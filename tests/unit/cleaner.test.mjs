@@ -414,6 +414,37 @@ describe("Whitelist — protected affiliates", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Copy behaviour — skipInject flag (used when user copies a URL via Ctrl+C)
+// ---------------------------------------------------------------------------
+describe("copy behaviour — skipInject flag", () => {
+
+  test("tracking params are stripped even with skipInject", () => {
+    const { cleanUrl } = processUrl(
+      "https://example.com/?utm_source=google&utm_medium=cpc",
+      { ...PREFS, injectOwnAffiliate: false }
+    );
+    assert.equal(new URL(cleanUrl).search, "");
+  });
+
+  test("affiliate is NOT injected when injectOwnAffiliate is false (skipInject simulation)", () => {
+    // Simulate what handleProcessUrl does when skipInject:true — forces injectOwnAffiliate:false
+    const { action } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?utm_source=email",
+      { ...PREFS, injectOwnAffiliate: false }
+    );
+    assert.notEqual(action, "injected");
+  });
+
+  test("URL with no query string is returned unchanged", () => {
+    const raw = "https://www.amazon.es/dp/B08N5WRWNW";
+    const { cleanUrl, action } = processUrl(raw, PREFS);
+    assert.equal(cleanUrl, raw);
+    assert.equal(action, "untouched");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Result shape — always returns expected fields
 // ---------------------------------------------------------------------------
 describe("result shape", () => {
