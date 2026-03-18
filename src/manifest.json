@@ -47,7 +47,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["onboarding/onboarding.html"],
+      "resources": ["onboarding/onboarding.html", "privacy/privacy.html"],
       "matches": ["<all_urls>"]
     }
   ],

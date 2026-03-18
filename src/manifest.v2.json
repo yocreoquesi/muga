@@ -42,7 +42,8 @@
   },
 
   "web_accessible_resources": [
-    "onboarding/onboarding.html"
+    "onboarding/onboarding.html",
+    "privacy/privacy.html"
   ],
 
   "icons": {
