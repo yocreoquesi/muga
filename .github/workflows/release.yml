@@ -1,0 +1,61 @@
+name: Release
+
+# Triggered when a version tag is pushed: git tag v1.0.0 && git push --tags
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Rename build artifacts
+        run: |
+          mv dist/chrome/muga-${{ steps.version.outputs.VERSION }}.zip \
+             dist/chrome/muga-${{ steps.version.outputs.VERSION }}-chrome.zip
+          mv dist/firefox/muga-${{ steps.version.outputs.VERSION }}.zip \
+             dist/firefox/muga-${{ steps.version.outputs.VERSION }}-firefox.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ steps.version.outputs.VERSION }}"
+          body: |
+            See [CHANGELOG.md](https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md) for what changed in this release.
+
+            ## Install from source
+            Download the `.zip` for your browser, unpack, and load as an unpacked extension.
+            - **Chrome**: `chrome://extensions` → Developer mode → Load unpacked
+            - **Firefox**: `about:debugging` → Load Temporary Add-on
+          files: |
+            dist/chrome/muga-${{ steps.version.outputs.VERSION }}-chrome.zip
+            dist/firefox/muga-${{ steps.version.outputs.VERSION }}-firefox.zip
+          draft: false
+          prerelease: false
