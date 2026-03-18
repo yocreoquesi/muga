@@ -19,6 +19,22 @@
    * Intercepts link clicks before navigation.
    * The service worker handles processing and responds with the clean URL.
    */
+  // Handle clipboard copy requests from the service worker (context menu "Copy clean link")
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type !== "COPY_TO_CLIPBOARD") return;
+    navigator.clipboard.writeText(message.text).catch(() => {
+      // Fallback for pages where the Clipboard API is unavailable
+      const el = document.createElement("textarea");
+      el.value = message.text;
+      el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand("copy"); } catch {}
+      el.remove();
+    });
+  });
+
   document.addEventListener("click", async (e) => {
     const anchor = e.target.closest("a[href]");
     if (!anchor) return;
