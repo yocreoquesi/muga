@@ -1,6 +1,6 @@
 {
   "name": "muga",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "Make URLs Great Again — clean URLs, no tracking, no unwanted referrals.",
   "type": "module",
   "scripts": {
