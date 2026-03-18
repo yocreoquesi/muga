@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +10,7 @@
   <header>
     <div class="logo">MUGA</div>
     <div class="toggle-wrap">
-      <label class="toggle" title="Activar / desactivar MUGA">
+      <label class="toggle" title="Enable / disable MUGA">
         <input type="checkbox" id="enabled-toggle">
         <span class="slider"></span>
       </label>
@@ -20,23 +20,23 @@
   <section class="stats">
     <div class="stat">
       <span class="stat-value" id="stat-tracking">0</span>
-      <span class="stat-label">tracking eliminado</span>
+      <span class="stat-label" data-i18n="stat_tracking">tracking removed</span>
     </div>
     <div class="stat">
       <span class="stat-value" id="stat-injected">0</span>
-      <span class="stat-label">afiliados activos</span>
+      <span class="stat-label" data-i18n="stat_injected">affiliate links</span>
     </div>
     <div class="stat">
       <span class="stat-value" id="stat-foreign">0</span>
-      <span class="stat-label">referidos detectados</span>
+      <span class="stat-label" data-i18n="stat_foreign">referrals detected</span>
     </div>
   </section>
 
   <section class="options">
     <label class="option-row">
       <span class="option-label">
-        Inyectar mi afiliado si no hay ninguno
-        <small>Solo en tiendas donde tengo acuerdo activo</small>
+        <span data-i18n="opt_inject_label">Inject our affiliate when none is present</span>
+        <small data-i18n="opt_inject_hint">Only on stores where we have an active account</small>
       </span>
       <label class="toggle sm">
         <input type="checkbox" id="inject-toggle">
@@ -46,8 +46,8 @@
 
     <label class="option-row">
       <span class="option-label">
-        Notificarme si hay un referido ajeno
-        <small>Muestra un aviso con opciones durante 5 seg</small>
+        <span data-i18n="opt_notify_label">Notify me when a third-party affiliate is detected</span>
+        <small data-i18n="opt_notify_hint">Shows a non-intrusive toast for 5 seconds</small>
       </span>
       <label class="toggle sm">
         <input type="checkbox" id="notify-toggle">
@@ -57,10 +57,10 @@
   </section>
 
   <footer>
-    <a href="#" id="open-options">Preferencias avanzadas →</a>
-    <a href="https://ko-fi.com/yocreoquesi" target="_blank" id="donate-link">Support the project</a>
+    <a href="#" id="open-options" data-i18n="link_advanced">Advanced settings →</a>
+    <a href="https://ko-fi.com/yocreoquesi" target="_blank" id="donate-link" data-i18n="link_donate">Support the project</a>
   </footer>
 
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

@@ -2,6 +2,8 @@
  * MUGA — Options page
  */
 
+import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
+
 const DEFAULTS = {
   injectOwnAffiliate: true,
   notifyForeignAffiliate: false,
@@ -10,7 +12,12 @@ const DEFAULTS = {
   whitelist: [],
 };
 
+let currentLang = "en";
+
 async function init() {
+  currentLang = await getStoredLang();
+  applyTranslations(currentLang);
+
   const prefs = await chrome.storage.sync.get(DEFAULTS);
 
   bindToggle("inject", "injectOwnAffiliate", prefs);
@@ -20,6 +27,8 @@ async function init() {
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
   renderStores();
+  initLanguageSelect();
+  bindListButtons();
 }
 
 function bindToggle(id, key, prefs) {
@@ -32,7 +41,7 @@ function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   if (!items.length) {
-    container.innerHTML = `<p class="empty">No entries yet.</p>`;
+    container.innerHTML = `<p class="empty">${t("empty_list", currentLang)}</p>`;
     return;
   }
   items.forEach((entry, i) => {
@@ -40,15 +49,26 @@ function renderList(containerId, items, listKey) {
     div.className = "list-item";
     div.innerHTML = `
       <span>${entry}</span>
-      <button class="del-btn" onclick="removeEntry('${listKey}', ${i})">×</button>
+      <button class="del-btn" data-list="${listKey}" data-index="${i}">×</button>
     `;
     container.appendChild(div);
   });
+
+  // Wire up delete buttons without inline onclick (CSP-safe)
+  container.querySelectorAll(".del-btn").forEach(btn => {
+    btn.addEventListener("click", () =>
+      removeEntry(btn.dataset.list, parseInt(btn.dataset.index, 10)));
+  });
+}
+
+function bindListButtons() {
+  document.getElementById("bl-add-btn").addEventListener("click", () =>
+    addEntry("blacklist", "bl-input", "blacklist-items"));
+  document.getElementById("wl-add-btn").addEventListener("click", () =>
+    addEntry("whitelist", "wl-input", "whitelist-items"));
 }
 
 function renderStores() {
-  // AFFILIATE_PATTERNS is embedded inline to avoid an ES module import in a non-module context.
-  // Keep in sync with src/lib/affiliates.js.
   const STORES = [
     { name: "Amazon ES", param: "tag", ourTag: "" },
     { name: "Amazon DE", param: "tag", ourTag: "" },
@@ -75,7 +95,21 @@ function renderStores() {
   `).join("");
 }
 
-window.addEntry = async function (listKey, inputId, containerId) {
+function initLanguageSelect() {
+  const select = document.getElementById("lang-select");
+  select.value = currentLang;
+  select.addEventListener("change", async () => {
+    currentLang = select.value;
+    await chrome.storage.sync.set({ language: currentLang });
+    applyTranslations(currentLang);
+    // Re-render dynamic lists with new language
+    const prefs = await chrome.storage.sync.get(DEFAULTS);
+    renderList("blacklist-items", prefs.blacklist, "blacklist");
+    renderList("whitelist-items", prefs.whitelist, "whitelist");
+  });
+}
+
+async function addEntry(listKey, inputId, containerId) {
   const input = document.getElementById(inputId);
   const value = input.value.trim();
   if (!value) return;
@@ -87,15 +121,15 @@ window.addEntry = async function (listKey, inputId, containerId) {
     renderList(containerId, list, listKey);
   }
   input.value = "";
-};
+}
 
-window.removeEntry = async function (listKey, index) {
+async function removeEntry(listKey, index) {
   const containerId = listKey === "blacklist" ? "blacklist-items" : "whitelist-items";
   const prefs = await chrome.storage.sync.get({ [listKey]: [] });
   const list = prefs[listKey];
   list.splice(index, 1);
   await chrome.storage.sync.set({ [listKey]: list });
   renderList(containerId, list, listKey);
-};
+}
 
 document.addEventListener("DOMContentLoaded", init);

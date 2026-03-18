@@ -64,7 +64,13 @@
     .store-dot.active { background: var(--success); }
     .store-name { font-weight: 500; }
     .store-param { font-size: 11px; color: var(--text2); font-family: monospace; }
-    /* Privacy policy link */
+    /* Language select */
+    .lang-select {
+      padding: 7px 10px; border-radius: 8px; font-size: 13px;
+      border: 0.5px solid var(--border); background: var(--bg);
+      color: var(--text); cursor: pointer; min-width: 120px;
+    }
+    /* Footer */
     .footer-links { text-align: center; padding-top: 8px; }
     .footer-links a { font-size: 12px; color: var(--text2); text-decoration: none; }
     .footer-links a:hover { color: var(--accent); }
@@ -72,29 +78,29 @@
 </head>
 <body>
   <h1>MUGA</h1>
-  <p class="subtitle">Advanced settings — Make URLs Great Again</p>
+  <p class="subtitle" data-i18n="opts_subtitle">Make URLs Great Again</p>
 
   <section>
-    <h2>Behaviour</h2>
+    <h2 data-i18n="section_behaviour">Behaviour</h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <strong>Inject our affiliate when none is present</strong>
-          <small>Only on stores where we have an active affiliate account</small>
+          <strong data-i18n="row_inject_label">Inject our affiliate when none is present</strong>
+          <small data-i18n="row_inject_hint">Only on stores where we have an active affiliate account</small>
         </div>
         <label class="toggle"><input type="checkbox" id="inject"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
-          <strong>Notify me when a third-party affiliate is detected</strong>
-          <small>Shows a non-intrusive toast with options — auto-dismisses in 5 seconds</small>
+          <strong data-i18n="row_notify_label">Notify me when a third-party affiliate is detected</strong>
+          <small data-i18n="row_notify_hint">Shows a non-intrusive toast with options — auto-dismisses in 5 seconds</small>
         </div>
         <label class="toggle"><input type="checkbox" id="notify"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
-          <strong>Allow replacing a third-party affiliate with ours</strong>
-          <small>Only available when the notification is on. You always decide, per link.</small>
+          <strong data-i18n="row_replace_label">Allow replacing a third-party affiliate with ours</strong>
+          <small data-i18n="row_replace_hint">Only available when notification is on. You always decide, per link.</small>
         </div>
         <label class="toggle"><input type="checkbox" id="replace"><span class="slider"></span></label>
       </div>
@@ -102,54 +108,63 @@
   </section>
 
   <section>
-    <h2>Supported stores</h2>
+    <h2 data-i18n="section_stores">Supported stores</h2>
     <div class="card">
-      <div class="stores-grid" id="stores-grid">
-        <!-- populated by options.js -->
-      </div>
+      <div class="stores-grid" id="stores-grid"></div>
       <div style="padding: 8px 16px 12px; border-top: 0.5px solid var(--border)">
-        <p class="hint">Green dot = affiliate account active and configured. Grey = account pending registration.</p>
+        <p class="hint" data-i18n="stores_hint">Green dot = affiliate account active. Grey = pending registration.</p>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>Blacklist — these affiliates are always stripped</h2>
+    <h2 data-i18n="section_blacklist">Blacklist — these affiliates are always stripped</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="blacklist-items"></div>
         <div class="add-row">
-          <input id="bl-input" placeholder="amazon.es  or  amazon.es::tag::youtuber-21" type="text">
-          <button class="add-btn" onclick="addEntry('blacklist', 'bl-input', 'blacklist-items')">+ Add</button>
+          <input id="bl-input" type="text" data-i18n-placeholder="bl_placeholder">
+          <button class="add-btn" id="bl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
-        <p class="hint">
-          Domain only (e.g. <code>amazon.es</code>) — blocks all affiliate activity on that site.<br>
-          Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>) — blocks one specific affiliate.
-        </p>
+        <p class="hint" id="bl-hint" data-i18n="bl_hint"></p>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>Whitelist — these affiliates are trusted and never touched</h2>
+    <h2 data-i18n="section_whitelist">Whitelist — these affiliates are trusted and never touched</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="whitelist-items"></div>
         <div class="add-row">
-          <input id="wl-input" placeholder="amazon.es::tag::creator-i-support" type="text">
-          <button class="add-btn" onclick="addEntry('whitelist', 'wl-input', 'whitelist-items')">+ Add</button>
+          <input id="wl-input" type="text" data-i18n-placeholder="wl_placeholder">
+          <button class="add-btn" id="wl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
-        <p class="hint">
-          Format: <code>domain::param::value</code>. That creator's affiliate tag is never modified.
-        </p>
+        <p class="hint" id="wl-hint" data-i18n="wl_hint"></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="section_language">Language</h2>
+    <div class="card">
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="lang_label">Display language</strong>
+          <small data-i18n="lang_hint">Affects the popup and settings page. Does not affect URL processing.</small>
+        </div>
+        <select class="lang-select" id="lang-select">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
       </div>
     </div>
   </section>
 
   <div class="footer-links">
-    <a href="../privacy/privacy.html" target="_blank">Privacy policy</a>
+    <a href="../privacy/privacy.html" target="_blank" data-i18n="privacy_link">Privacy policy</a>
   </div>
 
-  <script src="options.js"></script>
+  <script type="module" src="options.js"></script>
 </body>
 </html>

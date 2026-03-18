@@ -5,6 +5,7 @@
  *
  * Note: ES module imports are not supported in MV3 content scripts.
  * All URL processing is delegated to the service worker via messaging.
+ * Toast strings are kept inline and read from storage for i18n.
  */
 
 (function () {
@@ -15,10 +16,32 @@
   if (window.__mugaActive) return;
   window.__mugaActive = true;
 
-  /**
-   * Intercepts link clicks before navigation.
-   * The service worker handles processing and responds with the clean URL.
-   */
+  // Toast strings — default English, overridden by stored language preference
+  const STRINGS = {
+    en: {
+      toast_title:   "MUGA detected an affiliate",
+      toast_tag_msg: "carries the tag",
+      toast_keep:    "Keep",
+      toast_remove:  "Remove",
+      toast_ours:    "Use ours",
+      toast_dismiss: "Dismiss",
+    },
+    es: {
+      toast_title:   "MUGA detectó un referido",
+      toast_tag_msg: "lleva el tag",
+      toast_keep:    "Mantener",
+      toast_remove:  "Quitar",
+      toast_ours:    "Usar el nuestro",
+      toast_dismiss: "Descartar",
+    },
+  };
+
+  let s = STRINGS.en;
+  // Load language preference asynchronously — toast will use it if shown after load
+  chrome.storage.sync.get({ language: "en" }, (r) => {
+    s = STRINGS[r.language] ?? STRINGS.en;
+  });
+
   // Handle clipboard copy requests from the service worker (context menu "Copy clean link")
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type !== "COPY_TO_CLIPBOARD") return;
@@ -35,6 +58,10 @@
     });
   });
 
+  /**
+   * Intercepts link clicks before navigation.
+   * The service worker handles processing and responds with the clean URL.
+   */
   document.addEventListener("click", async (e) => {
     const anchor = e.target.closest("a[href]");
     if (!anchor) return;
@@ -74,8 +101,7 @@
       const { cleanUrl, action, detectedAffiliate } = response;
 
       if (action === "detected_foreign" && detectedAffiliate) {
-        // Show a non-intrusive notification so the user can decide
-        showAffiliateNotice(detectedAffiliate, href, cleanUrl, (choice) => {
+        showAffiliateNotice(detectedAffiliate, href, cleanUrl, response.withOurAffiliate, (choice) => {
           if (choice === "original") navigate(href, opensNewTab);
           else if (choice === "clean") navigate(cleanUrl, opensNewTab);
           else if (choice === "ours" && response.withOurAffiliate) {
@@ -104,49 +130,52 @@
   /**
    * Shows a non-intrusive toast when a foreign affiliate tag is detected.
    * Auto-dismisses after 5 seconds if the user does not interact.
+   * @param {object} affiliate
+   * @param {string} originalUrl
+   * @param {string} cleanUrl
+   * @param {string|undefined} withOurAffiliate - URL with our tag (only when allowReplaceAffiliate is on)
+   * @param {function} callback
    */
-  function showAffiliateNotice(affiliate, originalUrl, cleanUrl, callback) {
-    // Remove any existing toast
+  function showAffiliateNotice(affiliate, originalUrl, cleanUrl, withOurAffiliate, callback) {
     document.getElementById("muga-notice")?.remove();
 
     const notice = document.createElement("div");
     notice.id = "muga-notice";
-    notice.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #1a1a1a;
-      color: #f0f0f0;
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
-      line-height: 1.5;
-      max-width: 300px;
-      z-index: 2147483647;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      border: 0.5px solid rgba(255,255,255,0.1);
-    `;
+    notice.style.cssText = [
+      "position:fixed", "bottom:20px", "right:20px",
+      "background:#1a1a1a", "color:#f0f0f0", "border-radius:10px",
+      "padding:12px 16px",
+      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+      "font-size:13px", "line-height:1.5", "max-width:300px",
+      "z-index:2147483647", "box-shadow:0 4px 20px rgba(0,0,0,0.3)",
+      "border:0.5px solid rgba(255,255,255,0.1)",
+    ].join(";");
 
     const domain = new URL(originalUrl).hostname.replace("www.", "");
 
+    const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
+    const codeStyle = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
+
+    // "Use ours" button only shown when allowReplaceAffiliate is on and we have our tag
+    const oursBtn = withOurAffiliate
+      ? `<button data-choice="ours" style="${btnStyle}">${s.toast_ours}</button>`
+      : "";
+
     notice.innerHTML = `
-      <div style="font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa">
-        MUGA detectó un referido
-      </div>
+      <div style="font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa">${s.toast_title}</div>
       <div style="margin-bottom:10px;font-size:12px;color:#ddd">
-        ${domain} lleva el tag <code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px">${affiliate.param}=${affiliate.value}</code>
+        ${domain} ${s.toast_tag_msg} <code style="${codeStyle}">${affiliate.param}=${affiliate.value}</code>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button data-choice="original" style="flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer">Mantener</button>
-        <button data-choice="clean" style="flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer">Quitar</button>
+        <button data-choice="original" style="${btnStyle}">${s.toast_keep}</button>
+        <button data-choice="clean" style="${btnStyle}">${s.toast_remove}</button>
+        ${oursBtn}
       </div>
-      <div style="margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer" id="muga-dismiss">Descartar</div>
+      <div style="margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer" id="muga-dismiss">${s.toast_dismiss}</div>
     `;
 
     document.body.appendChild(notice);
 
-    // Auto-dismiss after 5 seconds → fall back to original URL
     const timer = setTimeout(() => {
       notice.remove();
       callback("original");
