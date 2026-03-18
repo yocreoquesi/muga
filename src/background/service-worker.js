@@ -27,8 +27,10 @@ async function handleProcessUrl(rawUrl, { skipInject = false } = {}) {
     return { cleanUrl: rawUrl, action: "untouched" };
   }
 
+  // On copy: respect the user's affiliate injection setting but suppress the toast
+  // (same behaviour as the context menu handler)
   const effectivePrefs = skipInject
-    ? { ...prefs, injectOwnAffiliate: false, notifyForeignAffiliate: false }
+    ? { ...prefs, notifyForeignAffiliate: false }
     : prefs;
 
   const result = processUrl(rawUrl, effectivePrefs);
