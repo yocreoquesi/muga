@@ -1,16 +1,16 @@
 /**
- * MUGA — Base de datos de patrones de afiliados y tracking
+ * MUGA — Affiliate and tracking parameter database
  *
- * Cada entrada define:
- *   - domains: dominios donde aplica el patrón
- *   - param: nombre del parámetro en la URL
- *   - type: 'affiliate' | 'tracking'
- *   - ourTag: nuestro valor de afiliado (solo si tenemos cuenta activa)
+ * Each entry defines:
+ *   - domains: domains where the pattern applies
+ *   - param:   the URL parameter name
+ *   - type:    'affiliate' | 'tracking'
+ *   - ourTag:  our affiliate value (only when we have an active account)
  *
- * Para añadir un nuevo programa:
- * 1. Añade la entrada al array AFFILIATE_PATTERNS
- * 2. Registra la cuenta en el programa correspondiente
- * 3. Rellena ourTag con tu ID de afiliado
+ * To add a new program:
+ * 1. Add an entry to AFFILIATE_PATTERNS
+ * 2. Register an account with the corresponding program
+ * 3. Fill in ourTag with your affiliate ID
  */
 
 export const TRACKING_PARAMS = [
@@ -39,7 +39,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.es", "www.amazon.es"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: rellenar con tu Amazon Associates tag cuando lo tengas
+    ourTag: "",  // TODO: fill in your Amazon Associates tag when available
   },
   {
     id: "amazon_de",
@@ -87,7 +87,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["booking.com", "www.booking.com"],
     param: "aid",
     type: "affiliate",
-    ourTag: "",  // TODO: rellenar con tu Booking Partner ID
+    ourTag: "",  // TODO: fill in your Booking Partner ID
   },
   {
     id: "aliexpress",
@@ -116,7 +116,7 @@ export const AFFILIATE_PATTERNS = [
 ];
 
 /**
- * Dado un hostname, devuelve todos los patrones de afiliado que aplican.
+ * Returns all affiliate patterns that match the given hostname.
  * @param {string} hostname
  * @returns {Array}
  */
@@ -128,7 +128,7 @@ export function getPatternsForHost(hostname) {
 }
 
 /**
- * Devuelve true si el parámetro es de tracking puro (no afiliado).
+ * Returns true if the parameter is a pure tracking param (not an affiliate tag).
  * @param {string} param
  * @returns {boolean}
  */

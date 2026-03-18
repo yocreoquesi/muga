@@ -1,17 +1,17 @@
 /**
  * MUGA — Service Worker (MV3)
- * Procesa URLs, gestiona mensajes del content script
- * y mantiene el estado de la extensión.
+ * Processes URLs, handles messages from content scripts,
+ * and maintains extension state.
  */
 
 import { processUrl } from "../lib/cleaner.js";
 import { getPrefs, incrementStat } from "../lib/storage.js";
 
-// --- Listener principal de mensajes desde content scripts ---
+// --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PROCESS_URL") {
     handleProcessUrl(message.url).then(sendResponse);
-    return true; // mantiene el canal abierto para la respuesta async
+    return true; // keep the channel open for the async response
   }
 
   if (message.type === "GET_PREFS") {
@@ -29,7 +29,7 @@ async function handleProcessUrl(rawUrl) {
 
   const result = processUrl(rawUrl, prefs);
 
-  // Actualizar estadísticas
+  // Update stats
   if (result.removedTracking.length > 0) {
     await incrementStat("trackingRemoved");
   }
@@ -38,7 +38,7 @@ async function handleProcessUrl(rawUrl) {
   }
   if (result.action === "detected_foreign") {
     await incrementStat("foreignDetected");
-    // Si el usuario tiene activado "reemplazar", preparar URL con nuestro afiliado
+    // If the user has "replace foreign affiliate" enabled, build the URL with our tag
     if (prefs.allowReplaceAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
       const url = new URL(result.cleanUrl);
       const p = result.detectedAffiliate.pattern;
@@ -50,11 +50,11 @@ async function handleProcessUrl(rawUrl) {
   return result;
 }
 
-// --- Menú contextual: "Copiar enlace limpio" ---
+// --- Context menu: "Copy clean link" ---
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "muga-copy-clean",
-    title: "MUGA: Copiar enlace limpio",
+    title: "MUGA: Copy clean link",
     contexts: ["link"],
   });
 });
@@ -64,7 +64,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   const prefs = await getPrefs();
   const result = processUrl(info.linkUrl, { ...prefs, notifyForeignAffiliate: false });
 
-  // Copiar al portapapeles via content script (el SW no tiene acceso directo)
+  // Copy to clipboard via content script (service worker has no direct clipboard access)
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id) {
     chrome.tabs.sendMessage(tab.id, {

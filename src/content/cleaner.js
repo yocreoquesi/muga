@@ -1,23 +1,23 @@
 /**
  * MUGA — Content Script
- * Se inyecta en todas las páginas. Intercepta la navegación antes de que
- * ocurra e intercambia mensajes con el service worker para limpiar la URL.
+ * Injected into every page. Intercepts link clicks before navigation occurs
+ * and communicates with the service worker to get a clean URL.
  *
- * Nota: los imports no funcionan en content scripts de MV3.
- * La lógica de limpieza se pasa como mensaje al service worker.
+ * Note: ES module imports are not supported in MV3 content scripts.
+ * All URL processing is delegated to the service worker via messaging.
  */
 
 (function () {
   "use strict";
 
-  // Evitar doble ejecución en iframes
+  // Prevent double execution in iframes
   if (window.self !== window.top) return;
   if (window.__mugaActive) return;
   window.__mugaActive = true;
 
   /**
-   * Intercepta clicks en enlaces antes de la navegación.
-   * El service worker hace el procesamiento y responde con la URL limpia.
+   * Intercepts link clicks before navigation.
+   * The service worker handles processing and responds with the clean URL.
    */
   document.addEventListener("click", async (e) => {
     const anchor = e.target.closest("a[href]");
@@ -26,7 +26,7 @@
     const href = anchor.href;
     if (!href || href.startsWith("javascript:") || href.startsWith("#")) return;
 
-    // Solo URLs http/https
+    // Only handle http/https URLs
     let url;
     try {
       url = new URL(href);
@@ -35,10 +35,10 @@
     }
     if (!["http:", "https:"].includes(url.protocol)) return;
 
-    // Si no tiene query string, no hay nada que limpiar
+    // No query string means nothing to clean
     if (!url.search) return;
 
-    // Respetar Ctrl/Cmd/Shift+click y target="_blank" (abrir en nueva pestaña/ventana)
+    // Preserve Ctrl/Cmd/Shift+click and target="_blank" (open in new tab/window)
     const opensNewTab = e.ctrlKey || e.metaKey || e.shiftKey ||
       (anchor.target && anchor.target !== "_self" && anchor.target !== "_top" && anchor.target !== "_parent");
 
@@ -58,7 +58,7 @@
       const { cleanUrl, action, detectedAffiliate } = response;
 
       if (action === "detected_foreign" && detectedAffiliate) {
-        // Mostrar notificación no intrusiva al usuario
+        // Show a non-intrusive notification so the user can decide
         showAffiliateNotice(detectedAffiliate, href, cleanUrl, (choice) => {
           if (choice === "original") navigate(href, opensNewTab);
           else if (choice === "clean") navigate(cleanUrl, opensNewTab);
@@ -75,7 +75,7 @@
   }, true);
 
   /**
-   * Navega a la URL indicada, preservando el comportamiento de nueva pestaña.
+   * Navigates to the given URL, preserving new-tab behaviour when needed.
    */
   function navigate(url, newTab) {
     if (newTab) {
@@ -86,11 +86,11 @@
   }
 
   /**
-   * Muestra un toast no intrusivo cuando se detecta un afiliado ajeno.
-   * Se autodestruye en 5 segundos si el usuario no interactúa.
+   * Shows a non-intrusive toast when a foreign affiliate tag is detected.
+   * Auto-dismisses after 5 seconds if the user does not interact.
    */
   function showAffiliateNotice(affiliate, originalUrl, cleanUrl, callback) {
-    // Eliminar toast previo si existe
+    // Remove any existing toast
     document.getElementById("muga-notice")?.remove();
 
     const notice = document.createElement("div");
@@ -130,7 +130,7 @@
 
     document.body.appendChild(notice);
 
-    // Autodestrucción tras 5 segundos → navega con URL original
+    // Auto-dismiss after 5 seconds → fall back to original URL
     const timer = setTimeout(() => {
       notice.remove();
       callback("original");

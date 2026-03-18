@@ -1,6 +1,6 @@
 /**
- * MUGA — Popup script
- * Carga preferencias, muestra estadísticas y gestiona los toggles.
+ * MUGA — Popup
+ * Loads preferences, displays stats, and manages the toggle switches.
  */
 
 async function init() {

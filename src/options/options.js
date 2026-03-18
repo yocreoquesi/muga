@@ -1,5 +1,5 @@
 /**
- * MUGA — Options page script
+ * MUGA — Options page
  */
 
 const DEFAULTS = {

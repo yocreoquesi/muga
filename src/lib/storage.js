@@ -1,7 +1,7 @@
 /**
- * MUGA — Gestión de almacenamiento
- * Usa chrome.storage.sync para que las preferencias se sincronicen
- * entre todos los dispositivos del usuario con la misma cuenta.
+ * MUGA — Storage helpers
+ * Uses chrome.storage.sync so preferences are synced across
+ * all devices signed into the same account.
  */
 
 const DEFAULTS = {
@@ -9,8 +9,8 @@ const DEFAULTS = {
   injectOwnAffiliate: true,
   notifyForeignAffiliate: false,
   allowReplaceAffiliate: false,
-  blacklist: [],   // ["amazon.es", "booking.com::aid::123456"]
-  whitelist: [],   // ["amazon.es::tag::youtuber-21"]
+  blacklist: [],   // e.g. ["amazon.es", "booking.com::aid::123456"]
+  whitelist: [],   // e.g. ["amazon.es::tag::youtuber-21"]
   stats: {
     trackingRemoved: 0,
     affiliatesInjected: 0,

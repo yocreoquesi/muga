@@ -6,11 +6,11 @@
 import { TRACKING_PARAMS, getPatternsForHost } from "./affiliates.js";
 
 /**
- * Processes a URL: removes tracking params, detects foreign affiliates,
+ * Processes a URL: strips tracking params, detects foreign affiliate tags,
  * and optionally injects our own affiliate tag.
  *
- * @param {string} rawUrl
- * @param {object} prefs
+ * @param {string} rawUrl - The original URL to process.
+ * @param {object} prefs  - User preferences from chrome.storage.sync.
  * @returns {{ cleanUrl: string, action: string, removedTracking: string[], detectedAffiliate: object|null }}
  */
 export function processUrl(rawUrl, prefs) {
@@ -26,7 +26,7 @@ export function processUrl(rawUrl, prefs) {
   let detectedAffiliate = null;
   let action = "untouched";
 
-  // 1. Detect foreign affiliate tag (only when we have our own tag to compare against)
+  // 1. Detect a foreign affiliate tag (only relevant when we have our own tag to compare against)
   if (prefs.notifyForeignAffiliate || prefs.allowReplaceAffiliate) {
     for (const pattern of patterns) {
       if (pattern.ourTag) {
@@ -40,7 +40,7 @@ export function processUrl(rawUrl, prefs) {
     }
   }
 
-  // 2. Remove tracking params
+  // 2. Strip known tracking parameters
   for (const param of [...url.searchParams.keys()]) {
     if (TRACKING_PARAMS.includes(param.toLowerCase())) {
       url.searchParams.delete(param);
@@ -52,7 +52,7 @@ export function processUrl(rawUrl, prefs) {
     action = "cleaned";
   }
 
-  // 3. Inject our affiliate tag (only if no foreign affiliate detected)
+  // 3. Inject our affiliate tag when the link has none (skip if a foreign one was detected)
   if (prefs.injectOwnAffiliate && action !== "detected_foreign") {
     for (const pattern of patterns) {
       if (pattern.ourTag && !url.searchParams.has(pattern.param)) {
