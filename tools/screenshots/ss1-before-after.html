@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+    background: #f0f0f0;
+  }
+
+  /* Browser chrome */
+  .browser {
+    width: 100%; height: 100%;
+    background: #fff;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .browser-chrome {
+    background: #dee1e6;
+    padding: 10px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .traffic-lights {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+  }
+  .light {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+  }
+  .l-red { background: #ff5f57; border: 0.5px solid rgba(0,0,0,.12); }
+  .l-yellow { background: #febc2e; border: 0.5px solid rgba(0,0,0,.12); }
+  .l-green { background: #28c840; border: 0.5px solid rgba(0,0,0,.12); }
+
+  .tabs-row {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    padding-top: 4px;
+  }
+  .tab {
+    height: 32px;
+    padding: 0 16px;
+    background: #f0f2f5;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #666;
+    min-width: 180px;
+  }
+  .tab.active {
+    background: #fff;
+    color: #1a1a1a;
+    font-weight: 500;
+  }
+  .tab-favicon {
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #ff9900 0%, #e47911 100%);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .tab-close {
+    width: 16px; height: 16px;
+    margin-left: auto;
+    color: #999;
+    font-size: 14px;
+    line-height: 16px;
+    text-align: center;
+  }
+
+  .omnibox-row {
+    background: #fff;
+    border-radius: 0;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .omnibox {
+    flex: 1;
+    height: 32px;
+    background: #f0f2f5;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+    font-size: 13px;
+    color: #333;
+    overflow: hidden;
+  }
+  .omnibox-lock { color: #5a7f50; font-size: 12px; flex-shrink: 0; }
+  .omnibox-url { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .omnibox-url .host { color: #1a1a1a; font-weight: 500; }
+  .omnibox-url .path { color: #555; }
+  .ext-area {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .ext-icon {
+    width: 24px; height: 24px;
+    background: linear-gradient(160deg, #0d1b4b 0%, #1a3a6b 60%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .ext-icon::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+
+  /* Page content */
+  .page-content {
+    flex: 1;
+    background: #fff;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 80px 40px;
+    overflow: hidden;
+  }
+
+  .content-wrap {
+    width: 100%;
+    max-width: 1060px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f0f9f0;
+    border: 1px solid #b6e0b6;
+    border-radius: 99px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2d7a2d;
+    margin-bottom: 20px;
+  }
+  .badge-dot { width: 7px; height: 7px; background: #2d7a2d; border-radius: 50%; }
+
+  h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #0d1b4b;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+  h1 em { color: #d97706; font-style: normal; }
+  .subtitle {
+    font-size: 17px;
+    color: #555;
+    margin-bottom: 48px;
+    max-width: 560px;
+    line-height: 1.5;
+  }
+
+  .examples { display: flex; flex-direction: column; gap: 18px; }
+
+  .example {
+    background: #f8f9fb;
+    border: 1px solid #e8eaed;
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .example-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    margin-bottom: 10px;
+  }
+  .url-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .url-pill {
+    flex: 1;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .url-pill.before {
+    background: #fff5f5;
+    border: 1px solid #fca5a5;
+    color: #7f1d1d;
+  }
+  .url-pill.after {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #14532d;
+  }
+  .arrow {
+    font-size: 18px;
+    color: #d97706;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+  .params-removed {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #888;
+  }
+  .params-removed span {
+    display: inline-block;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-right: 4px;
+    margin-top: 4px;
+    font-family: monospace;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="browser">
+  <div class="browser-chrome">
+    <div class="traffic-lights">
+      <div class="light l-red"></div>
+      <div class="light l-yellow"></div>
+      <div class="light l-green"></div>
+    </div>
+    <div class="tabs-row">
+      <div class="tab active">
+        <div class="tab-favicon"></div>
+        Amazon.es — Echo Dot (5th Gen)
+        <div class="tab-close">×</div>
+      </div>
+      <div class="tab">New Tab</div>
+    </div>
+    <div class="omnibox-row">
+      <div class="nav-btn">←</div>
+      <div class="nav-btn">→</div>
+      <div class="nav-btn">↻</div>
+      <div class="omnibox">
+        <span class="omnibox-lock">🔒</span>
+        <span class="omnibox-url">
+          <span class="host">amazon.es</span><span class="path">/dp/B09B8YWXDF</span>
+        </span>
+      </div>
+      <div class="ext-area">
+        <div class="ext-icon">M</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="content-wrap">
+      <div class="badge">
+        <div class="badge-dot"></div>
+        MUGA active — URL cleaned automatically
+      </div>
+      <h1>Drain the <em>tracking swamp.</em><br>Every link, every time.</h1>
+      <p class="subtitle">Every URL you click arrives loaded with tracking garbage. MUGA strips it silently — before the page even loads. Zero setup, zero clicks.</p>
+
+      <div class="examples">
+        <div class="example">
+          <div class="example-label">Amazon product — 18 params removed</div>
+          <div class="url-row">
+            <div class="url-pill before">amazon.es/dp/B09B8YWXDF?tag=youtuber-21&linkCode=ll1&linkId=abc123&pd_rd_r=xyz&pf_rd_p=def&pf_rd_r=ghi&ref_=nav&utm_source=youtube&utm_medium=video&utm_campaign=2026</div>
+            <div class="arrow">→</div>
+            <div class="url-pill after">amazon.es/dp/B09B8YWXDF?tag=youtuber-21</div>
+          </div>
+          <div class="params-removed">Removed: <span>linkCode</span><span>linkId</span><span>pd_rd_r</span><span>pf_rd_p</span><span>pf_rd_r</span><span>ref_</span><span>utm_source</span><span>utm_medium</span><span>utm_campaign</span></div>
+        </div>
+
+        <div class="example">
+          <div class="example-label">YouTube shared from mobile — si tracking token</div>
+          <div class="url-row">
+            <div class="url-pill before">youtube.com/watch?v=dQw4w9WgXcQ&si=abc123trackingtoken456789XYZ</div>
+            <div class="arrow">→</div>
+            <div class="url-pill after">youtube.com/watch?v=dQw4w9WgXcQ</div>
+          </div>
+          <div class="params-removed">Removed: <span>si</span></div>
+        </div>
+
+        <div class="example">
+          <div class="example-label">Booking.com newsletter — affiliate + UTMs stripped</div>
+          <div class="url-row">
+            <div class="url-pill before">booking.com/hotel/es/my-hotel.html?aid=304142&label=gen173nr&utm_source=email&utm_medium=newsletter</div>
+            <div class="arrow">→</div>
+            <div class="url-pill after">booking.com/hotel/es/my-hotel.html</div>
+          </div>
+          <div class="params-removed">Removed: <span>aid</span><span>label</span><span>utm_source</span><span>utm_medium</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

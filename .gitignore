@@ -17,3 +17,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Generated outputs
+mnt/
+tools/screenshots/out/

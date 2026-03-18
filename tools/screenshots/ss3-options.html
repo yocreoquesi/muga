@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+    background: #f0f0f0;
+    display: flex;
+  }
+
+  /* Left panel — feature callout */
+  .left {
+    width: 440px;
+    flex-shrink: 0;
+    background: linear-gradient(160deg, #0d1b4b 0%, #1a3a6b 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .left::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+  .left-logo {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 32px;
+  }
+  .left h2 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+  }
+  .left h2 em { color: #f59e0b; font-style: normal; }
+  .left p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    margin-bottom: 36px;
+  }
+  .feature-list { display: flex; flex-direction: column; gap: 12px; }
+  .feature-item {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .feature-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(245,158,11,0.2);
+    border: 1.5px solid #f59e0b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #f59e0b; flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .feature-text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; }
+  .feature-text strong { color: #fff; }
+
+  /* Right panel — options page */
+  .right {
+    flex: 1;
+    background: #f5f5f5;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Browser chrome for the right side */
+  .browser-chrome {
+    background: #dee1e6;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .traffic-lights { display: flex; gap: 6px; }
+  .light { width: 11px; height: 11px; border-radius: 50%; }
+  .l-red { background: #ff5f57; } .l-yellow { background: #febc2e; } .l-green { background: #28c840; }
+  .omnibox {
+    flex: 1; height: 28px;
+    background: #fff;
+    border-radius: 14px;
+    display: flex; align-items: center; padding: 0 12px; gap: 6px;
+    font-size: 11px; color: #555;
+  }
+  .ext-icon {
+    width: 20px; height: 20px;
+    background: linear-gradient(160deg, #0d1b4b 0%, #1a3a6b 60%);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 9px; font-weight: 800;
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .ext-icon::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+
+  /* Options content */
+  .options-content {
+    background: #fff;
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    font-size: 13px;
+    color: #1a1a1a;
+  }
+  .opt-header { margin-bottom: 24px; }
+  .opt-h1 { font-size: 18px; font-weight: 600; margin-bottom: 3px; }
+  .opt-subtitle { color: #666; font-size: 12px; }
+
+  .opt-section { margin-bottom: 22px; }
+  .opt-h2 {
+    font-size: 11px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .opt-card {
+    background: #f5f5f5;
+    border-radius: 10px;
+    border: 0.5px solid rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .opt-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+    gap: 10px;
+  }
+  .opt-row:last-child { border-bottom: none; }
+  .opt-row-label strong { display: block; font-size: 12.5px; font-weight: 500; }
+  .opt-row-label small { color: #888; font-size: 11.5px; display: block; margin-top: 1px; }
+  .toggle-vis {
+    width: 34px; height: 18px; border-radius: 99px; flex-shrink: 0;
+    position: relative;
+  }
+  .toggle-vis.on { background: #2563eb; }
+  .toggle-vis.off { background: #d1d5db; }
+  .toggle-vis::before {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    top: 3px; background: #fff; border-radius: 50%;
+  }
+  .toggle-vis.on::before { right: 3px; }
+  .toggle-vis.off::before { left: 3px; }
+
+  .lang-select {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 0.5px solid rgba(0,0,0,0.15);
+    background: #fff;
+    font-size: 12.5px;
+    color: #1a1a1a;
+    flex-shrink: 0;
+  }
+
+  .list-section { padding: 10px 14px; }
+  .list-items { margin-bottom: 8px; }
+  .list-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 8px; background: #fff; border-radius: 6px;
+    margin-bottom: 4px; font-size: 11.5px; font-family: monospace;
+    border: 0.5px solid rgba(0,0,0,0.06);
+  }
+  .del-btn { color: #dc2626; font-size: 14px; border: none; background: none; cursor: pointer; }
+  .add-row { display: flex; gap: 6px; }
+  .add-input {
+    flex: 1; padding: 6px 9px; border-radius: 6px;
+    border: 0.5px solid rgba(0,0,0,0.15); background: #fff;
+    color: #1a1a1a; font-size: 12px; font-family: monospace;
+  }
+  .add-btn {
+    padding: 6px 12px; border-radius: 6px;
+    border: 0.5px solid rgba(0,0,0,0.15); background: transparent;
+    font-size: 12px; cursor: pointer;
+  }
+  .hint { font-size: 10.5px; color: #888; margin-top: 6px; line-height: 1.5; }
+
+  .stores-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 6px; padding: 10px 14px;
+  }
+  .store-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 10px; border-radius: 8px;
+    background: #fff; border: 0.5px solid rgba(0,0,0,0.08);
+    font-size: 12px;
+  }
+  .store-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-pending { background: #fbbf24; }
+  .store-name { font-weight: 500; }
+  .store-domains { font-size: 10px; color: #888; }
+</style>
+</head>
+<body>
+  <!-- Left callout -->
+  <div class="left">
+    <div class="left-logo">MUGA Settings</div>
+    <h2>Full control.<br><em>Your rules.</em></h2>
+    <p>Every behaviour is configurable. Protect your favourite creators, block annoying domains, choose your language. MUGA does exactly what you tell it to.</p>
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-check">✓</div>
+        <div class="feature-text"><strong>Affiliate injection</strong> — on/off globally or per domain</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-check">✓</div>
+        <div class="feature-text"><strong>Blacklist</strong> — strip everything on domains you choose</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-check">✓</div>
+        <div class="feature-text"><strong>Whitelist</strong> — protect trusted creator affiliate links</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-check">✓</div>
+        <div class="feature-text"><strong>Language</strong> — English or Español, switch any time</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-check">✓</div>
+        <div class="feature-text"><strong>Synced</strong> — settings sync across all your Chrome devices</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: options page -->
+  <div class="right">
+    <div class="browser-chrome">
+      <div class="traffic-lights">
+        <div class="light l-red"></div>
+        <div class="light l-yellow"></div>
+        <div class="light l-green"></div>
+      </div>
+      <div class="omnibox">
+        🔒 <span>chrome-extension://muga/options/options.html</span>
+      </div>
+      <div class="ext-icon">M</div>
+    </div>
+
+    <div class="options-content">
+      <div class="opt-header">
+        <div class="opt-h1">MUGA — Settings</div>
+        <div class="opt-subtitle">Make URLs Great Again</div>
+      </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Behaviour</div>
+        <div class="opt-card">
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Inject our affiliate when none is present</strong>
+              <small>Only on stores with an active account — you pay the same price</small>
+            </div>
+            <div class="toggle-vis on"></div>
+          </div>
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Notify when a foreign affiliate is detected</strong>
+              <small>Non-intrusive toast — shows for 5 seconds</small>
+            </div>
+            <div class="toggle-vis off"></div>
+          </div>
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Allow replacing foreign affiliate with ours</strong>
+              <small>Only available if notification is enabled and you opt in explicitly</small>
+            </div>
+            <div class="toggle-vis off"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Language</div>
+        <div class="opt-card">
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Interface language</strong>
+              <small>Applied immediately across the extension</small>
+            </div>
+            <select class="lang-select">
+              <option selected>🇬🇧 English</option>
+              <option>🇪🇸 Español</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Blacklist — strip all params on these domains</div>
+        <div class="opt-card">
+          <div class="list-section">
+            <div class="list-items">
+              <div class="list-item">facebook.com <button class="del-btn">×</button></div>
+              <div class="list-item">twitter.com <button class="del-btn">×</button></div>
+            </div>
+            <div class="add-row">
+              <input class="add-input" placeholder="example.com or example.com::param::value" value="">
+              <button class="add-btn">Add</button>
+            </div>
+            <div class="hint">Format: <code>domain</code> to strip all params · <code>domain::param::value</code> to target a specific affiliate</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Whitelist — protect these affiliate links</div>
+        <div class="opt-card">
+          <div class="list-section">
+            <div class="list-items">
+              <div class="list-item">amazon.es::tag::mkbhd-21 <button class="del-btn">×</button></div>
+            </div>
+            <div class="add-row">
+              <input class="add-input" placeholder="amazon.es::tag::creator-21" value="">
+              <button class="add-btn">Add</button>
+            </div>
+            <div class="hint">Whitelisted affiliates are never touched and never trigger a notification.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Supported stores</div>
+        <div class="opt-card">
+          <div class="stores-grid">
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon ES</div><div class="store-domains">amazon.es</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon DE</div><div class="store-domains">amazon.de</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon FR</div><div class="store-domains">amazon.fr</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon IT</div><div class="store-domains">amazon.it</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon UK</div><div class="store-domains">amazon.co.uk</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon US</div><div class="store-domains">amazon.com</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Booking.com</div><div class="store-domains">booking.com</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">AliExpress</div><div class="store-domains">aliexpress.com</div></div></div>
+            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">eBay ES/UK/DE</div><div class="store-domains">ebay.*</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

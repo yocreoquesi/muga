@@ -8,445 +8,389 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:40px 24px; }
   h1 { font-size:22px; font-weight:700; margin-bottom:6px; }
-  .subtitle { color:var(--text2); font-size:13px; margin-bottom:40px; }
-  .options { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:24px; margin-bottom:48px; }
-  .option { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:24px; }
-  .option-title { font-size:16px; font-weight:600; margin-bottom:4px; }
-  .option-subtitle { font-size:12px; color:var(--text2); margin-bottom:20px; }
-  .previews { display:flex; gap:16px; align-items:flex-end; margin-bottom:20px; }
+  .subtitle { color:var(--text2); font-size:13px; margin-bottom:8px; }
+  .note { font-size:12px; color:#555; background:#111; border:1px solid #222; border-radius:8px; padding:10px 14px; margin-bottom:36px; line-height:1.6; }
+  .options { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; margin-bottom:48px; }
+  .option { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:22px; transition:border-color .2s; }
+  .option.selected { border-color:#f59e0b; }
+  .option-title { font-size:15px; font-weight:700; margin-bottom:3px; }
+  .option-subtitle { font-size:11.5px; color:var(--text2); margin-bottom:18px; line-height:1.5; }
+  .previews { display:flex; gap:14px; align-items:flex-end; margin-bottom:18px; }
   .preview-group { text-align:center; }
-  .preview-group canvas { display:block; margin:0 auto 4px; border-radius:8px; }
+  .preview-group canvas { display:block; margin:0 auto 4px; border-radius:6px; }
   .preview-group span { font-size:10px; color:var(--text2); }
-  .downloads { display:flex; flex-wrap:wrap; gap:8px; }
+  .downloads { display:flex; flex-wrap:wrap; gap:7px; }
   .dl-btn { padding:7px 12px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text); font-size:12px; cursor:pointer; transition:background .15s; }
   .dl-btn:hover { background:#2a2a2a; }
-  .dl-btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
-  h2 { font-size:16px; font-weight:600; margin-bottom:16px; }
-  .tile-row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
-  .tile-group { text-align:center; }
-  .tile-group canvas { display:block; border-radius:10px; }
-  .tile-group p { font-size:11px; color:var(--text2); margin-top:6px; }
-  .tile-dl { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .dl-btn.primary { background:#1a3a6b; border-color:#1a3a6b; color:#fff; }
+  .select-btn { width:100%; margin-top:12px; padding:8px; border-radius:8px; border:1px solid #333; background:transparent; color:#888; font-size:12px; cursor:pointer; transition:all .2s; }
+  .select-btn:hover, .option.selected .select-btn { background:#f59e0b; border-color:#f59e0b; color:#000; font-weight:600; }
+  h2 { font-size:16px; font-weight:600; margin-bottom:6px; }
+  .section-note { font-size:12px; color:#666; margin-bottom:20px; }
+  .tile-row { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+  .tile-group { }
+  .tile-group canvas { display:block; border-radius:10px; max-width:100%; }
+  .tile-group p { font-size:11px; color:var(--text2); margin-top:6px; text-align:center; }
+  .tile-dl { text-align:center; margin-top:8px; }
   hr { border:none; border-top:1px solid var(--border); margin:40px 0; }
-  .tag { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:99px; margin-left:8px; vertical-align:middle; }
-  .tag-red { background:rgba(220,38,38,.15); color:#f87171; }
-  .tag-blue { background:rgba(37,99,235,.2); color:#60a5fa; }
-  .tag-dark { background:rgba(255,255,255,.08); color:#aaa; }
+  .tag { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:99px; margin-left:6px; vertical-align:middle; }
+  .tag-gold { background:rgba(245,158,11,.15); color:#f59e0b; }
+  .tag-indigo { background:rgba(99,102,241,.15); color:#818cf8; }
+  .tag-teal { background:rgba(20,184,166,.15); color:#2dd4bf; }
+  .rec { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; background:#f59e0b; color:#000; margin-left:6px; vertical-align:middle; }
 </style>
 </head>
 <body>
 
-<h1>MUGA — Brand Asset Generator</h1>
-<p class="subtitle">Three identity options. Pick one, download all sizes, replace the files in src/icons/.</p>
+<h1>MUGA — Campaign Icon Variants</h1>
+<p class="subtitle">Option A refined: bold campaign structure, no star, three distinct palettes. Pick one → download all sizes.</p>
+<div class="note">
+  All three keep the campaign button structure (bold letter + bottom stripe). The change is only the color palette.<br>
+  <strong>Avoiding:</strong> hard red/blue (MAGA too literal) · red/orange (Megaupload) · anything that reads "political rally" at 16px.
+</div>
 
 <div class="options">
 
-  <!-- OPTION A -->
-  <div class="option" id="optA">
-    <div class="option-title">Option A — The Campaign <span class="tag tag-red">Bold · Political · Provocative</span></div>
-    <div class="option-subtitle">Campaign button aesthetic. Leans hard into the MAGA parody. Unforgettable. Slightly provocative — which is the point.</div>
+  <!-- A1: Navy + Gold -->
+  <div class="option selected" id="opt-a1">
+    <div class="option-title">A1 — Navy + Gold <span class="rec">Recommended</span></div>
+    <div class="option-subtitle">Deep navy background, gold stripe, white bold M. Reads as presidential / authoritative. Same campaign energy as MAGA, none of the red-flag associations. Distinctive in the Chrome Store — zero other extensions use this combo.</div>
     <div class="previews">
-      <div class="preview-group"><canvas id="a128" width="128" height="128"></canvas><span>128px</span></div>
-      <div class="preview-group"><canvas id="a48" width="48" height="48"></canvas><span>48px</span></div>
-      <div class="preview-group"><canvas id="a16" width="16" height="16"></canvas><span>16px</span></div>
+      <div class="preview-group"><canvas id="a1-128" width="128" height="128"></canvas><span>128px</span></div>
+      <div class="preview-group"><canvas id="a1-48" width="48" height="48"></canvas><span>48px</span></div>
+      <div class="preview-group"><canvas id="a1-16" width="16" height="16"></canvas><span>16px</span></div>
     </div>
     <div class="downloads">
-      <button class="dl-btn primary" onclick="download('a128','muga-128.png')">↓ 128px</button>
-      <button class="dl-btn" onclick="download('a48','muga-48.png')">↓ 48px</button>
-      <button class="dl-btn" onclick="download('a16','muga-16.png')">↓ 16px</button>
+      <button class="dl-btn primary" onclick="download('a1-128','muga-128.png')">↓ 128px</button>
+      <button class="dl-btn" onclick="download('a1-48','muga-48.png')">↓ 48px</button>
+      <button class="dl-btn" onclick="download('a1-16','muga-16.png')">↓ 16px</button>
     </div>
+    <button class="select-btn" onclick="selectOption('a1')">✓ Use this for promotional tiles</button>
   </div>
 
-  <!-- OPTION B -->
-  <div class="option" id="optB">
-    <div class="option-title">Option B — The Cleaner <span class="tag tag-blue">Modern · Clear · Tech</span></div>
-    <div class="option-subtitle">Scissor blades cutting a URL chain. Shows exactly what the extension does at a glance. Clean and professional.</div>
+  <!-- A2: Indigo + Yellow -->
+  <div class="option" id="opt-a2">
+    <div class="option-title">A2 — Indigo + Yellow <span class="tag tag-indigo">Bold · Playful</span></div>
+    <div class="option-subtitle">Deep indigo background, bright yellow stripe, white M. Strong European campaign poster energy — think EU elections or Spanish political graphics. More playful than A1. Very eye-catching at small sizes.</div>
     <div class="previews">
-      <div class="preview-group"><canvas id="b128" width="128" height="128"></canvas><span>128px</span></div>
-      <div class="preview-group"><canvas id="b48" width="48" height="48"></canvas><span>48px</span></div>
-      <div class="preview-group"><canvas id="b16" width="16" height="16"></canvas><span>16px</span></div>
+      <div class="preview-group"><canvas id="a2-128" width="128" height="128"></canvas><span>128px</span></div>
+      <div class="preview-group"><canvas id="a2-48" width="48" height="48"></canvas><span>48px</span></div>
+      <div class="preview-group"><canvas id="a2-16" width="16" height="16"></canvas><span>16px</span></div>
     </div>
     <div class="downloads">
-      <button class="dl-btn primary" onclick="download('b128','muga-128.png')">↓ 128px</button>
-      <button class="dl-btn" onclick="download('b48','muga-48.png')">↓ 48px</button>
-      <button class="dl-btn" onclick="download('b16','muga-16.png')">↓ 16px</button>
+      <button class="dl-btn primary" onclick="download('a2-128','muga-128.png')">↓ 128px</button>
+      <button class="dl-btn" onclick="download('a2-48','muga-48.png')">↓ 48px</button>
+      <button class="dl-btn" onclick="download('a2-16','muga-16.png')">↓ 16px</button>
     </div>
+    <button class="select-btn" onclick="selectOption('a2')">Use this for promotional tiles</button>
   </div>
 
-  <!-- OPTION C -->
-  <div class="option" id="optC">
-    <div class="option-title">Option C — The Stamp <span class="tag tag-dark">Premium · Dark · Minimal</span></div>
-    <div class="option-subtitle">Rubber stamp aesthetic — "MUGA Approved: Clean URL". Dark, high contrast, premium feel. Works great on both light and dark UIs.</div>
+  <!-- A3: Dark Teal + Amber -->
+  <div class="option" id="opt-a3">
+    <div class="option-title">A3 — Dark Teal + Amber <span class="tag tag-teal">Tech · Warm</span></div>
+    <div class="option-subtitle">Dark teal background, warm amber stripe, white M. Completely clear of any political or Megaupload associations. Reads as "privacy tech" — same family as uBlock or Bitwarden — while still having the bold campaign structure and clear identity.</div>
     <div class="previews">
-      <div class="preview-group"><canvas id="c128" width="128" height="128"></canvas><span>128px</span></div>
-      <div class="preview-group"><canvas id="c48" width="48" height="48"></canvas><span>48px</span></div>
-      <div class="preview-group"><canvas id="c16" width="16" height="16"></canvas><span>16px</span></div>
+      <div class="preview-group"><canvas id="a3-128" width="128" height="128"></canvas><span>128px</span></div>
+      <div class="preview-group"><canvas id="a3-48" width="48" height="48"></canvas><span>48px</span></div>
+      <div class="preview-group"><canvas id="a3-16" width="16" height="16"></canvas><span>16px</span></div>
     </div>
     <div class="downloads">
-      <button class="dl-btn primary" onclick="download('c128','muga-128.png')">↓ 128px</button>
-      <button class="dl-btn" onclick="download('c48','muga-48.png')">↓ 48px</button>
-      <button class="dl-btn" onclick="download('c16','muga-16.png')">↓ 16px</button>
+      <button class="dl-btn primary" onclick="download('a3-128','muga-128.png')">↓ 128px</button>
+      <button class="dl-btn" onclick="download('a3-48','muga-48.png')">↓ 48px</button>
+      <button class="dl-btn" onclick="download('a3-16','muga-16.png')">↓ 16px</button>
     </div>
+    <button class="select-btn" onclick="selectOption('a3')">Use this for promotional tiles</button>
   </div>
 
 </div>
 
 <hr>
 
-<!-- PROMOTIONAL TILES -->
-<h2>Promotional tiles — Chrome Web Store</h2>
-<p style="font-size:12px;color:#888;margin-bottom:24px">Screenshot each canvas at the exact pixel size shown. Use browser zoom at 100%.</p>
-
-<div class="tile-row" id="tile-row">
-  <!-- populated by JS for the selected option -->
-</div>
+<h2>Promotional tiles</h2>
+<p class="section-note">Generated for the selected option. Switch selection above to preview each palette. Download at full resolution.</p>
+<div class="tile-row" id="tile-row"></div>
 
 <script>
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
   ctx.closePath();
 }
 
 function download(canvasId, filename) {
-  const canvas = document.getElementById(canvasId);
+  const c = document.getElementById(canvasId);
   const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
+  a.href = c.toDataURL('image/png');
   a.download = filename;
   a.click();
 }
 
-// ─── OPTION A: The Campaign ─────────────────────────────────────────────────
-// Red background, bold white "M", yellow star, campaign button vibe
+// ─── Palette definitions ─────────────────────────────────────────────────────
+const PALETTES = {
+  a1: {
+    bg1: '#0d1b4b', bg2: '#1a3a6b',   // deep navy gradient
+    stripe: '#d97706',                  // amber gold
+    stripeLight: '#f59e0b',
+    letter: '#ffffff',
+    name: 'navy-gold',
+  },
+  a2: {
+    bg1: '#1e1b4b', bg2: '#312e81',   // deep indigo
+    stripe: '#ca8a04',                  // yellow-gold
+    stripeLight: '#facc15',
+    letter: '#ffffff',
+    name: 'indigo-yellow',
+  },
+  a3: {
+    bg1: '#0d2d2a', bg2: '#134e4a',   // dark teal
+    stripe: '#b45309',                  // warm amber
+    stripeLight: '#d97706',
+    letter: '#ffffff',
+    name: 'teal-amber',
+  },
+};
 
-function drawA(canvas) {
+// ─── Icon drawer (campaign structure, no star) ────────────────────────────
+function drawIcon(canvas, palette) {
   const ctx = canvas.getContext('2d');
   const s = canvas.width;
-  const r = s * 0.18;
+  const r = s * 0.19;
+  const p = palette;
 
-  // Red background
+  // Background gradient
   const grad = ctx.createLinearGradient(0, 0, s, s);
-  grad.addColorStop(0, '#dc2626');
-  grad.addColorStop(1, '#b91c1c');
+  grad.addColorStop(0, p.bg1);
+  grad.addColorStop(1, p.bg2);
   roundRect(ctx, 0, 0, s, s, r);
   ctx.fillStyle = grad;
   ctx.fill();
 
   if (s >= 48) {
-    // Blue stripe at bottom third
+    // Gold stripe — bottom 28% of the icon
+    const stripeY = s * 0.72;
     ctx.save();
     roundRect(ctx, 0, 0, s, s, r);
     ctx.clip();
-    ctx.fillStyle = '#1d4ed8';
-    ctx.fillRect(0, s * 0.68, s, s * 0.32);
+
+    const sg = ctx.createLinearGradient(0, stripeY, 0, s);
+    sg.addColorStop(0, p.stripe);
+    sg.addColorStop(1, p.stripeLight);
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, stripeY, s, s - stripeY);
     ctx.restore();
 
-    // White "M"
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${s * 0.52}px -apple-system, 'Helvetica Neue', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('M', s * 0.5, s * 0.41);
-
-    // Yellow star
-    const starX = s * 0.78, starY = s * 0.20, starR = s * 0.09;
-    drawStar(ctx, starX, starY, starR, '#fbbf24');
-
-  } else {
-    // 16px: just bold M on red
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${s * 0.68}px Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('M', s * 0.5, s * 0.52);
-  }
-}
-
-function drawStar(ctx, cx, cy, r, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
-    const x = cx + Math.cos(angle) * r;
-    const y = cy + Math.sin(angle) * r;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    const innerAngle = angle + Math.PI / 5;
-    ctx.lineTo(cx + Math.cos(innerAngle) * r * 0.4, cy + Math.sin(innerAngle) * r * 0.4);
-  }
-  ctx.closePath();
-  ctx.fill();
-}
-
-// ─── OPTION B: The Cleaner ──────────────────────────────────────────────────
-// Deep blue, scissors blades, "M" center
-
-function drawB(canvas) {
-  const ctx = canvas.getContext('2d');
-  const s = canvas.width;
-  const r = s * 0.22;
-
-  // Deep blue bg
-  const grad = ctx.createLinearGradient(0, 0, s, s);
-  grad.addColorStop(0, '#1e40af');
-  grad.addColorStop(1, '#1e3a8a');
-  roundRect(ctx, 0, 0, s, s, r);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  if (s >= 48) {
-    // Subtle grid hint (URL params being stripped)
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = s * 0.015;
-    for (let i = 0; i < 4; i++) {
-      const x = s * 0.15 + i * s * 0.22;
-      ctx.beginPath(); ctx.moveTo(x, s * 0.1); ctx.lineTo(x, s * 0.9); ctx.stroke();
-    }
-
-    // Scissors blades (top-left to bottom-right)
+    // Subtle inner glow at stripe boundary
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = s * 0.06;
-    ctx.lineCap = 'round';
-    // blade 1
-    ctx.beginPath(); ctx.moveTo(s*0.18, s*0.22); ctx.lineTo(s*0.82, s*0.78); ctx.stroke();
-    // blade 2
-    ctx.beginPath(); ctx.moveTo(s*0.82, s*0.22); ctx.lineTo(s*0.18, s*0.78); ctx.stroke();
+    roundRect(ctx, 0, 0, s, s, r);
+    ctx.clip();
+    const glow = ctx.createLinearGradient(0, stripeY - s*0.06, 0, stripeY + s*0.04);
+    glow.addColorStop(0, 'rgba(255,255,255,0)');
+    glow.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, stripeY - s*0.06, s, s*0.1);
     ctx.restore();
 
-    // Center circle with M
-    const cx = s * 0.5, cy = s * 0.5, cr = s * 0.28;
-    ctx.fillStyle = '#2563eb';
-    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI*2); ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${s * 0.30}px -apple-system, 'Helvetica Neue', sans-serif`;
+    // Bold "M" — takes up upper 65% of icon
+    ctx.fillStyle = p.letter;
+    ctx.font = `900 ${Math.round(s * 0.54)}px -apple-system,'Helvetica Neue',Arial,sans-serif`;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('M', cx, cy + s * 0.01);
+    ctx.textBaseline = 'alphabetic';
+
+    // Subtle text shadow for depth
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = s * 0.04;
+    ctx.shadowOffsetY = s * 0.02;
+    ctx.fillText('M', s * 0.5, s * 0.65);
+    ctx.shadowColor = 'transparent';
 
   } else {
-    // 16px: simple scissors X + M
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${s * 0.62}px Arial, sans-serif`;
+    // 16px: bold M, bg color only (no stripe — too small)
+    ctx.fillStyle = p.letter;
+    ctx.font = `900 ${Math.round(s * 0.68)}px Arial,sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('M', s * 0.5, s * 0.52);
   }
 }
 
-// ─── OPTION C: The Stamp ────────────────────────────────────────────────────
-// Near-black, circular border, "MUGA" bold center, clean approved feel
-
-function drawC(canvas) {
-  const ctx = canvas.getContext('2d');
-  const s = canvas.width;
-  const r = s * 0.22;
-
-  // Dark bg
-  roundRect(ctx, 0, 0, s, s, r);
-  ctx.fillStyle = '#0f172a';
-  ctx.fill();
-
-  if (s >= 48) {
-    // Outer ring
-    const cx = s * 0.5, cy = s * 0.5;
-    const ro = s * 0.42;
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = s * 0.045;
-    ctx.beginPath(); ctx.arc(cx, cy, ro, 0, Math.PI*2); ctx.stroke();
-
-    // Inner ring (thinner)
-    ctx.strokeStyle = 'rgba(245,158,11,0.3)';
-    ctx.lineWidth = s * 0.015;
-    ctx.beginPath(); ctx.arc(cx, cy, ro - s*0.08, 0, Math.PI*2); ctx.stroke();
-
-    // MUGA text
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = `800 ${s * 0.24}px -apple-system, 'Helvetica Neue', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('MUGA', cx, cy - s * 0.04);
-
-    // Tagline
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = `600 ${s * 0.085}px -apple-system, 'Helvetica Neue', sans-serif`;
-    ctx.fillText('CLEAN · URLS · NOW', cx, cy + s * 0.18);
-
-  } else {
-    // 16px: gold M on dark
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = `bold ${s * 0.68}px Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('M', s * 0.5, s * 0.52);
-  }
-}
-
-// ─── PROMO TILES ────────────────────────────────────────────────────────────
-
-function drawPromoTile(canvas, w, h, drawFn) {
+// ─── Promo tile drawer ───────────────────────────────────────────────────────
+function drawTile(canvas, w, h, palette) {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
+  const p = palette;
 
   // Background
-  const grad = ctx.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, '#0a0a0a');
-  grad.addColorStop(1, '#111827');
-  ctx.fillStyle = grad;
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, p.bg1);
+  bg.addColorStop(0.6, p.bg2);
+  bg.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Logo area (left side for wide tiles, top for square-ish)
-  const isWide = w > h * 1.2;
-  const iconSize = Math.min(h * 0.45, w * 0.18);
-  const iconX = isWide ? w * 0.08 : (w - iconSize) / 2;
-  const iconY = isWide ? (h - iconSize) / 2 : h * 0.12;
-
-  // Draw mini icon
-  const iconCanvas = document.createElement('canvas');
-  iconCanvas.width = iconSize;
-  iconCanvas.height = iconSize;
-  drawFn(iconCanvas);
-  ctx.drawImage(iconCanvas, iconX, iconY, iconSize, iconSize);
-
-  // Text
-  const textX = isWide ? iconX + iconSize + w * 0.05 : w / 2;
-  const textAlign = isWide ? 'left' : 'center';
-
-  ctx.textAlign = textAlign;
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `800 ${h * 0.18}px -apple-system, 'Helvetica Neue', sans-serif`;
-  ctx.fillText('MUGA', textX, isWide ? h * 0.38 : iconY + iconSize + h * 0.1);
-
-  ctx.fillStyle = '#9ca3af';
-  ctx.font = `400 ${h * 0.085}px -apple-system, 'Helvetica Neue', sans-serif`;
-  const tagline = 'Make URLs Great Again';
-  ctx.fillText(tagline, textX, isWide ? h * 0.56 : iconY + iconSize + h * 0.22);
-
-  // Bottom accent line (wide tiles)
-  if (isWide) {
-    ctx.fillStyle = '#2563eb';
-    ctx.fillRect(0, h - 3, w, 3);
+  // Subtle diagonal lines texture (campaign poster feel)
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for (let i = -h; i < w + h; i += Math.max(12, w * 0.025)) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + h, h);
+    ctx.stroke();
   }
 
-  // Before/after URL strip
-  const stripY = isWide ? h * 0.75 : h * 0.72;
-  const stripH = h * 0.14;
-  ctx.fillStyle = 'rgba(255,255,255,0.04)';
-  ctx.beginPath();
-  const stripR = stripH * 0.3;
-  roundRect(ctx, w * 0.05, stripY, w * 0.9, stripH, stripR);
+  const isWide = w / h > 1.4;
+
+  // Icon
+  const iconS = Math.round(Math.min(h * 0.44, w * 0.2, 200));
+  const iconCanvas = document.createElement('canvas');
+  iconCanvas.width = iconS; iconCanvas.height = iconS;
+  drawIcon(iconCanvas, p);
+
+  const iconX = isWide ? Math.round(w * 0.07) : Math.round((w - iconS) / 2);
+  const iconY = isWide ? Math.round((h - iconS) / 2) : Math.round(h * 0.1);
+  ctx.drawImage(iconCanvas, iconX, iconY, iconS, iconS);
+
+  // Text layout
+  const textX = isWide ? iconX + iconS + Math.round(w * 0.05) : w / 2;
+  const anchor = isWide ? 'left' : 'center';
+  const titleY = isWide ? Math.round(h * 0.36) : Math.round(iconY + iconS + h * 0.09);
+
+  // "MUGA" wordmark
+  ctx.textAlign = anchor;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `900 ${Math.round(h * 0.2)}px -apple-system,'Helvetica Neue',Arial,sans-serif`;
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 8;
+  ctx.fillText('MUGA', textX, titleY);
+  ctx.shadowColor = 'transparent';
+
+  // Tagline
+  ctx.fillStyle = p.stripeLight;
+  ctx.font = `600 ${Math.round(h * 0.075)}px -apple-system,'Helvetica Neue',Arial,sans-serif`;
+  ctx.fillText('Make URLs Great Again.', textX, titleY + Math.round(h * 0.16));
+
+  // Secondary line
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = `400 ${Math.round(h * 0.055)}px -apple-system,'Helvetica Neue',Arial,sans-serif`;
+  ctx.fillText('Strips tracking. Keeps links clean.', textX, titleY + Math.round(h * 0.26));
+
+  // Before / after pill
+  const pillPad = Math.round(w * 0.05);
+  const pillY = Math.round(h * 0.74);
+  const pillH = Math.round(h * 0.16);
+  const pillW = w - pillPad * 2;
+  const pillR = Math.round(pillH * 0.28);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, pillPad, pillY, pillW, pillH, pillR);
   ctx.fill();
+  ctx.stroke();
 
-  const fontSize = Math.max(8, h * 0.055);
-  ctx.font = `400 ${fontSize}px 'Courier New', monospace`;
+  const fs = Math.max(9, Math.round(h * 0.052));
+  ctx.font = `500 ${fs}px 'Courier New',monospace`;
   ctx.textAlign = 'left';
-  const maxLen = Math.floor((w * 0.8) / (fontSize * 0.6));
-  const before = 'amazon.es/dp/B08?tag=x&utm_source=yt&fbclid=abc&pd_rd_r=xyz'.slice(0, maxLen);
-  const after  = 'amazon.es/dp/B08?tag=x'.slice(0, maxLen);
+  const lineH = Math.round(pillH * 0.45);
+  const maxChars = Math.floor(pillW * 0.88 / (fs * 0.6));
 
-  ctx.fillStyle = '#ef4444';
-  ctx.fillText('✕  ' + before, w * 0.07, stripY + stripH * 0.38);
+  const before = ('amazon.es/dp/B0?tag=x&utm_source=yt&fbclid=Iw&pd_rd=xy').slice(0, maxChars);
+  const after  = ('amazon.es/dp/B0?tag=x').slice(0, maxChars);
 
-  ctx.fillStyle = '#22c55e';
-  ctx.fillText('✓  ' + after, w * 0.07, stripY + stripH * 0.78);
+  ctx.fillStyle = '#f87171';
+  ctx.fillText('✕  ' + before, pillPad + Math.round(pillW * 0.03), pillY + lineH);
+
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText('✓  ' + after,  pillPad + Math.round(pillW * 0.03), pillY + lineH * 2);
+
+  // Bottom accent stripe (palette color)
+  const sg = ctx.createLinearGradient(0, 0, w, 0);
+  sg.addColorStop(0, p.stripe);
+  sg.addColorStop(1, p.stripeLight);
+  ctx.fillStyle = sg;
+  ctx.fillRect(0, h - Math.max(3, Math.round(h * 0.012)), w, Math.max(3, Math.round(h * 0.012)));
 }
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-
-const DRAWERS = { a: drawA, b: drawB, c: drawC };
-const NAMES   = { a: 'Campaign', b: 'Cleaner', c: 'Stamp' };
-
-function renderAll() {
-  ['a','b','c'].forEach(key => {
-    const fn = DRAWERS[key];
-    [128, 48, 16].forEach(size => {
-      const c = document.getElementById(`${key}${size}`);
-      fn(c);
-    });
+// ─── Render all icons ────────────────────────────────────────────────────────
+Object.entries(PALETTES).forEach(([key, p]) => {
+  [128, 48, 16].forEach(s => {
+    const c = document.getElementById(`${key}-${s}`);
+    if (c) drawIcon(c, p);
   });
+});
+
+// ─── Selected option + tiles ─────────────────────────────────────────────────
+let selected = 'a1';
+
+function selectOption(key) {
+  document.querySelectorAll('.option').forEach(el => el.classList.remove('selected'));
+  document.querySelector(`#opt-${key}`).classList.add('selected');
+  document.querySelectorAll('.select-btn').forEach(btn => {
+    btn.textContent = btn.closest('.option').id === `opt-${key}`
+      ? '✓ Using this for tiles'
+      : 'Use this for promotional tiles';
+  });
+  selected = key;
   renderTiles();
 }
-
-let selectedOption = 'a';
 
 function renderTiles() {
   const row = document.getElementById('tile-row');
   row.innerHTML = '';
+  const p = PALETTES[selected];
 
-  const tiles = [
-    { w: 440, h: 280, label: '440×280 — Small promo tile' },
-    { w: 920, h: 680, label: '920×680 — Large promo tile', scale: 0.5 },
-    { w: 1400, h: 560, label: '1400×560 — Marquee tile', scale: 0.4 },
+  const configs = [
+    { w: 440, h: 280, label: '440×280  Small promo tile' },
+    { w: 920, h: 680, label: '920×680  Large promo tile', scale: 0.48 },
+    { w: 1400, h: 560, label: '1400×560  Marquee tile', scale: 0.38 },
   ];
 
-  // Option selector
-  const sel = document.createElement('div');
-  sel.style.cssText = 'margin-bottom:20px;display:flex;gap:8px;width:100%;grid-column:1/-1;align-items:center;';
-  sel.innerHTML = '<span style="font-size:12px;color:#888;margin-right:4px">Show tiles for option:</span>';
-  ['a','b','c'].forEach(k => {
-    const btn = document.createElement('button');
-    btn.textContent = `${k.toUpperCase()} — ${NAMES[k]}`;
-    btn.style.cssText = `padding:6px 14px;border-radius:8px;border:1px solid ${k === selectedOption ? '#2563eb' : '#2a2a2a'};background:${k === selectedOption ? '#2563eb' : 'transparent'};color:#fff;font-size:12px;cursor:pointer;`;
-    btn.onclick = () => { selectedOption = k; renderTiles(); };
-    sel.appendChild(btn);
-  });
-  row.appendChild(sel);
-
-  const fn = DRAWERS[selectedOption];
-
-  tiles.forEach(({ w, h, label, scale = 1 }) => {
-    const group = document.createElement('div');
-    group.className = 'tile-group';
-
-    const canvas = document.createElement('canvas');
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    canvas.style.cssText = `width:${w*scale}px;height:${h*scale}px;border-radius:10px;max-width:100%;`;
-
-    // Draw at full res for quality, display scaled
+  configs.forEach(({ w, h, label, scale = 1 }) => {
     const fullCanvas = document.createElement('canvas');
-    fullCanvas.width = w; fullCanvas.height = h;
-    drawPromoTile(fullCanvas, w, h, fn);
+    drawTile(fullCanvas, w, h, p);
 
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
-    ctx.drawImage(fullCanvas, 0, 0);
+    const display = document.createElement('canvas');
+    const dw = Math.round(w * scale), dh = Math.round(h * scale);
+    display.width = dw; display.height = dh;
+    display.style.cssText = `width:${dw}px;height:${dh}px;border-radius:10px;`;
+    display.getContext('2d').drawImage(fullCanvas, 0, 0, dw, dh);
 
-    const p = document.createElement('p');
-    p.textContent = label;
+    const lbl = document.createElement('p');
+    lbl.textContent = label;
 
-    const dlRow = document.createElement('div');
-    dlRow.className = 'tile-dl';
-    const dlBtn = document.createElement('button');
-    dlBtn.className = 'dl-btn primary';
-    dlBtn.textContent = `↓ Download ${w}×${h}`;
-    dlBtn.onclick = () => {
+    const dlDiv = document.createElement('div');
+    dlDiv.className = 'tile-dl';
+    const btn = document.createElement('button');
+    btn.className = 'dl-btn primary';
+    btn.style.cssText = 'font-size:12px;padding:7px 16px;border-radius:8px;background:#1a3a6b;border:none;color:#fff;cursor:pointer;';
+    btn.textContent = `↓ Download ${w}×${h}`;
+    btn.onclick = () => {
       const a = document.createElement('a');
       a.href = fullCanvas.toDataURL('image/png');
-      a.download = `muga-tile-${w}x${h}.png`;
+      a.download = `muga-tile-${w}x${h}-${p.name}.png`;
       a.click();
     };
-    dlRow.appendChild(dlBtn);
+    dlDiv.appendChild(btn);
 
-    group.appendChild(canvas);
-    group.appendChild(p);
-    group.appendChild(dlRow);
+    const group = document.createElement('div');
+    group.className = 'tile-group';
+    group.appendChild(display);
+    group.appendChild(lbl);
+    group.appendChild(dlDiv);
     row.appendChild(group);
   });
 }
 
-renderAll();
+renderTiles();
 </script>
 </body>
 </html>

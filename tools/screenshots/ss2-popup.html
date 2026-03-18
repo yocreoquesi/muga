@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+    background: #f0f0f0;
+  }
+  .browser {
+    width: 100%; height: 100%;
+    background: #1c1c1e;
+    display: flex;
+    flex-direction: column;
+  }
+  .browser-chrome {
+    background: #2c2c2e;
+    padding: 10px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .traffic-lights { display: flex; gap: 7px; align-items: center; }
+  .light { width: 12px; height: 12px; border-radius: 50%; }
+  .l-red { background: #ff5f57; }
+  .l-yellow { background: #febc2e; }
+  .l-green { background: #28c840; }
+
+  .tabs-row { display: flex; gap: 2px; align-items: flex-end; padding-top: 4px; }
+  .tab {
+    height: 32px; padding: 0 16px;
+    background: #3a3a3c;
+    border-radius: 8px 8px 0 0;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #999; min-width: 200px;
+  }
+  .tab.active { background: #1c1c1e; color: #f0f0f0; font-weight: 500; }
+  .tab-favicon {
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 2px; flex-shrink: 0;
+  }
+  .tab-close { width: 16px; margin-left: auto; color: #666; font-size: 14px; text-align: center; }
+
+  .omnibox-row {
+    background: #2c2c2e;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-btn { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 16px; }
+  .omnibox {
+    flex: 1; height: 32px;
+    background: #3a3a3c;
+    border-radius: 20px;
+    display: flex; align-items: center; padding: 0 14px; gap: 8px;
+    font-size: 13px; color: #ccc; overflow: hidden;
+  }
+  .omnibox-lock { color: #5a9a5a; font-size: 12px; flex-shrink: 0; }
+  .omnibox-url { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .omnibox-url .host { color: #f0f0f0; font-weight: 500; }
+  .omnibox-url .path { color: #888; }
+
+  .ext-area { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .ext-icon {
+    width: 24px; height: 24px;
+    background: linear-gradient(160deg, #0d1b4b 0%, #1a3a6b 60%);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 800;
+    position: relative; overflow: hidden; flex-shrink: 0;
+    box-shadow: 0 0 0 2px #f59e0b;
+  }
+  .ext-icon::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 5px;
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+
+  /* Page background (Amazon-like) */
+  .page-content {
+    flex: 1;
+    background: #131921;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Simulated Amazon page */
+  .amazon-header {
+    background: #131921;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid #232f3e;
+  }
+  .amazon-logo { color: #ff9900; font-size: 20px; font-weight: 900; letter-spacing: -1px; font-style: italic; }
+  .amazon-search {
+    flex: 1; height: 34px; border-radius: 4px;
+    background: #fff; display: flex; align-items: center;
+    padding: 0 12px; font-size: 13px; color: #555;
+    max-width: 600px;
+  }
+  .amazon-nav { display: flex; gap: 20px; }
+  .amazon-nav a { color: #ccc; font-size: 12px; }
+
+  .amazon-product {
+    display: flex; gap: 30px; padding: 24px 30px;
+  }
+  .product-image {
+    width: 280px; height: 280px; flex-shrink: 0;
+    background: #fff; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .product-image-inner {
+    width: 200px; height: 200px;
+    background: linear-gradient(135deg, #333, #555);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .product-info { flex: 1; }
+  .product-title { font-size: 20px; color: #e7e9ea; font-weight: 500; line-height: 1.4; margin-bottom: 10px; }
+  .product-rating { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .stars { color: #f0c14b; font-size: 14px; }
+  .reviews { color: #5b9dd9; font-size: 13px; }
+  .product-price { font-size: 26px; color: #e7e9ea; margin-bottom: 16px; }
+  .product-price sup { font-size: 14px; }
+  .buy-btn {
+    display: inline-block; padding: 10px 24px;
+    background: linear-gradient(to bottom, #f7dfa5, #f0c14b);
+    border-radius: 3px; font-size: 14px; color: #111; font-weight: 500;
+    border: 1px solid #a88734; cursor: pointer;
+  }
+
+  /* Extension popup */
+  .popup-shadow {
+    position: absolute;
+    top: 56px; right: 52px;
+    filter: drop-shadow(0 12px 40px rgba(0,0,0,0.7)) drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+    z-index: 10;
+  }
+  .popup {
+    width: 300px;
+    background: #1c1c1e;
+    border-radius: 12px;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    font-size: 13px;
+    color: #f0f0f0;
+  }
+  .popup-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 12px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  }
+  .popup-logo { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  .toggle-wrap { }
+  .toggle {
+    position: relative; display: inline-block;
+    width: 36px; height: 20px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: #2563eb;
+    border-radius: 20px;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 3px; top: 3px;
+    background: white; border-radius: 50%;
+    transform: translateX(16px);
+  }
+
+  .popup-stats {
+    display: flex;
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  }
+  .popup-stat {
+    flex: 1; padding: 12px 8px; text-align: center;
+    border-right: 0.5px solid rgba(255,255,255,0.08);
+  }
+  .popup-stat:last-child { border-right: none; }
+  .popup-stat-val { display: block; font-size: 22px; font-weight: 500; color: #f0f0f0; line-height: 1.2; }
+  .popup-stat-lbl { display: block; font-size: 10px; color: #999; margin-top: 2px; line-height: 1.3; }
+
+  .popup-options { padding: 8px 0; border-bottom: 0.5px solid rgba(255,255,255,0.08); }
+  .popup-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; gap: 12px;
+  }
+  .popup-row-label { flex: 1; }
+  .popup-row-label span { display: block; font-size: 12.5px; }
+  .popup-row-label small { display: block; font-size: 10.5px; color: #888; margin-top: 1px; }
+  .sm-toggle {
+    position: relative; display: inline-block;
+    width: 30px; height: 17px; flex-shrink: 0;
+  }
+  .sm-slider {
+    position: absolute; inset: 0;
+    border-radius: 20px;
+  }
+  .sm-slider.on { background: #2563eb; }
+  .sm-slider.off { background: #48484a; }
+  .sm-slider::before {
+    content: '';
+    position: absolute;
+    width: 11px; height: 11px;
+    top: 3px; background: white; border-radius: 50%;
+  }
+  .sm-slider.on::before { left: auto; right: 3px; }
+  .sm-slider.off::before { left: 3px; }
+
+  .popup-footer {
+    display: flex; justify-content: space-between;
+    padding: 10px 16px;
+  }
+  .popup-footer a { font-size: 11.5px; color: #888; text-decoration: none; }
+
+  /* Arrow indicator pointing to ext icon */
+  .popup-arrow {
+    position: absolute;
+    top: 42px;
+    right: 56px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid rgba(255,255,255,0.1);
+  }
+
+  /* Callout */
+  .callout {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    max-width: 380px;
+  }
+  .callout-card {
+    background: linear-gradient(135deg, #0d1b4b, #1a3a6b);
+    border: 1px solid rgba(245,158,11,0.4);
+    border-radius: 14px;
+    padding: 20px 24px;
+    color: #fff;
+  }
+  .callout-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .callout-title em { color: #f59e0b; font-style: normal; }
+  .callout-sub { font-size: 13px; color: #a0b0d0; line-height: 1.5; }
+  .callout-stats {
+    display: flex; gap: 20px; margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .callout-stat-val { font-size: 22px; font-weight: 700; color: #f59e0b; }
+  .callout-stat-lbl { font-size: 11px; color: #a0b0d0; }
+</style>
+</head>
+<body>
+<div class="browser">
+  <div class="browser-chrome">
+    <div class="traffic-lights">
+      <div class="light l-red"></div>
+      <div class="light l-yellow"></div>
+      <div class="light l-green"></div>
+    </div>
+    <div class="tabs-row">
+      <div class="tab active">
+        <div class="tab-favicon"></div>
+        Echo Dot (5ª generación) — Amazon.es
+        <div class="tab-close">×</div>
+      </div>
+      <div class="tab">New Tab</div>
+    </div>
+    <div class="omnibox-row">
+      <div class="nav-btn">←</div>
+      <div class="nav-btn">→</div>
+      <div class="nav-btn">↻</div>
+      <div class="omnibox">
+        <span class="omnibox-lock">🔒</span>
+        <span class="omnibox-url">
+          <span class="host">amazon.es</span><span class="path">/dp/B09B8YWXDF</span>
+        </span>
+      </div>
+      <div class="ext-area">
+        <div class="ext-icon">M</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <!-- Simulated Amazon page (blurred background) -->
+    <div class="amazon-header">
+      <div class="amazon-logo">amazon</div>
+      <div class="amazon-search">Search Amazon.es...</div>
+      <div class="amazon-nav">
+        <a>Hello, sign in</a>
+        <a>Cart</a>
+      </div>
+    </div>
+    <div class="amazon-product">
+      <div class="product-image">
+        <div class="product-image-inner" style="background: radial-gradient(#555, #222);">
+          <span style="color:#fff; font-size:40px;">🔊</span>
+        </div>
+      </div>
+      <div class="product-info">
+        <div class="product-title">Echo Dot (5ª generación, modelo 2022) | Bocina inteligente con Alexa | Antracita</div>
+        <div class="product-rating">
+          <span class="stars">★★★★½</span>
+          <span class="reviews">312,847 ratings</span>
+        </div>
+        <div class="product-price"><sup>€</sup>59<sup>,99</sup></div>
+        <div class="buy-btn">Add to Cart</div>
+      </div>
+    </div>
+
+    <!-- Extension popup overlay -->
+    <div class="popup-arrow"></div>
+    <div class="popup-shadow">
+      <div class="popup">
+        <div class="popup-header">
+          <div class="popup-logo">MUGA</div>
+          <label class="toggle">
+            <input type="checkbox" checked>
+            <div class="slider"></div>
+          </label>
+        </div>
+        <div class="popup-stats">
+          <div class="popup-stat">
+            <span class="popup-stat-val">1,284</span>
+            <span class="popup-stat-lbl">tracking removed</span>
+          </div>
+          <div class="popup-stat">
+            <span class="popup-stat-val">47</span>
+            <span class="popup-stat-lbl">affiliate links</span>
+          </div>
+          <div class="popup-stat">
+            <span class="popup-stat-val">12</span>
+            <span class="popup-stat-lbl">referrals detected</span>
+          </div>
+        </div>
+        <div class="popup-options">
+          <div class="popup-row">
+            <div class="popup-row-label">
+              <span>Inject our affiliate when none is present</span>
+              <small>Only on stores where we have an active account</small>
+            </div>
+            <div class="sm-toggle"><div class="sm-slider on"></div></div>
+          </div>
+          <div class="popup-row">
+            <div class="popup-row-label">
+              <span>Notify me when a third-party affiliate is detected</span>
+              <small>Shows a non-intrusive toast for 5 seconds</small>
+            </div>
+            <div class="sm-toggle"><div class="sm-slider off"></div></div>
+          </div>
+        </div>
+        <div class="popup-footer">
+          <a>Advanced settings →</a>
+          <a>Support the project</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Callout card -->
+    <div class="callout">
+      <div class="callout-card">
+        <div class="callout-title">Clean URL. <em>Same price.</em></div>
+        <div class="callout-sub">MUGA stripped 9 tracking parameters before this page loaded. You pay exactly the same — the store just knows you arrived via MUGA.</div>
+        <div class="callout-stats">
+          <div>
+            <div class="callout-stat-val">50+</div>
+            <div class="callout-stat-lbl">tracking params<br>recognized</div>
+          </div>
+          <div>
+            <div class="callout-stat-val">100%</div>
+            <div class="callout-stat-lbl">local processing<br>no data sent</div>
+          </div>
+          <div>
+            <div class="callout-stat-val">0</div>
+            <div class="callout-stat-lbl">clicks needed<br>automatic</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
