@@ -50,13 +50,21 @@ async function handleProcessUrl(rawUrl) {
   return result;
 }
 
-// --- Context menu: "Copy clean link" ---
-chrome.runtime.onInstalled.addListener(() => {
+// --- On install: open onboarding on first run, register context menu ---
+chrome.runtime.onInstalled.addListener(async (details) => {
   chrome.contextMenus.create({
     id: "muga-copy-clean",
     title: "MUGA: Copy clean link",
     contexts: ["link"],
   });
+
+  if (details.reason === "install") {
+    // First install — open the onboarding page in a new tab
+    const prefs = await chrome.storage.sync.get({ onboardingDone: false });
+    if (!prefs.onboardingDone) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+    }
+  }
 });
 
 chrome.contextMenus.onClicked.addListener(async (info) => {

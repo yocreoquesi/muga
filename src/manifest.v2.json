@@ -41,6 +41,10 @@
     "open_in_tab": true
   },
 
+  "web_accessible_resources": [
+    "onboarding/onboarding.html"
+  ],
+
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
