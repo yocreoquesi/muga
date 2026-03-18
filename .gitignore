@@ -7,6 +7,7 @@ node_modules/
 # Project context & private notes (not for version control)
 Muga.md
 *.local.md
+.github-issues.md
 
 # OS
 .DS_Store

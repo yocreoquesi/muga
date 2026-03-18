@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA — Browser Test Suite</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      padding: 32px;
+      line-height: 1.6;
+    }
+    h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #666; margin-bottom: 32px; }
+    h2 { font-size: 14px; font-weight: 600; color: #aaa; text-transform: uppercase;
+         letter-spacing: 0.08em; margin: 32px 0 12px; border-bottom: 1px solid #222; padding-bottom: 8px; }
+    .test {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .test.disabled { opacity: 0.4; }
+    .test-id { font-size: 10px; color: #555; font-family: monospace; margin-bottom: 4px; }
+    .test-title { font-size: 13px; font-weight: 500; color: #ddd; margin-bottom: 6px; }
+    .test-action { font-size: 12px; color: #888; margin-bottom: 10px; }
+    .test-action strong { color: #bbb; }
+    .test-link {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 5px;
+      padding: 5px 10px;
+      color: #6af;
+      text-decoration: none;
+      word-break: break-all;
+      margin-top: 2px;
+    }
+    .test-link:hover { background: #1c1c1c; border-color: #555; }
+    .expected {
+      font-size: 11px;
+      color: #555;
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: #111;
+      border-left: 2px solid #333;
+      border-radius: 0 4px 4px 0;
+    }
+    .expected .label { color: #4a4; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      font-weight: 600;
+    }
+    .badge-a { background: #1a3a1a; color: #5c5; }
+    .badge-b { background: #1a2a3a; color: #5af; }
+    .badge-c { background: #3a2a1a; color: #fa5; }
+    .badge-d { background: #3a1a1a; color: #f55; }
+    .badge-nav { background: #2a1a3a; color: #c5f; }
+    .badge-ui { background: #1a1a3a; color: #88f; }
+    .badge-todo { background: #2a2a1a; color: #aa5; }
+    .note {
+      font-size: 12px;
+      color: #666;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .note a { color: #6af; }
+    .checklist { list-style: none; }
+    .checklist li { font-size: 13px; color: #aaa; padding: 4px 0; }
+    .checklist li::before { content: "☐  "; color: #444; }
+    code {
+      font-family: monospace;
+      background: #222;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .step { font-size: 12px; color: #666; margin-bottom: 4px; }
+    .step strong { color: #999; }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 8px 0; }
+  </style>
+</head>
+<body>
+
+  <h1>MUGA — Browser Test Suite</h1>
+  <p class="subtitle">Manual validation checklist · Open this page with the extension active in Chrome</p>
+
+  <!-- ─── SETUP ──────────────────────────────────────────────────────────── -->
+  <h2>⚙ Setup</h2>
+  <div class="note">
+    <strong>Environment:</strong> Code runs in WSL Ubuntu · Chrome runs on Windows host<br><br>
+    <strong>Step 1 — Load the extension in Chrome (once)</strong><br>
+    Open <code>chrome://extensions</code> → Enable Developer mode → Load unpacked →
+    navigate to <code>\\wsl.localhost\Ubuntu\home\yocreoquesi\projects\muga\src</code> and select it.<br><br>
+    <strong>Step 2 — Serve this test page from WSL</strong><br>
+    In the WSL terminal run: <code>npm run test:serve</code><br>
+    Then open in Chrome: <code>http://localhost:5555</code><br><br>
+    <strong>Step 3 — Open DevTools → Console</strong> to catch any runtime errors while clicking.<br><br>
+    <strong>Important:</strong> Each test link must be <strong>clicked</strong> — do not paste URLs in the address bar.
+    The content script only intercepts click events.
+  </div>
+
+  <!-- ─── SCENARIO A — TRACKING REMOVAL ──────────────────────────────────── -->
+  <h2>Scenario A — Tracking parameter removal <span class="badge badge-a">A</span></h2>
+
+  <div class="test">
+    <div class="test-id">A-01</div>
+    <div class="test-title">Single UTM param stripped</div>
+    <div class="test-action">Click the link → <strong>you should land on example.com with no query string</strong></div>
+    <a class="test-link" href="https://example.com/?utm_source=google">
+      https://example.com/?utm_source=google
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://example.com/</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">A-02</div>
+    <div class="test-title">All 5 UTM params stripped at once</div>
+    <a class="test-link" href="https://example.com/?utm_source=fb&utm_medium=cpc&utm_campaign=spring&utm_content=banner&utm_term=shoes">
+      https://example.com/?utm_source=fb&utm_medium=cpc&utm_campaign=spring&utm_content=banner&utm_term=shoes
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://example.com/</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">A-03</div>
+    <div class="test-title">fbclid stripped</div>
+    <a class="test-link" href="https://example.com/article?fbclid=IwAR0abc123xyz">
+      https://example.com/article?fbclid=IwAR0abc123xyz
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://example.com/article</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">A-04</div>
+    <div class="test-title">gclid stripped</div>
+    <a class="test-link" href="https://example.com/?gclid=TeSter-123_abc">
+      https://example.com/?gclid=TeSter-123_abc
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://example.com/</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">A-05</div>
+    <div class="test-title">Tracking params stripped — functional params preserved</div>
+    <div class="test-action">Only <code>utm_source</code> should be removed. <code>q</code> and <code>page</code> must stay.</div>
+    <a class="test-link" href="https://example.com/search?q=laptop&page=2&utm_source=newsletter">
+      https://example.com/search?q=laptop&page=2&utm_source=newsletter
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://example.com/search?q=laptop&page=2</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">A-06</div>
+    <div class="test-title">Amazon: UTMs stripped, affiliate tag preserved</div>
+    <div class="test-action"><code>tag=</code> is an affiliate param, not tracking — it must not be removed.</div>
+    <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&utm_source=email&utm_medium=cpc">
+      https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&utm_source=email&utm_medium=cpc
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">A-07</div>
+    <div class="test-title">URL with no query string → passes through unchanged, no interception</div>
+    <div class="test-action">MUGA should not intercept this click at all (no query string to clean).</div>
+    <a class="test-link" href="https://example.com/page/no-params">
+      https://example.com/page/no-params
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://example.com/page/no-params (no change)</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── SCENARIO B — AFFILIATE INJECTION ────────────────────────────────── -->
+  <h2>Scenario B — Affiliate injection <span class="badge badge-b">B</span> <span class="badge badge-todo">TODO — needs ourTag</span></h2>
+
+  <div class="note">
+    These tests require <code>ourTag</code> to be filled in <code>src/lib/affiliates.js</code> for each store.
+    They will be unblocked once Amazon Associates (and other) accounts are registered and approved.
+    Current state: <code>ourTag: ""</code> for all stores → injection does not trigger.
+  </div>
+
+  <div class="test disabled">
+    <div class="test-id">B-01 · BLOCKED</div>
+    <div class="test-title">Amazon.es — our tag injected when URL has no affiliate</div>
+    <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW">
+      https://www.amazon.es/dp/B08N5WRWNW
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://www.amazon.es/dp/B08N5WRWNW?tag=OUR_TAG</div>
+  </div>
+
+  <div class="test disabled">
+    <div class="test-id">B-02 · BLOCKED</div>
+    <div class="test-title">Amazon.es — tag NOT injected when one already exists (even ours)</div>
+    <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW?tag=existing-tag-21">
+      https://www.amazon.es/dp/B08N5WRWNW?tag=existing-tag-21
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> unchanged (no double injection)</div>
+  </div>
+
+  <div class="test disabled">
+    <div class="test-id">B-03 · BLOCKED</div>
+    <div class="test-title">Injection disabled globally → no tag added</div>
+    <div class="test-action">Go to popup → disable "Inject my affiliate when there is none" → click link</div>
+    <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW">
+      https://www.amazon.es/dp/B08N5WRWNW
+    </a>
+    <div class="expected"><span class="label">Expected URL:</span> https://www.amazon.es/dp/B08N5WRWNW (no tag)</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── SCENARIO C — FOREIGN AFFILIATE ──────────────────────────────────── -->
+  <h2>Scenario C — Foreign affiliate detection <span class="badge badge-c">C</span> <span class="badge badge-todo">TODO — needs ourTag</span></h2>
+
+  <div class="note">
+    Same blocker as Scenario B. Detection only activates when <code>ourTag</code> is set,
+    because we need something to compare against. All three tests below are blocked until then.
+  </div>
+
+  <div class="test disabled">
+    <div class="test-id">C-01 · BLOCKED</div>
+    <div class="test-title">Toast appears when foreign affiliate detected (notify toggle ON)</div>
+    <div class="test-action">Go to popup → enable "Notify me if there is a foreign referral" → click link</div>
+    <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21">
+      https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21
+    </a>
+    <div class="expected"><span class="label">Expected:</span> Toast appears with 3 buttons: Keep / Remove / Replace</div>
+  </div>
+
+  <div class="test disabled">
+    <div class="test-id">C-02 · BLOCKED</div>
+    <div class="test-title">Toast auto-dismisses after 5 seconds → navigates with original URL</div>
+    <div class="expected"><span class="label">Expected:</span> Toast disappears, lands on original URL with foreign tag</div>
+  </div>
+
+  <div class="test disabled">
+    <div class="test-id">C-03 · BLOCKED</div>
+    <div class="test-title">No toast when notify toggle is OFF (default)</div>
+    <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21">
+      https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21
+    </a>
+    <div class="expected"><span class="label">Expected:</span> Navigates directly, no toast shown</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── NAVIGATION — BUG FIXES ──────────────────────────────────────────── -->
+  <h2>Navigation behaviour (bug fixes) <span class="badge badge-nav">NAV</span></h2>
+
+  <div class="test">
+    <div class="test-id">NAV-01</div>
+    <div class="test-title">target="_blank" link opens in new tab (not current tab)</div>
+    <div class="test-action">Click the link → <strong>must open in a new tab</strong>, current tab unchanged</div>
+    <a class="test-link" href="https://example.com/?utm_source=test" target="_blank">
+      https://example.com/?utm_source=test (target=_blank)
+    </a>
+    <div class="expected"><span class="label">Expected:</span> New tab opens with https://example.com/ (tracking stripped)</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">NAV-02</div>
+    <div class="test-title">Ctrl+click opens in new tab</div>
+    <div class="test-action"><strong>Hold Ctrl and click</strong> the link → must open in a new tab</div>
+    <a class="test-link" href="https://example.com/?utm_source=ctrl-test&fbclid=abc">
+      https://example.com/?utm_source=ctrl-test&fbclid=abc
+    </a>
+    <div class="expected"><span class="label">Expected:</span> New tab with https://example.com/ (both params stripped)</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">NAV-03</div>
+    <div class="test-title">Shift+click opens in new window</div>
+    <div class="test-action"><strong>Hold Shift and click</strong> the link → must open in a new window</div>
+    <a class="test-link" href="https://example.com/?utm_medium=shift-test">
+      https://example.com/?utm_medium=shift-test
+    </a>
+    <div class="expected"><span class="label">Expected:</span> New window with https://example.com/</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">NAV-04</div>
+    <div class="test-title">Normal click navigates current tab</div>
+    <div class="test-action">Regular left-click → navigates <strong>this tab</strong></div>
+    <a class="test-link" href="https://example.com/?utm_source=normal-click">
+      https://example.com/?utm_source=normal-click
+    </a>
+    <div class="expected"><span class="label">Expected:</span> This tab navigates to https://example.com/</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">NAV-05</div>
+    <div class="test-title">Link without query string — not intercepted, native browser behaviour</div>
+    <div class="test-action">Ctrl+click must open in new tab natively (MUGA does not intercept)</div>
+    <a class="test-link" href="https://example.com/no-params-here">
+      https://example.com/no-params-here
+    </a>
+    <div class="expected"><span class="label">Expected:</span> Native browser behaviour preserved</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── POPUP UI ─────────────────────────────────────────────────────────── -->
+  <h2>Popup UI <span class="badge badge-ui">UI</span></h2>
+
+  <div class="note">Open the extension popup by clicking the MUGA icon in the Chrome toolbar.</div>
+
+  <ul class="checklist">
+    <li>Popup opens without JS errors in DevTools Console</li>
+    <li>Stats section shows 3 counters (tracking removed, affiliates active, referrals detected)</li>
+    <li>Counter values are numbers (0 or higher — not NaN, undefined, or blank)</li>
+    <li>"Enable / disable MUGA" toggle changes state and persists after popup is closed and reopened</li>
+    <li>"Inject my affiliate when there is none" toggle persists after close/reopen</li>
+    <li>"Notify me if there is a foreign referral" toggle persists after close/reopen</li>
+    <li>"Advanced preferences →" link opens the options page in a new tab</li>
+    <li>After clicking a link with tracking params (e.g. A-01), reopen popup — counter for "tracking removed" should increment by 1</li>
+  </ul>
+
+  <hr class="divider">
+
+  <!-- ─── CONTEXT MENU ─────────────────────────────────────────────────────── -->
+  <h2>Context menu <span class="badge badge-ui">UI</span></h2>
+
+  <div class="note">Right-click on any link on this page to verify the context menu entry appears.</div>
+
+  <ul class="checklist">
+    <li>Right-click on any link below → context menu shows "MUGA: Copy clean link"</li>
+    <li>Click "MUGA: Copy clean link" on A-01 link → paste in address bar → should be https://example.com/ (no UTM)</li>
+    <li>Click "MUGA: Copy clean link" on A-05 link → paste → should have q= and page= but no utm_source</li>
+    <li>Click "MUGA: Copy clean link" on A-07 link (no params) → paste → URL unchanged</li>
+  </ul>
+
+  <hr class="divider">
+
+  <!-- ─── EXTENSION TOGGLE ─────────────────────────────────────────────────── -->
+  <h2>Global enable / disable <span class="badge badge-ui">UI</span></h2>
+
+  <ul class="checklist">
+    <li>Open popup → disable MUGA (toggle off) → click A-01 → should land on the URL WITH utm_source (not cleaned)</li>
+    <li>Re-enable MUGA → click A-01 again → should land on the URL WITHOUT utm_source</li>
+  </ul>
+
+  <hr class="divider">
+
+  <!-- ─── OPTIONS PAGE ─────────────────────────────────────────────────────── -->
+  <h2>Options page <span class="badge badge-ui">UI</span></h2>
+
+  <ul class="checklist">
+    <li>Opens in a full tab (not a popup)</li>
+    <li>All 3 toggles (inject, notify, replace) reflect saved state</li>
+    <li>Toggle states persist after page reload</li>
+    <li>Blacklist: add an entry (e.g. <code>example.com</code>) → entry appears in list</li>
+    <li>Blacklist: remove the entry → list updates</li>
+    <li>Whitelist: same add/remove flow works</li>
+  </ul>
+
+</body>
+</html>

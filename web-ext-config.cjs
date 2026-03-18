@@ -5,5 +5,6 @@ module.exports = {
     "web-ext-config.cjs",
     "*.md",
     ".git",
+    "tests/",
   ],
 };
