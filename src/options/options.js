@@ -19,6 +19,7 @@ async function init() {
 
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
+  renderStores();
 }
 
 function bindToggle(id, key, prefs) {
@@ -31,7 +32,7 @@ function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   if (!items.length) {
-    container.innerHTML = `<p class="empty">Sin entradas todavía.</p>`;
+    container.innerHTML = `<p class="empty">No entries yet.</p>`;
     return;
   }
   items.forEach((entry, i) => {
@@ -43,6 +44,35 @@ function renderList(containerId, items, listKey) {
     `;
     container.appendChild(div);
   });
+}
+
+function renderStores() {
+  // AFFILIATE_PATTERNS is embedded inline to avoid an ES module import in a non-module context.
+  // Keep in sync with src/lib/affiliates.js.
+  const STORES = [
+    { name: "Amazon ES", param: "tag", ourTag: "" },
+    { name: "Amazon DE", param: "tag", ourTag: "" },
+    { name: "Amazon FR", param: "tag", ourTag: "" },
+    { name: "Amazon IT", param: "tag", ourTag: "" },
+    { name: "Amazon UK", param: "tag", ourTag: "" },
+    { name: "Amazon US", param: "tag", ourTag: "" },
+    { name: "Booking.com", param: "aid", ourTag: "" },
+    { name: "AliExpress", param: "aff_fcid", ourTag: "" },
+    { name: "PcComponentes", param: "ref", ourTag: "" },
+    { name: "El Corte Inglés", param: "affiliateId", ourTag: "" },
+    { name: "eBay", param: "campid", ourTag: "" },
+  ];
+
+  const grid = document.getElementById("stores-grid");
+  grid.innerHTML = STORES.map(s => `
+    <div class="store-chip">
+      <div class="store-dot ${s.ourTag ? "active" : ""}"></div>
+      <div>
+        <div class="store-name">${s.name}</div>
+        <div class="store-param">${s.param}=</div>
+      </div>
+    </div>
+  `).join("");
 }
 
 window.addEntry = async function (listKey, inputId, containerId) {

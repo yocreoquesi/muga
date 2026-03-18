@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MUGA — Preferencias</title>
+  <title>MUGA — Settings</title>
   <style>
     :root {
       --bg: #fff; --bg2: #f5f5f5; --border: rgba(0,0,0,0.08);
@@ -55,33 +55,46 @@
     .add-btn:hover { background: var(--bg2); }
     .hint { font-size: 11.5px; color: var(--text2); margin-top: 8px; line-height: 1.5; }
     .empty { font-size: 12px; color: var(--text2); font-style: italic; }
+    /* Stores grid */
+    .stores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; padding: 12px 16px; }
+    .store-chip { display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: var(--bg); border-radius: 8px;
+      border: 0.5px solid var(--border); font-size: 12.5px; }
+    .store-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #d1d5db; }
+    .store-dot.active { background: var(--success); }
+    .store-name { font-weight: 500; }
+    .store-param { font-size: 11px; color: var(--text2); font-family: monospace; }
+    /* Privacy policy link */
+    .footer-links { text-align: center; padding-top: 8px; }
+    .footer-links a { font-size: 12px; color: var(--text2); text-decoration: none; }
+    .footer-links a:hover { color: var(--accent); }
   </style>
 </head>
 <body>
   <h1>MUGA</h1>
-  <p class="subtitle">Preferencias avanzadas — Make URLs Great Again</p>
+  <p class="subtitle">Advanced settings — Make URLs Great Again</p>
 
   <section>
-    <h2>Comportamiento general</h2>
+    <h2>Behaviour</h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <strong>Inyectar mi afiliado cuando no hay ninguno</strong>
-          <small>Solo en tiendas donde tengo cuenta de afiliado activa</small>
+          <strong>Inject our affiliate when none is present</strong>
+          <small>Only on stores where we have an active affiliate account</small>
         </div>
         <label class="toggle"><input type="checkbox" id="inject"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
-          <strong>Notificarme si hay un referido ajeno</strong>
-          <small>Muestra un aviso no intrusivo con opciones durante 5 segundos</small>
+          <strong>Notify me when a third-party affiliate is detected</strong>
+          <small>Shows a non-intrusive toast with options — auto-dismisses in 5 seconds</small>
         </div>
         <label class="toggle"><input type="checkbox" id="notify"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
-          <strong>Permitir reemplazar afiliado ajeno por el mío</strong>
-          <small>Solo disponible si la notificación está activa. El usuario siempre decide.</small>
+          <strong>Allow replacing a third-party affiliate with ours</strong>
+          <small>Only available when the notification is on. You always decide, per link.</small>
         </div>
         <label class="toggle"><input type="checkbox" id="replace"><span class="slider"></span></label>
       </div>
@@ -89,37 +102,53 @@
   </section>
 
   <section>
-    <h2>Blacklist — estos afiliados se eliminan siempre</h2>
+    <h2>Supported stores</h2>
+    <div class="card">
+      <div class="stores-grid" id="stores-grid">
+        <!-- populated by options.js -->
+      </div>
+      <div style="padding: 8px 16px 12px; border-top: 0.5px solid var(--border)">
+        <p class="hint">Green dot = affiliate account active and configured. Grey = account pending registration.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Blacklist — these affiliates are always stripped</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="blacklist-items"></div>
         <div class="add-row">
-          <input id="bl-input" placeholder="amazon.es  o  amazon.es::tag::youtuber-21" type="text">
-          <button class="add-btn" onclick="addEntry('blacklist', 'bl-input', 'blacklist-items')">+ Añadir</button>
+          <input id="bl-input" placeholder="amazon.es  or  amazon.es::tag::youtuber-21" type="text">
+          <button class="add-btn" onclick="addEntry('blacklist', 'bl-input', 'blacklist-items')">+ Add</button>
         </div>
         <p class="hint">
-          Solo dominio (ej: <code>amazon.es</code>) para bloquear toda actividad en esa web.<br>
-          Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>) para bloquear un afiliado concreto.
+          Domain only (e.g. <code>amazon.es</code>) — blocks all affiliate activity on that site.<br>
+          Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>) — blocks one specific affiliate.
         </p>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>Whitelist — estos afiliados son de confianza, no se tocan</h2>
+    <h2>Whitelist — these affiliates are trusted and never touched</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="whitelist-items"></div>
         <div class="add-row">
-          <input id="wl-input" placeholder="amazon.es::tag::creador-que-apoyo" type="text">
-          <button class="add-btn" onclick="addEntry('whitelist', 'wl-input', 'whitelist-items')">+ Añadir</button>
+          <input id="wl-input" placeholder="amazon.es::tag::creator-i-support" type="text">
+          <button class="add-btn" onclick="addEntry('whitelist', 'wl-input', 'whitelist-items')">+ Add</button>
         </div>
         <p class="hint">
-          Formato: <code>dominio::parámetro::valor</code>. El afiliado de ese creador nunca se toca.
+          Format: <code>domain::param::value</code>. That creator's affiliate tag is never modified.
         </p>
       </div>
     </div>
   </section>
+
+  <div class="footer-links">
+    <a href="../privacy/privacy.html" target="_blank">Privacy policy</a>
+  </div>
 
   <script src="options.js"></script>
 </body>

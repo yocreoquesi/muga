@@ -2,10 +2,12 @@
  * MUGA — Affiliate and tracking parameter database
  *
  * Each entry defines:
+ *   - id:      unique identifier
+ *   - name:    human-readable store name
  *   - domains: domains where the pattern applies
  *   - param:   the URL parameter name
  *   - type:    'affiliate' | 'tracking'
- *   - ourTag:  our affiliate value (only when we have an active account)
+ *   - ourTag:  our affiliate value (empty until affiliate account is registered)
  *
  * To add a new program:
  * 1. Add an entry to AFFILIATE_PATTERNS
@@ -19,17 +21,45 @@ export const TRACKING_PARAMS = [
   "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
   "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
   "msclkid", "tclid", "twclid",
+
   // Email marketing
   "mc_cid", "mc_eid", "MailingID", "HQEmail",
+
   // Social
   "igshid", "igsh", "s_cid",
+
+  // YouTube share tracking
+  "si",
+
+  // TikTok
+  "_r",
+
   // Generic
   "ref", "source", "campaign", "cid", "clickid",
   "_hsenc", "_hsmi", "hsCtaTracking",
   "mkt_tok", "trk", "trkCampaign",
-  // E-commerce internos (no funcionales para el usuario)
-  "psc", "spLa", "pd_rd_r", "pd_rd_w", "pd_rd_wg",
+
+  // Affiliate networks — click identifiers (not the affiliate tag itself, just the click ID)
+  "irgwc",    // Impact Radius
+  "cjevent",  // CJ Affiliate
+  "tduid",    // Tradedoubler
+
+  // Microsoft / Windows
+  "ocid",
+
+  // Amazon — internal / referral noise (not the affiliate tag)
+  "psc", "spLa",
+  "pd_rd_r", "pd_rd_w", "pd_rd_wg",
   "pf_rd_p", "pf_rd_r",
+  "linkCode", "linkId",
+  "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
+  "th",
+
+  // eBay
+  "mkevt", "mkcid", "mkrid", "campid", "toolid", "customid",
+
+  // AliExpress
+  "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
 ];
 
 export const AFFILIATE_PATTERNS = [
@@ -39,23 +69,23 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.es", "www.amazon.es"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag when available
+    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.es)
   },
   {
     id: "amazon_de",
-    name: "Amazon Alemania",
+    name: "Amazon Deutschland",
     domains: ["amazon.de", "www.amazon.de"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.de)
   },
   {
     id: "amazon_fr",
-    name: "Amazon Francia",
+    name: "Amazon France",
     domains: ["amazon.fr", "www.amazon.fr"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.fr)
   },
   {
     id: "amazon_it",
@@ -63,7 +93,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.it", "www.amazon.it"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.it)
   },
   {
     id: "amazon_co_uk",
@@ -71,7 +101,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.co.uk", "www.amazon.co.uk"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.co.uk)
   },
   {
     id: "amazon_com",
@@ -79,7 +109,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.com", "www.amazon.com"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.com)
   },
   {
     id: "booking",
@@ -95,7 +125,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["aliexpress.com", "es.aliexpress.com", "www.aliexpress.com"],
     param: "aff_fcid",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your AliExpress Portal affiliate ID
   },
   {
     id: "pccomponentes",
@@ -103,13 +133,31 @@ export const AFFILIATE_PATTERNS = [
     domains: ["pccomponentes.com", "www.pccomponentes.com"],
     param: "ref",
     type: "affiliate",
-    ourTag: "",
+    ourTag: "",  // TODO: fill in your PcComponentes affiliate ref
   },
   {
     id: "el_corte_ingles",
     name: "El Corte Inglés",
     domains: ["elcorteingles.es", "www.elcorteingles.es"],
     param: "affiliateId",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your El Corte Inglés affiliate ID
+  },
+  {
+    id: "ebay",
+    name: "eBay",
+    domains: ["ebay.com", "www.ebay.com", "ebay.es", "www.ebay.es",
+              "ebay.de", "www.ebay.de", "ebay.co.uk", "www.ebay.co.uk",
+              "ebay.fr", "www.ebay.fr", "ebay.it", "www.ebay.it"],
+    param: "campid",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your eBay Partner Network campaign ID
+  },
+  {
+    id: "awin",
+    name: "AWIN (network)",
+    domains: [],  // AWIN links use domain-specific redirects — tracked via irgwc / awc params
+    param: "awc",
     type: "affiliate",
     ourTag: "",
   },
@@ -134,4 +182,12 @@ export function getPatternsForHost(hostname) {
  */
 export function isTrackingParam(param) {
   return TRACKING_PARAMS.includes(param.toLowerCase());
+}
+
+/**
+ * Returns the list of stores with active affiliate support for display in the UI.
+ * Only includes entries with known domains.
+ */
+export function getSupportedStores() {
+  return AFFILIATE_PATTERNS.filter(p => p.domains.length > 0 && p.id !== "awin");
 }
