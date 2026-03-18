@@ -11,6 +11,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.1] — 2026-03-19
+
+### Added
+- **Clean URL on copy (Ctrl+C)** — when the user selects a URL as text on any page and copies it, MUGA strips tracking parameters before the text reaches the clipboard. Respects the `injectOwnAffiliate` setting: if affiliate injection is enabled, our tag is added to the copied URL too. No toast is shown on copy.
+- **Clean URL on context menu copy** — "Copy clean link" already respected `injectOwnAffiliate`; now consistent with Ctrl+C behaviour.
+
+### Fixed
+- GitHub Actions release workflow: use wildcard `*.zip` when renaming build artifacts — web-ext generates `muga_make_urls_great_again-X.Y.Z.zip`, not `muga-X.Y.Z.zip`
+- GitHub Actions release workflow: add `permissions: contents: write` so the workflow can create GitHub Releases
+
+---
+
 ## [1.0.0] — 2026-03-18
 
 ### Added
