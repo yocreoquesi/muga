@@ -75,7 +75,7 @@ After:  https://www.booking.com/hotel/es/my-hotel.es.html
 | Automated GitHub Release on version tag | ✅ |
 | Chrome Web Store listing | ⏳ pending account registration |
 | Firefox Add-ons listing | ⏳ pending account registration |
-| URL shortener (muga.link) | ⏳ Phase 2 |
+| URL shortener integration | ⏳ Phase 2 |
 
 ---
 
