@@ -13,7 +13,8 @@
     "test": "node --test --test-reporter=spec tests/unit/*.mjs",
     "test:serve": "npx serve tests/browser --listen 5555 --no-clipboard",
     "brand": "npx serve tools --listen 5556 --no-clipboard",
-    "screenshots": "node tools/screenshots/capture.mjs"
+    "screenshots": "node tools/screenshots/capture.mjs",
+    "promo-tiles": "python3 tools/generate-promo-tiles.py"
   },
   "devDependencies": {
     "playwright": "^1.58.2",
