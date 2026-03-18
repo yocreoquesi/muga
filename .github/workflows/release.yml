@@ -38,10 +38,8 @@ jobs:
 
       - name: Rename build artifacts
         run: |
-          mv dist/chrome/muga-${{ steps.version.outputs.VERSION }}.zip \
-             dist/chrome/muga-${{ steps.version.outputs.VERSION }}-chrome.zip
-          mv dist/firefox/muga-${{ steps.version.outputs.VERSION }}.zip \
-             dist/firefox/muga-${{ steps.version.outputs.VERSION }}-firefox.zip
+          mv dist/chrome/*.zip dist/chrome/muga-${{ steps.version.outputs.VERSION }}-chrome.zip
+          mv dist/firefox/*.zip dist/firefox/muga-${{ steps.version.outputs.VERSION }}-firefox.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
