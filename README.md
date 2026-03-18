@@ -89,10 +89,9 @@ PRs are welcome, especially for:
 
 ## Support the project
 
-MUGA is free and open source. If you find it useful:
+MUGA is free and open source. If you find it useful, consider supporting it:
 
-- [Ko-fi](https://ko-fi.com/YOUR_USERNAME)
-- [GitHub Sponsors](https://github.com/sponsors/YOUR_USERNAME)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/yocreoquesi)
 
 ---
 
