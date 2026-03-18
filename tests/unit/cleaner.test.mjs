@@ -426,13 +426,22 @@ describe("copy behaviour — skipInject flag", () => {
     assert.equal(new URL(cleanUrl).search, "");
   });
 
-  test("affiliate is NOT injected when injectOwnAffiliate is false (skipInject simulation)", () => {
-    // Simulate what handleProcessUrl does when skipInject:true — forces injectOwnAffiliate:false
+  test("affiliate is NOT injected when user has injectOwnAffiliate disabled", () => {
     const { action } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW?utm_source=email",
       { ...PREFS, injectOwnAffiliate: false }
     );
     assert.notEqual(action, "injected");
+  });
+
+  test("toast is suppressed on copy (notifyForeignAffiliate forced false)", () => {
+    // Simulate skipInject:true — only notifyForeignAffiliate is suppressed,
+    // injectOwnAffiliate is left as the user configured it
+    const { detectedAffiliate } = processUrl(
+      "https://www.amazon.es/dp/B08?utm_source=email",
+      { ...PREFS, notifyForeignAffiliate: false }
+    );
+    assert.equal(detectedAffiliate, null);
   });
 
   test("URL with no query string is returned unchanged", () => {
