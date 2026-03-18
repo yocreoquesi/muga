@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="logo">MUGA</div>
+    <div class="toggle-wrap">
+      <label class="toggle" title="Activar / desactivar MUGA">
+        <input type="checkbox" id="enabled-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="stat">
+      <span class="stat-value" id="stat-tracking">0</span>
+      <span class="stat-label">tracking eliminado</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="stat-injected">0</span>
+      <span class="stat-label">afiliados activos</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="stat-foreign">0</span>
+      <span class="stat-label">referidos detectados</span>
+    </div>
+  </section>
+
+  <section class="options">
+    <label class="option-row">
+      <span class="option-label">
+        Inyectar mi afiliado si no hay ninguno
+        <small>Solo en tiendas donde tengo acuerdo activo</small>
+      </span>
+      <label class="toggle sm">
+        <input type="checkbox" id="inject-toggle">
+        <span class="slider"></span>
+      </label>
+    </label>
+
+    <label class="option-row">
+      <span class="option-label">
+        Notificarme si hay un referido ajeno
+        <small>Muestra un aviso con opciones durante 5 seg</small>
+      </span>
+      <label class="toggle sm">
+        <input type="checkbox" id="notify-toggle">
+        <span class="slider"></span>
+      </label>
+    </label>
+  </section>
+
+  <footer>
+    <a href="#" id="open-options">Preferencias avanzadas →</a>
+    <a href="https://ko-fi.com/TUUSUARIO" target="_blank" id="donate-link">Apoyar el proyecto</a>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

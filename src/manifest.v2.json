@@ -1,0 +1,48 @@
+{
+  "manifest_version": 2,
+  "name": "MUGA — Make URLs Great Again",
+  "short_name": "MUGA",
+  "version": "0.1.0",
+  "description": "URLs limpias, sin tracking, sin referidos molestos. Tú decides qué pasa con cada enlace.",
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "contextMenus",
+    "<all_urls>"
+  ],
+
+  "background": {
+    "scripts": ["lib/browser-polyfill.min.js", "background/service-worker.js"],
+    "persistent": false
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/browser-polyfill.min.js", "content/cleaner.js"],
+      "run_at": "document_start"
+    }
+  ],
+
+  "browser_action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    },
+    "default_title": "MUGA"
+  },
+
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}

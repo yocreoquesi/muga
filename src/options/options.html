@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>MUGA — Preferencias</title>
+  <style>
+    :root {
+      --bg: #fff; --bg2: #f5f5f5; --border: rgba(0,0,0,0.08);
+      --text: #1a1a1a; --text2: #666; --accent: #2563eb;
+      --danger: #dc2626; --success: #16a34a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1c1c1e; --bg2: #2c2c2e; --border: rgba(255,255,255,0.08);
+        --text: #f0f0f0; --text2: #999; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); max-width: 640px;
+      margin: 0 auto; padding: 32px 24px; font-size: 14px; }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .subtitle { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+    section { margin-bottom: 28px; }
+    h2 { font-size: 13px; font-weight: 500; color: var(--text2);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .card { background: var(--bg2); border-radius: 10px;
+      border: 0.5px solid var(--border); overflow: hidden; }
+    .row { display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 16px; border-bottom: 0.5px solid var(--border); gap: 12px; }
+    .row:last-child { border-bottom: none; }
+    .row-label { flex: 1; }
+    .row-label strong { display: block; font-size: 13.5px; font-weight: 500; }
+    .row-label small { color: var(--text2); font-size: 12px; display: block; margin-top: 2px; }
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: #d1d5db;
+      border-radius: 20px; transition: background .2s; cursor: pointer; }
+    .slider::before { content: ''; position: absolute; width: 14px; height: 14px;
+      left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform .2s; }
+    .toggle input:checked + .slider { background: var(--accent); }
+    .toggle input:checked + .slider::before { transform: translateX(16px); }
+    .list-section { padding: 12px 16px; }
+    .list-items { margin-bottom: 10px; min-height: 20px; }
+    .list-item { display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; background: var(--bg); border-radius: 6px;
+      margin-bottom: 5px; font-size: 12.5px; font-family: monospace; }
+    .del-btn { background: none; border: none; color: var(--danger);
+      cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+    .add-row { display: flex; gap: 8px; }
+    .add-row input { flex: 1; padding: 7px 10px; border-radius: 6px;
+      border: 0.5px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 13px; font-family: monospace; }
+    .add-btn { padding: 7px 14px; border-radius: 6px;
+      border: 0.5px solid var(--border); background: transparent;
+      color: var(--text); font-size: 13px; cursor: pointer; }
+    .add-btn:hover { background: var(--bg2); }
+    .hint { font-size: 11.5px; color: var(--text2); margin-top: 8px; line-height: 1.5; }
+    .empty { font-size: 12px; color: var(--text2); font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>MUGA</h1>
+  <p class="subtitle">Preferencias avanzadas — Make URLs Great Again</p>
+
+  <section>
+    <h2>Comportamiento general</h2>
+    <div class="card">
+      <div class="row">
+        <div class="row-label">
+          <strong>Inyectar mi afiliado cuando no hay ninguno</strong>
+          <small>Solo en tiendas donde tengo cuenta de afiliado activa</small>
+        </div>
+        <label class="toggle"><input type="checkbox" id="inject"><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <div class="row-label">
+          <strong>Notificarme si hay un referido ajeno</strong>
+          <small>Muestra un aviso no intrusivo con opciones durante 5 segundos</small>
+        </div>
+        <label class="toggle"><input type="checkbox" id="notify"><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <div class="row-label">
+          <strong>Permitir reemplazar afiliado ajeno por el mío</strong>
+          <small>Solo disponible si la notificación está activa. El usuario siempre decide.</small>
+        </div>
+        <label class="toggle"><input type="checkbox" id="replace"><span class="slider"></span></label>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Blacklist — estos afiliados se eliminan siempre</h2>
+    <div class="card">
+      <div class="list-section">
+        <div class="list-items" id="blacklist-items"></div>
+        <div class="add-row">
+          <input id="bl-input" placeholder="amazon.es  o  amazon.es::tag::youtuber-21" type="text">
+          <button class="add-btn" onclick="addEntry('blacklist', 'bl-input', 'blacklist-items')">+ Añadir</button>
+        </div>
+        <p class="hint">
+          Solo dominio (ej: <code>amazon.es</code>) para bloquear toda actividad en esa web.<br>
+          Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>) para bloquear un afiliado concreto.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Whitelist — estos afiliados son de confianza, no se tocan</h2>
+    <div class="card">
+      <div class="list-section">
+        <div class="list-items" id="whitelist-items"></div>
+        <div class="add-row">
+          <input id="wl-input" placeholder="amazon.es::tag::creador-que-apoyo" type="text">
+          <button class="add-btn" onclick="addEntry('whitelist', 'wl-input', 'whitelist-items')">+ Añadir</button>
+        </div>
+        <p class="hint">
+          Formato: <code>dominio::parámetro::valor</code>. El afiliado de ese creador nunca se toca.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <script src="options.js"></script>
+</body>
+</html>
