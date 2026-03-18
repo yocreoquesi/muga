@@ -115,7 +115,18 @@ export function processUrl(rawUrl, prefs) {
       const current = url.searchParams.get(entry.param);
       if (current === entry.value) {
         url.searchParams.delete(entry.param);
-        if (action === "untouched") action = "cleaned";
+        // If this was the detected foreign affiliate, clear it — the toast must not fire
+        // for a parameter we already removed via the blacklist.
+        if (
+          detectedAffiliate &&
+          detectedAffiliate.param === entry.param &&
+          detectedAffiliate.value === entry.value
+        ) {
+          detectedAffiliate = null;
+          action = "cleaned";
+        } else if (action === "untouched") {
+          action = "cleaned";
+        }
       }
     }
   }

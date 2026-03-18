@@ -61,7 +61,7 @@ After:  https://www.booking.com/hotel/es/my-hotel.es.html
 | Feature | Status |
 |---|---|
 | Strip 50+ tracking params (UTMs, fbclid, gclid, eBay, YouTube `si`, AliExpress…) | ✅ |
-| Affiliate injection when link has no tag (Amazon, Booking, eBay, and more) | ✅ — pending affiliate account registration |
+| Passive affiliate support (invisible, optional, you keep the same price) | ✅ — pending affiliate account registration |
 | Foreign affiliate detection with non-intrusive toast | ✅ — pending affiliate account registration |
 | "Use ours" button in toast (only when you opt in) | ✅ |
 | Right-click → Copy clean link | ✅ |
@@ -85,6 +85,20 @@ MUGA can strip affiliate noise and optionally add our tag on:
 **Amazon** (ES · DE · FR · IT · UK · US), **Booking.com**, **AliExpress**, **eBay** (ES · DE · FR · IT · UK · US), **PcComponentes**, **El Corte Inglés**
 
 Tracking parameters are stripped on **every site** — not just the ones listed above.
+
+---
+
+## How the affiliate model works (and why it's not annoying)
+
+When you visit a supported store and the link you clicked has **no affiliate tag at all**, MUGA silently adds ours before you land on the page. You pay the exact same price — the store just knows you came via MUGA. This is how the extension stays free.
+
+A few things to know:
+- The URL in your address bar looks clean — the tag is added as part of the navigation, not visible noise.
+- It only fires on supported stores (Amazon, Booking, eBay…) and only when there's already no affiliate tag present.
+- You can turn it off in settings, per-domain or globally, at any time.
+- We **never** touch a link that already carries someone else's affiliate tag. That's not our call to make.
+
+This is opt-out, not opt-in — but you're told about it during onboarding, it's in the privacy policy, and the source code is public.
 
 ---
 

@@ -357,6 +357,22 @@ describe("Scenario D — blacklist enforcement", () => {
     assert.equal(new URL(cleanUrl).searchParams.get("tag"), "youtuber-21");
   });
 
+  test("blacklisted specific affiliate does NOT trigger foreign detection toast (closes #27)", () => {
+    // When a param is blacklisted AND would be detected as foreign, it gets stripped
+    // silently — the toast must not fire for a param we already removed.
+    const { action, detectedAffiliate, cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=badaffiliate-21&utm_source=email",
+      {
+        ...PREFS,
+        notifyForeignAffiliate: true,
+        blacklist: ["amazon.es::tag::badaffiliate-21"],
+      }
+    );
+    assert.notEqual(action, "detected_foreign");
+    assert.equal(detectedAffiliate, null);
+    assert.equal(new URL(cleanUrl).searchParams.has("tag"), false);
+  });
+
   test("blacklisted domain does not inject our affiliate", () => {
     const { action } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW",

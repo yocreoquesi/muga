@@ -79,15 +79,25 @@ export function t(key, lang) {
   return entry[lang] ?? entry["en"] ?? key;
 }
 
+// Keys whose values intentionally contain safe HTML (<code>, <br>).
+// All other keys use textContent to prevent any XSS risk.
+const HTML_KEYS = new Set(["bl_hint", "wl_hint"]);
+
 /**
  * Applies translations to all [data-i18n] elements in the current document.
+ * Uses textContent for plain strings and innerHTML only for known HTML keys.
  * Also handles [data-i18n-placeholder] for input placeholders.
  * @param {string} lang - Language code ("en" | "es")
  */
 export function applyTranslations(lang) {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const key = el.getAttribute("data-i18n");
-    el.innerHTML = t(key, lang);
+    const value = t(key, lang);
+    if (HTML_KEYS.has(key)) {
+      el.innerHTML = value;
+    } else {
+      el.textContent = value;
+    }
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
     const key = el.getAttribute("data-i18n-placeholder");
