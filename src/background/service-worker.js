@@ -10,7 +10,7 @@ import { getPrefs, incrementStat } from "../lib/storage.js";
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PROCESS_URL") {
-    handleProcessUrl(message.url).then(sendResponse);
+    handleProcessUrl(message.url, { skipInject: message.skipInject }).then(sendResponse);
     return true; // keep the channel open for the async response
   }
 
@@ -20,14 +20,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-async function handleProcessUrl(rawUrl) {
+async function handleProcessUrl(rawUrl, { skipInject = false } = {}) {
   const prefs = await getPrefs();
 
   if (!prefs.enabled) {
     return { cleanUrl: rawUrl, action: "untouched" };
   }
 
-  const result = processUrl(rawUrl, prefs);
+  const effectivePrefs = skipInject
+    ? { ...prefs, injectOwnAffiliate: false, notifyForeignAffiliate: false }
+    : prefs;
+
+  const result = processUrl(rawUrl, effectivePrefs);
 
   // Update stats
   if (result.removedTracking.length > 0) {

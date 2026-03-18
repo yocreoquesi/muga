@@ -59,6 +59,54 @@
   });
 
   /**
+   * Intercepts Ctrl+C / copy when the selected text is a URL.
+   * Strips tracking parameters from the copied URL without injecting our affiliate
+   * (the user is sharing, not navigating).
+   * Note: address bar copies are a browser UI element and cannot be intercepted.
+   */
+  document.addEventListener("copy", async (e) => {
+    const selected = window.getSelection()?.toString().trim();
+    if (!selected) return;
+
+    // Must be a valid http/https URL
+    let url;
+    try {
+      url = new URL(selected);
+    } catch {
+      return;
+    }
+    if (!["http:", "https:"].includes(url.protocol)) return;
+
+    // Nothing to clean if there are no query parameters
+    if (!url.search) return;
+
+    e.preventDefault();
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "PROCESS_URL",
+        url: selected,
+        skipInject: true,
+      });
+
+      const cleanUrl = response?.cleanUrl ?? selected;
+      await navigator.clipboard.writeText(cleanUrl).catch(() => {
+        const el = document.createElement("textarea");
+        el.value = cleanUrl;
+        el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        try { document.execCommand("copy"); } catch {}
+        el.remove();
+      });
+    } catch {
+      // If processing fails, let the original copy proceed (already prevented — re-copy original)
+      navigator.clipboard.writeText(selected).catch(() => {});
+    }
+  });
+
+  /**
    * Intercepts link clicks before navigation.
    * The service worker handles processing and responds with the clean URL.
    */
