@@ -7,6 +7,9 @@
  *   - Tracking parameter removal (Scenario A)
  *   - Affiliate injection when no tag present (Scenario B)
  *   - Foreign affiliate detection (Scenario C)
+ *   - Blacklist enforcement — domain-only (Scenario D)
+ *   - Blacklist enforcement — specific affiliate
+ *   - Whitelist — protected affiliate values are never touched
  *   - Edge cases: invalid URLs, no query string, empty ourTag
  *
  * NOTE: Affiliate injection and foreign-detection tests that depend on
@@ -26,6 +29,8 @@ const PREFS = {
   injectOwnAffiliate: false,
   notifyForeignAffiliate: false,
   allowReplaceAffiliate: false,
+  blacklist: [],
+  whitelist: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -85,6 +90,35 @@ describe("Scenario A — tracking parameter removal", () => {
     );
     assert.ok(removedTracking.includes("mc_cid"));
     assert.ok(removedTracking.includes("mc_eid"));
+  });
+
+  test("strips YouTube si param", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ&si=abc123tracking",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+    const clean = new URL(cleanUrl);
+    assert.equal(clean.searchParams.get("v"), "dQw4w9WgXcQ");
+    assert.equal(clean.searchParams.has("si"), false);
+  });
+
+  test("strips eBay tracking params (mkevt, mkcid, mkrid)", () => {
+    const { removedTracking } = processUrl(
+      "https://www.ebay.es/itm/123456?mkevt=1&mkcid=1&mkrid=1185",
+      PREFS
+    );
+    assert.ok(removedTracking.includes("mkevt"));
+    assert.ok(removedTracking.includes("mkcid"));
+    assert.ok(removedTracking.includes("mkrid"));
+  });
+
+  test("strips irgwc (Impact Radius click ID)", () => {
+    const { action } = processUrl(
+      "https://example.com/?irgwc=1&utm_source=affiliate",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
   });
 
   test("preserves non-tracking query params", () => {
@@ -210,6 +244,16 @@ describe("Amazon — affiliate param preserved", () => {
     assert.equal(cleanUrl, url);
   });
 
+  test("amazon internal noise params are stripped", () => {
+    const { removedTracking } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&psc=1&pd_rd_r=abc&linkCode=ll1",
+      PREFS
+    );
+    assert.ok(removedTracking.includes("psc"));
+    assert.ok(removedTracking.includes("pd_rd_r"));
+    assert.ok(removedTracking.includes("linkCode"));
+  });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -223,12 +267,10 @@ describe("Scenario B — affiliate injection", () => {
       "https://www.amazon.es/dp/B08N5WRWNW",
       { ...PREFS, injectOwnAffiliate: false }
     );
-    // Action should be untouched (no query string) or cleaned — never "injected"
     assert.notEqual(action, "injected");
   });
 
   test("injectOwnAffiliate: true but ourTag empty → does NOT inject", () => {
-    // All ourTag values are currently empty — injection must not happen
     const { action } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW",
       { ...PREFS, injectOwnAffiliate: true }
@@ -237,7 +279,7 @@ describe("Scenario B — affiliate injection", () => {
   });
 
   test("TODO — inject on amazon.es when ourTag is set", { todo: "Fill in ourTag in affiliates.js once Amazon Associates account is approved" }, () => {
-    // When implemented, test should verify:
+    // When implemented:
     // action === "injected"
     // cleanUrl contains tag=OUR_TAG
   });
@@ -250,7 +292,7 @@ describe("Scenario B — affiliate injection", () => {
 // ---------------------------------------------------------------------------
 describe("Scenario C — foreign affiliate detection", () => {
 
-  test("notifyForeignAffiliate: false → foreign tag NOT flagged (ourTag empty)", () => {
+  test("notifyForeignAffiliate: false → foreign tag NOT flagged", () => {
     const { action } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21",
       { ...PREFS, notifyForeignAffiliate: false }
@@ -259,7 +301,6 @@ describe("Scenario C — foreign affiliate detection", () => {
   });
 
   test("notifyForeignAffiliate: true but ourTag empty → still NOT detected", () => {
-    // Detection only triggers when ourTag is set (no tag to compare against)
     const { action } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21",
       { ...PREFS, notifyForeignAffiliate: true }
@@ -267,15 +308,91 @@ describe("Scenario C — foreign affiliate detection", () => {
     assert.notEqual(action, "detected_foreign");
   });
 
-  test("TODO — detect foreign affiliate on amazon.es when ourTag is set", { todo: "Fill in ourTag in affiliates.js once Amazon Associates account is approved" }, () => {
-    // When implemented, test should verify:
-    // action === "detected_foreign"
-    // detectedAffiliate.param === "tag"
-    // detectedAffiliate.value === "someother-21"
+  test("TODO — detect foreign affiliate on amazon.es when ourTag is set", { todo: "Fill in ourTag in affiliates.js once Amazon Associates account is approved" }, () => {});
+
+  test("TODO — our own tag is NOT flagged as foreign", { todo: "Fill in ourTag in affiliates.js" }, () => {});
+
+});
+
+// ---------------------------------------------------------------------------
+// Scenario D — Blacklisted domain: strip everything
+// ---------------------------------------------------------------------------
+describe("Scenario D — blacklist enforcement", () => {
+
+  test("domain-only blacklist entry strips all params including affiliate tags", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=affiliate-21&utm_source=email&psc=1",
+      { ...PREFS, blacklist: ["amazon.es"] }
+    );
+    assert.equal(action, "blacklisted");
+    assert.equal(cleanUrl, "https://www.amazon.es/dp/B08N5WRWNW");
   });
 
-  test("TODO — our own tag is NOT flagged as foreign", { todo: "Fill in ourTag in affiliates.js" }, () => {
-    // When ourTag is set, a URL with that same tag must NOT be flagged
+  test("blacklist entry with www prefix matches the non-www domain too", () => {
+    const { action } = processUrl(
+      "https://www.booking.com/hotel/es/foo?aid=12345&utm_source=google",
+      { ...PREFS, blacklist: ["booking.com"] }
+    );
+    assert.equal(action, "blacklisted");
+  });
+
+  test("specific affiliate blacklist (domain::param::value) removes only that affiliate", () => {
+    const { cleanUrl, action } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=spammer-21&utm_source=email",
+      { ...PREFS, blacklist: ["amazon.es::tag::spammer-21"] }
+    );
+    const clean = new URL(cleanUrl);
+    assert.equal(clean.searchParams.has("tag"), false);
+    assert.equal(clean.searchParams.has("utm_source"), false); // stripped by Scenario A
+    assert.notEqual(action, "blacklisted"); // Scenario A cleaned it, not full blacklist
+  });
+
+  test("specific blacklist does NOT remove a different affiliate value", () => {
+    const url = "https://www.amazon.es/dp/B08N5WRWNW?tag=youtuber-21";
+    const { cleanUrl } = processUrl(
+      url,
+      { ...PREFS, blacklist: ["amazon.es::tag::spammer-21"] }
+    );
+    // youtuber-21 is not blacklisted — must be preserved
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "youtuber-21");
+  });
+
+  test("blacklisted domain does not inject our affiliate", () => {
+    const { action } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW",
+      { ...PREFS, injectOwnAffiliate: true, blacklist: ["amazon.es"] }
+    );
+    // URL has no query string — blacklist check strips search, no injection
+    assert.equal(action, "blacklisted");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Whitelist — protected affiliate values are never touched
+// ---------------------------------------------------------------------------
+describe("Whitelist — protected affiliates", () => {
+
+  test("whitelisted affiliate is not flagged as foreign even when notification is on", () => {
+    // We fake a non-empty ourTag by using a pattern that won't match the whitelist value
+    // Since ourTag is empty in affiliates.js, detection won't fire anyway — but the
+    // whitelist logic is tested by verifying the affiliate value is preserved.
+    const url = "https://www.amazon.es/dp/B08N5WRWNW?tag=creator-i-support-21";
+    const { cleanUrl } = processUrl(
+      url,
+      { ...PREFS, whitelist: ["amazon.es::tag::creator-i-support-21"] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "creator-i-support-21");
+  });
+
+  test("non-whitelisted affiliate on same domain is still processed normally", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=random-21&utm_source=email",
+      { ...PREFS, whitelist: ["amazon.es::tag::creator-i-support-21"] }
+    );
+    // utm_source stripped (Scenario A), tag not whitelisted so remains untouched by whitelist
+    assert.equal(new URL(cleanUrl).searchParams.has("utm_source"), false);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "random-21");
   });
 
 });

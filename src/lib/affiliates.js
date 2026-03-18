@@ -23,7 +23,7 @@ export const TRACKING_PARAMS = [
   "msclkid", "tclid", "twclid",
 
   // Email marketing
-  "mc_cid", "mc_eid", "MailingID", "HQEmail",
+  "mc_cid", "mc_eid", "mailingid", "hqemail",
 
   // Social
   "igshid", "igsh", "s_cid",
@@ -36,8 +36,8 @@ export const TRACKING_PARAMS = [
 
   // Generic
   "ref", "source", "campaign", "cid", "clickid",
-  "_hsenc", "_hsmi", "hsCtaTracking",
-  "mkt_tok", "trk", "trkCampaign",
+  "_hsenc", "_hsmi", "hsctatracking",
+  "mkt_tok", "trk", "trkcampaign",
 
   // Affiliate networks — click identifiers (not the affiliate tag itself, just the click ID)
   "irgwc",    // Impact Radius
@@ -51,7 +51,7 @@ export const TRACKING_PARAMS = [
   "psc", "spLa",
   "pd_rd_r", "pd_rd_w", "pd_rd_wg",
   "pf_rd_p", "pf_rd_r",
-  "linkCode", "linkId",
+  "linkcode", "linkid",
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
   "th",
 
