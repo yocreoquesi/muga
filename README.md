@@ -3,8 +3,8 @@
 > URLs have become a mess — bloated with tracking parameters, hidden referral tags, and garbage that makes them impossible to share cleanly. MUGA fixes that.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Web%20Store-coming%20soon-lightgrey)]()
-[![Firefox Add-ons](https://img.shields.io/badge/Firefox-Add--ons-coming%20soon-lightgrey)]()
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-not_yet_published-lightgrey)](https://github.com/yocreoquesi/muga/issues/7)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-not_yet_published-lightgrey)](https://github.com/yocreoquesi/muga/issues/7)
 
 ---
 
