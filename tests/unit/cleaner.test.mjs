@@ -155,6 +155,47 @@ describe("Scenario A — tracking parameter removal", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Custom tracking params (#33)
+// ---------------------------------------------------------------------------
+describe("custom tracking params", () => {
+
+  test("strips a user-defined custom param", () => {
+    const { action, removedTracking } = processUrl(
+      "https://example.com/?ref_code=XYZ123&q=shoes",
+      { ...PREFS, customParams: ["ref_code"] }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("ref_code"));
+    assert.equal(new URL(processUrl("https://example.com/?ref_code=XYZ123&q=shoes", { ...PREFS, customParams: ["ref_code"] }).cleanUrl).searchParams.get("q"), "shoes");
+  });
+
+  test("custom param matching is case-insensitive", () => {
+    const { removedTracking } = processUrl(
+      "https://example.com/?Promo_ID=summer&page=1",
+      { ...PREFS, customParams: ["promo_id"] }
+    );
+    assert.ok(removedTracking.includes("Promo_ID"));
+  });
+
+  test("unknown param not in customParams is preserved", () => {
+    const { cleanUrl } = processUrl(
+      "https://example.com/?my_custom=abc",
+      { ...PREFS, customParams: [] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("my_custom"), "abc");
+  });
+
+  test("empty customParams does not affect built-in params", () => {
+    const { removedTracking } = processUrl(
+      "https://example.com/?utm_source=email",
+      { ...PREFS, customParams: [] }
+    );
+    assert.ok(removedTracking.includes("utm_source"));
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Untouched — no query string or no matching params
 // ---------------------------------------------------------------------------
 describe("action: untouched", () => {
