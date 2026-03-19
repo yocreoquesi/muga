@@ -12,10 +12,12 @@ const DEFAULTS = {
   blacklist: [],   // e.g. ["amazon.es", "booking.com::aid::123456"]
   whitelist: [],   // e.g. ["amazon.es::tag::youtuber-21"]
   stats: {
-    trackingRemoved: 0,
-    affiliatesInjected: 0,
-    foreignDetected: 0,
+    urlsCleaned: 0,
+    junkRemoved: 0,
+    referralsSpotted: 0,
   },
+  firstUsed: null,
+  nudgeDismissed: false,
 };
 
 export async function getPrefs() {
@@ -56,10 +58,10 @@ export async function removeFromWhitelist(entry) {
   await setPrefs({ whitelist: prefs.whitelist.filter(e => e !== entry) });
 }
 
-export async function incrementStat(key) {
+export async function incrementStat(key, amount = 1) {
   const prefs = await getPrefs();
   const stats = prefs.stats || DEFAULTS.stats;
-  stats[key] = (stats[key] || 0) + 1;
+  stats[key] = (stats[key] || 0) + amount;
   await setPrefs({ stats });
 }
 
