@@ -155,6 +155,44 @@ header {
 .toggle input:checked + .slider::before { transform: translateX(16px); }
 .toggle.sm input:checked + .slider::before { transform: translateX(13px); }
 
+/* URL preview */
+.preview {
+  padding: 8px 14px 10px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.preview-label {
+  font-size: 10px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+
+.preview-url {
+  font-size: 11px;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+.preview-url.before {
+  color: var(--text2);
+  text-decoration: line-through;
+}
+
+.preview-url.after {
+  color: var(--accent);
+}
+
+.preview-url.clean {
+  color: #16a34a;
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
 /* Nudge banner */
 .nudge {
   padding: 10px 14px;
