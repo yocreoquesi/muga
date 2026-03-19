@@ -1,10 +1,14 @@
 /**
  * MUGA — Storage helpers
- * Uses chrome.storage.sync so preferences are synced across
- * all devices signed into the same account.
+ *
+ * Two buckets:
+ *   chrome.storage.sync  — user preferences (synced across devices, 100KB quota)
+ *   chrome.storage.local — stats and ephemeral state (device-only, 10MB quota)
  */
 
-const DEFAULTS = {
+// ── Sync: user preferences ──────────────────────────────────────────────────
+
+const PREF_DEFAULTS = {
   enabled: true,
   injectOwnAffiliate: true,
   notifyForeignAffiliate: false,
@@ -12,18 +16,13 @@ const DEFAULTS = {
   stripAllAffiliates: false,
   blacklist: [],   // e.g. ["amazon.es", "booking.com::aid::123456"]
   whitelist: [],   // e.g. ["amazon.es::tag::youtuber-21"]
-  stats: {
-    urlsCleaned: 0,
-    junkRemoved: 0,
-    referralsSpotted: 0,
-  },
-  firstUsed: null,
-  nudgeDismissed: false,
+  language: "en",
+  onboardingDone: false,
 };
 
 export async function getPrefs() {
   return new Promise(resolve => {
-    chrome.storage.sync.get(DEFAULTS, result => resolve(result));
+    chrome.storage.sync.get(PREF_DEFAULTS, resolve);
   });
 }
 
@@ -36,8 +35,7 @@ export async function setPrefs(partial) {
 export async function addToBlacklist(entry) {
   const prefs = await getPrefs();
   if (!prefs.blacklist.includes(entry)) {
-    prefs.blacklist.push(entry);
-    await setPrefs({ blacklist: prefs.blacklist });
+    await setPrefs({ blacklist: [...prefs.blacklist, entry] });
   }
 }
 
@@ -49,8 +47,7 @@ export async function removeFromBlacklist(entry) {
 export async function addToWhitelist(entry) {
   const prefs = await getPrefs();
   if (!prefs.whitelist.includes(entry)) {
-    prefs.whitelist.push(entry);
-    await setPrefs({ whitelist: prefs.whitelist });
+    await setPrefs({ whitelist: [...prefs.whitelist, entry] });
   }
 }
 
@@ -59,14 +56,61 @@ export async function removeFromWhitelist(entry) {
   await setPrefs({ whitelist: prefs.whitelist.filter(e => e !== entry) });
 }
 
-export async function incrementStat(key, amount = 1) {
-  const prefs = await getPrefs();
-  const stats = prefs.stats || DEFAULTS.stats;
-  stats[key] = (stats[key] || 0) + amount;
-  await setPrefs({ stats });
-}
+// ── Local: stats and nudge state ─────────────────────────────────────────────
+
+const STAT_DEFAULTS = {
+  stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
+  firstUsed: null,
+  nudgeDismissed: false,
+};
 
 export async function getStats() {
-  const prefs = await getPrefs();
-  return prefs.stats || DEFAULTS.stats;
+  return new Promise(resolve => {
+    chrome.storage.local.get(STAT_DEFAULTS, resolve);
+  });
+}
+
+export async function setStats(partial) {
+  return new Promise(resolve => {
+    chrome.storage.local.set(partial, resolve);
+  });
+}
+
+export async function incrementStat(key, amount = 1) {
+  const local = await getStats();
+  const stats = local.stats || STAT_DEFAULTS.stats;
+  stats[key] = (stats[key] || 0) + amount;
+  await setStats({ stats });
+}
+
+/**
+ * One-time migration: moves stats out of chrome.storage.sync into
+ * chrome.storage.local. Safe to call on every startup — exits immediately
+ * if migration already done or no old data exists.
+ */
+export async function migrateStatsToLocal() {
+  const syncData = await new Promise(resolve =>
+    chrome.storage.sync.get({ stats: null, firstUsed: null, nudgeDismissed: null }, resolve)
+  );
+
+  const hasOldStats =
+    syncData.stats !== null ||
+    syncData.firstUsed !== null ||
+    syncData.nudgeDismissed !== null;
+
+  if (!hasOldStats) return;
+
+  // Copy to local (only if local doesn't already have data)
+  const localData = await getStats();
+  const merged = {
+    stats: syncData.stats ?? localData.stats,
+    firstUsed: syncData.firstUsed ?? localData.firstUsed,
+    nudgeDismissed: syncData.nudgeDismissed ?? localData.nudgeDismissed,
+  };
+  await setStats(merged);
+
+  // Remove from sync
+  await new Promise(resolve =>
+    chrome.storage.sync.remove(["stats", "firstUsed", "nudgeDismissed"], resolve)
+  );
 }

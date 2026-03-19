@@ -13,21 +13,25 @@ async function init() {
   const lang = await getStoredLang();
   applyTranslations(lang);
 
-  const prefs = await chrome.storage.sync.get({
-    enabled: true,
-    injectOwnAffiliate: true,
-    notifyForeignAffiliate: false,
-    stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
-    firstUsed: null,
-    nudgeDismissed: false,
-  });
+  const [prefs, local] = await Promise.all([
+    chrome.storage.sync.get({
+      enabled: true,
+      injectOwnAffiliate: true,
+      notifyForeignAffiliate: false,
+    }),
+    chrome.storage.local.get({
+      stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
+      firstUsed: null,
+      nudgeDismissed: false,
+    }),
+  ]);
 
   document.getElementById("stat-urls").textContent =
-    formatStat(prefs.stats?.urlsCleaned ?? 0);
+    formatStat(local.stats?.urlsCleaned ?? 0);
   document.getElementById("stat-junk").textContent =
-    formatStat(prefs.stats?.junkRemoved ?? 0);
+    formatStat(local.stats?.junkRemoved ?? 0);
   document.getElementById("stat-referrals").textContent =
-    formatStat(prefs.stats?.referralsSpotted ?? 0);
+    formatStat(local.stats?.referralsSpotted ?? 0);
 
   const enabledToggle = document.getElementById("enabled-toggle");
   const injectToggle  = document.getElementById("inject-toggle");
@@ -49,7 +53,7 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
-  maybeShowNudge(prefs, lang);
+  maybeShowNudge({ ...prefs, ...local }, lang);
 }
 
 function maybeShowNudge(prefs, lang) {
@@ -73,7 +77,7 @@ function maybeShowNudge(prefs, lang) {
 
   document.getElementById("nudge-dismiss").addEventListener("click", () => {
     nudge.hidden = true;
-    chrome.storage.sync.set({ nudgeDismissed: true });
+    chrome.storage.local.set({ nudgeDismissed: true });
   });
 }
 
