@@ -603,3 +603,36 @@ describe("Amazon — root-level /ref= path tracking", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// Whitelist priority over stripAllAffiliates (closes #8)
+// ---------------------------------------------------------------------------
+describe("whitelist priority over stripAllAffiliates", () => {
+
+  test("whitelisted affiliate is preserved even when stripAllAffiliates is on", () => {
+    const prefs = {
+      ...PREFS,
+      stripAllAffiliates: true,
+      whitelist: ["amazon.es::tag::trusted-21"],
+    };
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08?tag=trusted-21", prefs
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "trusted-21",
+      "whitelisted tag must survive stripAllAffiliates");
+  });
+
+  test("non-whitelisted affiliate is stripped when stripAllAffiliates is on", () => {
+    const prefs = {
+      ...PREFS,
+      stripAllAffiliates: true,
+      whitelist: ["amazon.es::tag::trusted-21"],
+    };
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08?tag=other-99", prefs
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null,
+      "non-whitelisted tag must be stripped");
+  });
+
+});
