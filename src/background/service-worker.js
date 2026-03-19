@@ -5,7 +5,10 @@
  */
 
 import { processUrl } from "../lib/cleaner.js";
-import { getPrefs, incrementStat } from "../lib/storage.js";
+import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from "../lib/storage.js";
+
+// Run migration once on startup (no-op if already done)
+migrateStatsToLocal();
 
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -35,10 +38,10 @@ async function handleProcessUrl(rawUrl, { skipInject = false } = {}) {
 
   const result = processUrl(rawUrl, effectivePrefs);
 
-  // Record first use timestamp for nudge threshold
-  const stored = await chrome.storage.sync.get({ firstUsed: null });
-  if (!stored.firstUsed) {
-    await chrome.storage.sync.set({ firstUsed: Date.now() });
+  // Record first use timestamp for nudge threshold (stored locally)
+  const localStats = await getStats();
+  if (!localStats.firstUsed) {
+    await setStats({ firstUsed: Date.now() });
   }
 
   // Update stats
