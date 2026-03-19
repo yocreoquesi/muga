@@ -41,7 +41,8 @@ function cleanAmazonPath(hostname, pathname) {
   if (!/amazon\.[a-z.]+$/.test(hostname)) return pathname;
   return pathname
     .replace(/(\/dp\/[A-Z0-9]{10})\/.+/, "$1/")
-    .replace(/(\/gp\/product\/[A-Z0-9]{10})\/.+/, "$1/");
+    .replace(/(\/gp\/product\/[A-Z0-9]{10})\/.+/, "$1/")
+    .replace(/\/ref=[^/?#]*/g, "") || "/";
 }
 
 /**
