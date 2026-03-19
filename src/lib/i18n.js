@@ -30,6 +30,7 @@ export const TRANSLATIONS = {
   nudge_dismiss:   { en: "✕",                 es: "✕" },
   preview_clean:   { en: "✓ This page is already clean",  es: "✓ Esta página ya está limpia" },
   preview_label:   { en: "This page",                     es: "Esta página" },
+  history_label:   { en: "Recent",                        es: "Recientes" },
   toggle_enabled:  { en: "Enable MUGA",                   es: "Activar MUGA" },
   opt_inject_label: { en: "Inject our affiliate when none is present", es: "Inyectar nuestro afiliado si no hay ninguno" },
   opt_inject_hint:  { en: "Only on stores where we have an active account", es: "Solo en tiendas donde tenemos cuenta activa" },

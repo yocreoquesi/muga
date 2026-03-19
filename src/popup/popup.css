@@ -239,6 +239,41 @@ header {
 
 .nudge-btn:hover { opacity: 0.85; }
 
+/* Session history */
+.history { border-top: 0.5px solid var(--border); }
+
+.history-summary {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.history-summary::-webkit-details-marker { display: none; }
+.history-summary::after { content: ' ›'; margin-left: auto; }
+
+.history-entry {
+  padding: 4px 16px 5px;
+  border-top: 0.5px solid var(--border);
+}
+
+.history-url {
+  font-size: 10.5px;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.6;
+}
+
+.history-url.before { color: var(--text2); text-decoration: line-through; }
+.history-url.after  { color: var(--accent); }
+
 footer {
   display: flex;
   justify-content: space-between;

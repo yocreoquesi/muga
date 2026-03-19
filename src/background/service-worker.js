@@ -37,6 +37,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`tab_${tabId}`);
 });
 
+// --- Session history helpers ---
+
+const HISTORY_MAX = 5;
+
+async function appendHistory(original, clean) {
+  if (original === clean) return;
+  const data = await chrome.storage.session.get({ history: [] });
+  const entry = { original, clean, ts: Date.now() };
+  const history = [entry, ...data.history].slice(0, HISTORY_MAX);
+  await chrome.storage.session.set({ history });
+}
+
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PROCESS_URL") {
@@ -76,9 +88,10 @@ async function handleProcessUrl(rawUrl, { skipInject = false } = {}) {
     await setStats({ firstUsed: Date.now() });
   }
 
-  // Update stats
+  // Update stats and session history
   if (result.action !== "untouched") {
     await incrementStat("urlsCleaned");
+    await appendHistory(rawUrl, result.cleanUrl);
   }
   if (result.junkRemoved > 0) {
     await incrementStat("junkRemoved", result.junkRemoved);

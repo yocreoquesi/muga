@@ -56,6 +56,7 @@ async function init() {
 
   maybeShowNudge({ ...prefs, ...local }, lang);
   await showUrlPreview(prefs, lang);
+  await showHistory();
 }
 
 async function showUrlPreview(prefs, lang) {
@@ -107,6 +108,23 @@ function formatStat(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
+}
+
+async function showHistory() {
+  const data = await chrome.storage.session.get({ history: [] });
+  const history = data.history;
+  if (!history.length) return;
+
+  const section = document.getElementById("history");
+  const list = document.getElementById("history-list");
+  section.hidden = false;
+
+  list.innerHTML = history.map(entry => `
+    <div class="history-entry">
+      <div class="history-url before">${entry.original}</div>
+      <div class="history-url after">${entry.clean}</div>
+    </div>
+  `).join("");
 }
 
 document.addEventListener("DOMContentLoaded", init);
