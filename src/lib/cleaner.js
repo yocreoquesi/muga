@@ -128,9 +128,11 @@ export function processUrl(rawUrl, prefs) {
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
 
   // 4b. Strip all affiliate params when user opted out of all affiliates
+  // Whitelist entries are respected — specific beats general.
   if (prefs.stripAllAffiliates) {
     for (const pattern of patterns) {
-      if (url.searchParams.has(pattern.param)) {
+      const val = url.searchParams.get(pattern.param);
+      if (val && !whitelistedValues.has(`${pattern.param}::${val}`)) {
         url.searchParams.delete(pattern.param);
         if (action === "untouched") action = "cleaned";
       }
