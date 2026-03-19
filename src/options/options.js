@@ -33,6 +33,7 @@ async function init() {
   initLanguageSelect();
   bindListButtons();
   initStatsSection();
+  initExportImport();
 }
 
 function bindToggle(id, key, prefs) {
@@ -141,6 +142,50 @@ function initStatsSection() {
       nudgeDismissed: false,
     });
     alert(t("stats_reset_done", currentLang));
+  });
+}
+
+function initExportImport() {
+  document.getElementById("export-btn").addEventListener("click", async () => {
+    const prefs = await chrome.storage.sync.get(DEFAULTS);
+    const payload = {
+      muga: true,
+      version: chrome.runtime.getManifest().version,
+      blacklist: prefs.blacklist,
+      whitelist: prefs.whitelist,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "muga-settings.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  const fileInput = document.getElementById("import-file");
+
+  document.getElementById("import-btn").addEventListener("click", () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist)) {
+        throw new Error("invalid");
+      }
+      await chrome.storage.sync.set({ blacklist: data.blacklist, whitelist: data.whitelist });
+      renderList("blacklist-items", data.blacklist, "blacklist");
+      renderList("whitelist-items", data.whitelist, "whitelist");
+      alert(t("import_success", currentLang));
+    } catch {
+      alert(t("import_error", currentLang));
+    }
+    fileInput.value = "";
   });
 }
 
