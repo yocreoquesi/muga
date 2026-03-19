@@ -10,10 +10,42 @@ import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
 
+// Set badge appearance once on startup
+chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
+
+// --- Badge helpers ---
+
+async function updateTabBadge(tabId, junkRemoved) {
+  if (!tabId || junkRemoved <= 0) return;
+  const key = `tab_${tabId}`;
+  const data = await chrome.storage.session.get({ [key]: 0 });
+  const newCount = data[key] + junkRemoved;
+  await chrome.storage.session.set({ [key]: newCount });
+  chrome.action.setBadgeText({ text: String(newCount), tabId });
+}
+
+// Clear badge when a tab starts navigating to a new page
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === "loading") {
+    chrome.storage.session.remove(`tab_${tabId}`);
+    chrome.action.setBadgeText({ text: "", tabId });
+  }
+});
+
+// Clean up session data when a tab closes
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.session.remove(`tab_${tabId}`);
+});
+
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PROCESS_URL") {
-    handleProcessUrl(message.url, { skipInject: message.skipInject }).then(sendResponse);
+    const tabId = sender.tab?.id;
+    handleProcessUrl(message.url, { skipInject: message.skipInject })
+      .then(result => {
+        updateTabBadge(tabId, result.junkRemoved ?? 0);
+        sendResponse(result);
+      });
     return true; // keep the channel open for the async response
   }
 
