@@ -130,11 +130,27 @@ export function applyTranslations(lang) {
 }
 
 /**
- * Reads the stored language preference, defaulting to "en".
+ * Reads the stored language preference.
+ * On first run (no preference saved), falls back to the browser's UI language
+ * via chrome.i18n.getUILanguage() — no extra permissions required.
+ * Unsupported languages fall back to "en".
  * @returns {Promise<string>}
  */
 export async function getStoredLang() {
+  const supported = new Set(SUPPORTED_LANGS.map(l => l.code));
+
+  // Resolve the browser language once, clamped to supported list
+  function browserLang() {
+    const raw = (typeof chrome !== "undefined" && chrome.i18n?.getUILanguage?.())
+      || navigator.language
+      || "en";
+    const code = raw.split("-")[0].toLowerCase();
+    return supported.has(code) ? code : "en";
+  }
+
   return new Promise(resolve => {
-    chrome.storage.sync.get({ language: "en" }, r => resolve(r.language));
+    chrome.storage.sync.get({ language: null }, r => {
+      resolve(r.language ?? browserLang());
+    });
   });
 }
