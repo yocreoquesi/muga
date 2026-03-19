@@ -527,3 +527,45 @@ describe("Amazon — real-world URL cleaning", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// stripAllAffiliates toggle (closes #5)
+// ---------------------------------------------------------------------------
+describe("stripAllAffiliates — strip all affiliate params", () => {
+
+  const PREFS_STRIP = { ...PREFS, stripAllAffiliates: true, injectOwnAffiliate: true };
+
+  test("strips affiliate tag even when injectOwnAffiliate is on", () => {
+    const { cleanUrl, action } = processUrl(
+      "https://www.amazon.es/dp/B08?tag=youtuber-21&utm_source=email",
+      PREFS_STRIP
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("tag"), null, "affiliate tag must be gone");
+    assert.equal(u.searchParams.get("utm_source"), null, "tracking must be gone too");
+    assert.equal(action, "cleaned");
+  });
+
+  test("does not inject our tag when stripAllAffiliates is on", () => {
+    const { action } = processUrl(
+      "https://www.amazon.es/dp/B08?utm_source=email",
+      PREFS_STRIP
+    );
+    assert.notEqual(action, "injected");
+  });
+
+  test("does not trigger foreign affiliate toast when stripAllAffiliates is on", () => {
+    const { detectedAffiliate } = processUrl(
+      "https://www.amazon.es/dp/B08?tag=youtuber-21",
+      { ...PREFS_STRIP, notifyForeignAffiliate: true }
+    );
+    assert.equal(detectedAffiliate, null);
+  });
+
+  test("normal URLs unaffected when stripAllAffiliates is off", () => {
+    const raw = "https://www.amazon.es/dp/B08?tag=youtuber-21";
+    const { cleanUrl } = processUrl(raw, { ...PREFS, stripAllAffiliates: false });
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "youtuber-21");
+  });
+
+});
