@@ -95,6 +95,9 @@ function renderStores() {
       </div>
     </div>
   `).join("");
+
+  const countEl = document.getElementById("stores-count");
+  if (countEl) countEl.textContent = `(${STORES.length})`;
 }
 
 function initLanguageSelect() {
