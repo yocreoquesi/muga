@@ -2,6 +2,12 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.0.1] - 2026-03-19
+
+### Fixed
+- Strip Amazon path-based tracking (`/ref=.../session-id`) after the ASIN in product URLs
+- Add missing Amazon query params: `_encoding`, `content-id`, `ref_`, `pd_rd_i`
+
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
