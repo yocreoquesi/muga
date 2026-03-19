@@ -32,6 +32,19 @@ function domainMatches(hostname, entryDomain) {
 }
 
 /**
+ * Strips Amazon path-based tracking segments that appear after the ASIN.
+ * Amazon embeds referral tokens and session IDs directly in the path, e.g.:
+ *   /dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601
+ * The clean form is: /dp/B0GQ4N9N33/
+ */
+function cleanAmazonPath(hostname, pathname) {
+  if (!/amazon\.[a-z.]+$/.test(hostname)) return pathname;
+  return pathname
+    .replace(/(\/dp\/[A-Z0-9]{10})\/.+/, "$1/")
+    .replace(/(\/gp\/product\/[A-Z0-9]{10})\/.+/, "$1/");
+}
+
+/**
  * Processes a URL according to user preferences and blacklist/whitelist rules.
  *
  * Logic order:
@@ -55,6 +68,7 @@ export function processUrl(rawUrl, prefs) {
   }
 
   const hostname = url.hostname;
+  url.pathname = cleanAmazonPath(hostname, url.pathname);
   const blacklist = prefs.blacklist || [];
   const whitelist = prefs.whitelist || [];
 

@@ -48,12 +48,12 @@ export const TRACKING_PARAMS = [
   "ocid",
 
   // Amazon — internal / referral noise (not the affiliate tag)
-  "psc", "spLa",
-  "pd_rd_r", "pd_rd_w", "pd_rd_wg",
+  "psc", "spla",
+  "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
   "pf_rd_p", "pf_rd_r",
   "linkcode", "linkid",
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
-  "th",
+  "th", "_encoding", "content-id", "ref_",
 
   // eBay
   "mkevt", "mkcid", "mkrid", "campid", "toolid", "customid",
