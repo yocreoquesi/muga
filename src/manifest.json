@@ -30,6 +30,16 @@
     }
   ],
 
+  "commands": {
+    "copy-clean-url": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
+      },
+      "description": "Copy clean URL of the current tab"
+    }
+  },
+
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
