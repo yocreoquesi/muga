@@ -55,7 +55,7 @@ export const TRANSLATIONS = {
   report_issue:    { en: "Report a bug or suggest a feature",    es: "Reportar un error o sugerir mejora" },
   bl_placeholder: { en: "amazon.es  or  amazon.es::tag::youtuber-21", es: "amazon.es  o  amazon.es::tag::youtuber-21" },
   wl_placeholder: { en: "amazon.es::tag::creator-i-support", es: "amazon.es::tag::creador-que-apoyo" },
-  bl_hint:  { en: "Domain only (e.g. <code>amazon.es</code>) — blocks all affiliate activity on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>) — blocks one specific affiliate.", es: "Solo dominio (ej: <code>amazon.es</code>) para bloquear toda actividad en esa web.<br>Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>) para bloquear un afiliado concreto." },
+  bl_hint:  { en: "Domain only (e.g. <code>amazon.es</code>) — strips all params on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>) — strips one specific affiliate.<br><code>amazon.es::disabled</code> — MUGA does nothing on that domain.", es: "Solo dominio (ej: <code>amazon.es</code>) — elimina todos los parámetros en esa web.<br>Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>) — elimina un afiliado concreto.<br><code>amazon.es::disabled</code> — MUGA no toca nada en ese dominio." },
   wl_hint:  { en: "Format: <code>domain::param::value</code>. That creator's affiliate tag is never modified.", es: "Formato: <code>dominio::parámetro::valor</code>. El afiliado de ese creador nunca se toca." },
   add_btn:  { en: "+ Add", es: "+ Añadir" },
   empty_list: { en: "No entries yet.", es: "Sin entradas todavía." },
