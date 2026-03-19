@@ -673,6 +673,64 @@ describe("Amazon — root-level /ref= path tracking", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Per-domain disable (issue #19)
+// ---------------------------------------------------------------------------
+describe("per-domain disable — domain::disabled blacklist entry", () => {
+
+  test("disabled domain returns URL completely untouched", () => {
+    const raw = "https://www.amazon.es/dp/B08?tag=affiliate-21&utm_source=email";
+    const { action, cleanUrl } = processUrl(raw, {
+      ...PREFS,
+      blacklist: ["amazon.es::disabled"],
+    });
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, raw);
+  });
+
+  test("disabled domain does not strip tracking params", () => {
+    const raw = "https://example.com/page?utm_source=google&fbclid=abc";
+    const { action, cleanUrl, removedTracking } = processUrl(raw, {
+      ...PREFS,
+      blacklist: ["example.com::disabled"],
+    });
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, raw);
+    assert.deepEqual(removedTracking, []);
+  });
+
+  test("disabled domain does not inject affiliate", () => {
+    const raw = "https://www.amazon.es/dp/B08";
+    const { action } = processUrl(raw, {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      blacklist: ["amazon.es::disabled"],
+    });
+    assert.notEqual(action, "injected");
+  });
+
+  test("disabled domain takes priority over regular domain blacklist", () => {
+    const raw = "https://www.amazon.es/dp/B08?tag=x";
+    const { action, cleanUrl } = processUrl(raw, {
+      ...PREFS,
+      blacklist: ["amazon.es::disabled", "amazon.es"],
+    });
+    // ::disabled fires first — URL unchanged
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, raw);
+  });
+
+  test("non-disabled domain is still processed normally", () => {
+    const raw = "https://www.amazon.es/dp/B08?utm_source=email";
+    const { action } = processUrl(raw, {
+      ...PREFS,
+      blacklist: ["booking.com::disabled"],
+    });
+    assert.equal(action, "cleaned");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Whitelist priority over stripAllAffiliates (closes #8)
 // ---------------------------------------------------------------------------
 describe("whitelist priority over stripAllAffiliates", () => {

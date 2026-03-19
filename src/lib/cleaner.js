@@ -69,15 +69,24 @@ export function processUrl(rawUrl, prefs) {
   }
 
   const hostname = url.hostname;
-  const originalPathname = url.pathname;
-  url.pathname = cleanAmazonPath(hostname, url.pathname);
-  const pathCleaned = url.pathname !== originalPathname;
   const blacklist = prefs.blacklist || [];
   const whitelist = prefs.whitelist || [];
 
   // Parse all list entries upfront
   const parsedBlacklist = blacklist.map(parseListEntry);
   const parsedWhitelist = whitelist.map(parseListEntry);
+
+  // 0. Per-domain disable — user wants MUGA to do nothing on this domain
+  const domainDisabled = parsedBlacklist.some(
+    e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain)
+  );
+  if (domainDisabled) {
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  }
+
+  const originalPathname = url.pathname;
+  url.pathname = cleanAmazonPath(hostname, url.pathname);
+  const pathCleaned = url.pathname !== originalPathname;
 
   // 1. Scenario D — domain is fully blacklisted: strip everything, no injection
   const domainBlacklisted = parsedBlacklist.some(
