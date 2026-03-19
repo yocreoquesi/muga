@@ -569,3 +569,37 @@ describe("stripAllAffiliates — strip all affiliate params", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// Amazon root-level /ref= path cleaning (closes #7)
+// ---------------------------------------------------------------------------
+describe("Amazon — root-level /ref= path tracking", () => {
+
+  test("strips /ref=nav_logo from homepage URL", () => {
+    const { cleanUrl } = processUrl("https://www.amazon.es/ref=nav_logo", PREFS);
+    assert.equal(new URL(cleanUrl).pathname, "/");
+  });
+
+  test("strips /ref= mid-path, preserves real path segments", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/s/ref=nb_sb_noss?k=iphone", PREFS
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.pathname, "/s");
+    assert.equal(u.searchParams.get("k"), "iphone");
+  });
+
+  test("strips /ref= at end of deep path", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/gp/cart/view.html/ref=nav_cart", PREFS
+    );
+    assert.equal(new URL(cleanUrl).pathname, "/gp/cart/view.html");
+  });
+
+  test("does not modify /ref= paths on non-Amazon sites", () => {
+    const raw = "https://www.example.com/blog/ref=social";
+    const { cleanUrl } = processUrl(raw, PREFS);
+    assert.equal(new URL(cleanUrl).pathname, "/blog/ref=social");
+  });
+
+});
