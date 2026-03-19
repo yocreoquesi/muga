@@ -31,6 +31,7 @@ async function init() {
   renderStores();
   initLanguageSelect();
   bindListButtons();
+  initStatsSection();
 }
 
 function bindToggle(id, key, prefs) {
@@ -135,6 +136,23 @@ async function removeEntry(listKey, index) {
   list.splice(index, 1);
   await chrome.storage.sync.set({ [listKey]: list });
   renderList(containerId, list, listKey);
+}
+
+function initStatsSection() {
+  const versionEl = document.getElementById("version-number");
+  if (versionEl) {
+    versionEl.textContent = chrome.runtime.getManifest().version;
+  }
+
+  document.getElementById("reset-stats-btn").addEventListener("click", async () => {
+    if (!confirm(t("stats_reset_confirm", currentLang))) return;
+    await chrome.storage.local.set({
+      stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
+      firstUsed: null,
+      nudgeDismissed: false,
+    });
+    alert(t("stats_reset_done", currentLang));
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);
