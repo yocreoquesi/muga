@@ -99,8 +99,8 @@ export function processUrl(rawUrl, prefs) {
       .map(e => `${e.param}::${e.value}`)
   );
 
-  // 3. Detect a foreign affiliate tag
-  if (prefs.notifyForeignAffiliate || prefs.allowReplaceAffiliate) {
+  // 3. Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
+  if (!prefs.stripAllAffiliates && (prefs.notifyForeignAffiliate || prefs.allowReplaceAffiliate)) {
     for (const pattern of patterns) {
       if (pattern.ourTag) {
         const value = url.searchParams.get(pattern.param);
@@ -125,6 +125,17 @@ export function processUrl(rawUrl, prefs) {
   }
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
+
+  // 4b. Strip all affiliate params when user opted out of all affiliates
+  if (prefs.stripAllAffiliates) {
+    for (const pattern of patterns) {
+      if (url.searchParams.has(pattern.param)) {
+        url.searchParams.delete(pattern.param);
+        if (action === "untouched") action = "cleaned";
+      }
+    }
+  }
+
   const junkRemoved = removedTracking.length + (pathCleaned ? 1 : 0);
 
   // 5. Strip specific blacklisted affiliate values
@@ -149,8 +160,8 @@ export function processUrl(rawUrl, prefs) {
     }
   }
 
-  // 6. Inject our affiliate tag when the link has none (skip if foreign was detected)
-  if (prefs.injectOwnAffiliate && action !== "detected_foreign") {
+  // 6. Inject our affiliate tag when the link has none (skip if foreign detected or stripAllAffiliates)
+  if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign") {
     for (const pattern of patterns) {
       if (pattern.ourTag && !url.searchParams.has(pattern.param)) {
         url.searchParams.set(pattern.param, pattern.ourTag);
