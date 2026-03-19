@@ -10,6 +10,9 @@ import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
 
+// Matches http/https URLs in arbitrary text — used by the "selection" context menu handler
+const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+
 // Set badge appearance once on startup
 chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
 
@@ -118,6 +121,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     contexts: ["link"],
   });
 
+  chrome.contextMenus.create({
+    id: "muga-copy-clean-selection",
+    title: "MUGA: Copy clean link",
+    contexts: ["selection"],
+  });
+
   if (details.reason === "install") {
     // First install — open the onboarding page in a new tab
     const prefs = await chrome.storage.sync.get({ onboardingDone: false });
@@ -142,18 +151,40 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
-  if (info.menuItemId !== "muga-copy-clean") return;
-
-  // Route through handleProcessUrl so stats are incremented correctly.
-  // skipInject: true suppresses the foreign-affiliate toast (not relevant on copy).
-  const result = await handleProcessUrl(info.linkUrl, { skipInject: true });
-
-  // Copy to clipboard via content script (service worker has no direct clipboard access)
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, {
-      type: "COPY_TO_CLIPBOARD",
-      text: result.cleanUrl,
-    });
+
+  if (info.menuItemId === "muga-copy-clean") {
+    // Route through handleProcessUrl so stats are incremented correctly.
+    // skipInject: true suppresses the foreign-affiliate toast (not relevant on copy).
+    const result = await handleProcessUrl(info.linkUrl, { skipInject: true });
+
+    // Copy to clipboard via content script (service worker has no direct clipboard access)
+    if (tab?.id) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: "COPY_TO_CLIPBOARD",
+        text: result.cleanUrl,
+      });
+    }
+    return;
+  }
+
+  if (info.menuItemId === "muga-copy-clean-selection") {
+    const text = info.selectionText;
+    if (!text || !tab?.id) return;
+
+    // Find all URLs in the selected text and clean each one that has query params
+    const matches = [...text.matchAll(URL_RE)];
+    let result = text;
+    for (const match of matches) {
+      const rawUrl = match[0];
+      const candidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
+      if (!candidate.includes("?")) continue;
+      const cleaned = await handleProcessUrl(candidate, { skipInject: true });
+      if (cleaned.cleanUrl !== candidate) {
+        result = result.replace(candidate, cleaned.cleanUrl);
+      }
+    }
+
+    chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result });
   }
 });
