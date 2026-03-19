@@ -82,6 +82,20 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// --- Keyboard shortcut: copy clean URL of current tab ---
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "copy-clean-url") return;
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url || !tab?.id) return;
+
+  const result = await handleProcessUrl(tab.url, { skipInject: true });
+  chrome.tabs.sendMessage(tab.id, {
+    type: "COPY_TO_CLIPBOARD",
+    text: result.cleanUrl,
+  });
+});
+
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== "muga-copy-clean") return;
 
