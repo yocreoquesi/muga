@@ -222,6 +222,74 @@ describe("edge cases", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Scenario A (extended) — new tracking params from issue #17
+// ---------------------------------------------------------------------------
+describe("Scenario A (extended) — new tracking params (#17)", () => {
+
+  test("strips Pinterest e_t and epik", () => {
+    const { removedTracking } = processUrl(
+      "https://pinterest.com/pin/123/?e_t=abc&epik=dQw4w9",
+      PREFS
+    );
+    assert.ok(removedTracking.includes("e_t"));
+    assert.ok(removedTracking.includes("epik"));
+  });
+
+  test("strips Snapchat sc_channel and sc_icid", () => {
+    const { action } = processUrl(
+      "https://example.com/?sc_channel=paid&sc_icid=top_nav_link",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+  });
+
+  test("strips Reddit rdt_cid", () => {
+    const { action } = processUrl(
+      "https://example.com/?rdt_cid=abc123",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+  });
+
+  test("strips Rakuten ranmid/raneaid/ransiteid", () => {
+    const { removedTracking } = processUrl(
+      "https://example.com/?ranmid=42&raneaid=xyz&ransiteid=abc",
+      PREFS
+    );
+    assert.ok(removedTracking.includes("ranmid"));
+    assert.ok(removedTracking.includes("raneaid"));
+    assert.ok(removedTracking.includes("ransiteid"));
+  });
+
+  test("strips TradeTracker ttaid/ttrk/ttcid", () => {
+    const { removedTracking } = processUrl(
+      "https://example.com/?ttaid=1&ttrk=click&ttcid=campaign",
+      PREFS
+    );
+    assert.ok(removedTracking.includes("ttaid"));
+    assert.ok(removedTracking.includes("ttrk"));
+    assert.ok(removedTracking.includes("ttcid"));
+  });
+
+  test("strips srsltid (Google Shopping)", () => {
+    const { action } = processUrl(
+      "https://example.com/product?srsltid=AfmBOoqJ5xyz",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+  });
+
+  test("strips wickedid", () => {
+    const { action } = processUrl(
+      "https://example.com/?wickedid=abc123",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Amazon URLs — affiliate param must NOT be stripped as tracking
 // ---------------------------------------------------------------------------
 describe("Amazon — affiliate param preserved", () => {
