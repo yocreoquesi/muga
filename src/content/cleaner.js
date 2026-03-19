@@ -58,41 +58,55 @@
     });
   });
 
+  // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation
+  const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+
   /**
-   * Intercepts Ctrl+C / copy when the selected text is a URL.
-   * Strips tracking parameters from the copied URL without injecting our affiliate
-   * (the user is sharing, not navigating).
+   * Intercepts Ctrl+C / copy.
+   * - If the entire selection is a URL: cleans it (existing behaviour).
+   * - If the selection is mixed text containing URLs: cleans each embedded URL
+   *   and puts the modified text on the clipboard, leaving all non-URL text intact.
    * Note: address bar copies are a browser UI element and cannot be intercepted.
    */
   document.addEventListener("copy", async (e) => {
-    const selected = window.getSelection()?.toString().trim();
+    const selected = window.getSelection()?.toString();
     if (!selected) return;
 
-    // Must be a valid http/https URL
-    let url;
-    try {
-      url = new URL(selected);
-    } catch {
-      return;
-    }
-    if (!["http:", "https:"].includes(url.protocol)) return;
+    const trimmed = selected.trim();
+    if (!trimmed) return;
 
-    // Nothing to clean if there are no query parameters
-    if (!url.search) return;
+    // Find all URLs in the selected text
+    const matches = [...trimmed.matchAll(URL_RE)];
+    if (matches.length === 0) return;
+
+    // Check at least one URL actually has query params worth cleaning
+    const hasQueryParams = matches.some(m => m[0].includes("?"));
+    if (!hasQueryParams) return;
 
     e.preventDefault();
 
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: "PROCESS_URL",
-        url: selected,
-        skipInject: true,
-      });
+      // Clean each unique URL found in the text
+      let result = trimmed;
+      for (const match of matches) {
+        const rawUrl = match[0];
+        // Strip trailing punctuation that is unlikely to be part of the URL
+        const cleanCandidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
+        if (!cleanCandidate.includes("?")) continue;
 
-      const cleanUrl = response?.cleanUrl ?? selected;
-      await navigator.clipboard.writeText(cleanUrl).catch(() => {
+        const response = await chrome.runtime.sendMessage({
+          type: "PROCESS_URL",
+          url: cleanCandidate,
+          skipInject: true,
+        });
+        if (response?.cleanUrl && response.cleanUrl !== cleanCandidate) {
+          result = result.replace(cleanCandidate, response.cleanUrl);
+        }
+      }
+
+      await navigator.clipboard.writeText(result).catch(() => {
         const el = document.createElement("textarea");
-        el.value = cleanUrl;
+        el.value = result;
         el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
         document.body.appendChild(el);
         el.focus();
@@ -101,8 +115,7 @@
         el.remove();
       });
     } catch {
-      // If processing fails, let the original copy proceed (already prevented — re-copy original)
-      navigator.clipboard.writeText(selected).catch(() => {});
+      navigator.clipboard.writeText(trimmed).catch(() => {});
     }
   });
 
