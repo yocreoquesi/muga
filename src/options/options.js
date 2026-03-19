@@ -8,6 +8,7 @@ const DEFAULTS = {
   injectOwnAffiliate: true,
   notifyForeignAffiliate: false,
   allowReplaceAffiliate: false,
+  stripAllAffiliates: false,
   blacklist: [],
   whitelist: [],
 };
@@ -23,6 +24,7 @@ async function init() {
   bindToggle("inject", "injectOwnAffiliate", prefs);
   bindToggle("notify", "notifyForeignAffiliate", prefs);
   bindToggle("replace", "allowReplaceAffiliate", prefs);
+  bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
 
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");

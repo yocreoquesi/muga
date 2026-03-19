@@ -9,6 +9,7 @@ const DEFAULTS = {
   injectOwnAffiliate: true,
   notifyForeignAffiliate: false,
   allowReplaceAffiliate: false,
+  stripAllAffiliates: false,
   blacklist: [],   // e.g. ["amazon.es", "booking.com::aid::123456"]
   whitelist: [],   // e.g. ["amazon.es::tag::youtuber-21"]
   stats: {
