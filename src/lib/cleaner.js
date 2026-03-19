@@ -68,7 +68,9 @@ export function processUrl(rawUrl, prefs) {
   }
 
   const hostname = url.hostname;
+  const originalPathname = url.pathname;
   url.pathname = cleanAmazonPath(hostname, url.pathname);
+  const pathCleaned = url.pathname !== originalPathname;
   const blacklist = prefs.blacklist || [];
   const whitelist = prefs.whitelist || [];
 
@@ -121,7 +123,9 @@ export function processUrl(rawUrl, prefs) {
       removedTracking.push(param);
     }
   }
+  if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
+  const junkRemoved = removedTracking.length + (pathCleaned ? 1 : 0);
 
   // 5. Strip specific blacklisted affiliate values
   for (const entry of parsedBlacklist) {
@@ -160,6 +164,7 @@ export function processUrl(rawUrl, prefs) {
     cleanUrl: url.toString(),
     action,
     removedTracking,
+    junkRemoved,
     detectedAffiliate,
   };
 }
