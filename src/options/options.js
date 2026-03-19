@@ -12,6 +12,7 @@ const DEFAULTS = {
   stripAllAffiliates: false,
   blacklist: [],
   whitelist: [],
+  customParams: [],
 };
 
 let currentLang = "en";
@@ -27,6 +28,7 @@ async function init() {
   bindToggle("replace", "allowReplaceAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
 
+  renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
   renderStores();
@@ -67,6 +69,8 @@ function renderList(containerId, items, listKey) {
 }
 
 function bindListButtons() {
+  document.getElementById("cp-add-btn").addEventListener("click", () =>
+    addEntry("customParams", "cp-input", "custom-params-items"));
   document.getElementById("bl-add-btn").addEventListener("click", () =>
     addEntry("blacklist", "bl-input", "blacklist-items"));
   document.getElementById("wl-add-btn").addEventListener("click", () =>
@@ -120,7 +124,8 @@ async function addEntry(listKey, inputId, containerId) {
 }
 
 async function removeEntry(listKey, index) {
-  const containerId = listKey === "blacklist" ? "blacklist-items" : "whitelist-items";
+  const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items" };
+  const containerId = containerMap[listKey] ?? `${listKey}-items`;
   const prefs = await chrome.storage.sync.get({ [listKey]: [] });
   const list = prefs[listKey];
   list.splice(index, 1);

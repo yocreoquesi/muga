@@ -14,8 +14,9 @@ const PREF_DEFAULTS = {
   notifyForeignAffiliate: false,
   allowReplaceAffiliate: false,
   stripAllAffiliates: false,
-  blacklist: [],   // e.g. ["amazon.es", "booking.com::aid::123456"]
-  whitelist: [],   // e.g. ["amazon.es::tag::youtuber-21"]
+  blacklist: [],     // e.g. ["amazon.es", "booking.com::aid::123456"]
+  whitelist: [],     // e.g. ["amazon.es::tag::youtuber-21"]
+  customParams: [],  // e.g. ["ref_code", "promo_id"]
   language: "en",
   onboardingDone: false,
 };

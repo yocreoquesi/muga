@@ -126,9 +126,11 @@ export function processUrl(rawUrl, prefs) {
     }
   }
 
-  // 4. Strip known tracking parameters
+  // 4. Strip known tracking parameters (built-in + user-defined custom params)
+  const customParams = (prefs.customParams || []).map(p => p.toLowerCase());
   for (const param of [...url.searchParams.keys()]) {
-    if (TRACKING_PARAMS.includes(param.toLowerCase())) {
+    const lower = param.toLowerCase();
+    if (TRACKING_PARAMS.includes(lower) || customParams.includes(lower)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
     }
