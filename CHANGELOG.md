@@ -13,7 +13,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [1.2.0] — 2026-03-19
+
+### Added
+- **Custom tracking params** — users can add their own parameter names to strip on every site (options page, new section above Blacklist)
+- **Clean URLs embedded in copied text** — when copying any text that contains a dirty URL, MUGA cleans the URL(s) in-place and leaves all surrounding text intact (Ctrl+C / copy event)
+- **Right-click "Copy clean link" on selected text** — in addition to the existing link context menu, right-clicking on a text selection now shows "MUGA: Copy clean link"; mixed selections (text + URL) are handled the same way as Ctrl+C
+- **Session history in popup** — last 5 cleaned URLs shown as a collapsible "Recent" section at the bottom of the popup
+- **Browser language auto-detection** — on first install, MUGA picks up the browser's UI language (`chrome.i18n.getUILanguage()`) instead of always defaulting to English; no extra permissions required; manual override in settings always takes precedence
+- **15 new tracking parameters** — Pinterest (`e_t`, `epik`), Snapchat (`sc_channel`, `sc_country`, `sc_funnel`, `sc_segment`, `icid`), Reddit (`rdt_cid`), Rakuten (`ranmid`, `raneaid`, `ransiteid`), TradeTracker (`ttaid`, `ttrk`, `ttcid`), Google Shopping (`srsltid`), WickedFire (`wickedid`)
+- **8 new affiliate stores** — Temu, Zalando ES/DE, SHEIN, Fnac ES/FR, MediaMarkt ES/DE
+- **Per-domain disable** — add `domain::disabled` to the blacklist to make MUGA completely ignore a domain (no params stripped, no affiliate injected)
+- **`Strip all affiliate parameters` toggle** in options — strips every known affiliate param on every site, overriding injection
+- **Import / Export settings** — export all preferences to a JSON file; import to restore or migrate between browsers/profiles
+- **Statistics section** in options — shows current version, URL count, junk removed, referrals spotted; reset button clears all counters
+- **Tab badge** — action icon badge shows how many tracking params were stripped on the current tab; resets on navigation
+- **Keyboard shortcut** `Alt+Shift+C` — copies the clean URL of the current tab to the clipboard without opening the popup
+- **URL preview in popup** — shows the before/after of the current tab's URL, or "✓ This page is already clean"
 
 ---
 
@@ -93,7 +109,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/yocreoquesi/muga/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/yocreoquesi/muga/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/yocreoquesi/muga/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/yocreoquesi/muga/compare/v0.1.2...v1.0.0
 [0.1.2]: https://github.com/yocreoquesi/muga/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/yocreoquesi/muga/compare/v0.1.0...v0.1.1

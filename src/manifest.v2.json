@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "MUGA — Make URLs Great Again",
   "short_name": "MUGA",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Clean URLs, no tracking, no unwanted referrals. You decide what happens to each link.",
 
   "permissions": [
