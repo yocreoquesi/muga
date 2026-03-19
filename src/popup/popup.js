@@ -4,6 +4,7 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
+import { processUrl } from "../lib/cleaner.js";
 
 const NUDGE_URL_THRESHOLD = 150;
 const NUDGE_DAY_THRESHOLD = 10;
@@ -54,6 +55,27 @@ async function init() {
   });
 
   maybeShowNudge({ ...prefs, ...local }, lang);
+  await showUrlPreview(prefs, lang);
+}
+
+async function showUrlPreview(prefs, lang) {
+  // Skip on internal browser pages, new tabs, etc.
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tab?.url;
+  if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("moz-extension://") || url.startsWith("chrome-extension://")) return;
+
+  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false });
+
+  const section = document.getElementById("preview");
+  section.hidden = false;
+
+  if (result.cleanUrl === url && result.action === "untouched") {
+    document.getElementById("preview-clean").hidden = false;
+    document.getElementById("preview-clean").textContent = t("preview_clean", lang);
+  } else {
+    document.getElementById("preview-before").textContent = url;
+    document.getElementById("preview-after").textContent = result.cleanUrl;
+  }
 }
 
 function maybeShowNudge(prefs, lang) {
