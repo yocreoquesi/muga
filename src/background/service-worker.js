@@ -81,8 +81,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== "muga-copy-clean") return;
-  const prefs = await getPrefs();
-  const result = processUrl(info.linkUrl, { ...prefs, notifyForeignAffiliate: false });
+
+  // Route through handleProcessUrl so stats are incremented correctly.
+  // skipInject: true suppresses the foreign-affiliate toast (not relevant on copy).
+  const result = await handleProcessUrl(info.linkUrl, { skipInject: true });
 
   // Copy to clipboard via content script (service worker has no direct clipboard access)
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
