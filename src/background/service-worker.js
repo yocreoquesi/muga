@@ -35,15 +35,21 @@ async function handleProcessUrl(rawUrl, { skipInject = false } = {}) {
 
   const result = processUrl(rawUrl, effectivePrefs);
 
-  // Update stats
-  if (result.removedTracking.length > 0) {
-    await incrementStat("trackingRemoved");
+  // Record first use timestamp for nudge threshold
+  const stored = await chrome.storage.sync.get({ firstUsed: null });
+  if (!stored.firstUsed) {
+    await chrome.storage.sync.set({ firstUsed: Date.now() });
   }
-  if (result.action === "injected") {
-    await incrementStat("affiliatesInjected");
+
+  // Update stats
+  if (result.action !== "untouched") {
+    await incrementStat("urlsCleaned");
+  }
+  if (result.junkRemoved > 0) {
+    await incrementStat("junkRemoved", result.junkRemoved);
   }
   if (result.action === "detected_foreign") {
-    await incrementStat("foreignDetected");
+    await incrementStat("referralsSpotted");
     // If the user has "replace foreign affiliate" enabled, build the URL with our tag
     if (prefs.allowReplaceAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
       const url = new URL(result.cleanUrl);

@@ -21,9 +21,13 @@ export const SUPPORTED_LANGS = [
 
 export const TRANSLATIONS = {
   // ── Popup ────────────────────────────────────────────────────────────────
-  stat_tracking:   { en: "tracking removed",   es: "tracking eliminado" },
-  stat_injected:   { en: "affiliate links",     es: "afiliados activos" },
-  stat_foreign:    { en: "referrals detected",  es: "referidos detectados" },
+  stat_urls:       { en: "URLs cleaned",      es: "URLs limpias" },
+  stat_junk:       { en: "junk removed",      es: "basura eliminada" },
+  stat_referrals:  { en: "referrals spotted", es: "referidos detectados" },
+  nudge_text:      { en: "You've quietly cleaned {n} URLs. Enjoying MUGA?", es: "Has limpiado {n} URLs sin esfuerzo. ¿Te gusta MUGA?" },
+  nudge_review:    { en: "⭐ Leave a review", es: "⭐ Deja una reseña" },
+  nudge_kofi:      { en: "☕ Ko-fi",          es: "☕ Ko-fi" },
+  nudge_dismiss:   { en: "✕",                 es: "✕" },
   toggle_enabled:  { en: "Enable MUGA",         es: "Activar MUGA" },
   opt_inject_label: { en: "Inject our affiliate when none is present", es: "Inyectar nuestro afiliado si no hay ninguno" },
   opt_inject_hint:  { en: "Only on stores where we have an active account", es: "Solo en tiendas donde tenemos cuenta activa" },
@@ -46,6 +50,8 @@ export const TRANSLATIONS = {
   stores_hint:       { en: "Green dot = affiliate account active and configured. Grey = account pending registration.", es: "Punto verde = cuenta de afiliado activa. Gris = cuenta pendiente de registro." },
   section_blacklist: { en: "Blacklist — these affiliates are always stripped", es: "Blacklist — estos afiliados se eliminan siempre" },
   section_whitelist: { en: "Whitelist — these affiliates are trusted and never touched", es: "Whitelist — estos afiliados son de confianza, no se tocan" },
+  privacy_link:    { en: "Privacy policy",                       es: "Política de privacidad" },
+  report_issue:    { en: "Report a bug or suggest a feature",    es: "Reportar un error o sugerir mejora" },
   bl_placeholder: { en: "amazon.es  or  amazon.es::tag::youtuber-21", es: "amazon.es  o  amazon.es::tag::youtuber-21" },
   wl_placeholder: { en: "amazon.es::tag::creator-i-support", es: "amazon.es::tag::creador-que-apoyo" },
   bl_hint:  { en: "Domain only (e.g. <code>amazon.es</code>) — blocks all affiliate activity on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>) — blocks one specific affiliate.", es: "Solo dominio (ej: <code>amazon.es</code>) para bloquear toda actividad en esa web.<br>Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>) para bloquear un afiliado concreto." },

@@ -19,18 +19,27 @@
 
   <section class="stats">
     <div class="stat">
-      <span class="stat-value" id="stat-tracking">0</span>
-      <span class="stat-label" data-i18n="stat_tracking">tracking removed</span>
+      <span class="stat-value" id="stat-urls">0</span>
+      <span class="stat-label" data-i18n="stat_urls">URLs cleaned</span>
     </div>
     <div class="stat">
-      <span class="stat-value" id="stat-injected">0</span>
-      <span class="stat-label" data-i18n="stat_injected">affiliate links</span>
+      <span class="stat-value" id="stat-junk">0</span>
+      <span class="stat-label" data-i18n="stat_junk">junk removed</span>
     </div>
     <div class="stat">
-      <span class="stat-value" id="stat-foreign">0</span>
-      <span class="stat-label" data-i18n="stat_foreign">referrals detected</span>
+      <span class="stat-value" id="stat-referrals">0</span>
+      <span class="stat-label" data-i18n="stat_referrals">referrals spotted</span>
     </div>
   </section>
+
+  <div class="nudge" id="nudge" hidden>
+    <p class="nudge-text" id="nudge-text"></p>
+    <div class="nudge-actions">
+      <a class="nudge-btn primary" id="nudge-review" href="#" target="_blank" data-i18n="nudge_review">⭐ Leave a review</a>
+      <a class="nudge-btn" href="https://ko-fi.com/yocreoquesi" target="_blank" data-i18n="nudge_kofi">☕ Ko-fi</a>
+      <button class="nudge-btn dismiss" id="nudge-dismiss" data-i18n="nudge_dismiss">✕</button>
+    </div>
+  </div>
 
   <section class="options">
     <label class="option-row">

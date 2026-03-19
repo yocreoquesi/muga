@@ -3,7 +3,11 @@
  * Loads preferences, displays stats, and manages the toggle switches.
  */
 
-import { applyTranslations, getStoredLang } from "../lib/i18n.js";
+import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
+
+const NUDGE_URL_THRESHOLD = 150;
+const NUDGE_DAY_THRESHOLD = 10;
+const MS_PER_DAY          = 86_400_000;
 
 async function init() {
   const lang = await getStoredLang();
@@ -13,15 +17,17 @@ async function init() {
     enabled: true,
     injectOwnAffiliate: true,
     notifyForeignAffiliate: false,
-    stats: { trackingRemoved: 0, affiliatesInjected: 0, foreignDetected: 0 },
+    stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
+    firstUsed: null,
+    nudgeDismissed: false,
   });
 
-  document.getElementById("stat-tracking").textContent =
-    formatStat(prefs.stats?.trackingRemoved ?? 0);
-  document.getElementById("stat-injected").textContent =
-    formatStat(prefs.stats?.affiliatesInjected ?? 0);
-  document.getElementById("stat-foreign").textContent =
-    formatStat(prefs.stats?.foreignDetected ?? 0);
+  document.getElementById("stat-urls").textContent =
+    formatStat(prefs.stats?.urlsCleaned ?? 0);
+  document.getElementById("stat-junk").textContent =
+    formatStat(prefs.stats?.junkRemoved ?? 0);
+  document.getElementById("stat-referrals").textContent =
+    formatStat(prefs.stats?.referralsSpotted ?? 0);
 
   const enabledToggle = document.getElementById("enabled-toggle");
   const injectToggle  = document.getElementById("inject-toggle");
@@ -42,9 +48,37 @@ async function init() {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
   });
+
+  maybeShowNudge(prefs, lang);
+}
+
+function maybeShowNudge(prefs, lang) {
+  if (prefs.nudgeDismissed) return;
+  const urlsCleaned   = prefs.stats?.urlsCleaned ?? 0;
+  const firstUsed     = prefs.firstUsed;
+  if (!firstUsed) return;
+  const daysInstalled = (Date.now() - firstUsed) / MS_PER_DAY;
+  if (urlsCleaned < NUDGE_URL_THRESHOLD || daysInstalled < NUDGE_DAY_THRESHOLD) return;
+
+  const nudge = document.getElementById("nudge");
+  document.getElementById("nudge-text").textContent =
+    t("nudge_text", lang).replace("{n}", formatStat(urlsCleaned));
+
+  const reviewUrl = typeof browser !== "undefined"
+    ? "https://addons.mozilla.org/firefox/addon/muga-make-urls-great-again/"
+    : "https://chromewebstore.google.com/detail/muga-make-urls-great-again/";
+  document.getElementById("nudge-review").href = reviewUrl;
+
+  nudge.hidden = false;
+
+  document.getElementById("nudge-dismiss").addEventListener("click", () => {
+    nudge.hidden = true;
+    chrome.storage.sync.set({ nudgeDismissed: true });
+  });
 }
 
 function formatStat(n) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
 }
