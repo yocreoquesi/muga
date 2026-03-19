@@ -64,6 +64,12 @@ export const TRANSLATIONS = {
   lang_label:  { en: "Display language", es: "Idioma de la interfaz" },
   lang_hint:   { en: "Affects the popup and settings page. Does not affect URL processing.", es: "Afecta al popup y a esta página. No afecta al procesamiento de URLs." },
 
+  section_stats:       { en: "Statistics",                                     es: "Estadísticas" },
+  stats_reset_btn:     { en: "Reset stats",                                    es: "Reiniciar stats" },
+  stats_reset_confirm: { en: "Are you sure? This will clear all counters.",    es: "¿Seguro? Se borrarán todos los contadores." },
+  stats_reset_done:    { en: "Stats cleared.",                                 es: "Stats borrados." },
+  stats_version:       { en: "Version",                                        es: "Versión" },
+
   // ── Content script toast ──────────────────────────────────────────────────
   toast_title:   { en: "MUGA detected an affiliate", es: "MUGA detectó un referido" },
   toast_tag_msg: { en: "carries the tag", es: "lleva el tag" },
