@@ -161,6 +161,70 @@ export const AFFILIATE_PATTERNS = [
     type: "affiliate",
     ourTag: "",
   },
+  {
+    id: "temu",
+    name: "Temu",
+    domains: ["temu.com", "www.temu.com"],
+    param: "aff_id",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Temu affiliate ID
+  },
+  {
+    id: "zalando_es",
+    name: "Zalando ES",
+    domains: ["zalando.es", "www.zalando.es"],
+    param: "wt_mc",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Zalando affiliate marketing code
+  },
+  {
+    id: "zalando_de",
+    name: "Zalando DE",
+    domains: ["zalando.de", "www.zalando.de"],
+    param: "wt_mc",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Zalando DE affiliate marketing code
+  },
+  {
+    id: "shein",
+    name: "SHEIN",
+    domains: ["shein.com", "www.shein.com", "es.shein.com", "fr.shein.com", "de.shein.com"],
+    param: "url_from",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your SHEIN affiliate ID
+  },
+  {
+    id: "fnac_es",
+    name: "Fnac ES",
+    domains: ["fnac.es", "www.fnac.es"],
+    param: "oref",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Fnac affiliate origin ref
+  },
+  {
+    id: "fnac_fr",
+    name: "Fnac FR",
+    domains: ["fnac.com", "www.fnac.com"],
+    param: "oref",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Fnac FR affiliate origin ref
+  },
+  {
+    id: "mediamarkt_es",
+    name: "MediaMarkt ES",
+    domains: ["mediamarkt.es", "www.mediamarkt.es"],
+    param: "ref",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your MediaMarkt affiliate ref (Impact Radius)
+  },
+  {
+    id: "mediamarkt_de",
+    name: "MediaMarkt DE",
+    domains: ["mediamarkt.de", "www.mediamarkt.de"],
+    param: "ref",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your MediaMarkt DE affiliate ref
+  },
 ];
 
 /**

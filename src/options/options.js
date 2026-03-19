@@ -3,6 +3,7 @@
  */
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
+import { getSupportedStores } from "../lib/affiliates.js";
 
 const DEFAULTS = {
   injectOwnAffiliate: true,
@@ -71,22 +72,10 @@ function bindListButtons() {
 }
 
 function renderStores() {
-  const STORES = [
-    { name: "Amazon ES", param: "tag", ourTag: "" },
-    { name: "Amazon DE", param: "tag", ourTag: "" },
-    { name: "Amazon FR", param: "tag", ourTag: "" },
-    { name: "Amazon IT", param: "tag", ourTag: "" },
-    { name: "Amazon UK", param: "tag", ourTag: "" },
-    { name: "Amazon US", param: "tag", ourTag: "" },
-    { name: "Booking.com", param: "aid", ourTag: "" },
-    { name: "AliExpress", param: "aff_fcid", ourTag: "" },
-    { name: "PcComponentes", param: "ref", ourTag: "" },
-    { name: "El Corte Inglés", param: "affiliateId", ourTag: "" },
-    { name: "eBay", param: "campid", ourTag: "" },
-  ];
+  const stores = getSupportedStores();
 
   const grid = document.getElementById("stores-grid");
-  grid.innerHTML = STORES.map(s => `
+  grid.innerHTML = stores.map(s => `
     <div class="store-chip">
       <div class="store-dot ${s.ourTag ? "active" : ""}"></div>
       <div>
@@ -97,7 +86,7 @@ function renderStores() {
   `).join("");
 
   const countEl = document.getElementById("stores-count");
-  if (countEl) countEl.textContent = `(${STORES.length})`;
+  if (countEl) countEl.textContent = `(${stores.length})`;
 }
 
 function initLanguageSelect() {
