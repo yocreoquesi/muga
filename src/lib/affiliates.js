@@ -60,6 +60,25 @@ export const TRACKING_PARAMS = [
 
   // AliExpress
   "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
+
+  // Pinterest
+  "e_t", "epik",
+
+  // Snapchat
+  "sc_channel", "sc_country", "sc_funnel", "sc_segment", "sc_icid",
+
+  // Reddit
+  "rdt_cid",
+
+  // Rakuten / LinkShare
+  "ranmid", "raneaid", "ransiteid",
+
+  // TradeTracker
+  "ttaid", "ttrk", "ttcid",
+
+  // General / Miscellaneous
+  "srsltid",    // Google Shopping source tracking
+  "wickedid",   // Wicked Reports click ID
 ];
 
 export const AFFILIATE_PATTERNS = [
