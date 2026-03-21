@@ -803,3 +803,60 @@ describe("whitelist priority over stripAllAffiliates", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// affiliate param / tracking param collision (BUG-06)
+// ---------------------------------------------------------------------------
+describe("affiliate param / tracking param collision", () => {
+
+  test("pccomponentes: ref= param is NOT stripped when pccomponentes is a matched host", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.pccomponentes.com/producto?ref=some-affiliate-tag&utm_source=google",
+      { ...PREFS, injectOwnAffiliate: false }
+    );
+    const clean = new URL(cleanUrl);
+    assert.equal(clean.searchParams.get("ref"), "some-affiliate-tag",
+      "ref= must be preserved as affiliate param on pccomponentes");
+    assert.ok(removedTracking.includes("utm_source"),
+      "utm_source must still be stripped");
+  });
+
+  test("eBay: campid= param is NOT stripped when eBay is a matched host", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.ebay.es/itm/123456?campid=some-affiliate-id&mkevt=1&utm_source=google",
+      { ...PREFS, injectOwnAffiliate: false }
+    );
+    const clean = new URL(cleanUrl);
+    assert.equal(clean.searchParams.get("campid"), "some-affiliate-id",
+      "campid= must be preserved as affiliate param on eBay");
+    assert.ok(removedTracking.includes("mkevt"),
+      "mkevt must still be stripped");
+    assert.ok(removedTracking.includes("utm_source"),
+      "utm_source must still be stripped");
+  });
+
+  test("ref= IS stripped on a non-affiliate host (e.g., example.com)", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://example.com/page?ref=tracking&utm_source=google",
+      PREFS
+    );
+    const clean = new URL(cleanUrl);
+    assert.equal(clean.searchParams.has("ref"), false,
+      "ref= must be stripped on a host with no affiliate pattern");
+    assert.ok(removedTracking.includes("ref"),
+      "ref must appear in removedTracking");
+    assert.ok(removedTracking.includes("utm_source"),
+      "utm_source must also be stripped");
+  });
+
+  test("whitelist protects ref= on pccomponentes", () => {
+    const { cleanUrl, action } = processUrl(
+      "https://www.pccomponentes.com/producto?ref=creator-21",
+      { ...PREFS, injectOwnAffiliate: false, whitelist: ["pccomponentes.com::ref::creator-21"] }
+    );
+    const clean = new URL(cleanUrl);
+    assert.equal(clean.searchParams.get("ref"), "creator-21",
+      "whitelisted ref= must be preserved on pccomponentes");
+  });
+
+});
