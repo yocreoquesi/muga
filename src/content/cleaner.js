@@ -266,4 +266,26 @@
       callback("original");
     });
   }
+
+  // --- Ping blocking (conditional on prefs.blockPings) ---
+  chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+    if (!prefs || !prefs.enabled) return;
+    if (prefs.blockPings) {
+      // Strip the ping attribute from all existing and future <a ping> elements
+      function removePingAttrs(root) {
+        root.querySelectorAll("a[ping]").forEach(a => a.removeAttribute("ping"));
+      }
+      removePingAttrs(document);
+      const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            if (node.hasAttribute?.("ping")) node.removeAttribute("ping");
+            removePingAttrs(node);
+          }
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+  });
 })();
