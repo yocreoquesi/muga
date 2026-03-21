@@ -14,7 +14,7 @@ import { TRACKING_PARAMS, getPatternsForHost } from "./affiliates.js";
  * @param {string} entry
  * @returns {{ domain: string, param: string|null, value: string|null }}
  */
-function parseListEntry(entry) {
+export function parseListEntry(entry) {
   const parts = entry.split("::");
   return {
     domain: parts[0]?.trim().replace(/^www\./, "") || "",
@@ -74,9 +74,9 @@ export function processUrl(rawUrl, prefs) {
   const blacklist = prefs.blacklist || [];
   const whitelist = prefs.whitelist || [];
 
-  // Parse all list entries upfront
-  const parsedBlacklist = blacklist.map(parseListEntry);
-  const parsedWhitelist = whitelist.map(parseListEntry);
+  // Use pre-parsed lists from the caller (service worker cache) when available
+  const parsedBlacklist = prefs._parsedBlacklist || blacklist.map(parseListEntry);
+  const parsedWhitelist = prefs._parsedWhitelist || whitelist.map(parseListEntry);
 
   // 0. Per-domain disable — user wants MUGA to do nothing on this domain
   const domainDisabled = parsedBlacklist.some(

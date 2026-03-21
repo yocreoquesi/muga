@@ -4,7 +4,7 @@
  * and maintains extension state.
  */
 
-import { processUrl } from "../lib/cleaner.js";
+import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from "../lib/storage.js";
 
 // Run migration once on startup (no-op if already done)
@@ -15,7 +15,12 @@ migrateStatsToLocal();
 let cachedPrefs = null;
 
 async function getPrefsWithCache() {
-  if (!cachedPrefs) cachedPrefs = await getPrefs();
+  if (!cachedPrefs) {
+    cachedPrefs = await getPrefs();
+    // Pre-parse blacklist/whitelist once so processUrl doesn't re-parse on every call
+    cachedPrefs._parsedBlacklist = (cachedPrefs.blacklist || []).map(parseListEntry);
+    cachedPrefs._parsedWhitelist = (cachedPrefs.whitelist || []).map(parseListEntry);
+  }
   return cachedPrefs;
 }
 
