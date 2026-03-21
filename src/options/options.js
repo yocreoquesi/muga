@@ -76,17 +76,37 @@ function bindListButtons() {
 }
 
 function renderStores() {
-  const stores = getSupportedStores();
+  const allStores = getSupportedStores();
+  // Only show stores where an affiliate tag has been configured.
+  const activeStores = allStores.filter(s => s.ourTag && s.ourTag.trim() !== "");
 
   const grid = document.getElementById("stores-grid");
+  const hintEl = document.getElementById("stores-hint");
   grid.innerHTML = "";
 
-  stores.forEach(s => {
+  if (activeStores.length === 0) {
+    // Hide the stores grid and hint; show a placeholder message instead.
+    grid.hidden = true;
+    if (hintEl) hintEl.hidden = true;
+    const placeholder = document.createElement("p");
+    placeholder.className = "empty";
+    placeholder.style.cssText = "padding:8px 16px 12px";
+    placeholder.textContent = t("no_active_stores", currentLang);
+    grid.parentNode.insertBefore(placeholder, grid);
+    const countEl = document.getElementById("stores-count");
+    if (countEl) countEl.textContent = "";
+    return;
+  }
+
+  grid.hidden = false;
+  if (hintEl) hintEl.hidden = false;
+
+  activeStores.forEach(s => {
     const chip = document.createElement("div");
     chip.className = "store-chip";
 
     const dot = document.createElement("div");
-    dot.className = "store-dot" + (s.ourTag ? " active" : "");
+    dot.className = "store-dot active";
 
     const info = document.createElement("div");
 
@@ -106,7 +126,7 @@ function renderStores() {
   });
 
   const countEl = document.getElementById("stores-count");
-  if (countEl) countEl.textContent = `(${stores.length})`;
+  if (countEl) countEl.textContent = `(${activeStores.length})`;
 }
 
 function initLanguageSelect() {

@@ -6,6 +6,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
 import { getPrefs } from "../lib/storage.js";
+import { getSupportedStores } from "../lib/affiliates.js";
 
 const NUDGE_URL_THRESHOLD = 150;
 const NUDGE_DAY_THRESHOLD = 10;
@@ -45,6 +46,15 @@ async function init() {
     chrome.storage.sync.set({ injectOwnAffiliate: injectToggle.checked }));
   notifyToggle.addEventListener("change", () =>
     chrome.storage.sync.set({ notifyForeignAffiliate: notifyToggle.checked }));
+
+  // Hide the inject toggle row when no affiliate accounts are active.
+  // The feature does nothing without a configured ourTag, so showing it
+  // only adds confusion.
+  const hasActiveStores = getSupportedStores().some(s => s.ourTag && s.ourTag.trim() !== "");
+  if (!hasActiveStores) {
+    const injectRow = injectToggle.closest("label.option-row");
+    if (injectRow) injectRow.hidden = true;
+  }
 
   document.getElementById("open-options").addEventListener("click", (e) => {
     e.preventDefault();
