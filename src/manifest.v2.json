@@ -77,6 +77,13 @@
     ]
   },
 
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "muga@yocreoquesi.github.io",
+      "strict_min_version": "128.0"
+    }
+  },
+
   "content_security_policy": "script-src 'self'; object-src 'self'",
 
   "icons": {
