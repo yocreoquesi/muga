@@ -32,6 +32,8 @@
     try {
       const canonical_ = new URL(canonicalUrl);
       const current_ = new URL(currentUrl);
+      // Only redirect to https (prevent accidental http downgrade from a bad canonical tag)
+      if (canonical_.protocol !== "https:") return;
       // Redirect only if the canonical is on the same or a parent domain
       if (
         canonical_.hostname === current_.hostname ||

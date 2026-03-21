@@ -10,8 +10,7 @@
     "tabs",
     "contextMenus",
     "clipboardWrite",
-    "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "declarativeNetRequest"
   ],
 
   "host_permissions": [
