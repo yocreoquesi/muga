@@ -155,6 +155,11 @@ header {
 .toggle input:checked + .slider::before { transform: translateX(16px); }
 .toggle.sm input:checked + .slider::before { transform: translateX(13px); }
 
+.toggle input:focus-visible + .slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* URL preview */
 .preview {
   padding: 8px 14px 10px;

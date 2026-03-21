@@ -38,6 +38,10 @@
       left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform .2s; }
     .toggle input:checked + .slider { background: var(--accent); }
     .toggle input:checked + .slider::before { transform: translateX(16px); }
+    .toggle input:focus-visible + .slider {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
     .list-section { padding: 12px 16px; }
     .list-items { margin-bottom: 10px; min-height: 20px; }
     .list-item { display: flex; align-items: center; justify-content: space-between;
@@ -89,7 +93,7 @@
   </style>
 </head>
 <body>
-  <h1>MUGA</h1>
+  <h1 data-i18n="opts_title">Advanced settings</h1>
   <p class="subtitle" data-i18n="opts_subtitle">Make URLs Great Again</p>
 
   <section>

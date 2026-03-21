@@ -66,8 +66,10 @@ async function showUrlPreview(prefs, lang) {
   section.hidden = false;
 
   if (prefs.enabled === false) {
-    document.getElementById("preview-clean").hidden = false;
-    document.getElementById("preview-clean").textContent = url;
+    const previewClean = document.getElementById("preview-clean");
+    previewClean.hidden = false;
+    previewClean.textContent = t("muga_disabled", lang);
+    previewClean.style.color = "var(--text2)";
     return;
   }
 

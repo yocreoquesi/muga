@@ -178,7 +178,6 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
     for (const match of matches) {
       const rawUrl = match[0];
       const candidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
-      if (!candidate.includes("?")) continue;
       const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
       if (cleaned.cleanUrl !== candidate) {
         result = result.replace(candidate, cleaned.cleanUrl);
