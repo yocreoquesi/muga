@@ -16,7 +16,9 @@
     const currentUrl = window.location.href;
 
     // Common redirect wrapper patterns — look for a destination URL in query params
-    const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "destination", "dest", "target", "to", "goto", "next", "return", "returnUrl", "return_url", "continue", "location"];
+    // "location", "return", "continue" intentionally excluded — too generic,
+    // common in SPA routing and OAuth flows, high false-positive risk.
+    const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "destination", "dest", "target", "to", "goto", "next", "returnUrl", "return_url"];
 
     let parsed;
     try {

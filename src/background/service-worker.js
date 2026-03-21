@@ -136,7 +136,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
-  const prefs = await getPrefs();
+  const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled) {
     return { cleanUrl: rawUrl, action: "untouched" };
@@ -148,7 +148,13 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
     ? { ...prefs, notifyForeignAffiliate: false, injectOwnAffiliate: false }
     : prefs;
 
-  const result = processUrl(rawUrl, effectivePrefs);
+  let result;
+  try {
+    result = processUrl(rawUrl, effectivePrefs);
+  } catch (err) {
+    console.error("[MUGA] processUrl failed:", err, rawUrl);
+    return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  }
 
   // Record first use timestamp for nudge threshold (stored locally)
   const localStats = await getStats();
