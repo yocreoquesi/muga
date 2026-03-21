@@ -18,7 +18,9 @@
     // Common redirect wrapper patterns — look for a destination URL in query params
     // "location", "return", "continue" intentionally excluded — too generic,
     // common in SPA routing and OAuth flows, high false-positive risk.
-    const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "destination", "dest", "goto", "returnUrl", "return_url"];
+    // "destination" intentionally excluded — used in SSO/corporate flows to indicate
+    // where to redirect AFTER authentication. Unwrapping it would bypass login. (#158)
+    const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "dest", "goto", "returnUrl", "return_url"];
 
     let parsed;
     try {
