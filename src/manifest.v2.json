@@ -40,7 +40,8 @@
   "commands": {
     "copy-clean-url": {
       "suggested_key": {
-        "default": "Alt+Shift+C"
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
       },
       "description": "Copy clean URL of the current tab"
     }

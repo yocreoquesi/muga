@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.3.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-105_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-112_pass-brightgreen)](#development)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-coming_soon-lightgrey)](#installation)
 
@@ -140,7 +140,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 105 unit tests
+npm test               # 112 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
@@ -151,7 +151,7 @@ New release: tag `vX.Y.Z` → push → GitHub Actions builds and publishes autom
 
 ## Contributing
 
-PRs welcome for new tracking parameters, new stores, or additional languages. See [`src/lib/affiliates.js`](src/lib/affiliates.js) for the store database and [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs) for the test suite.
+PRs welcome for new tracking parameters, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions. See [`src/lib/affiliates.js`](src/lib/affiliates.js) for the store database and [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs) for the test suite.
 
 ---
 
