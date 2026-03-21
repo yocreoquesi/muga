@@ -18,6 +18,13 @@
     </div>
   </header>
 
+  <nav class="tab-bar" role="tablist">
+    <button class="tab-btn active" id="tab-current" role="tab" aria-selected="true" aria-controls="current-panel" data-i18n="tab_current">Current page</button>
+    <button class="tab-btn" id="tab-batch" role="tab" aria-selected="false" aria-controls="batch-panel" data-i18n="tab_batch">Batch</button>
+  </nav>
+
+  <div id="current-panel" role="tabpanel">
+
   <section class="stats">
     <div class="stat">
       <span class="stat-value" id="stat-urls">0</span>
@@ -82,6 +89,24 @@
     <a href="#" id="open-options" data-i18n="link_advanced">Advanced settings →</a>
     <a href="https://ko-fi.com/yocreoquesi" target="_blank" id="donate-link" data-i18n="link_donate">Support the project</a>
   </footer>
+
+  </div><!-- /#current-panel -->
+
+  <div id="batch-panel" role="tabpanel" hidden>
+    <div class="batch-body">
+      <textarea id="batch-input" class="batch-textarea" data-i18n-placeholder="batch_placeholder" spellcheck="false"></textarea>
+      <div class="batch-actions">
+        <button id="batch-clean-btn" class="batch-btn primary" data-i18n="batch_clean_btn">Clean</button>
+      </div>
+      <div id="batch-results" hidden>
+        <div class="batch-result-header">
+          <span id="batch-count" class="batch-count"></span>
+          <button id="batch-copy-all" class="batch-btn" data-i18n="batch_copy_all">Copy all</button>
+        </div>
+        <textarea id="batch-output" class="batch-output" readonly></textarea>
+      </div>
+    </div>
+  </div><!-- /#batch-panel -->
 
   <script type="module" src="popup.js"></script>
 </body>

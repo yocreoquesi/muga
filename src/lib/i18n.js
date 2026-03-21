@@ -82,6 +82,14 @@ export const TRANSLATIONS = {
   import_success:        { en: "Settings imported successfully.",                                                   es: "Ajustes importados correctamente." },
   import_error:          { en: "Invalid file. Make sure it is a MUGA settings export.",                            es: "Archivo inválido. Asegúrate de que es una exportación de MUGA." },
 
+  // ── Batch cleaner tab ────────────────────────────────────────────────────
+  tab_current:       { en: "Current page",                    es: "Página actual" },
+  tab_batch:         { en: "Batch",                           es: "Lote" },
+  batch_placeholder: { en: "Paste URLs here, one per line...", es: "Pega URLs aquí, una por línea..." },
+  batch_clean_btn:   { en: "Clean",                           es: "Limpiar" },
+  batch_copy_all:    { en: "Copy all",                        es: "Copiar todo" },
+  batch_result_count: { en: "URLs cleaned",                   es: "URLs limpias" },
+
   // ── Content script toast ──────────────────────────────────────────────────
   toast_title:   { en: "MUGA detected an affiliate", es: "MUGA detectó un referido" },
   toast_tag_msg: { en: "carries the tag", es: "lleva el tag" },

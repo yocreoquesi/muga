@@ -64,6 +64,7 @@ async function init() {
   maybeShowNudge({ ...prefs, ...local }, lang);
   await showUrlPreview(prefs, lang);
   await showHistory();
+  initTabs(lang);
 }
 
 async function showUrlPreview(prefs, lang) {
@@ -149,6 +150,73 @@ async function showHistory() {
     entryDiv.appendChild(beforeDiv);
     entryDiv.appendChild(afterDiv);
     list.appendChild(entryDiv);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Tab switching
+// ---------------------------------------------------------------------------
+function initTabs(lang) {
+  const tabCurrent = document.getElementById("tab-current");
+  const tabBatch   = document.getElementById("tab-batch");
+  const panelCurrent = document.getElementById("current-panel");
+  const panelBatch   = document.getElementById("batch-panel");
+
+  function switchTab(active) {
+    const isBatch = active === "batch";
+    tabCurrent.classList.toggle("active", !isBatch);
+    tabBatch.classList.toggle("active", isBatch);
+    tabCurrent.setAttribute("aria-selected", String(!isBatch));
+    tabBatch.setAttribute("aria-selected", String(isBatch));
+    panelCurrent.hidden = isBatch;
+    panelBatch.hidden   = !isBatch;
+  }
+
+  tabCurrent.addEventListener("click", () => switchTab("current"));
+  tabBatch.addEventListener("click",   () => switchTab("batch"));
+  initBatchPanel(lang);
+}
+
+// ---------------------------------------------------------------------------
+// Batch URL cleaner
+// ---------------------------------------------------------------------------
+async function batchClean(rawText) {
+  const lines = rawText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const prefs = await getPrefs();
+  const results = lines.map(line => {
+    try {
+      const r = processUrl(line, { ...prefs, notifyForeignAffiliate: false, injectOwnAffiliate: false });
+      return r.cleanUrl || line;
+    } catch (e) {
+      return line; // Return original if parsing fails
+    }
+  });
+  return results;
+}
+
+function initBatchPanel(lang) {
+  const cleanBtn  = document.getElementById("batch-clean-btn");
+  const copyBtn   = document.getElementById("batch-copy-all");
+  const inputArea = document.getElementById("batch-input");
+  const outputArea = document.getElementById("batch-output");
+  const resultsDiv = document.getElementById("batch-results");
+  const countSpan  = document.getElementById("batch-count");
+
+  cleanBtn.addEventListener("click", async () => {
+    const raw = inputArea.value;
+    if (!raw.trim()) return;
+    const cleaned = await batchClean(raw);
+    outputArea.value = cleaned.join("\n");
+    countSpan.textContent = `${cleaned.length} ${t("batch_result_count", lang)}`;
+    resultsDiv.hidden = false;
+  });
+
+  copyBtn.addEventListener("click", () => {
+    if (!outputArea.value) return;
+    navigator.clipboard.writeText(outputArea.value).catch(() => {
+      outputArea.select();
+      document.execCommand("copy");
+    });
   });
 }
 
