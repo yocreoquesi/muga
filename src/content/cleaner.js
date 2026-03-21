@@ -266,4 +266,47 @@
       callback("original");
     });
   }
+
+  // --- Feature: <a ping> blocking ---
+  // The `ping` attribute on anchor elements causes the browser to silently POST
+  // to a tracking URL on click, bypassing MUGA's URL cleaning. We remove it.
+
+  function removePingAttributes(root) {
+    // Handle the root element itself if it's an anchor with ping
+    if (root.matches && root.matches("a[ping]")) {
+      root.removeAttribute("ping");
+    }
+    // Handle any descendants
+    root.querySelectorAll("a[ping]").forEach(a => a.removeAttribute("ping"));
+  }
+
+  // Strip ping from elements already in the DOM once it's ready
+  document.addEventListener("DOMContentLoaded", () => {
+    removePingAttributes(document.body);
+  });
+
+  // Watch for dynamically added elements (SPAs, infinite scroll)
+  const pingObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        removePingAttributes(node);
+      }
+    }
+  });
+
+  // Start observing as soon as body is available; if not yet available, wait
+  function startPingObserver() {
+    if (document.body) {
+      removePingAttributes(document.body);
+      pingObserver.observe(document.body, { childList: true, subtree: true });
+    } else {
+      document.addEventListener("DOMContentLoaded", () => {
+        removePingAttributes(document.body);
+        pingObserver.observe(document.body, { childList: true, subtree: true });
+      }, { once: true });
+    }
+  }
+  startPingObserver();
+
 })();

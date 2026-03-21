@@ -82,6 +82,9 @@ export const TRANSLATIONS = {
   import_success:        { en: "Settings imported successfully.",                                                   es: "Ajustes importados correctamente." },
   import_error:          { en: "Invalid file. Make sure it is a MUGA settings export.",                            es: "Archivo inválido. Asegúrate de que es una exportación de MUGA." },
 
+  // ── Privacy features ─────────────────────────────────────────────────────
+  amp_redirect: { en: "AMP page redirected to canonical URL", es: "Página AMP redirigida a URL canónica" },
+
   // ── Content script toast ──────────────────────────────────────────────────
   toast_title:   { en: "MUGA detected an affiliate", es: "MUGA detectó un referido" },
   toast_tag_msg: { en: "carries the tag", es: "lleva el tag" },
