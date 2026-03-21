@@ -101,7 +101,7 @@
         const response = await chrome.runtime.sendMessage({
           type: "PROCESS_URL",
           url: cleanCandidate,
-          skipInject: true,
+          skipNotify: true,
         });
         if (response?.cleanUrl && response.cleanUrl !== cleanCandidate) {
           result = result.replace(cleanCandidate, response.cleanUrl);
