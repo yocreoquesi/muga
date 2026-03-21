@@ -5,8 +5,8 @@
 Browser extension (Chrome + Firefox) que limpia URLs de tracking params, gestiona tags de afiliados y protege al usuario de sustitución silenciosa de afiliados (lo que hizo Honey).
 
 - **Nombre:** MUGA — Make URLs Great Again
-- **Repo:** https://github.com/yocreoquesi/muga (public, MIT)
-- **Versión actual:** 1.2.0
+- **Repo:** https://github.com/yocreoquesi/muga (public, GPL v3)
+- **Versión actual:** 1.3.0
 - **Contexto completo (privado):** lee `Muga.md` — nunca lo comitees
 
 ---
