@@ -127,9 +127,15 @@ export function processUrl(rawUrl, prefs) {
   }
 
   // 4. Strip known tracking parameters (built-in + user-defined custom params)
+  // Guard: never strip a param that is the affiliate identifier for this host.
+  // e.g. `ref` is in TRACKING_PARAMS generically, but is also the affiliate param
+  // for pccomponentes, mediamarkt_es, mediamarkt_de; `campid` is eBay's affiliate param.
+  const affiliateParamNames = patterns.map(p => p.param.toLowerCase());
   const customParams = (prefs.customParams || []).map(p => p.toLowerCase());
   for (const param of [...url.searchParams.keys()]) {
     const lower = param.toLowerCase();
+    // Don't strip params that are affiliate identifiers for this host
+    if (affiliateParamNames.includes(lower)) continue;
     if (TRACKING_PARAMS.includes(lower) || customParams.includes(lower)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
