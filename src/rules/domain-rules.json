@@ -1,0 +1,272 @@
+[
+  {
+    "domain": "google.com",
+    "preserveParams": ["q", "tbm", "tbs", "hl", "gl", "num", "start", "sa", "safe", "as_q", "as_sitesearch"],
+    "note": "Search query, language/region, pagination — functional"
+  },
+  {
+    "domain": "bing.com",
+    "preserveParams": ["q", "qs", "form", "pq", "sc", "sp", "sk", "first", "FORM"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "duckduckgo.com",
+    "preserveParams": ["q", "t", "ia", "iax", "iaxm", "kl", "kp", "kz", "km", "ks", "ko", "kt", "ka", "kf", "kaf", "kac", "kad", "kd", "kh", "kn", "ko", "kp", "kr", "kg", "kb", "kv", "kw"],
+    "note": "Search query and settings — functional"
+  },
+  {
+    "domain": "yahoo.com",
+    "preserveParams": ["p", "fr", "fr2", "fp", "b", "pz", "bct", "bkcat", "n", "ei"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "baidu.com",
+    "preserveParams": ["wd", "ie", "rsv_spt", "rsv_iqid", "f", "tn", "rsp", "rqlang", "bs"],
+    "note": "Search query and encoding — functional"
+  },
+  {
+    "domain": "yandex.ru",
+    "preserveParams": ["text", "lr", "lang", "p", "within", "from", "to"],
+    "note": "Search query, language, region and pagination — functional"
+  },
+  {
+    "domain": "yandex.com",
+    "preserveParams": ["text", "lr", "lang", "p", "within", "from", "to"],
+    "note": "Search query, language, region and pagination — functional"
+  },
+  {
+    "domain": "amazon.com",
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "amazon.es",
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "amazon.de",
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "amazon.fr",
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "amazon.co.uk",
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "amazon.it",
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "ebay.com",
+    "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "ebay.es",
+    "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
+    "note": "Search query, category, sort and pagination — functional"
+  },
+  {
+    "domain": "aliexpress.com",
+    "preserveParams": ["SearchText", "catId", "sortType", "shipCountry", "groupsort", "maxPrice", "minPrice", "filterCat", "page"],
+    "note": "Search query, category, filters and pagination — functional"
+  },
+  {
+    "domain": "pccomponentes.com",
+    "preserveParams": ["q", "sort", "page", "brands", "price_max", "price_min", "category"],
+    "note": "Search and filter params — functional"
+  },
+  {
+    "domain": "elcorteingles.es",
+    "preserveParams": ["s", "q", "category", "page", "sort", "brand"],
+    "note": "Search and filter params — functional"
+  },
+  {
+    "domain": "zalando.es",
+    "preserveParams": ["q", "order", "p", "size", "color", "brand", "price_from", "price_to"],
+    "note": "Search, filter and pagination — functional"
+  },
+  {
+    "domain": "zalando.de",
+    "preserveParams": ["q", "order", "p", "size", "color", "brand", "price_from", "price_to"],
+    "note": "Search, filter and pagination — functional"
+  },
+  {
+    "domain": "fnac.es",
+    "preserveParams": ["SearchQuery", "sl", "stype", "mo", "se"],
+    "note": "Search query and mode — functional"
+  },
+  {
+    "domain": "fnac.com",
+    "preserveParams": ["SearchQuery", "sl", "stype", "mo", "se"],
+    "note": "Search query and mode — functional"
+  },
+  {
+    "domain": "mediamarkt.es",
+    "preserveParams": ["query", "searchType", "page", "pageSize", "sort"],
+    "note": "Search and pagination — functional"
+  },
+  {
+    "domain": "mediamarkt.de",
+    "preserveParams": ["query", "searchType", "page", "pageSize", "sort"],
+    "note": "Search and pagination — functional"
+  },
+  {
+    "domain": "temu.com",
+    "preserveParams": ["search_key", "search_type", "page_num", "page_size", "sort_type"],
+    "note": "Search, pagination and sort — functional"
+  },
+  {
+    "domain": "shein.com",
+    "preserveParams": ["q", "search_type", "src_tab_page_id", "page", "sort", "attr_values", "brand"],
+    "note": "Search, filters and pagination — functional"
+  },
+  {
+    "domain": "youtube.com",
+    "preserveParams": ["v", "t", "list", "index", "start_radio", "ab_channel", "search_query"],
+    "note": "Video ID, timestamp, playlist, and channel context — functional. ab_channel is in TRACKING_PARAMS globally but is functional on YouTube (identifies the channel that uploaded the video)"
+  },
+  {
+    "domain": "twitter.com",
+    "preserveParams": ["q", "f", "src", "lang"],
+    "note": "Search query and filters — functional"
+  },
+  {
+    "domain": "x.com",
+    "preserveParams": ["q", "f", "src", "lang"],
+    "note": "Search query and filters — functional"
+  },
+  {
+    "domain": "instagram.com",
+    "preserveParams": ["hl"],
+    "note": "Language — functional"
+  },
+  {
+    "domain": "reddit.com",
+    "preserveParams": ["sort", "t", "after", "before", "count", "limit", "sr_detail", "q", "type"],
+    "note": "Sort, time filter, pagination and search — functional"
+  },
+  {
+    "domain": "tiktok.com",
+    "preserveParams": ["q", "lang", "region"],
+    "note": "Search query and locale — functional"
+  },
+  {
+    "domain": "twitch.tv",
+    "preserveParams": ["query", "type"],
+    "note": "Search query and content type — functional"
+  },
+  {
+    "domain": "linkedin.com",
+    "preserveParams": ["keywords", "location", "geoId", "f_TPR", "f_E", "f_JT", "f_C", "sortBy", "pageNum", "start"],
+    "note": "Job/people search filters and pagination — functional"
+  },
+  {
+    "domain": "facebook.com",
+    "preserveParams": ["q", "filters", "story_fbid", "id", "v"],
+    "note": "Search query, post and video IDs — functional"
+  },
+  {
+    "domain": "github.com",
+    "preserveParams": ["tab", "q", "type", "utf8", "search_value", "ref", "l", "o", "s", "p"],
+    "note": "Search, tab navigation, sort, pagination — functional. ref is not in TRACKING_PARAMS (removed PR #165)"
+  },
+  {
+    "domain": "stackoverflow.com",
+    "preserveParams": ["tab", "sort", "pagesize", "page", "q"],
+    "note": "Sort, pagination and search — functional"
+  },
+  {
+    "domain": "wikipedia.org",
+    "preserveParams": ["search", "title", "action", "oldid", "diff", "curid", "redirect", "section"],
+    "note": "Page navigation, search, revision — functional"
+  },
+  {
+    "domain": "office.com",
+    "preserveParams": ["auth", "home", "from"],
+    "note": "Auth flow and navigation — functional"
+  },
+  {
+    "domain": "booking.com",
+    "preserveParams": ["checkin", "checkout", "adults", "children", "rooms", "currency", "lang", "dest_id", "dest_type", "ss", "group_adults", "group_children", "no_rooms", "nflt"],
+    "note": "Hotel search and booking parameters — functional"
+  },
+  {
+    "domain": "renfe.com",
+    "preserveParams": ["tipoBusqueda", "origen", "destino", "fechaIda", "fechaVuelta", "adultos", "ninos", "jovenes", "mayores"],
+    "note": "Train search parameters — functional"
+  },
+  {
+    "domain": "iberia.com",
+    "preserveParams": ["origin", "destination", "outboundDate", "returnDate", "adults", "children", "infants", "cabinClass", "tripType"],
+    "note": "Flight search parameters — functional"
+  },
+  {
+    "domain": "idealista.com",
+    "preserveParams": ["tipo", "localidad", "metros", "habitaciones", "precio", "order", "ordenado-por", "pagina"],
+    "note": "Real estate search filters and pagination — functional"
+  },
+  {
+    "domain": "fotocasa.es",
+    "preserveParams": ["transactionType", "l", "minPrice", "maxPrice", "minRooms", "maxRooms", "minSurface", "maxSurface", "page"],
+    "note": "Real estate search filters and pagination — functional"
+  },
+  {
+    "domain": "marca.com",
+    "preserveParams": ["q"],
+    "note": "Search query — functional"
+  },
+  {
+    "domain": "as.com",
+    "preserveParams": ["q"],
+    "note": "Search query — functional"
+  },
+  {
+    "domain": "rtve.es",
+    "preserveParams": ["q", "page"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "20minutos.es",
+    "preserveParams": ["q"],
+    "note": "Search query — functional"
+  },
+  {
+    "domain": "elmundo.es",
+    "preserveParams": ["q", "page"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "elpais.com",
+    "preserveParams": ["q", "page"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "bbc.com",
+    "preserveParams": ["q", "seqId", "page"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "bbc.co.uk",
+    "preserveParams": ["q", "seqId", "page"],
+    "note": "Search query and pagination — functional"
+  },
+  {
+    "domain": "cnn.com",
+    "preserveParams": ["q"],
+    "note": "Search query — functional"
+  },
+  {
+    "domain": "nytimes.com",
+    "preserveParams": ["query", "type", "sort"],
+    "note": "Search query and sort — functional"
+  }
+]
