@@ -8,7 +8,7 @@
 
 // ── Sync: user preferences ──────────────────────────────────────────────────
 
-const PREF_DEFAULTS = {
+export const PREF_DEFAULTS = {
   enabled: true,
   injectOwnAffiliate: true,
   notifyForeignAffiliate: false,

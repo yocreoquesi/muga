@@ -4,16 +4,7 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
 import { getSupportedStores } from "../lib/affiliates.js";
-
-const DEFAULTS = {
-  injectOwnAffiliate: true,
-  notifyForeignAffiliate: false,
-  allowReplaceAffiliate: false,
-  stripAllAffiliates: false,
-  blacklist: [],
-  whitelist: [],
-  customParams: [],
-};
+import { PREF_PREF_DEFAULTS } from "../lib/storage.js";
 
 let currentLang = "en";
 
@@ -21,7 +12,7 @@ async function init() {
   currentLang = await getStoredLang();
   applyTranslations(currentLang);
 
-  const prefs = await chrome.storage.sync.get(DEFAULTS);
+  const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
 
   bindToggle("inject", "injectOwnAffiliate", prefs);
   bindToggle("notify", "notifyForeignAffiliate", prefs);
@@ -110,7 +101,7 @@ function initLanguageSelect() {
     await chrome.storage.sync.set({ language: currentLang });
     applyTranslations(currentLang);
     // Re-render dynamic lists with new language
-    const prefs = await chrome.storage.sync.get(DEFAULTS);
+    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
   });
@@ -159,7 +150,7 @@ function initStatsSection() {
 
 function initExportImport() {
   document.getElementById("export-btn").addEventListener("click", async () => {
-    const prefs = await chrome.storage.sync.get(DEFAULTS);
+    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
     const payload = {
       muga: true,
       version: chrome.runtime.getManifest().version,

@@ -94,7 +94,7 @@ export function processUrl(rawUrl, prefs) {
   );
   if (domainBlacklisted) {
     url.search = "";
-    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], detectedAffiliate: null };
+    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
   const patterns = getPatternsForHost(hostname);
