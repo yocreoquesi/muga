@@ -2,6 +2,32 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.3.0] — 2026-03-21
+
+### Added
+- **Pre-navigation DNR stripping** — browser-native `declarativeNetRequest` rules strip 69 tracking parameters *before* the page loads, covering address-bar navigation, bookmarks, and external app links. Togglable via Settings → URL Cleaning.
+- **Block `<a ping>` tracking beacons** — removes `ping` attributes from links so the browser doesn't send a background tracking request on click. Enabled by default; Settings → Privacy.
+- **AMP redirect** — detects Google AMP pages and silently redirects to the canonical article URL. Enabled by default; Settings → Redirect handling.
+- **Redirect-wrapper unwrapping** — unwraps common redirect intermediaries (Reddit `out.reddit.com`, Steam `linkfilter/`, and generic `?redirect=`, `?destination=`, `?url=`, `?to=` patterns). Enabled by default; Settings → Redirect handling.
+- **Batch URL cleaner** — new "Batch" tab in the popup: paste a block of text with multiple URLs and clean them all at once with a "Copy all" button.
+- **Options page — new sections**: URL Cleaning, Privacy, and Redirect handling with individual toggles for all four new features.
+- **Amazon extended cleaning** — strips product slug from URLs (`/ProductName/dp/ASIN/` → `/dp/ASIN/`) and locale params (`__mk_es_ES`, `__mk_de_DE`, `__mk_fr_FR`, `__mk_it_IT`, `ie`).
+
+### Fixed
+- `declarativeNetRequestFeedback` permission removed from manifest (was declared but never used).
+- AMP redirect now requires canonical URL to be `https:` before redirecting (prevents accidental http downgrade).
+- `tracking-params.json` corrected to top-level JSON array (Chrome DNR requirement).
+- DNR `action.redirect` structure corrected: `queryTransform` must nest under `transform`.
+- Inactive affiliate stores no longer shown in options page or popup when no `ourTag` is configured.
+- Copy-clean (Ctrl+C and context menu) no longer injects our affiliate tag into copied URLs.
+- Toast auto-dismiss navigates to clean URL instead of original.
+
+### Security
+- Toast rendering hardened with `escHtml()` to prevent XSS via malicious affiliate param values.
+- Options page list rendering migrated from `innerHTML` to `createElement` + `textContent`.
+
+---
+
 ## [1.0.1] - 2026-03-19
 
 ### Fixed
@@ -109,7 +135,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/yocreoquesi/muga/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/yocreoquesi/muga/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yocreoquesi/muga/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/yocreoquesi/muga/compare/v1.0.0...v1.0.1
