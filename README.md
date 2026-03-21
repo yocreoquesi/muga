@@ -2,7 +2,7 @@
 
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.3.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-112_pass-brightgreen)](#development)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
@@ -163,7 +163,7 @@ PRs welcome for new tracking parameters, new stores, or additional languages. Re
 
 ## License
 
-[MIT](LICENSE)
+[GPL v3](LICENSE) — forks and derivative works must remain open source under the same license.
 
 ---
 
