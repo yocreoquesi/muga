@@ -15,7 +15,7 @@
   ],
 
   "background": {
-    "scripts": ["lib/browser-polyfill.min.js", "background/service-worker.js"],
+    "page": "background/background.html",
     "persistent": false
   },
 
@@ -66,7 +66,6 @@
     "privacy/privacy.html"
   ],
 
-  // Requires Firefox 128+ for queryTransform support
   "declarative_net_request": {
     "rule_resources": [
       {
