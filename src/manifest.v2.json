@@ -10,6 +10,7 @@
     "tabs",
     "contextMenus",
     "clipboardWrite",
+    "declarativeNetRequest",
     "<all_urls>"
   ],
 
@@ -54,6 +55,17 @@
     "onboarding/onboarding.html",
     "privacy/privacy.html"
   ],
+
+  // Requires Firefox 128+ for queryTransform support
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "tracking_params",
+        "enabled": true,
+        "path": "rules/tracking-params.json"
+      }
+    ]
+  },
 
   "content_security_policy": "script-src 'self'; object-src 'self'",
 

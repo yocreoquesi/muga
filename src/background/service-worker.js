@@ -10,6 +10,56 @@ import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
 
+// --- Prefs cache ---
+
+let cachedPrefs = null;
+
+async function getPrefsWithCache() {
+  if (!cachedPrefs) cachedPrefs = await getPrefs();
+  return cachedPrefs;
+}
+
+// --- DNR sync helpers ---
+
+const DYNAMIC_RULE_ID = 1000;
+
+async function syncCustomParamsDNR(customParams) {
+  if (!customParams || customParams.length === 0) {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DYNAMIC_RULE_ID],
+      addRules: [],
+    });
+    return;
+  }
+  const normalized = customParams.map(p => p.trim().toLowerCase());
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [DYNAMIC_RULE_ID],
+    addRules: [{
+      id: DYNAMIC_RULE_ID,
+      priority: 1,
+      action: {
+        type: "redirect",
+        redirect: { queryTransform: { removeParams: normalized } },
+      },
+      condition: { urlFilter: "||*", resourceTypes: ["main_frame"] },
+    }],
+  });
+}
+
+async function applyDnrState(prefs) {
+  if (prefs.dnrEnabled) {
+    await chrome.declarativeNetRequest.updateEnabledRulesets({
+      enableRulesetIds: ["tracking_params"],
+    }).catch(() => {}); // no-op if already enabled
+    await syncCustomParamsDNR(prefs.customParams);
+  } else {
+    await chrome.declarativeNetRequest.updateEnabledRulesets({
+      disableRulesetIds: ["tracking_params"],
+    }).catch(() => {});
+    await syncCustomParamsDNR([]);
+  }
+}
+
 // Matches http/https URLs in arbitrary text — used by the "selection" context menu handler
 const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
 
@@ -52,8 +102,23 @@ async function appendHistory(original, clean) {
   await chrome.storage.session.set({ history });
 }
 
+// --- Storage change listener: invalidate cache and re-apply DNR state ---
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== "sync") return;
+  cachedPrefs = null; // Invalidate cache
+  if (changes.customParams || changes.dnrEnabled) {
+    const prefs = await getPrefsWithCache();
+    await applyDnrState(prefs);
+  }
+});
+
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "getPrefs") {
+    getPrefsWithCache().then(sendResponse);
+    return true;
+  }
+
   if (message.type === "PROCESS_URL") {
     const tabId = sender.tab?.id;
     handleProcessUrl(message.url, { skipNotify: message.skipNotify })
@@ -113,8 +178,17 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
   return result;
 }
 
+// --- On startup: apply DNR state ---
+chrome.runtime.onStartup.addListener(async () => {
+  const prefs = await getPrefsWithCache();
+  await applyDnrState(prefs);
+});
+
 // --- On install: open onboarding on first run, register context menu ---
 chrome.runtime.onInstalled.addListener(async (details) => {
+  const prefs = await getPrefsWithCache();
+  await applyDnrState(prefs);
+
   chrome.contextMenus.create({
     id: "muga-copy-clean",
     title: "MUGA: Copy clean link",
