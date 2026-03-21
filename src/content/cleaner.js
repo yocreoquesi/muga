@@ -83,10 +83,6 @@
     const matches = [...trimmed.matchAll(URL_RE)];
     if (matches.length === 0) return;
 
-    // Check at least one URL actually has query params worth cleaning
-    const hasQueryParams = matches.some(m => m[0].includes("?"));
-    if (!hasQueryParams) return;
-
     e.preventDefault();
 
     try {
@@ -96,7 +92,6 @@
         const rawUrl = match[0];
         // Strip trailing punctuation that is unlikely to be part of the URL
         const cleanCandidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
-        if (!cleanCandidate.includes("?")) continue;
 
         const response = await chrome.runtime.sendMessage({
           type: "PROCESS_URL",
@@ -142,9 +137,6 @@
       return;
     }
     if (!["http:", "https:"].includes(url.protocol)) return;
-
-    // No query string means nothing to clean
-    if (!url.search) return;
 
     // Preserve Ctrl/Cmd/Shift+click and target="_blank" (open in new tab/window)
     const opensNewTab = e.ctrlKey || e.metaKey || e.shiftKey ||
