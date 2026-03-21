@@ -9,7 +9,9 @@
     "storage",
     "tabs",
     "contextMenus",
-    "clipboardWrite"
+    "clipboardWrite",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
   ],
 
   "host_permissions": [
@@ -60,6 +62,16 @@
       "matches": ["<all_urls>"]
     }
   ],
+
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "tracking_params",
+        "enabled": true,
+        "path": "rules/tracking-params.json"
+      }
+    ]
+  },
 
   "icons": {
     "16": "icons/16.png",
