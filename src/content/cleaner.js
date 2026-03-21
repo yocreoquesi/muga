@@ -31,7 +31,7 @@
       toast_dismiss: "Dismiss",
     },
     es: {
-      toast_title:   "MUGA detectó un referido",
+      toast_title:   "MUGA detectó un afiliado ajeno",
       toast_tag_msg: "lleva el tag",
       toast_keep:    "Mantener",
       toast_remove:  "Quitar",
