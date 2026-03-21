@@ -3,8 +3,8 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-83_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-105_pass-brightgreen)](#development)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-coming_soon-lightgrey)](#installation)
 
@@ -54,8 +54,13 @@ After:  https://www.ebay.es/itm/123456789
 
 | Feature | Default |
 |---|---|
-| Strip 65+ tracking params (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…) | **Always on** |
-| Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN) | **Always on** |
+| Strip 89 tracking params before navigation (DNR — covers address bar, bookmarks, external apps) | On — opt-out |
+| Strip tracking params on in-page clicks (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…) | **Always on** |
+| Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug) | **Always on** |
+| Block `<a ping>` tracking beacons | On — opt-out |
+| Redirect AMP pages to canonical URL | On — opt-out |
+| Unwrap redirect wrappers (Reddit, Steam, generic `?redirect=`, `?url=`…) | On — opt-out |
+| **Batch cleaner** — paste multiple URLs, clean all at once | **Always on** |
 | Right-click any link → **Copy clean link** | **Always on** |
 | **Alt+Shift+C** — copy clean URL of current tab | **Always on** |
 | Badge counter — items cleaned on current tab | **Always on** |
@@ -135,7 +140,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 83 unit tests
+npm test               # 105 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
