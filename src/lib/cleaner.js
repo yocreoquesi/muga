@@ -32,6 +32,26 @@ function domainMatches(hostname, entryDomain) {
 }
 
 /**
+ * Builds the set of params that must NOT be stripped on the given hostname,
+ * based on the domain-rules compatibility list.
+ *
+ * Matching is subdomain-aware: "www.google.com" matches rule for "google.com".
+ *
+ * @param {string} hostname
+ * @param {Array}  domainRules  - Array of { domain, preserveParams[] } objects
+ * @returns {Set<string>}
+ */
+export function getPreservedParams(hostname, domainRules = []) {
+  const preserved = new Set();
+  for (const rule of domainRules) {
+    if (hostname === rule.domain || hostname.endsWith("." + rule.domain)) {
+      rule.preserveParams.forEach(p => preserved.add(p.toLowerCase()));
+    }
+  }
+  return preserved;
+}
+
+/**
  * Strips Amazon path-based tracking segments that appear after the ASIN.
  * Amazon embeds referral tokens and session IDs directly in the path, e.g.:
  *   /dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601
@@ -62,7 +82,7 @@ function cleanAmazonPath(hostname, pathname) {
  * @param {object} prefs  - User preferences from chrome.storage.sync.
  * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null }}
  */
-export function processUrl(rawUrl, prefs) {
+export function processUrl(rawUrl, prefs, domainRules = []) {
   let url;
   try {
     url = new URL(rawUrl);
@@ -134,10 +154,13 @@ export function processUrl(rawUrl, prefs) {
   // for pccomponentes, mediamarkt_es, mediamarkt_de; `campid` is eBay's affiliate param.
   const affiliateParamNames = patterns.map(p => p.param.toLowerCase());
   const customParams = (prefs.customParams || []).map(p => p.toLowerCase());
+  const preservedParams = getPreservedParams(hostname, domainRules);
   for (const param of [...url.searchParams.keys()]) {
     const lower = param.toLowerCase();
     // Don't strip params that are affiliate identifiers for this host
     if (affiliateParamNames.includes(lower)) continue;
+    // Don't strip params that are functional on this domain (domain-rules compatibility)
+    if (preservedParams.has(lower)) continue;
     if (TRACKING_PARAMS.includes(lower) || customParams.includes(lower)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
