@@ -166,6 +166,32 @@ header {
   border-bottom: 0.5px solid var(--border);
 }
 
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.preview-header .preview-label { margin-bottom: 0; }
+
+.tab-badge {
+  font-size: 10px;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.preview-removed {
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 4px;
+  line-height: 1.4;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .preview-label {
   font-size: 10px;
   color: var(--text2);
@@ -278,6 +304,13 @@ header {
 
 .history-url.before { color: var(--text2); text-decoration: line-through; }
 .history-url.after  { color: var(--accent); }
+
+.history-entry {
+  cursor: pointer;
+}
+.history-entry:hover { background: var(--bg2); }
+.history-entry:hover .history-url.after { text-decoration: underline; }
+.history-entry.copied .history-url.after { color: #16a34a; }
 
 footer {
   display: flex;
