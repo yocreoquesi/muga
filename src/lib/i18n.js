@@ -54,6 +54,7 @@ export const TRANSLATIONS = {
   row_replace_label:          { en: "Allow replacing a third-party affiliate with ours",  es: "Permitir reemplazar afiliado ajeno por el nuestro" },
   row_replace_hint:           { en: "Only available when notification is on. You always decide, per link.", es: "Solo disponible si la notificación está activa. El usuario siempre decide." },
   row_strip_affiliates_label: { en: "Strip all affiliate parameters",                      es: "Eliminar todos los parámetros de afiliado" },
+  row_strip_affiliates_hint:  { en: "Remove every affiliate parameter from all links, overriding injection", es: "Elimina todos los parámetros de afiliado de todos los enlaces, anulando la inyección" },
   section_stores:    { en: "Affiliate stores", es: "Tiendas afiliadas" },
   stores_hint:       { en: "Green dot = affiliate account active and configured. Grey = account pending registration.", es: "Punto verde = cuenta de afiliado activa. Gris = cuenta pendiente de registro." },
   no_active_stores:  { en: "No affiliate accounts configured yet.", es: "No hay cuentas de afiliado configuradas aún." },
@@ -95,6 +96,8 @@ export const TRANSLATIONS = {
   section_data:          { en: "Import / Export",                                                                   es: "Importar / Exportar" },
   export_btn:            { en: "Export settings",                                                                   es: "Exportar ajustes" },
   import_btn:            { en: "Import settings",                                                                   es: "Importar ajustes" },
+  export_label:          { en: "Export settings",                                                                   es: "Exportar ajustes" },
+  import_label:          { en: "Import settings",                                                                   es: "Importar ajustes" },
   import_success:        { en: "Settings imported successfully.",                                                   es: "Ajustes importados correctamente." },
   import_error:          { en: "Invalid file. Make sure it is a MUGA settings export.",                            es: "Archivo inválido. Asegúrate de que es una exportación de MUGA." },
 
