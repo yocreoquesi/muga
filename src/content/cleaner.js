@@ -11,6 +11,10 @@
 (function () {
   "use strict";
 
+  function escHtml(str) {
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
   // Prevent double execution in iframes
   if (window.self !== window.top) return;
   if (window.__mugaActive) return;
@@ -225,7 +229,7 @@
     notice.innerHTML = `
       <div style="font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa">${s.toast_title}</div>
       <div style="margin-bottom:10px;font-size:12px;color:#ddd">
-        ${domain} ${s.toast_tag_msg} <code style="${codeStyle}">${affiliate.param}=${affiliate.value}</code>
+        ${domain} ${s.toast_tag_msg} <code style="${codeStyle}">${escHtml(affiliate.param)}=${escHtml(affiliate.value)}</code>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button data-choice="original" style="${btnStyle}">${s.toast_keep}</button>
