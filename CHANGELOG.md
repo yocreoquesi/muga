@@ -5,7 +5,7 @@ All notable changes to MUGA will be documented in this file.
 ## [1.3.0] — 2026-03-21
 
 ### Added
-- **Pre-navigation DNR stripping** — browser-native `declarativeNetRequest` rules strip 69 tracking parameters *before* the page loads, covering address-bar navigation, bookmarks, and external app links. Togglable via Settings → URL Cleaning.
+- **Pre-navigation DNR stripping** — browser-native `declarativeNetRequest` rules strip 89 tracking parameters *before* the page loads, covering address-bar navigation, bookmarks, and external app links. Togglable via Settings → URL Cleaning.
 - **Block `<a ping>` tracking beacons** — removes `ping` attributes from links so the browser doesn't send a background tracking request on click. Enabled by default; Settings → Privacy.
 - **AMP redirect** — detects Google AMP pages and silently redirects to the canonical article URL. Enabled by default; Settings → Redirect handling.
 - **Redirect-wrapper unwrapping** — unwraps common redirect intermediaries (Reddit `out.reddit.com`, Steam `linkfilter/`, and generic `?redirect=`, `?destination=`, `?url=`, `?to=` patterns). Enabled by default; Settings → Redirect handling.
@@ -25,14 +25,6 @@ All notable changes to MUGA will be documented in this file.
 ### Security
 - Toast rendering hardened with `escHtml()` to prevent XSS via malicious affiliate param values.
 - Options page list rendering migrated from `innerHTML` to `createElement` + `textContent`.
-
----
-
-## [1.0.1] - 2026-03-19
-
-### Fixed
-- Strip Amazon path-based tracking (`/ref=.../session-id`) after the ASIN in product URLs
-- Add missing Amazon query params: `_encoding`, `content-id`, `ref_`, `pd_rd_i`
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -59,7 +51,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [1.0.1] — 2026-03-19
+## [1.1.0] — 2026-03-19
 
 ### Added
 - **Clean URL on copy (Ctrl+C)** — when the user selects a URL as text on any page and copies it, MUGA strips tracking parameters before the text reaches the clipboard. Respects the `injectOwnAffiliate` setting: if affiliate injection is enabled, our tag is added to the copied URL too. No toast is shown on copy.
@@ -68,6 +60,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 - GitHub Actions release workflow: use wildcard `*.zip` when renaming build artifacts — web-ext generates `muga_make_urls_great_again-X.Y.Z.zip`, not `muga-X.Y.Z.zip`
 - GitHub Actions release workflow: add `permissions: contents: write` so the workflow can create GitHub Releases
+
+---
+
+## [1.0.1] — 2026-03-19
+
+### Fixed
+- Strip Amazon path-based tracking (`/ref=.../session-id`) after the ASIN in product URLs
+- Add missing Amazon query params: `_encoding`, `content-id`, `ref_`, `pd_rd_i`
 
 ---
 
