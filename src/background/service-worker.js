@@ -56,7 +56,7 @@ async function appendHistory(original, clean) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PROCESS_URL") {
     const tabId = sender.tab?.id;
-    handleProcessUrl(message.url, { skipNotify: message.skipInject })
+    handleProcessUrl(message.url, { skipNotify: message.skipNotify })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         sendResponse(result);
