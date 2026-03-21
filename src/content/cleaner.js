@@ -121,6 +121,20 @@
   /**
    * Intercepts link clicks before navigation.
    * The service worker handles processing and responds with the clean URL.
+   *
+   * ARCHITECTURE NOTE — navigation interception scope:
+   *   MUGA intercepts clicks on <a> elements within pages where this content
+   *   script is already running (injected via manifest content_scripts rules).
+   *   The following navigation types CANNOT be intercepted in MV3:
+   *     - Typing or pasting a URL directly into the address bar
+   *     - Opening a bookmark
+   *     - External apps (e.g. clicking a link in an email client or Slack)
+   *     - Google Search result clicks that navigate the top-level frame to Amazon
+   *       before the content script has loaded on that tab
+   *   Cleaning these would require declarativeNetRequest (DNR) rules, which must
+   *   be declared statically and cannot be generated dynamically from user prefs.
+   *   The popup preview always reflects what WOULD be cleaned if the URL were
+   *   processed; actual cleaning only happens on in-page link clicks.
    */
   document.addEventListener("click", async (e) => {
     const anchor = e.target.closest("a[href]");

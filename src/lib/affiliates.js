@@ -54,6 +54,11 @@ export const TRACKING_PARAMS = [
   "linkcode", "linkid",
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
   "th", "_encoding", "content-id", "ref_",
+  // Amazon — locale/keyboard layout selector (appears in ES, DE, FR, IT storefronts).
+  // Stored lowercase — cleaner.js compares param.toLowerCase() against this list.
+  "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
+  // Amazon — legacy encoding indicator (ie=UTF8 on browse/search pages)
+  "ie",
 
   // eBay
   "mkevt", "mkcid", "mkrid", "campid", "toolid", "customid",
