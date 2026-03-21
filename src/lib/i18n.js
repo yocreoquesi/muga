@@ -99,7 +99,7 @@ export const TRANSLATIONS = {
   import_error:          { en: "Invalid file. Make sure it is a MUGA settings export.",                            es: "Archivo inválido. Asegúrate de que es una exportación de MUGA." },
 
   // ── Content script toast ──────────────────────────────────────────────────
-  toast_title:   { en: "MUGA detected an affiliate", es: "MUGA detectó un referido" },
+  toast_title:   { en: "MUGA detected an affiliate", es: "MUGA detectó un afiliado" },
   toast_tag_msg: { en: "carries the tag", es: "lleva el tag" },
   toast_keep:    { en: "Keep", es: "Mantener" },
   toast_remove:  { en: "Remove", es: "Quitar" },
