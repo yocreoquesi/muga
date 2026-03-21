@@ -925,18 +925,22 @@ describe("affiliate param / tracking param collision", () => {
       "utm_source must still be stripped");
   });
 
-  test("ref= IS stripped on a non-affiliate host (e.g., example.com)", () => {
+  test("ref= is NOT stripped on a non-affiliate host (e.g., example.com) — ref removed from global TRACKING_PARAMS (#160)", () => {
+    // 'ref' was removed from TRACKING_PARAMS because it is the affiliate param for
+    // PcComponentes and MediaMarkt. Applying it globally stripped it before the
+    // affiliate engine could act, and also broke GitHub ?ref= and SPA navigation.
+    // It should only be stripped context-specifically via AFFILIATE_PATTERNS.
     const { cleanUrl, removedTracking } = processUrl(
       "https://example.com/page?ref=tracking&utm_source=google",
       PREFS
     );
     const clean = new URL(cleanUrl);
-    assert.equal(clean.searchParams.has("ref"), false,
-      "ref= must be stripped on a host with no affiliate pattern");
-    assert.ok(removedTracking.includes("ref"),
-      "ref must appear in removedTracking");
+    assert.equal(clean.searchParams.get("ref"), "tracking",
+      "ref= must NOT be stripped globally — it is not in TRACKING_PARAMS");
     assert.ok(removedTracking.includes("utm_source"),
-      "utm_source must also be stripped");
+      "utm_source must still be stripped");
+    assert.ok(!removedTracking.includes("ref"),
+      "ref must NOT appear in removedTracking");
   });
 
   test("whitelist protects ref= on pccomponentes", () => {
@@ -999,9 +1003,9 @@ describe("Amazon extended cleaning", () => {
   });
 
   test("ref=sr_1_7 in path is not treated as a detected_foreign action", () => {
-    // ref= is in TRACKING_PARAMS generically, but on amazon.es the affiliate param
-    // is tag=, not ref=. Path-based /ref= is cleaned by cleanAmazonPath, not flagged
-    // as a foreign affiliate. This confirms no spurious detected_foreign is raised.
+    // On amazon.es the affiliate param is tag=, not ref=. Path-based /ref= is cleaned
+    // by cleanAmazonPath, not flagged as a foreign affiliate. This confirms no spurious
+    // detected_foreign is raised.
     const raw = "https://www.amazon.es/UGREEN-Adaptador/dp/B0B9N3QSL3/ref=sr_1_7?psc=1";
     const { action } = processUrl(raw, {
       ...PREFS,
@@ -1009,6 +1013,25 @@ describe("Amazon extended cleaning", () => {
     });
     assert.notEqual(action, "detected_foreign",
       "path-based /ref= must not trigger foreign affiliate detection");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Fix #160 — ref is NOT a global tracking param
+// ---------------------------------------------------------------------------
+describe("ref is not a global tracking param (#160)", () => {
+
+  test("GitHub URL with ?ref=main is NOT modified by processUrl", () => {
+    // 'ref' was removed from TRACKING_PARAMS — it must not be stripped globally.
+    // GitHub uses ?ref= to indicate branch context; stripping it would break links.
+    const prefs = { ...PREFS };
+    const { cleanUrl } = processUrl("https://github.com/user/repo?ref=main", prefs);
+    assert.equal(
+      cleanUrl,
+      "https://github.com/user/repo?ref=main",
+      "?ref=main must be preserved on GitHub — ref is not a global tracking param"
+    );
   });
 
 });
