@@ -41,7 +41,7 @@ async function syncCustomParamsDNR(customParams) {
         type: "redirect",
         redirect: { transform: { queryTransform: { removeParams: normalized } } },
       },
-      condition: { urlFilter: "||*", resourceTypes: ["main_frame"] },
+      condition: { urlFilter: "*", resourceTypes: ["main_frame"] },
     }],
   });
 }

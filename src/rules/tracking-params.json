@@ -41,7 +41,7 @@
       }
     },
     "condition": {
-      "urlFilter": "||*",
+      "urlFilter": "*",
       "resourceTypes": ["main_frame"]
     }
   }
