@@ -49,12 +49,13 @@ describe("Scenario A — tracking parameter removal", () => {
   });
 
   test("strips all major UTM params at once", () => {
-    const { removedTracking, cleanUrl } = processUrl(
+    const { removedTracking, cleanUrl, junkRemoved } = processUrl(
       "https://example.com/?utm_source=fb&utm_medium=cpc&utm_campaign=spring&utm_content=banner&utm_term=shoes",
       PREFS
     );
     assert.equal(removedTracking.length, 5);
     assert.equal(cleanUrl, "https://example.com/");
+    assert.equal(junkRemoved, 5);
   });
 
   test("strips fbclid", () => {
@@ -336,7 +337,7 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
 describe("Amazon — affiliate param preserved", () => {
 
   test("amazon.es: tag= is preserved, UTM is stripped", () => {
-    const { cleanUrl, removedTracking } = processUrl(
+    const { cleanUrl, removedTracking, junkRemoved } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&utm_source=email&utm_medium=cpc",
       PREFS
     );
@@ -344,6 +345,7 @@ describe("Amazon — affiliate param preserved", () => {
     assert.equal(clean.searchParams.get("tag"), "someaffiliate-21");
     assert.ok(removedTracking.includes("utm_source"));
     assert.ok(removedTracking.includes("utm_medium"));
+    assert.equal(junkRemoved, 2);
   });
 
   test("amazon.com: tag= is preserved when no tracking present", () => {
@@ -354,13 +356,14 @@ describe("Amazon — affiliate param preserved", () => {
   });
 
   test("amazon internal noise params are stripped", () => {
-    const { removedTracking } = processUrl(
+    const { removedTracking, junkRemoved } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&psc=1&pd_rd_r=abc&linkCode=ll1",
       PREFS
     );
     assert.ok(removedTracking.includes("psc"));
     assert.ok(removedTracking.includes("pd_rd_r"));
     assert.ok(removedTracking.includes("linkCode"));
+    assert.equal(junkRemoved, 3);
   });
 
 });
@@ -631,8 +634,9 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("full real URL 2 from issue #1", () => {
     const raw = "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=amzn1.sym.8303e4e0&pd_rd_i=B0GQ4N9N33&th=1";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl, junkRemoved } = processUrl(raw, PREFS);
     assert.equal(new URL(cleanUrl).href, "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/");
+    assert.equal(junkRemoved, 4);
   });
 
 });

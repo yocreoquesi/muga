@@ -118,6 +118,7 @@ function initLanguageSelect() {
     applyTranslations(currentLang);
     // Re-render dynamic lists with new language
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+    renderList("custom-params-items", prefs.customParams || [], "customParams");
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
   });
@@ -172,6 +173,7 @@ function initExportImport() {
       version: chrome.runtime.getManifest().version,
       blacklist: prefs.blacklist,
       whitelist: prefs.whitelist,
+      customParams: prefs.customParams,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -194,16 +196,17 @@ function initExportImport() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist)) {
+      if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist) || !Array.isArray(data.customParams)) {
         throw new Error("invalid");
       }
       const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500;
-      if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry)) {
+      if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
         throw new Error("invalid");
       }
-      await chrome.storage.sync.set({ blacklist: data.blacklist, whitelist: data.whitelist });
+      await chrome.storage.sync.set({ blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams });
       renderList("blacklist-items", data.blacklist, "blacklist");
       renderList("whitelist-items", data.whitelist, "whitelist");
+      renderList("custom-params-items", data.customParams, "customParams");
       alert(t("import_success", currentLang));
     } catch {
       alert(t("import_error", currentLang));

@@ -65,7 +65,7 @@ export const TRANSLATIONS = {
   wl_hint:  { en: "Format: <code>domain::param::value</code>. That creator's affiliate tag is never modified.", es: "Formato: <code>dominio::parámetro::valor</code>. El afiliado de ese creador nunca se toca." },
   add_btn:  { en: "+ Add", es: "+ Añadir" },
   empty_list: { en: "No entries yet.", es: "Sin entradas todavía." },
-  privacy_link: { en: "Privacy policy", es: "Política de privacidad" },
+  muga_disabled: { en: "MUGA is disabled", es: "MUGA está desactivado" },
   section_language: { en: "Language", es: "Idioma" },
   lang_label:  { en: "Display language", es: "Idioma de la interfaz" },
   lang_hint:   { en: "Affects the popup and settings page. Does not affect URL processing.", es: "Afecta al popup y a esta página. No afecta al procesamiento de URLs." },
