@@ -5,8 +5,9 @@
     "action": {
       "type": "redirect",
       "redirect": {
-        "queryTransform": {
-          "removeParams": [
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
             "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
             "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
             "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
@@ -36,6 +37,7 @@
             "srsltid", "wickedid"
           ]
         }
+      }
       }
     },
     "condition": {
