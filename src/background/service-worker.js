@@ -13,15 +13,21 @@ migrateStatsToLocal();
 // --- Prefs cache ---
 
 let cachedPrefs = null;
+let prefsFetchPromise = null;
 
-async function getPrefsWithCache() {
-  if (!cachedPrefs) {
-    cachedPrefs = await getPrefs();
-    // Pre-parse blacklist/whitelist once so processUrl doesn't re-parse on every call
-    cachedPrefs._parsedBlacklist = (cachedPrefs.blacklist || []).map(parseListEntry);
-    cachedPrefs._parsedWhitelist = (cachedPrefs.whitelist || []).map(parseListEntry);
+function getPrefsWithCache() {
+  if (cachedPrefs) return Promise.resolve(cachedPrefs);
+  if (!prefsFetchPromise) {
+    prefsFetchPromise = getPrefs().then(prefs => {
+      // Pre-parse blacklist/whitelist once so processUrl doesn't re-parse on every call
+      prefs._parsedBlacklist = (prefs.blacklist || []).map(parseListEntry);
+      prefs._parsedWhitelist = (prefs.whitelist || []).map(parseListEntry);
+      cachedPrefs = prefs;
+      prefsFetchPromise = null;
+      return prefs;
+    });
   }
-  return cachedPrefs;
+  return prefsFetchPromise;
 }
 
 // --- DNR sync helpers ---
@@ -110,7 +116,7 @@ async function appendHistory(original, clean) {
 // --- Storage change listener: invalidate cache and re-apply DNR state ---
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== "sync") return;
-  cachedPrefs = null; // Invalidate cache
+  cachedPrefs = null; prefsFetchPromise = null; // Invalidate cache
   if (changes.customParams || changes.dnrEnabled) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
@@ -134,10 +140,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep the channel open for the async response
   }
 
-  if (message.type === "GET_PREFS") {
-    getPrefs().then(sendResponse);
-    return true;
-  }
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {

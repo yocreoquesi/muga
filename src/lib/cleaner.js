@@ -158,14 +158,14 @@ export function processUrl(rawUrl, prefs) {
     }
   }
 
-  const junkRemoved = removedTracking.length + (pathCleaned ? 1 : 0);
-
   // 5. Strip specific blacklisted affiliate values
+  let blacklistStripped = 0;
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
       const current = url.searchParams.get(entry.param);
       if (current === entry.value) {
         url.searchParams.delete(entry.param);
+        blacklistStripped++;
         // If this was the detected foreign affiliate, clear it — the toast must not fire
         // for a parameter we already removed via the blacklist.
         if (
@@ -181,6 +181,8 @@ export function processUrl(rawUrl, prefs) {
       }
     }
   }
+
+  const junkRemoved = removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0);
 
   // 6. Inject our affiliate tag when the link has none (skip if foreign detected or stripAllAffiliates)
   if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign") {
