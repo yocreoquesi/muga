@@ -162,6 +162,8 @@ async function showHistory(lang) {
     const entryDiv = document.createElement("div");
     entryDiv.className = "history-entry";
     entryDiv.title = t("history_copy_hint", lang);
+    entryDiv.setAttribute("role", "button");
+    entryDiv.setAttribute("tabindex", "0");
 
     const beforeDiv = document.createElement("div");
     beforeDiv.className = "history-url before";
@@ -174,6 +176,14 @@ async function showHistory(lang) {
     entryDiv.appendChild(beforeDiv);
     entryDiv.appendChild(afterDiv);
     list.appendChild(entryDiv);
+
+    // Keyboard activation for history entries (#127)
+    entryDiv.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        entryDiv.click();
+      }
+    });
 
     // Click to copy clean URL (#87)
     entryDiv.addEventListener("click", () => {

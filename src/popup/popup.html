@@ -10,9 +10,9 @@
   <header>
     <div class="logo">MUGA</div>
     <div class="toggle-wrap">
-      <span class="toggle-label" data-i18n="toggle_enabled" style="display:none">Enable MUGA</span>
+      <span class="toggle-label sr-only" data-i18n="toggle_enabled">Enable MUGA</span>
       <label class="toggle" title="Enable / disable MUGA">
-        <input type="checkbox" id="enabled-toggle">
+        <input type="checkbox" id="enabled-toggle" aria-label="Enable MUGA">
         <span class="slider"></span>
       </label>
     </div>
@@ -36,11 +36,11 @@
   <section class="preview" id="preview" hidden>
     <div class="preview-header">
       <div class="preview-label" data-i18n="preview_label">This page</div>
-      <div class="tab-badge" id="tab-badge" hidden></div>
+      <div class="tab-badge" id="tab-badge" hidden aria-live="polite"></div>
     </div>
     <div class="preview-url before" id="preview-before"></div>
     <div class="preview-url after" id="preview-after"></div>
-    <div class="preview-removed" id="preview-removed" hidden></div>
+    <div class="preview-removed" id="preview-removed" hidden aria-live="polite"></div>
     <div class="preview-url clean" id="preview-clean" hidden data-i18n="preview_clean">✓ This page is already clean</div>
   </section>
 
@@ -59,8 +59,8 @@
         <span data-i18n="opt_inject_label">Inject our affiliate when none is present</span>
         <small data-i18n="opt_inject_hint">Only on stores where we have an active account</small>
       </span>
-      <label class="toggle sm">
-        <input type="checkbox" id="inject-toggle">
+      <label class="toggle sm" for="inject-toggle">
+        <input type="checkbox" id="inject-toggle" aria-label="Inject our affiliate when none is present">
         <span class="slider"></span>
       </label>
     </label>
@@ -70,8 +70,8 @@
         <span data-i18n="opt_notify_label">Notify me when a third-party affiliate is detected</span>
         <small data-i18n="opt_notify_hint">Shows a non-intrusive toast for 5 seconds</small>
       </span>
-      <label class="toggle sm">
-        <input type="checkbox" id="notify-toggle">
+      <label class="toggle sm" for="notify-toggle">
+        <input type="checkbox" id="notify-toggle" aria-label="Notify me when a third-party affiliate is detected">
         <span class="slider"></span>
       </label>
     </label>
