@@ -35,7 +35,11 @@ export const TRACKING_PARAMS = [
   "_r",
 
   // Generic
-  "ref", "source", "campaign", "cid", "clickid",
+  // "ref" removed — it's the affiliate param for PcComponentes and MediaMarkt ES/DE in
+  // AFFILIATE_PATTERNS. Applying it globally (urlFilter: "*") would strip it on those
+  // domains before the affiliate engine can act, and also break GitHub ?ref= branch refs
+  // and SPA internal navigation. Context-specific removal only via AFFILIATE_PATTERNS. (#160)
+  "source", "campaign", "cid", "clickid",
   "_hsenc", "_hsmi", "hsctatracking",
   "mkt_tok", "trk", "trkcampaign",
 
@@ -60,8 +64,10 @@ export const TRACKING_PARAMS = [
   // Amazon — legacy encoding indicator (ie=UTF8 on browse/search pages)
   "ie",
 
-  // eBay
-  "mkevt", "mkcid", "mkrid", "campid", "toolid", "customid",
+  // eBay — tracking/click params (not the affiliate param itself)
+  // "campid" removed from here — it is the eBay Partner Network affiliate param in
+  // AFFILIATE_PATTERNS. Stripping it globally would break affiliate attribution. (#160)
+  "mkevt", "mkcid", "mkrid", "toolid", "customid",
 
   // AliExpress
   "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
