@@ -22,8 +22,9 @@ import assert from "node:assert/strict";
 // Keep in sync with src/content/redirect-unwrap.js
 // "location", "return", "continue" excluded — too generic (SPA routing, OAuth flows)
 // "to", "next", "target" excluded — too generic (SPA routing, auth flows, UI targets)
+// "destination" excluded — SSO/corporate post-auth redirect target; unwrapping bypasses login (#158)
 const REDIRECT_PARAMS = [
-  "url", "redirect", "redirect_url", "destination", "dest",
+  "url", "redirect", "redirect_url", "dest",
   "goto", "returnUrl", "return_url",
 ];
 
@@ -93,13 +94,6 @@ describe("redirect-unwrap — supported wrapper patterns", () => {
     assert.equal(dest, "https://shop.com/product?id=42");
   });
 
-  test("Generic tracker with ?destination= param", () => {
-    const dest = extractRedirectDestination(
-      "https://partner.example.com/go?destination=https://merchant.com/deal"
-    );
-    assert.equal(dest, "https://merchant.com/deal");
-  });
-
   test("Generic tracker with ?goto= param", () => {
     const dest = extractRedirectDestination(
       "https://track.example.com/out?goto=https://publisher.com/article"
@@ -127,6 +121,16 @@ describe("redirect-unwrap — supported wrapper patterns", () => {
 // Safety guards — these must NOT be unwrapped
 // ---------------------------------------------------------------------------
 describe("redirect-unwrap — safety guards", () => {
+
+  test("SSO ?destination= param is NOT unwrapped (would bypass corporate login)", () => {
+    // "destination" is used by corporate/government SSO to signal post-auth redirect target.
+    // MUGA must NOT unwrap it — doing so lets the user reach the resource without
+    // completing authentication. See issue #158.
+    const dest = extractRedirectDestination(
+      "https://sso.empresa.com/login?destination=https://intranet.empresa.com/dashboard"
+    );
+    assert.equal(dest, null);
+  });
 
   test("same-origin destination is NOT unwrapped", () => {
     // Internal SPA navigation: ?next=/dashboard or ?next=https://same.com/page
