@@ -86,3 +86,74 @@ test("PREF_DEFAULTS contains unwrapRedirects: true (v1.3 redirect unwrapping)", 
   const { PREF_DEFAULTS } = await import("../../src/lib/storage.js");
   assert.equal(PREF_DEFAULTS.unwrapRedirects, true);
 });
+
+// ---------------------------------------------------------------------------
+// Affiliate / tracking param integrity — build-time collision detection
+// (issue #159)
+//
+// Test 9 will FAIL with current code — that is intentional. It documents a
+// known bug: 'campid' and 'ref' appear in both TRACKING_PARAMS and
+// AFFILIATE_PATTERNS, meaning the cleaner would strip them before the
+// affiliate injector has a chance to preserve them. Zara is fixing this in a
+// parallel branch. Once that fix lands, all three tests below must pass.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Test 9 — No collision between TRACKING_PARAMS and affiliate params
+// ---------------------------------------------------------------------------
+test("No param appears in both TRACKING_PARAMS and AFFILIATE_PATTERNS (collision = bug)", async () => {
+  const { TRACKING_PARAMS, AFFILIATE_PATTERNS } = await import("../../src/lib/affiliates.js");
+
+  const trackingSet = new Set(TRACKING_PARAMS);
+  const collisions = [...new Set(AFFILIATE_PATTERNS.map(e => e.param))].filter(p => trackingSet.has(p));
+
+  assert.equal(
+    collisions.length,
+    0,
+    `Collision detected: params ${JSON.stringify(collisions)} appear in both TRACKING_PARAMS and AFFILIATE_PATTERNS`
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Test 10 — Every AFFILIATE_PATTERNS entry has param (non-empty string) and domains (array)
+// ---------------------------------------------------------------------------
+test("Every AFFILIATE_PATTERNS entry has a non-empty param and a domains array", async () => {
+  const { AFFILIATE_PATTERNS } = await import("../../src/lib/affiliates.js");
+
+  const invalid = AFFILIATE_PATTERNS.filter(
+    e => typeof e.param !== "string" || e.param.trim() === "" || !Array.isArray(e.domains)
+  );
+
+  assert.equal(
+    invalid.length,
+    0,
+    `AFFILIATE_PATTERNS entries missing param or domains: ${JSON.stringify(invalid.map(e => e.id))}`
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Test 11 — No duplicate domain+param combinations within AFFILIATE_PATTERNS
+// ---------------------------------------------------------------------------
+test("No domain appears in more than one AFFILIATE_PATTERNS entry with the same param (ambiguous config)", async () => {
+  const { AFFILIATE_PATTERNS } = await import("../../src/lib/affiliates.js");
+
+  const seen = new Map(); // key: "domain:param" → first entry id
+  const duplicates = [];
+
+  for (const entry of AFFILIATE_PATTERNS) {
+    for (const domain of entry.domains) {
+      const key = `${domain}:${entry.param}`;
+      if (seen.has(key)) {
+        duplicates.push({ key, first: seen.get(key), second: entry.id });
+      } else {
+        seen.set(key, entry.id);
+      }
+    }
+  }
+
+  assert.equal(
+    duplicates.length,
+    0,
+    `Duplicate domain+param combinations found: ${JSON.stringify(duplicates)}`
+  );
+});
