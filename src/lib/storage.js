@@ -23,6 +23,7 @@ export const PREF_DEFAULTS = {
   unwrapRedirects: true,
   language: "en",
   onboardingDone: false,
+  disabledCategories: [],  // e.g. ["utm", "ads"] — params in these categories are not stripped
 };
 
 export async function getPrefs() {

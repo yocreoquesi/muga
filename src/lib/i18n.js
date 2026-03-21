@@ -72,6 +72,9 @@ export const TRANSLATIONS = {
   add_btn:  { en: "+ Add", es: "+ Añadir" },
   empty_list: { en: "No entries yet.", es: "Sin entradas todavía." },
   muga_disabled: { en: "MUGA is disabled", es: "MUGA está desactivado" },
+  section_tracking_categories: { en: "Tracking categories", es: "Categorías de rastreo" },
+  categories_hint: { en: "Enable or disable stripping for each param category. Disabling a category keeps those parameters in URLs.", es: "Activa o desactiva la eliminación por categoría. Desactivar una categoría conserva esos parámetros en las URLs." },
+
   section_language: { en: "Language", es: "Idioma" },
   lang_label:  { en: "Display language", es: "Idioma de la interfaz" },
   lang_hint:   { en: "Affects the popup and settings page. Does not affect URL processing.", es: "Afecta al popup y a esta página. No afecta al procesamiento de URLs." },

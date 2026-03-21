@@ -3,7 +3,7 @@
  */
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
-import { getSupportedStores } from "../lib/affiliates.js";
+import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS } from "../lib/storage.js";
 
 let currentLang = "en";
@@ -32,6 +32,7 @@ async function init() {
   renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
+  renderCategories(prefs.disabledCategories || []);
   renderStores();
   initLanguageSelect();
   bindListButtons();
@@ -92,6 +93,61 @@ function bindListButtons() {
     addEntry("blacklist", "bl-input", "blacklist-items"));
   document.getElementById("wl-add-btn").addEventListener("click", () =>
     addEntry("whitelist", "wl-input", "whitelist-items"));
+}
+
+function renderCategories(disabledCategories) {
+  const card = document.getElementById("categories-card");
+  card.innerHTML = "";
+  const disabled = new Set(disabledCategories);
+
+  for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+    const isEs = currentLang === "es";
+    const label = isEs ? cat.labelEs : cat.label;
+    const desc = isEs ? cat.descriptionEs : cat.description;
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const labelDiv = document.createElement("div");
+    labelDiv.className = "row-label";
+
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+
+    const small = document.createElement("small");
+    small.textContent = desc;
+
+    labelDiv.appendChild(strong);
+    labelDiv.appendChild(small);
+
+    const toggle = document.createElement("label");
+    toggle.className = "toggle";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = `cat-${key}`;
+    input.checked = !disabled.has(key);
+    input.addEventListener("change", async () => {
+      const prefs = await chrome.storage.sync.get({ disabledCategories: [] });
+      const set = new Set(prefs.disabledCategories);
+      if (input.checked) {
+        set.delete(key);
+      } else {
+        set.add(key);
+      }
+      await chrome.storage.sync.set({ disabledCategories: [...set] });
+    });
+
+    const slider = document.createElement("span");
+    slider.className = "slider";
+
+    toggle.appendChild(input);
+    toggle.appendChild(slider);
+
+    row.appendChild(labelDiv);
+    row.appendChild(toggle);
+    card.appendChild(row);
+  }
 }
 
 function renderStores() {
