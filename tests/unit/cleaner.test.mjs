@@ -626,16 +626,23 @@ describe("Amazon — real-world URL cleaning", () => {
     assert.ok(u.pathname.includes("/ref=tracking"), "non-Amazon path must not be modified");
   });
 
-  test("full real URL 1 from issue #1", () => {
+  test("full real URL 1 from issue #1 — slug now stripped by FIX-A3", () => {
+    // FIX-A3: product name slug before /dp/ is now stripped, so the expected path
+    // is /dp/ASIN/ rather than /Emergencia-Homologada/dp/ASIN/
     const raw = "https://www.amazon.es/Emergencia-Homologada/dp/B0GF8C2S62/?_encoding=UTF8&content-id=amzn1.sym.0a1e4d50&ref_=pd_hp_d_atf_unk&th=1";
     const { cleanUrl } = processUrl(raw, PREFS);
-    assert.equal(new URL(cleanUrl).href, "https://www.amazon.es/Emergencia-Homologada/dp/B0GF8C2S62/");
+    const u = new URL(cleanUrl);
+    assert.equal(u.pathname, "/dp/B0GF8C2S62/", "slug must be stripped, ASIN path preserved");
+    assert.equal(u.search, "");
   });
 
-  test("full real URL 2 from issue #1", () => {
+  test("full real URL 2 from issue #1 — slug now stripped by FIX-A3", () => {
+    // FIX-A3: product name slug before /dp/ is now stripped
     const raw = "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=amzn1.sym.8303e4e0&pd_rd_i=B0GQ4N9N33&th=1";
     const { cleanUrl, junkRemoved } = processUrl(raw, PREFS);
-    assert.equal(new URL(cleanUrl).href, "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/");
+    const u = new URL(cleanUrl);
+    assert.equal(u.pathname, "/dp/B0GQ4N9N33/", "slug must be stripped, ASIN path preserved");
+    assert.equal(u.search, "");
     assert.equal(junkRemoved, 4);
   });
 
@@ -861,6 +868,68 @@ describe("affiliate param / tracking param collision", () => {
     const clean = new URL(cleanUrl);
     assert.equal(clean.searchParams.get("ref"), "creator-21",
       "whitelisted ref= must be preserved on pccomponentes");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Amazon extended cleaning (FIX-A1/A2/A3)
+// ---------------------------------------------------------------------------
+describe("Amazon extended cleaning", () => {
+
+  test("product slug + ASIN path is cleaned: /UGREEN-Adaptador/dp/B0B9N3QSL3/ref=sr_1_7 → /dp/B0B9N3QSL3/", () => {
+    const raw = "https://www.amazon.es/UGREEN-Adaptador/dp/B0B9N3QSL3/ref=sr_1_7";
+    const { cleanUrl } = processUrl(raw, PREFS);
+    const u = new URL(cleanUrl);
+    assert.equal(u.pathname, "/dp/B0B9N3QSL3/",
+      "slug before /dp/ must be removed and /ref= after ASIN must be removed");
+  });
+
+  test("path without slug still cleaned correctly: /dp/B0B9N3QSL3/ref=sr_1_7 → /dp/B0B9N3QSL3", () => {
+    const raw = "https://www.amazon.es/dp/B0B9N3QSL3/ref=sr_1_7";
+    const { cleanUrl } = processUrl(raw, PREFS);
+    const u = new URL(cleanUrl);
+    assert.equal(u.pathname, "/dp/B0B9N3QSL3/",
+      "/dp/ASIN path without slug must still have trailing /ref= stripped");
+  });
+
+  test("__mk_es_ES is stripped from an Amazon URL", () => {
+    const raw = "https://www.amazon.es/s?k=usb+hub&__mk_es_ES=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=abc";
+    const { cleanUrl, removedTracking } = processUrl(raw, PREFS);
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("__mk_es_ES"), null, "__mk_es_ES must be stripped");
+    assert.ok(removedTracking.includes("__mk_es_ES"), "__mk_es_ES must appear in removedTracking");
+    assert.equal(u.searchParams.get("k"), "usb hub", "functional k= param must be preserved (+ decoded as space)");
+  });
+
+  test("ie=UTF8 is stripped from an Amazon browse URL", () => {
+    const raw = "https://www.amazon.es/s?k=laptop&ie=UTF8&index=electronics";
+    const { cleanUrl, removedTracking } = processUrl(raw, PREFS);
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("ie"), null, "ie= must be stripped");
+    assert.ok(removedTracking.includes("ie"), "ie must appear in removedTracking");
+    assert.equal(u.searchParams.get("k"), "laptop", "k= must be preserved");
+  });
+
+  test("node= is NOT stripped from an Amazon browse URL (functional category param)", () => {
+    const raw = "https://www.amazon.es/s?k=laptop&node=938005031";
+    const { cleanUrl } = processUrl(raw, PREFS);
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("node"), "938005031",
+      "node= is a functional category filter and must NOT be stripped");
+  });
+
+  test("ref=sr_1_7 in path is not treated as a detected_foreign action", () => {
+    // ref= is in TRACKING_PARAMS generically, but on amazon.es the affiliate param
+    // is tag=, not ref=. Path-based /ref= is cleaned by cleanAmazonPath, not flagged
+    // as a foreign affiliate. This confirms no spurious detected_foreign is raised.
+    const raw = "https://www.amazon.es/UGREEN-Adaptador/dp/B0B9N3QSL3/ref=sr_1_7?psc=1";
+    const { action } = processUrl(raw, {
+      ...PREFS,
+      notifyForeignAffiliate: true,
+    });
+    assert.notEqual(action, "detected_foreign",
+      "path-based /ref= must not trigger foreign affiliate detection");
   });
 
 });
