@@ -18,6 +18,10 @@ async function init() {
   bindToggle("notify", "notifyForeignAffiliate", prefs);
   bindToggle("replace", "allowReplaceAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
+  bindToggle("dnr-enabled", "dnrEnabled", prefs);
+  bindToggle("block-pings", "blockPings", prefs);
+  bindToggle("amp-redirect", "ampRedirect", prefs);
+  bindToggle("unwrap-redirects", "unwrapRedirects", prefs);
 
   renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");

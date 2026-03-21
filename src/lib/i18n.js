@@ -71,6 +71,18 @@ export const TRANSLATIONS = {
   lang_label:  { en: "Display language", es: "Idioma de la interfaz" },
   lang_hint:   { en: "Affects the popup and settings page. Does not affect URL processing.", es: "Afecta al popup y a esta página. No afecta al procesamiento de URLs." },
 
+  section_url_cleaning:  { en: "URL Cleaning",                       es: "Limpieza de URLs" },
+  row_dnr_label:         { en: "Strip tracking parameters before navigation", es: "Eliminar parámetros de rastreo antes de navegar" },
+  row_dnr_hint:          { en: "Uses browser-native rules to clean URLs from the address bar, bookmarks, and external apps", es: "Usa reglas nativas del navegador para limpiar URLs desde la barra de direcciones, marcadores y apps externas" },
+  section_privacy:       { en: "Privacy",                            es: "Privacidad" },
+  row_pings_label:       { en: "Block <a ping> tracking beacons",    es: "Bloquear balizas de rastreo <a ping>" },
+  row_pings_hint:        { en: "Removes ping attributes from links so the browser doesn't send tracking beacons on click", es: "Elimina atributos ping para que el navegador no envíe balizas al hacer clic" },
+  section_redirects:     { en: "Redirect handling",                  es: "Gestión de redirecciones" },
+  row_amp_label:         { en: "Redirect AMP pages to canonical URL", es: "Redirigir páginas AMP a la URL canónica" },
+  row_amp_hint:          { en: "Replaces Google AMP links with the original article URL", es: "Reemplaza los enlaces AMP de Google con la URL original del artículo" },
+  row_unwrap_label:      { en: "Unwrap redirect-wrapper URLs",        es: "Desenvolver URLs de redirección" },
+  row_unwrap_hint:       { en: "Extracts the real destination from Facebook, Reddit, Google, Steam and similar redirect wrappers", es: "Extrae el destino real de redireccionadores de Facebook, Reddit, Google, Steam y similares" },
+
   section_stats:         { en: "Statistics",                                                                        es: "Estadísticas" },
   stats_reset_btn:       { en: "Reset stats",                                                                       es: "Reiniciar stats" },
   stats_reset_confirm:   { en: "Are you sure? This will clear all counters.",                                       es: "¿Seguro? Se borrarán todos los contadores." },
