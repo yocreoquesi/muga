@@ -3,7 +3,7 @@
  * Exported as a module for use in the service worker.
  */
 
-import { TRACKING_PARAMS, getPatternsForHost } from "./affiliates.js";
+import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "./affiliates.js";
 
 /**
  * Parses a blacklist/whitelist entry string into a structured object.
@@ -155,12 +155,26 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   const affiliateParamNames = patterns.map(p => p.param.toLowerCase());
   const customParams = (prefs.customParams || []).map(p => p.toLowerCase());
   const preservedParams = getPreservedParams(hostname, domainRules);
+
+  // Build effective tracking params list: exclude params that belong to a disabled category
+  const disabledCategories = new Set(prefs.disabledCategories || []);
+  const disabledParams = new Set();
+  if (disabledCategories.size > 0) {
+    for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+      if (disabledCategories.has(key)) {
+        cat.params.forEach(p => disabledParams.add(p.toLowerCase()));
+      }
+    }
+  }
+
   for (const param of [...url.searchParams.keys()]) {
     const lower = param.toLowerCase();
     // Don't strip params that are affiliate identifiers for this host
     if (affiliateParamNames.includes(lower)) continue;
     // Don't strip params that are functional on this domain (domain-rules compatibility)
     if (preservedParams.has(lower)) continue;
+    // Don't strip params whose category has been disabled by the user
+    if (disabledParams.has(lower)) continue;
     if (TRACKING_PARAMS.includes(lower) || customParams.includes(lower)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
