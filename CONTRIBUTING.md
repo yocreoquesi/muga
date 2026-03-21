@@ -87,7 +87,13 @@ Output goes to `dist/`. Uses `web-ext` (Mozilla).
 
 ## Adding tracking parameters
 
-Edit `src/lib/affiliates.js` — add to the `TRACKING_PARAMS` array. Parameters are stripped by both the DNR static rule (`src/rules/tracking-params.json`) and the content script cleaner. Keep both in sync.
+Edit `src/lib/affiliates.js` — add to the `TRACKING_PARAMS` array. Then regenerate the DNR rules file:
+
+```bash
+npm run build:rules
+```
+
+`src/rules/tracking-params.json` is a **generated artifact** — do not edit it by hand. The single source of truth is `TRACKING_PARAMS` in `affiliates.js`. The CI pipeline enforces this: it runs `npm run build:rules` and fails if the generated file differs from what is committed.
 
 ## Adding affiliate stores
 
