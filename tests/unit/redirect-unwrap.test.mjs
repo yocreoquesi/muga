@@ -21,9 +21,10 @@ import assert from "node:assert/strict";
 // ---------------------------------------------------------------------------
 // Keep in sync with src/content/redirect-unwrap.js
 // "location", "return", "continue" excluded — too generic (SPA routing, OAuth flows)
+// "to", "next", "target" excluded — too generic (SPA routing, auth flows, UI targets)
 const REDIRECT_PARAMS = [
   "url", "redirect", "redirect_url", "destination", "dest",
-  "target", "to", "goto", "next", "returnUrl", "return_url",
+  "goto", "returnUrl", "return_url",
 ];
 
 /**
@@ -113,9 +114,9 @@ describe("redirect-unwrap — supported wrapper patterns", () => {
     assert.equal(dest, "https://destination.com/path?q=test");
   });
 
-  test("?to= param unwraps external URL", () => {
+  test("?goto= param unwraps external URL", () => {
     const dest = extractRedirectDestination(
-      "https://click.example.com/?to=https://external.com/landing"
+      "https://click.example.com/?goto=https://external.com/landing"
     );
     assert.equal(dest, "https://external.com/landing");
   });
