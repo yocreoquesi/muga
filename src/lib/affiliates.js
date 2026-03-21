@@ -172,6 +172,149 @@ export const TRACKING_PARAMS = [
   "ab_version", // A/B test version
 ];
 
+export const TRACKING_PARAM_CATEGORIES = {
+  utm: {
+    label: "UTM / Campaign",
+    labelEs: "UTM / Campaña",
+    description: "Google Analytics UTM parameters (utm_source, utm_medium, etc.)",
+    descriptionEs: "Parámetros UTM de Google Analytics",
+    params: [
+      "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+      "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
+    ],
+  },
+  ads: {
+    label: "Paid Ads Clicks",
+    labelEs: "Clics de publicidad",
+    description: "Click IDs from Google Ads, Facebook, TikTok, LinkedIn, Microsoft, Twitter, etc.",
+    descriptionEs: "IDs de clic de Google Ads, Facebook, TikTok, etc.",
+    params: [
+      // Google / Meta / Microsoft core
+      "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
+      "msclkid", "tclid", "twclid",
+      // Affiliate networks
+      "irgwc", "cjevent", "tduid",
+      // Rakuten / LinkShare
+      "ranmid", "raneaid", "ransiteid",
+      // TradeTracker
+      "ttaid", "ttrk", "ttcid",
+      // Google Shopping
+      "srsltid",
+      // LinkedIn Ads
+      "li_fat_id", "li_extra", "li_source",
+      // Adobe Analytics
+      "s_kwcid", "ef_id",
+      // TikTok Ads
+      "ttclid",
+      // Microsoft Advertising
+      "mscid",
+      // Outbrain
+      "obOrigUrl", "outbrainclickid",
+      // Taboola
+      "taboola_campaign_id", "tblci",
+      // Criteo
+      "criteo_id",
+      // Google Ads additional
+      "gad_source",
+      // Facebook / Meta additional
+      "fbc", "fbp",
+      // Snapchat
+      "sccid",
+      // Reddit
+      "rdt_cid",
+      // Zemanta / Outbrain DSP
+      "zemclick",
+      // Generic click / ad IDs
+      "click_id", "ad_id",
+    ],
+  },
+  email: {
+    label: "Email Marketing",
+    labelEs: "Email marketing",
+    description: "Tracking from Klaviyo, HubSpot, Iterable, Marketo, Pardot, ActiveCampaign, etc.",
+    descriptionEs: "Rastreo de Klaviyo, HubSpot, Iterable, Marketo, etc.",
+    params: [
+      // Mailchimp
+      "mc_cid", "mc_eid", "mailingid", "hqemail",
+      // HubSpot
+      "_hsenc", "_hsmi", "hsctatracking", "__hstc", "__hsfp", "__hssc",
+      // Marketo
+      "mkt_tok", "_mkto_trk",
+      // Generic email
+      "trk", "trkcampaign",
+      // Iterable
+      "itm_campaign", "itm_content", "itm_medium", "itm_source", "itm_term",
+      // Klaviyo
+      "_kx", "klaviyo_id",
+      // ActiveCampaign
+      "vgo_ee",
+      // Pardot / Salesforce
+      "pi_ad_id", "pi_campaign_id", "sfdcImpactSrc",
+      // Drip
+      "dm_i",
+      // Omnisend
+      "omnisendContactID",
+      // Sendinblue / Brevo
+      "sib_id",
+    ],
+  },
+  social: {
+    label: "Social Media",
+    labelEs: "Redes sociales",
+    description: "Tracking from Instagram, Pinterest, Snapchat, TikTok shares, etc.",
+    descriptionEs: "Rastreo de Instagram, Pinterest, Snapchat, etc.",
+    params: [
+      // Instagram
+      "igshid", "igsh",
+      // Pinterest
+      "e_t", "epik", "pin_unauth",
+      // Snapchat
+      "sc_channel", "sc_country", "sc_funnel", "sc_segment", "sc_icid",
+    ],
+  },
+  platform_noise: {
+    label: "Platform Noise",
+    labelEs: "Ruido de plataforma",
+    description: "Session IDs, A/B test tokens, internal routing params added by CDNs and platforms.",
+    descriptionEs: "IDs de sesión, tokens A/B, parámetros internos de CDNs y plataformas.",
+    params: [
+      // YouTube share
+      "si",
+      // TikTok
+      "_r",
+      // Generic
+      "source", "campaign", "cid", "clickid",
+      // Microsoft / Windows
+      "ocid",
+      // Amazon
+      "psc", "spla",
+      "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
+      "pf_rd_p", "pf_rd_r",
+      "linkcode", "linkid",
+      "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
+      "th", "_encoding", "content-id", "ref_",
+      "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
+      "ie",
+      // eBay
+      "mkevt", "mkcid", "mkrid", "toolid", "customid",
+      // AliExpress
+      "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
+      // A/B test
+      "ab_channel", "ab_version",
+    ],
+  },
+  generic: {
+    label: "Generic Tracking",
+    labelEs: "Rastreo genérico",
+    description: "Common generic tracking params used across many platforms.",
+    descriptionEs: "Parámetros de rastreo genéricos usados en múltiples plataformas.",
+    params: [
+      "s_cid",
+      "wickedid",
+    ],
+  },
+};
+
 export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_es",
