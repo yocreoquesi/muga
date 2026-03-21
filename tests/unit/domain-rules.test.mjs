@@ -1,0 +1,432 @@
+/**
+ * MUGA — Unit tests for domain-rules.json compatibility layer
+ *
+ * Verifies that functional URL params on top-100 sites are preserved
+ * while tracking params are still stripped.
+ *
+ * Run with: npm test
+ */
+
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { processUrl, getPreservedParams } from "../../src/lib/cleaner.js";
+
+const require = createRequire(import.meta.url);
+const domainRules = require("../../src/rules/domain-rules.json");
+
+// ---------------------------------------------------------------------------
+// Base prefs — minimal, tracking strip always on
+// ---------------------------------------------------------------------------
+const PREFS = {
+  enabled: true,
+  injectOwnAffiliate: false,
+  notifyForeignAffiliate: false,
+  allowReplaceAffiliate: false,
+  blacklist: [],
+  whitelist: [],
+};
+
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+function clean(rawUrl) {
+  return processUrl(rawUrl, PREFS, domainRules);
+}
+
+// ---------------------------------------------------------------------------
+// getPreservedParams unit tests
+// ---------------------------------------------------------------------------
+describe("getPreservedParams", () => {
+  test("returns empty set when domainRules is empty", () => {
+    const s = getPreservedParams("google.com", []);
+    assert.equal(s.size, 0);
+  });
+
+  test("exact domain match", () => {
+    const rules = [{ domain: "google.com", preserveParams: ["q", "hl"] }];
+    const s = getPreservedParams("google.com", rules);
+    assert.ok(s.has("q"));
+    assert.ok(s.has("hl"));
+  });
+
+  test("subdomain match — www.google.com matches google.com rule", () => {
+    const rules = [{ domain: "google.com", preserveParams: ["q"] }];
+    const s = getPreservedParams("www.google.com", rules);
+    assert.ok(s.has("q"));
+  });
+
+  test("deep subdomain match — mail.google.com matches google.com rule", () => {
+    const rules = [{ domain: "google.com", preserveParams: ["hl"] }];
+    const s = getPreservedParams("mail.google.com", rules);
+    assert.ok(s.has("hl"));
+  });
+
+  test("non-matching domain returns empty set", () => {
+    const rules = [{ domain: "google.com", preserveParams: ["q"] }];
+    const s = getPreservedParams("bing.com", rules);
+    assert.equal(s.size, 0);
+  });
+
+  test("partial domain must not match — egoogle.com must NOT match google.com", () => {
+    const rules = [{ domain: "google.com", preserveParams: ["q"] }];
+    const s = getPreservedParams("egoogle.com", rules);
+    assert.equal(s.size, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Google — search query preserved, tracking stripped
+// ---------------------------------------------------------------------------
+describe("Google search", () => {
+  test("preserves q, strips si (YouTube share tracking reused by Google)", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.google.com/search?q=javascript+tutorial&si=tracking123&utm_source=newsletter"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "javascript tutorial");
+    assert.ok(!u.searchParams.has("si"));
+    assert.ok(!u.searchParams.has("utm_source"));
+    assert.ok(removedTracking.includes("utm_source"));
+  });
+
+  test("preserves hl and gl — language and region params", () => {
+    const { cleanUrl } = clean(
+      "https://www.google.com/search?q=test&hl=es&gl=ES&gclid=abc123"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "test");
+    assert.equal(u.searchParams.get("hl"), "es");
+    assert.equal(u.searchParams.get("gl"), "ES");
+    assert.ok(!u.searchParams.has("gclid"));
+  });
+
+  test("preserves tbm (search type) and num (results count)", () => {
+    const { cleanUrl } = clean(
+      "https://www.google.com/search?q=muga&tbm=isch&num=20&fbclid=xyz"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("tbm"), "isch");
+    assert.equal(u.searchParams.get("num"), "20");
+    assert.ok(!u.searchParams.has("fbclid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bing — search params preserved
+// ---------------------------------------------------------------------------
+describe("Bing search", () => {
+  test("preserves q and form, strips msclkid", () => {
+    const { cleanUrl } = clean(
+      "https://www.bing.com/search?q=node+js&form=QBLH&msclkid=abc"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "node js");
+    assert.equal(u.searchParams.get("form"), "QBLH");
+    assert.ok(!u.searchParams.has("msclkid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DuckDuckGo — search query preserved
+// ---------------------------------------------------------------------------
+describe("DuckDuckGo search", () => {
+  test("preserves q, strips utm_source", () => {
+    const { cleanUrl } = clean(
+      "https://duckduckgo.com/?q=privacy+browser&utm_source=email"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "privacy browser");
+    assert.ok(!u.searchParams.has("utm_source"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Amazon — product/search params preserved, internal tracking stripped
+// ---------------------------------------------------------------------------
+describe("Amazon", () => {
+  test("preserves k (search keyword) and s (sort), strips pd_rd_r and psc", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.amazon.com/s?k=laptop&s=review-rank&pd_rd_r=abc123&psc=1"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("k"), "laptop");
+    assert.equal(u.searchParams.get("s"), "review-rank");
+    assert.ok(!u.searchParams.has("pd_rd_r"));
+    assert.ok(!u.searchParams.has("psc"));
+    assert.ok(removedTracking.includes("pd_rd_r"));
+  });
+
+  test("preserves ref on amazon.es (browse context), strips linkCode", () => {
+    const { cleanUrl } = clean(
+      "https://www.amazon.es/s?k=auriculares&ref=nb_sb_noss&linkCode=ll2"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("k"), "auriculares");
+    assert.equal(u.searchParams.get("ref"), "nb_sb_noss");
+    assert.ok(!u.searchParams.has("linkCode"));
+  });
+
+  test("strips ascsubtag on amazon.com", () => {
+    const { cleanUrl } = clean(
+      "https://www.amazon.com/dp/B0ABC12345/?ascsubtag=abc&k=test"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("ascsubtag"));
+    assert.equal(u.searchParams.get("k"), "test");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// eBay — search params preserved, tracking stripped
+// ---------------------------------------------------------------------------
+describe("eBay", () => {
+  test("preserves _nkw and _sacat, strips mkevt and mkcid", () => {
+    const { cleanUrl } = clean(
+      "https://www.ebay.com/sch/i.html?_nkw=iphone+13&_sacat=0&mkevt=1&mkcid=1"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("_nkw"), "iphone 13");
+    assert.equal(u.searchParams.get("_sacat"), "0");
+    assert.ok(!u.searchParams.has("mkevt"));
+    assert.ok(!u.searchParams.has("mkcid"));
+  });
+
+  test("preserves _sop (sort order) on ebay.es", () => {
+    const { cleanUrl } = clean(
+      "https://www.ebay.es/sch/i.html?_nkw=tablet&_sop=12&mkrid=abc"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("_sop"), "12");
+    assert.ok(!u.searchParams.has("mkrid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// YouTube — video/playlist params preserved, si stripped
+// ---------------------------------------------------------------------------
+describe("YouTube", () => {
+  test("preserves v, t and list — strips si (share tracking)", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42&list=PLtest123&si=trackingtoken"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("v"), "dQw4w9WgXcQ");
+    assert.equal(u.searchParams.get("t"), "42");
+    assert.equal(u.searchParams.get("list"), "PLtest123");
+    assert.ok(!u.searchParams.has("si"));
+    assert.ok(removedTracking.includes("si"));
+  });
+
+  test("ab_channel is preserved on YouTube (functional — channel context)", () => {
+    // ab_channel is in global TRACKING_PARAMS but YouTube domain rule preserves it
+    const { cleanUrl } = clean(
+      "https://www.youtube.com/watch?v=abc&ab_channel=Fireship&si=trackme"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("v"), "abc");
+    assert.equal(u.searchParams.get("ab_channel"), "Fireship");
+    assert.ok(!u.searchParams.has("si"));
+  });
+
+  test("ab_channel is stripped on non-YouTube domain (global tracking param)", () => {
+    const { cleanUrl } = clean(
+      "https://example.com/page?ab_channel=test&utm_source=email"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("ab_channel"));
+    assert.ok(!u.searchParams.has("utm_source"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reddit — sort/pagination preserved, tracking stripped
+// ---------------------------------------------------------------------------
+describe("Reddit", () => {
+  test("preserves sort, t, after, limit — strips rdt_cid", () => {
+    const { cleanUrl } = clean(
+      "https://www.reddit.com/r/javascript/?sort=top&t=week&after=t3_abc&limit=25&rdt_cid=xyz"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("sort"), "top");
+    assert.equal(u.searchParams.get("t"), "week");
+    assert.equal(u.searchParams.get("after"), "t3_abc");
+    assert.equal(u.searchParams.get("limit"), "25");
+    assert.ok(!u.searchParams.has("rdt_cid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GitHub — tab, search, ref preserved, tracking stripped
+// ---------------------------------------------------------------------------
+describe("GitHub", () => {
+  test("preserves tab and q, strips utm_source", () => {
+    const { cleanUrl } = clean(
+      "https://github.com/search?q=muga+extension&type=repositories&utm_source=newsletter"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "muga extension");
+    assert.equal(u.searchParams.get("type"), "repositories");
+    assert.ok(!u.searchParams.has("utm_source"));
+  });
+
+  test("preserves ref (branch ref) — ref is NOT in TRACKING_PARAMS", () => {
+    const { cleanUrl } = clean(
+      "https://github.com/user/repo/tree/main?ref=main&utm_campaign=launch"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("ref"), "main");
+    assert.ok(!u.searchParams.has("utm_campaign"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wikipedia — navigation params preserved
+// ---------------------------------------------------------------------------
+describe("Wikipedia", () => {
+  test("preserves search, action, oldid — strips utm_*", () => {
+    const { cleanUrl } = clean(
+      "https://en.wikipedia.org/wiki/JavaScript?action=history&oldid=1234567&utm_source=ref"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("action"), "history");
+    assert.equal(u.searchParams.get("oldid"), "1234567");
+    assert.ok(!u.searchParams.has("utm_source"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// StackOverflow — sort and pagination preserved
+// ---------------------------------------------------------------------------
+describe("StackOverflow", () => {
+  test("preserves tab, sort, page, pagesize — strips utm_*", () => {
+    const { cleanUrl } = clean(
+      "https://stackoverflow.com/questions?tab=Votes&sort=newest&page=2&pagesize=50&utm_medium=email"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("tab"), "Votes");
+    assert.equal(u.searchParams.get("sort"), "newest");
+    assert.equal(u.searchParams.get("page"), "2");
+    assert.equal(u.searchParams.get("pagesize"), "50");
+    assert.ok(!u.searchParams.has("utm_medium"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Booking.com — booking/search params preserved
+// ---------------------------------------------------------------------------
+describe("Booking.com", () => {
+  test("preserves checkin, checkout, adults, rooms — strips utm_*", () => {
+    const { cleanUrl } = clean(
+      "https://www.booking.com/searchresults.html?ss=Madrid&checkin=2026-04-01&checkout=2026-04-05&adults=2&rooms=1&utm_source=email"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("checkin"), "2026-04-01");
+    assert.equal(u.searchParams.get("checkout"), "2026-04-05");
+    assert.equal(u.searchParams.get("adults"), "2");
+    assert.equal(u.searchParams.get("rooms"), "1");
+    assert.ok(!u.searchParams.has("utm_source"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Travel (Iberia) — flight search params preserved
+// ---------------------------------------------------------------------------
+describe("Iberia", () => {
+  test("preserves origin, destination, outboundDate, adults — strips utm_*", () => {
+    const { cleanUrl } = clean(
+      "https://www.iberia.com/flights?origin=MAD&destination=BCN&outboundDate=2026-05-01&adults=1&utm_campaign=spring"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("origin"), "MAD");
+    assert.equal(u.searchParams.get("destination"), "BCN");
+    assert.equal(u.searchParams.get("outboundDate"), "2026-05-01");
+    assert.ok(!u.searchParams.has("utm_campaign"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Domain with no rules — ALL tracking params stripped normally
+// ---------------------------------------------------------------------------
+describe("Domain with no rules", () => {
+  test("all tracking params stripped on unknown domain", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://example.com/page?utm_source=twitter&utm_campaign=launch&fbclid=abc&gclid=xyz&ref=homepage"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("utm_source"));
+    assert.ok(!u.searchParams.has("utm_campaign"));
+    assert.ok(!u.searchParams.has("fbclid"));
+    assert.ok(!u.searchParams.has("gclid"));
+    // ref is not in TRACKING_PARAMS (removed PR #165) — so it stays
+    assert.equal(u.searchParams.get("ref"), "homepage");
+    assert.ok(removedTracking.length >= 4);
+  });
+
+  test("clean URL passes through untouched when no tracking params", () => {
+    const raw = "https://example.com/article/hello-world";
+    const { cleanUrl, action } = clean(raw);
+    assert.equal(cleanUrl, raw);
+    assert.equal(action, "untouched");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LinkedIn — job search params preserved
+// ---------------------------------------------------------------------------
+describe("LinkedIn", () => {
+  test("preserves keywords and location, strips li_fat_id", () => {
+    const { cleanUrl } = clean(
+      "https://www.linkedin.com/jobs/search/?keywords=engineer&location=Madrid&li_fat_id=abc123"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("keywords"), "engineer");
+    assert.equal(u.searchParams.get("location"), "Madrid");
+    assert.ok(!u.searchParams.has("li_fat_id"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spanish real-estate sites
+// ---------------------------------------------------------------------------
+describe("Idealista", () => {
+  test("preserves tipo and order, strips utm_*", () => {
+    const { cleanUrl } = clean(
+      "https://www.idealista.com/venta-viviendas/madrid/?tipo=pisos&order=desc&utm_source=portal"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("tipo"), "pisos");
+    assert.equal(u.searchParams.get("order"), "desc");
+    assert.ok(!u.searchParams.has("utm_source"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// domainRules.json — structural validation
+// ---------------------------------------------------------------------------
+describe("domain-rules.json structure", () => {
+  test("is an array", () => {
+    assert.ok(Array.isArray(domainRules));
+  });
+
+  test("every entry has domain (string) and preserveParams (non-empty array)", () => {
+    for (const rule of domainRules) {
+      assert.equal(typeof rule.domain, "string", `bad domain in rule: ${JSON.stringify(rule)}`);
+      assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array in: ${rule.domain}`);
+      assert.ok(rule.preserveParams.length > 0, `preserveParams must not be empty in: ${rule.domain}`);
+    }
+  });
+
+  test("no duplicate domains", () => {
+    const domains = domainRules.map(r => r.domain);
+    const unique = new Set(domains);
+    assert.equal(unique.size, domains.length, "Duplicate domain entries found");
+  });
+
+  test("covers key domains: google.com, youtube.com, amazon.com, github.com, wikipedia.org", () => {
+    const domains = new Set(domainRules.map(r => r.domain));
+    for (const d of ["google.com", "youtube.com", "amazon.com", "github.com", "wikipedia.org"]) {
+      assert.ok(domains.has(d), `Missing domain rule for: ${d}`);
+    }
+  });
+});

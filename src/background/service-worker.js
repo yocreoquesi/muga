@@ -6,6 +6,7 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from "../lib/storage.js";
+import domainRules from "../rules/domain-rules.json" with { type: "json" };
 
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
@@ -157,7 +158,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
 
   let result;
   try {
-    result = processUrl(rawUrl, effectivePrefs);
+    result = processUrl(rawUrl, effectivePrefs, domainRules);
   } catch (err) {
     console.error("[MUGA] processUrl failed:", err, rawUrl);
     return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
