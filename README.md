@@ -165,6 +165,8 @@ PRs welcome for new tracking parameters, new stores, or additional languages. Re
 
 [GPL v3](LICENSE) — forks and derivative works must remain open source under the same license.
 
+This project was relicensed from MIT to GPL v3 on 2026-03-22 by the sole copyright holder. All versions, including prior releases, are retroactively covered under GPL v3.
+
 ---
 
 *Built with the assistance of AI agents ([Claude](https://www.anthropic.com/claude) by Anthropic).*
