@@ -209,6 +209,15 @@ function initExportImport() {
     const payload = {
       muga: true,
       version: chrome.runtime.getManifest().version,
+      enabled: prefs.enabled,
+      injectOwnAffiliate: prefs.injectOwnAffiliate,
+      notifyForeignAffiliate: prefs.notifyForeignAffiliate,
+      allowReplaceAffiliate: prefs.allowReplaceAffiliate,
+      stripAllAffiliates: prefs.stripAllAffiliates,
+      dnrEnabled: prefs.dnrEnabled,
+      blockPings: prefs.blockPings,
+      ampRedirect: prefs.ampRedirect,
+      unwrapRedirects: prefs.unwrapRedirects,
       blacklist: prefs.blacklist,
       whitelist: prefs.whitelist,
       customParams: prefs.customParams,
@@ -238,10 +247,18 @@ function initExportImport() {
         throw new Error("invalid");
       }
       const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500;
+      if (data.blacklist.length > 500 || data.whitelist.length > 500 || data.customParams.length > 200) {
+        throw new Error("invalid");
+      }
       if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
         throw new Error("invalid");
       }
-      await chrome.storage.sync.set({ blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams });
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "allowReplaceAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects"];
+      const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
+      for (const key of BOOL_KEYS) {
+        if (typeof data[key] === "boolean") toSave[key] = data[key];
+      }
+      await chrome.storage.sync.set(toSave);
       renderList("blacklist-items", data.blacklist, "blacklist");
       renderList("whitelist-items", data.whitelist, "whitelist");
       renderList("custom-params-items", data.customParams, "customParams");
