@@ -119,12 +119,22 @@ async function showHistory() {
   const list = document.getElementById("history-list");
   section.hidden = false;
 
-  list.innerHTML = history.map(entry => `
-    <div class="history-entry">
-      <div class="history-url before">${entry.original}</div>
-      <div class="history-url after">${entry.clean}</div>
-    </div>
-  `).join("");
+  history.forEach(entry => {
+    const entryDiv = document.createElement("div");
+    entryDiv.className = "history-entry";
+
+    const beforeDiv = document.createElement("div");
+    beforeDiv.className = "history-url before";
+    beforeDiv.textContent = entry.original;
+
+    const afterDiv = document.createElement("div");
+    afterDiv.className = "history-url after";
+    afterDiv.textContent = entry.clean;
+
+    entryDiv.appendChild(beforeDiv);
+    entryDiv.appendChild(afterDiv);
+    list.appendChild(entryDiv);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

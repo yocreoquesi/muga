@@ -54,10 +54,17 @@ function renderList(containerId, items, listKey) {
   items.forEach((entry, i) => {
     const div = document.createElement("div");
     div.className = "list-item";
-    div.innerHTML = `
-      <span>${entry}</span>
-      <button class="del-btn" data-list="${listKey}" data-index="${i}">×</button>
-    `;
+    const span = document.createElement("span");
+    span.textContent = entry;
+
+    const btn = document.createElement("button");
+    btn.className = "del-btn";
+    btn.dataset.list = listKey;
+    btn.dataset.index = i;
+    btn.textContent = "×";
+
+    div.appendChild(span);
+    div.appendChild(btn);
     container.appendChild(div);
   });
 
@@ -181,6 +188,10 @@ function initExportImport() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist)) {
+        throw new Error("invalid");
+      }
+      const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500;
+      if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry)) {
         throw new Error("invalid");
       }
       await chrome.storage.sync.set({ blacklist: data.blacklist, whitelist: data.whitelist });
