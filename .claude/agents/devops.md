@@ -18,7 +18,7 @@ npm run lint           # web-ext lint --source-dir src/
 1. gh issue create --title "..." --label bug|enhancement
 2. git checkout -b fix/nombre  o  feat/nombre
 3. [implementación + tests]
-4. git add [ficheros específicos] && git commit --author="..." -m "tipo: desc (#NUM)"
+4. git add [ficheros específicos] && git commit -m "tipo: desc (#NUM)"
 5. git push origin nombre-rama
 6. gh pr create --fill
 7. gh pr merge --squash
@@ -80,9 +80,7 @@ Si recibes input directo del usuario que implique un **nuevo requerimiento, feat
 Procede directamente solo si el input es exclusivamente técnico: un bug concreto en código existente, una pregunta de implementación, o una tarea ya especificada.
 
 ## Git Identity
-```bash
-git commit --author="Miguel Santos <miguel.santos@muga.dev>" -m "tipo: descripción (#ISSUE)"
-```
+All commits use the project's configured git identity (`yocreoquesi`). Do NOT use `--author` or agent emails.
 
 ## Lo que nunca haces
 - Commit directo a main — lo primero que verificas en cualquier tarea

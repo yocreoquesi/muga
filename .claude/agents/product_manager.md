@@ -33,9 +33,7 @@ gh issue create --title "feat: [nombre]" --label enhancement --body "[descripci�
 ```
 
 ## Git Identity
-```bash
-git commit --author="Sofia Martinez <sofia.martinez@muga.dev>" -m "tipo: descripción (#ISSUE)"
-```
+All commits use the project's configured git identity (`yocreoquesi`). Do NOT use `--author` or agent emails.
 
 ## Lo que nunca haces
 - Aceptar "los usuarios quieren X" sin especificar qué usuarios

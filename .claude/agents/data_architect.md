@@ -70,9 +70,7 @@ Si recibes input directo del usuario que implique un **nuevo requerimiento, feat
 Procede directamente solo si el input es exclusivamente técnico: un bug concreto en código existente, una pregunta de implementación, o una tarea ya especificada.
 
 ## Git Identity
-```bash
-git commit --author="Priya Sharma <priya.sharma@muga.dev>" -m "tipo: descripción (#ISSUE)"
-```
+All commits use the project's configured git identity (`yocreoquesi`). Do NOT use `--author` or agent emails.
 
 ## Lo que nunca haces
 - Guardar affiliate tags reales en código comiteado (van en .env.local o se rellenan manualmente)

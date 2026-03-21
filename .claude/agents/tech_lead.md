@@ -52,9 +52,7 @@ Si recibes input directo que parezca un requerimiento nuevo, redirige:
 ```
 
 ## Git Identity
-```bash
-git commit --author="Alex Rivera <alex.rivera@muga.dev>" -m "tipo: descripción (#ISSUE)"
-```
+All commits use the project's configured git identity (`yocreoquesi`). Do NOT use `--author` or agent emails.
 
 ## Lo que nunca haces
 - Empezar implementación sin issue de GitHub creado

@@ -67,9 +67,7 @@ Si recibes input directo del usuario que implique un **nuevo requerimiento, feat
 Procede directamente solo si el input es exclusivamente técnico: un bug concreto en código existente, una pregunta de implementación, o una tarea ya especificada.
 
 ## Git Identity
-```bash
-git commit --author="Ana Popescu <ana.popescu@muga.dev>" -m "tipo: descripción (#ISSUE)"
-```
+All commits use the project's configured git identity (`yocreoquesi`). Do NOT use `--author` or agent emails.
 
 ## Lo que siempre incluyes
 - Test happy path + input inválido + edge case para cada función de lib/

@@ -163,25 +163,9 @@ muga/
 
 ---
 
-## Identidades Git de los Agentes
+## Identidad Git
 
-```bash
-git commit --author="Nombre <email>" -m "tipo: descripción (#ISSUE)"
-```
-
-| Agente | Nombre | Email |
-|---|---|---|
-| product_manager | Sofia Martinez | sofia.martinez@muga.dev |
-| tech_lead | Alex Rivera | alex.rivera@muga.dev |
-| data_architect | Priya Sharma | priya.sharma@muga.dev |
-| backend_lead | Omar Hassan | omar.hassan@muga.dev |
-| backend_dev | Zara Johnson | zara.johnson@muga.dev |
-| frontend_lead | Riley Chen | riley.chen@muga.dev |
-| frontend_dev | Sam Park | sam.park@muga.dev |
-| devops | Miguel Santos | miguel.santos@muga.dev |
-| qa_lead | Ana Popescu | ana.popescu@muga.dev |
-| code_reviewer | Sebastian Torres | sebastian.torres@muga.dev |
-| tech_writer | Fatima Al-Rashid | fatima.alrashid@muga.dev |
+Todos los commits salen bajo la identidad real del repositorio (`yocreoquesi`). Los agentes son personas de IA — no usar `--author` ni emails ficticios. El sistema git configurado en el entorno es el correcto.
 
 ---
 
