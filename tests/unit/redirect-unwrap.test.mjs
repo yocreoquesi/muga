@@ -19,10 +19,11 @@ import assert from "node:assert/strict";
 // ---------------------------------------------------------------------------
 // Replicated from src/content/redirect-unwrap.js — keep in sync
 // ---------------------------------------------------------------------------
+// Keep in sync with src/content/redirect-unwrap.js
+// "location", "return", "continue" excluded — too generic (SPA routing, OAuth flows)
 const REDIRECT_PARAMS = [
   "url", "redirect", "redirect_url", "destination", "dest",
-  "target", "to", "goto", "next", "return", "returnUrl",
-  "return_url", "continue", "location",
+  "target", "to", "goto", "next", "returnUrl", "return_url",
 ];
 
 /**
