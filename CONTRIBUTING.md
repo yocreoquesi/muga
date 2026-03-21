@@ -73,10 +73,12 @@ Types: `feat`, `fix`, `test`, `docs`, `ci`, `refactor`
 ## Building the extension
 
 ```bash
-npm run build
+npm run build          # both targets
+npm run build:chrome   # Chrome MV3 only → dist/chrome/
+npm run build:firefox  # Firefox MV2 only → dist/firefox/
 ```
 
-Output goes to `dist/`. Uses `web-ext` (Mozilla). The build generates both MV3 (Chrome) and MV2 (Firefox) packages.
+Output goes to `dist/`. Uses `web-ext` (Mozilla).
 
 ## Browser compatibility
 
