@@ -235,7 +235,7 @@
     notice.innerHTML = `
       <div style="font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa">${s.toast_title}</div>
       <div style="margin-bottom:10px;font-size:12px;color:#ddd">
-        ${domain} ${s.toast_tag_msg} <code style="${codeStyle}">${escHtml(affiliate.param)}=${escHtml(affiliate.value)}</code>
+        ${escHtml(domain)} ${s.toast_tag_msg} <code style="${codeStyle}">${escHtml(affiliate.param)}=${escHtml(affiliate.value)}</code>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button data-choice="original" style="${btnStyle}">${s.toast_keep}</button>
