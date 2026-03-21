@@ -17,9 +17,23 @@
  * and the values are filled in src/lib/affiliates.js.
  */
 
-import { test, describe } from "node:test";
+import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { processUrl } from "../../src/lib/cleaner.js";
+import { AFFILIATE_PATTERNS } from "../../src/lib/affiliates.js";
+
+// ---------------------------------------------------------------------------
+// Test-only affiliate pattern — injected before Scenario B/C tests,
+// removed after. Uses a fictional domain to avoid affecting real store logic.
+// ---------------------------------------------------------------------------
+const TEST_PATTERN = {
+  id: "_test_store",
+  name: "Test Store (unit tests only)",
+  domains: ["shop.test.muga", "www.shop.test.muga"],
+  param: "aff",
+  type: "affiliate",
+  ourTag: "muga-test-99",
+};
 
 // ---------------------------------------------------------------------------
 // Base prefs — mirrors the defaults in src/lib/storage.js
@@ -370,13 +384,18 @@ describe("Amazon — affiliate param preserved", () => {
 
 // ---------------------------------------------------------------------------
 // Scenario B — Affiliate injection
-// (Requires ourTag to be set in affiliates.js — currently empty)
 // ---------------------------------------------------------------------------
 describe("Scenario B — affiliate injection", () => {
 
+  before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
+  after(() => {
+    const idx = AFFILIATE_PATTERNS.findIndex(p => p.id === "_test_store");
+    if (idx !== -1) AFFILIATE_PATTERNS.splice(idx, 1);
+  });
+
   test("injectOwnAffiliate: false → never injects even on supported domain", () => {
     const { action } = processUrl(
-      "https://www.amazon.es/dp/B08N5WRWNW",
+      "https://shop.test.muga/product",
       { ...PREFS, injectOwnAffiliate: false }
     );
     assert.notEqual(action, "injected");
@@ -390,39 +409,99 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
-  test("TODO — inject on amazon.es when ourTag is set", { todo: "Fill in ourTag in affiliates.js once Amazon Associates account is approved" }, () => {
-    // When implemented:
-    // action === "injected"
-    // cleanUrl contains tag=OUR_TAG
+  test("injectOwnAffiliate: true + ourTag set → injects tag on clean URL", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://shop.test.muga/product?color=red",
+      { ...PREFS, injectOwnAffiliate: true }
+    );
+    assert.equal(action, "injected");
+    assert.ok(new URL(cleanUrl).searchParams.get("aff") === "muga-test-99");
+  });
+
+  test("does NOT inject when affiliate tag already present", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://shop.test.muga/product?aff=creator-99",
+      { ...PREFS, injectOwnAffiliate: true }
+    );
+    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("aff"), "creator-99");
+  });
+
+  test("does NOT inject when stripAllAffiliates is on", () => {
+    const { action } = processUrl(
+      "https://shop.test.muga/product",
+      { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true }
+    );
+    assert.notEqual(action, "injected");
+  });
+
+  test("ourTag empty string → does NOT inject (safety guard)", () => {
+    // Temporarily blank the ourTag
+    TEST_PATTERN.ourTag = "";
+    const { action } = processUrl(
+      "https://shop.test.muga/product",
+      { ...PREFS, injectOwnAffiliate: true }
+    );
+    TEST_PATTERN.ourTag = "muga-test-99"; // restore
+    assert.notEqual(action, "injected");
   });
 
 });
 
 // ---------------------------------------------------------------------------
 // Scenario C — Foreign affiliate detection
-// (Requires ourTag to be set to compare against)
 // ---------------------------------------------------------------------------
 describe("Scenario C — foreign affiliate detection", () => {
 
+  before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
+  after(() => {
+    const idx = AFFILIATE_PATTERNS.findIndex(p => p.id === "_test_store");
+    if (idx !== -1) AFFILIATE_PATTERNS.splice(idx, 1);
+  });
+
   test("notifyForeignAffiliate: false → foreign tag NOT flagged", () => {
     const { action } = processUrl(
-      "https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21",
+      "https://shop.test.muga/product?aff=someone-else-99",
       { ...PREFS, notifyForeignAffiliate: false }
     );
     assert.notEqual(action, "detected_foreign");
   });
 
-  test("notifyForeignAffiliate: true but ourTag empty → still NOT detected", () => {
+  test("notifyForeignAffiliate: true + foreign tag → detected_foreign", () => {
+    const { action, detectedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=someone-else-99",
+      { ...PREFS, notifyForeignAffiliate: true }
+    );
+    assert.equal(action, "detected_foreign");
+    assert.equal(detectedAffiliate.param, "aff");
+    assert.equal(detectedAffiliate.value, "someone-else-99");
+  });
+
+  test("our own tag is NOT flagged as foreign", () => {
     const { action } = processUrl(
-      "https://www.amazon.es/dp/B08N5WRWNW?tag=someother-21",
+      "https://shop.test.muga/product?aff=muga-test-99",
       { ...PREFS, notifyForeignAffiliate: true }
     );
     assert.notEqual(action, "detected_foreign");
   });
 
-  test("TODO — detect foreign affiliate on amazon.es when ourTag is set", { todo: "Fill in ourTag in affiliates.js once Amazon Associates account is approved" }, () => {});
+  test("whitelisted foreign tag is NOT flagged", () => {
+    const { action } = processUrl(
+      "https://shop.test.muga/product?aff=trusted-creator-99",
+      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["shop.test.muga::aff::trusted-creator-99"] }
+    );
+    assert.notEqual(action, "detected_foreign");
+  });
 
-  test("TODO — our own tag is NOT flagged as foreign", { todo: "Fill in ourTag in affiliates.js" }, () => {});
+  test("notifyForeignAffiliate: true but ourTag empty → NOT detected (no comparison point)", () => {
+    TEST_PATTERN.ourTag = "";
+    const { action } = processUrl(
+      "https://shop.test.muga/product?aff=someone-else-99",
+      { ...PREFS, notifyForeignAffiliate: true }
+    );
+    TEST_PATTERN.ourTag = "muga-test-99";
+    assert.notEqual(action, "detected_foreign");
+  });
 
 });
 
