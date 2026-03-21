@@ -27,6 +27,16 @@
       "matches": ["<all_urls>"],
       "js": ["lib/browser-polyfill.min.js", "content/cleaner.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/browser-polyfill.min.js", "content/amp-redirect.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/browser-polyfill.min.js", "content/redirect-unwrap.js"],
+      "run_at": "document_end"
     }
   ],
 
