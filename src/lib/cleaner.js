@@ -60,7 +60,7 @@ function cleanAmazonPath(hostname, pathname) {
  *
  * @param {string} rawUrl - The original URL to process.
  * @param {object} prefs  - User preferences from chrome.storage.sync.
- * @returns {{ cleanUrl: string, action: string, removedTracking: string[], detectedAffiliate: object|null }}
+ * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null }}
  */
 export function processUrl(rawUrl, prefs) {
   let url;
