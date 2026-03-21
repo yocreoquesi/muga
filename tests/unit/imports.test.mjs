@@ -63,3 +63,26 @@ test("processUrl is exported from lib/cleaner.js and is a function", async () =>
   const { processUrl } = await import("../../src/lib/cleaner.js");
   assert.equal(typeof processUrl, "function", "processUrl must be a function");
 });
+
+// ---------------------------------------------------------------------------
+// Test 5 — PREF_DEFAULTS contains all v1.3 pref keys with correct defaults
+// ---------------------------------------------------------------------------
+test("PREF_DEFAULTS contains dnrEnabled: true (v1.3 pre-navigation DNR)", async () => {
+  const { PREF_DEFAULTS } = await import("../../src/lib/storage.js");
+  assert.equal(PREF_DEFAULTS.dnrEnabled, true);
+});
+
+test("PREF_DEFAULTS contains blockPings: true (v1.3 ping beacon blocking)", async () => {
+  const { PREF_DEFAULTS } = await import("../../src/lib/storage.js");
+  assert.equal(PREF_DEFAULTS.blockPings, true);
+});
+
+test("PREF_DEFAULTS contains ampRedirect: true (v1.3 AMP redirect)", async () => {
+  const { PREF_DEFAULTS } = await import("../../src/lib/storage.js");
+  assert.equal(PREF_DEFAULTS.ampRedirect, true);
+});
+
+test("PREF_DEFAULTS contains unwrapRedirects: true (v1.3 redirect unwrapping)", async () => {
+  const { PREF_DEFAULTS } = await import("../../src/lib/storage.js");
+  assert.equal(PREF_DEFAULTS.unwrapRedirects, true);
+});
