@@ -150,3 +150,7 @@ PRs welcome for new tracking parameters, new stores, or additional languages. Se
 ## License
 
 [MIT](LICENSE)
+
+---
+
+*Built with the assistance of AI agents ([Claude](https://www.anthropic.com/claude) by Anthropic).*
