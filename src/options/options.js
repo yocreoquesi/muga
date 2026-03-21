@@ -79,15 +79,31 @@ function renderStores() {
   const stores = getSupportedStores();
 
   const grid = document.getElementById("stores-grid");
-  grid.innerHTML = stores.map(s => `
-    <div class="store-chip">
-      <div class="store-dot ${s.ourTag ? "active" : ""}"></div>
-      <div>
-        <div class="store-name">${s.name}</div>
-        <div class="store-param">${s.param}=</div>
-      </div>
-    </div>
-  `).join("");
+  grid.innerHTML = "";
+
+  stores.forEach(s => {
+    const chip = document.createElement("div");
+    chip.className = "store-chip";
+
+    const dot = document.createElement("div");
+    dot.className = "store-dot" + (s.ourTag ? " active" : "");
+
+    const info = document.createElement("div");
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "store-name";
+    nameEl.textContent = s.name;
+
+    const paramEl = document.createElement("div");
+    paramEl.className = "store-param";
+    paramEl.textContent = s.param + "=";
+
+    info.appendChild(nameEl);
+    info.appendChild(paramEl);
+    chip.appendChild(dot);
+    chip.appendChild(info);
+    grid.appendChild(chip);
+  });
 
   const countEl = document.getElementById("stores-count");
   if (countEl) countEl.textContent = `(${stores.length})`;
