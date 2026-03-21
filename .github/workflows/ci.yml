@@ -24,6 +24,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate DNR rules
+        run: npm run build:rules
+
+      - name: Check DNR rules are up to date
+        run: |
+          if ! git diff --exit-code src/rules/tracking-params.json; then
+            echo "ERROR: tracking-params.json is out of sync with affiliates.js. Run 'npm run build:rules' and commit the result."
+            exit 1
+          fi
+
       - name: Run unit tests
         run: npm test
 
