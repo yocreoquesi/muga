@@ -90,6 +90,86 @@ export const TRACKING_PARAMS = [
   // General / Miscellaneous
   "srsltid",    // Google Shopping source tracking
   "wickedid",   // Wicked Reports click ID
+
+  // LinkedIn Ads
+  "li_fat_id",  // LinkedIn first-party ad tracking
+  "li_extra",   // LinkedIn extra tracking
+  "li_source",  // LinkedIn source
+
+  // Adobe Analytics / Experience Cloud
+  "s_kwcid",    // Adobe Search Keyword Click ID
+  "ef_id",      // Adobe EF ID (Advertising Cloud)
+
+  // TikTok Ads
+  "ttclid",     // TikTok Click ID
+
+  // Microsoft Advertising (Bing Ads)
+  "mscid",      // Microsoft Campaign ID
+
+  // Iterable (email marketing)
+  "itm_campaign", "itm_content", "itm_medium", "itm_source", "itm_term",
+
+  // Klaviyo (email)
+  "_kx",          // Klaviyo tracking
+  "klaviyo_id",   // Klaviyo user ID
+
+  // ActiveCampaign
+  "vgo_ee",     // ActiveCampaign tracking
+
+  // Marketo
+  "_mkto_trk",  // Marketo cookie tracking
+
+  // Pardot / Salesforce Marketing Cloud
+  "pi_ad_id",       // Pardot ad ID
+  "pi_campaign_id", // Pardot campaign
+  "sfdcImpactSrc",  // Salesforce Impact Source
+
+  // Drip
+  "dm_i",       // Drip campaign identifier
+
+  // Omnisend
+  "omnisendContactID", // Omnisend contact
+
+  // Sendinblue / Brevo
+  "sib_id",     // Sendinblue contact ID
+
+  // HubSpot (query param forms)
+  "__hstc",     // HubSpot tracking cookie
+  "__hsfp",     // HubSpot fingerprint
+  "__hssc",     // HubSpot session
+
+  // Outbrain
+  "obOrigUrl",       // Outbrain original URL param
+  "outbrainclickid", // Outbrain click ID
+
+  // Taboola
+  "taboola_campaign_id", // Taboola campaign
+  "tblci",               // Taboola click ID
+
+  // Criteo
+  "criteo_id",  // Criteo user ID
+
+  // Google Ads (additional)
+  "gad_source", // Google Ads source
+
+  // Facebook / Meta (additional)
+  "fbc",        // Facebook Click (cookie param form)
+  "fbp",        // Facebook Pixel
+
+  // Snapchat (additional)
+  "sccid",      // Snapchat Click ID
+
+  // Pinterest (additional)
+  "pin_unauth", // Pinterest unauthenticated tracking
+
+  // Zemanta / Outbrain DSP
+  "zemclick",   // Zemanta click ID
+
+  // Generic / multi-platform
+  "click_id",   // generic click ID
+  "ad_id",      // generic ad ID
+  "ab_channel", // A/B test channel
+  "ab_version", // A/B test version
 ];
 
 export const AFFILIATE_PATTERNS = [
