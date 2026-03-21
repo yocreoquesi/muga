@@ -119,6 +119,7 @@ Agentes definidos en `.claude/agents/`. Dos modos:
 | `qa_lead` | Ana Popescu | tests/unit/*.mjs, browser tests, cobertura |
 | `code_reviewer` | Sebastian Torres | CSP, MV3/V2 compat, permissions, security |
 | `tech_writer` | Fatima Al-Rashid | README.md, CHANGELOG.md, docs/ |
+| `growth_lead` | Isabela Rodrigues | Store listings, RRSS, ProductHunt, lanzamiento |
 
 ---
 
