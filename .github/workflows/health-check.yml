@@ -1,0 +1,22 @@
+name: Weekly Health Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch:      # Manual trigger
+
+jobs:
+  health-check:
+    name: Domain compatibility smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run health-check tests
+        run: node --test tests/unit/health-check.test.mjs
+      - name: Run full unit test suite
+        run: npm test
