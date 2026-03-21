@@ -3,30 +3,29 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-68_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-83_pass-brightgreen)](#development)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-coming_soon-lightgrey)](#installation)
 
-**Every link. Cleaned. Before it loads.**
+# Every link. Cleaned. Before it loads.
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens and dozens more. MUGA strips them — silently, automatically, before the page renders. Zero clicks. Zero configuration.
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens and dozens more. MUGA strips them — silently, automatically, before the page renders. **Zero clicks. Zero configuration.**
+
+[Install from Chrome Web Store](#installation) · [Install for Firefox](#installation) · [View source](https://github.com/yocreoquesi/muga)
 
 </div>
 
 ---
 
-## How it looks
+## See it in action
 
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
-![Popup open on Amazon](docs/assets/screenshot-ss2-popup.png)
+<details>
+<summary><strong>More before / after examples</strong></summary>
 
----
-
-## Before / After
-
-**Amazon** — clicked from a Google ad
+**Amazon** — clicked from a YouTube review
 ```
 Before: https://www.amazon.es/dp/B08N5WRWNW?utm_source=google&utm_medium=cpc&gclid=EAIaIQ...&linkCode=ll1&pd_rd_r=xyz&pf_rd_p=def&ref_=nav
 
@@ -47,25 +46,28 @@ Before: https://www.ebay.es/itm/123456789?mkevt=1&mkcid=1&mkrid=1185-53479-19255
 After:  https://www.ebay.es/itm/123456789
 ```
 
+</details>
+
 ---
 
 ## What it does
 
 | Feature | Default |
 |---|---|
-| Strip 65+ tracking params (UTMs, fbclid, gclid, eBay, YouTube `si`, Pinterest, Snapchat, Reddit…) | **Always on** |
-| Strip Amazon path tracking (`/ref=nav_logo`, session IDs after ASIN) | **Always on** |
-| Right-click → **Copy clean link** | **Always on** |
-| **Alt+Shift+C** — keyboard shortcut to copy clean URL | **Always on** |
-| Badge counter showing items cleaned on the current tab | **Always on** |
-| Popup shows before/after for the current page | **Always on** |
-| Add our affiliate tag when none is present (you pay the same price) | On — opt-out |
-| Toast notification when a third-party affiliate is detected | Off — opt-in |
+| Strip 65+ tracking params (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…) | **Always on** |
+| Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN) | **Always on** |
+| Right-click any link → **Copy clean link** | **Always on** |
+| **Alt+Shift+C** — copy clean URL of current tab | **Always on** |
+| Badge counter — items cleaned on current tab | **Always on** |
+| Popup — before/after preview for the current page | **Always on** |
+| Add our affiliate tag when none is present *(you pay the same price)* | On — opt-out |
+| Toast when a third-party affiliate is detected | Off — opt-in |
 | Replace detected affiliate with ours | Off — explicit opt-in |
 | Strip **all** affiliate parameters | Off — opt-in |
 | Per-domain blacklist — strip everything on a site | Configurable |
-| Per-domain disable — `domain::disabled` — MUGA does nothing | Configurable |
+| Per-domain disable — `domain::disabled` | Configurable |
 | Whitelist — protect specific creator affiliate tags | Configurable |
+| Custom tracking params — add your own | Configurable |
 | Export / Import settings as JSON | Configurable |
 | EN / ES language toggle | Configurable |
 
@@ -73,17 +75,15 @@ Tracking removal works on **every site**. Affiliate features only apply to [supp
 
 ---
 
-## Advanced settings
+## The popup
 
-![Options page](docs/assets/screenshot-ss3-options.png)
+![Popup open on Amazon](docs/assets/screenshot-ss2-popup.png)
 
 ---
 
-## Supported stores
+## Advanced settings
 
-20 stores with affiliate tracking support: Amazon (ES, DE, FR, IT, UK, US), Booking.com, AliExpress, PcComponentes, El Corte Inglés, eBay, Temu, Zalando (ES, DE), SHEIN, Fnac (ES, FR), MediaMarkt (ES, DE).
-
-Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source.
+![Options page](docs/assets/screenshot-ss3-options.png)
 
 ---
 
@@ -100,11 +100,20 @@ Disclosed during onboarding, documented in the [privacy policy](https://yocreoqu
 
 ---
 
-## What MUGA will never do
+## Privacy
 
-- Replace someone else's affiliate tag without your explicit action
-- Collect your browsing data
-- Send anything to any server — every URL is processed locally, 100%
+- Every URL is processed **entirely inside your browser** — nothing is ever sent to any server
+- Zero browsing data collected, zero analytics, zero telemetry
+- No account, no sign-in, no cloud
+- Minimal permissions: `storage`, `tabs`, `contextMenus`, `clipboardWrite` — nothing else
+
+---
+
+## Supported stores
+
+20 stores with affiliate tracking support: Amazon (ES, DE, FR, IT, UK, US), Booking.com, AliExpress, PcComponentes, El Corte Inglés, eBay, Temu, Zalando (ES, DE), SHEIN, Fnac (ES, FR), MediaMarkt (ES, DE).
+
+Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source.
 
 ---
 
@@ -126,7 +135,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test                # 68 unit tests
+npm test               # 83 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
@@ -137,7 +146,7 @@ New release: tag `vX.Y.Z` → push → GitHub Actions builds and publishes autom
 
 ## Contributing
 
-PRs welcome for new tracking parameters, new stores, or additional languages. See [`src/lib/affiliates.js`](src/lib/affiliates.js) for the database and [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs) for the test suite.
+PRs welcome for new tracking parameters, new stores, or additional languages. See [`src/lib/affiliates.js`](src/lib/affiliates.js) for the store database and [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs) for the test suite.
 
 ---
 
