@@ -1,49 +1,46 @@
-{
-  "_comment": "Static DNR rules — pre-navigation tracking param stripping. Do not edit manually. Params ref and campid are intentionally excluded (affiliate param conflicts on pccomponentes/mediamarkt/ebay).",
-  "rules": [
-    {
-      "id": 1,
-      "priority": 1,
-      "action": {
-        "type": "redirect",
-        "redirect": {
-          "queryTransform": {
-            "removeParams": [
-              "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-              "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
-              "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
-              "msclkid", "tclid", "twclid",
-              "mc_cid", "mc_eid", "mailingid", "hqemail",
-              "igshid", "igsh", "s_cid",
-              "si", "_r",
-              "source", "campaign", "cid", "clickid",
-              "_hsenc", "_hsmi", "hsctatracking",
-              "mkt_tok", "trk", "trkcampaign",
-              "irgwc", "cjevent", "tduid",
-              "ocid", "psc", "spla",
-              "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
-              "pf_rd_p", "pf_rd_r",
-              "linkcode", "linkid",
-              "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
-              "th", "_encoding", "ref_",
-              "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
-              "ie",
-              "mkevt", "mkcid", "mkrid", "toolid", "customid",
-              "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
-              "e_t", "epik",
-              "sc_channel", "sc_country", "sc_funnel", "sc_segment", "sc_icid",
-              "rdt_cid",
-              "ranmid", "raneaid", "ransiteid",
-              "ttaid", "ttrk", "ttcid",
-              "srsltid", "wickedid"
-            ]
-          }
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "queryTransform": {
+          "removeParams": [
+            "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+            "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
+            "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
+            "msclkid", "tclid", "twclid",
+            "mc_cid", "mc_eid", "mailingid", "hqemail",
+            "igshid", "igsh", "s_cid",
+            "si", "_r",
+            "source", "campaign", "cid", "clickid",
+            "_hsenc", "_hsmi", "hsctatracking",
+            "mkt_tok", "trk", "trkcampaign",
+            "irgwc", "cjevent", "tduid",
+            "ocid", "psc", "spla",
+            "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
+            "pf_rd_p", "pf_rd_r",
+            "linkcode", "linkid",
+            "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
+            "th", "_encoding", "ref_",
+            "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
+            "ie",
+            "mkevt", "mkcid", "mkrid", "toolid", "customid",
+            "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
+            "e_t", "epik",
+            "sc_channel", "sc_country", "sc_funnel", "sc_segment", "sc_icid",
+            "rdt_cid",
+            "ranmid", "raneaid", "ransiteid",
+            "ttaid", "ttrk", "ttcid",
+            "srsltid", "wickedid"
+          ]
         }
-      },
-      "condition": {
-        "urlFilter": "||*",
-        "resourceTypes": ["main_frame"]
       }
+    },
+    "condition": {
+      "urlFilter": "||*",
+      "resourceTypes": ["main_frame"]
     }
-  ]
-}
+  }
+]
