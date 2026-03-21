@@ -71,6 +71,7 @@ function renderList(containerId, items, listKey) {
     btn.dataset.list = listKey;
     btn.dataset.index = i;
     btn.textContent = "×";
+    btn.setAttribute("aria-label", `Remove ${entry}`);
 
     div.appendChild(span);
     div.appendChild(btn);
