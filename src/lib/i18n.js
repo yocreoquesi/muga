@@ -52,6 +52,7 @@ export const TRANSLATIONS = {
   row_strip_affiliates_label: { en: "Strip all affiliate parameters",                      es: "Eliminar todos los parámetros de afiliado" },
   section_stores:    { en: "Supported stores", es: "Tiendas soportadas" },
   stores_hint:       { en: "Green dot = affiliate account active and configured. Grey = account pending registration.", es: "Punto verde = cuenta de afiliado activa. Gris = cuenta pendiente de registro." },
+  no_active_stores:  { en: "No affiliate accounts configured yet.", es: "No hay cuentas de afiliado configuradas aún." },
   section_custom_params:    { en: "Custom tracking params — always stripped everywhere", es: "Parámetros personalizados — siempre eliminados" },
   cp_placeholder:           { en: "ref_code  or  promo_id",                              es: "ref_codigo  o  promo_id" },
   cp_hint:                  { en: "One param name per entry. Stripped on every site, case-insensitive.", es: "Un nombre de parámetro por entrada. Eliminado en todas las webs, sin distinción de mayúsculas." },
