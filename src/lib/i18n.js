@@ -38,6 +38,10 @@ export const TRANSLATIONS = {
   opt_notify_hint:  { en: "Shows a non-intrusive toast for 5 seconds", es: "Muestra un aviso no intrusivo durante 5 segundos" },
   link_advanced:    { en: "Advanced settings →", es: "Preferencias avanzadas →" },
   link_donate:      { en: "Support the project", es: "Apoyar el proyecto" },
+  removed_params_label: { en: "Removed:", es: "Eliminado:" },
+  tab_badge_label:      { en: "stripped this tab", es: "eliminados en esta pestaña" },
+  history_copy_hint:    { en: "Click to copy clean URL", es: "Clic para copiar URL limpia" },
+  history_copied:       { en: "Copied!", es: "¡Copiado!" },
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Advanced settings", es: "Preferencias avanzadas" },

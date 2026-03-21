@@ -63,7 +63,7 @@ async function init() {
 
   maybeShowNudge({ ...prefs, ...local }, lang);
   await showUrlPreview(prefs, lang);
-  await showHistory();
+  await showHistory(lang);
 }
 
 async function showUrlPreview(prefs, lang) {
@@ -74,6 +74,18 @@ async function showUrlPreview(prefs, lang) {
 
   const section = document.getElementById("preview");
   section.hidden = false;
+
+  // Show per-tab badge count (#89)
+  if (tab?.id) {
+    const key = `tab_${tab.id}`;
+    const sessionData = await chrome.storage.session.get({ [key]: 0 });
+    const count = sessionData[key];
+    if (count > 0) {
+      const badge = document.getElementById("tab-badge");
+      badge.textContent = `${count} ${t("tab_badge_label", lang)}`;
+      badge.hidden = false;
+    }
+  }
 
   if (prefs.enabled === false) {
     const previewClean = document.getElementById("preview-clean");
@@ -91,6 +103,18 @@ async function showUrlPreview(prefs, lang) {
   } else {
     document.getElementById("preview-before").textContent = url;
     document.getElementById("preview-after").textContent = result.cleanUrl;
+
+    // Show which params were removed (#85)
+    if (result.removedTracking?.length > 0) {
+      const removedEl = document.getElementById("preview-removed");
+      const MAX = 4;
+      const shown = result.removedTracking.slice(0, MAX);
+      const extra = result.removedTracking.length - MAX;
+      let label = `${t("removed_params_label", lang)} ${shown.join(", ")}`;
+      if (extra > 0) label += ` +${extra}`;
+      removedEl.textContent = label;
+      removedEl.hidden = false;
+    }
   }
 }
 
@@ -125,7 +149,7 @@ function formatStat(n) {
   return String(n);
 }
 
-async function showHistory() {
+async function showHistory(lang) {
   const data = await chrome.storage.session.get({ history: [] });
   const history = data.history;
   if (!history.length) return;
@@ -137,6 +161,7 @@ async function showHistory() {
   history.forEach(entry => {
     const entryDiv = document.createElement("div");
     entryDiv.className = "history-entry";
+    entryDiv.title = t("history_copy_hint", lang);
 
     const beforeDiv = document.createElement("div");
     beforeDiv.className = "history-url before";
@@ -149,6 +174,19 @@ async function showHistory() {
     entryDiv.appendChild(beforeDiv);
     entryDiv.appendChild(afterDiv);
     list.appendChild(entryDiv);
+
+    // Click to copy clean URL (#87)
+    entryDiv.addEventListener("click", () => {
+      navigator.clipboard.writeText(entry.clean).then(() => {
+        const orig = afterDiv.textContent;
+        entryDiv.classList.add("copied");
+        afterDiv.textContent = t("history_copied", lang);
+        setTimeout(() => {
+          entryDiv.classList.remove("copied");
+          afterDiv.textContent = orig;
+        }, 1200);
+      });
+    });
   });
 }
 
