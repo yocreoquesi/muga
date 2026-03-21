@@ -5,6 +5,7 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
+import { getPrefs } from "../lib/storage.js";
 
 const NUDGE_URL_THRESHOLD = 150;
 const NUDGE_DAY_THRESHOLD = 10;
@@ -15,11 +16,7 @@ async function init() {
   applyTranslations(lang);
 
   const [prefs, local] = await Promise.all([
-    chrome.storage.sync.get({
-      enabled: true,
-      injectOwnAffiliate: true,
-      notifyForeignAffiliate: false,
-    }),
+    getPrefs(),
     chrome.storage.local.get({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
       firstUsed: null,
@@ -65,10 +62,16 @@ async function showUrlPreview(prefs, lang) {
   const url = tab?.url;
   if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("moz-extension://") || url.startsWith("chrome-extension://")) return;
 
-  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false });
-
   const section = document.getElementById("preview");
   section.hidden = false;
+
+  if (prefs.enabled === false) {
+    document.getElementById("preview-clean").hidden = false;
+    document.getElementById("preview-clean").textContent = url;
+    return;
+  }
+
+  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false });
 
   if (result.cleanUrl === url && result.action === "untouched") {
     document.getElementById("preview-clean").hidden = false;

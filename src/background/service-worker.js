@@ -56,7 +56,7 @@ async function appendHistory(original, clean) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PROCESS_URL") {
     const tabId = sender.tab?.id;
-    handleProcessUrl(message.url, { skipInject: message.skipInject })
+    handleProcessUrl(message.url, { skipNotify: message.skipInject })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         sendResponse(result);
@@ -70,17 +70,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-async function handleProcessUrl(rawUrl, { skipInject = false } = {}) {
+async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
   const prefs = await getPrefs();
 
   if (!prefs.enabled) {
     return { cleanUrl: rawUrl, action: "untouched" };
   }
 
-  // On copy: respect the user's affiliate injection setting but suppress the toast
-  // (same behaviour as the context menu handler)
-  const effectivePrefs = skipInject
-    ? { ...prefs, notifyForeignAffiliate: false }
+  // On copy: suppress the toast and affiliate injection — user didn't navigate,
+  // they just copied a link, so we should not inject our tag either.
+  const effectivePrefs = skipNotify
+    ? { ...prefs, notifyForeignAffiliate: false, injectOwnAffiliate: false }
     : prefs;
 
   const result = processUrl(rawUrl, effectivePrefs);
@@ -143,7 +143,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url || !tab?.id) return;
 
-  const result = await handleProcessUrl(tab.url, { skipInject: true });
+  const result = await handleProcessUrl(tab.url, { skipNotify: true });
   chrome.tabs.sendMessage(tab.id, {
     type: "COPY_TO_CLIPBOARD",
     text: result.cleanUrl,
@@ -155,8 +155,8 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 
   if (info.menuItemId === "muga-copy-clean") {
     // Route through handleProcessUrl so stats are incremented correctly.
-    // skipInject: true suppresses the foreign-affiliate toast (not relevant on copy).
-    const result = await handleProcessUrl(info.linkUrl, { skipInject: true });
+    // skipNotify: true suppresses the foreign-affiliate toast and injection (not relevant on copy).
+    const result = await handleProcessUrl(info.linkUrl, { skipNotify: true });
 
     // Copy to clipboard via content script (service worker has no direct clipboard access)
     if (tab?.id) {
@@ -179,7 +179,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
       const rawUrl = match[0];
       const candidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
       if (!candidate.includes("?")) continue;
-      const cleaned = await handleProcessUrl(candidate, { skipInject: true });
+      const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
       if (cleaned.cleanUrl !== candidate) {
         result = result.replace(candidate, cleaned.cleanUrl);
       }

@@ -148,7 +148,7 @@
 
     // Preserve Ctrl/Cmd/Shift+click and target="_blank" (open in new tab/window)
     const opensNewTab = e.ctrlKey || e.metaKey || e.shiftKey ||
-      (anchor.target && anchor.target !== "_self" && anchor.target !== "_top" && anchor.target !== "_parent");
+      anchor.target === "_blank";
 
     e.preventDefault();
 
@@ -243,7 +243,7 @@
 
     const timer = setTimeout(() => {
       notice.remove();
-      callback("original");
+      callback("clean");
     }, 5000);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {
