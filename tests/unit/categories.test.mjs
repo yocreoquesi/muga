@@ -122,3 +122,54 @@ describe("processUrl — disabledCategories", () => {
     assert.equal(out.searchParams.get("mc_cid"), "z", "mc_cid preserved");
   });
 });
+
+// ---------------------------------------------------------------------------
+// #196 — disabledCategories in processUrl (Sebastian review coverage gaps)
+// ---------------------------------------------------------------------------
+describe("disabledCategories in processUrl (#196)", () => {
+
+  test("disabledCategories: ['utm'] — utm_source is NOT stripped", () => {
+    const url = "https://example.com/?utm_source=newsletter";
+    const prefs = { ...DEFAULT_PREFS, disabledCategories: ["utm"] };
+    const result = processUrl(url, prefs);
+    const out = new URL(result.cleanUrl);
+    assert.equal(out.searchParams.get("utm_source"), "newsletter", "utm_source must not be removed when utm category is disabled");
+  });
+
+  test("disabledCategories: ['ads'] — fbclid is NOT stripped", () => {
+    const url = "https://example.com/?fbclid=IwAR0abc";
+    const prefs = { ...DEFAULT_PREFS, disabledCategories: ["ads"] };
+    const result = processUrl(url, prefs);
+    const out = new URL(result.cleanUrl);
+    assert.equal(out.searchParams.get("fbclid"), "IwAR0abc", "fbclid must not be removed when ads category is disabled");
+  });
+
+  test("disabledCategories: ['utm', 'ads'] — neither utm_source nor fbclid are stripped", () => {
+    const url = "https://example.com/?utm_source=email&fbclid=IwAR0abc";
+    const prefs = { ...DEFAULT_PREFS, disabledCategories: ["utm", "ads"] };
+    const result = processUrl(url, prefs);
+    const out = new URL(result.cleanUrl);
+    assert.equal(out.searchParams.get("utm_source"), "email", "utm_source must not be removed");
+    assert.equal(out.searchParams.get("fbclid"), "IwAR0abc", "fbclid must not be removed");
+  });
+
+  test("disabledCategories: [] (default) — both utm_source and fbclid ARE stripped", () => {
+    const url = "https://example.com/?utm_source=email&fbclid=IwAR0abc";
+    const prefs = { ...DEFAULT_PREFS, disabledCategories: [] };
+    const result = processUrl(url, prefs);
+    const out = new URL(result.cleanUrl);
+    assert.equal(out.searchParams.get("utm_source"), null, "utm_source must be stripped with empty disabledCategories");
+    assert.equal(out.searchParams.get("fbclid"), null, "fbclid must be stripped with empty disabledCategories");
+  });
+
+  test("disabledCategories: undefined — behaves the same as [] (both stripped)", () => {
+    const url = "https://example.com/?utm_source=email&fbclid=IwAR0abc";
+    // Omit disabledCategories entirely — processUrl should default to [] behaviour
+    const { disabledCategories: _removed, ...prefsWithoutCategories } = DEFAULT_PREFS;
+    const result = processUrl(url, prefsWithoutCategories);
+    const out = new URL(result.cleanUrl);
+    assert.equal(out.searchParams.get("utm_source"), null, "utm_source must be stripped when disabledCategories is undefined");
+    assert.equal(out.searchParams.get("fbclid"), null, "fbclid must be stripped when disabledCategories is undefined");
+  });
+
+});
