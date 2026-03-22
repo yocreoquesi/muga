@@ -38,6 +38,11 @@ async function init() {
   bindListButtons();
   initStatsSection();
   initExportImport();
+
+  bindToggle("dev-mode", "devMode", prefs);
+  syncDevTools();
+  document.getElementById("dev-mode").addEventListener("change", syncDevTools);
+  initDevTools();
 }
 
 function bindToggle(id, key, prefs) {
@@ -325,6 +330,74 @@ function initExportImport() {
     }
     fileInput.value = "";
   });
+}
+
+function syncDevTools() {
+  const on = document.getElementById("dev-mode").checked;
+  document.getElementById("dev-tools-card").style.display = on ? "" : "none";
+}
+
+function initDevTools() {
+  // Preview notification
+  document.getElementById("dev-preview-notify-btn").addEventListener("click", () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (!tab?.id) return;
+      chrome.tabs.sendMessage(tab.id, { type: "SHOW_TEST_TOAST" });
+    });
+  });
+
+  // Show onboarding
+  document.getElementById("dev-show-onboarding-btn").addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+  });
+
+  // Export debug log
+  document.getElementById("dev-export-log-btn").addEventListener("click", async () => {
+    const response = await chrome.runtime.sendMessage({ type: "GET_DEBUG_LOG" });
+    const log = response?.log ?? [];
+    const manifest = chrome.runtime.getManifest();
+    const payload = { muga_version: manifest.version, exported_at: new Date().toISOString(), log };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `muga-debug-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // URL tester
+  document.getElementById("dev-url-test-btn").addEventListener("click", testUrl);
+  document.getElementById("dev-url-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") testUrl();
+  });
+}
+
+async function testUrl() {
+  const input = document.getElementById("dev-url-input").value.trim();
+  const resultDiv = document.getElementById("dev-url-result");
+  const cleanEl = document.getElementById("dev-url-clean");
+  const removedEl = document.getElementById("dev-url-removed");
+  if (!input) return;
+  try {
+    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+    const { processUrl } = await import("../lib/cleaner.js");
+    const domainRules = await import("../rules/domain-rules.json", { with: { type: "json" } });
+    const result = processUrl(input, { ...prefs, notifyForeignAffiliate: false }, domainRules.default);
+    cleanEl.textContent = result.cleanUrl;
+    if (result.removedTracking?.length > 0) {
+      removedEl.textContent = `Removed: ${result.removedTracking.join(", ")}`;
+    } else if (result.cleanUrl === input) {
+      removedEl.textContent = "No tracking params found — URL is already clean.";
+    } else {
+      removedEl.textContent = `Action: ${result.action}`;
+    }
+    resultDiv.style.display = "";
+  } catch (e) {
+    cleanEl.textContent = "Error: " + e.message;
+    removedEl.textContent = "";
+    resultDiv.style.display = "";
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);

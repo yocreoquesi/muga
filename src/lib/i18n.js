@@ -113,6 +113,25 @@ export const TRANSLATIONS = {
   import_success:        { en: "Settings imported successfully.",                                                   es: "Ajustes importados correctamente." },
   import_error:          { en: "Invalid file. Make sure it is a MUGA settings export.",                            es: "Archivo inválido. Asegúrate de que es una exportación de MUGA." },
 
+  // ── Developer options ─────────────────────────────────────────────────────
+  section_dev:                { en: "Developer",                                                        es: "Desarrollador" },
+  dev_mode_label:             { en: "Developer mode",                                                   es: "Modo desarrollador" },
+  dev_mode_hint:              { en: "Enables advanced tools for testing and debugging",                 es: "Activa herramientas avanzadas para pruebas y depuración" },
+  dev_preview_notify_label:   { en: "Preview affiliate notification",                                   es: "Previsualizar notificación de afiliado" },
+  dev_preview_notify_hint:    { en: "See how the toast looks when a third-party affiliate is detected", es: "Ve cómo aparece el aviso cuando se detecta un afiliado ajeno" },
+  dev_preview_notify_btn:     { en: "Preview",                                                          es: "Vista previa" },
+  dev_onboarding_label:       { en: "Show welcome screen",                                              es: "Mostrar pantalla de bienvenida" },
+  dev_onboarding_hint:        { en: "Re-open the first-run onboarding page",                            es: "Vuelve a abrir el onboarding inicial" },
+  dev_onboarding_btn:         { en: "Open",                                                             es: "Abrir" },
+  dev_log_label:              { en: "Debug log",                                                        es: "Log de depuración" },
+  dev_log_hint:               { en: "Download a log of errors and warnings from the current session",   es: "Descarga un log de errores y avisos de la sesión actual" },
+  dev_log_btn:                { en: "Export log",                                                       es: "Exportar log" },
+  dev_url_tester_label:       { en: "URL tester",                                                       es: "Probador de URLs" },
+  dev_url_tester_hint:        { en: "Paste any URL to see what MUGA will clean",                        es: "Pega cualquier URL para ver qué limpiará MUGA" },
+  dev_url_tester_placeholder: { en: "https://example.com?utm_source=google&fbclid=...",                 es: "https://example.com?utm_source=google&fbclid=..." },
+  dev_url_test_btn:           { en: "Test",                                                             es: "Probar" },
+  dev_url_result_label:       { en: "Result",                                                           es: "Resultado" },
+
   // ── Content script toast ──────────────────────────────────────────────────
   toast_title:   { en: "MUGA detected a third-party affiliate", es: "MUGA detectó un afiliado ajeno" },
   toast_tag_msg: { en: "has an affiliate tag that isn't ours:", es: "tiene un tag de afiliado que no es nuestro:" },
