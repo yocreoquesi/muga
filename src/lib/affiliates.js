@@ -414,14 +414,8 @@ export const AFFILIATE_PATTERNS = [
     type: "affiliate",
     ourTag: "",
   },
-  {
-    id: "temu",
-    name: "Temu",
-    domains: ["temu.com", "www.temu.com"],
-    param: "aff_id",
-    type: "affiliate",
-    ourTag: "muga-temu",  // TODO: fill in your Temu affiliate ID
-  },
+  // Temu removed — proprietary affiliate program with opaque ToS; high legal risk.
+  // Re-add once a verified affiliate account is registered and ToS confirmed. (#222)
   {
     id: "zalando_es",
     name: "Zalando ES",
