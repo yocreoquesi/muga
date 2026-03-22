@@ -87,6 +87,8 @@ export const TRANSLATIONS = {
   section_url_cleaning:  { en: "URL Cleaning",                       es: "Limpieza de URLs" },
   row_dnr_label:         { en: "Strip tracking parameters before navigation", es: "Eliminar parámetros de rastreo antes de navegar" },
   row_dnr_hint:          { en: "Uses browser-native rules to clean URLs from the address bar, bookmarks, and external apps", es: "Usa reglas nativas del navegador para limpiar URLs desde la barra de direcciones, marcadores y apps externas" },
+  row_context_menu_label: { en: "Right-click → Copy clean link", es: "Menú contextual → Copiar enlace limpio" },
+  row_context_menu_hint:  { en: "Alt+Shift+C also copies the clean URL of the current tab", es: "Alt+Shift+C también copia la URL limpia de la pestaña activa" },
   section_privacy:       { en: "Privacy",                            es: "Privacidad" },
   row_pings_label:       { en: "Block <a ping> tracking beacons",    es: "Bloquear balizas de rastreo <a ping>" },
   row_pings_hint:        { en: "Removes ping attributes from links so the browser doesn't send tracking beacons on click", es: "Elimina atributos ping para que el navegador no envíe balizas al hacer clic" },
