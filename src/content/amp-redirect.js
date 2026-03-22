@@ -19,12 +19,23 @@
     const currentUrl = window.location.href;
     const canonicalUrl = canonical.href;
 
-    // Only redirect if we are on an AMP page and canonical differs
+    // Only redirect if we are on an AMP page and canonical differs.
+    // Strict URL checks prevent false positives for paths like /trampoline,
+    // /campaign, or /example-amp-meter (#189).
+    const parsedCurrent = (() => { try { return new URL(currentUrl); } catch { return null; } })();
+    const isAmpByUrl = parsedCurrent && (
+      parsedCurrent.hostname.startsWith("amp.") ||
+      parsedCurrent.pathname.startsWith("/amp/") ||
+      parsedCurrent.pathname === "/amp" ||
+      parsedCurrent.pathname.endsWith("/amp") ||
+      parsedCurrent.search.includes("?amp") ||
+      parsedCurrent.search.startsWith("?amp") ||
+      parsedCurrent.searchParams.has("amp")
+    );
     const isAmp =
       document.documentElement.hasAttribute("amp") ||
       document.documentElement.hasAttribute("⚡") ||
-      currentUrl.includes("/amp") ||
-      currentUrl.includes("?amp");
+      isAmpByUrl;
 
     if (!isAmp) return;
     if (canonicalUrl === currentUrl) return;
