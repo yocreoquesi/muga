@@ -6,8 +6,17 @@ node_modules/
 
 # Project context & private notes (not for version control)
 Muga.md
+CLAUDE.md
 *.local.md
 .github-issues.md
+docs/*-launch-*.md
+docs/*-strategy-*.md
+
+# Claude Code internals
+.claude/
+
+# Chrome extension metadata (auto-generated)
+src/_metadata/
 
 # OS
 .DS_Store
