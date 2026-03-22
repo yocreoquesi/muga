@@ -5,7 +5,7 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
-import { getPrefs } from "../lib/storage.js";
+import { getPrefs, sessionStorage } from "../lib/storage.js";
 import { getSupportedStores } from "../lib/affiliates.js";
 
 async function init() {
@@ -98,7 +98,7 @@ async function showUrlPreview(prefs, lang) {
   // Show per-tab badge count (#89)
   if (tab?.id) {
     const key = `tab_${tab.id}`;
-    const sessionData = await chrome.storage.session.get({ [key]: 0 });
+    const sessionData = await sessionStorage.get({ [key]: 0 });
     const count = sessionData[key];
     if (count > 0) {
       const badge = document.getElementById("tab-badge");
@@ -145,7 +145,7 @@ function formatStat(n) {
 }
 
 async function showHistory(lang) {
-  const data = await chrome.storage.session.get({ history: [] });
+  const data = await sessionStorage.get({ history: [] });
   const history = data.history;
   if (!history.length) return;
 

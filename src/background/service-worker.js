@@ -5,7 +5,7 @@
  */
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
-import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal } from "../lib/storage.js";
+import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
 import domainRules from "../rules/domain-rules.json" with { type: "json" };
 
 // Run migration once on startup (no-op if already done)
@@ -83,23 +83,23 @@ chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
 async function updateTabBadge(tabId, junkRemoved) {
   if (!tabId || junkRemoved <= 0) return;
   const key = `tab_${tabId}`;
-  const data = await chrome.storage.session.get({ [key]: 0 });
+  const data = await sessionStorage.get({ [key]: 0 });
   const newCount = data[key] + junkRemoved;
-  await chrome.storage.session.set({ [key]: newCount });
+  await sessionStorage.set({ [key]: newCount });
   chrome.action.setBadgeText({ text: String(newCount), tabId });
 }
 
 // Clear badge when a tab starts navigating to a new page
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
-    chrome.storage.session.remove(`tab_${tabId}`);
+    sessionStorage.remove(`tab_${tabId}`);
     chrome.action.setBadgeText({ text: "", tabId });
   }
 });
 
 // Clean up session data when a tab closes
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove(`tab_${tabId}`);
+  sessionStorage.remove(`tab_${tabId}`);
 });
 
 // --- Session history helpers ---
@@ -108,10 +108,10 @@ const HISTORY_MAX = 10;
 
 async function appendHistory(original, clean) {
   if (original === clean) return;
-  const data = await chrome.storage.session.get({ history: [] });
+  const data = await sessionStorage.get({ history: [] });
   const entry = { original, clean, ts: Date.now() };
   const history = [entry, ...data.history].slice(0, HISTORY_MAX);
-  await chrome.storage.session.set({ history });
+  await sessionStorage.set({ history });
 }
 
 // --- Storage change listener: invalidate cache and re-apply DNR state ---
