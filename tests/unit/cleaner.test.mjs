@@ -1035,3 +1035,44 @@ describe("ref is not a global tracking param (#160)", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// Bug #183 — blacklist-specific + inject must NOT silently replace competitor tag
+// ---------------------------------------------------------------------------
+describe("Bug #183 — blacklist removal takes priority over affiliate injection", () => {
+  before(() => AFFILIATE_PATTERNS.push(TEST_PATTERN));
+  after(() => { const i = AFFILIATE_PATTERNS.indexOf(TEST_PATTERN); if (i !== -1) AFFILIATE_PATTERNS.splice(i, 1); });
+
+  test("blacklisted affiliate tag is removed and ourTag is NOT injected (#183)", () => {
+    const prefs = {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      blacklist: ["shop.test.muga::aff::competitor-21"],
+    };
+    const { cleanUrl, action } = processUrl(
+      "https://shop.test.muga/product?aff=competitor-21&utm_source=email",
+      prefs
+    );
+    // The competitor tag must be gone
+    assert.ok(!cleanUrl.includes("competitor-21"), "competitor-21 must be stripped");
+    // Our tag must NOT have been silently injected
+    assert.ok(!cleanUrl.includes("muga-test-99"), "ourTag must NOT be injected after blacklist removal");
+    // Action must be cleaned, not injected
+    assert.notEqual(action, "injected", "action must not be 'injected' when blacklist removed the affiliate");
+  });
+
+  test("when no tag is present (no blacklist hit), ourTag is still injected normally (#183 non-regression)", () => {
+    const prefs = {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      blacklist: ["shop.test.muga::aff::competitor-21"],
+    };
+    const { cleanUrl, action } = processUrl(
+      "https://shop.test.muga/product?color=blue",
+      prefs
+    );
+    // No blacklist rule fired — normal injection should proceed
+    assert.ok(cleanUrl.includes("muga-test-99"), "ourTag should be injected when no blacklist hit");
+    assert.equal(action, "injected");
+  });
+});
