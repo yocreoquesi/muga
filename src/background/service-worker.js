@@ -164,6 +164,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep the channel open for the async response
   }
 
+  if (message.type === "ADD_TO_WHITELIST") {
+    getPrefsWithCache().then(async prefs => {
+      const entry = message.tag;
+      if (entry && !prefs.whitelist.includes(entry)) {
+        await setPrefs({ whitelist: [...prefs.whitelist, entry] });
+        cachedPrefs = null;
+      }
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+
+  if (message.type === "ADD_TO_BLACKLIST") {
+    getPrefsWithCache().then(async prefs => {
+      const entry = message.tag;
+      if (entry && !prefs.blacklist.includes(entry)) {
+        await setPrefs({ blacklist: [...prefs.blacklist, entry] });
+        cachedPrefs = null;
+      }
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {

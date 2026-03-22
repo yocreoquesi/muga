@@ -220,6 +220,12 @@ header {
   text-decoration: line-through;
 }
 
+/* When the page URL is already clean: show without strikethrough */
+.preview-url.before.clean-url {
+  text-decoration: none;
+  color: var(--text);
+}
+
 .preview-url.after {
   color: var(--accent);
 }

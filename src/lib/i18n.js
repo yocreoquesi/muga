@@ -39,7 +39,7 @@ export const TRANSLATIONS = {
   opt_test_notify_label: { en: "Preview affiliate notification", es: "Previsualizar notificación de afiliado" },
   opt_test_notify_hint:  { en: "See how the toast looks when a third-party affiliate is detected", es: "Ve cómo se ve el aviso cuando se detecta un afiliado ajeno" },
   opt_test_notify_btn:   { en: "Preview", es: "Vista previa" },
-  link_advanced:    { en: "Advanced settings →", es: "Preferencias avanzadas →" },
+  link_advanced:    { en: "Settings →", es: "Ajustes →" },
   link_donate:      { en: "Support the project", es: "Apoyar el proyecto" },
   removed_params_label: { en: "Removed:", es: "Eliminado:" },
   tab_badge_label:      { en: "stripped this tab", es: "eliminados en esta pestaña" },
@@ -48,7 +48,7 @@ export const TRANSLATIONS = {
   history_copy_original: { en: "Copy original", es: "Copiar original" },
 
   // ── Options ──────────────────────────────────────────────────────────────
-  opts_title:      { en: "Advanced settings", es: "Preferencias avanzadas" },
+  opts_title:      { en: "Settings", es: "Ajustes" },
   opts_subtitle:   { en: "Make URLs Great Again", es: "Make URLs Great Again" },
   section_behaviour: { en: "Behaviour", es: "Comportamiento" },
   section_affiliate_settings: { en: "Affiliate settings", es: "Configuración de afiliados" },
@@ -112,10 +112,10 @@ export const TRANSLATIONS = {
   import_error:          { en: "Invalid file. Make sure it is a MUGA settings export.",                            es: "Archivo inválido. Asegúrate de que es una exportación de MUGA." },
 
   // ── Content script toast ──────────────────────────────────────────────────
-  toast_title:   { en: "MUGA detected an affiliate", es: "MUGA detectó un afiliado" },
-  toast_tag_msg: { en: "carries the tag", es: "lleva el tag" },
-  toast_keep:    { en: "Keep", es: "Mantener" },
-  toast_remove:  { en: "Remove", es: "Quitar" },
+  toast_title:   { en: "MUGA detected a third-party affiliate", es: "MUGA detectó un afiliado ajeno" },
+  toast_tag_msg: { en: "has an affiliate tag that isn't ours:", es: "tiene un tag de afiliado que no es nuestro:" },
+  toast_allow:   { en: "Allow", es: "Permitir" },
+  toast_block:   { en: "Block", es: "Bloquear" },
   toast_ours:    { en: "Use ours", es: "Usar el nuestro" },
   toast_dismiss: { en: "Dismiss", es: "Descartar" },
 };
