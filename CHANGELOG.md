@@ -2,6 +2,14 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.5.2] — 2026-03-22
+
+### Bug Fixes
+- **Toast Allow/Block buttons now work correctly** — the "Allow" and "Block" buttons in the foreign-affiliate toast were storing entries in `param=value` format, which `parseListEntry` treated as a domain name. The entries never matched any real hostname, so the buttons had no effect. Entries are now stored in `domain::param::value` format so the whitelist/blacklist rule fires on subsequent visits (#229)
+
+### Internal
+- 261 passing tests, 0 failures (4 new tests covering the #229 bug and its regression guard)
+
 ## [1.5.1] — 2026-03-22
 
 ### Bug Fixes
