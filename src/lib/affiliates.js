@@ -488,7 +488,10 @@ export const AFFILIATE_PATTERNS = [
 export function getPatternsForHost(hostname) {
   const host = hostname.replace(/^www\./, "");
   return AFFILIATE_PATTERNS.filter(p =>
-    p.domains.some(d => d.replace(/^www\./, "") === host)
+    p.domains.some(d => {
+      const domain = d.replace(/^www\./, "");
+      return host === domain || host.endsWith("." + domain);
+    })
   );
 }
 
