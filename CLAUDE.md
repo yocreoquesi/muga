@@ -158,7 +158,7 @@ muga/
 | Escenario | Qué hace | Activación |
 |---|---|---|
 | A | Strip tracking params (utm_*, fbclid, gclid, etc.) | Siempre, automático |
-| B | Inject ourTag cuando no hay afiliado | OFF por defecto, opt-in (requiere consentimiento ToS) |
+| B | Inject ourTag cuando no hay afiliado | OFF por defecto — el usuario lo activa en el onboarding o manualmente en Settings |
 | C | Toast cuando detecta afiliado ajeno | OFF por defecto, opt-in |
 | D | Strip todo si el dominio está en blacklist | Configurable por dominio |
 
