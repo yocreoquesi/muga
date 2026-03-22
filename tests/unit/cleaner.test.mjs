@@ -413,13 +413,13 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
-  test("injectOwnAffiliate: true + amazon.es ourTag set → injects muga-es-21", () => {
+  test("injectOwnAffiliate: true + amazon.es ourTag empty → does NOT inject", () => {
     const { action, cleanUrl } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    assert.equal(action, "injected");
-    assert.ok(new URL(cleanUrl).searchParams.get("tag") === "muga-es-21");
+    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
   test("injectOwnAffiliate: true + ourTag set → injects tag on clean URL", () => {
