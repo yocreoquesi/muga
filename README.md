@@ -3,7 +3,7 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.5.2-blue)](#)
+[![Version](https://img.shields.io/badge/version-1.5.3-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-261_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
