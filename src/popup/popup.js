@@ -37,11 +37,11 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
-  // Clicking the URLs-cleaned stat toggles the history panel (#178)
+  // Clicking the URLs-cleaned stat always toggles the history panel (#178, #237)
   const statUrlsWrap = document.getElementById("stat-urls-wrap");
   statUrlsWrap.addEventListener("click", () => {
     const historySection = document.getElementById("history");
-    if (historySection.hidden) return; // no history to show
+    historySection.hidden = false;
     historySection.open = !historySection.open;
   });
   statUrlsWrap.addEventListener("keydown", (e) => {
@@ -119,11 +119,17 @@ function formatStat(n) {
 async function showHistory(lang) {
   const data = await sessionStorage.get({ history: [] });
   const history = data.history;
-  if (!history.length) return;
 
   const section = document.getElementById("history");
   const list = document.getElementById("history-list");
-  section.hidden = false;
+
+  if (!history.length) {
+    const empty = document.createElement("p");
+    empty.className = "history-empty";
+    empty.textContent = t("history_empty", lang);
+    list.appendChild(empty);
+    return;
+  }
 
   history.forEach(entry => {
     const entryDiv = document.createElement("div");

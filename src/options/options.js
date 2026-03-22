@@ -19,6 +19,10 @@ async function init() {
   bindToggle("replace", "allowReplaceAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
 
+  // replace requires inject — dim the row when inject is off (#237)
+  syncReplaceState();
+  document.getElementById("inject").addEventListener("change", syncReplaceState);
+
   bindToggle("dnr-enabled", "dnrEnabled", prefs);
   bindToggle("context-menu-toggle", "contextMenuEnabled", prefs);
   bindToggle("block-pings", "blockPings", prefs);
@@ -40,6 +44,14 @@ function bindToggle(id, key, prefs) {
   const el = document.getElementById(id);
   el.checked = prefs[key];
   el.addEventListener("change", () => chrome.storage.sync.set({ [key]: el.checked }));
+}
+
+// "Replace with ours" only makes sense when affiliate injection is on (#237)
+function syncReplaceState() {
+  const injectOn = document.getElementById("inject").checked;
+  const replaceRow = document.getElementById("replace").closest(".row");
+  replaceRow.style.opacity = injectOn ? "" : "0.4";
+  replaceRow.style.pointerEvents = injectOn ? "" : "none";
 }
 
 function renderList(containerId, items, listKey) {

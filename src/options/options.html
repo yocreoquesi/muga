@@ -86,8 +86,10 @@
       border: 0.5px solid var(--border); background: var(--bg);
       color: var(--text); cursor: pointer; min-width: 120px;
     }
+    /* Version */
+    .version-info { text-align: center; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
     /* Footer */
-    .footer-links { text-align: center; padding-top: 8px; }
+    .footer-links { text-align: center; padding-top: 4px; padding-bottom: 8px; }
     .footer-links a { font-size: 12px; color: var(--text2); text-decoration: none; }
     .footer-links a:hover { color: var(--accent); }
   </style>
@@ -230,8 +232,8 @@
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <strong data-i18n="stats_version">Version</strong>
-          <small id="version-number"></small>
+          <strong data-i18n="stats_reset_label">Lifetime stats</strong>
+          <small data-i18n="stats_reset_hint">URLs cleaned, params removed, affiliates spotted</small>
         </div>
         <button class="add-btn" id="reset-stats-btn" data-i18n="stats_reset_btn">Reset stats</button>
       </div>
@@ -256,6 +258,8 @@
       </div>
     </div>
   </section>
+
+  <p class="version-info">MUGA <span id="version-number"></span></p>
 
   <div class="footer-links">
     <a href="../privacy/privacy.html" target="_blank" data-i18n="privacy_link">Privacy policy</a>
