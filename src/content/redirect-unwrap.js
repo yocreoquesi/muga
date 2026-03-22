@@ -20,7 +20,8 @@
     // common in SPA routing and OAuth flows, high false-positive risk.
     // "destination" intentionally excluded — used in SSO/corporate flows to indicate
     // where to redirect AFTER authentication. Unwrapping it would bypass login. (#158)
-    const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "dest", "goto", "returnUrl", "return_url"];
+    // All entries lowercase — param keys are normalised to lowercase at lookup time (#191).
+    const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "dest", "goto", "returnurl", "return_url"];
 
     let parsed;
     try {
@@ -29,8 +30,11 @@
       return;
     }
 
-    for (const param of REDIRECT_PARAMS) {
-      const value = parsed.searchParams.get(param);
+    // Normalise param names to lowercase before lookup so ?URL=, ?Redirect=,
+    // ?returnUrl= etc. all match entries in REDIRECT_PARAMS (#191).
+    for (const [rawKey, value] of parsed.searchParams) {
+      const param = rawKey.toLowerCase();
+      if (!REDIRECT_PARAMS.includes(param)) continue;
       if (!value) continue;
 
       let destination;
