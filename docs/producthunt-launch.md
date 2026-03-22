@@ -8,13 +8,13 @@
 ## Taglines
 
 **Primary:**
-Drain the tracking swamp
+130+ trackers stripped. Automatically. Before the page loads.
 
 **Alternative 1:**
 Your links arrive dirty. MUGA cleans them.
 
 **Alternative 2:**
-130+ trackers stripped. Automatically. Before the page loads.
+Clean URLs. Before the page loads. Never replaces a creator's tag.
 
 ---
 
