@@ -124,7 +124,46 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   let detectedAffiliate = null;
   let action = "untouched";
 
-  // 2. Collect whitelisted affiliate values for this host (never touch these)
+  // 2. Whitelist domain-only check: if the domain itself is whitelisted, skip all affiliate processing
+  const domainWhitelisted = parsedWhitelist.some(
+    e => !e.param && domainMatches(hostname, e.domain)
+  );
+  if (domainWhitelisted) {
+    // Still strip tracking params, but leave all affiliate params untouched and skip injection
+    const affiliateParamNamesForSkip = getPatternsForHost(hostname).map(p => p.param.toLowerCase());
+    const customParamsForSkip = (prefs.customParams || []).map(p => p.toLowerCase());
+    const preservedParamsForSkip = getPreservedParams(hostname, domainRules);
+    const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
+    const disabledParamsForSkip = new Set();
+    if (disabledCategoriesForSkip.size > 0) {
+      for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+        if (disabledCategoriesForSkip.has(key)) {
+          cat.params.forEach(p => disabledParamsForSkip.add(p.toLowerCase()));
+        }
+      }
+    }
+    const removedTrackingForSkip = [];
+    for (const param of [...url.searchParams.keys()]) {
+      const lower = param.toLowerCase();
+      if (affiliateParamNamesForSkip.includes(lower)) continue;
+      if (preservedParamsForSkip.has(lower)) continue;
+      if (disabledParamsForSkip.has(lower)) continue;
+      if (TRACKING_PARAMS.includes(lower) || customParamsForSkip.includes(lower)) {
+        url.searchParams.delete(param);
+        removedTrackingForSkip.push(param);
+      }
+    }
+    const actionForSkip = removedTrackingForSkip.length > 0 ? "cleaned" : "untouched";
+    return {
+      cleanUrl: url.toString(),
+      action: actionForSkip,
+      removedTracking: removedTrackingForSkip,
+      junkRemoved: removedTrackingForSkip.length,
+      detectedAffiliate: null,
+    };
+  }
+
+  // 2b. Collect whitelisted affiliate values for this host (never touch these)
   const whitelistedValues = new Set(
     parsedWhitelist
       .filter(e => domainMatches(hostname, e.domain) && e.param && e.value)
