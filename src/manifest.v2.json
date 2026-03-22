@@ -66,7 +66,8 @@
 
   "web_accessible_resources": [
     "onboarding/onboarding.html",
-    "privacy/privacy.html"
+    "privacy/privacy.html",
+    "privacy/tos.html"
   ],
 
   "declarative_net_request": {
