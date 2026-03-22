@@ -7,12 +7,13 @@
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
 
-// B4 — fetch domain-rules dynamically (import assertions incompatible with Firefox)
+// B4 — fetch domain-rules dynamically (import assertions incompatible with Firefox;
+//       top-level await disallowed in Chrome MV3 service workers)
 let domainRules = [];
-try {
-  const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
-  domainRules = await resp.json();
-} catch (_) { /* domain-rules unavailable — continue without */ }
+let _domainRulesReady = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
+  .then(r => r.json())
+  .then(data => { domainRules = data; })
+  .catch(() => { /* domain-rules unavailable — continue without */ });
 
 // B3 — chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
@@ -237,6 +238,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
+  await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled) {
