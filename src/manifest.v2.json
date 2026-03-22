@@ -19,6 +19,8 @@
     "persistent": false
   },
 
+  "_sri_browser_polyfill": "sha256-ogk4EN2O4Ak+5NNOO0PRXB9pBcb0MPxmS2j4Da1JAk= (hex: a2093810df8e00393ee4d3adc243ea82d7e56471b40f0f66b64f8980da944094) — verified by tools/verify-polyfill-integrity.mjs (#97)",
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

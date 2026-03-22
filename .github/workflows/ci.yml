@@ -34,6 +34,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify browser-polyfill integrity (#97)
+        run: node tools/verify-polyfill-integrity.mjs
+
       - name: Run unit tests
         run: npm test
 
