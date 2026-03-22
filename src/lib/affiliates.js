@@ -322,7 +322,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.es", "www.amazon.es"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.es)
+    ourTag: "muga-es-21",  // TODO: fill in your Amazon Associates tag (amazon.es)
   },
   {
     id: "amazon_de",
@@ -330,7 +330,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.de", "www.amazon.de"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.de)
+    ourTag: "muga-de-21",  // TODO: fill in your Amazon Associates tag (amazon.de)
   },
   {
     id: "amazon_fr",
@@ -338,7 +338,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.fr", "www.amazon.fr"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.fr)
+    ourTag: "muga-fr-21",  // TODO: fill in your Amazon Associates tag (amazon.fr)
   },
   {
     id: "amazon_it",
@@ -346,7 +346,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.it", "www.amazon.it"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.it)
+    ourTag: "muga-it-21",  // TODO: fill in your Amazon Associates tag (amazon.it)
   },
   {
     id: "amazon_co_uk",
@@ -354,7 +354,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.co.uk", "www.amazon.co.uk"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.co.uk)
+    ourTag: "muga-uk-21",  // TODO: fill in your Amazon Associates tag (amazon.co.uk)
   },
   {
     id: "amazon_com",
@@ -362,7 +362,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.com", "www.amazon.com"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.com)
+    ourTag: "muga-us-21",  // TODO: fill in your Amazon Associates tag (amazon.com)
   },
   {
     id: "booking",
@@ -370,7 +370,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["booking.com", "www.booking.com"],
     param: "aid",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Booking Partner ID
+    ourTag: "muga-booking",  // TODO: fill in your Booking Partner ID
   },
   {
     id: "aliexpress",
@@ -378,7 +378,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["aliexpress.com", "es.aliexpress.com", "www.aliexpress.com"],
     param: "aff_fcid",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your AliExpress Portal affiliate ID
+    ourTag: "muga-aex",  // TODO: fill in your AliExpress Portal affiliate ID
   },
   {
     id: "pccomponentes",
@@ -386,7 +386,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["pccomponentes.com", "www.pccomponentes.com"],
     param: "ref",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your PcComponentes affiliate ref
+    ourTag: "muga-pcc",  // TODO: fill in your PcComponentes affiliate ref
   },
   {
     id: "el_corte_ingles",
@@ -394,7 +394,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["elcorteingles.es", "www.elcorteingles.es"],
     param: "affiliateId",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your El Corte Inglés affiliate ID
+    ourTag: "muga-eci",  // TODO: fill in your El Corte Inglés affiliate ID
   },
   {
     id: "ebay",
@@ -404,7 +404,7 @@ export const AFFILIATE_PATTERNS = [
               "ebay.fr", "www.ebay.fr", "ebay.it", "www.ebay.it"],
     param: "campid",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your eBay Partner Network campaign ID
+    ourTag: "muga-ebay",  // TODO: fill in your eBay Partner Network campaign ID
   },
   {
     id: "awin",
@@ -420,7 +420,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["temu.com", "www.temu.com"],
     param: "aff_id",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Temu affiliate ID
+    ourTag: "muga-temu",  // TODO: fill in your Temu affiliate ID
   },
   {
     id: "zalando_es",
@@ -428,7 +428,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["zalando.es", "www.zalando.es"],
     param: "wt_mc",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Zalando affiliate marketing code
+    ourTag: "muga-zal-es",  // TODO: fill in your Zalando affiliate marketing code
   },
   {
     id: "zalando_de",
@@ -436,7 +436,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["zalando.de", "www.zalando.de"],
     param: "wt_mc",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Zalando DE affiliate marketing code
+    ourTag: "muga-zal-de",  // TODO: fill in your Zalando DE affiliate marketing code
   },
   {
     id: "shein",
@@ -444,7 +444,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["shein.com", "www.shein.com", "es.shein.com", "fr.shein.com", "de.shein.com"],
     param: "url_from",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your SHEIN affiliate ID
+    ourTag: "muga-shein",  // TODO: fill in your SHEIN affiliate ID
   },
   {
     id: "fnac_es",
@@ -452,7 +452,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["fnac.es", "www.fnac.es"],
     param: "oref",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Fnac affiliate origin ref
+    ourTag: "muga-fnac-es",  // TODO: fill in your Fnac affiliate origin ref
   },
   {
     id: "fnac_fr",
@@ -460,7 +460,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["fnac.com", "www.fnac.com"],
     param: "oref",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Fnac FR affiliate origin ref
+    ourTag: "muga-fnac-fr",  // TODO: fill in your Fnac FR affiliate origin ref
   },
   {
     id: "mediamarkt_es",
@@ -468,7 +468,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["mediamarkt.es", "www.mediamarkt.es"],
     param: "ref",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your MediaMarkt affiliate ref (Impact Radius)
+    ourTag: "muga-mm-es",  // TODO: fill in your MediaMarkt affiliate ref (Impact Radius)
   },
   {
     id: "mediamarkt_de",
@@ -476,7 +476,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["mediamarkt.de", "www.mediamarkt.de"],
     param: "ref",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your MediaMarkt DE affiliate ref
+    ourTag: "muga-mm-de",  // TODO: fill in your MediaMarkt DE affiliate ref
   },
 ];
 
