@@ -64,26 +64,30 @@ function getPrefsWithCache() {
 const DYNAMIC_RULE_ID = 1000;
 
 async function syncCustomParamsDNR(customParams) {
-  if (!customParams || customParams.length === 0) {
+  try {
+    if (!customParams || customParams.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DYNAMIC_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    const normalized = customParams.map(p => p.trim().toLowerCase());
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [DYNAMIC_RULE_ID],
-      addRules: [],
+      addRules: [{
+        id: DYNAMIC_RULE_ID,
+        priority: 1,
+        action: {
+          type: "redirect",
+          redirect: { transform: { queryTransform: { removeParams: normalized } } },
+        },
+        condition: { urlFilter: "*", resourceTypes: ["main_frame"] },
+      }],
     });
-    return;
+  } catch (err) {
+    console.error("[MUGA] syncCustomParamsDNR failed:", err);
   }
-  const normalized = customParams.map(p => p.trim().toLowerCase());
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [DYNAMIC_RULE_ID],
-    addRules: [{
-      id: DYNAMIC_RULE_ID,
-      priority: 1,
-      action: {
-        type: "redirect",
-        redirect: { transform: { queryTransform: { removeParams: normalized } } },
-      },
-      condition: { urlFilter: "*", resourceTypes: ["main_frame"] },
-    }],
-  });
 }
 
 async function applyDnrState(prefs) {
@@ -108,20 +112,26 @@ const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
 async function syncContextMenus(enabled) {
   await chrome.contextMenus.removeAll();
   if (!enabled) return;
+  const prefs = await getPrefsWithCache();
+  const lang = prefs.language || "en";
+  const titles = {
+    copy: lang === "es" ? "Copiar enlace limpio" : "Copy clean link",
+    selection: lang === "es" ? "Copiar enlaces limpios de la selección" : "Copy clean links in selection",
+  };
   chrome.contextMenus.create({
     id: "muga-copy-clean",
-    title: "Copy clean link",
+    title: titles.copy,
     contexts: ["link"],
   });
   chrome.contextMenus.create({
     id: "muga-copy-clean-selection",
-    title: "Copy clean links in selection",
+    title: titles.selection,
     contexts: ["selection"],
   });
 }
 
 // Set badge appearance once on startup
-actionApi.setBadgeBackgroundColor({ color: "#2563eb" });
+actionApi.setBadgeBackgroundColor?.({ color: "#2563eb" });
 
 // --- Badge helpers ---
 
@@ -131,14 +141,14 @@ async function updateTabBadge(tabId, junkRemoved) {
   const data = await sessionStorage.get({ [key]: 0 });
   const newCount = data[key] + junkRemoved;
   await sessionStorage.set({ [key]: newCount });
-  actionApi.setBadgeText({ text: String(newCount), tabId });
+  actionApi.setBadgeText?.({ text: String(newCount), tabId });
 }
 
 // Clear badge when a tab starts navigating to a new page
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     sessionStorage.remove(`tab_${tabId}`);
-    actionApi.setBadgeText({ text: "", tabId });
+    actionApi.setBadgeText?.({ text: "", tabId });
   }
 });
 
@@ -170,8 +180,11 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
   }
-  if (changes.contextMenuEnabled) {
-    await syncContextMenus(changes.contextMenuEnabled.newValue !== false);
+  if (changes.contextMenuEnabled || changes.language) {
+    const enabled = changes.contextMenuEnabled
+      ? changes.contextMenuEnabled.newValue !== false
+      : (await getPrefsWithCache()).contextMenuEnabled !== false;
+    await syncContextMenus(enabled);
   }
 });
 
@@ -242,7 +255,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled) {
-    return { cleanUrl: rawUrl, action: "untouched" };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
   // On copy: suppress the toast and affiliate injection — user didn't navigate,
@@ -268,14 +281,14 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
   // Update stats and session history — only count if the URL actually changed (S13)
   const urlChanged = result.cleanUrl !== rawUrl;
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
-    await incrementStat("urlsCleaned");
+    incrementStat("urlsCleaned");
     await appendHistory(rawUrl, result.cleanUrl);
   }
   if (result.junkRemoved > 0) {
-    await incrementStat("junkRemoved", result.junkRemoved);
+    incrementStat("junkRemoved", result.junkRemoved);
   }
   if (result.action === "detected_foreign") {
-    await incrementStat("referralsSpotted");
+    incrementStat("referralsSpotted");
     // If the user has "replace foreign affiliate" enabled, build the URL with our tag
     if (prefs.allowReplaceAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
       const url = new URL(result.cleanUrl);

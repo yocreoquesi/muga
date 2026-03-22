@@ -11,10 +11,6 @@
 (function () {
   "use strict";
 
-  function escHtml(str) {
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
   // Prevent double execution in iframes
   if (window.self !== window.top) return;
   if (window.__mugaActive) return;
@@ -286,6 +282,8 @@
 
     const notice = document.createElement("div");
     notice.id = "muga-notice";
+    notice.setAttribute("role", "alert");
+    notice.setAttribute("aria-live", "assertive");
     notice.style.cssText = [
       "position:fixed", "bottom:20px", "right:20px",
       "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
@@ -296,7 +294,7 @@
       "border:0.5px solid rgba(255,255,255,0.1)",
     ].join(";");
 
-    const domain = new URL(originalUrl).hostname.replace("www.", "");
+    const domain = new URL(originalUrl).hostname.replace(/^www\./, "");
 
     const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
     const codeStyle = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
@@ -338,8 +336,8 @@
       btnDiv.appendChild(oursBtn);
     }
 
-    const dismissDiv = document.createElement("div");
-    dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer";
+    const dismissDiv = document.createElement("button");
+    dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
     dismissDiv.id = "muga-dismiss";
     dismissDiv.textContent = s.toast_dismiss;
 
