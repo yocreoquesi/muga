@@ -55,6 +55,20 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
+  // Clicking the URLs-cleaned stat toggles the history panel (#178)
+  const statUrlsWrap = document.getElementById("stat-urls-wrap");
+  statUrlsWrap.addEventListener("click", () => {
+    const historySection = document.getElementById("history");
+    if (historySection.hidden) return; // no history to show
+    historySection.open = !historySection.open;
+  });
+  statUrlsWrap.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      statUrlsWrap.click();
+    }
+  });
+
   document.getElementById("test-notify-btn").addEventListener("click", async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) {
@@ -154,8 +168,18 @@ async function showHistory(lang) {
     afterDiv.className = "history-url after";
     afterDiv.textContent = entry.clean;
 
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "history-actions";
+
+    const copyOrigBtn = document.createElement("button");
+    copyOrigBtn.className = "history-copy-btn";
+    copyOrigBtn.textContent = t("history_copy_original", lang);
+    copyOrigBtn.setAttribute("aria-label", t("history_copy_original", lang));
+
+    actionsDiv.appendChild(copyOrigBtn);
     entryDiv.appendChild(beforeDiv);
     entryDiv.appendChild(afterDiv);
+    entryDiv.appendChild(actionsDiv);
     list.appendChild(entryDiv);
 
     // Keyboard activation for history entries (#127)
@@ -167,7 +191,8 @@ async function showHistory(lang) {
     });
 
     // Click to copy clean URL (#87)
-    entryDiv.addEventListener("click", () => {
+    entryDiv.addEventListener("click", (e) => {
+      if (e.target === copyOrigBtn) return; // handled separately
       navigator.clipboard.writeText(entry.clean).then(() => {
         const orig = afterDiv.textContent;
         entryDiv.classList.add("copied");
@@ -176,6 +201,16 @@ async function showHistory(lang) {
           entryDiv.classList.remove("copied");
           afterDiv.textContent = orig;
         }, 1200);
+      });
+    });
+
+    // Copy original URL button (#178)
+    copyOrigBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(entry.original).then(() => {
+        const origText = copyOrigBtn.textContent;
+        copyOrigBtn.textContent = t("history_copied", lang);
+        setTimeout(() => { copyOrigBtn.textContent = origText; }, 1200);
       });
     });
   });
