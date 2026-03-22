@@ -23,9 +23,11 @@ import assert from "node:assert/strict";
 // "location", "return", "continue" excluded — too generic (SPA routing, OAuth flows)
 // "to", "next", "target" excluded — too generic (SPA routing, auth flows, UI targets)
 // "destination" excluded — SSO/corporate post-auth redirect target; unwrapping bypasses login (#158)
+// All entries lowercase — param keys are normalised to lowercase at lookup time (#191).
+// Keep in sync with src/content/redirect-unwrap.js
 const REDIRECT_PARAMS = [
   "url", "redirect", "redirect_url", "dest",
-  "goto", "returnUrl", "return_url",
+  "goto", "returnurl", "return_url",
 ];
 
 /**
@@ -40,8 +42,10 @@ function extractRedirectDestination(rawUrl) {
     return null;
   }
 
-  for (const param of REDIRECT_PARAMS) {
-    const value = parsed.searchParams.get(param);
+  // Normalise param names to lowercase before lookup — mirrors fix in redirect-unwrap.js (#191)
+  for (const [rawKey, value] of parsed.searchParams) {
+    const param = rawKey.toLowerCase();
+    if (!REDIRECT_PARAMS.includes(param)) continue;
     if (!value) continue;
 
     let destination;
@@ -183,65 +187,43 @@ describe("redirect-unwrap — safety guards", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Case-insensitive param matching — bug #191 (Zara's fix)
-// These tests document expected behaviour AFTER the fix in #191.
-// If that fix has not yet merged, these tests will fail and will be validated
-// by CI once the fix lands.
+// Case-insensitive param matching — bug #191
 // ---------------------------------------------------------------------------
-describe("redirect-unwrap — case-insensitive params (#198)", () => {
+describe("redirect-unwrap — case-insensitive params (#191)", () => {
 
-  // NOTE: The helper extractRedirectDestination above uses REDIRECT_PARAMS with the
-  // exact casing from the source file. The tests below exercise whether the logic
-  // handles params sent in a different case by the browser/tracker.
-  // A case-insensitive implementation would normalise query param keys before lookup.
-
-  test("?URL=https://example.com (uppercase) — unwraps correctly after #191 fix", () => {
-    // After fix #191: lookup is case-insensitive, so URL= matches the 'url' entry.
-    // The test helper below uses a case-insensitive variant to simulate the fixed behaviour.
-    const rawUrl = "https://tracker.example.com/click?URL=https://example.com/dest";
-    const parsed = new URL(rawUrl);
-    // Simulate case-insensitive search: find param key ignoring case
-    let dest = null;
-    for (const param of REDIRECT_PARAMS) {
-      for (const [key, value] of parsed.searchParams.entries()) {
-        if (key.toLowerCase() === param.toLowerCase() && value) {
-          try { dest = new URL(value).href; } catch { /* skip */ }
-          break;
-        }
-      }
-      if (dest) break;
-    }
-    assert.equal(dest, "https://example.com/dest", "?URL= (uppercase) should unwrap to destination");
+  test("?URL=https://example.com (uppercase) — unwraps correctly (#191)", () => {
+    // Before fix: parsed.searchParams.get('url') returned null for ?URL=...
+    // After fix: keys are normalised to lowercase, so URL matches 'url' in REDIRECT_PARAMS.
+    const dest = extractRedirectDestination(
+      "https://tracker.example.com/click?URL=https://example.com/dest"
+    );
+    assert.equal(dest, "https://example.com/dest",
+      "?URL= (uppercase) must unwrap after case-insensitive fix (#191)");
   });
 
-  test("?Redirect=https://example.com (mixed case) — unwraps after #191 fix", () => {
-    const rawUrl = "https://tracker.example.com/go?Redirect=https://example.com/landing";
-    const parsed = new URL(rawUrl);
-    let dest = null;
-    for (const param of REDIRECT_PARAMS) {
-      for (const [key, value] of parsed.searchParams.entries()) {
-        if (key.toLowerCase() === param.toLowerCase() && value) {
-          try { dest = new URL(value).href; } catch { /* skip */ }
-          break;
-        }
-      }
-      if (dest) break;
-    }
-    assert.equal(dest, "https://example.com/landing", "?Redirect= (mixed case) should unwrap to destination");
+  test("?Redirect=https://example.com (mixed case) — unwraps (#191)", () => {
+    const dest = extractRedirectDestination(
+      "https://tracker.example.com/go?Redirect=https://example.com/landing"
+    );
+    assert.equal(dest, "https://example.com/landing",
+      "?Redirect= (mixed case) must unwrap after fix (#191)");
   });
 
-  // ?returnUrl= is already in REDIRECT_PARAMS with exact casing — verifies existing case works
-  test("?returnUrl=https://example.com (exact case match, already in REDIRECT_PARAMS) — unwraps", () => {
+  test("?returnUrl=https://example.com — unwraps (normalised to returnurl) (#191)", () => {
     const dest = extractRedirectDestination(
       "https://shop.example.com/login?returnUrl=https://example.com/checkout"
     );
-    assert.equal(dest, "https://example.com/checkout", "?returnUrl= (exact REDIRECT_PARAMS casing) must unwrap");
+    assert.equal(dest, "https://example.com/checkout",
+      "?returnUrl= must unwrap after case-insensitive normalisation (#191)");
   });
 
-  // ?returnurl= (all lowercase) is NOT in REDIRECT_PARAMS — documents skipped behaviour
-  // If 'returnurl' (lowercase) is not in REDIRECT_PARAMS, this case is not handled.
-  // Skipped: returnurl (all lowercase) is not in REDIRECT_PARAMS — no unwrap expected
-  // test("?returnurl=... (all lowercase) — only unwraps if returnurl is in REDIRECT_PARAMS", () => { });
+  test("?RETURNURL=https://example.com (all caps) — unwraps after case-insensitive fix (#191)", () => {
+    const dest = extractRedirectDestination(
+      "https://shop.example.com/login?RETURNURL=https://example.com/account"
+    );
+    assert.equal(dest, "https://example.com/account",
+      "?RETURNURL= (all caps) must unwrap after fix (#191)");
+  });
 
 });
 
