@@ -97,7 +97,7 @@
   <p class="subtitle" data-i18n="opts_subtitle">Make URLs Great Again</p>
 
   <section>
-    <h2 data-i18n="section_behaviour">Behaviour</h2>
+    <h2 data-i18n="section_affiliate_settings">Affiliate settings</h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
@@ -116,17 +116,27 @@
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_replace_label">Allow replacing a third-party affiliate with ours</strong>
-          <small data-i18n="row_replace_hint">Only available when notification is on. You always decide, per link.</small>
+          <small data-i18n="row_replace_hint">You always decide, per link.</small>
         </div>
         <label class="toggle"><input type="checkbox" id="replace"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
-          <strong data-i18n="row_strip_affiliates_label">Strip all affiliate parameters</strong>
-          <small data-i18n="row_strip_affiliates_hint">Remove every affiliate parameter from all links, overriding injection</small>
+          <strong data-i18n="row_strip_affiliates_label">Strip all third-party affiliate parameters</strong>
+          <small data-i18n="row_strip_affiliates_hint">Removes third-party affiliate parameters from all links. Our affiliate tag is preserved when injection is active.</small>
         </div>
         <label class="toggle"><input type="checkbox" id="strip-affiliates"><span class="slider"></span></label>
       </div>
+      <details class="stores-details">
+        <summary class="stores-summary" role="heading" aria-level="2">
+          <span data-i18n="section_stores">Affiliate stores</span>
+          <span class="stores-count" id="stores-count"></span>
+        </summary>
+        <div class="stores-grid" id="stores-grid"></div>
+        <div style="padding: 4px 16px 12px">
+          <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active. Grey = pending registration.</p>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -180,21 +190,6 @@
     <h2 data-i18n="section_tracking_categories">Tracking categories</h2>
     <div class="card" id="categories-card"></div>
     <p class="hint" data-i18n="categories_hint" style="margin-top:8px"></p>
-  </section>
-
-  <section>
-    <div class="card">
-      <details class="stores-details">
-        <summary class="stores-summary" role="heading" aria-level="2">
-          <span data-i18n="section_stores">Affiliate stores</span>
-          <span class="stores-count" id="stores-count"></span>
-        </summary>
-        <div class="stores-grid" id="stores-grid"></div>
-        <div style="padding: 4px 16px 12px">
-          <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active. Grey = pending registration.</p>
-        </div>
-      </details>
-    </div>
   </section>
 
   <section>
