@@ -27,19 +27,43 @@ export const PREF_DEFAULTS = {
   consentVersion: null,   // e.g. "1.0" — bump to re-trigger onboarding on ToS changes
   consentDate: null,      // Unix timestamp (ms) of when the user accepted
   disabledCategories: [],  // e.g. ["utm", "ads"] — params in these categories are not stripped
+  // TODO(C8): devMode should migrate to chrome.storage.local — it is device-specific
+  //           and does not need to sync across devices. Left here for now to avoid
+  //           breaking options.js which reads it via getPrefs(). (#259)
   devMode: false,
 };
 
 export async function getPrefs() {
-  return new Promise(resolve => {
-    chrome.storage.sync.get(PREF_DEFAULTS, resolve);
-  });
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getPrefs failed:", err);
+    return { ...PREF_DEFAULTS };
+  }
 }
 
 export async function setPrefs(partial) {
-  return new Promise(resolve => {
-    chrome.storage.sync.set(partial, resolve);
-  });
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.sync.set(partial, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] setPrefs failed:", err);
+  }
 }
 
 export async function addToBlacklist(entry) {
@@ -116,8 +140,20 @@ async function _flushStats() {
 export function incrementStat(key, amount = 1) {
   _pendingStats[key] = (_pendingStats[key] || 0) + amount;
   if (!_statsFlushTimer) {
-    _statsFlushTimer = setTimeout(_flushStats, 100);
+    // C13 — use microtask instead of 100ms timer to minimize the window where
+    // pending stats can be lost if the MV3 service worker is terminated.
+    _statsFlushTimer = true;
+    Promise.resolve().then(_flushStats);
   }
+}
+
+// C13 — flush pending stats immediately when the service worker is about to suspend (MV2 only)
+if (typeof chrome !== "undefined" && chrome.runtime?.onSuspend) {
+  chrome.runtime.onSuspend.addListener(() => {
+    if (Object.keys(_pendingStats).length > 0) {
+      _flushStats();
+    }
+  });
 }
 
 // ── Session storage ponyfill — Firefox MV2 compat (#184) ─────────────────────

@@ -84,34 +84,6 @@ header {
 .stat-clickable:hover { background: var(--bg2); }
 .stat-clickable:hover .stat-value { text-decoration: underline; }
 
-.options {
-  padding: 8px 0;
-  border-bottom: 0.5px solid var(--border);
-}
-
-.option-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  gap: 12px;
-  cursor: pointer;
-}
-.option-row:hover { background: var(--bg2); }
-
-.option-label {
-  flex: 1;
-  font-size: 12.5px;
-  color: var(--text);
-  line-height: 1.4;
-}
-
-.option-label small {
-  display: block;
-  font-size: 10.5px;
-  color: var(--text2);
-  margin-top: 1px;
-}
 
 /* Toggle switch */
 .toggle {
@@ -122,10 +94,6 @@ header {
   flex-shrink: 0;
 }
 
-.toggle.sm {
-  width: 30px;
-  height: 17px;
-}
 
 .toggle input { opacity: 0; width: 0; height: 0; }
 
@@ -150,16 +118,9 @@ header {
   transition: transform 0.2s;
 }
 
-.toggle.sm .slider::before {
-  width: 11px;
-  height: 11px;
-  left: 3px;
-  top: 3px;
-}
 
 .toggle input:checked + .slider { background: var(--toggle-on); }
 .toggle input:checked + .slider::before { transform: translateX(16px); }
-.toggle.sm input:checked + .slider::before { transform: translateX(13px); }
 
 .toggle input:focus-visible + .slider {
   outline: 2px solid var(--accent);
@@ -236,20 +197,6 @@ header {
   font-size: 11.5px;
 }
 
-/* Test notification button */
-.btn-test-notify {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 5px;
-  border: 0.5px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.btn-test-notify:hover { background: var(--bg2); }
 
 /* Session history */
 .history { border-top: 0.5px solid var(--border); }

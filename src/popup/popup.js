@@ -7,6 +7,8 @@ import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage } from "../lib/storage.js";
 
+const CLIPBOARD_SVG = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+
 async function init() {
   const lang = await getStoredLang();
   applyTranslations(lang);
@@ -26,6 +28,8 @@ async function init() {
     formatStat(local.stats?.referralsSpotted ?? 0);
 
   const enabledToggle = document.getElementById("enabled-toggle");
+  enabledToggle.setAttribute("aria-label", t("toggle_enabled", lang));
+  enabledToggle.closest(".toggle").setAttribute("title", t("toggle_title", lang));
 
   enabledToggle.checked = prefs.enabled;
 
@@ -43,6 +47,7 @@ async function init() {
     const historySection = document.getElementById("history");
     historySection.hidden = false;
     historySection.open = !historySection.open;
+    statUrlsWrap.setAttribute("aria-expanded", String(historySection.open));
   });
   statUrlsWrap.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -84,7 +89,13 @@ async function showUrlPreview(prefs, lang) {
     return;
   }
 
-  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false });
+  let domainRules = [];
+  try {
+    const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
+    domainRules = await resp.json();
+  } catch (_) {}
+
+  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules);
 
   if (result.cleanUrl === url && result.action === "untouched") {
     // Show original URL as plain reference — no strikethrough, no "after" URL
@@ -152,7 +163,7 @@ async function showHistory(lang) {
     const copyCleanBtn = document.createElement("button");
     copyCleanBtn.className = "history-copy-clean-btn";
     copyCleanBtn.setAttribute("aria-label", t("history_copy_hint", lang));
-    copyCleanBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+    copyCleanBtn.innerHTML = CLIPBOARD_SVG;
 
     afterRow.appendChild(afterDiv);
     afterRow.appendChild(copyCleanBtn);
@@ -200,7 +211,7 @@ async function showHistory(lang) {
         copyCleanBtn.innerHTML = "✓";
         copyCleanBtn.style.fontSize = "11px";
         setTimeout(() => {
-          copyCleanBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+          copyCleanBtn.innerHTML = CLIPBOARD_SVG;
           copyCleanBtn.style.fontSize = "";
         }, 1200);
       });

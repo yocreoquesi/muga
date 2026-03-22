@@ -132,6 +132,7 @@ function renderCategories(disabledCategories) {
     input.type = "checkbox";
     input.id = `cat-${key}`;
     input.checked = !disabled.has(key);
+    input.setAttribute("aria-label", label);
     input.addEventListener("change", async () => {
       const prefs = await chrome.storage.sync.get({ disabledCategories: [] });
       const set = new Set(prefs.disabledCategories);
@@ -283,6 +284,10 @@ function initExportImport() {
       blacklist: prefs.blacklist,
       whitelist: prefs.whitelist,
       customParams: prefs.customParams,
+      contextMenuEnabled: prefs.contextMenuEnabled,
+      disabledCategories: prefs.disabledCategories,
+      language: prefs.language,
+      devMode: prefs.devMode,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -315,15 +320,44 @@ function initExportImport() {
       if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "allowReplaceAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "allowReplaceAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
       }
+      // Handle disabledCategories (array of strings)
+      if (Array.isArray(data.disabledCategories) && data.disabledCategories.every(e => typeof e === "string")) {
+        toSave.disabledCategories = data.disabledCategories;
+      }
+      // Handle language (string "en"|"es")
+      if (data.language === "en" || data.language === "es") {
+        toSave.language = data.language;
+      }
       await chrome.storage.sync.set(toSave);
-      renderList("blacklist-items", data.blacklist, "blacklist");
-      renderList("whitelist-items", data.whitelist, "whitelist");
-      renderList("custom-params-items", data.customParams, "customParams");
+
+      // Re-read prefs and update all UI toggles and lists
+      const newPrefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+      document.getElementById("inject").checked = newPrefs.injectOwnAffiliate;
+      document.getElementById("notify").checked = newPrefs.notifyForeignAffiliate;
+      document.getElementById("replace").checked = newPrefs.allowReplaceAffiliate;
+      document.getElementById("strip-affiliates").checked = newPrefs.stripAllAffiliates;
+      document.getElementById("dnr-enabled").checked = newPrefs.dnrEnabled;
+      document.getElementById("context-menu-toggle").checked = newPrefs.contextMenuEnabled;
+      document.getElementById("block-pings").checked = newPrefs.blockPings;
+      document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
+      document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
+      document.getElementById("dev-mode").checked = newPrefs.devMode;
+      syncReplaceState();
+      syncDevTools();
+      if (toSave.language) {
+        currentLang = toSave.language;
+        document.getElementById("lang-select").value = currentLang;
+        applyTranslations(currentLang);
+      }
+      renderList("blacklist-items", newPrefs.blacklist, "blacklist");
+      renderList("whitelist-items", newPrefs.whitelist, "whitelist");
+      renderList("custom-params-items", newPrefs.customParams, "customParams");
+      renderCategories(newPrefs.disabledCategories || []);
       alert(t("import_success", currentLang));
     } catch {
       alert(t("import_error", currentLang));
@@ -382,15 +416,16 @@ async function testUrl() {
   try {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
     const { processUrl } = await import("../lib/cleaner.js");
-    const domainRules = await import("../rules/domain-rules.json", { with: { type: "json" } });
-    const result = processUrl(input, { ...prefs, notifyForeignAffiliate: false }, domainRules.default);
+    const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
+    const domainRules = await resp.json();
+    const result = processUrl(input, { ...prefs, notifyForeignAffiliate: false }, domainRules);
     cleanEl.textContent = result.cleanUrl;
     if (result.removedTracking?.length > 0) {
-      removedEl.textContent = `Removed: ${result.removedTracking.join(", ")}`;
+      removedEl.textContent = t("dev_url_removed", currentLang).replace("%s", result.removedTracking.join(", "));
     } else if (result.cleanUrl === input) {
-      removedEl.textContent = "No tracking params found — URL is already clean.";
+      removedEl.textContent = t("dev_url_clean", currentLang);
     } else {
-      removedEl.textContent = `Action: ${result.action}`;
+      removedEl.textContent = t("dev_url_action", currentLang).replace("%s", result.action);
     }
     resultDiv.style.display = "";
   } catch (e) {

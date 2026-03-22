@@ -106,28 +106,28 @@
           <strong data-i18n="row_inject_label">Inject our affiliate tag when a link has none</strong>
           <small data-i18n="row_inject_hint">Off by default. Enable here or during first setup. You always pay the same price.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="inject"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="inject" aria-label="Enable affiliate injection"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_notify_label">Notify me when a third-party affiliate is detected</strong>
-          <small data-i18n="row_notify_hint">Shows a non-intrusive toast with options — auto-dismisses in 5 seconds</small>
+          <small data-i18n="row_notify_hint">Shows a non-intrusive toast with options — auto-dismisses in 15 seconds</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="notify"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="notify" aria-label="Enable foreign affiliate notification"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_replace_label">Allow replacing a third-party affiliate with ours</strong>
-          <small data-i18n="row_replace_hint">You always decide, per link.</small>
+          <small data-i18n="row_replace_hint">When a third-party affiliate is detected and the notification is shown, you can swap it for MUGA's tag. Requires affiliate injection to be enabled.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="replace"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="replace" aria-label="Enable affiliate replacement"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_strip_affiliates_label">Strip all third-party affiliate parameters</strong>
           <small data-i18n="row_strip_affiliates_hint">Removes third-party affiliate parameters from all links. Our affiliate tag is preserved when injection is active.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="strip-affiliates"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-label="Strip all third-party affiliate parameters"><span class="slider"></span></label>
       </div>
       <details class="stores-details">
         <summary class="stores-summary" role="heading" aria-level="2">
@@ -150,21 +150,21 @@
           <strong data-i18n="row_dnr_label">Strip tracking parameters before navigation</strong>
           <small data-i18n="row_dnr_hint">Uses browser-native rules to clean URLs from the address bar, bookmarks, and external apps</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="dnr-enabled"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="dnr-enabled" aria-label="Strip tracking parameters before navigation"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
           <small data-i18n="row_unwrap_hint">Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="unwrap-redirects"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="unwrap-redirects" aria-label="Unwrap redirect wrappers"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_context_menu_label">Right-click → Copy clean link</strong>
           <small data-i18n="row_context_menu_hint">Alt+Shift+C also copies the clean URL of the current tab</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="context-menu-toggle"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="context-menu-toggle" aria-label="Right-click copy clean link"><span class="slider"></span></label>
       </div>
     </div>
   </section>
@@ -177,7 +177,7 @@
           <strong data-i18n="row_pings_label">Block &lt;a ping&gt; tracking beacons</strong>
           <small data-i18n="row_pings_hint">Removes ping attributes from links so the browser doesn't send tracking beacons on click</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="block-pings"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="block-pings" aria-label="Block tracking beacons"><span class="slider"></span></label>
       </div>
     </div>
   </section>
@@ -190,7 +190,7 @@
           <strong data-i18n="row_amp_label">Redirect AMP pages to canonical URL</strong>
           <small data-i18n="row_amp_hint">Replaces Google AMP links with the original article URL</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="amp-redirect"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="amp-redirect" aria-label="Redirect AMP pages to canonical URL"><span class="slider"></span></label>
       </div>
     </div>
   </section>
@@ -299,7 +299,7 @@
           <strong data-i18n="dev_mode_label">Developer mode</strong>
           <small data-i18n="dev_mode_hint">Enables advanced tools for testing and debugging</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="dev-mode"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="dev-mode" aria-label="Enable developer mode"><span class="slider"></span></label>
       </div>
     </div>
     <div class="card" id="dev-tools-card" style="margin-top:10px;display:none;">

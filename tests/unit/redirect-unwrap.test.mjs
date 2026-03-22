@@ -15,6 +15,15 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REDIRECT_UNWRAP_SOURCE = readFileSync(
+  join(__dirname, "../../src/content/redirect-unwrap.js"),
+  "utf8"
+);
 
 // ---------------------------------------------------------------------------
 // Replicated from src/content/redirect-unwrap.js — keep in sync
@@ -240,4 +249,48 @@ describe("redirect-unwrap — param priority", () => {
     assert.equal(dest, "https://first.com/");
   });
 
+});
+
+// ---------------------------------------------------------------------------
+// C11 — Sync verification: replicated REDIRECT_PARAMS matches the real source
+// redirect-unwrap.js is an IIFE content script using chrome.* APIs.
+// ---------------------------------------------------------------------------
+describe("C11 — replica sync verification (redirect-unwrap.js)", () => {
+
+  test("source contains every param in the replicated REDIRECT_PARAMS array", () => {
+    for (const param of REDIRECT_PARAMS) {
+      assert.ok(
+        REDIRECT_UNWRAP_SOURCE.includes(`"${param}"`),
+        `Source must contain redirect param: "${param}"`
+      );
+    }
+  });
+
+  test("source does not contain extra redirect params beyond the replicated list", () => {
+    // Extract the REDIRECT_PARAMS array literal from the source
+    const match = REDIRECT_UNWRAP_SOURCE.match(
+      /const REDIRECT_PARAMS\s*=\s*\[([\s\S]*?)\];/
+    );
+    assert.ok(match, "Source must contain a REDIRECT_PARAMS array declaration");
+    const sourceParams = [...match[1].matchAll(/"([^"]+)"/g)].map(m => m[1]);
+    assert.deepEqual(
+      sourceParams.sort(),
+      [...REDIRECT_PARAMS].sort(),
+      "Source REDIRECT_PARAMS must exactly match the replicated list"
+    );
+  });
+
+  test("source normalises param keys to lowercase before lookup (#191)", () => {
+    assert.ok(
+      REDIRECT_UNWRAP_SOURCE.includes("rawKey.toLowerCase()"),
+      "Source must normalise param keys to lowercase (#191)"
+    );
+  });
+
+  test("source blocks non-http(s) protocols", () => {
+    assert.ok(
+      REDIRECT_UNWRAP_SOURCE.includes('"http:"') && REDIRECT_UNWRAP_SOURCE.includes('"https:"'),
+      "Source must check for http:/https: protocol"
+    );
+  });
 });

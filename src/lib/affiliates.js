@@ -409,7 +409,8 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "awin",
     name: "AWIN (network)",
-    domains: [],  // AWIN links use domain-specific redirects — tracked via irgwc / awc params
+    // AWIN operates cross-domain via awc param — cannot match by host; kept for reference
+    domains: [],
     param: "awc",
     type: "affiliate",
     ourTag: "",

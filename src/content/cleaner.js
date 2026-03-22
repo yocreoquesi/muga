@@ -20,6 +20,9 @@
   if (window.__mugaActive) return;
   window.__mugaActive = true;
 
+  // Timer ID for the toast auto-dismiss — cleared when a new toast replaces the old one
+  let _toastTimer = null;
+
   // Toast strings — default English, overridden by stored language preference
   const STRINGS = {
     en: {
@@ -40,9 +43,10 @@
     },
   };
 
-  let s = STRINGS.en;
+  const browserLang = (navigator.language || "en").startsWith("es") ? "es" : "en";
+  let s = STRINGS[browserLang];
   // Load language preference asynchronously — toast will use it if shown after load
-  chrome.storage.sync.get({ language: "en" }, (r) => {
+  chrome.storage.sync.get({ language: browserLang }, (r) => {
     s = STRINGS[r.language] ?? STRINGS.en;
   });
 
@@ -168,7 +172,7 @@
           skipNotify: true,
         });
         if (response?.cleanUrl && response.cleanUrl !== cleanCandidate) {
-          result = result.replace(cleanCandidate, response.cleanUrl);
+          result = result.replaceAll(cleanCandidate, response.cleanUrl);
         }
       }
 
@@ -269,7 +273,7 @@
 
   /**
    * Shows a non-intrusive toast when a foreign affiliate tag is detected.
-   * Auto-dismisses after 5 seconds if the user does not interact.
+   * Auto-dismisses after 15 seconds if the user does not interact.
    * @param {object} affiliate
    * @param {string} originalUrl
    * @param {string} cleanUrl
@@ -277,6 +281,7 @@
    * @param {function} callback
    */
   function showAffiliateNotice(affiliate, originalUrl, cleanUrl, withOurAffiliate, callback) {
+    if (_toastTimer) clearTimeout(_toastTimer);
     document.getElementById("muga-notice")?.remove();
 
     const notice = document.createElement("div");
@@ -296,34 +301,65 @@
     const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
     const codeStyle = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
 
-    // "Use ours" button only shown when allowReplaceAffiliate is on and we have our tag
-    const oursBtn = withOurAffiliate
-      ? `<button data-choice="ours" style="${btnStyle}">${s.toast_ours}</button>`
-      : "";
+    // Build toast using DOM API to avoid innerHTML with user-controlled strings
+    const titleDiv = document.createElement("div");
+    titleDiv.style.cssText = "font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa";
+    titleDiv.textContent = s.toast_title;
 
-    notice.innerHTML = `
-      <div style="font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa">${s.toast_title}</div>
-      <div style="margin-bottom:10px;font-size:12px;color:#ddd">
-        ${escHtml(domain)} ${s.toast_tag_msg} <code style="${codeStyle}">${escHtml(affiliate.param)}=${escHtml(affiliate.value)}</code>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button data-choice="original" style="${btnStyle}">${s.toast_allow}</button>
-        <button data-choice="clean" style="${btnStyle}">${s.toast_block}</button>
-        ${oursBtn}
-      </div>
-      <div style="margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer" id="muga-dismiss">${s.toast_dismiss}</div>
-    `;
+    const msgDiv = document.createElement("div");
+    msgDiv.style.cssText = "margin-bottom:10px;font-size:12px;color:#ddd";
+    msgDiv.appendChild(document.createTextNode(domain + " " + s.toast_tag_msg + " "));
+    const codeEl = document.createElement("code");
+    codeEl.style.cssText = codeStyle;
+    codeEl.textContent = `${affiliate.param}=${affiliate.value}`;
+    msgDiv.appendChild(codeEl);
+
+    const btnDiv = document.createElement("div");
+    btnDiv.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
+
+    const allowBtn = document.createElement("button");
+    allowBtn.dataset.choice = "original";
+    allowBtn.style.cssText = btnStyle;
+    allowBtn.textContent = s.toast_allow;
+    btnDiv.appendChild(allowBtn);
+
+    const blockBtn = document.createElement("button");
+    blockBtn.dataset.choice = "clean";
+    blockBtn.style.cssText = btnStyle;
+    blockBtn.textContent = s.toast_block;
+    btnDiv.appendChild(blockBtn);
+
+    // "Use ours" button only shown when allowReplaceAffiliate is on and we have our tag
+    if (withOurAffiliate) {
+      const oursBtn = document.createElement("button");
+      oursBtn.dataset.choice = "ours";
+      oursBtn.style.cssText = btnStyle;
+      oursBtn.textContent = s.toast_ours;
+      btnDiv.appendChild(oursBtn);
+    }
+
+    const dismissDiv = document.createElement("div");
+    dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer";
+    dismissDiv.id = "muga-dismiss";
+    dismissDiv.textContent = s.toast_dismiss;
+
+    notice.appendChild(titleDiv);
+    notice.appendChild(msgDiv);
+    notice.appendChild(btnDiv);
+    notice.appendChild(dismissDiv);
 
     document.body.appendChild(notice);
 
-    const timer = setTimeout(() => {
+    _toastTimer = setTimeout(() => {
+      _toastTimer = null;
       notice.remove();
       callback("clean");
     }, 15000);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {
       btn.addEventListener("click", () => {
-        clearTimeout(timer);
+        clearTimeout(_toastTimer);
+        _toastTimer = null;
         notice.remove();
         const choice = btn.dataset.choice;
         if (choice === "original") {
@@ -343,7 +379,8 @@
     });
 
     document.getElementById("muga-dismiss")?.addEventListener("click", () => {
-      clearTimeout(timer);
+      clearTimeout(_toastTimer);
+      _toastTimer = null;
       notice.remove();
       callback("original");
     });
