@@ -104,7 +104,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // --- Session history helpers ---
 
-const HISTORY_MAX = 5;
+const HISTORY_MAX = 10;
 
 async function appendHistory(original, clean) {
   if (original === clean) return;

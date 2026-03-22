@@ -45,6 +45,7 @@ export const TRANSLATIONS = {
   tab_badge_label:      { en: "stripped this tab", es: "eliminados en esta pestaña" },
   history_copy_hint:    { en: "Click to copy clean URL", es: "Clic para copiar URL limpia" },
   history_copied:       { en: "Copied!", es: "¡Copiado!" },
+  history_copy_original: { en: "Copy original", es: "Copiar original" },
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Advanced settings", es: "Preferencias avanzadas" },
