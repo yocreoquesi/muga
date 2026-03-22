@@ -309,6 +309,7 @@ header {
   cursor: pointer;
 }
 .history-copy-btn:hover { background: var(--bg2); color: var(--text); }
+.history-empty { font-size: 12px; color: var(--text2); font-style: italic; padding: 10px 16px 8px; }
 
 footer {
   display: flex;
