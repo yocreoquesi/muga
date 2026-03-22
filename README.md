@@ -119,7 +119,7 @@ MUGA is an open-source project maintained by real people. To keep it maintained 
 
 When you navigate to a supported store and there is **no existing affiliate tag** in the link, MUGA adds ours. The price you pay is exactly the same — the store just knows you arrived via MUGA. That's how affiliate programs work.
 
-This is explained during onboarding before the feature is enabled, documented in the [privacy policy](https://yocreoquesi.github.io/muga/), and verifiable in the source code.
+This is explained during onboarding before the feature is enabled, disclosed in the extension description, documented in the [privacy policy](https://yocreoquesi.github.io/muga/), and verifiable in the source code.
 
 - Only fires when the link has **no affiliate tag at all**
 - The tag is added as a standard URL parameter — nothing hidden, nothing obfuscated
@@ -139,9 +139,9 @@ This is explained during onboarding before the feature is enabled, documented in
 
 ## Supported stores
 
-19 stores with affiliate tracking support:
+18 stores with affiliate tracking support:
 
-Amazon (ES, DE, FR, IT, UK, US) · Booking.com · AliExpress · PcComponentes · El Corte Inglés · eBay · Temu · Zalando (ES, DE) · SHEIN · Fnac (ES, FR) · MediaMarkt (ES, DE)
+Amazon (ES, DE, FR, IT, UK, US) · Booking.com · AliExpress · PcComponentes · El Corte Inglés · eBay · Zalando (ES, DE) · SHEIN · Fnac (ES, FR) · MediaMarkt (ES, DE)
 
 Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source. All other stores are listed as pending.
 
