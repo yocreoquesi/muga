@@ -20,6 +20,7 @@ async function init() {
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
 
   bindToggle("dnr-enabled", "dnrEnabled", prefs);
+  bindToggle("context-menu-toggle", "contextMenuEnabled", prefs);
   bindToggle("block-pings", "blockPings", prefs);
   bindToggle("amp-redirect", "ampRedirect", prefs);
   bindToggle("unwrap-redirects", "unwrapRedirects", prefs);
