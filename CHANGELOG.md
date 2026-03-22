@@ -2,6 +2,19 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.5.0] — 2026-03-22
+
+### Security & Compliance
+- **Explicit consent onboarding** — onboarding now requires active acceptance of Terms of Use and Privacy Policy before the extension activates. Affiliate injection is opt-in with a dedicated checkbox; ToS acceptance is mandatory (#224)
+- **Terms of Use** — new `src/privacy/tos.html` covering functionality, affiliate model, no-data-collection guarantee, GPL v3 license, and disclaimer
+- **`injectOwnAffiliate` default changed to `false`** — affiliate injection is now off until the user explicitly enables it during onboarding. Consent version and timestamp recorded in storage.
+- **Manifest description updated** — both MV3 and MV2 manifests now explicitly disclose affiliate injection as required by Chrome Web Store policies (#222)
+- **Temu removed from affiliate patterns** — proprietary affiliate program with opaque ToS poses unacceptable legal risk without a verified registered account. Tracking param stripping on temu.com is unaffected (#222)
+
+### Internal
+- 257 passing tests, 0 failures
+- `consentVersion` and `consentDate` fields added to `PREF_DEFAULTS`
+
 ## [1.4.0] — 2026-03-22
 
 ### Features
