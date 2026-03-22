@@ -401,12 +401,13 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
-  test("injectOwnAffiliate: true but ourTag empty → does NOT inject", () => {
-    const { action } = processUrl(
+  test("injectOwnAffiliate: true + amazon.es ourTag set → injects muga-es-21", () => {
+    const { action, cleanUrl } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    assert.notEqual(action, "injected");
+    assert.equal(action, "injected");
+    assert.ok(new URL(cleanUrl).searchParams.get("tag") === "muga-es-21");
   });
 
   test("injectOwnAffiliate: true + ourTag set → injects tag on clean URL", () => {
@@ -1086,7 +1087,7 @@ const AMAZON_ES_TEST_PATTERN = {
   domains: ["amazon.es", "www.amazon.es"],
   param: "tag",
   type: "affiliate",
-  ourTag: "mugaTestEs-21",
+  ourTag: "muga-es-21",
 };
 
 describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
@@ -1108,7 +1109,7 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
     );
     const out = new URL(cleanUrl);
     assert.equal(out.searchParams.get("tag"), null, "competitor tag must be stripped");
-    assert.ok(!cleanUrl.includes("mugaTestEs-21"), "our tag must NOT be injected after blacklist removal (#197)");
+    assert.ok(!cleanUrl.includes("muga-es-21"), "our tag must NOT be injected after blacklist removal (#197)");
     assert.notEqual(action, "injected", "action must not be injected when blacklist removed the affiliate (#197)");
   });
 
@@ -1122,7 +1123,7 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
       "https://www.amazon.es/dp/B0GQ4N9N33?color=blue",
       prefs
     );
-    assert.ok(cleanUrl.includes("mugaTestEs-21"), "ourTag must be injected when no blacklist rule fires (#197)");
+    assert.ok(cleanUrl.includes("muga-es-21"), "ourTag must be injected when no blacklist rule fires (#197)");
     assert.equal(action, "injected", "action must be injected for normal injection without blacklist hit (#197)");
   });
 });
