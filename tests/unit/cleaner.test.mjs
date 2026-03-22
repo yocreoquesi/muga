@@ -1178,6 +1178,60 @@ describe("Bug #187 — deep subdomain matching in getPatternsForHost", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Bug #229 — Toast Allow/Block must store entries in domain::param::value format
+// ---------------------------------------------------------------------------
+describe("Bug #229 — toast whitelist/blacklist entry format", () => {
+  before(() => AFFILIATE_PATTERNS.push(TEST_PATTERN));
+  after(() => { const i = AFFILIATE_PATTERNS.indexOf(TEST_PATTERN); if (i !== -1) AFFILIATE_PATTERNS.splice(i, 1); });
+
+  test("whitelist entry as 'domain::param::value' prevents foreign detection (#229)", () => {
+    // Simulates what the toast Allow button should store (after the #229 fix).
+    // The entry is "shop.test.muga::aff::competitor-99" — must prevent detection.
+    const { action } = processUrl(
+      "https://shop.test.muga/product?aff=competitor-99",
+      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["shop.test.muga::aff::competitor-99"] }
+    );
+    assert.notEqual(action, "detected_foreign",
+      "whitelist entry in domain::param::value format must suppress foreign detection (#229)");
+  });
+
+  test("blacklist entry as 'domain::param::value' strips the affiliate param (#229)", () => {
+    // Simulates what the toast Block button should store (after the #229 fix).
+    const { cleanUrl, action } = processUrl(
+      "https://shop.test.muga/product?aff=competitor-99",
+      { ...PREFS, blacklist: ["shop.test.muga::aff::competitor-99"] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("aff"), false,
+      "blacklist entry in domain::param::value format must strip the affiliate param (#229)");
+    assert.notEqual(action, "detected_foreign",
+      "blacklisted param must not trigger foreign detection (#229)");
+  });
+
+  test("old-style 'param=value' whitelist entry (broken format) does NOT prevent detection (#229 regression guard)", () => {
+    // This test guards against the old bug re-appearing. The entry "aff=competitor-99"
+    // is treated as a domain name by parseListEntry — it must NOT suppress detection
+    // because no real hostname looks like "aff=competitor-99".
+    const { action } = processUrl(
+      "https://shop.test.muga/product?aff=competitor-99",
+      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["aff=competitor-99"] }
+    );
+    assert.equal(action, "detected_foreign",
+      "old-style 'param=value' whitelist entry must not suppress detection — it matches no real hostname (#229)");
+  });
+
+  test("blacklist entry with www-prefixed domain is normalised and still matches (#229)", () => {
+    // The fix strips www from the hostname before building the entry.
+    // Both "shop.test.muga::aff::v" and "www.shop.test.muga::aff::v" should match.
+    const { cleanUrl } = processUrl(
+      "https://www.shop.test.muga/product?aff=competitor-99",
+      { ...PREFS, blacklist: ["shop.test.muga::aff::competitor-99"] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("aff"), false,
+      "www-variant hostname must still match the non-www blacklist entry (#229)");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Bug #185 — Domain-only whitelist entry must skip all affiliate processing
 // ---------------------------------------------------------------------------
 describe("Bug #185 — domain-only whitelist skips affiliate processing", () => {
