@@ -2,6 +2,11 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.5.1] — 2026-03-22
+
+### Bug Fixes
+- Remove `_sri_browser_polyfill` custom key from `manifest.json` — Chrome MV3 does not allow unrecognized manifest keys and was showing a warning on extension load. The SRI hash is enforced by CI via `tools/verify-polyfill-integrity.mjs` (#227)
+
 ## [1.5.0] — 2026-03-22
 
 ### Security & Compliance
