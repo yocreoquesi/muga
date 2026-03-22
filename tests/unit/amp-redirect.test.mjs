@@ -39,6 +39,8 @@ function extractCanonical(linkEl) {
 
 /**
  * Returns true when the given URL should be treated as an AMP page.
+ * Strict URL-based checks prevent false positives for paths like /trampoline,
+ * /campaign, or /example-amp-meter (#189).
  *
  * @param {object} opts
  * @param {boolean} opts.hasAmpAttr   - document.documentElement.hasAttribute("amp")
@@ -47,11 +49,18 @@ function extractCanonical(linkEl) {
  * @returns {boolean}
  */
 function isAmpPage({ hasAmpAttr, hasLightningAttr, currentUrl }) {
+  const parsedCurrent = (() => { try { return new URL(currentUrl); } catch { return null; } })();
+  const isAmpByUrl = parsedCurrent && (
+    parsedCurrent.hostname.startsWith("amp.") ||
+    parsedCurrent.pathname.startsWith("/amp/") ||
+    parsedCurrent.pathname === "/amp" ||
+    parsedCurrent.pathname.endsWith("/amp") ||
+    parsedCurrent.searchParams.has("amp")
+  );
   return (
     hasAmpAttr ||
     hasLightningAttr ||
-    currentUrl.includes("/amp") ||
-    currentUrl.includes("?amp")
+    !!isAmpByUrl
   );
 }
 
@@ -137,9 +146,33 @@ describe("isAmpPage — AMP detection", () => {
     assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/article" }), false);
   });
 
-  test("/camping does NOT trigger AMP detection — '/amp' is not a substring of '/camping'", () => {
-    // '/camping' does not contain the literal substring '/amp', so isAmpPage returns false.
+  test("/camping does NOT trigger AMP detection — stricter path check (#189)", () => {
+    // '/camping' does not start with '/amp/', does not end with '/amp', so isAmpPage returns false.
     assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/camping/trip" }), false);
+  });
+
+  test("detects amp. subdomain (#189)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://amp.example.com/article" }), true);
+  });
+
+  test("detects path ending in /amp (#189)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/article/amp" }), true);
+  });
+
+  test("/trampoline does NOT trigger AMP detection — false positive fixed (#189)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/trampoline" }), false);
+  });
+
+  test("/campaign does NOT trigger AMP detection — false positive fixed (#189)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/campaign" }), false);
+  });
+
+  test("/example-amp-meter does NOT trigger AMP detection — false positive fixed (#189)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/example-amp-meter" }), false);
+  });
+
+  test("/vampire does NOT trigger AMP detection (#189)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/vampire/castle" }), false);
   });
 });
 
