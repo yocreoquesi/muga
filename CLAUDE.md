@@ -6,7 +6,7 @@ Browser extension (Chrome + Firefox) que limpia URLs de tracking params, gestion
 
 - **Nombre:** MUGA — Make URLs Great Again
 - **Repo:** https://github.com/yocreoquesi/muga (public, GPL v3)
-- **Versión actual:** 1.5.2
+- **Versión actual:** 1.6.0
 - **Contexto completo (privado):** lee `Muga.md` — nunca lo comitees
 
 ---
@@ -25,7 +25,7 @@ Browser extension (Chrome + Firefox) que limpia URLs de tracking params, gestion
 
 ---
 
-## Estado actual — v1.5.2
+## Estado actual — v1.6.0
 
 ### Phase 1 ✅ — Feature-complete
 - [x] Strip 130+ tracking params (Scenario A — siempre activo)
@@ -39,6 +39,9 @@ Browser extension (Chrome + Firefox) que limpia URLs de tracking params, gestion
 - [x] Badge counter por tab
 - [x] Export/import settings JSON
 - [x] GitHub Actions release workflow
+- [x] Developer tools (preview toast, debug log, URL tester)
+- [x] Selection cleaning (copy clean links in selection via DOM)
+- [x] History improvements (full URL display, clipboard icon per entry)
 
 ### Pendiente (bloqueado por pasos manuales)
 - [ ] ourTag rellenado en affiliates.js (requiere cuentas de afiliado registradas)

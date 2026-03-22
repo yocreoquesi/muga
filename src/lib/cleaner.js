@@ -90,7 +90,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   try {
     url = new URL(rawUrl);
   } catch {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
   const hostname = url.hostname;
@@ -121,7 +121,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     // C10 — count params removed so junkRemoved is reported correctly
     const blacklistedParamCount = [...url.searchParams.keys()].length;
     url.search = "";
-    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount, detectedAffiliate: null };
+    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0), detectedAffiliate: null };
   }
 
   const patterns = getPatternsForHost(hostname);
@@ -159,12 +159,12 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
         removedTrackingForSkip.push(param);
       }
     }
-    const actionForSkip = removedTrackingForSkip.length > 0 ? "cleaned" : "untouched";
+    const actionForSkip = (removedTrackingForSkip.length > 0 || pathCleaned) ? "cleaned" : "untouched";
     return {
       cleanUrl: url.toString(),
       action: actionForSkip,
       removedTracking: removedTrackingForSkip,
-      junkRemoved: removedTrackingForSkip.length,
+      junkRemoved: removedTrackingForSkip.length + (pathCleaned ? 1 : 0),
       detectedAffiliate: null,
     };
   }

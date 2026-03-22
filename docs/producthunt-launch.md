@@ -1,6 +1,6 @@
 # MUGA — ProductHunt Launch
 
-> Version: 1.5.2
+> Version: 1.6.0
 > Created: 2026-03-22
 
 ---

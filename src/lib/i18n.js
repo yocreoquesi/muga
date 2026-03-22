@@ -24,10 +24,6 @@ export const TRANSLATIONS = {
   stat_urls:       { en: "URLs cleaned",      es: "URLs limpias" },
   stat_junk:       { en: "junk removed",      es: "basura eliminada" },
   stat_referrals:  { en: "affiliates detected", es: "afiliados detectados" },
-  nudge_text:      { en: "You've quietly cleaned {n} URLs. Enjoying MUGA?", es: "Has limpiado {n} URLs sin esfuerzo. ¿Te gusta MUGA?" },
-  nudge_review:    { en: "⭐ Leave a review", es: "⭐ Deja una reseña" },
-  nudge_kofi:      { en: "☕ Ko-fi",          es: "☕ Ko-fi" },
-  nudge_dismiss:   { en: "✕",                 es: "✕" },
   preview_label:   { en: "This page",                     es: "Esta página" },
   history_label:        { en: "Recent",                               es: "Recientes" },
   history_empty:        { en: "No URLs cleaned in this session yet.", es: "Aún no se han limpiado URLs en esta sesión." },
@@ -39,6 +35,7 @@ export const TRANSLATIONS = {
   history_copy_hint:    { en: "Click to copy clean URL", es: "Clic para copiar URL limpia" },
   history_copied:       { en: "Copied!", es: "¡Copiado!" },
   history_copy_original: { en: "Copy original", es: "Copiar original" },
+  show_history:          { en: "Show history", es: "Mostrar historial" },
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Settings", es: "Ajustes" },
@@ -175,6 +172,10 @@ export function applyTranslations(lang) {
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
     const key = el.getAttribute("data-i18n-placeholder");
     el.placeholder = t(key, lang);
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => {
+    const key = el.getAttribute("data-i18n-title");
+    el.title = t(key, lang);
   });
 }
 

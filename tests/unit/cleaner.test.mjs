@@ -1682,58 +1682,8 @@ describe("Regression — B1 setPrefs is exported from storage.js", () => {
 });
 
 // ---------------------------------------------------------------------------
-// N9 — escHtml (content/cleaner.js) — replicated because IIFE cannot be imported
-// ---------------------------------------------------------------------------
-
-/**
- * Replica of escHtml from src/content/cleaner.js.
- * Kept in sync via source-text verification test below.
- */
-function escHtml(str) {
-  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-describe("N9 — escHtml (content/cleaner.js)", () => {
-
-  test("escapes <script> tag", () => {
-    assert.equal(escHtml("<script>alert(1)</script>"), "&lt;script&gt;alert(1)&lt;/script&gt;");
-  });
-
-  test("escapes double quotes", () => {
-    assert.equal(escHtml('value="test"'), "value=&quot;test&quot;");
-  });
-
-  test("escapes ampersand", () => {
-    assert.equal(escHtml("a & b"), "a &amp; b");
-  });
-
-  test("escapes mixed HTML characters", () => {
-    assert.equal(escHtml('<img src="x" onerror="alert(1)">'),
-      '&lt;img src=&quot;x&quot; onerror=&quot;alert(1)&quot;&gt;');
-  });
-
-  test("handles empty string", () => {
-    assert.equal(escHtml(""), "");
-  });
-
-  test("handles non-string input (number)", () => {
-    assert.equal(escHtml(42), "42");
-  });
-
-  test("handles null/undefined via String() coercion", () => {
-    assert.equal(escHtml(null), "null");
-    assert.equal(escHtml(undefined), "undefined");
-  });
-
-  test("C11 sync — source contains identical escHtml implementation", () => {
-    assert.ok(
-      CONTENT_CLEANER_SOURCE.includes(
-        'return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");'
-      ),
-      "content/cleaner.js must contain the same escHtml implementation"
-    );
-  });
-});
+// N9 — escHtml was removed from content/cleaner.js (dead code — toast uses createElement+textContent)
+// The escHtml tests have been removed accordingly.
 
 // ---------------------------------------------------------------------------
 // N9 — formatStat (popup.js) — replicated because popup.js has browser deps
