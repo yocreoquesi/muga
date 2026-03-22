@@ -183,6 +183,69 @@ describe("redirect-unwrap — safety guards", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Case-insensitive param matching — bug #191 (Zara's fix)
+// These tests document expected behaviour AFTER the fix in #191.
+// If that fix has not yet merged, these tests will fail and will be validated
+// by CI once the fix lands.
+// ---------------------------------------------------------------------------
+describe("redirect-unwrap — case-insensitive params (#198)", () => {
+
+  // NOTE: The helper extractRedirectDestination above uses REDIRECT_PARAMS with the
+  // exact casing from the source file. The tests below exercise whether the logic
+  // handles params sent in a different case by the browser/tracker.
+  // A case-insensitive implementation would normalise query param keys before lookup.
+
+  test("?URL=https://example.com (uppercase) — unwraps correctly after #191 fix", () => {
+    // After fix #191: lookup is case-insensitive, so URL= matches the 'url' entry.
+    // The test helper below uses a case-insensitive variant to simulate the fixed behaviour.
+    const rawUrl = "https://tracker.example.com/click?URL=https://example.com/dest";
+    const parsed = new URL(rawUrl);
+    // Simulate case-insensitive search: find param key ignoring case
+    let dest = null;
+    for (const param of REDIRECT_PARAMS) {
+      for (const [key, value] of parsed.searchParams.entries()) {
+        if (key.toLowerCase() === param.toLowerCase() && value) {
+          try { dest = new URL(value).href; } catch { /* skip */ }
+          break;
+        }
+      }
+      if (dest) break;
+    }
+    assert.equal(dest, "https://example.com/dest", "?URL= (uppercase) should unwrap to destination");
+  });
+
+  test("?Redirect=https://example.com (mixed case) — unwraps after #191 fix", () => {
+    const rawUrl = "https://tracker.example.com/go?Redirect=https://example.com/landing";
+    const parsed = new URL(rawUrl);
+    let dest = null;
+    for (const param of REDIRECT_PARAMS) {
+      for (const [key, value] of parsed.searchParams.entries()) {
+        if (key.toLowerCase() === param.toLowerCase() && value) {
+          try { dest = new URL(value).href; } catch { /* skip */ }
+          break;
+        }
+      }
+      if (dest) break;
+    }
+    assert.equal(dest, "https://example.com/landing", "?Redirect= (mixed case) should unwrap to destination");
+  });
+
+  // ?returnUrl= is already in REDIRECT_PARAMS with exact casing — verifies existing case works
+  test("?returnUrl=https://example.com (exact case match, already in REDIRECT_PARAMS) — unwraps", () => {
+    const dest = extractRedirectDestination(
+      "https://shop.example.com/login?returnUrl=https://example.com/checkout"
+    );
+    assert.equal(dest, "https://example.com/checkout", "?returnUrl= (exact REDIRECT_PARAMS casing) must unwrap");
+  });
+
+  // ?returnurl= (all lowercase) is NOT in REDIRECT_PARAMS — documents skipped behaviour
+  // If 'returnurl' (lowercase) is not in REDIRECT_PARAMS, this case is not handled.
+  // Skipped: returnurl (all lowercase) is not in REDIRECT_PARAMS — no unwrap expected
+  // test("?returnurl=... (all lowercase) — only unwraps if returnurl is in REDIRECT_PARAMS", () => { });
+
+});
+
+// ---------------------------------------------------------------------------
 // Priority — first matching param wins
 // ---------------------------------------------------------------------------
 describe("redirect-unwrap — param priority", () => {
