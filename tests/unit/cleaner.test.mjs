@@ -1128,6 +1128,55 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Bug #187 — getPatternsForHost must match deep subdomains
+// ---------------------------------------------------------------------------
+describe("Bug #187 — deep subdomain matching in getPatternsForHost", () => {
+
+  test("it.aliexpress.com matches aliexpress.com affiliate pattern (#187)", () => {
+    // Before the fix, getPatternsForHost('it.aliexpress.com') returned [] because
+    // 'it.aliexpress.com' !== 'aliexpress.com' (only exact match after www-strip was used).
+    // With the fix (hostname.endsWith('.aliexpress.com')), it now matches.
+    const { action } = processUrl(
+      "https://it.aliexpress.com/item/1005001234567.html?utm_source=email",
+      PREFS
+    );
+    assert.equal(action, "cleaned",
+      "it.aliexpress.com must match aliexpress affiliate patterns (#187)");
+  });
+
+  test("de.aliexpress.com matches aliexpress.com affiliate pattern (#187)", () => {
+    const { action } = processUrl(
+      "https://de.aliexpress.com/item/999.html?utm_source=google",
+      PREFS
+    );
+    assert.equal(action, "cleaned",
+      "de.aliexpress.com must match aliexpress affiliate patterns (#187)");
+  });
+
+  test("www.pccomponentes.com still matches pccomponentes.com after fix (#187)", () => {
+    const { action } = processUrl(
+      "https://www.pccomponentes.com/producto?utm_medium=cpc",
+      PREFS
+    );
+    assert.equal(action, "cleaned",
+      "www.pccomponentes.com must still match pccomponentes patterns after fix (#187)");
+  });
+
+  test("affiliate param aff_fcid preserved on it.aliexpress.com, utm_source stripped (#187)", () => {
+    // aff_fcid is the affiliate param for aliexpress — it must not be removed by Scenario A
+    const { cleanUrl } = processUrl(
+      "https://it.aliexpress.com/item/123.html?aff_fcid=testvalue&utm_source=email",
+      PREFS
+    );
+    assert.ok(new URL(cleanUrl).searchParams.has("aff_fcid"),
+      "affiliate param aff_fcid must be preserved on it.aliexpress.com (#187)");
+    assert.ok(!new URL(cleanUrl).searchParams.has("utm_source"),
+      "utm_source must be stripped on it.aliexpress.com (#187)");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Bug #185 — Domain-only whitelist entry must skip all affiliate processing
 // ---------------------------------------------------------------------------
 describe("Bug #185 — domain-only whitelist skips affiliate processing", () => {
