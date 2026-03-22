@@ -224,51 +224,20 @@ header {
   font-size: 11.5px;
 }
 
-/* Nudge banner */
-.nudge {
-  padding: 10px 14px;
-  background: var(--bg2);
-  border-bottom: 0.5px solid var(--border);
-}
-
-.nudge-text {
-  font-size: 11.5px;
-  color: var(--text);
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-
-.nudge-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.nudge-btn {
+/* Test notification button */
+.btn-test-notify {
   font-size: 11px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 5px;
   border: 0.5px solid var(--border);
   background: var(--bg);
   color: var(--text);
   cursor: pointer;
-  text-decoration: none;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.nudge-btn.primary {
-  background: var(--accent);
-  color: white;
-  border-color: transparent;
-}
-
-.nudge-btn.dismiss {
-  margin-left: auto;
-  padding: 4px 7px;
-  color: var(--text2);
-}
-
-.nudge-btn:hover { opacity: 0.85; }
+.btn-test-notify:hover { background: var(--bg2); }
 
 /* Session history */
 .history { border-top: 0.5px solid var(--border); }
