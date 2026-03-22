@@ -5,6 +5,9 @@
 
 import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "./affiliates.js";
 
+// C5 — O(1) lookup instead of O(n) array scan
+const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
+
 /**
  * Parses a blacklist/whitelist entry string into a structured object.
  * Supported formats:
@@ -115,8 +118,10 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     e => !e.param && domainMatches(hostname, e.domain)
   );
   if (domainBlacklisted) {
+    // C10 — count params removed so junkRemoved is reported correctly
+    const blacklistedParamCount = [...url.searchParams.keys()].length;
     url.search = "";
-    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount, detectedAffiliate: null };
   }
 
   const patterns = getPatternsForHost(hostname);
@@ -130,7 +135,8 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   );
   if (domainWhitelisted) {
     // Still strip tracking params, but leave all affiliate params untouched and skip injection
-    const affiliateParamNamesForSkip = getPatternsForHost(hostname).map(p => p.param.toLowerCase());
+    // S4 — reuse `patterns` already computed above instead of calling getPatternsForHost again
+    const affiliateParamNamesForSkip = patterns.map(p => p.param.toLowerCase());
     const customParamsForSkip = (prefs.customParams || []).map(p => p.toLowerCase());
     const preservedParamsForSkip = getPreservedParams(hostname, domainRules);
     const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
@@ -148,7 +154,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
       if (affiliateParamNamesForSkip.includes(lower)) continue;
       if (preservedParamsForSkip.has(lower)) continue;
       if (disabledParamsForSkip.has(lower)) continue;
-      if (TRACKING_PARAMS.includes(lower) || customParamsForSkip.includes(lower)) {
+      if (TRACKING_PARAMS_SET.has(lower) || customParamsForSkip.includes(lower)) {
         url.searchParams.delete(param);
         removedTrackingForSkip.push(param);
       }
@@ -214,7 +220,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     if (preservedParams.has(lower)) continue;
     // Don't strip params whose category has been disabled by the user
     if (disabledParams.has(lower)) continue;
-    if (TRACKING_PARAMS.includes(lower) || customParams.includes(lower)) {
+    if (TRACKING_PARAMS_SET.has(lower) || customParams.includes(lower)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
     }

@@ -5,8 +5,18 @@
  */
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
-import { getPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
-import domainRules from "../rules/domain-rules.json" with { type: "json" };
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
+
+// B4 — fetch domain-rules dynamically (import assertions incompatible with Firefox;
+//       top-level await disallowed in Chrome MV3 service workers)
+let domainRules = [];
+let _domainRulesReady = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
+  .then(r => r.json())
+  .then(data => { domainRules = data; })
+  .catch(() => { /* domain-rules unavailable — continue without */ });
+
+// B3 — chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
+const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
 
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
@@ -111,7 +121,7 @@ async function syncContextMenus(enabled) {
 }
 
 // Set badge appearance once on startup
-chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
+actionApi.setBadgeBackgroundColor({ color: "#2563eb" });
 
 // --- Badge helpers ---
 
@@ -121,14 +131,14 @@ async function updateTabBadge(tabId, junkRemoved) {
   const data = await sessionStorage.get({ [key]: 0 });
   const newCount = data[key] + junkRemoved;
   await sessionStorage.set({ [key]: newCount });
-  chrome.action.setBadgeText({ text: String(newCount), tabId });
+  actionApi.setBadgeText({ text: String(newCount), tabId });
 }
 
 // Clear badge when a tab starts navigating to a new page
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     sessionStorage.remove(`tab_${tabId}`);
-    chrome.action.setBadgeText({ text: "", tabId });
+    actionApi.setBadgeText({ text: "", tabId });
   }
 });
 
@@ -183,9 +193,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "ADD_TO_WHITELIST") {
+    const entry = message.tag;
+    if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) {
+      sendResponse({ ok: false });
+      return true;
+    }
     getPrefsWithCache().then(async prefs => {
-      const entry = message.tag;
-      if (entry && !prefs.whitelist.includes(entry)) {
+      if (!prefs.whitelist.includes(entry)) {
         await setPrefs({ whitelist: [...prefs.whitelist, entry] });
         cachedPrefs = null;
       }
@@ -195,9 +209,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "ADD_TO_BLACKLIST") {
+    const entry = message.tag;
+    if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) {
+      sendResponse({ ok: false });
+      return true;
+    }
     getPrefsWithCache().then(async prefs => {
-      const entry = message.tag;
-      if (entry && !prefs.blacklist.includes(entry)) {
+      if (!prefs.blacklist.includes(entry)) {
         await setPrefs({ blacklist: [...prefs.blacklist, entry] });
         cachedPrefs = null;
       }
@@ -211,6 +229,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // exposed for future dev-tools use
   if (message.type === "CLEAR_DEBUG_LOG") {
     sessionStorage.set({ debugLog: [] }).then(() => sendResponse({ ok: true }));
     return true;
@@ -219,6 +238,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
+  await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled) {
@@ -245,8 +265,9 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
     await setStats({ firstUsed: Date.now() });
   }
 
-  // Update stats and session history
-  if (result.action !== "untouched") {
+  // Update stats and session history — only count if the URL actually changed (S13)
+  const urlChanged = result.cleanUrl !== rawUrl;
+  if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
     await incrementStat("urlsCleaned");
     await appendHistory(rawUrl, result.cleanUrl);
   }
@@ -284,8 +305,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   if (details.reason === "install") {
     // First install — open the onboarding page in a new tab
-    const prefs = await chrome.storage.sync.get({ onboardingDone: false });
-    if (!prefs.onboardingDone) {
+    const installPrefs = await getPrefs();
+    if (!installPrefs.onboardingDone) {
       chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
     }
   }

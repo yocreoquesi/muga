@@ -14,6 +14,15 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const STORAGE_SOURCE = readFileSync(
+  join(__dirname, "../../src/lib/storage.js"),
+  "utf8"
+);
 
 // ---------------------------------------------------------------------------
 // Standalone replica of the batch-write pattern from storage.js
@@ -128,5 +137,46 @@ describe("incrementStat — batch-write pattern", () => {
     incrementStat("junkRemoved", 7);
     await flush();
     assert.equal(getStoredStats().junkRemoved, 7);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// C11 — Sync verification: replicated incrementStat pattern matches the real source
+// storage.js uses chrome.* APIs at the top level (onSuspend listener), so we
+// cannot import it without a chrome mock. Instead we verify key patterns.
+// ---------------------------------------------------------------------------
+describe("C11 — replica sync verification (storage.js incrementStat)", () => {
+
+  test("source exports incrementStat function", () => {
+    assert.ok(
+      STORAGE_SOURCE.includes("export function incrementStat("),
+      "Source must export incrementStat function"
+    );
+  });
+
+  test("source uses pending stats accumulation pattern (key, amount = 1)", () => {
+    assert.ok(
+      STORAGE_SOURCE.includes("_pendingStats[key] = (_pendingStats[key] || 0) + amount"),
+      "Source must accumulate pending stats with (key || 0) + amount pattern"
+    );
+  });
+
+  test("source flushStats reads then writes all pending stats in one pass", () => {
+    assert.ok(
+      STORAGE_SOURCE.includes("const toFlush = _pendingStats;"),
+      "Source must capture pending stats into toFlush variable"
+    );
+    assert.ok(
+      STORAGE_SOURCE.includes("_pendingStats = {};"),
+      "Source must clear pending stats after capture"
+    );
+  });
+
+  test("source uses microtask scheduling (Promise.resolve) instead of setTimeout", () => {
+    // C13 changed from setTimeout to Promise.resolve().then(_flushStats)
+    assert.ok(
+      STORAGE_SOURCE.includes("Promise.resolve().then(_flushStats)"),
+      "Source must use microtask scheduling (C13 fix)"
+    );
   });
 });

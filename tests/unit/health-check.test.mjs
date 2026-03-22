@@ -226,7 +226,7 @@ describe("Non-listed domain — all tracking stripped, no functional preservatio
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all 52 entries have domain, preserveParams (non-empty array), and note", () => {
+  test("all 54 entries have domain, preserveParams (non-empty array), and note", () => {
     assert.equal(domainRules.length, 54, `Expected 54 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
