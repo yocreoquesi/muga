@@ -75,6 +75,23 @@ async function applyDnrState(prefs) {
 // Matches http/https URLs in arbitrary text — used by the "selection" context menu handler
 const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
 
+// --- Context menu helpers ---
+
+async function syncContextMenus(enabled) {
+  await chrome.contextMenus.removeAll();
+  if (!enabled) return;
+  chrome.contextMenus.create({
+    id: "muga-copy-clean",
+    title: "Copy clean link",
+    contexts: ["link"],
+  });
+  chrome.contextMenus.create({
+    id: "muga-copy-clean-selection",
+    title: "Copy clean links in selection",
+    contexts: ["selection"],
+  });
+}
+
 // Set badge appearance once on startup
 chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
 
@@ -117,10 +134,16 @@ async function appendHistory(original, clean) {
 // --- Storage change listener: invalidate cache and re-apply DNR state ---
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== "sync") return;
-  cachedPrefs = null; prefsFetchPromise = null; // Invalidate cache
+  // Any sync storage change (including disabledCategories, contextMenuEnabled, etc.)
+  // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
+  cachedPrefs = null;
+  prefsFetchPromise = null;
   if (changes.customParams || changes.dnrEnabled) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
+  }
+  if (changes.contextMenuEnabled) {
+    await syncContextMenus(changes.contextMenuEnabled.newValue !== false);
   }
 });
 
