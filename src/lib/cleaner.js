@@ -183,14 +183,19 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
 
-  // 4b. Strip all affiliate params when user opted out of all affiliates
+  // 4b. Strip third-party affiliate params when user opted out of all affiliates.
+  // When inject is also active, our own tag is preserved — only third-party tags removed.
   // Whitelist entries are respected — specific beats general.
   if (prefs.stripAllAffiliates) {
     for (const pattern of patterns) {
       const val = url.searchParams.get(pattern.param);
-      if (val && !whitelistedValues.has(`${pattern.param}::${val}`)) {
-        url.searchParams.delete(pattern.param);
-        if (action === "untouched") action = "cleaned";
+      if (val) {
+        // Preserve our own tag when injection is active
+        if (prefs.injectOwnAffiliate && pattern.ourTag && val === pattern.ourTag) continue;
+        if (!whitelistedValues.has(`${pattern.param}::${val}`)) {
+          url.searchParams.delete(pattern.param);
+          if (action === "untouched") action = "cleaned";
+        }
       }
     }
   }

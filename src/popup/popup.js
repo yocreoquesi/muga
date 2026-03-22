@@ -8,10 +8,6 @@ import { processUrl } from "../lib/cleaner.js";
 import { getPrefs } from "../lib/storage.js";
 import { getSupportedStores } from "../lib/affiliates.js";
 
-const NUDGE_URL_THRESHOLD = 150;
-const NUDGE_DAY_THRESHOLD = 10;
-const MS_PER_DAY          = 86_400_000;
-
 async function init() {
   const lang = await getStoredLang();
   applyTranslations(lang);
@@ -20,8 +16,6 @@ async function init() {
     getPrefs(),
     chrome.storage.local.get({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
-      firstUsed: null,
-      nudgeDismissed: false,
     }),
   ]);
 
@@ -61,7 +55,19 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
-  maybeShowNudge({ ...prefs, ...local }, lang);
+  document.getElementById("test-notify-btn").addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      alert("No active tab found.");
+      return;
+    }
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: "SHOW_TEST_TOAST" });
+    } catch {
+      alert("Preview not available on this page. Navigate to a regular webpage and try again.");
+    }
+  });
+
   await showUrlPreview(prefs, lang);
   await showHistory(lang);
 }
@@ -116,31 +122,6 @@ async function showUrlPreview(prefs, lang) {
       removedEl.hidden = false;
     }
   }
-}
-
-function maybeShowNudge(prefs, lang) {
-  if (prefs.nudgeDismissed) return;
-  const urlsCleaned   = prefs.stats?.urlsCleaned ?? 0;
-  const firstUsed     = prefs.firstUsed;
-  if (!firstUsed) return;
-  const daysInstalled = (Date.now() - firstUsed) / MS_PER_DAY;
-  if (urlsCleaned < NUDGE_URL_THRESHOLD || daysInstalled < NUDGE_DAY_THRESHOLD) return;
-
-  const nudge = document.getElementById("nudge");
-  document.getElementById("nudge-text").textContent =
-    t("nudge_text", lang).replace("{n}", formatStat(urlsCleaned));
-
-  const reviewUrl = typeof browser !== "undefined"
-    ? "https://addons.mozilla.org/firefox/addon/muga-make-urls-great-again/"
-    : "https://chromewebstore.google.com/detail/muga-make-urls-great-again/";
-  document.getElementById("nudge-review").href = reviewUrl;
-
-  nudge.hidden = false;
-
-  document.getElementById("nudge-dismiss").addEventListener("click", () => {
-    nudge.hidden = true;
-    chrome.storage.local.set({ nudgeDismissed: true });
-  });
 }
 
 function formatStat(n) {
