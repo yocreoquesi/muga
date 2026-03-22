@@ -142,9 +142,20 @@ async function showHistory(lang) {
     beforeDiv.className = "history-url before";
     beforeDiv.textContent = entry.original;
 
+    const afterRow = document.createElement("div");
+    afterRow.className = "history-after-row";
+
     const afterDiv = document.createElement("div");
     afterDiv.className = "history-url after";
     afterDiv.textContent = entry.clean;
+
+    const copyCleanBtn = document.createElement("button");
+    copyCleanBtn.className = "history-copy-clean-btn";
+    copyCleanBtn.setAttribute("aria-label", t("history_copied", lang));
+    copyCleanBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+
+    afterRow.appendChild(afterDiv);
+    afterRow.appendChild(copyCleanBtn);
 
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "history-actions";
@@ -156,7 +167,7 @@ async function showHistory(lang) {
 
     actionsDiv.appendChild(copyOrigBtn);
     entryDiv.appendChild(beforeDiv);
-    entryDiv.appendChild(afterDiv);
+    entryDiv.appendChild(afterRow);
     entryDiv.appendChild(actionsDiv);
     list.appendChild(entryDiv);
 
@@ -170,7 +181,7 @@ async function showHistory(lang) {
 
     // Click to copy clean URL (#87)
     entryDiv.addEventListener("click", (e) => {
-      if (e.target === copyOrigBtn) return; // handled separately
+      if (e.target === copyOrigBtn || copyCleanBtn.contains(e.target)) return; // handled separately
       navigator.clipboard.writeText(entry.clean).then(() => {
         const orig = afterDiv.textContent;
         entryDiv.classList.add("copied");
@@ -178,6 +189,19 @@ async function showHistory(lang) {
         setTimeout(() => {
           entryDiv.classList.remove("copied");
           afterDiv.textContent = orig;
+        }, 1200);
+      });
+    });
+
+    // Copy clean URL icon button
+    copyCleanBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(entry.clean).then(() => {
+        copyCleanBtn.innerHTML = "✓";
+        copyCleanBtn.style.fontSize = "11px";
+        setTimeout(() => {
+          copyCleanBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+          copyCleanBtn.style.fontSize = "";
         }, 1200);
       });
     });

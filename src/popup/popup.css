@@ -277,14 +277,38 @@ header {
 .history-url {
   font-size: 10.5px;
   font-family: monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.6;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.5;
 }
 
 .history-url.before { color: var(--text2); text-decoration: line-through; }
 .history-url.after  { color: var(--accent); }
+
+.history-after-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.history-after-row .history-url.after { flex: 1; }
+
+.history-copy-clean-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 1px 2px;
+  color: var(--text2);
+  line-height: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.history-copy-clean-btn:hover { opacity: 1; color: var(--accent); }
+.history-entry.copied .history-copy-clean-btn { color: #16a34a; opacity: 1; }
 
 .history-entry {
   cursor: pointer;

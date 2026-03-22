@@ -27,6 +27,7 @@ export const PREF_DEFAULTS = {
   consentVersion: null,   // e.g. "1.0" — bump to re-trigger onboarding on ToS changes
   consentDate: null,      // Unix timestamp (ms) of when the user accepted
   disabledCategories: [],  // e.g. ["utm", "ads"] — params in these categories are not stripped
+  devMode: false,
 };
 
 export async function getPrefs() {
