@@ -4,14 +4,14 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-244_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-250_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-coming_soon-lightgrey)](#installation)
 
 # Every link. Cleaned. Before it loads.
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 120+ more. MUGA strips them — silently, automatically, before the page renders. **Zero clicks. Zero configuration.**
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 130+ more. MUGA strips them — automatically, before the page renders. **Zero clicks. Zero configuration.**
 
 [Install from source](#installation) · [View source](https://github.com/yocreoquesi/muga) · [Privacy policy](https://yocreoquesi.github.io/muga/)
 
@@ -76,7 +76,6 @@ After:  https://www.ebay.es/itm/123456789
 - Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C** — copy clean URL of current tab to clipboard
-- **Batch cleaner** — paste multiple URLs, get them all cleaned at once
 - Badge counter showing params stripped on current tab
 - Popup with before/after preview for the current page
 
@@ -108,7 +107,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ---
 
-## Advanced settings
+## Settings
 
 ![Options page](docs/assets/screenshot-ss3-options.png)
 
@@ -116,14 +115,16 @@ After:  https://www.ebay.es/itm/123456789
 
 ## Affiliate model — the honest version
 
-When you navigate to a supported store with no affiliate tag in the link, MUGA silently adds ours. **You pay the same price.** The store just knows you came via MUGA — that's how the extension stays free.
+MUGA is an open-source project maintained by real people. To keep it maintained and improving over time, it uses a simple affiliate model.
 
-- Only fires when there is **no** existing affiliate tag
-- Invisible — not shown as URL noise in your address bar
-- Off in two taps: Settings → toggle off, globally or per domain
-- We **never** silently replace someone else's tag — that's what [Honey did](https://en.wikipedia.org/wiki/Honey_(browser_extension)), and why they got sued
+When you navigate to a supported store and there is **no existing affiliate tag** in the link, MUGA adds ours. The price you pay is exactly the same — the store just knows you arrived via MUGA. That's how affiliate programs work.
 
-Disclosed during onboarding, documented in the [privacy policy](https://yocreoquesi.github.io/muga/), verifiable in the source code.
+This is explained during onboarding before the feature is enabled, documented in the [privacy policy](https://yocreoquesi.github.io/muga/), and verifiable in the source code.
+
+- Only fires when the link has **no affiliate tag at all**
+- The tag is added as a standard URL parameter — nothing hidden, nothing obfuscated
+- Turn it off any time: Settings → toggle off, globally or per domain
+- We **never replace** an existing tag from another affiliate — that practice is what got [Honey sued](https://en.wikipedia.org/wiki/Honey_(browser_extension)), and it's explicitly something MUGA does not do
 
 ---
 
@@ -164,7 +165,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 244 unit tests
+npm test               # 250 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
@@ -188,7 +189,7 @@ Key contribution points:
 
 ## Support
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/yocreoquesi)
+If MUGA saves you time or annoyance, consider supporting it on [Ko-fi](https://ko-fi.com/yocreoquesi). It helps keep the project going.
 
 ---
 
