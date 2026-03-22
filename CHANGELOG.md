@@ -2,6 +2,26 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.4.0] — 2026-03-22
+
+### Features
+- **130 tracking parameters** — expanded coverage with LinkedIn Ads (`li_fat_id`, `li_extra`, `li_source`), Adobe Analytics (`s_kwcid`, `ef_id`), TikTok Ads (`ttclid`), Microsoft Advertising (`mscid`), Outbrain (`oborigurl`, `outbrainclickid`), Taboola (`taboola_campaign_id`, `tblci`), Criteo (`criteo_id`), Google Ads (`gad_source`), Facebook/Meta (`fbc`, `fbp`), Snapchat (`sccid`), Pinterest (`pin_unauth`), Zemanta (`zemclick`), Klaviyo (`_kx`, `klaviyo_id`), ActiveCampaign (`vgo_ee`), Marketo (`_mkto_trk`), Pardot (`pi_ad_id`, `pi_campaign_id`, `sfdcimpactsrc`), Drip (`dm_i`), Omnisend (`omnisendcontactid`), Sendinblue (`sib_id`), HubSpot query-param forms (`__hstc`, `__hsfp`, `__hssc`), Iterable (`itm_*`), generic ids (`click_id`, `ad_id`, `ab_version`)
+- **TRACKING_PARAM_CATEGORIES** — tracking params now organised into 6 named groups (`utm`, `ads`, `email`, `social`, `platform_noise`, `generic`) for per-category display in the options page
+
+### Bug Fixes
+- Case-insensitive param lookup in redirect-unwrap — parameters passed as mixed-case no longer bypass the unwrap check (#191)
+- AMP redirect detection uses stricter heuristic — prevents false positives on `/trampoline` and similar paths that contain "amp" as a substring (#189)
+- Deep subdomain matching in `getPatternsForHost` — `it.aliexpress.com` and other regional subdomains now correctly match their parent domain entry in `AFFILIATE_PATTERNS` (#187)
+- Firefox MV2: `chrome.storage.session` ponyfilled with in-memory fallback — extension no longer crashes on Firefox where `storage.session` is not available (#184)
+
+### Improvements
+- README rewritten for v1.4.0 — real param counts (130), real store count (19), real test count (244), real domain-rules count (54); Contributing section now calls out `domain-rules.json` and `TRACKING_PARAM_CATEGORIES` as contribution points
+- Domain-rules coverage expanded to 54 sites — added Renfe, Iberia, Idealista, Fotocasa, Marca, AS, RTVE, 20minutos, El Mundo, El País, BBC, CNN, NYT, Office.com, and others
+
+### Internal
+- Test suite at 244 passing tests, 0 failures (#193 #196 #197 #198 #199)
+- `getSupportedStores()` helper filters AWIN network entry from UI lists — avoids displaying a domain-less pattern as a store
+
 ## [1.3.0] — 2026-03-21
 
 ### Added
@@ -135,7 +155,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/yocreoquesi/muga/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/yocreoquesi/muga/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/yocreoquesi/muga/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yocreoquesi/muga/compare/v1.0.1...v1.1.0

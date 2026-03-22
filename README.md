@@ -3,32 +3,49 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-112_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-244_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-coming_soon-lightgrey)](#installation)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-coming_soon-lightgrey)](#installation)
 
 # Every link. Cleaned. Before it loads.
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens and dozens more. MUGA strips them — silently, automatically, before the page renders. **Zero clicks. Zero configuration.**
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 120+ more. MUGA strips them — silently, automatically, before the page renders. **Zero clicks. Zero configuration.**
 
-[Install from Chrome Web Store](#installation) · [Install for Firefox](#installation) · [View source](https://github.com/yocreoquesi/muga)
+[Install from source](#installation) · [View source](https://github.com/yocreoquesi/muga) · [Privacy policy](https://yocreoquesi.github.io/muga/)
 
 </div>
 
 ---
 
-## See it in action
+## What it removes
+
+**130 tracking parameters** across 6 categories, on every site:
+
+| Category | Examples |
+|---|---|
+| UTM / Campaign | `utm_source`, `utm_medium`, `utm_campaign` + 6 more |
+| Paid Ads | `fbclid`, `gclid`, `msclkid`, `ttclid`, `li_fat_id` + 30 more |
+| Email Marketing | `mc_cid`, `_hsenc`, `mkt_tok`, `_mkto_trk`, `_kx` + 20 more |
+| Social Media | `igshid`, `igsh`, `epik`, `sc_channel`, `pin_unauth` + 5 more |
+| Platform Noise | Amazon session IDs, eBay click params, AliExpress tokens + 25 more |
+| Generic | `s_cid`, `wickedid`, and catch-all click IDs |
+
+Domain-specific rules for **54 sites** preserve functional query params (search queries, pagination, filters) while stripping noise.
+
+---
+
+## Before / after
 
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
 <details>
 <summary><strong>More before / after examples</strong></summary>
 
-**Amazon** — clicked from a YouTube review
+**Amazon** — link from a YouTube review
 ```
-Before: https://www.amazon.es/dp/B08N5WRWNW?utm_source=google&utm_medium=cpc&gclid=EAIaIQ...&linkCode=ll1&pd_rd_r=xyz&pf_rd_p=def&ref_=nav
+Before: https://www.amazon.es/dp/B08N5WRWNW?utm_source=google&gclid=EAIaIQ...&linkCode=ll1&pd_rd_r=xyz&pf_rd_p=def&ref_=nav
 
 After:  https://www.amazon.es/dp/B08N5WRWNW
 ```
@@ -51,33 +68,37 @@ After:  https://www.ebay.es/itm/123456789
 
 ---
 
-## What it does
+## Features
 
-| Feature | Default |
-|---|---|
-| Strip 89 tracking params before navigation (DNR — covers address bar, bookmarks, external apps) | On — opt-out |
-| Strip tracking params on in-page clicks (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…) | **Always on** |
-| Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug) | **Always on** |
-| Block `<a ping>` tracking beacons | On — opt-out |
-| Redirect AMP pages to canonical URL | On — opt-out |
-| Unwrap redirect wrappers (Reddit, Steam, generic `?redirect=`, `?url=`…) | On — opt-out |
-| **Batch cleaner** — paste multiple URLs, clean all at once | **Always on** |
-| Right-click any link → **Copy clean link** | **Always on** |
-| **Alt+Shift+C** — copy clean URL of current tab | **Always on** |
-| Badge counter — items cleaned on current tab | **Always on** |
-| Popup — before/after preview for the current page | **Always on** |
-| Add our affiliate tag when none is present *(you pay the same price)* | On — opt-out |
-| Toast when a third-party affiliate is detected | Off — opt-in |
-| Replace detected affiliate with ours | Off — explicit opt-in |
-| Strip **all** affiliate parameters | Off — opt-in |
-| Per-domain blacklist — strip everything on a site | Configurable |
-| Per-domain disable — `domain::disabled` | Configurable |
-| Whitelist — protect specific creator affiliate tags | Configurable |
-| Custom tracking params — add your own | Configurable |
-| Export / Import settings as JSON | Configurable |
-| EN / ES language toggle | Configurable |
+### Always on — no configuration needed
 
-Tracking removal works on **every site**. Affiliate features only apply to [supported stores](#supported-stores).
+- Strip 130 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
+- Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug, locale params)
+- Right-click any link → **Copy clean link**
+- **Alt+Shift+C** — copy clean URL of current tab to clipboard
+- **Batch cleaner** — paste multiple URLs, get them all cleaned at once
+- Badge counter showing params stripped on current tab
+- Popup with before/after preview for the current page
+
+### On by default — opt-out in Settings
+
+- **Pre-navigation cleaning** — browser-native DNR rules strip tracking params *before* the page loads, covering address-bar navigation, bookmarks, and external apps
+- **Block `<a ping>` beacons** — prevents background tracking requests on click
+- **AMP redirect** — silently redirects Google AMP pages to the canonical article URL
+- **Redirect-wrapper unwrapping** — unwraps Reddit, Steam, and generic `?redirect=`/`?url=` intermediaries
+- **Affiliate injection** — adds our tag when none is present *(you pay the same price)*
+
+### Configurable
+
+- Per-domain blacklist — strip everything on a specific site
+- Per-domain disable (`domain::disabled`) — opt entire domains out of MUGA
+- Whitelist — protect specific creator affiliate tags from detection
+- Custom tracking params — add your own parameter names
+- Strip all affiliate parameters (opt-in)
+- Replace detected third-party affiliate with ours (explicit opt-in)
+- Toast notification when a third-party affiliate is detected (opt-in)
+- Export / Import settings as JSON
+- EN / ES language toggle
 
 ---
 
@@ -111,15 +132,17 @@ Disclosed during onboarding, documented in the [privacy policy](https://yocreoqu
 - Every URL is processed **entirely inside your browser** — nothing is ever sent to any server
 - Zero browsing data collected, zero analytics, zero telemetry
 - No account, no sign-in, no cloud
-- Minimal permissions: `storage`, `tabs`, `contextMenus`, `clipboardWrite` — nothing else
+- Minimal permissions: `storage`, `tabs`, `contextMenus`, `declarativeNetRequest`, `clipboardWrite` — nothing else
 
 ---
 
 ## Supported stores
 
-20 stores with affiliate tracking support: Amazon (ES, DE, FR, IT, UK, US), Booking.com, AliExpress, PcComponentes, El Corte Inglés, eBay, Temu, Zalando (ES, DE), SHEIN, Fnac (ES, FR), MediaMarkt (ES, DE).
+19 stores with affiliate tracking support:
 
-Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source.
+Amazon (ES, DE, FR, IT, UK, US) · Booking.com · AliExpress · PcComponentes · El Corte Inglés · eBay · Temu · Zalando (ES, DE) · SHEIN · Fnac (ES, FR) · MediaMarkt (ES, DE)
+
+Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source. All other stores are listed as pending.
 
 ---
 
@@ -141,7 +164,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 112 unit tests
+npm test               # 244 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
@@ -152,7 +175,14 @@ New release: tag `vX.Y.Z` → push → GitHub Actions builds and publishes autom
 
 ## Contributing
 
-PRs welcome for new tracking parameters, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions. See [`src/lib/affiliates.js`](src/lib/affiliates.js) for the store database and [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs) for the test suite.
+PRs welcome for new tracking parameters, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions.
+
+Key contribution points:
+
+- **New tracking parameters** — add to `TRACKING_PARAMS` and the appropriate `TRACKING_PARAM_CATEGORIES` group in [`src/lib/affiliates.js`](src/lib/affiliates.js)
+- **New stores** — add an entry to `AFFILIATE_PATTERNS` in [`src/lib/affiliates.js`](src/lib/affiliates.js)
+- **Domain-specific param preservation** — add a rule to [`src/rules/domain-rules.json`](src/rules/domain-rules.json)
+- **Tests** — see [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs)
 
 ---
 
