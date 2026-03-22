@@ -1287,3 +1287,120 @@ describe("Bug #185 — domain-only whitelist skips affiliate processing", () => 
       "utm_source must be absent from clean URL (#185)");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Sprint — selection URL cleaning logic
+// Tests the URL extraction + cleaning logic used by GET_AND_COPY_CLEAN_SELECTION.
+// The handler delegates URL processing to processUrl; we test processUrl directly
+// on the URL patterns that the handler extracts from selected text.
+// ---------------------------------------------------------------------------
+describe("Sprint — selection URL cleaning (GET_AND_COPY_CLEAN_SELECTION logic)", () => {
+  test("dirty URL in plain text is cleaned — utm params removed", () => {
+    // Simulates a URL extracted from selected text by the URL_RE regex.
+    const url = "https://example.com?utm_source=google&fbclid=abc";
+    const { cleanUrl, action, removedTracking } = processUrl(url, PREFS);
+    assert.equal(action, "cleaned");
+    assert.equal(cleanUrl, "https://example.com/");
+    assert.ok(removedTracking.includes("utm_source"), "utm_source must be removed");
+    assert.ok(removedTracking.includes("fbclid"), "fbclid must be removed");
+  });
+
+  test("amazon URL with tracking but preserved tag — utm removed, tag kept", () => {
+    // Represents: "Check out https://amazon.es/dp/B08?tag=test&linkCode=ll1"
+    // linkCode is a known Amazon tracking param; tag= is an affiliate param preserved by default.
+    const url = "https://amazon.es/dp/B08?tag=test&linkCode=ll1";
+    const { cleanUrl, removedTracking } = processUrl(url, PREFS);
+    const result = new URL(cleanUrl);
+    assert.equal(result.searchParams.get("tag"), "test", "affiliate tag must be preserved");
+    assert.ok(removedTracking.includes("linkCode") || !result.searchParams.has("linkCode"),
+      "linkCode must be stripped");
+  });
+
+  test("URL with no tracking params passes through as untouched", () => {
+    const url = "https://example.com/article?id=42&page=2";
+    const { action, cleanUrl } = processUrl(url, PREFS);
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, url);
+  });
+
+  test("URL with already-clean params returns unchanged cleanUrl", () => {
+    const url = "https://example.com/shop?color=blue&size=M";
+    const { action } = processUrl(url, PREFS);
+    assert.equal(action, "untouched");
+  });
+
+  test("trailing punctuation stripped before processUrl — period not part of URL", () => {
+    // The content script regex strips trailing punctuation via: .replace(/[.,;:!?)\]]+$/, "")
+    // We verify that the cleaned candidate (without trailing period) is processed correctly.
+    const rawMatch = "https://example.com?utm_source=x.";
+    const cleanCandidate = rawMatch.replace(/[.,;:!?)\]]+$/, "");
+    assert.equal(cleanCandidate, "https://example.com?utm_source=x");
+    const { action, cleanUrl } = processUrl(cleanCandidate, PREFS);
+    assert.equal(action, "cleaned");
+    assert.equal(cleanUrl, "https://example.com/");
+  });
+
+  test("trailing comma is not part of the URL candidate", () => {
+    const rawMatch = "https://example.com?utm_medium=cpc,";
+    const cleanCandidate = rawMatch.replace(/[.,;:!?)\]]+$/, "");
+    assert.equal(cleanCandidate, "https://example.com?utm_medium=cpc");
+    const { action } = processUrl(cleanCandidate, PREFS);
+    assert.equal(action, "cleaned");
+  });
+
+  test("text with no URLs — URL_RE finds no matches, selection passed as-is", () => {
+    // The handler checks allUrls.length === 0 and copies plain text unchanged.
+    // We verify the regex behaviour: no URLs means no processing needed.
+    const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+    const text = "Hello world, this is plain text with no links.";
+    const matches = [...text.matchAll(URL_RE)];
+    assert.equal(matches.length, 0, "plain text must yield no URL matches");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint — URL tester logic (options.js testUrl() uses processUrl directly)
+// ---------------------------------------------------------------------------
+describe("Sprint — URL tester logic (options.js testUrl)", () => {
+  test("URL with tracking params → action cleaned, removedTracking lists params", () => {
+    const input = "https://example.com?utm_source=google&utm_medium=cpc";
+    const { action, cleanUrl, removedTracking } = processUrl(input, PREFS);
+    assert.equal(action, "cleaned");
+    assert.equal(cleanUrl, "https://example.com/");
+    assert.ok(removedTracking.includes("utm_source"), "removedTracking must include utm_source");
+    assert.ok(removedTracking.includes("utm_medium"), "removedTracking must include utm_medium");
+  });
+
+  test("URL with no tracking params → action untouched, cleanUrl equals input", () => {
+    const input = "https://example.com/product?id=123&page=2";
+    const { action, cleanUrl } = processUrl(input, PREFS);
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, input);
+  });
+
+  test("amazon URL with affiliate tag + utm_source → tracking removed, tag kept", () => {
+    const input = "https://www.amazon.es/dp/B08?tag=creator-21&utm_source=yt";
+    const { cleanUrl, removedTracking } = processUrl(input, PREFS);
+    const result = new URL(cleanUrl);
+    assert.equal(result.searchParams.get("tag"), "creator-21",
+      "affiliate tag must be preserved");
+    assert.ok(removedTracking.includes("utm_source"),
+      "utm_source must appear in removedTracking");
+    assert.ok(!result.searchParams.has("utm_source"),
+      "utm_source must not appear in cleanUrl");
+  });
+
+  test("processUrl result always has removedTracking array", () => {
+    const { removedTracking } = processUrl("https://example.com", PREFS);
+    assert.ok(Array.isArray(removedTracking), "removedTracking must be an array");
+  });
+
+  test("processUrl result junkRemoved equals count of removed params", () => {
+    const { junkRemoved } = processUrl(
+      "https://example.com?utm_source=x&utm_medium=y",
+      PREFS
+    );
+    assert.equal(typeof junkRemoved, "number");
+    assert.equal(junkRemoved, 2);
+  });
+});
