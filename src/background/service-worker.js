@@ -203,17 +203,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
 
-  chrome.contextMenus.create({
-    id: "muga-copy-clean",
-    title: "MUGA: Copy clean link",
-    contexts: ["link"],
-  });
-
-  chrome.contextMenus.create({
-    id: "muga-copy-clean-selection",
-    title: "MUGA: Copy clean link",
-    contexts: ["selection"],
-  });
+  if (prefs.contextMenuEnabled !== false) {
+    await syncContextMenus(true);
+  }
 
   if (details.reason === "install") {
     // First install — open the onboarding page in a new tab

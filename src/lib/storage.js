@@ -18,6 +18,7 @@ export const PREF_DEFAULTS = {
   whitelist: [],     // e.g. ["amazon.es::tag::youtuber-21"]
   customParams: [],  // e.g. ["ref_code", "promo_id"]
   dnrEnabled: true,
+  contextMenuEnabled: true,
   blockPings: true,
   ampRedirect: true,
   unwrapRedirects: true,
