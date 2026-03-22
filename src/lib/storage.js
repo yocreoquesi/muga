@@ -83,11 +83,38 @@ export async function setStats(partial) {
   });
 }
 
-export async function incrementStat(key, amount = 1) {
+// ── incrementStat — batch-write pattern to prevent count loss under concurrency ─
+//
+// Problem: the naive read-modify-write pattern loses increments when two calls
+// race — both read the same value before either writes.
+//
+// Solution: accumulate deltas in a pending map and flush them in a single
+// read-modify-write after a short timer (~100 ms).  All increments that arrive
+// before the flush are coalesced, so only one storage round-trip is needed
+// regardless of how many concurrent callers fire.
+
+let _pendingStats = {};
+let _statsFlushTimer = null;
+
+async function _flushStats() {
+  _statsFlushTimer = null;
+  if (Object.keys(_pendingStats).length === 0) return;
+  const toFlush = _pendingStats;
+  _pendingStats = {};
+
   const local = await getStats();
-  const stats = local.stats || STAT_DEFAULTS.stats;
-  stats[key] = (stats[key] || 0) + amount;
+  const stats = { ...(local.stats || STAT_DEFAULTS.stats) };
+  for (const [key, delta] of Object.entries(toFlush)) {
+    stats[key] = (stats[key] || 0) + delta;
+  }
   await setStats({ stats });
+}
+
+export function incrementStat(key, amount = 1) {
+  _pendingStats[key] = (_pendingStats[key] || 0) + amount;
+  if (!_statsFlushTimer) {
+    _statsFlushTimer = setTimeout(_flushStats, 100);
+  }
 }
 
 // ── Session storage ponyfill — Firefox MV2 compat (#184) ─────────────────────
