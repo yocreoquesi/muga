@@ -1078,6 +1078,56 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
 });
 
 // ---------------------------------------------------------------------------
+// Bug #183 — Regression: amazon.es + blacklist + inject (#197)
+// ---------------------------------------------------------------------------
+const AMAZON_ES_TEST_PATTERN = {
+  id: "_test_amazon_es",
+  name: "Amazon España (unit tests only)",
+  domains: ["amazon.es", "www.amazon.es"],
+  param: "tag",
+  type: "affiliate",
+  ourTag: "mugaTestEs-21",
+};
+
+describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
+  before(() => AFFILIATE_PATTERNS.push(AMAZON_ES_TEST_PATTERN));
+  after(() => {
+    const i = AFFILIATE_PATTERNS.indexOf(AMAZON_ES_TEST_PATTERN);
+    if (i !== -1) AFFILIATE_PATTERNS.splice(i, 1);
+  });
+
+  test("amazon.es with tag=competitor-21, blacklist has competitor-21, inject ON — result has NO tag at all (#197)", () => {
+    const prefs = {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      blacklist: ["amazon.es::tag::competitor-21"],
+    };
+    const { cleanUrl, action } = processUrl(
+      "https://www.amazon.es/dp/B0GQ4N9N33?tag=competitor-21&utm_source=email",
+      prefs
+    );
+    const out = new URL(cleanUrl);
+    assert.equal(out.searchParams.get("tag"), null, "competitor tag must be stripped");
+    assert.ok(!cleanUrl.includes("mugaTestEs-21"), "our tag must NOT be injected after blacklist removal (#197)");
+    assert.notEqual(action, "injected", "action must not be injected when blacklist removed the affiliate (#197)");
+  });
+
+  test("amazon.es without any tag, inject ON — ourTag IS injected (normal injection, no blacklist hit) (#197)", () => {
+    const prefs = {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      blacklist: ["amazon.es::tag::competitor-21"],
+    };
+    const { cleanUrl, action } = processUrl(
+      "https://www.amazon.es/dp/B0GQ4N9N33?color=blue",
+      prefs
+    );
+    assert.ok(cleanUrl.includes("mugaTestEs-21"), "ourTag must be injected when no blacklist rule fires (#197)");
+    assert.equal(action, "injected", "action must be injected for normal injection without blacklist hit (#197)");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Bug #185 — Domain-only whitelist entry must skip all affiliate processing
 // ---------------------------------------------------------------------------
 describe("Bug #185 — domain-only whitelist skips affiliate processing", () => {

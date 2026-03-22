@@ -128,6 +128,16 @@ test("All entries in TRACKING_PARAMS are lowercase (mixed-case breaks cleaner.js
 });
 
 // ---------------------------------------------------------------------------
+// Test 13 — Previously mixed-case params are now stored lowercase (#193)
+// ---------------------------------------------------------------------------
+test("previously mixed-case params are now lowercase in TRACKING_PARAMS (#193)", async () => {
+  const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
+  assert.ok(TRACKING_PARAMS.includes("sfdcimpactsrc"), "sfdcimpactsrc must be in TRACKING_PARAMS (lowercase)");
+  assert.ok(TRACKING_PARAMS.includes("omnisendcontactid"), "omnisendcontactid must be in TRACKING_PARAMS (lowercase)");
+  assert.ok(TRACKING_PARAMS.includes("oborigurl"), "oborigurl must be in TRACKING_PARAMS (lowercase)");
+});
+
+// ---------------------------------------------------------------------------
 // Test 10 — Every AFFILIATE_PATTERNS entry has param (non-empty string) and domains (array)
 // ---------------------------------------------------------------------------
 test("Every AFFILIATE_PATTERNS entry has a non-empty param and a domains array", async () => {
