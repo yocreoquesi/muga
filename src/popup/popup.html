@@ -19,7 +19,7 @@
   </header>
 
   <section class="stats">
-    <div class="stat">
+    <div class="stat stat-clickable" id="stat-urls-wrap" role="button" tabindex="0" title="Show history">
       <span class="stat-value" id="stat-urls">0</span>
       <span class="stat-label" data-i18n="stat_urls">URLs cleaned</span>
     </div>
@@ -32,6 +32,11 @@
       <span class="stat-label" data-i18n="stat_referrals">affiliates detected</span>
     </div>
   </section>
+
+  <details class="history" id="history" hidden>
+    <summary class="history-summary" data-i18n="history_label">Recent</summary>
+    <div id="history-list"></div>
+  </details>
 
   <section class="preview" id="preview" hidden>
     <div class="preview-header">
@@ -75,11 +80,6 @@
       <button class="btn-test-notify" id="test-notify-btn" data-i18n="opt_test_notify_btn">Preview</button>
     </div>
   </section>
-
-  <details class="history" id="history" hidden>
-    <summary class="history-summary" data-i18n="history_label">Recent</summary>
-    <div id="history-list"></div>
-  </details>
 
   <footer>
     <a href="#" id="open-options" data-i18n="link_advanced">Advanced settings →</a>
