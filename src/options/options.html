@@ -291,6 +291,59 @@
     </div>
   </section>
 
+  <section id="section-dev">
+    <h2 data-i18n="section_dev">Developer</h2>
+    <div class="card">
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="dev_mode_label">Developer mode</strong>
+          <small data-i18n="dev_mode_hint">Enables advanced tools for testing and debugging</small>
+        </div>
+        <label class="toggle"><input type="checkbox" id="dev-mode"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="card" id="dev-tools-card" style="margin-top:10px;display:none;">
+      <!-- 1. Preview notification -->
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="dev_preview_notify_label">Preview affiliate notification</strong>
+          <small data-i18n="dev_preview_notify_hint">See how the toast looks when a third-party affiliate is detected</small>
+        </div>
+        <button class="add-btn" id="dev-preview-notify-btn" data-i18n="dev_preview_notify_btn">Preview</button>
+      </div>
+      <!-- 2. Show onboarding -->
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="dev_onboarding_label">Show welcome screen</strong>
+          <small data-i18n="dev_onboarding_hint">Re-open the first-run onboarding page</small>
+        </div>
+        <button class="add-btn" id="dev-show-onboarding-btn" data-i18n="dev_onboarding_btn">Open</button>
+      </div>
+      <!-- 3. Debug log export -->
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="dev_log_label">Debug log</strong>
+          <small data-i18n="dev_log_hint">Download a log of errors and warnings from the current session</small>
+        </div>
+        <button class="add-btn" id="dev-export-log-btn" data-i18n="dev_log_btn">Export log</button>
+      </div>
+      <!-- 4. URL tester -->
+      <div class="list-section" style="border-top:0.5px solid var(--border);">
+        <strong style="font-size:13.5px;font-weight:500;display:block;margin-bottom:6px;" data-i18n="dev_url_tester_label">URL tester</strong>
+        <small style="color:var(--text2);font-size:12px;display:block;margin-bottom:10px;" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
+        <div class="add-row">
+          <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder">
+          <button class="add-btn" id="dev-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
+        </div>
+        <div id="dev-url-result" style="margin-top:10px;display:none;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;" data-i18n="dev_url_result_label">Result</div>
+          <div id="dev-url-clean" style="font-family:monospace;font-size:12px;color:#2563eb;word-break:break-all;margin-bottom:6px;"></div>
+          <div id="dev-url-removed" style="font-size:11px;color:var(--text2);"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <p class="version-info">MUGA <span id="version-number"></span></p>
 
   <div class="footer-links">
