@@ -71,11 +71,11 @@ MORE THAN JUST PARAM STRIPPING
 THE AFFILIATE MODEL — OPT-IN, HONEST, AUDITABLE
 ──────────────────────────────────────
 
-Affiliate injection is off by default. You choose during first setup whether to enable it — and it requires explicit consent in the Terms of Service before it activates.
+Affiliate injection is off by default. You enable it during the onboarding consent flow, or manually at any time via Settings → Affiliate settings.
 
 When enabled: if you navigate to one of 18 supported stores and your link has no affiliate tag, MUGA quietly adds ours. You pay the exact same price — the store just knows you arrived via MUGA. That's how this extension stays free.
 
-• Off by default — opt-in during onboarding, requires ToS consent
+• Off by default — enabled during onboarding or manually in Settings at any time
 • Only fires when there is no existing affiliate tag — we never touch someone else's
 • Turn it off any time in Settings, globally or per domain
 • Disclosed during setup, in the privacy policy, and in the source code
