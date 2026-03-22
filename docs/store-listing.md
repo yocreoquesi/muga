@@ -10,19 +10,17 @@
 
 ### Short description (132 chars max)
 
-Strips 130+ tracking params automatically. Affiliate injection is opt-in, transparent, and never replaces another creator's tag.
+130+ trackers stripped from every URL — automatically, before the page loads. No clicks. No setup. Never replaces a creator's tag.
 
-*(131 chars)*
+*(130 chars)*
 
 ---
 
 ### Detailed description
 
-URLs have become a swamp.
+Every URL you click is pre-loaded with trackers. MUGA strips 130+ of them — automatically, before the page loads. No clicks. No setup.
 
-Every link you click arrives pre-loaded with tracking tags — utm_source, fbclid, gclid, referral codes — put there to follow you across the web. You never asked for them. They're invisible. And every one of them tells advertisers exactly where you came from.
-
-MUGA drains the swamp.
+And unlike Honey, MUGA never replaces a creator's affiliate tag. Ever.
 
 ──────────────────────────────────────
 CLEAN LINKS. AUTOMATICALLY. ALWAYS.
@@ -134,9 +132,9 @@ privacy, URL cleaner, tracking protection, affiliate, UTM
 
 ### Summary (250 chars max)
 
-Strips 130+ tracking parameters from every URL, automatically. AMP redirect, ping blocking, redirect unwrapping. Affiliate injection is opt-in and transparent — we never replace another creator's tag. Open source, GPL v3.
+130+ trackers stripped from every URL — automatically, before the page loads. AMP redirect, ping blocking, redirect unwrapping. Unlike Honey, never replaces a creator's affiliate tag. Open source, GPL v3.
 
-*(221 chars)*
+*(205 chars)*
 
 ---
 
