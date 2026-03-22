@@ -287,8 +287,34 @@
     });
   }
 
+  // --- Module-level prefs cache (#142) ---
+  // Avoids repeated storage reads on every page load / click interception.
+  let _contentPrefs = null;
+  let _contentPrefsPending = null;
+
+  function getContentPrefs() {
+    if (_contentPrefs) return Promise.resolve(_contentPrefs);
+    if (_contentPrefsPending) return _contentPrefsPending;
+    _contentPrefsPending = new Promise(resolve => {
+      chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+        _contentPrefs = prefs;
+        _contentPrefsPending = null;
+        resolve(prefs);
+      });
+    });
+    return _contentPrefsPending;
+  }
+
+  // Invalidate cache when sync storage changes (e.g. user toggles a pref)
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "sync") {
+      _contentPrefs = null;
+      _contentPrefsPending = null;
+    }
+  });
+
   // --- Ping blocking (conditional on prefs.blockPings) ---
-  chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+  getContentPrefs().then((prefs) => {
     if (!prefs || !prefs.enabled) return;
     if (prefs.blockPings) {
       // Strip the ping attribute from all existing and future <a ping> elements
