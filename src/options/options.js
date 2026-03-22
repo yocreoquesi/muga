@@ -342,7 +342,7 @@ function initDevTools() {
   document.getElementById("dev-preview-notify-btn").addEventListener("click", () => {
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
       if (!tab?.id) return;
-      chrome.tabs.sendMessage(tab.id, { type: "PREVIEW_TOAST" });
+      chrome.tabs.sendMessage(tab.id, { type: "SHOW_TEST_TOAST" });
     });
   });
 
