@@ -1,8 +1,8 @@
 # MUGA — Store Listings
 
-> Version: 1.5.2
+> Version: 1.6.0
 > Last updated: 2026-03-22
-> Status: Updated for v1.5.2 — new feature counts, opt-in affiliate model, Firefox AMO section added
+> Status: Updated for v1.6.0 — new feature counts, opt-in affiliate model, Firefox AMO section added
 
 ---
 

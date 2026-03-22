@@ -2,7 +2,7 @@
  * MUGA — Options page
  */
 
-import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
+import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS } from "../lib/storage.js";
 

@@ -4,7 +4,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.6.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-281_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-328_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # Every link. Cleaned. Before it loads.
 
@@ -166,7 +166,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 261 unit tests
+npm test               # 328 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
