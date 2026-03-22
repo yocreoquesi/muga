@@ -1,6 +1,6 @@
 {
   "name": "muga",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Make URLs Great Again — clean URLs, no tracking, no unwanted referrals.",
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "test:serve": "npx serve tests/browser --listen 5555 --no-clipboard",
     "brand": "npx serve tools --listen 5556 --no-clipboard",
     "screenshots": "node tools/screenshots/capture.mjs",
+    "promo-tile": "node tools/screenshots/capture-promo.mjs",
     "promo-tiles": "python3 tools/generate-promo-tiles.py",
     "build:rules": "node tools/generate-dnr-rules.mjs"
   },

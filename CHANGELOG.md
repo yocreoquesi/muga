@@ -2,6 +2,14 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.5.3] — 2026-03-22
+
+### Bug Fixes
+- **Replace toggle hint rewritten** — old text "You always decide, per link" was ambiguous. New text accurately describes the flow: replacement happens via the toast, requires both affiliate injection and notifications to be enabled (#237)
+- **Replace toggle dependency** — row now dims and becomes non-interactive when affiliate injection is off, since replacing with our tag makes no sense without injection (#237)
+- **Version number now always visible** — moved out of the Statistics card (where it collapsed when empty) to a standalone line above the footer (#237)
+- **History panel always opens on click** — clicking "URLs cleaned" was a no-op when session history was empty. Now always opens, showing an empty-state message when no URLs have been processed yet in the current session (#237)
+
 ## [1.5.2] — 2026-03-22
 
 ### Bug Fixes
