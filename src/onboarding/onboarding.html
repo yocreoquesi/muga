@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to MUGA</title>
+  <title data-i18n="ob_page_title">Welcome to MUGA</title>
   <style>
     :root {
       --bg: #fff; --bg2: #f7f7f7; --border: rgba(0,0,0,0.08);
@@ -132,48 +132,52 @@
 <body>
   <div class="container">
     <div class="logo">MUGA</div>
-    <p class="tagline">Make URLs Great Again.<br>Here's exactly what this extension does — and what it never will.<br><small style="font-size:12px;color:var(--text2)">Everything runs locally in your browser. No data is sent to any server.</small></p>
+    <p class="tagline">
+      <span data-i18n="ob_tagline">Make URLs Great Again.</span><br>
+      <span data-i18n="ob_tagline_sub">Here's exactly what this extension does — and what it never will.</span><br>
+      <small style="font-size:12px;color:var(--text2)" data-i18n="ob_tagline_local">Everything runs locally in your browser. No data is sent to any server.</small>
+    </p>
 
     <!-- Step 1: What MUGA always does -->
     <div class="step">
       <div class="step-header">
         <div class="step-num">1</div>
-        <div class="step-title">Always on — no configuration needed</div>
+        <div class="step-title" data-i18n="ob_step1_title">Always on — no configuration needed</div>
       </div>
       <div class="step-body">
         <div class="feature-row">
           <div class="feature-icon">🧹</div>
           <div class="feature-text">
-            <strong>Strips 130+ tracking parameters automatically</strong>
-            <small>UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more — removed before the page loads.</small>
+            <strong data-i18n="ob_feat1_title">Strips 130+ tracking parameters automatically</strong>
+            <small data-i18n="ob_feat1_desc">UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more — removed before the page loads.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">⚡</div>
           <div class="feature-text">
-            <strong>Redirects Google AMP pages to the real article</strong>
-            <small>AMP URLs are silently redirected to the canonical article so you always land on the actual site.</small>
+            <strong data-i18n="ob_feat2_title">Redirects Google AMP pages to the real article</strong>
+            <small data-i18n="ob_feat2_desc">AMP URLs are silently redirected to the canonical article so you always land on the actual site.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">🚫</div>
           <div class="feature-text">
-            <strong>Blocks &lt;a ping&gt; tracking beacons</strong>
-            <small>Prevents the hidden ping requests advertisers use to log every link you click.</small>
+            <strong data-i18n="ob_feat3_title">Blocks &lt;a ping&gt; tracking beacons</strong>
+            <small data-i18n="ob_feat3_desc">Prevents the hidden ping requests advertisers use to log every link you click.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">🔗</div>
           <div class="feature-text">
-            <strong>Unwraps redirect-wrapper URLs</strong>
-            <small>Extracts the real destination from tracking wrappers so you go straight to the target page.</small>
+            <strong data-i18n="ob_feat4_title">Unwraps redirect-wrapper URLs</strong>
+            <small data-i18n="ob_feat4_desc">Extracts the real destination from tracking wrappers so you go straight to the target page.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">📋</div>
           <div class="feature-text">
-            <strong>Right-click → Copy clean link</strong>
-            <small>Copies the cleaned URL to your clipboard without navigating anywhere.</small>
+            <strong data-i18n="ob_feat5_title">Right-click → Copy clean link</strong>
+            <small data-i18n="ob_feat5_desc">Copies the cleaned URL to your clipboard without navigating anywhere.</small>
           </div>
         </div>
       </div>
@@ -183,10 +187,10 @@
     <div class="step">
       <div class="step-header">
         <div class="step-num">2</div>
-        <div class="step-title">How MUGA stays free — your choice</div>
+        <div class="step-title" data-i18n="ob_step2_title">How MUGA stays free — your choice</div>
       </div>
       <div class="affiliate-body">
-        <p>
+        <p data-i18n-html="ob_affiliate_desc">
           When you visit a supported store (Amazon, Booking.com, AliExpress…) and the link
           has <strong>no affiliate tag at all</strong>, MUGA can silently add ours.
           <strong>The price you pay is always identical</strong> — affiliate tags don't affect
@@ -194,7 +198,7 @@
           <br><br>
           This is how we keep MUGA free and actively maintained.
         </p>
-        <div class="disclaimer">
+        <div class="disclaimer" data-i18n-html="ob_disclaimer">
           <strong>What MUGA never does:</strong> replace or overwrite a tag that is already
           in a link. If a creator's or another affiliate's tag is there, MUGA leaves it alone.
           This is the exact opposite of what
@@ -205,8 +209,8 @@
         <label class="consent-check" id="affiliate-label">
           <input type="checkbox" id="affiliate-check">
           <div class="consent-check-label">
-            <strong>Yes, support MUGA for free — allow our affiliate tag on links that have none</strong>
-            <small>You always pay the same price. You can disable this in Settings at any time.</small>
+            <strong data-i18n="ob_affiliate_check_label">Yes, support MUGA for free — allow our affiliate tag on links that have none</strong>
+            <small data-i18n="ob_affiliate_check_hint">You always pay the same price. You can disable this in Settings at any time.</small>
           </div>
         </label>
       </div>
@@ -216,7 +220,7 @@
     <div class="tos-section">
       <label class="tos-check" id="tos-label">
         <input type="checkbox" id="tos-check">
-        <div class="tos-check-label">
+        <div class="tos-check-label" data-i18n-html="ob_tos_label">
           I have read and accept the
           <a href="../privacy/tos.html" target="_blank">Terms of use</a>
           and
@@ -228,8 +232,8 @@
 
     <!-- CTA -->
     <div class="cta">
-      <button class="btn-primary" id="start-btn" disabled>Get started →</button>
-      <p class="cta-note">You can change all of this later in Settings at any time.</p>
+      <button class="btn-primary" id="start-btn" disabled data-i18n="ob_cta_btn">Get started →</button>
+      <p class="cta-note" data-i18n="ob_cta_note">You can change all of this later in Settings at any time.</p>
     </div>
   </div>
 

@@ -134,6 +134,28 @@ export const TRANSLATIONS = {
   toast_block:   { en: "Block", es: "Bloquear" },
   toast_ours:    { en: "Use ours", es: "Usar el nuestro" },
   toast_dismiss: { en: "Dismiss", es: "Descartar" },
+
+  // ── Onboarding ──────────────────────────────────────────────────────────
+  ob_page_title:            { en: "Welcome to MUGA",                                                         es: "Bienvenido a MUGA" },
+  ob_tagline:               { en: "Make URLs Great Again.",                                                   es: "Haz que las URLs vuelvan a ser geniales." },
+  ob_tagline_sub:           { en: "Here's exactly what this extension does — and what it never will.",        es: "Esto es exactamente lo que hace esta extensión — y lo que nunca hará." },
+  ob_tagline_local:         { en: "Everything runs locally in your browser. No data is sent to any server.",  es: "Todo se ejecuta en tu navegador. No se envía ningún dato a ningún servidor." },
+  ob_step1_title:           { en: "Always on — no configuration needed",                                      es: "Siempre activo — sin configuración" },
+  ob_feat1_title:           { en: "Strips 130+ tracking parameters automatically",                            es: "Elimina más de 130 parámetros de rastreo automáticamente" },
+  ob_feat1_desc:            { en: "UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more — removed before the page loads.", es: "UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), tags de rastreo de eBay y más — eliminados antes de que cargue la página." },
+  ob_feat2_title:           { en: "Redirects Google AMP pages to the real article",                            es: "Redirige páginas AMP de Google al artículo real" },
+  ob_feat2_desc:            { en: "AMP URLs are silently redirected to the canonical article so you always land on the actual site.", es: "Las URLs AMP se redirigen silenciosamente al artículo original para que siempre llegues al sitio real." },
+  ob_feat3_title:           { en: "Blocks <a ping> tracking beacons",                                         es: "Bloquea balizas de rastreo <a ping>" },
+  ob_feat3_desc:            { en: "Prevents the hidden ping requests advertisers use to log every link you click.", es: "Impide las peticiones ocultas que los anunciantes usan para registrar cada enlace que pulsas." },
+  ob_feat4_title:           { en: "Unwraps redirect-wrapper URLs",                                            es: "Desenvuelve URLs con redireccionadores" },
+  ob_feat4_desc:            { en: "Extracts the real destination from tracking wrappers so you go straight to the target page.", es: "Extrae el destino real de los redireccionadores para que vayas directamente a la página de destino." },
+  ob_feat5_title:           { en: "Right-click → Copy clean link",                                            es: "Clic derecho → Copiar enlace limpio" },
+  ob_feat5_desc:            { en: "Copies the cleaned URL to your clipboard without navigating anywhere.",     es: "Copia la URL limpia al portapapeles sin navegar a ningún sitio." },
+  ob_step2_title:           { en: "How MUGA stays free — your choice",                                        es: "Cómo MUGA se mantiene gratis — tú decides" },
+  ob_affiliate_check_label: { en: "Yes, support MUGA for free — allow our affiliate tag on links that have none", es: "Sí, apoya a MUGA gratis — permitir nuestro tag de afiliado en enlaces sin ninguno" },
+  ob_affiliate_check_hint:  { en: "You always pay the same price. You can disable this in Settings at any time.", es: "Siempre pagas el mismo precio. Puedes desactivarlo en Ajustes en cualquier momento." },
+  ob_cta_btn:               { en: "Get started →",                                                            es: "Empezar →" },
+  ob_cta_note:              { en: "You can change all of this later in Settings at any time.",                 es: "Puedes cambiar todo esto más tarde en Ajustes en cualquier momento." },
 };
 
 /**
