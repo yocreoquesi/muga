@@ -3,8 +3,8 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.5.4-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-261_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-281_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # Every link. Cleaned. Before it loads.
 
