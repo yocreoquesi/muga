@@ -122,13 +122,13 @@ export const TRACKING_PARAMS = [
   // Pardot / Salesforce Marketing Cloud
   "pi_ad_id",       // Pardot ad ID
   "pi_campaign_id", // Pardot campaign
-  "sfdcImpactSrc",  // Salesforce Impact Source
+  "sfdcimpactsrc",  // Salesforce Impact Source
 
   // Drip
   "dm_i",       // Drip campaign identifier
 
   // Omnisend
-  "omnisendContactID", // Omnisend contact
+  "omnisendcontactid", // Omnisend contact
 
   // Sendinblue / Brevo
   "sib_id",     // Sendinblue contact ID
@@ -139,7 +139,7 @@ export const TRACKING_PARAMS = [
   "__hssc",     // HubSpot session
 
   // Outbrain
-  "obOrigUrl",       // Outbrain original URL param
+  "oborigurl",       // Outbrain original URL param
   "outbrainclickid", // Outbrain click ID
 
   // Taboola
@@ -209,7 +209,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Microsoft Advertising
       "mscid",
       // Outbrain
-      "obOrigUrl", "outbrainclickid",
+      "oborigurl", "outbrainclickid",
       // Taboola
       "taboola_campaign_id", "tblci",
       // Criteo
@@ -249,11 +249,11 @@ export const TRACKING_PARAM_CATEGORIES = {
       // ActiveCampaign
       "vgo_ee",
       // Pardot / Salesforce
-      "pi_ad_id", "pi_campaign_id", "sfdcImpactSrc",
+      "pi_ad_id", "pi_campaign_id", "sfdcimpactsrc",
       // Drip
       "dm_i",
       // Omnisend
-      "omnisendContactID",
+      "omnisendcontactid",
       // Sendinblue / Brevo
       "sib_id",
     ],

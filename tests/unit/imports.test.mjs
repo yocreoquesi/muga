@@ -115,6 +115,19 @@ test("No param appears in both TRACKING_PARAMS and AFFILIATE_PATTERNS (collision
 });
 
 // ---------------------------------------------------------------------------
+// Test 12 — All TRACKING_PARAMS entries are lowercase (prevents #182 regression)
+// ---------------------------------------------------------------------------
+test("All entries in TRACKING_PARAMS are lowercase (mixed-case breaks cleaner.js match)", async () => {
+  const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
+  const mixedCase = TRACKING_PARAMS.filter(p => p !== p.toLowerCase());
+  assert.equal(
+    mixedCase.length,
+    0,
+    `Mixed-case TRACKING_PARAMS entries found (will never match param.toLowerCase()): ${JSON.stringify(mixedCase)}`
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Test 10 — Every AFFILIATE_PATTERNS entry has param (non-empty string) and domains (array)
 // ---------------------------------------------------------------------------
 test("Every AFFILIATE_PATTERNS entry has a non-empty param and a domains array", async () => {
