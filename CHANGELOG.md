@@ -2,6 +2,26 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.6.0] — 2026-03-22
+
+### Features
+- **"Copy clean links in selection" now handles hyperlinks** — the context menu handler previously only cleaned plain text URLs via `info.selectionText`. It now delegates to the content script, which reads the real DOM selection, collects `href` attributes from all `<a>` elements plus plain URLs from text nodes, cleans each one, and writes the result to clipboard. Falls back to the plain-text approach if the content script is unavailable (#247)
+- **History panel — full URL display** — cleaned URLs in the history list no longer truncate with ellipsis. CSS updated to `white-space: normal; overflow-wrap: break-word; word-break: break-all` so long URLs wrap fully (#248)
+- **History panel — clipboard icon per entry** — a copy-to-clipboard icon button now appears next to each clean URL in the history list. Click the icon to copy the clean URL; clicking anywhere else on the row still copies as before. Accessibility label corrected (#248, #256)
+- **Developer section in Settings** — a new "Developer" section (off by default, toggled via `devMode` preference) exposes four tools (#248):
+  - **Preview affiliate notification** — triggers the foreign-affiliate toast on the active tab for testing
+  - **Show welcome screen** — re-opens the first-run onboarding page at any time
+  - **Export debug log** — downloads a JSON file with `console.error` and `console.warn` entries captured in the active session (up to 200 entries)
+  - **URL tester** — paste any URL and see the cleaned result plus which tracking params were removed, using the same `processUrl` logic as live cleaning
+
+### Bug Fixes
+- **Dev "Preview notification" button** — was sending `PREVIEW_TOAST` but the content script handler checks for `SHOW_TEST_TOAST`. Button silently did nothing. Fixed (#252, #254)
+- **History copy button `aria-label`** — incorrectly set to `"Copied!"` (post-action text) before any action. Changed to `"Click to copy clean URL"` (#253, #256)
+
+### Internal
+- 281 passing tests, 0 failures (+20 new tests covering selection URL cleaning logic, URL tester behaviour, and `devMode` default in `PREF_DEFAULTS`)
+- Debug log capture: `console.error`/`console.warn` in the service worker are patched to append structured entries to `sessionStorage` under `debugLog` (max 200 entries, cleared on session end)
+
 ## [1.5.4] — 2026-03-22
 
 ### Bug Fixes
