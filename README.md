@@ -79,13 +79,13 @@ After:  https://www.ebay.es/itm/123456789
 - Badge counter showing params stripped on current tab
 - Popup with before/after preview for the current page
 
-### On by default — opt-out in Settings
+### Optional — configured during first setup
 
 - **Pre-navigation cleaning** — browser-native DNR rules strip tracking params *before* the page loads, covering address-bar navigation, bookmarks, and external apps
 - **Block `<a ping>` beacons** — prevents background tracking requests on click
 - **AMP redirect** — silently redirects Google AMP pages to the canonical article URL
 - **Redirect-wrapper unwrapping** — unwraps Reddit, Steam, and generic `?redirect=`/`?url=` intermediaries
-- **Affiliate injection** — adds our tag when none is present *(you pay the same price)*
+- **Affiliate injection** — adds our tag when none is present *(you pay the same price; opt-in during onboarding)*
 
 ### Configurable
 
@@ -123,6 +123,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 - Only fires when the link has **no affiliate tag at all**
 - The tag is added as a standard URL parameter — nothing hidden, nothing obfuscated
+- **Opt-in only** — you choose during first setup; off by default
 - Turn it off any time: Settings → toggle off, globally or per domain
 - We **never replace** an existing tag from another affiliate — that practice is what got [Honey sued](https://en.wikipedia.org/wiki/Honey_(browser_extension)), and it's explicitly something MUGA does not do
 

@@ -57,67 +57,76 @@
     .feature-text strong { display: block; font-weight: 500; margin-bottom: 2px; }
     .feature-text small { color: var(--text2); font-size: 12px; line-height: 1.4; }
 
-    /* Consent rows */
-    .consent-row {
-      display: flex; align-items: flex-start; gap: 14px;
-      padding: 14px 16px; border-bottom: 0.5px solid var(--border);
+    /* Affiliate card */
+    .affiliate-body {
+      background: var(--bg2); border-radius: 12px;
+      border: 0.5px solid var(--border);
+      margin-left: 40px; padding: 16px;
     }
-    .consent-row:last-child { border-bottom: none; }
-    .consent-text { flex: 1; }
-    .consent-text strong { display: block; font-size: 13.5px; font-weight: 500; margin-bottom: 3px; }
-    .consent-text p { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
-    .consent-text .badge {
-      display: inline-block; font-size: 10.5px; font-weight: 500;
-      padding: 1px 7px; border-radius: 99px; margin-bottom: 4px;
+    .affiliate-body p {
+      font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 14px;
     }
-    .badge-on { background: rgba(22, 163, 74, 0.1); color: var(--success); }
-    .badge-off { background: rgba(217, 119, 6, 0.1); color: var(--warn); }
+    .affiliate-body strong { color: var(--text); }
 
-    /* Toggle */
-    .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; margin-top: 2px; }
-    .toggle input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; inset: 0; background: #d1d5db;
-      border-radius: 22px; transition: background .2s; cursor: pointer;
-    }
-    .slider::before {
-      content: ''; position: absolute; width: 16px; height: 16px;
-      left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform .2s;
-    }
-    .toggle input:checked + .slider { background: var(--accent); }
-    .toggle input:checked + .slider::before { transform: translateX(18px); }
-
-    /* Disclaimer */
     .disclaimer {
       font-size: 11.5px; color: var(--text2); line-height: 1.6;
-      padding: 12px 16px; background: var(--bg2);
-      border: 0.5px solid var(--border); border-radius: 10px;
-      margin: 0 0 0 40px;
+      padding: 10px 14px; background: var(--bg);
+      border: 0.5px solid var(--border); border-radius: 8px;
+      margin-bottom: 14px;
     }
     .disclaimer a { color: var(--accent); text-decoration: none; }
 
-    /* CTA */
-    .cta {
-      margin-top: 32px; text-align: center;
+    /* Consent checkboxes */
+    .consent-check {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 13px 14px; background: var(--bg);
+      border: 0.5px solid var(--border); border-radius: 8px;
+      cursor: pointer; transition: border-color .15s;
+      margin-bottom: 10px;
     }
+    .consent-check:last-child { margin-bottom: 0; }
+    .consent-check:hover { border-color: var(--accent); }
+    .consent-check input[type="checkbox"] {
+      width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0;
+      accent-color: var(--accent); cursor: pointer;
+    }
+    .consent-check-label { font-size: 13px; line-height: 1.5; }
+    .consent-check-label strong { display: block; font-weight: 500; margin-bottom: 2px; }
+    .consent-check-label small { color: var(--text2); font-size: 12px; }
+    .consent-check-label a { color: var(--accent); text-decoration: none; }
+
+    /* ToS section */
+    .tos-section {
+      margin-top: 16px;
+    }
+    .tos-check {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 13px 16px; background: var(--bg2);
+      border: 0.5px solid var(--border); border-radius: 10px;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .tos-check:hover { border-color: var(--accent); }
+    .tos-check input[type="checkbox"] {
+      width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0;
+      accent-color: var(--accent); cursor: pointer;
+    }
+    .tos-check-label { font-size: 13px; line-height: 1.5; }
+    .tos-check-label a { color: var(--accent); text-decoration: none; }
+
+    /* CTA */
+    .cta { margin-top: 20px; }
     .btn-primary {
-      display: inline-block; padding: 14px 40px;
+      display: block; width: 100%; padding: 14px 40px;
       background: var(--accent); color: #fff;
       font-size: 15px; font-weight: 600; border: none;
       border-radius: 12px; cursor: pointer; transition: opacity .15s;
-      width: 100%; text-decoration: none; text-align: center;
+      text-align: center;
     }
-    .btn-primary:hover { opacity: 0.88; }
-    .btn-secondary {
-      display: block; padding: 11px 24px; margin-top: 10px;
-      background: transparent; color: var(--text2);
-      font-size: 13px; font-weight: 500;
-      border: 0.5px solid var(--border); border-radius: 10px;
-      cursor: pointer; transition: opacity .15s;
-      width: 100%; text-decoration: none; text-align: center;
+    .btn-primary:disabled {
+      opacity: 0.35; cursor: not-allowed;
     }
-    .btn-secondary:hover { opacity: 0.7; }
-    .cta-note { font-size: 11.5px; color: var(--text2); margin-top: 10px; }
+    .btn-primary:not(:disabled):hover { opacity: 0.88; }
+    .cta-note { font-size: 11.5px; color: var(--text2); margin-top: 10px; text-align: center; }
   </style>
 </head>
 <body>
@@ -135,29 +144,29 @@
         <div class="feature-row">
           <div class="feature-icon">🧹</div>
           <div class="feature-text">
-            <strong>Strips tracking parameters automatically</strong>
-            <small>UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and 30+ others — removed before the page loads. 100% legal, no ToS conflicts.</small>
+            <strong>Strips 130+ tracking parameters automatically</strong>
+            <small>UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more — removed before the page loads.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">⚡</div>
           <div class="feature-text">
             <strong>Redirects Google AMP pages to the real article</strong>
-            <small>AMP URLs (google.com/amp/…) are silently redirected to the canonical article so you always land on the actual site.</small>
+            <small>AMP URLs are silently redirected to the canonical article so you always land on the actual site.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">🚫</div>
           <div class="feature-text">
             <strong>Blocks &lt;a ping&gt; tracking beacons</strong>
-            <small>Prevents browsers from firing the hidden ping requests that advertisers use to log every link you click.</small>
+            <small>Prevents the hidden ping requests advertisers use to log every link you click.</small>
           </div>
         </div>
         <div class="feature-row">
           <div class="feature-icon">🔗</div>
           <div class="feature-text">
             <strong>Unwraps redirect-wrapper URLs</strong>
-            <small>Extracts the real destination from tracking wrappers (e.g. l.facebook.com, t.co, redirect links) so you go straight to the target page.</small>
+            <small>Extracts the real destination from tracking wrappers so you go straight to the target page.</small>
           </div>
         </div>
         <div class="feature-row">
@@ -170,60 +179,56 @@
       </div>
     </div>
 
-    <!-- Step 2: Affiliate model — transparent explanation -->
+    <!-- Step 2: Affiliate model -->
     <div class="step">
       <div class="step-header">
         <div class="step-num">2</div>
-        <div class="step-title">How MUGA funds itself — no surprises</div>
+        <div class="step-title">How MUGA stays free — your choice</div>
       </div>
-      <div class="step-body">
-        <div class="consent-row">
-          <div class="consent-text">
-            <span class="badge badge-on">ON by default</span>
-            <strong>We add our affiliate tag when a link has no tag at all</strong>
-            <p>
-              When you navigate to a supported store (Amazon, Booking, AliExpress, eBay…)
-              and the link carries <em>no affiliate tag at all</em>, MUGA appends ours in the background.
-              The price you see is identical — affiliate tags don't affect what you pay,
-              they tell the store who referred you. We earn a small commission.
-              <br><br>
-              That's the whole model. You can disable it right now using the button below,
-              or any time later in Settings.
-            </p>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="inject-toggle" checked>
-            <span class="slider"></span>
-          </label>
+      <div class="affiliate-body">
+        <p>
+          When you visit a supported store (Amazon, Booking.com, AliExpress…) and the link
+          has <strong>no affiliate tag at all</strong>, MUGA can silently add ours.
+          <strong>The price you pay is always identical</strong> — affiliate tags don't affect
+          what you pay, they tell the store who referred you. We earn a small commission.
+          <br><br>
+          This is how we keep MUGA free and actively maintained.
+        </p>
+        <div class="disclaimer">
+          <strong>What MUGA never does:</strong> replace or overwrite a tag that is already
+          in a link. If a creator's or another affiliate's tag is there, MUGA leaves it alone.
+          This is the exact opposite of what
+          <a href="https://en.wikipedia.org/wiki/Honey_(browser_extension)" target="_blank">Honey did</a>.
+          MUGA only acts on links that have <em>no tag at all</em>.
+          The source code is public — you can verify this yourself.
         </div>
-        <div class="consent-row">
-          <div class="consent-text">
-            <span class="badge badge-off">OFF by default</span>
-            <strong>Notify me when a link already carries someone else's affiliate tag</strong>
-            <p>
-              A small notification appears with three options: keep the original tag,
-              remove it, or swap it for ours. Auto-dismisses in 5 seconds.
-              Default is always "keep". Enable this if you want visibility.
-            </p>
+        <label class="consent-check" id="affiliate-label">
+          <input type="checkbox" id="affiliate-check">
+          <div class="consent-check-label">
+            <strong>Yes, support MUGA for free — allow our affiliate tag on links that have none</strong>
+            <small>You always pay the same price. You can disable this in Settings at any time.</small>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="notify-toggle">
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-      <div class="disclaimer" style="margin-top:10px">
-        <strong>What MUGA never does:</strong> replace or overwrite an affiliate tag that
-        is already in a link. If a creator's or another affiliate's tag is there, MUGA leaves it alone.
-        This is the exact opposite of what <a href="https://en.wikipedia.org/wiki/Honey_(browser_extension)" target="_blank">Honey did</a> — they silently replaced creators' tags with their own, which is why they got sued.
-        MUGA only acts on links that have <em>no tag at all</em>.
-        The source code is public — you can verify this yourself.
+        </label>
       </div>
     </div>
 
+    <!-- ToS acceptance -->
+    <div class="tos-section">
+      <label class="tos-check" id="tos-label">
+        <input type="checkbox" id="tos-check">
+        <div class="tos-check-label">
+          I have read and accept the
+          <a href="../privacy/tos.html" target="_blank">Terms of use</a>
+          and
+          <a href="../privacy/privacy.html" target="_blank">Privacy policy</a>
+          <small style="display:block;color:var(--text2);margin-top:3px">Required to continue</small>
+        </div>
+      </label>
+    </div>
+
+    <!-- CTA -->
     <div class="cta">
-      <button class="btn-primary" id="start-btn">Make my URLs great →</button>
-      <a class="btn-secondary" id="disable-affiliate-btn" href="../options/options.html#affiliate">Disable affiliate injection</a>
+      <button class="btn-primary" id="start-btn" disabled>Get started →</button>
       <p class="cta-note">You can change all of this later in Settings at any time.</p>
     </div>
   </div>

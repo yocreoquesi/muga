@@ -10,7 +10,7 @@
 
 export const PREF_DEFAULTS = {
   enabled: true,
-  injectOwnAffiliate: true,
+  injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)
   notifyForeignAffiliate: false,
   allowReplaceAffiliate: false,
   stripAllAffiliates: false,
@@ -24,6 +24,8 @@ export const PREF_DEFAULTS = {
   unwrapRedirects: true,
   language: "en",
   onboardingDone: false,
+  consentVersion: null,   // e.g. "1.0" — bump to re-trigger onboarding on ToS changes
+  consentDate: null,      // Unix timestamp (ms) of when the user accepted
   disabledCategories: [],  // e.g. ["utm", "ads"] — params in these categories are not stripped
 };
 
