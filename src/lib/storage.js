@@ -90,6 +90,47 @@ export async function incrementStat(key, amount = 1) {
   await setStats({ stats });
 }
 
+// ── Session storage ponyfill — Firefox MV2 compat (#184) ─────────────────────
+//
+// chrome.storage.session is MV3-only (Chrome 102+). Firefox ships MUGA as MV2
+// and does not expose this API, causing crashes in the service worker and popup.
+// This ponyfill falls back to an in-memory Map when the API is unavailable.
+// The Map is cleared on extension reload/restart, matching session semantics.
+
+const _memStore = new Map();
+
+export const sessionStorage = {
+  get: (keys) => {
+    if (chrome.storage.session) return chrome.storage.session.get(keys);
+    const result = {};
+    const ks = Array.isArray(keys)
+      ? keys
+      : typeof keys === "string"
+      ? [keys]
+      : Object.keys(keys);
+    ks.forEach(k => {
+      if (_memStore.has(k)) {
+        result[k] = _memStore.get(k);
+      } else if (keys !== null && typeof keys === "object" && !Array.isArray(keys)) {
+        // Return default value when provided via object form { key: default }
+        result[k] = keys[k];
+      }
+    });
+    return Promise.resolve(result);
+  },
+  set: (items) => {
+    if (chrome.storage.session) return chrome.storage.session.set(items);
+    Object.entries(items).forEach(([k, v]) => _memStore.set(k, v));
+    return Promise.resolve();
+  },
+  remove: (keys) => {
+    if (chrome.storage.session) return chrome.storage.session.remove(keys);
+    const ks = Array.isArray(keys) ? keys : [keys];
+    ks.forEach(k => _memStore.delete(k));
+    return Promise.resolve();
+  },
+};
+
 /**
  * One-time migration: moves stats out of chrome.storage.sync into
  * chrome.storage.local. Safe to call on every startup — exits immediately
