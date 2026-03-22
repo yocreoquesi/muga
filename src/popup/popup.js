@@ -6,7 +6,6 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage } from "../lib/storage.js";
-import { getSupportedStores } from "../lib/affiliates.js";
 
 async function init() {
   const lang = await getStoredLang();
@@ -27,28 +26,11 @@ async function init() {
     formatStat(local.stats?.referralsSpotted ?? 0);
 
   const enabledToggle = document.getElementById("enabled-toggle");
-  const injectToggle  = document.getElementById("inject-toggle");
-  const notifyToggle  = document.getElementById("notify-toggle");
 
   enabledToggle.checked = prefs.enabled;
-  injectToggle.checked  = prefs.injectOwnAffiliate;
-  notifyToggle.checked  = prefs.notifyForeignAffiliate;
 
   enabledToggle.addEventListener("change", () =>
     chrome.storage.sync.set({ enabled: enabledToggle.checked }));
-  injectToggle.addEventListener("change", () =>
-    chrome.storage.sync.set({ injectOwnAffiliate: injectToggle.checked }));
-  notifyToggle.addEventListener("change", () =>
-    chrome.storage.sync.set({ notifyForeignAffiliate: notifyToggle.checked }));
-
-  // Hide the inject toggle row when no affiliate accounts are active.
-  // The feature does nothing without a configured ourTag, so showing it
-  // only adds confusion.
-  const hasActiveStores = getSupportedStores().some(s => s.ourTag && s.ourTag.trim() !== "");
-  if (!hasActiveStores) {
-    const injectRow = injectToggle.closest("label.option-row");
-    if (injectRow) injectRow.hidden = true;
-  }
 
   document.getElementById("open-options").addEventListener("click", (e) => {
     e.preventDefault();
@@ -66,19 +48,6 @@ async function init() {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       statUrlsWrap.click();
-    }
-  });
-
-  document.getElementById("test-notify-btn").addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) {
-      alert("No active tab found.");
-      return;
-    }
-    try {
-      await chrome.tabs.sendMessage(tab.id, { type: "SHOW_TEST_TOAST" });
-    } catch {
-      alert("Preview not available on this page. Navigate to a regular webpage and try again.");
     }
   });
 
@@ -118,8 +87,11 @@ async function showUrlPreview(prefs, lang) {
   const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false });
 
   if (result.cleanUrl === url && result.action === "untouched") {
-    document.getElementById("preview-clean").hidden = false;
-    document.getElementById("preview-clean").textContent = t("preview_clean", lang);
+    // Show original URL as plain reference — no strikethrough, no "after" URL
+    const beforeEl = document.getElementById("preview-before");
+    beforeEl.textContent = url;
+    beforeEl.classList.add("clean-url");
+    document.getElementById("preview-after").hidden = true;
   } else {
     document.getElementById("preview-before").textContent = url;
     document.getElementById("preview-after").textContent = result.cleanUrl;
