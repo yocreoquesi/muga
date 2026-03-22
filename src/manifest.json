@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MUGA — Make URLs Great Again",
   "short_name": "MUGA",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Strips 130+ tracking params from every URL. Optionally adds our affiliate tag when a link has none — disclosed during onboarding, opt-out in Settings anytime.",
 
   "permissions": [
