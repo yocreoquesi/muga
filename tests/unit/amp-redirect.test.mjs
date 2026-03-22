@@ -20,6 +20,15 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const AMP_REDIRECT_SOURCE = readFileSync(
+  join(__dirname, "../../src/content/amp-redirect.js"),
+  "utf8"
+);
 
 // ---------------------------------------------------------------------------
 // Pure helpers — mirror the logic in amp-redirect.js
@@ -236,6 +245,53 @@ describe("shouldRedirect — safety checks", () => {
     assert.equal(
       shouldRedirect("https://m.amp.example.com/p", "https://example.com/p"),
       true
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// C11 — Sync verification: replicated logic matches the real source
+// amp-redirect.js is an IIFE content script using chrome.* APIs, so we
+// cannot import it directly. Instead we verify that key logic fragments in
+// the source file match the replicated helpers above.
+// ---------------------------------------------------------------------------
+describe("C11 — replica sync verification (amp-redirect.js)", () => {
+
+  test("source contains the same AMP URL detection conditions as isAmpPage replica", () => {
+    // Key conditions that must appear in the source:
+    const conditions = [
+      'hostname.startsWith("amp.")',
+      'pathname.startsWith("/amp/")',
+      'pathname === "/amp"',
+      'pathname.endsWith("/amp")',
+      'searchParams.has("amp")',
+    ];
+    for (const cond of conditions) {
+      assert.ok(
+        AMP_REDIRECT_SOURCE.includes(cond),
+        `Source must contain AMP detection condition: ${cond}`
+      );
+    }
+  });
+
+  test("source contains the same https guard as shouldRedirect replica", () => {
+    assert.ok(
+      AMP_REDIRECT_SOURCE.includes('canonical_.protocol !== "https:"'),
+      "Source must contain the https protocol guard"
+    );
+  });
+
+  test("source contains the same domain safety check as shouldRedirect replica", () => {
+    assert.ok(
+      AMP_REDIRECT_SOURCE.includes('current_.hostname.endsWith("." + canonical_.hostname)'),
+      "Source must contain the parent-domain endsWith check"
+    );
+  });
+
+  test("source contains canonical URL equality check", () => {
+    assert.ok(
+      AMP_REDIRECT_SOURCE.includes("canonicalUrl === currentUrl"),
+      "Source must contain the canonical === current check (no redirect when equal)"
     );
   });
 });
