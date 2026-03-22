@@ -151,7 +151,7 @@ async function showHistory(lang) {
 
     const copyCleanBtn = document.createElement("button");
     copyCleanBtn.className = "history-copy-clean-btn";
-    copyCleanBtn.setAttribute("aria-label", t("history_copied", lang));
+    copyCleanBtn.setAttribute("aria-label", t("history_copy_hint", lang));
     copyCleanBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
 
     afterRow.appendChild(afterDiv);
