@@ -11,6 +11,24 @@ import domainRules from "../rules/domain-rules.json" with { type: "json" };
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
 
+// --- Debug log (dev mode only) ---
+const DEBUG_LOG_MAX = 200;
+
+function appendDebugLog(level, args) {
+  const entry = { ts: Date.now(), level, msg: args.map(a => {
+    try { return typeof a === "object" ? JSON.stringify(a) : String(a); } catch { return "[unserializable]"; }
+  }).join(" ") };
+  sessionStorage.get({ debugLog: [] }).then(data => {
+    const log = [entry, ...data.debugLog].slice(0, DEBUG_LOG_MAX);
+    sessionStorage.set({ debugLog: log });
+  });
+}
+
+const _origError = console.error.bind(console);
+console.error = (...args) => { _origError(...args); appendDebugLog("error", args); };
+const _origWarn = console.warn.bind(console);
+console.warn = (...args) => { _origWarn(...args); appendDebugLog("warn", args); };
+
 // --- Prefs cache ---
 
 let cachedPrefs = null;
@@ -188,6 +206,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "GET_DEBUG_LOG") {
+    sessionStorage.get({ debugLog: [] }).then(data => sendResponse({ log: data.debugLog }));
+    return true;
+  }
+
+  if (message.type === "CLEAR_DEBUG_LOG") {
+    sessionStorage.set({ debugLog: [] }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
@@ -296,21 +324,25 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   }
 
   if (info.menuItemId === "muga-copy-clean-selection") {
-    const text = info.selectionText;
-    if (!text || !tab?.id) return;
-
-    // Find all URLs in the selected text and clean each one that has query params
-    const matches = [...text.matchAll(URL_RE)];
-    let result = text;
-    for (const match of matches) {
-      const rawUrl = match[0];
-      const candidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
-      const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
-      if (cleaned.cleanUrl !== candidate) {
-        result = result.replace(candidate, cleaned.cleanUrl);
+    if (!tab?.id) return;
+    // Ask the content script to handle it — it can access the actual DOM selection including hrefs
+    chrome.tabs.sendMessage(tab.id, { type: "GET_AND_COPY_CLEAN_SELECTION" }, (response) => {
+      if (chrome.runtime.lastError || !response?.ok) {
+        // Fallback: plain-text approach (original behavior)
+        const text = info.selectionText;
+        if (!text) return;
+        let result = text;
+        (async () => {
+          const matches = [...text.matchAll(URL_RE)];
+          for (const match of matches) {
+            const candidate = match[0].replace(/[.,;:!?)\]]+$/, "");
+            const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
+            if (cleaned.cleanUrl !== candidate) result = result.split(candidate).join(cleaned.cleanUrl);
+          }
+          chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result });
+        })();
       }
-    }
-
-    chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result });
+    });
+    return;
   }
 });

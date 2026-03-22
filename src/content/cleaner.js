@@ -47,7 +47,66 @@
   });
 
   // Handle clipboard copy requests from the service worker (context menu "Copy clean link")
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "GET_AND_COPY_CLEAN_SELECTION") {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) { sendResponse({ ok: false }); return true; }
+
+      // 1. Get the HTML of the selection
+      const container = document.createElement("div");
+      for (let i = 0; i < sel.rangeCount; i++) {
+        container.appendChild(sel.getRangeAt(i).cloneContents());
+      }
+
+      // 2. Clean all href attributes
+      const anchors = container.querySelectorAll("a[href]");
+      const urlsToClean = [];
+      anchors.forEach(a => urlsToClean.push(a.getAttribute("href")));
+
+      // 3. Also find plain URLs in text content
+      const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      let node;
+      while ((node = walker.nextNode())) textNodes.push(node);
+      const textUrls = [];
+      textNodes.forEach(n => { const m = n.textContent.match(URL_RE); if (m) textUrls.push(...m); });
+
+      const allUrls = [...new Set([...urlsToClean, ...textUrls])];
+
+      if (allUrls.length === 0) {
+        // Nothing to clean — copy plain text as-is
+        const plainText = sel.toString();
+        navigator.clipboard.writeText(plainText).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+        return true;
+      }
+
+      // 4. Ask service worker to clean each URL
+      Promise.all(
+        allUrls.map(url => chrome.runtime.sendMessage({ type: "PROCESS_URL", url, skipNotify: true }))
+      ).then(results => {
+        const urlMap = new Map(allUrls.map((url, i) => [url, results[i]?.cleanUrl ?? url]));
+
+        // Apply to anchors
+        anchors.forEach(a => {
+          const orig = a.getAttribute("href");
+          const clean = urlMap.get(orig);
+          if (clean && clean !== orig) a.setAttribute("href", clean);
+        });
+
+        // Apply to text nodes
+        let finalText = sel.toString();
+        for (const [orig, clean] of urlMap) {
+          if (clean !== orig) finalText = finalText.split(orig).join(clean);
+        }
+
+        navigator.clipboard.writeText(finalText)
+          .then(() => sendResponse({ ok: true }))
+          .catch(() => sendResponse({ ok: false }));
+      });
+      return true;
+    }
+
     if (message.type === "SHOW_TEST_TOAST") {
       showAffiliateNotice(
         { param: "tag", value: "competitor-21" },
