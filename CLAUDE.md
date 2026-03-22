@@ -6,7 +6,7 @@ Browser extension (Chrome + Firefox) que limpia URLs de tracking params, gestion
 
 - **Nombre:** MUGA — Make URLs Great Again
 - **Repo:** https://github.com/yocreoquesi/muga (public, GPL v3)
-- **Versión actual:** 1.4.0
+- **Versión actual:** 1.5.2
 - **Contexto completo (privado):** lee `Muga.md` — nunca lo comitees
 
 ---
@@ -25,10 +25,10 @@ Browser extension (Chrome + Firefox) que limpia URLs de tracking params, gestion
 
 ---
 
-## Estado actual — v1.4.0
+## Estado actual — v1.5.2
 
 ### Phase 1 ✅ — Feature-complete
-- [x] Strip 65+ tracking params (Scenario A — siempre activo)
+- [x] Strip 130+ tracking params (Scenario A — siempre activo)
 - [x] Affiliate injection cuando no hay tag (Scenario B)
 - [x] Detección + toast de afiliado ajeno (Scenario C)
 - [x] Blacklist/whitelist enforcement (Scenario D)
@@ -158,7 +158,7 @@ muga/
 | Escenario | Qué hace | Activación |
 |---|---|---|
 | A | Strip tracking params (utm_*, fbclid, gclid, etc.) | Siempre, automático |
-| B | Inject ourTag cuando no hay afiliado | ON por defecto, opt-out |
+| B | Inject ourTag cuando no hay afiliado | OFF por defecto, opt-in (requiere consentimiento ToS) |
 | C | Toast cuando detecta afiliado ajeno | OFF por defecto, opt-in |
 | D | Strip todo si el dominio está en blacklist | Configurable por dominio |
 
