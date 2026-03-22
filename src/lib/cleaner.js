@@ -241,12 +241,19 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
 
   // 5. Strip specific blacklisted affiliate values
   let blacklistStripped = 0;
+  // Track whether a blacklist rule removed an affiliate param — if so, injection must be suppressed.
+  // Without this guard, a blacklisted competitor tag would be silently replaced by ourTag (#183).
+  let blacklistRemovedAffiliate = false;
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
       const current = url.searchParams.get(entry.param);
       if (current === entry.value) {
         url.searchParams.delete(entry.param);
         blacklistStripped++;
+        // If this param is an affiliate param for this host, flag injection suppression
+        if (affiliateParamNames.includes(entry.param.toLowerCase())) {
+          blacklistRemovedAffiliate = true;
+        }
         // If this was the detected foreign affiliate, clear it — the toast must not fire
         // for a parameter we already removed via the blacklist.
         if (
@@ -265,8 +272,9 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
 
   const junkRemoved = removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0);
 
-  // 6. Inject our affiliate tag when the link has none (skip if foreign detected or stripAllAffiliates)
-  if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign") {
+  // 6. Inject our affiliate tag when the link has none (skip if foreign detected, stripAllAffiliates,
+  //    or if a blacklist rule already removed an affiliate for this URL — blacklist takes priority (#183))
+  if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
     for (const pattern of patterns) {
       if (pattern.ourTag && !url.searchParams.has(pattern.param)) {
         url.searchParams.set(pattern.param, pattern.ourTag);
