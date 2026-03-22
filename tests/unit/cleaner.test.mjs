@@ -1076,3 +1076,60 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
     assert.equal(action, "injected");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Bug #185 — Domain-only whitelist entry must skip all affiliate processing
+// ---------------------------------------------------------------------------
+describe("Bug #185 — domain-only whitelist skips affiliate processing", () => {
+  before(() => AFFILIATE_PATTERNS.push(TEST_PATTERN));
+  after(() => { const i = AFFILIATE_PATTERNS.indexOf(TEST_PATTERN); if (i !== -1) AFFILIATE_PATTERNS.splice(i, 1); });
+
+  test("domain-only whitelist entry prevents ourTag injection (#185)", () => {
+    // When the hostname itself is whitelisted (no param::value), MUGA must skip
+    // injection entirely — the URL should come back unchanged apart from tracking param stripping.
+    const prefs = {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      whitelist: ["shop.test.muga"],
+    };
+    const { cleanUrl, action } = processUrl(
+      "https://shop.test.muga/product?color=blue",
+      prefs
+    );
+    assert.ok(!cleanUrl.includes("muga-test-99"),
+      "ourTag must NOT be injected when the domain is whitelisted (#185)");
+    assert.notEqual(action, "injected",
+      "action must not be 'injected' when domain is whitelisted (#185)");
+  });
+
+  test("domain-only whitelist entry prevents foreign affiliate detection (#185)", () => {
+    const prefs = {
+      ...PREFS,
+      notifyForeignAffiliate: true,
+      allowReplaceAffiliate: true,
+      whitelist: ["shop.test.muga"],
+    };
+    const { action } = processUrl(
+      "https://shop.test.muga/product?aff=some-other-creator-99",
+      prefs
+    );
+    assert.notEqual(action, "detected_foreign",
+      "foreign affiliate detection must be skipped when domain is whitelisted (#185)");
+  });
+
+  test("domain-only whitelist entry still allows tracking param stripping (#185)", () => {
+    const prefs = {
+      ...PREFS,
+      injectOwnAffiliate: true,
+      whitelist: ["shop.test.muga"],
+    };
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://shop.test.muga/product?color=blue&utm_source=email",
+      prefs
+    );
+    assert.ok(removedTracking.includes("utm_source"),
+      "utm_source must still be stripped even on a whitelisted domain (#185)");
+    assert.ok(!new URL(cleanUrl).searchParams.has("utm_source"),
+      "utm_source must be absent from clean URL (#185)");
+  });
+});
