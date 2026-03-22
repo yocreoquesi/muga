@@ -92,8 +92,8 @@ export const TRANSLATIONS = {
   section_redirects:     { en: "Redirect handling",                  es: "Gestión de redirecciones" },
   row_amp_label:         { en: "Redirect AMP pages to canonical URL", es: "Redirigir páginas AMP a la URL canónica" },
   row_amp_hint:          { en: "Replaces Google AMP links with the original article URL", es: "Reemplaza los enlaces AMP de Google con la URL original del artículo" },
-  row_unwrap_label:      { en: "Unwrap redirect-wrapper URLs",        es: "Desenvolver URLs de redirección" },
-  row_unwrap_hint:       { en: "Extracts the real destination from Facebook, Reddit, Google, Steam and similar redirect wrappers", es: "Extrae el destino real de redireccionadores de Facebook, Reddit, Google, Steam y similares" },
+  row_unwrap_label:      { en: "Unwrap redirect wrappers",            es: "Desenvolver redireccionadores" },
+  row_unwrap_hint:       { en: "Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)", es: "Extrae el destino real de URLs de redirección (ej: ?redirect=https://example.com)" },
 
   section_stats:         { en: "Statistics",                                                                        es: "Estadísticas" },
   stats_reset_btn:       { en: "Reset stats",                                                                       es: "Reiniciar stats" },
