@@ -23,18 +23,18 @@
   // Toast strings — default English, overridden by stored language preference
   const STRINGS = {
     en: {
-      toast_title:   "MUGA detected an affiliate",
-      toast_tag_msg: "carries the tag",
-      toast_keep:    "Keep",
-      toast_remove:  "Remove",
+      toast_title:   "MUGA detected a third-party affiliate",
+      toast_tag_msg: "has an affiliate tag that isn't ours:",
+      toast_allow:   "Allow",
+      toast_block:   "Block",
       toast_ours:    "Use ours",
       toast_dismiss: "Dismiss",
     },
     es: {
       toast_title:   "MUGA detectó un afiliado ajeno",
-      toast_tag_msg: "lleva el tag",
-      toast_keep:    "Mantener",
-      toast_remove:  "Quitar",
+      toast_tag_msg: "tiene un tag de afiliado que no es nuestro:",
+      toast_allow:   "Permitir",
+      toast_block:   "Bloquear",
       toast_ours:    "Usar el nuestro",
       toast_dismiss: "Descartar",
     },
@@ -224,7 +224,7 @@
     notice.id = "muga-notice";
     notice.style.cssText = [
       "position:fixed", "bottom:20px", "right:20px",
-      "background:#1a1a1a", "color:#f0f0f0", "border-radius:10px",
+      "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
       "padding:12px 16px",
       "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
       "font-size:13px", "line-height:1.5", "max-width:300px",
@@ -248,8 +248,8 @@
         ${escHtml(domain)} ${s.toast_tag_msg} <code style="${codeStyle}">${escHtml(affiliate.param)}=${escHtml(affiliate.value)}</code>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button data-choice="original" style="${btnStyle}">${s.toast_keep}</button>
-        <button data-choice="clean" style="${btnStyle}">${s.toast_remove}</button>
+        <button data-choice="original" style="${btnStyle}">${s.toast_allow}</button>
+        <button data-choice="clean" style="${btnStyle}">${s.toast_block}</button>
         ${oursBtn}
       </div>
       <div style="margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer" id="muga-dismiss">${s.toast_dismiss}</div>
@@ -260,13 +260,23 @@
     const timer = setTimeout(() => {
       notice.remove();
       callback("clean");
-    }, 5000);
+    }, 15000);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {
       btn.addEventListener("click", () => {
         clearTimeout(timer);
         notice.remove();
-        callback(btn.dataset.choice);
+        const choice = btn.dataset.choice;
+        if (choice === "original") {
+          // "Allow" — add to whitelist
+          const tag = `${affiliate.param}=${affiliate.value}`;
+          chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag });
+        } else if (choice === "clean") {
+          // "Block" — add to blacklist
+          const tag = `${affiliate.param}=${affiliate.value}`;
+          chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag });
+        }
+        callback(choice);
       });
     });
 
