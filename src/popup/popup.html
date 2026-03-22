@@ -44,15 +44,6 @@
     <div class="preview-url clean" id="preview-clean" hidden data-i18n="preview_clean">✓ This page is already clean</div>
   </section>
 
-  <div class="nudge" id="nudge" hidden>
-    <p class="nudge-text" id="nudge-text"></p>
-    <div class="nudge-actions">
-      <a class="nudge-btn primary" id="nudge-review" href="#" target="_blank" data-i18n="nudge_review">⭐ Leave a review</a>
-      <a class="nudge-btn" href="https://ko-fi.com/yocreoquesi" target="_blank" data-i18n="nudge_kofi">☕ Ko-fi</a>
-      <button class="nudge-btn dismiss" id="nudge-dismiss" data-i18n="nudge_dismiss">✕</button>
-    </div>
-  </div>
-
   <section class="options">
     <label class="option-row">
       <span class="option-label">
@@ -75,6 +66,14 @@
         <span class="slider"></span>
       </label>
     </label>
+
+    <div class="option-row">
+      <span class="option-label">
+        <span data-i18n="opt_test_notify_label">Preview affiliate notification</span>
+        <small data-i18n="opt_test_notify_hint">See how the toast looks when a third-party affiliate is detected</small>
+      </span>
+      <button class="btn-test-notify" id="test-notify-btn" data-i18n="opt_test_notify_btn">Preview</button>
+    </div>
   </section>
 
   <details class="history" id="history" hidden>
@@ -84,7 +83,6 @@
 
   <footer>
     <a href="#" id="open-options" data-i18n="link_advanced">Advanced settings →</a>
-    <a href="https://ko-fi.com/yocreoquesi" target="_blank" id="donate-link" data-i18n="link_donate">Support the project</a>
   </footer>
 
   <script type="module" src="popup.js"></script>
