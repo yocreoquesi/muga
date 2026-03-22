@@ -268,12 +268,15 @@
         notice.remove();
         const choice = btn.dataset.choice;
         if (choice === "original") {
-          // "Allow" — add to whitelist
-          const tag = `${affiliate.param}=${affiliate.value}`;
+          // "Allow" — add to whitelist in domain::param::value format so parseListEntry
+          // can match it correctly against the affiliate patterns (#229)
+          const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
+          const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag });
         } else if (choice === "clean") {
-          // "Block" — add to blacklist
-          const tag = `${affiliate.param}=${affiliate.value}`;
+          // "Block" — add to blacklist in domain::param::value format (#229)
+          const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
+          const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag });
         }
         callback(choice);
