@@ -48,6 +48,16 @@
 
   // Handle clipboard copy requests from the service worker (context menu "Copy clean link")
   chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "SHOW_TEST_TOAST") {
+      showAffiliateNotice(
+        { param: "tag", value: "competitor-21" },
+        "https://amazon.es/dp/B08N5WRWNW?tag=competitor-21",
+        "https://amazon.es/dp/B08N5WRWNW",
+        undefined,
+        () => {}
+      );
+      return;
+    }
     if (message.type !== "COPY_TO_CLIPBOARD") return;
     navigator.clipboard.writeText(message.text).catch(() => {
       // Fallback for pages where the Clipboard API is unavailable

@@ -19,11 +19,6 @@ async function init() {
   bindToggle("replace", "allowReplaceAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
 
-  // "Replace affiliate" only has effect when "Notify" is on (#88)
-  applyReplaceDependency(prefs.notifyForeignAffiliate);
-  document.getElementById("notify").addEventListener("change", (e) => {
-    applyReplaceDependency(e.target.checked);
-  });
   bindToggle("dnr-enabled", "dnrEnabled", prefs);
   bindToggle("block-pings", "blockPings", prefs);
   bindToggle("amp-redirect", "ampRedirect", prefs);
@@ -38,14 +33,6 @@ async function init() {
   bindListButtons();
   initStatsSection();
   initExportImport();
-}
-
-function applyReplaceDependency(notifyEnabled) {
-  const replaceEl = document.getElementById("replace");
-  const replaceRow = replaceEl?.closest(".row");
-  if (!replaceRow) return;
-  replaceEl.disabled = !notifyEnabled;
-  replaceRow.style.opacity = notifyEnabled ? "1" : "0.45";
 }
 
 function bindToggle(id, key, prefs) {
