@@ -2,6 +2,11 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.5.4] — 2026-03-22
+
+### Bug Fixes
+- **Options page crash fixed** — `block-pings`, `amp-redirect`, and `categories-card` elements were missing from `options.html`. `options.js` tried to bind toggles to these non-existent elements, causing `TypeError: Cannot set properties of null (setting 'checked')` on every options page load — all settings were inaccessible (#244)
+
 ## [1.5.3] — 2026-03-22
 
 ### Bug Fixes
