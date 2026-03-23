@@ -59,7 +59,7 @@ export const TRACKING_PARAMS = [
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
   "_encoding", "content-id", "ref_",
   // Amazon — store page / brand referral noise
-  "lp_asin", "store_ref", "bl_grd_status",
+  "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
   // Amazon — search/browse noise
   "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
   // Amazon — locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
@@ -358,7 +358,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "linkcode", "linkid",
       "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
       "_encoding", "content-id", "ref_",
-      "lp_asin", "store_ref", "bl_grd_status",
+      "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
       "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
       "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
