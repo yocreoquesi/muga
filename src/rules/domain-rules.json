@@ -419,5 +419,149 @@
     "preserveParams": ["keyword", "page"],
     "stripParams": ["sp_atk", "xptdk", "af_sub_siteid"],
     "note": "Southeast Asian e-commerce. sp_atk/xptdk are tracking tokens."
+  },
+  {
+    "domain": "target.com",
+    "preserveParams": ["s", "q", "category", "sortBy", "Nao", "preselect"],
+    "stripParams": ["ref", "afid", "fndsrc", "dfa", "adgroup", "lnm", "network", "device", "location", "targetid", "cpng", "lid"],
+    "note": "US retailer. ref/afid/fndsrc are ad attribution tracking."
+  },
+  {
+    "domain": "apple.com",
+    "preserveParams": ["mt", "ls", "l", "app", "id"],
+    "stripParams": ["afid", "ct", "pt"],
+    "note": "Apple. afid/ct/pt are affiliate/campaign tracking."
+  },
+  {
+    "domain": "imdb.com",
+    "preserveParams": ["ref_", "q"],
+    "stripParams": ["pf_rd_m", "pf_rd_t", "pf_rd_i"],
+    "note": "IMDb. pf_rd_* are internal placement tracking (same family as Amazon)."
+  },
+  {
+    "domain": "paypal.com",
+    "preserveParams": ["token", "flow", "intent", "fundingSource"],
+    "stripParams": ["utm_unptid", "ppid", "unptid", "unp_tpcid", "link_ref", "rsta", "cnac", "pgrp"],
+    "note": "PayPal. Session/campaign tracking params. Functional payment params preserved."
+  },
+  {
+    "domain": "sharepoint.com",
+    "preserveParams": ["id", "e", "cid"],
+    "stripParams": ["referrerscenario", "referrer", "xsdata", "sdata", "clickparams", "ovuser", "or", "ct"],
+    "note": "SharePoint/OneDrive. Referral/click tracking stripped. Document IDs preserved."
+  },
+  {
+    "domain": "bloomberg.com",
+    "preserveParams": ["q"],
+    "stripParams": ["in_source", "leadsource", "sref", "srnd"],
+    "note": "Bloomberg. in_source/sref are referral tracking."
+  },
+  {
+    "domain": "indeed.com",
+    "preserveParams": ["q", "l", "jt", "salary", "fromage", "radius"],
+    "stripParams": ["from", "tk", "vjs", "cmp", "advn", "adid", "sjdu", "acatk", "pub", "jrtk", "xpse", "xfps", "xkcb"],
+    "note": "Indeed job search. Search params preserved. Click/session tracking stripped."
+  },
+  {
+    "domain": "fiverr.com",
+    "preserveParams": ["query", "category_id", "page"],
+    "stripParams": ["context_referrer", "context_type", "imp_id", "pos", "ref_ctx_id", "funnel"],
+    "note": "Fiverr. Search preserved. Impression/funnel tracking stripped."
+  },
+  {
+    "domain": "humblebundle.com",
+    "preserveParams": ["srch"],
+    "stripParams": ["partner", "hmb_medium", "hmb_campaign", "hmb_source", "mcid"],
+    "note": "Humble Bundle. Partner/campaign tracking stripped."
+  },
+  {
+    "domain": "coolblue.nl",
+    "preserveParams": ["q", "sort", "page"],
+    "stripParams": ["clickref", "ref", "phgref", "cmt"],
+    "note": "Dutch retailer. Affiliate click refs stripped."
+  },
+  {
+    "domain": "trendyol.com",
+    "preserveParams": ["q", "qt", "st", "os"],
+    "stripParams": ["link_userid", "link_contentid", "tyutm_source", "tyutm_medium", "tyutm_campaign", "utm_subaff"],
+    "note": "Turkish e-commerce. Link/campaign tracking stripped."
+  },
+  {
+    "domain": "meetup.com",
+    "preserveParams": ["q", "location", "categoryId", "eventType"],
+    "stripParams": ["eventorigin", "recsource", "recid", "searchid"],
+    "note": "Meetup. Recommendation/search tracking stripped."
+  },
+  {
+    "domain": "dailymail.co.uk",
+    "preserveParams": ["q"],
+    "stripParams": ["ns_mchannel", "ns_campaign", "ito"],
+    "note": "Daily Mail. Campaign/channel tracking stripped."
+  },
+  {
+    "domain": "wsj.com",
+    "preserveParams": ["query", "page"],
+    "stripParams": ["mod", "reflink"],
+    "note": "Wall Street Journal. Module/referral tracking stripped."
+  },
+  {
+    "domain": "epicgames.com",
+    "preserveParams": ["q", "sortBy", "count"],
+    "stripParams": ["epic_gameid", "epic_affiliate"],
+    "note": "Epic Games Store. Affiliate tracking stripped."
+  },
+  {
+    "domain": "slickdeals.net",
+    "preserveParams": ["q", "sort", "page"],
+    "stripParams": ["sdtrk", "attr_track", "trd", "sdtid", "prop", "pv", "au", "peid", "adoberef", "attrsrc", "src"],
+    "note": "Deal aggregator. Attribution/ad tracking stripped."
+  },
+  {
+    "domain": "cnbc.com",
+    "preserveParams": ["q"],
+    "stripParams": ["__source", "par"],
+    "note": "CNBC. Source/partner tracking stripped."
+  },
+  {
+    "domain": "kickstarter.com",
+    "preserveParams": ["term", "category_id"],
+    "stripParams": ["ref", "event", "total_hits"],
+    "note": "Kickstarter. Referral/event tracking stripped."
+  },
+  {
+    "domain": "deepl.com",
+    "preserveParams": ["sl", "tl", "text"],
+    "stripParams": ["share", "cta"],
+    "note": "DeepL translator. Share/CTA tracking stripped. Translation params preserved."
+  },
+  {
+    "domain": "gitlab.com",
+    "preserveParams": ["tab", "q", "type", "ref", "sort", "page"],
+    "stripParams": ["referrer_action", "glm_source", "glm_content"],
+    "note": "GitLab. Marketing referral tracking stripped."
+  },
+  {
+    "domain": "msn.com",
+    "preserveParams": ["q"],
+    "stripParams": ["pc"],
+    "note": "MSN. Partner code tracking stripped."
+  },
+  {
+    "domain": "lenovo.com",
+    "preserveParams": ["q", "sort", "page"],
+    "stripParams": ["obem", "rrid", "run_key"],
+    "note": "Lenovo. Outbrain/campaign tracking stripped."
+  },
+  {
+    "domain": "tradingview.com",
+    "preserveParams": ["symbol", "interval"],
+    "stripParams": ["exchange", "aff_id", "aff_sub"],
+    "note": "TradingView. Affiliate tracking stripped. Chart params preserved."
+  },
+  {
+    "domain": "immobilienscout24.de",
+    "preserveParams": ["searchQuery", "sorting", "pagerOffset"],
+    "stripParams": ["referrer", "navigationserviceurl", "searchid", "searchgeopath", "enteredfrom"],
+    "note": "German real estate. Internal navigation tracking stripped."
   }
 ]
