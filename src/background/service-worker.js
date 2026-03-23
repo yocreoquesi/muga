@@ -333,8 +333,8 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
     incrementStat("referralsSpotted");
     const d = result.detectedAffiliate;
     logAction("affiliate_detected", `${d?.param}=${d?.value} on ${new URL(rawUrl).hostname}`);
-    // If the user has "replace foreign affiliate" enabled, build the URL with our tag
-    if (prefs.allowReplaceAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
+    // If injection is enabled, build the URL with our tag so "Remove it" can use it
+    if (prefs.injectOwnAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
       const url = new URL(result.cleanUrl);
       const p = result.detectedAffiliate.pattern;
       url.searchParams.set(p.param, p.ourTag);
