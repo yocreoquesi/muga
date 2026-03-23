@@ -87,6 +87,8 @@ export const TRANSLATIONS = {
   row_amp_hint:          { en: "Replaces Google AMP links with the original article URL", es: "Reemplaza los enlaces AMP de Google con la URL original del artículo" },
   row_unwrap_label:      { en: "Unwrap redirect wrappers",            es: "Desenvolver redireccionadores" },
   row_unwrap_hint:       { en: "Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)", es: "Extrae el destino real de URLs de redirección (ej: ?redirect=https://example.com)" },
+  row_toast_duration_label: { en: "Affiliate notification duration", es: "Duración de la notificación de afiliado" },
+  row_toast_duration_hint:  { en: "How long the notification stays visible before auto-dismissing", es: "Cuánto tiempo permanece visible la notificación antes de desaparecer" },
 
   section_stats:         { en: "Statistics",                                                                        es: "Estadísticas" },
   stats_reset_label:     { en: "Lifetime stats",                                                                    es: "Estadísticas acumuladas" },

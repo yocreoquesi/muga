@@ -21,23 +21,29 @@ const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction 
 // Run migration once on startup (no-op if already done)
 migrateStatsToLocal();
 
-// --- Debug log (dev mode only) ---
-const DEBUG_LOG_MAX = 200;
+// --- Session log (actions + errors, exported via debug log) ---
+const SESSION_LOG_MAX = 2000;
+const SESSION_LOG_MAX_BYTES = 2 * 1024 * 1024; // 2MB
 
-function appendDebugLog(level, args) {
+function appendSessionLog(level, args) {
   const entry = { ts: Date.now(), level, msg: args.map(a => {
     try { return typeof a === "object" ? JSON.stringify(a) : String(a); } catch { return "[unserializable]"; }
   }).join(" ") };
   sessionStorage.get({ debugLog: [] }).then(data => {
-    const log = [entry, ...data.debugLog].slice(0, DEBUG_LOG_MAX);
+    const log = [entry, ...data.debugLog].slice(0, SESSION_LOG_MAX);
     sessionStorage.set({ debugLog: log });
   });
 }
 
+/** Log a MUGA action (URL cleaned, affiliate detected, etc.) */
+function logAction(action, detail) {
+  appendSessionLog("action", [`[${action}]`, detail]);
+}
+
 const _origError = console.error.bind(console);
-console.error = (...args) => { _origError(...args); appendDebugLog("error", args); };
+console.error = (...args) => { _origError(...args); appendSessionLog("error", args); };
 const _origWarn = console.warn.bind(console);
-console.warn = (...args) => { _origWarn(...args); appendDebugLog("warn", args); };
+console.warn = (...args) => { _origWarn(...args); appendSessionLog("warn", args); };
 
 // --- Prefs cache ---
 
@@ -317,12 +323,16 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
     incrementStat("urlsCleaned");
     await appendHistory(rawUrl, result.cleanUrl);
+    const domain = new URL(rawUrl).hostname.replace(/^www\./, "");
+    logAction("cleaned", `${domain} | removed: ${result.removedTracking.join(", ")} | action: ${result.action}`);
   }
   if (result.junkRemoved > 0) {
     incrementStat("junkRemoved", result.junkRemoved);
   }
   if (result.action === "detected_foreign") {
     incrementStat("referralsSpotted");
+    const d = result.detectedAffiliate;
+    logAction("affiliate_detected", `${d?.param}=${d?.value} on ${new URL(rawUrl).hostname}`);
     // If the user has "replace foreign affiliate" enabled, build the URL with our tag
     if (prefs.allowReplaceAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
       const url = new URL(result.cleanUrl);
