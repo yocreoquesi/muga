@@ -70,6 +70,8 @@
               "lp_asin",
               "store_ref",
               "bl_grd_status",
+              "ingress",
+              "visitid",
               "dib",
               "dib_tag",
               "sprefix",

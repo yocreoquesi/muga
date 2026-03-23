@@ -416,6 +416,16 @@ describe("Amazon store page URL", () => {
     assert.equal(removedTracking.length, 3);
   });
 
+  test("strips ingress and visitId from store page", () => {
+    const { cleanUrl } = clean(
+      "https://www.amazon.es/stores/page/063F9A53-F6FA-47C3-B5F1-BA4025D14CC8?ingress=0&visitId=0ba739a1-553d-41f4-b2a8-0807b3006c87"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("ingress"));
+    assert.ok(!u.searchParams.has("visitId"));
+    assert.equal(u.search, "");
+  });
+
   test("strips dib, dib_tag, sprefix, crid, dchild, qid from search", () => {
     const { cleanUrl } = clean(
       "https://www.amazon.es/s?k=usb+cable&dib=abc&dib_tag=se&sprefix=usb&crid=xyz&dchild=1&qid=123456"
