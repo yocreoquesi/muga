@@ -54,13 +54,18 @@ export const TRACKING_PARAMS = [
   // Amazon — internal / referral noise (not the affiliate tag)
   "psc", "spla",
   "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
-  "pf_rd_p", "pf_rd_r",
+  "pf_rd_p", "pf_rd_r", "pf_rd_s",
   "linkcode", "linkid",
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
   "th", "_encoding", "content-id", "ref_",
-  // Amazon — locale/keyboard layout selector (appears in ES, DE, FR, IT storefronts).
+  // Amazon — store page / brand referral noise
+  "lp_asin", "store_ref", "bl_grd_status",
+  // Amazon — search/browse noise
+  "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
+  // Amazon — locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
   // Stored lowercase — cleaner.js compares param.toLowerCase() against this list.
   "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
+  "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
   // Amazon — legacy encoding indicator (ie=UTF8 on browse/search pages)
   "ie",
 
@@ -164,6 +169,66 @@ export const TRACKING_PARAMS = [
 
   // Zemanta / Outbrain DSP
   "zemclick",   // Zemanta click ID
+
+  // Google Analytics 4 (GA4) cross-domain
+  "_gl",        // GA4 cross-domain linker
+  "_ga",        // GA4 client ID in URL
+  "_gac",       // Google Ads conversion linker
+
+  // Facebook / Meta (additional)
+  "fb_action_ids",   // Facebook action tracking
+  "fb_action_types", // Facebook action types
+  "fb_ref",          // Facebook referral
+  "fb_source",       // Facebook source
+  "mibextid",        // Meta mobile app share tracking
+
+  // TikTok (additional)
+  "tt_medium",       // TikTok campaign medium
+  "tt_content",      // TikTok campaign content
+  "is_from_webapp",  // TikTok referral tracking
+  "sender_device",   // TikTok device tracking
+  "sender_web_id",   // TikTok web ID tracking
+  "is_copy_url",     // TikTok share method tracking
+
+  // Google search tracking
+  "ved",        // Google Visitor Encoding Data (click tracking)
+  "ei",         // Google Event ID (session tracking)
+  "sca_esv",    // Google search experiment/session value
+  "sxsrf",      // Google CSRF/tracking token
+  "gs_lcp",     // Google search autocomplete tracking
+
+  // Reddit (additional)
+  "share_id",   // Reddit share tracking
+
+  // Branch.io (deep link attribution)
+  "_branch_match_id",  // Branch match ID
+  "_branch_referrer",  // Branch referrer
+
+  // Braze
+  "_bta_tid",   // Braze tracking ID
+  "_bta_c",     // Braze campaign
+
+  // Salesforce Marketing Cloud
+  "sfmc_id",         // SFMC contact ID
+  "sfmc_activityid", // SFMC activity tracking
+
+  // Shopify
+  "_pos",   // Product position in collection
+  "_ss",    // Shopify search session
+  "_psq",   // Shopify predictive search query
+  "_sid",   // Shopify session ID
+  "_fid",   // Shopify filter ID
+
+  // AppsFlyer (mobile attribution)
+  "af_dp",     // AppsFlyer deep link
+  "af_web_dp", // AppsFlyer web deep link fallback
+  "af_sub1", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
+
+  // Adjust (mobile attribution)
+  "adjust_t",        // Adjust tracker
+  "adjust_campaign", // Adjust campaign
+  "adjust_adgroup",  // Adjust ad group
+  "adjust_creative", // Adjust creative
 
   // Generic / multi-platform
   "click_id",   // generic click ID
@@ -289,16 +354,41 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Amazon
       "psc", "spla",
       "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
-      "pf_rd_p", "pf_rd_r",
+      "pf_rd_p", "pf_rd_r", "pf_rd_s",
       "linkcode", "linkid",
       "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
       "th", "_encoding", "content-id", "ref_",
+      "lp_asin", "store_ref", "bl_grd_status",
+      "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
+      "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
       "ie",
       // eBay
       "mkevt", "mkcid", "mkrid", "toolid", "customid",
       // AliExpress
       "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
+      // Google search tracking
+      "ved", "ei", "sca_esv", "sxsrf", "gs_lcp",
+      // GA4 cross-domain
+      "_gl", "_ga", "_gac",
+      // TikTok share tracking
+      "tt_medium", "tt_content", "is_from_webapp", "sender_device", "sender_web_id", "is_copy_url",
+      // Meta mobile
+      "mibextid", "fb_action_ids", "fb_action_types", "fb_ref", "fb_source",
+      // Reddit share
+      "share_id",
+      // Branch.io
+      "_branch_match_id", "_branch_referrer",
+      // Braze
+      "_bta_tid", "_bta_c",
+      // Salesforce MC
+      "sfmc_id", "sfmc_activityid",
+      // Shopify
+      "_pos", "_ss", "_psq", "_sid", "_fid",
+      // AppsFlyer
+      "af_dp", "af_web_dp", "af_sub1", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
+      // Adjust
+      "adjust_t", "adjust_campaign", "adjust_adgroup", "adjust_creative",
       // A/B test
       "ab_channel", "ab_version",
     ],
