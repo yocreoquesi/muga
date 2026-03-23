@@ -319,6 +319,98 @@ export const TRACKING_PARAMS = [
   "ad_id",      // generic ad ID
   "ab_channel", // A/B test channel
   "ab_version", // A/B test version
+
+  // ── AdGuard filter 17 import (151 params, verified at scale by millions of users) ──
+
+  // Adjust extended
+  "adj_campaign", "adj_creative", "adj_label", "adj_t",
+  "adjust_referrer", "adjust_tracker", "adjust_tracker_limit",
+
+  // Admitad / Adsterra / misc ad networks
+  "admitad_uid", "adsterra_clid", "adsterra_placement_id",
+  "adfrom", "adc_publisher", "adc_token", "aiad_clid",
+
+  // AppsFlyer extended
+  "af_click_lookback", "af_force_deeplink", "is_retargeting",
+
+  // AT Internet / Piano extended
+  "at_campaign_type", "at_creation", "at_emailtype",
+  "at_link", "at_link_id", "at_link_origin", "at_link_type",
+  "at_ptr_name", "at_send_date",
+
+  // Blueshift extended
+  "bsft_aaid", "bsft_ek",
+
+  // CJ Affiliate
+  "cjdata",
+  // "awc" excluded — AWIN affiliate param in AFFILIATE_PATTERNS
+
+  // Content recommendation (Connexity, Revcontent)
+  "cx_click", "cx_recsorder", "cx_recswidget",
+
+  // DPG Media (Dutch publisher tracking)
+  "dpg_campaign", "dpg_content", "dpg_medium", "dpg_source",
+
+  // Ebis (Japanese analytics)
+  "ebisadid", "ebisother1", "ebisother2", "ebisother3", "ebisother4", "ebisother5",
+
+  // Eloqua extended
+  "elq", "elqak",
+
+  // Facebook / Meta extended
+  "fb_comment_id", "fbadid",
+  "action_object_map", "action_ref_map", "action_type_map",
+
+  // Google extended
+  "gad_campaignid", "gci", "gps_adid", "usqp",
+
+  // HubSpot extended
+  "hsa_la", "hsa_ol",
+
+  // Impact Radius extended
+  "ir_adid", "ir_campaignid", "ir_partnerid", "iclid",
+
+  // Internal campaign params (used by many CMSes)
+  "int_campaign", "int_content", "int_medium", "int_source", "int_term",
+
+  // LINE (Japanese messaging platform)
+  "line_uid",
+
+  // Matomo / mt_ tracking
+  "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
+  "mt_link_id", "mt_medium", "mt_network",
+  "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
+
+  // Mindbox
+  "mindbox-click-id", "mindbox-message-key",
+
+  // Piwik extended
+  "pk_vid",
+
+  // Triple Whale / Twitter extended
+  "tw_medium", "tw_profile_id",
+
+  // Yahoo / Oath / Verizon Media
+  "guccounter", "guce_referrer", "guce_referrer_sig",
+  "yj_r", "ymid",
+
+  // Various ad/analytics platforms
+  "__io_lv", "_bdadid", "_bhlid", "_clde", "_cldee", "_io_session_id",
+  "_ly_c", "_ly_r", "_ope",
+  "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
+  "_zucks_suid", "a8",
+  "analytics_context", "analytics_trace_id", "asgtbndr",
+  "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid",
+  "btag", "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
+  "emcs_t", "ems_dl", "erid", "external_click_id", "famad_xuid",
+  "ftag", "janet", "jmtyclid", "ldtag_cl", "loclid", "lt_r",
+  "maf", "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
+  "personaclick_input_query", "personaclick_search_query",
+  "recommended_by", "recommended_code", "rtkcid",
+  "spot_im_redirect_source", "srclt", "sscid", "tcsack",
+  "user_email_address", "uzcid", "vc_lpp", "vero_conv",
+  "vs_campaign_id", "vsm_cid", "vsm_pid", "vsm_type",
+  "winflncrtag",
 ];
 
 export const TRACKING_PARAM_CATEGORIES = {
@@ -397,6 +489,22 @@ export const TRACKING_PARAM_CATEGORIES = {
       "adobe_mc_ref", "adobe_mc_sdid",
       // AppsFlyer extended
       "af_xp", "af_ad", "af_adset",
+      // ── AdGuard filter 17 import — ad networks ──
+      "adj_campaign", "adj_creative", "adj_label", "adj_t",
+      "adjust_referrer", "adjust_tracker", "adjust_tracker_limit",
+      "admitad_uid", "adsterra_clid", "adsterra_placement_id",
+      "adfrom", "adc_publisher", "adc_token", "aiad_clid",
+      "af_click_lookback", "af_force_deeplink", "is_retargeting",
+      // "awc" excluded — AWIN affiliate param in AFFILIATE_PATTERNS
+      "cjdata",
+      "ir_adid", "ir_campaignid", "ir_partnerid", "iclid",
+      "gad_campaignid", "gci", "gps_adid",
+      "fbadid", "fb_comment_id",
+      "action_object_map", "action_ref_map", "action_type_map",
+      "tw_medium", "tw_profile_id",
+      "a8", "btag", "erid", "external_click_id", "ftag",
+      "jmtyclid", "maf", "rtkcid", "sscid",
+      "usqp", "vs_campaign_id",
     ],
   },
   email: {
@@ -448,6 +556,21 @@ export const TRACKING_PARAM_CATEGORIES = {
       "oly_anon_id", "oly_enc_id",
       // Wunderkind SMS (Brave + AdGuard)
       "sms_click", "sms_source", "sms_uph",
+      // ── AdGuard filter 17 import — email/CRM ──
+      "hsa_la", "hsa_ol",
+      "bsft_aaid", "bsft_ek",
+      "elq", "elqak",
+      "mindbox-click-id", "mindbox-message-key",
+      "at_campaign_type", "at_creation", "at_emailtype",
+      "at_link", "at_link_id", "at_link_origin", "at_link_type",
+      "at_ptr_name", "at_send_date",
+      "int_campaign", "int_content", "int_medium", "int_source", "int_term",
+      "cx_click", "cx_recsorder", "cx_recswidget",
+      "dpg_campaign", "dpg_content", "dpg_medium", "dpg_source",
+      "emcs_t", "ems_dl", "ldtag_cl", "lt_r", "srclt",
+      "personaclick_input_query", "personaclick_search_query",
+      "recommended_by", "recommended_code",
+      "user_email_address",
     ],
   },
   social: {
@@ -528,6 +651,25 @@ export const TRACKING_PARAM_CATEGORIES = {
     params: [
       "s_cid",
       "wickedid",
+      // ── AdGuard filter 17 import — analytics/session/misc ──
+      "__io_lv", "_bdadid", "_bhlid", "_clde", "_cldee", "_io_session_id",
+      "_ly_c", "_ly_r", "_ope",
+      "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
+      "_zucks_suid",
+      "analytics_context", "analytics_trace_id", "asgtbndr",
+      "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid",
+      "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
+      "ebisadid", "ebisother1", "ebisother2", "ebisother3", "ebisother4", "ebisother5",
+      "famad_xuid", "guccounter", "guce_referrer", "guce_referrer_sig",
+      "janet", "line_uid", "loclid",
+      "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
+      "mt_link_id", "mt_medium", "mt_network",
+      "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
+      "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
+      "pk_vid", "spot_im_redirect_source", "tcsack",
+      "uzcid", "vc_lpp", "vero_conv",
+      "vsm_cid", "vsm_pid", "vsm_type",
+      "winflncrtag", "yj_r", "ymid",
     ],
   },
 };
