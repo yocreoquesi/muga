@@ -26,7 +26,6 @@
       toast_tag_msg: "has an affiliate tag that isn't ours:",
       toast_allow:   "Keep it",
       toast_block:   "Remove it",
-      toast_ours:    "Use ours",
       toast_dismiss: "Dismiss",
     },
     es: {
@@ -34,7 +33,6 @@
       toast_tag_msg: "tiene un tag de afiliado que no es nuestro:",
       toast_allow:   "Mantenerlo",
       toast_block:   "Eliminarlo",
-      toast_ours:    "Usar el nuestro",
       toast_dismiss: "Descartar",
     },
   };
@@ -243,9 +241,9 @@
       if (action === "detected_foreign" && detectedAffiliate) {
         showAffiliateNotice(detectedAffiliate, href, cleanUrl, response.withOurAffiliate, (choice) => {
           if (choice === "original") navigate(href, opensNewTab);
-          else if (choice === "clean") navigate(cleanUrl, opensNewTab);
-          else if (choice === "ours" && response.withOurAffiliate) {
-            navigate(response.withOurAffiliate, opensNewTab);
+          else if (choice === "clean") {
+            // If user has injection enabled, navigate with our tag; otherwise clean URL
+            navigate(response.withOurAffiliate || cleanUrl, opensNewTab);
           }
         });
       } else {
@@ -326,15 +324,6 @@
     blockBtn.style.cssText = btnStyle;
     blockBtn.textContent = s.toast_block;
     btnDiv.appendChild(blockBtn);
-
-    // "Use ours" button only shown when allowReplaceAffiliate is on and we have our tag
-    if (withOurAffiliate) {
-      const oursBtn = document.createElement("button");
-      oursBtn.dataset.choice = "ours";
-      oursBtn.style.cssText = btnStyle;
-      oursBtn.textContent = s.toast_ours;
-      btnDiv.appendChild(oursBtn);
-    }
 
     const dismissDiv = document.createElement("button");
     dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";

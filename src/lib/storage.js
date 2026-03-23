@@ -12,7 +12,6 @@ export const PREF_DEFAULTS = {
   enabled: true,
   injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)
   notifyForeignAffiliate: false,
-  allowReplaceAffiliate: false,
   stripAllAffiliates: false,
   blacklist: [],     // e.g. ["amazon.es", "booking.com::aid::123456"]
   whitelist: [],     // e.g. ["amazon.es::tag::youtuber-21"]

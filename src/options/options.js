@@ -76,12 +76,7 @@ async function init() {
 
   bindToggle("inject", "injectOwnAffiliate", prefs);
   bindToggle("notify", "notifyForeignAffiliate", prefs);
-  bindToggle("replace", "allowReplaceAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
-
-  // replace requires inject — dim the row when inject is off (#237)
-  syncReplaceState();
-  document.getElementById("inject").addEventListener("change", syncReplaceState);
 
   bindToggle("dnr-enabled", "dnrEnabled", prefs);
   bindToggle("context-menu-toggle", "contextMenuEnabled", prefs);
@@ -116,14 +111,6 @@ function bindToggle(id, key, prefs) {
   const el = document.getElementById(id);
   el.checked = prefs[key];
   el.addEventListener("change", () => chrome.storage.sync.set({ [key]: el.checked }));
-}
-
-// "Replace with ours" only makes sense when affiliate injection is on (#237)
-function syncReplaceState() {
-  const injectOn = document.getElementById("inject").checked;
-  const replaceRow = document.getElementById("replace").closest(".row");
-  replaceRow.style.opacity = injectOn ? "" : "0.4";
-  replaceRow.style.pointerEvents = injectOn ? "" : "none";
 }
 
 function renderList(containerId, items, listKey) {
@@ -346,7 +333,6 @@ function initExportImport() {
       enabled: prefs.enabled,
       injectOwnAffiliate: prefs.injectOwnAffiliate,
       notifyForeignAffiliate: prefs.notifyForeignAffiliate,
-      allowReplaceAffiliate: prefs.allowReplaceAffiliate,
       stripAllAffiliates: prefs.stripAllAffiliates,
       dnrEnabled: prefs.dnrEnabled,
       blockPings: prefs.blockPings,
@@ -396,7 +382,7 @@ function initExportImport() {
       if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "allowReplaceAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -415,7 +401,6 @@ function initExportImport() {
       const newPrefs = await chrome.storage.sync.get(PREF_DEFAULTS);
       document.getElementById("inject").checked = newPrefs.injectOwnAffiliate;
       document.getElementById("notify").checked = newPrefs.notifyForeignAffiliate;
-      document.getElementById("replace").checked = newPrefs.allowReplaceAffiliate;
       document.getElementById("strip-affiliates").checked = newPrefs.stripAllAffiliates;
       document.getElementById("dnr-enabled").checked = newPrefs.dnrEnabled;
       document.getElementById("context-menu-toggle").checked = newPrefs.contextMenuEnabled;
@@ -423,7 +408,6 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("dev-mode").checked = newPrefs.devMode;
-      syncReplaceState();
       syncDevTools();
       if (toSave.language) {
         currentLang = toSave.language;
@@ -495,13 +479,6 @@ function initDevTools() {
     removeBtn.style.cssText = btnStyle;
     removeBtn.textContent = t("toast_block", currentLang);
     btnDiv.appendChild(removeBtn);
-
-    if (prefs.allowReplaceAffiliate) {
-      const oursBtn = document.createElement("button");
-      oursBtn.style.cssText = btnStyle;
-      oursBtn.textContent = t("toast_ours", currentLang);
-      btnDiv.appendChild(oursBtn);
-    }
 
     const dismissBtn = document.createElement("button");
     dismissBtn.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";

@@ -45,8 +45,6 @@ export const TRANSLATIONS = {
   row_inject_hint:  { en: "Off by default. Enable here or during first setup. You always pay the same price.", es: "Desactivado por defecto. Actívalo aquí o durante la configuración inicial." },
   row_notify_label: { en: "Alert me when a link has someone else's affiliate tag", es: "Avisarme cuando un enlace tenga el tag de afiliado de otro" },
   row_notify_hint:  { en: "Shows a quick notification with options — auto-dismisses in 15 seconds", es: "Muestra una notificación rápida con opciones — desaparece en 15 segundos" },
-  row_replace_label:          { en: "Allow replacing someone else's affiliate tag with ours",  es: "Permitir reemplazar el tag de afiliado de otro por el nuestro" },
-  row_replace_hint:           { en: "When someone else's affiliate tag is found and the notification is shown, you can swap it for MUGA's. Requires affiliate injection to be enabled.", es: "Cuando se encuentra el tag de afiliado de otro y aparece la notificación, puedes cambiarlo por el de MUGA. Requiere que la inyección de afiliados esté activada." },
   row_strip_affiliates_label: { en: "Remove all affiliate tags from other sources",          es: "Eliminar todos los tags de afiliado ajenos" },
   row_strip_affiliates_hint:  { en: "Removes affiliate tags placed by others from all links. Our tag is preserved when injection is active.", es: "Elimina los tags de afiliado de otros de todos los enlaces. Nuestro tag se conserva cuando la inyección está activa." },
   section_stores:    { en: "Affiliate stores", es: "Tiendas afiliadas" },
@@ -136,7 +134,6 @@ export const TRANSLATIONS = {
   toast_tag_msg: { en: "has an affiliate tag that isn't ours:", es: "tiene un tag de afiliado que no es nuestro:" },
   toast_allow:   { en: "Keep it", es: "Mantenerlo" },
   toast_block:   { en: "Remove it", es: "Eliminarlo" },
-  toast_ours:    { en: "Use ours", es: "Usar el nuestro" },
   toast_dismiss: { en: "Dismiss", es: "Descartar" },
 
   // ── Onboarding ──────────────────────────────────────────────────────────

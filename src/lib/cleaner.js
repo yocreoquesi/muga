@@ -199,7 +199,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   );
 
   // 3. Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
-  if (!prefs.stripAllAffiliates && (prefs.notifyForeignAffiliate || prefs.allowReplaceAffiliate)) {
+  if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
     for (const pattern of patterns) {
       if (pattern.ourTag) {
         const value = url.searchParams.get(pattern.param);

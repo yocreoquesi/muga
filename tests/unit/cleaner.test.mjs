@@ -57,7 +57,6 @@ const PREFS = {
   enabled: true,
   injectOwnAffiliate: false,
   notifyForeignAffiliate: false,
-  allowReplaceAffiliate: false,
   blacklist: [],
   whitelist: [],
 };
@@ -1514,12 +1513,11 @@ describe("C12 — foreign affiliate detection provides ourTag for withOurAffilia
     assert.equal(detectedAffiliate.pattern.param, "aff");
   });
 
-  test("allowReplaceAffiliate: true still produces detected_foreign from processUrl (withOurAffiliate is built by service-worker)", () => {
+  test("notifyForeignAffiliate triggers detection — withOurAffiliate built by service-worker", () => {
     const { action, detectedAffiliate } = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99",
-      { ...PREFS, allowReplaceAffiliate: true, notifyForeignAffiliate: false }
+      { ...PREFS, notifyForeignAffiliate: true }
     );
-    // allowReplaceAffiliate alone (without notifyForeignAffiliate) is enough to trigger detection
     assert.equal(action, "detected_foreign");
     assert.ok(detectedAffiliate, "detectedAffiliate must be present");
     assert.equal(detectedAffiliate.pattern.ourTag, "muga-test-99");
@@ -1528,7 +1526,7 @@ describe("C12 — foreign affiliate detection provides ourTag for withOurAffilia
   test("withOurAffiliate URL can be reconstructed from processUrl output (simulates service-worker logic)", () => {
     const result = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99&utm_source=email",
-      { ...PREFS, allowReplaceAffiliate: true }
+      { ...PREFS, notifyForeignAffiliate: true }
     );
     assert.equal(result.action, "detected_foreign");
     // Simulate service-worker.js handleProcessUrl logic:
