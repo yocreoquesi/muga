@@ -366,5 +366,58 @@
     "domain": "maps.google.com",
     "preserveParams": ["q", "ll", "z", "sll", "sspn", "layer", "cid", "ftid", "data", "saddr", "daddr", "dirflg", "ttype", "pb"],
     "note": "Maps search, coordinates, zoom, business ID, directions — functional"
+  },
+  {
+    "domain": "bilibili.com",
+    "preserveParams": ["p", "t"],
+    "stripParams": ["spm_id_from", "from_source", "from", "share_source", "share_medium", "share_plat", "share_session_id", "share_tag", "vd_source", "unique_k", "mid", "seid", "buvid", "plat_id", "is_story_h5", "bbid", "visit_id", "broadcast_type"],
+    "note": "Chinese video platform. Heavy share/fingerprint tracking. vd_source is a user fingerprint hash."
+  },
+  {
+    "domain": "vk.com",
+    "preserveParams": ["q", "section", "w", "z"],
+    "stripParams": ["from", "ref"],
+    "note": "Russian social network. from/ref are referral tracking."
+  },
+  {
+    "domain": "naver.com",
+    "preserveParams": ["query", "where", "sm", "ie"],
+    "stripParams": ["nclid"],
+    "note": "Korean search engine. nclid is Naver click ID."
+  },
+  {
+    "domain": "dzen.ru",
+    "preserveParams": ["text"],
+    "stripParams": ["from", "clid", "issue_tld"],
+    "note": "Russian news/content platform (ex-Yandex Zen). clid is client tracking."
+  },
+  {
+    "domain": "fandom.com",
+    "preserveParams": ["search", "query"],
+    "stripParams": ["cb", "so", "ref_"],
+    "note": "Wiki platform. cb is cache buster, so/ref_ are source tracking."
+  },
+  {
+    "domain": "yahoo.co.jp",
+    "preserveParams": ["p", "fr", "fr2", "fp", "b", "pz", "bct", "bkcat", "n", "ei"],
+    "note": "Japanese Yahoo search — same functional params as yahoo.com"
+  },
+  {
+    "domain": "flipkart.com",
+    "preserveParams": ["q", "sort", "page", "p"],
+    "stripParams": ["otracker", "ssid", "marketplace", "srno", "ppn", "ppt", "hpid", "ctx"],
+    "note": "Indian e-commerce. otracker/ssid/marketplace are internal tracking."
+  },
+  {
+    "domain": "tokopedia.com",
+    "preserveParams": ["q", "ob", "page"],
+    "stripParams": ["src", "trkid", "whid"],
+    "note": "Indonesian e-commerce. src/trkid are referral tracking."
+  },
+  {
+    "domain": "shopee.com",
+    "preserveParams": ["keyword", "page"],
+    "stripParams": ["sp_atk", "xptdk", "af_sub_siteid"],
+    "note": "Southeast Asian e-commerce. sp_atk/xptdk are tracking tokens."
   }
 ]

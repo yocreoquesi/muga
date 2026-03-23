@@ -558,6 +558,63 @@ describe("new global tracking params", () => {
 });
 
 // ---------------------------------------------------------------------------
+// utm_* prefix match — catches non-standard UTM variants
+// ---------------------------------------------------------------------------
+describe("utm_* prefix match", () => {
+  test("strips non-standard utm_ variants (utm_wave, utm_emailid, utm_newsletterid)", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://example.com/page?q=hello&utm_wave=spring&utm_emailid=abc&utm_newsletterid=xyz&utm_brand=acme"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("utm_wave"));
+    assert.ok(!u.searchParams.has("utm_emailid"));
+    assert.ok(!u.searchParams.has("utm_newsletterid"));
+    assert.ok(!u.searchParams.has("utm_brand"));
+    assert.equal(removedTracking.length, 4);
+  });
+
+  test("does not strip non-utm params that happen to start with 'ut'", () => {
+    const { cleanUrl } = clean(
+      "https://example.com/?utility=power&utensil=fork"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("utility"), "power");
+    assert.equal(u.searchParams.get("utensil"), "fork");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Asian/Russian market domains
+// ---------------------------------------------------------------------------
+describe("Bilibili", () => {
+  test("strips share/fingerprint tracking — preserves p, t", () => {
+    const { cleanUrl } = clean(
+      "https://www.bilibili.com/video/BV1xx?p=1&t=120&spm_id_from=333.999&vd_source=abc123&share_source=copy_web&from=search"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("p"), "1");
+    assert.equal(u.searchParams.get("t"), "120");
+    assert.ok(!u.searchParams.has("spm_id_from"));
+    assert.ok(!u.searchParams.has("vd_source"));
+    assert.ok(!u.searchParams.has("share_source"));
+    assert.ok(!u.searchParams.has("from"));
+  });
+});
+
+describe("Flipkart", () => {
+  test("strips otracker, ssid — preserves q", () => {
+    const { cleanUrl } = clean(
+      "https://www.flipkart.com/search?q=phone&otracker=search&ssid=abc&marketplace=FLIPKART"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "phone");
+    assert.ok(!u.searchParams.has("otracker"));
+    assert.ok(!u.searchParams.has("ssid"));
+    assert.ok(!u.searchParams.has("marketplace"));
+  });
+});
+
+// ---------------------------------------------------------------------------
 // domainRules.json — structural validation
 // ---------------------------------------------------------------------------
 describe("domain-rules.json structure", () => {

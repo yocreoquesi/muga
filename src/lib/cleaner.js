@@ -8,6 +8,21 @@ import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "
 // C5 — O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
 
+// Prefix-based tracking param detection — catches non-standard variants
+// (e.g., utm_wave, utm_emailid, utm_newsletterid) without listing each one.
+const TRACKING_PREFIXES = ["utm_"];
+
+/** Returns true if the param is a known tracking param (exact match or prefix). */
+function isTrackingParam(lower, customParams, domainStrip) {
+  if (TRACKING_PARAMS_SET.has(lower)) return true;
+  if (customParams.includes(lower)) return true;
+  if (domainStrip.has(lower)) return true;
+  for (const prefix of TRACKING_PREFIXES) {
+    if (lower.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 /**
  * Parses a blacklist/whitelist entry string into a structured object.
  * Supported formats:
@@ -161,7 +176,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
       if (affiliateParamNamesForSkip.includes(lower)) continue;
       if (preservedParamsForSkip.has(lower)) continue;
       if (disabledParamsForSkip.has(lower)) continue;
-      if (TRACKING_PARAMS_SET.has(lower) || customParamsForSkip.includes(lower) || domainStripForSkip.has(lower)) {
+      if (isTrackingParam(lower, customParamsForSkip, domainStripForSkip)) {
         url.searchParams.delete(param);
         removedTrackingForSkip.push(param);
       }
@@ -227,7 +242,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     if (preservedParams.has(lower)) continue;
     // Don't strip params whose category has been disabled by the user
     if (disabledParams.has(lower)) continue;
-    if (TRACKING_PARAMS_SET.has(lower) || customParams.includes(lower) || domainStrip.has(lower)) {
+    if (isTrackingParam(lower, customParams, domainStrip)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
     }
