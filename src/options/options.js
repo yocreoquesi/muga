@@ -89,6 +89,13 @@ async function init() {
   bindToggle("amp-redirect", "ampRedirect", prefs);
   bindToggle("unwrap-redirects", "unwrapRedirects", prefs);
 
+  // Toast duration select
+  const durationSelect = document.getElementById("toast-duration-select");
+  durationSelect.value = String(prefs.toastDuration || 15);
+  durationSelect.addEventListener("change", () => {
+    chrome.storage.sync.set({ toastDuration: parseInt(durationSelect.value, 10) });
+  });
+
   renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
@@ -441,9 +448,75 @@ function syncDevTools() {
 }
 
 function initDevTools() {
-  // Preview notification — show toast directly in options page
-  document.getElementById("dev-preview-notify-btn").addEventListener("click", () => {
-    showToast(t("toast_title", currentLang) + " — amazon.es tag=competitor-21");
+  // Preview notification — replicas the real affiliate toast from content/cleaner.js
+  document.getElementById("dev-preview-notify-btn").addEventListener("click", async () => {
+    document.getElementById("muga-preview-notice")?.remove();
+
+    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+    const toastDuration = (prefs.toastDuration || 15) * 1000;
+
+    const notice = document.createElement("div");
+    notice.id = "muga-preview-notice";
+    notice.setAttribute("role", "alert");
+    notice.setAttribute("aria-live", "assertive");
+    notice.style.cssText = [
+      "position:fixed", "bottom:20px", "right:20px",
+      "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
+      "padding:12px 16px",
+      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+      "font-size:13px", "line-height:1.5", "max-width:300px",
+      "z-index:2147483647", "box-shadow:0 4px 20px rgba(0,0,0,0.3)",
+      "border:0.5px solid rgba(255,255,255,0.1)",
+    ].join(";");
+
+    const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
+
+    const titleDiv = document.createElement("div");
+    titleDiv.style.cssText = "font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa";
+    titleDiv.textContent = t("toast_title", currentLang);
+
+    const msgDiv = document.createElement("div");
+    msgDiv.style.cssText = "margin-bottom:10px;font-size:12px;color:#ddd";
+    msgDiv.appendChild(document.createTextNode("amazon.es " + t("toast_tag_msg", currentLang) + " "));
+    const codeEl = document.createElement("code");
+    codeEl.style.cssText = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
+    codeEl.textContent = "tag=competitor-21";
+    msgDiv.appendChild(codeEl);
+
+    const btnDiv = document.createElement("div");
+    btnDiv.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
+
+    const keepBtn = document.createElement("button");
+    keepBtn.style.cssText = btnStyle;
+    keepBtn.textContent = t("toast_allow", currentLang);
+    btnDiv.appendChild(keepBtn);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.style.cssText = btnStyle;
+    removeBtn.textContent = t("toast_block", currentLang);
+    btnDiv.appendChild(removeBtn);
+
+    if (prefs.allowReplaceAffiliate) {
+      const oursBtn = document.createElement("button");
+      oursBtn.style.cssText = btnStyle;
+      oursBtn.textContent = t("toast_ours", currentLang);
+      btnDiv.appendChild(oursBtn);
+    }
+
+    const dismissBtn = document.createElement("button");
+    dismissBtn.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
+    dismissBtn.textContent = t("toast_dismiss", currentLang);
+
+    notice.appendChild(titleDiv);
+    notice.appendChild(msgDiv);
+    notice.appendChild(btnDiv);
+    notice.appendChild(dismissBtn);
+    document.body.appendChild(notice);
+
+    const timer = setTimeout(() => notice.remove(), toastDuration);
+    notice.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => { clearTimeout(timer); notice.remove(); });
+    });
   });
 
   // Show onboarding
@@ -453,11 +526,38 @@ function initDevTools() {
 
   // Export debug log
   document.getElementById("dev-export-log-btn").addEventListener("click", async () => {
-    const response = await chrome.runtime.sendMessage({ type: "GET_DEBUG_LOG" });
+    const [response, prefs, localData] = await Promise.all([
+      chrome.runtime.sendMessage({ type: "GET_DEBUG_LOG" }),
+      chrome.storage.sync.get(PREF_DEFAULTS),
+      chrome.storage.local.get({ stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 } }),
+    ]);
     const log = response?.log ?? [];
     const manifest = chrome.runtime.getManifest();
-    const payload = { muga_version: manifest.version, exported_at: new Date().toISOString(), log };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+
+    // Redact sensitive-ish fields but include config for debugging
+    const safePrefs = { ...prefs };
+    delete safePrefs._parsedBlacklist;
+    delete safePrefs._parsedWhitelist;
+
+    const payload = {
+      muga_version: manifest.version,
+      browser: navigator.userAgent,
+      exported_at: new Date().toISOString(),
+      settings: safePrefs,
+      stats: localData.stats,
+      session_log: log,
+    };
+
+    let jsonStr = JSON.stringify(payload, null, 2);
+    // Enforce 2MB limit — trim oldest log entries if needed
+    const MAX_BYTES = 2 * 1024 * 1024;
+    while (jsonStr.length > MAX_BYTES && payload.session_log.length > 10) {
+      payload.session_log = payload.session_log.slice(0, Math.floor(payload.session_log.length * 0.8));
+      payload.session_log_truncated = true;
+      jsonStr = JSON.stringify(payload, null, 2);
+    }
+
+    const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

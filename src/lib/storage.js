@@ -30,6 +30,7 @@ export const PREF_DEFAULTS = {
   // TODO(C8): devMode should migrate to chrome.storage.local — it is device-specific
   //           and does not need to sync across devices. Left here for now to avoid
   //           breaking options.js which reads it via getPrefs(). (#259)
+  toastDuration: 15,  // seconds — how long the affiliate notification stays visible
   devMode: false,
 };
 

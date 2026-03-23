@@ -348,11 +348,12 @@
 
     document.body.appendChild(notice);
 
+    const duration = (_contentPrefs?.toastDuration || 15) * 1000;
     _toastTimer = setTimeout(() => {
       _toastTimer = null;
       notice.remove();
       callback("clean");
-    }, 15000);
+    }, duration);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {
       btn.addEventListener("click", () => {
