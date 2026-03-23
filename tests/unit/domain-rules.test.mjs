@@ -402,6 +402,152 @@ describe("Idealista", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Amazon store page — lp_asin, store_ref, bl_grd_status stripped (#267)
+// ---------------------------------------------------------------------------
+describe("Amazon store page URL", () => {
+  test("strips lp_asin, store_ref, bl_grd_status from store page", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.amazon.es/stores/UGREEN/page/CF129B44-045C-4C53-AAE7-E2394B703029?lp_asin=B0B9N3QSL3&store_ref=bl_ast_dp_brandlogo_sto&bl_grd_status=override"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("lp_asin"));
+    assert.ok(!u.searchParams.has("store_ref"));
+    assert.ok(!u.searchParams.has("bl_grd_status"));
+    assert.equal(removedTracking.length, 3);
+  });
+
+  test("strips dib, dib_tag, sprefix, crid, dchild, qid from search", () => {
+    const { cleanUrl } = clean(
+      "https://www.amazon.es/s?k=usb+cable&dib=abc&dib_tag=se&sprefix=usb&crid=xyz&dchild=1&qid=123456"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("k"), "usb cable");
+    assert.ok(!u.searchParams.has("dib"));
+    assert.ok(!u.searchParams.has("dib_tag"));
+    assert.ok(!u.searchParams.has("sprefix"));
+    assert.ok(!u.searchParams.has("crid"));
+    assert.ok(!u.searchParams.has("dchild"));
+    assert.ok(!u.searchParams.has("qid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Domain stripParams — domain-specific stripping via domain-rules.json
+// ---------------------------------------------------------------------------
+describe("domain stripParams", () => {
+  test("Twitter: strips t, s, src (share tracking) — preserves q, f", () => {
+    const { cleanUrl } = clean(
+      "https://twitter.com/user/status/12345?t=abc&s=20&src=hashtag_click&q=test&f=live"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("t"));
+    assert.ok(!u.searchParams.has("s"));
+    assert.ok(!u.searchParams.has("src"));
+    assert.equal(u.searchParams.get("q"), "test");
+    assert.equal(u.searchParams.get("f"), "live");
+  });
+
+  test("YouTube: strips feature, pp — preserves v, t, list", () => {
+    const { cleanUrl } = clean(
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42&feature=shared&pp=abc&list=PLtest"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("feature"));
+    assert.ok(!u.searchParams.has("pp"));
+    assert.equal(u.searchParams.get("v"), "dQw4w9WgXcQ");
+    assert.equal(u.searchParams.get("t"), "42");
+    assert.equal(u.searchParams.get("list"), "PLtest");
+  });
+
+  test("youtu.be: strips feature — preserves t", () => {
+    const { cleanUrl } = clean(
+      "https://youtu.be/dQw4w9WgXcQ?t=42&feature=shared&si=trackingtoken"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("feature"));
+    assert.ok(!u.searchParams.has("si"));
+    assert.equal(u.searchParams.get("t"), "42");
+  });
+
+  test("Google: strips ved, ei, sca_esv — preserves q, cid", () => {
+    const { cleanUrl } = clean(
+      "https://www.google.com/search?q=test&ved=abc&ei=xyz&sca_esv=123&cid=business123"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("ved"));
+    assert.ok(!u.searchParams.has("ei"));
+    assert.ok(!u.searchParams.has("sca_esv"));
+    assert.equal(u.searchParams.get("q"), "test");
+    assert.equal(u.searchParams.get("cid"), "business123");
+  });
+
+  test("TikTok: strips is_from_webapp, sender_device — preserves q", () => {
+    const { cleanUrl } = clean(
+      "https://www.tiktok.com/@user/video/123?is_from_webapp=1&sender_device=pc&q=trending"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("is_from_webapp"));
+    assert.ok(!u.searchParams.has("sender_device"));
+    assert.equal(u.searchParams.get("q"), "trending");
+  });
+
+  test("Reddit: strips share_id, ref — preserves sort, context", () => {
+    const { cleanUrl } = clean(
+      "https://www.reddit.com/r/test/comments/abc?sort=top&context=3&share_id=xyz&ref=share"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("share_id"));
+    assert.ok(!u.searchParams.has("ref"));
+    assert.equal(u.searchParams.get("sort"), "top");
+    assert.equal(u.searchParams.get("context"), "3");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New global tracking params
+// ---------------------------------------------------------------------------
+describe("new global tracking params", () => {
+  test("strips GA4 cross-domain params (_gl, _ga, _gac)", () => {
+    const { cleanUrl } = clean(
+      "https://example.com/page?_gl=1*abc&_ga=2.123&_gac=1.def"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("_gl"));
+    assert.ok(!u.searchParams.has("_ga"));
+    assert.ok(!u.searchParams.has("_gac"));
+  });
+
+  test("strips Meta params (mibextid, fb_action_ids, fb_ref)", () => {
+    const { cleanUrl } = clean(
+      "https://example.com/?mibextid=abc&fb_action_ids=123&fb_ref=timeline"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("mibextid"));
+    assert.ok(!u.searchParams.has("fb_action_ids"));
+    assert.ok(!u.searchParams.has("fb_ref"));
+  });
+
+  test("strips Branch.io params", () => {
+    const { cleanUrl } = clean(
+      "https://example.com/?_branch_match_id=abc&_branch_referrer=xyz"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("_branch_match_id"));
+    assert.ok(!u.searchParams.has("_branch_referrer"));
+  });
+
+  test("strips Shopify params (_pos, _ss, _sid)", () => {
+    const { cleanUrl } = clean(
+      "https://myshop.com/products/item?_pos=1&_ss=r&_sid=abc"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("_pos"));
+    assert.ok(!u.searchParams.has("_ss"));
+    assert.ok(!u.searchParams.has("_sid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
 // domainRules.json — structural validation
 // ---------------------------------------------------------------------------
 describe("domain-rules.json structure", () => {

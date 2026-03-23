@@ -35,23 +35,30 @@ function domainMatches(hostname, entryDomain) {
 }
 
 /**
- * Builds the set of params that must NOT be stripped on the given hostname,
- * based on the domain-rules compatibility list.
+ * Builds the set of params that must NOT be stripped and the set of
+ * domain-specific params that MUST be stripped on the given hostname.
  *
  * Matching is subdomain-aware: "www.google.com" matches rule for "google.com".
  *
  * @param {string} hostname
- * @param {Array}  domainRules  - Array of { domain, preserveParams[] } objects
- * @returns {Set<string>}
+ * @param {Array}  domainRules  - Array of { domain, preserveParams[], stripParams[]? } objects
+ * @returns {{ preserved: Set<string>, domainStrip: Set<string> }}
  */
-export function getPreservedParams(hostname, domainRules = []) {
+export function getDomainParamSets(hostname, domainRules = []) {
   const preserved = new Set();
+  const domainStrip = new Set();
   for (const rule of domainRules) {
     if (hostname === rule.domain || hostname.endsWith("." + rule.domain)) {
-      rule.preserveParams.forEach(p => preserved.add(p.toLowerCase()));
+      (rule.preserveParams || []).forEach(p => preserved.add(p.toLowerCase()));
+      (rule.stripParams || []).forEach(p => domainStrip.add(p.toLowerCase()));
     }
   }
-  return preserved;
+  return { preserved, domainStrip };
+}
+
+// Backwards-compatible alias used by external callers
+export function getPreservedParams(hostname, domainRules = []) {
+  return getDomainParamSets(hostname, domainRules).preserved;
 }
 
 /**
@@ -138,7 +145,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     // S4 — reuse `patterns` already computed above instead of calling getPatternsForHost again
     const affiliateParamNamesForSkip = patterns.map(p => p.param.toLowerCase());
     const customParamsForSkip = (prefs.customParams || []).map(p => p.toLowerCase());
-    const preservedParamsForSkip = getPreservedParams(hostname, domainRules);
+    const { preserved: preservedParamsForSkip, domainStrip: domainStripForSkip } = getDomainParamSets(hostname, domainRules);
     const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
     const disabledParamsForSkip = new Set();
     if (disabledCategoriesForSkip.size > 0) {
@@ -154,7 +161,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
       if (affiliateParamNamesForSkip.includes(lower)) continue;
       if (preservedParamsForSkip.has(lower)) continue;
       if (disabledParamsForSkip.has(lower)) continue;
-      if (TRACKING_PARAMS_SET.has(lower) || customParamsForSkip.includes(lower)) {
+      if (TRACKING_PARAMS_SET.has(lower) || customParamsForSkip.includes(lower) || domainStripForSkip.has(lower)) {
         url.searchParams.delete(param);
         removedTrackingForSkip.push(param);
       }
@@ -199,7 +206,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   // for pccomponentes, mediamarkt_es, mediamarkt_de; `campid` is eBay's affiliate param.
   const affiliateParamNames = patterns.map(p => p.param.toLowerCase());
   const customParams = (prefs.customParams || []).map(p => p.toLowerCase());
-  const preservedParams = getPreservedParams(hostname, domainRules);
+  const { preserved: preservedParams, domainStrip } = getDomainParamSets(hostname, domainRules);
 
   // Build effective tracking params list: exclude params that belong to a disabled category
   const disabledCategories = new Set(prefs.disabledCategories || []);
@@ -220,7 +227,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     if (preservedParams.has(lower)) continue;
     // Don't strip params whose category has been disabled by the user
     if (disabledParams.has(lower)) continue;
-    if (TRACKING_PARAMS_SET.has(lower) || customParams.includes(lower)) {
+    if (TRACKING_PARAMS_SET.has(lower) || customParams.includes(lower) || domainStrip.has(lower)) {
       url.searchParams.delete(param);
       removedTracking.push(param);
     }
