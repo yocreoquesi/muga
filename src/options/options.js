@@ -441,12 +441,9 @@ function syncDevTools() {
 }
 
 function initDevTools() {
-  // Preview notification
+  // Preview notification — show toast directly in options page
   document.getElementById("dev-preview-notify-btn").addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (!tab?.id) return;
-      chrome.tabs.sendMessage(tab.id, { type: "SHOW_TEST_TOAST" });
-    });
+    showToast(t("toast_title", currentLang) + " — amazon.es tag=competitor-21");
   });
 
   // Show onboarding
