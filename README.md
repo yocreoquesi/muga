@@ -4,11 +4,11 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.6.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-379_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-380_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # Every link. Cleaned. Before it loads.
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 130+ more. MUGA strips them — automatically, before the page renders. **Zero clicks. Zero configuration. Never replaces a creator's affiliate tag.**
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 260+ more. MUGA strips them — automatically, before the page renders. **Zero clicks. Zero configuration. Never replaces a creator's affiliate tag.**
 
 [Install from source](#installation) · [View source](https://github.com/yocreoquesi/muga) · [Privacy policy](https://yocreoquesi.github.io/muga/)
 
@@ -18,7 +18,7 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTu
 
 ## What it removes
 
-**188 tracking parameters** across 6 categories, on every site:
+**271 tracking parameters** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -69,7 +69,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ### Always on — no configuration needed
 
-- Strip 188 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
+- Strip 271 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
 - Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C** — copy clean URL of current tab to clipboard

@@ -230,6 +230,90 @@ export const TRACKING_PARAMS = [
   "adjust_adgroup",  // Adjust ad group
   "adjust_creative", // Adjust creative
 
+  // ── Industry-standard params (verified in Firefox, Brave, AdGuard, Neat URL) ──
+
+  // Yandex (Firefox + Brave built-in)
+  "yclid",      // Yandex Direct click ID
+  "ysclid",     // Yandex session click ID
+  "_openstat",  // Russian ad analytics (Yandex)
+
+  // Piwik / Matomo (AdGuard + Neat URL + Registry)
+  "pk_campaign", "pk_kwd", "pk_source", "pk_medium", "pk_cid",
+  "mtm_campaign", "mtm_keyword", "mtm_source", "mtm_medium", "mtm_content",
+  "mtm_group", "mtm_placement", "mtm_cid",
+
+  // AT Internet / Piano Analytics (AdGuard + ClearURLs)
+  "xtor",       // AT Internet campaign
+  "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
+
+  // Webtrekk (AdGuard + Neat URL)
+  // "wt_mc" excluded — it is the affiliate param for MediaMarkt in AFFILIATE_PATTERNS
+  "wt_zmc",     // Zeit/Webtrekk campaign
+
+  // HubSpot extended (AdGuard + Registry)
+  "hsa_cam", "hsa_grp", "hsa_mt", "hsa_src", "hsa_ad",
+  "hsa_acc", "hsa_net", "hsa_kw", "hsa_tgt", "hsa_ver",
+
+  // Blueshift (Brave + AdGuard)
+  "bsft_clkid", "bsft_uid", "bsft_eid", "bsft_mid",
+
+  // Oracle Eloqua (AdGuard + Neat URL)
+  "elqtrackid", "elqaid", "elqat", "elqcampaignid",
+
+  // IBM Acoustic / Silverpop (Neat URL)
+  "spjobid", "spmailingid", "spreportid", "spuserid",
+
+  // Sailthru (Brave)
+  "sc_customer", "sc_eh", "sc_uid",
+
+  // Listrak (Registry)
+  "trk_contact", "trk_msg", "trk_module", "trk_sid",
+
+  // MailerLite (Brave + AdGuard)
+  "ml_subscriber", "ml_subscriber_hash",
+
+  // Drip / Klaviyo / ExactTarget / Brevo extended (Firefox + Brave + Registry)
+  "__s",         // Drip email tracking
+  "_ke",         // Klaviyo email
+  "et_rid",      // ExactTarget recipient ID
+  "ss_email_id", // SendinBlue/Brevo email ID
+  "vero_id",     // Vero email tracking
+
+  // Omeda (Firefox + Brave + AdGuard)
+  "oly_anon_id", // Omeda anonymous ID
+  "oly_enc_id",  // Omeda encrypted ID
+
+  // Wunderkind SMS (Brave + AdGuard)
+  "sms_click", "sms_source", "sms_uph",
+
+  // Ad platforms (Brave + Registry)
+  "irclickid",        // Impact Radius click ID (alternate form)
+  "unicorn_click_id", // Unicorn click tracking
+  "rb_clickid",       // Russian ad click ID
+  "ndclid",           // Nextdoor click ID
+  "vmcid",            // Yahoo/Verizon Media click ID
+  "ymclid",           // Yandex Market click ID
+  "syclid",           // Snapchat click ID (alternate)
+
+  // Triple Whale (Registry)
+  "tw_source", "tw_adid",
+
+  // Adobe extended (AdGuard)
+  "adobe_mc_ref",  // Adobe MC referrer
+  "adobe_mc_sdid", // Adobe MC supplemental data ID
+
+  // AppsFlyer extended (AdGuard)
+  "af_xp",     // AppsFlyer cross-promo
+  "af_ad",     // AppsFlyer ad
+  "af_adset",  // AppsFlyer adset
+
+  // Marin Software (Registry)
+  "mkwid",     // Marin keyword ID
+  "pcrid",     // Marin creative ID
+
+  // GoDataFeed (Registry)
+  "gdfms", "gdftrk", "gdffi",
+
   // Generic / multi-platform
   "click_id",   // generic click ID
   "ad_id",      // generic ad ID
@@ -291,6 +375,28 @@ export const TRACKING_PARAM_CATEGORIES = {
       "zemclick",
       // Generic click / ad IDs
       "click_id", "ad_id",
+      // Yandex
+      "yclid", "ysclid", "_openstat", "ymclid",
+      // Ad platforms (Brave + Registry)
+      "irclickid", "unicorn_click_id", "rb_clickid", "ndclid", "vmcid", "syclid",
+      // Piwik / Matomo
+      "pk_campaign", "pk_kwd", "pk_source", "pk_medium", "pk_cid",
+      "mtm_campaign", "mtm_keyword", "mtm_source", "mtm_medium", "mtm_content",
+      "mtm_group", "mtm_placement", "mtm_cid",
+      // AT Internet / Piano Analytics
+      "xtor", "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
+      // Webtrekk
+      "wt_zmc",
+      // Triple Whale
+      "tw_source", "tw_adid",
+      // Marin Software
+      "mkwid", "pcrid",
+      // GoDataFeed
+      "gdfms", "gdftrk", "gdffi",
+      // Adobe extended
+      "adobe_mc_ref", "adobe_mc_sdid",
+      // AppsFlyer extended
+      "af_xp", "af_ad", "af_adset",
     ],
   },
   email: {
@@ -321,6 +427,27 @@ export const TRACKING_PARAM_CATEGORIES = {
       "omnisendcontactid",
       // Sendinblue / Brevo
       "sib_id",
+      // HubSpot extended (AdGuard + Registry)
+      "hsa_cam", "hsa_grp", "hsa_mt", "hsa_src", "hsa_ad",
+      "hsa_acc", "hsa_net", "hsa_kw", "hsa_tgt", "hsa_ver",
+      // Blueshift (Brave + AdGuard)
+      "bsft_clkid", "bsft_uid", "bsft_eid", "bsft_mid",
+      // Oracle Eloqua (AdGuard + Neat URL)
+      "elqtrackid", "elqaid", "elqat", "elqcampaignid",
+      // IBM Acoustic / Silverpop (Neat URL)
+      "spjobid", "spmailingid", "spreportid", "spuserid",
+      // Sailthru (Brave)
+      "sc_customer", "sc_eh", "sc_uid",
+      // Listrak (Registry)
+      "trk_contact", "trk_msg", "trk_module", "trk_sid",
+      // MailerLite (Brave + AdGuard)
+      "ml_subscriber", "ml_subscriber_hash",
+      // Drip / Klaviyo / ExactTarget / Brevo extended
+      "__s", "_ke", "et_rid", "ss_email_id", "vero_id",
+      // Omeda (Firefox + Brave + AdGuard)
+      "oly_anon_id", "oly_enc_id",
+      // Wunderkind SMS (Brave + AdGuard)
+      "sms_click", "sms_source", "sms_uph",
     ],
   },
   social: {
