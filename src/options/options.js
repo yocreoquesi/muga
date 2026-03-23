@@ -8,6 +8,66 @@ import { PREF_DEFAULTS } from "../lib/storage.js";
 
 let currentLang = "en";
 
+// --- Toast & confirm helpers (replace native alert/confirm) ---
+
+let _toastEl = null;
+let _toastTimer = null;
+
+function showToast(msg) {
+  if (!_toastEl) {
+    _toastEl = document.createElement("div");
+    _toastEl.className = "toast";
+    _toastEl.setAttribute("role", "status");
+    _toastEl.setAttribute("aria-live", "polite");
+    document.body.appendChild(_toastEl);
+  }
+  _toastEl.textContent = msg;
+  _toastEl.classList.add("visible");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => _toastEl.classList.remove("visible"), 2500);
+}
+
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+
+    const box = document.createElement("div");
+    box.className = "confirm-box";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-modal", "true");
+
+    const p = document.createElement("p");
+    p.textContent = msg;
+
+    const btns = document.createElement("div");
+    btns.className = "confirm-btns";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "confirm-cancel";
+    cancelBtn.textContent = "Cancel";
+
+    const okBtn = document.createElement("button");
+    okBtn.className = "confirm-ok";
+    okBtn.textContent = "OK";
+
+    btns.appendChild(cancelBtn);
+    btns.appendChild(okBtn);
+    box.appendChild(p);
+    box.appendChild(btns);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    okBtn.focus();
+    const onKey = (e) => { if (e.key === "Escape") close(false); };
+    const close = (val) => { document.removeEventListener("keydown", onKey); overlay.remove(); resolve(val); };
+    document.addEventListener("keydown", onKey);
+    cancelBtn.addEventListener("click", () => close(false));
+    okBtn.addEventListener("click", () => close(true));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
+  });
+}
+
 async function init() {
   currentLang = await getStoredLang();
   applyTranslations(currentLang);
@@ -63,7 +123,10 @@ function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   if (!items.length) {
-    container.innerHTML = `<p class="empty">${t("empty_list", currentLang)}</p>`;
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = t("empty_list", currentLang);
+    container.appendChild(p);
     return;
   }
   items.forEach((entry, i) => {
@@ -256,13 +319,14 @@ function initStatsSection() {
   }
 
   document.getElementById("reset-stats-btn").addEventListener("click", async () => {
-    if (!confirm(t("stats_reset_confirm", currentLang))) return;
+    const ok = await showConfirm(t("stats_reset_confirm", currentLang));
+    if (!ok) return;
     await chrome.storage.local.set({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
       firstUsed: null,
       nudgeDismissed: false,
     });
-    alert(t("stats_reset_done", currentLang));
+    showToast(t("stats_reset_done", currentLang));
   });
 }
 
@@ -307,6 +371,11 @@ function initExportImport() {
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files[0];
     if (!file) return;
+    if (file.size > 102400) {
+      showToast(t("import_error", currentLang));
+      fileInput.value = "";
+      return;
+    }
     try {
       const text = await file.text();
       const data = JSON.parse(text);
@@ -358,9 +427,9 @@ function initExportImport() {
       renderList("whitelist-items", newPrefs.whitelist, "whitelist");
       renderList("custom-params-items", newPrefs.customParams, "customParams");
       renderCategories(newPrefs.disabledCategories || []);
-      alert(t("import_success", currentLang));
+      showToast(t("import_success", currentLang));
     } catch {
-      alert(t("import_error", currentLang));
+      showToast(t("import_error", currentLang));
     }
     fileInput.value = "";
   });

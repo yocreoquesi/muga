@@ -22,18 +22,18 @@
   // Toast strings — default English, overridden by stored language preference
   const STRINGS = {
     en: {
-      toast_title:   "MUGA detected a third-party affiliate",
+      toast_title:   "MUGA found someone else's affiliate tag",
       toast_tag_msg: "has an affiliate tag that isn't ours:",
-      toast_allow:   "Allow",
-      toast_block:   "Block",
+      toast_allow:   "Keep it",
+      toast_block:   "Remove it",
       toast_ours:    "Use ours",
       toast_dismiss: "Dismiss",
     },
     es: {
-      toast_title:   "MUGA detectó un afiliado ajeno",
+      toast_title:   "MUGA encontró el tag de afiliado de otro",
       toast_tag_msg: "tiene un tag de afiliado que no es nuestro:",
-      toast_allow:   "Permitir",
-      toast_block:   "Bloquear",
+      toast_allow:   "Mantenerlo",
+      toast_block:   "Eliminarlo",
       toast_ours:    "Usar el nuestro",
       toast_dismiss: "Descartar",
     },
@@ -64,7 +64,7 @@
       anchors.forEach(a => urlsToClean.push(a.getAttribute("href")));
 
       // 3. Also find plain URLs in text content
-      const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+      const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
       const textNodes = [];
       let node;
@@ -132,7 +132,7 @@
   });
 
   // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation
-  const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+  const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
   /**
    * Intercepts Ctrl+C / copy.
