@@ -28,62 +28,87 @@
       font-size: 14px; color: var(--text);
     }
     a { color: var(--accent); text-decoration: none; }
-    .placeholder-notice {
-      background: #fef3c7; border: 1px solid #d97706; border-radius: 8px;
-      padding: 12px 16px; margin-bottom: 32px; font-size: 13px; color: #92400e;
-    }
-    @media (prefers-color-scheme: dark) {
-      .placeholder-notice { background: #3b2100; border-color: #d97706; color: #fcd34d; }
-    }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text); }
   </style>
 </head>
 <body>
 
-  <div class="placeholder-notice">
-    ⚠️ <strong>Draft — pending legal review.</strong> This document will be finalized before the extension is published on the Chrome Web Store and Firefox AMO.
-  </div>
-
   <h1>Terms of Use</h1>
-  <p class="meta">MUGA — Make URLs Great Again · Version 1.0 · Last updated: 2026-03-22</p>
+  <p class="meta">MUGA — Make URLs Great Again &nbsp;&middot;&nbsp; Version 1.1 &nbsp;&middot;&nbsp; Last updated: 2026-03-23</p>
 
   <div class="highlight">
-    MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GNU General Public License v3</a>. All processing happens locally in your browser — no data is ever sent to any server.
+    MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU General Public License v3</a>. All processing happens locally in your browser — no data is ever sent to any server.
   </div>
 
-  <h2>1. What MUGA does</h2>
+  <h2>1. Scope and acceptance</h2>
+  <p>These Terms of Use ("Terms") govern your use of the MUGA browser extension ("MUGA", "the Extension"). By installing or using MUGA you agree to be bound by these Terms and by the <a href="privacy.html">Privacy Policy</a>.</p>
+  <p>These Terms apply to the use of the Extension as a browser add-on. They supplement — but do not replace — the rights and obligations set out in the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU General Public License v3 (GPL v3)</a>, which governs the source code. In the event of a conflict between these Terms and the GPL v3 regarding the source code, the GPL v3 prevails.</p>
+
+  <h2>2. What MUGA does</h2>
   <p>MUGA is a browser extension that:</p>
   <ul>
     <li>Strips tracking parameters (UTMs, click IDs, and similar) from URLs before pages load</li>
     <li>Redirects Google AMP pages to their canonical article URLs</li>
     <li>Blocks <code>&lt;a ping&gt;</code> tracking beacons on link clicks</li>
     <li>Unwraps redirect-wrapper URLs to take you directly to the destination</li>
-    <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you opt in</li>
+    <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you have opted in</li>
   </ul>
+  <p>All URL processing is performed locally within your browser. MUGA makes zero external network requests, collects no data, and has no servers.</p>
 
-  <h2>2. Affiliate model</h2>
-  <p>MUGA is maintained by a small team. To keep the project alive and free, we participate in affiliate programs with a small number of stores (Amazon, Booking.com, AliExpress, and others).</p>
-  <p>If you opt in during setup, MUGA will add our affiliate tag to links that have <strong>no existing affiliate tag</strong>. This has no effect on the price you pay — affiliate tags tell the store who referred you, nothing more.</p>
+  <h2>3. Affiliate model and disclosure</h2>
+  <p>MUGA is maintained by an independent developer. To keep the project alive and free, MUGA participates in affiliate programs operated by third-party stores, including but not limited to Amazon Associates, Booking.com, and AliExpress.</p>
+  <p>If you opted in during onboarding, MUGA adds our affiliate tag to URLs that contain <strong>no existing affiliate tag</strong>. This does not change the price you pay — affiliate tags tell the store who referred the visit, nothing more. The developer may earn a small commission from qualifying purchases.</p>
   <ul>
-    <li>MUGA <strong>never replaces</strong> an affiliate tag that is already present in a link</li>
-    <li>MUGA <strong>never replaces</strong> a creator's or another affiliate's tag with ours</li>
-    <li>Affiliate injection only fires on explicitly supported stores listed in the source code</li>
-    <li>You can disable affiliate injection at any time in Settings</li>
+    <li>MUGA <strong>never replaces</strong> an affiliate tag that is already present in a URL</li>
+    <li>MUGA <strong>never overwrites</strong> a content creator's or another affiliate's tag</li>
+    <li>Affiliate tag injection only applies to the supported stores explicitly listed in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener">source code</a></li>
+    <li>You can disable affiliate tag injection at any time in the Extension's Settings — no questions asked</li>
+    <li>As an Amazon Associate, the developer earns from qualifying purchases. This disclosure is required by the <a href="https://affiliate-program.amazon.com/help/operating/agreement" target="_blank" rel="noopener">Amazon Associates Program Operating Agreement</a></li>
   </ul>
 
-  <h2>3. No data collection</h2>
-  <p>MUGA does not collect, transmit, or store any browsing data. All URL processing happens exclusively inside your browser. We have no servers, no analytics, and no telemetry of any kind. See our <a href="privacy.html">Privacy Policy</a> for full details.</p>
+  <h2>4. No data collection</h2>
+  <p>MUGA does not collect, transmit, or store any browsing data. All URL processing happens exclusively inside your browser. MUGA has no servers, no analytics, no telemetry, and no crash-reporting services. Your preferences are stored in <code>chrome.storage.sync</code> and sync via your browser account — they are never visible to the developer.</p>
+  <p>For full details, see the <a href="privacy.html">Privacy Policy</a>.</p>
 
-  <h2>4. License</h2>
-  <p>MUGA is released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GNU General Public License v3 (GPL v3)</a>. You are free to use, study, modify, and distribute MUGA, provided that any derivative work is also released under GPL v3. The source code is available at <a href="https://github.com/yocreoquesi/muga" target="_blank">github.com/yocreoquesi/muga</a>.</p>
+  <h2>5. Third-party services</h2>
+  <p>When MUGA modifies a URL to include an affiliate tag and you navigate to that store, your interaction with the store is governed entirely by that store's own terms of service and privacy policy. MUGA has no control over and assumes no responsibility for the content, practices, or policies of third-party websites.</p>
 
-  <h2>5. Disclaimer</h2>
-  <p>MUGA is provided "as is", without warranty of any kind. The authors are not liable for any damages arising from the use of this software. Affiliate commissions are not guaranteed — they depend on the affiliate programs of third-party stores and are subject to change.</p>
+  <h2>6. Open-source license</h2>
+  <p>MUGA is released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU General Public License v3 (GPL v3)</a>. You are free to use, study, modify, and distribute the source code, provided that any derivative work is also released under the GPL v3. The complete source code is available at <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener">github.com/yocreoquesi/muga</a>.</p>
 
-  <h2>6. Changes to these terms</h2>
-  <p>If we make material changes to these terms, the extension will ask you to review and re-accept them on next use. The current version of this document is always available inside the extension.</p>
+  <h2>7. Eligibility</h2>
+  <p>MUGA is intended for general audiences. If you are under 16 years of age, you may only use MUGA with the consent of a parent or legal guardian, in accordance with Article 8 of the EU General Data Protection Regulation (GDPR). Since MUGA does not collect any personal data, no parental verification mechanism is required, but the age threshold applies to accepting these Terms.</p>
 
-  <h2>7. Contact</h2>
-  <p>Questions or concerns? Open an issue at <a href="https://github.com/yocreoquesi/muga/issues" target="_blank">github.com/yocreoquesi/muga/issues</a>.</p>
+  <h2>8. Disclaimer of warranties</h2>
+  <p>MUGA is provided <strong>"as is"</strong> and <strong>"as available"</strong>, without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
+  <p>The developer does not warrant that MUGA will operate without interruption or error, that tracking parameters will always be detected, or that affiliate tag injection will always function correctly. Website structures and tracking methods change frequently and may temporarily affect functionality.</p>
+  <p>Affiliate commissions are not guaranteed. They depend on the terms and availability of third-party affiliate programs, which may change at any time without notice from the developer.</p>
+  <p><strong>EU consumers:</strong> Nothing in these Terms limits or excludes your mandatory statutory rights under applicable consumer protection law, including the rights provided under Directive 2011/83/EU (Consumer Rights Directive) and applicable national legislation implementing it. Statutory warranty rights and rights of withdrawal, where applicable, remain unaffected.</p>
+
+  <h2>9. Limitation of liability</h2>
+  <p>To the maximum extent permitted by applicable law, the developer shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, arising from your use of or inability to use MUGA.</p>
+  <p>This limitation does not apply to liability that cannot be excluded or limited under applicable law, including liability for wilful misconduct or gross negligence under Spanish law.</p>
+
+  <h2>10. Changes to these Terms</h2>
+  <p>The developer may update these Terms from time to time. When material changes are made:</p>
+  <ul>
+    <li>The version number and "Last updated" date at the top of this document will be updated</li>
+    <li>The Extension will display a notice and ask you to review and re-accept the updated Terms before you can continue using MUGA</li>
+    <li>If you do not accept the updated Terms, you may uninstall the Extension</li>
+  </ul>
+  <p>Non-material changes (such as formatting or clarifications that do not alter your rights) may be made without re-acceptance, but the updated document will always be available inside the Extension.</p>
+
+  <h2>11. Governing law and jurisdiction</h2>
+  <p>These Terms are governed by and construed in accordance with the laws of Spain. Any disputes arising out of or in connection with these Terms shall be submitted to the competent courts of Spain.</p>
+  <p>If you are a consumer habitually resident in the European Union, you additionally enjoy the protection afforded by the mandatory provisions of your country of residence. Nothing in these Terms affects your right to rely on those provisions.</p>
+  <p>The European Commission provides an <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">Online Dispute Resolution (ODR) platform</a>. You can use this platform to seek out-of-court resolution of disputes related to online services.</p>
+
+  <h2>12. Severability</h2>
+  <p>If any provision of these Terms is found to be invalid or unenforceable by a court of competent jurisdiction, the remaining provisions shall continue in full force and effect. The invalid provision will be modified to the minimum extent necessary to make it valid and enforceable while preserving its original intent.</p>
+
+  <h2>13. Contact</h2>
+  <p>Questions or concerns? Open an issue at <a href="https://github.com/yocreoquesi/muga/issues" target="_blank" rel="noopener">github.com/yocreoquesi/muga/issues</a>.</p>
 
 </body>
 </html>
