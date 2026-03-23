@@ -39,7 +39,7 @@ export const TRANSLATIONS = {
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Settings", es: "Ajustes" },
-  opts_subtitle:   { en: "Make URLs Great Again", es: "Make URLs Great Again" },
+  opts_subtitle:   { en: "Make URLs Great Again", es: "Haz que las URLs vuelvan a ser geniales." },
   section_affiliate_settings: { en: "Affiliate settings", es: "Configuración de afiliados" },
   row_inject_label: { en: "Inject our affiliate tag when a link has none", es: "Inyectar nuestro afiliado cuando no hay ninguno" },
   row_inject_hint:  { en: "Off by default. Enable here or during first setup. You always pay the same price.", es: "Desactivado por defecto. Actívalo aquí o durante la configuración inicial." },
