@@ -679,33 +679,32 @@ describe("result shape", () => {
 // ---------------------------------------------------------------------------
 describe("Amazon — real-world URL cleaning", () => {
 
-  test("strips _encoding, content-id, ref_ from product URL", () => {
+  test("strips _encoding, content-id, ref_ — preserves th (variant selector)", () => {
     const raw = "https://www.amazon.es/Emergencia/dp/B0GF8C2S62/?_encoding=UTF8&content-id=amzn1.sym.abc&ref_=pd_hp_d_atf_unk&th=1";
     const { cleanUrl, action } = processUrl(raw, PREFS);
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("_encoding"), null);
     assert.equal(u.searchParams.get("content-id"), null);
     assert.equal(u.searchParams.get("ref_"), null);
-    assert.equal(u.searchParams.get("th"), null);
-    assert.equal(u.search, "");
+    assert.equal(u.searchParams.get("th"), "1", "th must be preserved (product variant selector)");
     assert.equal(action, "cleaned");
   });
 
-  test("strips pd_rd_i and content-id from product URL", () => {
+  test("strips pd_rd_i and content-id — preserves th", () => {
     const raw = "https://www.amazon.es/edihome/dp/B0GQ4N9N33/?content-id=amzn1.sym.def&pd_rd_i=B0GQ4N9N33&th=1";
     const { cleanUrl } = processUrl(raw, PREFS);
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("pd_rd_i"), null);
     assert.equal(u.searchParams.get("content-id"), null);
-    assert.equal(u.search, "");
+    assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
   });
 
-  test("strips path-based /ref= tracking after ASIN", () => {
+  test("strips path-based /ref= tracking after ASIN — preserves th", () => {
     const raw = "https://www.amazon.es/edihome/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=x&pd_rd_i=B0GQ4N9N33&th=1";
     const { cleanUrl } = processUrl(raw, PREFS);
     const u = new URL(cleanUrl);
     assert.ok(u.pathname.endsWith("/dp/B0GQ4N9N33/"), `path should end with /dp/ASIN/, got: ${u.pathname}`);
-    assert.equal(u.search, "");
+    assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
   });
 
   test("does not modify non-Amazon path", () => {
@@ -715,24 +714,22 @@ describe("Amazon — real-world URL cleaning", () => {
     assert.ok(u.pathname.includes("/ref=tracking"), "non-Amazon path must not be modified");
   });
 
-  test("full real URL 1 from issue #1 — slug now stripped by FIX-A3", () => {
-    // FIX-A3: product name slug before /dp/ is now stripped, so the expected path
-    // is /dp/ASIN/ rather than /Emergencia-Homologada/dp/ASIN/
+  test("full real URL 1 from issue #1 — slug stripped, th preserved", () => {
     const raw = "https://www.amazon.es/Emergencia-Homologada/dp/B0GF8C2S62/?_encoding=UTF8&content-id=amzn1.sym.0a1e4d50&ref_=pd_hp_d_atf_unk&th=1";
     const { cleanUrl } = processUrl(raw, PREFS);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0GF8C2S62/", "slug must be stripped, ASIN path preserved");
-    assert.equal(u.search, "");
+    assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
+    assert.equal(u.searchParams.get("_encoding"), null);
   });
 
-  test("full real URL 2 from issue #1 — slug now stripped by FIX-A3", () => {
-    // FIX-A3: product name slug before /dp/ is now stripped
+  test("full real URL 2 from issue #1 — slug stripped, th preserved", () => {
     const raw = "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=amzn1.sym.8303e4e0&pd_rd_i=B0GQ4N9N33&th=1";
     const { cleanUrl, junkRemoved } = processUrl(raw, PREFS);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0GQ4N9N33/", "slug must be stripped, ASIN path preserved");
-    assert.equal(u.search, "");
-    assert.equal(junkRemoved, 4);
+    assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
+    assert.equal(junkRemoved, 3, "3 params stripped (content-id, pd_rd_i + path), th preserved");
   });
 
 });
