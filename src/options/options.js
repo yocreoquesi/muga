@@ -88,7 +88,8 @@ async function init() {
   const durationSelect = document.getElementById("toast-duration-select");
   durationSelect.value = String(prefs.toastDuration || 15);
   durationSelect.addEventListener("change", () => {
-    chrome.storage.sync.set({ toastDuration: parseInt(durationSelect.value, 10) });
+    const val = Math.max(5, Math.min(60, parseInt(durationSelect.value, 10) || 15));
+    chrome.storage.sync.set({ toastDuration: val });
   });
 
   renderList("custom-params-items", prefs.customParams, "customParams");
@@ -437,7 +438,7 @@ function initDevTools() {
     document.getElementById("muga-preview-notice")?.remove();
 
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-    const toastDuration = (prefs.toastDuration || 15) * 1000;
+    const toastDuration = Math.max(5, Math.min(60, prefs.toastDuration || 15)) * 1000;
 
     const notice = document.createElement("div");
     notice.id = "muga-preview-notice";

@@ -18,7 +18,7 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTu
 
 ## What it removes
 
-**271 tracking parameters** across 6 categories, on every site:
+**421 tracking parameters** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -69,7 +69,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ### Always on — no configuration needed
 
-- Strip 271 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
+- Strip 421 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
 - Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C** — copy clean URL of current tab to clipboard

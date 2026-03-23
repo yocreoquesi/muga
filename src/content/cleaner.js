@@ -271,7 +271,7 @@
    * @param {object} affiliate
    * @param {string} originalUrl
    * @param {string} cleanUrl
-   * @param {string|undefined} withOurAffiliate - URL with our tag (only when allowReplaceAffiliate is on)
+   * @param {string|undefined} withOurAffiliate - URL with our tag (when injectOwnAffiliate is on)
    * @param {function} callback
    */
   function showAffiliateNotice(affiliate, originalUrl, cleanUrl, withOurAffiliate, callback) {
@@ -337,7 +337,8 @@
 
     document.body.appendChild(notice);
 
-    const duration = (_contentPrefs?.toastDuration || 15) * 1000;
+    const rawDuration = _contentPrefs?.toastDuration || 15;
+    const duration = Math.max(5, Math.min(60, rawDuration)) * 1000;
     _toastTimer = setTimeout(() => {
       _toastTimer = null;
       notice.remove();
