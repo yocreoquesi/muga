@@ -35,7 +35,7 @@
     for (const [rawKey, value] of parsed.searchParams) {
       const param = rawKey.toLowerCase();
       if (!REDIRECT_PARAMS.includes(param)) continue;
-      if (!value) continue;
+      if (!value || value.length > 2000) continue;
 
       let destination;
       try {

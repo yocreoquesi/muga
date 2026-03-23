@@ -64,7 +64,7 @@ async function showUrlPreview(prefs, lang) {
   // Skip on internal browser pages, new tabs, etc.
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url;
-  if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("moz-extension://") || url.startsWith("chrome-extension://")) return;
+  if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("moz-extension://") || url.startsWith("chrome-extension://") || url.startsWith("data:") || url.startsWith("blob:")) return;
 
   const section = document.getElementById("preview");
   section.hidden = false;
@@ -92,7 +92,7 @@ async function showUrlPreview(prefs, lang) {
   let domainRules = [];
   try {
     const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
-    domainRules = await resp.json();
+    if (resp.ok) domainRules = await resp.json();
   } catch (_) {}
 
   const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules);

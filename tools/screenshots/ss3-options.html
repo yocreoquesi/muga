@@ -258,26 +258,26 @@
       </div>
 
       <div class="opt-section">
-        <div class="opt-h2">Behaviour</div>
+        <div class="opt-h2">Affiliate settings</div>
         <div class="opt-card">
           <div class="opt-row">
             <div class="opt-row-label">
-              <strong>Inject our affiliate when none is present</strong>
-              <small>Only on stores with an active account — you pay the same price</small>
+              <strong>Inject our affiliate tag when a link has none</strong>
+              <small>Off by default. Enable here or during first setup. You always pay the same price.</small>
             </div>
             <div class="toggle-vis on"></div>
           </div>
           <div class="opt-row">
             <div class="opt-row-label">
-              <strong>Notify when a foreign affiliate is detected</strong>
-              <small>Non-intrusive toast — shows for 5 seconds</small>
+              <strong>Notify me when a third-party affiliate is detected</strong>
+              <small>Shows a non-intrusive toast with options — auto-dismisses in 15 seconds</small>
             </div>
             <div class="toggle-vis off"></div>
           </div>
           <div class="opt-row">
             <div class="opt-row-label">
-              <strong>Allow replacing foreign affiliate with ours</strong>
-              <small>Only available if notification is enabled and you opt in explicitly</small>
+              <strong>Allow replacing a third-party affiliate with ours</strong>
+              <small>Requires affiliate injection to be enabled</small>
             </div>
             <div class="toggle-vis off"></div>
           </div>
@@ -285,23 +285,20 @@
       </div>
 
       <div class="opt-section">
-        <div class="opt-h2">Language</div>
+        <div class="opt-h2">Features</div>
         <div class="opt-card">
           <div class="opt-row">
             <div class="opt-row-label">
-              <strong>Interface language</strong>
-              <small>Applied immediately across the extension</small>
+              <strong>Right-click → Copy clean link</strong>
+              <small>Alt+Shift+C also copies the clean URL of the current tab</small>
             </div>
-            <select class="lang-select">
-              <option selected>🇬🇧 English</option>
-              <option>🇪🇸 Español</option>
-            </select>
+            <div class="toggle-vis on"></div>
           </div>
         </div>
       </div>
 
       <div class="opt-section">
-        <div class="opt-h2">Blacklist — strip all params on these domains</div>
+        <div class="opt-h2">Blacklist — always strip on these domains</div>
         <div class="opt-card">
           <div class="list-section">
             <div class="list-items">
@@ -312,13 +309,12 @@
               <input class="add-input" placeholder="example.com or example.com::param::value" value="">
               <button class="add-btn">Add</button>
             </div>
-            <div class="hint">Format: <code>domain</code> to strip all params · <code>domain::param::value</code> to target a specific affiliate</div>
           </div>
         </div>
       </div>
 
       <div class="opt-section">
-        <div class="opt-h2">Whitelist — protect these affiliate links</div>
+        <div class="opt-h2">Whitelist — protected tags &amp; domains</div>
         <div class="opt-card">
           <div class="list-section">
             <div class="list-items">
@@ -328,27 +324,53 @@
               <input class="add-input" placeholder="amazon.es::tag::creator-21" value="">
               <button class="add-btn">Add</button>
             </div>
-            <div class="hint">Whitelisted affiliates are never touched and never trigger a notification.</div>
           </div>
         </div>
       </div>
 
       <div class="opt-section">
-        <div class="opt-h2">Supported stores</div>
+        <div class="opt-h2">Language</div>
         <div class="opt-card">
-          <div class="stores-grid">
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon ES</div><div class="store-domains">amazon.es</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon DE</div><div class="store-domains">amazon.de</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon FR</div><div class="store-domains">amazon.fr</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon IT</div><div class="store-domains">amazon.it</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon UK</div><div class="store-domains">amazon.co.uk</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Amazon US</div><div class="store-domains">amazon.com</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">Booking.com</div><div class="store-domains">booking.com</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">AliExpress</div><div class="store-domains">aliexpress.com</div></div></div>
-            <div class="store-chip"><div class="store-dot dot-pending"></div><div><div class="store-name">eBay ES/UK/DE</div><div class="store-domains">ebay.*</div></div></div>
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Display language</strong>
+              <small>Affects the popup and settings page</small>
+            </div>
+            <select class="lang-select">
+              <option selected>English</option>
+              <option>Español</option>
+            </select>
           </div>
         </div>
       </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Statistics</div>
+        <div class="opt-card">
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Lifetime stats</strong>
+              <small>URLs cleaned, params removed, affiliates spotted</small>
+            </div>
+            <button class="add-btn">Reset stats</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="opt-section">
+        <div class="opt-h2">Advanced</div>
+        <div class="opt-card">
+          <div class="opt-row">
+            <div class="opt-row-label">
+              <strong>Show advanced settings</strong>
+              <small>Fine-grained control over URL cleaning, privacy, and developer tools</small>
+            </div>
+            <div class="toggle-vis off"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:#888;margin-top:16px;">MUGA 1.6.0</div>
     </div>
   </div>
 </body>

@@ -168,6 +168,7 @@ const context = await chromium.launchPersistentContext('', {
     `--window-size=${WIDTH},${HEIGHT}`,
     '--no-sandbox',
     '--disable-dev-shm-usage',
+    '--disable-gpu',
     // Suppress the "Chrome is being controlled by automated software" bar
     '--disable-infobars',
     // Keep the UI clean for screenshots
