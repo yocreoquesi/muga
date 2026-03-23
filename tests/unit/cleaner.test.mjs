@@ -1555,12 +1555,12 @@ describe("N9 — processUrl edge cases", () => {
     assert.equal(cleanUrl, raw);
   });
 
-  test("URL with 100+ tracking params — all known params stripped", () => {
+  test("URL with 100+ tracking params — all stripped via prefix match and exact match", () => {
     const params = [];
     for (let i = 0; i < 100; i++) {
       params.push(`utm_source_${i}=val`);
     }
-    // Add some actually known tracking params
+    // Add some known tracking params
     params.push("utm_source=bulk", "fbclid=abc", "gclid=xyz", "msclkid=def");
     const raw = `https://example.com/page?${params.join("&")}`;
     const { removedTracking, junkRemoved } = processUrl(raw, PREFS);
@@ -1568,7 +1568,8 @@ describe("N9 — processUrl edge cases", () => {
     assert.ok(removedTracking.includes("fbclid"), "fbclid must be stripped");
     assert.ok(removedTracking.includes("gclid"), "gclid must be stripped");
     assert.ok(removedTracking.includes("msclkid"), "msclkid must be stripped");
-    assert.equal(junkRemoved, 4, "only the 4 known tracking params should be removed");
+    // utm_source_0..99 also stripped via utm_* prefix match
+    assert.equal(junkRemoved, 104, "100 utm_source_N + 4 exact-match params");
   });
 
   test("URL with encoded params (utm_source=%E2%9C%93) — param name matched, stripped", () => {
