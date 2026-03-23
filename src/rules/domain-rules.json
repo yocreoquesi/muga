@@ -37,33 +37,33 @@
   },
   {
     "domain": "amazon.com",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
-    "note": "Search query, category, sort and pagination — functional"
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
   },
   {
     "domain": "amazon.es",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
-    "note": "Search query, category, sort and pagination — functional"
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
   },
   {
     "domain": "amazon.de",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
-    "note": "Search query, category, sort and pagination — functional"
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
   },
   {
     "domain": "amazon.fr",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
-    "note": "Search query, category, sort and pagination — functional"
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
   },
   {
     "domain": "amazon.co.uk",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
-    "note": "Search query, category, sort and pagination — functional"
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
   },
   {
     "domain": "amazon.it",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page"],
-    "note": "Search query, category, sort and pagination — functional"
+    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
   },
   {
     "domain": "ebay.com",
