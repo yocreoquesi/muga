@@ -66,30 +66,6 @@ export async function setPrefs(partial) {
   }
 }
 
-export async function addToBlacklist(entry) {
-  const prefs = await getPrefs();
-  if (!prefs.blacklist.includes(entry)) {
-    await setPrefs({ blacklist: [...prefs.blacklist, entry] });
-  }
-}
-
-export async function removeFromBlacklist(entry) {
-  const prefs = await getPrefs();
-  await setPrefs({ blacklist: prefs.blacklist.filter(e => e !== entry) });
-}
-
-export async function addToWhitelist(entry) {
-  const prefs = await getPrefs();
-  if (!prefs.whitelist.includes(entry)) {
-    await setPrefs({ whitelist: [...prefs.whitelist, entry] });
-  }
-}
-
-export async function removeFromWhitelist(entry) {
-  const prefs = await getPrefs();
-  await setPrefs({ whitelist: prefs.whitelist.filter(e => e !== entry) });
-}
-
 // ── Local: stats and nudge state ─────────────────────────────────────────────
 
 const STAT_DEFAULTS = {

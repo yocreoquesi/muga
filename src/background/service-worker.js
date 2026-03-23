@@ -59,6 +59,19 @@ function getPrefsWithCache() {
   return prefsFetchPromise;
 }
 
+// --- Input validation helpers ---
+
+/** Validates a blacklist/whitelist entry: domain, domain::disabled, or domain::param::value */
+function isValidListEntry(entry) {
+  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
+  const parts = entry.split("::");
+  if (parts.length > 3) return false;
+  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
+  if (parts.length === 2 && parts[1] !== "disabled") return false;
+  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
+  return true;
+}
+
 // --- DNR sync helpers ---
 
 const DYNAMIC_RULE_ID = 1000;
@@ -72,7 +85,9 @@ async function syncCustomParamsDNR(customParams) {
       });
       return;
     }
-    const normalized = customParams.map(p => p.trim().toLowerCase());
+    const normalized = customParams
+      .filter(p => /^[a-zA-Z0-9_.-]+$/.test(p.trim()))
+      .map(p => p.trim().toLowerCase());
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [DYNAMIC_RULE_ID],
       addRules: [{
@@ -105,7 +120,7 @@ async function applyDnrState(prefs) {
 }
 
 // Matches http/https URLs in arbitrary text — used by the "selection" context menu handler
-const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
 // --- Context menu helpers ---
 
@@ -190,8 +205,13 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
 
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Validate that messages come from our own extension
+  if (sender.id !== chrome.runtime.id) return false;
+
   if (message.type === "getPrefs") {
-    getPrefsWithCache().then(sendResponse);
+    getPrefsWithCache()
+      .then(sendResponse)
+      .catch(() => sendResponse(null));
     return true;
   }
 
@@ -201,50 +221,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         sendResponse(result);
+      })
+      .catch(err => {
+        console.error("[MUGA] PROCESS_URL handler failed:", err);
+        sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null });
       });
     return true; // keep the channel open for the async response
   }
 
   if (message.type === "ADD_TO_WHITELIST") {
     const entry = message.tag;
-    if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) {
+    if (!isValidListEntry(entry)) {
       sendResponse({ ok: false });
       return true;
     }
     getPrefsWithCache().then(async prefs => {
       if (!prefs.whitelist.includes(entry)) {
-        await setPrefs({ whitelist: [...prefs.whitelist, entry] });
         cachedPrefs = null;
+        await setPrefs({ whitelist: [...prefs.whitelist, entry] });
       }
       sendResponse({ ok: true });
+    }).catch(err => {
+      console.error("[MUGA] ADD_TO_WHITELIST handler failed:", err);
+      sendResponse({ ok: false });
     });
     return true;
   }
 
   if (message.type === "ADD_TO_BLACKLIST") {
     const entry = message.tag;
-    if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) {
+    if (!isValidListEntry(entry)) {
       sendResponse({ ok: false });
       return true;
     }
     getPrefsWithCache().then(async prefs => {
       if (!prefs.blacklist.includes(entry)) {
-        await setPrefs({ blacklist: [...prefs.blacklist, entry] });
         cachedPrefs = null;
+        await setPrefs({ blacklist: [...prefs.blacklist, entry] });
       }
       sendResponse({ ok: true });
+    }).catch(err => {
+      console.error("[MUGA] ADD_TO_BLACKLIST handler failed:", err);
+      sendResponse({ ok: false });
     });
     return true;
   }
 
   if (message.type === "GET_DEBUG_LOG") {
-    sessionStorage.get({ debugLog: [] }).then(data => sendResponse({ log: data.debugLog }));
+    sessionStorage.get({ debugLog: [] })
+      .then(data => sendResponse({ log: data.debugLog }))
+      .catch(() => sendResponse({ log: [] }));
     return true;
   }
 
   // exposed for future dev-tools use
   if (message.type === "CLEAR_DEBUG_LOG") {
-    sessionStorage.set({ debugLog: [] }).then(() => sendResponse({ ok: true }));
+    sessionStorage.set({ debugLog: [] })
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
     return true;
   }
 
@@ -371,7 +405,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
           for (const match of matches) {
             const candidate = match[0].replace(/[.,;:!?)\]]+$/, "");
             const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
-            if (cleaned.cleanUrl !== candidate) result = result.split(candidate).join(cleaned.cleanUrl);
+            if (cleaned.cleanUrl !== candidate) result = result.replaceAll(candidate, cleaned.cleanUrl);
           }
           chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result });
         })();

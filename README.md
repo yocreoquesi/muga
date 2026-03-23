@@ -4,7 +4,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.6.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-328_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-367_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # Every link. Cleaned. Before it loads.
 
@@ -35,7 +35,6 @@ Domain-specific rules for **54 sites** preserve functional query params (search 
 
 ## Before / after
 
-<!-- screenshot-needs-retake: ss1-before-after — captured on v1.2.x UI, retake once extension is loaded from dist/ -->
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
 <details>
@@ -101,14 +100,12 @@ After:  https://www.ebay.es/itm/123456789
 
 ## The popup
 
-<!-- screenshot-needs-retake: ss2-popup — captured on v1.2.x UI, retake once extension is loaded from dist/ -->
 ![Popup open on Amazon](docs/assets/screenshot-ss2-popup.png)
 
 ---
 
 ## Settings
 
-<!-- screenshot-needs-retake: ss3-options — captured on v1.2.x UI, retake once extension is loaded from dist/ -->
 ![Options page](docs/assets/screenshot-ss3-options.png)
 
 ---

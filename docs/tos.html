@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA — Terms of Use</title>
+  <style>
+    :root {
+      --bg: #fff; --text: #1a1a1a; --text2: #555; --accent: #2563eb;
+      --border: rgba(0,0,0,0.08); --bg2: #f7f7f7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #111; --text: #f0f0f0; --text2: #999; --bg2: #1c1c1e; --border: rgba(255,255,255,0.08); }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      max-width: 680px; margin: 0 auto; padding: 48px 24px; font-size: 15px; line-height: 1.7; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .meta { color: var(--text2); font-size: 13px; margin-bottom: 40px; }
+    h2 { font-size: 16px; font-weight: 600; margin: 32px 0 10px; }
+    p { margin-bottom: 14px; color: var(--text2); }
+    ul { margin: 8px 0 14px 20px; color: var(--text2); }
+    li { margin-bottom: 6px; }
+    .highlight {
+      background: var(--bg2); border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0;
+      font-size: 14px; color: var(--text);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    .placeholder-notice {
+      background: #fef3c7; border: 1px solid #d97706; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 32px; font-size: 13px; color: #92400e;
+    }
+    @media (prefers-color-scheme: dark) {
+      .placeholder-notice { background: #3b2100; border-color: #d97706; color: #fcd34d; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="placeholder-notice">
+    ⚠️ <strong>Draft — pending legal review.</strong> This document will be finalized before the extension is published on the Chrome Web Store and Firefox AMO.
+  </div>
+
+  <h1>Terms of Use</h1>
+  <p class="meta">MUGA — Make URLs Great Again · Version 1.0 · Last updated: 2026-03-22</p>
+
+  <div class="highlight">
+    MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GNU General Public License v3</a>. All processing happens locally in your browser — no data is ever sent to any server.
+  </div>
+
+  <h2>1. What MUGA does</h2>
+  <p>MUGA is a browser extension that:</p>
+  <ul>
+    <li>Strips tracking parameters (UTMs, click IDs, and similar) from URLs before pages load</li>
+    <li>Redirects Google AMP pages to their canonical article URLs</li>
+    <li>Blocks <code>&lt;a ping&gt;</code> tracking beacons on link clicks</li>
+    <li>Unwraps redirect-wrapper URLs to take you directly to the destination</li>
+    <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you opt in</li>
+  </ul>
+
+  <h2>2. Affiliate model</h2>
+  <p>MUGA is maintained by a small team. To keep the project alive and free, we participate in affiliate programs with a small number of stores (Amazon, Booking.com, AliExpress, and others).</p>
+  <p>If you opt in during setup, MUGA will add our affiliate tag to links that have <strong>no existing affiliate tag</strong>. This has no effect on the price you pay — affiliate tags tell the store who referred you, nothing more.</p>
+  <ul>
+    <li>MUGA <strong>never replaces</strong> an affiliate tag that is already present in a link</li>
+    <li>MUGA <strong>never replaces</strong> a creator's or another affiliate's tag with ours</li>
+    <li>Affiliate injection only fires on explicitly supported stores listed in the source code</li>
+    <li>You can disable affiliate injection at any time in Settings</li>
+  </ul>
+
+  <h2>3. No data collection</h2>
+  <p>MUGA does not collect, transmit, or store any browsing data. All URL processing happens exclusively inside your browser. We have no servers, no analytics, and no telemetry of any kind. See our <a href="privacy.html">Privacy Policy</a> for full details.</p>
+
+  <h2>4. License</h2>
+  <p>MUGA is released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GNU General Public License v3 (GPL v3)</a>. You are free to use, study, modify, and distribute MUGA, provided that any derivative work is also released under GPL v3. The source code is available at <a href="https://github.com/yocreoquesi/muga" target="_blank">github.com/yocreoquesi/muga</a>.</p>
+
+  <h2>5. Disclaimer</h2>
+  <p>MUGA is provided "as is", without warranty of any kind. The authors are not liable for any damages arising from the use of this software. Affiliate commissions are not guaranteed — they depend on the affiliate programs of third-party stores and are subject to change.</p>
+
+  <h2>6. Changes to these terms</h2>
+  <p>If we make material changes to these terms, the extension will ask you to review and re-accept them on next use. The current version of this document is always available inside the extension.</p>
+
+  <h2>7. Contact</h2>
+  <p>Questions or concerns? Open an issue at <a href="https://github.com/yocreoquesi/muga/issues" target="_blank">github.com/yocreoquesi/muga/issues</a>.</p>
+
+</body>
+</html>

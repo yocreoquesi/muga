@@ -2,96 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MUGA — Settings</title>
-  <style>
-    :root {
-      --bg: #fff; --bg2: #f5f5f5; --border: rgba(0,0,0,0.08);
-      --text: #1a1a1a; --text2: #666; --accent: #2563eb;
-      --danger: #dc2626; --success: #16a34a;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root { --bg: #1c1c1e; --bg2: #2c2c2e; --border: rgba(255,255,255,0.08);
-        --text: #f0f0f0; --text2: #999; }
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg); color: var(--text); max-width: 640px;
-      margin: 0 auto; padding: 32px 24px; font-size: 14px; }
-    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
-    .subtitle { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
-    section { margin-bottom: 28px; }
-    h2 { font-size: 13px; font-weight: 500; color: var(--text2);
-      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-    .card { background: var(--bg2); border-radius: 10px;
-      border: 0.5px solid var(--border); overflow: hidden; }
-    .row { display: flex; align-items: center; justify-content: space-between;
-      padding: 13px 16px; border-bottom: 0.5px solid var(--border); gap: 12px; }
-    .row:last-child { border-bottom: none; }
-    .row-label { flex: 1; }
-    .row-label strong { display: block; font-size: 13.5px; font-weight: 500; }
-    .row-label small { color: var(--text2); font-size: 12px; display: block; margin-top: 2px; }
-    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
-    .toggle input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; inset: 0; background: #d1d5db;
-      border-radius: 20px; transition: background .2s; cursor: pointer; }
-    .slider::before { content: ''; position: absolute; width: 14px; height: 14px;
-      left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform .2s; }
-    .toggle input:checked + .slider { background: var(--accent); }
-    .toggle input:checked + .slider::before { transform: translateX(16px); }
-    .toggle input:focus-visible + .slider {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-    .list-section { padding: 12px 16px; }
-    .list-items { margin-bottom: 10px; min-height: 20px; }
-    .list-item { display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 10px; background: var(--bg); border-radius: 6px;
-      margin-bottom: 5px; font-size: 12.5px; font-family: monospace; }
-    .del-btn { background: none; border: none; color: var(--danger);
-      cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
-    .add-row { display: flex; gap: 8px; }
-    .add-row input { flex: 1; padding: 7px 10px; border-radius: 6px;
-      border: 0.5px solid var(--border); background: var(--bg);
-      color: var(--text); font-size: 13px; font-family: monospace; }
-    .add-btn { padding: 7px 14px; border-radius: 6px;
-      border: 0.5px solid var(--border); background: transparent;
-      color: var(--text); font-size: 13px; cursor: pointer; }
-    .add-btn:hover { background: var(--bg2); }
-    .hint { font-size: 11.5px; color: var(--text2); margin-top: 8px; line-height: 1.5; }
-    .empty { font-size: 12px; color: var(--text2); font-style: italic; }
-    /* Stores collapsible */
-    .stores-summary {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; cursor: pointer; list-style: none;
-      font-size: 13px; font-weight: 600; color: var(--text);
-      user-select: none;
-    }
-    .stores-summary::-webkit-details-marker { display: none; }
-    .stores-summary::after { content: '›'; font-size: 16px; color: var(--text2); transition: transform 0.2s; }
-    .stores-details[open] .stores-summary::after { transform: rotate(90deg); }
-    .stores-count { font-weight: 400; font-size: 11.5px; color: var(--text2); margin-left: 6px; }
-    /* Stores grid */
-    .stores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; padding: 4px 16px 8px; }
-    .store-chip { display: flex; align-items: center; gap: 8px;
-      padding: 8px 10px; background: var(--bg); border-radius: 8px;
-      border: 0.5px solid var(--border); font-size: 12.5px; }
-    .store-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #d1d5db; }
-    .store-dot.active { background: var(--success); }
-    .store-name { font-weight: 500; }
-    .store-param { font-size: 11px; color: var(--text2); font-family: monospace; }
-    /* Language select */
-    .lang-select {
-      padding: 7px 10px; border-radius: 8px; font-size: 13px;
-      border: 0.5px solid var(--border); background: var(--bg);
-      color: var(--text); cursor: pointer; min-width: 120px;
-    }
-    /* Version */
-    .version-info { text-align: center; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
-    /* Footer */
-    .footer-links { text-align: center; padding-top: 4px; padding-bottom: 8px; }
-    .footer-links a { font-size: 12px; color: var(--text2); text-decoration: none; }
-    .footer-links a:hover { color: var(--accent); }
-  </style>
+  <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <h1 data-i18n="opts_title">Settings</h1>
@@ -142,74 +55,14 @@
   </section>
 
   <section>
-    <h2 data-i18n="section_url_cleaning">URL Cleaning</h2>
+    <h2 data-i18n="section_features">Features</h2>
     <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_dnr_label">Strip tracking parameters before navigation</strong>
-          <small data-i18n="row_dnr_hint">Uses browser-native rules to clean URLs from the address bar, bookmarks, and external apps</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="dnr-enabled" aria-label="Strip tracking parameters before navigation"><span class="slider"></span></label>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
-          <small data-i18n="row_unwrap_hint">Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="unwrap-redirects" aria-label="Unwrap redirect wrappers"><span class="slider"></span></label>
-      </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_context_menu_label">Right-click → Copy clean link</strong>
           <small data-i18n="row_context_menu_hint">Alt+Shift+C also copies the clean URL of the current tab</small>
         </div>
         <label class="toggle"><input type="checkbox" id="context-menu-toggle" aria-label="Right-click copy clean link"><span class="slider"></span></label>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 data-i18n="section_privacy">Privacy</h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_pings_label">Block &lt;a ping&gt; tracking beacons</strong>
-          <small data-i18n="row_pings_hint">Removes ping attributes from links so the browser doesn't send tracking beacons on click</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="block-pings" aria-label="Block tracking beacons"><span class="slider"></span></label>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 data-i18n="section_redirects">Redirect handling</h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_amp_label">Redirect AMP pages to canonical URL</strong>
-          <small data-i18n="row_amp_hint">Replaces Google AMP links with the original article URL</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="amp-redirect" aria-label="Redirect AMP pages to canonical URL"><span class="slider"></span></label>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 data-i18n="section_tracking_categories">Tracking categories</h2>
-    <div class="card" id="categories-card"></div>
-    <p class="hint" style="margin-top:8px" data-i18n="categories_hint"></p>
-  </section>
-
-  <section>
-    <h2 data-i18n="section_custom_params">Custom tracking params — always stripped everywhere</h2>
-    <div class="card">
-      <div class="list-section">
-        <div class="list-items" id="custom-params-items"></div>
-        <div class="add-row">
-          <input id="cp-input" type="text" data-i18n-placeholder="cp_placeholder">
-          <button class="add-btn" id="cp-add-btn" data-i18n="add_btn">+ Add</button>
-        </div>
-        <p class="hint" data-i18n="cp_hint"></p>
       </div>
     </div>
   </section>
@@ -271,73 +124,122 @@
     </div>
   </section>
 
-  <section>
-    <h2 data-i18n="section_data">Import / Export</h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="export_label">Export settings</strong>
-        </div>
-        <button class="add-btn" id="export-btn" data-i18n="export_btn">Export settings</button>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="import_label">Import settings</strong>
-        </div>
-        <button class="add-btn" id="import-btn" data-i18n="import_btn">Import settings</button>
-        <input type="file" id="import-file" accept=".json" style="display:none">
-      </div>
-    </div>
-  </section>
-
   <section id="section-dev">
-    <h2 data-i18n="section_dev">Developer</h2>
+    <h2 data-i18n="section_advanced">Advanced</h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <strong data-i18n="dev_mode_label">Developer mode</strong>
-          <small data-i18n="dev_mode_hint">Enables advanced tools for testing and debugging</small>
+          <strong data-i18n="advanced_mode_label">Show advanced settings</strong>
+          <small data-i18n="advanced_mode_hint">Fine-grained control over URL cleaning, privacy, and developer tools</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="dev-mode" aria-label="Enable developer mode"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="dev-mode" aria-label="Show advanced settings"><span class="slider"></span></label>
       </div>
     </div>
-    <div class="card" id="dev-tools-card" style="margin-top:10px;display:none;">
-      <!-- 1. Preview notification -->
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="dev_preview_notify_label">Preview affiliate notification</strong>
-          <small data-i18n="dev_preview_notify_hint">See how the toast looks when a third-party affiliate is detected</small>
+    <div id="dev-tools-card" style="display:none;">
+      <!-- Advanced: URL cleaning -->
+      <div class="card" style="margin-top:10px;">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_dnr_label">Strip tracking parameters before navigation</strong>
+            <small data-i18n="row_dnr_hint">Uses browser-native rules to clean URLs from the address bar, bookmarks, and external apps</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="dnr-enabled" aria-label="Strip tracking parameters before navigation"><span class="slider"></span></label>
         </div>
-        <button class="add-btn" id="dev-preview-notify-btn" data-i18n="dev_preview_notify_btn">Preview</button>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
+            <small data-i18n="row_unwrap_hint">Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="unwrap-redirects" aria-label="Unwrap redirect wrappers"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_pings_label">Block &lt;a ping&gt; tracking beacons</strong>
+            <small data-i18n="row_pings_hint">Removes ping attributes from links so the browser doesn't send tracking beacons on click</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="block-pings" aria-label="Block tracking beacons"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_amp_label">Redirect AMP pages to canonical URL</strong>
+            <small data-i18n="row_amp_hint">Replaces Google AMP links with the original article URL</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="amp-redirect" aria-label="Redirect AMP pages to canonical URL"><span class="slider"></span></label>
+        </div>
       </div>
-      <!-- 2. Show onboarding -->
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="dev_onboarding_label">Show welcome screen</strong>
-          <small data-i18n="dev_onboarding_hint">Re-open the first-run onboarding page</small>
+
+      <!-- Advanced: Tracking categories -->
+      <h2 style="margin-top:16px" data-i18n="section_tracking_categories">Tracking categories</h2>
+      <div class="card" id="categories-card"></div>
+      <p class="hint" style="margin-top:8px" data-i18n="categories_hint"></p>
+
+      <!-- Advanced: Custom tracking params -->
+      <h2 style="margin-top:16px" data-i18n="section_custom_params">Custom tracking params — always stripped everywhere</h2>
+      <div class="card">
+        <div class="list-section">
+          <div class="list-items" id="custom-params-items"></div>
+          <div class="add-row">
+            <input id="cp-input" type="text" data-i18n-placeholder="cp_placeholder">
+            <button class="add-btn" id="cp-add-btn" data-i18n="add_btn">+ Add</button>
+          </div>
+          <p class="hint" data-i18n="cp_hint"></p>
         </div>
-        <button class="add-btn" id="dev-show-onboarding-btn" data-i18n="dev_onboarding_btn">Open</button>
       </div>
-      <!-- 3. Debug log export -->
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="dev_log_label">Debug log</strong>
-          <small data-i18n="dev_log_hint">Download a log of errors and warnings from the current session</small>
+
+      <!-- Import / Export -->
+      <h2 style="margin-top:16px" data-i18n="section_data">Import / Export</h2>
+      <div class="card">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="export_label">Export settings</strong>
+          </div>
+          <button class="add-btn" id="export-btn" data-i18n="export_btn">Export settings</button>
         </div>
-        <button class="add-btn" id="dev-export-log-btn" data-i18n="dev_log_btn">Export log</button>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="import_label">Import settings</strong>
+          </div>
+          <button class="add-btn" id="import-btn" data-i18n="import_btn">Import settings</button>
+          <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
       </div>
-      <!-- 4. URL tester -->
-      <div class="list-section" style="border-top:0.5px solid var(--border);">
-        <strong style="font-size:13.5px;font-weight:500;display:block;margin-bottom:6px;" data-i18n="dev_url_tester_label">URL tester</strong>
-        <small style="color:var(--text2);font-size:12px;display:block;margin-bottom:10px;" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
-        <div class="add-row">
-          <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder">
-          <button class="add-btn" id="dev-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
+
+      <!-- Developer tools -->
+      <h2 style="margin-top:16px" data-i18n="section_dev_tools">Developer tools</h2>
+      <div class="card">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="dev_preview_notify_label">Preview affiliate notification</strong>
+            <small data-i18n="dev_preview_notify_hint">See how the toast looks when a third-party affiliate is detected</small>
+          </div>
+          <button class="add-btn" id="dev-preview-notify-btn" data-i18n="dev_preview_notify_btn">Preview</button>
         </div>
-        <div id="dev-url-result" style="margin-top:10px;display:none;">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;" data-i18n="dev_url_result_label">Result</div>
-          <div id="dev-url-clean" style="font-family:monospace;font-size:12px;color:#2563eb;word-break:break-all;margin-bottom:6px;"></div>
-          <div id="dev-url-removed" style="font-size:11px;color:var(--text2);"></div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="dev_onboarding_label">Show welcome screen</strong>
+            <small data-i18n="dev_onboarding_hint">Re-open the first-run onboarding page</small>
+          </div>
+          <button class="add-btn" id="dev-show-onboarding-btn" data-i18n="dev_onboarding_btn">Open</button>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="dev_log_label">Debug log</strong>
+            <small data-i18n="dev_log_hint">Download a log of errors and warnings from the current session</small>
+          </div>
+          <button class="add-btn" id="dev-export-log-btn" data-i18n="dev_log_btn">Export log</button>
+        </div>
+        <div class="list-section" style="border-top:0.5px solid var(--border);">
+          <strong style="font-size:13.5px;font-weight:500;display:block;margin-bottom:6px;" data-i18n="dev_url_tester_label">URL tester</strong>
+          <small style="color:var(--text2);font-size:12px;display:block;margin-bottom:10px;" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
+          <div class="add-row">
+            <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder">
+            <button class="add-btn" id="dev-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
+          </div>
+          <div id="dev-url-result" style="margin-top:10px;display:none;">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;" data-i18n="dev_url_result_label">Result</div>
+            <div id="dev-url-clean" style="font-family:monospace;font-size:12px;color:#2563eb;word-break:break-all;margin-bottom:6px;"></div>
+            <div id="dev-url-removed" style="font-size:11px;color:var(--text2);"></div>
+          </div>
         </div>
       </div>
     </div>
