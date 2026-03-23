@@ -3,12 +3,12 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-380_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-384_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # Every link. Cleaned. Before it loads.
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 260+ more. MUGA strips them — automatically, before the page renders. **Zero clicks. Zero configuration. Never replaces a creator's affiliate tag.**
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 420+ more. MUGA strips them — automatically, before the page renders. **Zero clicks. Zero configuration. Never replaces a creator's affiliate tag.**
 
 [Install from source](#installation) · [View source](https://github.com/yocreoquesi/muga) · [Privacy policy](https://yocreoquesi.github.io/muga/)
 
