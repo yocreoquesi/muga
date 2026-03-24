@@ -34,16 +34,6 @@
         </div>
         <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-label="Strip all third-party affiliate parameters"><span class="slider"></span></label>
       </div>
-      <details class="stores-details">
-        <summary class="stores-summary">
-          <span data-i18n="section_stores">Affiliate stores</span>
-          <span class="stores-count" id="stores-count"></span>
-        </summary>
-        <div class="stores-grid" id="stores-grid"></div>
-        <div style="padding: 4px 16px 12px">
-          <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active. Grey = pending registration.</p>
-        </div>
-      </details>
     </div>
   </section>
 
@@ -129,6 +119,20 @@
       </div>
     </div>
     <div id="dev-tools-card" style="display:none;">
+      <!-- Advanced: Affiliate stores -->
+      <div class="card" style="margin-top:10px;">
+        <details class="stores-details">
+          <summary class="stores-summary">
+            <span data-i18n="section_stores">Affiliate stores</span>
+            <span class="stores-count" id="stores-count"></span>
+          </summary>
+          <div class="stores-grid" id="stores-grid"></div>
+          <div style="padding: 4px 16px 12px">
+            <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active. Grey = pending registration.</p>
+          </div>
+        </details>
+      </div>
+
       <!-- Advanced: URL cleaning -->
       <div class="card" style="margin-top:10px;">
         <div class="row">
