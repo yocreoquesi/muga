@@ -578,18 +578,49 @@ function initDevTools() {
 
       const dismissBtn = document.createElement("button");
       dismissBtn.style.cssText = btnStyle + ";color:#666";
-      dismissBtn.textContent = "Dismiss";
+      dismissBtn.textContent = `Dismiss (${localData.nudgeShownCount}/3)`;
+
+      const resetBtn = document.createElement("button");
+      resetBtn.style.cssText = btnStyle + ";color:#f59e0b;font-size:10px";
+      resetBtn.textContent = "Reset counters";
 
       btnRow.appendChild(rateBtn);
       btnRow.appendChild(dismissBtn);
+      btnRow.appendChild(resetBtn);
       notice.appendChild(title);
       notice.appendChild(info);
       notice.appendChild(btnRow);
       document.body.appendChild(notice);
 
-      const timer = setTimeout(() => notice.remove(), 10000);
-      notice.querySelectorAll("button").forEach(btn => {
-        btn.addEventListener("click", () => { clearTimeout(timer); notice.remove(); });
+      const timer = setTimeout(() => notice.remove(), 15000);
+
+      rateBtn.addEventListener("click", () => {
+        clearTimeout(timer);
+        const isFirefox = navigator.userAgent.includes("Firefox");
+        const storeUrl = isFirefox
+          ? "https://addons.mozilla.org/firefox/addon/muga/"
+          : "https://chromewebstore.google.com/detail/muga/";
+        chrome.tabs.create({ url: storeUrl });
+        notice.remove();
+      });
+
+      dismissBtn.addEventListener("click", async () => {
+        const fresh = await chrome.storage.local.get({ nudgeShownCount: 0 });
+        const newCount = fresh.nudgeShownCount + 1;
+        if (newCount > 3) {
+          await chrome.storage.local.set({ nudgeShownCount: 0, nudgeDismissed: false, nudgeLastShown: 0 });
+          info.textContent = "Counters reset to 0. Ready for fresh testing.";
+        } else {
+          await chrome.storage.local.set({ nudgeShownCount: newCount, nudgeLastShown: Date.now() });
+          info.textContent = `Status: dismissed=false, shown=${newCount}/3, lastShown=now`;
+        }
+        dismissBtn.textContent = `Dismiss (${newCount > 3 ? 0 : newCount}/3)`;
+      });
+
+      resetBtn.addEventListener("click", async () => {
+        await chrome.storage.local.set({ nudgeShownCount: 0, nudgeDismissed: false, nudgeLastShown: 0 });
+        info.textContent = "All nudge counters reset. Ready for testing.";
+        dismissBtn.textContent = "Dismiss (0/3)";
       });
     });
   }
