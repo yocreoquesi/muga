@@ -148,7 +148,14 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   const parsedBlacklist = prefs._parsedBlacklist || blacklist.map(parseListEntry);
   const parsedWhitelist = prefs._parsedWhitelist || whitelist.map(parseListEntry);
 
-  // 0. Per-domain disable — user wants MUGA to do nothing on this domain
+  // 0a. OAuth / auth / payment flow exemption — never touch params on these paths
+  const lowerPath = url.pathname.toLowerCase();
+  const AUTH_PATH_SEGMENTS = ["/oauth", "/authorize", "/callback", "/auth/", "/signin", "/login/", "/sso/", "/saml", "/checkout", "/payment", "/pay/"];
+  if (AUTH_PATH_SEGMENTS.some(seg => lowerPath.includes(seg))) {
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  }
+
+  // 0b. Per-domain disable — user wants MUGA to do nothing on this domain
   const domainDisabled = parsedBlacklist.some(
     e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain)
   );

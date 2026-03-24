@@ -139,15 +139,10 @@ async function showUrlPreview(prefs, lang) {
     document.getElementById("preview-before").textContent = url;
     document.getElementById("preview-after").textContent = result.cleanUrl;
 
-    // Show which params were removed (#85)
+    // Show which params were removed — full cleaning receipt
     if (result.removedTracking?.length > 0) {
       const removedEl = document.getElementById("preview-removed");
-      const MAX = 4;
-      const shown = result.removedTracking.slice(0, MAX);
-      const extra = result.removedTracking.length - MAX;
-      let label = `${t("removed_params_label", lang)} ${shown.join(", ")}`;
-      if (extra > 0) label += ` +${extra}`;
-      removedEl.textContent = label;
+      removedEl.textContent = `${t("removed_params_label", lang)} ${result.removedTracking.join(", ")}`;
       removedEl.hidden = false;
     }
   }
