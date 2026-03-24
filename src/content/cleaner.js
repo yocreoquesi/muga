@@ -45,7 +45,8 @@
   });
 
   // Handle clipboard copy requests from the service worker (context menu "Copy clean link")
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (sender.id !== chrome.runtime.id) return false;
     if (message.type === "GET_AND_COPY_CLEAN_SELECTION") {
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) { sendResponse({ ok: false }); return true; }
@@ -101,7 +102,7 @@
         navigator.clipboard.writeText(finalText)
           .then(() => sendResponse({ ok: true }))
           .catch(() => sendResponse({ ok: false }));
-      });
+      }).catch(() => sendResponse({ ok: false }));
       return true;
     }
 
@@ -258,6 +259,10 @@
    * Navigates to the given URL, preserving new-tab behaviour when needed.
    */
   function navigate(url, newTab) {
+    try {
+      const u = new URL(url);
+      if (u.protocol !== "http:" && u.protocol !== "https:") return;
+    } catch { return; }
     if (newTab) {
       window.open(url, "_blank");
     } else {
@@ -317,18 +322,21 @@
     allowBtn.dataset.choice = "original";
     allowBtn.style.cssText = btnStyle;
     allowBtn.textContent = s.toast_allow;
+    allowBtn.setAttribute("aria-label", s.toast_allow);
     btnDiv.appendChild(allowBtn);
 
     const blockBtn = document.createElement("button");
     blockBtn.dataset.choice = "clean";
     blockBtn.style.cssText = btnStyle;
     blockBtn.textContent = s.toast_block;
+    blockBtn.setAttribute("aria-label", s.toast_block);
     btnDiv.appendChild(blockBtn);
 
     const dismissDiv = document.createElement("button");
     dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
     dismissDiv.id = "muga-dismiss";
     dismissDiv.textContent = s.toast_dismiss;
+    dismissDiv.setAttribute("aria-label", s.toast_dismiss);
 
     notice.appendChild(titleDiv);
     notice.appendChild(msgDiv);
@@ -356,12 +364,12 @@
           // can match it correctly against the affiliate patterns (#229)
           const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
-          chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag });
+          chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag }).catch(() => {});
         } else if (choice === "clean") {
           // "Block" — add to blacklist in domain::param::value format (#229)
           const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
-          chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag });
+          chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag }).catch(() => {});
         }
         callback(choice);
       });
@@ -385,6 +393,7 @@
     if (_contentPrefsPending) return _contentPrefsPending;
     _contentPrefsPending = new Promise(resolve => {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+        void chrome.runtime.lastError;
         _contentPrefs = prefs;
         _contentPrefsPending = null;
         resolve(prefs);

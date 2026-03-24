@@ -31,13 +31,17 @@ function appendSessionLog(level, args) {
   }).join(" ") };
   sessionStorage.get({ debugLog: [] }).then(data => {
     const log = [entry, ...data.debugLog].slice(0, SESSION_LOG_MAX);
-    sessionStorage.set({ debugLog: log });
-  });
+    sessionStorage.set({ debugLog: log }).catch(() => {});
+  }).catch(() => {});
 }
 
-/** Log a MUGA action (URL cleaned, affiliate detected, etc.) */
+/** Log a MUGA action as a structured object for rich debug output. */
 function logAction(action, detail) {
-  appendSessionLog("action", [`[${action}]`, detail]);
+  if (typeof detail === "object") {
+    appendSessionLog("action", [`[${action}]`, JSON.stringify(detail)]);
+  } else {
+    appendSessionLog("action", [`[${action}]`, detail]);
+  }
 }
 
 const _origError = console.error.bind(console);
@@ -217,7 +221,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "getPrefs") {
     getPrefsWithCache()
       .then(sendResponse)
-      .catch(() => sendResponse(null));
+      .catch(() => { try { sendResponse(null); } catch { /* channel closed */ } });
     return true;
   }
 
@@ -230,7 +234,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .catch(err => {
         console.error("[MUGA] PROCESS_URL handler failed:", err);
-        sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null });
+        try { sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
       });
     return true; // keep the channel open for the async response
   }
@@ -244,12 +248,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getPrefsWithCache().then(async prefs => {
       if (!prefs.whitelist.includes(entry)) {
         cachedPrefs = null;
+        prefsFetchPromise = null;
         await setPrefs({ whitelist: [...prefs.whitelist, entry] });
+        logAction("whitelist_add", { entry });
       }
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_WHITELIST handler failed:", err);
-      sendResponse({ ok: false });
+      try { sendResponse({ ok: false }); } catch { /* channel closed */ }
     });
     return true;
   }
@@ -263,12 +269,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getPrefsWithCache().then(async prefs => {
       if (!prefs.blacklist.includes(entry)) {
         cachedPrefs = null;
+        prefsFetchPromise = null;
         await setPrefs({ blacklist: [...prefs.blacklist, entry] });
+        logAction("blacklist_add", { entry });
       }
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_BLACKLIST handler failed:", err);
-      sendResponse({ ok: false });
+      try { sendResponse({ ok: false }); } catch { /* channel closed */ }
     });
     return true;
   }
@@ -320,11 +328,27 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
 
   // Update stats and session history — only count if the URL actually changed (S13)
   const urlChanged = result.cleanUrl !== rawUrl;
+  if (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0)) {
+    try {
+      const p = new URL(rawUrl);
+      if (p.search) logAction("passthrough", { domain: p.hostname.replace(/^www\./, ""), path: p.pathname, params: [...p.searchParams.keys()] });
+    } catch { /* ignore */ }
+  }
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
     incrementStat("urlsCleaned");
     await appendHistory(rawUrl, result.cleanUrl);
-    const domain = new URL(rawUrl).hostname.replace(/^www\./, "");
-    logAction("cleaned", `${domain} | removed: ${result.removedTracking.join(", ")} | action: ${result.action}`);
+    const parsedRaw = new URL(rawUrl);
+    const domain = parsedRaw.hostname.replace(/^www\./, "");
+    logAction("cleaned", {
+      domain,
+      path: parsedRaw.pathname,
+      action: result.action,
+      removed: result.removedTracking,
+      junkRemoved: result.junkRemoved,
+      originalParams: [...new URL(rawUrl).searchParams.keys()],
+      cleanParams: [...new URL(result.cleanUrl).searchParams.keys()],
+      cleanUrl: result.cleanUrl,
+    });
   }
   if (result.junkRemoved > 0) {
     incrementStat("junkRemoved", result.junkRemoved);
@@ -332,7 +356,13 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
   if (result.action === "detected_foreign") {
     incrementStat("referralsSpotted");
     const d = result.detectedAffiliate;
-    logAction("affiliate_detected", `${d?.param}=${d?.value} on ${new URL(rawUrl).hostname}`);
+    logAction("affiliate_detected", {
+      domain: new URL(rawUrl).hostname.replace(/^www\./, ""),
+      param: d?.param,
+      value: d?.value,
+      store: d?.pattern?.name ?? null,
+      action: result.action,
+    });
     // If injection is enabled, build the URL with our tag so "Remove it" can use it
     if (prefs.injectOwnAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
       const url = new URL(result.cleanUrl);
@@ -380,7 +410,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   chrome.tabs.sendMessage(tab.id, {
     type: "COPY_TO_CLIPBOARD",
     text: result.cleanUrl,
-  });
+  }, () => void chrome.runtime.lastError);
 });
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
@@ -396,7 +426,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
       chrome.tabs.sendMessage(tab.id, {
         type: "COPY_TO_CLIPBOARD",
         text: result.cleanUrl,
-      });
+      }, () => void chrome.runtime.lastError);
     }
     return;
   }
@@ -417,7 +447,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
             const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
             if (cleaned.cleanUrl !== candidate) result = result.replaceAll(candidate, cleaned.cleanUrl);
           }
-          chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result });
+          chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result }, () => void chrome.runtime.lastError);
         })();
       }
     });

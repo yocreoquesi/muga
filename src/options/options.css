@@ -1,11 +1,12 @@
 :root {
   --bg: #fff; --bg2: #f5f5f5; --border: rgba(0,0,0,0.08);
-  --text: #1a1a1a; --text2: #666; --accent: #2563eb;
-  --danger: #dc2626; --success: #16a34a;
+  --text: #1a1a1a; --text2: #555; --accent: #2563eb;
+  --danger: #dc2626; --success: #16a34a; --toggle-off: #d1d5db;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #1c1c1e; --bg2: #2c2c2e; --border: rgba(255,255,255,0.08);
-    --text: #f0f0f0; --text2: #999; }
+    --text: #f0f0f0; --text2: #aaa; --accent: #60a5fa; --toggle-off: #48484a;
+    --danger: #ef4444; --success: #4ade80; }
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -26,7 +27,7 @@ h2 { font-size: 13px; font-weight: 500; color: var(--text2);
 .row-label small { color: var(--text2); font-size: 12px; display: block; margin-top: 2px; }
 .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
 .toggle input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; inset: 0; background: #d1d5db;
+.slider { position: absolute; inset: 0; background: var(--toggle-off, #d1d5db);
   border-radius: 20px; transition: background .2s; cursor: pointer; }
 .slider::before { content: ''; position: absolute; width: 14px; height: 14px;
   left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform .2s; }
@@ -51,7 +52,7 @@ h2 { font-size: 13px; font-weight: 500; color: var(--text2);
   border: 0.5px solid var(--border); background: transparent;
   color: var(--text); font-size: 13px; cursor: pointer; }
 .add-btn:hover { background: var(--bg2); }
-.add-btn:focus-visible {
+.del-btn:focus-visible, .add-btn:focus-visible, .add-row input:focus-visible, .lang-select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -73,7 +74,7 @@ h2 { font-size: 13px; font-weight: 500; color: var(--text2);
 .store-chip { display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; background: var(--bg); border-radius: 8px;
   border: 0.5px solid var(--border); font-size: 12.5px; }
-.store-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #d1d5db; }
+.store-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--toggle-off, #d1d5db); }
 .store-dot.active { background: var(--success); }
 .store-name { font-weight: 500; }
 .store-param { font-size: 11px; color: var(--text2); font-family: monospace; }
@@ -118,7 +119,7 @@ h2 { font-size: 13px; font-weight: 500; color: var(--text2);
   background: var(--bg2); color: var(--text);
   border: 0.5px solid var(--border);
 }
-.confirm-ok { background: var(--danger); color: #fff; }
+.confirm-ok { background: var(--danger); color: #fff; border: none; }
 .confirm-cancel:focus-visible, .confirm-ok:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }

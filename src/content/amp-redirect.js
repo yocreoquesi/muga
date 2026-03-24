@@ -10,6 +10,7 @@
   "use strict";
 
   chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+    void chrome.runtime.lastError;
     if (!prefs || !prefs.enabled || !prefs.ampRedirect) return;
 
     // Find the canonical link pointing to the non-AMP version
