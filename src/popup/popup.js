@@ -27,6 +27,21 @@ async function init() {
   document.getElementById("stat-referrals").textContent =
     formatStat(local.stats?.referralsSpotted ?? 0);
 
+  // Easter eggs — milestone titles on the logo
+  const logoEl = document.getElementById("logo-text");
+  if (logoEl && urlsCleaned > 0) {
+    const milestones = [
+      [10000, "MUGA — Legendary URL cleaner"],
+      [5000,  "MUGA — Master of Clean URLs"],
+      [1000,  "MUGA — Tracking Terminator"],
+      [500,   "MUGA — Drain the Swamp Pro"],
+      [100,   "MUGA — Making URLs Great Again"],
+      [10,    "MUGA — First steps to clean URLs"],
+    ];
+    const milestone = milestones.find(([threshold]) => urlsCleaned >= threshold);
+    if (milestone) logoEl.title = milestone[1];
+  }
+
   const enabledToggle = document.getElementById("enabled-toggle");
   enabledToggle.setAttribute("aria-label", t("toggle_enabled", lang));
   enabledToggle.closest(".toggle").setAttribute("title", t("toggle_title", lang));
@@ -40,6 +55,16 @@ async function init() {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
   });
+
+  // Footer rate link — always available, passive
+  const popupRateLink = document.getElementById("popup-rate-link");
+  if (popupRateLink) {
+    const isFirefox = navigator.userAgent.includes("Firefox");
+    popupRateLink.href = isFirefox
+      ? "https://addons.mozilla.org/firefox/addon/muga/"
+      : "https://chromewebstore.google.com/detail/muga/";
+    popupRateLink.target = "_blank";
+  }
 
   // Growth features
   const growthBar = document.getElementById("growth-bar");
@@ -88,7 +113,39 @@ async function init() {
     const storeUrl = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
-    const text = `I use MUGA to clean tracking junk from URLs — 421 trackers stripped automatically. Free & open source: ${storeUrl}`;
+
+    const junk = local.stats?.junkRemoved ?? 0;
+    const cleaned = local.stats?.urlsCleaned ?? 0;
+
+    // Seasonal easter eggs
+    const now = new Date();
+    const mmdd = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const seasonal = {
+      "01-01": "New year, new URLs. Still no tracking.",
+      "02-14": "Roses are red, trackers are dead. MUGA cleaned my URLs instead.",
+      "03-14": "Happy Pi Day! 3.14159 reasons to clean your URLs.",
+      "04-01": "This is not a joke: your URLs had tracking params. Had.",
+      "05-04": "May the clean URLs be with you.",
+      "10-31": "The scariest thing on the internet? Unclean URLs. Not anymore.",
+      "12-25": "All I want for Christmas is clean URLs. Done.",
+      "12-31": "My URLs are cleaner than my New Year's resolutions.",
+    };
+
+    // Fun phrases — rotated randomly
+    const phrases = [
+      `I've cleaned ${cleaned} URLs and stripped ${junk} trackers. My browser is basically a spa now.`,
+      `${junk} tracking params eliminated. Zero sent to any server. You're welcome, privacy.`,
+      `MUGA just cleaned ${cleaned} URLs for me. The trackers never saw it coming.`,
+      `My URLs used to be 400 characters of garbage. Now they're clean, honest, and short.`,
+      `${junk} trackers stripped. No accounts. No servers. No BS. Just clean URLs.`,
+      `I installed MUGA and it already cleaned ${cleaned} URLs. This is what browsers should do by default.`,
+      `Every link I click gets cleaned before it loads. ${junk} trackers gone. It's free and open source.`,
+      `Drain the tracking swamp. ${junk} params removed and counting.`,
+    ];
+
+    const pick = seasonal[mmdd] || phrases[Math.floor(Math.random() * phrases.length)];
+    const text = `${pick}\n\n${storeUrl}`;
+
     navigator.clipboard.writeText(text).then(() => {
       shareBtn.textContent = "✓ Copied!";
       setTimeout(() => { shareBtn.textContent = "📋 Share"; }, 1500);
