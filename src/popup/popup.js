@@ -49,19 +49,30 @@ async function init() {
 
   growthBar.hidden = false;
 
-  // Rate nudge: 200+ URLs AND 7+ days, max 3 sessions, then permanent silence
-  const nudgeData = await chrome.storage.local.get({ firstUsed: null, nudgeDismissed: false, nudgeShownCount: 0 });
+  // Rate nudge: 200+ URLs AND 7+ days since install, max 3 nudges,
+  // at least 3 days apart, then permanent silence.
+  const nudgeData = await chrome.storage.local.get({
+    firstUsed: null, nudgeDismissed: false, nudgeShownCount: 0, nudgeLastShown: 0,
+  });
   const nudgeSession = await sessionStorage.get({ nudgeSessionSeen: false });
   const daysSinceFirst = nudgeData.firstUsed ? (Date.now() - nudgeData.firstUsed) / 86400000 : 0;
+  const daysSinceLastNudge = nudgeData.nudgeLastShown ? (Date.now() - nudgeData.nudgeLastShown) / 86400000 : 999;
 
-  const shouldNudge = urlsCleaned >= 200 && daysSinceFirst >= 7
-    && !nudgeData.nudgeDismissed && nudgeData.nudgeShownCount < 3 && !nudgeSession.nudgeSessionSeen;
+  const shouldNudge = urlsCleaned >= 200
+    && daysSinceFirst >= 7
+    && daysSinceLastNudge >= 3
+    && !nudgeData.nudgeDismissed
+    && nudgeData.nudgeShownCount < 3
+    && !nudgeSession.nudgeSessionSeen;
 
   if (shouldNudge) {
     rateBtn.hidden = false;
     rateBtn.textContent = t("rate_nudge_btn_short", lang);
     sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {});
-    chrome.storage.local.set({ nudgeShownCount: nudgeData.nudgeShownCount + 1 }).catch(() => {});
+    chrome.storage.local.set({
+      nudgeShownCount: nudgeData.nudgeShownCount + 1,
+      nudgeLastShown: Date.now(),
+    }).catch(() => {});
     const isFirefox = navigator.userAgent.includes("Firefox");
     const storeUrl = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"

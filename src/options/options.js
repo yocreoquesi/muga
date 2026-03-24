@@ -542,6 +542,58 @@ function initDevTools() {
     });
   });
 
+  // Preview rating nudge
+  const nudgePreviewBtn = document.getElementById("dev-preview-nudge-btn");
+  if (nudgePreviewBtn) {
+    nudgePreviewBtn.addEventListener("click", async () => {
+      document.getElementById("muga-preview-nudge")?.remove();
+      const localData = await chrome.storage.local.get({ nudgeDismissed: false, nudgeShownCount: 0, nudgeLastShown: 0 });
+      const notice = document.createElement("div");
+      notice.id = "muga-preview-nudge";
+      notice.setAttribute("role", "alert");
+      notice.style.cssText = [
+        "position:fixed", "bottom:20px", "right:20px",
+        "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
+        "padding:12px 16px", "font-family:-apple-system,sans-serif",
+        "font-size:13px", "line-height:1.5", "max-width:320px",
+        "z-index:2147483647", "box-shadow:0 4px 20px rgba(0,0,0,0.3)",
+        "border:0.5px solid rgba(255,255,255,0.1)",
+      ].join(";");
+
+      const title = document.createElement("div");
+      title.style.cssText = "font-weight:600;margin-bottom:8px;font-size:13px";
+      title.textContent = t("rate_nudge_btn_short", currentLang);
+
+      const info = document.createElement("div");
+      info.style.cssText = "font-size:11px;color:#aaa;margin-bottom:10px;line-height:1.4";
+      info.textContent = `Status: dismissed=${localData.nudgeDismissed}, shown=${localData.nudgeShownCount}/3, lastShown=${localData.nudgeLastShown ? new Date(localData.nudgeLastShown).toLocaleDateString() : "never"}`;
+
+      const btnRow = document.createElement("div");
+      btnRow.style.cssText = "display:flex;gap:6px";
+      const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
+
+      const rateBtn = document.createElement("button");
+      rateBtn.style.cssText = btnStyle;
+      rateBtn.textContent = t("rate_nudge_btn_short", currentLang);
+
+      const dismissBtn = document.createElement("button");
+      dismissBtn.style.cssText = btnStyle + ";color:#666";
+      dismissBtn.textContent = "Dismiss";
+
+      btnRow.appendChild(rateBtn);
+      btnRow.appendChild(dismissBtn);
+      notice.appendChild(title);
+      notice.appendChild(info);
+      notice.appendChild(btnRow);
+      document.body.appendChild(notice);
+
+      const timer = setTimeout(() => notice.remove(), 10000);
+      notice.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => { clearTimeout(timer); notice.remove(); });
+      });
+    });
+  }
+
   // Show onboarding
   document.getElementById("dev-show-onboarding-btn").addEventListener("click", () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
