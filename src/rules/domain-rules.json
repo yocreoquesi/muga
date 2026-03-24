@@ -202,8 +202,8 @@
   {
     "domain": "youtube.com",
     "preserveParams": ["v", "t", "list", "index", "start_radio", "ab_channel", "search_query", "lc"],
-    "stripParams": ["feature", "pp", "rco", "source_ve_path"],
-    "note": "Video ID, timestamp, playlist, channel, comment link — functional. feature/pp are share/player tracking."
+    "stripParams": ["feature", "pp", "rco", "source_ve_path", "si", "cbrd", "ucbcb"],
+    "note": "Video ID, timestamp, playlist, channel, comment link — functional. si (share token), feature/pp are tracking."
   },
   {
     "domain": "twitter.com",
@@ -220,7 +220,8 @@
   {
     "domain": "instagram.com",
     "preserveParams": ["hl"],
-    "note": "Language — functional"
+    "stripParams": ["igsh", "img_index", "source", "entry_point"],
+    "note": "Language — functional. Share tracking (igsh) and app entry metadata stripped."
   },
   {
     "domain": "reddit.com",
@@ -248,8 +249,8 @@
   {
     "domain": "facebook.com",
     "preserveParams": ["q", "filters", "story_fbid", "id", "v", "set", "type"],
-    "stripParams": ["mibextid", "paipv", "eav"],
-    "note": "Search, post/video/album IDs — functional. mibextid/paipv are mobile tracking."
+    "stripParams": ["mibextid", "paipv", "eav", "ref", "notif_id", "notif_t", "acontext", "hc_ref", "fref", "rc", "__xts__", "__tn__", "action_history"],
+    "note": "Search, post/video/album IDs — functional. Mobile tracking, notification refs, and action history stripped."
   },
   {
     "domain": "github.com",
@@ -351,8 +352,8 @@
   {
     "domain": "youtu.be",
     "preserveParams": ["t", "list", "index", "start_radio"],
-    "stripParams": ["feature", "pp"],
-    "note": "YouTube short links — timestamp and playlist functional"
+    "stripParams": ["feature", "pp", "si", "cbrd", "ucbcb"],
+    "note": "YouTube short links — timestamp and playlist functional. si (share token) stripped."
   },
   {
     "domain": "ebay.co.uk",
@@ -381,7 +382,7 @@
   {
     "domain": "fb.com",
     "preserveParams": ["q", "filters", "story_fbid", "id", "v"],
-    "stripParams": ["mibextid", "paipv", "eav"],
+    "stripParams": ["mibextid", "paipv", "eav", "ref", "notif_id", "notif_t", "acontext", "hc_ref", "fref", "rc", "__xts__", "__tn__", "action_history"],
     "note": "Facebook short domain — same rules as facebook.com"
   },
   {
