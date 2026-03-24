@@ -354,7 +354,8 @@ function initStatsSection() {
     await chrome.storage.local.set({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
       firstUsed: null,
-      nudgeDismissed: false,
+      // nudgeDismissed and nudgeShownCount intentionally NOT reset —
+      // resetting stats must not re-trigger the review nudge.
     });
     showToast(t("stats_reset_done", currentLang));
   });

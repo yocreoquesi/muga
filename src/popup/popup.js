@@ -49,14 +49,25 @@ async function init() {
 
   growthBar.hidden = false;
 
-  // Show "Rate MUGA" after 50+ URLs cleaned
-  if (urlsCleaned >= 50) {
+  // Rate nudge: 200+ URLs AND 7+ days, max 3 sessions, then permanent silence
+  const nudgeData = await chrome.storage.local.get({ firstUsed: null, nudgeDismissed: false, nudgeShownCount: 0 });
+  const nudgeSession = await sessionStorage.get({ nudgeSessionSeen: false });
+  const daysSinceFirst = nudgeData.firstUsed ? (Date.now() - nudgeData.firstUsed) / 86400000 : 0;
+
+  const shouldNudge = urlsCleaned >= 200 && daysSinceFirst >= 7
+    && !nudgeData.nudgeDismissed && nudgeData.nudgeShownCount < 3 && !nudgeSession.nudgeSessionSeen;
+
+  if (shouldNudge) {
     rateBtn.hidden = false;
+    rateBtn.textContent = t("rate_nudge_btn_short", lang);
+    sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {});
+    chrome.storage.local.set({ nudgeShownCount: nudgeData.nudgeShownCount + 1 }).catch(() => {});
     const isFirefox = navigator.userAgent.includes("Firefox");
     const storeUrl = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
     rateBtn.addEventListener("click", () => {
+      chrome.storage.local.set({ nudgeDismissed: true });
       chrome.tabs.create({ url: storeUrl });
     });
   }
