@@ -27,21 +27,6 @@ async function init() {
   document.getElementById("stat-referrals").textContent =
     formatStat(local.stats?.referralsSpotted ?? 0);
 
-  // Easter eggs — milestone titles on the logo
-  const logoEl = document.getElementById("logo-text");
-  if (logoEl && urlsCleaned > 0) {
-    const milestones = [
-      [10000, "MUGA — Legendary URL cleaner"],
-      [5000,  "MUGA — Master of Clean URLs"],
-      [1000,  "MUGA — Tracking Terminator"],
-      [500,   "MUGA — Drain the Swamp Pro"],
-      [100,   "MUGA — Making URLs Great Again"],
-      [10,    "MUGA — First steps to clean URLs"],
-    ];
-    const milestone = milestones.find(([threshold]) => urlsCleaned >= threshold);
-    if (milestone) logoEl.title = milestone[1];
-  }
-
   const enabledToggle = document.getElementById("enabled-toggle");
   enabledToggle.setAttribute("aria-label", t("toggle_enabled", lang));
   enabledToggle.closest(".toggle").setAttribute("title", t("toggle_title", lang));
@@ -71,6 +56,21 @@ async function init() {
   const rateBtn = document.getElementById("rate-btn");
   const shareBtn = document.getElementById("share-btn");
   const urlsCleaned = local.stats?.urlsCleaned ?? 0;
+
+  // Easter eggs — milestone titles on the logo
+  const logoEl = document.getElementById("logo-text");
+  if (logoEl && urlsCleaned > 0) {
+    const milestones = [
+      [10000, "MUGA — Legendary URL cleaner"],
+      [5000,  "MUGA — Master of Clean URLs"],
+      [1000,  "MUGA — Tracking Terminator"],
+      [500,   "MUGA — Drain the Swamp Pro"],
+      [100,   "MUGA — Making URLs Great Again"],
+      [10,    "MUGA — First steps to clean URLs"],
+    ];
+    const milestone = milestones.find(([threshold]) => urlsCleaned >= threshold);
+    if (milestone) logoEl.title = milestone[1];
+  }
 
   growthBar.hidden = false;
 

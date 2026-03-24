@@ -297,6 +297,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "INCREMENT_STAT") {
     const ALLOWED_STAT_KEYS = ["urlsCleaned", "junkRemoved", "referralsSpotted"];
     if (ALLOWED_STAT_KEYS.includes(message.key)) incrementStat(message.key);
+    sendResponse({ ok: true });
     return false;
   }
 

@@ -114,7 +114,7 @@ function cleanAmazonPath(hostname, pathname) {
  */
 function isAliExpressItemPage(hostname, pathname) {
   if (!/aliexpress\.[a-z.]+$/.test(hostname)) return false;
-  return /^\/item\/\d+\.html?$/i.test(pathname);
+  return /^\/item\/\d+\.html?\/?$/i.test(pathname);
 }
 
 /**
