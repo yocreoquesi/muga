@@ -379,7 +379,7 @@ export const TRACKING_PARAMS = [
 
   // Matomo / mt_ tracking
   "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
-  "mt_link_id", "mt_medium", "mt_network",
+  "mt_link_id", "mt_medium", "mt_network", "mnv_sid",
   "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
 
   // Mindbox
@@ -392,7 +392,7 @@ export const TRACKING_PARAMS = [
   "tw_medium", "tw_profile_id",
 
   // Yahoo / Oath / Verizon Media
-  "guccounter", "guce_referrer", "guce_referrer_sig",
+  "guccounter", "guce_referrer", "guce_referrer_sig", "gfr_xid",
   "yj_r", "ymid",
 
   // Various ad/analytics platforms
@@ -400,8 +400,8 @@ export const TRACKING_PARAMS = [
   "_ly_c", "_ly_r", "_ope",
   "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
   "_zucks_suid", "a8",
-  "analytics_context", "analytics_trace_id", "asgtbndr",
-  "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid",
+  "analytics_context", "analytics_trace_id", "axr_tref", "asgtbndr",
+  "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid", "ucx_ref",
   "btag", "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
   "emcs_t", "ems_dl", "erid", "external_click_id", "famad_xuid",
   "ftag", "janet", "jmtyclid", "ldtag_cl", "loclid", "lt_r",
@@ -658,14 +658,14 @@ export const TRACKING_PARAM_CATEGORIES = {
       "_ly_c", "_ly_r", "_ope",
       "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
       "_zucks_suid",
-      "analytics_context", "analytics_trace_id", "asgtbndr",
-      "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid",
+      "analytics_context", "analytics_trace_id", "axr_tref", "asgtbndr",
+      "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid", "ucx_ref",
       "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
       "ebisadid", "ebisother1", "ebisother2", "ebisother3", "ebisother4", "ebisother5",
-      "famad_xuid", "guccounter", "guce_referrer", "guce_referrer_sig",
+      "famad_xuid", "gfr_xid", "guccounter", "guce_referrer", "guce_referrer_sig",
       "janet", "line_uid", "loclid",
       "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
-      "mt_link_id", "mt_medium", "mt_network",
+      "mt_link_id", "mt_medium", "mt_network", "mnv_sid",
       "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
       "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
       "pk_vid", "spot_im_redirect_source", "tcsack",
