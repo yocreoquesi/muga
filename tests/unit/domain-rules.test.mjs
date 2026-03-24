@@ -465,23 +465,39 @@ describe("Amazon store page URL", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Amazon regional TLD matrix — all TLDs use same rules
+// ---------------------------------------------------------------------------
+describe("Amazon regional TLDs — ref and social_share stripped on all", () => {
+  const tlds = ["amazon.com", "amazon.es", "amazon.de", "amazon.fr", "amazon.co.uk", "amazon.it",
+    "amazon.co.jp", "amazon.com.br", "amazon.in", "amazon.com.au", "amazon.ca",
+    "amazon.com.mx", "amazon.nl", "amazon.pl", "amazon.se", "amazon.sg"];
+
+  for (const tld of tlds) {
+    test(`${tld}: strips ref, preserves k and tag`, () => {
+      const { cleanUrl } = clean(
+        `https://www.${tld}/dp/B09B8YWXDF?k=test&ref=cm_sw_r_track&tag=test-21&utm_source=fb`
+      );
+      const u = new URL(cleanUrl);
+      assert.equal(u.searchParams.get("k"), "test", `k preserved on ${tld}`);
+      assert.equal(u.searchParams.get("tag"), "test-21", `tag preserved on ${tld}`);
+      assert.ok(!u.searchParams.has("ref"), `ref stripped on ${tld}`);
+      assert.ok(!u.searchParams.has("utm_source"), `utm_source stripped on ${tld}`);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // AliExpress — affiliate and tracking params stripped
 // ---------------------------------------------------------------------------
 describe("AliExpress — strips affiliate noise, preserves search", () => {
-  test("strips all tracking from Chollometro-style AliExpress link", () => {
+  test("strips ALL params from /item/ page (item pages need zero params)", () => {
     const { cleanUrl, removedTracking } = clean(
       "https://es.aliexpress.com/item/1005007831452483.html?dp=ppr-es-969667807&aff_fcid=abc&tt=CPS_NORMAL&aff_fsk=xyz&aff_platform=portals-tool&sk=xyz&terminal_id=abc123&afSmartRedirect=y&gatewayAdapt=glo2esp"
     );
     const u = new URL(cleanUrl);
-    assert.ok(!u.searchParams.has("dp"));
-    assert.ok(!u.searchParams.has("tt"));
-    assert.ok(!u.searchParams.has("aff_fsk"));
-    assert.ok(!u.searchParams.has("aff_platform"));
-    assert.ok(!u.searchParams.has("sk"));
-    assert.ok(!u.searchParams.has("terminal_id"));
-    assert.ok(!u.searchParams.has("afSmartRedirect"));
-    assert.ok(!u.searchParams.has("gatewayAdapt"));
-    assert.ok(removedTracking.length >= 7, `expected >=7 params removed, got ${removedTracking.length}`);
+    assert.equal(u.search, "", "item page should have zero query params");
+    assert.equal(cleanUrl, "https://es.aliexpress.com/item/1005007831452483.html");
+    assert.equal(removedTracking.length, 9, "all 9 params should be stripped");
   });
 
   test("preserves search params on AliExpress", () => {

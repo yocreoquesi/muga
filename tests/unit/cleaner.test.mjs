@@ -22,10 +22,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { createRequire } from "node:module";
 import { processUrl, parseListEntry } from "../../src/lib/cleaner.js";
 import { AFFILIATE_PATTERNS } from "../../src/lib/affiliates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const domainRules = require("../../src/rules/domain-rules.json");
 const CONTENT_CLEANER_SOURCE = readFileSync(
   join(__dirname, "../../src/content/cleaner.js"), "utf8"
 );
@@ -1165,16 +1168,16 @@ describe("Bug #187 — deep subdomain matching in getPatternsForHost", () => {
       "www.pccomponentes.com must still match pccomponentes patterns after fix (#187)");
   });
 
-  test("affiliate param aff_fcid preserved on it.aliexpress.com, utm_source stripped (#187)", () => {
-    // aff_fcid is the affiliate param for aliexpress — it must not be removed by Scenario A
+  test("all params stripped on AliExpress /item/ page including aff_fcid (#187)", () => {
+    // AliExpress item pages need zero params — aggressive stripping mode
     const { cleanUrl } = processUrl(
       "https://it.aliexpress.com/item/123.html?aff_fcid=testvalue&utm_source=email",
       PREFS
     );
-    assert.ok(new URL(cleanUrl).searchParams.has("aff_fcid"),
-      "affiliate param aff_fcid must be preserved on it.aliexpress.com (#187)");
+    assert.ok(!new URL(cleanUrl).searchParams.has("aff_fcid"),
+      "aff_fcid stripped on /item/ page — item pages need no params");
     assert.ok(!new URL(cleanUrl).searchParams.has("utm_source"),
-      "utm_source must be stripped on it.aliexpress.com (#187)");
+      "utm_source stripped on /item/ page");
   });
 
 });
@@ -1728,6 +1731,94 @@ describe("N9 — formatStat (popup.js)", () => {
     assert.equal(formatStat(2500000), "2.5M");
   });
 
+});
+
+// ---------------------------------------------------------------------------
+// Idempotency — clean(clean(url)) must equal clean(url)
+// ---------------------------------------------------------------------------
+describe("Idempotency — double-cleaning produces identical output", () => {
+  const urls = [
+    "https://www.amazon.es/dp/B09B8YWXDF?tag=test-21&utm_source=google&utm_medium=cpc&ref=cm_sw_r_cp",
+    "https://www.google.com/search?q=test&sca_esv=abc&ved=123&sxsrf=xyz",
+    "https://es.aliexpress.com/item/123.html?dp=abc&aff_fsk=xyz&sk=abc&terminal_id=def",
+    "https://example.com/page?utm_source=fb&utm_campaign=spring&fbclid=abc123",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ&si=abc&feature=share",
+    "https://example.com/path?clean=true",
+    "https://example.com/path#section?not=param",
+  ];
+
+  for (const url of urls) {
+    test(`idempotent: ${new URL(url).hostname}${new URL(url).pathname.slice(0, 20)}`, () => {
+      const first = processUrl(url, PREFS, domainRules);
+      const second = processUrl(first.cleanUrl, PREFS, domainRules);
+      assert.equal(first.cleanUrl, second.cleanUrl, `Double-clean changed URL:\n  1st: ${first.cleanUrl}\n  2nd: ${second.cleanUrl}`);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Encoding preservation — MUGA must not change + to %20 or vice versa
+// ---------------------------------------------------------------------------
+describe("Encoding preservation — param values keep original encoding", () => {
+  test("preserves + as space in query values", () => {
+    const url = "https://www.amazon.es/s?k=usb+cable&utm_source=google";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    assert.ok(cleanUrl.includes("k=usb+cable") || cleanUrl.includes("k=usb%20cable"),
+      "search query must survive without corruption");
+    assert.ok(!cleanUrl.includes("utm_source"));
+  });
+
+  test("preserves %20 in query values", () => {
+    const url = "https://www.amazon.es/s?k=usb%20cable&utm_source=google";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("k"), "usb cable");
+  });
+
+  test("does not introduce new encoding in clean URLs", () => {
+    const url = "https://example.com/path?q=hello+world";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    // URL constructor normalizes + to %20 in searchParams — that's browser behavior, not a MUGA bug
+    // But the URL must still decode to the same value
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "hello world");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hash/fragment preservation — MUGA must never touch anything after #
+// ---------------------------------------------------------------------------
+describe("Hash/fragment preservation — # content is never modified", () => {
+  test("preserves simple #anchor", () => {
+    const url = "https://example.com/page?utm_source=fb#section-3";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    assert.ok(cleanUrl.endsWith("#section-3"), `Fragment lost: ${cleanUrl}`);
+    assert.ok(!cleanUrl.includes("utm_source"));
+  });
+
+  test("preserves #! hashbang routing", () => {
+    const url = "https://example.com/app?fbclid=abc#!/dashboard/settings";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    assert.ok(cleanUrl.includes("#!/dashboard/settings"), `Hashbang lost: ${cleanUrl}`);
+  });
+
+  test("preserves #/spa-route with params", () => {
+    const url = "https://example.com/?utm_campaign=spring#/products?category=shoes&page=2";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    assert.ok(cleanUrl.includes("#/products?category=shoes&page=2"), `SPA route lost: ${cleanUrl}`);
+  });
+
+  test("does not parse fragment as query params", () => {
+    const url = "https://example.com/page#utm_source=fake&utm_medium=notreal";
+    const { cleanUrl } = processUrl(url, PREFS, domainRules);
+    assert.ok(cleanUrl.includes("#utm_source=fake&utm_medium=notreal"), "Fragment must not be stripped as tracking params");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// C11 sync verification (continued)
+// ---------------------------------------------------------------------------
+describe("C11 — popup.js formatStat sync", () => {
   test("C11 sync — source contains identical formatStat implementation", () => {
     // Verify key lines of the function exist in popup.js source
     assert.ok(POPUP_SOURCE.includes("function formatStat(n)"),
