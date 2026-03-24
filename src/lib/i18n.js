@@ -58,6 +58,7 @@ export const TRANSLATIONS = {
   privacy_link:    { en: "Privacy policy",                       es: "Política de privacidad" },
   report_issue:    { en: "Report a bug or suggest a feature",    es: "Reportar un error o sugerir mejora" },
   rate_muga_link:  { en: "Rate MUGA",                            es: "Valorar MUGA" },
+  rate_nudge_btn_short: { en: "Enjoying MUGA? Rate it",               es: "\u00bfTe gusta MUGA? Val\u00f3ralo" },
   bl_placeholder: { en: "mysite.com  or  amazon.es::tag::youtuber-21", es: "mysite.com  o  amazon.es::tag::youtuber-21" },
   wl_placeholder: { en: "mysite.com  or  amazon.es::tag::creator-21", es: "mysite.com  o  amazon.es::tag::creador-21" },
   bl_hint:  { en: "Domain only (e.g. <code>mysite.com</code>) — strips all params on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>) — strips one specific affiliate tag.<br><code>amazon.es::disabled</code> — MUGA does nothing on that domain.", es: "Solo dominio (ej: <code>mysite.com</code>) — elimina todos los parámetros en esa web.<br>Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>) — elimina un afiliado concreto.<br><code>amazon.es::disabled</code> — MUGA no toca nada en ese dominio." },
