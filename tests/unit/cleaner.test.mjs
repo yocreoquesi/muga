@@ -1756,6 +1756,22 @@ describe("OAuth / auth / payment flow exemption", () => {
       assert.equal(result.removedTracking.length, 0);
     });
   }
+
+  // False positive tests — these paths CONTAIN auth-like words but are NOT auth flows
+  const falsePositives = [
+    ["blog with authorize in path", "https://blog.com/authorize-your-creativity?utm_source=fb"],
+    ["login in slug", "https://example.com/how-to-login-faster?fbclid=abc"],
+    ["checkout in blog title", "https://blog.com/checkout-our-new-features?utm_medium=email"],
+    ["auth in domain not path", "https://auth.example.com/dashboard?utm_source=google"],
+  ];
+
+  for (const [name, url] of falsePositives) {
+    test(`NOT exempted: ${name}`, () => {
+      const result = processUrl(url, PREFS, domainRules);
+      assert.notEqual(result.action, "untouched", `${name} should be cleaned, not exempted`);
+      assert.ok(result.removedTracking.length > 0, `${name} should have params stripped`);
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
