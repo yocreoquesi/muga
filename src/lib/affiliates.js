@@ -55,9 +55,9 @@ export const TRACKING_PARAMS = [
   "psc", "spla",
   "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
   "pf_rd_p", "pf_rd_r", "pf_rd_s",
-  "linkcode", "linkid",
+  "linkcode", "linkid", "creativeasin", "smid", "spia",
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
-  "_encoding", "content-id", "ref_",
+  "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
   // Amazon — store page / brand referral noise
   "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
   // Amazon — search/browse noise
@@ -76,6 +76,7 @@ export const TRACKING_PARAMS = [
 
   // AliExpress
   "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
+  "afsmartredirect", "gatewayadapt", "aff_request_id", "mall_affr",
 
   // Pinterest
   "e_t", "epik",
@@ -605,9 +606,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       "psc", "spla",
       "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
       "pf_rd_p", "pf_rd_r", "pf_rd_s",
-      "linkcode", "linkid",
+      "linkcode", "linkid", "creativeasin", "smid", "spia",
       "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
-      "_encoding", "content-id", "ref_",
+      "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
       "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
       "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
@@ -617,6 +618,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "mkevt", "mkcid", "mkrid", "toolid", "customid",
       // AliExpress
       "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
+      "afsmartredirect", "gatewayadapt", "aff_request_id", "mall_affr",
       // Google search tracking
       "ved", "ei", "sca_esv", "sxsrf", "gs_lcp",
       // GA4 cross-domain

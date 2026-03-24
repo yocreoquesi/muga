@@ -10,7 +10,7 @@ const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
 
 // Prefix-based tracking param detection — catches non-standard variants
 // (e.g., utm_wave, utm_emailid, utm_newsletterid) without listing each one.
-const TRACKING_PREFIXES = ["utm_"];
+const TRACKING_PREFIXES = ["utm_", "cm_sw_"];
 
 /** Returns true if the param is a known tracking param (exact match or prefix). */
 function isTrackingParam(lower, customParams, domainStrip) {
