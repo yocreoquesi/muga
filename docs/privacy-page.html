@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA — Privacy Policy</title>
+  <style>
+    :root {
+      --bg: #fff; --text: #1a1a1a; --text2: #555; --accent: #2563eb;
+      --border: rgba(0,0,0,0.08); --bg2: #f7f7f7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #111; --text: #f0f0f0; --text2: #999; --bg2: #1c1c1e; --border: rgba(255,255,255,0.08); }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      max-width: 680px; margin: 0 auto; padding: 48px 24px; font-size: 15px; line-height: 1.7; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .meta { color: var(--text2); font-size: 13px; margin-bottom: 40px; }
+    h2 { font-size: 16px; font-weight: 600; margin: 32px 0 10px; }
+    p { margin-bottom: 14px; color: var(--text2); }
+    ul { margin: 8px 0 14px 20px; color: var(--text2); }
+    li { margin-bottom: 6px; }
+    .highlight {
+      background: var(--bg2); border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0;
+      font-size: 14px; color: var(--text);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <h1>Privacy Policy</h1>
+  <p class="meta">MUGA — Make URLs Great Again &nbsp;·&nbsp; Effective date: 2026-03-18 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+
+  <div class="highlight">
+    <strong>Short version:</strong> MUGA processes all URLs locally in your browser.
+    No URL, browsing history, or personal data is ever sent to any external server.
+    The code is open source — you can read every line at the link above.
+  </div>
+
+  <h2>What data does MUGA handle?</h2>
+  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are processed entirely within your browser using local JavaScript. They are never transmitted to any server owned or operated by MUGA.</p>
+  <p>Your extension preferences (toggles, blacklist, whitelist, language) are stored in <code>chrome.storage.sync</code>. This means they sync across your own devices via your browser account — they are never visible to MUGA.</p>
+
+  <h2>Tracking parameters</h2>
+  <p>MUGA strips tracking parameters (UTMs, fbclid, gclid, and others) from URLs automatically. This happens locally. The removed parameters are not logged, transmitted, or stored anywhere.</p>
+
+  <h2>Affiliate tags</h2>
+  <p>MUGA can add affiliate tags to URLs that carry none when you visit a supported store. This is how the extension is funded. You consented to this during installation and can disable it at any time in settings.</p>
+  <p>When you visit a supported store, MUGA checks the URL locally to see if an affiliate tag is already present. If not, and if you have the option enabled, MUGA modifies the URL before navigation to include our affiliate tag. <strong>This URL modification happens locally — no external request is made to determine whether to inject.</strong></p>
+
+  <h2>What MUGA never does</h2>
+  <ul>
+    <li>Does not send your URLs to any external server for processing.</li>
+    <li>Does not collect your browsing history.</li>
+    <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
+    <li>Does not collect, store, or transmit any personally identifiable information.</li>
+    <li>Does not use analytics, telemetry, or crash reporting services.</li>
+  </ul>
+
+  <h2>Third-party affiliate programs</h2>
+  <p>When you navigate to a store via a MUGA-modified URL, the store's own analytics may record the visit as originating from an affiliate link. This is standard affiliate behaviour and is governed by the store's own privacy policy, not MUGA's.</p>
+  <p>MUGA is a registered participant in affiliate programs including Amazon Associates and others. These programs have their own terms of service and privacy policies.</p>
+
+  <h2>Permissions</h2>
+  <p>MUGA requests the following browser permissions:</p>
+  <ul>
+    <li><strong>storage</strong> — to save your preferences and statistics locally.</li>
+    <li><strong>tabs</strong> — to open the onboarding page on first install and send clipboard messages.</li>
+    <li><strong>contextMenus</strong> — to add the "Copy clean link" right-click option.</li>
+    <li><strong>clipboardWrite</strong> — to copy the clean URL to your clipboard.</li>
+    <li><strong>declarativeNetRequest</strong> — Used for pre-navigation stripping of tracking parameters before the page loads.</li>
+    <li><strong>host_permissions: all_urls</strong> — to intercept link clicks on every page and add affiliate tags where applicable.</li>
+  </ul>
+
+  <h2>Open source</h2>
+  <p>MUGA is licensed under the <a href="https://github.com/yocreoquesi/muga/blob/main/LICENSE">GNU General Public License v3 (GPL v3)</a>. The complete source code is public. If you want to verify that this privacy policy accurately describes the extension's behaviour, read the code — it's all there.</p>
+
+  <h2>Contact</h2>
+  <p>Questions or concerns: open an issue at <a href="https://github.com/yocreoquesi/muga/issues">github.com/yocreoquesi/muga/issues</a>.</p>
+
+</body>
+</html>

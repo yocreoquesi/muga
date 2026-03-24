@@ -41,6 +41,38 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
+  // Growth features
+  const growthBar = document.getElementById("growth-bar");
+  const rateBtn = document.getElementById("rate-btn");
+  const shareBtn = document.getElementById("share-btn");
+  const urlsCleaned = local.stats?.urlsCleaned ?? 0;
+
+  growthBar.hidden = false;
+
+  // Show "Rate MUGA" after 50+ URLs cleaned
+  if (urlsCleaned >= 50) {
+    rateBtn.hidden = false;
+    const isFirefox = navigator.userAgent.includes("Firefox");
+    const storeUrl = isFirefox
+      ? "https://addons.mozilla.org/firefox/addon/muga/"
+      : "https://chromewebstore.google.com/detail/muga/";
+    rateBtn.addEventListener("click", () => {
+      chrome.tabs.create({ url: storeUrl });
+    });
+  }
+
+  shareBtn.addEventListener("click", () => {
+    const isFirefox = navigator.userAgent.includes("Firefox");
+    const storeUrl = isFirefox
+      ? "https://addons.mozilla.org/firefox/addon/muga/"
+      : "https://chromewebstore.google.com/detail/muga/";
+    const text = `I use MUGA to clean tracking junk from URLs — 421 trackers stripped automatically. Free & open source: ${storeUrl}`;
+    navigator.clipboard.writeText(text).then(() => {
+      shareBtn.textContent = "✓ Copied!";
+      setTimeout(() => { shareBtn.textContent = "📋 Share"; }, 1500);
+    }).catch(() => {});
+  });
+
   // Clicking the URLs-cleaned stat always toggles the history panel (#178, #237)
   const statUrlsWrap = document.getElementById("stat-urls-wrap");
   statUrlsWrap.addEventListener("click", () => {

@@ -179,9 +179,39 @@ export function t(key, lang) {
 // All other keys use textContent to prevent any XSS risk.
 const HTML_KEYS = new Set(["bl_hint", "wl_hint", "ob_affiliate_desc", "ob_disclaimer", "ob_tos_label"]);
 
+// Allowed tags and attributes for HTML_KEYS sanitization.
+const ALLOWED_TAGS = new Set(["code", "br", "strong", "em", "a", "small"]);
+const ALLOWED_ATTRS = new Set(["href", "target", "style"]);
+
+/** Sanitize HTML by stripping all tags/attrs not in the allowlists. */
+function sanitizeHTML(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const walk = (node) => {
+    for (const child of [...node.childNodes]) {
+      if (child.nodeType === 1) { // Element
+        if (!ALLOWED_TAGS.has(child.tagName.toLowerCase())) {
+          child.replaceWith(...child.childNodes);
+          continue;
+        }
+        for (const attr of [...child.attributes]) {
+          if (!ALLOWED_ATTRS.has(attr.name.toLowerCase())) child.removeAttribute(attr.name);
+        }
+        // Enforce safe href — no javascript: or data: URLs
+        if (child.hasAttribute("href")) {
+          const href = child.getAttribute("href");
+          if (!/^(https?:|\.\.\/|#)/.test(href)) child.removeAttribute("href");
+        }
+        walk(child);
+      }
+    }
+  };
+  walk(doc.body);
+  return doc.body.innerHTML;
+}
+
 /**
  * Applies translations to all [data-i18n] elements in the current document.
- * Uses textContent for plain strings and innerHTML only for known HTML keys.
+ * Uses textContent for plain strings and sanitized innerHTML only for known HTML keys.
  * Also handles [data-i18n-placeholder] for input placeholders.
  * @param {string} lang - Language code ("en" | "es")
  */
@@ -190,17 +220,17 @@ export function applyTranslations(lang) {
     const key = el.getAttribute("data-i18n");
     const value = t(key, lang);
     if (HTML_KEYS.has(key)) {
-      el.innerHTML = value;
+      el.innerHTML = sanitizeHTML(value);
     } else {
       el.textContent = value;
     }
   });
-  // [data-i18n-html] — always uses innerHTML (for keys with trusted HTML content)
+  // [data-i18n-html] — sanitized innerHTML for known HTML keys
   document.querySelectorAll("[data-i18n-html]").forEach(el => {
     const key = el.getAttribute("data-i18n-html");
     const value = t(key, lang);
     if (HTML_KEYS.has(key)) {
-      el.innerHTML = value;
+      el.innerHTML = sanitizeHTML(value);
     } else {
       el.textContent = value;
     }
