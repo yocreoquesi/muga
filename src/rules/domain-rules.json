@@ -37,39 +37,39 @@
   },
   {
     "domain": "amazon.com",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.es",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.de",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.fr",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.co.uk",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.it",
-    "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "ebay.com",
@@ -86,8 +86,8 @@
   {
     "domain": "aliexpress.com",
     "preserveParams": ["SearchText", "catId", "sortType", "shipCountry", "groupsort", "maxPrice", "minPrice", "filterCat", "page"],
-    "stripParams": ["aff_fsk", "aff_platform", "sk", "dp", "terminal_id", "spm", "scm", "pvid", "pdp_npi"],
-    "note": "Search and filters — functional. AliExpress internal tracking stripped."
+    "stripParams": ["aff_fsk", "aff_platform", "sk", "dp", "terminal_id", "spm", "scm", "pvid", "pdp_npi", "tt", "afSmartRedirect", "gatewayAdapt", "aff_request_id", "mall_affr", "cv", "af"],
+    "note": "Search and filters — functional. AliExpress internal tracking and affiliate redirect params stripped."
   },
   {
     "domain": "pccomponentes.com",

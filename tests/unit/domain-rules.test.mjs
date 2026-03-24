@@ -157,14 +157,15 @@ describe("Amazon", () => {
     assert.ok(removedTracking.includes("pd_rd_r"));
   });
 
-  test("preserves ref on amazon.es (browse context), strips linkCode", () => {
-    const { cleanUrl } = clean(
+  test("strips ref and linkCode on amazon.es — ref is tracking noise", () => {
+    const { cleanUrl, removedTracking } = clean(
       "https://www.amazon.es/s?k=auriculares&ref=nb_sb_noss&linkCode=ll2"
     );
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("k"), "auriculares");
-    assert.equal(u.searchParams.get("ref"), "nb_sb_noss");
+    assert.ok(!u.searchParams.has("ref"), "ref should be stripped on Amazon");
     assert.ok(!u.searchParams.has("linkCode"));
+    assert.ok(removedTracking.includes("ref"));
   });
 
   test("strips ascsubtag on amazon.com", () => {
@@ -436,6 +437,18 @@ describe("Amazon store page URL", () => {
     assert.equal(u.search, "");
   });
 
+  test("strips ref and social_share from Chollometro-style Amazon link", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.amazon.es/dp/B07JNVH9D8?ref=cm_sw_r_cso_cp_apan_dp_KP63TZ0DQH7N1Y09NXJ4&social_share=cm_sw_r_cso_cp_apan_dp_KP63TZ0DQH7N1Y09NXJ4&tag=pepperugc-21"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("ref"), "ref must be stripped");
+    assert.ok(!u.searchParams.has("social_share"), "social_share must be stripped");
+    assert.equal(u.searchParams.get("tag"), "pepperugc-21", "affiliate tag preserved");
+    assert.ok(removedTracking.includes("ref"));
+    assert.ok(removedTracking.includes("social_share"));
+  });
+
   test("strips dib, dib_tag, sprefix, crid, dchild, qid from search", () => {
     const { cleanUrl } = clean(
       "https://www.amazon.es/s?k=usb+cable&dib=abc&dib_tag=se&sprefix=usb&crid=xyz&dchild=1&qid=123456"
@@ -448,6 +461,36 @@ describe("Amazon store page URL", () => {
     assert.ok(!u.searchParams.has("crid"));
     assert.ok(!u.searchParams.has("dchild"));
     assert.ok(!u.searchParams.has("qid"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AliExpress — affiliate and tracking params stripped
+// ---------------------------------------------------------------------------
+describe("AliExpress — strips affiliate noise, preserves search", () => {
+  test("strips all tracking from Chollometro-style AliExpress link", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://es.aliexpress.com/item/1005007831452483.html?dp=ppr-es-969667807&aff_fcid=abc&tt=CPS_NORMAL&aff_fsk=xyz&aff_platform=portals-tool&sk=xyz&terminal_id=abc123&afSmartRedirect=y&gatewayAdapt=glo2esp"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("dp"));
+    assert.ok(!u.searchParams.has("tt"));
+    assert.ok(!u.searchParams.has("aff_fsk"));
+    assert.ok(!u.searchParams.has("aff_platform"));
+    assert.ok(!u.searchParams.has("sk"));
+    assert.ok(!u.searchParams.has("terminal_id"));
+    assert.ok(!u.searchParams.has("afSmartRedirect"));
+    assert.ok(!u.searchParams.has("gatewayAdapt"));
+    assert.ok(removedTracking.length >= 7, `expected >=7 params removed, got ${removedTracking.length}`);
+  });
+
+  test("preserves search params on AliExpress", () => {
+    const { cleanUrl } = clean(
+      "https://es.aliexpress.com/wholesale?SearchText=usb+cable&catId=0&spm=a2g0o.home.1000002.0"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("SearchText"), "usb cable");
+    assert.ok(!u.searchParams.has("spm"));
   });
 });
 
