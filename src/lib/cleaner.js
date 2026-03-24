@@ -148,10 +148,12 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   const parsedBlacklist = prefs._parsedBlacklist || blacklist.map(parseListEntry);
   const parsedWhitelist = prefs._parsedWhitelist || whitelist.map(parseListEntry);
 
-  // 0a. OAuth / auth / payment flow exemption — never touch params on these paths
+  // 0a. OAuth / auth / payment flow exemption — never touch params on these paths.
+  // Each segment must appear as a full path component (bounded by / or end-of-path)
+  // to avoid false positives like "/authorize-your-creativity".
   const lowerPath = url.pathname.toLowerCase();
-  const AUTH_PATH_SEGMENTS = ["/oauth", "/authorize", "/callback", "/auth/", "/signin", "/login/", "/sso/", "/saml", "/checkout", "/payment", "/pay/"];
-  if (AUTH_PATH_SEGMENTS.some(seg => lowerPath.includes(seg))) {
+  const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
+  if (AUTH_PATH_RE.test(lowerPath)) {
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
