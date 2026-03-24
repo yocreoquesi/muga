@@ -38,32 +38,38 @@
   {
     "domain": "amazon.com",
     "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
   },
   {
     "domain": "amazon.es",
     "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
   },
   {
     "domain": "amazon.de",
     "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
   },
   {
     "domain": "amazon.fr",
     "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
   },
   {
     "domain": "amazon.co.uk",
     "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
   },
   {
     "domain": "amazon.it",
     "preserveParams": ["k", "i", "rh", "s", "ref", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
-    "note": "Search query, category, sort, pagination, variant selector (th) — functional"
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId"],
+    "note": "Search query, category, sort, pagination, variant selector (th) — functional. Store page brand filter and ingress/visitId stripped."
   },
   {
     "domain": "ebay.com",

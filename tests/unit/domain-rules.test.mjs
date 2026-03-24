@@ -416,6 +416,16 @@ describe("Amazon store page URL", () => {
     assert.equal(removedTracking.length, 3);
   });
 
+  test("strips field-lbr_brands_browse-bin from store page", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.amazon.es/stores/page/9A938D7A-DE82-426E-A8E6-CF16CA1EFFCA?field-lbr_brands_browse-bin=AmazonBasics"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("field-lbr_brands_browse-bin"));
+    assert.equal(u.search, "");
+    assert.ok(removedTracking.includes("field-lbr_brands_browse-bin"));
+  });
+
   test("strips ingress and visitId from store page", () => {
     const { cleanUrl } = clean(
       "https://www.amazon.es/stores/page/063F9A53-F6FA-47C3-B5F1-BA4025D14CC8?ingress=0&visitId=0ba739a1-553d-41f4-b2a8-0807b3006c87"
