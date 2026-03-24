@@ -118,6 +118,15 @@ async function init() {
   syncDevTools();
   document.getElementById("dev-mode").addEventListener("change", syncDevTools);
   initDevTools();
+
+  // Rate link — point to the correct store
+  const rateLink = document.getElementById("rate-store-link");
+  if (rateLink) {
+    const isFirefox = navigator.userAgent.includes("Firefox");
+    rateLink.href = isFirefox
+      ? "https://addons.mozilla.org/firefox/addon/muga/"
+      : "https://chromewebstore.google.com/detail/muga/";
+  }
 }
 
 function bindToggle(id, key, prefs) {

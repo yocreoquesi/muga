@@ -96,7 +96,7 @@
 
       // 4. Ask service worker to clean each URL
       Promise.all(
-        allUrls.map(url => chrome.runtime.sendMessage({ type: "PROCESS_URL", url, skipNotify: true }))
+        allUrls.map(url => chrome.runtime.sendMessage({ type: "PROCESS_URL", url, skipNotify: true, skipStats: true }))
       ).then(results => {
         const urlMap = new Map(allUrls.map((url, i) => [url, results[i]?.cleanUrl ?? url]));
 
@@ -112,6 +112,10 @@
         for (const [orig, clean] of urlMap) {
           if (clean !== orig) finalText = finalText.split(orig).join(clean);
         }
+
+        // Count as 1 clean action regardless of how many URLs were in the selection
+        const anyChanged = [...urlMap.values()].some((clean, i) => clean !== allUrls[i]);
+        if (anyChanged) chrome.runtime.sendMessage({ type: "INCREMENT_STAT", key: "urlsCleaned" }).catch(() => {});
 
         navigator.clipboard.writeText(finalText)
           .then(() => sendResponse({ ok: true }))
