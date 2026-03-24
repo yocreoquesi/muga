@@ -72,6 +72,66 @@
     "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
+    "domain": "amazon.co.jp",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Japan — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.com.br",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Brazil — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.in",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "India — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.com.au",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Australia — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.ca",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Canada — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.com.mx",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Mexico — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.nl",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Netherlands — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.pl",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Poland — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.se",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Sweden — same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.sg",
+    "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
+    "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
+    "note": "Singapore — same rules as other Amazon TLDs"
+  },
+  {
     "domain": "ebay.com",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],

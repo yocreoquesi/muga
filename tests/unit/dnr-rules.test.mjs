@@ -108,6 +108,22 @@ test("No removeParams entry collides with AFFILIATE_PATTERNS params", async () =
 // ---------------------------------------------------------------------------
 // Test 7 — removeParams count matches the number of lowercase TRACKING_PARAMS
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Test 7b — resourceTypes must be restricted to main_frame (never xmlhttprequest)
+// ---------------------------------------------------------------------------
+test("DNR rules only target main_frame, never xmlhttprequest or other types", () => {
+  const SAFE_TYPES = new Set(["main_frame", "sub_frame"]);
+  for (const rule of rules) {
+    const types = rule.condition?.resourceTypes ?? [];
+    const unsafe = types.filter(t => !SAFE_TYPES.has(t));
+    assert.equal(unsafe.length, 0,
+      `Rule ${rule.id} targets unsafe resource types: ${JSON.stringify(unsafe)}. Only main_frame/sub_frame allowed.`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test 8 — removeParams count matches lowercase TRACKING_PARAMS count
+// ---------------------------------------------------------------------------
 test("removeParams count matches lowercase TRACKING_PARAMS count", async () => {
   const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
 

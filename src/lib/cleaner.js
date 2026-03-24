@@ -93,6 +93,16 @@ function cleanAmazonPath(hostname, pathname) {
 }
 
 /**
+ * Returns true if this is an AliExpress product/item page where ALL query
+ * params are tracking noise. Item pages load correctly with zero params.
+ * Search and category pages (preserveParams in domain-rules) are excluded.
+ */
+function isAliExpressItemPage(hostname, pathname) {
+  if (!/aliexpress\.[a-z.]+$/.test(hostname)) return false;
+  return /^\/item\/\d+\.html?$/i.test(pathname);
+}
+
+/**
  * Processes a URL according to user preferences and blacklist/whitelist rules.
  *
  * Logic order:
@@ -234,17 +244,25 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     }
   }
 
-  for (const param of [...url.searchParams.keys()]) {
-    const lower = param.toLowerCase();
-    // Don't strip params that are affiliate identifiers for this host
-    if (affiliateParamNames.includes(lower)) continue;
-    // Don't strip params that are functional on this domain (domain-rules compatibility)
-    if (preservedParams.has(lower)) continue;
-    // Don't strip params whose category has been disabled by the user
-    if (disabledParams.has(lower)) continue;
-    if (isTrackingParam(lower, customParams, domainStrip)) {
+  // 4a-pre. AliExpress item pages: strip ALL params (item pages need zero params)
+  if (isAliExpressItemPage(hostname, url.pathname)) {
+    for (const param of [...url.searchParams.keys()]) {
       url.searchParams.delete(param);
       removedTracking.push(param);
+    }
+  } else {
+    for (const param of [...url.searchParams.keys()]) {
+      const lower = param.toLowerCase();
+      // Don't strip params that are affiliate identifiers for this host
+      if (affiliateParamNames.includes(lower)) continue;
+      // Don't strip params that are functional on this domain (domain-rules compatibility)
+      if (preservedParams.has(lower)) continue;
+      // Don't strip params whose category has been disabled by the user
+      if (disabledParams.has(lower)) continue;
+      if (isTrackingParam(lower, customParams, domainStrip)) {
+        url.searchParams.delete(param);
+        removedTracking.push(param);
+      }
     }
   }
   if (pathCleaned && action === "untouched") action = "cleaned";
