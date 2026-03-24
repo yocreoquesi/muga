@@ -2,6 +2,64 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.8.0] — 2026-03-24
+
+### Features
+- **431 tracking parameters** + 13 prefix patterns (utm_, cm_sw_, pd_rd_, pf_rd_, __mk_, hsa_, mt_, int_, ir_, asc_, cv_ct_, scm_, sb-ci-) — catches future variants automatically
+- **112 domain rules** — added 10 Amazon TLDs (co.jp, com.br, in, com.au, ca, com.mx, nl, pl, se, sg), enriched Facebook (+10 stripParams), Instagram (+4), YouTube/youtu.be (si share token +2)
+- **AliExpress aggressive mode** — /item/ pages strip ALL params (item pages need zero params to load)
+- **OAuth/auth/payment flow exemption** — paths with /oauth, /authorize, /checkout, /payment, /signin, /sso, /saml are never cleaned
+- **Rewrite loop guard** — >3 rewrites on same domain in 2 seconds = bail out, prevents CPU spikes
+- **Ping blocking hardened** — MutationObserver watches attribute changes, navigator.sendBeacon neutralized
+- **Smart rating nudge** — 200 URLs + 7 days + 3-day cooldown, max 3 sessions, permanent silence after click or ignore
+- **Viral share** — dynamic phrases with user's real stats, 8 seasonal easter eggs (Pi Day, May 4th, Halloween, etc.)
+- **Milestone titles** — hover on MUGA logo for fun titles based on URLs cleaned (10→First steps, 1000→Tracking Terminator, 10000→Legendary)
+- **Landing page** (docs/index.html) with SEO meta, OG/Twitter cards, JSON-LD SoftwareApplication
+- **Cleaning receipt** — popup shows ALL removed params (no cap)
+- **Structured debug logging** — source field (navigation, copy_link, copy_selection, shortcut), domain, path, removed params, clean URL
+- **Dev tools** — preview rating nudge with dismiss counter + reset
+
+### Security
+- sender.id validation in content script
+- navigate() protocol validation (http/https only)
+- Redirect loop guard via sessionStorage
+- Import entries restricted to printable ASCII
+- innerHTML sanitized via tag/attribute allowlist
+- INCREMENT_STAT whitelist validation
+- OAuth path matching uses regex word boundaries (no false positives)
+- web_accessible_resources removed (pages only accessed internally)
+- addEntry() validates with isValidListEntry() before saving
+
+### Accessibility
+- --text2 contrast WCAG AA (#555/#aaa)
+- Focus-visible on all interactive elements
+- aria-labels on form inputs and toast buttons
+- Confirm dialog focus trap + aria-labelledby
+- CSS variables for --success, --toggle-off, --danger in both light/dark
+
+### Copy & UX
+- Affiliate hint: "this is how MUGA stays free"
+- Context menu: "Copy clean link or selection" — describes full capability
+- Stats hint: explains counter persistence vs session logs
+- Affiliate stores moved behind Advanced settings
+- GitHub link in popup replaced with Rate MUGA store link
+- Store listing: 431 params, 112 domains, MV3 native positioning
+
+### Bug Fixes
+- Amazon ref/social_share now stripped (was in preserveParams)
+- AliExpress params (tt, afSmartRedirect, gatewayAdapt) now stripped
+- Selection copy counts as 1 stat (not N per URL)
+- Reset stats no longer re-triggers rating nudge
+- _flushStats restores _pendingStats on write failure
+- prefsFetchPromise cleared alongside cachedPrefs
+- Whitelist/blacklist mutations serialized via queue (race condition fix)
+
+### Internal
+- 484 passing tests, 0 failures (+90 new: smoke tests, idempotency, encoding, hash, OAuth, Amazon TLD matrix, security patterns)
+- 15 smoke tests covering Google, Amazon, AliExpress, YouTube, Facebook, Twitter, Reddit, LinkedIn, TikTok, Instagram
+- Idempotency guarantee: clean(clean(url)) === clean(url)
+- DNR resourceTypes assertion (main_frame only)
+
 ## [1.7.0] — 2026-03-23
 
 ### Features

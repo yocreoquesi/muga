@@ -3,8 +3,8 @@
 ![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-393_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.8.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-484_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # Every link. Cleaned. Before it loads.
 
@@ -163,7 +163,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 393 unit tests
+npm test               # 484 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
