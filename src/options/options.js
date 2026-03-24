@@ -38,7 +38,10 @@ function showConfirm(msg) {
     box.setAttribute("aria-modal", "true");
 
     const p = document.createElement("p");
+    p.id = "confirm-msg";
     p.textContent = msg;
+
+    box.setAttribute("aria-labelledby", "confirm-msg");
 
     const btns = document.createElement("div");
     btns.className = "confirm-btns";
@@ -59,7 +62,16 @@ function showConfirm(msg) {
     document.body.appendChild(overlay);
 
     okBtn.focus();
-    const onKey = (e) => { if (e.key === "Escape") close(false); };
+    const focusable = [cancelBtn, okBtn];
+    const onKey = (e) => {
+      if (e.key === "Escape") close(false);
+      if (e.key === "Tab") {
+        const idx = focusable.indexOf(document.activeElement);
+        const next = e.shiftKey ? (idx <= 0 ? focusable.length - 1 : idx - 1) : (idx + 1) % focusable.length;
+        focusable[next].focus();
+        e.preventDefault();
+      }
+    };
     const close = (val) => { document.removeEventListener("keydown", onKey); overlay.remove(); resolve(val); };
     document.addEventListener("keydown", onKey);
     cancelBtn.addEventListener("click", () => close(false));
@@ -376,7 +388,7 @@ function initExportImport() {
       if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist) || !Array.isArray(data.customParams)) {
         throw new Error("invalid");
       }
-      const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500;
+      const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500 && /^[\x20-\x7E]+$/.test(e);
       if (data.blacklist.length > 500 || data.whitelist.length > 500 || data.customParams.length > 200) {
         throw new Error("invalid");
       }
@@ -391,6 +403,10 @@ function initExportImport() {
       // Handle disabledCategories (array of strings)
       if (Array.isArray(data.disabledCategories) && data.disabledCategories.every(e => typeof e === "string")) {
         toSave.disabledCategories = data.disabledCategories;
+      }
+      // Handle toastDuration (number 5-60)
+      if (typeof data.toastDuration === "number") {
+        toSave.toastDuration = Math.max(5, Math.min(60, data.toastDuration));
       }
       // Handle language (string "en"|"es")
       if (data.language === "en" || data.language === "es") {
@@ -409,6 +425,7 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("dev-mode").checked = newPrefs.devMode;
+      document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
       syncDevTools();
       if (toSave.language) {
         currentLang = toSave.language;
@@ -428,13 +445,17 @@ function initExportImport() {
 }
 
 function syncDevTools() {
-  const on = document.getElementById("dev-mode").checked;
-  document.getElementById("dev-tools-card").style.display = on ? "" : "none";
+  const devModeEl = document.getElementById("dev-mode");
+  const devToolsCard = document.getElementById("dev-tools-card");
+  if (!devModeEl || !devToolsCard) return;
+  devToolsCard.style.display = devModeEl.checked ? "" : "none";
 }
 
 function initDevTools() {
   // Preview notification — replicas the real affiliate toast from content/cleaner.js
-  document.getElementById("dev-preview-notify-btn").addEventListener("click", async () => {
+  const previewBtn = document.getElementById("dev-preview-notify-btn");
+  if (!previewBtn) return;
+  previewBtn.addEventListener("click", async () => {
     document.getElementById("muga-preview-notice")?.remove();
 
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);

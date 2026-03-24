@@ -1,6 +1,6 @@
 # MUGA — ProductHunt Launch
 
-> Version: 1.6.0
+> Version: 1.7.0
 > Created: 2026-03-22
 
 ---
@@ -8,7 +8,7 @@
 ## Taglines
 
 **Primary:**
-130+ trackers stripped. Automatically. Before the page loads.
+421 trackers stripped. Automatically. Before the page loads.
 
 **Alternative 1:**
 Your links arrive dirty. MUGA cleans them.
@@ -20,11 +20,11 @@ Clean URLs. Before the page loads. Never replaces a creator's tag.
 
 ## 240-char description (ProductHunt)
 
-Every URL you click is packed with trackers — UTMs, fbclid, gclid, Amazon noise, YouTube tokens. MUGA strips 130+ of them before the page loads. AMP redirect, ping blocking, redirect unwrapping. Affiliate injection is opt-in and never replaces another creator's tag.
+Every URL you click is packed with trackers — UTMs, fbclid, gclid, Amazon noise, YouTube tokens. MUGA strips 421 of them before the page loads. AMP redirect, ping blocking, redirect unwrapping. Affiliate injection is opt-in and never replaces another creator's tag.
 
 *(264 chars — trim to fit if needed:)*
 
-Every URL you click is packed with trackers. MUGA strips 130+ automatically — UTMs, fbclid, gclid, AMP links, ping beacons. Affiliate injection is opt-in, transparent, and never replaces another creator's tag. Open source.
+Every URL you click is packed with trackers. MUGA strips 421 automatically — UTMs, fbclid, gclid, AMP links, ping beacons. Affiliate injection is opt-in, transparent, and never replaces another creator's tag. Open source.
 
 *(222 chars — use this one)*
 
@@ -40,7 +40,7 @@ The short version: we built this after the Honey scandal broke. For those who mi
 
 We wanted to build the opposite of that.
 
-MUGA strips 130+ tracking parameters from every URL you visit — automatically, before the page loads. UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens — gone. You get the clean URL, the page loads normally, and nothing gets logged about where you came from.
+MUGA strips 421 tracking parameters from every URL you visit — automatically, before the page loads. UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens — gone. You get the clean URL, the page loads normally, and nothing gets logged about where you came from.
 
 The affiliate model works like this: when you navigate to one of 18 supported stores and your link has no affiliate tag, we quietly add ours. You pay the exact same price. The store just knows you arrived via MUGA. That's how the project stays free and maintained.
 

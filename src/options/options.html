@@ -35,7 +35,7 @@
         <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-label="Strip all third-party affiliate parameters"><span class="slider"></span></label>
       </div>
       <details class="stores-details">
-        <summary class="stores-summary" role="heading" aria-level="2">
+        <summary class="stores-summary">
           <span data-i18n="section_stores">Affiliate stores</span>
           <span class="stores-count" id="stores-count"></span>
         </summary>
@@ -66,7 +66,7 @@
       <div class="list-section">
         <div class="list-items" id="blacklist-items"></div>
         <div class="add-row">
-          <input id="bl-input" type="text" data-i18n-placeholder="bl_placeholder">
+          <input id="bl-input" type="text" data-i18n-placeholder="bl_placeholder" aria-label="Blacklist entry">
           <button class="add-btn" id="bl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
         <p class="hint" id="bl-hint" data-i18n="bl_hint"></p>
@@ -80,7 +80,7 @@
       <div class="list-section">
         <div class="list-items" id="whitelist-items"></div>
         <div class="add-row">
-          <input id="wl-input" type="text" data-i18n-placeholder="wl_placeholder">
+          <input id="wl-input" type="text" data-i18n-placeholder="wl_placeholder" aria-label="Whitelist entry">
           <button class="add-btn" id="wl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
         <p class="hint" id="wl-hint" data-i18n="wl_hint"></p>
@@ -184,7 +184,7 @@
         <div class="list-section">
           <div class="list-items" id="custom-params-items"></div>
           <div class="add-row">
-            <input id="cp-input" type="text" data-i18n-placeholder="cp_placeholder">
+            <input id="cp-input" type="text" data-i18n-placeholder="cp_placeholder" aria-label="Custom tracking parameter">
             <button class="add-btn" id="cp-add-btn" data-i18n="add_btn">+ Add</button>
           </div>
           <p class="hint" data-i18n="cp_hint"></p>
@@ -237,7 +237,7 @@
           <strong style="font-size:13.5px;font-weight:500;display:block;margin-bottom:6px;" data-i18n="dev_url_tester_label">URL tester</strong>
           <small style="color:var(--text2);font-size:12px;display:block;margin-bottom:10px;" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
           <div class="add-row">
-            <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder">
+            <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder" aria-label="URL to test">
             <button class="add-btn" id="dev-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
           </div>
           <div id="dev-url-result" style="margin-top:10px;display:none;">

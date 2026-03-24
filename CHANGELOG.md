@@ -2,6 +2,29 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.7.0] — 2026-03-23
+
+### Features
+- **421 tracking parameters** — expanded from 188 to 421 via industry-standard sources, AdGuard URL Tracking Filter 17 (151 params), utm_* prefix match, and Asian/Russian market coverage. 99% parity with AdGuard achieved
+- **102 domain-specific rules** — added 24 EU/US domain rules from AdGuard filter 17, plus domain `stripParams` engine for site-specific forced stripping
+- **Simplified affiliate toast** — removed "Use ours" button and `allowReplaceAffiliate` toggle. Toast now shows only "Keep it" / "Remove it" / "Dismiss"
+- **Enhanced debug log** — structured JSON entries with timestamps, consistent toast preview, configurable toast duration (5–60s)
+- **Positioning and UI design document** — added `docs/MUGA-Positioning-UI-Design.md`
+
+### Bug Fixes
+- **Amazon `th` param preserved** — product variant selector param was incorrectly stripped
+- **Amazon store page params stripped** — `ingress` and `visitId` removed from Amazon URLs
+- **Spanish translation for opts_subtitle** — was missing, now included
+- **toastDuration validation** — clamped to 5–60 in all code paths
+- **Stale JSDoc and README counts** — corrected param and test counts
+
+### Legal
+- **Terms of Use finalized** — removed draft status, added EU/GDPR compliance language
+
+### Internal
+- 393 passing tests, 0 failures (+112 new tests)
+- Tracking param categories: UTM/Campaign, Paid Ads, Email Marketing, Social Media, Platform Noise, Generic
+
 ## [1.6.0] — 2026-03-22
 
 ### Features

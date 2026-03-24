@@ -105,12 +105,19 @@ async function _flushStats() {
   const toFlush = _pendingStats;
   _pendingStats = {};
 
-  const local = await getStats();
-  const stats = { ...(local.stats || STAT_DEFAULTS.stats) };
-  for (const [key, delta] of Object.entries(toFlush)) {
-    stats[key] = (stats[key] || 0) + delta;
+  try {
+    const local = await getStats();
+    const stats = { ...(local.stats || STAT_DEFAULTS.stats) };
+    for (const [key, delta] of Object.entries(toFlush)) {
+      stats[key] = (stats[key] || 0) + delta;
+    }
+    await setStats({ stats });
+  } catch {
+    // Restore pending stats so they aren't lost on write failure
+    for (const [key, delta] of Object.entries(toFlush)) {
+      _pendingStats[key] = (_pendingStats[key] || 0) + delta;
+    }
   }
-  await setStats({ stats });
 }
 
 export function incrementStat(key, amount = 1) {
@@ -119,7 +126,7 @@ export function incrementStat(key, amount = 1) {
     // C13 — use microtask instead of 100ms timer to minimize the window where
     // pending stats can be lost if the MV3 service worker is terminated.
     _statsFlushTimer = true;
-    Promise.resolve().then(_flushStats);
+    Promise.resolve().then(_flushStats).catch(() => { _statsFlushTimer = false; });
   }
 }
 

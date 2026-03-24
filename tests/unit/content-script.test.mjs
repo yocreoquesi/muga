@@ -244,3 +244,62 @@ describe("Custom params validation for DNR rules", () => {
     assert.ok(!isValidParam(""));
   });
 });
+
+// ── Security: sender.id validation in message handlers ───────────────────────
+
+describe("Security: sender.id validation in message handlers", () => {
+  test("content script validates sender.id before processing messages", () => {
+    assert.ok(
+      contentSource.includes("sender.id !== chrome.runtime.id"),
+      "content/cleaner.js must validate sender.id in onMessage handler"
+    );
+  });
+
+  test("service worker validates sender.id before processing messages", () => {
+    assert.ok(
+      swSource.includes("sender.id !== chrome.runtime.id"),
+      "service-worker.js must validate sender.id in onMessage handler"
+    );
+  });
+});
+
+// ── Import entry validation ──────────────────────────────────────────────────
+
+describe("Import file entry validation", () => {
+  const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500 && /^[\x20-\x7E]+$/.test(e);
+
+  test("accepts valid domain entries", () => {
+    assert.ok(isValidEntry("amazon.es"));
+    assert.ok(isValidEntry("amazon.es::tag::youtuber-21"));
+  });
+
+  test("accepts valid custom param entries", () => {
+    assert.ok(isValidEntry("my_custom_param"));
+    assert.ok(isValidEntry("ref_code"));
+  });
+
+  test("rejects empty string", () => {
+    assert.ok(!isValidEntry(""));
+  });
+
+  test("rejects non-string values", () => {
+    assert.ok(!isValidEntry(123));
+    assert.ok(!isValidEntry(null));
+    assert.ok(!isValidEntry(undefined));
+  });
+
+  test("rejects entries over 500 chars", () => {
+    assert.ok(!isValidEntry("a".repeat(500)));
+  });
+
+  test("rejects entries with non-printable ASCII", () => {
+    assert.ok(!isValidEntry("amazon.es\x00"));
+    assert.ok(!isValidEntry("amazon.es\x01injection"));
+    assert.ok(!isValidEntry("domain\ttab"));
+  });
+
+  test("rejects entries with Unicode outside printable ASCII", () => {
+    assert.ok(!isValidEntry("amazon.es\u200B")); // zero-width space
+    assert.ok(!isValidEntry("dominio\u00F1o.com")); // ñ — should use punycode
+  });
+});

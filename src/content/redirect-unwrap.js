@@ -11,6 +11,7 @@
   "use strict";
 
   chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+    void chrome.runtime.lastError;
     if (!prefs || !prefs.enabled || !prefs.unwrapRedirects) return;
 
     const currentUrl = window.location.href;
@@ -50,9 +51,16 @@
       }
 
       if (!["http:", "https:"].includes(destination.protocol)) continue;
+      if (!destination.hostname) continue;
 
       // Only unwrap if the destination host differs (it's an actual redirect wrapper)
       if (destination.hostname === parsed.hostname) continue;
+
+      // Guard against redirect loops — if the destination points back to a page
+      // that could redirect to us, bail out.
+      const sessionKey = "__mugaUnwrapped";
+      if (sessionStorage.getItem(sessionKey)) return;
+      sessionStorage.setItem(sessionKey, "1");
 
       window.location.replace(destination.href);
       return;

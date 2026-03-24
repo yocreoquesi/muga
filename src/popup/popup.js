@@ -201,7 +201,7 @@ async function showHistory(lang) {
           entryDiv.classList.remove("copied");
           afterDiv.textContent = orig;
         }, 1200);
-      });
+      }).catch(() => {});
     });
 
     // Copy clean URL icon button
@@ -214,7 +214,7 @@ async function showHistory(lang) {
           copyCleanBtn.innerHTML = CLIPBOARD_SVG;
           copyCleanBtn.style.fontSize = "";
         }, 1200);
-      });
+      }).catch(() => {});
     });
 
     // Copy original URL button (#178)
@@ -224,7 +224,7 @@ async function showHistory(lang) {
         const origText = copyOrigBtn.textContent;
         copyOrigBtn.textContent = t("history_copied", lang);
         setTimeout(() => { copyOrigBtn.textContent = origText; }, 1200);
-      });
+      }).catch(() => {});
     });
   });
 }
