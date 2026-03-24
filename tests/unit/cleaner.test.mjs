@@ -1734,6 +1734,31 @@ describe("N9 — formatStat (popup.js)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// OAuth / auth / payment flow exemption — MUGA never touches these paths
+// ---------------------------------------------------------------------------
+describe("OAuth / auth / payment flow exemption", () => {
+  const authUrls = [
+    ["Google OAuth", "https://accounts.google.com/o/oauth2/auth?client_id=abc&redirect_uri=https://app.com/cb&scope=email&state=xyz&response_type=code"],
+    ["Microsoft OAuth", "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=abc&redirect_uri=https://app.com&scope=openid&state=xyz&nonce=123"],
+    ["GitHub OAuth", "https://github.com/login/oauth/authorize?client_id=abc&redirect_uri=https://app.com/cb&scope=user&state=xyz"],
+    ["Stripe Checkout", "https://checkout.stripe.com/pay/cs_test_abc123?utm_source=email"],
+    ["PayPal Checkout", "https://www.paypal.com/checkout/authorize?token=abc&fundingSource=paypal"],
+    ["Generic SSO", "https://auth.company.com/sso/login?returnUrl=https://app.com&sessionId=abc"],
+    ["SAML", "https://idp.example.com/saml/sso?SAMLRequest=abc&RelayState=xyz"],
+    ["Generic callback", "https://app.com/auth/callback?code=abc123&state=xyz"],
+  ];
+
+  for (const [name, url] of authUrls) {
+    test(`${name}: URL returned untouched`, () => {
+      const result = processUrl(url, PREFS, domainRules);
+      assert.equal(result.cleanUrl, url, `${name} URL must not be modified`);
+      assert.equal(result.action, "untouched");
+      assert.equal(result.removedTracking.length, 0);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Idempotency — clean(clean(url)) must equal clean(url)
 // ---------------------------------------------------------------------------
 describe("Idempotency — double-cleaning produces identical output", () => {

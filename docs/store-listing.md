@@ -2,7 +2,7 @@
 
 > Version: 1.7.0
 > Last updated: 2026-03-23
-> Status: Updated for v1.7.0 — 421 tracking params, 102 domain rules, simplified toast, opt-in affiliate model
+> Status: Updated for v1.7.0 — 431 tracking params, 112 domain rules, 13 prefix patterns, MV3 native, opt-in affiliate model
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### Short description (132 chars max)
 
-421 trackers stripped from every URL — automatically, before the page loads. No clicks. No setup. Never replaces a creator's tag.
+431 trackers stripped from every URL — automatically, before the page loads. Built for modern Chrome. Never replaces a creator's tag.
 
 *(131 chars)*
 
@@ -18,7 +18,7 @@
 
 ### Detailed description
 
-Every URL you click is pre-loaded with trackers. MUGA strips 421 of them — automatically, before the page loads. No clicks. No setup.
+Every URL you click is pre-loaded with trackers. MUGA strips 431 of them — automatically, before the page loads. No clicks. No setup. Built Manifest V3 native — designed for modern Chrome and Firefox.
 
 And unlike Honey, MUGA never replaces a creator's affiliate tag. Ever.
 
@@ -50,7 +50,7 @@ https://example.com/product
 WHAT GETS STRIPPED
 ──────────────────────────────────────
 
-MUGA recognizes 421 tracking parameters — UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens, TikTok click IDs, Pinterest tags, email marketing beacons, and more. Applied across 102 domain-specific rulesets so functional params (search queries, pagination, filters) are always preserved.
+MUGA recognizes 431 tracking parameters across 13 pattern families — UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens, TikTok click IDs, Pinterest tags, email marketing beacons, and more. Applied across 112 domain-specific rulesets so functional params (search queries, pagination, filters) are always preserved.
 
 What you get: shorter URLs, no tracking attached, and a browser that stops broadcasting your origin story to every site you visit.
 
@@ -132,7 +132,7 @@ privacy, URL cleaner, tracking protection, affiliate, UTM
 
 ### Summary (250 chars max)
 
-421 trackers stripped from every URL — automatically, before the page loads. AMP redirect, ping blocking, redirect unwrapping. Unlike Honey, never replaces a creator's affiliate tag. Open source, GPL v3.
+431 trackers stripped from every URL — automatically, before the page loads. AMP redirect, ping blocking, redirect unwrapping. Works on Chrome too. Unlike Honey, never replaces a creator's affiliate tag. GPL v3.
 
 *(205 chars)*
 

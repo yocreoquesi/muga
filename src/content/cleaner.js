@@ -19,6 +19,20 @@
   // Timer ID for the toast auto-dismiss — cleared when a new toast replaces the old one
   let _toastTimer = null;
 
+  // Rewrite loop guard — prevents infinite URL rewriting if another extension
+  // or the page itself re-injects tracking params after MUGA cleans them.
+  const _rewriteLog = new Map(); // hostname -> { count, firstTs }
+  function isRewriteLoop(hostname) {
+    const now = Date.now();
+    const entry = _rewriteLog.get(hostname);
+    if (!entry || now - entry.firstTs > 2000) {
+      _rewriteLog.set(hostname, { count: 1, firstTs: now });
+      return false;
+    }
+    entry.count++;
+    return entry.count > 3;
+  }
+
   // Toast strings — default English, overridden by stored language preference
   const STRINGS = {
     en: {
@@ -219,6 +233,9 @@
       return;
     }
     if (!["http:", "https:"].includes(url.protocol)) return;
+
+    // Rewrite loop guard — bail if this domain is being rewritten too rapidly
+    if (isRewriteLoop(url.hostname)) return;
 
     // Preserve Ctrl/Cmd/Shift+click and target="_blank" (open in new tab/window)
     const opensNewTab = e.ctrlKey || e.metaKey || e.shiftKey ||
@@ -421,14 +438,22 @@
       removePingAttrs(document);
       const observer = new MutationObserver(mutations => {
         for (const mutation of mutations) {
+          // Handle new nodes
           for (const node of mutation.addedNodes) {
             if (node.nodeType !== 1) continue;
             if (node.hasAttribute?.("ping")) node.removeAttribute("ping");
             removePingAttrs(node);
           }
+          // Handle attribute changes on existing elements
+          if (mutation.type === "attributes" && mutation.attributeName === "ping") {
+            mutation.target.removeAttribute("ping");
+          }
         }
       });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["ping"] });
+
+      // Neutralize navigator.sendBeacon — prevents beacon-based tracking
+      try { navigator.sendBeacon = () => true; } catch { /* frozen in strict contexts */ }
     }
   });
 })();
