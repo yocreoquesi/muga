@@ -108,8 +108,8 @@
 
     if (message.type === "SHOW_TEST_TOAST") {
       showAffiliateNotice(
-        { param: "tag", value: "competitor-21" },
-        "https://amazon.es/dp/B08N5WRWNW?tag=competitor-21",
+        { param: "tag", value: "somestore-21" },
+        "https://amazon.es/dp/B08N5WRWNW?tag=somestore-21",
         "https://amazon.es/dp/B08N5WRWNW",
         undefined,
         () => {}
