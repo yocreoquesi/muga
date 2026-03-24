@@ -231,7 +231,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "PROCESS_URL") {
     const tabId = sender.tab?.id;
-    handleProcessUrl(message.url, { skipNotify: message.skipNotify })
+    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         sendResponse(result);
@@ -294,6 +294,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "INCREMENT_STAT") {
+    if (typeof message.key === "string") incrementStat(message.key);
+    return false;
+  }
+
   // exposed for future dev-tools use
   if (message.type === "CLEAR_DEBUG_LOG") {
     sessionStorage.set({ debugLog: [] })
@@ -304,7 +309,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 });
 
-async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
+async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {
   await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 
@@ -341,11 +346,15 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
     } catch { /* ignore */ }
   }
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
-    incrementStat("urlsCleaned");
+    if (!skipStats) {
+      incrementStat("urlsCleaned");
+      if (result.junkRemoved > 0) incrementStat("junkRemoved", result.junkRemoved);
+    }
     await appendHistory(rawUrl, result.cleanUrl);
     const parsedRaw = new URL(rawUrl);
     const domain = parsedRaw.hostname.replace(/^www\./, "");
     logAction("cleaned", {
+      source,
       domain,
       path: parsedRaw.pathname,
       action: result.action,
@@ -355,8 +364,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false } = {}) {
       cleanParams: [...new URL(result.cleanUrl).searchParams.keys()],
       cleanUrl: result.cleanUrl,
     });
-  }
-  if (result.junkRemoved > 0) {
+  } else if (result.junkRemoved > 0 && !skipStats) {
     incrementStat("junkRemoved", result.junkRemoved);
   }
   if (result.action === "detected_foreign") {
@@ -412,7 +420,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url || !tab?.id) return;
 
-  const result = await handleProcessUrl(tab.url, { skipNotify: true });
+  const result = await handleProcessUrl(tab.url, { skipNotify: true, source: "shortcut" });
   chrome.tabs.sendMessage(tab.id, {
     type: "COPY_TO_CLIPBOARD",
     text: result.cleanUrl,
@@ -423,9 +431,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (info.menuItemId === "muga-copy-clean") {
-    // Route through handleProcessUrl so stats are incremented correctly.
-    // skipNotify: true suppresses the foreign-affiliate toast and injection (not relevant on copy).
-    const result = await handleProcessUrl(info.linkUrl, { skipNotify: true });
+    const result = await handleProcessUrl(info.linkUrl, { skipNotify: true, source: "copy_link" });
 
     // Copy to clipboard via content script (service worker has no direct clipboard access)
     if (tab?.id) {
@@ -448,11 +454,13 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
         let result = text;
         (async () => {
           const matches = [...text.matchAll(URL_RE)];
+          let anyChanged = false;
           for (const match of matches) {
             const candidate = match[0].replace(/[.,;:!?)\]]+$/, "");
-            const cleaned = await handleProcessUrl(candidate, { skipNotify: true });
-            if (cleaned.cleanUrl !== candidate) result = result.replaceAll(candidate, cleaned.cleanUrl);
+            const cleaned = await handleProcessUrl(candidate, { skipNotify: true, source: "copy_selection", skipStats: true });
+            if (cleaned.cleanUrl !== candidate) { result = result.replaceAll(candidate, cleaned.cleanUrl); anyChanged = true; }
           }
+          if (anyChanged) incrementStat("urlsCleaned");
           chrome.tabs.sendMessage(tab.id, { type: "COPY_TO_CLIPBOARD", text: result }, () => void chrome.runtime.lastError);
         })();
       }
