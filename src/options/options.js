@@ -486,7 +486,7 @@ function initDevTools() {
     msgDiv.appendChild(document.createTextNode("amazon.es " + t("toast_tag_msg", currentLang) + " "));
     const codeEl = document.createElement("code");
     codeEl.style.cssText = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
-    codeEl.textContent = "tag=competitor-21";
+    codeEl.textContent = "tag=somestore-21";
     msgDiv.appendChild(codeEl);
 
     const btnDiv = document.createElement("div");

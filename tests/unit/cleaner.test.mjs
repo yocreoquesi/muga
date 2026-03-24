@@ -1043,7 +1043,7 @@ describe("ref is not a global tracking param (#160)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bug #183 — blacklist-specific + inject must NOT silently replace competitor tag
+// Bug #183 — blacklist-specific + inject must NOT silently replace third-party tag
 // ---------------------------------------------------------------------------
 describe("Bug #183 — blacklist removal takes priority over affiliate injection", () => {
   before(() => AFFILIATE_PATTERNS.push(TEST_PATTERN));
@@ -1053,14 +1053,14 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
-      blacklist: ["shop.test.muga::aff::competitor-21"],
+      blacklist: ["shop.test.muga::aff::other-store-21"],
     };
     const { cleanUrl, action } = processUrl(
-      "https://shop.test.muga/product?aff=competitor-21&utm_source=email",
+      "https://shop.test.muga/product?aff=other-store-21&utm_source=email",
       prefs
     );
-    // The competitor tag must be gone
-    assert.ok(!cleanUrl.includes("competitor-21"), "competitor-21 must be stripped");
+    // The third-party tag must be gone
+    assert.ok(!cleanUrl.includes("other-store-21"), "other-store-21 must be stripped");
     // Our tag must NOT have been silently injected
     assert.ok(!cleanUrl.includes("muga-test-99"), "ourTag must NOT be injected after blacklist removal");
     // Action must be cleaned, not injected
@@ -1071,7 +1071,7 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
-      blacklist: ["shop.test.muga::aff::competitor-21"],
+      blacklist: ["shop.test.muga::aff::other-store-21"],
     };
     const { cleanUrl, action } = processUrl(
       "https://shop.test.muga/product?color=blue",
@@ -1099,18 +1099,18 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
   before(() => AFFILIATE_PATTERNS.push(AMAZON_ES_TEST_PATTERN));
   after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
 
-  test("amazon.es with tag=competitor-21, blacklist has competitor-21, inject ON — result has NO tag at all (#197)", () => {
+  test("amazon.es with tag=other-store-21, blacklist has other-store-21, inject ON — result has NO tag at all (#197)", () => {
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
-      blacklist: ["amazon.es::tag::competitor-21"],
+      blacklist: ["amazon.es::tag::other-store-21"],
     };
     const { cleanUrl, action } = processUrl(
-      "https://www.amazon.es/dp/B0GQ4N9N33?tag=competitor-21&utm_source=email",
+      "https://www.amazon.es/dp/B0GQ4N9N33?tag=other-store-21&utm_source=email",
       prefs
     );
     const out = new URL(cleanUrl);
-    assert.equal(out.searchParams.get("tag"), null, "competitor tag must be stripped");
+    assert.equal(out.searchParams.get("tag"), null, "third-party tag must be stripped");
     assert.ok(!cleanUrl.includes("muga-es-21"), "our tag must NOT be injected after blacklist removal (#197)");
     assert.notEqual(action, "injected", "action must not be injected when blacklist removed the affiliate (#197)");
   });
@@ -1119,7 +1119,7 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
-      blacklist: ["amazon.es::tag::competitor-21"],
+      blacklist: ["amazon.es::tag::other-store-21"],
     };
     const { cleanUrl, action } = processUrl(
       "https://www.amazon.es/dp/B0GQ4N9N33?color=blue",
@@ -1188,10 +1188,10 @@ describe("Bug #229 — toast whitelist/blacklist entry format", () => {
 
   test("whitelist entry as 'domain::param::value' prevents foreign detection (#229)", () => {
     // Simulates what the toast Allow button should store (after the #229 fix).
-    // The entry is "shop.test.muga::aff::competitor-99" — must prevent detection.
+    // The entry is "shop.test.muga::aff::other-store-99" — must prevent detection.
     const { action } = processUrl(
-      "https://shop.test.muga/product?aff=competitor-99",
-      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["shop.test.muga::aff::competitor-99"] }
+      "https://shop.test.muga/product?aff=other-store-99",
+      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["shop.test.muga::aff::other-store-99"] }
     );
     assert.notEqual(action, "detected_foreign",
       "whitelist entry in domain::param::value format must suppress foreign detection (#229)");
@@ -1200,8 +1200,8 @@ describe("Bug #229 — toast whitelist/blacklist entry format", () => {
   test("blacklist entry as 'domain::param::value' strips the affiliate param (#229)", () => {
     // Simulates what the toast Block button should store (after the #229 fix).
     const { cleanUrl, action } = processUrl(
-      "https://shop.test.muga/product?aff=competitor-99",
-      { ...PREFS, blacklist: ["shop.test.muga::aff::competitor-99"] }
+      "https://shop.test.muga/product?aff=other-store-99",
+      { ...PREFS, blacklist: ["shop.test.muga::aff::other-store-99"] }
     );
     assert.equal(new URL(cleanUrl).searchParams.has("aff"), false,
       "blacklist entry in domain::param::value format must strip the affiliate param (#229)");
@@ -1210,12 +1210,12 @@ describe("Bug #229 — toast whitelist/blacklist entry format", () => {
   });
 
   test("old-style 'param=value' whitelist entry (broken format) does NOT prevent detection (#229 regression guard)", () => {
-    // This test guards against the old bug re-appearing. The entry "aff=competitor-99"
+    // This test guards against the old bug re-appearing. The entry "aff=other-store-99"
     // is treated as a domain name by parseListEntry — it must NOT suppress detection
-    // because no real hostname looks like "aff=competitor-99".
+    // because no real hostname looks like "aff=other-store-99".
     const { action } = processUrl(
-      "https://shop.test.muga/product?aff=competitor-99",
-      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["aff=competitor-99"] }
+      "https://shop.test.muga/product?aff=other-store-99",
+      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["aff=other-store-99"] }
     );
     assert.equal(action, "detected_foreign",
       "old-style 'param=value' whitelist entry must not suppress detection — it matches no real hostname (#229)");
@@ -1225,8 +1225,8 @@ describe("Bug #229 — toast whitelist/blacklist entry format", () => {
     // The fix strips www from the hostname before building the entry.
     // Both "shop.test.muga::aff::v" and "www.shop.test.muga::aff::v" should match.
     const { cleanUrl } = processUrl(
-      "https://www.shop.test.muga/product?aff=competitor-99",
-      { ...PREFS, blacklist: ["shop.test.muga::aff::competitor-99"] }
+      "https://www.shop.test.muga/product?aff=other-store-99",
+      { ...PREFS, blacklist: ["shop.test.muga::aff::other-store-99"] }
     );
     assert.equal(new URL(cleanUrl).searchParams.has("aff"), false,
       "www-variant hostname must still match the non-www blacklist entry (#229)");

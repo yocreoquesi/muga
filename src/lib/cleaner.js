@@ -270,7 +270,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   // 5. Strip specific blacklisted affiliate values
   let blacklistStripped = 0;
   // Track whether a blacklist rule removed an affiliate param — if so, injection must be suppressed.
-  // Without this guard, a blacklisted competitor tag would be silently replaced by ourTag (#183).
+  // Without this guard, a blacklisted third-party tag would be silently replaced by ourTag (#183).
   let blacklistRemovedAffiliate = false;
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
