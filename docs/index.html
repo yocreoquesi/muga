@@ -3,86 +3,211 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA — Privacy Policy</title>
+  <title>MUGA — Make URLs Great Again | Clean URLs, No Tracking</title>
+  <meta name="description" content="MUGA strips 421 tracking parameters from every URL — automatically, before the page loads. No clicks. No setup. No data sent anywhere. Open source, GPL v3.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MUGA — Make URLs Great Again">
+  <meta property="og:description" content="Strips 421 tracking parameters from every URL. Zero network requests. Open source.">
+  <meta property="og:image" content="https://yocreoquesi.github.io/muga/assets/promo-marquee-1400x560.png">
+  <meta property="og:url" content="https://yocreoquesi.github.io/muga/">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MUGA — Make URLs Great Again">
+  <meta name="twitter:description" content="Strips 421 tracking parameters from every URL. Zero network requests. Open source.">
+  <meta name="twitter:image" content="https://yocreoquesi.github.io/muga/assets/promo-marquee-1400x560.png">
+
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MUGA — Make URLs Great Again",
+    "applicationCategory": "BrowserApplication",
+    "operatingSystem": "Chrome, Firefox",
+    "description": "Browser extension that strips 421 tracking parameters from every URL automatically. No data leaves your browser.",
+    "url": "https://yocreoquesi.github.io/muga/",
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "softwareVersion": "1.7.0"
+  }
+  </script>
+
   <style>
     :root {
-      --bg: #fff; --text: #1a1a1a; --text2: #555; --accent: #2563eb;
-      --border: rgba(0,0,0,0.08); --bg2: #f7f7f7;
+      --bg: #ffffff; --bg2: #f5f5f5; --text: #1a1a1a; --text2: #555;
+      --accent: #2563eb; --accent-hover: #1d4ed8; --border: rgba(0,0,0,0.08);
+      --success: #16a34a; --code-bg: #f0f0f0;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #111; --text: #f0f0f0; --text2: #999; --bg2: #1c1c1e; --border: rgba(255,255,255,0.08); }
+      :root {
+        --bg: #0a0a0a; --bg2: #1c1c1e; --text: #f0f0f0; --text2: #aaa;
+        --accent: #60a5fa; --accent-hover: #93c5fd; --border: rgba(255,255,255,0.08);
+        --success: #4ade80; --code-bg: #2c2c2e;
+      }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg); color: var(--text);
-      max-width: 680px; margin: 0 auto; padding: 48px 24px; font-size: 15px; line-height: 1.7; }
-    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
-    .meta { color: var(--text2); font-size: 13px; margin-bottom: 40px; }
-    h2 { font-size: 16px; font-weight: 600; margin: 32px 0 10px; }
-    p { margin-bottom: 14px; color: var(--text2); }
-    ul { margin: 8px 0 14px 20px; color: var(--text2); }
-    li { margin-bottom: 6px; }
-    .highlight {
-      background: var(--bg2); border-left: 3px solid var(--accent);
-      border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0;
-      font-size: 14px; color: var(--text);
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.6;
     }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    strong { color: var(--text); }
+
+    /* Hero */
+    .hero { text-align: center; padding: 80px 24px 60px; }
+    .hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; line-height: 1.15; margin-bottom: 16px; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { font-size: 18px; color: var(--text2); max-width: 560px; margin: 0 auto 32px; }
+    .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      transition: background 0.15s;
+    }
+    .cta-primary { background: var(--accent); color: #fff; }
+    .cta-primary:hover { background: var(--accent-hover); text-decoration: none; }
+    .cta-secondary { background: var(--bg2); color: var(--text); border: 1px solid var(--border); }
+    .cta-secondary:hover { background: var(--border); text-decoration: none; }
+
+    /* Before/After */
+    .demo { padding: 48px 0; }
+    .demo h2 { text-align: center; font-size: 22px; margin-bottom: 24px; }
+    .url-box {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 20px; margin-bottom: 12px; font-family: monospace; font-size: 13px;
+      word-break: break-all; line-height: 1.6;
+    }
+    .url-box .label {
+      display: inline-block; font-family: -apple-system, sans-serif; font-weight: 700;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 6px; padding: 2px 8px; border-radius: 4px;
+    }
+    .url-box.before .label { background: #fee2e2; color: #dc2626; }
+    .url-box.after .label { background: #dcfce7; color: var(--success); }
+    @media (prefers-color-scheme: dark) {
+      .url-box.before .label { background: #450a0a; }
+      .url-box.after .label { background: #052e16; }
+    }
+    .url-box .junk { color: #dc2626; text-decoration: line-through; opacity: 0.7; }
+
+    /* Features */
+    .features { padding: 48px 0; }
+    .features h2 { text-align: center; font-size: 22px; margin-bottom: 32px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .feature-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px;
+    }
+    .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .feature-card p { font-size: 13.5px; color: var(--text2); line-height: 1.5; }
+
+    /* Anti-Honey */
+    .anti-honey {
+      padding: 48px 0; text-align: center;
+    }
+    .anti-honey h2 { font-size: 22px; margin-bottom: 12px; }
+    .anti-honey p { font-size: 15px; color: var(--text2); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+    .anti-honey strong { color: var(--text); }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 0; text-align: center;
+      font-size: 13px; color: var(--text2);
+    }
+    footer a { margin: 0 10px; }
+
+    /* Stats banner */
+    .stats { display: flex; justify-content: center; gap: 40px; padding: 32px 0; flex-wrap: wrap; }
+    .stat-item { text-align: center; }
+    .stat-item .num { font-size: 28px; font-weight: 800; color: var(--accent); }
+    .stat-item .desc { font-size: 13px; color: var(--text2); }
   </style>
 </head>
 <body>
 
-  <h1>Privacy Policy</h1>
-  <p class="meta">MUGA — Make URLs Great Again &nbsp;·&nbsp; Effective date: 2026-03-18 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+  <section class="hero">
+    <div class="container">
+      <h1>Every link. <span>Cleaned.</span><br>Before it loads.</h1>
+      <p>MUGA strips tracking garbage from every URL you visit — automatically, before the page renders. Zero clicks. Zero configuration. Nothing leaves your browser.</p>
+      <div class="cta-row">
+        <a class="cta cta-primary" href="#">Install for Chrome</a>
+        <a class="cta cta-secondary" href="#">Install for Firefox</a>
+      </div>
+    </div>
+  </section>
 
-  <div class="highlight">
-    <strong>Short version:</strong> MUGA processes all URLs locally in your browser.
-    No URL, browsing history, or personal data is ever sent to any external server.
-    The code is open source — you can read every line at the link above.
-  </div>
+  <section class="container">
+    <div class="stats">
+      <div class="stat-item"><div class="num">421</div><div class="desc">tracking params stripped</div></div>
+      <div class="stat-item"><div class="num">102</div><div class="desc">domain-specific rules</div></div>
+      <div class="stat-item"><div class="num">0</div><div class="desc">network requests</div></div>
+    </div>
+  </section>
 
-  <h2>What data does MUGA handle?</h2>
-  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are processed entirely within your browser using local JavaScript. They are never transmitted to any server owned or operated by MUGA.</p>
-  <p>Your extension preferences (toggles, blacklist, whitelist, language) are stored in <code>chrome.storage.sync</code>. This means they sync across your own devices via your browser account — they are never visible to MUGA.</p>
+  <section class="demo container">
+    <h2>Before / after</h2>
+    <div class="url-box before">
+      <div class="label">Before</div>
+      https://www.amazon.es/dp/B09B8YWXDF?tag=youtuber-21<span class="junk">&amp;linkCode=ll1&amp;linkId=abc123&amp;pd_rd_r=xyz&amp;pf_rd_p=def&amp;utm_source=youtube&amp;utm_medium=video&amp;utm_campaign=review2026</span>
+    </div>
+    <div class="url-box after">
+      <div class="label">After</div>
+      https://www.amazon.es/dp/B09B8YWXDF?tag=youtuber-21
+    </div>
+  </section>
 
-  <h2>Tracking parameters</h2>
-  <p>MUGA strips tracking parameters (UTMs, fbclid, gclid, and others) from URLs automatically. This happens locally. The removed parameters are not logged, transmitted, or stored anywhere.</p>
+  <section class="features container">
+    <h2>What it does</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>421 trackers, gone</h3>
+        <p>UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens, TikTok click IDs, email beacons — all stripped before the page loads.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Zero network requests</h3>
+        <p>Everything runs inside your browser. No servers. No analytics. No telemetry. No accounts. No sign-in.</p>
+      </div>
+      <div class="feature-card">
+        <h3>AMP redirect</h3>
+        <p>Google AMP pages silently redirect to the real article. You always land on the actual site.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Redirect unwrapping</h3>
+        <p>Tracking redirects from Reddit, Steam, and generic wrappers are unwrapped automatically.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Ping blocking</h3>
+        <p>Hidden &lt;a ping&gt; beacons that log every click are suppressed before they fire.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Ethical affiliates</h3>
+        <p>Opt-in, disclosed, and never replaces a creator's tag. Off by default. The exact opposite of what Honey did.</p>
+      </div>
+    </div>
+  </section>
 
-  <h2>Affiliate tags</h2>
-  <p>MUGA can add affiliate tags to URLs that carry none when you visit a supported store. This is how the extension is funded. You consented to this during installation and can disable it at any time in settings.</p>
-  <p>When you visit a supported store, MUGA checks the URL locally to see if an affiliate tag is already present. If not, and if you have the option enabled, MUGA modifies the URL before navigation to include our affiliate tag. <strong>This URL modification happens locally — no external request is made to determine whether to inject.</strong></p>
+  <section class="anti-honey container">
+    <h2>The opposite of Honey</h2>
+    <p>
+      Honey secretly replaced creators' affiliate tags, stealing their commissions. MUGA does the opposite:
+      <strong>we never touch someone else's tag</strong>. Our affiliate model is opt-in, disclosed during onboarding,
+      and only activates on links that have no tag at all. The entire source code is public.
+      <a href="https://github.com/yocreoquesi/muga">Read it</a>.
+    </p>
+  </section>
 
-  <h2>What MUGA never does</h2>
-  <ul>
-    <li>Does not send your URLs to any external server for processing.</li>
-    <li>Does not collect your browsing history.</li>
-    <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
-    <li>Does not collect, store, or transmit any personally identifiable information.</li>
-    <li>Does not use analytics, telemetry, or crash reporting services.</li>
-  </ul>
-
-  <h2>Third-party affiliate programs</h2>
-  <p>When you navigate to a store via a MUGA-modified URL, the store's own analytics may record the visit as originating from an affiliate link. This is standard affiliate behaviour and is governed by the store's own privacy policy, not MUGA's.</p>
-  <p>MUGA is a registered participant in affiliate programs including Amazon Associates and others. These programs have their own terms of service and privacy policies.</p>
-
-  <h2>Permissions</h2>
-  <p>MUGA requests the following browser permissions:</p>
-  <ul>
-    <li><strong>storage</strong> — to save your preferences and statistics locally.</li>
-    <li><strong>tabs</strong> — to open the onboarding page on first install and send clipboard messages.</li>
-    <li><strong>contextMenus</strong> — to add the "Copy clean link" right-click option.</li>
-    <li><strong>clipboardWrite</strong> — to copy the clean URL to your clipboard.</li>
-    <li><strong>declarativeNetRequest</strong> — Used for pre-navigation stripping of tracking parameters before the page loads.</li>
-    <li><strong>host_permissions: all_urls</strong> — to intercept link clicks on every page and add affiliate tags where applicable.</li>
-  </ul>
-
-  <h2>Open source</h2>
-  <p>MUGA is licensed under the <a href="https://github.com/yocreoquesi/muga/blob/main/LICENSE">GNU General Public License v3 (GPL v3)</a>. The complete source code is public. If you want to verify that this privacy policy accurately describes the extension's behaviour, read the code — it's all there.</p>
-
-  <h2>Contact</h2>
-  <p>Questions or concerns: open an issue at <a href="https://github.com/yocreoquesi/muga/issues">github.com/yocreoquesi/muga/issues</a>.</p>
+  <footer>
+    <div class="container">
+      <a href="privacy-page.html">Privacy Policy</a>
+      <a href="https://github.com/yocreoquesi/muga">GitHub</a>
+      <a href="https://github.com/yocreoquesi/muga/blob/main/LICENSE">GPL v3</a>
+      <p style="margin-top: 12px;">MUGA — Make URLs Great Again</p>
+    </div>
+  </footer>
 
 </body>
 </html>

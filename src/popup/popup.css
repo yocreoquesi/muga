@@ -306,6 +306,19 @@ footer a {
 footer a:hover { color: var(--accent); }
 footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 
+/* Growth bar */
+.growth-bar {
+  display: flex; gap: 6px; padding: 6px 16px;
+  border-top: 0.5px solid var(--border);
+}
+.growth-btn {
+  flex: 1; padding: 5px 8px; border-radius: 6px; font-size: 11px;
+  border: 0.5px solid var(--border); background: var(--bg2);
+  color: var(--text2); cursor: pointer; transition: background 0.15s;
+}
+.growth-btn:hover { background: var(--border); color: var(--text); }
+.growth-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* Screen-reader only utility — visually hidden but accessible */
 .sr-only {
   position: absolute;

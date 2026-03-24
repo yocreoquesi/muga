@@ -54,6 +54,10 @@ console.warn = (...args) => { _origWarn(...args); appendSessionLog("warn", args)
 let cachedPrefs = null;
 let prefsFetchPromise = null;
 
+// Serialize list mutations (whitelist/blacklist) to prevent race conditions
+// where two rapid messages read the same cached list and the second overwrites the first.
+let _listMutationQueue = Promise.resolve();
+
 function getPrefsWithCache() {
   if (cachedPrefs) return Promise.resolve(cachedPrefs);
   if (!prefsFetchPromise) {
@@ -245,13 +249,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false });
       return true;
     }
-    getPrefsWithCache().then(async prefs => {
-      if (!prefs.whitelist.includes(entry)) {
-        cachedPrefs = null;
-        prefsFetchPromise = null;
-        await setPrefs({ whitelist: [...prefs.whitelist, entry] });
+    _listMutationQueue = _listMutationQueue.then(async () => {
+      const fresh = await getPrefs();
+      if (!fresh.whitelist.includes(entry)) {
+        await setPrefs({ whitelist: [...fresh.whitelist, entry] });
         logAction("whitelist_add", { entry });
       }
+      cachedPrefs = null;
+      prefsFetchPromise = null;
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_WHITELIST handler failed:", err);
@@ -266,13 +271,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false });
       return true;
     }
-    getPrefsWithCache().then(async prefs => {
-      if (!prefs.blacklist.includes(entry)) {
-        cachedPrefs = null;
-        prefsFetchPromise = null;
-        await setPrefs({ blacklist: [...prefs.blacklist, entry] });
+    _listMutationQueue = _listMutationQueue.then(async () => {
+      const fresh = await getPrefs();
+      if (!fresh.blacklist.includes(entry)) {
+        await setPrefs({ blacklist: [...fresh.blacklist, entry] });
         logAction("blacklist_add", { entry });
       }
+      cachedPrefs = null;
+      prefsFetchPromise = null;
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_BLACKLIST handler failed:", err);

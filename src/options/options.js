@@ -295,10 +295,24 @@ function initLanguageSelect() {
   });
 }
 
+function isValidListEntry(entry) {
+  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
+  const parts = entry.split("::");
+  if (parts.length > 3) return false;
+  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
+  if (parts.length === 2 && parts[1] !== "disabled") return false;
+  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
+  return true;
+}
+
 async function addEntry(listKey, inputId, containerId) {
   const input = document.getElementById(inputId);
   const value = input.value.trim();
   if (!value) return;
+  if (listKey !== "customParams" && !isValidListEntry(value)) {
+    showToast(t("import_error", currentLang));
+    return;
+  }
   const prefs = await chrome.storage.sync.get({ [listKey]: [] });
   const list = prefs[listKey];
   if (!list.includes(value)) {
