@@ -18,7 +18,7 @@ Fair to every click. 435 trackers stripped from URLs automatically. Never replac
 
 ### Detailed description
 
-Every URL you click is pre-loaded with trackers. MUGA strips 431 of them — automatically, before the page loads. No clicks. No setup. Built Manifest V3 native — designed for modern Chrome and Firefox.
+Every URL you click is pre-loaded with trackers. MUGA strips 435 of them — automatically, before the page loads. No clicks. No setup. Built natively for Manifest V3 — works on Chrome and Firefox today.
 
 MUGA never touches what isn't ours. If a link already has an affiliate tag, we leave it alone. Always.
 
@@ -50,7 +50,7 @@ https://example.com/product
 WHAT GETS STRIPPED
 ──────────────────────────────────────
 
-MUGA recognizes 431 tracking parameters across 13 pattern families — UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens, TikTok click IDs, Pinterest tags, email marketing beacons, and more. Applied across 112 domain-specific rulesets so functional params (search queries, pagination, filters) are always preserved.
+MUGA recognizes 435 tracking parameters across 13 pattern families — UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens, TikTok click IDs, Pinterest tags, email marketing beacons, and more. Applied across 112 domain-specific rulesets so functional params (search queries, pagination, filters) are always preserved.
 
 What you get: shorter URLs, no tracking attached, and a browser that stops broadcasting your origin story to every site you visit.
 
