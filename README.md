@@ -1,14 +1,16 @@
 <div align="center">
 
-![MUGA — Make URLs Great Again](docs/assets/promo-marquee-1400x560.png)
+![MUGA — Fair to Every Click](docs/assets/mascot-geometric.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.8.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-484_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
-# Every link. Cleaned. Before it loads.
+# MUGA — Fair to every click.
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 435+ more. MUGA strips them — automatically, before the page renders. **Zero clicks. Zero configuration. Never replaces a creator's affiliate tag.**
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 435+ more. MUGA strips them — automatically, before the page renders. **Clean links. Nothing hidden. Never replaces a creator's affiliate tag.**
+
+> **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
 [Install from source](#installation) · [View source](https://github.com/yocreoquesi/muga) · [Privacy policy](https://yocreoquesi.github.io/muga/)
 

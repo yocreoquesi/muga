@@ -39,7 +39,7 @@ export const TRANSLATIONS = {
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Settings", es: "Ajustes" },
-  opts_subtitle:   { en: "Make URLs Great Again", es: "Haz que las URLs vuelvan a ser geniales." },
+  opts_subtitle:   { en: "Fair to every click.", es: "Fair to every click." },
   section_affiliate_settings: { en: "Affiliate settings", es: "Configuración de afiliados" },
   row_inject_label: { en: "Inject our affiliate tag when a link has none", es: "Inyectar nuestro afiliado cuando no hay ninguno" },
   row_inject_hint:  { en: "Off by default. You always pay the same price — this is how MUGA stays free.", es: "Desactivado por defecto. Siempre pagas el mismo precio — así se mantiene MUGA gratis." },
@@ -143,7 +143,7 @@ export const TRANSLATIONS = {
 
   // ── Onboarding ──────────────────────────────────────────────────────────
   ob_page_title:            { en: "Welcome to MUGA",                                                         es: "Bienvenido a MUGA" },
-  ob_tagline:               { en: "Make URLs Great Again.",                                                   es: "Haz que las URLs vuelvan a ser geniales." },
+  ob_tagline:               { en: "Fair to every click.",                                                    es: "Fair to every click." },
   ob_tagline_sub:           { en: "Here's exactly what this extension does — and what it never will.",        es: "Esto es exactamente lo que hace esta extensión — y lo que nunca hará." },
   ob_tagline_local:         { en: "MUGA never acts behind your back. Nothing happens without your action.",   es: "MUGA nunca act\u00faa a tus espaldas. Nada ocurre sin tu acci\u00f3n." },
   ob_step1_title:           { en: "Always on — no configuration needed",                                      es: "Siempre activo — sin configuración" },
