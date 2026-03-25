@@ -58,7 +58,7 @@ tests/unit/                Node.js test runner tests
 ## Security rules
 
 - No `eval()`, inline scripts, or remote code — violates CSP
-- No external network requests — all processing is local (Phase 1)
+- No silent external requests that send user data — all URL processing is local
 - Minimal permissions in manifests — only what is strictly needed
 - Content scripts must be explicitly listed in `manifest.json` and `manifest.v2.json`
 

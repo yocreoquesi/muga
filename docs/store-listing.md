@@ -102,7 +102,7 @@ Settings sync across all your Chrome devices automatically.
 PRIVATE. REALLY.
 ──────────────────────────────────────
 
-Every URL is processed inside your browser. Nothing is ever sent to any server. No analytics. No telemetry. No account. No sign-in. The only network request MUGA makes is the one you chose: loading the page you wanted to visit.
+Every URL is processed inside your browser. MUGA never acts behind your back — nothing happens without your action. No analytics. No telemetry. No account. No sign-in. Your browsing data is never collected, sold, or shared.
 
 ──────────────────────────────────────
 SUPPORTED STORES (affiliate features, opt-in)

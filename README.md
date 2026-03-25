@@ -128,7 +128,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 ## Privacy
 
-- Every URL is processed **entirely inside your browser** — nothing is ever sent to any server
+- Every URL is processed **entirely inside your browser** — MUGA never acts behind your back
 - Zero browsing data collected, zero analytics, zero telemetry
 - No account, no sign-in, no cloud
 - Minimal permissions: `storage`, `tabs`, `contextMenus`, `declarativeNetRequest`, `clipboardWrite` — nothing else
