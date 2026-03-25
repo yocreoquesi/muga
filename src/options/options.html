@@ -23,16 +23,16 @@
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_notify_label">Notify me when a third-party affiliate is detected</strong>
-          <small data-i18n="row_notify_hint">Shows a non-intrusive toast with options — auto-dismisses in 15 seconds</small>
+          <small data-i18n="row_notify_hint">Shows a quick notification with options — disappears in 15 seconds</small>
         </div>
         <label class="toggle"><input type="checkbox" id="notify" aria-label="Enable foreign affiliate notification"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
-          <strong data-i18n="row_strip_affiliates_label">Strip all third-party affiliate parameters</strong>
+          <strong data-i18n="row_strip_affiliates_label">Remove all third-party affiliate tags</strong>
           <small data-i18n="row_strip_affiliates_hint">Removes third-party affiliate parameters from all links. Our affiliate tag is preserved when injection is active.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-label="Strip all third-party affiliate parameters"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-label="Remove all third-party affiliate tags"><span class="slider"></span></label>
       </div>
     </div>
   </section>
@@ -138,7 +138,7 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_dnr_label">Strip tracking parameters before navigation</strong>
-            <small data-i18n="row_dnr_hint">Uses browser-native rules to clean URLs from the address bar, bookmarks, and external apps</small>
+            <small data-i18n="row_dnr_hint">Cleans URLs from the address bar, bookmarks, and links from other apps</small>
           </div>
           <label class="toggle"><input type="checkbox" id="dnr-enabled" aria-label="Strip tracking parameters before navigation"><span class="slider"></span></label>
         </div>
