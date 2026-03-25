@@ -1,8 +1,8 @@
 # MUGA — Store Listings
 
-> Version: 1.7.0
-> Last updated: 2026-03-23
-> Status: Updated for v1.7.0 — 431 tracking params, 112 domain rules, 13 prefix patterns, MV3 native, opt-in affiliate model
+> Version: 1.8.0
+> Last updated: 2026-03-25
+> Status: Updated for v1.8.0 — 435 tracking params, 112 domain rules, 13 prefix patterns, MV3 native, "Fair to every click"
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### Short description (132 chars max)
 
-431 trackers stripped from every URL — automatically, before the page loads. Built for modern Chrome. Never replaces a creator's tag.
+Fair to every click. 435 trackers stripped from URLs automatically. Never replaces a creator's tag. Open source. MV3 native.
 
 *(131 chars)*
 

@@ -131,16 +131,17 @@ async function init() {
       "12-31": "My URLs are cleaner than my New Year's resolutions.",
     };
 
-    // Fun phrases — rotated randomly
+    // Fun phrases — rotated randomly, with backronym hooks
     const phrases = [
+      `MUGA? Most URLs Get Abused. Mine don't anymore. ${junk} trackers stripped so far.`,
+      `MUGA. Mercilessly Undoing Garbage Attachments. ${junk} params destroyed and counting.`,
+      `MUGA! Make URLs Genuine Again. ${cleaned} URLs cleaned, zero data collected.`,
       `I've cleaned ${cleaned} URLs and stripped ${junk} trackers. My browser is basically a spa now.`,
-      `${junk} tracking params eliminated. Nothing happened behind my back. You're welcome, privacy.`,
+      `${junk} tracking params eliminated. Nothing happened behind my back. Fair to every click.`,
       `MUGA just cleaned ${cleaned} URLs for me. The trackers never saw it coming.`,
       `My URLs used to be 400 characters of garbage. Now they're clean, honest, and short.`,
-      `${junk} trackers stripped. No accounts. No servers. No BS. Just clean URLs.`,
-      `I installed MUGA and it already cleaned ${cleaned} URLs. This is what browsers should do by default.`,
-      `Every link I click gets cleaned before it loads. ${junk} trackers gone. It's free and open source.`,
-      `Drain the tracking swamp. ${junk} params removed and counting.`,
+      `${junk} trackers stripped. No analytics. No telemetry. Just clean links. Fair to every click.`,
+      `Every link I click gets cleaned before it loads. ${junk} trackers gone. Free and open source.`,
     ];
 
     const pick = seasonal[mmdd] || phrases[Math.floor(Math.random() * phrases.length)];
