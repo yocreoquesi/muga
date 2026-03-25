@@ -1,4 +1,4 @@
-# MUGA — Make URLs Great Again
+# MUGA — Fair to Every Click
 ## Master Plan: Competitive Intelligence + Development Strategy
 
 *Generated: 2026-03-23*
@@ -2036,7 +2036,7 @@ Prepara y publica la extension MUGA en las tiendas de navegadores.
 1. **Chrome Web Store**:
    - Build: `npm run build:chrome` (genera zip)
    - Store listing:
-     - Nombre: "MUGA — Make URLs Great Again"
+     - Nombre: "MUGA — Fair to Every Click"
      - Descripcion corta (132 chars): "Clean tracking from URLs and shorten them in one click. Free analytics, QR codes, custom domains."
      - Descripcion larga: Features completas, privacy policy, como funciona
      - Capturas de pantalla: Al menos 3 (1280x800) mostrando popup, URL limpia, shortening
@@ -2324,7 +2324,7 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 
 ---
 
-## MUGA — Make URLs Great Again
+## MUGA — Fair to Every Click
 
 ### Posicionamiento
 **"Enterprise link features, indie pricing, browser-native."**
@@ -2363,5 +2363,5 @@ Benchmark: T.LY alcanzo $15K MRR en ~3 anos. MUGA apunta a $4K MRR en 1 ano con 
 
 ---
 
-*Documento generado el 2026-03-23 para el proyecto MUGA — Make URLs Great Again*
+*Documento generado el 2026-03-23 para el proyecto MUGA — Fair to Every Click*
 *Dominio links: mug.ag | Plataforma: muga.link | Dominios cortos: out.pw, tap.pw, jab.pw*

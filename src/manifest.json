@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "MUGA — Make URLs Great Again",
+  "name": "MUGA — Fair to Every Click",
   "short_name": "MUGA",
   "version": "1.8.0",
   "description": "Strips 431+ tracking params from every URL. Optionally adds our affiliate tag when a link has none — disclosed during onboarding, opt-out in Settings anytime.",

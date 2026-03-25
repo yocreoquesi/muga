@@ -473,7 +473,7 @@ SECCION 1 — Hero
 |                                                       |
 |   [Logo MUGA]    Features  Pricing  Blog    [Login]   |
 |                                                       |
-|        Make URLs Great Again                          |
+|        Fair to Every Click                          |
 |                                                       |
 |   The fastest URL shortener with enterprise           |
 |   features at indie prices. Free forever.             |
