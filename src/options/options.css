@@ -129,3 +129,4 @@ h2 { font-size: 13px; font-weight: 500; color: var(--text2);
 .footer-links { text-align: center; padding-top: 4px; padding-bottom: 8px; }
 .footer-links a { font-size: 12px; color: var(--text2); text-decoration: none; }
 .footer-links a:hover { color: var(--accent); }
+.footer-links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
