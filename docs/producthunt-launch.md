@@ -36,7 +36,7 @@ Every URL you click is packed with trackers. MUGA strips 435 automatically — U
 
 Hey PH — I'm Isabela, one of the people behind MUGA.
 
-The short version: we built this after the Honey scandal broke. For those who missed it — Honey, a browser extension with millions of users, was quietly replacing affiliate tags from creators without disclosure. Creators lost commissions they'd earned. Users had no idea it was happening.
+The short version: we built this because too many extensions manipulate your links without telling you. Affiliate tags get swapped, tracking params pile up, and nobody asks permission. We wanted to prove you can build a useful tool without being shady about it.
 
 We wanted to build the opposite of that.
 
