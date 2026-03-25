@@ -52,7 +52,7 @@ A few things that might surprise you:
 - Right-click any link to copy the clean version without visiting it
 - Alt+Shift+C copies the current tab's clean URL to clipboard
 - Export / import your full settings as JSON
-- Everything runs inside your browser — no server, no account, no telemetry
+- MUGA never acts behind your back — no data collected, no account, no telemetry
 
 Happy to answer anything in the comments. If you find a tracking param we're missing, open an issue — we usually ship fixes within 24 hours.
 

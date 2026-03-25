@@ -134,7 +134,7 @@ async function init() {
     // Fun phrases — rotated randomly
     const phrases = [
       `I've cleaned ${cleaned} URLs and stripped ${junk} trackers. My browser is basically a spa now.`,
-      `${junk} tracking params eliminated. Zero sent to any server. You're welcome, privacy.`,
+      `${junk} tracking params eliminated. Nothing happened behind my back. You're welcome, privacy.`,
       `MUGA just cleaned ${cleaned} URLs for me. The trackers never saw it coming.`,
       `My URLs used to be 400 characters of garbage. Now they're clean, honest, and short.`,
       `${junk} trackers stripped. No accounts. No servers. No BS. Just clean URLs.`,

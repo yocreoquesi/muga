@@ -39,12 +39,12 @@
 
   <div class="highlight">
     <strong>Short version:</strong> MUGA processes all URLs locally in your browser.
-    No URL, browsing history, or personal data is ever sent to any external server.
+    MUGA never acts behind your back — nothing happens without your action.
     The code is open source — you can read every line at the link above.
   </div>
 
   <h2>What data does MUGA handle?</h2>
-  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are processed entirely within your browser using local JavaScript. They are never transmitted to any server owned or operated by MUGA.</p>
+  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are processed locally within your browser. MUGA never silently sends your data anywhere — any feature that contacts an external service requires your explicit action and is disclosed here.</p>
   <p>Your extension preferences (toggles, blacklist, whitelist, language) are stored in <code>chrome.storage.sync</code>. This means they sync across your own devices via your browser account — they are never visible to MUGA.</p>
 
   <h2>Tracking parameters</h2>
@@ -56,7 +56,7 @@
 
   <h2>What MUGA never does</h2>
   <ul>
-    <li>Does not send your URLs to any external server for processing.</li>
+    <li>Does not silently send your URLs or browsing data to any server.</li>
     <li>Does not collect your browsing history.</li>
     <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
     <li>Does not collect, store, or transmit any personally identifiable information.</li>

@@ -145,7 +145,7 @@ export const TRANSLATIONS = {
   ob_page_title:            { en: "Welcome to MUGA",                                                         es: "Bienvenido a MUGA" },
   ob_tagline:               { en: "Make URLs Great Again.",                                                   es: "Haz que las URLs vuelvan a ser geniales." },
   ob_tagline_sub:           { en: "Here's exactly what this extension does — and what it never will.",        es: "Esto es exactamente lo que hace esta extensión — y lo que nunca hará." },
-  ob_tagline_local:         { en: "Everything runs locally in your browser. No data is sent to any server.",  es: "Todo se ejecuta en tu navegador. No se envía ningún dato a ningún servidor." },
+  ob_tagline_local:         { en: "MUGA never acts behind your back. Nothing happens without your action.",   es: "MUGA nunca act\u00faa a tus espaldas. Nada ocurre sin tu acci\u00f3n." },
   ob_step1_title:           { en: "Always on — no configuration needed",                                      es: "Siempre activo — sin configuración" },
   ob_feat1_title:           { en: "Strips 421 tracking parameters automatically",                             es: "Elimina 421 parámetros de rastreo automáticamente" },
   ob_feat1_desc:            { en: "UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more — removed before the page loads.", es: "UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), tags de rastreo de eBay y más — eliminados antes de que cargue la página." },
