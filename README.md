@@ -124,7 +124,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 - The tag is added as a standard URL parameter — nothing hidden, nothing obfuscated
 - **Off by default** — enabled during onboarding or manually in Settings at any time
 - Turn it off any time: Settings → toggle off, globally or per domain
-- We **never replace** an existing tag from another affiliate — that practice is what got [Honey sued](https://en.wikipedia.org/wiki/Honey_(browser_extension)), and it's explicitly something MUGA does not do
+- We **never touch what isn't ours** — if a link already has someone else's affiliate tag, MUGA leaves it alone
 
 ---
 

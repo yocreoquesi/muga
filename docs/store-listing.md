@@ -20,7 +20,7 @@ Fair to every click. 435 trackers stripped from URLs automatically. Never replac
 
 Every URL you click is pre-loaded with trackers. MUGA strips 431 of them — automatically, before the page loads. No clicks. No setup. Built Manifest V3 native — designed for modern Chrome and Firefox.
 
-And unlike Honey, MUGA never replaces a creator's affiliate tag. Ever.
+MUGA never touches what isn't ours. If a link already has an affiliate tag, we leave it alone. Always.
 
 ──────────────────────────────────────
 CLEAN LINKS. AUTOMATICALLY. ALWAYS.
@@ -78,7 +78,7 @@ When enabled: if you navigate to one of 18 supported stores and your link has no
 • Turn it off any time in Settings, globally or per domain
 • Disclosed during setup, in the privacy policy, and in the source code
 
-This is what Honey should have done. We will never replace anyone's tag — that requires a separate, deliberate opt-in that is disabled by default.
+We never touch what isn't ours. If a link has someone else's tag, we leave it alone. Replacing requires a separate, deliberate opt-in that is disabled by default.
 
 ──────────────────────────────────────
 YOUR RULES
@@ -132,7 +132,7 @@ privacy, URL cleaner, tracking protection, affiliate, UTM
 
 ### Summary (250 chars max)
 
-431 trackers stripped from every URL — automatically, before the page loads. AMP redirect, ping blocking, redirect unwrapping. Works on Chrome too. Unlike Honey, never replaces a creator's affiliate tag. GPL v3.
+Fair to every click. 435 trackers stripped from every URL — AMP redirect, ping blocking, redirect unwrapping. Never touches what isn't ours. Open source, GPL v3.
 
 *(205 chars)*
 
