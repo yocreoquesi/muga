@@ -119,7 +119,7 @@ export const TRANSLATIONS = {
   dev_log_hint:               { en: "Download a log of errors and warnings from the current session",   es: "Descarga un log de errores y avisos de la sesión actual" },
   dev_log_btn:                { en: "Export log",                                                       es: "Exportar log" },
   dev_nudge_label:            { en: "Preview rating nudge",                                              es: "Previsualizar aviso de valoraci\u00f3n" },
-  dev_nudge_hint:             { en: "Shows how the \"Rate MUGA\" prompt looks in the popup. Does not affect nudge counters.", es: "Muestra c\u00f3mo se ve el aviso de \"Valorar MUGA\" en el popup. No afecta a los contadores." },
+  dev_nudge_hint:             { en: "Test the rating nudge. Dismiss increments the counter, Reset clears it.", es: "Prueba el aviso de valoraci\u00f3n. Descartar incrementa el contador, Reset lo limpia." },
   dev_nudge_btn:              { en: "Preview",                                                           es: "Previsualizar" },
   dev_url_tester_label:       { en: "URL tester",                                                       es: "Probador de URLs" },
   dev_url_tester_hint:        { en: "Paste any URL to see what MUGA will clean",                        es: "Pega cualquier URL para ver qué limpiará MUGA" },
