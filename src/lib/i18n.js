@@ -147,7 +147,7 @@ export const TRANSLATIONS = {
   ob_tagline_sub:           { en: "Here's exactly what this extension does — and what it never will.",        es: "Esto es exactamente lo que hace esta extensión — y lo que nunca hará." },
   ob_tagline_local:         { en: "MUGA never acts behind your back. Nothing happens without your action.",   es: "MUGA nunca act\u00faa a tus espaldas. Nada ocurre sin tu acci\u00f3n." },
   ob_step1_title:           { en: "Always on — no configuration needed",                                      es: "Siempre activo — sin configuración" },
-  ob_feat1_title:           { en: "Strips 421 tracking parameters automatically",                             es: "Elimina 421 parámetros de rastreo automáticamente" },
+  ob_feat1_title:           { en: "Strips 435 tracking parameters automatically",                             es: "Elimina 435 par\u00e1metros de rastreo autom\u00e1ticamente" },
   ob_feat1_desc:            { en: "UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more — removed before the page loads.", es: "UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), tags de rastreo de eBay y más — eliminados antes de que cargue la página." },
   ob_feat2_title:           { en: "Redirects Google AMP pages to the real article",                            es: "Redirige páginas AMP de Google al artículo real" },
   ob_feat2_desc:            { en: "AMP URLs are silently redirected to the canonical article so you always land on the actual site.", es: "Las URLs AMP se redirigen silenciosamente al artículo original para que siempre llegues al sitio real." },
