@@ -230,8 +230,8 @@ describe("Non-listed domain — all tracking stripped, no functional preservatio
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all 112 entries have domain, preserveParams (non-empty array), and note", () => {
-    assert.equal(domainRules.length, 112, `Expected 112 entries, got ${domainRules.length}`);
+  test("all 120 entries have domain, preserveParams (non-empty array), and note", () => {
+    assert.equal(domainRules.length, 120, `Expected 120 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);
@@ -259,6 +259,42 @@ describe("domain-rules.json integrity", () => {
     const required = ["google.com", "youtube.com", "amazon.com", "github.com", "wikipedia.org", "booking.com", "reddit.com"];
     for (const d of required) {
       assert.ok(domains.has(d), `Missing domain rule for: ${d}`);
+    }
+  });
+
+  test("no known affiliate param appears in any domain's stripParams (except documented overrides)", () => {
+    // Affiliate params that must NEVER be stripped — they belong to creators/partners
+    const knownAffiliateParams = new Set([
+      "tag",           // Amazon Associates
+      "aid",           // Booking.com
+      "aff_fcid",      // AliExpress
+      "affiliateid",   // AliExpress
+      "campid",        // eBay Partner Network
+      "awc",           // AWIN
+      "wt_mc",         // Zalando
+      "url_from",      // Fnac
+      "oref",          // SHEIN
+      "subid",         // Coupang Partners
+      "hmkeyword",     // Coupang Partners
+    ]);
+    // Documented exceptions: "ref" is an affiliate param on PcComponentes/MediaMarkt
+    // but is tracking noise on Amazon (ref=cm_sw_r_*). On Amazon domains, ref is safe
+    // to strip because Amazon uses "tag" for affiliates, not "ref".
+    const allowedOverrides = {
+      "ref": ["amazon.com", "amazon.es", "amazon.de", "amazon.fr", "amazon.co.uk", "amazon.it",
+              "amazon.co.jp", "amazon.com.br", "amazon.in", "amazon.com.au", "amazon.ca",
+              "amazon.com.mx", "amazon.nl", "amazon.pl", "amazon.se", "amazon.sg"],
+    };
+    for (const rule of domainRules) {
+      for (const param of (rule.stripParams || [])) {
+        const lower = param.toLowerCase();
+        const overrideDomains = allowedOverrides[lower] || [];
+        if (overrideDomains.includes(rule.domain)) continue;
+        assert.ok(
+          !knownAffiliateParams.has(lower),
+          `Domain ${rule.domain} has affiliate param "${param}" in stripParams — this would strip someone's affiliate tag`
+        );
+      }
     }
   });
 });
