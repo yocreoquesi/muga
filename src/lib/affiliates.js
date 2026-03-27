@@ -93,6 +93,17 @@ export const TRACKING_PARAMS = [
   // TradeTracker
   "ttaid", "ttrk", "ttcid",
 
+  // Naver (Korean search/ads)
+  "nclid", "napm", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
+  "n_keyword", "n_keyword_id", "n_campaign_type", "n_cid", "n_match",
+  "ssc_referrer",
+
+  // Kakao (Korean messaging/ads)
+  "kclid", "kakao_agent", "kakaotrack",
+
+  // LinkPrice (Korean affiliate network)
+  "lpinfo",
+
   // General / Miscellaneous
   "srsltid",    // Google Shopping source tracking
   "wickedid",   // Wicked Reports click ID
@@ -490,6 +501,14 @@ export const TRACKING_PARAM_CATEGORIES = {
       "adobe_mc_ref", "adobe_mc_sdid",
       // AppsFlyer extended
       "af_xp", "af_ad", "af_adset",
+      // Naver Ads (Korean)
+      "nclid", "napm", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
+      "n_keyword", "n_keyword_id", "n_campaign_type", "n_cid", "n_match",
+      "ssc_referrer",
+      // Kakao Ads (Korean)
+      "kclid", "kakao_agent", "kakaotrack",
+      // LinkPrice (Korean affiliate network)
+      "lpinfo",
       // ── AdGuard filter 17 import — ad networks ──
       "adj_campaign", "adj_creative", "adj_label", "adj_t",
       "adjust_referrer", "adjust_tracker", "adjust_tracker_limit",

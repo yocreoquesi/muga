@@ -1,7 +1,5 @@
 <div align="center">
 
-![MUGA — Fair to Every Click](docs/assets/mascot-geometric.png)
-
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.8.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-484_pass-brightgreen)](#development)
