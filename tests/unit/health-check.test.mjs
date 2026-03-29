@@ -300,6 +300,46 @@ describe("domain-rules.json integrity", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Manifest integrity — prevent AMO/CWS submission failures
+// ---------------------------------------------------------------------------
+describe("manifest.json integrity", () => {
+  const require = createRequire(import.meta.url);
+  const mv3 = require("../../src/manifest.json");
+  const mv2 = require("../../src/manifest.v2.json");
+
+  test("MV3 and MV2 have matching version", () => {
+    assert.equal(mv3.version, mv2.version, `MV3 version ${mv3.version} !== MV2 version ${mv2.version}`);
+  });
+
+  test("MV3 and MV2 have matching name", () => {
+    assert.equal(mv3.name, mv2.name, "Extension name must match across manifests");
+  });
+
+  test("MV2 has gecko ID", () => {
+    const geckoId = mv2.browser_specific_settings?.gecko?.id;
+    assert.ok(geckoId, "manifest.v2.json must have browser_specific_settings.gecko.id");
+  });
+
+  test("MV2 has data_collection_permissions with required array", () => {
+    const dcp = mv2.browser_specific_settings?.gecko?.data_collection_permissions;
+    assert.ok(dcp, "manifest.v2.json must have data_collection_permissions");
+    assert.ok(Array.isArray(dcp.required), "data_collection_permissions.required must be an array");
+    assert.ok(dcp.required.length > 0, "data_collection_permissions.required must not be empty");
+  });
+
+  test("MV2 has gecko_android settings", () => {
+    const android = mv2.browser_specific_settings?.gecko_android;
+    assert.ok(android, "manifest.v2.json must have gecko_android for Firefox Android support");
+    assert.ok(android.strict_min_version, "gecko_android must have strict_min_version");
+  });
+
+  test("version in package.json matches manifests", () => {
+    const pkg = require("../../package.json");
+    assert.equal(pkg.version, mv3.version, `package.json ${pkg.version} !== manifest.json ${mv3.version}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // HTML fallback text must match i18n EN translations
 // ---------------------------------------------------------------------------
 const __healthDir = dirname(fileURLToPath(import.meta.url));

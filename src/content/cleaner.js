@@ -1,5 +1,5 @@
 /**
- * MUGA — Content Script
+ * MUGA: Content Script
  * Injected into every page. Intercepts link clicks before navigation occurs
  * and communicates with the service worker to get a clean URL.
  *
@@ -16,10 +16,10 @@
   if (window.__mugaActive) return;
   window.__mugaActive = true;
 
-  // Timer ID for the toast auto-dismiss — cleared when a new toast replaces the old one
+  // Timer ID for the toast auto-dismiss. Cleared when a new toast replaces the old one.
   let _toastTimer = null;
 
-  // Rewrite loop guard — prevents infinite URL rewriting if another extension
+  // Rewrite loop guard: prevents infinite URL rewriting if another extension
   // or the page itself re-injects tracking params after MUGA cleans them.
   const _rewriteLog = new Map(); // hostname -> { count, firstTs }
   function isRewriteLoop(hostname) {
@@ -33,7 +33,7 @@
     return entry.count > 3;
   }
 
-  // Toast strings — default English, overridden by stored language preference
+  // Toast strings: default English, overridden by stored language preference
   const STRINGS = {
     en: {
       toast_title:   "MUGA found someone else's affiliate tag",
@@ -53,7 +53,7 @@
 
   const browserLang = (navigator.language || "en").startsWith("es") ? "es" : "en";
   let s = STRINGS[browserLang];
-  // Load language preference asynchronously — toast will use it if shown after load
+  // Load language preference asynchronously. Toast will use it if shown after load.
   chrome.storage.sync.get({ language: browserLang }, (r) => {
     s = STRINGS[r.language] ?? STRINGS.en;
   });
@@ -88,7 +88,7 @@
       const allUrls = [...new Set([...urlsToClean, ...textUrls])];
 
       if (allUrls.length === 0) {
-        // Nothing to clean — copy plain text as-is
+        // Nothing to clean. Copy plain text as-is.
         const plainText = sel.toString();
         navigator.clipboard.writeText(plainText).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
         return true;
@@ -208,7 +208,7 @@
    * Intercepts link clicks before navigation.
    * The service worker handles processing and responds with the clean URL.
    *
-   * ARCHITECTURE NOTE — navigation interception scope:
+   * ARCHITECTURE NOTE: navigation interception scope:
    *   MUGA intercepts clicks on <a> elements within pages where this content
    *   script is already running (injected via manifest content_scripts rules).
    *   The following navigation types CANNOT be intercepted in MV3:
@@ -238,7 +238,7 @@
     }
     if (!["http:", "https:"].includes(url.protocol)) return;
 
-    // Rewrite loop guard — bail if this domain is being rewritten too rapidly
+    // Rewrite loop guard: bail if this domain is being rewritten too rapidly
     if (isRewriteLoop(url.hostname)) return;
 
     // Preserve Ctrl/Cmd/Shift+click and target="_blank" (open in new tab/window)
@@ -381,13 +381,13 @@
         notice.remove();
         const choice = btn.dataset.choice;
         if (choice === "original") {
-          // "Allow" — add to whitelist in domain::param::value format so parseListEntry
+          // "Allow": add to whitelist in domain::param::value format so parseListEntry
           // can match it correctly against the affiliate patterns (#229)
           const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag }).catch(() => {});
         } else if (choice === "clean") {
-          // "Block" — add to blacklist in domain::param::value format (#229)
+          // "Block": add to blacklist in domain::param::value format (#229)
           const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag }).catch(() => {});
@@ -456,7 +456,7 @@
       });
       observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["ping"] });
 
-      // Neutralize navigator.sendBeacon — prevents beacon-based tracking
+      // Neutralize navigator.sendBeacon: prevents beacon-based tracking
       try { navigator.sendBeacon = () => true; } catch { /* frozen in strict contexts */ }
     }
   });

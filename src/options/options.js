@@ -1,5 +1,5 @@
 /**
- * MUGA — Options page
+ * MUGA: Options page
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
@@ -119,7 +119,7 @@ async function init() {
   document.getElementById("dev-mode").addEventListener("change", syncDevTools);
   initDevTools();
 
-  // Rate link — point to the correct store
+  // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
   if (rateLink) {
     const isFirefox = navigator.userAgent.includes("Firefox");
@@ -354,7 +354,7 @@ function initStatsSection() {
     await chrome.storage.local.set({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
       firstUsed: null,
-      // nudgeDismissed and nudgeShownCount intentionally NOT reset —
+      // nudgeDismissed and nudgeShownCount intentionally NOT reset:
       // resetting stats must not re-trigger the review nudge.
     });
     showToast(t("stats_reset_done", currentLang));
@@ -476,7 +476,7 @@ function syncDevTools() {
 }
 
 function initDevTools() {
-  // Preview notification — replicas the real affiliate toast from content/cleaner.js
+  // Preview notification: replicas the real affiliate toast from content/cleaner.js
   const previewBtn = document.getElementById("dev-preview-notify-btn");
   if (!previewBtn) return;
   previewBtn.addEventListener("click", async () => {
@@ -655,7 +655,7 @@ function initDevTools() {
     };
 
     let jsonStr = JSON.stringify(payload, null, 2);
-    // Enforce 2MB limit — trim oldest log entries if needed
+    // Enforce 2MB limit: trim oldest log entries if needed
     const MAX_BYTES = 2 * 1024 * 1024;
     while (jsonStr.length > MAX_BYTES && payload.session_log.length > 10) {
       payload.session_log = payload.session_log.slice(0, Math.floor(payload.session_log.length * 0.8));

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MUGA — Brand Asset Generator</title>
+<title>MUGA: Brand Asset Generator</title>
 <style>
   :root { --bg:#0f0f0f; --bg2:#1a1a1a; --border:#2a2a2a; --text:#f0f0f0; --text2:#888; --accent:#2563eb; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -42,7 +42,7 @@
 </head>
 <body>
 
-<h1>MUGA — Campaign Icon Variants</h1>
+<h1>MUGA: Campaign Icon Variants</h1>
 <p class="subtitle">Option A refined: bold campaign structure, no star, three distinct palettes. Pick one → download all sizes.</p>
 <div class="note">
   All three keep the campaign button structure (bold letter + bottom stripe). The change is only the color palette.<br>
@@ -53,8 +53,8 @@
 
   <!-- A1: Navy + Gold -->
   <div class="option selected" id="opt-a1">
-    <div class="option-title">A1 — Navy + Gold <span class="rec">Recommended</span></div>
-    <div class="option-subtitle">Deep navy background, gold stripe, white bold M. Reads as presidential / authoritative. Same campaign energy as MAGA, none of the red-flag associations. Distinctive in the Chrome Store — zero other extensions use this combo.</div>
+    <div class="option-title">A1: Navy + Gold <span class="rec">Recommended</span></div>
+    <div class="option-subtitle">Deep navy background, gold stripe, white bold M. Reads as presidential / authoritative. Same campaign energy as MAGA, none of the red-flag associations. Distinctive in the Chrome Store. Zero other extensions use this combo.</div>
     <div class="previews">
       <div class="preview-group"><canvas id="a1-128" width="128" height="128"></canvas><span>128px</span></div>
       <div class="preview-group"><canvas id="a1-48" width="48" height="48"></canvas><span>48px</span></div>
@@ -70,8 +70,8 @@
 
   <!-- A2: Indigo + Yellow -->
   <div class="option" id="opt-a2">
-    <div class="option-title">A2 — Indigo + Yellow <span class="tag tag-indigo">Bold · Playful</span></div>
-    <div class="option-subtitle">Deep indigo background, bright yellow stripe, white M. Strong European campaign poster energy — think EU elections or Spanish political graphics. More playful than A1. Very eye-catching at small sizes.</div>
+    <div class="option-title">A2: Indigo + Yellow <span class="tag tag-indigo">Bold · Playful</span></div>
+    <div class="option-subtitle">Deep indigo background, bright yellow stripe, white M. Strong European campaign poster energy. Think EU elections or Spanish political graphics. More playful than A1. Very eye-catching at small sizes.</div>
     <div class="previews">
       <div class="preview-group"><canvas id="a2-128" width="128" height="128"></canvas><span>128px</span></div>
       <div class="preview-group"><canvas id="a2-48" width="48" height="48"></canvas><span>48px</span></div>
@@ -87,8 +87,8 @@
 
   <!-- A3: Dark Teal + Amber -->
   <div class="option" id="opt-a3">
-    <div class="option-title">A3 — Dark Teal + Amber <span class="tag tag-teal">Tech · Warm</span></div>
-    <div class="option-subtitle">Dark teal background, warm amber stripe, white M. Completely clear of any political or Megaupload associations. Reads as "privacy tech" — same family as uBlock or Bitwarden — while still having the bold campaign structure and clear identity.</div>
+    <div class="option-title">A3: Dark Teal + Amber <span class="tag tag-teal">Tech · Warm</span></div>
+    <div class="option-subtitle">Dark teal background, warm amber stripe, white M. Completely clear of any political or Megaupload associations. Reads as "privacy tech", same family as uBlock or Bitwarden, while still having the bold campaign structure and clear identity.</div>
     <div class="previews">
       <div class="preview-group"><canvas id="a3-128" width="128" height="128"></canvas><span>128px</span></div>
       <div class="preview-group"><canvas id="a3-48" width="48" height="48"></canvas><span>48px</span></div>
@@ -174,7 +174,7 @@ function drawIcon(canvas, palette) {
   ctx.fill();
 
   if (s >= 48) {
-    // Gold stripe — bottom 28% of the icon
+    // Gold stripe: bottom 28% of the icon
     const stripeY = s * 0.72;
     ctx.save();
     roundRect(ctx, 0, 0, s, s, r);
@@ -199,7 +199,7 @@ function drawIcon(canvas, palette) {
     ctx.fillRect(0, stripeY - s*0.06, s, s*0.1);
     ctx.restore();
 
-    // Bold "M" — takes up upper 65% of icon
+    // Bold "M": takes up upper 65% of icon
     ctx.fillStyle = p.letter;
     ctx.font = `900 ${Math.round(s * 0.54)}px -apple-system,'Helvetica Neue',Arial,sans-serif`;
     ctx.textAlign = 'center';
@@ -213,7 +213,7 @@ function drawIcon(canvas, palette) {
     ctx.shadowColor = 'transparent';
 
   } else {
-    // 16px: bold M, bg color only (no stripe — too small)
+    // 16px: bold M, bg color only (no stripe, too small)
     ctx.fillStyle = p.letter;
     ctx.font = `900 ${Math.round(s * 0.68)}px Arial,sans-serif`;
     ctx.textAlign = 'center';
@@ -276,7 +276,7 @@ function drawTile(canvas, w, h, palette) {
   // Tagline
   ctx.fillStyle = p.stripeLight;
   ctx.font = `600 ${Math.round(h * 0.075)}px -apple-system,'Helvetica Neue',Arial,sans-serif`;
-  ctx.fillText('Make URLs Great Again.', textX, titleY + Math.round(h * 0.16));
+  ctx.fillText('Fair to every click.', textX, titleY + Math.round(h * 0.16));
 
   // Secondary line
   ctx.fillStyle = 'rgba(255,255,255,0.45)';

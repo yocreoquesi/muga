@@ -1,5 +1,5 @@
 /**
- * MUGA — AMP Redirect Content Script
+ * MUGA: AMP Redirect Content Script
  * Detects AMP pages and redirects to the canonical non-AMP URL.
  *
  * Note: ES module imports are not supported in MV3 content scripts.
@@ -54,7 +54,7 @@
         window.location.replace(canonicalUrl);
       }
     } catch {
-      // Invalid URL — do nothing
+      // Invalid URL. Do nothing.
     }
   });
 })();

@@ -57,9 +57,9 @@ tests/unit/                Node.js test runner tests
 
 ## Security rules
 
-- No `eval()`, inline scripts, or remote code — violates CSP
-- No silent external requests that send user data — all URL processing is local
-- Minimal permissions in manifests — only what is strictly needed
+- No `eval()`, inline scripts, or remote code: violates CSP
+- No silent external requests that send user data: all URL processing is local
+- Minimal permissions in manifests: only what is strictly needed
 - Content scripts must be explicitly listed in `manifest.json` and `manifest.v2.json`
 
 ## Commit message format
@@ -87,17 +87,17 @@ Output goes to `dist/`. Uses `web-ext` (Mozilla).
 
 ## Adding tracking parameters
 
-Edit `src/lib/affiliates.js` — add to the `TRACKING_PARAMS` array. Then regenerate the DNR rules file:
+Edit `src/lib/affiliates.js` and add to the `TRACKING_PARAMS` array. Then regenerate the DNR rules file:
 
 ```bash
 npm run build:rules
 ```
 
-`src/rules/tracking-params.json` is a **generated artifact** — do not edit it by hand. The single source of truth is `TRACKING_PARAMS` in `affiliates.js`. The CI pipeline enforces this: it runs `npm run build:rules` and fails if the generated file differs from what is committed.
+`src/rules/tracking-params.json` is a **generated artifact**. Do not edit it by hand. The single source of truth is `TRACKING_PARAMS` in `affiliates.js`. The CI pipeline enforces this: it runs `npm run build:rules` and fails if the generated file differs from what is committed.
 
 ## Adding affiliate stores
 
-Edit `src/lib/affiliates.js` — add an entry to `AFFILIATE_PATTERNS`:
+Edit `src/lib/affiliates.js` and add an entry to `AFFILIATE_PATTERNS`:
 
 ```js
 {
@@ -110,4 +110,4 @@ Edit `src/lib/affiliates.js` — add an entry to `AFFILIATE_PATTERNS`:
 }
 ```
 
-Leave `ourTag` empty — it is filled in privately by the repository owner.
+Leave `ourTag` empty. It is filled in privately by the repository owner.

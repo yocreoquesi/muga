@@ -1,5 +1,5 @@
 /**
- * MUGA — Affiliate and tracking parameter database
+ * MUGA: Affiliate and tracking parameter database
  *
  * Each entry defines:
  *   - id:      unique identifier
@@ -35,7 +35,7 @@ export const TRACKING_PARAMS = [
   "_r",
 
   // Generic
-  // "ref" removed — it's the affiliate param for PcComponentes and MediaMarkt ES/DE in
+  // "ref" removed: it's the affiliate param for PcComponentes and MediaMarkt ES/DE in
   // AFFILIATE_PATTERNS. Applying it globally (urlFilter: "*") would strip it on those
   // domains before the affiliate engine can act, and also break GitHub ?ref= branch refs
   // and SPA internal navigation. Context-specific removal only via AFFILIATE_PATTERNS. (#160)
@@ -43,7 +43,7 @@ export const TRACKING_PARAMS = [
   "_hsenc", "_hsmi", "hsctatracking",
   "mkt_tok", "trk", "trkcampaign",
 
-  // Affiliate networks — click identifiers (not the affiliate tag itself, just the click ID)
+  // Affiliate networks: click identifiers (not the affiliate tag itself, just the click ID)
   "irgwc",    // Impact Radius
   "cjevent",  // CJ Affiliate
   "tduid",    // Tradedoubler
@@ -51,26 +51,26 @@ export const TRACKING_PARAMS = [
   // Microsoft / Windows
   "ocid",
 
-  // Amazon — internal / referral noise (not the affiliate tag)
+  // Amazon: internal / referral noise (not the affiliate tag)
   "psc", "spla",
   "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
   "pf_rd_p", "pf_rd_r", "pf_rd_s",
   "linkcode", "linkid", "creativeasin", "smid", "spia",
   "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
   "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
-  // Amazon — store page / brand referral noise
+  // Amazon: store page / brand referral noise
   "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
-  // Amazon — search/browse noise
+  // Amazon: search/browse noise
   "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
-  // Amazon — locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
-  // Stored lowercase — cleaner.js compares param.toLowerCase() against this list.
+  // Amazon: locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
+  // Stored lowercase. cleaner.js compares param.toLowerCase() against this list.
   "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
   "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
-  // Amazon — legacy encoding indicator (ie=UTF8 on browse/search pages)
+  // Amazon: legacy encoding indicator (ie=UTF8 on browse/search pages)
   "ie",
 
-  // eBay — tracking/click params (not the affiliate param itself)
-  // "campid" removed from here — it is the eBay Partner Network affiliate param in
+  // eBay: tracking/click params (not the affiliate param itself)
+  // "campid" removed from here: it is the eBay Partner Network affiliate param in
   // AFFILIATE_PATTERNS. Stripping it globally would break affiliate attribution. (#160)
   "mkevt", "mkcid", "mkrid", "toolid", "customid",
 
@@ -259,7 +259,7 @@ export const TRACKING_PARAMS = [
   "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
 
   // Webtrekk (AdGuard + Neat URL)
-  // "wt_mc" excluded — it is the affiliate param for MediaMarkt in AFFILIATE_PATTERNS
+  // "wt_mc" excluded: it is the affiliate param for MediaMarkt in AFFILIATE_PATTERNS
   "wt_zmc",     // Zeit/Webtrekk campaign
 
   // HubSpot extended (AdGuard + Registry)
@@ -355,7 +355,7 @@ export const TRACKING_PARAMS = [
 
   // CJ Affiliate
   "cjdata",
-  // "awc" excluded — AWIN affiliate param in AFFILIATE_PATTERNS
+  // "awc" excluded: AWIN affiliate param in AFFILIATE_PATTERNS
 
   // Content recommendation (Connexity, Revcontent)
   "cx_click", "cx_recsorder", "cx_recswidget",
@@ -509,13 +509,13 @@ export const TRACKING_PARAM_CATEGORIES = {
       "kclid", "kakao_agent", "kakaotrack",
       // LinkPrice (Korean affiliate network)
       "lpinfo",
-      // ── AdGuard filter 17 import — ad networks ──
+      // AdGuard filter 17 import: ad networks
       "adj_campaign", "adj_creative", "adj_label", "adj_t",
       "adjust_referrer", "adjust_tracker", "adjust_tracker_limit",
       "admitad_uid", "adsterra_clid", "adsterra_placement_id",
       "adfrom", "adc_publisher", "adc_token", "aiad_clid",
       "af_click_lookback", "af_force_deeplink", "is_retargeting",
-      // "awc" excluded — AWIN affiliate param in AFFILIATE_PATTERNS
+      // "awc" excluded: AWIN affiliate param in AFFILIATE_PATTERNS
       "cjdata",
       "ir_adid", "ir_campaignid", "ir_partnerid", "iclid",
       "gad_campaignid", "gci", "gps_adid",
@@ -576,7 +576,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "oly_anon_id", "oly_enc_id",
       // Wunderkind SMS (Brave + AdGuard)
       "sms_click", "sms_source", "sms_uph",
-      // ── AdGuard filter 17 import — email/CRM ──
+      // AdGuard filter 17 import: email/CRM
       "hsa_la", "hsa_ol",
       "bsft_aaid", "bsft_ek",
       "elq", "elqak",
@@ -672,7 +672,7 @@ export const TRACKING_PARAM_CATEGORIES = {
     params: [
       "s_cid",
       "wickedid",
-      // ── AdGuard filter 17 import — analytics/session/misc ──
+      // AdGuard filter 17 import: analytics/session/misc
       "__io_lv", "_bdadid", "_bhlid", "_clde", "_cldee", "_io_session_id",
       "_ly_c", "_ly_r", "_ope",
       "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
@@ -789,13 +789,13 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "awin",
     name: "AWIN (network)",
-    // AWIN operates cross-domain via awc param — cannot match by host; kept for reference
+    // AWIN operates cross-domain via awc param. Cannot match by host; kept for reference
     domains: [],
     param: "awc",
     type: "affiliate",
     ourTag: "",
   },
-  // Temu removed — proprietary affiliate program with opaque ToS; high legal risk.
+  // Temu removed: proprietary affiliate program with opaque ToS; high legal risk.
   // Re-add once a verified affiliate account is registered and ToS confirmed. (#222)
   {
     id: "zalando_es",

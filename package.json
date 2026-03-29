@@ -1,7 +1,7 @@
 {
   "name": "muga",
   "version": "1.8.0",
-  "description": "Make URLs Great Again — clean URLs, no tracking, no unwanted referrals.",
+  "description": "Fair to every click. Strips 452+ tracking params, respects affiliate links. Open source.",
   "type": "module",
   "scripts": {
     "dev:chrome": "web-ext run --source-dir src/ --target chromium",

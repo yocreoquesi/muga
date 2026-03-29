@@ -1,9 +1,9 @@
 {
   "manifest_version": 2,
-  "name": "MUGA — Fair to Every Click",
+  "name": "MUGA: Clean URLs, Fair to Every Click",
   "short_name": "MUGA",
   "version": "1.8.0",
-  "description": "Strips 435+ tracking params automatically. Optionally adds our affiliate tag on links with none — your choice, always. Open source.",
+  "description": "Automatically cleans URLs by removing 452+ tracking params (utm, fbclid, gclid). AMP redirect, ping blocking. Open source.",
 
   "permissions": [
     "storage",
@@ -19,7 +19,7 @@
     "persistent": false
   },
 
-  "_sri_browser_polyfill": "sha256-ogk4EN2O4Ak+5NNOO0PRXB9pBcb0MPxmS2j4Da1JAk= (hex: a2093810df8e00393ee4d3adc243ea82d7e56471b40f0f66b64f8980da944094) — verified by tools/verify-polyfill-integrity.mjs (#97)",
+  "_sri_browser_polyfill": "sha256-ogk4EN2O4Ak+5NNOO0PRXB9pBcb0MPxmS2j4Da1JAk= (hex: a2093810df8e00393ee4d3adc243ea82d7e56471b40f0f66b64f8980da944094). Verified by tools/verify-polyfill-integrity.mjs (#97)",
 
   "content_scripts": [
     {
@@ -83,7 +83,14 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "muga@yocreoquesi.github.io",
-      "strict_min_version": "128.0"
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": ["technicalAndInteraction"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "140.0"
     }
   },
 
