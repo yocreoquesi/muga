@@ -3,436 +3,436 @@
     "domain": "google.com",
     "preserveParams": ["q", "tbm", "tbs", "hl", "gl", "num", "start", "safe", "as_q", "as_sitesearch", "cid", "nfpr"],
     "stripParams": ["sa", "ved", "ei", "gs_lcp", "sclient", "uact", "gs_lp", "bih", "biw", "oq", "aqs", "sourceid", "sca_esv", "sxsrf", "usg"],
-    "note": "Search query, language/region, pagination — functional. cid preserved for Maps. sa/ved/ei are click tracking."
+    "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ved/ei are click tracking."
   },
   {
     "domain": "bing.com",
     "preserveParams": ["q", "qs", "form", "pq", "sc", "sp", "sk", "first", "FORM"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "duckduckgo.com",
     "preserveParams": ["q", "t", "ia", "iax", "iaxm", "kl", "kp", "kz", "km", "ks", "ko", "kt", "ka", "kf", "kaf", "kac", "kad", "kd", "kh", "kn", "ko", "kp", "kr", "kg", "kb", "kv", "kw"],
-    "note": "Search query and settings — functional"
+    "note": "Search query and settings: functional"
   },
   {
     "domain": "yahoo.com",
     "preserveParams": ["p", "fr", "fr2", "fp", "b", "pz", "bct", "bkcat", "n", "ei"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "baidu.com",
     "preserveParams": ["wd", "ie", "rsv_spt", "rsv_iqid", "f", "tn", "rsp", "rqlang", "bs"],
-    "note": "Search query and encoding — functional"
+    "note": "Search query and encoding: functional"
   },
   {
     "domain": "yandex.ru",
     "preserveParams": ["text", "lr", "lang", "p", "within", "from", "to"],
-    "note": "Search query, language, region and pagination — functional"
+    "note": "Search query, language, region and pagination: functional"
   },
   {
     "domain": "yandex.com",
     "preserveParams": ["text", "lr", "lang", "p", "within", "from", "to"],
-    "note": "Search query, language, region and pagination — functional"
+    "note": "Search query, language, region and pagination: functional"
   },
   {
     "domain": "amazon.com",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.es",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.de",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.fr",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.co.uk",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.it",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Search/browse functional params preserved. ref moved to stripParams — Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
   {
     "domain": "amazon.co.jp",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Japan — same rules as other Amazon TLDs"
+    "note": "Japan: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.com.br",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Brazil — same rules as other Amazon TLDs"
+    "note": "Brazil: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.in",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "India — same rules as other Amazon TLDs"
+    "note": "India: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.com.au",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Australia — same rules as other Amazon TLDs"
+    "note": "Australia: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.ca",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Canada — same rules as other Amazon TLDs"
+    "note": "Canada: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.com.mx",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Mexico — same rules as other Amazon TLDs"
+    "note": "Mexico: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.nl",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Netherlands — same rules as other Amazon TLDs"
+    "note": "Netherlands: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.pl",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Poland — same rules as other Amazon TLDs"
+    "note": "Poland: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.se",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Sweden — same rules as other Amazon TLDs"
+    "note": "Sweden: same rules as other Amazon TLDs"
   },
   {
     "domain": "amazon.sg",
     "preserveParams": ["k", "i", "rh", "s", "keywords", "field-keywords", "n", "me", "merchant", "node", "page", "th"],
     "stripParams": ["field-lbr_brands_browse-bin", "ingress", "visitId", "ref", "social_share", "smid", "spIA", "creativeASIN", "skipTwisterOG", "starsLeft"],
-    "note": "Singapore — same rules as other Amazon TLDs"
+    "note": "Singapore: same rules as other Amazon TLDs"
   },
   {
     "domain": "ebay.com",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],
-    "note": "Search query, category, sort and pagination — functional"
+    "note": "Search query, category, sort and pagination: functional"
   },
   {
     "domain": "ebay.es",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],
-    "note": "Search query, category, sort and pagination — functional"
+    "note": "Search query, category, sort and pagination: functional"
   },
   {
     "domain": "aliexpress.com",
     "preserveParams": ["SearchText", "catId", "sortType", "shipCountry", "groupsort", "maxPrice", "minPrice", "filterCat", "page"],
     "stripParams": ["aff_fsk", "aff_platform", "sk", "dp", "terminal_id", "spm", "scm", "pvid", "pdp_npi", "tt", "afSmartRedirect", "gatewayAdapt", "aff_request_id", "mall_affr", "cv", "af"],
-    "note": "Search and filters — functional. AliExpress internal tracking and affiliate redirect params stripped."
+    "note": "Search and filters: functional. AliExpress internal tracking and affiliate redirect params stripped."
   },
   {
     "domain": "pccomponentes.com",
     "preserveParams": ["q", "sort", "page", "brands", "price_max", "price_min", "category"],
-    "note": "Search and filter params — functional"
+    "note": "Search and filter params: functional"
   },
   {
     "domain": "elcorteingles.es",
     "preserveParams": ["s", "q", "category", "page", "sort", "brand"],
-    "note": "Search and filter params — functional"
+    "note": "Search and filter params: functional"
   },
   {
     "domain": "zalando.es",
     "preserveParams": ["q", "order", "p", "size", "color", "brand", "price_from", "price_to"],
-    "note": "Search, filter and pagination — functional"
+    "note": "Search, filter and pagination: functional"
   },
   {
     "domain": "zalando.de",
     "preserveParams": ["q", "order", "p", "size", "color", "brand", "price_from", "price_to"],
-    "note": "Search, filter and pagination — functional"
+    "note": "Search, filter and pagination: functional"
   },
   {
     "domain": "fnac.es",
     "preserveParams": ["SearchQuery", "sl", "stype", "mo", "se"],
-    "note": "Search query and mode — functional"
+    "note": "Search query and mode: functional"
   },
   {
     "domain": "fnac.com",
     "preserveParams": ["SearchQuery", "sl", "stype", "mo", "se"],
-    "note": "Search query and mode — functional"
+    "note": "Search query and mode: functional"
   },
   {
     "domain": "mediamarkt.es",
     "preserveParams": ["query", "searchType", "page", "pageSize", "sort"],
-    "note": "Search and pagination — functional"
+    "note": "Search and pagination: functional"
   },
   {
     "domain": "mediamarkt.de",
     "preserveParams": ["query", "searchType", "page", "pageSize", "sort"],
-    "note": "Search and pagination — functional"
+    "note": "Search and pagination: functional"
   },
   {
     "domain": "temu.com",
     "preserveParams": ["search_key", "search_type", "page_num", "page_size", "sort_type"],
-    "note": "Search, pagination and sort — functional"
+    "note": "Search, pagination and sort: functional"
   },
   {
     "domain": "shein.com",
     "preserveParams": ["q", "search_type", "src_tab_page_id", "page", "sort", "attr_values", "brand"],
-    "note": "Search, filters and pagination — functional"
+    "note": "Search, filters and pagination: functional"
   },
   {
     "domain": "youtube.com",
     "preserveParams": ["v", "t", "list", "index", "start_radio", "ab_channel", "search_query", "lc"],
     "stripParams": ["feature", "pp", "rco", "source_ve_path", "si", "cbrd", "ucbcb"],
-    "note": "Video ID, timestamp, playlist, channel, comment link — functional. si (share token), feature/pp are tracking."
+    "note": "Video ID, timestamp, playlist, channel, comment link: functional. si (share token), feature/pp are tracking."
   },
   {
     "domain": "twitter.com",
     "preserveParams": ["q", "f", "lang"],
     "stripParams": ["t", "s", "ref_src", "ref_url", "src"],
-    "note": "Search query and filters — functional. t/s/src are share tracking."
+    "note": "Search query and filters: functional. t/s/src are share tracking."
   },
   {
     "domain": "x.com",
     "preserveParams": ["q", "f", "lang"],
     "stripParams": ["t", "s", "ref_src", "ref_url", "src"],
-    "note": "Search query and filters — functional. t/s/src are share tracking."
+    "note": "Search query and filters: functional. t/s/src are share tracking."
   },
   {
     "domain": "instagram.com",
     "preserveParams": ["hl"],
     "stripParams": ["igsh", "img_index", "source", "entry_point"],
-    "note": "Language — functional. Share tracking (igsh) and app entry metadata stripped."
+    "note": "Language: functional. Share tracking (igsh) and app entry metadata stripped."
   },
   {
     "domain": "reddit.com",
     "preserveParams": ["sort", "t", "after", "before", "count", "limit", "sr_detail", "q", "type", "context"],
     "stripParams": ["share_id", "ref", "ref_source"],
-    "note": "Sort, time filter, pagination, search, comment context — functional. share_id/ref are tracking."
+    "note": "Sort, time filter, pagination, search, comment context: functional. share_id/ref are tracking."
   },
   {
     "domain": "tiktok.com",
     "preserveParams": ["q", "lang", "region"],
     "stripParams": ["is_from_webapp", "sender_device", "sender_web_id", "is_copy_url", "enter_method", "_t"],
-    "note": "Search and locale — functional. Share tracking params stripped."
+    "note": "Search and locale: functional. Share tracking params stripped."
   },
   {
     "domain": "twitch.tv",
     "preserveParams": ["query", "type"],
-    "note": "Search query and content type — functional"
+    "note": "Search query and content type: functional"
   },
   {
     "domain": "linkedin.com",
     "preserveParams": ["keywords", "location", "geoId", "f_TPR", "f_E", "f_JT", "f_C", "sortBy", "pageNum", "start"],
     "stripParams": ["trackingId", "lipi", "lici", "midToken", "midSig"],
-    "note": "Job/people search filters — functional. trackingId/lipi/lici are click tracking."
+    "note": "Job/people search filters: functional. trackingId/lipi/lici are click tracking."
   },
   {
     "domain": "facebook.com",
     "preserveParams": ["q", "filters", "story_fbid", "id", "v", "set", "type"],
     "stripParams": ["mibextid", "paipv", "eav", "ref", "notif_id", "notif_t", "acontext", "hc_ref", "fref", "rc", "__xts__", "__tn__", "action_history"],
-    "note": "Search, post/video/album IDs — functional. Mobile tracking, notification refs, and action history stripped."
+    "note": "Search, post/video/album IDs: functional. Mobile tracking, notification refs, and action history stripped."
   },
   {
     "domain": "github.com",
     "preserveParams": ["tab", "q", "type", "utf8", "search_value", "ref", "l", "o", "s", "p"],
     "stripParams": ["email_token", "email_source", "notification_referrer_id"],
-    "note": "Search, tab, sort, pagination — functional. Email notification tracking stripped."
+    "note": "Search, tab, sort, pagination: functional. Email notification tracking stripped."
   },
   {
     "domain": "stackoverflow.com",
     "preserveParams": ["tab", "sort", "pagesize", "page", "q"],
-    "note": "Sort, pagination and search — functional"
+    "note": "Sort, pagination and search: functional"
   },
   {
     "domain": "wikipedia.org",
     "preserveParams": ["search", "title", "action", "oldid", "diff", "curid", "redirect", "section"],
-    "note": "Page navigation, search, revision — functional"
+    "note": "Page navigation, search, revision: functional"
   },
   {
     "domain": "office.com",
     "preserveParams": ["auth", "home", "from"],
-    "note": "Auth flow and navigation — functional"
+    "note": "Auth flow and navigation: functional"
   },
   {
     "domain": "booking.com",
     "preserveParams": ["checkin", "checkout", "adults", "children", "rooms", "currency", "lang", "dest_id", "dest_type", "ss", "group_adults", "group_children", "no_rooms", "nflt"],
     "stripParams": ["label", "sid", "keep_landing"],
-    "note": "Hotel search and booking — functional. label/sid are tracking."
+    "note": "Hotel search and booking: functional. label/sid are tracking."
   },
   {
     "domain": "renfe.com",
     "preserveParams": ["tipoBusqueda", "origen", "destino", "fechaIda", "fechaVuelta", "adultos", "ninos", "jovenes", "mayores"],
-    "note": "Train search parameters — functional"
+    "note": "Train search parameters: functional"
   },
   {
     "domain": "iberia.com",
     "preserveParams": ["origin", "destination", "outboundDate", "returnDate", "adults", "children", "infants", "cabinClass", "tripType"],
-    "note": "Flight search parameters — functional"
+    "note": "Flight search parameters: functional"
   },
   {
     "domain": "idealista.com",
     "preserveParams": ["tipo", "localidad", "metros", "habitaciones", "precio", "order", "ordenado-por", "pagina"],
-    "note": "Real estate search filters and pagination — functional"
+    "note": "Real estate search filters and pagination: functional"
   },
   {
     "domain": "fotocasa.es",
     "preserveParams": ["transactionType", "l", "minPrice", "maxPrice", "minRooms", "maxRooms", "minSurface", "maxSurface", "page"],
-    "note": "Real estate search filters and pagination — functional"
+    "note": "Real estate search filters and pagination: functional"
   },
   {
     "domain": "marca.com",
     "preserveParams": ["q"],
-    "note": "Search query — functional"
+    "note": "Search query: functional"
   },
   {
     "domain": "as.com",
     "preserveParams": ["q"],
-    "note": "Search query — functional"
+    "note": "Search query: functional"
   },
   {
     "domain": "rtve.es",
     "preserveParams": ["q", "page"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "20minutos.es",
     "preserveParams": ["q"],
-    "note": "Search query — functional"
+    "note": "Search query: functional"
   },
   {
     "domain": "elmundo.es",
     "preserveParams": ["q", "page"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "elpais.com",
     "preserveParams": ["q", "page"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "bbc.com",
     "preserveParams": ["q", "seqId", "page"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "bbc.co.uk",
     "preserveParams": ["q", "seqId", "page"],
-    "note": "Search query and pagination — functional"
+    "note": "Search query and pagination: functional"
   },
   {
     "domain": "cnn.com",
     "preserveParams": ["q"],
-    "note": "Search query — functional"
+    "note": "Search query: functional"
   },
   {
     "domain": "nytimes.com",
     "preserveParams": ["query", "type", "sort"],
-    "note": "Search query and sort — functional"
+    "note": "Search query and sort: functional"
   },
   {
     "domain": "youtu.be",
     "preserveParams": ["t", "list", "index", "start_radio"],
     "stripParams": ["feature", "pp", "si", "cbrd", "ucbcb"],
-    "note": "YouTube short links — timestamp and playlist functional. si (share token) stripped."
+    "note": "YouTube short links: timestamp and playlist functional. si (share token) stripped."
   },
   {
     "domain": "ebay.co.uk",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],
-    "note": "Search query, category, sort and pagination — functional"
+    "note": "Search query, category, sort and pagination: functional"
   },
   {
     "domain": "ebay.de",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],
-    "note": "Search query, category, sort and pagination — functional"
+    "note": "Search query, category, sort and pagination: functional"
   },
   {
     "domain": "ebay.fr",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],
-    "note": "Search query, category, sort and pagination — functional"
+    "note": "Search query, category, sort and pagination: functional"
   },
   {
     "domain": "ebay.it",
     "preserveParams": ["_nkw", "_sacat", "_sop", "_pgn", "_ipg", "_fcid", "LH_BIN", "LH_Auction", "rt", "nkw"],
     "stripParams": ["hash", "amdata", "norover"],
-    "note": "Search query, category, sort and pagination — functional"
+    "note": "Search query, category, sort and pagination: functional"
   },
   {
     "domain": "fb.com",
     "preserveParams": ["q", "filters", "story_fbid", "id", "v"],
     "stripParams": ["mibextid", "paipv", "eav", "ref", "notif_id", "notif_t", "acontext", "hc_ref", "fref", "rc", "__xts__", "__tn__", "action_history"],
-    "note": "Facebook short domain — same rules as facebook.com"
+    "note": "Facebook short domain: same rules as facebook.com"
   },
   {
     "domain": "open.spotify.com",
     "preserveParams": ["nd", "go", "context", "theme"],
     "stripParams": ["dl_branch"],
-    "note": "Playback context — functional. dl_branch is Branch.io tracking."
+    "note": "Playback context: functional. dl_branch is Branch.io tracking."
   },
   {
     "domain": "netflix.com",
     "preserveParams": ["q", "jbv"],
     "stripParams": ["trackId", "tctx"],
-    "note": "Search and content ID — functional. trackId/tctx are internal tracking."
+    "note": "Search and content ID: functional. trackId/tctx are internal tracking."
   },
   {
     "domain": "etsy.com",
     "preserveParams": ["q", "page", "order", "min", "max", "ship_to", "search_type", "taxonomy_id"],
     "stripParams": ["click_key", "click_sum", "rec_type", "ref", "frs", "sts"],
-    "note": "Search and filters — functional. Click/referral tracking stripped."
+    "note": "Search and filters: functional. Click/referral tracking stripped."
   },
   {
     "domain": "walmart.com",
     "preserveParams": ["q", "sort", "page", "min_price", "max_price", "cat_id", "query"],
     "stripParams": ["athbdg", "athena", "from", "povid", "wmlspartner"],
-    "note": "Search and filters — functional. Internal recommendation/affiliate tracking stripped."
+    "note": "Search and filters: functional. Internal recommendation/affiliate tracking stripped."
   },
   {
     "domain": "pinterest.com",
     "preserveParams": ["q", "rs", "page"],
-    "note": "Search and pagination — functional"
+    "note": "Search and pagination: functional"
   },
   {
     "domain": "apps.apple.com",
     "preserveParams": ["mt", "ls", "l"],
-    "note": "Media type, locale — functional"
+    "note": "Media type, locale: functional"
   },
   {
     "domain": "play.google.com",
     "preserveParams": ["id", "hl", "gl"],
-    "note": "App ID and locale — functional"
+    "note": "App ID and locale: functional"
   },
   {
     "domain": "scholar.google.com",
     "preserveParams": ["q", "hl", "as_sdt", "as_ylo", "as_yhi", "cites", "scisbd", "cluster", "start", "num"],
-    "note": "Scholar search, citation filters, pagination — functional"
+    "note": "Scholar search, citation filters, pagination: functional"
   },
   {
     "domain": "maps.google.com",
     "preserveParams": ["q", "ll", "z", "sll", "sspn", "layer", "cid", "ftid", "data", "saddr", "daddr", "dirflg", "ttype", "pb"],
-    "note": "Maps search, coordinates, zoom, business ID, directions — functional"
+    "note": "Maps search, coordinates, zoom, business ID, directions: functional"
   },
   {
     "domain": "bilibili.com",
@@ -456,13 +456,13 @@
     "domain": "daum.net",
     "preserveParams": ["q", "w", "sort", "p", "page", "period", "DA"],
     "stripParams": ["nil_suggest", "nil_ch", "nil_src", "ref", "trkid", "re_svc"],
-    "note": "Kakao/Daum search portal — Korean search engine"
+    "note": "Kakao/Daum search portal: Korean search engine"
   },
   {
     "domain": "coupang.com",
     "preserveParams": ["q", "page", "sorter", "minPrice", "maxPrice", "brand", "rating", "rocketAll", "filterType", "itemId", "vendorItemId", "pickType"],
     "stripParams": ["channel", "component", "eventCategory", "trcid", "traid", "traceId", "clickEventId", "searchId", "src", "spec", "sourceType", "rmdId", "isAddedCart", "searchProductType", "campaignId", "rank", "listSize", "isPriceRange"],
-    "note": "Korea's largest e-commerce. subId/hmKeyword are Coupang Partners affiliate params — never stripped."
+    "note": "Korea's largest e-commerce. subId/hmKeyword are Coupang Partners affiliate params: never stripped."
   },
   {
     "domain": "gmarket.co.kr",
@@ -515,7 +515,7 @@
   {
     "domain": "yahoo.co.jp",
     "preserveParams": ["p", "fr", "fr2", "fp", "b", "pz", "bct", "bkcat", "n", "ei"],
-    "note": "Japanese Yahoo search — same functional params as yahoo.com"
+    "note": "Japanese Yahoo search: same functional params as yahoo.com"
   },
   {
     "domain": "flipkart.com",

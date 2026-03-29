@@ -1,5 +1,5 @@
 /**
- * MUGA — Popup
+ * MUGA: Popup
  * Loads preferences, displays stats, and manages the toggle switches.
  */
 
@@ -41,7 +41,7 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
-  // Footer rate link — always available, passive
+  // Footer rate link: always available, passive
   const popupRateLink = document.getElementById("popup-rate-link");
   if (popupRateLink) {
     const isFirefox = navigator.userAgent.includes("Firefox");
@@ -57,16 +57,16 @@ async function init() {
   const shareBtn = document.getElementById("share-btn");
   const urlsCleaned = local.stats?.urlsCleaned ?? 0;
 
-  // Easter eggs — milestone titles on the logo
+  // Easter eggs: milestone titles on the logo
   const logoEl = document.getElementById("logo-text");
   if (logoEl && urlsCleaned > 0) {
     const milestones = [
-      [10000, "MUGA — Legendary URL cleaner"],
-      [5000,  "MUGA — Master of Clean URLs"],
-      [1000,  "MUGA — Tracking Terminator"],
-      [500,   "MUGA — Drain the Swamp Pro"],
-      [100,   "MUGA — Making URLs Great Again"],
-      [10,    "MUGA — First steps to clean URLs"],
+      [10000, "MUGA: Legendary URL cleaner"],
+      [5000,  "MUGA: Master of Clean URLs"],
+      [1000,  "MUGA: Tracking Terminator"],
+      [500,   "MUGA: Drain the Swamp Pro"],
+      [100,   "MUGA: Making URLs Good Again"],
+      [10,    "MUGA: First steps to clean URLs"],
     ];
     const milestone = milestones.find(([threshold]) => urlsCleaned >= threshold);
     if (milestone) logoEl.title = milestone[1];
@@ -131,11 +131,11 @@ async function init() {
       "12-31": "My URLs are cleaner than my New Year's resolutions.",
     };
 
-    // Fun phrases — rotated randomly, with backronym hooks
+    // Fun phrases: rotated randomly, with backronym hooks
     const phrases = [
       `MUGA? Most URLs Get Abused. Mine don't anymore. ${junk} trackers stripped so far.`,
       `MUGA. Mercilessly Undoing Garbage Attachments. ${junk} params destroyed and counting.`,
-      `MUGA! Make URLs Genuine Again. ${cleaned} URLs cleaned, zero data collected.`,
+      `MUGA! Making URLs Good Again. ${cleaned} URLs cleaned, zero data collected.`,
       `I've cleaned ${cleaned} URLs and stripped ${junk} trackers. My browser is basically a spa now.`,
       `${junk} tracking params eliminated. Nothing happened behind my back. Fair to every click.`,
       `MUGA just cleaned ${cleaned} URLs for me. The trackers never saw it coming.`,
@@ -210,7 +210,7 @@ async function showUrlPreview(prefs, lang) {
   const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules);
 
   if (result.cleanUrl === url && result.action === "untouched") {
-    // Show original URL as plain reference — no strikethrough, no "after" URL
+    // Show original URL as plain reference. No strikethrough, no "after" URL
     const beforeEl = document.getElementById("preview-before");
     beforeEl.textContent = url;
     beforeEl.classList.add("clean-url");
@@ -219,7 +219,7 @@ async function showUrlPreview(prefs, lang) {
     document.getElementById("preview-before").textContent = url;
     document.getElementById("preview-after").textContent = result.cleanUrl;
 
-    // Show which params were removed — full cleaning receipt
+    // Show which params were removed: full cleaning receipt
     if (result.removedTracking?.length > 0) {
       const removedEl = document.getElementById("preview-removed");
       removedEl.textContent = `${t("removed_params_label", lang)} ${result.removedTracking.join(", ")}`;

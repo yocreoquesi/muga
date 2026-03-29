@@ -1,5 +1,5 @@
 /**
- * MUGA — Service Worker (MV3)
+ * MUGA: Service Worker (MV3)
  * Processes URLs, handles messages from content scripts,
  * and maintains extension state.
  */
@@ -7,15 +7,15 @@
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
 
-// B4 — fetch domain-rules dynamically (import assertions incompatible with Firefox;
+// B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
 //       top-level await disallowed in Chrome MV3 service workers)
 let domainRules = [];
 let _domainRulesReady = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
   .then(r => r.json())
   .then(data => { domainRules = data; })
-  .catch(() => { /* domain-rules unavailable — continue without */ });
+  .catch(() => { /* domain-rules unavailable. Continue without. */ });
 
-// B3 — chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
+// B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
 
 // Run migration once on startup (no-op if already done)
@@ -133,7 +133,7 @@ async function applyDnrState(prefs) {
   }
 }
 
-// Matches http/https URLs in arbitrary text — used by the "selection" context menu handler
+// Matches http/https URLs in arbitrary text. Used by the "selection" context menu handler.
 const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
 // --- Context menu helpers ---
@@ -319,7 +319,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
-  // On copy: suppress the toast and affiliate injection — user didn't navigate,
+  // On copy: suppress the toast and affiliate injection. User didn't navigate,
   // they just copied a link, so we should not inject our tag either.
   const effectivePrefs = skipNotify
     ? { ...prefs, notifyForeignAffiliate: false, injectOwnAffiliate: false }
@@ -339,7 +339,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     await setStats({ firstUsed: Date.now() });
   }
 
-  // Update stats and session history — only count if the URL actually changed (S13)
+  // Update stats and session history. Only count if the URL actually changed (S13).
   const urlChanged = result.cleanUrl !== rawUrl;
   if (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0)) {
     try {
@@ -407,7 +407,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 
   if (details.reason === "install") {
-    // First install — open the onboarding page in a new tab
+    // First install: open the onboarding page in a new tab
     const installPrefs = await getPrefs();
     if (!installPrefs.onboardingDone) {
       chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
@@ -447,7 +447,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 
   if (info.menuItemId === "muga-copy-clean-selection") {
     if (!tab?.id) return;
-    // Ask the content script to handle it — it can access the actual DOM selection including hrefs
+    // Ask the content script to handle it: it can access the actual DOM selection including hrefs
     chrome.tabs.sendMessage(tab.id, { type: "GET_AND_COPY_CLEAN_SELECTION" }, (response) => {
       if (chrome.runtime.lastError || !response?.ok) {
         // Fallback: plain-text approach (original behavior)

@@ -1,4 +1,4 @@
-# MUGA — Fair to Every Click
+# MUGA: Fair to Every Click
 ## Master Plan: Competitive Intelligence + Development Strategy
 
 *Generated: 2026-03-23*
@@ -6,18 +6,18 @@
 
 ---
 
-# FASE 1 — INTELIGENCIA COMPETITIVA
+# FASE 1: INTELIGENCIA COMPETITIVA
 
 ---
 
 ## 1. Bitly
 
 ### Pricing
-- **Free**: $0/mes — 5 links/mes, 2 QR codes, 0 custom domains, 1,000 API req/mes, sin historial de datos
-- **Core**: $10/mes (solo anual) — 100 links/mes, 5 QR codes, 30 dias historial, 5,000 API req/mes
-- **Growth**: $29/mes anual ($35 mensual) — 500 links/mes, 10 QR codes, 1 custom domain gratis, 120 dias historial, 25,000 API req/mes, bulk creation (100 links/upload)
-- **Premium**: $199/mes anual ($300 mensual) — 3,000 links/mes, 200 QR codes, analytics ciudad/dispositivo, deep linking, campanas, 1 ano historial, 50,000 API req/mes
-- **Enterprise**: pricing custom — 2 anos historial, SSO, webhooks, SLA 99.9%, dedicated CSM
+- **Free**: $0/mes: 5 links/mes, 2 QR codes, 0 custom domains, 1,000 API req/mes, sin historial de datos
+- **Core**: $10/mes (solo anual): 100 links/mes, 5 QR codes, 30 dias historial, 5,000 API req/mes
+- **Growth**: $29/mes anual ($35 mensual): 500 links/mes, 10 QR codes, 1 custom domain gratis, 120 dias historial, 25,000 API req/mes, bulk creation (100 links/upload)
+- **Premium**: $199/mes anual ($300 mensual): 3,000 links/mes, 200 QR codes, analytics ciudad/dispositivo, deep linking, campanas, 1 ano historial, 50,000 API req/mes
+- **Enterprise**: pricing custom: 2 anos historial, SSO, webhooks, SLA 99.9%, dedicated CSM
 - **Modelo**: Freemium con free plan extremadamente limitado. Interstitial ads en links gratuitos desde 2025.
 - **Revenue estimado**: ARPU Core ~$120/ano, Growth ~$348/ano, Premium ~$2,388/ano
 
@@ -32,7 +32,7 @@
 - Link-in-bio (landing pages)
 
 ### Gaps y quejas de usuarios
-- **Precio excesivo**: $199/mes por analytics de ciudad/dispositivo — competidores lo ofrecen a $20-50/mes
+- **Precio excesivo**: $199/mes por analytics de ciudad/dispositivo. Competidores lo ofrecen a $20-50/mes
 - **Free plan inutilizable**: 5 links/mes es insultantemente bajo, ads intersticiales en links gratuitos
 - **Analytics retrasados**: no actualizan en tiempo real
 - **Extension problematica**: errores internos frecuentes, problemas OAuth, funciones eliminadas en updates
@@ -62,19 +62,19 @@
 
 ### Pricing
 - **Free**: Extension gratuita, shortening basico sin cuenta
-- **Hobby**: $5/mes — 500 links/mes, custom domains con SSL, Smart URLs, API, QR codes, analytics, retargeting
-- **Basic**: $20/mes — 4,000 links/mes, todo lo de Hobby ampliado
-- **Pro**: $50/mes — 10,000 links/mes, team management, soporte prioritario
+- **Hobby**: $5/mes: 500 links/mes, custom domains con SSL, Smart URLs, API, QR codes, analytics, retargeting
+- **Basic**: $20/mes: 4,000 links/mes, todo lo de Hobby ampliado
+- **Pro**: $50/mes: 10,000 links/mes, team management, soporte prioritario
 - **Modelo**: Freemium (extension gratis + SaaS de pago). Trial 5 dias en plans de pago.
 - **Revenue**: ~$15,000 MRR ($180K ARR) con ~600 clientes de pago estimados
 
 ### Features diferencial
-- **Dominio mas corto posible**: t.ly (4 caracteres) — marketing strong
+- **Dominio mas corto posible**: t.ly (4 caracteres): marketing strong
 - **Extension de navegador muy popular**: 330,000+ usuarios activos
 - **Smart URLs** (geo/device redirect) en TODOS los planes de pago
 - **OneLinks** (link-in-bio)
 - **Retargeting pixels** incluidos desde el plan mas barato ($5/mes)
-- **Todos los features desbloqueados** en todos los planes — solo varian los limites de volumen
+- **Todos los features desbloqueados** en todos los planes. Solo varian los limites de volumen
 - **Pricing agresivo**: 50% mas barato que la media del mercado
 
 ### Gaps y quejas de usuarios
@@ -82,7 +82,7 @@
 - **UX del dashboard**: Interfaz funcional pero no pulida, no es "premium feeling"
 - **Soporte limitado**: Un solo fundador, sin equipo
 - **Sin workspaces/equipos** en planes basicos
-- **Marca percibida como "indie"** — enterprises no confian
+- **Marca percibida como "indie"**: enterprises no confian
 
 ### Stack tecnico detectado
 - Backend: **Laravel** (PHP) + **Vue.js**
@@ -100,7 +100,7 @@
 ### Oportunidad para MUGA
 - **Extension como canal de captacion**: T.LY demostro que una extension popular puede generar 350K usuarios. MUGA ya tiene una extension funcional con un hook diferente (limpieza de URLs + shortening).
 - **UX premium**: T.LY parece "indie project". MUGA puede posicionarse con UX mas pulida para capturar el segmento que quiere calidad visual.
-- **Modelo hibrido**: MUGA combina limpieza de tracking params (uso diario) + shortening (uso ocasional) — mas engagement con la extension.
+- **Modelo hibrido**: MUGA combina limpieza de tracking params (uso diario) + shortening (uso ocasional). Mas engagement con la extension.
 - **Vulnerabilidad**: T.LY depende de un solo fundador sin equipo. Si escala, sera un cuello de botella.
 
 ---
@@ -108,15 +108,15 @@
 ## 3. Rebrandly
 
 ### Pricing
-- **Free**: $0/mes — 10 links/mes, 10 QR codes, 1 custom domain, 100 clicks analytics/mes
-- **Essentials**: $8/mes anual ($11 mensual) — 250 links/mes, 2 custom domains, 10K clicks analytics
-- **Professional**: $22/mes anual ($32 mensual) — 1,500 links/mes, 3 custom domains, 25K clicks, password protection, link expiration, webhooks, traffic routing
-- **Growth**: $69/mes anual ($99 mensual) — 3,500 links/mes, 10 custom domains, 150K clicks analytics, 5 workspaces, 5 teammates, mobile deep linking
-- **Enterprise**: Custom — unlimited todo, SSO, HIPAA, dedicated CSM
+- **Free**: $0/mes: 10 links/mes, 10 QR codes, 1 custom domain, 100 clicks analytics/mes
+- **Essentials**: $8/mes anual ($11 mensual): 250 links/mes, 2 custom domains, 10K clicks analytics
+- **Professional**: $22/mes anual ($32 mensual): 1,500 links/mes, 3 custom domains, 25K clicks, password protection, link expiration, webhooks, traffic routing
+- **Growth**: $69/mes anual ($99 mensual): 3,500 links/mes, 10 custom domains, 150K clicks analytics, 5 workspaces, 5 teammates, mobile deep linking
+- **Enterprise**: Custom: unlimited todo, SSO, HIPAA, dedicated CSM
 - **Modelo**: Freemium con progression natural entre tiers.
 
 ### Features diferencial
-- **Branded links** como core value prop — fuerte en branding corporativo
+- **Branded links** como core value prop: fuerte en branding corporativo
 - **Link galleries** (link-in-bio agrupadas)
 - **AI scheduling suggestions**
 - **Traffic routing** (geo/device redirect en Professional+)
@@ -149,16 +149,16 @@
 ## 4. Short.io
 
 ### Pricing
-- **Free**: $0/mes — 1,000 links total, 50K clicks/mes, 5 custom domains, 1 usuario
-- **Hobby**: $5/mes — 2,500 links, 100K clicks, 7 domains, geo-targeting pais, referrer hiding
-- **Pro**: $18/mes — links ilimitados, clicks ilimitados, 10 domains, password protection, link expiration, link cloaking
-- **Team** (popular): $48/mes — todo ilimitado, 50 domains, usuarios ilimitados, geo ciudad/region, deep links, E2E encryption, SLA 99.9%
-- **Enterprise**: $148/mes — domains ilimitados, multi-teams, SSO, raw S3 export
+- **Free**: $0/mes: 1,000 links total, 50K clicks/mes, 5 custom domains, 1 usuario
+- **Hobby**: $5/mes: 2,500 links, 100K clicks, 7 domains, geo-targeting pais, referrer hiding
+- **Pro**: $18/mes: links ilimitados, clicks ilimitados, 10 domains, password protection, link expiration, link cloaking
+- **Team** (popular): $48/mes: todo ilimitado, 50 domains, usuarios ilimitados, geo ciudad/region, deep links, E2E encryption, SLA 99.9%
+- **Enterprise**: $148/mes: domains ilimitados, multi-teams, SSO, raw S3 export
 - **Modelo**: Freemium generoso. Trial 7 dias en plans de pago. Sin tarjeta requerida.
 
 ### Features diferencial
 - **Free plan generoso**: 1,000 links + 50K clicks es el mejor free plan del mercado
-- **5 custom domains en free** — unico en el mercado
+- **5 custom domains en free**: unico en el mercado
 - **Link automation** (bulk creation)
 - **Raw data export a S3** (Enterprise)
 - **E2E encryption** (Team+)
@@ -192,15 +192,15 @@
 ## 5. Dub.co
 
 ### Pricing
-- **Free**: $0 — 25 links/mes, 1K tracked events/mes, 3 custom domains, 1 usuario, 30 dias analytics
-- **Pro**: $25/mes anual — 1K links/mes, 50K events, 10 domains, 3 usuarios, 1 ano analytics, 600 API req/min
-- **Business**: $75/mes anual — 10K links/mes, 250K events, 100 domains, 10 usuarios, 3 anos analytics
-- **Advanced**: $250/mes anual — 50K links/mes, 1M events, 250 domains, 20 usuarios, 5 anos analytics
-- **Enterprise**: Custom — todo ilimitado
+- **Free**: $0: 25 links/mes, 1K tracked events/mes, 3 custom domains, 1 usuario, 30 dias analytics
+- **Pro**: $25/mes anual: 1K links/mes, 50K events, 10 domains, 3 usuarios, 1 ano analytics, 600 API req/min
+- **Business**: $75/mes anual: 10K links/mes, 250K events, 100 domains, 10 usuarios, 3 anos analytics
+- **Advanced**: $250/mes anual: 50K links/mes, 1M events, 250 domains, 20 usuarios, 5 anos analytics
+- **Enterprise**: Custom: todo ilimitado
 - **Modelo**: Freemium + Open Source. El mas moderno del mercado.
 
 ### Features diferencial
-- **Open source** (GitHub, 20K+ stars) — confianza y transparencia
+- **Open source** (GitHub, 20K+ stars): confianza y transparencia
 - **Real-time analytics** con Tinybird
 - **Conversion tracking** nativo
 - **A/B testing** de links
@@ -209,19 +209,19 @@
 - **Link cloaking** en todos los planes
 - **Custom QR codes** en todos los planes
 - **UTM templates**
-- **Dub Partners** — sistema de affiliates integrado
+- **Dub Partners**: sistema de affiliates integrado
 - **API moderna y bien documentada**
 - **Self-hostable** (Docker)
-- **UI/UX la mejor del mercado** — diseno moderno, dark mode, rapido
+- **UI/UX la mejor del mercado**: diseno moderno, dark mode, rapido
 
 ### Gaps y quejas de usuarios
-- **Relatively nuevo** — menos track record que Bitly
+- **Relatively nuevo**: menos track record que Bitly
 - **Sin extension de navegador** dedicada (o basica)
 - **Vercel lock-in** para el stack completo
 - **Self-hosting complejo** (requiere Tinybird, Upstash, Vercel)
 - **Sin CTA overlays**
 - **Sin link-in-bio** nativo
-- **Pricing de eventos** confuso — tracked events vs clicks vs links
+- **Pricing de eventos** confuso: tracked events vs clicks vs links
 
 ### Stack tecnico detectado
 - **Framework**: Next.js 14 + React 18 + TypeScript
@@ -240,7 +240,7 @@
 - Nota: Vercel challenge activado en curl (403)
 
 ### Oportunidad para MUGA
-- **Extension nativa**: Dub.co NO tiene extension de navegador integrada. Este es el gap mas grande — MUGA nace como extension-first.
+- **Extension nativa**: Dub.co NO tiene extension de navegador integrada. Este es el gap mas grande. MUGA nace como extension-first.
 - **Simplicidad de stack**: Dub requiere Tinybird + Upstash + Vercel + Prisma para self-hosting. MUGA con Cloudflare Workers + KV + Supabase es mas simple y barato.
 - **Pricing mas simple**: "links/mes" es mas facil de entender que "tracked events".
 - **No AGPL**: Si MUGA es open source, usar MIT o Apache 2.0 permite mas adopcion que AGPL.
@@ -250,15 +250,15 @@
 ## 6. Sniply
 
 ### Pricing
-- **Basic**: $9/mes anual — 250 links/mes, 5 CTAs, 5K CTA impressions/mes, 1 user, 1 custom domain
-- **Pro** (popular): $29/mes anual — links ilimitados, 30 CTAs, 20K impressions, 3 users, 5 domains
-- **Business**: $59/mes anual — links ilimitados, 100 CTAs, 50K impressions, 10 users, 20 domains
-- **Enterprise**: Custom — todo ilimitado, API access
+- **Basic**: $9/mes anual: 250 links/mes, 5 CTAs, 5K CTA impressions/mes, 1 user, 1 custom domain
+- **Pro** (popular): $29/mes anual: links ilimitados, 30 CTAs, 20K impressions, 3 users, 5 domains
+- **Business**: $59/mes anual: links ilimitados, 100 CTAs, 50K impressions, 10 users, 20 domains
+- **Enterprise**: Custom: todo ilimitado, API access
 - **Trial**: 14 dias gratis en cualquier plan
 - **Modelo**: Trial-to-paid, sin free plan permanente.
 
 ### Features diferencial
-- **CTA overlays** como CORE del producto — unico enfoque en el mercado
+- **CTA overlays** como CORE del producto: unico enfoque en el mercado
 - Los overlays aparecen sobre el contenido del destino (no redirects simples)
 - **Retargeting pixels** integrados en links
 - **Lead generation overlay** (captura emails)
@@ -267,7 +267,7 @@
 - **Browser extensions** (Chrome, Firefox)
 
 ### Gaps y quejas de usuarios
-- **No es un shortener puro** — es un CTA tool con shortening
+- **No es un shortener puro**: es un CTA tool con shortening
 - **Overlays pueden ser bloqueados** por adblockers
 - **Sin analytics avanzados** de clicks (geo, dispositivo limitados)
 - **Sin custom domains** en Basic
@@ -276,7 +276,7 @@
 
 ### Stack tecnico detectado
 - CDN: **Cloudflare** (cf-ray headers, PoP Madrid)
-- Redirect: HTTP 302 (no 301 — necesario para inyectar overlay)
+- Redirect: HTTP 302 (no 301: necesario para inyectar overlay)
 
 ### Velocidad de redireccion
 - **~191ms** time_starttransfer (Cloudflare, PoP Madrid)
@@ -291,25 +291,25 @@
 ## 7. Replug
 
 ### Pricing
-- **Free**: $0/mes — 100 links, 2 bio links, 10 QR codes, 1K clicks/mes, 3 custom domains
-- **Essentials**: $9/mes anual — 1K links, 10 bio links, 100 QR codes, 10K clicks/mes, 1 retargeting pixel, 5 domains, 1 free .link domain
-- **Scale**: $23/mes anual — links ilimitados, bio links ilimitados, 50K clicks/mes, pixels ilimitados, 15 domains, 3 workspaces, 3 usuarios
-- **Agency**: $79/mes anual — 250K clicks/mes, 50 domains, 10 workspace kits, 10 usuarios, 10 .link domains
+- **Free**: $0/mes: 100 links, 2 bio links, 10 QR codes, 1K clicks/mes, 3 custom domains
+- **Essentials**: $9/mes anual: 1K links, 10 bio links, 100 QR codes, 10K clicks/mes, 1 retargeting pixel, 5 domains, 1 free .link domain
+- **Scale**: $23/mes anual: links ilimitados, bio links ilimitados, 50K clicks/mes, pixels ilimitados, 15 domains, 3 workspaces, 3 usuarios
+- **Agency**: $79/mes anual: 250K clicks/mes, 50 domains, 10 workspace kits, 10 usuarios, 10 .link domains
 - **Enterprise**: Custom
 - **Modelo**: Freemium con escalado por workspaces.
 
 ### Features diferencial
-- **Retargeting pixels** como feature central — Meta, Google, LinkedIn, Twitter pixels
+- **Retargeting pixels** como feature central: Meta, Google, LinkedIn, Twitter pixels
 - **Bio links** completos (link-in-bio)
 - **Smart QR codes** dinamicos
-- **Workspace kits** (plan Agency) — ideal para agencias con multiples clientes
+- **Workspace kits** (plan Agency): ideal para agencias con multiples clientes
 - **Dominios .link gratuitos** incluidos en planes de pago
 - **Campanas** con organizacion
 - **Click limit por link**
 - **A/B testing de links**
 
 ### Gaps y quejas de usuarios
-- **Click limits** como mecanismo de monetizacion principal — frustrante
+- **Click limits** como mecanismo de monetizacion principal: frustrante
 - **Marca poco conocida**
 - **Sin CTA overlays** (a diferencia de Sniply)
 - **Dashboard funcional pero no destacable**
@@ -353,7 +353,7 @@
 
 ---
 
-# FASE 2 — IDENTIFICACION DE GAPS Y POSICIONAMIENTO
+# FASE 2: IDENTIFICACION DE GAPS Y POSICIONAMIENTO
 
 ---
 
@@ -365,27 +365,27 @@
 ### Top 5 gaps del mercado (ordenados por impacto)
 
 #### 1. Gap de precio en analytics avanzados
-- **Impacto**: ALTO — El 80% de las quejas sobre Bitly son de precio
+- **Impacto**: ALTO: El 80% de las quejas sobre Bitly son de precio
 - **El problema**: Bitly cobra $199/mes por analytics de ciudad/dispositivo. Dub cobra $25/mes. Hay un enorme espacio entre $0 y $25.
 - **Como MUGA lo resuelve**: Analytics de geo/dispositivo/referrer incluidos en el plan Free (con retencion 7 dias) y completos desde $9/mes (retencion 1 ano). Esto ataca directamente al 90% de la base de Bitly que paga por analytics.
 
 #### 2. Gap de extension de navegador nativa
-- **Impacto**: ALTO — T.LY demostro que una extension puede generar 350K usuarios organicos
+- **Impacto**: ALTO: T.LY demostro que una extension puede generar 350K usuarios organicos
 - **El problema**: Ningun competidor tiene una extension de navegador que sea el core del producto desde el dia 1. T.LY la tiene pero es un add-on. Dub.co no tiene. Bitly tiene una extension buggy.
-- **Como MUGA lo resuelve**: MUGA ya tiene una extension funcional (limpieza de URLs) con base de codigo lista. Anadir shortening convierte cada limpieza de URL en una oportunidad de conversion. El usuario ya instalo la extension por la limpieza — el shortening es el upgrade natural.
+- **Como MUGA lo resuelve**: MUGA ya tiene una extension funcional (limpieza de URLs) con base de codigo lista. Anadir shortening convierte cada limpieza de URL en una oportunidad de conversion. El usuario ya instalo la extension por la limpieza. El shortening es el upgrade natural.
 
 #### 3. Gap de retargeting democratizado
-- **Impacto**: MEDIO-ALTO — Los marketers pagan por retargeting, pero esta detras de paywalls
+- **Impacto**: MEDIO-ALTO: Los marketers pagan por retargeting, pero esta detras de paywalls
 - **El problema**: Retargeting pixels estan gate-kept: Replug desde $9/mes, T.LY desde $5/mes, Bitly no lo ofrece, Dub.co no nativo. Short.io y Rebrandly no lo tienen.
 - **Como MUGA lo resuelve**: Retargeting pixels (Meta, Google, LinkedIn) incluidos en el plan Free (1 pixel) y ilimitados desde Pro ($9/mes). Esto es el feature que mas diferencia genera para marketers.
 
 #### 4. Gap de free plan viable
-- **Impacto**: MEDIO — El free plan es la puerta de entrada
+- **Impacto**: MEDIO: El free plan es la puerta de entrada
 - **El problema**: Bitly da 5 links/mes. Rebrandly da 10. Dub da 25. Solo Short.io da 1,000 pero sin analytics.
 - **Como MUGA lo resuelve**: Free plan con 100 links/mes, analytics basicos (7 dias), 1 custom domain, 1 retargeting pixel, QR codes ilimitados, API (100 req/dia). Suficientemente generoso para que el usuario dependa del producto antes de pagar.
 
 #### 5. Gap de simplicidad en pricing
-- **Impacto**: MEDIO — El pricing confuso causa churn
+- **Impacto**: MEDIO: El pricing confuso causa churn
 - **El problema**: Rebrandly tiene 6 variables (links, clicks, edits, galleries, tags, domains). Dub tiene "tracked events" que confunde. Bitly limita QR codes separado de links.
 - **Como MUGA lo resuelve**: Un solo eje de pricing: **links/mes**. Todo lo demas ilimitado en cada tier. Sin limites de clicks, sin limites de QR codes, sin limites de analytics. Simple.
 
@@ -393,16 +393,16 @@
 
 Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 
-1. **Motor de redireccion ultra-rapido** (CF Workers, <20ms) — diferenciador tecnico
-2. **Extension de navegador integrada** — ya existe, solo anadir shortening
-3. **Analytics de clicks** (geo, dispositivo, referrer) — en TODOS los planes
-4. **Custom domains** — desde el plan Free
-5. **QR codes dinamicos** — sin marca de agua, todos los planes
-6. **Retargeting pixels** — desde Free (1 pixel)
-7. **API publica** — desde Free (con rate limiting)
-8. **Smart links** (geo/device redirect) — desde Pro
-9. **Password protection + link expiration** — todos los planes
-10. **Workspaces multi-usuario** — plan Agency
+1. **Motor de redireccion ultra-rapido** (CF Workers, <20ms): diferenciador tecnico
+2. **Extension de navegador integrada**: ya existe, solo anadir shortening
+3. **Analytics de clicks** (geo, dispositivo, referrer): en TODOS los planes
+4. **Custom domains**: desde el plan Free
+5. **QR codes dinamicos**: sin marca de agua, todos los planes
+6. **Retargeting pixels**: desde Free (1 pixel)
+7. **API publica**: desde Free (con rate limiting)
+8. **Smart links** (geo/device redirect): desde Pro
+9. **Password protection + link expiration**: todos los planes
+10. **Workspaces multi-usuario**: plan Agency
 
 ### Usuarios objetivo primarios (ICP)
 
@@ -432,10 +432,10 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 
 ### Precio recomendado por tier basado en el analisis
 
-#### Free — $0/mes
+#### Free: $0/mes
 - 100 links/mes
 - Clicks ilimitados
-- Analytics basicos (geo, dispositivo, referrer) — retencion 7 dias
+- Analytics basicos (geo, dispositivo, referrer): retencion 7 dias
 - 1 custom domain
 - 1 retargeting pixel (Meta o Google)
 - QR codes ilimitados (sin marca de agua)
@@ -443,9 +443,9 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 - Extension de navegador completa
 - **Por que**: Mas generoso que Bitly (5 links), Rebrandly (10), Dub (25). Suficiente para que un indie marketer use el producto activamente y dependa de el antes de pagar. El analytics de 7 dias crea urgencia de upgrade.
 
-#### Pro — $9/mes (anual $7/mes)
+#### Pro: $9/mes (anual $7/mes)
 - 1,000 links/mes
-- Analytics completos — retencion 1 ano
+- Analytics completos: retencion 1 ano
 - 3 custom domains
 - Retargeting pixels ilimitados
 - Smart links (geo/device redirect)
@@ -455,19 +455,19 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 - Webhooks
 - **Por que**: $9/mes es 64% mas barato que Dub Pro ($25), 10% mas barato que Rebrandly Essentials ($8) pero con 4x mas links. El punto de precio magico para indie hackers. Incluye TODO lo que Bitly cobra $199/mes (analytics avanzados).
 
-#### Agency — $29/mes (anual $24/mes)
+#### Agency: $29/mes (anual $24/mes)
 - 10,000 links/mes
 - 10 workspaces (separacion por cliente)
 - 10 custom domains
 - 10 usuarios
-- Analytics completos — retencion 2 anos
+- Analytics completos: retencion 2 anos
 - CTA overlays basicos
 - API: 10,000 req/dia
 - Exportacion de datos
 - Soporte prioritario
 - **Por que**: $29/mes es el precio al que Bitly ofrece su plan Growth (500 links, sin workspaces). MUGA ofrece 20x mas links + workspaces + retargeting por el mismo precio. Para agencias, esto es un no-brainer.
 
-#### Enterprise — Custom
+#### Enterprise: Custom
 - Todo ilimitado
 - SSO/SAML
 - SLA 99.99%
@@ -478,7 +478,7 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 
 ---
 
-# FASE 3 — ARQUITECTURA TECNICA
+# FASE 3: ARQUITECTURA TECNICA
 
 ---
 
@@ -487,14 +487,14 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 ### Motor de redireccion: Cloudflare Workers + KV
 - **Justificacion**: <20ms P50 latency globalmente, 300+ PoPs, cold start <1ms (V8 isolates). Free tier: 100K req/dia. $5/mes = 10M req/mes. El mas rapido y barato para redirects.
 - **Alternativas descartadas**: Vercel Edge (78ms en tests, ~3x mas lento), AWS CloudFront + Lambda@Edge (150-400ms cold starts), Fastly (pricing menos transparente, menos PoPs)
-- **Benchmark**: T.LY usa Cloudflare (60ms), Rebrandly usa Cloudflare (59ms) — valida la eleccion
+- **Benchmark**: T.LY usa Cloudflare (60ms), Rebrandly usa Cloudflare (59ms). Valida la eleccion
 
 ### Base de datos: Supabase (PostgreSQL)
 - **Justificacion**: Free tier generoso (500MB, 50K MAU), PostgreSQL completo, Row Level Security, Realtime, Auth integrado, API auto-generada. Elimina la necesidad de un ORM o backend separado.
 - **Alternativas descartadas**: PlanetScale (MySQL, menos features), Neon (bueno pero Supabase tiene mas ecosystem), Turso (SQLite, demasiado limitado para SaaS multi-tenant)
 
 ### Cache hot links: Cloudflare KV (no Upstash Redis)
-- **Justificacion**: KV esta integrado nativamente con Workers — zero latency extra. No necesitamos Redis si los Workers ya tienen KV con 100K reads/dia gratis. Simplifica el stack eliminando una dependencia.
+- **Justificacion**: KV esta integrado nativamente con Workers: zero latency extra. No necesitamos Redis si los Workers ya tienen KV con 100K reads/dia gratis. Simplifica el stack eliminando una dependencia.
 - **Cambio vs stack propuesto**: Eliminamos Upstash Redis. KV es suficiente para cache de links. Si necesitamos Redis para rate limiting o sessions en el futuro, anadimos entonces.
 
 ### Frontend dashboard: Next.js 15 + Tailwind CSS
@@ -502,7 +502,7 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 - **Alternativas descartadas**: Nuxt (menos ecosystem SaaS), SvelteKit (menos templates/componentes), Remix (menos adopcion)
 
 ### Auth: Clerk
-- **Justificacion**: Mejor DX del mercado para Next.js. Free tier hasta 10K MAU. Maneja OAuth, MFA, organizaciones, invitaciones — todo lo que necesitamos para workspaces. Supabase Auth es bueno pero Clerk es superior en UX.
+- **Justificacion**: Mejor DX del mercado para Next.js. Free tier hasta 10K MAU. Maneja OAuth, MFA, organizaciones, invitaciones: todo lo que necesitamos para workspaces. Supabase Auth es bueno pero Clerk es superior en UX.
 - **Coste**: Free hasta 10K MAU, luego $0.02/MAU. Con 10K usuarios = $0. Con 50K = $800/mes. Escala con revenue.
 
 ### Pagos: Stripe Checkout (sin Billing)
@@ -538,7 +538,7 @@ Ordenados por impacto/esfuerzo (alto impacto + bajo esfuerzo primero):
 
 ```sql
 -- ============================================
--- MUGA Database Schema — Supabase PostgreSQL
+-- MUGA Database Schema: Supabase PostgreSQL
 -- ============================================
 
 -- Enable extensions
@@ -758,7 +758,7 @@ CREATE TABLE campaign_links (
 );
 
 -- ============================================
--- CLICK EVENTS (summary table — detail in CF Analytics Engine)
+-- CLICK EVENTS (summary table: detail in CF Analytics Engine)
 -- ============================================
 -- Daily aggregates synced from Cloudflare Analytics Engine
 CREATE TABLE click_stats_daily (
@@ -953,8 +953,8 @@ User clicks mug.ag/abc123
 
 1. **Click llega** al Worker en el edge mas cercano al usuario
 2. **KV lookup** del slug → obtiene URL destino + link_id + configuracion (geo/device targets, password, expiry)
-3. **301 redirect** enviado inmediatamente al usuario — latencia total <20ms
-4. **`ctx.waitUntil()`** ejecuta el logging de forma asincrona — NO bloquea la respuesta
+3. **301 redirect** enviado inmediatamente al usuario. Latencia total <20ms
+4. **`ctx.waitUntil()`** ejecuta el logging de forma asincrona: NO bloquea la respuesta
 5. El evento se escribe en **Cloudflare Analytics Engine** con toda la metadata (geo viene de los headers CF-IPCountry y CF-IPCity, device/browser del User-Agent)
 6. **Cron Worker** (cada 6 horas) agrega datos del Analytics Engine en resumenes diarios y los escribe en la tabla `click_stats_daily` de Supabase
 7. El **dashboard** consulta Supabase para mostrar graficos y tablas
@@ -972,7 +972,7 @@ User clicks mug.ag/abc123
 ```
 muga/
 ├── apps/
-│   ├── web/                    # Next.js 15 — Dashboard + Landing + Blog
+│   ├── web/                    # Next.js 15: Dashboard + Landing + Blog
 │   │   ├── app/
 │   │   │   ├── (dashboard)/    # Authenticated dashboard routes
 │   │   │   │   ├── links/
@@ -993,7 +993,7 @@ muga/
 │   │   ├── lib/
 │   │   └── package.json
 │   │
-│   ├── worker/                 # Cloudflare Worker — Redirect engine
+│   ├── worker/                 # Cloudflare Worker: Redirect engine
 │   │   ├── src/
 │   │   │   ├── index.ts        # Main handler: lookup + redirect + async log
 │   │   │   ├── analytics.ts    # Click event logging to Analytics Engine
@@ -1069,7 +1069,7 @@ muga/
 | Monetizacion | Mas dificil (self-hosting gratis) | Clara | Clara |
 | Mantenimiento | Alto (PRs externos, issues) | Bajo | Bajo |
 
-**Razon principal**: Dub.co ya es el "open-source URL shortener". Competir en el mismo posicionamiento es perder. MUGA se diferencia por la extension, el pricing, y la UX — no por ser open source.
+**Razon principal**: Dub.co ya es el "open-source URL shortener". Competir en el mismo posicionamiento es perder. MUGA se diferencia por la extension, el pricing, y la UX: no por ser open source.
 
 **Lo que SI publicamos open source**:
 - La extension de navegador (ya es MIT en GitHub)
@@ -1083,11 +1083,11 @@ muga/
 
 ---
 
-# FASE 4 — PLAN DE DESARROLLO CON AGENTES DE IA
+# FASE 4: PLAN DE DESARROLLO CON AGENTES DE IA
 
 ---
 
-## Sprint 0 — Infraestructura base (Semana 1)
+## Sprint 0: Infraestructura base (Semana 1)
 
 ### Objetivo del sprint
 Monorepo configurado, Worker de redireccion desplegado en mug.ag, lookup en KV funcional. Un link hardcoded en KV redirige correctamente.
@@ -1097,7 +1097,7 @@ Monorepo configurado, Worker de redireccion desplegado en mug.ag, lookup en KV f
 
 ### Tareas
 
-#### Tarea 0.1 — Configurar monorepo con Turborepo
+#### Tarea 0.1: Configurar monorepo con Turborepo
 
 **Criterio de done:** `pnpm install` y `pnpm build` funcionan sin errores en la raiz del monorepo. La estructura de carpetas coincide con el arbol definido en la arquitectura.
 **Dependencias:** Ninguna
@@ -1136,7 +1136,7 @@ Requisitos:
 NO uses create-turbo. Configura cada pieza manualmente para control total.
 ---
 
-#### Tarea 0.2 — Configurar Cloudflare Workers + KV
+#### Tarea 0.2: Configurar Cloudflare Workers + KV
 
 **Criterio de done:** Worker desplegado en Cloudflare con binding a KV namespace. `wrangler dev` funcional en local.
 **Dependencias:** Tarea 0.1
@@ -1163,10 +1163,10 @@ En el directorio `apps/worker/` del monorepo muga-saas, configura el Cloudflare 
 
 4. Verifica con `wrangler dev` que localhost/test redirige a muga.link
 
-No despliegues a produccion todavia — solo verifica que funciona en local.
+No despliegues a produccion todavia. Solo verifica que funciona en local.
 ---
 
-#### Tarea 0.3 — Configurar Supabase con schema inicial
+#### Tarea 0.3: Configurar Supabase con schema inicial
 
 **Criterio de done:** Proyecto Supabase creado, schema SQL ejecutado, tablas visibles en dashboard de Supabase.
 **Dependencias:** Tarea 0.1
@@ -1202,7 +1202,7 @@ Configura la base de datos Supabase para el proyecto MUGA.
 NOTA: El usuario debe tener un proyecto Supabase creado previamente. Si no existe, indique que debe crearlo en supabase.com y proporcionar SUPABASE_URL y SUPABASE_ANON_KEY.
 ---
 
-#### Tarea 0.4 — Conectar dominio mug.ag a Cloudflare
+#### Tarea 0.4: Conectar dominio mug.ag a Cloudflare
 
 **Criterio de done:** mug.ag resuelve a Cloudflare, SSL activo, Worker responde en mug.ag/test.
 **Dependencias:** Tarea 0.2
@@ -1236,7 +1236,7 @@ Conecta el dominio mug.ag a Cloudflare Workers para que sirva como dominio princ
 NOTA: Si mug.ag no esta en Cloudflare, el usuario debe transferir los nameservers primero. Proporciona las instrucciones para hacerlo en el registrar del dominio.
 ---
 
-#### Tarea 0.5 — Verificar redireccion end-to-end
+#### Tarea 0.5: Verificar redireccion end-to-end
 
 **Criterio de done:** mug.ag/test redirige a muga.link con HTTP 301, tiempo de respuesta <50ms.
 **Dependencias:** Tarea 0.4
@@ -1274,7 +1274,7 @@ Verifica que la infraestructura de redireccion de MUGA funciona correctamente en
 
 ---
 
-## Sprint 1 — MVP cobrable (Semanas 2-3)
+## Sprint 1: MVP cobrable (Semanas 2-3)
 
 ### Objetivo del sprint
 Dashboard funcional donde un usuario puede registrarse, crear links, ver clicks, y pagar por un plan Pro via Stripe. Deploy en produccion en muga.link.
@@ -1284,7 +1284,7 @@ Un usuario puede: 1) Registrarse, 2) Crear un link corto, 3) El link redirige en
 
 ### Tareas
 
-#### Tarea 1.1 — Auth con Clerk
+#### Tarea 1.1: Auth con Clerk
 
 **Criterio de done:** Registro, login y logout funcionan en muga.link. El usuario aparece en la tabla `users` de Supabase tras registrarse.
 **Dependencias:** Sprint 0
@@ -1300,8 +1300,8 @@ Implementa autenticacion con Clerk en la app Next.js (`apps/web/`).
    - Rutas publicas: /, /pricing, /blog/*, /api/webhooks/*
 
 3. Implementa las paginas de auth:
-   - `app/(auth)/sign-in/[[...sign-in]]/page.tsx` — pagina de login
-   - `app/(auth)/sign-up/[[...sign-up]]/page.tsx` — pagina de registro
+   - `app/(auth)/sign-in/[[...sign-in]]/page.tsx`: pagina de login
+   - `app/(auth)/sign-up/[[...sign-up]]/page.tsx`: pagina de registro
    - Usa componentes de Clerk: <SignIn /> y <SignUp />
 
 4. Configura webhook de Clerk para sincronizar usuarios con Supabase:
@@ -1318,7 +1318,7 @@ Implementa autenticacion con Clerk en la app Next.js (`apps/web/`).
 IMPORTANTE: No hardcodees ninguna key. Todo via variables de entorno.
 ---
 
-#### Tarea 1.2 — Dashboard basico (crear y listar links)
+#### Tarea 1.2: Dashboard basico (crear y listar links)
 
 **Criterio de done:** El usuario puede crear un link corto desde el dashboard, ver la lista de sus links, y copiar el link al clipboard.
 **Dependencias:** Tarea 1.1
@@ -1356,7 +1356,7 @@ Componentes UI necesarios: Button, Input, Modal, Card, Table, CopyButton, Badge
 Puedes usar shadcn/ui como base si lo prefieres.
 ---
 
-#### Tarea 1.3 — Motor de redireccion con analytics asincrono
+#### Tarea 1.3: Motor de redireccion con analytics asincrono
 
 **Criterio de done:** Cada click a mug.ag/{slug} se registra en Cloudflare Analytics Engine. Un endpoint de API devuelve el conteo de clicks de un link.
 **Dependencias:** Tarea 0.2
@@ -1409,10 +1409,10 @@ Actualiza el Worker de redireccion en `apps/worker/` para registrar clicks de fo
 6. **Incremento de clicks**:
    - Despues del logging, tambien llama a la API de Supabase para incrementar `links.clicks += 1`
    - Usa una funcion RPC de Supabase o un simple UPDATE
-   - Este incremento tambien va dentro de ctx.waitUntil() — no bloquea el redirect
+   - Este incremento tambien va dentro de ctx.waitUntil(): no bloquea el redirect
 ---
 
-#### Tarea 1.4 — Integracion Stripe (plan Pro)
+#### Tarea 1.4: Integracion Stripe (plan Pro)
 
 **Criterio de done:** El usuario puede hacer click en "Upgrade to Pro", ser redirigido a Stripe Checkout, pagar, y ver su plan actualizado a Pro en el dashboard.
 **Dependencias:** Tarea 1.1
@@ -1437,9 +1437,9 @@ Implementa la integracion de pagos con Stripe en MUGA para el plan Pro ($9/mes).
 
 3. **Webhook endpoint** (`api/webhooks/stripe/route.ts`):
    - Verifica la firma con stripe.webhooks.constructEvent()
-   - `checkout.session.completed`: Actualiza usuario en Supabase — plan='pro', stripe_customer_id, stripe_subscription_id, stripe_subscription_status='active', links_limit=1000
+   - `checkout.session.completed`: Actualiza usuario en Supabase: plan='pro', stripe_customer_id, stripe_subscription_id, stripe_subscription_status='active', links_limit=1000
    - `customer.subscription.updated`: Sincroniza status
-   - `customer.subscription.deleted`: Downgrade a free — plan='free', links_limit=100
+   - `customer.subscription.deleted`: Downgrade a free: plan='free', links_limit=100
    - `invoice.payment_failed`: Marca status como 'past_due'
 
 4. **Customer Portal** (`api/stripe/portal/route.ts`):
@@ -1447,7 +1447,7 @@ Implementa la integracion de pagos con Stripe en MUGA para el plan Pro ($9/mes).
    - return_url: `${origin}/dashboard/settings`
 
 5. **Pagina de pricing** (`app/(marketing)/pricing/page.tsx`):
-   - Muestra planes Free, Pro ($9/mes), Agency ($29/mes — coming soon)
+   - Muestra planes Free, Pro ($9/mes), Agency ($29/mes, coming soon)
    - Boton "Get Started Free" → /sign-up
    - Boton "Upgrade to Pro" → llama a /api/stripe/checkout
    - Feature comparison table
@@ -1464,7 +1464,7 @@ Implementa la integracion de pagos con Stripe en MUGA para el plan Pro ($9/mes).
 NO uses Stripe Billing (evitar 0.7% surcharge). Usa Checkout Sessions + webhooks manuales.
 ---
 
-#### Tarea 1.5 — Landing page minima
+#### Tarea 1.5: Landing page minima
 
 **Criterio de done:** muga.link muestra una landing page con hero, features, pricing, y CTA de registro. Responsive y rapida.
 **Dependencias:** Tarea 1.1
@@ -1472,12 +1472,12 @@ NO uses Stripe Billing (evitar 0.7% surcharge). Usa Checkout Sessions + webhooks
 ---
 Crea una landing page minima pero efectiva para muga.link en `apps/web/app/(marketing)/page.tsx`.
 
-La landing es el primer contacto con el usuario — debe comunicar el valor en 5 segundos.
+La landing es el primer contacto con el usuario. Debe comunicar el valor en 5 segundos.
 
 1. **Hero section**:
-   - Headline: "Make URLs Great Again"
+   - Headline: "Fair to every click"
    - Subheadline: "The fastest URL shortener with enterprise features at indie prices. Free forever."
-   - CTA principal: "Start Shortening — Free" (→ /sign-up)
+   - CTA principal: "Start Shortening: Free" (→ /sign-up)
    - CTA secundario: "See Pricing" (→ /pricing)
    - Visual: Un input field decorativo que muestra la transformacion de una URL larga a mug.ag/clean
 
@@ -1486,12 +1486,12 @@ La landing es el primer contacto con el usuario — debe comunicar el valor en 5
    - Logos placeholder de "Featured on" (Product Hunt, HN)
 
 3. **Features grid** (3 columnas, iconos):
-   - "Lightning Fast" — Redirects in <20ms worldwide via Cloudflare edge
-   - "Free Analytics" — Geo, device, referrer analytics included in every plan
-   - "Custom Domains" — Use your own domain, free SSL included
-   - "QR Codes" — Dynamic QR codes, no watermarks, ever
-   - "Browser Extension" — Shorten any URL with one click from your browser
-   - "Retargeting Pixels" — Meta, Google, LinkedIn pixels on your links
+   - "Lightning Fast": Redirects in <20ms worldwide via Cloudflare edge
+   - "Free Analytics": Geo, device, referrer analytics included in every plan
+   - "Custom Domains": Use your own domain, free SSL included
+   - "QR Codes": Dynamic QR codes, no watermarks, ever
+   - "Browser Extension": Shorten any URL with one click from your browser
+   - "Retargeting Pixels": Meta, Google, LinkedIn pixels on your links
 
 4. **Comparison section**:
    - Tabla simple: MUGA vs Bitly vs T.LY vs Dub.co
@@ -1505,10 +1505,10 @@ La landing es el primer contacto con el usuario — debe comunicar el valor en 5
    - Links: Privacy, Terms, Blog, API Docs, GitHub (extension)
    - "Made with obstinacy. No VC funding. No bullshit."
 
-Disenado con Tailwind CSS. Dark mode por defecto (o toggle). Rapido — sin imagenes pesadas, sin JS innecesario.
+Disenado con Tailwind CSS. Dark mode por defecto (o toggle). Rapido. Sin imagenes pesadas, sin JS innecesario.
 ---
 
-#### Tarea 1.6 — Deploy en produccion
+#### Tarea 1.6: Deploy en produccion
 
 **Criterio de done:** muga.link sirve la web app, mug.ag sirve redirects, todo funcional en produccion.
 **Dependencias:** Tareas 1.1-1.5
@@ -1565,7 +1565,7 @@ Despliega MUGA en produccion.
 
 ---
 
-## Sprint 2 — Features competitivos (Semanas 4-6)
+## Sprint 2: Features competitivos (Semanas 4-6)
 
 ### Objetivo del sprint
 Analytics graficos en el dashboard, custom domains funcionales, QR codes, API publica con keys, extension integrada con cuenta del usuario.
@@ -1575,7 +1575,7 @@ Analytics graficos en el dashboard, custom domains funcionales, QR codes, API pu
 
 ### Tareas
 
-#### Tarea 2.1 — Analytics de clicks (dashboard)
+#### Tarea 2.1: Analytics de clicks (dashboard)
 **Criterio de done:** Pagina /dashboard/analytics muestra graficos de clicks (timeseries), breakdown por pais (tabla + mapa), dispositivos (pie chart), y top referrers.
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
@@ -1597,13 +1597,13 @@ Implementa la pagina de analytics en el dashboard de MUGA en `apps/web/app/(dash
    - Usa upsert para no duplicar datos
 
 2. **API endpoints de analytics** (`api/v1/links/[id]/stats/`):
-   - `GET /stats` — resumen: total clicks, unique visitors (ultimos 7/30/90 dias)
-   - `GET /stats/timeseries?period=7d|30d|90d` — clicks por dia
-   - `GET /stats/countries` — clicks por pais
-   - `GET /stats/cities` — clicks por ciudad (Pro+)
-   - `GET /stats/devices` — clicks por device type
-   - `GET /stats/browsers` — clicks por browser
-   - `GET /stats/referrers` — clicks por referrer
+   - `GET /stats`: resumen: total clicks, unique visitors (ultimos 7/30/90 dias)
+   - `GET /stats/timeseries?period=7d|30d|90d`: clicks por dia
+   - `GET /stats/countries`: clicks por pais
+   - `GET /stats/cities`: clicks por ciudad (Pro+)
+   - `GET /stats/devices`: clicks por device type
+   - `GET /stats/browsers`: clicks por browser
+   - `GET /stats/referrers`: clicks por referrer
    - Todos consultan la tabla click_stats_daily
 
 3. **Pagina de analytics** (`analytics/page.tsx`):
@@ -1621,7 +1621,7 @@ Implementa la pagina de analytics en el dashboard de MUGA en `apps/web/app/(dash
 Usa una libreria de graficos ligera: recharts (React-native) o chart.js con react-chartjs-2.
 ---
 
-#### Tarea 2.2 — Custom domains
+#### Tarea 2.2: Custom domains
 **Criterio de done:** Un usuario puede anadir su propio dominio en el dashboard, configurar DNS CNAME, y el Worker sirve redirects en ese dominio.
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
@@ -1664,7 +1664,7 @@ Implementa soporte de custom domains para MUGA.
 Cloudflare Custom Hostnames docs: https://developers.cloudflare.com/ssl/ssl-for-saas/
 ---
 
-#### Tarea 2.3 — QR codes dinamicos
+#### Tarea 2.3: QR codes dinamicos
 **Criterio de done:** Cada link tiene un boton para generar/descargar un QR code en SVG y PNG. Sin marca de agua. Personalizacion basica de colores.
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
@@ -1693,7 +1693,7 @@ Implementa generacion de QR codes para links de MUGA.
 5. Sin marca de agua en ningun plan. Este es un diferenciador vs Bitly.
 ---
 
-#### Tarea 2.4 — API publica con API keys
+#### Tarea 2.4: API publica con API keys
 **Criterio de done:** Un usuario puede crear API keys en el dashboard. La API acepta autenticacion via Bearer token. La documentacion basica esta disponible.
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
@@ -1733,7 +1733,7 @@ Implementa API keys y autenticacion por API key para la API publica de MUGA.
    - Ejemplo de obtener stats via curl
 ---
 
-#### Tarea 2.5 — Extension de navegador integrada con cuenta MUGA
+#### Tarea 2.5: Extension de navegador integrada con cuenta MUGA
 **Criterio de done:** La extension MUGA existente puede: 1) Conectar con una cuenta MUGA via OAuth/API key, 2) Shortear la URL actual via la API, 3) Mostrar el link corto en el popup.
 **Dependencias:** Sprint 1, Tarea 2.4
 **Prompt para el agente:**
@@ -1757,7 +1757,7 @@ La extension ya existe y limpia URLs de tracking params. Ahora anadimos la funci
    - Boton "Shorten This URL" prominente en el popup
    - Al hacer click:
      a. Toma la URL de la pestana actual
-     b. Limpia la URL (quita tracking params — funcionalidad existente)
+     b. Limpia la URL (quita tracking params: funcionalidad existente)
      c. Llama a POST /api/v1/links con la URL limpia
      d. Muestra el link corto (mug.ag/xxx) con boton de copiar
    - Si no esta conectado a una cuenta: usa un endpoint publico con rate limiting (5/dia)
@@ -1775,7 +1775,7 @@ No rompas ninguna funcionalidad existente de la extension. Los tests existentes 
 
 ---
 
-## Sprint 3 — Diferenciacion (Semanas 7-10)
+## Sprint 3: Diferenciacion (Semanas 7-10)
 
 ### Objetivo del sprint
 Implementar los features que distinguen a MUGA de la competencia: retargeting pixels, smart links con geo/device redirect, workspaces multi-usuario (Agency), y CTA overlays basicos.
@@ -1785,7 +1785,7 @@ Implementar los features que distinguen a MUGA de la competencia: retargeting pi
 
 ### Tareas
 
-#### Tarea 3.1 — Retargeting pixels en links
+#### Tarea 3.1: Retargeting pixels en links
 **Criterio de done:** El usuario puede crear un pixel (Meta, Google), asociarlo a un link, y al hacer click el pixel se dispara antes del redirect.
 **Dependencias:** Sprint 2
 **Prompt para el agente:**
@@ -1821,7 +1821,7 @@ Implementa retargeting pixels en los links de MUGA.
 La pagina HTML intermedia debe ser extremadamente ligera. No uses frameworks. HTML puro + scripts inline de los vendors de pixels.
 ---
 
-#### Tarea 3.2 — Smart links (geo/device redirect)
+#### Tarea 3.2: Smart links (geo/device redirect)
 **Criterio de done:** Un link puede configurarse para redirigir a URLs distintas segun pais o dispositivo del visitante.
 **Dependencias:** Sprint 2
 **Prompt para el agente:**
@@ -1863,7 +1863,7 @@ Implementa smart links con geo-redirect y device-redirect en MUGA.
    - Pro+: smart links incluidos
 ---
 
-#### Tarea 3.3 — Workspaces multi-usuario (plan Agency)
+#### Tarea 3.3: Workspaces multi-usuario (plan Agency)
 **Criterio de done:** Un usuario Agency puede crear workspaces, invitar miembros por email, y cada workspace tiene sus propios links, dominios, y pixels.
 **Dependencias:** Sprint 2
 **Prompt para el agente:**
@@ -1899,7 +1899,7 @@ Implementa el sistema de workspaces multi-usuario para el plan Agency de MUGA.
    - Agency: 10 workspaces, 10 usuarios
 ---
 
-#### Tarea 3.4 — CTA overlays basicos
+#### Tarea 3.4: CTA overlays basicos
 **Criterio de done:** Un link puede tener un CTA overlay que muestra un banner con texto y boton sobre la pagina destino.
 **Dependencias:** Sprint 2
 **Prompt para el agente:**
@@ -1942,12 +1942,12 @@ Implementa CTA overlays basicos para links de MUGA (plan Agency).
 
 5. **Plan enforcement**:
    - Solo Agency+ puede usar CTA overlays
-   - Sniply cobra $9/mes por esto — MUGA lo incluye en Agency ($29/mes) junto con todo lo demas
+   - Sniply cobra $9/mes por esto. MUGA lo incluye en Agency ($29/mes) junto con todo lo demas
 ---
 
 ---
 
-## Sprint 4 — Traccion y SEO (Semanas 11-16)
+## Sprint 4: Traccion y SEO (Semanas 11-16)
 
 ### Objetivo del sprint
 SEO tecnico implementado, landing pages de comparativa publicadas, blog con primeros articulos, extension publicada en Chrome Web Store y Firefox, email onboarding automatizado.
@@ -1957,15 +1957,15 @@ SEO tecnico implementado, landing pages de comparativa publicadas, blog con prim
 
 ### Tareas
 
-#### Tarea 4.1 — SEO tecnico
+#### Tarea 4.1: SEO tecnico
 **Criterio de done:** sitemap.xml, robots.txt, schema markup JSON-LD, Open Graph tags, y canonical URLs configurados correctamente.
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
 ---
 Implementa SEO tecnico completo para muga.link.
 
-1. `app/sitemap.ts` — genera sitemap dinamico con todas las paginas publicas + blog posts
-2. `app/robots.ts` — permite indexacion de paginas publicas, bloquea /dashboard/*
+1. `app/sitemap.ts`: genera sitemap dinamico con todas las paginas publicas + blog posts
+2. `app/robots.ts`: permite indexacion de paginas publicas, bloquea /dashboard/*
 3. Metadata global en `app/layout.tsx` con Open Graph, Twitter cards
 4. Schema markup JSON-LD en la homepage (SoftwareApplication) y pricing (Product)
 5. Canonical URLs en todas las paginas
@@ -1973,24 +1973,24 @@ Implementa SEO tecnico completo para muga.link.
 7. Verifica con Google Search Console (el usuario registrara el sitio)
 ---
 
-#### Tarea 4.2 — Landing pages de comparativa
+#### Tarea 4.2: Landing pages de comparativa
 **Criterio de done:** Paginas /vs/bitly, /vs/tly, /vs/rebrandly, /vs/short-io, /vs/dub publicadas con comparaciones detalladas.
 **Dependencias:** Sprint 1, Fase 1 (datos de competidores)
 **Prompt para el agente:**
 ---
 Crea 5 landing pages de comparativa en `apps/web/app/(marketing)/vs/`:
 
-1. `/vs/bitly` — "MUGA vs Bitly: Why Pay 20x More?"
-2. `/vs/tly` — "MUGA vs T.LY: The Next-Gen URL Shortener"
-3. `/vs/rebrandly` — "MUGA vs Rebrandly: Simpler Pricing, More Features"
-4. `/vs/short-io` — "MUGA vs Short.io: Enterprise Features at Indie Prices"
-5. `/vs/dub` — "MUGA vs Dub.co: Browser-Native Link Shortening"
+1. `/vs/bitly`: "MUGA vs Bitly: Why Pay 20x More?"
+2. `/vs/tly`: "MUGA vs T.LY: The Next-Gen URL Shortener"
+3. `/vs/rebrandly`: "MUGA vs Rebrandly: Simpler Pricing, More Features"
+4. `/vs/short-io`: "MUGA vs Short.io: Enterprise Features at Indie Prices"
+5. `/vs/dub`: "MUGA vs Dub.co: Browser-Native Link Shortening"
 
 Cada pagina debe tener:
 - H1 optimizado para SEO con la keyword "[competitor] alternative"
 - Tabla comparativa lado a lado (features, pricing, limits)
 - 3-5 secciones detallando donde MUGA gana
-- CTA: "Switch to MUGA — Free"
+- CTA: "Switch to MUGA: Free"
 - Schema markup (ComparisonTable)
 - Meta description optimizada para CTR
 
@@ -1998,14 +1998,14 @@ Usa datos reales de precios y features de la Fase 1 de inteligencia competitiva.
 SEO target keywords: "bitly alternative", "free url shortener", "tly alternative", etc.
 ---
 
-#### Tarea 4.3 — Blog con primeros 5 articulos
+#### Tarea 4.3: Blog con primeros 5 articulos
 **Criterio de done:** Blog en /blog con 5 articulos SEO publicados, cada uno >1,500 palabras.
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
 ---
 Implementa el blog de MUGA y crea los primeros 5 articulos SEO.
 
-1. **Blog engine** — usa MDX con Next.js:
+1. **Blog engine**: usa MDX con Next.js:
    - Archivos .mdx en `apps/web/content/blog/`
    - Pagina de listado en `/blog`
    - Pagina de post individual en `/blog/[slug]`
@@ -2026,7 +2026,7 @@ Implementa el blog de MUGA y crea los primeros 5 articulos SEO.
    - OG image (genera placeholder)
 ---
 
-#### Tarea 4.4 — Publicar extension en Chrome Web Store y Firefox
+#### Tarea 4.4: Publicar extension en Chrome Web Store y Firefox
 **Criterio de done:** Extension disponible para descarga en Chrome Web Store y Firefox Add-ons.
 **Dependencias:** Tarea 2.5
 **Prompt para el agente:**
@@ -2036,7 +2036,7 @@ Prepara y publica la extension MUGA en las tiendas de navegadores.
 1. **Chrome Web Store**:
    - Build: `npm run build:chrome` (genera zip)
    - Store listing:
-     - Nombre: "MUGA — Fair to Every Click"
+     - Nombre: "MUGA: Fair to Every Click"
      - Descripcion corta (132 chars): "Clean tracking from URLs and shorten them in one click. Free analytics, QR codes, custom domains."
      - Descripcion larga: Features completas, privacy policy, como funciona
      - Capturas de pantalla: Al menos 3 (1280x800) mostrando popup, URL limpia, shortening
@@ -2059,7 +2059,7 @@ Prepara y publica la extension MUGA en las tiendas de navegadores.
 NOTA: El usuario debe tener cuenta de developer en Chrome Web Store ($5 one-time). Si no la tiene, proporciona instrucciones.
 ---
 
-#### Tarea 4.5 — Email onboarding automatizado
+#### Tarea 4.5: Email onboarding automatizado
 **Criterio de done:** Nuevos usuarios reciben 3 emails automaticos: bienvenida (dia 0), primer link (dia 1), upgrade (dia 3).
 **Dependencias:** Sprint 1
 **Prompt para el agente:**
@@ -2072,13 +2072,13 @@ Implementa email onboarding automatizado con Resend para MUGA.
    - Configura dominio de envio: noreply@muga.link (requiere DNS records)
 
 2. **Email templates** (React Email o HTML):
-   - Email 1 — "Welcome to MUGA" (dia 0):
+   - Email 1: "Welcome to MUGA" (dia 0):
      - Saludo personalizado
      - 3 quick actions: Create your first link, Install the extension, Explore analytics
-   - Email 2 — "Your first short link" (dia 1):
+   - Email 2: "Your first short link" (dia 1):
      - Si no ha creado ningun link: tutorial paso a paso
      - Si ya creo: felicitacion + tip sobre custom domains
-   - Email 3 — "Unlock Pro features" (dia 3):
+   - Email 3: "Unlock Pro features" (dia 3):
      - Highlights de Pro: analytics ilimitados, retargeting, smart links
      - CTA: Upgrade to Pro (link a /pricing)
      - Social proof: "Join X users who upgraded"
@@ -2095,7 +2095,7 @@ Implementa email onboarding automatizado con Resend para MUGA.
 
 ---
 
-# FASE 5 — ESTRATEGIA DE LANZAMIENTO Y CAPTACION
+# FASE 5: ESTRATEGIA DE LANZAMIENTO Y CAPTACION
 
 ---
 
@@ -2108,7 +2108,7 @@ Semana  1-2:  Sprint 0+1 (MVP funcional)
 Semana  3-4:  Beta privada (20-50 usuarios invitados)
 Semana  5-6:  Sprint 2 (features competitivos)
 Semana  7:    Extension publicada en Chrome Web Store
-Semana  8:    Soft launch — Reddit, Indie Hackers, HN
+Semana  8:    Soft launch: Reddit, Indie Hackers, HN
 Semana  9-10: Sprint 3 (diferenciacion)
 Semana  11:   Product Hunt launch
 Semana  12-16: Sprint 4 (SEO, contenido, traccion)
@@ -2118,12 +2118,12 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 
 | # | Canal | Esfuerzo | Potencial | Primeras acciones |
 |---|-------|----------|-----------|-------------------|
-| 1 | **Chrome Web Store** | Bajo | Alto | Publicar extension. T.LY demostro 350K usuarios organicos via CWS search. La extension de limpieza de URLs es el hook — el shortening es el upsell. |
+| 1 | **Chrome Web Store** | Bajo | Alto | Publicar extension. T.LY demostro 350K usuarios organicos via CWS search. La extension de limpieza de URLs es el hook: el shortening es el upsell. |
 | 2 | **SEO / Blog** | Medio | Alto (long-term) | 5 articulos iniciales + 5 paginas de comparativa. Target keywords: "bitly alternative", "free url shortener", "url shortener with analytics". |
 | 3 | **Product Hunt** | Medio | Alto (burst) | Lanzar en semana 11. Preparar assets, construir base de upvoters. Target: Top 5 del dia. |
 | 4 | **Reddit** | Bajo | Medio | Posts genuinos en r/SaaS, r/entrepreneur, r/webdev, r/marketing. Compartir historia de "built with AI agents". |
 | 5 | **Indie Hackers** | Bajo | Medio | Building in public: posts semanales sobre revenue, usuarios, decisiones tecnicas. |
-| 6 | **Hacker News** | Bajo | Alto (burst) | "Show HN: MUGA — URL shortener with enterprise features at indie prices". Timing critico — lanzar entre semana, manana US. |
+| 6 | **Hacker News** | Bajo | Alto (burst) | "Show HN: MUGA: URL shortener with enterprise features at indie prices". Timing critico: lanzar entre semana, manana US. |
 | 7 | **X/Twitter** | Bajo | Medio | Build in public thread. Daily updates sobre desarrollo con AI agents. |
 | 8 | **Comunidades hispanas** | Bajo | Bajo-Medio | Forobeta, Publisuites community, grupos de marketing digital en Telegram/Discord ES. |
 
@@ -2147,18 +2147,18 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 - Posicionamiento: "Best free URL shortener for businesses"
 - Leccion: Un free plan generoso genera boca a boca
 
-### Plan de contenido SEO — Top 20 keywords
+### Plan de contenido SEO: Top 20 keywords
 
 | # | Keyword | Vol. est. | Dificultad | Tipo | Titulo |
 |---|---------|-----------|------------|------|--------|
 | 1 | bitly alternative | 2,400/mo | Media | Comparativa | "Best Bitly Alternatives in 2026 (Free & Paid)" |
-| 2 | free url shortener | 12,000/mo | Alta | Pilar | "Best Free URL Shorteners — No Signup Required" |
+| 2 | free url shortener | 12,000/mo | Alta | Pilar | "Best Free URL Shorteners: No Signup Required" |
 | 3 | url shortener with analytics | 1,600/mo | Media | Feature | "URL Shortener with Analytics: Track Every Click Free" |
 | 4 | custom domain url shortener | 1,200/mo | Media | Tutorial | "How to Shorten URLs with Your Own Custom Domain" |
 | 5 | bitly alternative free | 800/mo | Baja | Comparativa | "Free Bitly Alternative: Why Marketers Are Switching" |
 | 6 | url shortener extension | 900/mo | Baja | Feature | "Best URL Shortener Browser Extensions in 2026" |
 | 7 | link shortener for instagram | 1,000/mo | Media | Tutorial | "How to Create Short Links for Instagram Bio" |
-| 8 | qr code link shortener | 700/mo | Baja | Feature | "Generate QR Codes from Short URLs — Free" |
+| 8 | qr code link shortener | 700/mo | Baja | Feature | "Generate QR Codes from Short URLs: Free" |
 | 9 | retargeting pixel link | 500/mo | Baja | Tutorial | "How to Add Retargeting Pixels to Any Link" |
 | 10 | tly alternative | 300/mo | Baja | Comparativa | "T.LY vs MUGA: Which URL Shortener Is Better?" |
 | 11 | url shortener api | 800/mo | Media | Technical | "Best URL Shortener APIs for Developers" |
@@ -2169,7 +2169,7 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 | 16 | link management tool | 400/mo | Media | Pilar | "Link Management Platforms Compared (2026)" |
 | 17 | geo redirect link | 300/mo | Baja | Technical | "How to Redirect Users by Country with Smart Links" |
 | 18 | shorten amazon links | 1,500/mo | Baja | Tutorial | "How to Shorten Amazon Links (Clean & Trackable)" |
-| 19 | url shortener without ads | 600/mo | Baja | Feature | "URL Shorteners Without Ads — Top Picks" |
+| 19 | url shortener without ads | 600/mo | Baja | Feature | "URL Shorteners Without Ads: Top Picks" |
 | 20 | dub.co alternative | 200/mo | Baja | Comparativa | "Dub.co vs MUGA: Open Source vs Browser-Native" |
 
 ### Plan de Product Hunt
@@ -2208,20 +2208,20 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 ### Mensajes clave por audiencia
 
 **Para marketers:**
-> "Stop paying Bitly $300/month for analytics. MUGA gives you geo targeting, retargeting pixels, and QR codes — starting free."
+> "Stop paying Bitly $300/month for analytics. MUGA gives you geo targeting, retargeting pixels, and QR codes: starting free."
 
 **Para developers:**
 > "The fastest URL shortener API. <20ms redirects on Cloudflare edge. Free tier with 100 links/month and 100 API calls/day."
 
 **Para agencias:**
-> "One dashboard for all your clients. 10 workspaces, 10 custom domains, unlimited retargeting — $29/month. Not $300."
+> "One dashboard for all your clients. 10 workspaces, 10 custom domains, unlimited retargeting: $29/month. Not $300."
 
 **Para afiliados:**
 > "Short links that track everything. Know exactly which platform, country, and device drives your clicks. Free to start."
 
 ---
 
-# FASE 6 — MODELO FINANCIERO
+# FASE 6: MODELO FINANCIERO
 
 ---
 
@@ -2243,7 +2243,7 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 | Sign-up from extension | 15% de installs | Estimacion: no todos conectan cuenta |
 | Sign-up from web | 200/mes (base) | SEO + PH + reddit + organic |
 
-## Proyeccion mensual — Escenario BASE (24 meses)
+## Proyeccion mensual: Escenario BASE (24 meses)
 
 | Mes | Installs ext. | Registros nuevos | Nuevos pagos | Churn | Clientes pago total | MRR | Costes | Beneficio |
 |-----|--------------|-----------------|-------------|-------|-------------------|-----|--------|-----------|
@@ -2324,7 +2324,7 @@ Semana  12-16: Sprint 4 (SEO, contenido, traccion)
 
 ---
 
-## MUGA — Fair to Every Click
+## MUGA: Fair to Every Click
 
 ### Posicionamiento
 **"Enterprise link features, indie pricing, browser-native."**
@@ -2363,5 +2363,5 @@ Benchmark: T.LY alcanzo $15K MRR en ~3 anos. MUGA apunta a $4K MRR en 1 ano con 
 
 ---
 
-*Documento generado el 2026-03-23 para el proyecto MUGA — Fair to Every Click*
+*Documento generado el 2026-03-23 para el proyecto MUGA: Fair to Every Click*
 *Dominio links: mug.ag | Plataforma: muga.link | Dominios cortos: out.pw, tap.pw, jab.pw*

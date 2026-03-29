@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA — Browser Test Suite</title>
+  <title>MUGA: Browser Test Suite</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -96,26 +96,26 @@
 </head>
 <body>
 
-  <h1>MUGA — Browser Test Suite</h1>
+  <h1>MUGA: Browser Test Suite</h1>
   <p class="subtitle">Manual validation checklist · Open this page with the extension active in Chrome</p>
 
   <!-- ─── SETUP ──────────────────────────────────────────────────────────── -->
   <h2>⚙ Setup</h2>
   <div class="note">
     <strong>Environment:</strong> Code runs in WSL Ubuntu · Chrome runs on Windows host<br><br>
-    <strong>Step 1 — Load the extension in Chrome (once)</strong><br>
+    <strong>Step 1: Load the extension in Chrome (once)</strong><br>
     Open <code>chrome://extensions</code> → Enable Developer mode → Load unpacked →
     navigate to <code>\\wsl.localhost\Ubuntu\home\yocreoquesi\projects\muga\src</code> and select it.<br><br>
-    <strong>Step 2 — Serve this test page from WSL</strong><br>
+    <strong>Step 2: Serve this test page from WSL</strong><br>
     In the WSL terminal run: <code>npm run test:serve</code><br>
     Then open in Chrome: <code>http://localhost:5555</code><br><br>
-    <strong>Step 3 — Open DevTools → Console</strong> to catch any runtime errors while clicking.<br><br>
-    <strong>Important:</strong> Each test link must be <strong>clicked</strong> — do not paste URLs in the address bar.
+    <strong>Step 3: Open DevTools → Console</strong> to catch any runtime errors while clicking.<br><br>
+    <strong>Important:</strong> Each test link must be <strong>clicked</strong>. Do not paste URLs in the address bar.
     The content script only intercepts click events.
   </div>
 
-  <!-- ─── SCENARIO A — TRACKING REMOVAL ──────────────────────────────────── -->
-  <h2>Scenario A — Tracking parameter removal <span class="badge badge-a">A</span></h2>
+  <!-- SCENARIO A: TRACKING REMOVAL -->
+  <h2>Scenario A: Tracking parameter removal <span class="badge badge-a">A</span></h2>
 
   <div class="test">
     <div class="test-id">A-01</div>
@@ -156,7 +156,7 @@
 
   <div class="test">
     <div class="test-id">A-05</div>
-    <div class="test-title">Tracking params stripped — functional params preserved</div>
+    <div class="test-title">Tracking params stripped. Functional params preserved</div>
     <div class="test-action">Only <code>utm_source</code> should be removed. <code>q</code> and <code>page</code> must stay.</div>
     <a class="test-link" href="https://example.com/search?q=laptop&page=2&utm_source=newsletter">
       https://example.com/search?q=laptop&page=2&utm_source=newsletter
@@ -167,7 +167,7 @@
   <div class="test">
     <div class="test-id">A-06</div>
     <div class="test-title">Amazon: UTMs stripped, affiliate tag preserved</div>
-    <div class="test-action"><code>tag=</code> is an affiliate param, not tracking — it must not be removed.</div>
+    <div class="test-action"><code>tag=</code> is an affiliate param, not tracking. It must not be removed.</div>
     <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&utm_source=email&utm_medium=cpc">
       https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&utm_source=email&utm_medium=cpc
     </a>
@@ -186,8 +186,8 @@
 
   <hr class="divider">
 
-  <!-- ─── SCENARIO B — AFFILIATE INJECTION ────────────────────────────────── -->
-  <h2>Scenario B — Affiliate injection <span class="badge badge-b">B</span> <span class="badge badge-todo">TODO — needs ourTag</span></h2>
+  <!-- SCENARIO B: AFFILIATE INJECTION -->
+  <h2>Scenario B: Affiliate injection <span class="badge badge-b">B</span> <span class="badge badge-todo">TODO: needs ourTag</span></h2>
 
   <div class="note">
     These tests require <code>ourTag</code> to be filled in <code>src/lib/affiliates.js</code> for each store.
@@ -197,7 +197,7 @@
 
   <div class="test disabled">
     <div class="test-id">B-01 · BLOCKED</div>
-    <div class="test-title">Amazon.es — our tag injected when URL has no affiliate</div>
+    <div class="test-title">Amazon.es: our tag injected when URL has no affiliate</div>
     <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW">
       https://www.amazon.es/dp/B08N5WRWNW
     </a>
@@ -206,7 +206,7 @@
 
   <div class="test disabled">
     <div class="test-id">B-02 · BLOCKED</div>
-    <div class="test-title">Amazon.es — tag NOT injected when one already exists (even ours)</div>
+    <div class="test-title">Amazon.es: tag NOT injected when one already exists (even ours)</div>
     <a class="test-link" href="https://www.amazon.es/dp/B08N5WRWNW?tag=existing-tag-21">
       https://www.amazon.es/dp/B08N5WRWNW?tag=existing-tag-21
     </a>
@@ -225,8 +225,8 @@
 
   <hr class="divider">
 
-  <!-- ─── SCENARIO C — FOREIGN AFFILIATE ──────────────────────────────────── -->
-  <h2>Scenario C — Foreign affiliate detection <span class="badge badge-c">C</span> <span class="badge badge-todo">TODO — needs ourTag</span></h2>
+  <!-- SCENARIO C: FOREIGN AFFILIATE -->
+  <h2>Scenario C: Foreign affiliate detection <span class="badge badge-c">C</span> <span class="badge badge-todo">TODO: needs ourTag</span></h2>
 
   <div class="note">
     Same blocker as Scenario B. Detection only activates when <code>ourTag</code> is set,
@@ -260,7 +260,7 @@
 
   <hr class="divider">
 
-  <!-- ─── NAVIGATION — BUG FIXES ──────────────────────────────────────────── -->
+  <!-- NAVIGATION: BUG FIXES -->
   <h2>Navigation behaviour (bug fixes) <span class="badge badge-nav">NAV</span></h2>
 
   <div class="test">
@@ -305,7 +305,7 @@
 
   <div class="test">
     <div class="test-id">NAV-05</div>
-    <div class="test-title">Link without query string — not intercepted, native browser behaviour</div>
+    <div class="test-title">Link without query string: not intercepted, native browser behaviour</div>
     <div class="test-action">Ctrl+click must open in new tab natively (MUGA does not intercept)</div>
     <a class="test-link" href="https://example.com/no-params-here">
       https://example.com/no-params-here
@@ -323,12 +323,12 @@
   <ul class="checklist">
     <li>Popup opens without JS errors in DevTools Console</li>
     <li>Stats section shows 3 counters (tracking removed, affiliates active, referrals detected)</li>
-    <li>Counter values are numbers (0 or higher — not NaN, undefined, or blank)</li>
+    <li>Counter values are numbers (0 or higher, not NaN, undefined, or blank)</li>
     <li>"Enable / disable MUGA" toggle changes state and persists after popup is closed and reopened</li>
     <li>"Inject my affiliate when there is none" toggle persists after close/reopen</li>
     <li>"Notify me if there is a foreign referral" toggle persists after close/reopen</li>
     <li>"Advanced preferences →" link opens the options page in a new tab</li>
-    <li>After clicking a link with tracking params (e.g. A-01), reopen popup — counter for "tracking removed" should increment by 1</li>
+    <li>After clicking a link with tracking params (e.g. A-01), reopen popup. Counter for "tracking removed" should increment by 1</li>
   </ul>
 
   <hr class="divider">

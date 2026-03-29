@@ -1,4 +1,4 @@
-# MUGA — Posicionamiento, Atributos Competitivos y Direccion de UI
+# MUGA: Posicionamiento, Atributos Competitivos y Direccion de UI
 
 *Generado: 2026-03-23*
 
@@ -14,7 +14,7 @@ MUGA no compite por ser el shortener mas barato (Short.io ya ofrece $5/mes). Com
 
 ## 1.2 Tres pilares de posicionamiento
 
-### Pilar 1 — Browser-Native (Extension como core, no como add-on)
+### Pilar 1: Browser-Native (Extension como core, no como add-on)
 
 Ningun competidor nacio con la extension como el centro del producto. T.LY la anadio despues. Bitly la tiene rota. Dub.co no tiene ninguna.
 
@@ -22,7 +22,7 @@ MUGA ya tiene una extension funcional con 380 tests que limpia URLs. Esa extensi
 
 **Mensaje**: "Tu primer contacto con MUGA es una extension que hace tu navegacion mas limpia. El shortening viene gratis con ella."
 
-### Pilar 2 — Radical Transparency in Pricing
+### Pilar 2: Radical Transparency in Pricing
 
 Los competidores juegan a confundir:
 - Bitly tiene 6+ variables de pricing (links, QR codes, landing pages, back-halves, redirects, API calls)
@@ -33,7 +33,7 @@ MUGA tiene UN SOLO eje: **links/mes**. Todo lo demas es ilimitado en cada tier.
 
 **Mensaje**: "Sin trucos. Sin limites ocultos. Un precio, todo incluido."
 
-### Pilar 3 — Premium Feel, Indie Price
+### Pilar 3: Premium Feel, Indie Price
 
 El diseno y la experiencia deben sentirse como Vercel o Linear (productos premium que generan confianza), pero el precio es indie ($9/mes).
 
@@ -76,7 +76,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 ### C. Comparativas agresivas pero honestas
 - **Target**: 5 paginas /vs/ con datos reales de competidores
 - **Como**: Tablas de comparacion con precios actualizados, links a fuentes
-- **Por que**: SEO de alta intencion de compra ("bitly alternative", "tly alternative"). Dub.co ya hace esto bien — MUGA debe hacerlo mejor.
+- **Por que**: SEO de alta intencion de compra ("bitly alternative", "tly alternative"). Dub.co ya hace esto bien. MUGA debe hacerlo mejor.
 
 ### D. Pricing cristalino
 - **Target**: Un usuario entiende los 3 planes en <10 segundos
@@ -86,7 +86,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 ### E. Proof points inmediatos
 - **Target**: Credibilidad antes de signup
 - **Como**: Numero de extension installs (counter real), velocidad de redirect demostrada (widget live), logos de "as seen on" cuando se tengan
-- **Por que**: MUGA es nueva — necesita trust signals desde el dia 1.
+- **Por que**: MUGA es nueva. Necesita trust signals desde el dia 1.
 
 ### F. Blog como maquina SEO
 - **Target**: 20 articulos en los primeros 6 meses
@@ -100,7 +100,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 - **Por que**: Es el atributo tecnico mas facil de demostrar y mas dificil de rebatir. Bitly tarda 131ms. MUGA tarda <20ms. Eso se puede mostrar en la landing con un test en vivo.
 
 ### B. Analytics sin paywall
-- Geo (pais, ciudad), dispositivo, browser, OS, referrer — en TODOS los planes incluyendo Free
+- Geo (pais, ciudad), dispositivo, browser, OS, referrer: en TODOS los planes incluyendo Free
 - **Por que**: Bitly cobra $199/mes por analytics de ciudad. Es el gap mas grande del mercado.
 
 ### C. Links que nunca expiran
@@ -109,7 +109,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 
 ### D. Extension que da valor diario
 - La extension limpia URLs SIEMPRE (gratis, sin cuenta). El shortening es el bonus.
-- **Por que**: T.LY prueba que una extension popular genera 450K usuarios organicos. Pero su extension solo acorta — no da valor diario. MUGA si.
+- **Por que**: T.LY prueba que una extension popular genera 450K usuarios organicos. Pero su extension solo acorta, no da valor diario. MUGA si.
 
 ### E. API desde el dia 1
 - REST API documentada con OpenAPI spec, SDKs en TypeScript/Python, rate limiting transparente
@@ -127,7 +127,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 
 # 3. FASES DE DESARROLLO (DETALLADAS)
 
-## Fase 0 — Foundation (Semana 1)
+## Fase 0: Foundation (Semana 1)
 
 **Entregable**: Monorepo funcional, Worker de redireccion en mug.ag, KV con link de prueba.
 
@@ -138,7 +138,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 | Supabase schema | 15 tablas con RLS, migrations, types generados | Schema visible en Supabase dashboard |
 | DNS mug.ag | Route en CF Workers, SSL Full Strict | `curl -I mug.ag/test` → 301 |
 
-## Fase 1 — MVP cobrable (Semanas 2-3)
+## Fase 1: MVP cobrable (Semanas 2-3)
 
 **Entregable**: Un usuario puede registrarse, crear links, ver clicks, y pagar Pro.
 
@@ -151,7 +151,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 | Landing page | Hero + features + pricing + CTA | muga.link carga en <2s, Lighthouse >90 |
 | Deploy | CF Pages (web) + Workers (redirect) | End-to-end funcional en produccion |
 
-## Fase 2 — Paridad competitiva (Semanas 4-6)
+## Fase 2: Paridad competitiva (Semanas 4-6)
 
 **Entregable**: Analytics graficos, custom domains, QR codes, API publica, extension integrada.
 
@@ -163,7 +163,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 | API keys | CRUD de keys, auth por Bearer token, rate limiting | curl con API key crea un link |
 | Extension + cuenta | Login por API key, shortening via API | Extension acorta URL con cuenta conectada |
 
-## Fase 3 — Diferenciacion (Semanas 7-10)
+## Fase 3: Diferenciacion (Semanas 7-10)
 
 **Entregable**: Features que ningun competidor ofrece en el mismo rango de precio.
 
@@ -175,7 +175,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 | CTA overlays | Banner basico via interstitial (no iframe) | CTA visible sobre pagina destino |
 | Plan Agency | Stripe product, 10 workspaces, 10 usuarios | Checkout Agency funcional |
 
-## Fase 4 — Traccion (Semanas 11-16)
+## Fase 4: Traccion (Semanas 11-16)
 
 **Entregable**: SEO implementado, contenido publicado, extension en stores, email onboarding.
 
@@ -187,7 +187,7 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 | Extension en stores | Chrome Web Store + Firefox Add-ons | Disponible para descarga publica |
 | Email onboarding | 3 emails (bienvenida, primer link, upgrade) | Nuevo usuario recibe los 3 emails |
 
-## Fase 5 — Escala (Semanas 17-24)
+## Fase 5: Escala (Semanas 17-24)
 
 **Entregable**: Product Hunt launch, 100 clientes pago, $1.5K+ MRR.
 
@@ -205,13 +205,13 @@ Esta narrativa conecta la extension (limpieza) con el SaaS (shortening + analyti
 
 ## 4.1 Filosofia de diseno: "Calm Premium"
 
-La UI de MUGA sigue la filosofia de **Calm Design** — menos en pantalla, mas en foco. Inspirada por Linear (precision), Vercel (claridad), y Stripe (confianza).
+La UI de MUGA sigue la filosofia de **Calm Design**: menos en pantalla, mas en foco. Inspirada por Linear (precision), Vercel (claridad), y Stripe (confianza).
 
 **Principios:**
-1. **Cada elemento justifica su existencia** — si no mueve al usuario hacia su objetivo, se elimina
-2. **Progressive disclosure** — complejidad disponible pero nunca impuesta
-3. **Dark-first** — el 45% de SaaS nuevos lideran con dark mode. MUGA tambien.
-4. **Delight sutil** — micro-animaciones que dan feedback, no que distraen
+1. **Cada elemento justifica su existencia**: si no mueve al usuario hacia su objetivo, se elimina
+2. **Progressive disclosure**: complejidad disponible pero nunca impuesta
+3. **Dark-first**: el 45% de SaaS nuevos lideran con dark mode. MUGA tambien.
+4. **Delight sutil**: micro-animaciones que dan feedback, no que distraen
 
 ## 4.2 Sistema de diseno
 
@@ -241,7 +241,7 @@ Mono/data:        14px / 400 / Geist Mono
 **Modo oscuro (por defecto):**
 ```
 Background 1:    #0a0a0a    (negro profundo, casi-negro)
-Background 2:    #141414    (superficie elevada — cards, modals)
+Background 2:    #141414    (superficie elevada: cards, modals)
 Background 3:    #1a1a1a    (hover states, sidebar)
 Border:          #262626    (bordes sutiles)
 Border hover:    #3a3a3a    (bordes interactivos)
@@ -252,13 +252,13 @@ Text muted:      #666666    (timestamps, metadata)
 
 **Colores de acento:**
 ```
-Brand primary:   #3b82f6    (azul vibrante — CTAs principales)
+Brand primary:   #3b82f6    (azul vibrante, CTAs principales)
 Brand hover:     #2563eb    (azul mas oscuro al hover)
-Success:         #22c55e    (verde — link creado, copiado)
-Warning:         #f59e0b    (ambar — limites cerca)
-Error:           #ef4444    (rojo — errores, deletes)
-Pro badge:       #a855f7    (purpura — plan Pro)
-Agency badge:    #f97316    (naranja — plan Agency)
+Success:         #22c55e    (verde: link creado, copiado)
+Warning:         #f59e0b    (ambar: limites cerca)
+Error:           #ef4444    (rojo: errores, deletes)
+Pro badge:       #a855f7    (purpura: plan Pro)
+Agency badge:    #f97316    (naranja: plan Agency)
 ```
 
 **Modo claro (secundario):**
@@ -468,7 +468,7 @@ Implementar desde el dia 1 usando el componente Command de shadcn/ui (basado en 
 ### Landing page (muga.link)
 
 ```
-SECCION 1 — Hero
+SECCION 1: Hero
 +-------------------------------------------------------+
 |                                                       |
 |   [Logo MUGA]    Features  Pricing  Blog    [Login]   |
@@ -488,12 +488,12 @@ SECCION 1 — Hero
 |   radial gradient azul sutil desde arriba             |
 +-------------------------------------------------------+
 
-SECCION 2 — Social proof bar
+SECCION 2: Social proof bar
 +-------------------------------------------------------+
 | "X extension installs" · "<20ms redirects" · "Free"   |
 +-------------------------------------------------------+
 
-SECCION 3 — Bento Grid de features
+SECCION 3: Bento Grid de features
 +---------------------------+---------------------------+
 |                           |                           |
 |  [icono rayo]             |  [mini grafico]           |
@@ -510,7 +510,7 @@ SECCION 3 — Bento Grid de features
 |              |            |              |            |
 +--------------+------------+--------------+------------+
 
-SECCION 4 — Comparativa
+SECCION 4: Comparativa
 +-------------------------------------------------------+
 |          MUGA vs la competencia                       |
 |                                                       |
@@ -522,7 +522,7 @@ SECCION 4 — Comparativa
 |                                                       |
 +-------------------------------------------------------+
 
-SECCION 5 — Pricing
+SECCION 5: Pricing
 +-------------------------------------------------------+
 |                                                       |
 |  +----------+  +-----------+  +----------+            |
@@ -539,12 +539,12 @@ SECCION 5 — Pricing
 |  "Everything unlimited except link volume."           |
 +-------------------------------------------------------+
 
-SECCION 6 — CTA final
+SECCION 6: CTA final
 +-------------------------------------------------------+
 |                                                       |
 |   Ready to make your URLs great again?                |
 |                                                       |
-|   [Start Shortening — Free]                           |
+|   [Start Shortening, Free]                            |
 |                                                       |
 |   "No credit card. No tracking. No BS."               |
 |                                                       |

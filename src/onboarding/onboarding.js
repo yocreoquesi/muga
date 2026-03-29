@@ -1,9 +1,9 @@
 /**
- * MUGA — Onboarding page
+ * MUGA: Onboarding page
  *
  * Two checkboxes:
- *   - ToS acceptance (mandatory — button stays disabled until checked)
- *   - Affiliate opt-in (optional — activates injectOwnAffiliate if checked)
+ *   - ToS acceptance (mandatory: button stays disabled until checked)
+ *   - Affiliate opt-in (optional: activates injectOwnAffiliate if checked)
  *
  * On "Get started": saves consent metadata + prefs, then closes the tab.
  */

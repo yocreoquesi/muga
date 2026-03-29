@@ -1,9 +1,9 @@
 /**
- * MUGA — Storage helpers
+ * MUGA: Storage helpers
  *
  * Two buckets:
- *   chrome.storage.sync  — user preferences (synced across devices, 100KB quota)
- *   chrome.storage.local — stats and ephemeral state (device-only, 10MB quota)
+ *   chrome.storage.sync:  user preferences (synced across devices, 100KB quota)
+ *   chrome.storage.local: stats and ephemeral state (device-only, 10MB quota)
  */
 
 // ── Sync: user preferences ──────────────────────────────────────────────────
@@ -23,13 +23,13 @@ export const PREF_DEFAULTS = {
   unwrapRedirects: true,
   language: "en",
   onboardingDone: false,
-  consentVersion: null,   // e.g. "1.0" — bump to re-trigger onboarding on ToS changes
+  consentVersion: null,   // e.g. "1.0". Bump to re-trigger onboarding on ToS changes.
   consentDate: null,      // Unix timestamp (ms) of when the user accepted
-  disabledCategories: [],  // e.g. ["utm", "ads"] — params in these categories are not stripped
-  // TODO(C8): devMode should migrate to chrome.storage.local — it is device-specific
+  disabledCategories: [],  // e.g. ["utm", "ads"]. Params in these categories are not stripped.
+  // TODO(C8): devMode should migrate to chrome.storage.local. It is device-specific
   //           and does not need to sync across devices. Left here for now to avoid
   //           breaking options.js which reads it via getPrefs(). (#259)
-  toastDuration: 15,  // seconds — how long the affiliate notification stays visible
+  toastDuration: 15,  // seconds: how long the affiliate notification stays visible
   devMode: false,
 };
 
@@ -86,10 +86,10 @@ export async function setStats(partial) {
   });
 }
 
-// ── incrementStat — batch-write pattern to prevent count loss under concurrency ─
+// ── incrementStat: batch-write pattern to prevent count loss under concurrency ──
 //
 // Problem: the naive read-modify-write pattern loses increments when two calls
-// race — both read the same value before either writes.
+// race: both read the same value before either writes.
 //
 // Solution: accumulate deltas in a pending map and flush them in a single
 // read-modify-write after a short timer (~100 ms).  All increments that arrive
@@ -123,14 +123,14 @@ async function _flushStats() {
 export function incrementStat(key, amount = 1) {
   _pendingStats[key] = (_pendingStats[key] || 0) + amount;
   if (!_statsFlushTimer) {
-    // C13 — use microtask instead of 100ms timer to minimize the window where
+    // C13: use microtask instead of 100ms timer to minimize the window where
     // pending stats can be lost if the MV3 service worker is terminated.
     _statsFlushTimer = true;
     Promise.resolve().then(_flushStats).catch(() => { _statsFlushTimer = false; });
   }
 }
 
-// C13 — flush pending stats immediately when the service worker is about to suspend (MV2 only)
+// C13: flush pending stats immediately when the service worker is about to suspend (MV2 only)
 if (typeof chrome !== "undefined" && chrome.runtime?.onSuspend) {
   chrome.runtime.onSuspend.addListener(() => {
     if (Object.keys(_pendingStats).length > 0) {
@@ -139,7 +139,7 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onSuspend) {
   });
 }
 
-// ── Session storage ponyfill — Firefox MV2 compat (#184) ─────────────────────
+// ── Session storage ponyfill: Firefox MV2 compat (#184) ──────────────────────
 //
 // chrome.storage.session is MV3-only (Chrome 102+). Firefox ships MUGA as MV2
 // and does not expose this API, causing crashes in the service worker and popup.
@@ -182,7 +182,7 @@ export const sessionStorage = {
 
 /**
  * One-time migration: moves stats out of chrome.storage.sync into
- * chrome.storage.local. Safe to call on every startup — exits immediately
+ * chrome.storage.local. Safe to call on every startup. Exits immediately
  * if migration already done or no old data exists.
  */
 export async function migrateStatsToLocal() {
