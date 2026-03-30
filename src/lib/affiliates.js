@@ -702,7 +702,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.es", "www.amazon.es"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.es)
+    ourTag: "muga0b-21",
   },
   {
     id: "amazon_de",
@@ -710,7 +710,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.de", "www.amazon.de"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.de)
+    ourTag: "muga0f-21",
   },
   {
     id: "amazon_fr",
@@ -718,7 +718,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.fr", "www.amazon.fr"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.fr)
+    ourTag: "muga08a-21",
   },
   {
     id: "amazon_it",
@@ -726,7 +726,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.it", "www.amazon.it"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.it)
+    ourTag: "muga04f-21",
   },
   {
     id: "amazon_co_uk",
@@ -734,7 +734,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.co.uk", "www.amazon.co.uk"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.co.uk)
+    ourTag: "muga0a-21",
   },
   {
     id: "amazon_com",
@@ -742,7 +742,7 @@ export const AFFILIATE_PATTERNS = [
     domains: ["amazon.com", "www.amazon.com"],
     param: "tag",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your Amazon Associates tag (amazon.com)
+    ourTag: "muga0b-20",
   },
   {
     id: "booking",

@@ -415,13 +415,13 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
-  test("injectOwnAffiliate: true + amazon.es ourTag empty → does NOT inject", () => {
+  test("injectOwnAffiliate: true + amazon.es ourTag set → injects muga0b-21", () => {
     const { action, cleanUrl } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    assert.notEqual(action, "injected");
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
+    assert.equal(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
   });
 
   test("injectOwnAffiliate: true + ourTag set → injects tag on clean URL", () => {
@@ -461,6 +461,49 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
+});
+
+// ---------------------------------------------------------------------------
+// Amazon affiliate tags — real tag injection per marketplace
+// ---------------------------------------------------------------------------
+describe("Amazon affiliate tags — real tag injection per marketplace", () => {
+  const INJECT_PREFS = { ...PREFS, injectOwnAffiliate: true };
+
+  const MARKETS = [
+    { domain: "www.amazon.es",    tag: "muga0b-21",  name: "ES" },
+    { domain: "www.amazon.de",    tag: "muga0f-21",  name: "DE" },
+    { domain: "www.amazon.fr",    tag: "muga08a-21", name: "FR" },
+    { domain: "www.amazon.it",    tag: "muga04f-21", name: "IT" },
+    { domain: "www.amazon.co.uk", tag: "muga0a-21",  name: "UK" },
+    { domain: "www.amazon.com",   tag: "muga0b-20",  name: "US" },
+  ];
+
+  for (const { domain, tag, name } of MARKETS) {
+    test(`amazon.${name}: injects tag=${tag} on clean URL`, () => {
+      const { action, cleanUrl } = processUrl(
+        `https://${domain}/dp/B08N5WRWNW`,
+        INJECT_PREFS
+      );
+      assert.equal(action, "injected", `${name} must inject`);
+      assert.equal(new URL(cleanUrl).searchParams.get("tag"), tag);
+    });
+
+    test(`amazon.${name}: does NOT replace existing foreign tag`, () => {
+      const { cleanUrl } = processUrl(
+        `https://${domain}/dp/B08N5WRWNW?tag=creator-21`,
+        INJECT_PREFS
+      );
+      assert.equal(new URL(cleanUrl).searchParams.get("tag"), "creator-21");
+    });
+
+    test(`amazon.${name}: own tag is not flagged as foreign`, () => {
+      const { action } = processUrl(
+        `https://${domain}/dp/B08N5WRWNW?tag=${tag}`,
+        { ...PREFS, notifyForeignAffiliate: true }
+      );
+      assert.notEqual(action, "detected_foreign");
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -1128,7 +1171,7 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
       "https://www.amazon.es/dp/B0GQ4N9N33?color=blue",
       prefs
     );
-    assert.ok(cleanUrl.includes("muga-es-21"), "ourTag must be injected when no blacklist rule fires (#197)");
+    assert.ok(cleanUrl.includes("muga0b-21"), "ourTag must be injected when no blacklist rule fires (#197)");
     assert.equal(action, "injected", "action must be injected for normal injection without blacklist hit (#197)");
   });
 });
