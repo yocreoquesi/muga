@@ -172,11 +172,13 @@ describe("C11 — replica sync verification (storage.js incrementStat)", () => {
     );
   });
 
-  test("source uses microtask scheduling (Promise.resolve) instead of setTimeout", () => {
-    // C13 changed from setTimeout to Promise.resolve().then(_flushStats)
+  test("source uses short setTimeout for MV3-safe flush scheduling", () => {
+    // Changed from microtask to setTimeout(50ms) for MV3 reliability:
+    // MV3 service workers can be killed mid-microtask, losing unflushed stats.
+    // A short setTimeout gives the engine time to finish the current task.
     assert.ok(
-      STORAGE_SOURCE.includes("Promise.resolve().then(_flushStats)"),
-      "Source must use microtask scheduling (C13 fix)"
+      STORAGE_SOURCE.includes("setTimeout(_flushStats"),
+      "Source must use setTimeout for MV3-safe flush scheduling"
     );
   });
 });

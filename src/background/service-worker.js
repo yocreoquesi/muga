@@ -23,7 +23,6 @@ migrateStatsToLocal();
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
-const SESSION_LOG_MAX_BYTES = 2 * 1024 * 1024; // 2MB
 
 function appendSessionLog(level, args) {
   const entry = { ts: Date.now(), level, msg: args.map(a => {

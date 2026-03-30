@@ -2,6 +2,34 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.8.1] - 2026-03-30
+
+### Fixes
+- **Amazon ASIN regex**: accept mixed-case ASINs (`[A-Za-z0-9]{10}` instead of `[A-Z0-9]{10}`)
+- **Amazon domain regex**: `notamazon.com` no longer matches Amazon rules
+- **Content script memory leak**: `_rewriteLog` Map capped at 200 entries
+- **MV3 stats flush**: switched from microtask to `setTimeout(50ms)` for service worker reliability
+- **getStats error handling**: returns STAT_DEFAULTS on chrome.runtime.lastError
+- **Copy handler**: sort URL matches by length descending to prevent partial replacements
+- **sendBeacon override removed**: ineffective in MV3 isolated world
+- **DuckDuckGo**: removed duplicate `ko`/`kp` in preserveParams
+- **Firefox AMO**: removed custom `_sri_browser_polyfill` manifest key (issue #272)
+
+### Domain rules
+- **Coupang**: moved `itemId`/`vendorItemId` to stripParams (product ID is in the URL path); added 11 new tracking params (`addtag`, `ctag`, `lptag`, `itime`, `pageType`, `pageValue`, `wPcid`, `wRef`, `wTime`, `redirect`, `mcid`)
+- **Danawa**: new domain rule (Korea's largest price comparison site); `go_link_goods.php` redirect wrapper already handled by existing unwrap logic
+
+### Improvements
+- Brand name: "MUGA: Clean URLs, Fair to Every Click" (SEO)
+- Copy: "stays free" reframed as "support an indie developer"; absolute "never replaces" qualified with "by default"
+- Onboarding dark mode `--text2` raised to `#aaa` for WCAG AA contrast
+- Added `aria-label` on language select, toast duration select, ToS checkbox, affiliate checkbox
+- Hardcoded popup strings (Copied!, Share) replaced with i18n keys
+- Merged duplicate `.history-entry` CSS rule
+- Removed unused `SESSION_LOG_MAX_BYTES` constant
+- MV3 `web_accessible_resources` declared for onboarding/privacy pages
+- 606 tests (16 new regression tests)
+
 ## [1.8.0] - 2026-03-24
 
 ### Features

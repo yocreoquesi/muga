@@ -48,11 +48,11 @@ function showConfirm(msg) {
 
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "confirm-cancel";
-    cancelBtn.textContent = "Cancel";
+    cancelBtn.textContent = t("confirm_cancel", currentLang);
 
     const okBtn = document.createElement("button");
     okBtn.className = "confirm-ok";
-    okBtn.textContent = "OK";
+    okBtn.textContent = t("confirm_ok", currentLang);
 
     btns.appendChild(cancelBtn);
     btns.appendChild(okBtn);

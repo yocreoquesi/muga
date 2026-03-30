@@ -148,6 +148,32 @@ describe("Amazon — search params preserved, tracking stripped", () => {
   });
 });
 
+describe("Amazon: path cleaning regression tests", () => {
+  test("lowercase ASIN in /dp/ path is cleaned", () => {
+    const { cleanUrl } = clean(
+      "https://www.amazon.com/dp/b0gq4n9n33/ref=cm_sw_r_cp_api?tag=creator-20"
+    );
+    assert.ok(!cleanUrl.includes("/ref="), "ref= path segment must be stripped even with lowercase ASIN");
+    assert.ok(cleanUrl.includes("b0gq4n9n33"), "lowercase ASIN must be preserved");
+    assert.ok(cleanUrl.includes("tag=creator-20"), "affiliate tag must be preserved");
+  });
+
+  test("mixed-case ASIN in /dp/ path is cleaned", () => {
+    const { cleanUrl } = clean(
+      "https://www.amazon.es/dp/B0Gq4N9n33/ref=sr_1_1?tag=test-21"
+    );
+    assert.ok(!cleanUrl.includes("/ref="), "ref= must be stripped with mixed-case ASIN");
+  });
+
+  test("notamazon.com does not trigger Amazon path cleaning", () => {
+    const { cleanUrl } = clean(
+      "https://notamazon.com/dp/B00EXAMPLE/ref=test123?utm_source=x"
+    );
+    // ref= in path should NOT be stripped (not a real Amazon domain)
+    assert.ok(cleanUrl.includes("/ref=test123"), "non-Amazon domain must not trigger path cleaning");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Reddit
 // ---------------------------------------------------------------------------
@@ -230,8 +256,8 @@ describe("Non-listed domain — all tracking stripped, no functional preservatio
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all 120 entries have domain, preserveParams (non-empty array), and note", () => {
-    assert.equal(domainRules.length, 120, `Expected 120 entries, got ${domainRules.length}`);
+  test("all 121 entries have domain, preserveParams (non-empty array), and note", () => {
+    assert.equal(domainRules.length, 121, `Expected 121 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);
@@ -414,6 +440,107 @@ describe("manifest.json integrity", () => {
     for (const p of mv2Perms) {
       assert.ok(mv3Perms.has(p), `Permission "${p}" in MV2 but missing from MV3`);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression tests for bug fixes (1.8.1)
+// ---------------------------------------------------------------------------
+describe("Regression: Amazon ASIN case sensitivity", () => {
+  test("lowercase ASIN in /dp/ path is preserved", () => {
+    const { cleanUrl } = clean("https://www.amazon.com/dp/b0b9n3qsl3?tag=someone-20");
+    assert.ok(cleanUrl.includes("b0b9n3qsl3"), "Lowercase ASIN must not be broken");
+  });
+
+  test("mixed-case ASIN in /dp/ path is preserved", () => {
+    const { cleanUrl } = clean("https://www.amazon.com/Some-Product/dp/B0b9N3qSl3?ref=sr_1_1");
+    assert.ok(cleanUrl.includes("B0b9N3qSl3"), "Mixed-case ASIN must be preserved");
+  });
+
+  test("notamazon.com is not treated as Amazon domain", () => {
+    const { cleanUrl } = clean("https://notamazon.com/dp/B0B9N3QSL3?ref=tracking");
+    // Should NOT apply Amazon path cleaning
+    const u = new URL(cleanUrl);
+    assert.ok(!cleanUrl.includes("/dp/B0B9N3QSL3/"), "notamazon.com must not get Amazon path normalization");
+  });
+});
+
+describe("Coupang product page cleaning", () => {
+  test("strips tracking params, keeps clean product URL", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://www.coupang.com/vp/products/9380846500?itemId=123&vendorItemId=456&src=1032001&spec=10305200&addtag=400&ctag=9380846500&lptag=CFM&itime=20230101&pageType=PRODUCT&pageValue=9380846500&wPcid=abc&wRef=cr&wTime=20230101&redirect=HP_Btn&mcid=abc"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.pathname, "/vp/products/9380846500");
+    assert.equal(u.search, "");
+    assert.ok(removedTracking.includes("itemId"));
+    assert.ok(removedTracking.includes("vendorItemId"));
+  });
+
+  test("preserves affiliate params subId and hmKeyword", () => {
+    const { cleanUrl } = clean(
+      "https://www.coupang.com/vp/products/9380846500?subId=partner123&hmKeyword=test"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("subId"), "partner123");
+    assert.equal(u.searchParams.get("hmKeyword"), "test");
+  });
+
+  test("preserves search functional params", () => {
+    const { cleanUrl } = clean(
+      "https://www.coupang.com/np/search?q=laptop&page=2&sorter=bestAsc&channel=user&src=1032001"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "laptop");
+    assert.equal(u.searchParams.get("page"), "2");
+    assert.equal(u.searchParams.get("sorter"), "bestAsc");
+    assert.equal(u.searchParams.has("channel"), false);
+    assert.equal(u.searchParams.has("src"), false);
+  });
+});
+
+describe("Danawa search URL cleaning", () => {
+  test("strips tracking params from search URLs", () => {
+    const { cleanUrl } = clean(
+      "https://search.danawa.com/dsearch.php?q=RTX+5070&logger_kw=RTX+5070&loc=main_search"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "RTX 5070");
+    assert.equal(u.searchParams.has("logger_kw"), false);
+    assert.equal(u.searchParams.has("loc"), false);
+  });
+});
+
+describe("Regression: DuckDuckGo preserveParams no duplicates", () => {
+  test("domain-rules.json has no duplicate preserveParams for any domain", () => {
+    for (const rule of domainRules) {
+      if (!rule.preserveParams) continue;
+      const seen = new Set();
+      for (const p of rule.preserveParams) {
+        assert.ok(!seen.has(p), `Duplicate preserveParam "${p}" on domain ${rule.domain}`);
+        seen.add(p);
+      }
+    }
+  });
+});
+
+describe("Regression: i18n keys exist for share/confirm buttons", () => {
+  const requiredKeys = ["share_copied", "share_btn", "confirm_cancel", "confirm_ok"];
+  for (const key of requiredKeys) {
+    test(`i18n key "${key}" exists with en and es`, () => {
+      assert.ok(TRANSLATIONS[key], `Missing i18n key: ${key}`);
+      assert.ok(TRANSLATIONS[key].en, `Missing EN translation for: ${key}`);
+      assert.ok(TRANSLATIONS[key].es, `Missing ES translation for: ${key}`);
+    });
+  }
+});
+
+describe("Regression: storage.js uses setTimeout for MV3-safe flush", () => {
+  const _dir = dirname(fileURLToPath(import.meta.url));
+  const storageSource = readFileSync(join(_dir, "../../src/lib/storage.js"), "utf8");
+  test("flushStats uses setTimeout, not microtask", () => {
+    assert.ok(storageSource.includes("setTimeout(_flushStats"), "Must use setTimeout for flush");
+    assert.ok(!storageSource.includes("Promise.resolve().then(_flushStats"), "Must not use microtask flush");
   });
 });
 
