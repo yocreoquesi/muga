@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPersistentLog } from "../lib/storage.js";
 
 let currentLang = "en";
 
@@ -115,6 +115,7 @@ async function init() {
   initExportImport();
 
   bindToggle("dev-mode", "devMode", prefs);
+  bindToggle("persist-log", "persistLog", prefs);
   syncDevTools();
   document.getElementById("dev-mode").addEventListener("change", syncDevTools);
   initDevTools();
@@ -382,6 +383,7 @@ function initExportImport() {
       disabledCategories: prefs.disabledCategories,
       language: prefs.language,
       devMode: prefs.devMode,
+      persistLog: prefs.persistLog,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -419,7 +421,7 @@ function initExportImport() {
       if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode", "persistLog"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -449,6 +451,7 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("dev-mode").checked = newPrefs.devMode;
+      document.getElementById("persist-log").checked = newPrefs.persistLog;
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
       syncDevTools();
       if (toSave.language) {
@@ -654,6 +657,15 @@ function initDevTools() {
       session_log: log,
     };
 
+    // Include persistent log as a separate field when enabled
+    if (prefs.persistLog) {
+      try {
+        payload.persistent_log = await getPersistentLog();
+      } catch {
+        payload.persistent_log = [];
+      }
+    }
+
     let jsonStr = JSON.stringify(payload, null, 2);
     // Enforce 2MB limit: trim oldest log entries if needed
     const MAX_BYTES = 2 * 1024 * 1024;
@@ -684,6 +696,8 @@ async function testUrl() {
   const resultDiv = document.getElementById("dev-url-result");
   const cleanEl = document.getElementById("dev-url-clean");
   const removedEl = document.getElementById("dev-url-removed");
+  const reportBtn = document.getElementById("dev-url-report-btn");
+  if (reportBtn) reportBtn.style.display = "none";
   if (!input) return;
   try {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
@@ -700,6 +714,35 @@ async function testUrl() {
       removedEl.textContent = t("dev_url_action", currentLang).replace("%s", result.action);
     }
     resultDiv.style.display = "";
+
+    // Show report button after results
+    if (reportBtn) {
+      reportBtn.style.display = "";
+      reportBtn.onclick = () => {
+        try {
+          const hostname = new URL(input).hostname;
+          const version = chrome.runtime.getManifest().version;
+          const removed = result.removedTracking?.join(", ") || "none";
+          const action = result.action || "none";
+          const title = encodeURIComponent(`[URL Report] ${hostname}`);
+          const body = encodeURIComponent(
+            `## URL Report\n\n` +
+            `**Domain:** ${hostname}\n` +
+            `**MUGA version:** ${version}\n` +
+            `**Browser:** ${navigator.userAgent}\n` +
+            `**Action taken:** ${action}\n` +
+            `**Params removed:** ${removed}\n\n` +
+            `## Problem\n\n` +
+            `<!-- Describe what went wrong: params that should have been removed but weren't, or params that were removed but shouldn't have been -->\n\n` +
+            `## Expected behavior\n\n` +
+            `<!-- What should MUGA do with this URL? -->\n`
+          );
+          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}`, "_blank");
+        } catch {
+          // Invalid URL, ignore
+        }
+      };
+    }
   } catch (e) {
     cleanEl.textContent = "Error: " + e.message;
     removedEl.textContent = "";

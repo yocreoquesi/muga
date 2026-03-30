@@ -54,11 +54,11 @@ export const TRANSLATIONS = {
   section_stores:    { en: "Affiliate stores", es: "Tiendas afiliadas" },
   stores_hint:       { en: "Green dot = affiliate account active and configured. Grey = account pending registration.", es: "Punto verde = cuenta de afiliado activa. Gris = cuenta pendiente de registro." },
   no_active_stores:  { en: "No affiliate accounts configured yet.", es: "No hay cuentas de afiliado configuradas aún." },
-  section_custom_params:    { en: "Custom tracking params: always stripped everywhere", es: "Parámetros personalizados: siempre eliminados" },
+  section_custom_params:    { en: "Custom tracking params: always strip", es: "Parámetros personalizados: eliminar siempre" },
   cp_placeholder:           { en: "ref_code  or  promo_id",                              es: "ref_codigo  o  promo_id" },
-  cp_hint:                  { en: "One param name per entry. Stripped on every site, case-insensitive.", es: "Un nombre de parámetro por entrada. Eliminado en todas las webs, sin distinción de mayúsculas." },
-  section_blacklist: { en: "Always strip on these domains", es: "Eliminar siempre en estos dominios" },
-  section_whitelist: { en: "Protected tags & domains: never touched", es: "Tags y dominios protegidos: nunca se tocan" },
+  cp_hint:                  { en: "One param name per entry (e.g. <code>mc_cid</code>, <code>oly_enc_id</code>). Stripped on every site, case-insensitive.", es: "Un nombre de parámetro por entrada (ej: <code>mc_cid</code>, <code>oly_enc_id</code>). Eliminado en todas las webs, sin distinción de mayúsculas." },
+  section_blacklist: { en: "Blocked domains: always strip", es: "Dominios bloqueados: eliminar siempre" },
+  section_whitelist: { en: "Protected tags & domains: never strip", es: "Tags y dominios protegidos: nunca eliminar" },
   privacy_link:    { en: "Privacy policy",                       es: "Política de privacidad" },
   report_issue:    { en: "Report a bug or suggest a feature",    es: "Reportar un error o sugerir mejora" },
   rate_muga_link:  { en: "Rate MUGA",                            es: "Valorar MUGA" },
@@ -133,6 +133,9 @@ export const TRANSLATIONS = {
   dev_url_removed:            { en: "Removed: %s",                                                       es: "Eliminados: %s" },
   dev_url_clean:              { en: "No tracking params found. URL is already clean.",                   es: "Sin parámetros de rastreo. La URL ya está limpia." },
   dev_url_action:             { en: "Action: %s",                                                        es: "Acción: %s" },
+  dev_url_report_btn:         { en: "Report a problem with this URL",                                    es: "Reportar un problema con esta URL" },
+  dev_persist_log_label:      { en: "Persist debug log",                                                 es: "Guardar log entre sesiones" },
+  dev_persist_log_hint:       { en: "Keep debug log across browser restarts. Stored locally, never transmitted.", es: "Conserva el log de depuración entre reinicios del navegador. Almacenado localmente, nunca se transmite." },
 
   // ── Context menu ─────────────────────────────────────────────────────────
   ctx_copy_clean_link:      { en: "Copy clean link",                       es: "Copiar enlace limpio" },
@@ -186,7 +189,7 @@ export function t(key, lang) {
 
 // Keys whose values intentionally contain safe HTML (<code>, <br>).
 // All other keys use textContent to prevent any XSS risk.
-const HTML_KEYS = new Set(["bl_hint", "wl_hint", "ob_affiliate_desc", "ob_disclaimer", "ob_tos_label"]);
+const HTML_KEYS = new Set(["bl_hint", "wl_hint", "cp_hint", "ob_affiliate_desc", "ob_disclaimer", "ob_tos_label"]);
 
 // Allowed tags and attributes for HTML_KEYS sanitization.
 const ALLOWED_TAGS = new Set(["code", "br", "strong", "em", "a", "small"]);

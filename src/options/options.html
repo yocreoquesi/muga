@@ -51,7 +51,7 @@
   </section>
 
   <section>
-    <h2 data-i18n="section_blacklist">Always strip on these domains</h2>
+    <h2 data-i18n="section_blacklist">Blocked domains: always strip</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="blacklist-items"></div>
@@ -65,7 +65,7 @@
   </section>
 
   <section>
-    <h2 data-i18n="section_whitelist">Protected tags &amp; domains: never touched</h2>
+    <h2 data-i18n="section_whitelist">Protected tags &amp; domains: never strip</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="whitelist-items"></div>
@@ -183,7 +183,7 @@
       <p class="hint" style="margin-top:8px" data-i18n="categories_hint"></p>
 
       <!-- Advanced: Custom tracking params -->
-      <h2 style="margin-top:16px" data-i18n="section_custom_params">Custom tracking params: always stripped everywhere</h2>
+      <h2 style="margin-top:16px" data-i18n="section_custom_params">Custom tracking params: always strip</h2>
       <div class="card">
         <div class="list-section">
           <div class="list-items" id="custom-params-items"></div>
@@ -232,6 +232,13 @@
         </div>
         <div class="row">
           <div class="row-label">
+            <strong data-i18n="dev_persist_log_label">Persist debug log</strong>
+            <small data-i18n="dev_persist_log_hint">Keep debug log across browser restarts. Stored locally, never transmitted.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="persist-log" aria-label="Persist debug log across sessions"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
             <strong data-i18n="dev_log_label">Debug log</strong>
             <small data-i18n="dev_log_hint">Download a log of errors and warnings from the current session</small>
           </div>
@@ -255,6 +262,7 @@
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px;" data-i18n="dev_url_result_label">Result</div>
             <div id="dev-url-clean" style="font-family:monospace;font-size:12px;color:#2563eb;word-break:break-all;margin-bottom:6px;"></div>
             <div id="dev-url-removed" style="font-size:11px;color:var(--text2);"></div>
+            <button class="report-btn" id="dev-url-report-btn" style="display:none;margin-top:8px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;" data-i18n="dev_url_report_btn">Report a problem with this URL</button>
           </div>
         </div>
       </div>
