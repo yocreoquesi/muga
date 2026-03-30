@@ -200,6 +200,17 @@ header {
   font-size: 11.5px;
 }
 
+.report-link {
+  display: block;
+  font-size: 10px;
+  color: var(--text2);
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.report-link:hover { color: var(--accent); }
+.report-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 
 /* Session history */
 .history { border-top: 0.5px solid var(--border); }

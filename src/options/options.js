@@ -237,7 +237,6 @@ function renderCategories(disabledCategories) {
 
 function renderStores() {
   const allStores = getSupportedStores();
-  // Only show stores where an affiliate tag has been configured.
   const activeStores = allStores.filter(s => s.ourTag && s.ourTag.trim() !== "");
 
   const grid = document.getElementById("stores-grid");
@@ -245,7 +244,6 @@ function renderStores() {
   grid.innerHTML = "";
 
   if (activeStores.length === 0) {
-    // Hide the stores grid and hint; show a placeholder message instead.
     grid.hidden = true;
     if (hintEl) hintEl.hidden = true;
     const placeholder = document.createElement("p");
@@ -261,32 +259,101 @@ function renderStores() {
   grid.hidden = false;
   if (hintEl) hintEl.hidden = false;
 
-  activeStores.forEach(s => {
+  // Group stores by brand
+  const groups = new Map();
+  for (const s of activeStores) {
+    const key = s.group || s.name;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+
+  for (const [groupName, stores] of groups) {
+    const isSingle = stores.length === 1;
+
     const chip = document.createElement("div");
-    chip.className = "store-chip";
+    chip.className = "store-chip" + (isSingle ? "" : " store-group");
 
     const dot = document.createElement("div");
     dot.className = "store-dot active";
 
     const info = document.createElement("div");
+    info.className = "store-info";
 
-    const nameEl = document.createElement("div");
+    const header = document.createElement("div");
+    header.className = "store-header";
+
+    const nameEl = document.createElement("span");
     nameEl.className = "store-name";
-    nameEl.textContent = s.name;
+    nameEl.textContent = groupName;
+    header.appendChild(nameEl);
 
-    const paramEl = document.createElement("div");
-    paramEl.className = "store-param";
-    paramEl.textContent = s.param + "=";
+    if (!isSingle) {
+      const countBadge = document.createElement("span");
+      countBadge.className = "store-count";
+      countBadge.textContent = `(${stores.length})`;
+      header.appendChild(countBadge);
 
-    info.appendChild(nameEl);
-    info.appendChild(paramEl);
+      const arrow = document.createElement("span");
+      arrow.className = "store-arrow";
+      arrow.textContent = "›";
+      header.appendChild(arrow);
+    }
+
+    info.appendChild(header);
+
+    if (isSingle) {
+      const paramEl = document.createElement("div");
+      paramEl.className = "store-param";
+      paramEl.textContent = `${stores[0].param}=${stores[0].ourTag}`;
+      info.appendChild(paramEl);
+    } else {
+      const detail = document.createElement("div");
+      detail.className = "store-detail";
+      detail.hidden = true;
+
+      for (const s of stores) {
+        const row = document.createElement("div");
+        row.className = "store-detail-row";
+
+        const rowDot = document.createElement("div");
+        rowDot.className = "store-dot active";
+
+        const rowInfo = document.createElement("div");
+
+        const rowName = document.createElement("div");
+        rowName.className = "store-name";
+        rowName.textContent = s.name;
+
+        const rowParam = document.createElement("div");
+        rowParam.className = "store-param";
+        rowParam.textContent = `${s.param}=${s.ourTag}`;
+
+        rowInfo.appendChild(rowName);
+        rowInfo.appendChild(rowParam);
+        row.appendChild(rowDot);
+        row.appendChild(rowInfo);
+        detail.appendChild(row);
+      }
+
+      info.appendChild(detail);
+
+      chip.addEventListener("click", () => {
+        const open = !detail.hidden;
+        detail.hidden = open;
+        chip.classList.toggle("open", !open);
+      });
+    }
+
     chip.appendChild(dot);
     chip.appendChild(info);
     grid.appendChild(chip);
-  });
+  }
 
   const countEl = document.getElementById("stores-count");
-  if (countEl) countEl.textContent = `(${activeStores.length})`;
+  if (countEl) {
+    const brandCount = groups.size;
+    countEl.textContent = `(${brandCount})`;
+  }
 }
 
 function initLanguageSelect() {
@@ -476,6 +543,34 @@ function syncDevTools() {
 }
 
 function initDevTools() {
+  // Report broken site: opens a pre-filled GitHub issue
+  const reportBrokenBtn = document.getElementById("dev-report-broken-btn");
+  if (reportBrokenBtn) {
+    reportBrokenBtn.addEventListener("click", async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const hostname = tab?.url ? new URL(tab.url).hostname : "unknown";
+      const version = chrome.runtime.getManifest().version;
+      const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+      const features = [
+        prefs.dnrEnabled && "DNR",
+        prefs.blockPings && "ping-blocking",
+        prefs.ampRedirect && "AMP-redirect",
+        prefs.unwrapRedirects && "redirect-unwrap",
+      ].filter(Boolean).join(", ") || "default";
+      const title = encodeURIComponent(`[Report] ${hostname}`);
+      const body = encodeURIComponent(
+        `## Broken site report\n\n` +
+        `**Domain:** ${hostname}\n` +
+        `**MUGA version:** ${version}\n` +
+        `**Browser:** ${navigator.userAgent}\n` +
+        `**Features active:** ${features}\n\n` +
+        `## What broke?\n\n` +
+        `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
+      );
+      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site`, "_blank");
+    });
+  }
+
   // Preview notification: replicas the real affiliate toast from content/cleaner.js
   const previewBtn = document.getElementById("dev-preview-notify-btn");
   if (!previewBtn) return;
