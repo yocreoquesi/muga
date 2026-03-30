@@ -12,9 +12,8 @@
  *   - Whitelist — protected affiliate values are never touched
  *   - Edge cases: invalid URLs, no query string, empty ourTag
  *
- * NOTE: Affiliate injection and foreign-detection tests that depend on
- * ourTag will be marked as TODO until affiliate accounts are registered
- * and the values are filled in src/lib/affiliates.js.
+ * Amazon Associates tags are active for ES/DE/FR/IT/UK/US.
+ * Full preference interaction matrix tested below.
  */
 
 import { test, describe, before, after } from "node:test";
@@ -504,6 +503,164 @@ describe("Amazon affiliate tags — real tag injection per marketplace", () => {
       assert.notEqual(action, "detected_foreign");
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Preference interaction matrix — all toggle combinations with real Amazon tags
+// ---------------------------------------------------------------------------
+describe("Preference interaction matrix — amazon.es with real tags", () => {
+  const BASE = "https://www.amazon.es/dp/B08N5WRWNW";
+  const WITH_FOREIGN = `${BASE}?tag=creator-21`;
+  const WITH_OUR = `${BASE}?tag=muga0b-21`;
+  const WITH_TRACKING = `${BASE}?tag=creator-21&utm_source=email&fbclid=abc`;
+  const CLEAN = BASE;
+
+  // --- inject:OFF, stripAll:OFF, notify:OFF (default) ---
+  test("all OFF + foreign tag → tag preserved, tracking stripped", () => {
+    const { cleanUrl, action } = processUrl(WITH_TRACKING, { ...PREFS }, domainRules);
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("tag"), "creator-21", "foreign tag preserved");
+    assert.equal(u.searchParams.get("utm_source"), null, "tracking stripped");
+    assert.equal(u.searchParams.get("fbclid"), null, "tracking stripped");
+  });
+
+  test("all OFF + no tag → no injection", () => {
+    const { cleanUrl, action } = processUrl(CLEAN, { ...PREFS }, domainRules);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
+    assert.notEqual(action, "injected");
+  });
+
+  // --- inject:ON, stripAll:OFF, notify:OFF ---
+  test("inject ON + no tag → our tag injected", () => {
+    const { cleanUrl, action } = processUrl(CLEAN, { ...PREFS, injectOwnAffiliate: true }, domainRules);
+    assert.equal(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+  });
+
+  test("inject ON + foreign tag → foreign tag preserved, no injection", () => {
+    const { cleanUrl, action } = processUrl(WITH_FOREIGN, { ...PREFS, injectOwnAffiliate: true }, domainRules);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "creator-21");
+    assert.notEqual(action, "injected");
+  });
+
+  test("inject ON + our tag already present → no change", () => {
+    const { cleanUrl, action } = processUrl(WITH_OUR, { ...PREFS, injectOwnAffiliate: true }, domainRules);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+    assert.notEqual(action, "injected");  // already there, no need to inject
+  });
+
+  // --- inject:OFF, stripAll:ON ---
+  test("stripAll ON + foreign tag → tag removed, URL clean", () => {
+    const { cleanUrl } = processUrl(WITH_FOREIGN, { ...PREFS, stripAllAffiliates: true }, domainRules);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
+  });
+
+  test("stripAll ON + our tag → our tag preserved (stripAll only removes others)", () => {
+    const { cleanUrl } = processUrl(WITH_OUR, { ...PREFS, stripAllAffiliates: true }, domainRules);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+  });
+
+  // --- inject:ON, stripAll:ON (the key ethical test) ---
+  test("inject ON + stripAll ON + foreign tag → foreign removed, ours NOT injected", () => {
+    const { cleanUrl, action } = processUrl(
+      WITH_FOREIGN,
+      { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
+      domainRules
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null, "no tag at all — ethical guard");
+    assert.notEqual(action, "injected", "must NOT inject when stripAll is on");
+  });
+
+  test("inject ON + stripAll ON + no tag → no injection either", () => {
+    const { cleanUrl, action } = processUrl(
+      CLEAN,
+      { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
+      domainRules
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
+    assert.notEqual(action, "injected");
+  });
+
+  test("inject ON + stripAll ON + our tag already present → our tag preserved", () => {
+    const { cleanUrl } = processUrl(
+      WITH_OUR,
+      { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
+      domainRules
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21", "own tag preserved when inject+stripAll");
+  });
+
+  // --- notify:ON interactions ---
+  test("notify ON + foreign tag → detected_foreign", () => {
+    const { action, detectedAffiliate } = processUrl(
+      WITH_FOREIGN,
+      { ...PREFS, notifyForeignAffiliate: true },
+      domainRules
+    );
+    assert.equal(action, "detected_foreign");
+    assert.equal(detectedAffiliate.value, "creator-21");
+  });
+
+  test("notify ON + our tag → NOT flagged as foreign", () => {
+    const { action } = processUrl(
+      WITH_OUR,
+      { ...PREFS, notifyForeignAffiliate: true },
+      domainRules
+    );
+    assert.notEqual(action, "detected_foreign");
+  });
+
+  test("notify ON + stripAll ON → notify skipped (stripAll takes priority)", () => {
+    const { action } = processUrl(
+      WITH_FOREIGN,
+      { ...PREFS, notifyForeignAffiliate: true, stripAllAffiliates: true },
+      domainRules
+    );
+    assert.notEqual(action, "detected_foreign", "no notification when stripAll is removing it anyway");
+  });
+
+  // --- whitelist interactions ---
+  test("whitelist protects foreign tag even with stripAll ON", () => {
+    const { cleanUrl } = processUrl(
+      WITH_FOREIGN,
+      { ...PREFS, stripAllAffiliates: true, whitelist: ["amazon.es::tag::creator-21"] },
+      domainRules
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "creator-21", "whitelisted tag survives stripAll");
+  });
+
+  test("whitelist protects foreign tag from notify", () => {
+    const { action } = processUrl(
+      WITH_FOREIGN,
+      { ...PREFS, notifyForeignAffiliate: true, whitelist: ["amazon.es::tag::creator-21"] },
+      domainRules
+    );
+    assert.notEqual(action, "detected_foreign", "whitelisted tag not flagged");
+  });
+
+  // --- blacklist interactions ---
+  test("blacklist removes specific tag + suppresses injection", () => {
+    const { cleanUrl, action } = processUrl(
+      WITH_FOREIGN,
+      { ...PREFS, injectOwnAffiliate: true, blacklist: ["amazon.es::tag::creator-21"] },
+      domainRules
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null, "blacklisted tag removed");
+    assert.notEqual(action, "injected", "injection suppressed after blacklist removal (#183)");
+  });
+
+  // --- global tracking params never strip affiliate param ---
+  test("global tracking rules do not strip 'tag' param on Amazon", () => {
+    const { cleanUrl } = processUrl(
+      `${BASE}?tag=creator-21&utm_source=fb&gclid=abc`,
+      { ...PREFS },
+      domainRules
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("tag"), "creator-21", "affiliate param protected from global rules");
+    assert.equal(u.searchParams.get("utm_source"), null, "tracking stripped");
+    assert.equal(u.searchParams.get("gclid"), null, "tracking stripped");
+  });
 });
 
 // ---------------------------------------------------------------------------

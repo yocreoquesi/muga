@@ -50,7 +50,7 @@ export const TRANSLATIONS = {
   row_notify_label: { en: "Alert me when a link has someone else's affiliate tag", es: "Avisarme cuando un enlace tenga el tag de afiliado de otro" },
   row_notify_hint:  { en: "Shows a quick notification with options. Auto-dismisses in 15 seconds", es: "Muestra una notificación rápida con opciones. Desaparece en 15 segundos" },
   row_strip_affiliates_label: { en: "Remove all affiliate tags from other sources",          es: "Eliminar todos los tags de afiliado ajenos" },
-  row_strip_affiliates_hint:  { en: "Removes affiliate tags placed by others from all links. Our tag is preserved when injection is active.", es: "Elimina los tags de afiliado de otros de todos los enlaces. Nuestro tag se conserva cuando la inyección está activa." },
+  row_strip_affiliates_hint:  { en: "Removes affiliate tags placed by others from all links. Our tag is always preserved.", es: "Elimina los tags de afiliado de otros de todos los enlaces. Nuestro tag siempre se conserva." },
   section_stores:    { en: "Affiliate stores", es: "Tiendas afiliadas" },
   stores_hint:       { en: "Green dot = affiliate account active and configured. Grey = account pending registration.", es: "Punto verde = cuenta de afiliado activa. Gris = cuenta pendiente de registro." },
   no_active_stores:  { en: "No affiliate accounts configured yet.", es: "No hay cuentas de afiliado configuradas aún." },
