@@ -31,6 +31,7 @@ export const PREF_DEFAULTS = {
   //           breaking options.js which reads it via getPrefs(). (#259)
   toastDuration: 15,  // seconds: how long the affiliate notification stays visible
   devMode: false,
+  persistLog: false,  // opt-in: keep debug log across browser restarts
 };
 
 export async function getPrefs() {
@@ -200,6 +201,42 @@ export const sessionStorage = {
     return Promise.resolve();
   },
 };
+
+// NOTE: URL history is intentionally session-only. Persisting cleaned URLs
+// would create a local browsing history, violating our privacy commitments.
+// Evaluated and rejected 2026-03-30. See options.js initExportImport for context.
+
+// ── Persistent debug log (opt-in) ──────────────────────────────────────────
+// Circular buffer in chrome.storage.local. Max 200 entries, ~100KB worst-case.
+// Only active when user enables persistLog in Advanced settings.
+
+const LOG_MAX_ENTRIES = 200;
+
+export async function appendPersistentLog(entry) {
+  const { persistentLog = [] } = await new Promise(resolve =>
+    chrome.storage.local.get({ persistentLog: [] }, resolve)
+  );
+  persistentLog.push(entry);
+  if (persistentLog.length > LOG_MAX_ENTRIES) {
+    persistentLog.splice(0, persistentLog.length - LOG_MAX_ENTRIES);
+  }
+  await new Promise(resolve =>
+    chrome.storage.local.set({ persistentLog }, resolve)
+  );
+}
+
+export async function getPersistentLog() {
+  const { persistentLog = [] } = await new Promise(resolve =>
+    chrome.storage.local.get({ persistentLog: [] }, resolve)
+  );
+  return persistentLog;
+}
+
+export async function clearPersistentLog() {
+  await new Promise(resolve =>
+    chrome.storage.local.set({ persistentLog: [] }, resolve)
+  );
+}
 
 /**
  * One-time migration: moves stats out of chrome.storage.sync into

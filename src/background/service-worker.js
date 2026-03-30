@@ -5,7 +5,7 @@
  */
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, appendPersistentLog, getPersistentLog } from "../lib/storage.js";
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
 //       top-level await disallowed in Chrome MV3 service workers)
@@ -31,6 +31,10 @@ function appendSessionLog(level, args) {
   sessionStorage.get({ debugLog: [] }).then(data => {
     const log = [entry, ...data.debugLog].slice(0, SESSION_LOG_MAX);
     sessionStorage.set({ debugLog: log }).catch(() => {});
+  }).catch(() => {});
+  // Also write to persistent log if opt-in is enabled
+  getPrefs().then(prefs => {
+    if (prefs.persistLog) appendPersistentLog(entry);
   }).catch(() => {});
 }
 
@@ -287,9 +291,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "GET_DEBUG_LOG") {
-    sessionStorage.get({ debugLog: [] })
-      .then(data => sendResponse({ log: data.debugLog }))
-      .catch(() => sendResponse({ log: [] }));
+    (async () => {
+      try {
+        const data = await sessionStorage.get({ debugLog: [] });
+        const sessionLog = data.debugLog || [];
+        const prefs = await getPrefsWithCache();
+        if (prefs.persistLog) {
+          const persistentLog = await getPersistentLog();
+          // Merge: deduplicate by timestamp, session entries take priority
+          const sessionTs = new Set(sessionLog.map(e => e.ts));
+          const merged = [...sessionLog];
+          for (const entry of persistentLog) {
+            if (!sessionTs.has(entry.ts)) merged.push(entry);
+          }
+          merged.sort((a, b) => b.ts - a.ts);
+          sendResponse({ log: merged });
+        } else {
+          sendResponse({ log: sessionLog });
+        }
+      } catch {
+        sendResponse({ log: [] });
+      }
+    })();
     return true;
   }
 
