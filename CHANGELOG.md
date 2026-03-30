@@ -2,6 +2,13 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.8.2] - 2026-03-30
+
+### Fixes (Chrome Web Store rejection)
+- **Permission**: `declarativeNetRequest` replaced with `declarativeNetRequestWithHostAccess` (required for redirect-type DNR rules in MV3)
+- **Permission**: `tabs` replaced with `activeTab` (narrower scope, all `tab.url` access is user-gesture-triggered)
+- **Privacy policy**: public URL at `https://yocreoquesi.github.io/muga/privacy-page.html` for CWS submission
+
 ## [1.8.1] - 2026-03-30
 
 ### Fixes

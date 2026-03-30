@@ -407,6 +407,24 @@ describe("manifest.json integrity", () => {
     }
   });
 
+  test("MV3 uses declarativeNetRequestWithHostAccess (not declarativeNetRequest) for redirect rules", () => {
+    assert.ok(
+      mv3.permissions.includes("declarativeNetRequestWithHostAccess"),
+      "MV3 must use declarativeNetRequestWithHostAccess for redirect-type DNR rules"
+    );
+    assert.ok(
+      !mv3.permissions.includes("declarativeNetRequest"),
+      "MV3 must NOT use plain declarativeNetRequest (insufficient for redirect rules)"
+    );
+  });
+
+  test("neither manifest requests the tabs permission (use activeTab instead)", () => {
+    assert.ok(!mv3.permissions.includes("tabs"), "MV3 must not request tabs permission");
+    assert.ok(!mv2.permissions.includes("tabs"), "MV2 must not request tabs permission");
+    assert.ok(mv3.permissions.includes("activeTab"), "MV3 must use activeTab");
+    assert.ok(mv2.permissions.includes("activeTab"), "MV2 must use activeTab");
+  });
+
   // Prevent em dashes sneaking back into user-visible manifest fields
   test("no em dashes in manifest name or description fields", () => {
     const fields = [mv3.name, mv3.description, mv2.name, mv2.description];
@@ -431,9 +449,15 @@ describe("manifest.json integrity", () => {
     );
   });
 
-  test("MV3 and MV2 declare the same permissions (excluding host_permissions)", () => {
-    const mv3Perms = new Set(mv3.permissions);
-    const mv2Perms = new Set(mv2.permissions.filter(p => p !== "<all_urls>"));
+  test("MV3 and MV2 declare the same permissions (excluding host_permissions and MV-specific equivalents)", () => {
+    // MV3 uses declarativeNetRequestWithHostAccess (required for redirect rules in MV3)
+    // MV2 uses declarativeNetRequest (Firefox MV2 doesn't support the WithHostAccess variant)
+    const MV_EQUIVALENTS = new Map([
+      ["declarativeNetRequestWithHostAccess", "declarativeNetRequest"],
+    ]);
+    const normalize = (p) => MV_EQUIVALENTS.get(p) ?? p;
+    const mv3Perms = new Set(mv3.permissions.map(normalize));
+    const mv2Perms = new Set(mv2.permissions.filter(p => p !== "<all_urls>").map(normalize));
     for (const p of mv3Perms) {
       assert.ok(mv2Perms.has(p), `Permission "${p}" in MV3 but missing from MV2`);
     }
