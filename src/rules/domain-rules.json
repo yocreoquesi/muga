@@ -12,7 +12,7 @@
   },
   {
     "domain": "duckduckgo.com",
-    "preserveParams": ["q", "t", "ia", "iax", "iaxm", "kl", "kp", "kz", "km", "ks", "ko", "kt", "ka", "kf", "kaf", "kac", "kad", "kd", "kh", "kn", "ko", "kp", "kr", "kg", "kb", "kv", "kw"],
+    "preserveParams": ["q", "t", "ia", "iax", "iaxm", "kl", "kp", "kz", "km", "ks", "ko", "kt", "ka", "kf", "kaf", "kac", "kad", "kd", "kh", "kn", "kr", "kg", "kb", "kv", "kw"],
     "note": "Search query and settings: functional"
   },
   {
@@ -459,10 +459,16 @@
     "note": "Kakao/Daum search portal: Korean search engine"
   },
   {
+    "domain": "danawa.com",
+    "preserveParams": ["q", "keyword", "page", "sort", "cate", "brand", "minPrice", "maxPrice", "prdCd"],
+    "stripParams": ["logger_kw", "loc", "DA_PG", "DA_STC", "DA_STC2", "DA_SOC", "DA_SOC2", "checkedProdCount", "previousCheckedProdCount", "volumeType", "brandCodeArray", "prdInfoLink", "cmpnyInfoLink", "adAttributeCode"],
+    "note": "Korea's largest price comparison site. go_link_goods.php is a redirect wrapper (handled by redirect-unwrap via url= param)."
+  },
+  {
     "domain": "coupang.com",
-    "preserveParams": ["q", "page", "sorter", "minPrice", "maxPrice", "brand", "rating", "rocketAll", "filterType", "itemId", "vendorItemId", "pickType"],
-    "stripParams": ["channel", "component", "eventCategory", "trcid", "traid", "traceId", "clickEventId", "searchId", "src", "spec", "sourceType", "rmdId", "isAddedCart", "searchProductType", "campaignId", "rank", "listSize", "isPriceRange"],
-    "note": "Korea's largest e-commerce. subId/hmKeyword are Coupang Partners affiliate params: never stripped."
+    "preserveParams": ["q", "page", "sorter", "minPrice", "maxPrice", "brand", "rating", "rocketAll", "filterType", "pickType"],
+    "stripParams": ["channel", "component", "eventCategory", "trcid", "traid", "traceId", "clickEventId", "searchId", "src", "spec", "sourceType", "rmdId", "isAddedCart", "searchProductType", "campaignId", "rank", "listSize", "isPriceRange", "itemId", "vendorItemId", "addtag", "ctag", "lptag", "itime", "pageType", "pageValue", "wPcid", "wRef", "wTime", "redirect", "mcid"],
+    "note": "Korea's largest e-commerce. Product ID is in the URL path (/vp/products/ID), so itemId/vendorItemId are tracking noise. subId/hmKeyword are Coupang Partners affiliate params: never stripped."
   },
   {
     "domain": "gmarket.co.kr",

@@ -13,7 +13,7 @@
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #111; --bg2: #1c1c1e; --border: rgba(255,255,255,0.08);
-        --text: #f0f0f0; --text2: #999; --accent: #60a5fa;
+        --text: #f0f0f0; --text2: #aaa; --accent: #60a5fa;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -206,7 +206,7 @@
           The source code is public. You can verify this yourself.
         </div>
         <label class="consent-check" id="affiliate-label">
-          <input type="checkbox" id="affiliate-check">
+          <input type="checkbox" id="affiliate-check" aria-label="Enable affiliate support">
           <div class="consent-check-label">
             <strong data-i18n="ob_affiliate_check_label">Yes, support MUGA for free: allow our affiliate tag on links that have none</strong>
             <small data-i18n="ob_affiliate_check_hint">You always pay the same price. You can disable this in Settings at any time.</small>
@@ -218,7 +218,7 @@
     <!-- ToS acceptance -->
     <div class="tos-section">
       <label class="tos-check" id="tos-label">
-        <input type="checkbox" id="tos-check">
+        <input type="checkbox" id="tos-check" aria-label="Accept terms of use">
         <div class="tos-check-label" data-i18n-html="ob_tos_label">
           I have read and accept the
           <a href="../privacy/tos.html" target="_blank">Terms of use</a>

@@ -98,12 +98,12 @@ export function getPreservedParams(hostname, domainRules = []) {
  * The clean form is: /dp/B0GQ4N9N33/
  */
 function cleanAmazonPath(hostname, pathname) {
-  if (!/amazon\.[a-z.]+$/.test(hostname)) return pathname;
+  if (!/(?:^|\.)amazon\.[a-z.]+$/.test(hostname)) return pathname;
   return pathname
     // Strip product-name slug that precedes /dp/ASIN (e.g. /UGREEN-Adaptador/dp/B0B9N3QSL3/)
-    .replace(/\/[^/]+\/dp\/([A-Z0-9]{10})/, "/dp/$1")
-    .replace(/(\/dp\/[A-Z0-9]{10})\/.+/, "$1/")
-    .replace(/(\/gp\/product\/[A-Z0-9]{10})\/.+/, "$1/")
+    .replace(/\/[^/]+\/dp\/([A-Za-z0-9]{10})/, "/dp/$1")
+    .replace(/(\/dp\/[A-Za-z0-9]{10})\/.+/, "$1/")
+    .replace(/(\/gp\/product\/[A-Za-z0-9]{10})\/.+/, "$1/")
     .replace(/\/ref=[^/?#]*/g, "") || "/";
 }
 

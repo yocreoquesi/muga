@@ -148,8 +148,8 @@ async function init() {
     const text = `${pick}\n\n${storeUrl}`;
 
     navigator.clipboard.writeText(text).then(() => {
-      shareBtn.textContent = "✓ Copied!";
-      setTimeout(() => { shareBtn.textContent = "📋 Share"; }, 1500);
+      shareBtn.textContent = "✓ " + t("share_copied", lang);
+      setTimeout(() => { shareBtn.textContent = "📋 " + t("share_btn", lang); }, 1500);
     }).catch(() => {});
   });
 

@@ -222,6 +222,7 @@ header {
 .history-entry {
   padding: 4px 16px 5px;
   border-top: 0.5px solid var(--border);
+  cursor: pointer;
 }
 
 .history-url {
@@ -260,9 +261,6 @@ header {
 .history-copy-clean-btn:hover { opacity: 1; color: var(--accent); }
 .history-entry.copied .history-copy-clean-btn { color: var(--success); opacity: 1; }
 
-.history-entry {
-  cursor: pointer;
-}
 .history-entry:hover { background: var(--bg2); }
 .history-entry:hover .history-url.after { text-decoration: underline; }
 .history-entry.copied .history-url.after { color: var(--success); }

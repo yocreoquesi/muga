@@ -36,6 +36,10 @@ export const TRANSLATIONS = {
   history_copied:       { en: "Copied!", es: "¡Copiado!" },
   history_copy_original: { en: "Copy with tracking", es: "Copiar con rastreo" },
   show_history:          { en: "Show history", es: "Mostrar historial" },
+  share_copied:          { en: "Copied!", es: "Copiado!" },
+  share_btn:             { en: "Share", es: "Compartir" },
+  confirm_cancel:        { en: "Cancel", es: "Cancelar" },
+  confirm_ok:            { en: "OK", es: "OK" },
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Settings", es: "Ajustes" },

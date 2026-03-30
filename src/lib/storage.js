@@ -75,9 +75,20 @@ const STAT_DEFAULTS = {
 };
 
 export async function getStats() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(STAT_DEFAULTS, resolve);
-  });
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.get(STAT_DEFAULTS, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getStats failed:", err);
+    return { ...STAT_DEFAULTS };
+  }
 }
 
 export async function setStats(partial) {
@@ -123,10 +134,13 @@ async function _flushStats() {
 export function incrementStat(key, amount = 1) {
   _pendingStats[key] = (_pendingStats[key] || 0) + amount;
   if (!_statsFlushTimer) {
-    // C13: use microtask instead of 100ms timer to minimize the window where
-    // pending stats can be lost if the MV3 service worker is terminated.
-    _statsFlushTimer = true;
-    Promise.resolve().then(_flushStats).catch(() => { _statsFlushTimer = false; });
+    // MV3 service workers can be terminated at any time without firing onSuspend,
+    // so a microtask is not reliable -- the worker may be killed before the
+    // microtask queue drains. A short setTimeout gives the JS engine a chance to
+    // finish the current task first while still batching rapid calls together.
+    // Trade-off: a ~50ms window remains where a sudden termination can still lose
+    // the pending increment, but this is acceptable for non-critical counters.
+    _statsFlushTimer = setTimeout(_flushStats, 50);
   }
 }
 

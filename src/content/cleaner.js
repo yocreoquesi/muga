@@ -26,6 +26,7 @@
     const now = Date.now();
     const entry = _rewriteLog.get(hostname);
     if (!entry || now - entry.firstTs > 2000) {
+      if (_rewriteLog.size > 200) _rewriteLog.clear();
       _rewriteLog.set(hostname, { count: 1, firstTs: now });
       return false;
     }
@@ -172,9 +173,13 @@
     e.preventDefault();
 
     try {
-      // Clean each unique URL found in the text
+      // Clean each unique URL found in the text.
+      // Sort matches by length descending so longer URLs are replaced first,
+      // preventing a shorter URL that is a prefix of a longer one from
+      // corrupting the longer URL during replaceAll.
+      const sortedMatches = [...matches].sort((a, b) => b[0].length - a[0].length);
       let result = trimmed;
-      for (const match of matches) {
+      for (const match of sortedMatches) {
         const rawUrl = match[0];
         // Strip trailing punctuation that is unlikely to be part of the URL
         const cleanCandidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
@@ -247,8 +252,16 @@
 
     e.preventDefault();
 
+    // Wrap sendMessage in a 3-second timeout so that if the service worker is
+    // dead or unresponsive the user is not left with a dead click. On timeout
+    // we fall through to the catch block which navigates to the original href.
+    const sendWithTimeout = (msg) => Promise.race([
+      chrome.runtime.sendMessage(msg),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("muga_sw_timeout")), 3000)),
+    ]);
+
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendWithTimeout({
         type: "PROCESS_URL",
         url: href,
       });
@@ -456,8 +469,9 @@
       });
       observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["ping"] });
 
-      // Neutralize navigator.sendBeacon: prevents beacon-based tracking
-      try { navigator.sendBeacon = () => true; } catch { /* frozen in strict contexts */ }
+      // sendBeacon override removed: MV3 content scripts run in an isolated world,
+      // so overriding navigator.sendBeacon here has no effect on page-initiated
+      // beacons. Ping blocking is handled via <a ping> attribute removal instead.
     }
   });
 })();
