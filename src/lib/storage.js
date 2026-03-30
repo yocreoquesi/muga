@@ -92,8 +92,15 @@ export async function getStats() {
 }
 
 export async function setStats(partial) {
-  return new Promise(resolve => {
-    chrome.storage.local.set(partial, resolve);
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(partial, () => {
+      if (chrome.runtime.lastError) {
+        console.error("[MUGA] setStats failed:", chrome.runtime.lastError.message);
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve();
+      }
+    });
   });
 }
 
