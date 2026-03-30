@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, getPersistentLog } from "../lib/storage.js";
+import { PREF_DEFAULTS } from "../lib/storage.js";
 
 let currentLang = "en";
 
@@ -115,7 +115,6 @@ async function init() {
   initExportImport();
 
   bindToggle("dev-mode", "devMode", prefs);
-  bindToggle("persist-log", "persistLog", prefs);
   syncDevTools();
   document.getElementById("dev-mode").addEventListener("change", syncDevTools);
   initDevTools();
@@ -383,7 +382,6 @@ function initExportImport() {
       disabledCategories: prefs.disabledCategories,
       language: prefs.language,
       devMode: prefs.devMode,
-      persistLog: prefs.persistLog,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -421,7 +419,7 @@ function initExportImport() {
       if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode", "persistLog"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -451,7 +449,6 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("dev-mode").checked = newPrefs.devMode;
-      document.getElementById("persist-log").checked = newPrefs.persistLog;
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
       syncDevTools();
       if (toSave.language) {
@@ -656,15 +653,6 @@ function initDevTools() {
       stats: localData.stats,
       session_log: log,
     };
-
-    // Include persistent log as a separate field when enabled
-    if (prefs.persistLog) {
-      try {
-        payload.persistent_log = await getPersistentLog();
-      } catch {
-        payload.persistent_log = [];
-      }
-    }
 
     let jsonStr = JSON.stringify(payload, null, 2);
     // Enforce 2MB limit: trim oldest log entries if needed

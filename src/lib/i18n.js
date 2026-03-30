@@ -25,7 +25,7 @@ export const TRANSLATIONS = {
   stat_junk:       { en: "tracking params removed", es: "parámetros eliminados" },
   stat_referrals:  { en: "affiliate tags detected", es: "tags de afiliado detectados" },
   preview_label:   { en: "This page",                     es: "Esta página" },
-  history_label:        { en: "Recent",                               es: "Recientes" },
+  history_label:        { en: "This session",                          es: "Esta sesión" },
   history_empty:        { en: "No URLs cleaned yet. Start browsing. MUGA works automatically.", es: "Aún no se han limpiado URLs. Navega normalmente. MUGA funciona automáticamente." },
   toggle_enabled:  { en: "Enable MUGA",                   es: "Activar MUGA" },
   toggle_title:    { en: "Enable / disable MUGA",        es: "Activar / desactivar MUGA" },
@@ -134,8 +134,6 @@ export const TRANSLATIONS = {
   dev_url_clean:              { en: "No tracking params found. URL is already clean.",                   es: "Sin parámetros de rastreo. La URL ya está limpia." },
   dev_url_action:             { en: "Action: %s",                                                        es: "Acción: %s" },
   dev_url_report_btn:         { en: "Report a problem with this URL",                                    es: "Reportar un problema con esta URL" },
-  dev_persist_log_label:      { en: "Persist debug log",                                                 es: "Guardar log entre sesiones" },
-  dev_persist_log_hint:       { en: "Keep debug log across browser restarts. Stored locally, never transmitted.", es: "Conserva el log de depuración entre reinicios del navegador. Almacenado localmente, nunca se transmite." },
 
   // ── Context menu ─────────────────────────────────────────────────────────
   ctx_copy_clean_link:      { en: "Copy clean link",                       es: "Copiar enlace limpio" },

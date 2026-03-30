@@ -65,7 +65,6 @@ describe("export settings (source verification)", () => {
       "unwrapRedirects",
       "contextMenuEnabled",
       "devMode",
-      "persistLog",
     ];
     // Verify each boolean key appears in the export payload block
     for (const key of EXPECTED_BOOL_KEYS) {
