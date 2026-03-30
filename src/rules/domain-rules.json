@@ -507,6 +507,30 @@
     "note": "Korea's top beauty/cosmetics retailer"
   },
   {
+    "domain": "shopping.naver.com",
+    "preserveParams": ["query", "nv_mid", "cat_id", "catId", "productId", "pagingIndex", "pagingSize", "viewType", "sort"],
+    "stripParams": ["frm", "t", "h", "bt", "NaPm", "nv_ad", "adId", "nv_chnl", "nv_src"],
+    "note": "Naver Shopping. Product clicks via cr3.shopping.naver.com are redirect wrappers (handled by redirect-unwrap via url= param). frm/t/h/NaPm are click attribution tracking."
+  },
+  {
+    "domain": "dcinside.com",
+    "preserveParams": ["id", "no", "page", "s_type", "s_keyword", "search_pos"],
+    "stripParams": ["from", "s_url", "s_key", "exception_mode"],
+    "note": "Korea's largest internet community/imageboard. from is referral tracking, s_url/s_key are login redirect session params."
+  },
+  {
+    "domain": "namu.wiki",
+    "preserveParams": ["q", "page", "target", "rev", "oldrev"],
+    "stripParams": ["from"],
+    "note": "Korea's Wikipedia equivalent. Path-based article URLs (/w/Title). Minimal query params; from is referral tracking."
+  },
+  {
+    "domain": "tistory.com",
+    "preserveParams": ["page", "category"],
+    "stripParams": [],
+    "note": "Kakao-owned blog platform. Path-based post URLs. Tracking is server-side (Kakao Tiara), not in URL params. Standard UTMs handled by global rules."
+  },
+  {
     "domain": "dzen.ru",
     "preserveParams": ["text"],
     "stripParams": ["from", "clid", "issue_tld"],

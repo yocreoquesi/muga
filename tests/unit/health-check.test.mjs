@@ -256,8 +256,8 @@ describe("Non-listed domain — all tracking stripped, no functional preservatio
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all 121 entries have domain, preserveParams (non-empty array), and note", () => {
-    assert.equal(domainRules.length, 121, `Expected 121 entries, got ${domainRules.length}`);
+  test("all 125 entries have domain, preserveParams (non-empty array), and note", () => {
+    assert.equal(domainRules.length, 125, `Expected 125 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);
@@ -508,6 +508,45 @@ describe("Danawa search URL cleaning", () => {
     assert.equal(u.searchParams.get("q"), "RTX 5070");
     assert.equal(u.searchParams.has("logger_kw"), false);
     assert.equal(u.searchParams.has("loc"), false);
+  });
+});
+
+describe("Naver Shopping URL cleaning", () => {
+  test("strips click attribution, preserves search params", () => {
+    const { cleanUrl, removedTracking } = clean(
+      "https://search.shopping.naver.com/search?query=laptop&sort=rel&frm=NVSCPRO&NaPm=ct%3Dabc&nv_ad=1"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("query"), "laptop");
+    assert.equal(u.searchParams.get("sort"), "rel");
+    assert.equal(u.searchParams.has("frm"), false);
+    assert.equal(u.searchParams.has("NaPm"), false);
+    assert.equal(u.searchParams.has("nv_ad"), false);
+  });
+});
+
+describe("DCInside URL cleaning", () => {
+  test("strips referral tracking, preserves gallery/post params", () => {
+    const { cleanUrl } = clean(
+      "https://gall.dcinside.com/board/view/?id=programming&no=2918073&page=1&from=A08&exception_mode=1"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("id"), "programming");
+    assert.equal(u.searchParams.get("no"), "2918073");
+    assert.equal(u.searchParams.get("page"), "1");
+    assert.equal(u.searchParams.has("from"), false);
+    assert.equal(u.searchParams.has("exception_mode"), false);
+  });
+});
+
+describe("Namu.wiki URL cleaning", () => {
+  test("strips from param on search URLs", () => {
+    const { cleanUrl } = clean(
+      "https://namu.wiki/search?q=Python&from=external"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "Python");
+    assert.equal(u.searchParams.has("from"), false);
   });
 });
 
