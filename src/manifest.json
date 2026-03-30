@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MUGA: Clean URLs, Fair to Every Click",
   "short_name": "MUGA",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Automatically cleans URLs by removing 452+ tracking params (utm, fbclid, gclid). AMP redirect, ping blocking. Open source, MV3.",
 
   "permissions": [
@@ -64,6 +64,13 @@
     "page": "options/options.html",
     "open_in_tab": true
   },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["onboarding/onboarding.html", "privacy/privacy.html", "privacy/tos.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
 
   "declarative_net_request": {
     "rule_resources": [
