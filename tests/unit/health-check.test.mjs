@@ -337,6 +337,84 @@ describe("manifest.json integrity", () => {
     const pkg = require("../../package.json");
     assert.equal(pkg.version, mv3.version, `package.json ${pkg.version} !== manifest.json ${mv3.version}`);
   });
+
+  // Prevent issue #272: custom keys cause Firefox warnings
+  test("MV2 has no custom/non-standard keys at root level", () => {
+    const standardMV2Keys = new Set([
+      "manifest_version", "name", "short_name", "version", "description",
+      "permissions", "optional_permissions", "background", "content_scripts",
+      "commands", "browser_action", "page_action", "options_ui",
+      "web_accessible_resources", "declarative_net_request", "icons",
+      "content_security_policy", "browser_specific_settings",
+      "default_locale", "homepage_url", "author", "developer",
+      "incognito", "minimum_chrome_version", "offline_enabled",
+      "omnibox", "options_page", "sidebar_action", "theme",
+      "chrome_url_overrides", "chrome_settings_overrides",
+      "devtools_page", "externally_connectable", "storage",
+    ]);
+    for (const key of Object.keys(mv2)) {
+      assert.ok(
+        standardMV2Keys.has(key),
+        `MV2 manifest has non-standard key "${key}" which will cause Firefox warnings`
+      );
+    }
+  });
+
+  test("MV3 has no custom/non-standard keys at root level", () => {
+    const standardMV3Keys = new Set([
+      "manifest_version", "name", "short_name", "version", "description",
+      "permissions", "optional_permissions", "host_permissions",
+      "background", "content_scripts", "commands", "action",
+      "options_ui", "options_page", "web_accessible_resources",
+      "declarative_net_request", "icons", "content_security_policy",
+      "default_locale", "homepage_url", "author", "developer",
+      "incognito", "minimum_chrome_version", "offline_enabled",
+      "omnibox", "side_panel", "devtools_page",
+      "externally_connectable", "storage", "key",
+      "chrome_url_overrides", "chrome_settings_overrides",
+    ]);
+    for (const key of Object.keys(mv3)) {
+      assert.ok(
+        standardMV3Keys.has(key),
+        `MV3 manifest has non-standard key "${key}" which may cause store rejection`
+      );
+    }
+  });
+
+  // Prevent em dashes sneaking back into user-visible manifest fields
+  test("no em dashes in manifest name or description fields", () => {
+    const fields = [mv3.name, mv3.description, mv2.name, mv2.description];
+    for (const field of fields) {
+      assert.ok(
+        !field.includes("\u2014"),
+        `Em dash found in manifest field: "${field}"`
+      );
+    }
+  });
+
+  // MV3 must declare web_accessible_resources for pages opened by the extension
+  test("MV3 has web_accessible_resources", () => {
+    assert.ok(
+      mv3.web_accessible_resources,
+      "MV3 manifest must declare web_accessible_resources for onboarding/privacy pages"
+    );
+    const allResources = mv3.web_accessible_resources.flatMap(r => r.resources || []);
+    assert.ok(
+      allResources.includes("onboarding/onboarding.html"),
+      "onboarding/onboarding.html must be in web_accessible_resources"
+    );
+  });
+
+  test("MV3 and MV2 declare the same permissions (excluding host_permissions)", () => {
+    const mv3Perms = new Set(mv3.permissions);
+    const mv2Perms = new Set(mv2.permissions.filter(p => p !== "<all_urls>"));
+    for (const p of mv3Perms) {
+      assert.ok(mv2Perms.has(p), `Permission "${p}" in MV3 but missing from MV2`);
+    }
+    for (const p of mv2Perms) {
+      assert.ok(mv3Perms.has(p), `Permission "${p}" in MV2 but missing from MV3`);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
