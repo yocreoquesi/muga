@@ -225,6 +225,40 @@ async function showUrlPreview(prefs, lang) {
       removedEl.textContent = `${t("removed_params_label", lang)} ${result.removedTracking.join(", ")}`;
       removedEl.hidden = false;
     }
+
+    // Report broken site: only for advanced users when URL was modified
+    if (prefs.devMode) {
+      const reportLink = document.getElementById("report-broken");
+      reportLink.hidden = false;
+      reportLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          const hostname = new URL(url).hostname;
+          const version = chrome.runtime.getManifest().version;
+          const removed = result.removedTracking?.join(", ") || "none";
+          const action = result.action || "none";
+          const features = [
+            prefs.dnrEnabled && "DNR",
+            prefs.blockPings && "ping-blocking",
+            prefs.ampRedirect && "AMP-redirect",
+            prefs.unwrapRedirects && "redirect-unwrap",
+          ].filter(Boolean).join(", ") || "default";
+          const title = encodeURIComponent(`[Report] ${hostname}`);
+          const body = encodeURIComponent(
+            `## Broken site report\n\n` +
+            `**Domain:** ${hostname}\n` +
+            `**MUGA version:** ${version}\n` +
+            `**Browser:** ${navigator.userAgent}\n` +
+            `**Action:** ${action}\n` +
+            `**Params removed:** ${removed}\n` +
+            `**Features active:** ${features}\n\n` +
+            `## What broke?\n\n` +
+            `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
+          );
+          chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site` });
+        } catch { /* invalid URL */ }
+      });
+    }
   }
 }
 

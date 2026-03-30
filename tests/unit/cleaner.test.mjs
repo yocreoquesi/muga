@@ -506,6 +506,49 @@ describe("Amazon affiliate tags — real tag injection per marketplace", () => {
 });
 
 // ---------------------------------------------------------------------------
+// eBay affiliate tags — real tag injection per marketplace
+// ---------------------------------------------------------------------------
+describe("eBay affiliate tags — real tag injection per marketplace", () => {
+  const INJECT_PREFS = { ...PREFS, injectOwnAffiliate: true };
+
+  const MARKETS = [
+    { domain: "www.ebay.com",   name: "US" },
+    { domain: "www.ebay.es",    name: "ES" },
+    { domain: "www.ebay.de",    name: "DE" },
+    { domain: "www.ebay.co.uk", name: "UK" },
+    { domain: "www.ebay.fr",    name: "FR" },
+    { domain: "www.ebay.it",    name: "IT" },
+  ];
+
+  for (const { domain, name } of MARKETS) {
+    test(`ebay.${name}: injects campid=5339147108 on clean URL`, () => {
+      const { action, cleanUrl } = processUrl(
+        `https://${domain}/itm/123456789`,
+        INJECT_PREFS
+      );
+      assert.equal(action, "injected", `${name} must inject`);
+      assert.equal(new URL(cleanUrl).searchParams.get("campid"), "5339147108");
+    });
+
+    test(`ebay.${name}: does NOT replace existing foreign campid`, () => {
+      const { cleanUrl } = processUrl(
+        `https://${domain}/itm/123456789?campid=9999999999`,
+        INJECT_PREFS
+      );
+      assert.equal(new URL(cleanUrl).searchParams.get("campid"), "9999999999");
+    });
+
+    test(`ebay.${name}: own campid is not flagged as foreign`, () => {
+      const { action } = processUrl(
+        `https://${domain}/itm/123456789?campid=5339147108`,
+        { ...PREFS, notifyForeignAffiliate: true }
+      );
+      assert.notEqual(action, "detected_foreign");
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Preference interaction matrix — all toggle combinations with real Amazon tags
 // ---------------------------------------------------------------------------
 describe("Preference interaction matrix — amazon.es with real tags", () => {

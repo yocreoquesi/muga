@@ -1,8 +1,8 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.8.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-585_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.9.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-715_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # MUGA: Clean URLs, Fair to Every Click
 
@@ -29,7 +29,7 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTu
 | Platform Noise | Amazon session IDs, eBay click params, AliExpress tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **120 domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
+Domain-specific rules for **167 domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
 
 ---
 
@@ -91,7 +91,7 @@ After:  https://www.ebay.es/itm/123456789
 - Whitelist: protect specific creator affiliate tags from detection
 - Custom tracking params: add your own parameter names
 - Strip all affiliate parameters (opt-in)
-- Replace detected third-party affiliate with ours (explicit opt-in)
+- Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
 - Export / Import settings as JSON
 - EN / ES language toggle
@@ -131,17 +131,21 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 - Every URL is processed **entirely inside your browser**. MUGA never acts behind your back.
 - Zero browsing data collected, zero analytics, zero telemetry
 - No account, no sign-in, no cloud
-- Minimal permissions: `storage`, `tabs`, `contextMenus`, `declarativeNetRequest`, `clipboardWrite`. Nothing else.
+- Minimal permissions: `storage`, `activeTab`, `contextMenus`, `declarativeNetRequestWithHostAccess`, `clipboardWrite`. Nothing else.
 
 ---
 
 ## Supported stores
 
-18 stores with affiliate tracking support:
+19 stores with affiliate tracking support:
 
-Amazon (ES, DE, FR, IT, UK, US) · Booking.com · AliExpress · PcComponentes · El Corte Inglés · eBay · Zalando (ES, DE) · SHEIN · Fnac (ES, FR) · MediaMarkt (ES, DE)
+**Active:** Amazon (ES, DE, FR, IT, UK, US) · eBay (US, ES, DE, UK, FR, IT)
 
-Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source. All other stores are listed as pending.
+**Pending registration:** Booking.com
+
+Only stores that support direct URL parameter injection are compatible with MUGA. Stores that require redirect-based tracking (AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, El Corte Ingles) are not supported because redirecting user URLs through external servers would violate our privacy policy.
+
+Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source.
 
 ---
 
@@ -163,7 +167,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 585 unit tests
+npm test               # 715 unit tests
 npm run build:chrome
 npm run build:firefox
 ```

@@ -699,6 +699,7 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_es",
     name: "Amazon España",
+    group: "Amazon",
     domains: ["amazon.es", "www.amazon.es"],
     param: "tag",
     type: "affiliate",
@@ -707,6 +708,7 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_de",
     name: "Amazon Deutschland",
+    group: "Amazon",
     domains: ["amazon.de", "www.amazon.de"],
     param: "tag",
     type: "affiliate",
@@ -715,6 +717,7 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_fr",
     name: "Amazon France",
+    group: "Amazon",
     domains: ["amazon.fr", "www.amazon.fr"],
     param: "tag",
     type: "affiliate",
@@ -723,6 +726,7 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_it",
     name: "Amazon Italia",
+    group: "Amazon",
     domains: ["amazon.it", "www.amazon.it"],
     param: "tag",
     type: "affiliate",
@@ -731,6 +735,7 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_co_uk",
     name: "Amazon UK",
+    group: "Amazon",
     domains: ["amazon.co.uk", "www.amazon.co.uk"],
     param: "tag",
     type: "affiliate",
@@ -739,6 +744,7 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "amazon_com",
     name: "Amazon US",
+    group: "Amazon",
     domains: ["amazon.com", "www.amazon.com"],
     param: "tag",
     type: "affiliate",
@@ -747,112 +753,46 @@ export const AFFILIATE_PATTERNS = [
   {
     id: "booking",
     name: "Booking.com",
+    group: "Booking.com",
     domains: ["booking.com", "www.booking.com"],
     param: "aid",
     type: "affiliate",
     ourTag: "",  // TODO: fill in your Booking Partner ID
   },
-  {
-    id: "aliexpress",
-    name: "AliExpress",
-    domains: ["aliexpress.com", "es.aliexpress.com", "www.aliexpress.com"],
-    param: "aff_fcid",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your AliExpress Portal affiliate ID
-  },
-  {
-    id: "pccomponentes",
-    name: "PcComponentes",
-    domains: ["pccomponentes.com", "www.pccomponentes.com"],
-    param: "ref",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your PcComponentes affiliate ref
-  },
-  {
-    id: "el_corte_ingles",
-    name: "El Corte Inglés",
-    domains: ["elcorteingles.es", "www.elcorteingles.es"],
-    param: "affiliateId",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your El Corte Inglés affiliate ID
-  },
+  // AliExpress removed: uses redirect-based tracking (s.click.aliexpress.com).
+  // Direct parameter injection (aff_fcid=) is not recognized for commission attribution.
+  // Supporting AliExpress would require redirecting user URLs through an external server,
+  // which violates our privacy policy ("MUGA never silently sends your data anywhere").
+  //
+  // PcComponentes, El Corte Inglés removed: both use Awin redirect-based tracking.
+  // No direct URL parameter injection supported. Same privacy constraint applies.
   {
     id: "ebay",
     name: "eBay",
+    group: "eBay",
     domains: ["ebay.com", "www.ebay.com", "ebay.es", "www.ebay.es",
               "ebay.de", "www.ebay.de", "ebay.co.uk", "www.ebay.co.uk",
               "ebay.fr", "www.ebay.fr", "ebay.it", "www.ebay.it"],
     param: "campid",
     type: "affiliate",
-    ourTag: "",  // TODO: fill in your eBay Partner Network campaign ID
+    ourTag: "5339147108",
   },
-  {
-    id: "awin",
-    name: "AWIN (network)",
-    // AWIN operates cross-domain via awc param. Cannot match by host; kept for reference
-    domains: [],
-    param: "awc",
-    type: "affiliate",
-    ourTag: "",
-  },
-  // Temu removed: proprietary affiliate program with opaque ToS; high legal risk.
-  // Re-add once a verified affiliate account is registered and ToS confirmed. (#222)
-  {
-    id: "zalando_es",
-    name: "Zalando ES",
-    domains: ["zalando.es", "www.zalando.es"],
-    param: "wt_mc",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Zalando affiliate marketing code
-  },
-  {
-    id: "zalando_de",
-    name: "Zalando DE",
-    domains: ["zalando.de", "www.zalando.de"],
-    param: "wt_mc",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Zalando DE affiliate marketing code
-  },
-  {
-    id: "shein",
-    name: "SHEIN",
-    domains: ["shein.com", "www.shein.com", "es.shein.com", "fr.shein.com", "de.shein.com"],
-    param: "url_from",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your SHEIN affiliate ID
-  },
-  {
-    id: "fnac_es",
-    name: "Fnac ES",
-    domains: ["fnac.es", "www.fnac.es"],
-    param: "oref",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Fnac affiliate origin ref
-  },
-  {
-    id: "fnac_fr",
-    name: "Fnac FR",
-    domains: ["fnac.com", "www.fnac.com"],
-    param: "oref",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Fnac FR affiliate origin ref
-  },
-  {
-    id: "mediamarkt_es",
-    name: "MediaMarkt ES",
-    domains: ["mediamarkt.es", "www.mediamarkt.es"],
-    param: "ref",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your MediaMarkt affiliate ref (Impact Radius)
-  },
-  {
-    id: "mediamarkt_de",
-    name: "MediaMarkt DE",
-    domains: ["mediamarkt.de", "www.mediamarkt.de"],
-    param: "ref",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your MediaMarkt DE affiliate ref
-  },
+  // AWIN network removed: redirect-based tracking only (awin1.com/pclick.php).
+  // Cannot inject awc parameter directly; requires redirecting through AWIN servers.
+  //
+  // Temu removed: proprietary affiliate program with opaque ToS; high legal risk. (#222)
+  //
+  // The following stores were evaluated and removed because they all use redirect-based
+  // affiliate tracking through networks (Awin, ShareASale, Admitad, Skimlinks, Impact Radius).
+  // None support direct URL parameter injection. Supporting them would require redirecting
+  // user URLs through external servers, violating our privacy policy.
+  //   - Zalando (ES, DE): Awin redirect
+  //   - SHEIN: Awin/ShareASale/Admitad redirect
+  //   - Fnac (ES, FR): Skimlinks/VigLink redirect
+  //   - MediaMarkt (ES, DE): Awin/Sovrn redirect
+  //
+  // Only stores that support direct parameter injection (like Amazon tag= and eBay campid=)
+  // are compatible with MUGA's privacy-first model.
 ];
 
 /**
@@ -884,5 +824,5 @@ export function isTrackingParam(param) {
  * Only includes entries with known domains.
  */
 export function getSupportedStores() {
-  return AFFILIATE_PATTERNS.filter(p => p.domains.length > 0 && p.id !== "awin");
+  return AFFILIATE_PATTERNS.filter(p => p.domains.length > 0);
 }

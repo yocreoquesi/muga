@@ -35,7 +35,7 @@
 <body>
 
   <h1>Privacy Policy</h1>
-  <p class="meta">MUGA: Fair to every click &nbsp;·&nbsp; Effective date: 2026-03-18 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;·&nbsp; Effective date: 2026-03-31 &nbsp;·&nbsp; Version 1.9.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
     <strong>Short version:</strong> You control what MUGA does. Every feature is transparent and configurable.
@@ -46,13 +46,25 @@
   <h2>What data does MUGA handle?</h2>
   <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are cleaned inside your browser. MUGA never silently sends your data anywhere. Any feature that contacts an external service requires your explicit action and is disclosed here.</p>
   <p>Your extension preferences (toggles, blacklist, whitelist, language) are stored in <code>chrome.storage.sync</code>. This means they sync across your own devices via your browser account. They are never visible to MUGA.</p>
+  <p>Anonymous usage counters (URLs cleaned, parameters removed, referrals spotted) are stored locally on your device via <code>chrome.storage.local</code>. These counters are never transmitted anywhere. Session data (debug logs, per-tab badge counts, recently cleaned URLs) is stored in <code>chrome.storage.session</code> and is automatically cleared when the browser restarts.</p>
 
   <h2>Tracking parameters</h2>
   <p>MUGA strips tracking parameters (UTMs, fbclid, gclid, and others) from URLs automatically. This happens locally. The removed parameters are not logged, transmitted, or stored anywhere.</p>
 
+  <h2>Additional features</h2>
+  <p>The following features are enabled by default and can be individually toggled in Settings:</p>
+  <ul>
+    <li><strong>AMP redirect:</strong> Redirects Google AMP pages to the original canonical URL. Happens locally via the content script.</li>
+    <li><strong>Ping blocking:</strong> Removes <code>&lt;a ping&gt;</code> attributes from links so the browser does not send tracking beacons when you click.</li>
+    <li><strong>Redirect unwrapping:</strong> Detects redirect-wrapper URLs and navigates directly to the real destination.</li>
+    <li><strong>Right-click "Copy clean link":</strong> Cleans URLs when you copy them via context menu. Also available via keyboard shortcut (Alt+Shift+C).</li>
+  </ul>
+  <p>All of these operate entirely within your browser. No external requests are made.</p>
+
   <h2>Affiliate tags</h2>
-  <p>MUGA can add affiliate tags to URLs that carry none when you visit a supported store. This is how the developer earns income from the tool he maintains. If you opted in during onboarding, this feature is active. You can disable it at any time in Settings.</p>
+  <p>MUGA can add affiliate tags to URLs that carry none when you visit a supported store. This is how an independent developer earns income from the tool he maintains. If you opted in during onboarding, this feature is active. You can disable it at any time in Settings.</p>
   <p>When you visit a supported store, MUGA checks the URL locally to see if an affiliate tag is already present. If not, and if you have the option enabled, MUGA modifies the URL before navigation to include our affiliate tag. <strong>This URL modification happens locally. No external request is made to determine whether to inject.</strong></p>
+  <p>If you enable "Remove all affiliate tags from other sources", only third-party tags are removed. Our own tag is always preserved. MUGA never replaces another affiliate's tag with ours in the same operation.</p>
 
   <h2>What MUGA never does</h2>
   <ul>
@@ -70,12 +82,12 @@
   <h2>Permissions</h2>
   <p>MUGA requests the following browser permissions:</p>
   <ul>
-    <li><strong>storage</strong>: to save your preferences and statistics locally.</li>
-    <li><strong>tabs</strong>: to open the onboarding page on first install and send clipboard messages.</li>
-    <li><strong>contextMenus</strong>: to add the "Copy clean link" right-click option.</li>
-    <li><strong>clipboardWrite</strong>: to copy the clean URL to your clipboard.</li>
-    <li><strong>declarativeNetRequest</strong>: used for pre-navigation stripping of tracking parameters before the page loads.</li>
-    <li><strong>host_permissions: all_urls</strong>: to intercept link clicks on every page and add affiliate tags where applicable.</li>
+    <li><strong>storage</strong>: to save your preferences, statistics, and session data locally.</li>
+    <li><strong>activeTab</strong>: to access the current tab's URL when you use the popup, keyboard shortcut, or context menu. Only activates on your explicit action.</li>
+    <li><strong>contextMenus</strong>: to add the "Copy clean link" and "Copy clean selection" right-click options.</li>
+    <li><strong>clipboardWrite</strong>: to copy clean URLs to your clipboard (fallback for pages where the Clipboard API is blocked).</li>
+    <li><strong>declarativeNetRequestWithHostAccess</strong> (Chrome) / <strong>declarativeNetRequest</strong> (Firefox): to strip tracking parameters from URLs before the page loads, using the browser's built-in rule engine.</li>
+    <li><strong>host_permissions: all_urls</strong>: required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, redirect unwrapping) and for declarativeNetRequest redirect rules to apply on all sites.</li>
   </ul>
 
   <h2>Open source</h2>

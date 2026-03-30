@@ -2,6 +2,34 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.0] - 2026-03-31
+
+### Features
+- **Amazon Associates activated**: 6 marketplace tags configured (ES `muga0b-21`, DE `muga0f-21`, FR `muga08a-21`, IT `muga04f-21`, UK `muga0a-21`, US `muga0b-20`). Affiliate injection is now live on all Amazon markets
+- **eBay Partner Network activated**: campaign ID `5339147108` configured for 6 markets (US, ES, DE, UK, FR, IT)
+- **42 new domain rules** (125 to 167 total): LATAM 14 (Mercado Libre, Falabella, Liverpool, Coppel, etc.), Germany 9 (Otto, Douglas, Thomann, etc.), Korea 8 (Coupang, Yes24, Interpark, etc.), US/Global 7 (Newegg, Wayfair, Nike, etc.), China 1 (JD.com)
+- **Report broken site**: pre-filled GitHub issue with hostname (never full URL), MUGA version, browser, active features, and params removed. Available in popup (Advanced mode) and Settings dev tools
+- **Report button in URL tester**: opens pre-filled GitHub issue with hostname only for privacy
+
+### Fixes
+- **stripAllAffiliates preserves our tag**: `stripAllAffiliates` no longer removes our own affiliate tag when `injectOwnAffiliate` is OFF. The UI says "from other sources", so our tag is now always preserved regardless of injection setting
+
+### Improvements
+- **UI consistency**: section names standardized ("Blocked domains: always strip", "Protected tags & domains: never strip", "Custom tracking params: always strip") with matching i18n keys and HTML fallbacks
+- **Session history label**: "Recent" renamed to "This session" in popup to clarify ephemeral nature vs lifetime counters
+- **Custom params hint**: now includes HTML examples (`mc_cid`, `oly_enc_id`)
+- **stripAllAffiliates hint**: updated to "Our tag is always preserved" (removed conditional "when injection is active")
+- **Privacy policy synced**: internal (`src/privacy/`) and public (`docs/`) pages updated with storage.session disclosure, Additional features section, stripAll behavior, and correct permissions
+- **Persistent logs evaluated and rejected**: debug logs contain domains, paths, and cleaned URLs. Persisting them to `storage.local` would create a de facto browsing history, contradicting privacy commitments. Intentionally kept session-only with a code comment explaining why
+
+### Internal
+- 715 passing tests, 0 failures (+109 new)
+- 34 export/import tests (new file `tests/unit/export-import.test.mjs`): source verification, `isValidListEntry` extraction, export payload completeness
+- 18 Amazon marketplace tests (3 per market: injection, no-replace, no-false-foreign)
+- 17 preference interaction matrix tests covering all toggle combinations (inject, stripAll, notify, whitelist, blacklist)
+- 18 eBay marketplace tests (3 per market: injection, no-replace, no-false-foreign)
+- Health check domain count assertion updated 125 to 167
+
 ## [1.8.2] - 2026-03-30
 
 ### Fixes (Chrome Web Store rejection)
@@ -330,7 +358,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/yocreoquesi/muga/compare/v1.8.2...v1.9.0
+[1.8.2]: https://github.com/yocreoquesi/muga/compare/v1.8.1...v1.8.2
+[1.8.1]: https://github.com/yocreoquesi/muga/compare/v1.8.0...v1.8.1
+[1.8.0]: https://github.com/yocreoquesi/muga/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/yocreoquesi/muga/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/yocreoquesi/muga/compare/v1.5.4...v1.6.0
 [1.5.4]: https://github.com/yocreoquesi/muga/compare/v1.5.3...v1.5.4
 [1.5.3]: https://github.com/yocreoquesi/muga/compare/v1.5.2...v1.5.3
