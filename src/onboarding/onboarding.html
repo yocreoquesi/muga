@@ -29,22 +29,12 @@
     .logo { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
     .tagline { font-size: 16px; color: var(--text2); margin-bottom: 36px; line-height: 1.5; }
 
-    /* Steps */
-    .step { margin-bottom: 24px; }
-    .step-header {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
-    }
-    .step-num {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: var(--accent); color: #fff;
-      font-size: 13px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .step-title { font-size: 16px; font-weight: 600; }
-    .step-body {
+    /* Sections */
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+    .section-body {
       background: var(--bg2); border-radius: 12px;
       border: 0.5px solid var(--border); overflow: hidden;
-      margin-left: 40px;
     }
 
     /* Feature rows */
@@ -61,20 +51,12 @@
     .affiliate-body {
       background: var(--bg2); border-radius: 12px;
       border: 0.5px solid var(--border);
-      margin-left: 40px; padding: 16px;
+      padding: 16px;
     }
     .affiliate-body p {
       font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 14px;
     }
     .affiliate-body strong { color: var(--text); }
-
-    .disclaimer {
-      font-size: 11.5px; color: var(--text2); line-height: 1.6;
-      padding: 10px 14px; background: var(--bg);
-      border: 0.5px solid var(--border); border-radius: 8px;
-      margin-bottom: 14px;
-    }
-    .disclaimer a { color: var(--accent); text-decoration: none; }
 
     /* Consent checkboxes */
     .consent-check {
@@ -135,82 +117,55 @@
     <div class="logo">MUGA</div>
     <p class="tagline">
       <span data-i18n="ob_tagline">Fair to every click.</span><br>
-      <span data-i18n="ob_tagline_sub">Here's exactly what this extension does, and what it never will.</span><br>
-      <small style="font-size:12px;color:var(--text2)" data-i18n="ob_tagline_local">MUGA never acts behind your back. Nothing happens without your action.</small>
+      <span data-i18n="ob_tagline_sub">Open source. Transparent. Built to protect your privacy.</span><br>
+      <small style="font-size:12px;color:var(--text2)" data-i18n="ob_tagline_values">We may get things wrong, but we will always be honest about it and work to fix it. You stay in control.</small>
     </p>
 
-    <!-- Step 1: What MUGA always does -->
-    <div class="step">
-      <div class="step-header">
-        <div class="step-num">1</div>
-        <div class="step-title" data-i18n="ob_step1_title">Always on: no configuration needed</div>
-      </div>
-      <div class="step-body">
+    <!-- What MUGA does -->
+    <div class="section">
+      <div class="section-title" data-i18n="ob_step1_title">What MUGA does, automatically</div>
+      <div class="section-body">
         <div class="feature-row">
           <div class="feature-icon">🧹</div>
           <div class="feature-text">
-            <strong data-i18n="ob_feat1_title">Strips 454 tracking parameters automatically</strong>
-            <small data-i18n="ob_feat1_desc">UTMs, fbclid, gclid, msclkid, mc_cid, si (YouTube), eBay tracking tags, and more. Removed before the page loads.</small>
+            <strong data-i18n="ob_feat1_title">Strips 454+ tracking parameters from every URL</strong>
+            <small data-i18n="ob_feat1_desc">fbclid, gclid, UTMs, and hundreds more. Removed before the page loads. No data is collected or sent anywhere.</small>
           </div>
         </div>
         <div class="feature-row">
-          <div class="feature-icon">⚡</div>
+          <div class="feature-icon">🛡️</div>
           <div class="feature-text">
-            <strong data-i18n="ob_feat2_title">Redirects Google AMP pages to the real article</strong>
-            <small data-i18n="ob_feat2_desc">AMP URLs are silently redirected to the canonical article so you always land on the actual site.</small>
+            <strong data-i18n="ob_feat2_title">Blocks hidden tracking: AMP redirects, ping beacons, URL wrappers</strong>
+            <small data-i18n="ob_feat2_desc">Every trick advertisers use to follow your clicks is neutralized locally, inside your browser.</small>
           </div>
         </div>
         <div class="feature-row">
-          <div class="feature-icon">🚫</div>
+          <div class="feature-icon">✨</div>
           <div class="feature-text">
-            <strong data-i18n="ob_feat3_title">Blocks &lt;a ping&gt; tracking beacons</strong>
-            <small data-i18n="ob_feat3_desc">Prevents the hidden ping requests advertisers use to log every link you click.</small>
-          </div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-icon">🔗</div>
-          <div class="feature-text">
-            <strong data-i18n="ob_feat4_title">Unwraps redirect-wrapper URLs</strong>
-            <small data-i18n="ob_feat4_desc">Extracts the real destination from tracking wrappers so you go straight to the target page.</small>
-          </div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-icon">📋</div>
-          <div class="feature-text">
-            <strong data-i18n="ob_feat5_title">Right-click → Copy clean link or selection</strong>
-            <small data-i18n="ob_feat5_desc">Copies cleaned URLs to your clipboard. Works on a single link or a text selection with multiple URLs. No navigation needed.</small>
+            <strong data-i18n="ob_feat3_title">Clean URLs are shorter, prettier, and safe to share</strong>
+            <small data-i18n="ob_feat3_desc">Sometimes you can barely tell where a link goes with all the junk attached. Right-click any link to copy it clean -- no tracking, no noise.</small>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Step 2: Affiliate model -->
-    <div class="step">
-      <div class="step-header">
-        <div class="step-num">2</div>
-        <div class="step-title" data-i18n="ob_step2_title">Support an indie developer: your choice</div>
-      </div>
+    <!-- How MUGA stays free -->
+    <div class="section">
+      <div class="section-title" data-i18n="ob_step2_title">How MUGA stays free</div>
       <div class="affiliate-body">
         <p data-i18n-html="ob_affiliate_desc">
-          When you visit a supported store (Amazon, eBay, Booking.com) and the link
-          has <strong>no affiliate tag at all</strong>, MUGA can silently add ours.
-          <strong>The price you pay is always identical.</strong> Affiliate tags don't affect
-          what you pay, they tell the store who referred you. We earn a small commission.
+          On selected stores, if a link has <strong>no affiliate tag at all</strong>, MUGA can add ours.
+          <strong>Your price never changes.</strong> If a creator's tag is already there, we never touch it
+          -- the code is open source, you can verify this.
           <br><br>
-          This is how an independent developer earns income from the tool he maintains.
+          We deliberately rejected 10+ stores whose tracking methods require routing your clicks through external servers.
+          We would rather earn less than compromise how MUGA works.
         </p>
-        <div class="disclaimer" data-i18n-html="ob_disclaimer">
-          <strong>What MUGA does not do by default:</strong> replace or overwrite a tag that is already
-          in a link. If a creator's or another affiliate's tag is there, MUGA leaves it alone.
-          By default, we never touch what isn't ours.
-          MUGA only acts on links that have <em>no tag at all</em>.
-          The source code is public. You can verify this yourself.
-        </div>
         <label class="consent-check" id="affiliate-label">
           <input type="checkbox" id="affiliate-check" aria-label="Enable affiliate support">
           <div class="consent-check-label">
-            <strong data-i18n="ob_affiliate_check_label">Yes, support MUGA for free: allow our affiliate tag on links that have none</strong>
-            <small data-i18n="ob_affiliate_check_hint">You always pay the same price. You can disable this in Settings at any time.</small>
+            <strong data-i18n="ob_affiliate_check_label">Allow MUGA's affiliate tag on links that have none</strong>
+            <small data-i18n="ob_affiliate_check_hint">Same price, always. If a link already has a tag, MUGA never touches it. Verify in our source code.</small>
           </div>
         </label>
       </div>
@@ -232,8 +187,8 @@
 
     <!-- CTA -->
     <div class="cta">
-      <button class="btn-primary" id="start-btn" disabled data-i18n="ob_cta_btn">Get started →</button>
-      <p class="cta-note" data-i18n="ob_cta_note">You can change all of this later in Settings at any time.</p>
+      <button class="btn-primary" id="start-btn" disabled data-i18n="ob_cta_btn">Start browsing clean</button>
+      <p class="cta-note" data-i18n="ob_cta_note">Open source, GPL v3. Change any setting anytime.</p>
     </div>
   </div>
 
