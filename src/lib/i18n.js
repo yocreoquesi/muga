@@ -134,9 +134,9 @@ export const TRANSLATIONS = {
   dev_url_clean:              { en: "No tracking params found. URL is already clean.",                   es: "Sin parámetros de rastreo. La URL ya está limpia." },
   dev_url_action:             { en: "Action: %s",                                                        es: "Acción: %s" },
   dev_url_report_btn:         { en: "Report a problem with this URL",                                    es: "Reportar un problema con esta URL" },
-  report_broken_label:        { en: "Report broken site",                                                es: "Reportar sitio roto" },
-  dev_report_broken_label:    { en: "Report broken site",                                                es: "Reportar sitio roto" },
-  dev_report_broken_hint:     { en: "Report that MUGA broke a website. Opens a pre-filled GitHub issue", es: "Reporta que MUGA rompió una web. Abre un issue de GitHub pre-rellenado" },
+  report_broken_label:        { en: "Report a bug or suggest an improvement",                            es: "Reportar un error o sugerir una mejora" },
+  dev_report_broken_label:    { en: "Report a bug or suggest an improvement",                            es: "Reportar un error o sugerir una mejora" },
+  dev_report_broken_hint:     { en: "Opens a pre-filled GitHub issue with your browser and extension info", es: "Abre un issue de GitHub pre-rellenado con info de tu navegador y extensi\u00f3n" },
   dev_report_broken_btn:      { en: "Report",                                                            es: "Reportar" },
 
   // ── Context menu ─────────────────────────────────────────────────────────
