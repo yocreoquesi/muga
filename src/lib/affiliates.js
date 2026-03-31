@@ -47,6 +47,8 @@ export const TRACKING_PARAMS = [
   "irgwc",    // Impact Radius
   "cjevent",  // CJ Affiliate
   "tduid",    // Tradedoubler
+  "awc",      // Awin click ID (redirect-based network, incompatible with MUGA privacy model)
+  "wt_mc",    // Webtrekk/Awin campaign tracking (MediaMarkt and others via Awin)
 
   // Microsoft / Windows
   "ocid",
@@ -259,7 +261,7 @@ export const TRACKING_PARAMS = [
   "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
 
   // Webtrekk (AdGuard + Neat URL)
-  // "wt_mc" excluded: it is the affiliate param for MediaMarkt in AFFILIATE_PATTERNS
+  // wt_mc moved to affiliate network click IDs: no longer preserved (Awin redirect model)
   "wt_zmc",     // Zeit/Webtrekk campaign
 
   // HubSpot extended (AdGuard + Registry)
@@ -355,7 +357,7 @@ export const TRACKING_PARAMS = [
 
   // CJ Affiliate
   "cjdata",
-  // "awc" excluded: AWIN affiliate param in AFFILIATE_PATTERNS
+  // awc moved to affiliate network click IDs: no longer preserved (Awin redirect model)
 
   // Content recommendation (Connexity, Revcontent)
   "cx_click", "cx_recsorder", "cx_recswidget",
@@ -446,7 +448,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
       "msclkid", "tclid", "twclid",
       // Affiliate networks
-      "irgwc", "cjevent", "tduid",
+      "irgwc", "cjevent", "tduid", "awc", "wt_mc",
       // Rakuten / LinkShare
       "ranmid", "raneaid", "ransiteid",
       // TradeTracker
@@ -515,7 +517,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "admitad_uid", "adsterra_clid", "adsterra_placement_id",
       "adfrom", "adc_publisher", "adc_token", "aiad_clid",
       "af_click_lookback", "af_force_deeplink", "is_retargeting",
-      // "awc" excluded: AWIN affiliate param in AFFILIATE_PATTERNS
+      // awc moved to affiliate network click IDs: no longer preserved (Awin redirect model)
       "cjdata",
       "ir_adid", "ir_campaignid", "ir_partnerid", "iclid",
       "gad_campaignid", "gci", "gps_adid",

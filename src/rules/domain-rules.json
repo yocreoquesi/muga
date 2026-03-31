@@ -1176,7 +1176,11 @@
       "sort",
       "brand"
     ],
-    "note": "Search and filter params: functional"
+    "stripParams": [
+      "lgw_code",
+      "ref"
+    ],
+    "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "elmundo.es",
@@ -1386,7 +1390,12 @@
       "mo",
       "se"
     ],
-    "note": "Search query and mode: functional"
+    "stripParams": [
+      "CtrlBtw498",
+      "Origin",
+      "ref"
+    ],
+    "note": "Search query and mode: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "fnac.es",
@@ -1396,6 +1405,11 @@
       "stype",
       "mo",
       "se"
+    ],
+    "stripParams": [
+      "CtrlBtw498",
+      "Origin",
+      "ref"
     ],
     "note": "Search query and mode: functional"
   },
@@ -1779,7 +1793,10 @@
       "pageSize",
       "sort"
     ],
-    "note": "Search and pagination: functional"
+    "stripParams": [
+      "ref"
+    ],
+    "note": "Search and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "mediamarkt.es",
@@ -1790,7 +1807,10 @@
       "pageSize",
       "sort"
     ],
-    "note": "Search and pagination: functional"
+    "stripParams": [
+      "ref"
+    ],
+    "note": "Search and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "meetup.com",
@@ -2105,7 +2125,11 @@
       "price_min",
       "category"
     ],
-    "note": "Search and filter params: functional"
+    "stripParams": [
+      "publicidadId",
+      "ref"
+    ],
+    "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "pinterest.com",
@@ -2223,7 +2247,12 @@
       "attr_values",
       "brand"
     ],
-    "note": "Search, filters and pagination: functional"
+    "stripParams": [
+      "url_from",
+      "ref",
+      "onelink"
+    ],
+    "note": "Search, filters and pagination: functional. Affiliate params (redirect-based networks) actively stripped."
   },
   {
     "domain": "shopee.com",
@@ -2677,7 +2706,10 @@
       "price_from",
       "price_to"
     ],
-    "note": "Search, filter and pagination: functional"
+    "stripParams": [
+      "wmc"
+    ],
+    "note": "Search, filter and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "zalando.es",
@@ -2691,7 +2723,10 @@
       "price_from",
       "price_to"
     ],
-    "note": "Search, filter and pagination: functional"
+    "stripParams": [
+      "wmc"
+    ],
+    "note": "Search, filter and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
     "domain": "zigzag.kr",

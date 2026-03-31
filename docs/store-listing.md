@@ -1,8 +1,8 @@
 # MUGA: Store Listings
 
-> Version: 1.8.0
-> Last updated: 2026-03-29
-> Status: Final listing for Chrome Web Store submission. 452 tracking params, 120 domain rules, 13 prefix patterns, 18 stores, MV3 native.
+> Version: 1.9.0
+> Last updated: 2026-03-31
+> Status: Final listing for Chrome Web Store submission. 454 tracking params, 167 domain rules, 13 prefix patterns, 19 stores (3 affiliate-compatible), MV3 native.
 
 ---
 
@@ -14,7 +14,7 @@ MUGA: Clean URLs, Fair to Every Click
 
 ### Short description (132 chars max)
 
-URL cleaner: strips utm, fbclid, gclid and 452 tracking params automatically. Respects creator affiliates. Open source, MV3 native.
+URL cleaner: strips utm, fbclid, gclid and 454 tracking params automatically. Respects creator affiliates. Open source, MV3 native.
 
 *(130 chars)*
 
@@ -55,7 +55,7 @@ Five tracking params removed. The actual page URL is untouched.
 WHAT GETS STRIPPED
 ======================================
 
-452 tracking parameters across 13 pattern families:
+454 tracking parameters across 13 pattern families:
 
 . UTM parameters (utm_source, utm_medium, utm_campaign, utm_content, utm_term, and more)
 . Facebook (fbclid), Google (gclid, dclid, gbraid, wbraid), Microsoft (msclkid)
@@ -68,7 +68,7 @@ WHAT GETS STRIPPED
 . AliExpress tokens (aff_trace_key, algo_expid, algo_pvid)
 . Generic click IDs and campaign identifiers
 
-120 domain-specific rulesets ensure functional params (search queries, pagination, filters) are always preserved. MUGA only removes tracking. It never breaks a page.
+167 domain-specific rulesets ensure functional params (search queries, pagination, filters) are always preserved. MUGA only removes tracking. It never breaks a page.
 
 
 ======================================
@@ -92,12 +92,15 @@ MUGA has an affiliate feature. Here is exactly how it works.
 
 Affiliate injection is off by default. You choose to enable it during onboarding, or manually in Settings at any time.
 
-When enabled: if you navigate to one of 18 supported stores and the link has no affiliate tag at all, MUGA adds ours. The price you pay is exactly the same. The store just knows you arrived via MUGA. That is how you support an independent developer at zero cost to you.
+When enabled: if you navigate to a supported store and the link has no affiliate tag at all, MUGA adds ours. The price you pay is exactly the same. The store just knows you arrived via MUGA. That is how you support an independent developer at zero cost to you.
+
+Not every store is compatible. We evaluated 10 stores and rejected all of them because they require redirect-based tracking that forces your clicks through external servers. We do not believe that is necessary or fair. We chose to give up that revenue rather than compromise your privacy.
 
 What MUGA does NOT do by default:
-. It never replaces an existing affiliate tag. If someone's tag is already in the link, MUGA leaves it alone.
+. It never replaces an existing affiliate tag on compatible stores. If someone's tag is already in the link, MUGA leaves it alone.
 . Replacing requires a separate, deliberate opt-in that is disabled by default.
 . You can turn affiliate injection off at any time in Settings, globally or per domain.
+. On stores with redirect-based affiliate models, MUGA strips their tracking parameters and unwraps redirect URLs when possible.
 
 This is disclosed during setup, in the privacy policy, and in the source code. You can read every line.
 
@@ -110,8 +113,10 @@ Every URL is processed entirely inside your browser. MUGA never sends data anywh
 
 . Zero analytics, zero telemetry, zero data collection
 . No account, no sign-in, no cloud
-. Minimal permissions: storage, tabs, contextMenus, declarativeNetRequest, clipboardWrite
+. Minimal permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
 . Nothing else. Ever.
+
+We evaluated affiliate programs for AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, and El Corte Ingles. All of them require redirect-based tracking that routes your clicks through external servers before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected every one of them and chose to give up that revenue rather than compromise your privacy. On those stores, MUGA now actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
 
 ======================================
@@ -132,7 +137,11 @@ YOUR RULES
 SUPPORTED STORES (affiliate features, opt-in only)
 ======================================
 
-18 stores: Amazon (ES, DE, FR, IT, UK, US), Booking.com, AliExpress, PcComponentes, El Corte Ingles, eBay, Zalando (ES, DE), SHEIN, Fnac (ES, FR), MediaMarkt (ES, DE).
+Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT).
+
+Pending registration: Booking.com.
+
+Only stores that support direct URL parameter injection are compatible with MUGA. Stores that require redirect-based tracking (AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, El Corte Ingles) are not supported because redirecting user URLs through external servers would violate our privacy policy.
 
 Tracking removal works on every site on the web, not just these stores. If you find a tracker MUGA misses, open an issue on GitHub. We fix them.
 
@@ -157,7 +166,7 @@ privacy, URL cleaner, tracking remover, affiliate, UTM
 
 ### Summary (250 chars max)
 
-URL cleaner and tracking remover. Strips utm, fbclid, gclid and 452 tracking params automatically. AMP redirect, ping blocking, redirect unwrapping. Respects creator affiliates by default. Open source, GPL v3.
+URL cleaner and tracking remover. Strips utm, fbclid, gclid and 454 tracking params automatically. AMP redirect, ping blocking, redirect unwrapping. Respects creator affiliates by default. Open source, GPL v3.
 
 *(211 chars)*
 
