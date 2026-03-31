@@ -6,7 +6,7 @@
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # MUGA: Clean URLs, Fair to Every Click
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 452+ more. MUGA strips them automatically, before the page renders. **We clean tracking, but we respect referrals. By default, we never touch what isn't ours.**
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTube share tokens, and 454+ more. MUGA strips them automatically, before the page renders. **We clean tracking, but we respect referrals. By default, we never touch what isn't ours.** On stores whose affiliate model forces your clicks through external tracking servers, we strip their tracking parameters too -- we do not believe that forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
 
 > **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
@@ -18,7 +18,7 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, Amazon noise, YouTu
 
 ## What it removes
 
-**452 tracking parameters** across 6 categories, on every site:
+**454 tracking parameters** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -69,7 +69,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ### Always on, no configuration needed
 
-- Strip 452 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
+- Strip 454 tracking params on in-page navigation (UTMs, fbclid, gclid, YouTube `si`, Pinterest, Snapchat, Reddit…)
 - Strip Amazon path noise (`/ref=nav_logo`, session IDs after ASIN, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
@@ -116,13 +116,19 @@ MUGA is an open-source project maintained by real people. To keep it maintained 
 
 When you navigate to a supported store and there is **no existing affiliate tag** in the link, MUGA adds ours. The price you pay is exactly the same. The store just knows you arrived via MUGA. That's how affiliate programs work.
 
+**Not every store is compatible.** We evaluated affiliate programs for AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, and El Corte Ingles. All of them require redirect-based tracking -- your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected every one of these programs and chose to give up that revenue rather than compromise your privacy.
+
+**What this means in practice:**
+- On compatible stores (Amazon, eBay): if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
+- On incompatible stores: MUGA actively strips affiliate tracking parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
+
 This is explained during onboarding before the feature is enabled, disclosed in the extension description, documented in the [privacy policy](https://yocreoquesi.github.io/muga/), and verifiable in the source code.
 
 - Only fires when the link has **no affiliate tag at all**
 - The tag is added as a standard URL parameter. Nothing hidden, nothing obfuscated.
 - **Off by default**: enabled during onboarding or manually in Settings at any time
 - Turn it off any time: Settings → toggle off, globally or per domain
-- **By default, we never touch what isn't ours**: if a link already has someone else's affiliate tag, MUGA leaves it alone. Replacing requires a separate, deliberate opt-in
+- **By default, we never touch what isn't ours**: if a link already has someone else's affiliate tag on a compatible store, MUGA leaves it alone. Replacing requires a separate, deliberate opt-in
 
 ---
 

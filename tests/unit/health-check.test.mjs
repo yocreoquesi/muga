@@ -289,27 +289,26 @@ describe("domain-rules.json integrity", () => {
   });
 
   test("no known affiliate param appears in any domain's stripParams (except documented overrides)", () => {
-    // Affiliate params that must NEVER be stripped — they belong to creators/partners
+    // Affiliate params that must NEVER be stripped -- they belong to creators/partners
+    // on stores where MUGA supports affiliate injection (privacy-compatible model).
+    // Params from redirect-based networks (Awin, Admitad, etc.) are intentionally
+    // excluded: MUGA strips them as policy because these networks force users through
+    // external tracking servers. See privacy policy "Stores removed for privacy reasons".
     const knownAffiliateParams = new Set([
       "tag",           // Amazon Associates
       "aid",           // Booking.com
-      "aff_fcid",      // AliExpress
-      "affiliateid",   // AliExpress
       "campid",        // eBay Partner Network
-      "awc",           // AWIN
-      "wt_mc",         // Zalando
-      "url_from",      // Fnac
-      "oref",          // SHEIN
       "subid",         // Coupang Partners
       "hmkeyword",     // Coupang Partners
     ]);
-    // Documented exceptions: "ref" is an affiliate param on PcComponentes/MediaMarkt
-    // but is tracking noise on Amazon (ref=cm_sw_r_*). On Amazon domains, ref is safe
-    // to strip because Amazon uses "tag" for affiliates, not "ref".
+    // Documented exceptions for "ref": tracking noise on Amazon (ref=cm_sw_r_*),
+    // and intentionally stripped on incompatible stores (redirect-based affiliate policy).
     const allowedOverrides = {
       "ref": ["amazon.com", "amazon.es", "amazon.de", "amazon.fr", "amazon.co.uk", "amazon.it",
               "amazon.co.jp", "amazon.com.br", "amazon.in", "amazon.com.au", "amazon.ca",
-              "amazon.com.mx", "amazon.nl", "amazon.pl", "amazon.se", "amazon.sg"],
+              "amazon.com.mx", "amazon.nl", "amazon.pl", "amazon.se", "amazon.sg",
+              "pccomponentes.com", "mediamarkt.es", "mediamarkt.de",
+              "fnac.com", "fnac.es", "elcorteingles.es", "shein.com"],
     };
     for (const rule of domainRules) {
       for (const param of (rule.stripParams || [])) {
