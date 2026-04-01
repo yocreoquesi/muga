@@ -292,14 +292,14 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
 
-  // 4b. Strip third-party affiliate params. Our own tag is always preserved —
+  // 4b. Strip third-party affiliate params. Our own tag is always preserved --
   // "strip all" means "strip all from OTHER sources", as the UI label promises.
   // Whitelist entries are also respected: specific beats general.
   if (prefs.stripAllAffiliates) {
     for (const pattern of patterns) {
       const val = url.searchParams.get(pattern.param);
       if (val) {
-        // Our own tag is never stripped — inject controls adding, not keeping
+        // Our own tag is never stripped -- inject controls adding, not keeping
         if (pattern.ourTag && val === pattern.ourTag) continue;
         if (!whitelistedValues.has(`${pattern.param}::${val}`)) {
           url.searchParams.delete(pattern.param);

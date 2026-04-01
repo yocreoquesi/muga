@@ -202,7 +202,7 @@ export const sessionStorage = {
 };
 
 // NOTE: Both URL history and debug logs are intentionally session-only.
-// Debug logs contain domains, paths, and cleaned URLs — persisting them would
+// Debug logs contain domains, paths, and cleaned URLs -- persisting them would
 // create a de facto browsing history, the same privacy concern that rules out
 // persistent URL history. Evaluated and rejected 2026-03-30.
 
