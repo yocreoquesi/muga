@@ -21,9 +21,9 @@ All notable changes to MUGA will be documented in this file.
 - **Privacy messaging**: README, store-listing, and privacy policy updated with privacy-over-revenue stance
 
 ### Internal
-- 711 passing tests, 0 failures
+- 730 passing tests, 0 failures
 - Health check test updated to reflect intentional policy change (awc, wt_mc no longer protected as affiliate params)
-- Tracking param count: 452 to 454
+- Tracking param count: updated to 454
 
 ## [1.9.0] - 2026-03-31
 

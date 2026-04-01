@@ -8,7 +8,7 @@
 ## Taglines
 
 **Primary:**
-452 trackers stripped. Automatically. Before the page loads.
+454 trackers stripped. Automatically. Before the page loads.
 
 **Alternative 1:**
 Your links arrive dirty. MUGA cleans them.
@@ -20,11 +20,11 @@ Clean URLs. Before the page loads. Never replaces a creator's tag.
 
 ## 240-char description (ProductHunt)
 
-Every URL you click is packed with trackers: UTMs, fbclid, gclid, Amazon noise, YouTube tokens. MUGA strips 452 of them before the page loads. AMP redirect, ping blocking, redirect unwrapping. Affiliate injection is opt-in and never replaces another creator's tag.
+Every URL you click is packed with trackers: UTMs, fbclid, gclid, Amazon noise, YouTube tokens. MUGA strips 454 of them before the page loads. AMP redirect, ping blocking, redirect unwrapping. Affiliate injection is opt-in and never replaces another creator's tag.
 
 *(264 chars, trim to fit if needed:)*
 
-Every URL you click is packed with trackers. MUGA strips 452 automatically: UTMs, fbclid, gclid, AMP links, ping beacons. Affiliate injection is opt-in, transparent, and never replaces another creator's tag. Open source.
+Every URL you click is packed with trackers. MUGA strips 454 automatically: UTMs, fbclid, gclid, AMP links, ping beacons. Affiliate injection is opt-in, transparent, and never replaces another creator's tag. Open source.
 
 *(222 chars, use this one)*
 
@@ -40,9 +40,9 @@ The short version: we built this because too many extensions manipulate your lin
 
 We wanted to build the opposite of that.
 
-MUGA strips 452 tracking parameters from every URL you visit automatically, before the page loads. UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens: gone. You get the clean URL, the page loads normally, and nothing gets logged about where you came from.
+MUGA strips 454 tracking parameters from every URL you visit automatically, before the page loads. UTMs, fbclid, gclid, Amazon session noise, YouTube share tokens: gone. You get the clean URL, the page loads normally, and nothing gets logged about where you came from.
 
-The affiliate model works like this: when you navigate to one of 18 supported stores and your link has no affiliate tag, we quietly add ours. You pay the exact same price. The store just knows you arrived via MUGA. That's how the project stays free and maintained.
+The affiliate model works like this: when you navigate to a supported store and your link has no affiliate tag, we quietly add ours. You pay the exact same price. The store just knows you arrived via MUGA. That's how the project stays free and maintained.
 
 What we will never do: replace someone else's tag. Not silently, not ever. Enabling that behavior requires a separate, deliberate opt-in that is off by default, and even then, you're shown a toast notification asking you to confirm. The whole thing is disclosed during onboarding, in the Terms of Service, in the privacy policy, and in the source code. GPL v3. Read it.
 

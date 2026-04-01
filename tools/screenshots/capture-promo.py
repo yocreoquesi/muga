@@ -152,7 +152,7 @@ draw.text((LX, 200), "Make URLs Great Again", font=f_tagline, fill=BLUE_LIGHT)
 # Pills
 pill_y = 238
 pill_x = LX
-for label in ["130+ trackers stripped", "18 stores", "Zero data sent", "Open source"]:
+for label in ["454 trackers stripped", "2 active + 1 pending store", "Zero data sent", "Open source"]:
     adv = draw_pill(draw, rgba, pill_x, pill_y, label, f_pill)
     pill_x += adv
     if pill_x > LX + 310:
