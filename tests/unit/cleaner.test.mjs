@@ -359,6 +359,37 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     assert.equal(action, "cleaned");
   });
 
+  test("strips awc (Awin click ID — redirect-based network, incompatible with MUGA)", () => {
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_1234567890_abc",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("awc"));
+    assert.equal(cleanUrl, "https://www.zalando.es/product.html");
+  });
+
+  test("strips wt_mc (Webtrekk/Awin campaign tracking)", () => {
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://www.mediamarkt.de/product/123?wt_mc=affiliate.awin.456",
+      PREFS
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("wt_mc"));
+    assert.equal(cleanUrl, "https://www.mediamarkt.de/product/123");
+  });
+
+  test("strips awc alongside other tracking params", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.shein.com/dress-p-12345.html?awc=999_abc&utm_source=awin&utm_medium=affiliate",
+      PREFS
+    );
+    assert.ok(removedTracking.includes("awc"));
+    assert.ok(removedTracking.includes("utm_source"));
+    assert.ok(removedTracking.includes("utm_medium"));
+    assert.equal(cleanUrl, "https://www.shein.com/dress-p-12345.html");
+  });
+
 });
 
 // ---------------------------------------------------------------------------

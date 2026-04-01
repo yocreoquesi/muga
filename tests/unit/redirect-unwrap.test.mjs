@@ -39,6 +39,16 @@ const REDIRECT_PARAMS = [
   "goto", "returnurl", "return_url",
 ];
 
+// Keep in sync with AFFILIATE_REDIRECT_PARAMS in src/content/redirect-unwrap.js
+const AFFILIATE_REDIRECT_PARAMS = {
+  "awin1.com":              "ued",
+  "shareasale.com":         "urllink",
+  "ad.admitad.com":         "ulp",
+  "alitems.com":            "ulp",
+  "redirect.viglink.com":   "u",
+  "clk.tradedoubler.com":   "url",
+};
+
 /**
  * Extracts the unwrapped destination from a redirect-wrapper URL.
  * Returns the destination href string, or null if none found.
@@ -75,6 +85,38 @@ function extractRedirectDestination(rawUrl) {
   }
 
   return null;
+}
+
+/**
+ * Extracts destination from affiliate network redirect URLs.
+ * Mirrors the AFFILIATE_REDIRECT_PARAMS logic in redirect-unwrap.js.
+ */
+function extractAffiliateRedirectDestination(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+
+  const currentHost = parsed.hostname.replace(/^www\./, "");
+  const affiliateParam = AFFILIATE_REDIRECT_PARAMS[currentHost];
+  if (!affiliateParam) return null;
+
+  const raw = parsed.searchParams.get(affiliateParam);
+  if (!raw || raw.length > 2000) return null;
+
+  let dest;
+  try {
+    dest = new URL(raw);
+  } catch {
+    try { dest = new URL(decodeURIComponent(raw)); } catch { return null; }
+  }
+
+  if (!["http:", "https:"].includes(dest.protocol)) return null;
+  if (!dest.hostname || dest.hostname === parsed.hostname) return null;
+
+  return dest.href;
 }
 
 // ---------------------------------------------------------------------------
@@ -292,5 +334,135 @@ describe("C11 — replica sync verification (redirect-unwrap.js)", () => {
       REDIRECT_UNWRAP_SOURCE.includes('"http:"') && REDIRECT_UNWRAP_SOURCE.includes('"https:"'),
       "Source must check for http:/https: protocol"
     );
+  });
+
+  test("source contains every entry in the replicated AFFILIATE_REDIRECT_PARAMS map", () => {
+    for (const [domain, param] of Object.entries(AFFILIATE_REDIRECT_PARAMS)) {
+      assert.ok(
+        REDIRECT_UNWRAP_SOURCE.includes(`"${domain}"`) && REDIRECT_UNWRAP_SOURCE.includes(`"${param}"`),
+        `Source must contain affiliate redirect entry: "${domain}" → "${param}"`
+      );
+    }
+  });
+
+  test("source AFFILIATE_REDIRECT_PARAMS exactly matches replicated map", () => {
+    const match = REDIRECT_UNWRAP_SOURCE.match(
+      /const AFFILIATE_REDIRECT_PARAMS\s*=\s*\{([\s\S]*?)\};/
+    );
+    assert.ok(match, "Source must contain an AFFILIATE_REDIRECT_PARAMS object declaration");
+    const entries = [...match[1].matchAll(/"([^"]+)"\s*:\s*"([^"]+)"/g)];
+    const sourceMap = Object.fromEntries(entries.map(m => [m[1], m[2]]));
+    assert.deepEqual(sourceMap, AFFILIATE_REDIRECT_PARAMS,
+      "Source AFFILIATE_REDIRECT_PARAMS must exactly match the replicated map");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Affiliate network redirect unwrapping
+// ---------------------------------------------------------------------------
+describe("redirect-unwrap — affiliate network redirects", () => {
+
+  test("Awin (awin1.com) — unwraps ?ued= to store destination", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?awinmid=12345&ued=https%3A%2F%2Fwww.zalando.es%2Fproduct.html"
+    );
+    assert.equal(dest, "https://www.zalando.es/product.html");
+  });
+
+  test("ShareASale — unwraps ?urllink= to store destination", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.shareasale.com/r.cfm?b=999&u=111&urllink=https%3A%2F%2Fwww.shein.com%2Fdress-p-12345.html"
+    );
+    assert.equal(dest, "https://www.shein.com/dress-p-12345.html");
+  });
+
+  test("Admitad (ad.admitad.com) — unwraps ?ulp= to store destination", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://ad.admitad.com/g/abc123/?ulp=https%3A%2F%2Fwww.aliexpress.com%2Fitem%2F1005001234.html"
+    );
+    assert.equal(dest, "https://www.aliexpress.com/item/1005001234.html");
+  });
+
+  test("Admitad via AliExpress (alitems.com) — unwraps ?ulp=", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://alitems.com/g/abc/?ulp=https%3A%2F%2Fwww.aliexpress.com%2Fitem%2F999.html"
+    );
+    assert.equal(dest, "https://www.aliexpress.com/item/999.html");
+  });
+
+  test("VigLink (redirect.viglink.com) — unwraps ?u= to store", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://redirect.viglink.com/?key=abc&u=https%3A%2F%2Fwww.mediamarkt.de%2Fproduct%2F123"
+    );
+    assert.equal(dest, "https://www.mediamarkt.de/product/123");
+  });
+
+  test("Tradedoubler (clk.tradedoubler.com) — unwraps ?url= to store", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://clk.tradedoubler.com/click?p=999&url=https%3A%2F%2Fwww.fnac.es%2Fproducto%2F456"
+    );
+    assert.equal(dest, "https://www.fnac.es/producto/456");
+  });
+
+  test("non-encoded destination URL is also extracted", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?ued=https://www.zalando.de/shoes.html"
+    );
+    assert.equal(dest, "https://www.zalando.de/shoes.html");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Affiliate redirect — safety guards
+// ---------------------------------------------------------------------------
+describe("redirect-unwrap — affiliate redirect safety guards", () => {
+
+  test("unknown affiliate domain returns null", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://unknown-network.com/click?ued=https://store.com/page"
+    );
+    assert.equal(dest, null);
+  });
+
+  test("same-host destination is NOT unwrapped", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?ued=https://www.awin1.com/other-page"
+    );
+    assert.equal(dest, null);
+  });
+
+  test("javascript: scheme destination is NOT followed", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?ued=javascript:alert(1)"
+    );
+    assert.equal(dest, null);
+  });
+
+  test("data: URI destination is NOT followed", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?ued=data:text/html,<h1>hi</h1>"
+    );
+    assert.equal(dest, null);
+  });
+
+  test("empty param value returns null", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?ued="
+    );
+    assert.equal(dest, null);
+  });
+
+  test("param value exceeding 2000 chars returns null", () => {
+    const longUrl = "https://store.com/" + "a".repeat(2000);
+    const dest = extractAffiliateRedirectDestination(
+      `https://www.awin1.com/cread.php?ued=${encodeURIComponent(longUrl)}`
+    );
+    assert.equal(dest, null);
+  });
+
+  test("malformed URL returns null", () => {
+    const dest = extractAffiliateRedirectDestination("not-a-url");
+    assert.equal(dest, null);
   });
 });

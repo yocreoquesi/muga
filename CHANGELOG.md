@@ -2,6 +2,29 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.2] - 2026-04-01
+
+### Improvements
+- **Onboarding redesigned**: 5 features reduced to 3, privacy-first messaging, "How MUGA stays free" replaces "Support an indie developer", claim about rejecting 10+ stores, "Start browsing clean" CTA, GPL v3 badge
+- **Report button renamed**: "Report broken site" changed to "Report a bug or suggest an improvement" in popup, options, and i18n (EN + ES)
+- **Collapsible store groups fix**: CSS `display:flex` was overriding `hidden` attribute on `.store-detail`. Amazon group now collapses correctly
+- Version bump to 1.9.2 with Chrome and Firefox build artifacts
+
+## [1.9.1] - 2026-04-01
+
+### Features
+- **Privacy-first affiliate policy**: redirect-based affiliate networks (Awin, Admitad, ShareASale, VigLink, Tradedoubler) force users through external tracking servers. MUGA now actively works against this:
+  - `awc` (Awin) and `wt_mc` (Webtrekk) moved to TRACKING_PARAMS -- stripped globally (454 total)
+  - Domain-specific `stripParams` added to 9 stores: SHEIN, Zalando ES/DE, Fnac ES/FR, MediaMarkt ES/DE, PcComponentes, El Corte Ingles
+  - Affiliate redirect unwrap: awin1.com (`ued`), shareasale.com (`urllink`), ad.admitad.com (`ulp`), alitems.com (`ulp`), redirect.viglink.com (`u`), clk.tradedoubler.com (`url`)
+- **New privacy policy section**: "Stores removed for privacy reasons" explains why 10+ stores were rejected
+- **Privacy messaging**: README, store-listing, and privacy policy updated with privacy-over-revenue stance
+
+### Internal
+- 711 passing tests, 0 failures
+- Health check test updated to reflect intentional policy change (awc, wt_mc no longer protected as affiliate params)
+- Tracking param count: 452 to 454
+
 ## [1.9.0] - 2026-03-31
 
 ### Features
@@ -358,7 +381,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/yocreoquesi/muga/compare/v1.9.1...v1.9.2
+[1.9.1]: https://github.com/yocreoquesi/muga/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/yocreoquesi/muga/compare/v1.8.2...v1.9.0
 [1.8.2]: https://github.com/yocreoquesi/muga/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/yocreoquesi/muga/compare/v1.8.0...v1.8.1
