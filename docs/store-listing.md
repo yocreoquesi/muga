@@ -164,26 +164,101 @@ privacy, URL cleaner, tracking remover, affiliate, UTM
 
 ## Firefox Add-ons (AMO)
 
+### Extension name
+
+MUGA: Clean URLs, Fair to Every Click
+
 ### Summary (250 chars max)
 
-URL cleaner and tracking remover. Strips utm, fbclid, gclid and 454 tracking params automatically. AMP redirect, ping blocking, redirect unwrapping. Respects creator affiliates by default. Open source, GPL v3.
+URL cleaner and tracking remover. Strips 454 tracking params (utm, fbclid, gclid) before the page loads. Respects creator affiliates. Rejects redirect-based tracking. 100% local, open source, GPL v3. Nothing leaves your browser.
 
-*(211 chars)*
+*(243 chars)*
 
 ---
 
-### Description
+### Detailed description
 
-Same as Chrome detailed description above. AMO accepts the same copy. Paste verbatim.
+MUGA is a URL cleaner built for people who care about what happens to their clicks.
 
-AMO-specific notes:
+Every URL you visit arrives loaded with tracking parameters -- utm_source, fbclid, gclid, msclkid, YouTube share tokens, Amazon session noise, and hundreds more. MUGA strips them automatically, before the page renders. No buttons to press. No configuration needed. No data leaves your browser. Ever.
+
+
+454 tracking parameters. 167 domain-specific rulesets. Zero data collection.
+
+MUGA removes tracking from every site on the web. Domain-specific rules ensure functional parameters (search queries, pagination, filters) are always preserved. We only remove tracking. We never break a page.
+
+What gets stripped:
+. UTM parameters (utm_source, utm_medium, utm_campaign, and more)
+. Facebook (fbclid), Google (gclid, dclid, gbraid, wbraid), Microsoft (msclkid)
+. TikTok (ttclid), Twitter (twclid), Snapchat (sclid, sc_channel)
+. YouTube share tokens (si), Pinterest (epik), Reddit, LinkedIn
+. Email marketing (mc_cid, _hsenc, mkt_tok, _mkto_trk, _kx)
+. Amazon session noise (pd_rd_r, pf_rd_p, linkCode, linkId, and 30+ more)
+. eBay click tracking (mkevt, mkcid, mkrid)
+. AliExpress tokens, generic click IDs, and catch-all campaign identifiers
+
+
+More than param stripping
+
+. AMP redirect: Google AMP pages redirect to the canonical article URL
+. Block <a ping> beacons: suppresses background tracking requests on click
+. Redirect unwrapping: strips intermediary wrappers (Reddit, Steam, generic redirect URLs)
+. Right-click any link: "Copy clean link" without visiting the page
+. Alt+Shift+C: copy the clean URL of the current tab to clipboard
+. Badge counter: see how many params were stripped on the current tab
+. Popup preview: before/after view for the current page
+
+
+Fair to every click
+
+By default, MUGA never touches what is not ours. If a link already has a creator's affiliate tag, we leave it alone. A reviewer links to a product with their tag -- it stays. That is what "fair to every click" means.
+
+MUGA has an optional affiliate feature (off by default). When enabled: if you navigate to a supported store and the link has no affiliate tag at all, MUGA adds ours. The price you pay is exactly the same. You can turn it off any time, globally or per domain.
+
+
+We rejected 10+ stores to protect your privacy
+
+We evaluated affiliate programs for AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, El Corte Ingles, and others. Every one of them requires redirect-based tracking -- your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected all of them and gave up that revenue.
+
+On those stores, MUGA actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
+
+Supported stores (affiliate features, opt-in only):
+Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT).
+Pending: Booking.com.
+
+
+Private by design
+
+Every URL is processed entirely inside your browser. MUGA never sends data anywhere.
+. Zero analytics, zero telemetry, zero data collection
+. No account, no sign-in, no cloud
+. Minimal permissions: storage, activeTab, contextMenus, declarativeNetRequest, clipboardWrite
+. Nothing else. Ever.
+
+
+Your rules
+
+. Blacklist a domain: strip everything on that site, no affiliate injection
+. Whitelist a tag: protect a specific creator's affiliate link
+. Custom tracking params: add your own parameter names to strip
+. Per-domain disable: opt entire domains out of MUGA
+. Export/Import settings as JSON
+. English and Spanish, switchable any time
+
+
+Open source. GPL v3. Read every line.
+
+The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit it. Fork it. If anything looks wrong, open an issue. We built MUGA to be the URL cleaner we wanted to use ourselves -- transparent, honest, and built to last.
+
+https://github.com/yocreoquesi/muga
+
+---
+
+### AMO metadata
+
+- Extension name: MUGA: Clean URLs, Fair to Every Click
 - License: GPL v3
-- Listed under: Privacy & Security
+- Primary category: Privacy & Security
+- Secondary category: Shopping
 - Tags: privacy, tracking, url-cleaner, affiliate
-
----
-
-### AMO Categories
-
-- Primary: Privacy & Security
-- Secondary: Shopping
+- Website: https://github.com/yocreoquesi/muga
