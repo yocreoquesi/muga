@@ -1,8 +1,8 @@
 # MUGA: Store Listings
 
-> Version: 1.9.0
-> Last updated: 2026-03-31
-> Status: Final listing for Chrome Web Store submission. 454 tracking params, 167 domain rules, 13 prefix patterns, 19 stores (3 affiliate-compatible), MV3 native.
+> Version: 1.9.2
+> Last updated: 2026-04-01
+> Status: Final listing for Chrome Web Store and Firefox AMO. 454 tracking params, 167 domain rules, 13 prefix patterns, 2 active affiliate programs + 1 pending, MV3 native.
 
 ---
 

@@ -1,8 +1,8 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.9.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-715_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.9.2-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-730_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # MUGA: Clean URLs, Fair to Every Click
 
@@ -143,7 +143,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 ## Supported stores
 
-19 stores with affiliate tracking support:
+2 active affiliate programs, 1 pending:
 
 **Active:** Amazon (ES, DE, FR, IT, UK, US) · eBay (US, ES, DE, UK, FR, IT)
 
@@ -173,7 +173,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 715 unit tests
+npm test               # 730 unit tests
 npm run build:chrome
 npm run build:firefox
 ```
