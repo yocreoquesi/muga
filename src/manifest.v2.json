@@ -2,8 +2,8 @@
   "manifest_version": 2,
   "name": "MUGA: Clean URLs, Fair to Every Click",
   "short_name": "MUGA",
-  "version": "1.9.2",
-  "description": "Automatically cleans URLs by removing 454+ tracking params (utm, fbclid, gclid). AMP redirect, ping blocking. Open source.",
+  "version": "1.9.6",
+  "description": "Automatically cleans URLs by removing 459+ tracking params (utm, fbclid, gclid). AMP redirect, ping blocking. Open source.",
 
   "permissions": [
     "storage",
@@ -16,7 +16,7 @@
 
   "background": {
     "page": "background/background.html",
-    "persistent": false
+    "persistent": true
   },
   "content_scripts": [
     {
@@ -80,14 +80,14 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "muga@yocreoquesi.github.io",
-      "strict_min_version": "140.0",
+      "strict_min_version": "128.0",
       "data_collection_permissions": {
         "required": ["none"],
         "optional": ["technicalAndInteraction"]
       }
     },
     "gecko_android": {
-      "strict_min_version": "140.0"
+      "strict_min_version": "128.0"
     }
   },
 

@@ -232,6 +232,11 @@ export const TRACKING_PARAMS = [
   "_psq",   // Shopify predictive search query
   "_sid",   // Shopify session ID
   "_fid",   // Shopify filter ID
+  "pr_prod_strat",  // Shopify product recommendation strategy
+  "pr_rec_id",      // Shopify recommendation ID
+  "pr_ref_pid",     // Shopify referral product ID
+  "pr_rec_pid",     // Shopify recommended product ID
+  "pr_seq",         // Shopify recommendation sequence
 
   // AppsFlyer (mobile attribution)
   "af_dp",     // AppsFlyer deep link
@@ -658,6 +663,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "sfmc_id", "sfmc_activityid",
       // Shopify
       "_pos", "_ss", "_psq", "_sid", "_fid",
+      "pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq",
       // AppsFlyer
       "af_dp", "af_web_dp", "af_sub1", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
       // Adjust
@@ -827,4 +833,18 @@ export function isTrackingParam(param) {
  */
 export function getSupportedStores() {
   return AFFILIATE_PATTERNS.filter(p => p.domains.length > 0);
+}
+
+/**
+ * Returns a flat array of all unique hostnames (without www.) where
+ * affiliate logic may apply. Used by the content script to decide
+ * whether a link click needs interception.
+ * @returns {string[]}
+ */
+export function getAffiliateDomains() {
+  const set = new Set();
+  for (const p of AFFILIATE_PATTERNS) {
+    for (const d of p.domains) set.add(d.replace(/^www\./, ""));
+  }
+  return [...set];
 }

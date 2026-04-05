@@ -2,6 +2,72 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.6] - 2026-04-05
+
+### Fixes
+- **Content script intercepts clicks when disabled**: the capture-phase click handler in `content/cleaner.js` called `e.preventDefault()` on ALL link clicks without checking if the extension was enabled. This broke notification dropdowns, modal triggers, and any UI element using `<a>` tags (e.g. mediavida.com notifications). Click and copy handlers now check `_contentPrefs.enabled` and `_contentPrefs.onboardingDone` synchronously before any interception
+- **Self-clean fires when disabled**: the `history.replaceState` fallback (Firefox MV2 and Chrome safety net) ran on every page load without checking the enabled pref. Now gated behind `getContentPrefs().then()` with an enabled check
+- **Prefs loaded eagerly**: `getContentPrefs()` is now called immediately on content script load so that `_contentPrefs` is populated by the time the user clicks or copies. Previously prefs were only loaded when ping blocking initialized
+
+### Improvements
+- **Selective click interception**: click handler now only intercepts links to affiliate store domains (Amazon, eBay, Booking, etc.). All other clicks pass through unmodified, preserving SPA navigation on YouTube, forums, and other sites. Tracking param removal on non-affiliate sites is handled by DNR (Chrome) and self-clean replaceState (Firefox)
+
+### Tests
+- 852 passing tests (up from 821): 5 disabled-state guard tests, 4 selective interception tests, 5 getAffiliateDomains functional tests
+
+## [1.9.5] - 2026-04-02
+
+### Features
+- **Self-clean on page load**: content script now cleans the current page URL when it loads, using `history.replaceState` to update the address bar without reloading. This is the primary cleaning mechanism on Firefox MV2 (no DNR support) and acts as a safety net on Chrome for params that DNR rules miss (e.g. case-sensitive params)
+- **Pepper network redirect unwrap**: unwraps deal-aggregator redirects from Chollometro, mydealz, dealabs, hotukdeals, and 10 more Pepper.com sites. Extracts the store destination from the `<meta refresh>` intermediary (digidip.net) and navigates directly, skipping all tracking servers
+- **Amazon `sp_cr` param**: added to stripParams for all 16 Amazon TLDs
+
+### Fixes
+- **DNR case-sensitive `__mk_*` params**: added mixed-case variants (`__mk_es_ES`, `__mk_de_DE`, etc.) to DNR rules — Chrome's `removeParams` is case-sensitive, so lowercase-only rules missed the actual params
+- **Keyword spam removal**: all brand/platform names removed from store listings, README, privacy policy, ToS, and marketing copy to comply with Chrome Web Store policy (violation ref: Yellow Argon). Replaced with parameter names and generic categories
+- **Promo tiles updated**: regenerated all promotional images with current slogan, stats, and store count
+
+### Tests
+- 821 passing tests (up from 802): Pepper network redirect unwrap (18 tests), DNR sync verification improved (split into bidirectional checks)
+
+## [1.9.4] - 2026-04-01
+
+### Features
+- **Consent gate**: extension is fully disabled until user accepts Terms of Use in onboarding. Popup shows a consent screen, options redirects to onboarding, service worker blocks URL processing, content script skips ping blocking. Works on both Firefox and Chrome
+- **120+ new domain-specific tracking params**: comprehensive audit against ClearURLs, AdGuard Filter 17, Neat-URL, and Mozilla's built-in strip list. Major additions:
+  - Amazon (16 TLDs): +45 params (qid, sr, crid, sprefix, pf_rd_*, pd_rd_*, ascsubtag, linkCode, _encoding, psc, etc.) — 60 total
+  - Facebook/fb.com: +14 params (__cft__, dti, tracking, sfnsn, wtsid, rdid, extid, etc.)
+  - TikTok: +19 params (share_link_id, tt_from, sec_user_id, web_id, embed_source, etc.)
+  - Google: +8 params (sei, iflsig, pcampaignid, cshid, fbs, vet, dpr)
+  - LinkedIn: +8 params (refId, trk, trkEmail, eBP, lgCta, origin, etc.)
+  - Reddit: +7 params (correlation_id, ref_campaign, rdt, post_index, etc.)
+  - eBay (6 TLDs): +3 params (_trkparms, _trksid, _from)
+  - YouTube: +3 (embeds_referring_euri, embeds_referring_origin, kw)
+  - Spotify: +4 (sp_cid, dlsi, pi, referral)
+  - Also: Netflix, NYTimes, BBC, AliExpress, Bing, Yahoo, Twitter/X, Etsy
+- **Shopify recommendation tracking**: 5 new global params (pr_prod_strat, pr_rec_id, pr_ref_pid, pr_rec_pid, pr_seq)
+- Global tracking params: 459 (up from 454). Domain-specific strip rules: 1,528 across 106 domains
+
+### Fixes
+- **Double onboarding tabs**: `openOnboardingOnce()` dedup function prevents both `onInstalled` and the fallback IIFE from opening duplicate tabs
+- **Promise shim double-execution**: the Firefox MV2 shim was probing each API call by invoking it without a callback first — for side-effectful methods like `chrome.tabs.create`, this executed the action twice. Now detects the environment once at startup with a safe `storage.sync.get` probe
+
+### Tests
+- 802 passing tests (up from 775): consent gate enforcement (6 tests), onboarding dedup (2 tests), cross-portal tracking param coverage (14 tests), Amazon param groups (5 tests), shim safe-probe (1 test), Amazon /sspa/click redirect unwrap (10 tests)
+
+## [1.9.3] - 2026-04-01
+
+### Fixes
+- **Firefox compatibility**: guard all `declarativeNetRequest` calls with `hasDNR` check -- Firefox MV2 does not support DNR, causing background script crash that blocked onboarding, context menus, and all extension functionality
+- **Firefox Android**: guard `contextMenus` and `commands` APIs (not available on mobile)
+- **Browser polyfill**: add `browser-polyfill.min.js` to popup, options, and onboarding HTML (was only in background.html)
+- **strict_min_version**: lowered from 140.0 to 128.0 (Firefox ESR) to support current stable Firefox
+- **dev:firefox**: script now swaps manifest to MV2 before running (was loading MV3 manifest in Firefox)
+
+### Tests
+- 22 new Firefox MV2 compatibility tests (752 total): DNR guards, contextMenus guards, polyfill presence and load order, manifest structure checks
+- Tests prevent future regressions -- removing any guard or polyfill will fail the test suite
+
 ## [1.9.2] - 2026-04-01
 
 ### Improvements
