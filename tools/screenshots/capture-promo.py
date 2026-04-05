@@ -147,12 +147,12 @@ LX = 72
 draw.text((LX, 80), "MUGA", font=f_logo, fill=WHITE)
 
 # Tagline
-draw.text((LX, 200), "Make URLs Great Again", font=f_tagline, fill=BLUE_LIGHT)
+draw.text((LX, 200), "Clean URLs, Fair to Every Click", font=f_tagline, fill=BLUE_LIGHT)
 
 # Pills
 pill_y = 238
 pill_x = LX
-for label in ["454 trackers stripped", "2 active + 1 pending store", "Zero data sent", "Open source"]:
+for label in ["459+ trackers stripped", "3 active stores", "Zero data sent", "Open source"]:
     adv = draw_pill(draw, rgba, pill_x, pill_y, label, f_pill)
     pill_x += adv
     if pill_x > LX + 310:
@@ -234,8 +234,8 @@ draw = ImageDraw.Draw(rgba)
 
 # ── Stats bar ─────────────────────────────────────────────────────────────────
 stats = [
-    ("130+", "tracking params"),
-    ("54",   "domain rules"),
+    ("459+", "tracking params"),
+    ("167",  "domain rules"),
     ("100%", "local processing"),
     ("0",    "data sent"),
 ]
