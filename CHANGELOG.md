@@ -2,6 +2,31 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.7] - 2026-04-06
+
+### Fixed
+- Remove 9 DNR params that conflicted with domain-rules.json preserveParams
+- Enforce disabled-state guards across all features (DNR, context menus, content scripts)
+- Wrap all chrome.storage calls in try/catch with error logging
+- Fix case sensitivity in param matching and remove dead code
+- Fix inverted aria-expanded on store group chips
+- Fix reportBtn listener accumulation in options dev tools
+
+### Added
+- AGENTS.md code review rules for GGA pre-commit hook
+- Version-consistency test for manifest/package.json sync
+- 166 new tests (896 total): prefix params, defensive inputs, scheme rejection, DNR exclusions
+- All user-visible strings now go through i18n (milestones, share phrases, seasonal easter eggs)
+- Spanish translations for all new strings
+
+### Improved
+- Upgrade toast/consent dialogs to role="alert"/alertdialog with aria-live
+- Add aria-labels, initial aria-expanded on all toggle controls
+- Build clipboard SVG via createElementNS instead of innerHTML
+- Add customParams regex validation
+- Add noopener noreferrer to all external links
+- Add focus-visible styles for consent gate button
+
 ## [1.9.6] - 2026-04-05
 
 ### Fixes
