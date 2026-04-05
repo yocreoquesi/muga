@@ -12,7 +12,7 @@
 
   chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
     void chrome.runtime.lastError;
-    if (!prefs || !prefs.enabled || !prefs.unwrapRedirects) return;
+    if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.unwrapRedirects) return;
 
     const currentUrl = window.location.href;
 
@@ -61,7 +61,73 @@
           try { dest = new URL(decodeURIComponent(raw)); } catch { /* skip */ }
         }
         if (dest && ["http:", "https:"].includes(dest.protocol) && dest.hostname && dest.hostname !== parsed.hostname) {
-          const sessionKey = "__mugaUnwrapped";
+          const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
+          if (!sessionStorage.getItem(sessionKey)) {
+            sessionStorage.setItem(sessionKey, "1");
+            window.location.replace(dest.href);
+            return;
+          }
+        }
+      }
+    }
+
+    // --- Pepper network deal sites (Chollometro, mydealz, dealabs, etc.) ---
+    // /visit/{section}/{dealId} pages use a <meta http-equiv="refresh"> to bounce
+    // through digidip.net or path.*.com intermediaries before reaching the store.
+    // We extract the final destination from the intermediary's "url" param and
+    // navigate directly, skipping all tracking servers.
+    const PEPPER_DOMAINS = [
+      "chollometro.com", "mydealz.de", "dealabs.com", "hotukdeals.com",
+      "pepper.pl", "pepper.it", "pepper.ru", "pepper.com",
+      "promodescuentos.com", "pelando.com.br", "preisjaeger.at",
+      "nl.pepper.com", "pepper.se", "pepper.fr",
+    ];
+    if (/^\/visit\//.test(parsed.pathname) && PEPPER_DOMAINS.some(d => currentHost === d || currentHost === "www." + d)) {
+      // The page body contains a meta refresh with the intermediary URL.
+      // We look for it in the DOM (already parsed by the time content script runs).
+      const meta = document.querySelector('meta[http-equiv="refresh"]');
+      if (meta) {
+        const content = meta.getAttribute("content") || "";
+        // Format: "0;url='https://chollometro.digidip.net/visit?url=...'"
+        const urlMatch = content.match(/url=['"]*([^'">\s]+)/i);
+        if (urlMatch) {
+          let intermediary;
+          try { intermediary = new URL(urlMatch[1]); } catch { /* skip */ }
+          if (intermediary) {
+            // Extract the real destination from the intermediary's "url" param
+            const destRaw = intermediary.searchParams.get("url");
+            if (destRaw && destRaw.length <= 2000) {
+              let dest;
+              try { dest = new URL(destRaw); } catch {
+                try { dest = new URL(decodeURIComponent(destRaw)); } catch { /* skip */ }
+              }
+              if (dest && ["http:", "https:"].includes(dest.protocol)) {
+                const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
+                if (!sessionStorage.getItem(sessionKey)) {
+                  sessionStorage.setItem(sessionKey, "1");
+                  window.location.replace(dest.href);
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // --- Amazon Sponsored Products redirect unwrap ---
+    // /sspa/click URLs embed the real product URL in the "url" param as a
+    // relative path (e.g. /dp/B01N5VHLUG/ref=...). We resolve it against the
+    // current origin and navigate directly, skipping the tracking redirect.
+    if (parsed.pathname === "/sspa/click") {
+      const raw = parsed.searchParams.get("url");
+      if (raw && raw.length <= 2000) {
+        let decoded;
+        try { decoded = decodeURIComponent(raw); } catch { decoded = raw; }
+        let dest;
+        try { dest = new URL(decoded, parsed.origin); } catch { /* skip */ }
+        if (dest && ["http:", "https:"].includes(dest.protocol)) {
+          const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
           if (!sessionStorage.getItem(sessionKey)) {
             sessionStorage.setItem(sessionKey, "1");
             window.location.replace(dest.href);
@@ -72,6 +138,10 @@
     }
 
     // --- Generic redirect wrapper unwrap ---
+    // Only unwrap on pages whose path looks like a redirect endpoint
+    const REDIRECT_PATH_RE = /\/(redirect|bounce|out|away|leave|goto|jump|click|track|link|redir|forward|proxy|url|exit)\b/i;
+    if (!REDIRECT_PATH_RE.test(location.pathname)) return;
+
     // Normalise param names to lowercase before lookup so ?URL=, ?Redirect=,
     // ?returnUrl= etc. all match entries in REDIRECT_PARAMS (#191).
     for (const [rawKey, value] of parsed.searchParams) {
@@ -99,7 +169,7 @@
 
       // Guard against redirect loops: if the destination points back to a page
       // that could redirect to us, bail out.
-      const sessionKey = "__mugaUnwrapped";
+      const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
       if (sessionStorage.getItem(sessionKey)) return;
       sessionStorage.setItem(sessionKey, "1");
 

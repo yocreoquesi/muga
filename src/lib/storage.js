@@ -6,6 +6,65 @@
  *   chrome.storage.local: stats and ephemeral state (device-only, 10MB quota)
  */
 
+// ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
+//
+// In Chrome MV3, chrome.* APIs return Promises when called without a callback.
+// In Firefox MV2, chrome.* is callback-only -- calling without a callback
+// returns undefined. This shim wraps callback-based methods so the rest of the
+// codebase can use `await chrome.storage.sync.get(...)` etc. without changes.
+// The shim is a no-op in Chrome MV3 (APIs already return Promises).
+
+(function shimChromePromises() {
+  if (typeof chrome === "undefined") return;
+
+  // Detect once whether chrome.* APIs natively return Promises (Chrome MV3).
+  // In Firefox MV2 they are callback-only and return undefined.
+  // We probe with a safe, side-effect-free call (storage.sync.get).
+  let _nativePromises = false;
+  try {
+    const probe = chrome.storage?.sync?.get?.({});
+    _nativePromises = !!(probe && typeof probe.then === "function");
+  } catch { /* assume callback-only */ }
+
+  function wrapMethod(obj, method) {
+    if (!obj || !obj[method]) return;
+    const original = obj[method].bind(obj);
+    obj[method] = function (...args) {
+      // If last arg is a callback, pass through to original
+      if (typeof args[args.length - 1] === "function") {
+        return original(...args);
+      }
+      // Chrome MV3: APIs already return Promises, pass through
+      if (_nativePromises) return original(...args);
+      // Firefox MV2 (callback-only): wrap in Promise without probing,
+      // because probing side-effectful methods (tabs.create, tabs.remove)
+      // would execute the action twice.
+      return new Promise((resolve, reject) => {
+        original(...args, (res) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(res);
+        });
+      });
+    };
+  }
+
+  // chrome.storage.sync / local
+  for (const area of [chrome.storage?.sync, chrome.storage?.local]) {
+    if (!area) continue;
+    for (const m of ["get", "set", "remove", "clear"]) wrapMethod(area, m);
+  }
+
+  // chrome.tabs
+  if (chrome.tabs) {
+    for (const m of ["query", "create", "sendMessage", "remove"]) wrapMethod(chrome.tabs, m);
+  }
+
+  // chrome.contextMenus
+  if (chrome.contextMenus) {
+    wrapMethod(chrome.contextMenus, "removeAll");
+  }
+})();
+
 // ── Sync: user preferences ──────────────────────────────────────────────────
 
 export const PREF_DEFAULTS = {
@@ -33,6 +92,10 @@ export const PREF_DEFAULTS = {
   devMode: false,
 };
 
+/**
+ * Reads all user preferences from chrome.storage.sync with defaults.
+ * @returns {Promise<object>} Preferences merged with PREF_DEFAULTS.
+ */
 export async function getPrefs() {
   try {
     return await new Promise((resolve, reject) => {
@@ -50,6 +113,11 @@ export async function getPrefs() {
   }
 }
 
+/**
+ * Writes a partial preferences object to chrome.storage.sync.
+ * @param {object} partial - Key/value pairs to merge into stored prefs.
+ * @returns {Promise<void>}
+ */
 export async function setPrefs(partial) {
   try {
     return await new Promise((resolve, reject) => {
@@ -74,6 +142,10 @@ const STAT_DEFAULTS = {
   nudgeDismissed: false,
 };
 
+/**
+ * Reads stats and nudge state from chrome.storage.local with defaults.
+ * @returns {Promise<object>} Stats merged with STAT_DEFAULTS.
+ */
 export async function getStats() {
   try {
     return await new Promise((resolve, reject) => {
@@ -91,17 +163,25 @@ export async function getStats() {
   }
 }
 
+/**
+ * Writes a partial stats object to chrome.storage.local.
+ * @param {object} partial - Key/value pairs to merge into stored stats.
+ * @returns {Promise<void>}
+ */
 export async function setStats(partial) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.set(partial, () => {
-      if (chrome.runtime.lastError) {
-        console.error("[MUGA] setStats failed:", chrome.runtime.lastError.message);
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve();
-      }
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.set(partial, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
     });
-  });
+  } catch (err) {
+    console.error("[MUGA] setStats failed:", err);
+  }
 }
 
 // ── incrementStat: batch-write pattern to prevent count loss under concurrency ──
@@ -169,9 +249,20 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onSuspend) {
 
 const _memStore = new Map();
 
+// Detect usable chrome.storage.session: must exist AND return a Promise from get().
+// Firefox MV2 may expose chrome.storage.session as a stub that is callback-only
+// or non-functional, so a simple truthiness check is not enough.
+const _hasSessionStorage = (() => {
+  try {
+    if (!chrome.storage?.session?.get) return false;
+    const probe = chrome.storage.session.get({});
+    return probe && typeof probe.then === "function";
+  } catch { return false; }
+})();
+
 export const sessionStorage = {
   get: (keys) => {
-    if (chrome.storage.session) return chrome.storage.session.get(keys);
+    if (_hasSessionStorage) return chrome.storage.session.get(keys);
     const result = {};
     const ks = Array.isArray(keys)
       ? keys
@@ -189,12 +280,12 @@ export const sessionStorage = {
     return Promise.resolve(result);
   },
   set: (items) => {
-    if (chrome.storage.session) return chrome.storage.session.set(items);
+    if (_hasSessionStorage) return chrome.storage.session.set(items);
     Object.entries(items).forEach(([k, v]) => _memStore.set(k, v));
     return Promise.resolve();
   },
   remove: (keys) => {
-    if (chrome.storage.session) return chrome.storage.session.remove(keys);
+    if (_hasSessionStorage) return chrome.storage.session.remove(keys);
     const ks = Array.isArray(keys) ? keys : [keys];
     ks.forEach(k => _memStore.delete(k));
     return Promise.resolve();
@@ -212,9 +303,12 @@ export const sessionStorage = {
  * if migration already done or no old data exists.
  */
 export async function migrateStatsToLocal() {
-  const syncData = await new Promise(resolve =>
-    chrome.storage.sync.get({ stats: null, firstUsed: null, nudgeDismissed: null }, resolve)
-  );
+  const syncData = await new Promise((resolve, reject) =>
+    chrome.storage.sync.get({ stats: null, firstUsed: null, nudgeDismissed: null }, (result) => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve(result);
+    })
+  ).catch(() => ({ stats: null, firstUsed: null, nudgeDismissed: null }));
 
   const hasOldStats =
     syncData.stats !== null ||
@@ -233,7 +327,10 @@ export async function migrateStatsToLocal() {
   await setStats(merged);
 
   // Remove from sync
-  await new Promise(resolve =>
-    chrome.storage.sync.remove(["stats", "firstUsed", "nudgeDismissed"], resolve)
-  );
+  await new Promise((resolve, reject) =>
+    chrome.storage.sync.remove(["stats", "firstUsed", "nudgeDismissed"], () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
+    })
+  ).catch(() => {}); // best-effort: old keys already migrated, removal is non-critical
 }

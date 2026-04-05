@@ -11,7 +11,7 @@
 
   chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
     void chrome.runtime.lastError;
-    if (!prefs || !prefs.enabled || !prefs.ampRedirect) return;
+    if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.ampRedirect) return;
 
     // Find the canonical link pointing to the non-AMP version
     const canonical = document.querySelector('link[rel="canonical"]');
