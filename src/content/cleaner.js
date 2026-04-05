@@ -160,6 +160,9 @@
    * Note: address bar copies are a browser UI element and cannot be intercepted.
    */
   document.addEventListener("copy", async (e) => {
+    // Do nothing when extension is disabled or onboarding not done.
+    if (!_contentPrefs?.enabled || !_contentPrefs?.onboardingDone) return;
+
     const selected = window.getSelection()?.toString();
     if (!selected) return;
 
@@ -209,25 +212,51 @@
     }
   });
 
+  // Eagerly load prefs so they're available synchronously for click/copy handlers
+  getContentPrefs();
+
+  // ── Self-clean: clean the current page URL on load ────────────────────────
+  // DNR (Chrome MV3) strips tracking params before the page loads, but Firefox
+  // MV2 has no DNR. This fallback asks the service worker to clean the current
+  // URL and, if it changed, updates the address bar via history.replaceState.
+  // This also acts as a safety net for Chrome when DNR rules don't cover a param.
+  getContentPrefs().then((prefs) => {
+    if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
+    const href = window.location.href;
+    if (href.startsWith("http")) {
+      chrome.runtime.sendMessage({ type: "PROCESS_URL", url: href, skipNotify: false }, (result) => {
+        void chrome.runtime.lastError;
+        if (!result || !result.cleanUrl || result.cleanUrl === href) return;
+        try {
+          history.replaceState(history.state, "", result.cleanUrl);
+        } catch { /* cross-origin or sandboxed — ignore */ }
+      });
+    }
+  });
+
   /**
-   * Intercepts link clicks before navigation.
-   * The service worker handles processing and responds with the clean URL.
-   *
-   * ARCHITECTURE NOTE: navigation interception scope:
-   *   MUGA intercepts clicks on <a> elements within pages where this content
-   *   script is already running (injected via manifest content_scripts rules).
-   *   The following navigation types CANNOT be intercepted in MV3:
-   *     - Typing or pasting a URL directly into the address bar
-   *     - Opening a bookmark
-   *     - External apps (e.g. clicking a link in an email client or Slack)
-   *     - Google Search result clicks that navigate the top-level frame to Amazon
-   *       before the content script has loaded on that tab
-   *   Cleaning these would require declarativeNetRequest (DNR) rules, which must
-   *   be declared statically and cannot be generated dynamically from user prefs.
-   *   The popup preview always reflects what WOULD be cleaned if the URL were
-   *   processed; actual cleaning only happens on in-page link clicks.
+   * Checks if a hostname matches any known affiliate store domain.
+   * Used to decide whether a click needs interception for affiliate logic.
+   * Non-affiliate clicks go through naturally (DNR + self-clean handle params).
+   */
+  function isAffiliateDomain(hostname) {
+    const host = hostname.replace(/^www\./, "");
+    const domains = _contentPrefs?._affiliateDomains;
+    if (!domains || !domains.length) return false;
+    return domains.some(d => host === d || host.endsWith("." + d));
+  }
+
+  /**
+   * Intercepts link clicks ONLY on affiliate store domains.
+   * Non-affiliate clicks go through naturally: Chrome DNR strips tracking
+   * params before navigation, and the self-clean replaceState handles Firefox.
+   * This avoids disrupting SPA navigation on YouTube, forums, etc.
    */
   document.addEventListener("click", async (e) => {
+    // Do nothing when extension is disabled or onboarding not done.
+    // Uses cached prefs (loaded eagerly above) for synchronous access.
+    if (!_contentPrefs?.enabled || !_contentPrefs?.onboardingDone) return;
+
     const anchor = e.target.closest("a[href]");
     if (!anchor) return;
 
@@ -242,6 +271,11 @@
       return;
     }
     if (!["http:", "https:"].includes(url.protocol)) return;
+
+    // Only intercept clicks to affiliate store domains. All other clicks
+    // pass through unmodified: DNR (Chrome) and self-clean (Firefox) handle
+    // tracking param removal without disrupting SPA navigation.
+    if (!isAffiliateDomain(url.hostname)) return;
 
     // Rewrite loop guard: bail if this domain is being rewritten too rapidly
     if (isRewriteLoop(url.hostname)) return;
@@ -446,7 +480,7 @@
 
   // --- Ping blocking (conditional on prefs.blockPings) ---
   getContentPrefs().then((prefs) => {
-    if (!prefs || !prefs.enabled) return;
+    if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
     if (prefs.blockPings) {
       // Strip the ping attribute from all existing and future <a ping> elements
       function removePingAttrs(root) {

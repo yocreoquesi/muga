@@ -13,6 +13,8 @@ import { join, dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+import { getAffiliateDomains } from "../../src/lib/affiliates.js";
+
 // Extract the URL_RE regex from content/cleaner.js source
 const contentSource = readFileSync(
   join(__dirname, "../../src/content/cleaner.js"), "utf8"
@@ -260,6 +262,177 @@ describe("Security: sender.id validation in message handlers", () => {
       swSource.includes("sender.id !== chrome.runtime.id"),
       "service-worker.js must validate sender.id in onMessage handler"
     );
+  });
+});
+
+// ── Disabled state: no interception when extension is off ────────────────────
+
+describe("Content script — disabled state guards", () => {
+  test("click handler checks _contentPrefs.enabled before preventDefault", () => {
+    // The click handler must bail out when the extension is disabled.
+    // It checks _contentPrefs?.enabled synchronously before any interception.
+    const clickHandler = contentSource.match(
+      /document\.addEventListener\("click"[\s\S]*?\}, true\)/
+    );
+    assert.ok(clickHandler, "click handler with capture phase must exist");
+    const handlerBody = clickHandler[0];
+
+    // The enabled check must appear BEFORE e.preventDefault()
+    const enabledIdx = handlerBody.indexOf("_contentPrefs?.enabled");
+    const preventIdx = handlerBody.indexOf("e.preventDefault()");
+    assert.ok(enabledIdx !== -1, "click handler must check _contentPrefs?.enabled");
+    assert.ok(preventIdx !== -1, "click handler must call e.preventDefault()");
+    assert.ok(enabledIdx < preventIdx,
+      "enabled check must come BEFORE e.preventDefault() to avoid intercepting clicks when disabled");
+  });
+
+  test("click handler checks _contentPrefs.onboardingDone before preventDefault", () => {
+    const clickHandler = contentSource.match(
+      /document\.addEventListener\("click"[\s\S]*?\}, true\)/
+    );
+    const handlerBody = clickHandler[0];
+    const onboardingIdx = handlerBody.indexOf("_contentPrefs?.onboardingDone");
+    const preventIdx = handlerBody.indexOf("e.preventDefault()");
+    assert.ok(onboardingIdx !== -1, "click handler must check _contentPrefs?.onboardingDone");
+    assert.ok(onboardingIdx < preventIdx,
+      "onboarding check must come BEFORE e.preventDefault()");
+  });
+
+  test("copy handler checks _contentPrefs.enabled before preventDefault", () => {
+    // The copy handler must bail out when the extension is disabled.
+    const copyHandler = contentSource.match(
+      /document\.addEventListener\("copy"[\s\S]*?\}\);/
+    );
+    assert.ok(copyHandler, "copy handler must exist");
+    const handlerBody = copyHandler[0];
+
+    const enabledIdx = handlerBody.indexOf("_contentPrefs?.enabled");
+    const preventIdx = handlerBody.indexOf("e.preventDefault()");
+    assert.ok(enabledIdx !== -1, "copy handler must check _contentPrefs?.enabled");
+    assert.ok(preventIdx !== -1, "copy handler must call e.preventDefault()");
+    assert.ok(enabledIdx < preventIdx,
+      "enabled check must come BEFORE e.preventDefault() in copy handler");
+  });
+
+  test("self-clean checks prefs.enabled before replaceState", () => {
+    // The self-clean block must not modify the URL when the extension is disabled.
+    // It should be wrapped in getContentPrefs().then() with an enabled check.
+    assert.ok(
+      contentSource.includes("getContentPrefs().then"),
+      "self-clean must be wrapped in getContentPrefs().then()"
+    );
+    // Verify the enabled check is present in the self-clean block
+    const selfCleanMatch = contentSource.match(
+      /Self-clean[\s\S]*?getContentPrefs\(\)\.then\(\(prefs\) => \{[\s\S]*?prefs\.enabled/
+    );
+    assert.ok(selfCleanMatch, "self-clean must check prefs.enabled after getContentPrefs()");
+  });
+
+  test("prefs are eagerly loaded for synchronous access in click/copy handlers", () => {
+    // getContentPrefs() must be called early (before the click handler) so that
+    // _contentPrefs is populated by the time the user clicks or copies.
+    const earlyLoad = contentSource.indexOf("// Eagerly load prefs");
+    const clickHandler = contentSource.indexOf('document.addEventListener("click"');
+    assert.ok(earlyLoad !== -1, "eager prefs loading comment must exist");
+    assert.ok(earlyLoad < clickHandler,
+      "eager prefs loading must happen BEFORE click handler registration");
+  });
+});
+
+// ── Selective click interception: affiliate domains only ─────────────────────
+
+describe("Content script — affiliate-only click interception", () => {
+  test("click handler checks isAffiliateDomain before preventDefault", () => {
+    const clickHandler = contentSource.match(
+      /document\.addEventListener\("click"[\s\S]*?\}, true\)/
+    );
+    assert.ok(clickHandler, "click handler must exist");
+    const handlerBody = clickHandler[0];
+
+    const affiliateCheckIdx = handlerBody.indexOf("isAffiliateDomain");
+    const preventIdx = handlerBody.indexOf("e.preventDefault()");
+    assert.ok(affiliateCheckIdx !== -1, "click handler must check isAffiliateDomain()");
+    assert.ok(affiliateCheckIdx < preventIdx,
+      "affiliate domain check must come BEFORE e.preventDefault()");
+  });
+
+  test("isAffiliateDomain helper function exists in content script", () => {
+    assert.ok(
+      contentSource.includes("function isAffiliateDomain(hostname)"),
+      "content script must define isAffiliateDomain helper"
+    );
+  });
+
+  test("isAffiliateDomain uses _contentPrefs._affiliateDomains", () => {
+    assert.ok(
+      contentSource.includes("_contentPrefs?._affiliateDomains"),
+      "isAffiliateDomain must read domains from cached prefs"
+    );
+  });
+
+  test("click handler returns early for non-affiliate domains (no preventDefault)", () => {
+    // The pattern: if (!isAffiliateDomain(...)) return; must appear before e.preventDefault()
+    const clickHandler = contentSource.match(
+      /document\.addEventListener\("click"[\s\S]*?\}, true\)/
+    )[0];
+    assert.ok(
+      clickHandler.includes("if (!isAffiliateDomain(url.hostname)) return;"),
+      "click handler must return early for non-affiliate domains"
+    );
+  });
+});
+
+// ── getAffiliateDomains helper ──────────────────────────────────────────────
+
+describe("getAffiliateDomains — affiliate domain list", () => {
+  // Import the actual function for direct testing
+  const affiliatesSource = readFileSync(
+    join(__dirname, "../../src/lib/affiliates.js"), "utf8"
+  );
+
+  test("getAffiliateDomains is exported from affiliates.js", () => {
+    assert.ok(
+      affiliatesSource.includes("export function getAffiliateDomains()"),
+      "affiliates.js must export getAffiliateDomains"
+    );
+  });
+
+  test("service worker imports getAffiliateDomains", () => {
+    assert.ok(
+      swSource.includes("getAffiliateDomains"),
+      "service-worker.js must import getAffiliateDomains"
+    );
+  });
+
+  test("service worker includes _affiliateDomains in getPrefs response", () => {
+    assert.ok(
+      swSource.includes("_affiliateDomains"),
+      "service-worker.js must include _affiliateDomains in prefs response"
+    );
+  });
+
+  test("getAffiliateDomains returns an array of strings", () => {
+    const domains = getAffiliateDomains();
+    assert.ok(Array.isArray(domains), "must return an array");
+    assert.ok(domains.length > 0, "must have at least one domain");
+    assert.ok(domains.every(d => typeof d === "string"), "all entries must be strings");
+  });
+
+  test("getAffiliateDomains includes known affiliate stores", () => {
+    const domains = getAffiliateDomains();
+    assert.ok(domains.includes("amazon.es"), "must include amazon.es");
+    assert.ok(domains.includes("amazon.com"), "must include amazon.com");
+    assert.ok(domains.includes("booking.com"), "must include booking.com");
+  });
+
+  test("getAffiliateDomains strips www. prefix", () => {
+    const domains = getAffiliateDomains();
+    assert.ok(domains.every(d => !d.startsWith("www.")), "no domain should start with www.");
+  });
+
+  test("getAffiliateDomains returns unique values", () => {
+    const domains = getAffiliateDomains();
+    assert.equal(domains.length, new Set(domains).size, "all domains must be unique");
   });
 });
 

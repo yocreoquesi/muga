@@ -1,8 +1,8 @@
 # MUGA: Store Listings
 
-> Version: 1.9.2
+> Version: 1.9.6
 > Last updated: 2026-04-01
-> Status: Final listing for Chrome Web Store and Firefox AMO. 454 tracking params, 167 domain rules, 13 prefix patterns, 2 active affiliate programs + 1 pending, MV3 native.
+> Status: Final listing for Chrome Web Store and Firefox AMO. 459 tracking params, 167 domain rules, 13 prefix patterns, 3 active affiliate programs, MV3 native.
 
 ---
 
@@ -14,7 +14,7 @@ MUGA: Clean URLs, Fair to Every Click
 
 ### Short description (132 chars max)
 
-URL cleaner: strips utm, fbclid, gclid and 454 tracking params automatically. Respects creator affiliates. Open source, MV3 native.
+URL cleaner: strips utm, fbclid, gclid and 459 tracking params automatically. Respects creator affiliates. Open source, MV3 native.
 
 *(130 chars)*
 
@@ -31,14 +31,14 @@ By default, MUGA never touches what isn't ours. If a link already has a creator'
 BEFORE / AFTER
 ======================================
 
-Amazon link from a video review:
+Store link from a video review:
 
 Before: amazon.es/dp/B00EXAMPLE?tag=reviewer-21&linkCode=ll1&linkId=abc123&pd_rd_r=xyz&pf_rd_p=def&utm_source=youtube&utm_medium=video
 After:  amazon.es/dp/B00EXAMPLE?tag=reviewer-21
 
 The reviewer's affiliate tag stays. The 7 tracking params are gone.
 
-YouTube link shared from mobile:
+Video link shared from mobile:
 
 Before: youtube.com/watch?v=dQw4w9WgXcQ&si=abc123trackingtoken456789
 After:  youtube.com/watch?v=dQw4w9WgXcQ
@@ -55,17 +55,13 @@ Five tracking params removed. The actual page URL is untouched.
 WHAT GETS STRIPPED
 ======================================
 
-454 tracking parameters across 13 pattern families:
+459 tracking parameters across 13 pattern families:
 
-. UTM parameters (utm_source, utm_medium, utm_campaign, utm_content, utm_term, and more)
-. Facebook (fbclid), Google (gclid, dclid, gbraid, wbraid), Microsoft (msclkid)
-. TikTok (ttclid), Twitter (twclid), Snapchat (sclid, sc_channel)
-. YouTube share tokens (si)
-. Pinterest (epik, pin_unauth), Reddit, LinkedIn
+. UTM family (utm_source, utm_medium, utm_campaign, utm_content, utm_term, and more)
+. Click IDs: fbclid, gclid, dclid, gbraid, wbraid, msclkid, ttclid, twclid, sclid, sc_channel
+. Share and discovery tokens (si, epik, pin_unauth)
 . Email marketing (mc_cid, _hsenc, mkt_tok, _mkto_trk, _kx)
-. Amazon session noise (pd_rd_r, pf_rd_p, linkCode, linkId, and 30+ more)
-. eBay click tracking (mkevt, mkcid, mkrid)
-. AliExpress tokens (aff_trace_key, algo_expid, algo_pvid)
+. E-commerce session noise (pd_rd_r, pf_rd_p, linkCode, linkId, mkevt, mkcid, mkrid, aff_trace_key, algo_expid, algo_pvid, and 30+ more)
 . Generic click IDs and campaign identifiers
 
 167 domain-specific rulesets ensure functional params (search queries, pagination, filters) are always preserved. MUGA only removes tracking. It never breaks a page.
@@ -75,9 +71,9 @@ WHAT GETS STRIPPED
 MORE THAN PARAM STRIPPING
 ======================================
 
-. AMP redirect: Google AMP pages redirect to the canonical article URL
+. AMP redirect: AMP pages redirect to the canonical article URL
 . Block <a ping> beacons: suppresses background tracking requests on click
-. Redirect unwrapping: strips intermediary wrappers (Reddit, Steam, generic redirect URLs)
+. Redirect unwrapping: detects and bypasses intermediary redirect wrappers so you land on the real URL
 . Right-click any link: "Copy clean link" without visiting the page
 . Alt+Shift+C: copy the clean URL of the current tab to clipboard
 . Badge counter: see how many params were stripped on the current tab
@@ -116,7 +112,7 @@ Every URL is processed entirely inside your browser. MUGA never sends data anywh
 . Minimal permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
 . Nothing else. Ever.
 
-We evaluated affiliate programs for AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, and El Corte Ingles. All of them require redirect-based tracking that routes your clicks through external servers before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected every one of them and chose to give up that revenue rather than compromise your privacy. On those stores, MUGA now actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
+We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking that routes your clicks through external servers before reaching the store. We rejected every one of them and gave up that revenue rather than compromise your privacy. On those stores, MUGA actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
 
 ======================================
@@ -137,11 +133,9 @@ YOUR RULES
 SUPPORTED STORES (affiliate features, opt-in only)
 ======================================
 
-Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT).
+Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT), Booking.com.
 
-Pending registration: Booking.com.
-
-Only stores that support direct URL parameter injection are compatible with MUGA. Stores that require redirect-based tracking (AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, El Corte Ingles) are not supported because redirecting user URLs through external servers would violate our privacy policy.
+Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based tracking, because routing your clicks through external servers would violate our privacy policy.
 
 Tracking removal works on every site on the web, not just these stores. If you find a tracker MUGA misses, open an issue on GitHub. We fix them.
 
@@ -170,7 +164,7 @@ MUGA: Clean URLs, Fair to Every Click
 
 ### Summary (250 chars max)
 
-URL cleaner and tracking remover. Strips 454 tracking params (utm, fbclid, gclid) before the page loads. Respects creator affiliates. Rejects redirect-based tracking. 100% local, open source, GPL v3. Nothing leaves your browser.
+URL cleaner and tracking remover. Strips 459 tracking params (utm, fbclid, gclid) before the page loads. Respects creator affiliates. Rejects redirect-based tracking. 100% local, open source, GPL v3. Nothing leaves your browser.
 
 *(243 chars)*
 
@@ -180,29 +174,27 @@ URL cleaner and tracking remover. Strips 454 tracking params (utm, fbclid, gclid
 
 MUGA is a URL cleaner built for people who care about what happens to their clicks.
 
-Every URL you visit arrives loaded with tracking parameters -- utm_source, fbclid, gclid, msclkid, YouTube share tokens, Amazon session noise, and hundreds more. MUGA strips them automatically, before the page renders. No buttons to press. No configuration needed. No data leaves your browser. Ever.
+Every URL you visit arrives loaded with tracking parameters -- utm_source, fbclid, gclid, msclkid, share tokens, e-commerce session noise, and hundreds more. MUGA strips them automatically, before the page renders. No buttons to press. No configuration needed. No data leaves your browser. Ever.
 
 
-454 tracking parameters. 167 domain-specific rulesets. Zero data collection.
+459 tracking parameters. 167 domain-specific rulesets. Zero data collection.
 
 MUGA removes tracking from every site on the web. Domain-specific rules ensure functional parameters (search queries, pagination, filters) are always preserved. We only remove tracking. We never break a page.
 
 What gets stripped:
-. UTM parameters (utm_source, utm_medium, utm_campaign, and more)
-. Facebook (fbclid), Google (gclid, dclid, gbraid, wbraid), Microsoft (msclkid)
-. TikTok (ttclid), Twitter (twclid), Snapchat (sclid, sc_channel)
-. YouTube share tokens (si), Pinterest (epik), Reddit, LinkedIn
+. UTM family (utm_source, utm_medium, utm_campaign, utm_content, utm_term, and more)
+. Click IDs: fbclid, gclid, dclid, gbraid, wbraid, msclkid, ttclid, twclid, sclid, sc_channel
+. Share and discovery tokens (si, epik, pin_unauth)
 . Email marketing (mc_cid, _hsenc, mkt_tok, _mkto_trk, _kx)
-. Amazon session noise (pd_rd_r, pf_rd_p, linkCode, linkId, and 30+ more)
-. eBay click tracking (mkevt, mkcid, mkrid)
-. AliExpress tokens, generic click IDs, and catch-all campaign identifiers
+. E-commerce session noise (pd_rd_r, pf_rd_p, linkCode, linkId, mkevt, mkcid, mkrid, aff_trace_key, algo_expid, algo_pvid, and 30+ more)
+. Generic click IDs and campaign identifiers
 
 
 More than param stripping
 
-. AMP redirect: Google AMP pages redirect to the canonical article URL
+. AMP redirect: AMP pages redirect to the canonical article URL
 . Block <a ping> beacons: suppresses background tracking requests on click
-. Redirect unwrapping: strips intermediary wrappers (Reddit, Steam, generic redirect URLs)
+. Redirect unwrapping: detects and bypasses intermediary redirect wrappers so you land on the real URL
 . Right-click any link: "Copy clean link" without visiting the page
 . Alt+Shift+C: copy the clean URL of the current tab to clipboard
 . Badge counter: see how many params were stripped on the current tab
@@ -218,13 +210,12 @@ MUGA has an optional affiliate feature (off by default). When enabled: if you na
 
 We rejected 10+ stores to protect your privacy
 
-We evaluated affiliate programs for AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, El Corte Ingles, and others. Every one of them requires redirect-based tracking -- your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected all of them and gave up that revenue.
+We evaluated 10+ affiliate programs from major retailers and marketplaces. Every one of them requires redirect-based tracking -- your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected all of them and gave up that revenue.
 
 On those stores, MUGA actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
 Supported stores (affiliate features, opt-in only):
-Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT).
-Pending: Booking.com.
+3 active programs across multiple markets (ES, DE, FR, IT, UK, US).
 
 
 Private by design

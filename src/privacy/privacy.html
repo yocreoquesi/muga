@@ -35,7 +35,7 @@
 <body>
 
   <h1>Privacy Policy</h1>
-  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;·&nbsp; Effective date: 2026-04-01 &nbsp;·&nbsp; Version 1.9.2 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;·&nbsp; Effective date: 2026-04-01 &nbsp;·&nbsp; Version 1.9.6 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
     <strong>Short version:</strong> You control what MUGA does. Every feature is transparent and configurable.
@@ -54,7 +54,7 @@
   <h2>Additional features</h2>
   <p>The following features are enabled by default and can be individually toggled in Settings:</p>
   <ul>
-    <li><strong>AMP redirect:</strong> Redirects Google AMP pages to the original canonical URL. Happens locally via the content script.</li>
+    <li><strong>AMP redirect:</strong> Redirects AMP pages to the original canonical URL. Happens locally via the content script.</li>
     <li><strong>Ping blocking:</strong> Removes <code>&lt;a ping&gt;</code> attributes from links so the browser does not send tracking beacons when you click.</li>
     <li><strong>Redirect unwrapping:</strong> Detects redirect-wrapper URLs and navigates directly to the real destination.</li>
     <li><strong>Right-click "Copy clean link":</strong> Cleans URLs when you copy them via context menu. Also available via keyboard shortcut (Alt+Shift+C).</li>
@@ -77,14 +77,14 @@
   </ul>
 
   <h2>Stores removed for privacy reasons</h2>
-  <p>MUGA evaluated affiliate programs for AliExpress, SHEIN, Zalando, Fnac, MediaMarkt, PcComponentes, and El Corte Ingles. All of them require redirect-based tracking: your click is routed through an external server (Awin, Admitad, ShareASale, or Skimlinks) before reaching the store. That server logs your visit, your referrer, and your destination.</p>
+  <p>MUGA evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking: your click is routed through an external server before reaching the store. That server logs your visit, your referrer, and your destination.</p>
   <p>We do not believe forcing users through external tracking servers is necessary or fair. Redirect-based affiliate tracking is a choice these networks make, not a technical requirement. We rejected every one of these programs and chose to give up that revenue rather than compromise your privacy.</p>
-  <p>Because these stores rely on redirect-based affiliate networks, MUGA actively strips their affiliate tracking parameters (awc, wt_mc, lgw_code, and others) from URLs you visit. These parameters were placed by the same redirect servers we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs (e.g. from Awin or Admitad) and sends you directly to the store, so the intermediary server is bypassed entirely.</p>
-  <p>Only stores that support direct URL parameter injection -- where the affiliate tag is a simple query parameter added locally, with no server involved -- are compatible with MUGA. Currently: Amazon and eBay. We believe users deserve the freedom to reach any store directly, and we will apply this same standard to any affiliate program we evaluate in the future.</p>
+  <p>Because these stores rely on redirect-based affiliate networks, MUGA actively strips their affiliate tracking parameters (awc, wt_mc, lgw_code, and others) from URLs you visit. These parameters were placed by the same redirect servers we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store, so the intermediary server is bypassed entirely.</p>
+  <p>Only stores that support direct URL parameter injection -- where the affiliate tag is a simple query parameter added locally, with no server involved -- are compatible with MUGA. We believe users deserve the freedom to reach any store directly, and we will apply this same standard to any affiliate program we evaluate in the future.</p>
 
   <h2>Third-party affiliate programs</h2>
   <p>When you navigate to a store via a MUGA-modified URL, the store's own analytics may record the visit as originating from an affiliate link. This is standard affiliate behaviour and is governed by the store's own privacy policy, not MUGA's.</p>
-  <p>MUGA is a registered participant in affiliate programs including Amazon Associates and others. These programs have their own terms of service and privacy policies.</p>
+  <p>MUGA is a registered participant in affiliate programs operated by supported stores. These programs have their own terms of service and privacy policies.</p>
 
   <h2>Permissions</h2>
   <p>MUGA requests the following browser permissions:</p>

@@ -5,7 +5,11 @@
  */
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
+import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
+
+// Pre-compute affiliate domains once at startup for getPrefs responses
+const _affiliateDomains = getAffiliateDomains();
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
 //       top-level await disallowed in Chrome MV3 service workers)
@@ -86,10 +90,13 @@ function isValidListEntry(entry) {
 }
 
 // --- DNR sync helpers ---
+// Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
+const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
 
 const DYNAMIC_RULE_ID = 1000;
 
 async function syncCustomParamsDNR(customParams) {
+  if (!hasDNR) return;
   try {
     if (!customParams || customParams.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
@@ -119,6 +126,7 @@ async function syncCustomParamsDNR(customParams) {
 }
 
 async function applyDnrState(prefs) {
+  if (!hasDNR) return;
   if (prefs.dnrEnabled) {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       enableRulesetIds: ["tracking_params"],
@@ -136,8 +144,11 @@ async function applyDnrState(prefs) {
 const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
 // --- Context menu helpers ---
+// Firefox Android does not support chrome.contextMenus; guard all calls.
+const hasContextMenus = typeof chrome.contextMenus !== "undefined";
 
 async function syncContextMenus(enabled) {
+  if (!hasContextMenus) return;
   await chrome.contextMenus.removeAll();
   if (!enabled) return;
   const prefs = await getPrefsWithCache();
@@ -223,7 +234,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "getPrefs") {
     getPrefsWithCache()
-      .then(sendResponse)
+      .then(prefs => sendResponse({ ...prefs, _affiliateDomains }))
       .catch(() => { try { sendResponse(null); } catch { /* channel closed */ } });
     return true;
   }
@@ -316,7 +327,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 
-  if (!prefs.enabled) {
+  if (!prefs.enabled || !prefs.onboardingDone) {
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
@@ -398,6 +409,14 @@ chrome.runtime.onStartup.addListener(async () => {
   await applyDnrState(prefs);
 });
 
+// --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
+let _onboardingTabOpened = false;
+function openOnboardingOnce() {
+  if (_onboardingTabOpened) return;
+  _onboardingTabOpened = true;
+  chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+}
+
 // --- On install: open onboarding on first run, register context menu ---
 chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
@@ -408,16 +427,35 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 
   if (details.reason === "install") {
-    // First install: open the onboarding page in a new tab
     const installPrefs = await getPrefs();
     if (!installPrefs.onboardingDone) {
-      chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+      openOnboardingOnce();
     }
   }
 });
 
+// --- Fallback: onInstalled is unreliable in Firefox MV2 temporary add-ons ---
+// If onboarding was never completed, open it on background load. This also
+// covers edge cases where onInstalled fires before the module registers its
+// listener. The dedup flag ensures only one tab opens even if both paths fire.
+(async () => {
+  try {
+    const prefs = await getPrefs();
+    if (!prefs.onboardingDone) {
+      openOnboardingOnce();
+    }
+    // Also ensure context menus are registered on first load
+    if (prefs.contextMenuEnabled !== false) {
+      await syncContextMenus(true);
+    }
+  } catch (e) {
+    console.error("[MUGA] fallback onboarding check failed:", e);
+  }
+})();
+
 // --- Keyboard shortcut: copy clean URL of current tab ---
-chrome.commands.onCommand.addListener(async (command) => {
+// Firefox Android does not support chrome.commands
+if (chrome.commands) chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "copy-clean-url") return;
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -430,7 +468,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   }, () => void chrome.runtime.lastError);
 });
 
-chrome.contextMenus.onClicked.addListener(async (info) => {
+if (hasContextMenus) chrome.contextMenus.onClicked.addListener(async (info) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (info.menuItemId === "muga-copy-clean") {

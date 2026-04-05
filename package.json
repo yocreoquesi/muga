@@ -1,11 +1,11 @@
 {
   "name": "muga",
-  "version": "1.9.2",
-  "description": "Fair to every click. Strips 454+ tracking params, respects affiliate links. Open source.",
+  "version": "1.9.6",
+  "description": "Fair to every click. Strips 459+ tracking params, respects affiliate links. Open source.",
   "type": "module",
   "scripts": {
     "dev:chrome": "web-ext run --source-dir src/ --target chromium",
-    "dev:firefox": "web-ext run --source-dir src/ --target firefox-desktop",
+    "dev:firefox": "cp src/manifest.json src/manifest.v3.json && cp src/manifest.v2.json src/manifest.json && web-ext run --source-dir src/ --target firefox-desktop; EXIT=$?; cp src/manifest.v3.json src/manifest.json && rm -f src/manifest.v3.json; exit $EXIT",
     "build:chrome": "web-ext build --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest",
     "build:firefox": "cp src/manifest.json src/manifest.v3.json && cp src/manifest.v2.json src/manifest.json && web-ext build --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest && cp src/manifest.v3.json src/manifest.json && rm src/manifest.v3.json",
     "build": "npm run build:chrome && npm run build:firefox",
