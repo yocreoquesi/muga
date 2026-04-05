@@ -89,7 +89,7 @@
 - `data-i18n="key"` for all user-visible text. English fallback directly in the HTML.
 - `hidden` attribute for initially hidden sections (toggled via JS, not CSS classes).
 - Scripts at end of `<body>`: polyfill as `<script src>`, then page JS as `<script type="module" src>`.
-- No inline styles in HTML. Content scripts set styles via `element.style.cssText` in JS.
+- No inline styles in HTML. Content scripts set styles via `element.style.cssText` in JS. Preview replicas in options/popup pages that mirror content-script UI may also use `style.cssText` to stay in sync with the injected styles.
 
 ## i18n
 

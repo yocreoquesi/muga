@@ -6,19 +6,20 @@ import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS } from "../lib/storage.js";
 
-let currentLang = "en";
+let _currentLang = "en";
 
-// --- Toast & confirm helpers (replace native alert/confirm) ---
+// ── Toast & confirm helpers ─────────────────────────────────────────────────
 
 let _toastEl = null;
 let _toastTimer = null;
 
+/** Shows a temporary toast notification. */
 function showToast(msg) {
   if (!_toastEl) {
     _toastEl = document.createElement("div");
     _toastEl.className = "toast";
-    _toastEl.setAttribute("role", "status");
-    _toastEl.setAttribute("aria-live", "polite");
+    _toastEl.setAttribute("role", "alert");
+    _toastEl.setAttribute("aria-live", "assertive");
     document.body.appendChild(_toastEl);
   }
   _toastEl.textContent = msg;
@@ -27,14 +28,16 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => _toastEl.classList.remove("visible"), 2500);
 }
 
+/** Shows a modal confirmation dialog, returns Promise<boolean>. */
 function showConfirm(msg) {
   return new Promise(resolve => {
+    const prevFocus = document.activeElement;
     const overlay = document.createElement("div");
     overlay.className = "confirm-overlay";
 
     const box = document.createElement("div");
     box.className = "confirm-box";
-    box.setAttribute("role", "dialog");
+    box.setAttribute("role", "alertdialog");
     box.setAttribute("aria-modal", "true");
 
     const p = document.createElement("p");
@@ -48,11 +51,11 @@ function showConfirm(msg) {
 
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "confirm-cancel";
-    cancelBtn.textContent = t("confirm_cancel", currentLang);
+    cancelBtn.textContent = t("confirm_cancel", _currentLang);
 
     const okBtn = document.createElement("button");
     okBtn.className = "confirm-ok";
-    okBtn.textContent = t("confirm_ok", currentLang);
+    okBtn.textContent = t("confirm_ok", _currentLang);
 
     btns.appendChild(cancelBtn);
     btns.appendChild(okBtn);
@@ -72,7 +75,7 @@ function showConfirm(msg) {
         e.preventDefault();
       }
     };
-    const close = (val) => { document.removeEventListener("keydown", onKey); overlay.remove(); resolve(val); };
+    const close = (val) => { document.removeEventListener("keydown", onKey); overlay.remove(); if (prevFocus) prevFocus.focus(); resolve(val); };
     document.addEventListener("keydown", onKey);
     cancelBtn.addEventListener("click", () => close(false));
     okBtn.addEventListener("click", () => close(true));
@@ -80,11 +83,18 @@ function showConfirm(msg) {
   });
 }
 
+/** Initializes the options page: loads prefs, binds controls, renders lists. */
 async function init() {
-  currentLang = await getStoredLang();
-  applyTranslations(currentLang);
+  _currentLang = await getStoredLang();
+  applyTranslations(_currentLang);
 
   const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+
+  // --- Consent gate: redirect to onboarding if user hasn't accepted ToS ---
+  if (!prefs.onboardingDone) {
+    window.location.href = chrome.runtime.getURL("onboarding/onboarding.html");
+    return;
+  }
 
   bindToggle("inject", "injectOwnAffiliate", prefs);
   bindToggle("notify", "notifyForeignAffiliate", prefs);
@@ -101,7 +111,7 @@ async function init() {
   durationSelect.value = String(prefs.toastDuration || 15);
   durationSelect.addEventListener("change", () => {
     const val = Math.max(5, Math.min(60, parseInt(durationSelect.value, 10) || 15));
-    chrome.storage.sync.set({ toastDuration: val });
+    try { chrome.storage.sync.set({ toastDuration: val }); } catch (err) { console.error("[MUGA] save duration:", err); }
   });
 
   renderList("custom-params-items", prefs.customParams, "customParams");
@@ -129,19 +139,23 @@ async function init() {
   }
 }
 
+/** Binds a checkbox to a sync storage preference key. */
 function bindToggle(id, key, prefs) {
   const el = document.getElementById(id);
   el.checked = prefs[key];
-  el.addEventListener("change", () => chrome.storage.sync.set({ [key]: el.checked }));
+  el.addEventListener("change", () => {
+    try { chrome.storage.sync.set({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
+  });
 }
 
+/** Renders a blacklist/whitelist/customParams list into its container. */
 function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   if (!items.length) {
     const p = document.createElement("p");
     p.className = "empty";
-    p.textContent = t("empty_list", currentLang);
+    p.textContent = t("empty_list", _currentLang);
     container.appendChild(p);
     return;
   }
@@ -170,6 +184,7 @@ function renderList(containerId, items, listKey) {
   });
 }
 
+/** Wires add/remove buttons for list management sections. */
 function bindListButtons() {
   document.getElementById("cp-add-btn").addEventListener("click", () =>
     addEntry("customParams", "cp-input", "custom-params-items"));
@@ -179,13 +194,14 @@ function bindListButtons() {
     addEntry("whitelist", "wl-input", "whitelist-items"));
 }
 
+/** Renders tracking category toggle cards. */
 function renderCategories(disabledCategories) {
   const card = document.getElementById("categories-card");
   card.innerHTML = "";
   const disabled = new Set(disabledCategories);
 
   for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-    const isEs = currentLang === "es";
+    const isEs = _currentLang === "es";
     const label = isEs ? cat.labelEs : cat.label;
     const desc = isEs ? cat.descriptionEs : cat.description;
 
@@ -220,7 +236,7 @@ function renderCategories(disabledCategories) {
       } else {
         set.add(key);
       }
-      await chrome.storage.sync.set({ disabledCategories: [...set] });
+      try { await chrome.storage.sync.set({ disabledCategories: [...set] }); } catch (err) { console.error("[MUGA] save category:", err); }
     });
 
     const slider = document.createElement("span");
@@ -235,6 +251,7 @@ function renderCategories(disabledCategories) {
   }
 }
 
+/** Renders the supported affiliate stores grid. */
 function renderStores() {
   const allStores = getSupportedStores();
   const activeStores = allStores.filter(s => s.ourTag && s.ourTag.trim() !== "");
@@ -247,9 +264,8 @@ function renderStores() {
     grid.hidden = true;
     if (hintEl) hintEl.hidden = true;
     const placeholder = document.createElement("p");
-    placeholder.className = "empty";
-    placeholder.style.cssText = "padding:8px 16px 12px";
-    placeholder.textContent = t("no_active_stores", currentLang);
+    placeholder.className = "empty stores-empty";
+    placeholder.textContent = t("no_active_stores", _currentLang);
     grid.parentNode.insertBefore(placeholder, grid);
     const countEl = document.getElementById("stores-count");
     if (countEl) countEl.textContent = "";
@@ -337,11 +353,17 @@ function renderStores() {
 
       info.appendChild(detail);
 
+      chip.setAttribute("role", "button");
+      chip.setAttribute("tabindex", "0");
+      chip.setAttribute("aria-label", `Toggle ${groupName} stores`);
+      chip.setAttribute("aria-expanded", "false");
       chip.addEventListener("click", () => {
-        const open = !detail.hidden;
-        detail.hidden = open;
-        chip.classList.toggle("open", !open);
+        const wasOpen = !detail.hidden;
+        detail.hidden = wasOpen;
+        chip.setAttribute("aria-expanded", String(!wasOpen));
+        chip.classList.toggle("open", !wasOpen);
       });
+      chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chip.click(); } });
     }
 
     chip.appendChild(dot);
@@ -356,13 +378,14 @@ function renderStores() {
   }
 }
 
+/** Initializes the language dropdown and binds change handler. */
 function initLanguageSelect() {
   const select = document.getElementById("lang-select");
-  select.value = currentLang;
+  select.value = _currentLang;
   select.addEventListener("change", async () => {
-    currentLang = select.value;
-    await chrome.storage.sync.set({ language: currentLang });
-    applyTranslations(currentLang);
+    _currentLang = select.value;
+    try { await chrome.storage.sync.set({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
+    applyTranslations(_currentLang);
     // Re-render dynamic lists with new language
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
     renderList("custom-params-items", prefs.customParams || [], "customParams");
@@ -371,6 +394,7 @@ function initLanguageSelect() {
   });
 }
 
+/** Validates a blacklist/whitelist entry format. */
 function isValidListEntry(entry) {
   if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
   const parts = entry.split("::");
@@ -381,34 +405,42 @@ function isValidListEntry(entry) {
   return true;
 }
 
+/** Adds a new entry to a list (blacklist/whitelist/customParams). */
 async function addEntry(listKey, inputId, containerId) {
   const input = document.getElementById(inputId);
   const value = input.value.trim();
   if (!value) return;
-  if (listKey !== "customParams" && !isValidListEntry(value)) {
-    showToast(t("import_error", currentLang));
+  if (listKey === "customParams") {
+    if (!/^[a-zA-Z0-9_.\-]+$/.test(value)) {
+      showToast(t("import_error", _currentLang));
+      return;
+    }
+  } else if (!isValidListEntry(value)) {
+    showToast(t("import_error", _currentLang));
     return;
   }
   const prefs = await chrome.storage.sync.get({ [listKey]: [] });
   const list = prefs[listKey];
   if (!list.includes(value)) {
     list.push(value);
-    await chrome.storage.sync.set({ [listKey]: list });
+    try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
     renderList(containerId, list, listKey);
   }
   input.value = "";
 }
 
+/** Removes an entry from a list by index. */
 async function removeEntry(listKey, index) {
   const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items" };
   const containerId = containerMap[listKey] ?? `${listKey}-items`;
   const prefs = await chrome.storage.sync.get({ [listKey]: [] });
   const list = prefs[listKey];
   list.splice(index, 1);
-  await chrome.storage.sync.set({ [listKey]: list });
+  try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
   renderList(containerId, list, listKey);
 }
 
+/** Initializes the stats display and reset button. */
 function initStatsSection() {
   const versionEl = document.getElementById("version-number");
   if (versionEl) {
@@ -416,7 +448,7 @@ function initStatsSection() {
   }
 
   document.getElementById("reset-stats-btn").addEventListener("click", async () => {
-    const ok = await showConfirm(t("stats_reset_confirm", currentLang));
+    const ok = await showConfirm(t("stats_reset_confirm", _currentLang));
     if (!ok) return;
     await chrome.storage.local.set({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
@@ -424,10 +456,11 @@ function initStatsSection() {
       // nudgeDismissed and nudgeShownCount intentionally NOT reset:
       // resetting stats must not re-trigger the review nudge.
     });
-    showToast(t("stats_reset_done", currentLang));
+    showToast(t("stats_reset_done", _currentLang));
   });
 }
 
+/** Initializes export/import settings functionality. */
 function initExportImport() {
   document.getElementById("export-btn").addEventListener("click", async () => {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
@@ -447,6 +480,7 @@ function initExportImport() {
       customParams: prefs.customParams,
       contextMenuEnabled: prefs.contextMenuEnabled,
       disabledCategories: prefs.disabledCategories,
+      toastDuration: prefs.toastDuration,
       language: prefs.language,
       devMode: prefs.devMode,
     };
@@ -469,7 +503,7 @@ function initExportImport() {
     const file = fileInput.files[0];
     if (!file) return;
     if (file.size > 102400) {
-      showToast(t("import_error", currentLang));
+      showToast(t("import_error", _currentLang));
       fileInput.value = "";
       return;
     }
@@ -519,22 +553,23 @@ function initExportImport() {
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
       syncDevTools();
       if (toSave.language) {
-        currentLang = toSave.language;
-        document.getElementById("lang-select").value = currentLang;
-        applyTranslations(currentLang);
+        _currentLang = toSave.language;
+        document.getElementById("lang-select").value = _currentLang;
+        applyTranslations(_currentLang);
       }
       renderList("blacklist-items", newPrefs.blacklist, "blacklist");
       renderList("whitelist-items", newPrefs.whitelist, "whitelist");
       renderList("custom-params-items", newPrefs.customParams, "customParams");
       renderCategories(newPrefs.disabledCategories || []);
-      showToast(t("import_success", currentLang));
+      showToast(t("import_success", _currentLang));
     } catch {
-      showToast(t("import_error", currentLang));
+      showToast(t("import_error", _currentLang));
     }
     fileInput.value = "";
   });
 }
 
+/** Shows/hides dev tools section based on devMode pref. */
 function syncDevTools() {
   const devModeEl = document.getElementById("dev-mode");
   const devToolsCard = document.getElementById("dev-tools-card");
@@ -542,13 +577,15 @@ function syncDevTools() {
   devToolsCard.style.display = devModeEl.checked ? "" : "none";
 }
 
+/** Initializes dev tools: URL tester and preview features. */
 function initDevTools() {
   // Report broken site: opens a pre-filled GitHub issue
   const reportBrokenBtn = document.getElementById("dev-report-broken-btn");
   if (reportBrokenBtn) {
     reportBrokenBtn.addEventListener("click", async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const hostname = tab?.url ? new URL(tab.url).hostname : "unknown";
+      let hostname = "unknown";
+      try { if (tab?.url) hostname = new URL(tab.url).hostname; } catch { /* non-http tab */ }
       const version = chrome.runtime.getManifest().version;
       const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
       const features = [
@@ -598,11 +635,11 @@ function initDevTools() {
 
     const titleDiv = document.createElement("div");
     titleDiv.style.cssText = "font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa";
-    titleDiv.textContent = t("toast_title", currentLang);
+    titleDiv.textContent = t("toast_title", _currentLang);
 
     const msgDiv = document.createElement("div");
     msgDiv.style.cssText = "margin-bottom:10px;font-size:12px;color:#ddd";
-    msgDiv.appendChild(document.createTextNode("amazon.es " + t("toast_tag_msg", currentLang) + " "));
+    msgDiv.appendChild(document.createTextNode("amazon.es " + t("toast_tag_msg", _currentLang) + " "));
     const codeEl = document.createElement("code");
     codeEl.style.cssText = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
     codeEl.textContent = "tag=somestore-21";
@@ -613,17 +650,17 @@ function initDevTools() {
 
     const keepBtn = document.createElement("button");
     keepBtn.style.cssText = btnStyle;
-    keepBtn.textContent = t("toast_allow", currentLang);
+    keepBtn.textContent = t("toast_allow", _currentLang);
     btnDiv.appendChild(keepBtn);
 
     const removeBtn = document.createElement("button");
     removeBtn.style.cssText = btnStyle;
-    removeBtn.textContent = t("toast_block", currentLang);
+    removeBtn.textContent = t("toast_block", _currentLang);
     btnDiv.appendChild(removeBtn);
 
     const dismissBtn = document.createElement("button");
     dismissBtn.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
-    dismissBtn.textContent = t("toast_dismiss", currentLang);
+    dismissBtn.textContent = t("toast_dismiss", _currentLang);
 
     notice.appendChild(titleDiv);
     notice.appendChild(msgDiv);
@@ -646,6 +683,7 @@ function initDevTools() {
       const notice = document.createElement("div");
       notice.id = "muga-preview-nudge";
       notice.setAttribute("role", "alert");
+      notice.setAttribute("aria-live", "assertive");
       notice.style.cssText = [
         "position:fixed", "bottom:20px", "right:20px",
         "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
@@ -657,7 +695,7 @@ function initDevTools() {
 
       const title = document.createElement("div");
       title.style.cssText = "font-weight:600;margin-bottom:8px;font-size:13px";
-      title.textContent = t("rate_nudge_btn_short", currentLang);
+      title.textContent = t("rate_nudge_btn_short", _currentLang);
 
       const info = document.createElement("div");
       info.style.cssText = "font-size:11px;color:#aaa;margin-bottom:10px;line-height:1.4";
@@ -669,7 +707,7 @@ function initDevTools() {
 
       const rateBtn = document.createElement("button");
       rateBtn.style.cssText = btnStyle;
-      rateBtn.textContent = t("rate_nudge_btn_short", currentLang);
+      rateBtn.textContent = t("rate_nudge_btn_short", _currentLang);
 
       const dismissBtn = document.createElement("button");
       dismissBtn.style.cssText = btnStyle + ";color:#666";
@@ -774,6 +812,7 @@ function initDevTools() {
   });
 }
 
+/** Tests a URL against the cleaner and displays results. */
 async function testUrl() {
   const input = document.getElementById("dev-url-input").value.trim();
   const resultDiv = document.getElementById("dev-url-result");
@@ -790,18 +829,20 @@ async function testUrl() {
     const result = processUrl(input, { ...prefs, notifyForeignAffiliate: false }, domainRules);
     cleanEl.textContent = result.cleanUrl;
     if (result.removedTracking?.length > 0) {
-      removedEl.textContent = t("dev_url_removed", currentLang).replace("%s", result.removedTracking.join(", "));
+      removedEl.textContent = t("dev_url_removed", _currentLang).replace("%s", result.removedTracking.join(", "));
     } else if (result.cleanUrl === input) {
-      removedEl.textContent = t("dev_url_clean", currentLang);
+      removedEl.textContent = t("dev_url_clean", _currentLang);
     } else {
-      removedEl.textContent = t("dev_url_action", currentLang).replace("%s", result.action);
+      removedEl.textContent = t("dev_url_action", _currentLang).replace("%s", result.action);
     }
     resultDiv.style.display = "";
 
-    // Show report button after results
+    // Show report button after results (clone to avoid listener accumulation)
     if (reportBtn) {
-      reportBtn.style.display = "";
-      reportBtn.onclick = () => {
+      const newBtn = reportBtn.cloneNode(true);
+      reportBtn.parentNode.replaceChild(newBtn, reportBtn);
+      newBtn.style.display = "";
+      newBtn.addEventListener("click", () => {
         try {
           const hostname = new URL(input).hostname;
           const version = chrome.runtime.getManifest().version;
@@ -824,7 +865,7 @@ async function testUrl() {
         } catch {
           // Invalid URL, ignore
         }
-      };
+      });
     }
   } catch (e) {
     cleanEl.textContent = "Error: " + e.message;
