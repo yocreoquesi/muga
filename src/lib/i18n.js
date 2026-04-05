@@ -30,16 +30,49 @@ export const TRANSLATIONS = {
   toggle_enabled:  { en: "Enable MUGA",                   es: "Activar MUGA" },
   toggle_title:    { en: "Enable / disable MUGA",        es: "Activar / desactivar MUGA" },
   link_advanced:    { en: "Settings →", es: "Ajustes →" },
-  removed_params_label: { en: "Removed:", es: "Eliminado:" },
-  tab_badge_label:      { en: "stripped this tab", es: "eliminados en esta pestaña" },
+  removed_params_label: { en: "Removed:", es: "Eliminados:" },
+  tab_badge_label:      { en: "stripped in this tab", es: "eliminados en esta pestaña" },
   history_copy_hint:    { en: "Click to copy clean URL", es: "Clic para copiar URL limpia" },
   history_copied:       { en: "Copied!", es: "¡Copiado!" },
   history_copy_original: { en: "Copy with tracking", es: "Copiar con rastreo" },
   show_history:          { en: "Show history", es: "Mostrar historial" },
-  share_copied:          { en: "Copied!", es: "Copiado!" },
+  share_copied:          { en: "Copied!", es: "¡Copiado!" },
   share_btn:             { en: "Share", es: "Compartir" },
   confirm_cancel:        { en: "Cancel", es: "Cancelar" },
   confirm_ok:            { en: "OK", es: "OK" },
+
+  // ── Popup milestones ────────────────────────────────────────────────────
+  milestone_10000: { en: "MUGA: Legendary URL cleaner", es: "MUGA: Limpiador legendario de URLs" },
+  milestone_5000:  { en: "MUGA: Master of Clean URLs", es: "MUGA: Maestro de URLs limpias" },
+  milestone_1000:  { en: "MUGA: Tracking Terminator", es: "MUGA: Exterminador de rastreo" },
+  milestone_500:   { en: "MUGA: Drain the Swamp Pro", es: "MUGA: Drenando el pantano Pro" },
+  milestone_100:   { en: "MUGA: Making URLs Good Again", es: "MUGA: Haciendo las URLs geniales de nuevo" },
+  milestone_10:    { en: "MUGA: First steps to clean URLs", es: "MUGA: Primeros pasos hacia URLs limpias" },
+
+  // ── Share: seasonal easter eggs ─────────────────────────────────────────
+  share_seasonal_0101: { en: "New year, new URLs. Still no tracking.", es: "Año nuevo, URLs nuevas. Sin rastreo." },
+  share_seasonal_0214: { en: "Roses are red, trackers are dead. MUGA cleaned my URLs instead.", es: "Las rosas son rojas, los rastreadores están muertos. MUGA limpió mis URLs." },
+  share_seasonal_0314: { en: "Happy Pi Day! 3.14159 reasons to clean your URLs.", es: "¡Feliz día de Pi! 3.14159 razones para limpiar tus URLs." },
+  share_seasonal_0401: { en: "This is not a joke: your URLs had tracking params. Had.", es: "No es broma: tus URLs tenían parámetros de rastreo. Tenían." },
+  share_seasonal_0504: { en: "May the clean URLs be with you.", es: "Que las URLs limpias te acompañen." },
+  share_seasonal_1031: { en: "The scariest thing on the internet? Unclean URLs. Not anymore.", es: "¿Lo más aterrador de internet? URLs sucias. Ya no más." },
+  share_seasonal_1225: { en: "All I want for Christmas is clean URLs. Done.", es: "Todo lo que quiero para Navidad son URLs limpias. Hecho." },
+  share_seasonal_1231: { en: "My URLs are cleaner than my New Year's resolutions.", es: "Mis URLs están más limpias que mis propósitos de año nuevo." },
+
+  // ── Share: fun phrases ──────────────────────────────────────────────────
+  share_phrase_1: { en: "MUGA? Most URLs Get Abused. Mine don't anymore. %junk% trackers stripped so far.", es: "¿MUGA? La Mayoría de URLs son Abusadas. Las mías ya no. %junk% rastreadores eliminados." },
+  share_phrase_2: { en: "MUGA. Mercilessly Undoing Garbage Attachments. %junk% params destroyed and counting.", es: "MUGA. Deshaciendo despiadadamente adjuntos basura. %junk% parámetros destruidos y contando." },
+  share_phrase_3: { en: "MUGA! Making URLs Good Again. %cleaned% URLs cleaned, zero data collected.", es: "¡MUGA! Haciendo las URLs geniales de nuevo. %cleaned% URLs limpiadas, cero datos recolectados." },
+  share_phrase_4: { en: "I've cleaned %cleaned% URLs and stripped %junk% trackers. My browser is basically a spa now.", es: "He limpiado %cleaned% URLs y eliminado %junk% rastreadores. Mi navegador es básicamente un spa." },
+  share_phrase_5: { en: "%junk% tracking params eliminated. Nothing happened behind my back. Fair to every click.", es: "%junk% parámetros de rastreo eliminados. Nada pasó a mis espaldas. Justo con cada clic." },
+  share_phrase_6: { en: "MUGA just cleaned %cleaned% URLs for me. The trackers never saw it coming.", es: "MUGA acaba de limpiar %cleaned% URLs. Los rastreadores no lo vieron venir." },
+  share_phrase_7: { en: "My URLs used to be 400 characters of garbage. Now they're clean, honest, and short.", es: "Mis URLs solían tener 400 caracteres de basura. Ahora son limpias, honestas y cortas." },
+  share_phrase_8: { en: "%junk% trackers stripped. No analytics. No telemetry. Just clean links. Fair to every click.", es: "%junk% rastreadores eliminados. Sin analytics. Sin telemetría. Solo enlaces limpios. Justo con cada clic." },
+  share_phrase_9: { en: "Every link I click gets cleaned before it loads. %junk% trackers gone. Free and open source.", es: "Cada enlace que abro se limpia antes de cargar. %junk% rastreadores eliminados. Libre y open source." },
+
+  // ── Share: button prefixes ──────────────────────────────────────────────
+  share_copied_prefix: { en: "✓ ", es: "✓ " },
+  share_copy_prefix:   { en: "📋 ", es: "📋 " },
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Settings", es: "Ajustes" },
@@ -62,6 +95,8 @@ export const TRANSLATIONS = {
   privacy_link:    { en: "Privacy policy",                       es: "Política de privacidad" },
   report_issue:    { en: "Report a bug or suggest a feature",    es: "Reportar un error o sugerir mejora" },
   rate_muga_link:  { en: "Rate MUGA",                            es: "Valorar MUGA" },
+  consent_gate_msg: { en: "Please accept the Terms of Use and Privacy Policy before using MUGA.", es: "Acepta los Términos de uso y la Política de privacidad antes de usar MUGA." },
+  consent_gate_btn: { en: "Accept terms to continue",             es: "Aceptar condiciones para continuar" },
   rate_nudge_btn_short: { en: "Enjoying MUGA? Rate it",               es: "\u00bfTe gusta MUGA? Val\u00f3ralo" },
   bl_placeholder: { en: "mysite.com  or  amazon.es::tag::youtuber-21", es: "mysite.com  o  amazon.es::tag::youtuber-21" },
   wl_placeholder: { en: "mysite.com  or  amazon.es::tag::creator-21", es: "mysite.com  o  amazon.es::tag::creador-21" },
@@ -80,7 +115,7 @@ export const TRANSLATIONS = {
 
   section_url_cleaning:  { en: "URL Cleaning",                       es: "Limpieza de URLs" },
   row_dnr_label:         { en: "Strip tracking parameters before navigation", es: "Eliminar parámetros de rastreo antes de navegar" },
-  row_dnr_hint:          { en: "Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads", es: "Limpia URLs mientras escribes en la barra de direcciones, desde marcadores y enlaces de otras apps. Antes de que cargue la página" },
+  row_dnr_hint:          { en: "Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.", es: "Limpia URLs mientras escribes en la barra de direcciones, desde marcadores y enlaces de otras apps. Antes de que cargue la página." },
   row_context_menu_label: { en: "Right-click → Copy clean link or selection", es: "Menú contextual → Copiar enlace o selección limpia" },
   row_context_menu_hint:  { en: "Works on a single link, a text selection with multiple URLs, or plain-text URLs. Alt+Shift+C copies the current tab's clean URL. Ctrl+C also auto-cleans URLs in your selection.", es: "Funciona con un enlace, una selección con varias URLs, o URLs en texto plano. Alt+Shift+C copia la URL limpia de la pestaña. Ctrl+C también limpia automáticamente las URLs en tu selección." },
   section_privacy:       { en: "Privacy",                            es: "Privacidad" },
@@ -88,7 +123,7 @@ export const TRANSLATIONS = {
   row_pings_hint:        { en: "Removes ping attributes from links so the browser doesn't send tracking beacons on click", es: "Elimina atributos ping para que el navegador no envíe balizas al hacer clic" },
   section_redirects:     { en: "Redirect handling",                  es: "Gestión de redirecciones" },
   row_amp_label:         { en: "Redirect AMP pages to canonical URL", es: "Redirigir páginas AMP a la URL canónica" },
-  row_amp_hint:          { en: "Replaces Google AMP links with the original article URL", es: "Reemplaza los enlaces AMP de Google con la URL original del artículo" },
+  row_amp_hint:          { en: "Replaces AMP links with the original article URL", es: "Reemplaza los enlaces AMP con la URL original del artículo" },
   row_unwrap_label:      { en: "Unwrap redirect wrappers",            es: "Desenvolver redireccionadores" },
   row_unwrap_hint:       { en: "Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)", es: "Extrae el destino real de URLs de redirección (ej: ?redirect=https://example.com)" },
   row_toast_duration_label: { en: "Affiliate notification duration", es: "Duración de la notificación de afiliado" },
@@ -97,9 +132,9 @@ export const TRANSLATIONS = {
   section_stats:         { en: "Statistics",                                                                        es: "Estadísticas" },
   stats_reset_label:     { en: "Lifetime stats",                                                                    es: "Estadísticas acumuladas" },
   stats_reset_hint:      { en: "Counters persist across sessions. Debug log resets when the browser restarts.", es: "Los contadores se conservan entre sesiones. El log de depuración se reinicia al cerrar el navegador." },
-  stats_reset_btn:       { en: "Reset stats",                                                                       es: "Reiniciar stats" },
+  stats_reset_btn:       { en: "Reset stats",                                                                       es: "Reiniciar estadísticas" },
   stats_reset_confirm:   { en: "Are you sure? This will clear all counters.",                                       es: "¿Seguro? Se borrarán todos los contadores." },
-  stats_reset_done:      { en: "Stats cleared.",                                                                    es: "Stats borrados." },
+  stats_reset_done:      { en: "Stats cleared.",                                                                    es: "Estadísticas borradas." },
   section_data:          { en: "Import / Export",                                                                   es: "Importar / Exportar" },
   export_btn:            { en: "Export settings",                                                                   es: "Exportar ajustes" },
   import_btn:            { en: "Import settings",                                                                   es: "Importar ajustes" },
@@ -135,7 +170,6 @@ export const TRANSLATIONS = {
   dev_url_action:             { en: "Action: %s",                                                        es: "Acción: %s" },
   dev_url_report_btn:         { en: "Report a problem with this URL",                                    es: "Reportar un problema con esta URL" },
   report_broken_label:        { en: "Report a bug or suggest an improvement",                            es: "Reportar un error o sugerir una mejora" },
-  dev_report_broken_label:    { en: "Report a bug or suggest an improvement",                            es: "Reportar un error o sugerir una mejora" },
   dev_report_broken_hint:     { en: "Opens a pre-filled GitHub issue with your browser and extension info", es: "Abre un issue de GitHub pre-rellenado con info de tu navegador y extensi\u00f3n" },
   dev_report_broken_btn:      { en: "Report",                                                            es: "Reportar" },
 
@@ -156,15 +190,15 @@ export const TRANSLATIONS = {
   ob_tagline_sub:           { en: "Open source. Transparent. Built to protect your privacy.",                es: "Open source. Transparente. Hecho para proteger tu privacidad." },
   ob_tagline_values:        { en: "We may get things wrong, but we will always be honest about it and work to fix it. You stay in control.", es: "Puede que nos equivoquemos, pero siempre seremos honestos al respecto y trabajaremos para corregirlo. T\u00fa decides." },
   ob_step1_title:           { en: "What MUGA does, automatically",                                          es: "Lo que MUGA hace, autom\u00e1ticamente" },
-  ob_feat1_title:           { en: "Strips 454+ tracking parameters from every URL",                         es: "Elimina 454+ par\u00e1metros de rastreo de cada URL" },
+  ob_feat1_title:           { en: "Strips 459+ tracking parameters from every URL",                         es: "Elimina 459+ par\u00e1metros de rastreo de cada URL" },
   ob_feat1_desc:            { en: "fbclid, gclid, UTMs, and hundreds more. Removed before the page loads. No data is collected or sent anywhere.", es: "fbclid, gclid, UTMs y cientos m\u00e1s. Eliminados antes de que cargue la p\u00e1gina. No se recoge ni env\u00eda ning\u00fan dato." },
   ob_feat2_title:           { en: "Blocks hidden tracking: AMP redirects, ping beacons, URL wrappers",      es: "Bloquea rastreo oculto: redirecciones AMP, balizas ping, wrappers de URL" },
   ob_feat2_desc:            { en: "Every trick advertisers use to follow your clicks is neutralized locally, inside your browser.", es: "Cada truco que los anunciantes usan para seguir tus clics se neutraliza en local, dentro de tu navegador." },
   ob_feat3_title:           { en: "Clean URLs are shorter, prettier, and safe to share",                     es: "Las URLs limpias son m\u00e1s cortas, m\u00e1s bonitas y seguras para compartir" },
   ob_feat3_desc:            { en: "Sometimes you can barely tell where a link goes with all the junk attached. Right-click any link to copy it clean -- no tracking, no noise.", es: "A veces es imposible saber a d\u00f3nde lleva un enlace con tanta basura pegada. Clic derecho en cualquier enlace para copiarlo limpio -- sin rastreo, sin ruido." },
-  ob_step2_title:           { en: "How MUGA stays free",                                                    es: "C\u00f3mo MUGA se mantiene gratis" },
+  ob_step2_title:           { en: "Fair to every click",                                                    es: "Justa con cada clic" },
   ob_affiliate_desc:        { en: 'On selected stores, if a link has <strong>no affiliate tag at all</strong>, MUGA can add ours. <strong>Your price never changes.</strong> If a creator\'s tag is already there, we never touch it -- the code is open source, you can verify this.<br><br>We deliberately rejected 10+ stores whose tracking methods require routing your clicks through external servers. We would rather earn less than compromise how MUGA works.', es: 'En tiendas seleccionadas, si un enlace <strong>no tiene ning\u00fan tag de afiliado</strong>, MUGA puede a\u00f1adir el nuestro. <strong>Tu precio nunca cambia.</strong> Si el tag de un creador ya est\u00e1 ah\u00ed, nunca lo tocamos -- el c\u00f3digo es open source, puedes comprobarlo.<br><br>Hemos rechazado deliberadamente m\u00e1s de 10 tiendas cuyos m\u00e9todos de rastreo obligan a pasar tus clics por servidores externos. Preferimos ganar menos que comprometer c\u00f3mo funciona MUGA.' },
-  ob_tos_label:             { en: 'I have read and accept the <a href="../privacy/tos.html" target="_blank">Terms of use</a> and <a href="../privacy/privacy.html" target="_blank">Privacy policy</a><small class="tos-required-hint">Required to continue</small>', es: 'He le\u00eddo y acepto los <a href="../privacy/tos.html" target="_blank">T\u00e9rminos de uso</a> y la <a href="../privacy/privacy.html" target="_blank">Pol\u00edtica de privacidad</a><small class="tos-required-hint">Obligatorio para continuar</small>' },
+  ob_tos_label:             { en: 'I have read and accept the <a href="../privacy/tos.html" target="_blank" rel="noopener noreferrer">Terms of use</a> and <a href="../privacy/privacy.html" target="_blank" rel="noopener noreferrer">Privacy policy</a><small class="tos-required-hint">Required to continue</small>', es: 'He le\u00eddo y acepto los <a href="../privacy/tos.html" target="_blank" rel="noopener noreferrer">T\u00e9rminos de uso</a> y la <a href="../privacy/privacy.html" target="_blank" rel="noopener noreferrer">Pol\u00edtica de privacidad</a><small class="tos-required-hint">Obligatorio para continuar</small>' },
   ob_affiliate_check_label: { en: "Allow MUGA's affiliate tag on links that have none",                     es: "Permitir el tag de afiliado de MUGA en enlaces que no tengan ninguno" },
   ob_affiliate_check_hint:  { en: "Same price, always. If a link already has a tag, MUGA never touches it. Verify in our source code.", es: "Mismo precio, siempre. Si un enlace ya tiene un tag, MUGA nunca lo toca. Compru\u00e9balo en nuestro c\u00f3digo fuente." },
   ob_cta_btn:               { en: "Start browsing clean",                                                   es: "Empieza a navegar limpio" },
@@ -190,7 +224,7 @@ const HTML_KEYS = new Set(["bl_hint", "wl_hint", "cp_hint", "ob_affiliate_desc",
 
 // Allowed tags and attributes for HTML_KEYS sanitization.
 const ALLOWED_TAGS = new Set(["code", "br", "strong", "em", "a", "small"]);
-const ALLOWED_ATTRS = new Set(["href", "target", "class"]);
+const ALLOWED_ATTRS = new Set(["href", "target", "class", "rel"]);
 
 /** Sanitize HTML by stripping all tags/attrs not in the allowlists. */
 function sanitizeHTML(html) {
@@ -274,8 +308,19 @@ export async function getStoredLang() {
   }
 
   return new Promise(resolve => {
-    chrome.storage.sync.get({ language: null }, r => {
-      resolve(r.language ?? browserLang());
-    });
+    try {
+      chrome.storage.sync.get({ language: null }, r => {
+        void chrome.runtime.lastError;
+        try {
+          resolve(r?.language ?? browserLang());
+        } catch (err) {
+          console.error("[MUGA] getStoredLang:", err);
+          resolve(browserLang());
+        }
+      });
+    } catch (err) {
+      console.error("[MUGA] getStoredLang:", err);
+      resolve(browserLang());
+    }
   });
 }

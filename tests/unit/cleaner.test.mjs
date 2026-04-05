@@ -2131,6 +2131,110 @@ describe("Hash/fragment preservation — # content is never modified", () => {
 });
 
 // ---------------------------------------------------------------------------
+// processUrl — defensive input handling
+// ---------------------------------------------------------------------------
+describe("processUrl — defensive input handling", () => {
+
+  test("returns untouched for null URL", () => {
+    const result = processUrl(null, PREFS);
+    assert.equal(result.action, "untouched");
+  });
+
+  test("returns untouched for undefined URL", () => {
+    const result = processUrl(undefined, PREFS);
+    assert.equal(result.action, "untouched");
+  });
+
+  test("returns untouched for empty object as URL", () => {
+    const result = processUrl({}, PREFS);
+    assert.equal(result.action, "untouched");
+  });
+
+  test("handles missing pref keys gracefully", () => {
+    const result = processUrl("https://example.com?utm_source=test", {});
+    // Should not throw — missing keys are treated as defaults
+    assert.ok(result);
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// TRACKING_PREFIXES — prefix-based param stripping
+// ---------------------------------------------------------------------------
+describe("TRACKING_PREFIXES — prefix-based param stripping", () => {
+
+  test("strips cm_sw_ prefixed params (Amazon)", () => {
+    const result = processUrl(
+      "https://www.amazon.com/dp/B01N5?cm_sw_r_cp_api_test=abc",
+      PREFS
+    );
+    assert.ok(result.removedTracking.some(p => p.startsWith("cm_sw_")));
+  });
+
+  test("strips hsa_ prefixed params (HubSpot)", () => {
+    const result = processUrl(
+      "https://example.com/page?hsa_cam=123&hsa_grp=456",
+      PREFS
+    );
+    assert.ok(result.removedTracking.includes("hsa_cam"));
+    assert.ok(result.removedTracking.includes("hsa_grp"));
+  });
+
+  test("strips mt_ prefixed params (Matomo)", () => {
+    const result = processUrl(
+      "https://example.com/page?mt_campaign=spring",
+      PREFS
+    );
+    assert.ok(result.removedTracking.includes("mt_campaign"));
+  });
+
+  test("strips scm_ prefixed params (AliExpress/Alibaba)", () => {
+    const result = processUrl(
+      "https://example.com/page?scm_id=123",
+      PREFS
+    );
+    assert.ok(result.removedTracking.includes("scm_id"));
+  });
+
+  test("strips sb-ci- prefixed params (Amazon search)", () => {
+    const result = processUrl(
+      "https://www.amazon.com/s?k=phone&sb-ci-n=0",
+      PREFS
+    );
+    assert.ok(result.removedTracking.includes("sb-ci-n"));
+  });
+
+  test("does NOT strip params that merely contain a prefix substring", () => {
+    // "custom_param" contains "cm_" but does not START with "cm_sw_"
+    const result = processUrl(
+      "https://example.com/page?custom_param=abc",
+      PREFS
+    );
+    assert.ok(!result.removedTracking.includes("custom_param"));
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// YouTube — list= playlist param preserved while tracking params are stripped
+// ---------------------------------------------------------------------------
+describe("YouTube — list= playlist preservation", () => {
+
+  test("strips tracking but preserves list= on YouTube", () => {
+    const result = processUrl(
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf&si=abc123&utm_source=share",
+      PREFS,
+      domainRules
+    );
+    const u = new URL(result.cleanUrl);
+    assert.equal(u.searchParams.get("list"), "PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf");
+    assert.equal(u.searchParams.get("v"), "dQw4w9WgXcQ");
+    assert.ok(result.removedTracking.includes("utm_source"));
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // C11 sync verification (continued)
 // ---------------------------------------------------------------------------
 describe("C11 — popup.js formatStat sync", () => {

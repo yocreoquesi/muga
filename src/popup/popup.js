@@ -7,14 +7,69 @@ import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage } from "../lib/storage.js";
 
-const CLIPBOARD_SVG = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+/** Creates a clipboard SVG icon (12x12) via createElementNS. */
+function _createClipboardSvg() {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", "12");
+  svg.setAttribute("height", "12");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("aria-hidden", "true");
+  const rect = document.createElementNS(NS, "rect");
+  for (const [k, v] of Object.entries({ x: "5", y: "5", width: "9", height: "10", rx: "1.5", stroke: "currentColor", "stroke-width": "1.5", fill: "none" })) rect.setAttribute(k, v);
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", "M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4");
+  for (const [k, v] of Object.entries({ stroke: "currentColor", "stroke-width": "1.5", fill: "none", "stroke-linecap": "round" })) path.setAttribute(k, v);
+  svg.appendChild(rect);
+  svg.appendChild(path);
+  return svg;
+}
 
+/** Replaces element content with a fresh clipboard SVG icon. */
+function _setClipboardIcon(el) {
+  el.textContent = "";
+  el.appendChild(_createClipboardSvg());
+}
+
+/** Initializes popup: loads prefs/stats, renders UI, binds event handlers. */
 async function init() {
   const lang = await getStoredLang();
   applyTranslations(lang);
 
+  // --- Consent gate: block popup until user accepts ToS in onboarding ---
+  const prefsCheck = await getPrefs();
+  if (!prefsCheck.onboardingDone) {
+    document.body.innerHTML = "";
+    const gate = document.createElement("div");
+    gate.className = "consent-gate";
+    gate.setAttribute("role", "alertdialog");
+    gate.setAttribute("aria-label", "MUGA consent required");
+    const logo = document.createElement("div");
+    logo.className = "consent-gate-logo";
+    logo.textContent = "MUGA";
+    const msg = document.createElement("p");
+    msg.className = "consent-gate-msg";
+    msg.setAttribute("data-i18n", "consent_gate_msg");
+    msg.textContent = t("consent_gate_msg", lang);
+    const btn = document.createElement("button");
+    btn.className = "consent-gate-btn";
+    btn.setAttribute("data-i18n", "consent_gate_btn");
+    btn.textContent = t("consent_gate_btn", lang);
+    gate.appendChild(logo);
+    gate.appendChild(msg);
+    gate.appendChild(btn);
+    document.body.appendChild(gate);
+    btn.focus();
+    btn.addEventListener("click", () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+      window.close();
+    });
+    return;
+  }
+
   const [prefs, local] = await Promise.all([
-    getPrefs(),
+    Promise.resolve(prefsCheck),
     chrome.storage.local.get({
       stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
     }),
@@ -33,8 +88,9 @@ async function init() {
 
   enabledToggle.checked = prefs.enabled;
 
-  enabledToggle.addEventListener("change", () =>
-    chrome.storage.sync.set({ enabled: enabledToggle.checked }));
+  enabledToggle.addEventListener("change", () => {
+    try { chrome.storage.sync.set({ enabled: enabledToggle.checked }); } catch (err) { console.error("[MUGA] save enabled:", err); }
+  });
 
   document.getElementById("open-options").addEventListener("click", (e) => {
     e.preventDefault();
@@ -49,6 +105,7 @@ async function init() {
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
     popupRateLink.target = "_blank";
+    popupRateLink.rel = "noopener noreferrer";
   }
 
   // Growth features
@@ -61,12 +118,12 @@ async function init() {
   const logoEl = document.getElementById("logo-text");
   if (logoEl && urlsCleaned > 0) {
     const milestones = [
-      [10000, "MUGA: Legendary URL cleaner"],
-      [5000,  "MUGA: Master of Clean URLs"],
-      [1000,  "MUGA: Tracking Terminator"],
-      [500,   "MUGA: Drain the Swamp Pro"],
-      [100,   "MUGA: Making URLs Good Again"],
-      [10,    "MUGA: First steps to clean URLs"],
+      [10000, t("milestone_10000", lang)],
+      [5000,  t("milestone_5000", lang)],
+      [1000,  t("milestone_1000", lang)],
+      [500,   t("milestone_500", lang)],
+      [100,   t("milestone_100", lang)],
+      [10,    t("milestone_10", lang)],
     ];
     const milestone = milestones.find(([threshold]) => urlsCleaned >= threshold);
     if (milestone) logoEl.title = milestone[1];
@@ -93,17 +150,17 @@ async function init() {
   if (shouldNudge) {
     rateBtn.hidden = false;
     rateBtn.textContent = t("rate_nudge_btn_short", lang);
-    sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {});
+    sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {}); // best-effort; nudge still shows
     chrome.storage.local.set({
       nudgeShownCount: nudgeData.nudgeShownCount + 1,
       nudgeLastShown: Date.now(),
-    }).catch(() => {});
+    }).catch(() => {}); // best-effort; count is non-critical
     const isFirefox = navigator.userAgent.includes("Firefox");
     const storeUrl = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
     rateBtn.addEventListener("click", () => {
-      chrome.storage.local.set({ nudgeDismissed: true });
+      try { chrome.storage.local.set({ nudgeDismissed: true }); } catch (err) { console.error("[MUGA] save nudge dismiss:", err); }
       chrome.tabs.create({ url: storeUrl });
     });
   }
@@ -120,41 +177,46 @@ async function init() {
     // Seasonal easter eggs
     const now = new Date();
     const mmdd = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const seasonal = {
-      "01-01": "New year, new URLs. Still no tracking.",
-      "02-14": "Roses are red, trackers are dead. MUGA cleaned my URLs instead.",
-      "03-14": "Happy Pi Day! 3.14159 reasons to clean your URLs.",
-      "04-01": "This is not a joke: your URLs had tracking params. Had.",
-      "05-04": "May the clean URLs be with you.",
-      "10-31": "The scariest thing on the internet? Unclean URLs. Not anymore.",
-      "12-25": "All I want for Christmas is clean URLs. Done.",
-      "12-31": "My URLs are cleaner than my New Year's resolutions.",
+    const seasonalKeys = {
+      "01-01": "share_seasonal_0101",
+      "02-14": "share_seasonal_0214",
+      "03-14": "share_seasonal_0314",
+      "04-01": "share_seasonal_0401",
+      "05-04": "share_seasonal_0504",
+      "10-31": "share_seasonal_1031",
+      "12-25": "share_seasonal_1225",
+      "12-31": "share_seasonal_1231",
     };
+    const seasonal = Object.fromEntries(
+      Object.entries(seasonalKeys).map(([date, key]) => [date, t(key, lang)])
+    );
 
     // Fun phrases: rotated randomly, with backronym hooks
+    const phraseReplace = (s) => s.replace("%junk%", junk).replace("%cleaned%", cleaned);
     const phrases = [
-      `MUGA? Most URLs Get Abused. Mine don't anymore. ${junk} trackers stripped so far.`,
-      `MUGA. Mercilessly Undoing Garbage Attachments. ${junk} params destroyed and counting.`,
-      `MUGA! Making URLs Good Again. ${cleaned} URLs cleaned, zero data collected.`,
-      `I've cleaned ${cleaned} URLs and stripped ${junk} trackers. My browser is basically a spa now.`,
-      `${junk} tracking params eliminated. Nothing happened behind my back. Fair to every click.`,
-      `MUGA just cleaned ${cleaned} URLs for me. The trackers never saw it coming.`,
-      `My URLs used to be 400 characters of garbage. Now they're clean, honest, and short.`,
-      `${junk} trackers stripped. No analytics. No telemetry. Just clean links. Fair to every click.`,
-      `Every link I click gets cleaned before it loads. ${junk} trackers gone. Free and open source.`,
+      phraseReplace(t("share_phrase_1", lang)),
+      phraseReplace(t("share_phrase_2", lang)),
+      phraseReplace(t("share_phrase_3", lang)),
+      phraseReplace(t("share_phrase_4", lang)),
+      phraseReplace(t("share_phrase_5", lang)),
+      phraseReplace(t("share_phrase_6", lang)),
+      phraseReplace(t("share_phrase_7", lang)),
+      phraseReplace(t("share_phrase_8", lang)),
+      phraseReplace(t("share_phrase_9", lang)),
     ];
 
     const pick = seasonal[mmdd] || phrases[Math.floor(Math.random() * phrases.length)];
     const text = `${pick}\n\n${storeUrl}`;
 
     navigator.clipboard.writeText(text).then(() => {
-      shareBtn.textContent = "✓ " + t("share_copied", lang);
-      setTimeout(() => { shareBtn.textContent = "📋 " + t("share_btn", lang); }, 1500);
-    }).catch(() => {});
+      shareBtn.textContent = t("share_copied_prefix", lang) + t("share_copied", lang);
+      setTimeout(() => { shareBtn.textContent = t("share_copy_prefix", lang) + t("share_btn", lang); }, 1500);
+    }).catch(() => {}); // clipboard may fail in restricted contexts; share is non-critical
   });
 
   // Clicking the URLs-cleaned stat always toggles the history panel (#178, #237)
   const statUrlsWrap = document.getElementById("stat-urls-wrap");
+  statUrlsWrap.setAttribute("aria-expanded", "false");
   statUrlsWrap.addEventListener("click", () => {
     const historySection = document.getElementById("history");
     historySection.hidden = false;
@@ -172,6 +234,7 @@ async function init() {
   await showHistory(lang);
 }
 
+/** Shows a live preview of URL cleaning for the current tab. */
 async function showUrlPreview(prefs, lang) {
   // Skip on internal browser pages, new tabs, etc.
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -205,7 +268,7 @@ async function showUrlPreview(prefs, lang) {
   try {
     const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
     if (resp.ok) domainRules = await resp.json();
-  } catch (_) {}
+  } catch (_) { /* non-critical: preview works without domain rules */ }
 
   const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules);
 
@@ -262,12 +325,14 @@ async function showUrlPreview(prefs, lang) {
   }
 }
 
+/** Formats a number with locale-appropriate thousand separators. */
 function formatStat(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
 }
 
+/** Renders the recent URL cleaning history list. */
 async function showHistory(lang) {
   const data = await sessionStorage.get({ history: [] });
   const history = data.history;
@@ -304,7 +369,7 @@ async function showHistory(lang) {
     const copyCleanBtn = document.createElement("button");
     copyCleanBtn.className = "history-copy-clean-btn";
     copyCleanBtn.setAttribute("aria-label", t("history_copy_hint", lang));
-    copyCleanBtn.innerHTML = CLIPBOARD_SVG;
+    _setClipboardIcon(copyCleanBtn);
 
     afterRow.appendChild(afterDiv);
     afterRow.appendChild(copyCleanBtn);
@@ -334,38 +399,51 @@ async function showHistory(lang) {
     // Click to copy clean URL (#87)
     entryDiv.addEventListener("click", (e) => {
       if (e.target === copyOrigBtn || copyCleanBtn.contains(e.target)) return; // handled separately
+      const orig = afterDiv.textContent;
       navigator.clipboard.writeText(entry.clean).then(() => {
-        const orig = afterDiv.textContent;
         entryDiv.classList.add("copied");
         afterDiv.textContent = t("history_copied", lang);
         setTimeout(() => {
           entryDiv.classList.remove("copied");
           afterDiv.textContent = orig;
         }, 1200);
-      }).catch(() => {});
+      }).catch(() => {
+        afterDiv.textContent = "✗";
+        setTimeout(() => { afterDiv.textContent = orig; }, 1200);
+      });
     });
 
     // Copy clean URL icon button
     copyCleanBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       navigator.clipboard.writeText(entry.clean).then(() => {
-        copyCleanBtn.innerHTML = "✓";
+        copyCleanBtn.textContent = "✓";
         copyCleanBtn.style.fontSize = "11px";
         setTimeout(() => {
-          copyCleanBtn.innerHTML = CLIPBOARD_SVG;
+          _setClipboardIcon(copyCleanBtn);
           copyCleanBtn.style.fontSize = "";
         }, 1200);
-      }).catch(() => {});
+      }).catch(() => {
+        copyCleanBtn.textContent = "✗";
+        copyCleanBtn.style.fontSize = "11px";
+        setTimeout(() => {
+          _setClipboardIcon(copyCleanBtn);
+          copyCleanBtn.style.fontSize = "";
+        }, 1200);
+      });
     });
 
     // Copy original URL button (#178)
     copyOrigBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      const origText = copyOrigBtn.textContent;
       navigator.clipboard.writeText(entry.original).then(() => {
-        const origText = copyOrigBtn.textContent;
         copyOrigBtn.textContent = t("history_copied", lang);
         setTimeout(() => { copyOrigBtn.textContent = origText; }, 1200);
-      }).catch(() => {});
+      }).catch(() => {
+        copyOrigBtn.textContent = "✗";
+        setTimeout(() => { copyOrigBtn.textContent = origText; }, 1200);
+      });
     });
   });
 }

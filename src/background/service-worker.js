@@ -8,8 +8,14 @@ import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
 
+self.addEventListener("unhandledrejection", (e) => {
+  console.warn("[MUGA] unhandled rejection:", e.reason);
+});
+
 // Pre-compute affiliate domains once at startup for getPrefs responses
 const _affiliateDomains = getAffiliateDomains();
+
+let _firstUsedSet = false;
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
 //       top-level await disallowed in Chrome MV3 service workers)
@@ -17,7 +23,7 @@ let domainRules = [];
 let _domainRulesReady = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
   .then(r => r.json())
   .then(data => { domainRules = data; })
-  .catch(() => { /* domain-rules unavailable. Continue without. */ });
+  .catch(err => console.warn("[MUGA] domain-rules.json fetch failed:", err));
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
@@ -127,7 +133,7 @@ async function syncCustomParamsDNR(customParams) {
 
 async function applyDnrState(prefs) {
   if (!hasDNR) return;
-  if (prefs.dnrEnabled) {
+  if (prefs.enabled && prefs.dnrEnabled) {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       enableRulesetIds: ["tracking_params"],
     }).catch(() => {}); // no-op if already enabled
@@ -152,6 +158,7 @@ async function syncContextMenus(enabled) {
   await chrome.contextMenus.removeAll();
   if (!enabled) return;
   const prefs = await getPrefsWithCache();
+  if (!prefs.enabled) return;
   const lang = prefs.language || "en";
   const titles = {
     copy: lang === "es" ? "Copiar enlace limpio" : "Copy clean link",
@@ -215,11 +222,11 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
   cachedPrefs = null;
   prefsFetchPromise = null;
-  if (changes.customParams || changes.dnrEnabled) {
+  if (changes.customParams || changes.dnrEnabled || changes.enabled) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
   }
-  if (changes.contextMenuEnabled || changes.language) {
+  if (changes.contextMenuEnabled || changes.language || changes.enabled) {
     const enabled = changes.contextMenuEnabled
       ? changes.contextMenuEnabled.newValue !== false
       : (await getPrefsWithCache()).contextMenuEnabled !== false;
@@ -240,6 +247,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "PROCESS_URL") {
+    if (typeof message.url !== "string") {
+      try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
+      return true;
+    }
     const tabId = sender.tab?.id;
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats })
       .then(result => {
@@ -324,6 +335,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {
+  if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 
@@ -346,18 +358,22 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   }
 
   // Record first use timestamp for nudge threshold (stored locally)
-  const localStats = await getStats();
-  if (!localStats.firstUsed) {
-    await setStats({ firstUsed: Date.now() });
+  if (!_firstUsedSet) {
+    const localStats = await getStats();
+    if (localStats.firstUsed) {
+      _firstUsedSet = true;
+    } else {
+      await setStats({ firstUsed: Date.now() });
+      _firstUsedSet = true;
+    }
   }
 
   // Update stats and session history. Only count if the URL actually changed (S13).
   const urlChanged = result.cleanUrl !== rawUrl;
+  let parsedRaw;
+  try { parsedRaw = new URL(rawUrl); } catch { /* ignore */ }
   if (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0)) {
-    try {
-      const p = new URL(rawUrl);
-      if (p.search) logAction("passthrough", { domain: p.hostname.replace(/^www\./, ""), path: p.pathname, params: [...p.searchParams.keys()] });
-    } catch { /* ignore */ }
+    if (parsedRaw?.search) logAction("passthrough", { domain: parsedRaw.hostname.replace(/^www\./, ""), path: parsedRaw.pathname, params: [...parsedRaw.searchParams.keys()] });
   }
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
     if (!skipStats) {
@@ -365,27 +381,27 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
       if (result.junkRemoved > 0) incrementStat("junkRemoved", result.junkRemoved);
     }
     await appendHistory(rawUrl, result.cleanUrl);
-    const parsedRaw = new URL(rawUrl);
-    const domain = parsedRaw.hostname.replace(/^www\./, "");
-    logAction("cleaned", {
-      source,
-      domain,
-      path: parsedRaw.pathname,
-      action: result.action,
-      removed: result.removedTracking,
-      junkRemoved: result.junkRemoved,
-      originalParams: [...new URL(rawUrl).searchParams.keys()],
-      cleanParams: [...new URL(result.cleanUrl).searchParams.keys()],
-      cleanUrl: result.cleanUrl,
-    });
-  } else if (result.junkRemoved > 0 && !skipStats) {
-    incrementStat("junkRemoved", result.junkRemoved);
+    if (parsedRaw) {
+      const domain = parsedRaw.hostname.replace(/^www\./, "");
+      const parsedClean = new URL(result.cleanUrl);
+      logAction("cleaned", {
+        source,
+        domain,
+        path: parsedRaw.pathname,
+        action: result.action,
+        removed: result.removedTracking,
+        junkRemoved: result.junkRemoved,
+        originalParams: [...parsedRaw.searchParams.keys()],
+        cleanParams: [...parsedClean.searchParams.keys()],
+        cleanUrl: result.cleanUrl,
+      });
+    }
   }
   if (result.action === "detected_foreign") {
     incrementStat("referralsSpotted");
     const d = result.detectedAffiliate;
     logAction("affiliate_detected", {
-      domain: new URL(rawUrl).hostname.replace(/^www\./, ""),
+      domain: parsedRaw?.hostname.replace(/^www\./, "") ?? "",
       param: d?.param,
       value: d?.value,
       store: d?.pattern?.name ?? null,

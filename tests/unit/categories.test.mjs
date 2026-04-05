@@ -172,4 +172,15 @@ describe("disabledCategories in processUrl (#196)", () => {
     assert.equal(out.searchParams.get("fbclid"), null, "fbclid must be stripped when disabledCategories is undefined");
   });
 
+  test("unknown category name in disabledCategories is safely ignored — other params still stripped", () => {
+    // A category key that doesn't exist in TRACKING_PARAM_CATEGORIES must not cause an error
+    // and must not accidentally disable any real params.
+    const url = "https://example.com/?utm_source=google&fbclid=abc123";
+    const prefs = { ...DEFAULT_PREFS, disabledCategories: ["nonexistent_category_xyz"] };
+    const result = processUrl(url, prefs);
+    const out = new URL(result.cleanUrl);
+    assert.equal(out.searchParams.get("utm_source"), null, "utm_source must still be stripped with unknown category");
+    assert.equal(out.searchParams.get("fbclid"), null, "fbclid must still be stripped with unknown category");
+  });
+
 });

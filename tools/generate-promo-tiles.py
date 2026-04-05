@@ -103,12 +103,12 @@ bb = draw.textbbox((0, 0), 'MUGA', font=f_logo)
 draw.text((tx, 42), 'MUGA', fill=WHITE, font=f_logo)
 y = 42 + (bb[3] - bb[1]) + 6
 
-draw.text((tx, y), 'Make URLs Great Again.', fill=GOLD, font=f_tag)
+draw.text((tx, y), 'Clean URLs, Fair to Every Click.', fill=GOLD, font=f_tag)
 y += 22
 draw.line([(tx, y), (W - 16, y)], fill=(255, 255, 255), width=1)
 y += 10
 
-for feat in ['✓  Strips 50+ tracking parameters', '✓  Silent. Automatic. Free.', '✓  100% local — no data sent']:
+for feat in ['✓  Strips 459+ tracking parameters', '✓  Silent. Automatic. Free.', '✓  100% local — no data sent']:
     draw.text((tx, y), feat, fill=WHITE70, font=f_feat)
     y += 19
 
@@ -142,7 +142,7 @@ bb = draw.textbbox((0, 0), 'MUGA', font=f_muga)
 mh = bb[3] - bb[1]
 my = icon_cy - mh // 2 - 10
 draw.text((text_x, my), 'MUGA', fill=WHITE, font=f_muga)
-draw.text((text_x, my + mh + 6), 'Make URLs Great Again.', fill=GOLD, font=f_sub)
+draw.text((text_x, my + mh + 6), 'Clean URLs, Fair to Every Click.', fill=GOLD, font=f_sub)
 
 # Vertical divider
 div_x = 560
@@ -152,7 +152,7 @@ draw.line([(div_x, 56), (div_x, H - SH - 36)], fill=(255, 255, 255), width=1)
 rx, ry = div_x + 60, 52
 draw.text((rx, ry), 'Every link. Cleaned. Before it loads.', fill=WHITE, font=f_h2)
 ry += 44
-draw.text((rx, ry), 'Strips UTMs, fbclid, gclid, Amazon noise, YouTube tokens and 40+ more.', fill=WHITE70, font=f_body)
+draw.text((rx, ry), 'Strips UTMs, fbclid, gclid, Amazon noise, YouTube tokens and 459+ more.', fill=WHITE70, font=f_body)
 ry += 32
 
 # Before / After pills

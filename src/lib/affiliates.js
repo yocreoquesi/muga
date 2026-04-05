@@ -803,28 +803,37 @@ export const AFFILIATE_PATTERNS = [
   // are compatible with MUGA's privacy-first model.
 ];
 
+const _hostIndex = new Map();
+let _indexedLength = 0;
+
+function _rebuildHostIndex() {
+  _hostIndex.clear();
+  for (const p of AFFILIATE_PATTERNS) {
+    for (const d of p.domains) {
+      const clean = d.replace(/^www\./, "");
+      if (!_hostIndex.has(clean)) _hostIndex.set(clean, []);
+      _hostIndex.get(clean).push(p);
+    }
+  }
+  _indexedLength = AFFILIATE_PATTERNS.length;
+}
+_rebuildHostIndex();
+
 /**
  * Returns all affiliate patterns that match the given hostname.
  * @param {string} hostname
  * @returns {Array}
  */
 export function getPatternsForHost(hostname) {
+  // Rebuild index if AFFILIATE_PATTERNS was modified (e.g. by tests)
+  if (AFFILIATE_PATTERNS.length !== _indexedLength) _rebuildHostIndex();
   const host = hostname.replace(/^www\./, "");
-  return AFFILIATE_PATTERNS.filter(p =>
-    p.domains.some(d => {
-      const domain = d.replace(/^www\./, "");
-      return host === domain || host.endsWith("." + domain);
-    })
-  );
-}
-
-/**
- * Returns true if the parameter is a pure tracking param (not an affiliate tag).
- * @param {string} param
- * @returns {boolean}
- */
-export function isTrackingParam(param) {
-  return TRACKING_PARAMS.includes(param.toLowerCase());
+  const exact = _hostIndex.get(host);
+  if (exact) return exact;
+  for (const [domain, patterns] of _hostIndex) {
+    if (host.endsWith("." + domain)) return patterns;
+  }
+  return [];
 }
 
 /**

@@ -138,7 +138,7 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_dnr_label">Strip tracking parameters before navigation</strong>
-            <small data-i18n="row_dnr_hint">Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads</small>
+            <small data-i18n="row_dnr_hint">Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.</small>
           </div>
           <label class="toggle"><input type="checkbox" id="dnr-enabled" aria-label="Strip tracking parameters before navigation"><span class="slider"></span></label>
         </div>
@@ -159,7 +159,7 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_amp_label">Redirect AMP pages to canonical URL</strong>
-            <small data-i18n="row_amp_hint">Replaces Google AMP links with the original article URL</small>
+            <small data-i18n="row_amp_hint">Replaces AMP links with the original article URL</small>
           </div>
           <label class="toggle"><input type="checkbox" id="amp-redirect" aria-label="Redirect AMP pages to canonical URL"><span class="slider"></span></label>
         </div>
@@ -218,7 +218,7 @@
       <div class="card">
         <div class="row">
           <div class="row-label">
-            <strong data-i18n="dev_report_broken_label">Report a bug or suggest an improvement</strong>
+            <strong data-i18n="report_broken_label">Report a bug or suggest an improvement</strong>
             <small data-i18n="dev_report_broken_hint">Opens a pre-filled GitHub issue with your browser and extension info</small>
           </div>
           <button class="add-btn" id="dev-report-broken-btn" data-i18n="dev_report_broken_btn">Report</button>
@@ -272,13 +272,14 @@
   <p class="version-info">MUGA <span id="version-number"></span></p>
 
   <div class="footer-links">
-    <a href="../privacy/privacy.html" target="_blank" data-i18n="privacy_link">Privacy policy</a>
+    <a href="../privacy/privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="privacy_link">Privacy policy</a>
     &nbsp;·&nbsp;
-    <a href="https://github.com/yocreoquesi/muga/issues/new" target="_blank" data-i18n="report_issue">Report a bug or suggest a feature</a>
+    <a href="https://github.com/yocreoquesi/muga/issues/new" target="_blank" rel="noopener noreferrer" data-i18n="report_issue">Report a bug or suggest a feature</a>
     &nbsp;·&nbsp;
-    <a href="#" id="rate-store-link" target="_blank" data-i18n="rate_muga_link">Rate MUGA</a>
+    <a href="#" id="rate-store-link" target="_blank" rel="noopener noreferrer" data-i18n="rate_muga_link">Rate MUGA</a>
   </div>
 
+  <script src="../lib/browser-polyfill.min.js"></script>
   <script type="module" src="options.js"></script>
 </body>
 </html>

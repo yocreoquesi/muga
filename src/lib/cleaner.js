@@ -30,7 +30,7 @@ const TRACKING_PREFIXES = [
 /** Returns true if the param is a known tracking param (exact match or prefix). */
 function isTrackingParam(lower, customParams, domainStrip) {
   if (TRACKING_PARAMS_SET.has(lower)) return true;
-  if (customParams.includes(lower)) return true;
+  if (customParams.has(lower)) return true;
   if (domainStrip.has(lower)) return true;
   for (const prefix of TRACKING_PREFIXES) {
     if (lower.startsWith(prefix)) return true;
@@ -50,7 +50,7 @@ function isTrackingParam(lower, customParams, domainStrip) {
 export function parseListEntry(entry) {
   const parts = entry.split("::");
   return {
-    domain: parts[0]?.trim().replace(/^www\./, "") || "",
+    domain: parts[0]?.trim().replace(/^www\./, "").toLowerCase() || "",
     param:  parts[1]?.trim() || null,
     value:  parts[2]?.trim() || null,
   };
@@ -86,7 +86,13 @@ export function getDomainParamSets(hostname, domainRules = []) {
   return { preserved, domainStrip };
 }
 
-// Backwards-compatible alias used by external callers
+/**
+ * Returns the set of preserved params for a hostname.
+ * Backwards-compatible alias for getDomainParamSets().preserved.
+ * @param {string} hostname - The hostname to look up.
+ * @param {Array} domainRules - Domain rules array from domain-rules.json.
+ * @returns {Set<string>} Lowercased param names that should be preserved.
+ */
 export function getPreservedParams(hostname, domainRules = []) {
   return getDomainParamSets(hostname, domainRules).preserved;
 }
@@ -115,6 +121,40 @@ function cleanAmazonPath(hostname, pathname) {
 function isAliExpressItemPage(hostname, pathname) {
   if (!/aliexpress\.[a-z.]+$/.test(hostname)) return false;
   return /^\/item\/\d+\.html?\/?$/i.test(pathname);
+}
+
+/**
+ * Strips tracking params from a URL object, respecting affiliate, preserved,
+ * and disabled-category params.  Returns { removed, junkCount }.
+ */
+function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
+  const hostname = url.hostname;
+  const patterns = getPatternsForHost(hostname);
+  const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
+  const { preserved, domainStrip } = getDomainParamSets(hostname, domainRules);
+
+  const disabledParams = new Set();
+  if (disabledCategories.size > 0) {
+    for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+      if (disabledCategories.has(key)) {
+        cat.params.forEach(p => disabledParams.add(p.toLowerCase()));
+      }
+    }
+  }
+
+  const removed = [];
+  for (const param of [...url.searchParams.keys()]) {
+    const lower = param.toLowerCase();
+    if (affiliateParamSet.has(lower)) continue;
+    if (preserved.has(lower)) continue;
+    if (disabledParams.has(lower)) continue;
+    if (isTrackingParam(lower, customParams, domainStrip)) {
+      url.searchParams.delete(param);
+      removed.push(param);
+    }
+  }
+  return { removed, junkCount: removed.length };
 }
 
 /**
@@ -191,30 +231,8 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   );
   if (domainWhitelisted) {
     // Still strip tracking params, but leave all affiliate params untouched and skip injection
-    // S4: reuse `patterns` already computed above instead of calling getPatternsForHost again
-    const affiliateParamNamesForSkip = patterns.map(p => p.param.toLowerCase());
-    const customParamsForSkip = (prefs.customParams || []).map(p => p.toLowerCase());
-    const { preserved: preservedParamsForSkip, domainStrip: domainStripForSkip } = getDomainParamSets(hostname, domainRules);
     const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
-    const disabledParamsForSkip = new Set();
-    if (disabledCategoriesForSkip.size > 0) {
-      for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-        if (disabledCategoriesForSkip.has(key)) {
-          cat.params.forEach(p => disabledParamsForSkip.add(p.toLowerCase()));
-        }
-      }
-    }
-    const removedTrackingForSkip = [];
-    for (const param of [...url.searchParams.keys()]) {
-      const lower = param.toLowerCase();
-      if (affiliateParamNamesForSkip.includes(lower)) continue;
-      if (preservedParamsForSkip.has(lower)) continue;
-      if (disabledParamsForSkip.has(lower)) continue;
-      if (isTrackingParam(lower, customParamsForSkip, domainStripForSkip)) {
-        url.searchParams.delete(param);
-        removedTrackingForSkip.push(param);
-      }
-    }
+    const { removed: removedTrackingForSkip } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip);
     const actionForSkip = (removedTrackingForSkip.length > 0 || pathCleaned) ? "cleaned" : "untouched";
     return {
       cleanUrl: url.toString(),
@@ -250,44 +268,21 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   }
 
   // 4. Strip known tracking parameters (built-in + user-defined custom params)
-  // Guard: never strip a param that is the affiliate identifier for this host.
-  // e.g. `ref` is in TRACKING_PARAMS generically, but may also be an affiliate param
-  // on certain domains (see domain-rules.json); `campid` is eBay's affiliate param.
-  const affiliateParamNames = patterns.map(p => p.param.toLowerCase());
-  const customParams = (prefs.customParams || []).map(p => p.toLowerCase());
-  const { preserved: preservedParams, domainStrip } = getDomainParamSets(hostname, domainRules);
-
-  // Build effective tracking params list: exclude params that belong to a disabled category
+  const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
   const disabledCategories = new Set(prefs.disabledCategories || []);
-  const disabledParams = new Set();
-  if (disabledCategories.size > 0) {
-    for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-      if (disabledCategories.has(key)) {
-        cat.params.forEach(p => disabledParams.add(p.toLowerCase()));
-      }
-    }
-  }
 
-  // 4a-pre. AliExpress item pages: strip ALL params (item pages need zero params)
+  // 4a-pre. AliExpress item pages: strip ALL params (item pages need zero params),
+  // except params explicitly preserved by domain-rules.json.
   if (isAliExpressItemPage(hostname, url.pathname)) {
+    const { preserved } = getDomainParamSets(hostname, domainRules);
     for (const param of [...url.searchParams.keys()]) {
+      if (preserved.has(param.toLowerCase())) continue;
       url.searchParams.delete(param);
       removedTracking.push(param);
     }
   } else {
-    for (const param of [...url.searchParams.keys()]) {
-      const lower = param.toLowerCase();
-      // Don't strip params that are affiliate identifiers for this host
-      if (affiliateParamNames.includes(lower)) continue;
-      // Don't strip params that are functional on this domain (domain-rules compatibility)
-      if (preservedParams.has(lower)) continue;
-      // Don't strip params whose category has been disabled by the user
-      if (disabledParams.has(lower)) continue;
-      if (isTrackingParam(lower, customParams, domainStrip)) {
-        url.searchParams.delete(param);
-        removedTracking.push(param);
-      }
-    }
+    const { removed } = stripTrackingParams(url, prefs, domainRules, disabledCategories);
+    removedTracking.push(...removed);
   }
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
@@ -321,7 +316,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
         url.searchParams.delete(entry.param);
         blacklistStripped++;
         // If this param is an affiliate param for this host, flag injection suppression
-        if (affiliateParamNames.includes(entry.param.toLowerCase())) {
+        if (affiliateParamSet.has(entry.param.toLowerCase())) {
           blacklistRemovedAffiliate = true;
         }
         // If this was the detected foreign affiliate, clear it. The toast must not fire

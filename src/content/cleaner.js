@@ -16,6 +16,22 @@
   if (window.__mugaActive) return;
   window.__mugaActive = true;
 
+  function copyToClipboard(text) {
+    return navigator.clipboard.writeText(text).catch(() => {
+      const el = document.createElement("textarea");
+      el.value = text;
+      el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand("copy"); } catch {}
+      el.remove();
+    });
+  }
+
+  // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation
+  const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
+
   // Timer ID for the toast auto-dismiss. Cleared when a new toast replaces the old one.
   let _toastTimer = null;
 
@@ -63,6 +79,7 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id) return false;
     if (message.type === "GET_AND_COPY_CLEAN_SELECTION") {
+      if (!_contentPrefs?.enabled || !_contentPrefs?.onboardingDone) { sendResponse({ ok: false }); return true; }
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) { sendResponse({ ok: false }); return true; }
 
@@ -78,7 +95,6 @@
       anchors.forEach(a => urlsToClean.push(a.getAttribute("href")));
 
       // 3. Also find plain URLs in text content
-      const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
       const textNodes = [];
       let node;
@@ -136,21 +152,8 @@
       return;
     }
     if (message.type !== "COPY_TO_CLIPBOARD") return;
-    navigator.clipboard.writeText(message.text).catch(() => {
-      // Fallback for pages where the Clipboard API is unavailable
-      const el = document.createElement("textarea");
-      el.value = message.text;
-      el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
-      document.body.appendChild(el);
-      el.focus();
-      el.select();
-      try { document.execCommand("copy"); } catch {}
-      el.remove();
-    });
+    copyToClipboard(message.text);
   });
-
-  // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation
-  const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
   /**
    * Intercepts Ctrl+C / copy.
@@ -197,16 +200,7 @@
         }
       }
 
-      await navigator.clipboard.writeText(result).catch(() => {
-        const el = document.createElement("textarea");
-        el.value = result;
-        el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
-        document.body.appendChild(el);
-        el.focus();
-        el.select();
-        try { document.execCommand("copy"); } catch {}
-        el.remove();
-      });
+      await copyToClipboard(result);
     } catch {
       navigator.clipboard.writeText(trimmed).catch(() => {});
     }
@@ -257,7 +251,7 @@
     // Uses cached prefs (loaded eagerly above) for synchronous access.
     if (!_contentPrefs?.enabled || !_contentPrefs?.onboardingDone) return;
 
-    const anchor = e.target.closest("a[href]");
+    const anchor = e.target.closest("a[href], area[href]");
     if (!anchor) return;
 
     const href = anchor.href;
@@ -412,13 +406,15 @@
     notice.appendChild(dismissDiv);
 
     document.body.appendChild(notice);
+    notice.tabIndex = -1;
+    notice.focus();
 
     const rawDuration = _contentPrefs?.toastDuration || 15;
     const duration = Math.max(5, Math.min(60, rawDuration)) * 1000;
     _toastTimer = setTimeout(() => {
       _toastTimer = null;
       notice.remove();
-      callback("clean");
+      callback("original");
     }, duration);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {

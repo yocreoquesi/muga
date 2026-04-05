@@ -11,9 +11,18 @@ CLAUDE.md
 .github-issues.md
 docs/*-launch-*.md
 docs/*-strategy-*.md
+docs/MUGA-Master-Plan.md
+docs/MUGA-Positioning-UI-Design.md
+docs/producthunt-launch.md
+docs/assets/mascot-geometric.png
 
 # Claude Code internals
 .claude/
+
+# Agent tooling & SDD artifacts (internal, not for version control)
+.atl/
+.gga
+openspec/
 
 # Chrome extension metadata (auto-generated)
 src/_metadata/
@@ -30,3 +39,4 @@ Thumbs.db
 # Generated outputs
 mnt/
 tools/screenshots/out/
+*.zip
