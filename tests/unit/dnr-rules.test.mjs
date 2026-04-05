@@ -36,6 +36,14 @@ test("tracking-params.json contains at least one rule", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Test 2b — All rule IDs are unique
+// ---------------------------------------------------------------------------
+test("has no duplicate rule IDs", () => {
+  const ids = rules.map(r => r.id);
+  assert.equal(new Set(ids).size, ids.length, "Rule IDs must be unique");
+});
+
+// ---------------------------------------------------------------------------
 // Test 3 — Each rule has id, priority, action, condition
 // ---------------------------------------------------------------------------
 test("Every DNR rule has id, priority, action, and condition", () => {
@@ -124,19 +132,59 @@ test("DNR rules only target main_frame, never xmlhttprequest or other types", ()
 // ---------------------------------------------------------------------------
 // Test 8 — removeParams count matches lowercase TRACKING_PARAMS count
 // ---------------------------------------------------------------------------
-test("removeParams count matches lowercase TRACKING_PARAMS count", async () => {
+test("every removeParam (lowercased) exists in TRACKING_PARAMS", async () => {
   const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
 
-  const lowercaseCount = TRACKING_PARAMS.filter(p => p === p.toLowerCase()).length;
+  const trackingSet = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
   const allRemoveParams = [
     ...new Set(
       rules.flatMap(r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? [])
     ),
   ];
 
-  assert.equal(
-    allRemoveParams.length,
-    lowercaseCount,
-    `removeParams has ${allRemoveParams.length} entries but TRACKING_PARAMS has ${lowercaseCount} lowercase params`
+  for (const param of allRemoveParams) {
+    assert.ok(
+      trackingSet.has(param.toLowerCase()),
+      `DNR removeParam "${param}" (lowercased: "${param.toLowerCase()}") not found in TRACKING_PARAMS`
+    );
+  }
+});
+
+// Params intentionally removed from DNR because they conflict with domain-rules.json
+// preserveParams (e.g. cid on Google Maps, ie on CJK search engines).
+// The content script handles these with domain-specific logic.
+const DNR_EXCLUDED_PARAMS = new Set([
+  "si", "_r", "source", "campaign", "cid", "ref_", "ie", "ei", "ab_channel",
+]);
+
+test("every lowercase TRACKING_PARAM has a corresponding removeParam entry (except DNR-excluded)", async () => {
+  const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
+
+  const removeParamSet = new Set(
+    rules.flatMap(r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? [])
+      .map(p => p.toLowerCase())
   );
+
+  for (const param of TRACKING_PARAMS) {
+    const lower = param.toLowerCase();
+    if (DNR_EXCLUDED_PARAMS.has(lower)) continue;
+    assert.ok(
+      removeParamSet.has(lower),
+      `TRACKING_PARAM "${param}" has no corresponding DNR removeParam entry`
+    );
+  }
+});
+
+test("DNR-excluded params are NOT in DNR removeParams", () => {
+  const removeParamSet = new Set(
+    rules.flatMap(r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? [])
+      .map(p => p.toLowerCase())
+  );
+
+  for (const param of DNR_EXCLUDED_PARAMS) {
+    assert.ok(
+      !removeParamSet.has(param),
+      `"${param}" should NOT be in DNR — it conflicts with domain-rules.json preserveParams`
+    );
+  }
 });
