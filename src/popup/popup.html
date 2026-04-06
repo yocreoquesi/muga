@@ -33,6 +33,11 @@
     </div>
   </section>
 
+  <details class="domain-stats" id="domain-stats" hidden>
+    <summary data-i18n="domain_stats_label">Your top trackers</summary>
+    <div id="domain-stats-list"></div>
+  </details>
+
   <details class="history" id="history" hidden>
     <summary class="history-summary" data-i18n="history_label">This session</summary>
     <div id="history-list"></div>
@@ -47,7 +52,7 @@
     <div class="preview-url after" id="preview-after"></div>
     <div class="preview-removed" id="preview-removed" hidden aria-live="polite"></div>
     <div class="preview-url clean" id="preview-clean" hidden></div>
-    <a class="report-link" id="report-broken" href="#" hidden data-i18n="report_broken_label">Report a bug or suggest an improvement</a>
+    <a class="report-link" id="report-broken" href="#" hidden data-i18n="report_dirty_url">Report a problem with this URL</a>
   </section>
 
   <div class="growth-bar" id="growth-bar" hidden>
