@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { processUrl } from "../../src/lib/cleaner.js";
 import { TRANSLATIONS } from "../../src/lib/i18n.js";
+import { TRACKING_PARAM_CATEGORIES } from "../../src/lib/affiliates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -1275,5 +1276,27 @@ describe("Onboarding dedup — prevent double tabs", () => {
       afterFallback.includes("openOnboardingOnce()"),
       "fallback IIFE must call openOnboardingOnce()"
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TRACKING_PARAM_CATEGORIES smoke test (Task 3.2)
+// ---------------------------------------------------------------------------
+describe("TRACKING_PARAM_CATEGORIES — smoke test", () => {
+  test("is a non-empty object and every category has a non-empty params array", () => {
+    assert.ok(
+      typeof TRACKING_PARAM_CATEGORIES === "object" && TRACKING_PARAM_CATEGORIES !== null,
+      "TRACKING_PARAM_CATEGORIES must be an object"
+    );
+    assert.ok(
+      Object.keys(TRACKING_PARAM_CATEGORIES).length > 0,
+      "TRACKING_PARAM_CATEGORIES must have at least one category"
+    );
+    for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+      assert.ok(
+        Array.isArray(catData.params) && catData.params.length > 0,
+        `Category "${catKey}" must have a non-empty params array`
+      );
+    }
   });
 });
