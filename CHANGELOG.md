@@ -2,6 +2,20 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.8] - 2026-04-06
+
+### Added
+- Param breakdown: expanding cleaned URLs shows what was removed, grouped by category
+- Per-domain stats: "Your top trackers" section in popup (50-domain cap, LRU eviction)
+- Public report button: "Report a problem with this URL" visible to all users
+- Three new feature flags: paramBreakdown, showReportButton, domainStats
+- 26 new tests (922 total), strict TDD
+
+### Changed
+- Report button moved from dev-tools-only to popup (gated by showReportButton flag)
+- History entries now store removedTracking array for breakdown display
+- Stats reset also clears domain stats
+
 ## [1.9.7] - 2026-04-06
 
 ### Fixed
