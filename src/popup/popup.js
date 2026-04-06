@@ -5,7 +5,8 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
-import { getPrefs, sessionStorage } from "../lib/storage.js";
+import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
+import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -30,6 +31,63 @@ function _createClipboardSvg() {
 function _setClipboardIcon(el) {
   el.textContent = "";
   el.appendChild(_createClipboardSvg());
+}
+
+// ── Param breakdown ───────────────────────────────────────────────────────────
+
+/** Builds a reverse index: param name → { category key, label, labelEs }. Cached as singleton. */
+let _paramIndex = null;
+function _buildParamIndex() {
+  if (_paramIndex) return _paramIndex;
+  _paramIndex = new Map();
+  for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+    for (const param of catData.params) {
+      _paramIndex.set(param.toLowerCase(), {
+        categoryKey: catKey,
+        label: catData.label,
+        labelEs: catData.labelEs,
+      });
+    }
+  }
+  return _paramIndex;
+}
+
+/** Renders a param breakdown section showing removed params grouped by category. */
+function _renderParamBreakdown(removedTracking, lang) {
+  const index = _buildParamIndex();
+  // Group params by category
+  const groups = new Map();
+  for (const param of removedTracking) {
+    const info = index.get(param.toLowerCase());
+    const catKey = info ? info.categoryKey : "other";
+    const label = info
+      ? (lang === "es" ? info.labelEs : info.label)
+      : t("param_category_other", lang);
+    if (!groups.has(catKey)) groups.set(catKey, { label, params: [] });
+    groups.get(catKey).params.push(param);
+  }
+
+  const container = document.createElement("div");
+  container.className = "param-breakdown";
+
+  for (const [, group] of groups) {
+    const row = document.createElement("div");
+    row.className = "breakdown-row";
+
+    const catEl = document.createElement("span");
+    catEl.className = "breakdown-cat";
+    catEl.textContent = group.label;
+
+    const paramsEl = document.createElement("span");
+    paramsEl.className = "breakdown-params";
+    paramsEl.textContent = group.params.join(", ");
+
+    row.appendChild(catEl);
+    row.appendChild(paramsEl);
+    container.appendChild(row);
+  }
+
+  return container;
 }
 
 /** Initializes popup: loads prefs/stats, renders UI, binds event handlers. */
@@ -231,7 +289,8 @@ async function init() {
   });
 
   await showUrlPreview(prefs, lang);
-  await showHistory(lang);
+  await showHistory(prefs, lang);
+  await showDomainStats(prefs, lang);
 }
 
 /** Shows a live preview of URL cleaning for the current tab. */
@@ -289,8 +348,8 @@ async function showUrlPreview(prefs, lang) {
       removedEl.hidden = false;
     }
 
-    // Report broken site: only for advanced users when URL was modified
-    if (prefs.devMode) {
+    // Report broken site: visible to all users when URL was modified and feature flag is on
+    if (prefs.showReportButton) {
       const reportLink = document.getElementById("report-broken");
       reportLink.hidden = false;
       reportLink.addEventListener("click", (e) => {
@@ -322,6 +381,18 @@ async function showUrlPreview(prefs, lang) {
         } catch { /* invalid URL */ }
       });
     }
+
+    // Param breakdown: show removed params grouped by category when feature is on
+    if (prefs.paramBreakdown === true && result.removedTracking?.length > 0) {
+      const previewSection = document.getElementById("preview");
+      const details = document.createElement("details");
+      details.className = "preview-breakdown";
+      const summary = document.createElement("summary");
+      summary.textContent = t("param_breakdown_label", lang);
+      details.appendChild(summary);
+      details.appendChild(_renderParamBreakdown(result.removedTracking, lang));
+      previewSection.appendChild(details);
+    }
   }
 }
 
@@ -332,8 +403,55 @@ function formatStat(n) {
   return String(n);
 }
 
+/** Renders the per-domain tracker stats panel. */
+async function showDomainStats(prefs, lang) {
+  if (!prefs.domainStats) return;
+
+  const section = document.getElementById("domain-stats");
+  const list = document.getElementById("domain-stats-list");
+
+  const allStats = await getDomainStats();
+  const entries = Object.entries(allStats)
+    .sort((a, b) => b[1].params - a[1].params)
+    .slice(0, 10);
+
+  section.hidden = false;
+  const summary = section.querySelector("summary");
+  if (summary) summary.setAttribute("aria-label", t("domain_stats_label", lang));
+
+  if (entries.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "domain-stats-empty";
+    empty.textContent = t("domain_stats_empty", lang);
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const [domain, data] of entries) {
+    const row = document.createElement("div");
+    row.className = "domain-stats-row";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "domain-stats-name";
+    nameEl.textContent = domain;
+
+    const paramsEl = document.createElement("span");
+    paramsEl.className = "domain-stats-params";
+    paramsEl.textContent = `${data.params} ${t("domain_stats_params", lang)}`;
+
+    const urlsEl = document.createElement("span");
+    urlsEl.className = "domain-stats-urls";
+    urlsEl.textContent = `${data.urls} ${t("domain_stats_urls", lang)}`;
+
+    row.appendChild(nameEl);
+    row.appendChild(paramsEl);
+    row.appendChild(urlsEl);
+    list.appendChild(row);
+  }
+}
+
 /** Renders the recent URL cleaning history list. */
-async function showHistory(lang) {
+async function showHistory(prefs, lang) {
   const data = await sessionStorage.get({ history: [] });
   const history = data.history;
 
@@ -385,6 +503,19 @@ async function showHistory(lang) {
     actionsDiv.appendChild(copyOrigBtn);
     entryDiv.appendChild(beforeDiv);
     entryDiv.appendChild(afterRow);
+
+    // Param breakdown: show removed params per history entry when feature is on
+    if (prefs.paramBreakdown === true && entry.removedTracking?.length > 0) {
+      const details = document.createElement("details");
+      details.className = "history-breakdown";
+      const summary = document.createElement("summary");
+      summary.setAttribute("aria-label", `${entry.removedTracking.length} ${t("param_breakdown_label", lang)}`);
+      summary.textContent = t("param_breakdown_label", lang);
+      details.appendChild(summary);
+      details.appendChild(_renderParamBreakdown(entry.removedTracking, lang));
+      entryDiv.appendChild(details);
+    }
+
     entryDiv.appendChild(actionsDiv);
     list.appendChild(entryDiv);
 

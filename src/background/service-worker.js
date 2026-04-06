@@ -6,7 +6,7 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat } from "../lib/storage.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -207,10 +207,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 const HISTORY_MAX = 10;
 
-async function appendHistory(original, clean) {
+async function appendHistory(original, clean, removedTracking = []) {
   if (original === clean) return;
   const data = await sessionStorage.get({ history: [] });
-  const entry = { original, clean, ts: Date.now() };
+  const entry = { original, clean, ts: Date.now(), removedTracking };
   const history = [entry, ...data.history].slice(0, HISTORY_MAX);
   await sessionStorage.set({ history });
 }
@@ -379,8 +379,14 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     if (!skipStats) {
       incrementStat("urlsCleaned");
       if (result.junkRemoved > 0) incrementStat("junkRemoved", result.junkRemoved);
+      if (prefs.domainStats && result.junkRemoved > 0) {
+        try {
+          const hostname = new URL(rawUrl).hostname.replace(/^www\./, "");
+          incrementDomainStat(hostname, result.junkRemoved);
+        } catch { /* invalid URL, skip domain stat */ }
+      }
     }
-    await appendHistory(rawUrl, result.cleanUrl);
+    await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
     if (parsedRaw) {
       const domain = parsedRaw.hostname.replace(/^www\./, "");
       const parsedClean = new URL(result.cleanUrl);
