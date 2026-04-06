@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA: Transparency Report</title>
+  <style>
+    :root {
+      --bg: #fff; --text: #1a1a1a; --text2: #555; --accent: #2563eb;
+      --border: rgba(0,0,0,0.08); --bg2: #f7f7f7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #111; --text: #f0f0f0; --text2: #999; --bg2: #1c1c1e; --border: rgba(255,255,255,0.08); }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      max-width: 680px; margin: 0 auto; padding: 48px 24px; font-size: 15px; line-height: 1.7; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .meta { color: var(--text2); font-size: 13px; margin-bottom: 40px; }
+    h2 { font-size: 16px; font-weight: 600; margin: 32px 0 10px; }
+    p { margin-bottom: 14px; color: var(--text2); }
+    ul { margin: 8px 0 14px 20px; color: var(--text2); }
+    li { margin-bottom: 6px; }
+    .highlight {
+      background: var(--bg2); border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0;
+      font-size: 14px; color: var(--text);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text); }
+    .at-a-glance {
+      border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; margin: 20px 0;
+    }
+    .at-a-glance-row {
+      display: flex; align-items: baseline;
+      padding: 11px 16px; border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+    .at-a-glance-row:last-child { border-bottom: none; }
+    .at-a-glance-label {
+      color: var(--text2); font-size: 13px; flex: 0 0 220px;
+    }
+    .at-a-glance-value {
+      color: var(--text); font-size: 14px; font-weight: 600;
+    }
+    .tag-zero {
+      display: inline-block; background: #dcfce7; color: #166534;
+      font-size: 12px; font-weight: 700; padding: 1px 8px;
+      border-radius: 999px; vertical-align: middle; margin-left: 6px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .tag-zero { background: #14532d; color: #86efac; }
+    }
+    .permission-block {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; margin: 10px 0;
+    }
+    .permission-name {
+      font-weight: 600; color: var(--text); font-size: 14px; margin-bottom: 4px;
+    }
+    .permission-why { color: var(--text2); font-size: 14px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+    .footer { color: var(--text2); font-size: 13px; margin-top: 40px; }
+    .footer a { color: var(--text2); text-decoration: underline; }
+    .footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <h1>Transparency Report</h1>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.9.8 &nbsp;&middot;&nbsp; 2026-04-06 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+
+  <div class="highlight">
+    Privacy policies say "we don't collect your data." This page shows the evidence behind that claim — what MUGA actually does, which permissions it uses and why, and how you can verify every statement yourself.
+  </div>
+
+  <h2>At a Glance</h2>
+
+  <div class="at-a-glance">
+    <div class="at-a-glance-row">
+      <span class="at-a-glance-label">Version</span>
+      <span class="at-a-glance-value">1.9.8</span>
+    </div>
+    <div class="at-a-glance-row">
+      <span class="at-a-glance-label">External server connections</span>
+      <span class="at-a-glance-value">0 <span class="tag-zero">zero</span></span>
+    </div>
+    <div class="at-a-glance-row">
+      <span class="at-a-glance-label">Data collected</span>
+      <span class="at-a-glance-value">None</span>
+    </div>
+    <div class="at-a-glance-row">
+      <span class="at-a-glance-label">Data sent anywhere</span>
+      <span class="at-a-glance-value">None — not even to us</span>
+    </div>
+    <div class="at-a-glance-row">
+      <span class="at-a-glance-label">Third-party dependencies</span>
+      <span class="at-a-glance-value">1 (browser-polyfill.min.js for Firefox compatibility)</span>
+    </div>
+    <div class="at-a-glance-row">
+      <span class="at-a-glance-label">Open source license</span>
+      <span class="at-a-glance-value"><a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GPL v3</a></span>
+    </div>
+  </div>
+
+  <h2>What MUGA Does With Your Data</h2>
+
+  <p><strong>URLs</strong> — Cleaned locally inside your browser. Never stored beyond the current session. Session history (recently cleaned URLs, per-tab badge counts, debug logs) lives in <code>chrome.storage.session</code> and is automatically cleared when the browser restarts.</p>
+
+  <p><strong>Preferences</strong> — Stored in <code>chrome.storage.sync</code>. Encrypted and managed by your browser, synced to your Google or Firefox account — not to any server we control or can access.</p>
+
+  <p><strong>Stats</strong> — Local counters only: URLs cleaned, parameters removed, referrals spotted. Stored in <code>chrome.storage.local</code>. No personally identifiable information. No timestamps tied to individual URLs.</p>
+
+  <p><strong>Domain stats</strong> — Domain names and parameter counts only. No full URLs, no paths, no timestamps. Stored locally, capped at 50 domains to prevent unbounded growth. Never transmitted.</p>
+
+  <p><strong>Affiliate tags</strong> — Injected locally by the extension when you visit a supported store with no existing tag. No API call is made to decide when or where to inject. The logic runs entirely in your browser against a list of domains that ships with the extension.</p>
+
+  <h2>What We Deliberately Don't Do</h2>
+
+  <ul>
+    <li><strong>No telemetry or usage analytics.</strong> We have no idea how often you use MUGA or which features you use.</li>
+    <li><strong>No crash reporting.</strong> If the extension throws an error, it logs to your browser console — nowhere else.</li>
+    <li><strong>No remote configuration or feature flags.</strong> Every toggle is a local preference. There is no server that can change your extension's behavior remotely.</li>
+    <li><strong>No CDN for rules.</strong> The 459+ tracking parameter list and domain rules ship bundled with the extension. No network request is made to fetch or update them.</li>
+    <li><strong>No server-side redirect for affiliate links.</strong> We evaluated 10+ affiliate programs that require routing your click through an external tracking server. We rejected every one of them.</li>
+    <li><strong>No A/B testing infrastructure.</strong> Every user runs the same code.</li>
+    <li><strong>No user accounts or sign-in.</strong> We have no concept of a MUGA user identity.</li>
+  </ul>
+
+  <h2>Permissions Explained</h2>
+
+  <p>Every permission in <code>manifest.json</code> has a specific, minimal purpose. Here is what each one is and why it exists.</p>
+
+  <div class="permission-block">
+    <div class="permission-name">storage</div>
+    <div class="permission-why">Save your preferences, local stats, and session data. Without this, your settings would reset every time the browser restarts.</div>
+  </div>
+
+  <div class="permission-block">
+    <div class="permission-name">activeTab</div>
+    <div class="permission-why">Read the current tab's URL when you open the popup, use the keyboard shortcut (Alt+Shift+C), or trigger the context menu. This permission only activates on your explicit action — MUGA cannot read your tabs in the background.</div>
+  </div>
+
+  <div class="permission-block">
+    <div class="permission-name">contextMenus</div>
+    <div class="permission-why">Add the "Copy clean link" and "Copy clean selection" entries to your right-click menu. Without this permission, the entries cannot be registered.</div>
+  </div>
+
+  <div class="permission-block">
+    <div class="permission-name">clipboardWrite</div>
+    <div class="permission-why">Copy cleaned URLs to your clipboard when you use the context menu or keyboard shortcut. This is a fallback for pages where the modern Clipboard API is blocked by the page's own content security policy.</div>
+  </div>
+
+  <div class="permission-block">
+    <div class="permission-name">declarativeNetRequest <em>(Firefox)</em> / declarativeNetRequestWithHostAccess <em>(Chrome)</em></div>
+    <div class="permission-why">Strip tracking parameters from URLs before the page loads, using the browser's own built-in rule engine. The rules run entirely inside the browser. No request is sent to an external service to evaluate them. The <code>WithHostAccess</code> variant on Chrome is required to apply redirect rules across all sites.</div>
+  </div>
+
+  <div class="permission-block">
+    <div class="permission-name">host_permissions: &lt;all_urls&gt;</div>
+    <div class="permission-why">Required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, redirect unwrapping) and for declarativeNetRequest redirect rules to apply on all sites. Without this, MUGA would only work on a predefined list of domains.</div>
+  </div>
+
+  <h2>How to Verify</h2>
+
+  <p>Every claim on this page is verifiable. You don't have to take our word for it.</p>
+
+  <ul>
+    <li><strong>Read the source code</strong> — <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a>. Every line that runs in your browser is published there.</li>
+    <li><strong>Build from source</strong> — Clone the repo and run <code>npm run build</code>. The output is the same extension distributed on the Chrome Web Store and Firefox AMO.</li>
+    <li><strong>Diff the published extension</strong> — Unpack the installed extension (Chrome: <code>chrome://extensions</code> in developer mode; Firefox: extract the XPI) and diff the files against the published source. They should match exactly.</li>
+    <li><strong>Check network requests yourself</strong> — Open your browser's DevTools Network tab while using MUGA. You will see zero outbound requests initiated by the extension.</li>
+    <li><strong>Read the coding standards</strong> — <code>AGENTS.md</code> in the repository documents the automated review rules that enforce these constraints on every pull request.</li>
+  </ul>
+
+  <hr>
+
+  <div class="footer">
+    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v1.9.8 — 2026-04-06 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
+  </div>
+
+</body>
+</html>
