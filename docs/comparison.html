@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA: Honest Comparison with Other URL Cleaning Extensions</title>
+  <style>
+    :root {
+      --bg: #fff; --text: #1a1a1a; --text2: #555; --accent: #2563eb;
+      --border: rgba(0,0,0,0.08); --bg2: #f7f7f7; --green: #16a34a;
+      --red: #dc2626; --yellow: #ca8a04; --row-alt: #fafafa;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111; --text: #f0f0f0; --text2: #999; --bg2: #1c1c1e;
+        --border: rgba(255,255,255,0.08); --row-alt: #161618;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      max-width: 960px; margin: 0 auto; padding: 48px 24px; font-size: 15px; line-height: 1.7;
+    }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .meta { color: var(--text2); font-size: 13px; margin-bottom: 40px; }
+    h2 { font-size: 16px; font-weight: 600; margin: 40px 0 10px; }
+    p { margin-bottom: 14px; color: var(--text2); }
+    ul { margin: 8px 0 14px 20px; color: var(--text2); }
+    li { margin-bottom: 6px; }
+    .highlight {
+      background: var(--bg2); border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0 32px;
+      font-size: 14px; color: var(--text);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text); }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; margin: 0 0 32px; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 14px;
+    }
+    thead th {
+      text-align: left; padding: 10px 14px; background: var(--bg2);
+      border-bottom: 2px solid var(--border); font-weight: 600; white-space: nowrap;
+    }
+    thead th:first-child { width: 220px; }
+    tbody tr:nth-child(even) { background: var(--row-alt); }
+    tbody td {
+      padding: 9px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tbody td:first-child { color: var(--text2); font-size: 13px; }
+    .yes  { color: var(--green); font-weight: 600; }
+    .no   { color: var(--text2); }
+    .partial { color: var(--yellow); font-weight: 500; }
+    .na   { color: var(--text2); font-style: italic; }
+    .muga { font-weight: 600; color: var(--text); }
+    .bad  { color: var(--red); font-weight: 600; }
+
+    /* Notes section */
+    .note {
+      background: var(--bg2); border-radius: 8px; padding: 14px 16px;
+      margin-bottom: 12px; font-size: 14px; color: var(--text2);
+    }
+    .note strong { color: var(--text); }
+    .note.warn {
+      border-left: 3px solid var(--yellow); border-radius: 0 8px 8px 0;
+    }
+    .note.honest {
+      border-left: 3px solid var(--red); border-radius: 0 8px 8px 0;
+    }
+
+    sup { font-size: 11px; color: var(--text2); }
+    .footnotes { font-size: 12px; color: var(--text2); margin-top: 32px; border-top: 1px solid var(--border); padding-top: 16px; }
+    .footnotes ol { margin-left: 18px; }
+    .footnotes li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <h1>Honest Comparison</h1>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;·&nbsp; Last updated: 2026-04-06 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+
+  <div class="highlight">
+    <strong>Our approach to this page:</strong> We believe honesty is more useful than marketing copy.
+    Every claim in this table is verifiable — sources are linked in the footnotes.
+    Where a competitor does something better than MUGA, we say so.
+    If you spot an error or outdated figure, <a href="https://github.com/yocreoquesi/muga/issues" target="_blank" rel="noopener noreferrer">open an issue</a>.
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>MUGA</th>
+          <th>ClearURLs</th>
+          <th>Neat URL</th>
+          <th>uBlock Origin</th>
+          <th>Honey (PayPal)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Tracking params stripped</td>
+          <td class="muga">458 params<sup>1</sup></td>
+          <td>~300<sup>2</sup></td>
+          <td>~200<sup>3</sup></td>
+          <td class="partial">Limited (via filter lists)<sup>4</sup></td>
+          <td class="na">0</td>
+        </tr>
+        <tr>
+          <td>Domain-specific rules</td>
+          <td class="muga">167 domains<sup>1</sup></td>
+          <td>~100<sup>2</sup></td>
+          <td>Manual (user-defined)</td>
+          <td class="partial">Via filter lists</td>
+          <td class="na">N/A</td>
+        </tr>
+        <tr>
+          <td>AMP redirect</td>
+          <td class="yes muga">Yes</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+        </tr>
+        <tr>
+          <td>Redirect unwrapping</td>
+          <td class="muga yes">Yes (6 networks)<sup>5</sup></td>
+          <td class="yes">Yes<sup>6</sup></td>
+          <td class="no">No</td>
+          <td class="partial">Partial (via filters)</td>
+          <td class="no">No</td>
+        </tr>
+        <tr>
+          <td>Ping blocking</td>
+          <td class="muga yes">Yes</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="yes">Yes</td>
+          <td class="no">No</td>
+        </tr>
+        <tr>
+          <td>Affiliate transparency</td>
+          <td class="muga yes">Full (toast notification)</td>
+          <td class="na">N/A</td>
+          <td class="na">N/A</td>
+          <td class="na">N/A</td>
+          <td class="bad">None (silent replacement)<sup>7</sup></td>
+        </tr>
+        <tr>
+          <td>Replaces creator affiliates</td>
+          <td class="muga yes">Never</td>
+          <td class="na">N/A</td>
+          <td class="na">N/A</td>
+          <td class="na">N/A</td>
+          <td class="bad">Yes (silently)<sup>7</sup></td>
+        </tr>
+        <tr>
+          <td>Open source</td>
+          <td class="muga">GPL v3</td>
+          <td>LGPL v3<sup>8</sup></td>
+          <td>GPL v2<sup>9</sup></td>
+          <td>GPL v3<sup>10</sup></td>
+          <td class="bad">No</td>
+        </tr>
+        <tr>
+          <td>External server calls</td>
+          <td class="muga yes">0</td>
+          <td class="yes">0<sup>11</sup></td>
+          <td class="yes">0</td>
+          <td class="partial">Filter list updates</td>
+          <td class="bad">Yes (PayPal servers)<sup>12</sup></td>
+        </tr>
+        <tr>
+          <td>Data collected</td>
+          <td class="muga yes">None</td>
+          <td class="yes">None</td>
+          <td class="yes">None</td>
+          <td class="yes">None</td>
+          <td class="bad">Browsing data<sup>12</sup></td>
+        </tr>
+        <tr>
+          <td>Manifest V3</td>
+          <td class="muga yes">Yes</td>
+          <td class="partial">Partial (MV3 branch in progress)<sup>13</sup></td>
+          <td class="no">No (Firefox only)</td>
+          <td class="yes">Yes</td>
+          <td class="yes">Yes</td>
+        </tr>
+        <tr>
+          <td>Browser support</td>
+          <td class="muga">Chrome, Firefox</td>
+          <td>Chrome, Firefox, Edge, Opera<sup>14</sup></td>
+          <td>Firefox only<sup>9</sup></td>
+          <td>Chrome, Firefox, Edge, Opera</td>
+          <td>Chrome, Firefox, Edge, Opera, Safari</td>
+        </tr>
+        <tr>
+          <td>Interface languages (i18n)</td>
+          <td class="muga">EN, ES, PT, DE</td>
+          <td>EN, DE (partial)<sup>15</sup></td>
+          <td>EN</td>
+          <td>50+ languages</td>
+          <td>10+ languages</td>
+        </tr>
+        <tr>
+          <td>Per-domain param stats</td>
+          <td class="muga yes">Yes</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+        </tr>
+        <tr>
+          <td>Param breakdown (education)</td>
+          <td class="muga yes">Yes</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Honest notes</h2>
+
+  <div class="note">
+    <strong>uBlock Origin is not a URL cleaner — and that is fine.</strong>
+    uBlock Origin is a full-spectrum content blocker. URL parameter stripping is a small part of what it does,
+    and it does it well for the most common cases. If you already use uBlock Origin, you do not need
+    MUGA for basic UTM stripping. MUGA adds value on top: affiliate transparency, AMP redirects,
+    and 167 domain-specific rule sets that target tracker params unique to individual stores.
+  </div>
+
+  <div class="note">
+    <strong>ClearURLs was the pioneer.</strong>
+    ClearURLs was doing this before most people knew tracking params existed. MUGA builds on the
+    same open-source ethos and adds more domain-specific rules, affiliate transparency as a
+    first-class feature, and AMP redirect handling. If you already use ClearURLs and it works
+    for you, that is a perfectly reasonable choice.
+  </div>
+
+  <div class="note warn">
+    <strong>Where ClearURLs beats MUGA right now.</strong>
+    ClearURLs supports Edge and Opera in addition to Chrome and Firefox. MUGA currently supports
+    only Chrome and Firefox. If you are on Edge or Opera, ClearURLs is the better option today.
+  </div>
+
+  <div class="note warn">
+    <strong>Where uBlock Origin beats MUGA.</strong>
+    uBlock Origin supports 50+ interface languages and has a mature, battle-tested filter
+    infrastructure maintained by a large community. MUGA currently supports four languages.
+    If broad language support matters to you, uBlock Origin (combined with a URL-cleaning
+    filter list) has the advantage.
+  </div>
+
+  <div class="note honest">
+    <strong>About Honey.</strong>
+    Honey was acquired by PayPal for $4 billion. That price reflects the value of the browsing
+    data it collects, not the coupons it finds. Honey's own privacy policy confirms it collects
+    information about every page you visit on shopping sites.<sup>12</sup>
+    Additionally, multiple independent reports found that Honey silently overwrites affiliate
+    links created by content creators without notifying the user or the creator.<sup>7</sup>
+    MUGA takes the opposite approach: all processing is local, nothing leaves your browser,
+    and affiliate tag handling is always disclosed with a visible notification.
+  </div>
+
+  <h2>Methodology</h2>
+  <p>MUGA numbers (tracking params, domain rules, redirect networks) are taken directly from the
+  source files in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">public repository</a>.
+  Competitor numbers are based on public repository data, extension store listings, and published
+  documentation linked in the footnotes below. Counts for competitors are approximations and may
+  change as those projects update. If you find a discrepancy,
+  <a href="https://github.com/yocreoquesi/muga/issues" target="_blank" rel="noopener noreferrer">please open an issue</a>.</p>
+
+  <div class="footnotes">
+    <ol>
+      <li>MUGA source: <a href="https://github.com/yocreoquesi/muga/blob/main/src/rules/tracking-params.json" target="_blank" rel="noopener noreferrer">src/rules/tracking-params.json</a> (458 params), <a href="https://github.com/yocreoquesi/muga/blob/main/src/rules/domain-rules.json" target="_blank" rel="noopener noreferrer">src/rules/domain-rules.json</a> (167 domain rule sets).</li>
+      <li>ClearURLs rules: <a href="https://github.com/ClearURLs/Rules/blob/master/data.min.json" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Rules</a>. Parameter count varies by version; ~300 is an approximation based on the global rules list.</li>
+      <li>Neat URL rules: <a href="https://github.com/Smile4ever/Neat-URL/blob/master/data/default-params.json" target="_blank" rel="noopener noreferrer">github.com/Smile4ever/Neat-URL</a>. Count includes default parameter list; users can add more manually.</li>
+      <li>uBlock Origin strips tracking params via the <code>removeparam</code> filter cosmetic option. Coverage depends on the filter lists the user has enabled. <a href="https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#removeparam" target="_blank" rel="noopener noreferrer">uBlock Origin docs: removeparam</a>.</li>
+      <li>MUGA unwraps redirects from: Awin, ShareASale, Admitad, Admitad/AliExpress (alitems.com), Sovrn/VigLink, and Tradedoubler. See <a href="https://github.com/yocreoquesi/muga/blob/main/src/content/redirect-unwrap.js" target="_blank" rel="noopener noreferrer">src/content/redirect-unwrap.js</a>.</li>
+      <li>ClearURLs redirect handling: <a href="https://github.com/ClearURLs/Rules/blob/master/data.min.json" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Rules</a> — includes <code>redirections</code> entries.</li>
+      <li>Honey affiliate replacement reports: <a href="https://www.pcmag.com/news/paypal-honey-browser-extension-is-stealing-credit-from-influencers" target="_blank" rel="noopener noreferrer">PCMag: PayPal Honey stealing credit from influencers</a>; <a href="https://megaphone.fm/ADL9840478058" target="_blank" rel="noopener noreferrer">MegaLag: video investigation</a>. Honey's own ToS does not prohibit this behavior.</li>
+      <li>ClearURLs license: <a href="https://github.com/ClearURLs/Addon/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon — LICENSE</a>.</li>
+      <li>Neat URL license and browser support: <a href="https://github.com/Smile4ever/Neat-URL" target="_blank" rel="noopener noreferrer">github.com/Smile4ever/Neat-URL</a>. Firefox Add-ons only; no Chrome version available.</li>
+      <li>uBlock Origin license: <a href="https://github.com/gorhill/uBlock/blob/master/LICENSE.txt" target="_blank" rel="noopener noreferrer">github.com/gorhill/uBlock — LICENSE</a>.</li>
+      <li>ClearURLs external calls: the extension fetches its rules from a remote URL on first install and on updates. No browsing data is sent. See <a href="https://github.com/ClearURLs/Addon" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon</a>.</li>
+      <li>Honey privacy policy: <a href="https://www.joinhoney.com/privacy" target="_blank" rel="noopener noreferrer">joinhoney.com/privacy</a>. Honey collects page visit data on shopping sites and transmits it to PayPal servers.</li>
+      <li>ClearURLs MV3 status: <a href="https://github.com/ClearURLs/Addon/issues" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon issues</a>. MV3 migration is tracked but not yet complete as of early 2026.</li>
+      <li>ClearURLs browser support: available on Chrome Web Store, Firefox Add-ons, and Edge Add-ons. <a href="https://clearurls.xyz" target="_blank" rel="noopener noreferrer">clearurls.xyz</a>.</li>
+      <li>ClearURLs i18n: the extension ships with English and German UI strings. Community translations exist but are incomplete.</li>
+    </ol>
+  </div>
+
+</body>
+</html>
