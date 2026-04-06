@@ -40,6 +40,21 @@ export const TRANSLATIONS = {
   share_btn:             { en: "Share", es: "Compartir" },
   confirm_cancel:        { en: "Cancel", es: "Cancelar" },
   confirm_ok:            { en: "OK", es: "OK" },
+  domain_stats_label:    { en: "Your top trackers", es: "Tus principales rastreadores" },
+  domain_stats_empty:    { en: "No domain stats yet. Keep browsing!", es: "Aún no hay estadísticas. ¡Sigue navegando!" },
+  domain_stats_params:   { en: "params stripped", es: "parámetros eliminados" },
+  domain_stats_urls:     { en: "URLs cleaned", es: "URLs limpiadas" },
+
+  // ── Popup: param breakdown (impact-dashboard) ─────────────────────────────
+  param_breakdown_label:      { en: "What was removed",                  es: "Qué se eliminó" },
+  param_category_analytics:   { en: "Analytics tracking",                es: "Rastreo analítico" },
+  param_category_social:      { en: "Social media tracking",             es: "Rastreo de redes sociales" },
+  param_category_advertising: { en: "Ad click tracking",                 es: "Rastreo de clics publicitarios" },
+  param_category_email:       { en: "Email campaign tracking",           es: "Rastreo de campañas de email" },
+  param_category_affiliate:   { en: "Affiliate network tracking",        es: "Rastreo de redes de afiliados" },
+  param_category_marketplace: { en: "Marketplace tracking",              es: "Rastreo de marketplace" },
+  param_category_ecommerce:   { en: "E-commerce tracking",               es: "Rastreo de e-commerce" },
+  param_category_other:       { en: "Other tracking",                    es: "Otro rastreo" },
 
   // ── Popup milestones ────────────────────────────────────────────────────
   milestone_10000: { en: "MUGA: Legendary URL cleaner", es: "MUGA: Limpiador legendario de URLs" },
@@ -170,6 +185,7 @@ export const TRANSLATIONS = {
   dev_url_action:             { en: "Action: %s",                                                        es: "Acción: %s" },
   dev_url_report_btn:         { en: "Report a problem with this URL",                                    es: "Reportar un problema con esta URL" },
   report_broken_label:        { en: "Report a bug or suggest an improvement",                            es: "Reportar un error o sugerir una mejora" },
+  report_dirty_url:           { en: "Report a problem with this URL",                                    es: "Reportar un problema con esta URL" },
   dev_report_broken_hint:     { en: "Opens a pre-filled GitHub issue with your browser and extension info", es: "Abre un issue de GitHub pre-rellenado con info de tu navegador y extensi\u00f3n" },
   dev_report_broken_btn:      { en: "Report",                                                            es: "Reportar" },
 

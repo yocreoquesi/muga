@@ -90,6 +90,9 @@ export const PREF_DEFAULTS = {
   //           breaking options.js which reads it via getPrefs(). (#259)
   toastDuration: 15,  // seconds: how long the affiliate notification stays visible
   devMode: false,
+  paramBreakdown: true,
+  showReportButton: true,
+  domainStats: true,
 };
 
 /**
@@ -237,7 +240,81 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onSuspend) {
     if (Object.keys(_pendingStats).length > 0) {
       _flushStats();
     }
+    if (Object.keys(_pendingDomainStats).length > 0) {
+      _flushDomainStats();
+    }
   });
+}
+
+// ── Domain stats: per-domain tracking param counters ──────────────────────────
+
+export const DOMAIN_STATS_MAX = 50;
+
+let _pendingDomainStats = {};
+let _domainStatsFlushTimer = null;
+
+async function _flushDomainStats() {
+  _domainStatsFlushTimer = null;
+  if (Object.keys(_pendingDomainStats).length === 0) return;
+  const toFlush = _pendingDomainStats;
+  _pendingDomainStats = {};
+
+  try {
+    const local = await new Promise((resolve, reject) => {
+      chrome.storage.local.get({ domainStats: {} }, (result) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(result);
+      });
+    });
+    const stats = { ...(local.domainStats || {}) };
+    for (const [domain, delta] of Object.entries(toFlush)) {
+      if (!stats[domain]) stats[domain] = { params: 0, urls: 0 };
+      stats[domain].params += delta.params;
+      stats[domain].urls += delta.urls;
+    }
+    // Evict lowest-count domains if over cap
+    const entries = Object.entries(stats);
+    if (entries.length > DOMAIN_STATS_MAX) {
+      entries.sort((a, b) => a[1].params - b[1].params);
+      const keep = Object.fromEntries(entries.slice(entries.length - DOMAIN_STATS_MAX));
+      await setStats({ domainStats: keep });
+    } else {
+      await setStats({ domainStats: stats });
+    }
+  } catch {
+    // Restore pending so they aren't lost on write failure
+    for (const [domain, delta] of Object.entries(toFlush)) {
+      if (!_pendingDomainStats[domain]) _pendingDomainStats[domain] = { params: 0, urls: 0 };
+      _pendingDomainStats[domain].params += delta.params;
+      _pendingDomainStats[domain].urls += delta.urls;
+    }
+  }
+}
+
+/** Batches domain stat increments and flushes after 50ms. */
+export function incrementDomainStat(domain, paramsCount) {
+  if (!_pendingDomainStats[domain]) _pendingDomainStats[domain] = { params: 0, urls: 0 };
+  _pendingDomainStats[domain].params += paramsCount;
+  _pendingDomainStats[domain].urls += 1;
+  if (!_domainStatsFlushTimer) {
+    _domainStatsFlushTimer = setTimeout(_flushDomainStats, 50);
+  }
+}
+
+/** Reads per-domain stats from chrome.storage.local. */
+export async function getDomainStats() {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      chrome.storage.local.get({ domainStats: {} }, (r) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(r);
+      });
+    });
+    return result.domainStats || {};
+  } catch (err) {
+    console.error("[MUGA] getDomainStats:", err);
+    return {};
+  }
 }
 
 // ── Session storage ponyfill: Firefox MV2 compat (#184) ──────────────────────
