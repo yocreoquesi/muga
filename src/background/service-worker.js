@@ -33,6 +33,7 @@ migrateStatsToLocal();
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
+const MAX_URL_LENGTH = 8192;
 
 function appendSessionLog(level, args) {
   const entry = { ts: Date.now(), level, msg: args.map(a => {
@@ -247,7 +248,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "PROCESS_URL") {
-    if (typeof message.url !== "string") {
+    if (typeof message.url !== "string" || message.url.length > MAX_URL_LENGTH) {
       try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
       return true;
     }
