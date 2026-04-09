@@ -244,7 +244,26 @@ const HTML_KEYS = new Set(["bl_hint", "wl_hint", "cp_hint", "ob_affiliate_desc",
 const ALLOWED_TAGS = new Set(["code", "br", "strong", "em", "a", "small"]);
 const ALLOWED_ATTRS = new Set(["href", "target", "class", "rel"]);
 
-/** Sanitize HTML by stripping all tags/attrs not in the allowlists. */
+/**
+ * Sanitize HTML from translation strings. Defense-in-depth approach:
+ *
+ * Layer 1: Tag allowlist — only <code>, <br>, <strong>, <em>, <a>, <small> pass.
+ *          All others (including <img>, <svg>, <script>, <object>, <embed>) are
+ *          stripped, with their text content preserved.
+ *
+ * Layer 2: Attribute allowlist — only href, target, class, rel survive.
+ *          All event handlers (onclick, onerror, onload, etc.) are removed.
+ *
+ * Layer 3: href scheme allowlist — only https:, http:, relative (../), and
+ *          fragment (#) URLs are permitted. javascript:, data:, vbscript:
+ *          and all other schemes are stripped.
+ *
+ * Safe to use with innerHTML because all three layers are applied before
+ * returning the sanitized markup.
+ *
+ * @param {string} html — raw HTML from translation strings
+ * @returns {string} — sanitized HTML safe for innerHTML
+ */
 function sanitizeHTML(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const walk = (node) => {
