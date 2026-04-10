@@ -149,10 +149,10 @@ describe("import settings (source verification)", () => {
     );
   });
 
-  test("9. import validates language is 'en' or 'es'", () => {
+  test("9. import validates language against supported locales", () => {
     assert.ok(
-      OPTIONS_SOURCE.includes('data.language === "en" || data.language === "es"'),
-      "Import must validate language is 'en' or 'es'"
+      OPTIONS_SOURCE.includes('["en", "es", "pt", "de"].includes(data.language)'),
+      "Import must validate language against supported locale list"
     );
   });
 

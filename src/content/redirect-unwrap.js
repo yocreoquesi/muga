@@ -9,6 +9,9 @@
 
 (function () {
   "use strict";
+  function safeSessionSet(key, value) {
+    try { sessionStorage.setItem(key, value); } catch { /* incognito/quota */ }
+  }
 
   chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
     void chrome.runtime.lastError;
@@ -63,7 +66,7 @@
         if (dest && ["http:", "https:"].includes(dest.protocol) && dest.hostname && dest.hostname !== parsed.hostname) {
           const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
           if (!sessionStorage.getItem(sessionKey)) {
-            sessionStorage.setItem(sessionKey, "1");
+            safeSessionSet(sessionKey, "1");
             window.location.replace(dest.href);
             return;
           }
@@ -104,7 +107,7 @@
               if (dest && ["http:", "https:"].includes(dest.protocol)) {
                 const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
                 if (!sessionStorage.getItem(sessionKey)) {
-                  sessionStorage.setItem(sessionKey, "1");
+                  safeSessionSet(sessionKey, "1");
                   window.location.replace(dest.href);
                   return;
                 }
@@ -129,7 +132,7 @@
         if (dest && ["http:", "https:"].includes(dest.protocol)) {
           const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
           if (!sessionStorage.getItem(sessionKey)) {
-            sessionStorage.setItem(sessionKey, "1");
+            safeSessionSet(sessionKey, "1");
             window.location.replace(dest.href);
             return;
           }
@@ -171,7 +174,7 @@
       // that could redirect to us, bail out.
       const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
       if (sessionStorage.getItem(sessionKey)) return;
-      sessionStorage.setItem(sessionKey, "1");
+      safeSessionSet(sessionKey, "1");
 
       window.location.replace(destination.href);
       return;

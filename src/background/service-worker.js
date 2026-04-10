@@ -41,8 +41,8 @@ function appendSessionLog(level, args) {
   }).join(" ") };
   sessionStorage.get({ debugLog: [] }).then(data => {
     const log = [entry, ...data.debugLog].slice(0, SESSION_LOG_MAX);
-    sessionStorage.set({ debugLog: log }).catch(() => {});
-  }).catch(() => {});
+    sessionStorage.set({ debugLog: log }).catch(() => { /* best-effort debug log */ });
+  }).catch(() => { /* session storage may be unavailable */ });
 }
 
 /** Log a MUGA action as a structured object for rich debug output. */
@@ -149,7 +149,7 @@ async function applyDnrState(prefs) {
   } else {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       disableRulesetIds: ["tracking_params"],
-    }).catch(() => {});
+    }).catch(() => { /* no-op if already disabled */ });
     await syncCustomParamsDNR([]);
   }
 }
@@ -332,7 +332,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const ALLOWED_STAT_KEYS = ["urlsCleaned", "junkRemoved", "referralsSpotted"];
     if (ALLOWED_STAT_KEYS.includes(message.key)) incrementStat(message.key);
     sendResponse({ ok: true });
-    return false;
+    return;
   }
 
   // exposed for future dev-tools use
@@ -399,19 +399,21 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     }
     await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
     if (parsedRaw) {
-      const domain = parsedRaw.hostname.replace(/^www\./, "");
-      const parsedClean = new URL(result.cleanUrl);
-      logAction("cleaned", {
-        source,
-        domain,
-        path: parsedRaw.pathname,
-        action: result.action,
-        removed: result.removedTracking,
-        junkRemoved: result.junkRemoved,
-        originalParams: [...parsedRaw.searchParams.keys()],
-        cleanParams: [...parsedClean.searchParams.keys()],
-        cleanUrl: result.cleanUrl,
-      });
+      try {
+        const domain = parsedRaw.hostname.replace(/^www\./, "");
+        const parsedClean = new URL(result.cleanUrl);
+        logAction("cleaned", {
+          source,
+          domain,
+          path: parsedRaw.pathname,
+          action: result.action,
+          removed: result.removedTracking,
+          junkRemoved: result.junkRemoved,
+          originalParams: [...parsedRaw.searchParams.keys()],
+          cleanParams: [...parsedClean.searchParams.keys()],
+          cleanUrl: result.cleanUrl,
+        });
+      } catch { /* malformed cleanUrl — skip logging */ }
     }
   }
   if (result.action === "detected_foreign") {
@@ -426,10 +428,12 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     });
     // If injection is enabled, build the URL with our tag so "Remove it" can use it
     if (prefs.injectOwnAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
-      const url = new URL(result.cleanUrl);
-      const p = result.detectedAffiliate.pattern;
-      url.searchParams.set(p.param, p.ourTag);
-      result.withOurAffiliate = url.toString();
+      try {
+        const url = new URL(result.cleanUrl);
+        const p = result.detectedAffiliate.pattern;
+        url.searchParams.set(p.param, p.ourTag);
+        result.withOurAffiliate = url.toString();
+      } catch { /* malformed cleanUrl — skip injection */ }
     }
   }
 

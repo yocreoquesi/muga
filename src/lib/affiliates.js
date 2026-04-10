@@ -436,8 +436,12 @@ export const TRACKING_PARAM_CATEGORIES = {
   utm: {
     label: "UTM / Campaign",
     labelEs: "UTM / Campaña",
+    labelPt: "UTM / Campanha",
+    labelDe: "UTM / Kampagne",
     description: "Google Analytics UTM parameters (utm_source, utm_medium, etc.)",
     descriptionEs: "Parámetros UTM de Google Analytics",
+    descriptionPt: "Parâmetros UTM do Google Analytics",
+    descriptionDe: "Google Analytics UTM-Parameter",
     params: [
       "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
       "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
@@ -446,8 +450,12 @@ export const TRACKING_PARAM_CATEGORIES = {
   ads: {
     label: "Paid Ads Clicks",
     labelEs: "Clics de publicidad",
+    labelPt: "Cliques de anúncios",
+    labelDe: "Bezahlte Werbeklicks",
     description: "Click IDs from Google Ads, Facebook, TikTok, LinkedIn, Microsoft, Twitter, etc.",
     descriptionEs: "IDs de clic de Google Ads, Facebook, TikTok, etc.",
+    descriptionPt: "IDs de clique do Google Ads, Facebook, TikTok, etc.",
+    descriptionDe: "Klick-IDs von Google Ads, Facebook, TikTok, etc.",
     params: [
       // Google / Meta / Microsoft core
       "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
@@ -537,8 +545,12 @@ export const TRACKING_PARAM_CATEGORIES = {
   email: {
     label: "Email Marketing",
     labelEs: "Email marketing",
+    labelPt: "E-mail marketing",
+    labelDe: "E-Mail-Marketing",
     description: "Tracking from Klaviyo, HubSpot, Iterable, Marketo, Pardot, ActiveCampaign, etc.",
     descriptionEs: "Rastreo de Klaviyo, HubSpot, Iterable, Marketo, etc.",
+    descriptionPt: "Rastreamento de Klaviyo, HubSpot, Iterable, Marketo, etc.",
+    descriptionDe: "Tracking von Klaviyo, HubSpot, Iterable, Marketo, etc.",
     params: [
       // Mailchimp
       "mc_cid", "mc_eid", "mailingid", "hqemail",
@@ -603,8 +615,12 @@ export const TRACKING_PARAM_CATEGORIES = {
   social: {
     label: "Social Media",
     labelEs: "Redes sociales",
+    labelPt: "Redes sociais",
+    labelDe: "Soziale Medien",
     description: "Tracking from Instagram, Pinterest, Snapchat, TikTok shares, etc.",
     descriptionEs: "Rastreo de Instagram, Pinterest, Snapchat, etc.",
+    descriptionPt: "Rastreamento de Instagram, Pinterest, Snapchat, etc.",
+    descriptionDe: "Tracking von Instagram, Pinterest, Snapchat, etc.",
     params: [
       // Instagram
       "igshid", "igsh",
@@ -617,8 +633,12 @@ export const TRACKING_PARAM_CATEGORIES = {
   platform_noise: {
     label: "Platform Noise",
     labelEs: "Ruido de plataforma",
+    labelPt: "Ruído de plataforma",
+    labelDe: "Plattform-Rauschen",
     description: "Session IDs, A/B test tokens, internal routing params added by CDNs and platforms.",
     descriptionEs: "IDs de sesión, tokens A/B, parámetros internos de CDNs y plataformas.",
+    descriptionPt: "IDs de sessão, tokens A/B, parâmetros internos de CDNs e plataformas.",
+    descriptionDe: "Sitzungs-IDs, A/B-Test-Token, interne CDN- und Plattform-Parameter.",
     params: [
       // YouTube share
       "si",
@@ -675,8 +695,12 @@ export const TRACKING_PARAM_CATEGORIES = {
   generic: {
     label: "Generic Tracking",
     labelEs: "Rastreo genérico",
+    labelPt: "Rastreamento genérico",
+    labelDe: "Allgemeines Tracking",
     description: "Common generic tracking params used across many platforms.",
     descriptionEs: "Parámetros de rastreo genéricos usados en múltiples plataformas.",
+    descriptionPt: "Parâmetros de rastreamento genéricos usados em várias plataformas.",
+    descriptionDe: "Allgemeine Tracking-Parameter, die auf vielen Plattformen verwendet werden.",
     params: [
       "s_cid",
       "wickedid",
