@@ -68,6 +68,8 @@ jobs:
         run: bash scripts/prepare-amo-metadata.sh "${{ steps.version.outputs.VERSION }}"
 
       - name: Submit to Firefox AMO
+        id: amo
+        continue-on-error: true
         run: |
           bash scripts/with-firefox-manifest.sh \
             npx web-ext sign \
@@ -95,6 +97,8 @@ jobs:
           echo "TOKEN=$TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Upload to Chrome Web Store
+        id: cws-upload
+        continue-on-error: true
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X PUT \
@@ -111,6 +115,9 @@ jobs:
           fi
 
       - name: Publish on Chrome Web Store
+        if: steps.cws-upload.outcome == 'success'
+        id: cws-publish
+        continue-on-error: true
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
@@ -125,3 +132,23 @@ jobs:
             echo "::error::CWS publish failed with HTTP $HTTP_CODE"
             exit 1
           fi
+
+      # ── Submission summary ──────────────────────────────────────────
+      - name: Check store submissions
+        if: always()
+        run: |
+          AMO="${{ steps.amo.outcome }}"
+          CWS_UP="${{ steps.cws-upload.outcome }}"
+          CWS_PUB="${{ steps.cws-publish.outcome }}"
+          echo "## Store submission results" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AMO: ${AMO}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- CWS upload: ${CWS_UP}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- CWS publish: ${CWS_PUB}" >> "$GITHUB_STEP_SUMMARY"
+          # Fail only if BOTH stores failed
+          if [ "$AMO" = "failure" ] && [ "$CWS_UP" = "failure" -o "$CWS_PUB" = "failure" ]; then
+            echo "::error::Both AMO and CWS submissions failed"
+            exit 1
+          fi
+          [ "$AMO" = "failure" ] && echo "::warning::AMO submission failed (version may already exist)"
+          [ "$CWS_UP" = "failure" -o "$CWS_PUB" = "failure" ] && echo "::warning::CWS submission failed"
+          exit 0
