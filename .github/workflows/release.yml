@@ -78,3 +78,48 @@ jobs:
               --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
               --api-secret="${{ secrets.AMO_JWT_SECRET }}" \
               --approval-timeout=0
+
+      # ── Chrome Web Store submission ─────────────────────────────────
+      - name: Get CWS access token
+        id: cws-token
+        run: |
+          RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${{ secrets.CWS_CLIENT_ID }}" \
+            -d "client_secret=${{ secrets.CWS_CLIENT_SECRET }}" \
+            -d "refresh_token=${{ secrets.CWS_REFRESH_TOKEN }}" \
+            -d "grant_type=refresh_token")
+          TOKEN=$(echo "$RESPONSE" | node -e "process.stdin.on('data',d=>{const t=JSON.parse(d).access_token;if(!t){console.error('Failed to get token:',d.toString());process.exit(1);}console.log(t);})")
+          echo "::add-mask::$TOKEN"
+          echo "TOKEN=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to Chrome Web Store
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X PUT \
+            -H "Authorization: Bearer ${{ steps.cws-token.outputs.TOKEN }}" \
+            -H "x-goog-api-version: 2" \
+            -T "dist/chrome/muga-${{ steps.version.outputs.VERSION }}-chrome.zip" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${{ secrets.CWS_EXTENSION_ID }}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "$BODY"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::CWS upload failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Publish on Chrome Web Store
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ steps.cws-token.outputs.TOKEN }}" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${{ secrets.CWS_EXTENSION_ID }}/publish")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "$BODY"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::CWS publish failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
