@@ -59,3 +59,22 @@ jobs:
             dist/firefox/muga-${{ steps.version.outputs.VERSION }}-firefox.zip
           draft: false
           prerelease: false
+
+      # ── Firefox AMO submission ──────────────────────────────────────
+      - name: Prepare source code archive for AMO
+        run: git archive --format=zip --prefix=muga-source/ HEAD -o muga-source.zip
+
+      - name: Inject release notes into AMO metadata
+        run: bash scripts/prepare-amo-metadata.sh "${{ steps.version.outputs.VERSION }}"
+
+      - name: Submit to Firefox AMO
+        run: |
+          bash scripts/with-firefox-manifest.sh \
+            npx web-ext sign \
+              --source-dir=src/ \
+              --channel=listed \
+              --amo-metadata=amo-metadata.json \
+              --upload-source-code=muga-source.zip \
+              --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
+              --api-secret="${{ secrets.AMO_JWT_SECRET }}" \
+              --approval-timeout=0
