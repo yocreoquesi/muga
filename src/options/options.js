@@ -88,7 +88,8 @@ async function init() {
   _currentLang = await getStoredLang();
   applyTranslations(_currentLang);
 
-  const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+  let prefs;
+  try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
 
   // --- Consent gate: redirect to onboarding if user hasn't accepted ToS ---
   if (!prefs.onboardingDone) {
@@ -201,9 +202,9 @@ function renderCategories(disabledCategories) {
   const disabled = new Set(disabledCategories);
 
   for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-    const isEs = _currentLang === "es";
-    const label = isEs ? cat.labelEs : cat.label;
-    const desc = isEs ? cat.descriptionEs : cat.description;
+    const langSuffix = { es: "Es", pt: "Pt", de: "De" }[_currentLang];
+    const label = (langSuffix && cat["label" + langSuffix]) || cat.label;
+    const desc = (langSuffix && cat["description" + langSuffix]) || cat.description;
 
     const row = document.createElement("div");
     row.className = "row";
@@ -229,7 +230,8 @@ function renderCategories(disabledCategories) {
     input.checked = !disabled.has(key);
     input.setAttribute("aria-label", label);
     input.addEventListener("change", async () => {
-      const prefs = await chrome.storage.sync.get({ disabledCategories: [] });
+      let prefs;
+      try { prefs = await chrome.storage.sync.get({ disabledCategories: [] }); } catch (err) { console.error("[MUGA] load categories:", err); return; }
       const set = new Set(prefs.disabledCategories);
       if (input.checked) {
         set.delete(key);
@@ -387,7 +389,8 @@ function initLanguageSelect() {
     try { await chrome.storage.sync.set({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
     applyTranslations(_currentLang);
     // Re-render dynamic lists with new language
-    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+    let prefs;
+    try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] reload prefs:", err); prefs = { ...PREF_DEFAULTS }; }
     renderList("custom-params-items", prefs.customParams || [], "customParams");
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
@@ -405,8 +408,15 @@ function isValidListEntry(entry) {
   return true;
 }
 
+/** Serializes list mutations to prevent read-modify-write races. */
+let _listMutex = Promise.resolve();
+function withListLock(fn) {
+  _listMutex = _listMutex.then(fn, fn);
+  return _listMutex;
+}
+
 /** Adds a new entry to a list (blacklist/whitelist/customParams). */
-async function addEntry(listKey, inputId, containerId) {
+function addEntry(listKey, inputId, containerId) {
   const input = document.getElementById(inputId);
   const value = input.value.trim();
   if (!value) return;
@@ -419,25 +429,31 @@ async function addEntry(listKey, inputId, containerId) {
     showToast(t("import_error", _currentLang));
     return;
   }
-  const prefs = await chrome.storage.sync.get({ [listKey]: [] });
-  const list = prefs[listKey];
-  if (!list.includes(value)) {
-    list.push(value);
-    try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
-    renderList(containerId, list, listKey);
-  }
-  input.value = "";
+  return withListLock(async () => {
+    let prefs;
+    try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
+    const list = prefs[listKey];
+    if (!list.includes(value)) {
+      list.push(value);
+      try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
+      renderList(containerId, list, listKey);
+    }
+    input.value = "";
+  });
 }
 
 /** Removes an entry from a list by index. */
-async function removeEntry(listKey, index) {
-  const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items" };
-  const containerId = containerMap[listKey] ?? `${listKey}-items`;
-  const prefs = await chrome.storage.sync.get({ [listKey]: [] });
-  const list = prefs[listKey];
-  list.splice(index, 1);
-  try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
-  renderList(containerId, list, listKey);
+function removeEntry(listKey, index) {
+  return withListLock(async () => {
+    const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items" };
+    const containerId = containerMap[listKey] ?? `${listKey}-items`;
+    let prefs;
+    try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
+    const list = prefs[listKey];
+    list.splice(index, 1);
+    try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
+    renderList(containerId, list, listKey);
+  });
 }
 
 /** Initializes the stats display and reset button. */
@@ -450,21 +466,24 @@ function initStatsSection() {
   document.getElementById("reset-stats-btn").addEventListener("click", async () => {
     const ok = await showConfirm(t("stats_reset_confirm", _currentLang));
     if (!ok) return;
-    await chrome.storage.local.set({
-      stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
-      firstUsed: null,
-      domainStats: {},
-      // nudgeDismissed and nudgeShownCount intentionally NOT reset:
-      // resetting stats must not re-trigger the review nudge.
-    });
-    showToast(t("stats_reset_done", _currentLang));
+    try {
+      await chrome.storage.local.set({
+        stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
+        firstUsed: null,
+        domainStats: {},
+        // nudgeDismissed and nudgeShownCount intentionally NOT reset:
+        // resetting stats must not re-trigger the review nudge.
+      });
+      showToast(t("stats_reset_done", _currentLang));
+    } catch (err) { console.error("[MUGA] reset stats:", err); }
   });
 }
 
 /** Initializes export/import settings functionality. */
 function initExportImport() {
   document.getElementById("export-btn").addEventListener("click", async () => {
-    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+    let prefs;
+    try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] export prefs:", err); return; }
     const payload = {
       muga: true,
       version: chrome.runtime.getManifest().version,
@@ -534,8 +553,8 @@ function initExportImport() {
       if (typeof data.toastDuration === "number") {
         toSave.toastDuration = Math.max(5, Math.min(60, data.toastDuration));
       }
-      // Handle language (string "en"|"es")
-      if (data.language === "en" || data.language === "es") {
+      // Handle language (any supported locale)
+      if (["en", "es", "pt", "de"].includes(data.language)) {
         toSave.language = data.language;
       }
       await chrome.storage.sync.set(toSave);
@@ -605,7 +624,7 @@ function initDevTools() {
         `## What broke?\n\n` +
         `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
       );
-      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site`, "_blank");
+      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site`, "_blank", "noopener,noreferrer");
     });
   }
 
@@ -862,7 +881,7 @@ async function testUrl() {
             `## Expected behavior\n\n` +
             `<!-- What should MUGA do with this URL? -->\n`
           );
-          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}`, "_blank");
+          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}`, "_blank", "noopener,noreferrer");
         } catch {
           // Invalid URL, ignore
         }
