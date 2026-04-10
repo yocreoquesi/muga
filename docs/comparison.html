@@ -106,7 +106,7 @@
       <tbody>
         <tr>
           <td>Tracking params stripped</td>
-          <td class="muga">458 params<sup>1</sup></td>
+          <td class="muga">450+ params<sup>1</sup></td>
           <td>~300<sup>2</sup></td>
           <td>~200<sup>3</sup></td>
           <td class="partial">Limited (via filter lists)<sup>4</sup></td>
@@ -114,7 +114,7 @@
         </tr>
         <tr>
           <td>Domain-specific rules</td>
-          <td class="muga">167 domains<sup>1</sup></td>
+          <td class="muga">150+ domains<sup>1</sup></td>
           <td>~100<sup>2</sup></td>
           <td>Manual (user-defined)</td>
           <td class="partial">Via filter lists</td>
@@ -235,7 +235,7 @@
     uBlock Origin is a full-spectrum content blocker. URL parameter stripping is a small part of what it does,
     and it does it well for the most common cases. If you already use uBlock Origin, you do not need
     MUGA for basic UTM stripping. MUGA adds value on top: affiliate transparency, AMP redirects,
-    and 167 domain-specific rule sets that target tracker params unique to individual stores.
+    and 150+ domain-specific rule sets that target tracker params unique to individual stores.
   </div>
 
   <div class="note">
@@ -281,7 +281,7 @@
 
   <div class="footnotes">
     <ol>
-      <li>MUGA source: <a href="https://github.com/yocreoquesi/muga/blob/main/src/rules/tracking-params.json" target="_blank" rel="noopener noreferrer">src/rules/tracking-params.json</a> (458 params), <a href="https://github.com/yocreoquesi/muga/blob/main/src/rules/domain-rules.json" target="_blank" rel="noopener noreferrer">src/rules/domain-rules.json</a> (167 domain rule sets).</li>
+      <li>MUGA source: <a href="https://github.com/yocreoquesi/muga/blob/main/src/rules/tracking-params.json" target="_blank" rel="noopener noreferrer">src/rules/tracking-params.json</a> (450+ params), <a href="https://github.com/yocreoquesi/muga/blob/main/src/rules/domain-rules.json" target="_blank" rel="noopener noreferrer">src/rules/domain-rules.json</a> (150+ domain rule sets).</li>
       <li>ClearURLs rules: <a href="https://github.com/ClearURLs/Rules/blob/master/data.min.json" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Rules</a>. Parameter count varies by version; ~300 is an approximation based on the global rules list.</li>
       <li>Neat URL rules: <a href="https://github.com/Smile4ever/Neat-URL/blob/master/data/default-params.json" target="_blank" rel="noopener noreferrer">github.com/Smile4ever/Neat-URL</a>. Count includes default parameter list; users can add more manually.</li>
       <li>uBlock Origin strips tracking params via the <code>removeparam</code> filter cosmetic option. Coverage depends on the filter lists the user has enabled. <a href="https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#removeparam" target="_blank" rel="noopener noreferrer">uBlock Origin docs: removeparam</a>.</li>
