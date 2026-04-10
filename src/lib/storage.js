@@ -59,6 +59,11 @@
     for (const m of ["query", "create", "sendMessage", "remove"]) wrapMethod(chrome.tabs, m);
   }
 
+  // chrome.runtime
+  if (chrome.runtime) {
+    wrapMethod(chrome.runtime, "sendMessage");
+  }
+
   // chrome.contextMenus
   if (chrome.contextMenus) {
     wrapMethod(chrome.contextMenus, "removeAll");

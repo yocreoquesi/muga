@@ -853,6 +853,17 @@ describe("Firefox MV2 compatibility guards", () => {
     );
   });
 
+  test("shimChromePromises wraps chrome.runtime.sendMessage", () => {
+    const shimBlock = STORAGE_SOURCE.slice(
+      STORAGE_SOURCE.indexOf("shimChromePromises"),
+      STORAGE_SOURCE.indexOf("// ── Sync:")
+    );
+    assert.ok(
+      shimBlock.includes('wrapMethod(chrome.runtime, "sendMessage")'),
+      "shim must wrap chrome.runtime.sendMessage for Firefox MV2"
+    );
+  });
+
   test("Promise shim wraps chrome.storage.sync and chrome.storage.local", () => {
     assert.ok(
       STORAGE_SOURCE.includes("chrome.storage?.sync") && STORAGE_SOURCE.includes("chrome.storage?.local"),
@@ -1002,11 +1013,11 @@ describe("Firefox MV2 manifest structure", () => {
       `strict_min_version (${minVersion}) must not exceed 128 to support Firefox ESR`);
   });
 
-  test("content scripts include browser-polyfill.min.js", () => {
-    for (const cs of MANIFEST_V2.content_scripts) {
-      assert.ok(cs.js.includes("lib/browser-polyfill.min.js"),
-        `Content script [${cs.js.join(", ")}] must include browser-polyfill.min.js`);
-    }
+  test("browser-polyfill.min.js loads in document_start entry", () => {
+    const startEntry = MANIFEST_V2.content_scripts.find(cs => cs.run_at === "document_start");
+    assert.ok(startEntry, "must have a document_start content script entry");
+    assert.ok(startEntry.js.includes("lib/browser-polyfill.min.js"),
+      "document_start entry must include browser-polyfill.min.js");
   });
 
   test("version matches package.json", () => {

@@ -30,12 +30,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/amp-redirect.js"],
-      "run_at": "document_end"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/redirect-unwrap.js"],
+      "js": ["content/amp-redirect.js", "content/redirect-unwrap.js"],
       "run_at": "document_end"
     }
   ],
