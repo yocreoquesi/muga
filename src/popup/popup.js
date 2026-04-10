@@ -61,7 +61,7 @@ function _renderParamBreakdown(removedTracking, lang) {
     const info = index.get(param.toLowerCase());
     const catKey = info ? info.categoryKey : "other";
     const label = info
-      ? (lang === "es" ? info.labelEs : info.label)
+      ? ({ es: info.labelEs, pt: info.labelPt, de: info.labelDe }[lang] || info.label)
       : t("param_category_other", lang);
     if (!groups.has(catKey)) groups.set(catKey, { label, params: [] });
     groups.get(catKey).params.push(param);
