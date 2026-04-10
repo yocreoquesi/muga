@@ -170,6 +170,50 @@ describe("Bug #229 — whitelist/blacklist entry format", () => {
   });
 });
 
+// ── Cache invalidation version counter ───────────────────────────────────────
+
+describe("Cache invalidation — version counter", () => {
+  test("defines _cacheVersion counter", () => {
+    assert.ok(swSource.includes("let _cacheVersion = 0"), "_cacheVersion should be initialized to 0");
+  });
+
+  test("getPrefsWithCache captures version before fetch", () => {
+    assert.ok(
+      swSource.includes("const versionAtStart = _cacheVersion"),
+      "should snapshot _cacheVersion before starting async fetch"
+    );
+  });
+
+  test("getPrefsWithCache discards stale result when version changed", () => {
+    assert.ok(
+      swSource.includes("_cacheVersion !== versionAtStart"),
+      "should compare version after fetch completes"
+    );
+  });
+
+  test("storage change listener increments _cacheVersion", () => {
+    const storageListener = swSource.slice(
+      swSource.indexOf("chrome.storage.onChanged.addListener"),
+      swSource.indexOf("chrome.storage.onChanged.addListener") + 500
+    );
+    assert.ok(storageListener.includes("_cacheVersion++"), "storage listener should increment _cacheVersion");
+  });
+
+  test("whitelist handler increments _cacheVersion", () => {
+    const whitelistHandler = swSource.slice(
+      swSource.indexOf('"ADD_TO_WHITELIST"'),
+      swSource.indexOf('"ADD_TO_BLACKLIST"')
+    );
+    assert.ok(whitelistHandler.includes("_cacheVersion++"), "whitelist handler should increment _cacheVersion");
+  });
+
+  test("blacklist handler increments _cacheVersion", () => {
+    const blacklistStart = swSource.indexOf('"ADD_TO_BLACKLIST"');
+    const blacklistHandler = swSource.slice(blacklistStart, blacklistStart + 800);
+    assert.ok(blacklistHandler.includes("_cacheVersion++"), "blacklist handler should increment _cacheVersion");
+  });
+});
+
 // ── Onboarding consent verification ─────────────────────────────────────────
 
 describe("Onboarding consent — source code patterns", () => {
