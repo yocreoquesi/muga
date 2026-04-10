@@ -63,6 +63,7 @@ console.warn = (...args) => { _origWarn(...args); appendSessionLog("warn", args)
 
 let cachedPrefs = null;
 let prefsFetchPromise = null;
+let _cacheVersion = 0;
 
 // Serialize list mutations (whitelist/blacklist) to prevent race conditions
 // where two rapid messages read the same cached list and the second overwrites the first.
@@ -71,7 +72,13 @@ let _listMutationQueue = Promise.resolve();
 function getPrefsWithCache() {
   if (cachedPrefs) return Promise.resolve(cachedPrefs);
   if (!prefsFetchPromise) {
+    const versionAtStart = _cacheVersion;
     prefsFetchPromise = getPrefs().then(prefs => {
+      if (_cacheVersion !== versionAtStart) {
+        // Cache was invalidated while fetching — discard stale result
+        prefsFetchPromise = null;
+        return getPrefsWithCache();
+      }
       // Pre-parse blacklist/whitelist once so processUrl doesn't re-parse on every call
       prefs._parsedBlacklist = (prefs.blacklist || []).map(parseListEntry);
       prefs._parsedWhitelist = (prefs.whitelist || []).map(parseListEntry);
@@ -223,6 +230,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
   cachedPrefs = null;
   prefsFetchPromise = null;
+  _cacheVersion++;
   if (changes.customParams || changes.dnrEnabled || changes.enabled) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
@@ -279,6 +287,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       cachedPrefs = null;
       prefsFetchPromise = null;
+      _cacheVersion++;
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_WHITELIST handler failed:", err);
@@ -301,6 +310,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       cachedPrefs = null;
       prefsFetchPromise = null;
+      _cacheVersion++;
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_BLACKLIST handler failed:", err);

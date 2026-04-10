@@ -40,9 +40,16 @@
   const _rewriteLog = new Map(); // hostname -> { count, firstTs }
   function isRewriteLoop(hostname) {
     const now = Date.now();
+    // Evict stale entries older than 2s instead of bulk-clearing the entire map
+    if (_rewriteLog.size > 50) {
+      for (const [key, val] of _rewriteLog) {
+        if (now - val.firstTs > 2000) _rewriteLog.delete(key);
+      }
+      // Safety cap: if still over 200 after eviction, clear all
+      if (_rewriteLog.size > 200) _rewriteLog.clear();
+    }
     const entry = _rewriteLog.get(hostname);
     if (!entry || now - entry.firstTs > 2000) {
-      if (_rewriteLog.size > 200) _rewriteLog.clear();
       _rewriteLog.set(hostname, { count: 1, firstTs: now });
       return false;
     }
@@ -483,18 +490,20 @@
         root.querySelectorAll("a[ping]").forEach(a => a.removeAttribute("ping"));
       }
       removePingAttrs(document);
+      let _pingBatchId = 0;
       const observer = new MutationObserver(mutations => {
+        // Attribute changes: handle immediately (ping must be removed before click)
         for (const mutation of mutations) {
-          // Handle new nodes
-          for (const node of mutation.addedNodes) {
-            if (node.nodeType !== 1) continue;
-            if (node.hasAttribute?.("ping")) node.removeAttribute("ping");
-            removePingAttrs(node);
-          }
-          // Handle attribute changes on existing elements
           if (mutation.type === "attributes" && mutation.attributeName === "ping") {
             mutation.target.removeAttribute("ping");
           }
+        }
+        // New nodes: batch via rAF to avoid per-mutation DOM walks
+        if (!_pingBatchId) {
+          _pingBatchId = requestAnimationFrame(() => {
+            _pingBatchId = 0;
+            removePingAttrs(document);
+          });
         }
       });
       observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["ping"] });
