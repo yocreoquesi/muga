@@ -31,14 +31,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   startBtn.addEventListener("click", async () => {
     if (!tosCheck.checked) return;
 
-    await chrome.storage.sync.set({
-      onboardingDone:        true,
-      consentVersion:        CONSENT_VERSION,
-      consentDate:           Date.now(),
-      injectOwnAffiliate:    affiliateCheck.checked,
-      notifyForeignAffiliate: false,
-    });
-
-    window.close();
+    try {
+      await chrome.storage.sync.set({
+        onboardingDone:        true,
+        consentVersion:        CONSENT_VERSION,
+        consentDate:           Date.now(),
+        injectOwnAffiliate:    affiliateCheck.checked,
+        notifyForeignAffiliate: false,
+        language:              lang,
+      });
+      window.close();
+    } catch (err) {
+      console.error("[MUGA] onboarding save:", err);
+      startBtn.textContent = "Error — please try again";
+      startBtn.disabled = false;
+    }
   });
 });

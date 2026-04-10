@@ -349,7 +349,8 @@ export async function getStoredLang() {
       chrome.storage.sync.get({ language: null }, r => {
         void chrome.runtime.lastError;
         try {
-          resolve(r?.language ?? browserLang());
+          const stored = r?.language;
+          resolve(stored && supported.has(stored) ? stored : browserLang());
         } catch (err) {
           console.error("[MUGA] getStoredLang:", err);
           resolve(browserLang());

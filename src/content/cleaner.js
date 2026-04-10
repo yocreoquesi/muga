@@ -73,9 +73,25 @@
       toast_block:   "Eliminarlo",
       toast_dismiss: "Descartar",
     },
+    pt: {
+      toast_title:   "MUGA encontrou a tag de afiliado de outra pessoa",
+      toast_tag_msg: "tem uma tag de afiliado que não é nossa:",
+      toast_allow:   "Manter",
+      toast_block:   "Remover",
+      toast_dismiss: "Dispensar",
+    },
+    de: {
+      toast_title:   "MUGA hat ein fremdes Affiliate-Tag gefunden",
+      toast_tag_msg: "hat ein Affiliate-Tag, das nicht uns gehört:",
+      toast_allow:   "Behalten",
+      toast_block:   "Entfernen",
+      toast_dismiss: "Schließen",
+    },
   };
 
-  const browserLang = (navigator.language || "en").startsWith("es") ? "es" : "en";
+  const SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1 };
+  const navLang = (navigator.language || "en").slice(0, 2);
+  const browserLang = navLang in SUPPORTED_LANGS ? navLang : "en";
   let s = STRINGS[browserLang];
   // Load language preference asynchronously. Toast will use it if shown after load.
   chrome.storage.sync.get({ language: browserLang }, (r) => {
@@ -333,7 +349,7 @@
       if (u.protocol !== "http:" && u.protocol !== "https:") return;
     } catch { return; }
     if (newTab) {
-      window.open(url, "_blank");
+      window.open(url, "_blank", "noopener,noreferrer");
     } else {
       window.location.href = url;
     }
