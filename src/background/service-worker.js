@@ -169,8 +169,8 @@ async function syncContextMenus(enabled) {
   if (!prefs.enabled) return;
   const lang = prefs.language || "en";
   const titles = {
-    copy: lang === "es" ? "Copiar enlace limpio" : "Copy clean link",
-    selection: lang === "es" ? "Copiar enlaces limpios de la selección" : "Copy clean links in selection",
+    copy: { es: "Copiar enlace limpio", pt: "Copiar link limpo", de: "Sauberen Link kopieren" }[lang] || "Copy clean link",
+    selection: { es: "Copiar enlaces limpios de la selección", pt: "Copiar links limpos da seleção", de: "Saubere Links der Auswahl kopieren" }[lang] || "Copy clean links in selection",
   };
   chrome.contextMenus.create({
     id: "muga-copy-clean",

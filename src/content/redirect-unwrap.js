@@ -9,6 +9,9 @@
 
 (function () {
   "use strict";
+  function safeSessionGet(key) {
+    try { return sessionStorage.getItem(key); } catch { return null; /* incognito/quota */ }
+  }
   function safeSessionSet(key, value) {
     try { sessionStorage.setItem(key, value); } catch { /* incognito/quota */ }
   }
@@ -65,7 +68,7 @@
         }
         if (dest && ["http:", "https:"].includes(dest.protocol) && dest.hostname && dest.hostname !== parsed.hostname) {
           const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
-          if (!sessionStorage.getItem(sessionKey)) {
+          if (!safeSessionGet(sessionKey)) {
             safeSessionSet(sessionKey, "1");
             window.location.replace(dest.href);
             return;
@@ -106,7 +109,7 @@
               }
               if (dest && ["http:", "https:"].includes(dest.protocol)) {
                 const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
-                if (!sessionStorage.getItem(sessionKey)) {
+                if (!safeSessionGet(sessionKey)) {
                   safeSessionSet(sessionKey, "1");
                   window.location.replace(dest.href);
                   return;
@@ -131,7 +134,7 @@
         try { dest = new URL(decoded, parsed.origin); } catch { /* skip */ }
         if (dest && ["http:", "https:"].includes(dest.protocol)) {
           const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
-          if (!sessionStorage.getItem(sessionKey)) {
+          if (!safeSessionGet(sessionKey)) {
             safeSessionSet(sessionKey, "1");
             window.location.replace(dest.href);
             return;
@@ -173,7 +176,7 @@
       // Guard against redirect loops: if the destination points back to a page
       // that could redirect to us, bail out.
       const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
-      if (sessionStorage.getItem(sessionKey)) return;
+      if (safeSessionGet(sessionKey)) return;
       safeSessionSet(sessionKey, "1");
 
       window.location.replace(destination.href);
