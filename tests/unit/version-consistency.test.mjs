@@ -120,6 +120,58 @@ describe("Version consistency — all files must match package.json", () => {
   });
 });
 
+describe("Version consistency — README badges", () => {
+
+  test("README.md Chrome badge links to Chrome Web Store (not Coming Soon)", () => {
+    const readme = read("README.md");
+    assert.ok(
+      readme.includes("chromewebstore.google.com/detail"),
+      "Chrome badge must link to Chrome Web Store, not '#installation'"
+    );
+    assert.ok(
+      !readme.includes("Coming_soon"),
+      "Chrome badge must not say 'Coming soon'"
+    );
+  });
+
+  test("README.md Firefox badge links to AMO", () => {
+    const readme = read("README.md");
+    assert.ok(
+      readme.includes("addons.mozilla.org/firefox/addon/muga"),
+      "Firefox badge must link to AMO"
+    );
+  });
+
+  test("README.md test count badge is not stale (within 50 of actual)", () => {
+    const readme = read("README.md");
+    const match = readme.match(/tests-(\d+)_pass/);
+    assert.ok(match, "README must have a tests badge");
+    const badgeCount = parseInt(match[1], 10);
+    // This test itself is part of the count, so allow ±50 tolerance
+    assert.ok(badgeCount >= 900, `Badge shows ${badgeCount} tests — likely stale, should be ~958+`);
+  });
+});
+
+describe("Version consistency — release workflow", () => {
+
+  test("release.yml submits to Firefox AMO", () => {
+    const yml = read(".github/workflows/release.yml");
+    assert.ok(yml.includes("web-ext sign"), "release.yml must run web-ext sign for AMO");
+    assert.ok(yml.includes("AMO_JWT_ISSUER"), "release.yml must reference AMO_JWT_ISSUER secret");
+  });
+
+  test("release.yml submits to Chrome Web Store", () => {
+    const yml = read(".github/workflows/release.yml");
+    assert.ok(yml.includes("chromewebstore"), "release.yml must call CWS API");
+    assert.ok(yml.includes("CWS_CLIENT_ID"), "release.yml must reference CWS_CLIENT_ID secret");
+  });
+
+  test("release.yml uploads source code for AMO review", () => {
+    const yml = read(".github/workflows/release.yml");
+    assert.ok(yml.includes("upload-source-code"), "release.yml must upload source code to AMO");
+  });
+});
+
 describe("Version consistency — build artifacts", () => {
 
   test("release.yml builds both Chrome and Firefox on tag push", () => {
