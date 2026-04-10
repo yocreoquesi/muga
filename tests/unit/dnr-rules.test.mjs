@@ -150,12 +150,18 @@ test("every removeParam (lowercased) exists in TRACKING_PARAMS", async () => {
   }
 });
 
-// Params intentionally removed from DNR because they conflict with domain-rules.json
-// preserveParams (e.g. cid on Google Maps, ie on CJK search engines).
-// The content script handles these with domain-specific logic.
-const DNR_EXCLUDED_PARAMS = new Set([
-  "si", "_r", "source", "campaign", "cid", "ref_", "ie", "ei", "ab_channel",
-]);
+// Params that appear in domain-rules.json preserveParams are functional on some
+// domains (e.g. cid on Google Maps, ie on CJK search engines).  They must NOT
+// be in the global DNR rule — the content script handles them per-domain.
+// Derived dynamically so the test stays in sync with domain-rules.json.
+const domainRulesPath = join(root, "src", "rules", "domain-rules.json");
+const domainRules = JSON.parse(readFileSync(domainRulesPath, "utf8"));
+const DNR_EXCLUDED_PARAMS = new Set();
+for (const rule of domainRules) {
+  if (rule.preserveParams) {
+    for (const p of rule.preserveParams) DNR_EXCLUDED_PARAMS.add(p);
+  }
+}
 
 test("every lowercase TRACKING_PARAM has a corresponding removeParam entry (except DNR-excluded)", async () => {
   const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
