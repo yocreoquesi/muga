@@ -13,7 +13,7 @@
 
 ---
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, e-commerce noise, share tokens, and 459+ more. MUGA strips them automatically, before the page renders. **We clean tracking, but we respect referrals. By default, we never touch what isn't ours.** On stores whose affiliate model forces your clicks through external tracking servers, we strip their tracking parameters too -- we do not believe that forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
+URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, e-commerce noise, share tokens, and 450+ more. MUGA strips them automatically, before the page renders. **We clean tracking, but we respect referrals. By default, we never touch what isn't ours.** On stores whose affiliate model forces your clicks through external tracking servers, we strip their tracking parameters too -- we do not believe that forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
 
 > **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
@@ -25,7 +25,7 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, e-commerce noise, s
 
 ## What it removes
 
-**459 tracking parameters** across 6 categories, on every site:
+**450+ tracking parameters** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -36,7 +36,7 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, e-commerce noise, s
 | Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **167 domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
+Domain-specific rules for **150+ domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
 
 ---
 
@@ -76,7 +76,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ### Always on, no configuration needed
 
-- Strip 459 tracking params on in-page navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Strip 450+ tracking params on in-page navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path noise (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
@@ -150,7 +150,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 ## Supported stores
 
-3 active affiliate programs across multiple markets (ES, DE, FR, IT, UK, US).
+2 active affiliate programs across multiple markets (ES, DE, FR, IT, UK, US).
 
 Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based tracking, because routing your clicks through external servers would violate our privacy policy.
 

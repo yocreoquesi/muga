@@ -2,7 +2,7 @@
 
 > Version: 1.9.9
 > Last updated: 2026-04-01
-> Status: Final listing for Chrome Web Store and Firefox AMO. 459 tracking params, 167 domain rules, 13 prefix patterns, 3 active affiliate programs, MV3 native.
+> Status: Final listing for Chrome Web Store and Firefox AMO. 450+ tracking params, 150+ domain rules, 6 categories, 2 active affiliate programs, MV3 native.
 
 ---
 
@@ -14,7 +14,7 @@ MUGA: Clean URLs, Fair to Every Click
 
 ### Short description (132 chars max)
 
-URL cleaner: strips utm, fbclid, gclid and 459 tracking params automatically. Respects creator affiliates. Open source, MV3 native.
+URL cleaner: strips utm, fbclid, gclid and 450+ tracking params automatically. Respects creator affiliates. Open source, MV3 native.
 
 *(130 chars)*
 
@@ -22,7 +22,7 @@ URL cleaner: strips utm, fbclid, gclid and 459 tracking params automatically. Re
 
 ### Detailed description
 
-MUGA is a URL cleaner and tracking remover. It strips utm_source, utm_medium, utm_campaign, fbclid, gclid, msclkid, and 449 more tracking parameters from every URL you visit, automatically, before the page loads. No buttons. No setup. No permission popups. Built natively for Manifest V3. Works on Chrome and Firefox.
+MUGA is a URL cleaner and tracking remover. It strips utm_source, utm_medium, utm_campaign, fbclid, gclid, msclkid, and 450+ more tracking parameters from every URL you visit, automatically, before the page loads. No buttons. No setup. No permission popups. Built natively for Manifest V3. Works on Chrome and Firefox.
 
 By default, MUGA never touches what isn't ours. If a link already has a creator's affiliate tag, we leave it alone. That is the "fair to every click" part, and what makes MUGA different from every other URL cleaner out there.
 
@@ -55,7 +55,7 @@ Five tracking params removed. The actual page URL is untouched.
 WHAT GETS STRIPPED
 ======================================
 
-459 tracking parameters across 13 pattern families:
+450+ tracking parameters across 6 categories:
 
 . UTM family (utm_source, utm_medium, utm_campaign, utm_content, utm_term, and more)
 . Click IDs: fbclid, gclid, dclid, gbraid, wbraid, msclkid, ttclid, twclid, sclid, sc_channel
@@ -64,7 +64,7 @@ WHAT GETS STRIPPED
 . E-commerce session noise (pd_rd_r, pf_rd_p, linkCode, linkId, mkevt, mkcid, mkrid, aff_trace_key, algo_expid, algo_pvid, and 30+ more)
 . Generic click IDs and campaign identifiers
 
-167 domain-specific rulesets ensure functional params (search queries, pagination, filters) are always preserved. MUGA only removes tracking. It never breaks a page.
+150+ domain-specific rulesets ensure functional params (search queries, pagination, filters) are always preserved. MUGA only removes tracking. It never breaks a page.
 
 
 ======================================
@@ -123,6 +123,7 @@ YOUR RULES
 . Whitelist a tag: protect a specific creator's affiliate link so MUGA never touches it
 . Custom tracking params: add your own parameter names to strip on any site
 . Affiliate notifications: enable a toast when a third-party affiliate is detected
+. Strip all third-party affiliates: one toggle to remove every affiliate tag globally
 . Per-domain disable: opt entire domains out of MUGA
 . Export / Import settings as JSON: back up or move your config across devices
 . Language: English and Espanol, switchable any time
@@ -133,7 +134,7 @@ YOUR RULES
 SUPPORTED STORES (affiliate features, opt-in only)
 ======================================
 
-Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT), Booking.com.
+Active: Amazon (ES, DE, FR, IT, UK, US), eBay (US, ES, DE, UK, FR, IT).
 
 Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based tracking, because routing your clicks through external servers would violate our privacy policy.
 
@@ -164,7 +165,7 @@ MUGA: Clean URLs, Fair to Every Click
 
 ### Summary (250 chars max)
 
-URL cleaner and tracking remover. Strips 459 tracking params (utm, fbclid, gclid) before the page loads. Respects creator affiliates. Rejects redirect-based tracking. 100% local, open source, GPL v3. Nothing leaves your browser.
+URL cleaner and tracking remover. Strips 450+ tracking params (utm, fbclid, gclid) before the page loads. Respects creator affiliates. Rejects redirect-based tracking. 100% local, open source, GPL v3. Nothing leaves your browser.
 
 *(243 chars)*
 
@@ -177,7 +178,7 @@ MUGA is a URL cleaner built for people who care about what happens to their clic
 Every URL you visit arrives loaded with tracking parameters -- utm_source, fbclid, gclid, msclkid, share tokens, e-commerce session noise, and hundreds more. MUGA strips them automatically, before the page renders. No buttons to press. No configuration needed. No data leaves your browser. Ever.
 
 
-459 tracking parameters. 167 domain-specific rulesets. Zero data collection.
+450+ tracking parameters. 150+ domain-specific rulesets. Zero data collection.
 
 MUGA removes tracking from every site on the web. Domain-specific rules ensure functional parameters (search queries, pagination, filters) are always preserved. We only remove tracking. We never break a page.
 
@@ -215,7 +216,7 @@ We evaluated 10+ affiliate programs from major retailers and marketplaces. Every
 On those stores, MUGA actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
 Supported stores (affiliate features, opt-in only):
-3 active programs across multiple markets (ES, DE, FR, IT, UK, US).
+2 active programs across multiple markets (ES, DE, FR, IT, UK, US).
 
 
 Private by design
@@ -232,6 +233,7 @@ Your rules
 . Blacklist a domain: strip everything on that site, no affiliate injection
 . Whitelist a tag: protect a specific creator's affiliate link
 . Custom tracking params: add your own parameter names to strip
+. Strip all third-party affiliates: one toggle to remove every affiliate tag globally
 . Per-domain disable: opt entire domains out of MUGA
 . Export/Import settings as JSON
 . English and Spanish, switchable any time
