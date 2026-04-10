@@ -27,6 +27,35 @@ function isValidListEntry(entry) {
 
 // ── Message handler structure verification ───────────────────────────────────
 
+describe("PROCESS_URL payload limits", () => {
+  test("defines a sensible max URL length", () => {
+    const match = swSource.match(/const MAX_URL_LENGTH\s*=\s*(\d+)/);
+    assert.ok(match, "MAX_URL_LENGTH constant should be defined");
+    const value = parseInt(match[1], 10);
+    assert.ok(value >= 2048, `MAX_URL_LENGTH (${value}) should be >= 2048`);
+    assert.ok(value <= 65536, `MAX_URL_LENGTH (${value}) should be <= 65536`);
+  });
+
+  test("rejects URLs exceeding MAX_URL_LENGTH", () => {
+    assert.ok(
+      swSource.includes("message.url.length > MAX_URL_LENGTH"),
+      "PROCESS_URL handler should check url length against MAX_URL_LENGTH"
+    );
+  });
+
+  test("accepts URLs at exactly MAX_URL_LENGTH", () => {
+    // Boundary: the guard is strictly greater-than, so length === MAX_URL_LENGTH is allowed
+    assert.ok(
+      swSource.includes("message.url.length > MAX_URL_LENGTH"),
+      "guard must be strictly greater-than so boundary-length URLs are accepted"
+    );
+    assert.ok(
+      !swSource.includes("message.url.length >= MAX_URL_LENGTH"),
+      "guard must not be >= (that would reject exactly-MAX_URL_LENGTH URLs)"
+    );
+  });
+});
+
 describe("Service worker message handlers", () => {
   test("handles PROCESS_URL message type", () => {
     assert.ok(swSource.includes('message.type === "PROCESS_URL"'));

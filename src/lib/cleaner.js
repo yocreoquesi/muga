@@ -180,6 +180,10 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  }
+
   const hostname = url.hostname;
   const blacklist = prefs.blacklist || [];
   const whitelist = prefs.whitelist || [];

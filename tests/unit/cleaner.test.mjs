@@ -2235,6 +2235,43 @@ describe("YouTube — list= playlist preservation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Scheme validation
+// ---------------------------------------------------------------------------
+describe("scheme validation", () => {
+  test("rejects ftp: URLs as untouched", () => {
+    const result = processUrl("ftp://files.example.com/doc.pdf?utm_source=test", PREFS);
+    assert.strictEqual(result.action, "untouched");
+    assert.strictEqual(result.cleanUrl, "ftp://files.example.com/doc.pdf?utm_source=test");
+    assert.deepStrictEqual(result.removedTracking, []);
+  });
+
+  test("rejects data: URLs as untouched", () => {
+    const result = processUrl("data:text/html,<h1>hi</h1>?utm_source=test", PREFS);
+    assert.strictEqual(result.action, "untouched");
+  });
+
+  test("rejects javascript: URLs as untouched", () => {
+    const result = processUrl("javascript:alert(1)", PREFS);
+    assert.strictEqual(result.action, "untouched");
+  });
+
+  test("rejects blob: URLs as untouched", () => {
+    const result = processUrl("blob:https://example.com/uuid", PREFS);
+    assert.strictEqual(result.action, "untouched");
+  });
+
+  test("accepts http: URLs normally", () => {
+    const result = processUrl("http://example.com/?utm_source=test", PREFS);
+    assert.strictEqual(result.action, "cleaned");
+  });
+
+  test("accepts https: URLs normally", () => {
+    const result = processUrl("https://example.com/?utm_source=test", PREFS);
+    assert.strictEqual(result.action, "cleaned");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // C11 sync verification (continued)
 // ---------------------------------------------------------------------------
 describe("C11 — popup.js formatStat sync", () => {

@@ -135,3 +135,162 @@ describe("import validation robustness (options.js source verification)", () => 
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// sanitizeHTML — malicious input defense (source-level verification)
+//
+// sanitizeHTML uses DOMParser (browser-only) and is not exported, so these
+// tests verify the security properties by inspecting the implementation
+// source — the same approach used by the allowlist tests above.
+// Each test maps 1:1 to a specific XSS defense layer.
+// ---------------------------------------------------------------------------
+describe("sanitizeHTML — malicious input defense", () => {
+
+  test("strips <img> tags (not in ALLOWED_TAGS)", () => {
+    // img is absent from ALLOWED_TAGS → walk() calls replaceWith(...childNodes)
+    const match = I18N_SOURCE.match(/ALLOWED_TAGS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    assert.ok(match, "ALLOWED_TAGS declaration must exist");
+    const tags = match[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    assert.ok(!tags.includes("img"), "<img> must not be in ALLOWED_TAGS");
+    // The walk uses replaceWith to preserve child text, stripping the element
+    assert.ok(
+      I18N_SOURCE.includes("child.replaceWith(...child.childNodes)"),
+      "walk must use replaceWith to strip disallowed tags while keeping text"
+    );
+  });
+
+  test("strips <script> tags entirely", () => {
+    const match = I18N_SOURCE.match(/ALLOWED_TAGS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    assert.ok(match, "ALLOWED_TAGS declaration must exist");
+    const tags = match[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    assert.ok(!tags.includes("script"), "<script> must not be in ALLOWED_TAGS");
+  });
+
+  test("strips <svg> tags with onload", () => {
+    // svg is not in ALLOWED_TAGS (tag stripped) AND onload is not in ALLOWED_ATTRS
+    const tagsMatch = I18N_SOURCE.match(/ALLOWED_TAGS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    const attrsMatch = I18N_SOURCE.match(/ALLOWED_ATTRS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    assert.ok(tagsMatch && attrsMatch, "ALLOWED_TAGS and ALLOWED_ATTRS must exist");
+    const tags = tagsMatch[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    const attrs = attrsMatch[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    assert.ok(!tags.includes("svg"), "<svg> must not be in ALLOWED_TAGS");
+    assert.ok(!attrs.includes("onload"), "onload must not be in ALLOWED_ATTRS");
+  });
+
+  test("strips <object> and <embed> tags", () => {
+    const match = I18N_SOURCE.match(/ALLOWED_TAGS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    assert.ok(match, "ALLOWED_TAGS declaration must exist");
+    const tags = match[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    assert.ok(!tags.includes("object"), "<object> must not be in ALLOWED_TAGS");
+    assert.ok(!tags.includes("embed"), "<embed> must not be in ALLOWED_TAGS");
+  });
+
+  test("removes javascript: href from <a> tags", () => {
+    // href validation rejects any scheme not matching /^(https?:|\.\.\/|#)/
+    assert.ok(
+      I18N_SOURCE.includes('if (!/^(https?:|\\.\\.\\/|#)/.test(href)) child.removeAttribute("href")'),
+      "sanitizeHTML must remove href when scheme is not https?:, ../, or #"
+    );
+  });
+
+  test("removes data: href from <a> tags", () => {
+    // data: does not match /^(https?:|\.\.\/|#)/ → href removed
+    // Verified by same regex guard checked in test above; explicitly assert
+    // the regex does NOT accidentally permit data: by testing it here
+    const hrefRegex = /^(https?:|\.\.\/|#)/;
+    assert.ok(!hrefRegex.test("data:text/html,<script>alert(1)</script>"), "data: must not pass href regex");
+    // And confirm the guard is present in source
+    assert.ok(
+      I18N_SOURCE.includes("if (!/^(https?:|\\.\\.\\/|#)/.test(href))"),
+      "href scheme guard must exist in source"
+    );
+  });
+
+  test("removes vbscript: href from <a> tags", () => {
+    const hrefRegex = /^(https?:|\.\.\/|#)/;
+    assert.ok(!hrefRegex.test("vbscript:MsgBox(1)"), "vbscript: must not pass href regex");
+    assert.ok(
+      I18N_SOURCE.includes("if (!/^(https?:|\\.\\.\\/|#)/.test(href))"),
+      "href scheme guard must exist in source"
+    );
+  });
+
+  test("preserves valid https: href on <a> tags", () => {
+    // https: DOES match the allowlist regex
+    const hrefRegex = /^(https?:|\.\.\/|#)/;
+    assert.ok(hrefRegex.test("https://example.com"), "https: must pass href regex");
+    assert.ok(hrefRegex.test("http://example.com"), "http: must pass href regex");
+  });
+
+  test("strips nested dangerous tags inside allowed tags", () => {
+    // walk() recurses into allowed children, so nested disallowed tags are
+    // also stripped. Verify recursion exists.
+    assert.ok(
+      I18N_SOURCE.includes("walk(child)"),
+      "walk must recurse into allowed children to strip nested dangerous tags"
+    );
+    // And <img> is not in ALLOWED_TAGS regardless of nesting
+    const match = I18N_SOURCE.match(/ALLOWED_TAGS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    const tags = match[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    assert.ok(!tags.includes("img"), "nested <img> is still stripped (not in ALLOWED_TAGS)");
+  });
+
+  test("strips event handler attributes from allowed tags", () => {
+    // Attribute allowlist is enforced regardless of whether the tag is allowed.
+    // onclick is not in ALLOWED_ATTRS.
+    const match = I18N_SOURCE.match(/ALLOWED_ATTRS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    assert.ok(match, "ALLOWED_ATTRS declaration must exist");
+    const attrs = match[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    const EVENT_HANDLERS = ["onclick", "onerror", "onload", "onmouseover", "onfocus",
+                            "onblur", "onsubmit", "onkeydown", "onkeyup", "onchange"];
+    for (const handler of EVENT_HANDLERS) {
+      assert.ok(!attrs.includes(handler), `${handler} must not be in ALLOWED_ATTRS`);
+    }
+    // Confirm attribute removal code exists
+    assert.ok(
+      I18N_SOURCE.includes("child.removeAttribute(attr.name)"),
+      "walk must remove non-allowlisted attributes"
+    );
+  });
+
+  test("handles deeply nested malicious content — recursion verified", () => {
+    // javascript: href inside deeply nested allowed tags is still stripped
+    // because walk() recurses AND href guard runs on every allowed element
+    assert.ok(
+      I18N_SOURCE.includes("walk(child)"),
+      "walk must recurse to handle deeply nested content"
+    );
+    assert.ok(
+      I18N_SOURCE.includes('child.removeAttribute("href")'),
+      "href must be removed when it fails scheme validation, at any nesting depth"
+    );
+    // All nesting elements are in ALLOWED_TAGS, so they survive but href is stripped
+    const match = I18N_SOURCE.match(/ALLOWED_TAGS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/);
+    const tags = match[1].match(/"([^"]+)"/g).map(s => s.replace(/"/g, ""));
+    for (const tag of ["em", "strong", "a", "code"]) {
+      assert.ok(tags.includes(tag), `<${tag}> must be in ALLOWED_TAGS`);
+    }
+  });
+
+  test("handles empty input — sanitizeHTML uses DOMParser body.innerHTML", () => {
+    // DOMParser on empty string returns empty body; innerHTML is ""
+    // Verify the function reads doc.body.innerHTML as its return value
+    assert.ok(
+      I18N_SOURCE.includes("return doc.body.innerHTML"),
+      "sanitizeHTML must return doc.body.innerHTML"
+    );
+    assert.ok(
+      I18N_SOURCE.includes('new DOMParser().parseFromString(html, "text/html")'),
+      "sanitizeHTML must use DOMParser.parseFromString"
+    );
+  });
+
+  test("handles plain text (no HTML) — text nodes pass through untouched", () => {
+    // walk() only processes nodeType === 1 (Element); text nodes (nodeType === 3)
+    // are untouched, so plain text survives as-is in body.innerHTML
+    assert.ok(
+      I18N_SOURCE.includes("child.nodeType === 1"),
+      "walk must only process Element nodes (nodeType 1), leaving text nodes intact"
+    );
+  });
+});
