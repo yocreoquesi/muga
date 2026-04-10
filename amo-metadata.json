@@ -1,6 +1,6 @@
 {
   "version": {
-    "license": "GPL-3.0-or-later",
+    "license": "GPL-3.0",
     "approval_notes": "No build step, no bundler, no minification. Source is plain vanilla JS (ES2022).\n\nTo verify:\n1. Unzip source code\n2. Compare src/ directory contents with the extension zip — they are identical\n3. npm ci && npm test (958+ unit tests)\n\nThe <all_urls> permission is required to clean tracking parameters from URLs on any website the user visits.\n\nOpen source: https://github.com/yocreoquesi/muga\nLicense: GPL-3.0"
   }
 }
