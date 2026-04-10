@@ -9,7 +9,7 @@
  *   npm run build:rules
  */
 
-import { writeFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
@@ -17,7 +17,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const { TRACKING_PARAMS } = await import("../src/lib/affiliates.js");
 
-const rule = [
+// Params that appear in domain-rules.json preserveParams are functional on
+// some domains and must NOT be stripped globally via DNR.  The content script
+// handles them with domain-specific logic instead.
+const domainRulesPath = resolve(__dirname, "../src/rules/domain-rules.json");
+const domainRules = JSON.parse(readFileSync(domainRulesPath, "utf8"));
+const preservedByDomain = new Set();
+for (const rule of domainRules) {
+  if (rule.preserveParams) {
+    for (const p of rule.preserveParams) preservedByDomain.add(p);
+  }
+}
+
+const filtered = TRACKING_PARAMS.filter((p) => !preservedByDomain.has(p));
+const excluded = TRACKING_PARAMS.length - filtered.length;
+
+const dnrRule = [
   {
     id: 1,
     priority: 1,
@@ -26,7 +41,7 @@ const rule = [
       redirect: {
         transform: {
           queryTransform: {
-            removeParams: TRACKING_PARAMS,
+            removeParams: filtered,
           },
         },
       },
@@ -39,6 +54,8 @@ const rule = [
 ];
 
 const outputPath = resolve(__dirname, "../src/rules/tracking-params.json");
-writeFileSync(outputPath, JSON.stringify(rule, null, 2) + "\n", "utf8");
+writeFileSync(outputPath, JSON.stringify(dnrRule, null, 2) + "\n", "utf8");
 
-console.log(`Generated tracking-params.json with ${TRACKING_PARAMS.length} params`);
+console.log(
+  `Generated tracking-params.json with ${filtered.length} params (${excluded} excluded — handled by domain-rules)`
+);
