@@ -139,7 +139,7 @@
 
         // Count as 1 clean action regardless of how many URLs were in the selection
         const anyChanged = [...urlMap.values()].some((clean, i) => clean !== allUrls[i]);
-        if (anyChanged) chrome.runtime.sendMessage({ type: "INCREMENT_STAT", key: "urlsCleaned" }).catch(() => {});
+        if (anyChanged) chrome.runtime.sendMessage({ type: "INCREMENT_STAT", key: "urlsCleaned" }).catch(() => { /* expected: channel may close */ });
 
         navigator.clipboard.writeText(finalText)
           .then(() => sendResponse({ ok: true }))
@@ -209,7 +209,7 @@
 
       await copyToClipboard(result);
     } catch {
-      navigator.clipboard.writeText(trimmed).catch(() => {});
+      navigator.clipboard.writeText(trimmed).catch(() => { /* best-effort fallback */ });
     }
   });
 
@@ -435,12 +435,12 @@
           // can match it correctly against the affiliate patterns (#229)
           const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
-          chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag }).catch(() => {});
+          chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag }).catch(() => { /* expected: channel may close */ });
         } else if (choice === "clean") {
           // "Block": add to blacklist in domain::param::value format (#229)
           const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
-          chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag }).catch(() => {});
+          chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag }).catch(() => { /* expected: channel may close */ });
         }
         callback(choice);
       });

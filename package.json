@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev:chrome": "web-ext run --source-dir src/ --target chromium",
-    "dev:firefox": "cp src/manifest.json src/manifest.v3.json && cp src/manifest.v2.json src/manifest.json && web-ext run --source-dir src/ --target firefox-desktop; EXIT=$?; cp src/manifest.v3.json src/manifest.json && rm -f src/manifest.v3.json; exit $EXIT",
+    "dev:firefox": "bash scripts/with-firefox-manifest.sh web-ext run --source-dir src/ --target firefox-desktop",
     "build:chrome": "web-ext build --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest",
-    "build:firefox": "cp src/manifest.json src/manifest.v3.json && cp src/manifest.v2.json src/manifest.json && web-ext build --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest && cp src/manifest.v3.json src/manifest.json && rm src/manifest.v3.json",
+    "build:firefox": "bash scripts/with-firefox-manifest.sh web-ext build --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest",
     "build": "npm run build:chrome && npm run build:firefox",
     "lint": "web-ext lint --source-dir src/",
     "test": "node --test --test-reporter=spec tests/unit/*.mjs",
