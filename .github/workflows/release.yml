@@ -80,6 +80,8 @@ jobs:
               --approval-timeout=0
 
       # ── Chrome Web Store submission ─────────────────────────────────
+      # CWS API does not support release notes — changelog is in the
+      # GitHub Release body and CHANGELOG.md for transparency.
       - name: Get CWS access token
         id: cws-token
         run: |

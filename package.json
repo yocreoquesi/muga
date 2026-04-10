@@ -1,6 +1,6 @@
 {
   "name": "muga",
-  "version": "1.9.8",
+  "version": "1.9.9",
   "description": "Fair to every click. Strips 459+ tracking params, respects affiliate links. Open source.",
   "type": "module",
   "scripts": {

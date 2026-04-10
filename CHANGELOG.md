@@ -2,6 +2,21 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.9] - 2026-04-10
+
+### Fixed
+- Security: add URL payload length limit, reject non-HTTP schemes, harden sanitizeHTML
+- Robustness: cache version counter prevents stale prefs, time-based rewrite loop eviction
+- Firefox MV2: shim chrome.runtime.sendMessage, deduplicate browser-polyfill loading
+- MutationObserver ping blocking debounced via requestAnimationFrame
+- Document silent .catch() handlers in content scripts
+- Safe manifest swap script with trap-based restoration
+
+### Added
+- Automated Firefox AMO submission on tag push
+- Automated Chrome Web Store submission on tag push
+- README: Chrome Web Store install badge (no longer "Coming soon")
+
 ## [1.9.8] - 2026-04-06
 
 ### Added

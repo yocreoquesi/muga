@@ -1,15 +1,15 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.9.8-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-852_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-1.9.9-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-964_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # MUGA: Clean URLs, Fair to Every Click
 
 ### Install now
 
 [![Firefox](https://img.shields.io/badge/Firefox-Install_from_AMO-FF7139?logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/firefox/addon/muga/)
-[![Chrome](https://img.shields.io/badge/Chrome-Coming_soon-4285F4?logo=googlechrome&logoColor=white)](#installation)
+[![Chrome](https://img.shields.io/badge/Chrome-Install_from_CWS-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
 
 ---
 
@@ -162,7 +162,9 @@ Affiliate injection is only active on stores where an account is registered and 
 
 **Firefox** — [Install from AMO](https://addons.mozilla.org/firefox/addon/muga/)
 
-**Chrome** — Coming soon. In the meantime, install from source:
+**Chrome** — [Install from Chrome Web Store](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
+
+Or install from source:
 
 ```bash
 git clone https://github.com/yocreoquesi/muga.git
