@@ -16,9 +16,11 @@
     "screenshots": "node tools/screenshots/capture.mjs",
     "promo-tile": "node tools/screenshots/capture-promo.mjs",
     "promo-tiles": "python3 tools/generate-promo-tiles.py",
-    "build:rules": "node tools/generate-dnr-rules.mjs"
+    "build:rules": "node tools/generate-dnr-rules.mjs",
+    "test:e2e": "npx playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "playwright": "^1.58.2",
     "web-ext": "^8.0.0"
   }
