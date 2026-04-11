@@ -2,10 +2,10 @@
  * MUGA — Playwright screenshot capture script
  *
  * Captures all screenshots needed for the README and Chrome Web Store listing.
- * The real extension is loaded from dist/chrome/ so every screen shows live UI.
+ * The real extension is loaded from src/ so every screen shows live UI.
  *
  * Prerequisites:
- *   1. npm run build:chrome          — produces dist/chrome/
+ *   1. Extension source in src/ (no build step needed — vanilla JS)
  *   2. npx playwright install chromium  — downloads Chromium if not already present
  *
  * Usage:
@@ -50,10 +50,8 @@ const mockDir     = __dirname; // HTML mock-ups live alongside this script
 
 if (!fs.existsSync(distPath)) {
   console.error('');
-  console.error('  dist/chrome/ not found.');
-  console.error('  Build the extension first:');
-  console.error('');
-  console.error('      npm run build:chrome');
+  console.error('  src/ not found.');
+  console.error('  Extension source directory missing.');
   console.error('');
   process.exit(1);
 }
@@ -186,6 +184,36 @@ try {
 
   const popupUrl  = `chrome-extension://${extId}/popup/popup.html`;
   const optionsUrl = `chrome-extension://${extId}/options/options.html`;
+
+  // Complete onboarding to prevent redirect from options/popup to onboarding page.
+  // Reuse existing extension page (auto-opened onboarding) if available.
+  const extOrigin = `chrome-extension://${extId}`;
+  let extPage = context.pages().find((p) => p.url().startsWith(extOrigin));
+  if (!extPage) {
+    extPage = await context.newPage();
+    await extPage.goto(`${extOrigin}/onboarding/onboarding.html`);
+  }
+  await extPage.evaluate(() => {
+    return new Promise((resolve) => {
+      chrome.storage.sync.set(
+        {
+          onboardingDone: true,
+          consentVersion: '1.0',
+          consentDate: Date.now(),
+          injectOwnAffiliate: false,
+          notifyForeignAffiliate: false,
+          language: 'en',
+        },
+        resolve,
+      );
+    });
+  });
+  // Close auto-opened onboarding tabs
+  for (const p of context.pages()) {
+    if (p.url().includes('/onboarding/')) {
+      await p.close();
+    }
+  }
 
   // -------------------------------------------------------------------------
   // README screenshots
