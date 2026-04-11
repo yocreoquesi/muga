@@ -40,7 +40,7 @@ import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
-const distPath    = path.resolve(projectRoot, 'dist/chrome');
+const distPath    = path.resolve(projectRoot, 'src');
 const assetsPath  = path.resolve(projectRoot, 'docs/assets');
 const mockDir     = __dirname; // HTML mock-ups live alongside this script
 
