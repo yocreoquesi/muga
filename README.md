@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.9.9-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-964_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-1001_pass-brightgreen)](#development)
 [![Health Check](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml/badge.svg)](https://github.com/yocreoquesi/muga/actions/workflows/health-check.yml)
 # MUGA: Clean URLs, Fair to Every Click
 
@@ -23,29 +23,14 @@ URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, e-commerce noise, s
 
 ---
 
-## What it removes
-
-**450+ tracking parameters** across 6 categories, on every site:
-
-| Category | Examples |
-|---|---|
-| UTM / Campaign | `utm_source`, `utm_medium`, `utm_campaign` + 6 more |
-| Paid Ads | `fbclid`, `gclid`, `msclkid`, `ttclid`, `li_fat_id` + 30 more |
-| Email Marketing | `mc_cid`, `_hsenc`, `mkt_tok`, `_mkto_trk`, `_kx` + 20 more |
-| Social Media | `igshid`, `igsh`, `epik`, `sc_channel`, `pin_unauth` + 5 more |
-| Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
-| Generic | `s_cid`, `wickedid`, and catch-all click IDs |
-
-Domain-specific rules for **150+ domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
-
----
-
-## Before / after
+## How it works
 
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
+MUGA intercepts URLs as you browse and strips tracking parameters before the page loads. The result is a shorter, cleaner URL with no tracking noise — your browsing stays the same, minus the surveillance.
+
 <details>
-<summary><strong>More before / after examples</strong></summary>
+<summary><strong>More examples</strong></summary>
 
 **E-commerce**: link from a video review
 ```
@@ -72,11 +57,40 @@ After:  https://www.ebay.es/itm/123456789
 
 ---
 
+## What it strips
+
+**459 tracking parameters** across 6 categories, on every site:
+
+| Category | Examples |
+|---|---|
+| UTM / Campaign | `utm_source`, `utm_medium`, `utm_campaign` + 6 more |
+| Paid Ads | `fbclid`, `gclid`, `msclkid`, `ttclid`, `li_fat_id` + 30 more |
+| Email Marketing | `mc_cid`, `_hsenc`, `mkt_tok`, `_mkto_trk`, `_kx` + 20 more |
+| Social Media | `igshid`, `igsh`, `epik`, `sc_channel`, `pin_unauth` + 5 more |
+| Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
+| Generic | `s_cid`, `wickedid`, and catch-all click IDs |
+
+Domain-specific rules for **167 domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
+
+---
+
+## What you see
+
+The popup shows what MUGA cleaned on the current page: which parameters were removed, and what the URL looks like now.
+
+![Popup showing cleaned URL on a store page](docs/assets/screenshot-ss2-popup.png)
+
+Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. Available in English, Spanish, Portuguese, and German.
+
+![Settings page](docs/assets/screenshot-ss3-options.png)
+
+---
+
 ## Features
 
 ### Always on, no configuration needed
 
-- Strip 450+ tracking params on in-page navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Strip 459 tracking params on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path noise (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
@@ -101,19 +115,7 @@ After:  https://www.ebay.es/itm/123456789
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
 - Export / Import settings as JSON
-- EN / ES language toggle
-
----
-
-## The popup
-
-![Popup open on a store page](docs/assets/screenshot-ss2-popup.png)
-
----
-
-## Settings
-
-![Options page](docs/assets/screenshot-ss3-options.png)
+- 4 languages: English, Spanish, Portuguese, German
 
 ---
 
@@ -179,7 +181,8 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 802 unit tests
+npm test               # 964 unit tests
+npm run test:e2e       # 37 E2E tests (Playwright, requires headed Chromium)
 npm run build:chrome
 npm run build:firefox
 ```
