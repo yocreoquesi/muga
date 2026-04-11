@@ -18,13 +18,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionPath = path.resolve(__dirname, "../../src");
 
 /**
- * Completes onboarding by setting storage flags directly.
- * Call this before navigating to popup/options pages.
+ * Completes onboarding by setting storage flags directly,
+ * reusing an existing extension page if available.
+ * Closes all stale tabs (about:blank, auto-opened onboarding).
  */
 async function completeOnboarding(context, extensionId) {
-  const page = await context.newPage();
-  await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
-  await page.evaluate(() => {
+  // Find an existing extension page to run evaluate() on (auto-opened onboarding)
+  const extOrigin = `chrome-extension://${extensionId}`;
+  let extPage = context.pages().find((p) => p.url().startsWith(extOrigin));
+
+  if (!extPage) {
+    extPage = await context.newPage();
+    await extPage.goto(`${extOrigin}/onboarding/onboarding.html`);
+  }
+
+  await extPage.evaluate(() => {
     return new Promise((resolve) => {
       chrome.storage.sync.set(
         {
@@ -39,7 +47,13 @@ async function completeOnboarding(context, extensionId) {
       );
     });
   });
-  await page.close();
+
+  // Close auto-opened onboarding tabs (keep about:blank — browser needs ≥1 page)
+  for (const p of context.pages()) {
+    if (p.url().includes("/onboarding/")) {
+      await p.close();
+    }
+  }
 }
 
 export const test = base.extend({
