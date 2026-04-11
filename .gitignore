@@ -40,3 +40,5 @@ Thumbs.db
 mnt/
 tools/screenshots/out/
 *.zip
+.gstack/
+test-results/
