@@ -503,6 +503,9 @@ function initExportImport() {
       toastDuration: prefs.toastDuration,
       language: prefs.language,
       devMode: prefs.devMode,
+      paramBreakdown: prefs.paramBreakdown,
+      showReportButton: prefs.showReportButton,
+      domainStats: prefs.domainStats,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -533,20 +536,21 @@ function initExportImport() {
       if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist) || !Array.isArray(data.customParams)) {
         throw new Error("invalid");
       }
-      const isValidEntry = e => typeof e === "string" && e.length > 0 && e.length < 500 && /^[\x20-\x7E]+$/.test(e);
       if (data.blacklist.length > 500 || data.whitelist.length > 500 || data.customParams.length > 200) {
         throw new Error("invalid");
       }
-      if (!data.blacklist.every(isValidEntry) || !data.whitelist.every(isValidEntry) || !data.customParams.every(isValidEntry)) {
+      const isValidParam = e => typeof e === "string" && e.length > 0 && e.length < 500 && /^[a-zA-Z0-9_.\-]+$/.test(e);
+      if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry) || !data.customParams.every(isValidParam)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode", "paramBreakdown", "showReportButton", "domainStats"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
       }
-      // Handle disabledCategories (array of strings)
-      if (Array.isArray(data.disabledCategories) && data.disabledCategories.every(e => typeof e === "string")) {
+      // Handle disabledCategories (validated against known category keys)
+      const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noise", "generic"]);
+      if (Array.isArray(data.disabledCategories) && data.disabledCategories.every(e => VALID_CATEGORIES.has(e))) {
         toSave.disabledCategories = data.disabledCategories;
       }
       // Handle toastDuration (number 5-60)

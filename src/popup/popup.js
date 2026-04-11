@@ -35,7 +35,7 @@ function _setClipboardIcon(el) {
 
 // ── Param breakdown ───────────────────────────────────────────────────────────
 
-/** Builds a reverse index: param name → { category key, label, labelEs }. Cached as singleton. */
+/** Builds a reverse index: param name → { category key, label, labelEs, labelPt, labelDe }. Cached as singleton. */
 let _paramIndex = null;
 function _buildParamIndex() {
   if (_paramIndex) return _paramIndex;
@@ -46,6 +46,8 @@ function _buildParamIndex() {
         categoryKey: catKey,
         label: catData.label,
         labelEs: catData.labelEs,
+        labelPt: catData.labelPt,
+        labelDe: catData.labelDe,
       });
     }
   }
