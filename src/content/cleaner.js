@@ -24,7 +24,7 @@
       document.body.appendChild(el);
       el.focus();
       el.select();
-      try { document.execCommand("copy"); } catch {}
+      try { document.execCommand("copy"); } catch { /* legacy fallback — failure is silent by design */ }
       el.remove();
     });
   }

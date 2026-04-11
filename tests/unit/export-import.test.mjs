@@ -29,9 +29,9 @@ function isValidListEntry(entry) {
   return true;
 }
 
-// Extract isValidEntry inline pattern from source (line ~415 of options.js)
-function isValidEntry(e) {
-  return typeof e === "string" && e.length > 0 && e.length < 500 && /^[\x20-\x7E]+$/.test(e);
+// Extract isValidParam inline pattern from source (customParams validator in options.js)
+function isValidParam(e) {
+  return typeof e === "string" && e.length > 0 && e.length < 500 && /^[a-zA-Z0-9_.\-]+$/.test(e);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +65,9 @@ describe("export settings (source verification)", () => {
       "unwrapRedirects",
       "contextMenuEnabled",
       "devMode",
+      "paramBreakdown",
+      "showReportButton",
+      "domainStats",
     ];
     // Verify each boolean key appears in the export payload block
     for (const key of EXPECTED_BOOL_KEYS) {
@@ -128,10 +131,14 @@ describe("import settings (source verification)", () => {
     );
   });
 
-  test("6. import validates entries with printable ASCII check", () => {
+  test("6. import validates list entries with isValidListEntry and params with regex", () => {
     assert.ok(
-      /\^?\[\\x20-\\x7E\]\+\$/.test(OPTIONS_SOURCE),
-      "Import must validate entries with printable ASCII regex"
+      OPTIONS_SOURCE.includes("isValidListEntry"),
+      "Import must validate blacklist/whitelist entries with isValidListEntry"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("isValidParam"),
+      "Import must validate customParams entries with isValidParam"
     );
   });
 
@@ -163,14 +170,14 @@ describe("import settings (source verification)", () => {
     );
   });
 
-  test("11. import validates disabledCategories as array of strings", () => {
+  test("11. import validates disabledCategories against known category keys", () => {
     assert.ok(
       OPTIONS_SOURCE.includes("Array.isArray(data.disabledCategories)"),
       "Import must validate disabledCategories is an array"
     );
     assert.ok(
-      OPTIONS_SOURCE.includes('typeof e === "string"'),
-      "Import must validate disabledCategories entries are strings"
+      OPTIONS_SOURCE.includes("VALID_CATEGORIES"),
+      "Import must validate disabledCategories against VALID_CATEGORIES set"
     );
   });
 
@@ -266,38 +273,38 @@ describe("isValidListEntry (extracted function)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Extracted logic tests — isValidEntry (inline pattern)
+// Extracted logic tests — isValidParam (customParams validator)
 // ---------------------------------------------------------------------------
-describe("isValidEntry (extracted inline pattern)", () => {
+describe("isValidParam (extracted inline pattern)", () => {
 
-  test("26. valid ASCII string -> true", () => {
-    assert.strictEqual(isValidEntry("hello world"), true);
-    assert.strictEqual(isValidEntry("some-param_123"), true);
-    assert.strictEqual(isValidEntry("a"), true);
+  test("26. valid param strings -> true", () => {
+    assert.strictEqual(isValidParam("some-param_123"), true);
+    assert.strictEqual(isValidParam("ref_code"), true);
+    assert.strictEqual(isValidParam("a"), true);
   });
 
   test("27. empty string -> false", () => {
-    assert.strictEqual(isValidEntry(""), false);
+    assert.strictEqual(isValidParam(""), false);
   });
 
   test("28. non-string (number) -> false", () => {
-    assert.strictEqual(isValidEntry(42), false);
-    assert.strictEqual(isValidEntry(null), false);
-    assert.strictEqual(isValidEntry(undefined), false);
+    assert.strictEqual(isValidParam(42), false);
+    assert.strictEqual(isValidParam(null), false);
+    assert.strictEqual(isValidParam(undefined), false);
   });
 
-  test("29. string with non-ASCII chars: 'café' -> false", () => {
-    assert.strictEqual(isValidEntry("café"), false);
-    assert.strictEqual(isValidEntry("über"), false);
-    assert.strictEqual(isValidEntry("日本語"), false);
+  test("29. string with spaces or non-alphanumeric chars -> false", () => {
+    assert.strictEqual(isValidParam("hello world"), false);
+    assert.strictEqual(isValidParam("café"), false);
+    assert.strictEqual(isValidParam("param=value"), false);
   });
 
   test("30. string at length limit (499 chars) -> true", () => {
-    assert.strictEqual(isValidEntry("a".repeat(499)), true);
+    assert.strictEqual(isValidParam("a".repeat(499)), true);
   });
 
   test("31. string over limit (500+ chars) -> false", () => {
-    assert.strictEqual(isValidEntry("a".repeat(500)), false);
-    assert.strictEqual(isValidEntry("a".repeat(501)), false);
+    assert.strictEqual(isValidParam("a".repeat(500)), false);
+    assert.strictEqual(isValidParam("a".repeat(501)), false);
   });
 });
