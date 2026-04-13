@@ -78,3 +78,44 @@ describe("MutationObserver — ping blocking debounce", () => {
     );
   });
 });
+
+describe("Temporal Dead Zone guard — _contentPrefs declaration ordering", () => {
+  // Regression for bug reported on nukebg.app (issue #298): Firefox threw
+  // "can't access lexical declaration '_contentPrefs' before initialization"
+  // because event handlers registered early in the IIFE fired before the
+  // let declaration line ran. Declarations MUST sit above the first reader.
+
+  test("_contentPrefs is declared before any reader references it", () => {
+    const declPos = cleanerSource.indexOf("let _contentPrefs");
+    assert.ok(declPos > 0, "expected `let _contentPrefs` declaration");
+
+    const firstReadPos = cleanerSource.indexOf("_contentPrefs?.");
+    assert.ok(firstReadPos > 0, "expected at least one `_contentPrefs?.` reader");
+
+    assert.ok(
+      declPos < firstReadPos,
+      "declaration must come before any reader to avoid Firefox TDZ"
+    );
+  });
+
+  test("_contentPrefsPending is declared before first use", () => {
+    const declPos = cleanerSource.indexOf("let _contentPrefsPending");
+    assert.ok(declPos > 0, "expected `let _contentPrefsPending` declaration");
+
+    const firstUsePos = cleanerSource.indexOf("_contentPrefsPending =");
+    // First `=` is the declaration itself; find the NEXT assignment / read.
+    const nextUsePos = cleanerSource.indexOf("_contentPrefsPending", firstUsePos + 1);
+    assert.ok(nextUsePos > declPos, "every use must come after the declaration");
+  });
+
+  test("both prefs cache vars are hoisted near the top of the IIFE", () => {
+    // Hoisting target: within the first 120 lines of the file so no handler
+    // registered later can outrun them, regardless of site-specific timing.
+    const declPos = cleanerSource.indexOf("let _contentPrefs");
+    const lineNumber = cleanerSource.slice(0, declPos).split("\n").length;
+    assert.ok(
+      lineNumber < 120,
+      `_contentPrefs should be declared in the top of the IIFE (found at line ${lineNumber})`
+    );
+  });
+});
