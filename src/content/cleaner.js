@@ -32,8 +32,26 @@
   // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation
   const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
+  // Parses a URL and returns its hostname without a leading "www." prefix.
+  // Returns "" if the input is not a valid URL — never throws. Callers that
+  // key storage by hostname must handle the empty-string case defensively.
+  function safeHostname(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  }
+
   // Timer ID for the toast auto-dismiss. Cleared when a new toast replaces the old one.
   let _toastTimer = null;
+
+  // Module-level prefs cache (#142). Declared at the top of the IIFE so event
+  // handlers registered below (copy/click/message listeners) cannot hit the
+  // Temporal Dead Zone on Firefox when they fire before the IIFE reaches the
+  // getContentPrefs definition.
+  let _contentPrefs = null;
+  let _contentPrefsPending = null;
 
   // Rewrite loop guard: prevents infinite URL rewriting if another extension
   // or the page itself re-injects tracking params after MUGA cleans them.
@@ -344,6 +362,7 @@
    * Navigates to the given URL, preserving new-tab behaviour when needed.
    */
   function navigate(url, newTab) {
+    if (typeof url !== "string" || url.length > 2000) return;
     try {
       const u = new URL(url);
       if (u.protocol !== "http:" && u.protocol !== "https:") return;
@@ -382,7 +401,7 @@
       "border:0.5px solid rgba(255,255,255,0.1)",
     ].join(";");
 
-    const domain = new URL(originalUrl).hostname.replace(/^www\./, "");
+    const domain = safeHostname(originalUrl);
 
     const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
     const codeStyle = "background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px";
@@ -449,12 +468,12 @@
         if (choice === "original") {
           // "Allow": add to whitelist in domain::param::value format so parseListEntry
           // can match it correctly against the affiliate patterns (#229)
-          const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
+          const hostname = safeHostname(originalUrl);
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_WHITELIST", tag }).catch(() => { /* expected: channel may close */ });
         } else if (choice === "clean") {
           // "Block": add to blacklist in domain::param::value format (#229)
-          const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
+          const hostname = safeHostname(originalUrl);
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag }).catch(() => { /* expected: channel may close */ });
         }
@@ -470,11 +489,7 @@
     });
   }
 
-  // --- Module-level prefs cache (#142) ---
-  // Avoids repeated storage reads on every page load / click interception.
-  let _contentPrefs = null;
-  let _contentPrefsPending = null;
-
+  // Module-level prefs cache (#142). Declarations hoisted to top of IIFE; see comment there.
   function getContentPrefs() {
     if (_contentPrefs) return Promise.resolve(_contentPrefs);
     if (_contentPrefsPending) return _contentPrefsPending;

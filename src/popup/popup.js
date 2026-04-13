@@ -417,17 +417,14 @@ async function showDomainStats(prefs, lang) {
     .sort((a, b) => b[1].params - a[1].params)
     .slice(0, 10);
 
+  if (entries.length === 0) {
+    section.hidden = true;
+    return;
+  }
+
   section.hidden = false;
   const summary = section.querySelector("summary");
   if (summary) summary.setAttribute("aria-label", t("domain_stats_label", lang));
-
-  if (entries.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "domain-stats-empty";
-    empty.textContent = t("domain_stats_empty", lang);
-    list.appendChild(empty);
-    return;
-  }
 
   for (const [domain, data] of entries) {
     const row = document.createElement("div");

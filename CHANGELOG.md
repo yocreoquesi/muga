@@ -2,6 +2,16 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [1.9.10] - 2026-04-13
+
+### Fixed
+- Firefox TDZ: `_contentPrefs` declarations hoisted to top of the content script IIFE so early-firing event handlers (copy, click, runtime.onMessage) can no longer reference them before initialization (#298)
+- Security: `navigate()` now enforces the 2000-char URL length cap before parsing
+- Security: hostname extraction in the affiliate toast wrapped in `safeHostname()` — malformed URLs no longer throw inside event handlers
+
+### Added
+- Static-analysis regression tests asserting `_contentPrefs` / `_contentPrefsPending` declarations stay above any reader and within the first 120 lines of `cleaner.js`
+
 ## [1.9.9] - 2026-04-10
 
 ### Fixed
