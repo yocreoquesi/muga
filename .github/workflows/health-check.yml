@@ -16,7 +16,5 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: Run health-check tests
-        run: node --test tests/unit/health-check.test.mjs
       - name: Run full unit test suite
         run: npm test
