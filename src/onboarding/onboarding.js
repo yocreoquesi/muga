@@ -28,6 +28,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   tosCheck.addEventListener("change", updateButton);
 
+  // Signal that DOMContentLoaded setup is complete — tests wait for this flag
+  // before interacting with the page (same pattern as options.html; avoids
+  // fixture-ready races where clicks land before listeners are registered).
+  document.body.dataset.mugaReady = "1";
+
   startBtn.addEventListener("click", async () => {
     if (!tosCheck.checked) return;
 

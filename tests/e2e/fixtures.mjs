@@ -85,6 +85,10 @@ export const test = base.extend({
   onboardingPage: async ({ context, extensionId }, use) => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
+    // onboarding.js init is async (reads stored lang from chrome.storage).
+    // Wait for the init-complete flag before yielding — avoids fixture-ready
+    // races where test clicks land before change listeners are registered.
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
     await use(page);
     await page.close();
   },

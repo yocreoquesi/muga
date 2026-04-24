@@ -52,6 +52,8 @@ test.describe("Onboarding", () => {
   test("completing onboarding saves preferences to storage", async ({ context, extensionId }) => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
+    // Wait for init-complete flag so change listeners are registered before we click
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
 
     // Accept ToS
     await page.locator("#tos-check").check();
