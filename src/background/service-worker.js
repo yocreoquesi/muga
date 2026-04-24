@@ -8,6 +8,7 @@ import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules } from "../lib/storage.js";
 import { isValidListEntry } from "../lib/validation.js";
+import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -123,14 +124,12 @@ function getPrefsWithCache() {
 // Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
 const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
 
-const DYNAMIC_RULE_ID = 1000;
-
 async function syncCustomParamsDNR(customParams) {
   if (!hasDNR) return;
   try {
     if (!customParams || customParams.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [DYNAMIC_RULE_ID],
+        removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
         addRules: [],
       });
       return;
@@ -139,9 +138,9 @@ async function syncCustomParamsDNR(customParams) {
       .filter(p => /^[a-zA-Z0-9_.-]+$/.test(p.trim()))
       .map(p => p.trim().toLowerCase());
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DYNAMIC_RULE_ID],
+      removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
       addRules: [{
-        id: DYNAMIC_RULE_ID,
+        id: DNR_CUSTOM_PARAMS_RULE_ID,
         priority: 1,
         action: {
           type: "redirect",
