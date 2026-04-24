@@ -85,8 +85,9 @@ jobs:
         run: sleep 30
 
       - name: Smoke-check published URL
-        # --retry 3 with --retry-delay 30 tolerates up to ~90s of propagation lag.
-        # --fail makes curl exit non-zero on HTTP errors (404, 500, etc.).
+        # --fail exits non-zero on HTTP 4xx/5xx (including 404 during propagation).
+        # --retry-all-errors retries on transient HTTP errors (not just network errors).
+        # --retry 3 with --retry-delay 30 tolerates up to ~120s of propagation lag.
         # --silent suppresses progress bar; --show-error still shows error messages.
         run: |
           curl --head \
@@ -95,4 +96,5 @@ jobs:
                --show-error \
                --retry 3 \
                --retry-delay 30 \
+               --retry-all-errors \
                https://yocreoquesi.github.io/muga/rules/v1/params.json
