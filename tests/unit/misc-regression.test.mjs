@@ -46,6 +46,54 @@ describe("TRACKING_PARAM_CATEGORIES — smoke test", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Regression: SW context menu labels come from lib/i18n.js, not inline objects
+// ---------------------------------------------------------------------------
+describe("Regression: SW syncContextMenus uses lib/i18n.js translations", () => {
+  const swSource = readFileSync(join(_dir, "../../src/background/service-worker.js"), "utf8");
+
+  test("SW imports t() from lib/i18n.js", () => {
+    assert.ok(
+      swSource.includes('from "../lib/i18n.js"'),
+      "service-worker.js must import from lib/i18n.js"
+    );
+    assert.ok(
+      swSource.includes("{ t }") || swSource.includes("t,") || swSource.match(/import\s*\{[^}]*\bt\b[^}]*\}/),
+      "service-worker.js must import the t() function from lib/i18n.js"
+    );
+  });
+
+  test("syncContextMenus uses t() for context menu titles", () => {
+    const ctxBlock = swSource.slice(
+      swSource.indexOf("syncContextMenus"),
+      swSource.indexOf("muga-copy-clean-selection") + 200
+    );
+    assert.ok(
+      ctxBlock.includes('t("ctx_copy_clean_link"'),
+      "syncContextMenus must use t('ctx_copy_clean_link', lang) for copy title"
+    );
+    assert.ok(
+      ctxBlock.includes('t("ctx_copy_clean_selection"'),
+      "syncContextMenus must use t('ctx_copy_clean_selection', lang) for selection title"
+    );
+  });
+
+  test("inline German translation 'Sauberen Link kopieren' is gone from SW", () => {
+    assert.ok(
+      !swSource.includes("Sauberen Link kopieren"),
+      "SW must not contain the old inline German string 'Sauberen Link kopieren' — use t() from i18n.js"
+    );
+  });
+
+  test("canonical German translation 'Bereinigten Link kopieren' lives only in i18n.js", () => {
+    const i18nSource = readFileSync(join(_dir, "../../src/lib/i18n.js"), "utf8");
+    assert.ok(
+      i18nSource.includes("Bereinigten Link kopieren"),
+      "lib/i18n.js must contain the canonical German translation"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Regression: options.js routes all sync writes through setPrefs()
 // ---------------------------------------------------------------------------
 describe("Regression: options.js uses setPrefs() for all sync writes", () => {

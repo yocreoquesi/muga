@@ -9,6 +9,7 @@ import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules } from "../lib/storage.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
+import { t } from "../lib/i18n.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -198,9 +199,11 @@ async function syncContextMenus(enabled) {
   const prefs = await getPrefsWithCache();
   if (!prefs.enabled) return;
   const lang = prefs.language || "en";
+  // Titles sourced from lib/i18n.js (ctx_copy_clean_link / ctx_copy_clean_selection).
+  // Canonical German (de): "Bereinigten Link kopieren" — see lib/i18n.js.
   const titles = {
-    copy: { es: "Copiar enlace limpio", pt: "Copiar link limpo", de: "Sauberen Link kopieren" }[lang] || "Copy clean link",
-    selection: { es: "Copiar enlaces limpios de la selección", pt: "Copiar links limpos da seleção", de: "Saubere Links der Auswahl kopieren" }[lang] || "Copy clean links in selection",
+    copy: t("ctx_copy_clean_link", lang),
+    selection: t("ctx_copy_clean_selection", lang),
   };
   chrome.contextMenus.create({
     id: "muga-copy-clean",
