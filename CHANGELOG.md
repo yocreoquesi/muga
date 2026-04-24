@@ -4,6 +4,16 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-04-25
+
+### Changed
+- Options page: the "Remote rule updates" section now appears before the "Advanced" block, so Advanced remains the last section on the page.
+- Remote-rules copy softened to reflect the on-wake refresh model introduced in 1.10.1: "Enable rule updates" (toggle) and "Periodically checks for signed updates… about once a week, while you browse" (description). No behavioral change — the max cadence is still ~7 days.
+
+### Added
+- Popup now reacts live to settings changes. Toggling MUGA on/off, or adding the current domain to the per-domain-disable list (blacklist entries of the form `domain::disabled`), updates the preview without reopening the popup. The trigger is both an optimistic in-popup re-render on the enabled-toggle click AND a `chrome.storage.onChanged` listener that catches changes made from the Options page in another tab.
+- Distinct popup status when MUGA is globally active but the current site is on the per-domain-disable list. Previously only "MUGA is disabled" (global) was shown; now "MUGA is disabled on this site" surfaces the per-domain state. New i18n key `muga_disabled_for_domain` in all four locales.
+
 ## [1.10.1] - 2026-04-25
 
 ### Changed
@@ -526,7 +536,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.10.2...HEAD
+[1.10.2]: https://github.com/yocreoquesi/muga/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/yocreoquesi/muga/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/yocreoquesi/muga/compare/v1.9.10...v1.10.0
 [1.9.10]: https://github.com/yocreoquesi/muga/compare/v1.9.9...v1.9.10

@@ -152,24 +152,25 @@ describe("T3.1 remote-rules section in options.html", () => {
   });
 
   test("section is placed between custom-params area and About/footer", () => {
-    // The remote-rules section must appear after the custom-params section
-    // and before the version-info / footer area.
-    const cpIdx  = optionsHtml.indexOf('section_custom_params');
+    // v1.10.2 layout: remote-rules comes BEFORE the Advanced (#section-dev)
+    // section so that Advanced stays the last thing on the page. Custom params
+    // live inside Advanced (dev-mode-gated), so remote-rules also ends up
+    // before the custom-params markup.
+    const devIdx = optionsHtml.indexOf('id="section-dev"');
     const rrIdx  = optionsHtml.indexOf('id="remote-rules-section"');
     const verIdx = optionsHtml.indexOf('version-info');
 
-    // custom-params must appear somewhere — if not, the markup shifted heavily
-    assert.ok(cpIdx !== -1,  "options.html must still contain the custom-params section");
+    assert.ok(devIdx !== -1, "options.html must still contain the #section-dev (Advanced) block");
     assert.ok(rrIdx !== -1,  "remote-rules section must exist");
     assert.ok(verIdx !== -1, "version-info must still be in the page");
 
     assert.ok(
-      rrIdx > cpIdx,
-      "remote-rules section must appear after the custom-params area"
+      rrIdx < devIdx,
+      "remote-rules section must appear before the Advanced section (which stays last, v1.10.2)"
     );
     assert.ok(
-      rrIdx < verIdx,
-      "remote-rules section must appear before the version-info / footer"
+      devIdx < verIdx,
+      "Advanced section must stay above the version-info / footer"
     );
   });
 });

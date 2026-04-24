@@ -4,7 +4,7 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
-import { processUrl } from "../lib/cleaner.js";
+import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
@@ -152,8 +152,13 @@ async function init() {
 
   enabledToggle.checked = prefs.enabled;
 
-  enabledToggle.addEventListener("change", () => {
+  enabledToggle.addEventListener("change", async () => {
     try { chrome.storage.sync.set({ enabled: enabledToggle.checked }); } catch (err) { console.error("[MUGA] save enabled:", err); }
+    // Optimistic re-render — the storage.onChanged listener below will also fire
+    // once the write lands, but we don't want the user to wait for that roundtrip.
+    try {
+      await showUrlPreview({ ...prefs, enabled: enabledToggle.checked }, lang);
+    } catch (err) { console.error("[MUGA] preview re-render:", err); }
   });
 
   document.getElementById("open-options").addEventListener("click", (e) => {
@@ -299,9 +304,72 @@ async function init() {
   await showUrlPreview(prefs, lang);
   await showHistory(prefs, lang);
   await showDomainStats(prefs, lang);
+
+  // Reactivity: re-render the preview when the user flips relevant settings —
+  // either from the popup itself (the enabled toggle already calls showUrlPreview
+  // optimistically) OR from the Options page opened in another tab. Watch for
+  // enabled, blacklist (per-domain disable + aggressive strip), whitelist, and
+  // customParams. We refetch full prefs instead of diffing to stay simple.
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area !== "sync") return;
+    if (!changes.enabled && !changes.blacklist && !changes.whitelist && !changes.customParams) return;
+    try {
+      const fresh = await getPrefs();
+      // Keep the popup's own toggle in sync with any external change
+      if (changes.enabled && enabledToggle.checked !== fresh.enabled) {
+        enabledToggle.checked = fresh.enabled;
+      }
+      await showUrlPreview(fresh, lang);
+    } catch (err) {
+      console.error("[MUGA] reactive re-render:", err);
+    }
+  });
 }
 
-/** Shows a live preview of URL cleaning for the current tab. */
+/**
+ * Returns true if the current hostname matches a per-domain-disable entry
+ * in the blacklist — i.e. the user added an entry like `example.com::disabled`
+ * meaning "MUGA does nothing on this domain" (cleaner.js:206).
+ */
+function isPerDomainDisabled(hostname, blacklist) {
+  if (!hostname || !Array.isArray(blacklist)) return false;
+  return blacklist.some(raw => {
+    const entry = parseListEntry(raw);
+    if (!entry || entry.param !== "disabled" || entry.value) return false;
+    if (!entry.domain) return false;
+    return hostname === entry.domain || hostname.endsWith("." + entry.domain);
+  });
+}
+
+/** Resets preview-related DOM so repeated renders are idempotent. */
+function _resetPreviewDom() {
+  const el = (id) => document.getElementById(id);
+  const previewClean = el("preview-clean");
+  if (previewClean) {
+    previewClean.hidden = true;
+    previewClean.textContent = "";
+    previewClean.style.color = "";
+  }
+  const previewBefore = el("preview-before");
+  if (previewBefore) {
+    previewBefore.textContent = "";
+    previewBefore.classList.remove("clean-url");
+  }
+  const previewAfter = el("preview-after");
+  if (previewAfter) {
+    previewAfter.hidden = false;
+    previewAfter.textContent = "";
+  }
+  const previewRemoved = el("preview-removed");
+  if (previewRemoved) {
+    previewRemoved.hidden = true;
+    previewRemoved.textContent = "";
+  }
+  const reportLink = el("report-broken");
+  if (reportLink) reportLink.hidden = true;
+}
+
+/** Shows a live preview of URL cleaning for the current tab. Idempotent — callable multiple times. */
 async function showUrlPreview(prefs, lang) {
   // Skip on internal browser pages, new tabs, etc.
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -310,6 +378,10 @@ async function showUrlPreview(prefs, lang) {
 
   const section = document.getElementById("preview");
   section.hidden = false;
+
+  // Reset DOM state so repeated calls (on toggle change / storage change) don't
+  // accumulate stale markup from the previous render.
+  _resetPreviewDom();
 
   // Show per-tab badge count (#89)
   if (tab?.id) {
@@ -327,6 +399,18 @@ async function showUrlPreview(prefs, lang) {
     const previewClean = document.getElementById("preview-clean");
     previewClean.hidden = false;
     previewClean.textContent = t("muga_disabled", lang);
+    previewClean.style.color = "var(--text2)";
+    return;
+  }
+
+  // Per-domain disable: MUGA globally on, but user has opted this domain out
+  // via a `domain::disabled` blacklist entry. Show a distinct message so they
+  // understand MUGA is active but intentionally skipped for this site.
+  const currentHost = (() => { try { return new URL(url).hostname; } catch { return ""; } })();
+  if (isPerDomainDisabled(currentHost, prefs.blacklist)) {
+    const previewClean = document.getElementById("preview-clean");
+    previewClean.hidden = false;
+    previewClean.textContent = t("muga_disabled_for_domain", lang);
     previewClean.style.color = "var(--text2)";
     return;
   }
