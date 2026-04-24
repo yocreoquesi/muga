@@ -110,6 +110,44 @@
     </div>
   </section>
 
+  <section class="options-section" id="remote-rules-section" hidden>
+    <h2 data-i18n="optionsRemoteRulesTitle"></h2>
+    <div class="card">
+      <div class="row">
+        <div class="row-label">
+          <p class="section-desc" data-i18n="optionsRemoteRulesDesc"></p>
+        </div>
+      </div>
+      <div class="row">
+        <label class="toggle">
+          <input type="checkbox" id="remote-rules-toggle" aria-label="Enable remote rule updates">
+          <span class="slider"></span>
+        </label>
+        <span data-i18n="optionsRemoteRulesToggle"></span>
+      </div>
+      <div id="remote-rules-status" hidden>
+        <div class="row">
+          <div class="row-label">
+            <span data-i18n="optionsRemoteRulesLastFetch"></span>
+            <span id="remote-rules-last-fetch"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span data-i18n="optionsRemoteRulesParamCount"></span>
+            <span id="remote-rules-param-count"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <a id="remote-rules-source" target="_blank" rel="noopener noreferrer" data-i18n="optionsRemoteRulesSource"></a>
+          </div>
+        </div>
+      </div>
+      <p id="remote-rules-error" class="error" hidden data-i18n="optionsRemoteRulesError"></p>
+    </div>
+  </section>
+
   <section id="section-dev">
     <h2 data-i18n="section_advanced">Advanced</h2>
     <div class="card">
@@ -269,44 +307,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </section>
-
-  <section class="options-section" id="remote-rules-section" hidden>
-    <h2 data-i18n="optionsRemoteRulesTitle"></h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <p class="section-desc" data-i18n="optionsRemoteRulesDesc"></p>
-        </div>
-      </div>
-      <div class="row">
-        <label class="toggle">
-          <input type="checkbox" id="remote-rules-toggle" aria-label="Enable remote rule updates">
-          <span class="slider"></span>
-        </label>
-        <span data-i18n="optionsRemoteRulesToggle"></span>
-      </div>
-      <div id="remote-rules-status" hidden>
-        <div class="row">
-          <div class="row-label">
-            <span data-i18n="optionsRemoteRulesLastFetch"></span>
-            <span id="remote-rules-last-fetch"></span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="row-label">
-            <span data-i18n="optionsRemoteRulesParamCount"></span>
-            <span id="remote-rules-param-count"></span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="row-label">
-            <a id="remote-rules-source" target="_blank" rel="noopener noreferrer" data-i18n="optionsRemoteRulesSource"></a>
-          </div>
-        </div>
-      </div>
-      <p id="remote-rules-error" class="error" hidden data-i18n="optionsRemoteRulesError"></p>
     </div>
   </section>
 
