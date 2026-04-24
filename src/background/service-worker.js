@@ -171,6 +171,9 @@ async function applyDnrState(prefs) {
 }
 
 // Matches http/https URLs in arbitrary text. Used by the "selection" context menu handler.
+// NOTE: content/cleaner.js contains an identical copy of this regex. Content scripts
+// cannot import ES modules, so the definition must stay in both files. The sync
+// regression test at tests/unit/url-regex-sync.test.mjs enforces identical literals.
 const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
 // --- Context menu helpers ---

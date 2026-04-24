@@ -29,7 +29,10 @@
     });
   }
 
-  // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation
+  // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation.
+  // NOTE: background/service-worker.js contains an identical copy of this regex. Content scripts
+  // cannot import ES modules, so the definition must stay in both files. The sync
+  // regression test at tests/unit/url-regex-sync.test.mjs enforces identical literals.
   const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
   // Parses a URL and returns its hostname without a leading "www." prefix.
