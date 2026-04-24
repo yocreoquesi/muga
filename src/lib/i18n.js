@@ -48,6 +48,10 @@ export const TRANSLATIONS = {
   domain_stats_urls:     { en: "URLs cleaned", es: "URLs limpiadas", pt: "URLs limpas", de: "URLs bereinigt" },
 
   // ── Popup: param breakdown (impact-dashboard) ─────────────────────────────
+  // NOTE: The breakdown in popup.js reads locale labels directly from
+  // TRACKING_PARAM_CATEGORIES (labelEs/labelPt/labelDe) for performance.
+  // The keys below are kept in sync so contributors can update all labels in
+  // one place and as a reference for future locale additions.
   param_breakdown_label:      { en: "What was removed",                  es: "Qué se eliminó",                      pt: "O que foi removido",                   de: "Was wurde entfernt" },
   param_category_analytics:   { en: "Analytics tracking",                es: "Rastreo analítico",                   pt: "Rastreamento analítico",               de: "Analytics-Tracking" },
   param_category_social:      { en: "Social media tracking",             es: "Rastreo de redes sociales",           pt: "Rastreamento de redes sociais",        de: "Social-Media-Tracking" },
@@ -93,7 +97,7 @@ export const TRANSLATIONS = {
 
   // ── Options ──────────────────────────────────────────────────────────────
   opts_title:      { en: "Settings", es: "Ajustes", pt: "Configurações", de: "Einstellungen" },
-  opts_subtitle:   { en: "Fair to every click.", es: "Fair to every click.", pt: "Fair to every click.", de: "Fair to every click." },
+  opts_subtitle:   { en: "Fair to every click.", es: "Justa con cada clic.", pt: "Justa com cada clique.", de: "Fair bei jedem Klick." },
   section_affiliate_settings: { en: "Affiliate settings", es: "Configuración de afiliados", pt: "Configurações de afiliados", de: "Affiliate-Einstellungen" },
   row_inject_label: { en: "Inject our affiliate tag when a link has none", es: "Inyectar nuestro afiliado cuando no hay ninguno", pt: "Inserir nossa tag de afiliado quando o link não tem nenhuma", de: "Unser Affiliate-Tag einfügen, wenn ein Link keinen hat" },
   row_inject_hint:  { en: "Off by default. You always pay the same price. This is how you support an independent developer at zero cost to you.", es: "Desactivado por defecto. Siempre pagas el mismo precio. Así apoyas a un desarrollador independiente sin coste para ti.", pt: "Desativado por padrão. Você sempre paga o mesmo preço. É assim que você apoia um desenvolvedor independente sem nenhum custo.", de: "Standardmäßig deaktiviert. Du zahlst immer denselben Preis. So unterstützt du einen unabhängigen Entwickler ohne Mehrkosten." },
@@ -130,15 +134,12 @@ export const TRANSLATIONS = {
   lang_label:  { en: "Display language", es: "Idioma de la interfaz", pt: "Idioma da interface", de: "Anzeigesprache" },
   lang_hint:   { en: "Affects the popup and settings page. Does not affect URL processing.", es: "Afecta al popup y a esta página. No afecta al procesamiento de URLs.", pt: "Afeta o popup e a página de configurações. Não afeta o processamento de URLs.", de: "Betrifft das Popup und die Einstellungsseite. Hat keinen Einfluss auf die URL-Verarbeitung." },
 
-  section_url_cleaning:  { en: "URL Cleaning",                       es: "Limpieza de URLs",                       pt: "Limpeza de URLs",                       de: "URL-Bereinigung" },
   row_dnr_label:         { en: "Strip tracking parameters before navigation", es: "Eliminar parámetros de rastreo antes de navegar", pt: "Remover parâmetros de rastreamento antes de navegar", de: "Tracking-Parameter vor der Navigation entfernen" },
   row_dnr_hint:          { en: "Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.", es: "Limpia URLs mientras escribes en la barra de direcciones, desde marcadores y enlaces de otras apps. Antes de que cargue la página.", pt: "Limpa URLs enquanto você digita na barra de endereços, de favoritos e links de outros apps. Antes de a página carregar.", de: "Bereinigt URLs während du in der Adressleiste tippst, aus Lesezeichen und Links aus anderen Apps. Vor dem Laden der Seite." },
   row_context_menu_label: { en: "Right-click → Copy clean link or selection", es: "Menú contextual → Copiar enlace o selección limpia", pt: "Botão direito → Copiar link limpo ou seleção", de: "Rechtsklick → Bereinigten Link oder Auswahl kopieren" },
   row_context_menu_hint:  { en: "Works on a single link, a text selection with multiple URLs, or plain-text URLs. Alt+Shift+C copies the current tab's clean URL. Ctrl+C also auto-cleans URLs in your selection.", es: "Funciona con un enlace, una selección con varias URLs, o URLs en texto plano. Alt+Shift+C copia la URL limpia de la pestaña. Ctrl+C también limpia automáticamente las URLs en tu selección.", pt: "Funciona em um único link, uma seleção de texto com várias URLs, ou URLs em texto puro. Alt+Shift+C copia a URL limpa da aba atual. Ctrl+C também limpa automaticamente URLs na sua seleção.", de: "Funktioniert bei einem einzelnen Link, einer Textauswahl mit mehreren URLs oder reinen Text-URLs. Alt+Shift+C kopiert die bereinigte URL des aktuellen Tabs. Strg+C bereinigt auch URLs in deiner Auswahl automatisch." },
-  section_privacy:       { en: "Privacy",                            es: "Privacidad",                            pt: "Privacidade",                            de: "Datenschutz" },
   row_pings_label:       { en: "Block <a ping> tracking beacons",    es: "Bloquear balizas de rastreo <a ping>",    pt: "Bloquear balizas de rastreamento <a ping>",    de: "<a ping>-Tracking-Beacons blockieren" },
   row_pings_hint:        { en: "Removes ping attributes from links so the browser doesn't send tracking beacons on click", es: "Elimina atributos ping para que el navegador no envíe balizas al hacer clic", pt: "Remove atributos ping dos links para que o navegador não envie balizas de rastreamento ao clicar", de: "Entfernt ping-Attribute von Links, damit der Browser beim Klicken keine Tracking-Beacons sendet" },
-  section_redirects:     { en: "Redirect handling",                  es: "Gestión de redirecciones",                  pt: "Tratamento de redirecionamentos",                  de: "Weiterleitungen" },
   row_amp_label:         { en: "Redirect AMP pages to canonical URL", es: "Redirigir páginas AMP a la URL canónica", pt: "Redirecionar páginas AMP para a URL canônica", de: "AMP-Seiten zur kanonischen URL weiterleiten" },
   row_amp_hint:          { en: "Replaces AMP links with the original article URL", es: "Reemplaza los enlaces AMP con la URL original del artículo", pt: "Substitui links AMP pela URL original do artigo", de: "Ersetzt AMP-Links durch die Original-Artikel-URL" },
   row_unwrap_label:      { en: "Unwrap redirect wrappers",            es: "Desenvolver redireccionadores",            pt: "Desempacotar redirecionadores",            de: "Weiterleitungs-Wrapper entpacken" },
@@ -198,9 +199,6 @@ export const TRANSLATIONS = {
   ob_save_error:   { en: "Error — please try again", es: "Error — por favor intentalo de nuevo", pt: "Erro — por favor tente novamente", de: "Fehler — bitte versuche es erneut" },
   dev_url_error:   { en: "Error:", es: "Error:", pt: "Erro:", de: "Fehler:" },
 
-  // ── Share button ─────────────────────────────────────────────────────────
-  share_btn_label: { en: "Share MUGA", es: "Compartir MUGA", pt: "Compartilhar MUGA", de: "MUGA teilen" },
-
   // ── Dev-mode nudge panel (developer-facing, intentionally minimal) ────────
   dev_nudge_dismiss_btn: { en: "Dismiss", es: "Descartar", pt: "Dispensar", de: "Schließen" },
   dev_nudge_reset_btn:   { en: "Reset counters", es: "Reiniciar contadores", pt: "Zerar contadores", de: "Zähler zurücksetzen" },
@@ -221,7 +219,7 @@ export const TRANSLATIONS = {
 
   // ── Onboarding ──────────────────────────────────────────────────────────
   ob_page_title:            { en: "Welcome to MUGA",                                                         es: "Bienvenido a MUGA",                                                         pt: "Bem-vindo ao MUGA",                                                         de: "Willkommen bei MUGA" },
-  ob_tagline:               { en: "Fair to every click.",                                                    es: "Fair to every click.",                                                    pt: "Fair to every click.",                                                    de: "Fair to every click." },
+  ob_tagline:               { en: "Fair to every click.",                                                    es: "Justa con cada clic.",                                                    pt: "Justa com cada clique.",                                                    de: "Fair bei jedem Klick." },
   ob_tagline_sub:           { en: "Open source. Transparent. Built to protect your privacy.",                es: "Open source. Transparente. Hecho para proteger tu privacidad.",                pt: "Open source. Transparente. Feito para proteger sua privacidade.",                de: "Open source. Transparent. Entwickelt zum Schutz deiner Privatsphäre." },
   ob_tagline_values:        { en: "We may get things wrong, but we will always be honest about it and work to fix it. You stay in control.", es: "Puede que nos equivoquemos, pero siempre seremos honestos al respecto y trabajaremos para corregirlo. T\u00fa decides.", pt: "Podemos errar, mas sempre seremos honestos sobre isso e trabalharemos para corrigir. Você permanece no controle.", de: "Wir können Fehler machen, aber wir werden immer ehrlich darüber sein und daran arbeiten, sie zu beheben. Du behältst die Kontrolle." },
   ob_step1_title:           { en: "What MUGA does, automatically",                                          es: "Lo que MUGA hace, autom\u00e1ticamente",                                          pt: "O que MUGA faz, automaticamente",                                          de: "Was MUGA automatisch macht" },

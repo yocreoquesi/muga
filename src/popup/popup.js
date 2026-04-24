@@ -423,7 +423,12 @@ async function showDomainStats(prefs, lang) {
     .slice(0, 10);
 
   if (entries.length === 0) {
-    section.hidden = true;
+    // Show section with empty-state message so users know the panel exists
+    section.hidden = false;
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "domain-stats-empty";
+    emptyEl.textContent = t("domain_stats_empty", lang);
+    list.appendChild(emptyEl);
     return;
   }
 

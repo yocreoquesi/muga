@@ -26,7 +26,6 @@ describe("New i18n keys exist in all 4 locales", () => {
   const newKeys = [
     "ob_save_error",
     "dev_url_error",
-    "share_btn_label",
     "dev_nudge_dismiss_btn",
     "dev_nudge_reset_btn",
     "dev_nudge_status",
