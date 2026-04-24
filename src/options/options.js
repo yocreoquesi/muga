@@ -5,7 +5,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
-import { isFirefox } from "../lib/browser-detect.js";
+import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry } from "../lib/validation.js";
 
 let _currentLang = "en";
@@ -143,7 +143,7 @@ async function init() {
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
   if (rateLink) {
-    const isFirefox = isFirefox();
+    const isFirefox = detectFirefox();
     rateLink.href = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
@@ -760,7 +760,7 @@ function initDevTools() {
 
       rateBtn.addEventListener("click", () => {
         clearTimeout(timer);
-        const isFirefox = isFirefox();
+        const isFirefox = detectFirefox();
         const storeUrl = isFirefox
           ? "https://addons.mozilla.org/firefox/addon/muga/"
           : "https://chromewebstore.google.com/detail/muga/";

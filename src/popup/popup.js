@@ -7,7 +7,7 @@ import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { isFirefox } from "../lib/browser-detect.js";
+import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -161,7 +161,7 @@ async function init() {
   // Footer rate link: always available, passive
   const popupRateLink = document.getElementById("popup-rate-link");
   if (popupRateLink) {
-    const isFirefox = isFirefox();
+    const isFirefox = detectFirefox();
     popupRateLink.href = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
@@ -216,7 +216,7 @@ async function init() {
       nudgeShownCount: nudgeData.nudgeShownCount + 1,
       nudgeLastShown: Date.now(),
     }).catch(() => {}); // best-effort; count is non-critical
-    const isFirefox = isFirefox();
+    const isFirefox = detectFirefox();
     const storeUrl = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
@@ -227,7 +227,7 @@ async function init() {
   }
 
   shareBtn.addEventListener("click", () => {
-    const isFirefox = isFirefox();
+    const isFirefox = detectFirefox();
     const storeUrl = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
