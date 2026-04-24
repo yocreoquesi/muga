@@ -10,6 +10,16 @@ import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLo
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
+import {
+  REMOTE_ALARM_NAME,
+  ALARM_PERIOD_MIN,
+  ALARM_DELAY_MIN,
+  runRemoteRulesFetch,
+  clearRemoteCache,
+  buildRemoteDnrRule,
+  REMOTE_RULE_ID,
+} from "../lib/remote-rules.js";
+import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -133,9 +143,61 @@ function getPrefsWithCache() {
   return prefsFetchPromise;
 }
 
+// --- Remote-rules alarm helpers ---
+// Feature-detect chrome.alarms (absent in some stripped Firefox MV2 builds).
+const hasAlarms = typeof chrome.alarms !== "undefined";
+
+/**
+ * Registers the remote-rules weekly alarm idempotently.
+ * Called on onInstalled and onStartup. The alarm handler short-circuits
+ * if remoteRulesEnabled is false, so always registering is safe (REQ-OPT-6).
+ *
+ * Pure helper — takes chrome.alarms as an injected dep for unit-testability.
+ * No-op when the API is absent (feature-detect).
+ *
+ * @param {typeof chrome.alarms | undefined} alarms - chrome.alarms API (or undefined).
+ */
+function registerRemoteRulesAlarm(alarms) {
+  if (!alarms) return;
+  return alarms.create(REMOTE_ALARM_NAME, {
+    periodInMinutes: ALARM_PERIOD_MIN,
+    delayInMinutes: ALARM_DELAY_MIN,
+  });
+}
+
 // --- DNR sync helpers ---
 // Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
 const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
+
+/**
+ * Syncs remote params (signed payload) to DNR rule 1001.
+ *
+ * Mirrors syncCustomParamsDNR for rule 1000 but operates exclusively on
+ * REMOTE_RULE_ID (1001). Rule 1000 MUST NOT appear in removeRuleIds or addRules
+ * from this function. (REQ-MERGE-2, REQ-MERGE-4)
+ *
+ * No-op when DNR is unsupported (Firefox MV2 graceful degradation).
+ *
+ * @param {string[]} params - Remote params to sync. Empty array removes the rule.
+ */
+async function syncRemoteParamsDNR(params) {
+  if (!hasDNR) return;
+  try {
+    if (!params || params.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [REMOTE_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [REMOTE_RULE_ID],
+      addRules: [buildRemoteDnrRule(params)],
+    });
+  } catch (err) {
+    console.error("[MUGA] syncRemoteParamsDNR failed:", err);
+  }
+}
 
 async function syncCustomParamsDNR(customParams) {
   if (!hasDNR) return;
@@ -380,6 +442,85 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── Remote-rules message handlers ──────────────────────────────────────────
+  // Sender validation: the top-level guard (sender.id !== chrome.runtime.id) already
+  // rejects messages from unknown senders before reaching these branches. (REQ-SECURITY-2)
+
+  if (message.type === "ENABLE_REMOTE_RULES") {
+    // Note: chrome.permissions.request must have been called by the UI BEFORE sending
+    // this message (Firefox MV2 requires the gesture in the same call frame, design §10).
+    (async () => {
+      try {
+        await setPrefs({ remoteRulesEnabled: true });
+        _invalidatePrefsCache();
+        // Re-register alarm idempotently (REQ-OPT-6)
+        registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
+        // Immediate first fetch (REQ-OPT-3, SC-02)
+        await runRemoteRulesFetch(_remoteRulesDeps());
+        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] ENABLE_REMOTE_RULES handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "DISABLE_REMOTE_RULES") {
+    (async () => {
+      try {
+        await setPrefs({ remoteRulesEnabled: false });
+        _invalidatePrefsCache();
+        // Clear remote params + DNR rule 1001. Rule 1000 (custom) is NOT touched. (REQ-OPT-5, SC-03)
+        await clearRemoteCache({
+          storage: {
+            remove: (k) => chrome.storage.local.remove(k),
+          },
+          dnr: hasDNR
+            ? { updateDynamicRules: (opts) => chrome.declarativeNetRequest.updateDynamicRules(opts) }
+            : { updateDynamicRules: async () => {} },
+        });
+        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] DISABLE_REMOTE_RULES handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "GET_REMOTE_RULES_STATUS") {
+    (async () => {
+      try {
+        // Read enabled from sync (authoritative)
+        const syncData = await chrome.storage.sync.get({ remoteRulesEnabled: false });
+        const enabled = !!syncData.remoteRulesEnabled;
+        // Read meta from local
+        const localData = await chrome.storage.local.get({
+          remoteParams: [],
+          remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
+        });
+        // Feature-detect flags (REQ-UI-5)
+        const supportsAlarms = hasAlarms;
+        const supportsDNR = hasDNR;
+        try {
+          sendResponse({
+            ok: true,
+            enabled,
+            meta: localData.remoteRulesMeta,
+            remoteParams: localData.remoteParams,
+            supportsAlarms,
+            supportsDNR,
+          });
+        } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] GET_REMOTE_RULES_STATUS handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {
@@ -489,10 +630,60 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   return result;
 }
 
-// --- On startup: apply DNR state ---
+// --- Remote-rules deps factory ---
+// Builds the deps object for runRemoteRulesFetch. Centralised so onAlarm
+// and ENABLE_REMOTE_RULES message handler use exactly the same deps.
+function _remoteRulesDeps() {
+  return {
+    fetchImpl: globalThis.fetch,
+    subtle: globalThis.crypto?.subtle,
+    trustedKeys: TRUSTED_PUBLIC_KEYS,
+    storage: hasDNR ? {
+      get: (d) => chrome.storage.local.get(d),
+      set: (i) => chrome.storage.local.set(i),
+      remove: (k) => chrome.storage.local.remove(k),
+    } : null,
+    dnr: hasDNR ? {
+      updateDynamicRules: (opts) => chrome.declarativeNetRequest.updateDynamicRules(opts),
+    } : { updateDynamicRules: async () => {} },
+  };
+}
+
+// --- onAlarm: weekly remote-rules fetch ---
+// Registered after hasAlarms guard so we don't reference chrome.alarms in envs where it's absent.
+if (hasAlarms) {
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name !== REMOTE_ALARM_NAME) return;
+
+    // Re-read remoteRulesEnabled from storage on every fire (REQ-OPT-6, SC-01).
+    // Must NOT use the prefs cache — the alarm fires infrequently and re-reading
+    // is cheap. Using the cache here could silently leave the disabled state stale.
+    let enabled = false;
+    try {
+      const data = await chrome.storage.sync.get({ remoteRulesEnabled: false });
+      enabled = !!data.remoteRulesEnabled;
+    } catch (err) {
+      console.error("[MUGA] remote-rules: failed to read remoteRulesEnabled:", err);
+      return;
+    }
+
+    if (!enabled) return; // short-circuit: disabled (SC-01)
+
+    // runRemoteRulesFetch manages its own _remoteFetchInFlight dedup guard (REQ-FETCH-3, SC-11)
+    try {
+      await runRemoteRulesFetch(_remoteRulesDeps());
+    } catch (err) {
+      // runRemoteRulesFetch writes errors to meta itself; this catch is for unexpected throws
+      console.error("[MUGA] remote-rules: unexpected error in alarm handler:", err);
+    }
+  });
+}
+
+// --- On startup: apply DNR state + register remote-rules alarm ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
+  registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
 });
 
 // --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
@@ -503,10 +694,11 @@ function openOnboardingOnce() {
   chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
 }
 
-// --- On install: open onboarding on first run, register context menu ---
+// --- On install: open onboarding on first run, register context menu + alarm ---
 chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
+  registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

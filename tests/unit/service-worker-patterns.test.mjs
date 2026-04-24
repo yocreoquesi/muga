@@ -314,6 +314,404 @@ describe("Security: debug log payload privacy (finding 1)", () => {
   });
 });
 
+// ── T2.1: Remote-rules alarm registration ────────────────────────────────────
+
+import {
+  REMOTE_ALARM_NAME,
+  ALARM_PERIOD_MIN,
+  ALARM_DELAY_MIN,
+} from "../../src/lib/remote-rules.js";
+
+/**
+ * Pure alarm-registration helper extracted from the service worker.
+ * Takes the chrome.alarms API as an injected dependency so it can be
+ * unit-tested without a browser environment.
+ *
+ * Mirrors the production logic in service-worker.js:
+ *   registerRemoteRulesAlarm(chrome.alarms)
+ */
+function registerRemoteRulesAlarm(alarms) {
+  if (!alarms) return; // feature-detect: no-op if API absent
+  return alarms.create(REMOTE_ALARM_NAME, {
+    periodInMinutes: ALARM_PERIOD_MIN,
+    delayInMinutes: ALARM_DELAY_MIN,
+  });
+}
+
+describe("T2.1 — Remote-rules alarm registration helper", () => {
+  test("calls alarms.create with REMOTE_ALARM_NAME", () => {
+    const calls = [];
+    const fakeAlarms = {
+      create(name, opts) { calls.push({ name, opts }); },
+    };
+    registerRemoteRulesAlarm(fakeAlarms);
+    assert.strictEqual(calls.length, 1, "alarms.create must be called exactly once");
+    assert.strictEqual(calls[0].name, REMOTE_ALARM_NAME);
+  });
+
+  test("creates alarm with correct periodInMinutes (7 days = 10080)", () => {
+    const calls = [];
+    const fakeAlarms = { create(name, opts) { calls.push({ name, opts }); } };
+    registerRemoteRulesAlarm(fakeAlarms);
+    assert.strictEqual(calls[0].opts.periodInMinutes, 10_080);
+  });
+
+  test("creates alarm with correct delayInMinutes (1 hour = 60)", () => {
+    const calls = [];
+    const fakeAlarms = { create(name, opts) { calls.push({ name, opts }); } };
+    registerRemoteRulesAlarm(fakeAlarms);
+    assert.strictEqual(calls[0].opts.delayInMinutes, 60);
+  });
+
+  test("no-ops when alarms API is absent (feature-detect)", () => {
+    // Must not throw; just return without calling create
+    assert.doesNotThrow(() => registerRemoteRulesAlarm(undefined));
+    assert.doesNotThrow(() => registerRemoteRulesAlarm(null));
+  });
+
+  test("service worker source registers alarm on onInstalled", () => {
+    const onInstalledPos = swSource.indexOf("onInstalled.addListener");
+    assert.ok(onInstalledPos !== -1, "onInstalled.addListener must be present");
+    // The block from onInstalled to the next top-level chrome.runtime listener
+    const onInstalledBlock = swSource.slice(onInstalledPos, onInstalledPos + 600);
+    assert.ok(
+      onInstalledBlock.includes("registerRemoteRulesAlarm"),
+      "SW must call registerRemoteRulesAlarm inside the onInstalled listener"
+    );
+  });
+
+  test("service worker source registers alarm on onStartup", () => {
+    const onStartupPos = swSource.indexOf("onStartup.addListener");
+    assert.ok(onStartupPos !== -1, "onStartup.addListener must be present");
+    const onStartupBlock = swSource.slice(onStartupPos, onStartupPos + 300);
+    assert.ok(
+      onStartupBlock.includes("registerRemoteRulesAlarm"),
+      "SW must call registerRemoteRulesAlarm inside the onStartup listener"
+    );
+  });
+
+  test("service worker feature-detects chrome.alarms before registering", () => {
+    // The SW must guard alarms registration (same pattern as hasDNR / hasContextMenus)
+    assert.ok(
+      swSource.includes("chrome.alarms") && swSource.includes("typeof chrome.alarms"),
+      "SW must feature-detect chrome.alarms before registering"
+    );
+  });
+});
+
+// ── T2.2: onAlarm handler ────────────────────────────────────────────────────
+
+/**
+ * Pure alarm-handler logic extracted from the service worker.
+ * Tests the gate logic (disabled check, dedup guard) without needing a real browser.
+ *
+ * In production, the SW's chrome.alarms.onAlarm listener calls this function.
+ * We extract it so it can be unit-tested with in-memory fakes.
+ */
+async function handleRemoteRulesAlarm(alarmName, deps) {
+  // Only handle our alarm
+  if (alarmName !== REMOTE_ALARM_NAME) return "ignored";
+
+  // Re-read remoteRulesEnabled from storage — NOT a module cache (REQ-OPT-6, SC-01)
+  const syncData = await deps.syncStorage.get({ remoteRulesEnabled: false });
+  if (!syncData.remoteRulesEnabled) return "disabled";
+
+  // Dedup guard: delegate to runRemoteRulesFetch which manages _remoteFetchInFlight
+  await deps.runFetch(deps.fetchDeps);
+  return "ran";
+}
+
+describe("T2.2 — onAlarm handler logic", () => {
+  function makeSyncFake(data) {
+    return {
+      get(defaults) {
+        const result = { ...defaults };
+        for (const k of Object.keys(defaults)) {
+          if (Object.prototype.hasOwnProperty.call(data, k)) result[k] = data[k];
+        }
+        return Promise.resolve(result);
+      },
+    };
+  }
+
+  test("short-circuits when remoteRulesEnabled is false (SC-01)", async () => {
+    let fetchCalled = false;
+    const result = await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: false }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "disabled");
+    assert.strictEqual(fetchCalled, false, "fetch must not be called when disabled");
+  });
+
+  test("calls runFetch when enabled (happy path)", async () => {
+    let fetchCalled = false;
+    const result = await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "ran");
+    assert.strictEqual(fetchCalled, true, "runFetch must be called when enabled");
+  });
+
+  test("ignores alarm with different name", async () => {
+    let fetchCalled = false;
+    const result = await handleRemoteRulesAlarm("other-alarm", {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "ignored");
+    assert.strictEqual(fetchCalled, false);
+  });
+
+  test("passes fetchDeps to runFetch", async () => {
+    let receivedDeps = null;
+    const fakeDeps = { foo: "bar" };
+    await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+      runFetch: async (deps) => { receivedDeps = deps; },
+      fetchDeps: fakeDeps,
+    });
+    assert.strictEqual(receivedDeps, fakeDeps);
+  });
+
+  test("service worker source registers onAlarm listener", () => {
+    assert.ok(
+      swSource.includes("alarms.onAlarm.addListener"),
+      "SW must register chrome.alarms.onAlarm listener"
+    );
+  });
+
+  test("service worker onAlarm handler re-reads remoteRulesEnabled from storage (SC-01)", () => {
+    const alarmBlock = swSource.slice(
+      swSource.indexOf("alarms.onAlarm.addListener"),
+      swSource.indexOf("alarms.onAlarm.addListener") + 800
+    );
+    assert.ok(
+      alarmBlock.includes("remoteRulesEnabled"),
+      "onAlarm handler must re-read remoteRulesEnabled from storage"
+    );
+  });
+
+  test("service worker onAlarm handler calls runRemoteRulesFetch", () => {
+    const alarmBlock = swSource.slice(
+      swSource.indexOf("alarms.onAlarm.addListener"),
+      swSource.indexOf("alarms.onAlarm.addListener") + 800
+    );
+    assert.ok(
+      alarmBlock.includes("runRemoteRulesFetch"),
+      "onAlarm handler must call runRemoteRulesFetch"
+    );
+  });
+});
+
+// ── T2.3: ENABLE/DISABLE/GET_STATUS message handlers ────────────────────────
+
+describe("T2.3 — Message handler source patterns", () => {
+  test("SW handles ENABLE_REMOTE_RULES message type", () => {
+    assert.ok(
+      swSource.includes('"ENABLE_REMOTE_RULES"'),
+      "SW must handle ENABLE_REMOTE_RULES"
+    );
+  });
+
+  test("SW handles DISABLE_REMOTE_RULES message type", () => {
+    assert.ok(
+      swSource.includes('"DISABLE_REMOTE_RULES"'),
+      "SW must handle DISABLE_REMOTE_RULES"
+    );
+  });
+
+  test("SW handles GET_REMOTE_RULES_STATUS message type", () => {
+    assert.ok(
+      swSource.includes('"GET_REMOTE_RULES_STATUS"'),
+      "SW must handle GET_REMOTE_RULES_STATUS"
+    );
+  });
+
+  test("ENABLE_REMOTE_RULES handler calls setPrefs with remoteRulesEnabled true", () => {
+    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
+    assert.ok(enablePos !== -1);
+    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    assert.ok(
+      enableBlock.includes("remoteRulesEnabled: true"),
+      "ENABLE handler must setPrefs({ remoteRulesEnabled: true })"
+    );
+  });
+
+  test("DISABLE_REMOTE_RULES handler calls setPrefs with remoteRulesEnabled false", () => {
+    const disablePos = swSource.indexOf('"DISABLE_REMOTE_RULES"');
+    assert.ok(disablePos !== -1);
+    const disableBlock = swSource.slice(disablePos, disablePos + 600);
+    assert.ok(
+      disableBlock.includes("remoteRulesEnabled: false"),
+      "DISABLE handler must setPrefs({ remoteRulesEnabled: false })"
+    );
+  });
+
+  test("DISABLE_REMOTE_RULES handler calls clearRemoteCache", () => {
+    const disablePos = swSource.indexOf('"DISABLE_REMOTE_RULES"');
+    const disableBlock = swSource.slice(disablePos, disablePos + 600);
+    assert.ok(
+      disableBlock.includes("clearRemoteCache"),
+      "DISABLE handler must call clearRemoteCache (REQ-OPT-5, SC-03)"
+    );
+  });
+
+  test("ENABLE_REMOTE_RULES handler triggers immediate runRemoteRulesFetch", () => {
+    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
+    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    assert.ok(
+      enableBlock.includes("runRemoteRulesFetch"),
+      "ENABLE handler must call runRemoteRulesFetch for immediate first fetch (REQ-OPT-3)"
+    );
+  });
+
+  test("ENABLE_REMOTE_RULES handler re-registers alarm idempotently", () => {
+    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
+    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    assert.ok(
+      enableBlock.includes("registerRemoteRulesAlarm"),
+      "ENABLE handler must re-register alarm idempotently (REQ-OPT-6)"
+    );
+  });
+
+  test("GET_REMOTE_RULES_STATUS responds with enabled, meta, supportsAlarms, supportsDNR", () => {
+    const statusPos = swSource.indexOf('"GET_REMOTE_RULES_STATUS"');
+    const statusBlock = swSource.slice(statusPos, statusPos + 800);
+    assert.ok(statusBlock.includes("supportsAlarms"), "status must include supportsAlarms (REQ-UI-5)");
+    assert.ok(statusBlock.includes("supportsDNR"), "status must include supportsDNR (REQ-UI-5)");
+    assert.ok(statusBlock.includes("enabled"), "status must include enabled flag");
+  });
+
+  test("all remote-rules message handlers return true (keep channel open)", () => {
+    // All three handlers must return true per the onMessage invariant.
+    // Each handler uses an IIFE pattern so return true is at the end of the block.
+    for (const msgType of ["ENABLE_REMOTE_RULES", "DISABLE_REMOTE_RULES", "GET_REMOTE_RULES_STATUS"]) {
+      const pos = swSource.indexOf(`"${msgType}"`);
+      assert.ok(pos !== -1, `${msgType} handler must exist`);
+      // Find the return true within the next 1200 chars (IIFE pattern is ~900 chars)
+      const block = swSource.slice(pos, pos + 1200);
+      assert.ok(block.includes("return true"), `${msgType} handler must return true`);
+    }
+  });
+
+  test("sender.id validation present in message listener (REQ-SECURITY-2)", () => {
+    // The main onMessage handler already validates sender.id; the new handlers
+    // fall through the same gate — verify the gate is present and covers all messages
+    assert.ok(
+      swSource.includes("sender.id !== chrome.runtime.id"),
+      "onMessage listener must validate sender.id (REQ-SECURITY-2)"
+    );
+  });
+});
+
+// ── T2.4: DNR integration — syncRemoteParamsDNR ──────────────────────────────
+
+import { buildRemoteDnrRule, REMOTE_RULE_ID } from "../../src/lib/remote-rules.js";
+import { DNR_CUSTOM_PARAMS_RULE_ID } from "../../src/lib/dnr-ids.js";
+
+/**
+ * Pure syncRemoteParamsDNR helper — mirrors the implementation in SW.
+ * Extracted here for unit-testability with a fake DNR facade.
+ *
+ * @param {string[]} params - Remote params to sync (may be empty to remove rule).
+ * @param {{ updateDynamicRules: Function } | null} chromeDnr - DNR API or null if unsupported.
+ */
+async function syncRemoteParamsDNR(params, chromeDnr) {
+  if (!chromeDnr) return; // no-op when DNR unsupported
+  if (!params || params.length === 0) {
+    await chromeDnr.updateDynamicRules({
+      removeRuleIds: [REMOTE_RULE_ID],
+      addRules: [],
+    });
+    return;
+  }
+  await chromeDnr.updateDynamicRules({
+    removeRuleIds: [REMOTE_RULE_ID],
+    addRules: [buildRemoteDnrRule(params)],
+  });
+}
+
+describe("T2.4 — syncRemoteParamsDNR", () => {
+  test("adds rule 1001 on non-empty params", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    await syncRemoteParamsDNR(["utm_test", "fbclid_x"], fakeDnr);
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].addRules.length, 1);
+    assert.strictEqual(calls[0].addRules[0].id, REMOTE_RULE_ID);
+    assert.strictEqual(calls[0].addRules[0].id, 1001);
+  });
+
+  test("rule 1001 removeParams contains the provided params", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    const params = ["tracker_a", "tracker_b"];
+    await syncRemoteParamsDNR(params, fakeDnr);
+    const rule = calls[0].addRules[0];
+    assert.deepEqual(rule.action.redirect.transform.queryTransform.removeParams, params);
+  });
+
+  test("removes rule 1001 on empty params (purely removes)", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    await syncRemoteParamsDNR([], fakeDnr);
+    assert.strictEqual(calls.length, 1);
+    assert.ok(calls[0].removeRuleIds.includes(1001), "must remove rule 1001");
+    assert.strictEqual(calls[0].addRules.length, 0, "must not add any rules on empty params");
+  });
+
+  test("rule 1000 (custom params) NEVER appears in removeRuleIds (REQ-MERGE-2, REQ-MERGE-4)", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    // Test both paths: with params and without
+    await syncRemoteParamsDNR(["utm_x"], fakeDnr);
+    await syncRemoteParamsDNR([], fakeDnr);
+    for (const call of calls) {
+      assert.ok(
+        !(call.removeRuleIds ?? []).includes(DNR_CUSTOM_PARAMS_RULE_ID),
+        `rule 1000 must never appear in removeRuleIds (found in call: ${JSON.stringify(call)})`
+      );
+      assert.ok(
+        !(call.addRules ?? []).some(r => r.id === DNR_CUSTOM_PARAMS_RULE_ID),
+        "rule 1000 must never appear in addRules"
+      );
+    }
+  });
+
+  test("no-op when DNR unsupported (chromeDnr is null/undefined)", async () => {
+    // Must not throw; returns without calling updateDynamicRules
+    await assert.doesNotReject(() => syncRemoteParamsDNR(["utm_x"], null));
+    await assert.doesNotReject(() => syncRemoteParamsDNR(["utm_x"], undefined));
+  });
+
+  test("service worker source defines syncRemoteParamsDNR function", () => {
+    assert.ok(
+      swSource.includes("syncRemoteParamsDNR"),
+      "SW must define syncRemoteParamsDNR function"
+    );
+  });
+
+  test("service worker syncRemoteParamsDNR only references REMOTE_RULE_ID (not custom)", () => {
+    // Find the syncRemoteParamsDNR function block in the SW source
+    const fnStart = swSource.indexOf("function syncRemoteParamsDNR");
+    assert.ok(fnStart !== -1, "syncRemoteParamsDNR must be defined in SW");
+    const fnBlock = swSource.slice(fnStart, fnStart + 600);
+    assert.ok(
+      fnBlock.includes("REMOTE_RULE_ID"),
+      "syncRemoteParamsDNR must use REMOTE_RULE_ID"
+    );
+    assert.ok(
+      !fnBlock.includes("DNR_CUSTOM_PARAMS_RULE_ID"),
+      "syncRemoteParamsDNR must NOT reference DNR_CUSTOM_PARAMS_RULE_ID"
+    );
+  });
+});
+
 // ── Onboarding consent verification ─────────────────────────────────────────
 
 describe("Onboarding consent — source code patterns", () => {
