@@ -2,6 +2,11 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Optional weekly updates for the tracking parameter list, off by default. Ed25519-signed payloads fetched from a public GitHub Pages endpoint (`https://yocreoquesi.github.io/muga/rules/v1/params.json`). Enable in Settings → Remote rule updates. Zero outbound requests on a default install. See `docs/transparency.html`. (#270)
+
 ## [1.9.10] - 2026-04-13
 
 ### Fixed
