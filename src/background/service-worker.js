@@ -6,7 +6,10 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules } from "../lib/storage.js";
+import { isValidListEntry } from "../lib/validation.js";
+import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
+import { t } from "../lib/i18n.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -18,12 +21,40 @@ const _affiliateDomains = getAffiliateDomains();
 let _firstUsedSet = false;
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
-//       top-level await disallowed in Chrome MV3 service workers)
+//       top-level await disallowed in Chrome MV3 service workers).
+// Cache-first: on each SW restart we attempt to read from chrome.storage.session
+// first. Only falls back to fetch() on a cache miss. On persistent fetch failure
+// (up to 3 attempts) we log the error and leave domainRules as [] so the SW can
+// still operate without domain-specific rules.
 let domainRules = [];
-let _domainRulesReady = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
-  .then(r => r.json())
-  .then(data => { domainRules = data; })
-  .catch(err => console.warn("[MUGA] domain-rules.json fetch failed:", err));
+let _domainRulesReady = null;
+let _domainRulesFetchAttempts = 0;
+const DOMAIN_RULES_MAX_ATTEMPTS = 3;
+
+async function _loadDomainRules() {
+  const cached = await getCachedDomainRules();
+  if (cached) {
+    domainRules = cached;
+    return;
+  }
+  if (_domainRulesFetchAttempts >= DOMAIN_RULES_MAX_ATTEMPTS) {
+    console.error("[MUGA] domain-rules.json: max fetch attempts reached; domain rules unavailable");
+    return;
+  }
+  try {
+    _domainRulesFetchAttempts++;
+    const r = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
+    const data = await r.json();
+    domainRules = data;
+    await cacheDomainRules(data);
+  } catch (err) {
+    console.error("[MUGA] domain-rules.json fetch failed (attempt", _domainRulesFetchAttempts, "):", err);
+    // Null out so the next handleProcessUrl call retries (up to the cap)
+    _domainRulesReady = null;
+  }
+}
+
+_domainRulesReady = _loadDomainRules();
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
@@ -65,6 +96,18 @@ let cachedPrefs = null;
 let prefsFetchPromise = null;
 let _cacheVersion = 0;
 
+/**
+ * Invalidates the prefs cache so the next getPrefsWithCache() call re-fetches.
+ * Extracted to a single function so all three call-sites (storage.onChanged,
+ * ADD_TO_WHITELIST, ADD_TO_BLACKLIST) remain consistent when the cache
+ * mechanism evolves (e.g., adding a 4th invalidation flag).
+ */
+function _invalidatePrefsCache() {
+  cachedPrefs = null;
+  prefsFetchPromise = null;
+  _cacheVersion++;
+}
+
 // Serialize list mutations (whitelist/blacklist) to prevent race conditions
 // where two rapid messages read the same cached list and the second overwrites the first.
 let _listMutationQueue = Promise.resolve();
@@ -90,31 +133,16 @@ function getPrefsWithCache() {
   return prefsFetchPromise;
 }
 
-// --- Input validation helpers ---
-
-/** Validates a blacklist/whitelist entry: domain, domain::disabled, or domain::param::value */
-function isValidListEntry(entry) {
-  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
-  const parts = entry.split("::");
-  if (parts.length > 3) return false;
-  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
-  if (parts.length === 2 && parts[1] !== "disabled") return false;
-  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
-  return true;
-}
-
 // --- DNR sync helpers ---
 // Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
 const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
-
-const DYNAMIC_RULE_ID = 1000;
 
 async function syncCustomParamsDNR(customParams) {
   if (!hasDNR) return;
   try {
     if (!customParams || customParams.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [DYNAMIC_RULE_ID],
+        removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
         addRules: [],
       });
       return;
@@ -123,9 +151,9 @@ async function syncCustomParamsDNR(customParams) {
       .filter(p => /^[a-zA-Z0-9_.-]+$/.test(p.trim()))
       .map(p => p.trim().toLowerCase());
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DYNAMIC_RULE_ID],
+      removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
       addRules: [{
-        id: DYNAMIC_RULE_ID,
+        id: DNR_CUSTOM_PARAMS_RULE_ID,
         priority: 1,
         action: {
           type: "redirect",
@@ -155,6 +183,9 @@ async function applyDnrState(prefs) {
 }
 
 // Matches http/https URLs in arbitrary text. Used by the "selection" context menu handler.
+// NOTE: content/cleaner.js contains an identical copy of this regex. Content scripts
+// cannot import ES modules, so the definition must stay in both files. The sync
+// regression test at tests/unit/url-regex-sync.test.mjs enforces identical literals.
 const URL_RE = /https?:\/\/[^\s"'<>()[\]{}]{1,2000}/g;
 
 // --- Context menu helpers ---
@@ -168,9 +199,11 @@ async function syncContextMenus(enabled) {
   const prefs = await getPrefsWithCache();
   if (!prefs.enabled) return;
   const lang = prefs.language || "en";
+  // Titles sourced from lib/i18n.js (ctx_copy_clean_link / ctx_copy_clean_selection).
+  // Canonical German (de): "Bereinigten Link kopieren" — see lib/i18n.js.
   const titles = {
-    copy: { es: "Copiar enlace limpio", pt: "Copiar link limpo", de: "Sauberen Link kopieren" }[lang] || "Copy clean link",
-    selection: { es: "Copiar enlaces limpios de la selección", pt: "Copiar links limpos da seleção", de: "Saubere Links der Auswahl kopieren" }[lang] || "Copy clean links in selection",
+    copy: t("ctx_copy_clean_link", lang),
+    selection: t("ctx_copy_clean_selection", lang),
   };
   chrome.contextMenus.create({
     id: "muga-copy-clean",
@@ -228,9 +261,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== "sync") return;
   // Any sync storage change (including disabledCategories, contextMenuEnabled, etc.)
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
-  cachedPrefs = null;
-  prefsFetchPromise = null;
-  _cacheVersion++;
+  _invalidatePrefsCache();
   if (changes.customParams || changes.dnrEnabled || changes.enabled) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
@@ -285,9 +316,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setPrefs({ whitelist: [...fresh.whitelist, entry] });
         logAction("whitelist_add", { entry });
       }
-      cachedPrefs = null;
-      prefsFetchPromise = null;
-      _cacheVersion++;
+      _invalidatePrefsCache();
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_WHITELIST handler failed:", err);
@@ -308,9 +337,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setPrefs({ blacklist: [...fresh.blacklist, entry] });
         logAction("blacklist_add", { entry });
       }
-      cachedPrefs = null;
-      prefsFetchPromise = null;
-      _cacheVersion++;
+      _invalidatePrefsCache();
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_BLACKLIST handler failed:", err);
@@ -332,7 +359,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const ALLOWED_STAT_KEYS = ["urlsCleaned", "junkRemoved", "referralsSpotted"];
     if (ALLOWED_STAT_KEYS.includes(message.key)) incrementStat(message.key);
     sendResponse({ ok: true });
-    return;
+    return true;
   }
 
   // exposed for future dev-tools use
@@ -347,6 +374,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  // _domainRulesReady is nulled on fetch failure to allow retry on the next call
+  if (!_domainRulesReady) _domainRulesReady = _loadDomainRules();
   await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 

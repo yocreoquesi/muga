@@ -10,20 +10,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { isValidListEntry } from "../../src/lib/validation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const swSource = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
-
-// Replicate isValidListEntry from service-worker.js
-function isValidListEntry(entry) {
-  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
-  const parts = entry.split("::");
-  if (parts.length > 3) return false;
-  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
-  if (parts.length === 2 && parts[1] !== "disabled") return false;
-  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
-  return true;
-}
 
 // ── Message handler structure verification ───────────────────────────────────
 
@@ -170,6 +160,28 @@ describe("Bug #229 — whitelist/blacklist entry format", () => {
   });
 });
 
+// ── INCREMENT_STAT handler returns true ──────────────────────────────────────
+
+describe("INCREMENT_STAT handler — response channel", () => {
+  test("INCREMENT_STAT handler returns true (keeps response channel open)", () => {
+    // All other branches return true to keep the sendResponse channel open.
+    // INCREMENT_STAT must also return true for consistency and future-safety.
+    const handlerBlock = swSource.slice(
+      swSource.indexOf('"INCREMENT_STAT"'),
+      swSource.indexOf('"CLEAR_DEBUG_LOG"')
+    );
+    // The block must NOT end with a bare `return;` (undefined)
+    assert.ok(
+      !handlerBlock.includes("sendResponse({ ok: true });\n    return;\n"),
+      "INCREMENT_STAT must not use bare return (returns undefined, closes channel early)"
+    );
+    assert.ok(
+      handlerBlock.includes("return true;"),
+      "INCREMENT_STAT handler must return true to keep the sendResponse channel open"
+    );
+  });
+});
+
 // ── Cache invalidation version counter ───────────────────────────────────────
 
 describe("Cache invalidation — version counter", () => {
@@ -191,26 +203,58 @@ describe("Cache invalidation — version counter", () => {
     );
   });
 
-  test("storage change listener increments _cacheVersion", () => {
+  test("storage change listener invalidates prefs cache via _invalidatePrefsCache()", () => {
     const storageListener = swSource.slice(
       swSource.indexOf("chrome.storage.onChanged.addListener"),
       swSource.indexOf("chrome.storage.onChanged.addListener") + 500
     );
-    assert.ok(storageListener.includes("_cacheVersion++"), "storage listener should increment _cacheVersion");
+    assert.ok(
+      storageListener.includes("_invalidatePrefsCache()"),
+      "storage listener should call _invalidatePrefsCache() to invalidate the prefs cache"
+    );
   });
 
-  test("whitelist handler increments _cacheVersion", () => {
+  test("whitelist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
     const whitelistHandler = swSource.slice(
       swSource.indexOf('"ADD_TO_WHITELIST"'),
       swSource.indexOf('"ADD_TO_BLACKLIST"')
     );
-    assert.ok(whitelistHandler.includes("_cacheVersion++"), "whitelist handler should increment _cacheVersion");
+    assert.ok(
+      whitelistHandler.includes("_invalidatePrefsCache()"),
+      "whitelist handler should call _invalidatePrefsCache()"
+    );
   });
 
-  test("blacklist handler increments _cacheVersion", () => {
+  test("blacklist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
     const blacklistStart = swSource.indexOf('"ADD_TO_BLACKLIST"');
     const blacklistHandler = swSource.slice(blacklistStart, blacklistStart + 800);
-    assert.ok(blacklistHandler.includes("_cacheVersion++"), "blacklist handler should increment _cacheVersion");
+    assert.ok(
+      blacklistHandler.includes("_invalidatePrefsCache()"),
+      "blacklist handler should call _invalidatePrefsCache()"
+    );
+  });
+
+  test("_invalidatePrefsCache helper is defined and increments _cacheVersion", () => {
+    assert.ok(
+      swSource.includes("function _invalidatePrefsCache()"),
+      "_invalidatePrefsCache helper must be defined"
+    );
+    const helperBlock = swSource.slice(
+      swSource.indexOf("function _invalidatePrefsCache()"),
+      swSource.indexOf("function _invalidatePrefsCache()") + 200
+    );
+    assert.ok(
+      helperBlock.includes("_cacheVersion++"),
+      "_invalidatePrefsCache must increment _cacheVersion"
+    );
+    assert.ok(
+      helperBlock.includes("cachedPrefs = null"),
+      "_invalidatePrefsCache must null cachedPrefs"
+    );
+    assert.ok(
+      helperBlock.includes("prefsFetchPromise = null"),
+      "_invalidatePrefsCache must null prefsFetchPromise"
+    );
   });
 });
 

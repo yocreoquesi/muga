@@ -14,6 +14,7 @@
  */
 
 import { TRUSTED_PUBLIC_KEYS } from "./remote-rules-keys.js";
+import { DNR_REMOTE_PARAMS_RULE_ID } from "./dnr-ids.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -24,8 +25,12 @@ export const REMOTE_RULES_URL =
 /** chrome.alarms name for the weekly fetch alarm (REQ-FETCH-1). */
 export const REMOTE_ALARM_NAME = "muga-remote-rules";
 
-/** DNR rule ID for remote params. MUST NOT be 1000 (custom params). (REQ-MERGE-2) */
-export const REMOTE_RULE_ID = 1001;
+/**
+ * DNR rule ID for remote params. Re-exported from lib/dnr-ids.js for
+ * backwards compatibility with callers that import it from this module.
+ * The canonical value and collision-prevention comment live in dnr-ids.js.
+ */
+export const REMOTE_RULE_ID = DNR_REMOTE_PARAMS_RULE_ID;
 
 /** Maximum response body size before rejection (REQ-SECURITY-4, REQ-FETCH-4). */
 export const MAX_PAYLOAD_BYTES = 50 * 1024; // 50 KB

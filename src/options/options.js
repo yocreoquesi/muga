@@ -4,7 +4,8 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS } from "../lib/storage.js";
+import { PREF_DEFAULTS, setPrefs } from "../lib/storage.js";
+import { isValidListEntry } from "../lib/validation.js";
 
 let _currentLang = "en";
 
@@ -112,7 +113,7 @@ async function init() {
   durationSelect.value = String(prefs.toastDuration || 15);
   durationSelect.addEventListener("change", () => {
     const val = Math.max(5, Math.min(60, parseInt(durationSelect.value, 10) || 15));
-    try { chrome.storage.sync.set({ toastDuration: val }); } catch (err) { console.error("[MUGA] save duration:", err); }
+    try { setPrefs({ toastDuration: val }); } catch (err) { console.error("[MUGA] save duration:", err); }
   });
 
   renderList("custom-params-items", prefs.customParams, "customParams");
@@ -145,7 +146,7 @@ function bindToggle(id, key, prefs) {
   const el = document.getElementById(id);
   el.checked = prefs[key];
   el.addEventListener("change", () => {
-    try { chrome.storage.sync.set({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
+    try { setPrefs({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
   });
 }
 
@@ -238,7 +239,7 @@ function renderCategories(disabledCategories) {
       } else {
         set.add(key);
       }
-      try { await chrome.storage.sync.set({ disabledCategories: [...set] }); } catch (err) { console.error("[MUGA] save category:", err); }
+      try { await setPrefs({ disabledCategories: [...set] }); } catch (err) { console.error("[MUGA] save category:", err); }
     });
 
     const slider = document.createElement("span");
@@ -386,7 +387,7 @@ function initLanguageSelect() {
   select.value = _currentLang;
   select.addEventListener("change", async () => {
     _currentLang = select.value;
-    try { await chrome.storage.sync.set({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
+    try { await setPrefs({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
     applyTranslations(_currentLang);
     // Re-render dynamic lists with new language
     let prefs;
@@ -395,17 +396,6 @@ function initLanguageSelect() {
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
   });
-}
-
-/** Validates a blacklist/whitelist entry format. */
-function isValidListEntry(entry) {
-  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
-  const parts = entry.split("::");
-  if (parts.length > 3) return false;
-  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
-  if (parts.length === 2 && parts[1] !== "disabled") return false;
-  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
-  return true;
 }
 
 /** Serializes list mutations to prevent read-modify-write races. */
@@ -435,7 +425,7 @@ function addEntry(listKey, inputId, containerId) {
     const list = prefs[listKey];
     if (!list.includes(value)) {
       list.push(value);
-      try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
+      try { await setPrefs({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
       renderList(containerId, list, listKey);
     }
     input.value = "";
@@ -451,7 +441,7 @@ function removeEntry(listKey, index) {
     try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
     const list = prefs[listKey];
     list.splice(index, 1);
-    try { await chrome.storage.sync.set({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
+    try { await setPrefs({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
     renderList(containerId, list, listKey);
   });
 }
@@ -561,7 +551,7 @@ function initExportImport() {
       if (["en", "es", "pt", "de"].includes(data.language)) {
         toSave.language = data.language;
       }
-      await chrome.storage.sync.set(toSave);
+      await setPrefs(toSave);
 
       // Re-read prefs and update all UI toggles and lists
       const newPrefs = await chrome.storage.sync.get(PREF_DEFAULTS);
