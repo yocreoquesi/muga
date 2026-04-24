@@ -511,7 +511,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.9.2...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.9.10...HEAD
+[1.9.10]: https://github.com/yocreoquesi/muga/compare/v1.9.9...v1.9.10
+[1.9.9]: https://github.com/yocreoquesi/muga/compare/v1.9.8...v1.9.9
+[1.9.8]: https://github.com/yocreoquesi/muga/compare/v1.9.7...v1.9.8
+[1.9.7]: https://github.com/yocreoquesi/muga/compare/v1.9.6...v1.9.7
+[1.9.6]: https://github.com/yocreoquesi/muga/compare/v1.9.5...v1.9.6
+[1.9.5]: https://github.com/yocreoquesi/muga/compare/v1.9.4...v1.9.5
+[1.9.4]: https://github.com/yocreoquesi/muga/compare/v1.9.3...v1.9.4
+[1.9.3]: https://github.com/yocreoquesi/muga/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/yocreoquesi/muga/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/yocreoquesi/muga/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/yocreoquesi/muga/compare/v1.8.2...v1.9.0

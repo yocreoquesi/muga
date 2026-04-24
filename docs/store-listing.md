@@ -1,7 +1,7 @@
 # MUGA: Store Listings
 
 > Version: 1.9.10
-> Last updated: 2026-04-01
+> Last updated: 2026-04-13
 > Status: Final listing for Chrome Web Store and Firefox AMO. 450+ tracking params, 150+ domain rules, 6 categories, 2 active affiliate programs, MV3 native.
 
 ---
@@ -22,7 +22,7 @@ URL cleaner: strips utm, fbclid, gclid and 450+ tracking params automatically. R
 
 ### Detailed description
 
-MUGA is a URL cleaner and tracking remover. It strips utm_source, utm_medium, utm_campaign, fbclid, gclid, msclkid, and 450+ more tracking parameters from every URL you visit, automatically, before the page loads. No buttons. No setup. No permission popups. Built natively for Manifest V3. Works on Chrome and Firefox.
+MUGA is a URL cleaner and tracking remover. It strips utm_source, utm_medium, utm_campaign, fbclid, gclid, msclkid, and 450+ more tracking parameters from every URL you visit, automatically, before the page loads. No buttons. No setup. No permission popups. Built natively for Manifest V3 on Chrome. Available for Firefox via Manifest V2.
 
 By default, MUGA never touches what isn't ours. If a link already has a creator's affiliate tag, we leave it alone. That is the "fair to every click" part, and what makes MUGA different from every other URL cleaner out there.
 
