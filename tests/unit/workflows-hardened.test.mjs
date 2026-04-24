@@ -15,7 +15,10 @@ import { join, dirname } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const workflowsDir = join(__dirname, "../../.github/workflows");
 
-const WORKFLOW_FILES = ["ci.yml", "health-check.yml", "release.yml"];
+// health-check.yml was removed (audit wave 4 – finding 4): it only ran
+// npm test, duplicating PR CI with no additional signal. A meaningful
+// canary will be re-added when a stable fixture set is available.
+const WORKFLOW_FILES = ["ci.yml", "release.yml"];
 
 function readWorkflow(name) {
   return readFileSync(join(workflowsDir, name), "utf8");
