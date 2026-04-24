@@ -65,13 +65,6 @@
     "open_in_tab": true
   },
 
-  "web_accessible_resources": [
-    {
-      "resources": ["onboarding/onboarding.html", "privacy/privacy.html", "privacy/tos.html"],
-      "matches": ["<all_urls>"]
-    }
-  ],
-
   "declarative_net_request": {
     "rule_resources": [
       {

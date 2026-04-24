@@ -196,17 +196,23 @@ describe("manifest.json integrity", () => {
     }
   });
 
-  // MV3 must declare web_accessible_resources for pages opened by the extension
-  test("MV3 has web_accessible_resources", () => {
-    assert.ok(
-      mv3.web_accessible_resources,
-      "MV3 manifest must declare web_accessible_resources for onboarding/privacy pages"
-    );
-    const allResources = mv3.web_accessible_resources.flatMap(r => r.resources || []);
-    assert.ok(
-      allResources.includes("onboarding/onboarding.html"),
-      "onboarding/onboarding.html must be in web_accessible_resources"
-    );
+  // Security: onboarding/privacy pages must NOT be web-accessible to external origins.
+  // These pages are only opened via chrome.tabs.create() or window.location.href from
+  // within the extension — they do not need web_accessible_resources. Removing them
+  // prevents any webpage from iframing the onboarding page (clickjacking risk).
+  test("MV3 does not expose onboarding or privacy pages as web_accessible_resources", () => {
+    const allResources = (mv3.web_accessible_resources || []).flatMap(r => r.resources || []);
+    const sensitivePages = [
+      "onboarding/onboarding.html",
+      "privacy/privacy.html",
+      "privacy/tos.html",
+    ];
+    for (const page of sensitivePages) {
+      assert.ok(
+        !allResources.includes(page),
+        `${page} must NOT be in web_accessible_resources — it is only opened by the extension itself`
+      );
+    }
   });
 
   test("MV3 and MV2 declare the same permissions (excluding host_permissions and MV-specific equivalents)", () => {
