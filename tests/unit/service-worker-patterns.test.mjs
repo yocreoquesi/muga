@@ -609,6 +609,109 @@ describe("T2.3 — Message handler source patterns", () => {
   });
 });
 
+// ── T2.4: DNR integration — syncRemoteParamsDNR ──────────────────────────────
+
+import { buildRemoteDnrRule, REMOTE_RULE_ID } from "../../src/lib/remote-rules.js";
+import { DNR_CUSTOM_PARAMS_RULE_ID } from "../../src/lib/dnr-ids.js";
+
+/**
+ * Pure syncRemoteParamsDNR helper — mirrors the implementation in SW.
+ * Extracted here for unit-testability with a fake DNR facade.
+ *
+ * @param {string[]} params - Remote params to sync (may be empty to remove rule).
+ * @param {{ updateDynamicRules: Function } | null} chromeDnr - DNR API or null if unsupported.
+ */
+async function syncRemoteParamsDNR(params, chromeDnr) {
+  if (!chromeDnr) return; // no-op when DNR unsupported
+  if (!params || params.length === 0) {
+    await chromeDnr.updateDynamicRules({
+      removeRuleIds: [REMOTE_RULE_ID],
+      addRules: [],
+    });
+    return;
+  }
+  await chromeDnr.updateDynamicRules({
+    removeRuleIds: [REMOTE_RULE_ID],
+    addRules: [buildRemoteDnrRule(params)],
+  });
+}
+
+describe("T2.4 — syncRemoteParamsDNR", () => {
+  test("adds rule 1001 on non-empty params", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    await syncRemoteParamsDNR(["utm_test", "fbclid_x"], fakeDnr);
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].addRules.length, 1);
+    assert.strictEqual(calls[0].addRules[0].id, REMOTE_RULE_ID);
+    assert.strictEqual(calls[0].addRules[0].id, 1001);
+  });
+
+  test("rule 1001 removeParams contains the provided params", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    const params = ["tracker_a", "tracker_b"];
+    await syncRemoteParamsDNR(params, fakeDnr);
+    const rule = calls[0].addRules[0];
+    assert.deepEqual(rule.action.redirect.transform.queryTransform.removeParams, params);
+  });
+
+  test("removes rule 1001 on empty params (purely removes)", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    await syncRemoteParamsDNR([], fakeDnr);
+    assert.strictEqual(calls.length, 1);
+    assert.ok(calls[0].removeRuleIds.includes(1001), "must remove rule 1001");
+    assert.strictEqual(calls[0].addRules.length, 0, "must not add any rules on empty params");
+  });
+
+  test("rule 1000 (custom params) NEVER appears in removeRuleIds (REQ-MERGE-2, REQ-MERGE-4)", async () => {
+    const calls = [];
+    const fakeDnr = { updateDynamicRules(opts) { calls.push(opts); return Promise.resolve(); } };
+    // Test both paths: with params and without
+    await syncRemoteParamsDNR(["utm_x"], fakeDnr);
+    await syncRemoteParamsDNR([], fakeDnr);
+    for (const call of calls) {
+      assert.ok(
+        !(call.removeRuleIds ?? []).includes(DNR_CUSTOM_PARAMS_RULE_ID),
+        `rule 1000 must never appear in removeRuleIds (found in call: ${JSON.stringify(call)})`
+      );
+      assert.ok(
+        !(call.addRules ?? []).some(r => r.id === DNR_CUSTOM_PARAMS_RULE_ID),
+        "rule 1000 must never appear in addRules"
+      );
+    }
+  });
+
+  test("no-op when DNR unsupported (chromeDnr is null/undefined)", async () => {
+    // Must not throw; returns without calling updateDynamicRules
+    await assert.doesNotReject(() => syncRemoteParamsDNR(["utm_x"], null));
+    await assert.doesNotReject(() => syncRemoteParamsDNR(["utm_x"], undefined));
+  });
+
+  test("service worker source defines syncRemoteParamsDNR function", () => {
+    assert.ok(
+      swSource.includes("syncRemoteParamsDNR"),
+      "SW must define syncRemoteParamsDNR function"
+    );
+  });
+
+  test("service worker syncRemoteParamsDNR only references REMOTE_RULE_ID (not custom)", () => {
+    // Find the syncRemoteParamsDNR function block in the SW source
+    const fnStart = swSource.indexOf("function syncRemoteParamsDNR");
+    assert.ok(fnStart !== -1, "syncRemoteParamsDNR must be defined in SW");
+    const fnBlock = swSource.slice(fnStart, fnStart + 600);
+    assert.ok(
+      fnBlock.includes("REMOTE_RULE_ID"),
+      "syncRemoteParamsDNR must use REMOTE_RULE_ID"
+    );
+    assert.ok(
+      !fnBlock.includes("DNR_CUSTOM_PARAMS_RULE_ID"),
+      "syncRemoteParamsDNR must NOT reference DNR_CUSTOM_PARAMS_RULE_ID"
+    );
+  });
+});
+
 // ── Onboarding consent verification ─────────────────────────────────────────
 
 describe("Onboarding consent — source code patterns", () => {

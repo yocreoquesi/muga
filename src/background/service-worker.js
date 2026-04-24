@@ -16,6 +16,7 @@ import {
   ALARM_DELAY_MIN,
   runRemoteRulesFetch,
   clearRemoteCache,
+  buildRemoteDnrRule,
   REMOTE_RULE_ID,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
@@ -167,6 +168,36 @@ function registerRemoteRulesAlarm(alarms) {
 // --- DNR sync helpers ---
 // Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
 const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
+
+/**
+ * Syncs remote params (signed payload) to DNR rule 1001.
+ *
+ * Mirrors syncCustomParamsDNR for rule 1000 but operates exclusively on
+ * REMOTE_RULE_ID (1001). Rule 1000 MUST NOT appear in removeRuleIds or addRules
+ * from this function. (REQ-MERGE-2, REQ-MERGE-4)
+ *
+ * No-op when DNR is unsupported (Firefox MV2 graceful degradation).
+ *
+ * @param {string[]} params - Remote params to sync. Empty array removes the rule.
+ */
+async function syncRemoteParamsDNR(params) {
+  if (!hasDNR) return;
+  try {
+    if (!params || params.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [REMOTE_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [REMOTE_RULE_ID],
+      addRules: [buildRemoteDnrRule(params)],
+    });
+  } catch (err) {
+    console.error("[MUGA] syncRemoteParamsDNR failed:", err);
+  }
+}
 
 async function syncCustomParamsDNR(customParams) {
   if (!hasDNR) return;
