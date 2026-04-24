@@ -5,6 +5,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS } from "../lib/storage.js";
+import { isValidListEntry } from "../lib/validation.js";
 
 let _currentLang = "en";
 
@@ -395,17 +396,6 @@ function initLanguageSelect() {
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
   });
-}
-
-/** Validates a blacklist/whitelist entry format. */
-function isValidListEntry(entry) {
-  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
-  const parts = entry.split("::");
-  if (parts.length > 3) return false;
-  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
-  if (parts.length === 2 && parts[1] !== "disabled") return false;
-  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
-  return true;
 }
 
 /** Serializes list mutations to prevent read-modify-write races. */

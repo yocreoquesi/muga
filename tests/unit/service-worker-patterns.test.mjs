@@ -10,20 +10,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { isValidListEntry } from "../../src/lib/validation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const swSource = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
-
-// Replicate isValidListEntry from service-worker.js
-function isValidListEntry(entry) {
-  if (typeof entry !== "string" || entry.length === 0 || entry.length > 500) return false;
-  const parts = entry.split("::");
-  if (parts.length > 3) return false;
-  if (!parts[0] || !/^[a-zA-Z0-9.-]+$/.test(parts[0])) return false;
-  if (parts.length === 2 && parts[1] !== "disabled") return false;
-  if (parts.length === 3 && (!parts[1] || !parts[2])) return false;
-  return true;
-}
 
 // ── Message handler structure verification ───────────────────────────────────
 
