@@ -1047,7 +1047,7 @@ async function initRemoteRules() {
   let status = { enabled: false, fetchedAt: null, paramCount: 0, lastError: null, source: REMOTE_RULES_URL };
   try {
     const resp = await chrome.runtime.sendMessage({ type: "GET_REMOTE_RULES_STATUS" });
-    if (resp) status = { ...status, ...resp };
+    if (resp) status = { ...status, ...resp, ...(resp.meta || {}) };
   } catch (err) {
     console.error("[MUGA] GET_REMOTE_RULES_STATUS:", err);
   }
@@ -1113,7 +1113,7 @@ async function initRemoteRules() {
       // Re-query status and render updated state
       const statusResp = await chrome.runtime.sendMessage({ type: "GET_REMOTE_RULES_STATUS" });
       if (statusResp) {
-        renderRemoteRulesStatus({ source: REMOTE_RULES_URL, ...statusResp });
+        renderRemoteRulesStatus({ source: REMOTE_RULES_URL, ...statusResp, ...(statusResp.meta || {}) });
       }
     } catch (err) {
       console.error("[MUGA] ENABLE_REMOTE_RULES:", err);
