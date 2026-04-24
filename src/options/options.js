@@ -724,7 +724,7 @@ function initDevTools() {
       rateBtn.textContent = t("rate_nudge_btn_short", _currentLang);
 
       const dismissBtn = document.createElement("button");
-      dismissBtn.style.cssText = btnStyle + ";color:#666";
+      dismissBtn.style.cssText = btnStyle + ";color:#9A9A9A";
       dismissBtn.textContent = `Dismiss (${localData.nudgeShownCount}/3)`;
 
       const resetBtn = document.createElement("button");
