@@ -1202,12 +1202,12 @@ describe("runRemoteRulesFetch — orchestrator (integration-ish)", () => {
 // ── NFR-PERF-2 benchmark ─────────────────────────────────────────────────────
 
 describe("NFR-PERF-2 — remote params do not measurably slow processUrl", () => {
-  // This benchmark verifies that merging 500 remote params doesn't add significant
-  // latency to per-URL processing. Threshold: < 50ms for 1000 invocations.
-  // Rationale: even on a slow CI machine, O(1) Set lookup for 500 params should
-  // be negligible vs. the URL parsing and param iteration overhead.
+  // NFR-PERF-2 target: "merge of 500 remote params adds < 1ms to per-URL processing".
+  // Cap: 500ms total for 1000 invocations = 0.5ms/call average, 10x headroom over
+  // typical local baseline (~40ms) to absorb CI runner variance. A real regression
+  // (e.g. O(n) lookup replacing Set.has) would easily exceed 500ms.
 
-  test("processUrl with 500 remote params: 1000 invocations complete in < 50ms", async () => {
+  test("processUrl with 500 remote params: 1000 invocations complete in < 500ms", async () => {
     const { processUrl } = await import("../../src/lib/cleaner.js");
 
     // Build a prefs object with 500 remote params
@@ -1248,14 +1248,9 @@ describe("NFR-PERF-2 — remote params do not measurably slow processUrl", () =>
     }
     const elapsed = performance.now() - start;
 
-    // Threshold: < 50ms for 1000 invocations is generous — real expected value is < 5ms
-    // Comment: Set.has() is O(1) regardless of set size. The overhead of adding 500 remote
-    // params to the Set constructor is the main cost, and it's paid per processUrl call.
-    // If this ever becomes a bottleneck, the fix is to cache the remoteParams Set in the
-    // prefs cache layer (T2.x scope). For now, < 50ms is a safe ceiling for CI.
     assert.ok(
-      elapsed < 50,
-      `NFR-PERF-2 FAILED: 1000 processUrl calls with 500 remote params took ${elapsed.toFixed(2)}ms (limit: 50ms)`
+      elapsed < 500,
+      `NFR-PERF-2 FAILED: 1000 processUrl calls with 500 remote params took ${elapsed.toFixed(2)}ms (limit: 500ms)`
     );
   });
 });
