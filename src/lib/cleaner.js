@@ -28,10 +28,11 @@ const TRACKING_PREFIXES = [
 ];
 
 /** Returns true if the param is a known tracking param (exact match or prefix). */
-function isTrackingParam(lower, customParams, domainStrip) {
+function isTrackingParam(lower, customParams, domainStrip, remoteParams) {
   if (TRACKING_PARAMS_SET.has(lower)) return true;
   if (customParams.has(lower)) return true;
   if (domainStrip.has(lower)) return true;
+  if (remoteParams.has(lower)) return true;  // T1.5: additive remote params (ADR-D10)
   for (const prefix of TRACKING_PREFIXES) {
     if (lower.startsWith(prefix)) return true;
   }
@@ -132,6 +133,7 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
   const patterns = getPatternsForHost(hostname);
   const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
   const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
+  const remoteParams = new Set((prefs.remoteParams || []).map(p => p.toLowerCase()));  // T1.5: ADR-D10
   const { preserved, domainStrip } = getDomainParamSets(hostname, domainRules);
 
   const disabledParams = new Set();
@@ -149,7 +151,7 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
     if (disabledParams.has(lower)) continue;
-    if (isTrackingParam(lower, customParams, domainStrip)) {
+    if (isTrackingParam(lower, customParams, domainStrip, remoteParams)) {
       url.searchParams.delete(param);
       removed.push(param);
     }
