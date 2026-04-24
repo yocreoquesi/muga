@@ -105,6 +105,10 @@ export const test = base.extend({
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/options/options.html`);
     await page.waitForLoadState("domcontentloaded");
+    // options.js init is async (reads devMode from chrome.storage.local).
+    // Wait for the init-complete flag to avoid races where a test click
+    // lands before the stored value has been applied to the DOM.
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
     await use(page);
     await page.close();
   },

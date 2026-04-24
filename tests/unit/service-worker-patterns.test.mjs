@@ -81,10 +81,10 @@ describe("Service worker message handlers", () => {
 
   test("list mutations read fresh prefs (not cache) to prevent race", () => {
     // After the queue fix, handlers should call getPrefs() directly, not getPrefsWithCache()
-    const whitelistHandler = swSource.slice(
-      swSource.indexOf('"ADD_TO_WHITELIST"'),
-      swSource.indexOf('"ADD_TO_BLACKLIST"')
-    );
+    // Use the dedicated handler block (skip combined tab guard at the top)
+    const whitelistStart = swSource.indexOf('if (message.type === "ADD_TO_WHITELIST")');
+    const blacklistStart = swSource.indexOf('if (message.type === "ADD_TO_BLACKLIST")');
+    const whitelistHandler = swSource.slice(whitelistStart, blacklistStart);
     assert.ok(whitelistHandler.includes("getPrefs()"), "whitelist handler should read fresh prefs");
   });
 });
@@ -215,10 +215,10 @@ describe("Cache invalidation — version counter", () => {
   });
 
   test("whitelist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
-    const whitelistHandler = swSource.slice(
-      swSource.indexOf('"ADD_TO_WHITELIST"'),
-      swSource.indexOf('"ADD_TO_BLACKLIST"')
-    );
+    // Use the dedicated handler block (skip combined tab guard at the top)
+    const whitelistStart = swSource.indexOf('if (message.type === "ADD_TO_WHITELIST")');
+    const blacklistStart = swSource.indexOf('if (message.type === "ADD_TO_BLACKLIST")');
+    const whitelistHandler = swSource.slice(whitelistStart, blacklistStart);
     assert.ok(
       whitelistHandler.includes("_invalidatePrefsCache()"),
       "whitelist handler should call _invalidatePrefsCache()"
@@ -226,7 +226,8 @@ describe("Cache invalidation — version counter", () => {
   });
 
   test("blacklist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
-    const blacklistStart = swSource.indexOf('"ADD_TO_BLACKLIST"');
+    // Use the dedicated handler block (skip combined guard at the top)
+    const blacklistStart = swSource.indexOf('if (message.type === "ADD_TO_BLACKLIST")');
     const blacklistHandler = swSource.slice(blacklistStart, blacklistStart + 800);
     assert.ok(
       blacklistHandler.includes("_invalidatePrefsCache()"),
@@ -254,6 +255,61 @@ describe("Cache invalidation — version counter", () => {
     assert.ok(
       helperBlock.includes("prefsFetchPromise = null"),
       "_invalidatePrefsCache must null prefsFetchPromise"
+    );
+  });
+});
+
+// ── Security: debug log must not contain URLs/paths outside devMode ──────────
+
+describe("Security: debug log payload privacy (finding 1)", () => {
+  test("logAction('cleaned') does not include cleanUrl unconditionally", () => {
+    // cleanUrl must only be logged when devMode is true.
+    // The entry object is built before the logAction call; we anchor on cleanedEntry.
+    const cleanedEntryStart = swSource.indexOf("const cleanedEntry =");
+    assert.ok(cleanedEntryStart !== -1, "cleanedEntry object must exist");
+    const cleanedBlock = swSource.slice(cleanedEntryStart, cleanedEntryStart + 600);
+    const devModeGatePos = cleanedBlock.indexOf("if (prefs.devMode)");
+    assert.ok(devModeGatePos !== -1, "cleanedEntry block must have a devMode gate");
+    const cleanUrlBeforeGate = cleanedBlock.slice(0, devModeGatePos).includes("cleanUrl");
+    assert.ok(!cleanUrlBeforeGate, "cleanUrl must not appear in the flat log entry before devMode gate");
+  });
+
+  test("logAction('cleaned') includes domain unconditionally", () => {
+    const cleanedEntryStart = swSource.indexOf("const cleanedEntry =");
+    assert.ok(cleanedEntryStart !== -1, "cleanedEntry object must exist");
+    const cleanedBlock = swSource.slice(cleanedEntryStart, cleanedEntryStart + 200);
+    assert.ok(cleanedBlock.includes("domain"), "domain must always be logged");
+  });
+
+  test("logAction('cleaned') includes junkRemoved unconditionally", () => {
+    const cleanedEntryStart = swSource.indexOf("const cleanedEntry =");
+    assert.ok(cleanedEntryStart !== -1, "cleanedEntry object must exist");
+    const cleanedBlock = swSource.slice(cleanedEntryStart, cleanedEntryStart + 250);
+    assert.ok(cleanedBlock.includes("junkRemoved"), "junkRemoved must always be logged");
+  });
+
+  test("logAction('passthrough') does not include path unconditionally", () => {
+    // path must only be logged when devMode is true.
+    // The devMode gate wraps path/params assignment BEFORE the logAction call.
+    // We find the block that contains both the gate and the logAction call.
+    const passthroughEntryStart = swSource.indexOf("const passthroughEntry =");
+    assert.ok(passthroughEntryStart !== -1, "passthroughEntry object must exist");
+    const passthroughBlock = swSource.slice(passthroughEntryStart, passthroughEntryStart + 400);
+    // The flat literal (before devMode gate) must NOT contain path:
+    const devModeGatePos = passthroughBlock.indexOf("if (prefs.devMode)");
+    assert.ok(devModeGatePos !== -1, "passthrough block must have a devMode gate");
+    const pathBeforeGate = passthroughBlock.slice(0, devModeGatePos).includes("path:");
+    assert.ok(!pathBeforeGate, "path must not appear in passthrough entry before devMode gate");
+  });
+
+  test("sender.tab guard required for list-mutation messages (finding 5)", () => {
+    // ADD_TO_WHITELIST and ADD_TO_BLACKLIST handlers must check sender.tab
+    const whitelistPos = swSource.indexOf('"ADD_TO_WHITELIST"');
+    const blacklistPos = swSource.indexOf('"ADD_TO_BLACKLIST"');
+    const listSection = swSource.slice(whitelistPos, blacklistPos + 600);
+    assert.ok(
+      listSection.includes("sender.tab"),
+      "list-mutation handlers must check sender.tab"
     );
   });
 });

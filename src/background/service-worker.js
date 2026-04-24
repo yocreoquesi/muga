@@ -304,6 +304,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep the channel open for the async response
   }
 
+  if (message.type === "ADD_TO_WHITELIST" || message.type === "ADD_TO_BLACKLIST") {
+    // List mutations must originate from a tab (content script). Reject messages
+    // from extension pages (popup, options) that lack a sender.tab — they cannot
+    // legitimately trigger list changes, and this prevents a defense-in-depth gap.
+    if (!sender.tab) {
+      try { sendResponse({ ok: false, error: "tab-only" }); } catch { /* channel closed */ }
+      return false;
+    }
+  }
+
   if (message.type === "ADD_TO_WHITELIST") {
     const entry = message.tag;
     if (!isValidListEntry(entry)) {
@@ -413,7 +423,14 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   let parsedRaw;
   try { parsedRaw = new URL(rawUrl); } catch { /* ignore */ }
   if (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0)) {
-    if (parsedRaw?.search) logAction("passthrough", { domain: parsedRaw.hostname.replace(/^www\./, ""), path: parsedRaw.pathname, params: [...parsedRaw.searchParams.keys()] });
+    if (parsedRaw?.search) {
+      const passthroughEntry = { domain: parsedRaw.hostname.replace(/^www\./, "") };
+      if (prefs.devMode) {
+        passthroughEntry.path = parsedRaw.pathname;
+        passthroughEntry.params = [...parsedRaw.searchParams.keys()];
+      }
+      logAction("passthrough", passthroughEntry);
+    }
   }
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
     if (!skipStats) {
@@ -430,18 +447,21 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     if (parsedRaw) {
       try {
         const domain = parsedRaw.hostname.replace(/^www\./, "");
-        const parsedClean = new URL(result.cleanUrl);
-        logAction("cleaned", {
+        const cleanedEntry = {
           source,
           domain,
-          path: parsedRaw.pathname,
           action: result.action,
-          removed: result.removedTracking,
           junkRemoved: result.junkRemoved,
-          originalParams: [...parsedRaw.searchParams.keys()],
-          cleanParams: [...parsedClean.searchParams.keys()],
-          cleanUrl: result.cleanUrl,
-        });
+        };
+        if (prefs.devMode) {
+          const parsedClean = new URL(result.cleanUrl);
+          cleanedEntry.path = parsedRaw.pathname;
+          cleanedEntry.removed = result.removedTracking;
+          cleanedEntry.originalParams = [...parsedRaw.searchParams.keys()];
+          cleanedEntry.cleanParams = [...parsedClean.searchParams.keys()];
+          cleanedEntry.cleanUrl = result.cleanUrl;
+        }
+        logAction("cleaned", cleanedEntry);
       } catch { /* malformed cleanUrl — skip logging */ }
     }
   }

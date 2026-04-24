@@ -4,7 +4,8 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, setPrefs } from "../lib/storage.js";
+import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
+import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry } from "../lib/validation.js";
 
 let _currentLang = "en";
@@ -126,19 +127,32 @@ async function init() {
   initStatsSection();
   initExportImport();
 
-  bindToggle("dev-mode", "devMode", prefs);
+  // devMode is device-local (chrome.storage.local), not sync — bind separately
+  const devModeVal = await getDevMode();
+  const devModeEl = document.getElementById("dev-mode");
+  if (devModeEl) {
+    devModeEl.checked = devModeVal;
+    devModeEl.addEventListener("change", () => {
+      setDevMode(devModeEl.checked).catch(err => console.error("[MUGA] save devMode:", err));
+    });
+  }
   syncDevTools();
-  document.getElementById("dev-mode").addEventListener("change", syncDevTools);
+  if (devModeEl) devModeEl.addEventListener("change", syncDevTools);
   initDevTools();
 
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
   if (rateLink) {
-    const isFirefox = navigator.userAgent.includes("Firefox");
+    const isFirefox = detectFirefox();
     rateLink.href = isFirefox
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
   }
+
+  // Signal init completion for e2e tests that need to avoid races with
+  // async storage reads (e.g. clicking the dev-mode checkbox before the
+  // stored value has been applied to the DOM).
+  document.body.dataset.mugaReady = "1";
 }
 
 /** Binds a checkbox to a sync storage preference key. */
@@ -475,6 +489,8 @@ function initExportImport() {
   document.getElementById("export-btn").addEventListener("click", async () => {
     let prefs;
     try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] export prefs:", err); return; }
+    // devMode is device-local (not in PREF_DEFAULTS) — read separately
+    const devModeLocal = await getDevMode();
     const payload = {
       muga: true,
       version: chrome.runtime.getManifest().version,
@@ -493,7 +509,7 @@ function initExportImport() {
       disabledCategories: prefs.disabledCategories,
       toastDuration: prefs.toastDuration,
       language: prefs.language,
-      devMode: prefs.devMode,
+      devMode: devModeLocal,
       paramBreakdown: prefs.paramBreakdown,
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
@@ -534,10 +550,15 @@ function initExportImport() {
       if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry) || !data.customParams.every(isValidParam)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode", "paramBreakdown", "showReportButton", "domainStats"];
+      // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
+      }
+      // devMode from imported file → local storage
+      if (typeof data.devMode === "boolean") {
+        await setDevMode(data.devMode);
       }
       // Handle disabledCategories (validated against known category keys)
       const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noise", "generic"]);
@@ -564,7 +585,8 @@ function initExportImport() {
       document.getElementById("block-pings").checked = newPrefs.blockPings;
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
-      document.getElementById("dev-mode").checked = newPrefs.devMode;
+      // devMode is device-local — re-read from local storage after import
+      document.getElementById("dev-mode").checked = await getDevMode();
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
       syncDevTools();
       if (toSave.language) {
@@ -747,7 +769,7 @@ function initDevTools() {
 
       rateBtn.addEventListener("click", () => {
         clearTimeout(timer);
-        const isFirefox = navigator.userAgent.includes("Firefox");
+        const isFirefox = detectFirefox();
         const storeUrl = isFirefox
           ? "https://addons.mozilla.org/firefox/addon/muga/"
           : "https://chromewebstore.google.com/detail/muga/";
@@ -786,6 +808,15 @@ function initDevTools() {
 
   // Export debug log
   document.getElementById("dev-export-log-btn").addEventListener("click", async () => {
+    // Warn before exporting: the file contains browser info and extension settings.
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(
+      "This log includes your browser version and extension settings.\n\n" +
+      "Do NOT share it publicly (e.g. in a GitHub issue) without reviewing it first.\n\n" +
+      "Proceed with export?"
+    );
+    if (!confirmed) return;
+
     const [response, prefs, localData] = await Promise.all([
       chrome.runtime.sendMessage({ type: "GET_DEBUG_LOG" }),
       chrome.storage.sync.get(PREF_DEFAULTS),
@@ -794,14 +825,27 @@ function initDevTools() {
     const log = response?.log ?? [];
     const manifest = chrome.runtime.getManifest();
 
-    // Redact sensitive-ish fields but include config for debugging
+    // Reduce UA to "BrowserName MajorVersion" to avoid full fingerprint in exports
+    const uaRaw = navigator.userAgent;
+    let browserLabel = "Unknown";
+    const firefoxMatch = uaRaw.match(/Firefox\/(\d+)/);
+    const chromeMatch = uaRaw.match(/Chrome\/(\d+)/);
+    const edgeMatch = uaRaw.match(/Edg\/(\d+)/);
+    if (firefoxMatch) browserLabel = `Firefox ${firefoxMatch[1]}`;
+    else if (edgeMatch) browserLabel = `Edge ${edgeMatch[1]}`;
+    else if (chromeMatch) browserLabel = `Chrome ${chromeMatch[1]}`;
+
+    // Strip sensitive/personal list data; keep only config flags needed for debugging
     const safePrefs = { ...prefs };
     delete safePrefs._parsedBlacklist;
     delete safePrefs._parsedWhitelist;
+    // blacklist/whitelist contain user-specific domains — omit from export
+    delete safePrefs.blacklist;
+    delete safePrefs.whitelist;
 
     const payload = {
       muga_version: manifest.version,
-      browser: navigator.userAgent,
+      browser: browserLabel,
       exported_at: new Date().toISOString(),
       settings: safePrefs,
       stats: localData.stats,

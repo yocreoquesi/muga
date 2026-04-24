@@ -75,11 +75,12 @@ function isAmpPage({ hasAmpAttr, hasLightningAttr, currentUrl }) {
 
 /**
  * Returns true when it is safe to redirect to canonicalUrl.
- * Safety rules (mirrors amp-redirect.js):
+ * Safety rules (mirrors amp-redirect.js after security fix):
  *   1. canonicalUrl must parse as a valid URL
  *   2. protocol must be https:
- *   3. hostname must be the same domain or a parent domain of currentUrl
- *   4. canonicalUrl must differ from currentUrl
+ *   3. currentUrl hostname must start with "amp." (subdomain requirement)
+ *   4. canonical hostname must be a strict parent domain (subdomain → parent only)
+ *   5. canonicalUrl must differ from currentUrl
  *
  * @param {string} currentUrl
  * @param {string} canonicalUrl
@@ -91,10 +92,10 @@ function shouldRedirect(currentUrl, canonicalUrl) {
     const canonical_ = new URL(canonicalUrl);
     const current_ = new URL(currentUrl);
     if (canonical_.protocol !== "https:") return false;
-    if (
-      canonical_.hostname === current_.hostname ||
-      current_.hostname.endsWith("." + canonical_.hostname)
-    ) {
+    // Only follow canonical tags on pages with an explicit "amp." subdomain prefix.
+    if (!current_.hostname.startsWith("amp.")) return false;
+    // Redirect only if the canonical is on a parent domain (subdomain → parent)
+    if (current_.hostname.endsWith("." + canonical_.hostname)) {
       return true;
     }
     return false;
@@ -186,17 +187,27 @@ describe("isAmpPage — AMP detection", () => {
 });
 
 describe("shouldRedirect — safety checks", () => {
-  test("allows redirect from amp subdomain to parent domain (same root)", () => {
+  test("allows redirect from amp subdomain to parent domain (canonical AMP case)", () => {
     assert.equal(
       shouldRedirect("https://amp.example.com/article", "https://example.com/article"),
       true
     );
   });
 
-  test("allows redirect when canonical is on the exact same hostname", () => {
+  test("blocks redirect when current page does not have amp. subdomain prefix", () => {
+    // Security fix: same-hostname redirect via injected canonical is blocked unless
+    // the page is on an "amp." subdomain (the legitimate AMP use-case).
     assert.equal(
       shouldRedirect("https://example.com/article?amp=1", "https://example.com/article"),
-      true
+      false
+    );
+  });
+
+  test("blocks redirect from non-amp. subdomain even with AMP attributes", () => {
+    // A page at www.example.com with html[amp] can inject a canonical — must not redirect
+    assert.equal(
+      shouldRedirect("https://www.example.com/article", "https://example.com/article"),
+      false
     );
   });
 
@@ -215,7 +226,7 @@ describe("shouldRedirect — safety checks", () => {
   });
 
   test("returns false when canonical equals current URL (no redirect needed)", () => {
-    const url = "https://example.com/article";
+    const url = "https://amp.example.com/article";
     assert.equal(shouldRedirect(url, url), false);
   });
 
@@ -241,10 +252,12 @@ describe("shouldRedirect — safety checks", () => {
     );
   });
 
-  test("allows deeper subdomain to redirect to shallower canonical", () => {
+  test("deeper amp. subdomain redirect blocked (m.amp. does not start with amp.)", () => {
+    // m.amp.example.com does not startsWith("amp."), so it is blocked for safety.
+    // The common case is amp.example.com, not nested amp subdomains.
     assert.equal(
       shouldRedirect("https://m.amp.example.com/p", "https://example.com/p"),
-      true
+      false
     );
   });
 });
@@ -285,6 +298,13 @@ describe("C11 — replica sync verification (amp-redirect.js)", () => {
     assert.ok(
       AMP_REDIRECT_SOURCE.includes('current_.hostname.endsWith("." + canonical_.hostname)'),
       "Source must contain the parent-domain endsWith check"
+    );
+  });
+
+  test("source requires amp. subdomain prefix before following canonical (security fix)", () => {
+    assert.ok(
+      AMP_REDIRECT_SOURCE.includes('current_.hostname.startsWith("amp.")'),
+      "Source must require amp. subdomain prefix before trusting canonical tag"
     );
   });
 

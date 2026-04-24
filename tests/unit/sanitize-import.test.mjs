@@ -294,3 +294,45 @@ describe("sanitizeHTML — malicious input defense", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Security: sanitizeHTML forces rel=noopener + assertHtmlKeyCoverage (finding 6)
+// ---------------------------------------------------------------------------
+describe("Security: sanitizeHTML target=_blank gets rel=noopener noreferrer (finding 6)", () => {
+
+  test("source forces rel=noopener noreferrer on target=_blank anchors", () => {
+    assert.ok(
+      I18N_SOURCE.includes('"noopener noreferrer"'),
+      'sanitizeHTML must set rel="noopener noreferrer" on target="_blank" anchors'
+    );
+  });
+
+  test("source checks for target=_blank before setting rel", () => {
+    const sanitizeBlock = I18N_SOURCE.slice(
+      I18N_SOURCE.indexOf("function sanitizeHTML("),
+      I18N_SOURCE.indexOf("function sanitizeHTML(") + 1500
+    );
+    assert.ok(
+      sanitizeBlock.includes('getAttribute("target") === "_blank"'),
+      'sanitizeHTML must check getAttribute("target") === "_blank"'
+    );
+  });
+
+  test("assertHtmlKeyCoverage is exported from i18n.js", () => {
+    assert.ok(
+      I18N_SOURCE.includes("export function assertHtmlKeyCoverage("),
+      "assertHtmlKeyCoverage must be exported from i18n.js"
+    );
+  });
+
+  test("assertHtmlKeyCoverage is called in the data-i18n-html fallback path", () => {
+    const applyBlock = I18N_SOURCE.slice(
+      I18N_SOURCE.indexOf("data-i18n-html"),
+      I18N_SOURCE.indexOf("data-i18n-html") + 500
+    );
+    assert.ok(
+      applyBlock.includes("assertHtmlKeyCoverage(key)"),
+      "assertHtmlKeyCoverage must be called in the data-i18n-html fallback path"
+    );
+  });
+});

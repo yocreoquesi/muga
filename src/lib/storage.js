@@ -90,11 +90,7 @@ export const PREF_DEFAULTS = {
   consentVersion: null,   // e.g. "1.0". Bump to re-trigger onboarding on ToS changes.
   consentDate: null,      // Unix timestamp (ms) of when the user accepted
   disabledCategories: [],  // e.g. ["utm", "ads"]. Params in these categories are not stripped.
-  // TODO(C8): devMode should migrate to chrome.storage.local. It is device-specific
-  //           and does not need to sync across devices. Left here for now to avoid
-  //           breaking options.js which reads it via getPrefs(). (#259)
   toastDuration: 15,  // seconds: how long the affiliate notification stays visible
-  devMode: false,
   paramBreakdown: true,
   showReportButton: true,
   domainStats: true,
@@ -192,6 +188,54 @@ export async function setStats(partial) {
     });
   } catch (err) {
     console.error("[MUGA] setStats failed:", err);
+  }
+}
+
+// ── devMode: device-local flag (chrome.storage.local, not sync) ──────────────
+//
+// devMode is a developer-only setting that should NOT sync across devices.
+// It is stored in chrome.storage.local and accessed via dedicated helpers so
+// the options page can split reads without touching PREF_DEFAULTS (sync).
+
+/**
+ * Reads the devMode flag from chrome.storage.local.
+ * @returns {Promise<boolean>}
+ */
+export async function getDevMode() {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.get({ devMode: false }, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result.devMode === true);
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getDevMode failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Writes the devMode flag to chrome.storage.local.
+ * @param {boolean} value
+ * @returns {Promise<void>}
+ */
+export async function setDevMode(value) {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ devMode: !!value }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] setDevMode failed:", err);
   }
 }
 

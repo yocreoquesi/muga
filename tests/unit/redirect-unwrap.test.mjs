@@ -846,6 +846,81 @@ describe("redirect-unwrap — Pepper network /visit/ redirects", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Security: Pepper intermediary allowlist (finding 4)
+// ---------------------------------------------------------------------------
+
+// Mirrors isPepperIntermediary() from redirect-unwrap.js
+function isPepperIntermediary(hostname) {
+  if (hostname === "digidip.net" || hostname.endsWith(".digidip.net")) return true;
+  const parts = hostname.split(".");
+  if (parts.length >= 3 && parts[0] === "path") return true;
+  return false;
+}
+
+describe("Security: Pepper intermediary allowlist (finding 4)", () => {
+  test("chollometro.digidip.net is an allowed intermediary", () => {
+    assert.ok(isPepperIntermediary("chollometro.digidip.net"));
+  });
+
+  test("chollometro-amazon.digidip.net is an allowed intermediary", () => {
+    assert.ok(isPepperIntermediary("chollometro-amazon.digidip.net"));
+  });
+
+  test("digidip.net itself is an allowed intermediary", () => {
+    assert.ok(isPepperIntermediary("digidip.net"));
+  });
+
+  test("path.chollometro.com is an allowed intermediary", () => {
+    assert.ok(isPepperIntermediary("path.chollometro.com"));
+  });
+
+  test("path.mydealz.de is an allowed intermediary", () => {
+    assert.ok(isPepperIntermediary("path.mydealz.de"));
+  });
+
+  test("evil.com is NOT an allowed intermediary", () => {
+    assert.ok(!isPepperIntermediary("evil.com"));
+  });
+
+  test("notdigidip.net is NOT an allowed intermediary", () => {
+    assert.ok(!isPepperIntermediary("notdigidip.net"));
+  });
+
+  test("chollometro.com (the deal site itself) is NOT an allowed intermediary", () => {
+    assert.ok(!isPepperIntermediary("chollometro.com"));
+  });
+
+  test("fake-digidip.net is NOT an allowed intermediary", () => {
+    assert.ok(!isPepperIntermediary("fake-digidip.net"));
+  });
+
+  test("source contains PEPPER_INTERMEDIARY_ALLOWLIST constant", () => {
+    assert.ok(
+      REDIRECT_UNWRAP_SOURCE.includes("PEPPER_INTERMEDIARY_ALLOWLIST"),
+      "Source must define PEPPER_INTERMEDIARY_ALLOWLIST"
+    );
+  });
+
+  test("source contains isPepperIntermediary() guard function", () => {
+    assert.ok(
+      REDIRECT_UNWRAP_SOURCE.includes("isPepperIntermediary"),
+      "Source must define isPepperIntermediary() guard"
+    );
+  });
+
+  test("source gates Pepper extraction on isPepperIntermediary check", () => {
+    const pepperBlock = REDIRECT_UNWRAP_SOURCE.slice(
+      REDIRECT_UNWRAP_SOURCE.indexOf("PEPPER_DOMAINS"),
+      REDIRECT_UNWRAP_SOURCE.indexOf("PEPPER_DOMAINS") + 2000
+    );
+    assert.ok(
+      pepperBlock.includes("isPepperIntermediary(intermediary.hostname)"),
+      "Pepper extraction must be gated by isPepperIntermediary()"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // C11 — Sync: Pepper network handler present in source
 // ---------------------------------------------------------------------------
 describe("C11 — replica sync verification (Pepper network)", () => {
