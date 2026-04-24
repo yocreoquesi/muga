@@ -10,7 +10,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -147,8 +147,31 @@ describe("Version consistency — README badges", () => {
     const match = readme.match(/tests-(\d+)_pass/);
     assert.ok(match, "README must have a tests badge");
     const badgeCount = parseInt(match[1], 10);
-    // This test itself is part of the count, so allow ±50 tolerance
-    assert.ok(badgeCount >= 900, `Badge shows ${badgeCount} tests — likely stale, should be ~958+`);
+
+    // Compute the floor dynamically from the number of test() calls across
+    // all unit test files rather than hard-coding a magic number that goes
+    // stale every time a new test file is added.
+    //
+    // Staleness protocol: if this assertion fails, the README badge is more
+    // than 50 tests behind the actual count. Update the badge and re-run.
+    // The computed floor is intentionally conservative (counts `test(` call
+    // sites, not nested sub-tests) so a ±50 window is reasonable.
+    const unitDir = join(__dirname, ".");
+    const unitFiles = readdirSync(unitDir).filter(f => f.endsWith(".test.mjs"));
+    let computedCount = 0;
+    for (const f of unitFiles) {
+      const src = readFileSync(join(unitDir, f), "utf8");
+      // Count top-level test( calls; this under-counts nested describe tests
+      // but provides a stable lower bound for the badge floor.
+      const matches = src.match(/\btest\(/g);
+      computedCount += matches ? matches.length : 0;
+    }
+    const floor = Math.max(computedCount - 50, 0);
+
+    assert.ok(
+      badgeCount >= floor,
+      `Badge shows ${badgeCount} tests — likely stale. Computed floor: ${floor} (actual test() sites: ${computedCount}). Update the README badge.`
+    );
   });
 });
 

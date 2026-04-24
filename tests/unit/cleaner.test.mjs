@@ -255,6 +255,52 @@ describe("action: untouched", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Disabled-extension guard contract — prefs.enabled === false
+//
+// DESIGN NOTE: processUrl is a pure function. The primary enabled guard
+// lives in handleProcessUrl (service-worker.js) — NOT inside processUrl.
+// Any caller that passes enabled: false gets cleaning applied anyway;
+// suppression is the caller's responsibility.
+//
+// These tests lock in that contract so a refactor that accidentally moves
+// the guard into processUrl is caught immediately (it would break the
+// existing test at line ~1904 and the coverage below).
+// ---------------------------------------------------------------------------
+describe("disabled extension — prefs.enabled === false (coverage for enabled guard contract)", () => {
+
+  test("processUrl cleans tracking params regardless of enabled flag — guard is caller's responsibility", () => {
+    // Regression guard: processUrl is intentionally pure; enabled is checked by
+    // handleProcessUrl in service-worker.js, not here. See also line ~1904.
+    const raw = "https://example.com/?utm_source=newsletter&fbclid=abc123";
+    const { action, removedTracking } = processUrl(
+      raw,
+      { ...PREFS, enabled: false }
+    );
+    assert.equal(action, "cleaned",
+      "processUrl must still clean when enabled=false — enabled guard belongs to the caller");
+    assert.ok(removedTracking.includes("utm_source"), "utm_source must be removed");
+    assert.ok(removedTracking.includes("fbclid"), "fbclid must be removed");
+  });
+
+  test("cleanUrl differs from rawUrl when enabled=false and params are dirty", () => {
+    const raw = "https://example.com/?utm_campaign=spring";
+    const { cleanUrl } = processUrl(raw, { ...PREFS, enabled: false });
+    assert.notEqual(cleanUrl, raw,
+      "cleanUrl must be the cleaned value; enabled guard is not processUrl's concern");
+    assert.ok(!cleanUrl.includes("utm_campaign"));
+  });
+
+  test("URL with only clean params is still untouched when enabled=false", () => {
+    // Verifies the untouched path works correctly regardless of the enabled value
+    const raw = "https://example.com/?page=3&lang=en";
+    const { action, cleanUrl } = processUrl(raw, { ...PREFS, enabled: false });
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, raw);
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Edge cases
 // ---------------------------------------------------------------------------
 describe("edge cases", () => {
