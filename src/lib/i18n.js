@@ -281,12 +281,39 @@ function sanitizeHTML(html) {
           const href = child.getAttribute("href");
           if (!/^(https?:|\.\.\/|#)/.test(href)) child.removeAttribute("href");
         }
+        // Force rel="noopener noreferrer" on any <a target="_blank"> to prevent
+        // reverse tabnapping. target="_blank" without rel="noopener" gives the
+        // opened page access to window.opener.
+        if (child.tagName.toLowerCase() === "a" && child.getAttribute("target") === "_blank") {
+          child.setAttribute("rel", "noopener noreferrer");
+        }
         walk(child);
       }
     }
   };
   walk(doc.body);
   return doc.body.innerHTML;
+}
+
+/**
+ * Dev-mode assertion: warn loudly when a data-i18n-html element references a
+ * key not in HTML_KEYS. This turns a silent textContent fallback into an
+ * audible error so missing HTML_KEYS registrations are caught early.
+ *
+ * Only logs console.error (does not throw) to avoid breaking the page in prod.
+ * In tests, assertHtmlKeyCoverage() can be called explicitly to throw.
+ *
+ * @param {string} key
+ */
+export function assertHtmlKeyCoverage(key) {
+  if (!HTML_KEYS.has(key)) {
+    const msg = `[MUGA i18n] data-i18n-html key "${key}" is not in HTML_KEYS — add it or use data-i18n instead.`;
+    // In test environments (Node), throw so CI catches missing registrations.
+    if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test") {
+      throw new Error(msg);
+    }
+    console.error(msg);
+  }
 }
 
 /**
@@ -312,6 +339,9 @@ export function applyTranslations(lang) {
     if (HTML_KEYS.has(key)) {
       el.innerHTML = sanitizeHTML(value);
     } else {
+      // Silent fallback: the key is not registered in HTML_KEYS.
+      // Warn loudly so developers notice the missing registration.
+      assertHtmlKeyCoverage(key);
       el.textContent = value;
     }
   });
