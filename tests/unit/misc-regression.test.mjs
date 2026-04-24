@@ -94,6 +94,72 @@ describe("Regression: SW syncContextMenus uses lib/i18n.js translations", () => 
 });
 
 // ---------------------------------------------------------------------------
+// Security: debug log export privacy hardening (finding 2)
+// ---------------------------------------------------------------------------
+describe("Security: debug export payload privacy (finding 2)", () => {
+  const optionsSource = readFileSync(join(_dir, "../../src/options/options.js"), "utf8");
+
+  test("debug export shows a confirmation dialog before downloading", () => {
+    const exportBlock = optionsSource.slice(
+      optionsSource.indexOf("dev-export-log-btn"),
+      optionsSource.indexOf("dev-export-log-btn") + 1500
+    );
+    assert.ok(
+      exportBlock.includes("window.confirm(") || exportBlock.includes("confirm("),
+      "export handler must show a confirmation dialog before downloading"
+    );
+  });
+
+  test("debug export returns early when user cancels", () => {
+    const exportBlock = optionsSource.slice(
+      optionsSource.indexOf("dev-export-log-btn"),
+      optionsSource.indexOf("dev-export-log-btn") + 1500
+    );
+    assert.ok(
+      exportBlock.includes("if (!confirmed) return;") || exportBlock.includes("if (!confirmed)"),
+      "export handler must return early when user cancels the dialog"
+    );
+  });
+
+  test("debug export omits blacklist from payload", () => {
+    const exportBlock = optionsSource.slice(
+      optionsSource.indexOf("dev-export-log-btn"),
+      optionsSource.indexOf("dev-export-log-btn") + 2500
+    );
+    assert.ok(
+      exportBlock.includes("delete safePrefs.blacklist"),
+      "export handler must delete blacklist from safePrefs before export"
+    );
+  });
+
+  test("debug export omits whitelist from payload", () => {
+    const exportBlock = optionsSource.slice(
+      optionsSource.indexOf("dev-export-log-btn"),
+      optionsSource.indexOf("dev-export-log-btn") + 2500
+    );
+    assert.ok(
+      exportBlock.includes("delete safePrefs.whitelist"),
+      "export handler must delete whitelist from safePrefs before export"
+    );
+  });
+
+  test("debug export does not embed raw navigator.userAgent string", () => {
+    const exportBlock = optionsSource.slice(
+      optionsSource.indexOf("dev-export-log-btn"),
+      optionsSource.indexOf("dev-export-log-btn") + 2500
+    );
+    // The payload must use the trimmed browserLabel, not navigator.userAgent directly
+    const payloadStart = exportBlock.indexOf("const payload =");
+    assert.ok(payloadStart !== -1, "payload object must be defined");
+    const payloadLiteral = exportBlock.slice(payloadStart, payloadStart + 300);
+    assert.ok(
+      !payloadLiteral.includes("navigator.userAgent"),
+      "payload must not embed navigator.userAgent directly — use trimmed browserLabel instead"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Regression: options.js routes all sync writes through setPrefs()
 // ---------------------------------------------------------------------------
 describe("Regression: options.js uses setPrefs() for all sync writes", () => {

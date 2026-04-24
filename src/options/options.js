@@ -779,6 +779,15 @@ function initDevTools() {
 
   // Export debug log
   document.getElementById("dev-export-log-btn").addEventListener("click", async () => {
+    // Warn before exporting: the file contains browser info and extension settings.
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(
+      "This log includes your browser version and extension settings.\n\n" +
+      "Do NOT share it publicly (e.g. in a GitHub issue) without reviewing it first.\n\n" +
+      "Proceed with export?"
+    );
+    if (!confirmed) return;
+
     const [response, prefs, localData] = await Promise.all([
       chrome.runtime.sendMessage({ type: "GET_DEBUG_LOG" }),
       chrome.storage.sync.get(PREF_DEFAULTS),
@@ -787,14 +796,27 @@ function initDevTools() {
     const log = response?.log ?? [];
     const manifest = chrome.runtime.getManifest();
 
-    // Redact sensitive-ish fields but include config for debugging
+    // Reduce UA to "BrowserName MajorVersion" to avoid full fingerprint in exports
+    const uaRaw = navigator.userAgent;
+    let browserLabel = "Unknown";
+    const firefoxMatch = uaRaw.match(/Firefox\/(\d+)/);
+    const chromeMatch = uaRaw.match(/Chrome\/(\d+)/);
+    const edgeMatch = uaRaw.match(/Edg\/(\d+)/);
+    if (firefoxMatch) browserLabel = `Firefox ${firefoxMatch[1]}`;
+    else if (edgeMatch) browserLabel = `Edge ${edgeMatch[1]}`;
+    else if (chromeMatch) browserLabel = `Chrome ${chromeMatch[1]}`;
+
+    // Strip sensitive/personal list data; keep only config flags needed for debugging
     const safePrefs = { ...prefs };
     delete safePrefs._parsedBlacklist;
     delete safePrefs._parsedWhitelist;
+    // blacklist/whitelist contain user-specific domains — omit from export
+    delete safePrefs.blacklist;
+    delete safePrefs.whitelist;
 
     const payload = {
       muga_version: manifest.version,
-      browser: navigator.userAgent,
+      browser: browserLabel,
       exported_at: new Date().toISOString(),
       settings: safePrefs,
       stats: localData.stats,
