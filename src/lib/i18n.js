@@ -191,6 +191,23 @@ export const TRANSLATIONS = {
   dev_report_broken_hint:     { en: "Opens a pre-filled GitHub issue with your browser and extension info", es: "Abre un issue de GitHub pre-rellenado con info de tu navegador y extensi\u00f3n", pt: "Abre uma issue do GitHub pré-preenchida com informações do seu navegador e extensão", de: "Öffnet ein vorab ausgefülltes GitHub-Issue mit deinen Browser- und Erweiterungsinfos" },
   dev_report_broken_btn:      { en: "Report",                                                            es: "Reportar",                                                            pt: "Reportar",                                                            de: "Melden" },
 
+  // ── Rate button short label (used by growth bar) ──────────────────────────
+  rate_muga_short: { en: "Rate MUGA", es: "Valorar MUGA", pt: "Avaliar MUGA", de: "MUGA bewerten" },
+
+  // ── Error messages ───────────────────────────────────────────────────────
+  ob_save_error:   { en: "Error — please try again", es: "Error — por favor intentalo de nuevo", pt: "Erro — por favor tente novamente", de: "Fehler — bitte versuche es erneut" },
+  dev_url_error:   { en: "Error:", es: "Error:", pt: "Erro:", de: "Fehler:" },
+
+  // ── Share button ─────────────────────────────────────────────────────────
+  share_btn_label: { en: "Share MUGA", es: "Compartir MUGA", pt: "Compartilhar MUGA", de: "MUGA teilen" },
+
+  // ── Dev-mode nudge panel (developer-facing, intentionally minimal) ────────
+  dev_nudge_dismiss_btn: { en: "Dismiss", es: "Descartar", pt: "Dispensar", de: "Schließen" },
+  dev_nudge_reset_btn:   { en: "Reset counters", es: "Reiniciar contadores", pt: "Zerar contadores", de: "Zähler zurücksetzen" },
+  dev_nudge_status:      { en: "Status: dismissed=%s1, shown=%s2/3, lastShown=%s3", es: "Estado: descartado=%s1, mostrado=%s2/3, lastShown=%s3", pt: "Status: descartado=%s1, mostrado=%s2/3, lastShown=%s3", de: "Status: verworfen=%s1, gezeigt=%s2/3, zuletzt=%s3" },
+  dev_nudge_reset_done:  { en: "All nudge counters reset. Ready for testing.", es: "Todos los contadores reiniciados. Listo para probar.", pt: "Todos os contadores zerados. Pronto para testar.", de: "Alle Zähler zurückgesetzt. Bereit zum Testen." },
+  dev_nudge_reset_fresh: { en: "Counters reset to 0. Ready for fresh testing.", es: "Contadores a 0. Listo para una prueba nueva.", pt: "Contadores a 0. Pronto para um novo teste.", de: "Zähler auf 0. Bereit für neue Tests." },
+
   // ── Context menu ─────────────────────────────────────────────────────────
   ctx_copy_clean_link:      { en: "Copy clean link",                       es: "Copiar enlace limpio",                       pt: "Copiar link limpo",                       de: "Bereinigten Link kopieren" },
   ctx_copy_clean_selection: { en: "Copy clean links in selection",         es: "Copiar enlaces limpios de la selección",         pt: "Copiar links limpos da seleção",         de: "Bereinigte Links in Auswahl kopieren" },

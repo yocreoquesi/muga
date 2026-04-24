@@ -210,7 +210,8 @@ async function init() {
 
   if (shouldNudge) {
     rateBtn.hidden = false;
-    rateBtn.textContent = t("rate_nudge_btn_short", lang);
+    const rateBtnLabel = rateBtn.querySelector("[data-i18n='rate_muga_short']") || rateBtn;
+    rateBtnLabel.textContent = t("rate_nudge_btn_short", lang);
     sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {}); // best-effort; nudge still shows
     chrome.storage.local.set({
       nudgeShownCount: nudgeData.nudgeShownCount + 1,
@@ -269,9 +270,10 @@ async function init() {
     const pick = seasonal[mmdd] || phrases[Math.floor(Math.random() * phrases.length)];
     const text = `${pick}\n\n${storeUrl}`;
 
+    const shareBtnLabel = shareBtn.querySelector("[data-i18n='share_btn']") || shareBtn;
     navigator.clipboard.writeText(text).then(() => {
-      shareBtn.textContent = t("share_copied_prefix", lang) + t("share_copied", lang);
-      setTimeout(() => { shareBtn.textContent = t("share_copy_prefix", lang) + t("share_btn", lang); }, 1500);
+      shareBtnLabel.textContent = t("share_copied_prefix", lang) + t("share_copied", lang);
+      setTimeout(() => { shareBtnLabel.textContent = t("share_copy_prefix", lang) + t("share_btn", lang); }, 1500);
     }).catch(() => {}); // clipboard may fail in restricted contexts; share is non-critical
   });
 
