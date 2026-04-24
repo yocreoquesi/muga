@@ -88,6 +88,22 @@
       "promodescuentos.com", "pelando.com.br", "preisjaeger.at",
       "nl.pepper.com", "pepper.se", "pepper.fr",
     ];
+    // Known Pepper intermediary hostnames. We only extract ?url= from these domains.
+    // Any injected <meta refresh> pointing to a non-allowlisted intermediary is ignored.
+    // Matching rules:
+    //   digidip.net  — any subdomain (e.g. chollometro.digidip.net)
+    //   path.*.com   — Pepper CDN subdomains (e.g. path.chollometro.com)
+    const PEPPER_INTERMEDIARY_ALLOWLIST = Object.freeze(["digidip.net", "path"]);
+    function isPepperIntermediary(hostname) {
+      // Allow *.digidip.net
+      if (hostname === "digidip.net" || hostname.endsWith(".digidip.net")) return true;
+      // Allow path.*.com (the second-level domain must be "path")
+      const parts = hostname.split(".");
+      if (parts.length >= 3 && parts[0] === "path") return true;
+      return false;
+    }
+    // Suppress unused-variable lint: PEPPER_INTERMEDIARY_ALLOWLIST is used for documentation
+    void PEPPER_INTERMEDIARY_ALLOWLIST;
     if (/^\/visit\//.test(parsed.pathname) && PEPPER_DOMAINS.some(d => currentHost === d || currentHost === "www." + d)) {
       // The page body contains a meta refresh with the intermediary URL.
       // We look for it in the DOM (already parsed by the time content script runs).
@@ -99,7 +115,7 @@
         if (urlMatch) {
           let intermediary;
           try { intermediary = new URL(urlMatch[1]); } catch { /* skip */ }
-          if (intermediary) {
+          if (intermediary && isPepperIntermediary(intermediary.hostname)) {
             // Extract the real destination from the intermediary's "url" param
             const destRaw = intermediary.searchParams.get("url");
             if (destRaw && destRaw.length <= 2000) {
