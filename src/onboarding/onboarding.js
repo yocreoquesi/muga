@@ -8,7 +8,7 @@
  * On "Get started": saves consent metadata + prefs, then closes the tab.
  */
 
-import { applyTranslations, getStoredLang } from "../lib/i18n.js";
+import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 
 const CONSENT_VERSION = "1.0";
 
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.close();
     } catch (err) {
       console.error("[MUGA] onboarding save:", err);
-      startBtn.textContent = "Error — please try again";
+      startBtn.textContent = t("ob_save_error", lang);
       startBtn.disabled = false;
     }
   });

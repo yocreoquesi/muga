@@ -388,6 +388,7 @@ function initLanguageSelect() {
   select.addEventListener("change", async () => {
     _currentLang = select.value;
     try { await setPrefs({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
+    document.documentElement.lang = _currentLang;
     applyTranslations(_currentLang);
     // Re-render dynamic lists with new language
     let prefs;
@@ -713,7 +714,10 @@ function initDevTools() {
 
       const info = document.createElement("div");
       info.style.cssText = "font-size:11px;color:#aaa;margin-bottom:10px;line-height:1.4";
-      info.textContent = `Status: dismissed=${localData.nudgeDismissed}, shown=${localData.nudgeShownCount}/3, lastShown=${localData.nudgeLastShown ? new Date(localData.nudgeLastShown).toLocaleDateString() : "never"}`;
+      info.textContent = t("dev_nudge_status", _currentLang)
+        .replace("%s1", localData.nudgeDismissed)
+        .replace("%s2", localData.nudgeShownCount)
+        .replace("%s3", localData.nudgeLastShown ? new Date(localData.nudgeLastShown).toLocaleDateString() : "never");
 
       const btnRow = document.createElement("div");
       btnRow.style.cssText = "display:flex;gap:6px";
@@ -724,12 +728,12 @@ function initDevTools() {
       rateBtn.textContent = t("rate_nudge_btn_short", _currentLang);
 
       const dismissBtn = document.createElement("button");
-      dismissBtn.style.cssText = btnStyle + ";color:#666";
-      dismissBtn.textContent = `Dismiss (${localData.nudgeShownCount}/3)`;
+      dismissBtn.style.cssText = btnStyle + ";color:#9A9A9A";
+      dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (${localData.nudgeShownCount}/3)`;
 
       const resetBtn = document.createElement("button");
       resetBtn.style.cssText = btnStyle + ";color:#f59e0b;font-size:10px";
-      resetBtn.textContent = "Reset counters";
+      resetBtn.textContent = t("dev_nudge_reset_btn", _currentLang);
 
       btnRow.appendChild(rateBtn);
       btnRow.appendChild(dismissBtn);
@@ -756,18 +760,21 @@ function initDevTools() {
         const newCount = fresh.nudgeShownCount + 1;
         if (newCount > 3) {
           await chrome.storage.local.set({ nudgeShownCount: 0, nudgeDismissed: false, nudgeLastShown: 0 });
-          info.textContent = "Counters reset to 0. Ready for fresh testing.";
+          info.textContent = t("dev_nudge_reset_fresh", _currentLang);
         } else {
           await chrome.storage.local.set({ nudgeShownCount: newCount, nudgeLastShown: Date.now() });
-          info.textContent = `Status: dismissed=false, shown=${newCount}/3, lastShown=now`;
+          info.textContent = t("dev_nudge_status", _currentLang)
+            .replace("%s1", "false")
+            .replace("%s2", newCount)
+            .replace("%s3", "now");
         }
-        dismissBtn.textContent = `Dismiss (${newCount > 3 ? 0 : newCount}/3)`;
+        dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (${newCount > 3 ? 0 : newCount}/3)`;
       });
 
       resetBtn.addEventListener("click", async () => {
         await chrome.storage.local.set({ nudgeShownCount: 0, nudgeDismissed: false, nudgeLastShown: 0 });
-        info.textContent = "All nudge counters reset. Ready for testing.";
-        dismissBtn.textContent = "Dismiss (0/3)";
+        info.textContent = t("dev_nudge_reset_done", _currentLang);
+        dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (0/3)`;
       });
     });
   }
@@ -882,7 +889,7 @@ async function testUrl() {
       });
     }
   } catch (e) {
-    cleanEl.textContent = "Error: " + e.message;
+    cleanEl.textContent = t("dev_url_error", _currentLang) + " " + e.message;
     removedEl.textContent = "";
     resultDiv.style.display = "";
   }
