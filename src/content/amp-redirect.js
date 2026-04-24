@@ -46,11 +46,13 @@
       const current_ = new URL(currentUrl);
       // Only redirect to https (prevent accidental http downgrade from a bad canonical tag)
       if (canonical_.protocol !== "https:") return;
-      // Redirect only if the canonical is on the same or a parent domain
-      if (
-        canonical_.hostname === current_.hostname ||
-        current_.hostname.endsWith("." + canonical_.hostname)
-      ) {
+      // Only follow canonical tags on pages with an explicit "amp." subdomain prefix.
+      // This is the canonical AMP use-case (amp.example.com → example.com) and prevents
+      // abuse via injected canonical tags on non-subdomain AMP pages controlled by the
+      // page author. html[amp] / html[⚡] attributes alone are not trusted for redirects.
+      if (!current_.hostname.startsWith("amp.")) return;
+      // Redirect only if the canonical is on a parent domain (subdomain → parent)
+      if (current_.hostname.endsWith("." + canonical_.hostname)) {
         window.location.replace(canonicalUrl);
       }
     } catch {
