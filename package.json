@@ -9,7 +9,7 @@
     "build:chrome": "web-ext build --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest",
     "build:firefox": "bash scripts/with-firefox-manifest.sh web-ext build --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest",
     "build": "npm run build:chrome && npm run build:firefox",
-    "lint": "web-ext lint --source-dir src/",
+    "lint": "bash scripts/with-firefox-manifest.sh npx --no-install web-ext lint --source-dir src/",
     "test": "node --test --test-reporter=spec tests/unit/*.mjs",
     "test:serve": "npx serve tests/browser --listen 5555 --no-clipboard",
     "brand": "npx serve tools --listen 5556 --no-clipboard",
