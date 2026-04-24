@@ -1,0 +1,31 @@
+name: validate-rules
+
+# Triggered on pull requests that touch the unsigned rules source.
+# Ensures bad params (denylist, format, schema) are caught at PR time.
+on:
+  pull_request:
+    paths:
+      - "tools/rules-source/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate rules source
+        run: node tools/validate-rules-source.mjs

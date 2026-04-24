@@ -18,7 +18,8 @@ const workflowsDir = join(__dirname, "../../.github/workflows");
 // health-check.yml was removed (audit wave 4 – finding 4): it only ran
 // npm test, duplicating PR CI with no additional signal. A meaningful
 // canary will be re-added when a stable fixture set is available.
-const WORKFLOW_FILES = ["ci.yml", "release.yml"];
+// validate-rules.yml and publish-rules.yml added in Phase 6 (T6.2, T6.3).
+const WORKFLOW_FILES = ["ci.yml", "release.yml", "validate-rules.yml", "publish-rules.yml"];
 
 function readWorkflow(name) {
   return readFileSync(join(workflowsDir, name), "utf8");
