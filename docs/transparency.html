@@ -71,7 +71,7 @@
 <body>
 
   <h1>Transparency Report</h1>
-  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.9.8 &nbsp;&middot;&nbsp; 2026-04-06 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.9.10 &nbsp;&middot;&nbsp; 2026-04-13 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
 
   <div class="highlight">
     Privacy policies say "we don't collect your data." This page shows the evidence behind that claim — what MUGA actually does, which permissions it uses and why, and how you can verify every statement yourself.
@@ -82,7 +82,7 @@
   <div class="at-a-glance">
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Version</span>
-      <span class="at-a-glance-value">1.9.8</span>
+      <span class="at-a-glance-value">1.9.10</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">External server connections</span>
@@ -124,7 +124,7 @@
     <li><strong>No telemetry or usage analytics.</strong> We have no idea how often you use MUGA or which features you use.</li>
     <li><strong>No crash reporting.</strong> If the extension throws an error, it logs to your browser console — nowhere else.</li>
     <li><strong>No remote configuration or feature flags.</strong> Every toggle is a local preference. There is no server that can change your extension's behavior remotely.</li>
-    <li><strong>No CDN for rules.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension. No network request is made to fetch or update them.</li>
+    <li><strong>No CDN for rules — by default.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension. The default install makes zero outbound requests. If you opt into <strong>Remote Rules</strong> in Settings (off by default), the extension fetches a signed parameter list weekly from <code>yocreoquesi.github.io</code> via HTTPS GET with <code>credentials: "omit"</code> and <code>cache: "no-store"</code> — no browsing data is sent, no cookies, no identifiers of any kind.</li>
     <li><strong>No server-side redirect for affiliate links.</strong> We evaluated 10+ affiliate programs that require routing your click through an external tracking server. We rejected every one of them.</li>
     <li><strong>No A/B testing infrastructure.</strong> Every user runs the same code.</li>
     <li><strong>No user accounts or sign-in.</strong> We have no concept of a MUGA user identity.</li>
@@ -179,7 +179,7 @@
   <hr>
 
   <div class="footer">
-    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v1.9.8 — 2026-04-06 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
+    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v1.9.10 — 2026-04-13 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
   </div>
 
 </body>
