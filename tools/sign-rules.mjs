@@ -67,7 +67,7 @@ const REMOTE_PARAM_DENYLIST = new Set([
 const AFFILIATE_PARAM_GUARD = new Set([
   "tag", "ascsubtag", "associatetag", "linkcode", "creativeasin",
   "campid", "mkevt", "mkcid", "mkrid", "toolid", "customid",
-  "aid", "subid", "affiliate_id",
+  "aid", "subid", "sid", "affiliate_id",
   "awc", "irclickid", "irgwc", "clickid", "click_id",
   "hmkeyword",
   "afsrc", "af_id",
