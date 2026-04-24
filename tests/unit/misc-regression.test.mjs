@@ -2,7 +2,8 @@
  * MUGA — Miscellaneous Regression Tests
  *
  * Smaller regression/smoke checks that don't fit a dedicated area:
- * storage flush behavior and TRACKING_PARAM_CATEGORIES shape.
+ * storage flush behavior, TRACKING_PARAM_CATEGORIES shape, and
+ * options.js write-path routing.
  */
 
 import { test, describe } from "node:test";
@@ -12,8 +13,9 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { TRACKING_PARAM_CATEGORIES } from "../../src/lib/affiliates.js";
 
+const _dir = dirname(fileURLToPath(import.meta.url));
+
 describe("Regression: storage.js uses setTimeout for MV3-safe flush", () => {
-  const _dir = dirname(fileURLToPath(import.meta.url));
   const storageSource = readFileSync(join(_dir, "../../src/lib/storage.js"), "utf8");
   test("flushStats uses setTimeout, not microtask", () => {
     assert.ok(storageSource.includes("setTimeout(_flushStats"), "Must use setTimeout for flush");
@@ -40,5 +42,28 @@ describe("TRACKING_PARAM_CATEGORIES — smoke test", () => {
         `Category "${catKey}" must have a non-empty params array`
       );
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression: options.js routes all sync writes through setPrefs()
+// ---------------------------------------------------------------------------
+describe("Regression: options.js uses setPrefs() for all sync writes", () => {
+  const optionsSource = readFileSync(join(_dir, "../../src/options/options.js"), "utf8");
+
+  test("options.js imports setPrefs from lib/storage.js", () => {
+    assert.ok(
+      optionsSource.includes("setPrefs") && optionsSource.includes('from "../lib/storage.js"'),
+      "options.js must import setPrefs from lib/storage.js"
+    );
+  });
+
+  test("options.js contains no direct chrome.storage.sync.set() calls", () => {
+    // All writes must go through setPrefs() so future logic in setPrefs
+    // (validation, quota guards, migration hooks) covers the options page too.
+    assert.ok(
+      !optionsSource.includes("chrome.storage.sync.set("),
+      "options.js must not call chrome.storage.sync.set() directly — use setPrefs() instead"
+    );
   });
 });
