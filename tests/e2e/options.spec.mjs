@@ -23,7 +23,8 @@ async function setCheckbox(page, id, checked) {
     },
     { id, checked }
   );
-  await page.waitForTimeout(200);
+  // Wait for the checkbox state to reflect the requested value
+  await expect(page.locator(`#${id}`)).toBeChecked({ checked });
 }
 
 test.describe("Options — toggles", () => {
@@ -85,17 +86,15 @@ test.describe("Options — blacklist", () => {
     // Add
     await input.fill("example.com");
     await addBtn.click();
-    await page.waitForTimeout(300);
 
-    // Entry appears in list
+    // Entry appears in list (expect auto-waits for DOM update)
     await expect(list).toContainText("example.com");
 
     // Remove (click the × button)
     const removeBtn = list.locator("button").first();
     await removeBtn.click();
-    await page.waitForTimeout(300);
 
-    // Entry is gone
+    // Entry is gone (expect auto-waits)
     await expect(list).not.toContainText("example.com");
   });
 
@@ -122,14 +121,14 @@ test.describe("Options — whitelist", () => {
 
     await input.fill("mysite.org::tag::partner-01");
     await addBtn.click();
-    await page.waitForTimeout(300);
 
+    // expect auto-waits for DOM update
     await expect(list).toContainText("mysite.org");
 
     const removeBtn = list.locator("button").first();
     await removeBtn.click();
-    await page.waitForTimeout(300);
 
+    // expect auto-waits
     await expect(list).not.toContainText("mysite.org");
   });
 });
@@ -144,24 +143,20 @@ test.describe("Options — language", () => {
     const select = page.locator("#lang-select");
     const title = page.locator("h1");
 
-    // Switch to Spanish
+    // Switch to Spanish (toHaveText auto-waits for the text to change)
     await select.selectOption("es");
-    await page.waitForTimeout(500);
     await expect(title).toHaveText("Ajustes");
 
     // Switch to Portuguese
     await select.selectOption("pt");
-    await page.waitForTimeout(500);
     await expect(title).toHaveText("Configurações");
 
     // Switch to German
     await select.selectOption("de");
-    await page.waitForTimeout(500);
     await expect(title).toHaveText("Einstellungen");
 
     // Back to English
     await select.selectOption("en");
-    await page.waitForTimeout(500);
     await expect(title).toHaveText("Settings");
   });
 });
@@ -203,8 +198,8 @@ test.describe("Options — advanced settings", () => {
     await input.scrollIntoViewIfNeeded();
     await input.fill("https://example.com?utm_source=test&utm_medium=email&fbclid=abc123");
     await testBtn.click();
-    await page.waitForTimeout(500);
 
+    // toBeVisible auto-waits for the result card to appear
     await expect(result).toBeVisible();
     const text = await cleanUrl.textContent();
     // URL constructor normalizes: example.com -> example.com/

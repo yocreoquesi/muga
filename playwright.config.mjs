@@ -8,7 +8,7 @@ const extensionPath = path.resolve(__dirname, "src");
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
-  retries: 0,
+  retries: process.env.CI ? 1 : 0,
   workers: 1, // extensions require serial execution
   reporter: [["list"]],
   use: {

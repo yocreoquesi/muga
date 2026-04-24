@@ -19,7 +19,8 @@ async function setCheckbox(page, id, checked) {
     },
     { id, checked }
   );
-  await page.waitForTimeout(200);
+  // Wait for the checkbox state to reflect the requested value
+  await expect(page.locator(`#${id}`)).toBeChecked({ checked });
 }
 
 test.describe("Export / Import", () => {
@@ -96,12 +97,12 @@ test.describe("Export / Import", () => {
 
     // Enable dev mode to see import button (force: hidden by toggle CSS)
     await setCheckbox(page, "dev-mode", true);
-    await page.waitForTimeout(300);
-
-    // Import
+    // Wait for dev-mode panel to reveal the import button before interacting
     const fileInput = page.locator("#import-file");
+    await expect(fileInput).toBeAttached();
+
+    // Import — subsequent expect() calls auto-wait for the UI to update
     await fileInput.setInputFiles(tmpPath);
-    await page.waitForTimeout(1000);
 
     // Verify toggles updated
     await expect(page.locator("#inject")).toBeChecked();
@@ -125,18 +126,18 @@ test.describe("Export / Import", () => {
 
   test("import rejects invalid files", async ({ optionsPage: page }) => {
     await setCheckbox(page, "dev-mode", true);
-    await page.waitForTimeout(300);
+    // Wait for dev-mode panel to reveal the import button before interacting
+    const fileInput = page.locator("#import-file");
+    await expect(fileInput).toBeAttached();
 
     // Create an invalid file (missing muga flag)
     const tmpPath = path.join(os.tmpdir(), "muga-bad-import.json");
     fs.writeFileSync(tmpPath, JSON.stringify({ not_muga: true }));
 
-    const fileInput = page.locator("#import-file");
     await fileInput.setInputFiles(tmpPath);
-    await page.waitForTimeout(500);
 
     // The import should be rejected — no settings changed, no crash
-    // Blacklist should still be empty
+    // Blacklist should still be empty (expect auto-waits)
     const items = page.locator("#blacklist-items .list-item");
     await expect(items).toHaveCount(0);
 
