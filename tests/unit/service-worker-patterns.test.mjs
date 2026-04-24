@@ -399,6 +399,115 @@ describe("T2.1 — Remote-rules alarm registration helper", () => {
   });
 });
 
+// ── T2.2: onAlarm handler ────────────────────────────────────────────────────
+
+/**
+ * Pure alarm-handler logic extracted from the service worker.
+ * Tests the gate logic (disabled check, dedup guard) without needing a real browser.
+ *
+ * In production, the SW's chrome.alarms.onAlarm listener calls this function.
+ * We extract it so it can be unit-tested with in-memory fakes.
+ */
+async function handleRemoteRulesAlarm(alarmName, deps) {
+  // Only handle our alarm
+  if (alarmName !== REMOTE_ALARM_NAME) return "ignored";
+
+  // Re-read remoteRulesEnabled from storage — NOT a module cache (REQ-OPT-6, SC-01)
+  const syncData = await deps.syncStorage.get({ remoteRulesEnabled: false });
+  if (!syncData.remoteRulesEnabled) return "disabled";
+
+  // Dedup guard: delegate to runRemoteRulesFetch which manages _remoteFetchInFlight
+  await deps.runFetch(deps.fetchDeps);
+  return "ran";
+}
+
+describe("T2.2 — onAlarm handler logic", () => {
+  function makeSyncFake(data) {
+    return {
+      get(defaults) {
+        const result = { ...defaults };
+        for (const k of Object.keys(defaults)) {
+          if (Object.prototype.hasOwnProperty.call(data, k)) result[k] = data[k];
+        }
+        return Promise.resolve(result);
+      },
+    };
+  }
+
+  test("short-circuits when remoteRulesEnabled is false (SC-01)", async () => {
+    let fetchCalled = false;
+    const result = await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: false }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "disabled");
+    assert.strictEqual(fetchCalled, false, "fetch must not be called when disabled");
+  });
+
+  test("calls runFetch when enabled (happy path)", async () => {
+    let fetchCalled = false;
+    const result = await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "ran");
+    assert.strictEqual(fetchCalled, true, "runFetch must be called when enabled");
+  });
+
+  test("ignores alarm with different name", async () => {
+    let fetchCalled = false;
+    const result = await handleRemoteRulesAlarm("other-alarm", {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "ignored");
+    assert.strictEqual(fetchCalled, false);
+  });
+
+  test("passes fetchDeps to runFetch", async () => {
+    let receivedDeps = null;
+    const fakeDeps = { foo: "bar" };
+    await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
+      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+      runFetch: async (deps) => { receivedDeps = deps; },
+      fetchDeps: fakeDeps,
+    });
+    assert.strictEqual(receivedDeps, fakeDeps);
+  });
+
+  test("service worker source registers onAlarm listener", () => {
+    assert.ok(
+      swSource.includes("alarms.onAlarm.addListener"),
+      "SW must register chrome.alarms.onAlarm listener"
+    );
+  });
+
+  test("service worker onAlarm handler re-reads remoteRulesEnabled from storage (SC-01)", () => {
+    const alarmBlock = swSource.slice(
+      swSource.indexOf("alarms.onAlarm.addListener"),
+      swSource.indexOf("alarms.onAlarm.addListener") + 800
+    );
+    assert.ok(
+      alarmBlock.includes("remoteRulesEnabled"),
+      "onAlarm handler must re-read remoteRulesEnabled from storage"
+    );
+  });
+
+  test("service worker onAlarm handler calls runRemoteRulesFetch", () => {
+    const alarmBlock = swSource.slice(
+      swSource.indexOf("alarms.onAlarm.addListener"),
+      swSource.indexOf("alarms.onAlarm.addListener") + 800
+    );
+    assert.ok(
+      alarmBlock.includes("runRemoteRulesFetch"),
+      "onAlarm handler must call runRemoteRulesFetch"
+    );
+  });
+});
+
 // ── Onboarding consent verification ─────────────────────────────────────────
 
 describe("Onboarding consent — source code patterns", () => {

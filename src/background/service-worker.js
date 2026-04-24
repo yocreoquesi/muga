@@ -520,6 +520,55 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   return result;
 }
 
+// --- Remote-rules deps factory ---
+// Builds the deps object for runRemoteRulesFetch. Centralised so onAlarm
+// and ENABLE_REMOTE_RULES message handler use exactly the same deps.
+function _remoteRulesDeps() {
+  return {
+    fetchImpl: globalThis.fetch,
+    subtle: globalThis.crypto?.subtle,
+    trustedKeys: TRUSTED_PUBLIC_KEYS,
+    storage: hasDNR ? {
+      get: (d) => chrome.storage.local.get(d),
+      set: (i) => chrome.storage.local.set(i),
+      remove: (k) => chrome.storage.local.remove(k),
+    } : null,
+    dnr: hasDNR ? {
+      updateDynamicRules: (opts) => chrome.declarativeNetRequest.updateDynamicRules(opts),
+    } : { updateDynamicRules: async () => {} },
+  };
+}
+
+// --- onAlarm: weekly remote-rules fetch ---
+// Registered after hasAlarms guard so we don't reference chrome.alarms in envs where it's absent.
+if (hasAlarms) {
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name !== REMOTE_ALARM_NAME) return;
+
+    // Re-read remoteRulesEnabled from storage on every fire (REQ-OPT-6, SC-01).
+    // Must NOT use the prefs cache — the alarm fires infrequently and re-reading
+    // is cheap. Using the cache here could silently leave the disabled state stale.
+    let enabled = false;
+    try {
+      const data = await chrome.storage.sync.get({ remoteRulesEnabled: false });
+      enabled = !!data.remoteRulesEnabled;
+    } catch (err) {
+      console.error("[MUGA] remote-rules: failed to read remoteRulesEnabled:", err);
+      return;
+    }
+
+    if (!enabled) return; // short-circuit: disabled (SC-01)
+
+    // runRemoteRulesFetch manages its own _remoteFetchInFlight dedup guard (REQ-FETCH-3, SC-11)
+    try {
+      await runRemoteRulesFetch(_remoteRulesDeps());
+    } catch (err) {
+      // runRemoteRulesFetch writes errors to meta itself; this catch is for unexpected throws
+      console.error("[MUGA] remote-rules: unexpected error in alarm handler:", err);
+    }
+  });
+}
+
 // --- On startup: apply DNR state + register remote-rules alarm ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
