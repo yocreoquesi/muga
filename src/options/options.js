@@ -7,6 +7,7 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry } from "../lib/validation.js";
+import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 
 let _currentLang = "en";
 
@@ -139,6 +140,9 @@ async function init() {
   syncDevTools();
   if (devModeEl) devModeEl.addEventListener("change", syncDevTools);
   initDevTools();
+
+  // Remote rule updates section — feature-detect then wire (REQ-UI-5)
+  await initRemoteRules();
 
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
@@ -937,6 +941,189 @@ async function testUrl() {
     removedEl.textContent = "";
     resultDiv.style.display = "";
   }
+}
+
+// ── Error-code → i18n-key map for remote-rules status rendering ──────────────
+
+/**
+ * i18n key used in the onboarding what's-new splash (REQ-UI-6).
+ * Defined here so it is trackable by the orphan-key linter until Phase 4
+ * wires it into the onboarding update splash.
+ * @see {@link ../onboarding/onboarding.js}
+ */
+const WHATS_NEW_REMOTE_RULES_KEY = "whatsNewRemoteRules";
+void WHATS_NEW_REMOTE_RULES_KEY; // prevent lint unused-var warning
+
+/** Maps remote-rules error codes to i18n keys (design §5). */
+const REMOTE_ERR_KEYS = Object.freeze({
+  NETWORK_ERROR:      "optionsRemoteRulesErrNetwork",
+  SCHEMA_ERROR:       "optionsRemoteRulesErrSchema",
+  VERIFY_FAILED:      "optionsRemoteRulesErrSignature",
+  INVALID_FORMAT:     "optionsRemoteRulesErrFormat",
+  DENYLIST_HIT:       "optionsRemoteRulesErrDenylist",
+  OVER_CAP:           "optionsRemoteRulesErrOverCap",
+  VERSION_REGRESSION: "optionsRemoteRulesErrVersion",
+  STALE_PAYLOAD:      "optionsRemoteRulesErrStale",
+});
+
+/**
+ * Renders the remote-rules status block with data from the service worker.
+ * Uses textContent only — no innerHTML with dynamic data (REQ-SECURITY-1).
+ *
+ * @param {{ enabled: boolean, fetchedAt: string|null, paramCount: number|null, lastError: string|null, source: string }} status
+ */
+function renderRemoteRulesStatus(status) {
+  const statusBlock = document.getElementById("remote-rules-status");
+  const lastFetchEl = document.getElementById("remote-rules-last-fetch");
+  const paramCountEl = document.getElementById("remote-rules-param-count");
+  const sourceEl = document.getElementById("remote-rules-source");
+  const errorEl = document.getElementById("remote-rules-error");
+
+  if (!statusBlock || !lastFetchEl || !paramCountEl || !sourceEl || !errorEl) return;
+
+  if (status.enabled) {
+    statusBlock.hidden = false;
+
+    // Last fetch timestamp — localised (REQ-UI-2)
+    if (status.fetchedAt) {
+      lastFetchEl.textContent = new Date(status.fetchedAt).toLocaleString(_currentLang);
+    } else {
+      lastFetchEl.textContent = t("optionsRemoteRulesNeverFetched", _currentLang);
+    }
+
+    // Param count (integer display)
+    paramCountEl.textContent = typeof status.paramCount === "number" ? String(status.paramCount) : "0";
+
+    // Source URL — set href, textContent is already i18n via data-i18n (REQ-UI-2)
+    sourceEl.href = status.source || REMOTE_RULES_URL;
+  } else {
+    statusBlock.hidden = true;
+    lastFetchEl.textContent = "";
+    paramCountEl.textContent = "";
+    sourceEl.href = REMOTE_RULES_URL;
+  }
+
+  // Error display — REQ-UI-4
+  if (status.lastError) {
+    const errKey = REMOTE_ERR_KEYS[status.lastError] || "optionsRemoteRulesErrUnknown";
+    errorEl.textContent = t(errKey, _currentLang);
+    errorEl.hidden = false;
+  } else {
+    errorEl.textContent = "";
+    errorEl.hidden = true;
+  }
+}
+
+/**
+ * Initialises the remote-rules UI section.
+ *
+ * Sequence (design §4.5, REQ-UI-5):
+ * 1. Feature-detect chrome.alarms + chrome.declarativeNetRequest.
+ * 2. If unsupported: leave section hidden and return.
+ * 3. If supported: show section, query status, render, bind toggle.
+ *
+ * Firefox MV2 note (design §10, REQ-OPT-4):
+ * chrome.permissions.request MUST be the FIRST await in the enable branch of
+ * the toggle change handler. Any await before it detaches from the Firefox MV2
+ * user-gesture frame and the permission request silently returns false.
+ */
+async function initRemoteRules() {
+  // REQ-UI-5: hide the section entirely on runtimes without alarms or DNR
+  const supportsRemote =
+    typeof chrome.alarms !== "undefined" &&
+    typeof chrome.declarativeNetRequest !== "undefined";
+
+  const section = document.getElementById("remote-rules-section");
+  if (!section) return;
+
+  if (!supportsRemote) {
+    // Leave hidden — already set via the hidden attribute in HTML
+    return;
+  }
+
+  section.hidden = false;
+
+  // Query current status from the service worker
+  let status = { enabled: false, fetchedAt: null, paramCount: 0, lastError: null, source: REMOTE_RULES_URL };
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: "GET_REMOTE_RULES_STATUS" });
+    if (resp) status = { ...status, ...resp };
+  } catch (err) {
+    console.error("[MUGA] GET_REMOTE_RULES_STATUS:", err);
+  }
+
+  // Render initial state
+  const remoteRulesToggle = document.getElementById("remote-rules-toggle");
+  if (!remoteRulesToggle) return;
+
+  remoteRulesToggle.checked = Boolean(status.enabled);
+  renderRemoteRulesStatus(status);
+
+  // Toggle change handler (design §10 + REQ-OPT-4)
+  remoteRulesToggle.addEventListener("change", async (e) => {
+    const errorEl = document.getElementById("remote-rules-error");
+
+    if (!e.target.checked) {
+      // Disable path (design §4.4)
+      try {
+        const resp = await chrome.runtime.sendMessage({ type: "DISABLE_REMOTE_RULES" });
+        if (resp?.ok) {
+          renderRemoteRulesStatus({ enabled: false, fetchedAt: null, paramCount: 0, lastError: null, source: REMOTE_RULES_URL });
+        }
+      } catch (err) {
+        console.error("[MUGA] DISABLE_REMOTE_RULES:", err);
+      }
+      return;
+    }
+
+    // Enable path — CRITICAL: chrome.permissions.request MUST be the FIRST await.
+    // Firefox MV2 requires the permission request to be called synchronously in
+    // the same gesture frame. Any await before this call detaches from that frame
+    // and the request silently returns false. (design §10, REQ-OPT-4)
+    let granted = false;
+    try {
+      granted = await chrome.permissions.request({
+        origins: ["https://yocreoquesi.github.io/*"],
+      });
+    } catch {
+      granted = false;
+    }
+
+    if (!granted) {
+      e.target.checked = false;
+      if (errorEl) {
+        errorEl.textContent = t("optionsRemoteRulesPermDenied", _currentLang);
+        errorEl.hidden = false;
+      }
+      return;
+    }
+
+    // Permission granted — send enable message
+    try {
+      const resp = await chrome.runtime.sendMessage({ type: "ENABLE_REMOTE_RULES" });
+      if (!resp?.ok) {
+        e.target.checked = false;
+        if (errorEl) {
+          const errKey = (resp?.error && REMOTE_ERR_KEYS[resp.error]) || "optionsRemoteRulesErrUnknown";
+          errorEl.textContent = t(errKey, _currentLang);
+          errorEl.hidden = false;
+        }
+        return;
+      }
+      // Re-query status and render updated state
+      const statusResp = await chrome.runtime.sendMessage({ type: "GET_REMOTE_RULES_STATUS" });
+      if (statusResp) {
+        renderRemoteRulesStatus({ source: REMOTE_RULES_URL, ...statusResp });
+      }
+    } catch (err) {
+      console.error("[MUGA] ENABLE_REMOTE_RULES:", err);
+      e.target.checked = false;
+      if (errorEl) {
+        errorEl.textContent = t("optionsRemoteRulesErrUnknown", _currentLang);
+        errorEl.hidden = false;
+      }
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);
