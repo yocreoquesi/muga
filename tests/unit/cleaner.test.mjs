@@ -2285,3 +2285,82 @@ describe("C11 — popup.js formatStat sync", () => {
       "popup.js formatStat must use 1000 divisor");
   });
 });
+
+// ---------------------------------------------------------------------------
+// T1.5 — remoteParams integration in processUrl (REQ-MERGE-3, REQ-MERGE-5)
+//
+// cleaner.js reads prefs.remoteParams (a plain array) alongside customParams.
+// The remote-rules module is the WRITER; cleaner is the READER (ADR-D10).
+// No import of remote-rules.js here or in cleaner.js — decoupled by design.
+// ---------------------------------------------------------------------------
+describe("T1.5 — remoteParams consumed by processUrl", () => {
+
+  test("a param only in remoteParams is stripped", () => {
+    const prefs = {
+      ...PREFS,
+      remoteParams: ["my_remote_tracker"],
+    };
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://example.com/?my_remote_tracker=abc&keep=yes",
+      prefs
+    );
+    assert.strictEqual(action, "cleaned");
+    assert.ok(
+      removedTracking.includes("my_remote_tracker"),
+      "remoteParams param must appear in removedTracking"
+    );
+    assert.ok(
+      cleanUrl.includes("keep=yes"),
+      "unrelated params must be preserved"
+    );
+    assert.ok(
+      !cleanUrl.includes("my_remote_tracker"),
+      "remote param must not appear in cleanUrl"
+    );
+  });
+
+  test("a built-in tracking param is still stripped when remoteParams is non-empty", () => {
+    // Triangulation: remote params must not interfere with existing built-in strip
+    const prefs = {
+      ...PREFS,
+      remoteParams: ["some_other_remote"],
+    };
+    const { action, removedTracking } = processUrl(
+      "https://example.com/?utm_source=google&some_other_remote=xyz",
+      prefs
+    );
+    assert.strictEqual(action, "cleaned");
+    assert.ok(
+      removedTracking.includes("utm_source"),
+      "built-in param must still be stripped"
+    );
+    assert.ok(
+      removedTracking.includes("some_other_remote"),
+      "remote param must also be stripped"
+    );
+  });
+
+  test("when remoteParams is undefined, behavior is identical to pre-T1.5 baseline", () => {
+    // remoteParams absent in prefs — must not break existing processing
+    const prefs = { ...PREFS };  // no remoteParams key
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://example.com/?utm_source=google&q=cats",
+      prefs
+    );
+    assert.strictEqual(action, "cleaned");
+    assert.ok(removedTracking.includes("utm_source"), "utm_source must still be stripped");
+    assert.ok(cleanUrl.includes("q=cats"), "q param must be preserved (not a tracking param)");
+  });
+
+  test("when remoteParams is an empty array, behavior is identical to pre-T1.5 baseline", () => {
+    const prefs = { ...PREFS, remoteParams: [] };
+    const { action, cleanUrl } = processUrl(
+      "https://example.com/?utm_source=google&legit=1",
+      prefs
+    );
+    assert.strictEqual(action, "cleaned");
+    assert.ok(cleanUrl.includes("legit=1"), "non-tracking params must be preserved");
+    assert.ok(!cleanUrl.includes("utm_source"), "built-in params must still be stripped");
+  });
+
+});
