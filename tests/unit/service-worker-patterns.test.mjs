@@ -314,196 +314,176 @@ describe("Security: debug log payload privacy (finding 1)", () => {
   });
 });
 
-// ── T2.1: Remote-rules alarm registration ────────────────────────────────────
+// ── Remote-rules refresh — on-wake time-gated (v1.10.1) ──────────────────────
+// Replaces chrome.alarms. No new permission required — the SW wakes on natural
+// events (onInstalled, onStartup, PROCESS_URL) and checks the stored fetchedAt
+// timestamp. One check per SW lifetime via a module-level flag.
 
-import {
-  REMOTE_ALARM_NAME,
-  ALARM_PERIOD_MIN,
-  ALARM_DELAY_MIN,
-} from "../../src/lib/remote-rules.js";
-
-/**
- * Pure alarm-registration helper extracted from the service worker.
- * Takes the chrome.alarms API as an injected dependency so it can be
- * unit-tested without a browser environment.
- *
- * Mirrors the production logic in service-worker.js:
- *   registerRemoteRulesAlarm(chrome.alarms)
- */
-function registerRemoteRulesAlarm(alarms) {
-  if (!alarms) return; // feature-detect: no-op if API absent
-  return alarms.create(REMOTE_ALARM_NAME, {
-    periodInMinutes: ALARM_PERIOD_MIN,
-    delayInMinutes: ALARM_DELAY_MIN,
-  });
-}
-
-describe("T2.1 — Remote-rules alarm registration helper", () => {
-  test("calls alarms.create with REMOTE_ALARM_NAME", () => {
-    const calls = [];
-    const fakeAlarms = {
-      create(name, opts) { calls.push({ name, opts }); },
-    };
-    registerRemoteRulesAlarm(fakeAlarms);
-    assert.strictEqual(calls.length, 1, "alarms.create must be called exactly once");
-    assert.strictEqual(calls[0].name, REMOTE_ALARM_NAME);
-  });
-
-  test("creates alarm with correct periodInMinutes (7 days = 10080)", () => {
-    const calls = [];
-    const fakeAlarms = { create(name, opts) { calls.push({ name, opts }); } };
-    registerRemoteRulesAlarm(fakeAlarms);
-    assert.strictEqual(calls[0].opts.periodInMinutes, 10_080);
-  });
-
-  test("creates alarm with correct delayInMinutes (1 hour = 60)", () => {
-    const calls = [];
-    const fakeAlarms = { create(name, opts) { calls.push({ name, opts }); } };
-    registerRemoteRulesAlarm(fakeAlarms);
-    assert.strictEqual(calls[0].opts.delayInMinutes, 60);
-  });
-
-  test("no-ops when alarms API is absent (feature-detect)", () => {
-    // Must not throw; just return without calling create
-    assert.doesNotThrow(() => registerRemoteRulesAlarm(undefined));
-    assert.doesNotThrow(() => registerRemoteRulesAlarm(null));
-  });
-
-  test("service worker source registers alarm on onInstalled", () => {
-    const onInstalledPos = swSource.indexOf("onInstalled.addListener");
-    assert.ok(onInstalledPos !== -1, "onInstalled.addListener must be present");
-    // The block from onInstalled to the next top-level chrome.runtime listener
-    const onInstalledBlock = swSource.slice(onInstalledPos, onInstalledPos + 600);
-    assert.ok(
-      onInstalledBlock.includes("registerRemoteRulesAlarm"),
-      "SW must call registerRemoteRulesAlarm inside the onInstalled listener"
-    );
-  });
-
-  test("service worker source registers alarm on onStartup", () => {
-    const onStartupPos = swSource.indexOf("onStartup.addListener");
-    assert.ok(onStartupPos !== -1, "onStartup.addListener must be present");
-    const onStartupBlock = swSource.slice(onStartupPos, onStartupPos + 300);
-    assert.ok(
-      onStartupBlock.includes("registerRemoteRulesAlarm"),
-      "SW must call registerRemoteRulesAlarm inside the onStartup listener"
-    );
-  });
-
-  test("service worker feature-detects chrome.alarms before registering", () => {
-    // The SW must guard alarms registration (same pattern as hasDNR / hasContextMenus)
-    assert.ok(
-      swSource.includes("chrome.alarms") && swSource.includes("typeof chrome.alarms"),
-      "SW must feature-detect chrome.alarms before registering"
-    );
-  });
-});
-
-// ── T2.2: onAlarm handler ────────────────────────────────────────────────────
+const REMOTE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Pure alarm-handler logic extracted from the service worker.
- * Tests the gate logic (disabled check, dedup guard) without needing a real browser.
- *
- * In production, the SW's chrome.alarms.onAlarm listener calls this function.
- * We extract it so it can be unit-tested with in-memory fakes.
+ * Pure extraction of maybeFetchRemoteRules for unit testing. Mirrors the
+ * production logic in service-worker.js.
  */
-async function handleRemoteRulesAlarm(alarmName, deps) {
-  // Only handle our alarm
-  if (alarmName !== REMOTE_ALARM_NAME) return "ignored";
-
-  // Re-read remoteRulesEnabled from storage — NOT a module cache (REQ-OPT-6, SC-01)
-  const syncData = await deps.syncStorage.get({ remoteRulesEnabled: false });
-  if (!syncData.remoteRulesEnabled) return "disabled";
-
-  // Dedup guard: delegate to runRemoteRulesFetch which manages _remoteFetchInFlight
-  await deps.runFetch(deps.fetchDeps);
-  return "ran";
+function makeMaybeFetchHelper() {
+  let _checked = false;
+  return async function maybeFetchRemoteRules(deps) {
+    if (_checked) return "skipped-dedup";
+    _checked = true;
+    const { remoteRulesEnabled } = await deps.getPrefs();
+    if (!remoteRulesEnabled) return "disabled";
+    const { remoteRulesMeta } = await deps.getRemoteParams();
+    const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
+    if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) {
+      return "fresh";
+    }
+    await deps.runFetch(deps.fetchDeps);
+    return "ran";
+  };
 }
 
-describe("T2.2 — onAlarm handler logic", () => {
-  function makeSyncFake(data) {
-    return {
-      get(defaults) {
-        const result = { ...defaults };
-        for (const k of Object.keys(defaults)) {
-          if (Object.prototype.hasOwnProperty.call(data, k)) result[k] = data[k];
-        }
-        return Promise.resolve(result);
-      },
-    };
-  }
-
+describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
   test("short-circuits when remoteRulesEnabled is false (SC-01)", async () => {
     let fetchCalled = false;
-    const result = await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
-      syncStorage: makeSyncFake({ remoteRulesEnabled: false }),
+    const maybe = makeMaybeFetchHelper();
+    const result = await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: false }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
     assert.strictEqual(result, "disabled");
-    assert.strictEqual(fetchCalled, false, "fetch must not be called when disabled");
+    assert.strictEqual(fetchCalled, false, "fetch must not fire when disabled");
   });
 
-  test("calls runFetch when enabled (happy path)", async () => {
+  test("short-circuits when last fetch is fresh (< 7 days)", async () => {
     let fetchCalled = false;
-    const result = await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
-      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+    const maybe = makeMaybeFetchHelper();
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1h ago
+    const result = await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: recent } }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "fresh");
+    assert.strictEqual(fetchCalled, false);
+  });
+
+  test("fires fetch when last fetch is stale (> 7 days)", async () => {
+    let fetchCalled = false;
+    const maybe = makeMaybeFetchHelper();
+    const stale = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const result = await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: stale } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
     assert.strictEqual(result, "ran");
-    assert.strictEqual(fetchCalled, true, "runFetch must be called when enabled");
+    assert.strictEqual(fetchCalled, true);
   });
 
-  test("ignores alarm with different name", async () => {
+  test("fires fetch when fetchedAt is absent (first-time enable)", async () => {
     let fetchCalled = false;
-    const result = await handleRemoteRulesAlarm("other-alarm", {
-      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
+    const maybe = makeMaybeFetchHelper();
+    const result = await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
-    assert.strictEqual(result, "ignored");
-    assert.strictEqual(fetchCalled, false);
+    assert.strictEqual(result, "ran");
+    assert.strictEqual(fetchCalled, true);
+  });
+
+  test("dedupes subsequent calls in the same SW lifetime", async () => {
+    let fetchCount = 0;
+    const maybe = makeMaybeFetchHelper();
+    const deps = {
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
+      runFetch: async () => { fetchCount++; },
+      fetchDeps: {},
+    };
+    const first = await maybe(deps);
+    const second = await maybe(deps);
+    const third = await maybe(deps);
+    assert.strictEqual(first, "ran");
+    assert.strictEqual(second, "skipped-dedup");
+    assert.strictEqual(third, "skipped-dedup");
+    assert.strictEqual(fetchCount, 1, "runFetch must only be invoked once per SW lifetime");
   });
 
   test("passes fetchDeps to runFetch", async () => {
-    let receivedDeps = null;
-    const fakeDeps = { foo: "bar" };
-    await handleRemoteRulesAlarm(REMOTE_ALARM_NAME, {
-      syncStorage: makeSyncFake({ remoteRulesEnabled: true }),
-      runFetch: async (deps) => { receivedDeps = deps; },
+    let received = null;
+    const maybe = makeMaybeFetchHelper();
+    const fakeDeps = { marker: "xyz" };
+    await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
+      runFetch: async (deps) => { received = deps; },
       fetchDeps: fakeDeps,
     });
-    assert.strictEqual(receivedDeps, fakeDeps);
+    assert.strictEqual(received, fakeDeps);
   });
 
-  test("service worker source registers onAlarm listener", () => {
+  test("service worker source defines maybeFetchRemoteRules", () => {
     assert.ok(
-      swSource.includes("alarms.onAlarm.addListener"),
-      "SW must register chrome.alarms.onAlarm listener"
-    );
-  });
-
-  test("service worker onAlarm handler re-reads remoteRulesEnabled from storage (SC-01)", () => {
-    const alarmBlock = swSource.slice(
-      swSource.indexOf("alarms.onAlarm.addListener"),
-      swSource.indexOf("alarms.onAlarm.addListener") + 800
-    );
-    assert.ok(
-      alarmBlock.includes("remoteRulesEnabled"),
-      "onAlarm handler must re-read remoteRulesEnabled from storage"
+      /function\s+maybeFetchRemoteRules|async\s+function\s+maybeFetchRemoteRules/.test(swSource),
+      "SW must define maybeFetchRemoteRules function"
     );
   });
 
-  test("service worker onAlarm handler calls runRemoteRulesFetch", () => {
-    const alarmBlock = swSource.slice(
-      swSource.indexOf("alarms.onAlarm.addListener"),
-      swSource.indexOf("alarms.onAlarm.addListener") + 800
+  test("service worker defines REMOTE_REFRESH_INTERVAL_MS as 7 days", () => {
+    const match = swSource.match(/REMOTE_REFRESH_INTERVAL_MS\s*=\s*([^;]+);/);
+    assert.ok(match, "SW must define REMOTE_REFRESH_INTERVAL_MS");
+    // eslint-disable-next-line no-eval
+    const value = Function(`"use strict"; return (${match[1]});`)();
+    assert.strictEqual(value, 7 * 24 * 60 * 60 * 1000, "must equal 7 days in ms");
+  });
+
+  test("service worker calls maybeFetchRemoteRules from onInstalled", () => {
+    const onInstalledPos = swSource.indexOf("onInstalled.addListener");
+    assert.ok(onInstalledPos !== -1, "onInstalled.addListener must be present");
+    const block = swSource.slice(onInstalledPos, onInstalledPos + 600);
+    assert.ok(
+      block.includes("maybeFetchRemoteRules"),
+      "onInstalled handler must call maybeFetchRemoteRules"
+    );
+  });
+
+  test("service worker calls maybeFetchRemoteRules from onStartup", () => {
+    const onStartupPos = swSource.indexOf("onStartup.addListener");
+    assert.ok(onStartupPos !== -1, "onStartup.addListener must be present");
+    const block = swSource.slice(onStartupPos, onStartupPos + 600);
+    assert.ok(
+      block.includes("maybeFetchRemoteRules"),
+      "onStartup handler must call maybeFetchRemoteRules"
+    );
+  });
+
+  test("service worker calls maybeFetchRemoteRules from PROCESS_URL handler", () => {
+    const processUrlPos = swSource.indexOf('message.type === "PROCESS_URL"');
+    assert.ok(processUrlPos !== -1, "PROCESS_URL handler must be present");
+    const block = swSource.slice(processUrlPos, processUrlPos + 800);
+    assert.ok(
+      block.includes("maybeFetchRemoteRules"),
+      "PROCESS_URL handler must call maybeFetchRemoteRules so users who never restart the browser still get refreshes"
+    );
+  });
+
+  test("service worker does NOT import chrome.alarms (permission removed)", () => {
+    // Regression guard: the alarms permission was removed in v1.10.1.
+    // If someone reintroduces chrome.alarms.create / onAlarm, the next build
+    // against the current manifest will fail at runtime.
+    assert.ok(
+      !swSource.includes("chrome.alarms.create"),
+      "SW must not reintroduce chrome.alarms.create — v1.10.1 removed the permission"
     );
     assert.ok(
-      alarmBlock.includes("runRemoteRulesFetch"),
-      "onAlarm handler must call runRemoteRulesFetch"
+      !swSource.includes("chrome.alarms.onAlarm"),
+      "SW must not reintroduce chrome.alarms.onAlarm — v1.10.1 removed the permission"
     );
   });
 });
@@ -570,18 +550,9 @@ describe("T2.3 — Message handler source patterns", () => {
     );
   });
 
-  test("ENABLE_REMOTE_RULES handler re-registers alarm idempotently", () => {
-    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
-    const enableBlock = swSource.slice(enablePos, enablePos + 600);
-    assert.ok(
-      enableBlock.includes("registerRemoteRulesAlarm"),
-      "ENABLE handler must re-register alarm idempotently (REQ-OPT-6)"
-    );
-  });
-
   test("GET_REMOTE_RULES_STATUS responds with enabled, meta, supportsAlarms, supportsDNR", () => {
     const statusPos = swSource.indexOf('"GET_REMOTE_RULES_STATUS"');
-    const statusBlock = swSource.slice(statusPos, statusPos + 800);
+    const statusBlock = swSource.slice(statusPos, statusPos + 1500);
     assert.ok(statusBlock.includes("supportsAlarms"), "status must include supportsAlarms (REQ-UI-5)");
     assert.ok(statusBlock.includes("supportsDNR"), "status must include supportsDNR (REQ-UI-5)");
     assert.ok(statusBlock.includes("enabled"), "status must include enabled flag");
@@ -589,12 +560,12 @@ describe("T2.3 — Message handler source patterns", () => {
 
   test("all remote-rules message handlers return true (keep channel open)", () => {
     // All three handlers must return true per the onMessage invariant.
-    // Each handler uses an IIFE pattern so return true is at the end of the block.
+    // Each handler uses an IIFE pattern; the status handler grew with v1.10.1
+    // explanatory comments so give the window enough headroom.
     for (const msgType of ["ENABLE_REMOTE_RULES", "DISABLE_REMOTE_RULES", "GET_REMOTE_RULES_STATUS"]) {
       const pos = swSource.indexOf(`"${msgType}"`);
       assert.ok(pos !== -1, `${msgType} handler must exist`);
-      // Find the return true within the next 1200 chars (IIFE pattern is ~900 chars)
-      const block = swSource.slice(pos, pos + 1200);
+      const block = swSource.slice(pos, pos + 1800);
       assert.ok(block.includes("return true"), `${msgType} handler must return true`);
     }
   });

@@ -1,7 +1,7 @@
 # MUGA: Store Listings
 
-> Version: 1.10.0
-> Last updated: 2026-04-13
+> Version: 1.10.1
+> Last updated: 2026-04-25
 > Status: Final listing for Chrome Web Store and Firefox AMO. 450+ tracking params, 150+ domain rules, 6 categories, 2 active affiliate programs, MV3 native.
 
 ---
@@ -110,8 +110,7 @@ Every URL is processed entirely inside your browser. MUGA never sends data anywh
 . Zero analytics, zero telemetry, zero data collection
 . No account, no sign-in, no cloud
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
-. alarms: used to schedule a weekly background check for signed tracking-parameter updates when the user enables Remote rule updates in Settings. No alarm fires if the feature is disabled (off by default).
-. optional_host_permissions https://yocreoquesi.github.io/*: granted only when the user enables Remote rule updates. Used to fetch the signed tracking-parameter payload — single HTTPS GET per week, credentials-omit, no user data transmitted. Revocable at any time via browser settings.
+. optional_host_permissions https://yocreoquesi.github.io/*: granted only when the user enables Remote rule updates. Used to fetch the signed tracking-parameter payload — a single HTTPS GET check at most once per 7 days, piggybacked on natural service-worker wake events (no chrome.alarms permission). Credentials-omit, no user data transmitted. Revocable at any time via browser settings.
 
 We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking that routes your clicks through external servers before reaching the store. We rejected every one of them and gave up that revenue rather than compromise your privacy. On those stores, MUGA actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
@@ -226,8 +225,7 @@ Every URL is processed entirely inside your browser. MUGA never sends data anywh
 . Zero analytics, zero telemetry, zero data collection
 . No account, no sign-in, no cloud
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequest, clipboardWrite
-. alarms: used to schedule a weekly background check for signed tracking-parameter updates when you enable Remote rule updates in Settings. No alarm fires on a default install.
-. optional_permissions https://yocreoquesi.github.io/*: granted only when you enable Remote rule updates. Used to fetch the signed tracking-parameter payload — single HTTPS GET per week, credentials-omit, no user data transmitted. Revocable at any time.
+. optional_permissions https://yocreoquesi.github.io/*: granted only when you enable Remote rule updates. Used to fetch the signed tracking-parameter payload — a single HTTPS GET check at most once per 7 days, piggybacked on natural browser activity (no chrome.alarms permission). Credentials-omit, no user data transmitted. Revocable at any time.
 
 
 Your rules

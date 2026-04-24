@@ -23,9 +23,6 @@ import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
 export const REMOTE_RULES_URL =
   "https://yocreoquesi.github.io/muga/rules/v1/params.json";
 
-/** chrome.alarms name for the weekly fetch alarm (REQ-FETCH-1). */
-export const REMOTE_ALARM_NAME = "muga-remote-rules";
-
 /**
  * DNR rule ID for remote params. Re-exported from lib/dnr-ids.js for
  * backwards compatibility with callers that import it from this module.
@@ -38,12 +35,6 @@ export const MAX_PAYLOAD_BYTES = 50 * 1024; // 50 KB
 
 /** Fetch timeout in milliseconds (REQ-FETCH-5). */
 export const FETCH_TIMEOUT_MS = 15_000;
-
-/** Alarm period in minutes — 7 days (REQ-FETCH-1). */
-export const ALARM_PERIOD_MIN = 10_080;
-
-/** Alarm initial delay in minutes — 1 hour (REQ-FETCH-1). */
-export const ALARM_DELAY_MIN = 60;
 
 /** Maximum accepted remote params after filtering (REQ-VALIDATE-6). */
 export const MAX_PARAM_COUNT = 500;
