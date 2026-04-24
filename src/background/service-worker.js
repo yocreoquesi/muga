@@ -95,6 +95,18 @@ let cachedPrefs = null;
 let prefsFetchPromise = null;
 let _cacheVersion = 0;
 
+/**
+ * Invalidates the prefs cache so the next getPrefsWithCache() call re-fetches.
+ * Extracted to a single function so all three call-sites (storage.onChanged,
+ * ADD_TO_WHITELIST, ADD_TO_BLACKLIST) remain consistent when the cache
+ * mechanism evolves (e.g., adding a 4th invalidation flag).
+ */
+function _invalidatePrefsCache() {
+  cachedPrefs = null;
+  prefsFetchPromise = null;
+  _cacheVersion++;
+}
+
 // Serialize list mutations (whitelist/blacklist) to prevent race conditions
 // where two rapid messages read the same cached list and the second overwrites the first.
 let _listMutationQueue = Promise.resolve();
@@ -246,9 +258,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== "sync") return;
   // Any sync storage change (including disabledCategories, contextMenuEnabled, etc.)
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
-  cachedPrefs = null;
-  prefsFetchPromise = null;
-  _cacheVersion++;
+  _invalidatePrefsCache();
   if (changes.customParams || changes.dnrEnabled || changes.enabled) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
@@ -303,9 +313,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setPrefs({ whitelist: [...fresh.whitelist, entry] });
         logAction("whitelist_add", { entry });
       }
-      cachedPrefs = null;
-      prefsFetchPromise = null;
-      _cacheVersion++;
+      _invalidatePrefsCache();
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_WHITELIST handler failed:", err);
@@ -326,9 +334,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setPrefs({ blacklist: [...fresh.blacklist, entry] });
         logAction("blacklist_add", { entry });
       }
-      cachedPrefs = null;
-      prefsFetchPromise = null;
-      _cacheVersion++;
+      _invalidatePrefsCache();
       sendResponse({ ok: true });
     }).catch(err => {
       console.error("[MUGA] ADD_TO_BLACKLIST handler failed:", err);

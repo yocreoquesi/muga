@@ -203,26 +203,58 @@ describe("Cache invalidation — version counter", () => {
     );
   });
 
-  test("storage change listener increments _cacheVersion", () => {
+  test("storage change listener invalidates prefs cache via _invalidatePrefsCache()", () => {
     const storageListener = swSource.slice(
       swSource.indexOf("chrome.storage.onChanged.addListener"),
       swSource.indexOf("chrome.storage.onChanged.addListener") + 500
     );
-    assert.ok(storageListener.includes("_cacheVersion++"), "storage listener should increment _cacheVersion");
+    assert.ok(
+      storageListener.includes("_invalidatePrefsCache()"),
+      "storage listener should call _invalidatePrefsCache() to invalidate the prefs cache"
+    );
   });
 
-  test("whitelist handler increments _cacheVersion", () => {
+  test("whitelist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
     const whitelistHandler = swSource.slice(
       swSource.indexOf('"ADD_TO_WHITELIST"'),
       swSource.indexOf('"ADD_TO_BLACKLIST"')
     );
-    assert.ok(whitelistHandler.includes("_cacheVersion++"), "whitelist handler should increment _cacheVersion");
+    assert.ok(
+      whitelistHandler.includes("_invalidatePrefsCache()"),
+      "whitelist handler should call _invalidatePrefsCache()"
+    );
   });
 
-  test("blacklist handler increments _cacheVersion", () => {
+  test("blacklist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
     const blacklistStart = swSource.indexOf('"ADD_TO_BLACKLIST"');
     const blacklistHandler = swSource.slice(blacklistStart, blacklistStart + 800);
-    assert.ok(blacklistHandler.includes("_cacheVersion++"), "blacklist handler should increment _cacheVersion");
+    assert.ok(
+      blacklistHandler.includes("_invalidatePrefsCache()"),
+      "blacklist handler should call _invalidatePrefsCache()"
+    );
+  });
+
+  test("_invalidatePrefsCache helper is defined and increments _cacheVersion", () => {
+    assert.ok(
+      swSource.includes("function _invalidatePrefsCache()"),
+      "_invalidatePrefsCache helper must be defined"
+    );
+    const helperBlock = swSource.slice(
+      swSource.indexOf("function _invalidatePrefsCache()"),
+      swSource.indexOf("function _invalidatePrefsCache()") + 200
+    );
+    assert.ok(
+      helperBlock.includes("_cacheVersion++"),
+      "_invalidatePrefsCache must increment _cacheVersion"
+    );
+    assert.ok(
+      helperBlock.includes("cachedPrefs = null"),
+      "_invalidatePrefsCache must null cachedPrefs"
+    );
+    assert.ok(
+      helperBlock.includes("prefsFetchPromise = null"),
+      "_invalidatePrefsCache must null prefsFetchPromise"
+    );
   });
 });
 
