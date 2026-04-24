@@ -96,6 +96,7 @@ function _renderParamBreakdown(removedTracking, lang) {
 /** Initializes popup: loads prefs/stats, renders UI, binds event handlers. */
 async function init() {
   const lang = await getStoredLang();
+  document.documentElement.lang = lang;
   applyTranslations(lang);
 
   // --- Consent gate: block popup until user accepts ToS in onboarding ---
@@ -106,10 +107,12 @@ async function init() {
     gate.className = "consent-gate";
     gate.setAttribute("role", "alertdialog");
     gate.setAttribute("aria-label", "MUGA consent required");
+    gate.setAttribute("aria-describedby", "consent-gate-msg");
     const logo = document.createElement("div");
     logo.className = "consent-gate-logo";
     logo.textContent = "MUGA";
     const msg = document.createElement("p");
+    msg.id = "consent-gate-msg";
     msg.className = "consent-gate-msg";
     msg.setAttribute("data-i18n", "consent_gate_msg");
     msg.textContent = t("consent_gate_msg", lang);
@@ -210,7 +213,8 @@ async function init() {
 
   if (shouldNudge) {
     rateBtn.hidden = false;
-    rateBtn.textContent = t("rate_nudge_btn_short", lang);
+    const rateBtnLabel = rateBtn.querySelector("[data-i18n='rate_muga_short']") || rateBtn;
+    rateBtnLabel.textContent = t("rate_nudge_btn_short", lang);
     sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {}); // best-effort; nudge still shows
     chrome.storage.local.set({
       nudgeShownCount: nudgeData.nudgeShownCount + 1,
@@ -269,9 +273,10 @@ async function init() {
     const pick = seasonal[mmdd] || phrases[Math.floor(Math.random() * phrases.length)];
     const text = `${pick}\n\n${storeUrl}`;
 
+    const shareBtnLabel = shareBtn.querySelector("[data-i18n='share_btn']") || shareBtn;
     navigator.clipboard.writeText(text).then(() => {
-      shareBtn.textContent = t("share_copied_prefix", lang) + t("share_copied", lang);
-      setTimeout(() => { shareBtn.textContent = t("share_copy_prefix", lang) + t("share_btn", lang); }, 1500);
+      shareBtnLabel.textContent = t("share_copied_prefix", lang) + t("share_copied", lang);
+      setTimeout(() => { shareBtnLabel.textContent = t("share_copy_prefix", lang) + t("share_btn", lang); }, 1500);
     }).catch(() => {}); // clipboard may fail in restricted contexts; share is non-critical
   });
 
@@ -419,7 +424,12 @@ async function showDomainStats(prefs, lang) {
     .slice(0, 10);
 
   if (entries.length === 0) {
-    section.hidden = true;
+    // Show section with empty-state message so users know the panel exists
+    section.hidden = false;
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "domain-stats-empty";
+    emptyEl.textContent = t("domain_stats_empty", lang);
+    list.appendChild(emptyEl);
     return;
   }
 
