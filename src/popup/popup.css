@@ -501,15 +501,21 @@ footer {
   background: var(--surface-1);
 }
 
-footer a {
+footer a,
+footer .footer-link-btn {
   font-size: 11.5px;
   color: var(--text-2);
   text-decoration: none;
   padding: 2px 4px;
   border-radius: 2px;
   transition: color var(--dur) var(--ease);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
 }
-footer a:hover { color: var(--accent-strong); }
+footer a:hover,
+footer .footer-link-btn:hover { color: var(--accent-strong); }
 
 /* ---------- Growth bar (rate / share) ----------------------------------- */
 .growth-bar {

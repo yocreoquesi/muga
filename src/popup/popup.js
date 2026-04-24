@@ -106,10 +106,12 @@ async function init() {
     gate.className = "consent-gate";
     gate.setAttribute("role", "alertdialog");
     gate.setAttribute("aria-label", "MUGA consent required");
+    gate.setAttribute("aria-describedby", "consent-gate-msg");
     const logo = document.createElement("div");
     logo.className = "consent-gate-logo";
     logo.textContent = "MUGA";
     const msg = document.createElement("p");
+    msg.id = "consent-gate-msg";
     msg.className = "consent-gate-msg";
     msg.setAttribute("data-i18n", "consent_gate_msg");
     msg.textContent = t("consent_gate_msg", lang);
