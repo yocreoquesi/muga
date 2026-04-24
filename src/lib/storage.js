@@ -98,6 +98,9 @@ export const PREF_DEFAULTS = {
   paramBreakdown: true,
   showReportButton: true,
   domainStats: true,
+  // Remote rules toggle — lives in sync so the opt-in preference follows the user
+  // across devices. Default false per REQ-OPT-1: zero network activity on fresh install.
+  remoteRulesEnabled: false,
 };
 
 /**
@@ -378,6 +381,134 @@ export const sessionStorage = {
 // Debug logs contain domains, paths, and cleaned URLs -- persisting them would
 // create a de facto browsing history, the same privacy concern that rules out
 // persistent URL history. Evaluated and rejected 2026-03-30.
+
+// ── Remote rules: toggle + params cache ───────────────────────────────────────
+//
+// Toggle (remoteRulesEnabled) lives in chrome.storage.sync — it is a user
+// preference that should follow the user across devices.
+//
+// Params (remoteParams, remoteRulesMeta) live in chrome.storage.local — they
+// are device-specific cache of the last fetched signed payload and are large
+// enough that sync's 100 KB quota is not appropriate.
+
+/**
+ * Reads the remoteRulesEnabled toggle from chrome.storage.sync.
+ * @returns {Promise<boolean>} Whether remote rule updates are enabled.
+ */
+export async function getRemoteRulesState() {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.sync.get({ remoteRulesEnabled: false }, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(!!result.remoteRulesEnabled);
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getRemoteRulesState failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Writes the remoteRulesEnabled toggle to chrome.storage.sync.
+ * @param {boolean} enabled
+ * @returns {Promise<void>}
+ */
+export async function setRemoteRulesState(enabled) {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.sync.set({ remoteRulesEnabled: !!enabled }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] setRemoteRulesState failed:", err);
+  }
+}
+
+/**
+ * Reads cached remote params and their metadata from chrome.storage.local.
+ * Returns { remoteParams: string[], remoteRulesMeta: object }.
+ * @returns {Promise<{ remoteParams: string[], remoteRulesMeta: object }>}
+ */
+export async function getRemoteParams() {
+  const defaults = {
+    remoteParams: [],
+    remoteRulesMeta: {
+      version: 0,
+      fetchedAt: null,
+      paramCount: 0,
+      lastError: null,
+      published: null,
+    },
+  };
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.get(defaults, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getRemoteParams failed:", err);
+    return { ...defaults };
+  }
+}
+
+/**
+ * Writes remote params and their metadata to chrome.storage.local.
+ * @param {string[]} params - Accepted remote tracking params.
+ * @param {object}   meta   - Metadata: { version, fetchedAt, paramCount, lastError, published }.
+ * @returns {Promise<void>}
+ */
+export async function setRemoteParams(params, meta) {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ remoteParams: params, remoteRulesMeta: meta }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] setRemoteParams failed:", err);
+  }
+}
+
+/**
+ * Clears remote params and metadata from chrome.storage.local.
+ * Called when the user disables remote rules (REQ-OPT-5).
+ * @returns {Promise<void>}
+ */
+export async function clearRemoteParams() {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.remove(["remoteParams", "remoteRulesMeta"], () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] clearRemoteParams failed:", err);
+  }
+}
+
+// ── One-time migration ────────────────────────────────────────────────────────
 
 /**
  * One-time migration: moves stats out of chrome.storage.sync into
