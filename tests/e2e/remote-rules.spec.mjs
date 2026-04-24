@@ -173,27 +173,12 @@ test.describe("Remote rules — E2E", () => {
       const result = await enableRemoteRules(page);
       expect(result?.ok).toBe(true);
 
-      // Reload the status by sending GET_REMOTE_RULES_STATUS and updating the DOM
-      // (The options page renders on init; to test the UI update, we trigger a DOM refresh)
-      await page.evaluate(async () => {
-        // Trigger a GET_REMOTE_RULES_STATUS and manually update the DOM elements
-        // that renderRemoteRulesStatus() would normally update via the toggle handler
-        const resp = await new Promise(resolve =>
-          chrome.runtime.sendMessage({ type: "GET_REMOTE_RULES_STATUS" }, resolve)
-        );
-        if (resp?.enabled) {
-          const statusBlock = document.getElementById("remote-rules-status");
-          if (statusBlock) statusBlock.hidden = false;
-
-          const fetchEl = document.getElementById("remote-rules-last-fetch");
-          if (fetchEl && resp.meta?.fetchedAt) {
-            fetchEl.textContent = new Date(resp.meta.fetchedAt).toLocaleString("en");
-          }
-
-          const countEl = document.getElementById("remote-rules-param-count");
-          if (countEl) countEl.textContent = String(resp.meta?.paramCount ?? 0);
-        }
-      });
+      // Reload the options page so initRemoteRules() fires again and calls
+      // renderRemoteRulesStatus() via the real code path. This ensures that if
+      // renderRemoteRulesStatus() is broken the test will fail — not silently pass
+      // because the DOM was written directly (S-1 fix).
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
 
       // Status block should now be visible
       await expect(page.locator("#remote-rules-status")).not.toBeHidden();

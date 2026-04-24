@@ -6,7 +6,7 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
@@ -126,7 +126,11 @@ function getPrefsWithCache() {
   if (cachedPrefs) return Promise.resolve(cachedPrefs);
   if (!prefsFetchPromise) {
     const versionAtStart = _cacheVersion;
-    prefsFetchPromise = getPrefs().then(prefs => {
+    // Fetch sync prefs and local remoteParams together so the cleaner sees
+    // remote params on the copy/context-menu/selection paths (REQ-MERGE-5).
+    // Without this, processUrl() gets prefs.remoteParams === undefined and
+    // remote params are only stripped via DNR (navigation), not the content-script copy path.
+    prefsFetchPromise = Promise.all([getPrefs(), getRemoteParams()]).then(([prefs, remote]) => {
       if (_cacheVersion !== versionAtStart) {
         // Cache was invalidated while fetching — discard stale result
         prefsFetchPromise = null;
@@ -135,6 +139,7 @@ function getPrefsWithCache() {
       // Pre-parse blacklist/whitelist once so processUrl doesn't re-parse on every call
       prefs._parsedBlacklist = (prefs.blacklist || []).map(parseListEntry);
       prefs._parsedWhitelist = (prefs.whitelist || []).map(parseListEntry);
+      prefs.remoteParams = remote.remoteParams || [];
       cachedPrefs = prefs;
       prefsFetchPromise = null;
       return prefs;
@@ -320,6 +325,12 @@ async function appendHistory(original, clean, removedTracking = []) {
 
 // --- Storage change listener: invalidate cache and re-apply DNR state ---
 chrome.storage.onChanged.addListener(async (changes, area) => {
+  // Invalidate the prefs cache on both sync changes (disabledCategories, customParams, etc.)
+  // and local changes that affect the merged cache (remoteParams — REQ-MERGE-5).
+  if (area === "local") {
+    if (changes.remoteParams) _invalidatePrefsCache();
+    return;
+  }
   if (area !== "sync") return;
   // Any sync storage change (including disabledCategories, contextMenuEnabled, etc.)
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
