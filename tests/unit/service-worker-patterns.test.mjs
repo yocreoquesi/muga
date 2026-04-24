@@ -170,6 +170,28 @@ describe("Bug #229 — whitelist/blacklist entry format", () => {
   });
 });
 
+// ── INCREMENT_STAT handler returns true ──────────────────────────────────────
+
+describe("INCREMENT_STAT handler — response channel", () => {
+  test("INCREMENT_STAT handler returns true (keeps response channel open)", () => {
+    // All other branches return true to keep the sendResponse channel open.
+    // INCREMENT_STAT must also return true for consistency and future-safety.
+    const handlerBlock = swSource.slice(
+      swSource.indexOf('"INCREMENT_STAT"'),
+      swSource.indexOf('"CLEAR_DEBUG_LOG"')
+    );
+    // The block must NOT end with a bare `return;` (undefined)
+    assert.ok(
+      !handlerBlock.includes("sendResponse({ ok: true });\n    return;\n"),
+      "INCREMENT_STAT must not use bare return (returns undefined, closes channel early)"
+    );
+    assert.ok(
+      handlerBlock.includes("return true;"),
+      "INCREMENT_STAT handler must return true to keep the sendResponse channel open"
+    );
+  });
+});
+
 // ── Cache invalidation version counter ───────────────────────────────────────
 
 describe("Cache invalidation — version counter", () => {

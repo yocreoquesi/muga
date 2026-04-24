@@ -360,7 +360,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const ALLOWED_STAT_KEYS = ["urlsCleaned", "junkRemoved", "referralsSpotted"];
     if (ALLOWED_STAT_KEYS.includes(message.key)) incrementStat(message.key);
     sendResponse({ ok: true });
-    return;
+    return true;
   }
 
   // exposed for future dev-tools use
