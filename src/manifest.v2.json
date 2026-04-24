@@ -11,7 +11,12 @@
     "contextMenus",
     "clipboardWrite",
     "declarativeNetRequest",
-    "<all_urls>"
+    "<all_urls>",
+    "alarms"
+  ],
+
+  "optional_permissions": [
+    "https://yocreoquesi.github.io/*"
   ],
 
   "background": {

@@ -149,7 +149,7 @@ describe("manifest.json integrity", () => {
   test("MV3 has no custom/non-standard keys at root level", () => {
     const standardMV3Keys = new Set([
       "manifest_version", "name", "short_name", "version", "description",
-      "permissions", "optional_permissions", "host_permissions",
+      "permissions", "optional_permissions", "optional_host_permissions", "host_permissions",
       "background", "content_scripts", "commands", "action",
       "options_ui", "options_page", "web_accessible_resources",
       "declarative_net_request", "icons", "content_security_policy",
@@ -224,5 +224,42 @@ describe("manifest.json integrity", () => {
     for (const p of mv2Perms) {
       assert.ok(mv3Perms.has(p), `Permission "${p}" in MV2 but missing from MV3`);
     }
+  });
+
+  // Remote rules update (T1.1) — REQ-MANIFEST-1, REQ-MANIFEST-2
+  test("MV3 permissions include alarms (required for weekly remote-rules fetch)", () => {
+    assert.ok(
+      mv3.permissions.includes("alarms"),
+      'manifest.json must include "alarms" in permissions for chrome.alarms API'
+    );
+  });
+
+  test("MV2 permissions include alarms (required for weekly remote-rules fetch)", () => {
+    assert.ok(
+      mv2.permissions.includes("alarms"),
+      'manifest.v2.json must include "alarms" in permissions for browser.alarms API'
+    );
+  });
+
+  test("MV3 optional_host_permissions includes yocreoquesi.github.io (remote rules endpoint)", () => {
+    assert.ok(
+      Array.isArray(mv3.optional_host_permissions),
+      "manifest.json must have optional_host_permissions array"
+    );
+    assert.ok(
+      mv3.optional_host_permissions.includes("https://yocreoquesi.github.io/*"),
+      'manifest.json optional_host_permissions must include "https://yocreoquesi.github.io/*"'
+    );
+  });
+
+  test("MV2 optional_permissions includes yocreoquesi.github.io (remote rules endpoint)", () => {
+    assert.ok(
+      Array.isArray(mv2.optional_permissions),
+      "manifest.v2.json must have optional_permissions array"
+    );
+    assert.ok(
+      mv2.optional_permissions.includes("https://yocreoquesi.github.io/*"),
+      'manifest.v2.json optional_permissions must include "https://yocreoquesi.github.io/*"'
+    );
   });
 });

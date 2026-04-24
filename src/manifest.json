@@ -10,7 +10,12 @@
     "activeTab",
     "contextMenus",
     "clipboardWrite",
-    "declarativeNetRequestWithHostAccess"
+    "declarativeNetRequestWithHostAccess",
+    "alarms"
+  ],
+
+  "optional_host_permissions": [
+    "https://yocreoquesi.github.io/*"
   ],
 
   "host_permissions": [
