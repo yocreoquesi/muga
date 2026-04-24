@@ -276,8 +276,12 @@ describe("verifySignature — Ed25519 via crypto.subtle", () => {
   test("tampered signature returns false", async () => {
     const msg = "1|2026-04-01T00:00:00Z|utm_test";
     const sig = signMessage(msg);
-    // flip last char to corrupt the sig
-    const badSig = sig.slice(0, -1) + (sig.endsWith("A") ? "B" : "A");
+    // Flip a char near the middle: the LAST base64 char of a 64-byte Ed25519
+    // signature only carries 2 data bits + 4 padding bits, so some swaps at the
+    // end (e.g. "A"<->"B") change only padding and leave the decoded bytes
+    // identical — verification still succeeds and the test is flaky.
+    const mid = Math.floor(sig.length / 2);
+    const badSig = sig.slice(0, mid) + (sig[mid] === "A" ? "B" : "A") + sig.slice(mid + 1);
     const result = await verifySignature(msg, badSig, [testPubB64], subtle);
     assert.strictEqual(result, false);
   });
