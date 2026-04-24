@@ -633,11 +633,22 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
 // --- Remote-rules deps factory ---
 // Builds the deps object for runRemoteRulesFetch. Centralised so onAlarm
 // and ENABLE_REMOTE_RULES message handler use exactly the same deps.
+//
+// Test-only key override (design §13.5, T7.2):
+//   When globalThis.__MUGA_TRUSTED_KEYS__ is set, use it instead of the
+//   production TRUSTED_PUBLIC_KEYS. This allows E2E tests to inject a
+//   throw-away keypair without committing any private key material.
+//   The override is inert at runtime in the packaged extension — the browser
+//   never sets __MUGA_TRUSTED_KEYS__, so production behaviour is unchanged.
 function _remoteRulesDeps() {
+  const trustedKeys =
+    Array.isArray(globalThis.__MUGA_TRUSTED_KEYS__) && globalThis.__MUGA_TRUSTED_KEYS__.length > 0
+      ? globalThis.__MUGA_TRUSTED_KEYS__
+      : TRUSTED_PUBLIC_KEYS;
   return {
     fetchImpl: globalThis.fetch,
     subtle: globalThis.crypto?.subtle,
-    trustedKeys: TRUSTED_PUBLIC_KEYS,
+    trustedKeys,
     storage: hasDNR ? {
       get: (d) => chrome.storage.local.get(d),
       set: (i) => chrome.storage.local.set(i),
