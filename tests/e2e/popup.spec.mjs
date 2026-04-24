@@ -76,8 +76,11 @@ test.describe("Popup", () => {
     await expect(page.locator("#history")).toBeHidden();
   });
 
-  test("domain stats section is hidden when empty", async ({ popupPage: page }) => {
-    await expect(page.locator("#domain-stats")).toBeHidden();
+  test("domain stats section shows empty state when no data", async ({ popupPage: page }) => {
+    // PR-F wired `domain_stats_empty` i18n key — section is visible with empty message
+    // instead of hidden, so users know the feature exists.
+    await expect(page.locator("#domain-stats")).toBeVisible();
+    await expect(page.locator(".domain-stats-empty")).toBeVisible();
   });
 
   test("preview section is hidden on blank popup", async ({ popupPage: page }) => {

@@ -148,6 +148,11 @@ async function init() {
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
   }
+
+  // Signal init completion for e2e tests that need to avoid races with
+  // async storage reads (e.g. clicking the dev-mode checkbox before the
+  // stored value has been applied to the DOM).
+  document.body.dataset.mugaReady = "1";
 }
 
 /** Binds a checkbox to a sync storage preference key. */
