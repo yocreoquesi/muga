@@ -26,7 +26,17 @@ const { sessionStorage } = await import("../../src/lib/storage.js");
 // Tests
 // ---------------------------------------------------------------------------
 
+// All keys touched by any test in this suite. Extend this list when new
+// tests are added. beforeEach wipes them so tests are fully independent of
+// each other's execution order — the ponyfill's _memStore is a module
+// singleton and does not reset between test cases otherwise.
+const ALL_TEST_KEYS = ["foo", "missingKey", "counter", "toRemove", "a", "b", "x", "y", "p"];
+
 describe("sessionStorage ponyfill — in-memory fallback (chrome.storage.session undefined)", () => {
+
+  beforeEach(async () => {
+    await sessionStorage.remove(ALL_TEST_KEYS);
+  });
 
   test("set and get a single key", async () => {
     await sessionStorage.set({ foo: "bar" });
