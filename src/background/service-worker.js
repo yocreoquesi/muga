@@ -6,7 +6,7 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules } from "../lib/storage.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -18,12 +18,40 @@ const _affiliateDomains = getAffiliateDomains();
 let _firstUsedSet = false;
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
-//       top-level await disallowed in Chrome MV3 service workers)
+//       top-level await disallowed in Chrome MV3 service workers).
+// Cache-first: on each SW restart we attempt to read from chrome.storage.session
+// first. Only falls back to fetch() on a cache miss. On persistent fetch failure
+// (up to 3 attempts) we log the error and leave domainRules as [] so the SW can
+// still operate without domain-specific rules.
 let domainRules = [];
-let _domainRulesReady = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
-  .then(r => r.json())
-  .then(data => { domainRules = data; })
-  .catch(err => console.warn("[MUGA] domain-rules.json fetch failed:", err));
+let _domainRulesReady = null;
+let _domainRulesFetchAttempts = 0;
+const DOMAIN_RULES_MAX_ATTEMPTS = 3;
+
+async function _loadDomainRules() {
+  const cached = await getCachedDomainRules();
+  if (cached) {
+    domainRules = cached;
+    return;
+  }
+  if (_domainRulesFetchAttempts >= DOMAIN_RULES_MAX_ATTEMPTS) {
+    console.error("[MUGA] domain-rules.json: max fetch attempts reached; domain rules unavailable");
+    return;
+  }
+  try {
+    _domainRulesFetchAttempts++;
+    const r = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
+    const data = await r.json();
+    domainRules = data;
+    await cacheDomainRules(data);
+  } catch (err) {
+    console.error("[MUGA] domain-rules.json fetch failed (attempt", _domainRulesFetchAttempts, "):", err);
+    // Null out so the next handleProcessUrl call retries (up to the cap)
+    _domainRulesReady = null;
+  }
+}
+
+_domainRulesReady = _loadDomainRules();
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
@@ -347,6 +375,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  // _domainRulesReady is nulled on fetch failure to allow retry on the next call
+  if (!_domainRulesReady) _domainRulesReady = _loadDomainRules();
   await _domainRulesReady;
   const prefs = await getPrefsWithCache();
 

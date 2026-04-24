@@ -382,6 +382,47 @@ export const sessionStorage = {
 // create a de facto browsing history, the same privacy concern that rules out
 // persistent URL history. Evaluated and rejected 2026-03-30.
 
+// ── Domain-rules session cache ────────────────────────────────────────────────
+//
+// MV3 service workers are killed on inactivity and re-evaluated from scratch on
+// the next event. On every cold start, domainRules would require a fresh fetch()
+// of the bundled rules/domain-rules.json. This session cache persists the parsed
+// array across SW restarts using chrome.storage.session (falls back to the
+// in-memory store for Firefox MV2 compatibility).
+//
+// Cache key: "domainRulesCache"
+// Value: serialised JSON array of domain-rule objects.
+
+const DOMAIN_RULES_CACHE_KEY = "domainRulesCache";
+
+/**
+ * Persists the fetched domain rules into session storage so subsequent
+ * SW restarts can skip the fetch round-trip.
+ * @param {Array} rules - Parsed domain-rules array.
+ * @returns {Promise<void>}
+ */
+export async function cacheDomainRules(rules) {
+  try {
+    await sessionStorage.set({ [DOMAIN_RULES_CACHE_KEY]: rules });
+  } catch (err) {
+    console.warn("[MUGA] cacheDomainRules: failed to write session cache:", err);
+  }
+}
+
+/**
+ * Reads domain rules from session storage. Returns null on cache miss or error.
+ * @returns {Promise<Array|null>}
+ */
+export async function getCachedDomainRules() {
+  try {
+    const data = await sessionStorage.get({ [DOMAIN_RULES_CACHE_KEY]: null });
+    const cached = data[DOMAIN_RULES_CACHE_KEY];
+    return Array.isArray(cached) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Remote rules: toggle + params cache ───────────────────────────────────────
 //
 // Toggle (remoteRulesEnabled) lives in chrome.storage.sync — it is a user
