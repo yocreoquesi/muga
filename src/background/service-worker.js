@@ -411,6 +411,85 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── Remote-rules message handlers ──────────────────────────────────────────
+  // Sender validation: the top-level guard (sender.id !== chrome.runtime.id) already
+  // rejects messages from unknown senders before reaching these branches. (REQ-SECURITY-2)
+
+  if (message.type === "ENABLE_REMOTE_RULES") {
+    // Note: chrome.permissions.request must have been called by the UI BEFORE sending
+    // this message (Firefox MV2 requires the gesture in the same call frame, design §10).
+    (async () => {
+      try {
+        await setPrefs({ remoteRulesEnabled: true });
+        _invalidatePrefsCache();
+        // Re-register alarm idempotently (REQ-OPT-6)
+        registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
+        // Immediate first fetch (REQ-OPT-3, SC-02)
+        await runRemoteRulesFetch(_remoteRulesDeps());
+        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] ENABLE_REMOTE_RULES handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "DISABLE_REMOTE_RULES") {
+    (async () => {
+      try {
+        await setPrefs({ remoteRulesEnabled: false });
+        _invalidatePrefsCache();
+        // Clear remote params + DNR rule 1001. Rule 1000 (custom) is NOT touched. (REQ-OPT-5, SC-03)
+        await clearRemoteCache({
+          storage: {
+            remove: (k) => chrome.storage.local.remove(k),
+          },
+          dnr: hasDNR
+            ? { updateDynamicRules: (opts) => chrome.declarativeNetRequest.updateDynamicRules(opts) }
+            : { updateDynamicRules: async () => {} },
+        });
+        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] DISABLE_REMOTE_RULES handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "GET_REMOTE_RULES_STATUS") {
+    (async () => {
+      try {
+        // Read enabled from sync (authoritative)
+        const syncData = await chrome.storage.sync.get({ remoteRulesEnabled: false });
+        const enabled = !!syncData.remoteRulesEnabled;
+        // Read meta from local
+        const localData = await chrome.storage.local.get({
+          remoteParams: [],
+          remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
+        });
+        // Feature-detect flags (REQ-UI-5)
+        const supportsAlarms = hasAlarms;
+        const supportsDNR = hasDNR;
+        try {
+          sendResponse({
+            ok: true,
+            enabled,
+            meta: localData.remoteRulesMeta,
+            remoteParams: localData.remoteParams,
+            supportsAlarms,
+            supportsDNR,
+          });
+        } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] GET_REMOTE_RULES_STATUS handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {

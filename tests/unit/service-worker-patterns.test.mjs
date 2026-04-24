@@ -508,6 +508,107 @@ describe("T2.2 — onAlarm handler logic", () => {
   });
 });
 
+// ── T2.3: ENABLE/DISABLE/GET_STATUS message handlers ────────────────────────
+
+describe("T2.3 — Message handler source patterns", () => {
+  test("SW handles ENABLE_REMOTE_RULES message type", () => {
+    assert.ok(
+      swSource.includes('"ENABLE_REMOTE_RULES"'),
+      "SW must handle ENABLE_REMOTE_RULES"
+    );
+  });
+
+  test("SW handles DISABLE_REMOTE_RULES message type", () => {
+    assert.ok(
+      swSource.includes('"DISABLE_REMOTE_RULES"'),
+      "SW must handle DISABLE_REMOTE_RULES"
+    );
+  });
+
+  test("SW handles GET_REMOTE_RULES_STATUS message type", () => {
+    assert.ok(
+      swSource.includes('"GET_REMOTE_RULES_STATUS"'),
+      "SW must handle GET_REMOTE_RULES_STATUS"
+    );
+  });
+
+  test("ENABLE_REMOTE_RULES handler calls setPrefs with remoteRulesEnabled true", () => {
+    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
+    assert.ok(enablePos !== -1);
+    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    assert.ok(
+      enableBlock.includes("remoteRulesEnabled: true"),
+      "ENABLE handler must setPrefs({ remoteRulesEnabled: true })"
+    );
+  });
+
+  test("DISABLE_REMOTE_RULES handler calls setPrefs with remoteRulesEnabled false", () => {
+    const disablePos = swSource.indexOf('"DISABLE_REMOTE_RULES"');
+    assert.ok(disablePos !== -1);
+    const disableBlock = swSource.slice(disablePos, disablePos + 600);
+    assert.ok(
+      disableBlock.includes("remoteRulesEnabled: false"),
+      "DISABLE handler must setPrefs({ remoteRulesEnabled: false })"
+    );
+  });
+
+  test("DISABLE_REMOTE_RULES handler calls clearRemoteCache", () => {
+    const disablePos = swSource.indexOf('"DISABLE_REMOTE_RULES"');
+    const disableBlock = swSource.slice(disablePos, disablePos + 600);
+    assert.ok(
+      disableBlock.includes("clearRemoteCache"),
+      "DISABLE handler must call clearRemoteCache (REQ-OPT-5, SC-03)"
+    );
+  });
+
+  test("ENABLE_REMOTE_RULES handler triggers immediate runRemoteRulesFetch", () => {
+    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
+    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    assert.ok(
+      enableBlock.includes("runRemoteRulesFetch"),
+      "ENABLE handler must call runRemoteRulesFetch for immediate first fetch (REQ-OPT-3)"
+    );
+  });
+
+  test("ENABLE_REMOTE_RULES handler re-registers alarm idempotently", () => {
+    const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
+    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    assert.ok(
+      enableBlock.includes("registerRemoteRulesAlarm"),
+      "ENABLE handler must re-register alarm idempotently (REQ-OPT-6)"
+    );
+  });
+
+  test("GET_REMOTE_RULES_STATUS responds with enabled, meta, supportsAlarms, supportsDNR", () => {
+    const statusPos = swSource.indexOf('"GET_REMOTE_RULES_STATUS"');
+    const statusBlock = swSource.slice(statusPos, statusPos + 800);
+    assert.ok(statusBlock.includes("supportsAlarms"), "status must include supportsAlarms (REQ-UI-5)");
+    assert.ok(statusBlock.includes("supportsDNR"), "status must include supportsDNR (REQ-UI-5)");
+    assert.ok(statusBlock.includes("enabled"), "status must include enabled flag");
+  });
+
+  test("all remote-rules message handlers return true (keep channel open)", () => {
+    // All three handlers must return true per the onMessage invariant.
+    // Each handler uses an IIFE pattern so return true is at the end of the block.
+    for (const msgType of ["ENABLE_REMOTE_RULES", "DISABLE_REMOTE_RULES", "GET_REMOTE_RULES_STATUS"]) {
+      const pos = swSource.indexOf(`"${msgType}"`);
+      assert.ok(pos !== -1, `${msgType} handler must exist`);
+      // Find the return true within the next 1200 chars (IIFE pattern is ~900 chars)
+      const block = swSource.slice(pos, pos + 1200);
+      assert.ok(block.includes("return true"), `${msgType} handler must return true`);
+    }
+  });
+
+  test("sender.id validation present in message listener (REQ-SECURITY-2)", () => {
+    // The main onMessage handler already validates sender.id; the new handlers
+    // fall through the same gate — verify the gate is present and covers all messages
+    assert.ok(
+      swSource.includes("sender.id !== chrome.runtime.id"),
+      "onMessage listener must validate sender.id (REQ-SECURITY-2)"
+    );
+  });
+});
+
 // ── Onboarding consent verification ─────────────────────────────────────────
 
 describe("Onboarding consent — source code patterns", () => {
