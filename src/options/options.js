@@ -1028,10 +1028,10 @@ function renderRemoteRulesStatus(status) {
  * user-gesture frame and the permission request silently returns false.
  */
 async function initRemoteRules() {
-  // REQ-UI-5: hide the section entirely on runtimes without alarms or DNR
-  const supportsRemote =
-    typeof chrome.alarms !== "undefined" &&
-    typeof chrome.declarativeNetRequest !== "undefined";
+  // REQ-UI-5: hide the section entirely on runtimes without DNR. v1.10.1
+  // removed the chrome.alarms dependency — the only remaining runtime gate
+  // is DNR availability.
+  const supportsRemote = typeof chrome.declarativeNetRequest !== "undefined";
 
   const section = document.getElementById("remote-rules-section");
   if (!section) return;

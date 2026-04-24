@@ -11,9 +11,6 @@ import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
 import {
-  REMOTE_ALARM_NAME,
-  ALARM_PERIOD_MIN,
-  ALARM_DELAY_MIN,
   runRemoteRulesFetch,
   clearRemoteCache,
   buildRemoteDnrRule,
@@ -148,26 +145,50 @@ function getPrefsWithCache() {
   return prefsFetchPromise;
 }
 
-// --- Remote-rules alarm helpers ---
-// Feature-detect chrome.alarms (absent in some stripped Firefox MV2 builds).
-const hasAlarms = typeof chrome.alarms !== "undefined";
+// --- Remote-rules opportunistic fetch ---
+// MV3 service workers wake on many events (navigation, message, onInstalled,
+// onStartup, etc.). Instead of using chrome.alarms — which requires a separate
+// permission and a Privacy-practices justification — we piggyback on those
+// natural wake-ups and throttle with a time-gate stored in remoteRulesMeta.
+// Users who never open the browser don't need fresh rules; users who do, get
+// one fetch per ~7 days as a side-effect of normal activity.
+
+// Target interval between successful remote-rules fetches (7 days).
+const REMOTE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Module-level flag — checked once per SW lifetime so repeated wake events
+// (one per message, one per navigation, etc.) don't hit chrome.storage on
+// every call. Resets automatically when the SW dies and respawns.
+let _remoteRulesCheckedThisLifetime = false;
 
 /**
- * Registers the remote-rules weekly alarm idempotently.
- * Called on onInstalled and onStartup. The alarm handler short-circuits
- * if remoteRulesEnabled is false, so always registering is safe (REQ-OPT-6).
+ * Fires a remote-rules fetch iff (a) the user has opted in, (b) no fetch is
+ * currently in flight (enforced by runRemoteRulesFetch internally), and (c)
+ * the last successful fetch is older than REMOTE_REFRESH_INTERVAL_MS (or has
+ * never happened). Silent no-op on any failure to read state — this is a
+ * best-effort path that must never block callers.
  *
- * Pure helper — takes chrome.alarms as an injected dep for unit-testability.
- * No-op when the API is absent (feature-detect).
+ * Deduplicated per SW lifetime via `_remoteRulesCheckedThisLifetime` so
+ * hot paths (PROCESS_URL, message handlers) can call it freely without
+ * extra storage reads.
  *
- * @param {typeof chrome.alarms | undefined} alarms - chrome.alarms API (or undefined).
+ * @param {object} deps - Dependencies for runRemoteRulesFetch (same shape as Phase 2).
+ * @returns {Promise<void>}
  */
-function registerRemoteRulesAlarm(alarms) {
-  if (!alarms) return;
-  return alarms.create(REMOTE_ALARM_NAME, {
-    periodInMinutes: ALARM_PERIOD_MIN,
-    delayInMinutes: ALARM_DELAY_MIN,
-  });
+async function maybeFetchRemoteRules(deps) {
+  if (_remoteRulesCheckedThisLifetime) return;
+  _remoteRulesCheckedThisLifetime = true;
+  try {
+    const { remoteRulesEnabled } = await getPrefs();
+    if (!remoteRulesEnabled) return;
+    const { remoteRulesMeta } = await getRemoteParams();
+    const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
+    if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) return;
+    await runRemoteRulesFetch(deps);
+  } catch (err) {
+    // Non-fatal: remote rules are optional. Leave built-in rules active.
+    console.warn("[MUGA] maybeFetchRemoteRules:", err?.message || err);
+  }
 }
 
 // --- DNR sync helpers ---
@@ -364,6 +385,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
       return true;
     }
+    // Opportunistic remote-rules refresh — cheap no-op after the first call
+    // in each SW lifetime. Catches the "user never restarts browser" case
+    // that onStartup can't reach. Runs in parallel with URL processing.
+    maybeFetchRemoteRules(_remoteRulesDeps());
     const tabId = sender.tab?.id;
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats })
       .then(result => {
@@ -464,9 +489,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         await setPrefs({ remoteRulesEnabled: true });
         _invalidatePrefsCache();
-        // Re-register alarm idempotently (REQ-OPT-6)
-        registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
-        // Immediate first fetch (REQ-OPT-3, SC-02)
+        // Immediate first fetch (REQ-OPT-3, SC-02). Subsequent fetches happen
+        // opportunistically via maybeFetchRemoteRules on any SW wake once the
+        // 7-day interval has elapsed — no alarm required.
         await runRemoteRulesFetch(_remoteRulesDeps());
         try { sendResponse({ ok: true }); } catch { /* channel closed */ }
       } catch (err) {
@@ -511,8 +536,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           remoteParams: [],
           remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
         });
-        // Feature-detect flags (REQ-UI-5)
-        const supportsAlarms = hasAlarms;
+        // Feature-detect flags (REQ-UI-5). Since v1.10.1 the feature no
+        // longer requires chrome.alarms — the only remaining runtime gate
+        // is DNR availability. `supportsAlarms` is kept as `true` for
+        // backwards compat with any cached UI bundle that still inspects it.
+        const supportsAlarms = true;
         const supportsDNR = hasDNR;
         try {
           sendResponse({
@@ -671,41 +699,14 @@ function _remoteRulesDeps() {
   };
 }
 
-// --- onAlarm: weekly remote-rules fetch ---
-// Registered after hasAlarms guard so we don't reference chrome.alarms in envs where it's absent.
-if (hasAlarms) {
-  chrome.alarms.onAlarm.addListener(async (alarm) => {
-    if (alarm.name !== REMOTE_ALARM_NAME) return;
-
-    // Re-read remoteRulesEnabled from storage on every fire (REQ-OPT-6, SC-01).
-    // Must NOT use the prefs cache — the alarm fires infrequently and re-reading
-    // is cheap. Using the cache here could silently leave the disabled state stale.
-    let enabled = false;
-    try {
-      const data = await chrome.storage.sync.get({ remoteRulesEnabled: false });
-      enabled = !!data.remoteRulesEnabled;
-    } catch (err) {
-      console.error("[MUGA] remote-rules: failed to read remoteRulesEnabled:", err);
-      return;
-    }
-
-    if (!enabled) return; // short-circuit: disabled (SC-01)
-
-    // runRemoteRulesFetch manages its own _remoteFetchInFlight dedup guard (REQ-FETCH-3, SC-11)
-    try {
-      await runRemoteRulesFetch(_remoteRulesDeps());
-    } catch (err) {
-      // runRemoteRulesFetch writes errors to meta itself; this catch is for unexpected throws
-      console.error("[MUGA] remote-rules: unexpected error in alarm handler:", err);
-    }
-  });
-}
-
-// --- On startup: apply DNR state + register remote-rules alarm ---
+// --- On startup: apply DNR state + opportunistic remote-rules fetch ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
-  registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
+  // Opportunistic fetch: time-gated so it only fires if the stored fetchedAt
+  // is older than REMOTE_REFRESH_INTERVAL_MS or absent. Also short-circuits
+  // immediately if remoteRulesEnabled is false.
+  maybeFetchRemoteRules(_remoteRulesDeps());
 });
 
 // --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
@@ -716,11 +717,13 @@ function openOnboardingOnce() {
   chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
 }
 
-// --- On install: open onboarding on first run, register context menu + alarm ---
+// --- On install: open onboarding on first run, sync DNR + maybe fetch rules ---
 chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
-  registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
+  // Opportunistic fetch: fires on install/update if user had enabled remote rules
+  // before the update and the stored payload is stale (or absent).
+  maybeFetchRemoteRules(_remoteRulesDeps());
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

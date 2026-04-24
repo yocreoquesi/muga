@@ -209,10 +209,11 @@ describe("T3.2 options.js remote-rules wiring", () => {
     );
   });
 
-  test("feature-detects chrome.alarms and chrome.declarativeNetRequest", () => {
+  test("feature-detects chrome.declarativeNetRequest (REQ-UI-5)", () => {
+    // v1.10.1 removed the alarms permission — only DNR is required now.
     assert.ok(
-      optionsJs.includes("chrome.alarms") && optionsJs.includes("chrome.declarativeNetRequest"),
-      "options.js must feature-detect chrome.alarms and chrome.declarativeNetRequest (REQ-UI-5)"
+      optionsJs.includes("chrome.declarativeNetRequest"),
+      "options.js must feature-detect chrome.declarativeNetRequest (REQ-UI-5)"
     );
   });
 

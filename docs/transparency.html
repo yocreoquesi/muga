@@ -71,7 +71,7 @@
 <body>
 
   <h1>Transparency Report</h1>
-  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.10.0 &nbsp;&middot;&nbsp; 2026-04-24 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.10.1 &nbsp;&middot;&nbsp; 2026-04-25 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
 
   <div class="highlight">
     Privacy policies say "we don't collect your data." This page shows the evidence behind that claim — what MUGA actually does, which permissions it uses and why, and how you can verify every statement yourself.
@@ -82,7 +82,7 @@
   <div class="at-a-glance">
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Version</span>
-      <span class="at-a-glance-value">1.10.0</span>
+      <span class="at-a-glance-value">1.10.1</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">External server connections</span>
@@ -165,13 +165,8 @@
   </div>
 
   <div class="permission-block">
-    <div class="permission-name">alarms</div>
-    <div class="permission-why">Used to schedule a weekly background check for signed tracking-parameter updates when you have enabled Remote rule updates in Settings. No alarm fires on a default install — the alarm handler reads your preference on every tick and returns immediately if the feature is off. This permission cannot be withheld; it is always declared so the alarm infrastructure is ready if you opt in.</div>
-  </div>
-
-  <div class="permission-block">
     <div class="permission-name">optional_host_permissions: https://yocreoquesi.github.io/* <em>(Chrome MV3)</em> / optional_permissions <em>(Firefox MV2)</em></div>
-    <div class="permission-why">Granted only when you enable Remote rule updates. Used to perform one HTTPS GET per week to fetch the signed tracking-parameter list from the project's public GitHub Pages endpoint (<code>https://yocreoquesi.github.io/muga/rules/v1/params.json</code>). The request is sent with <code>credentials: "omit"</code> and <code>cache: "no-store"</code> — no cookies, no user identifiers, no POST body. The endpoint is open source and auditable. If you disable Remote rule updates, this permission remains granted but no code path uses it; you can revoke it at any time via your browser's extension settings.</div>
+    <div class="permission-why">Granted only when you enable Remote rule updates. Used to perform a single HTTPS GET — at most once per 7 days — to fetch the signed tracking-parameter list from the project's public GitHub Pages endpoint (<code>https://yocreoquesi.github.io/muga/rules/v1/params.json</code>). The request is sent with <code>credentials: "omit"</code> and <code>cache: "no-store"</code> — no cookies, no user identifiers, no POST body. The refresh is triggered by natural service-worker wake events (a page visit, a browser startup, a message from the popup) combined with a stored "last-fetched" timestamp; no background alarm permission is used. The endpoint is open source and auditable. You can revoke this permission at any time via your browser's extension settings.</div>
   </div>
 
   <h2>How to Verify</h2>

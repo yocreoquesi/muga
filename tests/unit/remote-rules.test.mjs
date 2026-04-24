@@ -67,7 +67,6 @@ import {
   buildRemoteDnrRule,
   runRemoteRulesFetch,
   REMOTE_RULE_ID,
-  REMOTE_ALARM_NAME,
   REMOTE_RULES_URL,
   MAX_PAYLOAD_BYTES,
   FETCH_TIMEOUT_MS,
@@ -137,10 +136,6 @@ function makePayload({
 describe("Constants — shape and values", () => {
   test("REMOTE_RULE_ID is 1001", () => {
     assert.strictEqual(REMOTE_RULE_ID, 1001);
-  });
-
-  test("REMOTE_ALARM_NAME is a non-empty string", () => {
-    assert.ok(typeof REMOTE_ALARM_NAME === "string" && REMOTE_ALARM_NAME.length > 0);
   });
 
   test("REMOTE_RULES_URL is the correct endpoint", () => {

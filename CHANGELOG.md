@@ -4,6 +4,14 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-04-25
+
+### Changed
+- Remote rule updates no longer require the `alarms` permission. The weekly refresh now piggybacks on natural service-worker wake events (browser startup, page visits, popup messages) and is throttled by a stored `fetchedAt` timestamp — at most one fetch per 7 days, short-circuited immediately when the feature is off. This drops one permission from the manifest without changing the opt-in default or the privacy posture.
+
+### Removed
+- `alarms` permission from `manifest.json` and `manifest.v2.json`.
+
 ## [1.10.0] - 2026-04-24
 
 ### Added
@@ -518,7 +526,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/yocreoquesi/muga/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/yocreoquesi/muga/compare/v1.9.10...v1.10.0
 [1.9.10]: https://github.com/yocreoquesi/muga/compare/v1.9.9...v1.9.10
 [1.9.9]: https://github.com/yocreoquesi/muga/compare/v1.9.8...v1.9.9
