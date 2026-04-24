@@ -15,19 +15,9 @@ import assert from "node:assert/strict";
 // The mock must exist before the module is imported so Node.js does not throw
 // a ReferenceError if the engine evaluates any top-level expressions.
 // ---------------------------------------------------------------------------
-globalThis.chrome = {
-  storage: {
-    sync: {
-      get: (defaults, cb) => cb && cb({}),
-      set: (_data, cb) => cb && cb(),
-      remove: (_keys, cb) => cb && cb(),
-    },
-    local: {
-      get: (defaults, cb) => cb && cb({}),
-      set: (_data, cb) => cb && cb(),
-    },
-  },
-};
+import { makeChromeMock } from "./helpers/chrome-stub.mjs";
+// callback shape, no session — matches original behaviour
+globalThis.chrome = makeChromeMock({ hasSession: false, promiseShape: false });
 
 // ---------------------------------------------------------------------------
 // Test 1 — PREF_DEFAULTS is exported from storage.js and is an object

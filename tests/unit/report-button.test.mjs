@@ -20,23 +20,9 @@ const root = resolve(__dirname, "../..");
 // storage.js uses chrome.* APIs at module level (the shim IIFE and the
 // onSuspend listener). Provide a minimal stub so the module can be imported
 // in a Node.js test environment without crashing.
-globalThis.chrome = {
-  storage: {
-    sync: {
-      get: () => Promise.resolve({}),
-      set: () => Promise.resolve(),
-    },
-    local: {
-      get: () => Promise.resolve({}),
-      set: () => Promise.resolve(),
-    },
-    session: undefined,
-  },
-  runtime: {
-    lastError: null,
-    onSuspend: { addListener: () => {} },
-  },
-};
+import { makeChromeMock } from "./helpers/chrome-stub.mjs";
+// Promise shape, session explicitly absent (undefined) — matches original behaviour
+globalThis.chrome = makeChromeMock({ hasSession: false, promiseShape: true });
 
 const { PREF_DEFAULTS } = await import("../../src/lib/storage.js");
 const { TRANSLATIONS } = await import("../../src/lib/i18n.js");

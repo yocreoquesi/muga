@@ -13,20 +13,9 @@ import assert from "node:assert/strict";
 // ---------------------------------------------------------------------------
 // Simulate Firefox MV2: chrome.storage.session is undefined
 // ---------------------------------------------------------------------------
-globalThis.chrome = {
-  storage: {
-    sync: {
-      get: (defaults, cb) => cb && cb({}),
-      set: (_data, cb) => cb && cb(),
-      remove: (_keys, cb) => cb && cb(),
-    },
-    local: {
-      get: (defaults, cb) => cb && cb({}),
-      set: (_data, cb) => cb && cb(),
-    },
-    // session intentionally absent — Firefox MV2 does not have it
-  },
-};
+import { makeChromeMock } from "./helpers/chrome-stub.mjs";
+// callback shape, no session — simulates Firefox MV2 (chrome.storage.session absent)
+globalThis.chrome = makeChromeMock({ hasSession: false, promiseShape: false });
 
 // ---------------------------------------------------------------------------
 // Import after mock so the module sees our chrome stub
