@@ -608,7 +608,7 @@ export async function runRemoteRulesFetch(deps = {}) {
         fetchImpl,
       });
     } catch (err) {
-      const code = err.code === ERR.OVER_CAP ? ERR.NETWORK_ERROR : ERR.NETWORK_ERROR;
+      const code = err.code || ERR.NETWORK_ERROR;
       await _writeError(code, storage);
       console.error("[MUGA] remote-rules:", code, err.message);
       return;
