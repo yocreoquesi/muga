@@ -1,10 +1,21 @@
 name: Release
 
 # Triggered when a version tag is pushed: git tag v1.0.0 && git push --tags
+# Also supports manual dispatch: some main commits use [skip ci] in their
+# message (e.g. the publish-rules.yml auto-commit) and GitHub honors that
+# token on tag pushes when the tag points to such a commit, suppressing
+# this workflow. workflow_dispatch gives ops a reliable manual trigger
+# that takes a tag name input.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing git tag to release (e.g. v1.10.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,6 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
@@ -39,7 +52,11 @@ jobs:
 
       - name: Get version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          # For push events, GITHUB_REF_NAME is the tag (v1.2.3); for
+          # workflow_dispatch, read from the input.
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Rename build artifacts
         run: |
