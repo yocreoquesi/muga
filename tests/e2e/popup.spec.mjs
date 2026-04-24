@@ -36,15 +36,15 @@ test.describe("Popup", () => {
       el.checked = false;
       el.dispatchEvent(new Event("change"));
     });
-    await page.waitForTimeout(300);
 
-    // Verify in storage
-    const enabled = await page.evaluate(() => {
-      return new Promise((resolve) => {
+    // Wait for the storage write to complete before reading it back
+    const enabled = await page.waitForFunction(async () => {
+      const result = await new Promise((resolve) => {
         chrome.storage.sync.get({ enabled: true }, (r) => resolve(r.enabled));
       });
+      return result === false ? false : undefined;
     });
-    expect(enabled).toBe(false);
+    expect(await enabled.jsonValue()).toBe(false);
 
     // Re-enable
     await page.evaluate(() => {
@@ -52,7 +52,14 @@ test.describe("Popup", () => {
       el.checked = true;
       el.dispatchEvent(new Event("change"));
     });
-    await page.waitForTimeout(300);
+
+    // Wait for re-enable to persist
+    await page.waitForFunction(async () => {
+      const result = await new Promise((resolve) => {
+        chrome.storage.sync.get({ enabled: true }, (r) => resolve(r.enabled));
+      });
+      return result === true ? true : undefined;
+    });
   });
 
   test("settings link opens options page", async ({ context, extensionId, popupPage: page }) => {
