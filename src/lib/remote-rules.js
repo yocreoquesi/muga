@@ -15,6 +15,7 @@
 
 import { TRUSTED_PUBLIC_KEYS } from "./remote-rules-keys.js";
 import { DNR_REMOTE_PARAMS_RULE_ID } from "./dnr-ids.js";
+import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -660,16 +661,14 @@ export async function runRemoteRulesFetch(deps = {}) {
       return;
     }
 
-    // 6. Silent dedup against built-in params
-    // Import TRACKING_PARAMS lazily to avoid circular deps — cleaner.js imports affiliates.js
-    let builtinSet;
-    try {
-      const { TRACKING_PARAMS } = await import("./affiliates.js");
-      builtinSet = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
-    } catch {
-      // If affiliates.js unavailable (e.g. in some test envs), skip dedup
-      builtinSet = new Set();
-    }
+    // 6. Silent dedup against built-in params (REQ-VALIDATE-9, SC-12).
+    // Uses the statically-imported _BUILTIN_TRACKING_PARAMS array.
+    // Note: dynamic import() is disallowed on ServiceWorkerGlobalScope per the HTML spec
+    // (https://github.com/w3c/ServiceWorker/issues/1356), so a static top-level import
+    // is the only reliable approach. No circular dep: remote-rules.js does not import
+    // cleaner.js; affiliates.js → remote-rules.js is the only direction that would create
+    // a cycle, and affiliates.js has no such import.
+    const builtinSet = new Set(_BUILTIN_TRACKING_PARAMS.map(p => p.toLowerCase()));
     const accepted = filterAgainstBuiltin(validResult.accepted, builtinSet);
 
     // 7. Merge into cache
