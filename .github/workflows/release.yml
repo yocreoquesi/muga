@@ -66,6 +66,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
+          # Explicit tag_name lets the action work under workflow_dispatch,
+          # where github.ref is the branch (e.g. refs/heads/main), not a tag.
+          tag_name: "v${{ steps.version.outputs.VERSION }}"
           name: "v${{ steps.version.outputs.VERSION }}"
           body: |
             See [CHANGELOG.md](https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md) for what changed in this release.
