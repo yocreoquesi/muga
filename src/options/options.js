@@ -388,6 +388,7 @@ function initLanguageSelect() {
   select.addEventListener("change", async () => {
     _currentLang = select.value;
     try { await setPrefs({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
+    document.documentElement.lang = _currentLang;
     applyTranslations(_currentLang);
     // Re-render dynamic lists with new language
     let prefs;

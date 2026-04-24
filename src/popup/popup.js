@@ -95,6 +95,7 @@ function _renderParamBreakdown(removedTracking, lang) {
 /** Initializes popup: loads prefs/stats, renders UI, binds event handlers. */
 async function init() {
   const lang = await getStoredLang();
+  document.documentElement.lang = lang;
   applyTranslations(lang);
 
   // --- Consent gate: block popup until user accepts ToS in onboarding ---
