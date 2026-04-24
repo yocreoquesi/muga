@@ -113,6 +113,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
+- **Remote rule updates** (optional, off by default): weekly signed updates to the tracking-param list from a public GitHub Pages endpoint. Zero outbound requests on a default install.
 - Export / Import settings as JSON
 - 4 languages: English, Spanish, Portuguese, German
 
