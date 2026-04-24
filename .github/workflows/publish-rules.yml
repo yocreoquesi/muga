@@ -1,0 +1,100 @@
+name: publish-rules
+
+# Triggered on push to main that changes the unsigned rules source.
+# Signs the source with the Ed25519 key stored in MUGA_SIGNING_KEY secret,
+# commits the signed docs/rules/v1/params.json back to main, and smoke-checks
+# the GitHub Pages URL after publication.
+#
+# Action required before first run:
+#   Upload the Ed25519 private key as the MUGA_SIGNING_KEY repository secret.
+#   See the PR body for the exact command.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/rules-source/**"
+
+# Default to least privilege. The publish job elevates to contents: write.
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Elevated to write so we can commit the signed artifact back to main.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          # Use the default GITHUB_TOKEN — this is sufficient for push to main.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Write signing key to temp file and mask it
+        # Writes the private key PEM to a temp file in RUNNER_TEMP (not the workspace).
+        # Immediately masks the value so any accidental echo is redacted in logs.
+        # SECURITY: never echo $MUGA_SIGNING_KEY directly — use the file path only.
+        env:
+          MUGA_SIGNING_KEY: ${{ secrets.MUGA_SIGNING_KEY }}
+        run: |
+          echo "$MUGA_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
+          echo "::add-mask::$(cat "$RUNNER_TEMP/key.pem")"
+
+      - name: Sign rules source
+        env:
+          MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
+        run: node tools/sign-rules.mjs
+
+      - name: Clean up signing key
+        # Always runs — even if previous steps fail — so the key is never left on disk.
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key.pem"
+
+      - name: Commit and push signed artifact
+        run: |
+          git config user.name "Antonio Rodriguez"
+          git config user.email "yocreoquesi@gmail.com"
+          git add docs/rules/v1/params.json
+          # Only commit if the file actually changed
+          if ! git diff --cached --quiet; then
+            git commit -m "ci(rules): publish signed params.json [skip ci]"
+            git push
+          else
+            echo "No changes to docs/rules/v1/params.json — skipping commit"
+          fi
+
+  smoke-check:
+    runs-on: ubuntu-latest
+    needs: publish
+    # Allow some propagation delay — GitHub Pages can take a minute after push.
+    steps:
+      - name: Wait for GitHub Pages propagation
+        # Brief initial pause to let the push reach Pages CDN before retrying.
+        run: sleep 30
+
+      - name: Smoke-check published URL
+        # --fail exits non-zero on HTTP 4xx/5xx (including 404 during propagation).
+        # --retry-all-errors retries on transient HTTP errors (not just network errors).
+        # --retry 3 with --retry-delay 30 tolerates up to ~120s of propagation lag.
+        # --silent suppresses progress bar; --show-error still shows error messages.
+        run: |
+          curl --head \
+               --fail \
+               --silent \
+               --show-error \
+               --retry 3 \
+               --retry-delay 30 \
+               --retry-all-errors \
+               https://yocreoquesi.github.io/muga/rules/v1/params.json
