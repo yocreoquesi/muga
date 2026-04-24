@@ -28,8 +28,28 @@ const STORAGE_SOURCE = readFileSync(
 // PREF_DEFAULTS shape
 // ---------------------------------------------------------------------------
 describe("PREF_DEFAULTS — shape and default values", () => {
-  test("devMode defaults to false", () => {
-    assert.strictEqual(PREF_DEFAULTS.devMode, false);
+  test("devMode is NOT in PREF_DEFAULTS (moved to chrome.storage.local)", () => {
+    // devMode is device-local and should not sync across devices (C8 TODO resolved)
+    assert.strictEqual(
+      Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, "devMode"),
+      false,
+      "devMode must not be in PREF_DEFAULTS — it lives in chrome.storage.local via getDevMode/setDevMode"
+    );
+  });
+
+  test("getDevMode and setDevMode are exported from storage.js", () => {
+    // Verify the new local-storage helpers exist in source
+    const storageSource = STORAGE_SOURCE;
+    assert.ok(storageSource.includes("export async function getDevMode("), "getDevMode must be exported");
+    assert.ok(storageSource.includes("export async function setDevMode("), "setDevMode must be exported");
+  });
+
+  test("getDevMode reads from chrome.storage.local (not sync)", () => {
+    const devModeBlock = STORAGE_SOURCE.slice(
+      STORAGE_SOURCE.indexOf("export async function getDevMode("),
+      STORAGE_SOURCE.indexOf("export async function getDevMode(") + 400
+    );
+    assert.ok(devModeBlock.includes("chrome.storage.local.get"), "getDevMode must use chrome.storage.local.get");
   });
 
   test("enabled defaults to true", () => {
@@ -56,8 +76,9 @@ describe("PREF_DEFAULTS — shape and default values", () => {
     assert.deepEqual(PREF_DEFAULTS.customParams, []);
   });
 
-  test("devMode is a boolean (not undefined or null)", () => {
-    assert.strictEqual(typeof PREF_DEFAULTS.devMode, "boolean");
+  test("devMode is absent from PREF_DEFAULTS (lives in local storage)", () => {
+    // After C8 migration, PREF_DEFAULTS no longer contains devMode.
+    assert.strictEqual(PREF_DEFAULTS.devMode, undefined);
   });
 
   // T1.2 — remote rules toggle must default to false (REQ-OPT-1)

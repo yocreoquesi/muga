@@ -41,7 +41,8 @@ describe("export settings (source verification)", () => {
   });
 
   test("32. export includes ALL expected boolean keys", () => {
-    const EXPECTED_BOOL_KEYS = [
+    // devMode is device-local (chrome.storage.local), read via getDevMode(), not prefs.devMode
+    const SYNC_BOOL_KEYS = [
       "enabled",
       "injectOwnAffiliate",
       "notifyForeignAffiliate",
@@ -51,18 +52,22 @@ describe("export settings (source verification)", () => {
       "ampRedirect",
       "unwrapRedirects",
       "contextMenuEnabled",
-      "devMode",
       "paramBreakdown",
       "showReportButton",
       "domainStats",
     ];
-    // Verify each boolean key appears in the export payload block
-    for (const key of EXPECTED_BOOL_KEYS) {
+    // Verify each sync boolean key appears in the export payload block
+    for (const key of SYNC_BOOL_KEYS) {
       assert.ok(
         OPTIONS_SOURCE.includes(`${key}: prefs.${key}`),
         `Export payload must include boolean key "${key}"`
       );
     }
+    // devMode comes from local storage (devModeLocal), not prefs
+    assert.ok(
+      OPTIONS_SOURCE.includes("devMode: devModeLocal"),
+      "Export payload must set devMode from devModeLocal (local storage)"
+    );
   });
 
   test("33. export includes ALL expected array keys", () => {

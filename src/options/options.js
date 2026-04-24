@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, setPrefs } from "../lib/storage.js";
+import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
 import { isValidListEntry } from "../lib/validation.js";
 
 let _currentLang = "en";
@@ -126,9 +126,17 @@ async function init() {
   initStatsSection();
   initExportImport();
 
-  bindToggle("dev-mode", "devMode", prefs);
+  // devMode is device-local (chrome.storage.local), not sync — bind separately
+  const devModeVal = await getDevMode();
+  const devModeEl = document.getElementById("dev-mode");
+  if (devModeEl) {
+    devModeEl.checked = devModeVal;
+    devModeEl.addEventListener("change", () => {
+      setDevMode(devModeEl.checked).catch(err => console.error("[MUGA] save devMode:", err));
+    });
+  }
   syncDevTools();
-  document.getElementById("dev-mode").addEventListener("change", syncDevTools);
+  if (devModeEl) devModeEl.addEventListener("change", syncDevTools);
   initDevTools();
 
   // Rate link: point to the correct store
@@ -474,6 +482,8 @@ function initExportImport() {
   document.getElementById("export-btn").addEventListener("click", async () => {
     let prefs;
     try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] export prefs:", err); return; }
+    // devMode is device-local (not in PREF_DEFAULTS) — read separately
+    const devModeLocal = await getDevMode();
     const payload = {
       muga: true,
       version: chrome.runtime.getManifest().version,
@@ -492,7 +502,7 @@ function initExportImport() {
       disabledCategories: prefs.disabledCategories,
       toastDuration: prefs.toastDuration,
       language: prefs.language,
-      devMode: prefs.devMode,
+      devMode: devModeLocal,
       paramBreakdown: prefs.paramBreakdown,
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
@@ -533,10 +543,15 @@ function initExportImport() {
       if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry) || !data.customParams.every(isValidParam)) {
         throw new Error("invalid");
       }
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "devMode", "paramBreakdown", "showReportButton", "domainStats"];
+      // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
+      }
+      // devMode from imported file → local storage
+      if (typeof data.devMode === "boolean") {
+        await setDevMode(data.devMode);
       }
       // Handle disabledCategories (validated against known category keys)
       const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noise", "generic"]);
@@ -563,7 +578,8 @@ function initExportImport() {
       document.getElementById("block-pings").checked = newPrefs.blockPings;
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
-      document.getElementById("dev-mode").checked = newPrefs.devMode;
+      // devMode is device-local — re-read from local storage after import
+      document.getElementById("dev-mode").checked = await getDevMode();
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
       syncDevTools();
       if (toSave.language) {
