@@ -10,6 +10,15 @@ import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLo
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
+import {
+  REMOTE_ALARM_NAME,
+  ALARM_PERIOD_MIN,
+  ALARM_DELAY_MIN,
+  runRemoteRulesFetch,
+  clearRemoteCache,
+  REMOTE_RULE_ID,
+} from "../lib/remote-rules.js";
+import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -131,6 +140,28 @@ function getPrefsWithCache() {
     });
   }
   return prefsFetchPromise;
+}
+
+// --- Remote-rules alarm helpers ---
+// Feature-detect chrome.alarms (absent in some stripped Firefox MV2 builds).
+const hasAlarms = typeof chrome.alarms !== "undefined";
+
+/**
+ * Registers the remote-rules weekly alarm idempotently.
+ * Called on onInstalled and onStartup. The alarm handler short-circuits
+ * if remoteRulesEnabled is false, so always registering is safe (REQ-OPT-6).
+ *
+ * Pure helper — takes chrome.alarms as an injected dep for unit-testability.
+ * No-op when the API is absent (feature-detect).
+ *
+ * @param {typeof chrome.alarms | undefined} alarms - chrome.alarms API (or undefined).
+ */
+function registerRemoteRulesAlarm(alarms) {
+  if (!alarms) return;
+  return alarms.create(REMOTE_ALARM_NAME, {
+    periodInMinutes: ALARM_PERIOD_MIN,
+    delayInMinutes: ALARM_DELAY_MIN,
+  });
 }
 
 // --- DNR sync helpers ---
@@ -489,10 +520,11 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   return result;
 }
 
-// --- On startup: apply DNR state ---
+// --- On startup: apply DNR state + register remote-rules alarm ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
+  registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
 });
 
 // --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
@@ -503,10 +535,11 @@ function openOnboardingOnce() {
   chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
 }
 
-// --- On install: open onboarding on first run, register context menu ---
+// --- On install: open onboarding on first run, register context menu + alarm ---
 chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
+  registerRemoteRulesAlarm(hasAlarms ? chrome.alarms : undefined);
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

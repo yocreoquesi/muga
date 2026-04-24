@@ -314,6 +314,91 @@ describe("Security: debug log payload privacy (finding 1)", () => {
   });
 });
 
+// ── T2.1: Remote-rules alarm registration ────────────────────────────────────
+
+import {
+  REMOTE_ALARM_NAME,
+  ALARM_PERIOD_MIN,
+  ALARM_DELAY_MIN,
+} from "../../src/lib/remote-rules.js";
+
+/**
+ * Pure alarm-registration helper extracted from the service worker.
+ * Takes the chrome.alarms API as an injected dependency so it can be
+ * unit-tested without a browser environment.
+ *
+ * Mirrors the production logic in service-worker.js:
+ *   registerRemoteRulesAlarm(chrome.alarms)
+ */
+function registerRemoteRulesAlarm(alarms) {
+  if (!alarms) return; // feature-detect: no-op if API absent
+  return alarms.create(REMOTE_ALARM_NAME, {
+    periodInMinutes: ALARM_PERIOD_MIN,
+    delayInMinutes: ALARM_DELAY_MIN,
+  });
+}
+
+describe("T2.1 — Remote-rules alarm registration helper", () => {
+  test("calls alarms.create with REMOTE_ALARM_NAME", () => {
+    const calls = [];
+    const fakeAlarms = {
+      create(name, opts) { calls.push({ name, opts }); },
+    };
+    registerRemoteRulesAlarm(fakeAlarms);
+    assert.strictEqual(calls.length, 1, "alarms.create must be called exactly once");
+    assert.strictEqual(calls[0].name, REMOTE_ALARM_NAME);
+  });
+
+  test("creates alarm with correct periodInMinutes (7 days = 10080)", () => {
+    const calls = [];
+    const fakeAlarms = { create(name, opts) { calls.push({ name, opts }); } };
+    registerRemoteRulesAlarm(fakeAlarms);
+    assert.strictEqual(calls[0].opts.periodInMinutes, 10_080);
+  });
+
+  test("creates alarm with correct delayInMinutes (1 hour = 60)", () => {
+    const calls = [];
+    const fakeAlarms = { create(name, opts) { calls.push({ name, opts }); } };
+    registerRemoteRulesAlarm(fakeAlarms);
+    assert.strictEqual(calls[0].opts.delayInMinutes, 60);
+  });
+
+  test("no-ops when alarms API is absent (feature-detect)", () => {
+    // Must not throw; just return without calling create
+    assert.doesNotThrow(() => registerRemoteRulesAlarm(undefined));
+    assert.doesNotThrow(() => registerRemoteRulesAlarm(null));
+  });
+
+  test("service worker source registers alarm on onInstalled", () => {
+    const onInstalledPos = swSource.indexOf("onInstalled.addListener");
+    assert.ok(onInstalledPos !== -1, "onInstalled.addListener must be present");
+    // The block from onInstalled to the next top-level chrome.runtime listener
+    const onInstalledBlock = swSource.slice(onInstalledPos, onInstalledPos + 600);
+    assert.ok(
+      onInstalledBlock.includes("registerRemoteRulesAlarm"),
+      "SW must call registerRemoteRulesAlarm inside the onInstalled listener"
+    );
+  });
+
+  test("service worker source registers alarm on onStartup", () => {
+    const onStartupPos = swSource.indexOf("onStartup.addListener");
+    assert.ok(onStartupPos !== -1, "onStartup.addListener must be present");
+    const onStartupBlock = swSource.slice(onStartupPos, onStartupPos + 300);
+    assert.ok(
+      onStartupBlock.includes("registerRemoteRulesAlarm"),
+      "SW must call registerRemoteRulesAlarm inside the onStartup listener"
+    );
+  });
+
+  test("service worker feature-detects chrome.alarms before registering", () => {
+    // The SW must guard alarms registration (same pattern as hasDNR / hasContextMenus)
+    assert.ok(
+      swSource.includes("chrome.alarms") && swSource.includes("typeof chrome.alarms"),
+      "SW must feature-detect chrome.alarms before registering"
+    );
+  });
+});
+
 // ── Onboarding consent verification ─────────────────────────────────────────
 
 describe("Onboarding consent — source code patterns", () => {
