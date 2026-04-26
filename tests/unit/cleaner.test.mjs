@@ -838,6 +838,119 @@ describe("Scenario C — foreign affiliate detection", () => {
 });
 
 // ---------------------------------------------------------------------------
+// preservedAffiliate — read-only feedback for the popup UI (#327)
+// Independent of notifyForeignAffiliate. Reflects whether a third-party
+// creator tag survived the cleaning pass.
+// ---------------------------------------------------------------------------
+describe("preservedAffiliate — UI feedback signal", () => {
+
+  before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
+  after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
+
+  test("third-party tag preserved → preservedAffiliate populated, even with notifyForeignAffiliate off", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=someone-else-99",
+      { ...PREFS, notifyForeignAffiliate: false }
+    );
+    assert.ok(preservedAffiliate, "preservedAffiliate must be populated");
+    assert.equal(preservedAffiliate.param, "aff");
+    assert.equal(preservedAffiliate.value, "someone-else-99");
+    assert.equal(typeof preservedAffiliate.store, "string");
+  });
+
+  test("our own tag is NOT reported as preserved (it's ours, not a creator's)", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=muga-test-99",
+      { ...PREFS }
+    );
+    assert.equal(preservedAffiliate, null);
+  });
+
+  test("whitelisted creator tag is reported as preserved (intentional preservation)", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=trusted-creator-99",
+      { ...PREFS, whitelist: ["shop.test.muga::aff::trusted-creator-99"] }
+    );
+    assert.ok(preservedAffiliate);
+    assert.equal(preservedAffiliate.value, "trusted-creator-99");
+  });
+
+  test("blacklisted creator tag is stripped → preservedAffiliate null", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=banned-creator-99",
+      { ...PREFS, blacklist: ["shop.test.muga::aff::banned-creator-99"] }
+    );
+    assert.equal(preservedAffiliate, null);
+  });
+
+  test("stripAllAffiliates removes the third-party tag → preservedAffiliate null", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=someone-else-99",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(preservedAffiliate, null);
+  });
+
+  test("URL without any affiliate param → preservedAffiliate null", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?utm_source=newsletter",
+      { ...PREFS }
+    );
+    assert.equal(preservedAffiliate, null);
+  });
+
+  test("injected our own tag → preservedAffiliate null (injection is not preservation)", () => {
+    const { preservedAffiliate, action } = processUrl(
+      "https://shop.test.muga/product",
+      { ...PREFS, injectOwnAffiliate: true }
+    );
+    assert.equal(action, "injected");
+    assert.equal(preservedAffiliate, null);
+  });
+
+  test("ourTag empty → preservedAffiliate null even if a third-party-looking value is present", () => {
+    TEST_PATTERN.ourTag = "";
+    const { preservedAffiliate } = processUrl(
+      "https://shop.test.muga/product?aff=someone-else-99",
+      { ...PREFS }
+    );
+    TEST_PATTERN.ourTag = "muga-test-99";
+    assert.equal(preservedAffiliate, null);
+  });
+
+  test("early-return paths return preservedAffiliate: null", () => {
+    // Invalid URL
+    let r = processUrl("not a url", { ...PREFS });
+    assert.equal(r.preservedAffiliate, null);
+    // Non-http scheme
+    r = processUrl("ftp://shop.test.muga/x?aff=someone-99", { ...PREFS });
+    assert.equal(r.preservedAffiliate, null);
+    // OAuth path
+    r = processUrl("https://shop.test.muga/oauth/callback?aff=someone-99", { ...PREFS });
+    assert.equal(r.preservedAffiliate, null);
+    // Per-domain disabled
+    r = processUrl("https://shop.test.muga/x?aff=someone-99", {
+      ...PREFS,
+      blacklist: ["shop.test.muga::disabled"],
+    });
+    assert.equal(r.preservedAffiliate, null);
+  });
+
+  test("domain-whitelisted: third-party tag survives + preservedAffiliate populated", () => {
+    const { preservedAffiliate, cleanUrl } = processUrl(
+      "https://shop.test.muga/product?aff=someone-else-99&utm_source=fb",
+      { ...PREFS, whitelist: ["shop.test.muga"] }
+    );
+    // Domain whitelist still strips tracking but leaves affiliates
+    assert.equal(new URL(cleanUrl).searchParams.get("aff"), "someone-else-99");
+    assert.equal(new URL(cleanUrl).searchParams.get("utm_source"), null);
+    assert.ok(preservedAffiliate);
+    assert.equal(preservedAffiliate.value, "someone-else-99");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Scenario D — Blacklisted domain: strip everything
 // ---------------------------------------------------------------------------
 describe("Scenario D — blacklist enforcement", () => {

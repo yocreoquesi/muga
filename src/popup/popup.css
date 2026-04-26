@@ -314,6 +314,30 @@ header {
   text-overflow: ellipsis;
 }
 
+.preview-preserved {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--success-soft);
+  border-left: 2px solid var(--success);
+  font-size: 11px;
+  line-height: 1.35;
+  cursor: help;
+}
+.preview-preserved-label { color: var(--success); font-weight: 600; }
+.preview-preserved-tag {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 .report-link {
   display: inline-block;
   font-size: 10.5px;

@@ -99,6 +99,33 @@ export function getPreservedParams(hostname, domainRules = []) {
 }
 
 /**
+ * Detects whether the FINAL URL still carries a third-party affiliate tag for
+ * a known store — i.e. a tag MUGA decided to preserve. Independent of
+ * notifyForeignAffiliate (read-only signal for UI feedback). Skips empty
+ * ourTag patterns: those are programs without a registered account, so any
+ * value present cannot be classified as "ours" vs "someone else's".
+ *
+ * @param {URL}   url
+ * @param {Array} patterns - Affiliate patterns scoped to the hostname.
+ * @returns {{param:string,value:string,store:string,group:string}|null}
+ */
+function detectPreservedAffiliate(url, patterns) {
+  for (const pattern of patterns) {
+    if (!pattern.ourTag) continue;
+    const value = url.searchParams.get(pattern.param);
+    if (value && value !== pattern.ourTag) {
+      return {
+        param: pattern.param,
+        value,
+        store: pattern.name,
+        group: pattern.group || pattern.name,
+      };
+    }
+  }
+  return null;
+}
+
+/**
  * Strips Amazon path-based tracking segments that appear after the ASIN.
  * Amazon embeds referral tokens and session IDs directly in the path, e.g.:
  *   /dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601
@@ -172,18 +199,18 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
  *
  * @param {string} rawUrl - The original URL to process.
  * @param {object} prefs  - User preferences from chrome.storage.sync.
- * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null }}
+ * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null }}
  */
 export function processUrl(rawUrl, prefs, domainRules = []) {
   let url;
   try {
     url = new URL(rawUrl);
   } catch {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
   }
 
   const hostname = url.hostname;
@@ -200,7 +227,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   const lowerPath = url.pathname.toLowerCase();
   const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
   if (AUTH_PATH_RE.test(lowerPath)) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
   }
 
   // 0b. Per-domain disable: user wants MUGA to do nothing on this domain
@@ -208,7 +235,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain)
   );
   if (domainDisabled) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
   }
 
   const originalPathname = url.pathname;
@@ -223,7 +250,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     // C10: count params removed so junkRemoved is reported correctly
     const blacklistedParamCount = [...url.searchParams.keys()].length;
     url.search = "";
-    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0), detectedAffiliate: null };
+    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0), detectedAffiliate: null, preservedAffiliate: null };
   }
 
   const patterns = getPatternsForHost(hostname);
@@ -246,6 +273,7 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
       removedTracking: removedTrackingForSkip,
       junkRemoved: removedTrackingForSkip.length + (pathCleaned ? 1 : 0),
       detectedAffiliate: null,
+      preservedAffiliate: detectPreservedAffiliate(url, patterns),
     };
   }
 
@@ -361,5 +389,6 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
     removedTracking,
     junkRemoved,
     detectedAffiliate,
+    preservedAffiliate: detectPreservedAffiliate(url, patterns),
   };
 }
