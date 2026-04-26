@@ -4,6 +4,9 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- New collaborative report link in the popup: "Still see tracking? Help us improve" (i18n key `report_unclean_url`). Visible only when MUGA modified the URL and `showReportButton` is on, alongside the existing "Report a problem with this URL" link. Opens a pre-filled GitHub issue tagged `unclean-url` with hostname, version, browser and the params MUGA already removed — never the full URL or query string. Same zero-network, no-new-permissions model as the broken-site report. Feeds the remote-rules catalog with real-world misses. (#271)
+
 ## [1.10.2] - 2026-04-25
 
 ### Changed
