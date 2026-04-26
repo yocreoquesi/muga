@@ -365,6 +365,13 @@ function _resetPreviewDom() {
     previewRemoved.hidden = true;
     previewRemoved.textContent = "";
   }
+  const previewPreserved = el("preview-preserved");
+  if (previewPreserved) {
+    previewPreserved.hidden = true;
+    previewPreserved.removeAttribute("title");
+    const tag = document.getElementById("preview-preserved-tag");
+    if (tag) tag.textContent = "";
+  }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
   const reportUncleanLink = el("report-unclean");
@@ -424,6 +431,21 @@ async function showUrlPreview(prefs, lang) {
   } catch (_) { /* non-critical: preview works without domain rules */ }
 
   const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules);
+
+  // Wedge feedback: when MUGA preserved a third-party creator's affiliate tag,
+  // surface it visibly. This is the core "fair to creators" promise made
+  // tangible — fires regardless of whether the URL was otherwise modified.
+  if (result.preservedAffiliate) {
+    const preservedEl = document.getElementById("preview-preserved");
+    if (preservedEl) {
+      const tagEl = document.getElementById("preview-preserved-tag");
+      if (tagEl) {
+        tagEl.textContent = `${result.preservedAffiliate.param}=${result.preservedAffiliate.value}`;
+      }
+      preservedEl.title = t("preview_preserved_creator_hint", lang);
+      preservedEl.hidden = false;
+    }
+  }
 
   if (result.cleanUrl === url && result.action === "untouched") {
     // Show original URL as plain reference. No strikethrough, no "after" URL
