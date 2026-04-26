@@ -90,3 +90,97 @@ test("T2-5: TRANSLATIONS has report_dirty_url key with en and es", () => {
     "report_dirty_url must have a non-empty `es` translation"
   );
 });
+
+// ── Unclean URL collaborative report (#271) ──────────────────────────────────
+
+test("U-1: TRANSLATIONS has report_unclean_url key with en and es", () => {
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(TRANSLATIONS, "report_unclean_url"),
+    "TRANSLATIONS must have a report_unclean_url key"
+  );
+  assert.ok(
+    typeof TRANSLATIONS.report_unclean_url.en === "string" && TRANSLATIONS.report_unclean_url.en.length > 0,
+    "report_unclean_url must have a non-empty `en` translation"
+  );
+  assert.ok(
+    typeof TRANSLATIONS.report_unclean_url.es === "string" && TRANSLATIONS.report_unclean_url.es.length > 0,
+    "report_unclean_url must have a non-empty `es` translation"
+  );
+});
+
+test("U-2: popup.html exposes #report-unclean inside #preview", () => {
+  const html = readFileSync(resolve(root, "src/popup/popup.html"), "utf8");
+  // The link must exist in the document
+  assert.match(
+    html,
+    /id="report-unclean"/,
+    "popup.html must contain an element with id report-unclean"
+  );
+  // It must declare the i18n key so labels stay localized
+  assert.match(
+    html,
+    /id="report-unclean"[^>]*data-i18n="report_unclean_url"/,
+    "#report-unclean must use data-i18n=\"report_unclean_url\""
+  );
+  // It must live inside the #preview section so it inherits the same gating surface
+  // as #report-broken. We do a coarse check: the closing </section> for preview
+  // must come AFTER the #report-unclean opening tag.
+  const previewOpenIdx = html.indexOf('id="preview"');
+  const reportIdx = html.indexOf('id="report-unclean"');
+  const previewCloseIdx = html.indexOf("</section>", previewOpenIdx);
+  assert.ok(
+    previewOpenIdx !== -1 && reportIdx !== -1 && previewCloseIdx !== -1,
+    "preview section and report-unclean must both exist"
+  );
+  assert.ok(
+    reportIdx > previewOpenIdx && reportIdx < previewCloseIdx,
+    "#report-unclean must live inside the #preview section"
+  );
+});
+
+test("U-3: popup.js builds an unclean-url GitHub issue with hostname only", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+
+  // The new label must be wired
+  assert.ok(
+    popupSrc.includes("labels=unclean-url"),
+    "popup.js must open a GitHub issue with labels=unclean-url"
+  );
+
+  // Anchor on a literal unique to the unclean-url handler so we do not pick up
+  // unrelated occurrences elsewhere in the file (e.g. the reset helper).
+  const titleAnchor = popupSrc.indexOf("[Unclean URL]");
+  assert.ok(titleAnchor !== -1, "popup.js must build a [Unclean URL] issue title");
+  const labelIdx = popupSrc.indexOf("labels=unclean-url", titleAnchor);
+  assert.ok(labelIdx !== -1, "labels=unclean-url must follow the [Unclean URL] title");
+  const handlerSlice = popupSrc.slice(titleAnchor, labelIdx + 50);
+
+  // The body must NOT serialize the full URL — only the hostname.
+  // We assert that the slice does not push `url` (the raw tab URL) into the body
+  // and does not push `result.cleanUrl` either.
+  // The handler IS allowed to call new URL(url).hostname — that is fine. The forbidden
+  // pattern is interpolating the bare `url` variable into the issue body or title.
+  assert.ok(
+    !/\$\{url\}/.test(handlerSlice),
+    "unclean-url handler must not interpolate the full URL (${url}) into the issue payload"
+  );
+  assert.ok(
+    !/result\.cleanUrl/.test(handlerSlice),
+    "unclean-url handler must not include result.cleanUrl in the issue payload"
+  );
+});
+
+test("U-4: _resetPreviewDom hides #report-unclean", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+
+  const fnIdx = popupSrc.indexOf("function _resetPreviewDom");
+  assert.ok(fnIdx !== -1, "popup.js must define _resetPreviewDom");
+
+  // The function body ends at the next top-level closing brace at column 0.
+  // Coarse check: take a 2000-char window and assert the reset clears report-unclean.
+  const slice = popupSrc.slice(fnIdx, fnIdx + 2000);
+  assert.ok(
+    slice.includes("report-unclean"),
+    "_resetPreviewDom must reset the #report-unclean link to hidden"
+  );
+});

@@ -367,6 +367,8 @@ function _resetPreviewDom() {
   }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
+  const reportUncleanLink = el("report-unclean");
+  if (reportUncleanLink) reportUncleanLink.hidden = true;
 }
 
 /** Shows a live preview of URL cleaning for the current tab. Idempotent — callable multiple times. */
@@ -470,6 +472,32 @@ async function showUrlPreview(prefs, lang) {
             `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
           );
           chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site` });
+        } catch { /* invalid URL */ }
+      });
+
+      // Collaborative report: "MUGA cleaned, but I still see tracking — help us improve".
+      // Body intentionally carries hostname only (no full URL, no query string) to keep
+      // the privacy contract intact. Distinct label so unclean-url reports feed the
+      // remote-rules catalog, not the broken-site triage queue.
+      const uncleanLink = document.getElementById("report-unclean");
+      uncleanLink.hidden = false;
+      uncleanLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          const hostname = new URL(url).hostname;
+          const version = chrome.runtime.getManifest().version;
+          const removed = result.removedTracking?.join(", ") || "none";
+          const title = encodeURIComponent(`[Unclean URL] ${hostname}`);
+          const body = encodeURIComponent(
+            `## Unclean URL report\n\n` +
+            `**Domain:** ${hostname}\n` +
+            `**MUGA version:** ${version}\n` +
+            `**Browser:** ${navigator.userAgent}\n` +
+            `**Params MUGA already removed:** ${removed}\n\n` +
+            `## What tracking is still in the URL?\n\n` +
+            `<!-- Paste the param names you can still see (do NOT paste the full URL or any IDs). -->\n`
+          );
+          chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=unclean-url` });
         } catch { /* invalid URL */ }
       });
     }
