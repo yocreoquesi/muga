@@ -4,6 +4,9 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Popup now headlines a count celebration when MUGA cleans a URL: "MUGA removed N trackers from this URL", with a one-shot pulse animation on the digits (gated by `prefers-reduced-motion: no-preference`). Pluralized via `Intl.PluralRules` so the en/es/pt/de variants stay grammatical. When MUGA evaluates a URL and finds nothing to clean, a quieter "URL was already clean" line surfaces instead — a positive signal that MUGA *checked*, not silence. Built via DOM nodes (no `innerHTML`) so the i18n template stays injection-proof. Three new keys: `preview_count_one`, `preview_count_other`, `preview_count_clean`. (#326)
+
 ## [1.11.0] - 2026-04-26
 
 ### Added

@@ -342,6 +342,54 @@ function isPerDomainDisabled(hostname, blacklist) {
 }
 
 /** Resets preview-related DOM so repeated renders are idempotent. */
+/**
+ * Renders the "MUGA removed N trackers" celebration line, the "URL was
+ * already clean" positive signal, or nothing — depending on the cleaner
+ * result. The number gets wrapped in its own span so CSS can target it for
+ * a one-shot pulse animation (gated on prefers-reduced-motion: no-preference).
+ *
+ * Plurals are picked via Intl.PluralRules so the en/es/pt/de variants stay
+ * grammatical without hard-coded count===1 forks.
+ */
+function renderCountCelebration(result, url, lang) {
+  const el = document.getElementById("preview-count");
+  if (!el) return;
+  const count = result.removedTracking?.length ?? 0;
+
+  if (count > 0) {
+    const pr = new Intl.PluralRules(lang || "en");
+    const key = pr.select(count) === "one" ? "preview_count_one" : "preview_count_other";
+    const template = t(key, lang);
+    // Split around {n} and rebuild via text nodes + a number span. Avoids
+    // innerHTML so the i18n string can never become an injection vector,
+    // and lets CSS animate just the digits.
+    el.replaceChildren();
+    const [before, after] = template.split("{n}", 2);
+    if (before) el.appendChild(document.createTextNode(before));
+    const number = document.createElement("span");
+    number.className = "preview-count-number";
+    number.textContent = String(count);
+    el.appendChild(number);
+    if (after !== undefined) el.appendChild(document.createTextNode(after));
+    // The "one" key has no {n} placeholder — render plain text in that case.
+    if (after === undefined) el.textContent = template;
+    el.classList.remove("is-clean");
+    el.dataset.animating = "true";
+    el.hidden = false;
+    return;
+  }
+
+  // count === 0: only show the "already clean" line when the URL was truly
+  // untouched. Path-cleanup / blacklist-only cases leave the URL diff to
+  // communicate the change without a count headline.
+  if (result.cleanUrl === url && result.action === "untouched") {
+    el.textContent = t("preview_count_clean", lang);
+    el.classList.add("is-clean");
+    el.removeAttribute("data-animating");
+    el.hidden = false;
+  }
+}
+
 function _resetPreviewDom() {
   const el = (id) => document.getElementById(id);
   const previewClean = el("preview-clean");
@@ -364,6 +412,13 @@ function _resetPreviewDom() {
   if (previewRemoved) {
     previewRemoved.hidden = true;
     previewRemoved.textContent = "";
+  }
+  const previewCount = el("preview-count");
+  if (previewCount) {
+    previewCount.hidden = true;
+    previewCount.textContent = "";
+    previewCount.classList.remove("is-clean");
+    previewCount.removeAttribute("data-animating");
   }
   const previewPreserved = el("preview-preserved");
   if (previewPreserved) {
@@ -446,6 +501,14 @@ async function showUrlPreview(prefs, lang) {
       preservedEl.hidden = false;
     }
   }
+
+  // Tracker count celebration: surface the value MUGA delivered on this URL.
+  // Three states:
+  //  - count > 0   → "MUGA removed N trackers" (the dopamine moment).
+  //  - count === 0 and the URL was untouched → "URL was already clean".
+  //  - count === 0 with path cleanup / blacklist only → no count line; the
+  //    visible URL diff already communicates what happened.
+  renderCountCelebration(result, url, lang);
 
   if (result.cleanUrl === url && result.action === "untouched") {
     // Show original URL as plain reference. No strikethrough, no "after" URL
