@@ -4,9 +4,11 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-04-26
+
 ### Added
-- New collaborative report link in the popup: "Still see tracking? Help us improve" (i18n key `report_unclean_url`). Visible only when MUGA modified the URL and `showReportButton` is on, alongside the existing "Report a problem with this URL" link. Opens a pre-filled GitHub issue tagged `unclean-url` with hostname, version, browser and the params MUGA already removed — never the full URL or query string. Same zero-network, no-new-permissions model as the broken-site report. Feeds the remote-rules catalog with real-world misses. (#271)
 - Popup now surfaces when MUGA preserved a third-party creator's affiliate tag on the current URL. New "Creator referral preserved" badge inside the preview section, with a tooltip explaining the policy. Fires regardless of whether the URL was otherwise modified — including on URLs MUGA leaves untouched. Wedge of "fair to creators" made tangible. New cleaner result field `preservedAffiliate` exposing `{ param, value, store, group }`. Independent of the existing `notifyForeignAffiliate` toast preference: this is a passive UI signal, not a notification. New i18n keys `preview_preserved_creator` and `preview_preserved_creator_hint` in en/es/pt/de. (#327)
+- New collaborative report link in the popup: "Still see tracking? Help us improve" (i18n key `report_unclean_url`). Visible only when MUGA modified the URL and `showReportButton` is on, alongside the existing "Report a problem with this URL" link. Opens a pre-filled GitHub issue tagged `unclean-url` with hostname, version, browser and the params MUGA already removed — never the full URL or query string. Same zero-network, no-new-permissions model as the broken-site report. Feeds the remote-rules catalog with real-world misses. (#271)
 
 ## [1.10.2] - 2026-04-25
 
@@ -540,7 +542,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.10.2...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/yocreoquesi/muga/compare/v1.10.2...v1.11.0
 [1.10.2]: https://github.com/yocreoquesi/muga/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/yocreoquesi/muga/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/yocreoquesi/muga/compare/v1.9.10...v1.10.0
