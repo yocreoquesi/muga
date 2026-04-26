@@ -2,8 +2,8 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.11.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-1624_pass-brightgreen)](#development)
-# MUGA: Clean URLs, Fair to Every Click
+[![Tests](https://img.shields.io/badge/tests-1658_pass-brightgreen)](#development)
+# MUGA: Privacy Without Breaking Creator Links
 
 ### Install now
 
@@ -12,7 +12,9 @@
 
 ---
 
-URLs arrive pre-loaded with `utm_source`, `fbclid`, `gclid`, e-commerce noise, share tokens, and 450+ more. MUGA strips them automatically, before the page renders. **We clean tracking, but we respect referrals. By default, we never touch what isn't ours.** On stores whose affiliate model forces your clicks through external tracking servers, we strip their tracking parameters too -- we do not believe that forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
+**MUGA strips tracking from every URL — without breaking the affiliate links of the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone** — and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
+
+On stores whose affiliate model forces your clicks through external tracking servers, MUGA strips their tracking parameters anyway — we do not believe forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
 
 > **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
