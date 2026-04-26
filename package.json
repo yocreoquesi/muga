@@ -1,7 +1,7 @@
 {
   "name": "muga",
   "version": "1.11.0",
-  "description": "Fair to every click. Strips 450+ tracking params, respects affiliate links. Open source.",
+  "description": "Privacy without breaking creator links. Strips 450+ tracking params, preserves creator affiliate referrals. Open source.",
   "type": "module",
   "scripts": {
     "dev:chrome": "web-ext run --source-dir src/ --target chromium",
