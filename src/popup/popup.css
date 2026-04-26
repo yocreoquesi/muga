@@ -303,6 +303,27 @@ header {
   border-color: transparent;
 }
 
+.preview-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+  margin-top: 8px;
+  line-height: 1.3;
+}
+.preview-count.is-clean { color: var(--text-2); font-weight: 500; }
+.preview-count-number { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .preview-count[data-animating="true"] .preview-count-number {
+    animation: muga-count-pulse 360ms ease-out 1;
+  }
+}
+@keyframes muga-count-pulse {
+  0%   { transform: scale(0.85); opacity: 0.6; }
+  60%  { transform: scale(1.06); opacity: 1;   }
+  100% { transform: scale(1);    opacity: 1;   }
+}
+
 .preview-removed {
   font-size: 10px;
   color: var(--text-3);
