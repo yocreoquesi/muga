@@ -154,6 +154,8 @@ The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit
 
 https://github.com/yocreoquesi/muga
 
+Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://yocreoquesi.github.io/muga/comparison.html
+
 ---
 
 ### Keywords (Chrome Web Store, max 5)
@@ -261,6 +263,8 @@ The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit
 
 https://github.com/yocreoquesi/muga
 
+Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://yocreoquesi.github.io/muga/comparison.html
+
 ---
 
 ### AMO metadata
@@ -271,3 +275,5 @@ https://github.com/yocreoquesi/muga
 - Secondary category: Shopping
 - Tags: privacy, tracking, url-cleaner, affiliate, creator-friendly
 - Website: https://github.com/yocreoquesi/muga
+
+Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://yocreoquesi.github.io/muga/comparison.html

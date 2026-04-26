@@ -18,7 +18,7 @@ On stores whose affiliate model forces your clicks through external tracking ser
 
 > **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
-[Privacy policy](https://yocreoquesi.github.io/muga/) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+[Privacy policy](https://yocreoquesi.github.io/muga/) · [Comparison vs other URL cleaners](https://yocreoquesi.github.io/muga/comparison.html) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
