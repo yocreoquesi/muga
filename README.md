@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.10.2-blue)](#)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-1624_pass-brightgreen)](#development)
 # MUGA: Clean URLs, Fair to Every Click
 
