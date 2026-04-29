@@ -85,15 +85,55 @@ Output goes to `dist/`. Uses `web-ext` (Mozilla).
 - Chrome: Manifest V3, `declarativeNetRequest`
 - Firefox: Manifest V2, requires Firefox 128+ for `queryTransform` support in DNR rules
 
-## Adding tracking parameters
+## Tracking parameter contributions
 
-Edit `src/lib/affiliates.js` and add to the `TRACKING_PARAMS` array. Then regenerate the DNR rules file:
+A new tracking parameter can land in one of three places. The choice has real consequences. Before opening a PR, decide which carrier fits, then read the section that applies.
 
-```bash
-npm run build:rules
-```
+| Carrier | Scope | Source file |
+|---|---|---|
+| `TRACKING_PARAMS` (universal DNR) | Stripped on every domain | `src/lib/affiliates.js` |
+| `stripParams` per domain | Stripped only on the listed domain(s) | `src/rules/domain-rules.json` |
+| `preserveParams` per domain | Kept on the listed domain(s); implicitly removed from universal DNR | `src/rules/domain-rules.json` |
 
-`src/rules/tracking-params.json` is a **generated artifact**. Do not edit it by hand. The single source of truth is `TRACKING_PARAMS` in `affiliates.js`. The CI pipeline enforces this: it runs `npm run build:rules` and fails if the generated file differs from what is committed.
+### When to use universal `TRACKING_PARAMS`
+
+A parameter belongs in the universal list when **all** of the following hold:
+
+- It is in active, observed use as a tracker on **multiple, unrelated** domains. A single store's custom tracker does not qualify.
+- It is **never functional**. Its presence does not change what the user sees, only what is reported back to a tracking system.
+- It does **not** appear in any domain's `preserveParams` list. The DNR ↔ domain-rules consistency test (`tests/unit/dnr-rules.test.mjs:184`) enforces this — adding a param to both is a CI failure.
+
+If any of those fails, the param does not belong in the universal list. Pick a domain-specific carrier instead.
+
+To add to the universal list:
+
+1. Add the param to the `TRACKING_PARAMS` array in `src/lib/affiliates.js`.
+2. Regenerate the DNR rules file: `npm run build:rules`.
+3. Commit both `affiliates.js` and `src/rules/tracking-params.json`.
+
+`src/rules/tracking-params.json` is a **generated artifact** — do not edit it by hand. The single source of truth is `TRACKING_PARAMS` in `affiliates.js`. The CI pipeline runs `npm run build:rules` and fails if the generated file differs from what is committed.
+
+### When to use per-domain `stripParams`
+
+A parameter belongs in a domain's `stripParams` when:
+
+- It is a tracker custom to that domain, or to a small set of related domains owned by the same operator (e.g. Amazon's `pd_rd_*` family, AliExpress's `aff_fsk` / `spm` / `scm`).
+- It does not generalize to the broader web — adding it to the universal list would create rules with no benefit elsewhere and risk false positives on unrelated sites that legitimately use the same parameter name.
+
+Edit `src/rules/domain-rules.json` and add the param to the matching domain entry's `stripParams` array (creating the domain entry if it does not exist).
+
+### Hidden global cost of `preserveParams`
+
+`preserveParams` declares that a parameter is **functional** on a specific domain (e.g. `q` is the search query on Google). The consistency test then **forbids** that parameter from appearing in the universal `TRACKING_PARAMS` list. The mechanism is correct and well-tested, but the contributor needs to understand the consequence:
+
+> Adding a param to any domain's `preserveParams` list implicitly removes it from the universal DNR list. The param now **survives on every other domain too**, including domains where it acts as a tracker.
+
+Before adding to `preserveParams`, consider:
+
+- Is the param functional on **only** this domain? If it acts as a tracker on Domain X but is functional on Domain Y, you cannot add it to universal `TRACKING_PARAMS` (the test will fail). The correct shape is: `preserveParams` on Domain Y, `stripParams` on every domain where it acts as a tracker.
+- Are you accepting the trade-off explicitly? If `track_id` is functional on `your-store.com` and adding it preserves it everywhere, that needs to be a deliberate choice noted in the PR description.
+
+The consistency test catches the rule-level violation. It does not catch poor judgment about scope. That is your call — this section exists so the call is made deliberately.
 
 ## Adding affiliate stores
 
