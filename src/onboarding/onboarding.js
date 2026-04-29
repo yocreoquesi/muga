@@ -9,6 +9,7 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
+import { setConsent } from "../lib/consent-storage.js";
 
 const CONSENT_VERSION = "1.0";
 
@@ -37,14 +38,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!tosCheck.checked) return;
 
     try {
-      await chrome.storage.sync.set({
-        onboardingDone:        true,
-        consentVersion:        CONSENT_VERSION,
-        consentDate:           Date.now(),
-        injectOwnAffiliate:    affiliateCheck.checked,
-        notifyForeignAffiliate: false,
-        language:              lang,
-      });
+      // Consent fields go to chrome.storage.local via consent-storage
+      // (per-device, #355 / ADR-0001). Behavioural prefs continue to
+      // live in chrome.storage.sync.
+      await Promise.all([
+        setConsent({
+          onboardingDone: true,
+          consentVersion: CONSENT_VERSION,
+          consentDate:    Date.now(),
+        }),
+        new Promise((resolve, reject) => {
+          chrome.storage.sync.set({
+            injectOwnAffiliate:     affiliateCheck.checked,
+            notifyForeignAffiliate: false,
+            language:               lang,
+          }, () => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve();
+          });
+        }),
+      ]);
       window.close();
     } catch (err) {
       console.error("[MUGA] onboarding save:", err);

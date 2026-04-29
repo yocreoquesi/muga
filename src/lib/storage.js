@@ -100,12 +100,18 @@ export const PREF_DEFAULTS = {
 };
 
 /**
- * Reads all user preferences from chrome.storage.sync with defaults.
+ * Reads all user preferences. Behavioural prefs come from
+ * `chrome.storage.sync` (cross-device). Consent fields
+ * (`onboardingDone`, `consentVersion`, `consentDate`) are overlaid
+ * from per-device `chrome.storage.local` via consent-storage (#355,
+ * see ADR-0001) — local wins when both have data, falling back to
+ * the sync values during the migration window.
+ *
  * @returns {Promise<object>} Preferences merged with PREF_DEFAULTS.
  */
 export async function getPrefs() {
   try {
-    return await new Promise((resolve, reject) => {
+    const sync = await new Promise((resolve, reject) => {
       chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
@@ -114,6 +120,22 @@ export async function getPrefs() {
         }
       });
     });
+
+    // Overlay per-device consent. Lazily import to avoid circular load
+    // order issues with consent-storage during early startup.
+    const { getConsent } = await import("./consent-storage.js");
+    const consent = await getConsent();
+
+    // Local consent wins when present. During the migration window
+    // (legacy sync values still around), the sync read above provides
+    // the fallback. Once migrate-sync-to-local has run, sync no longer
+    // has these fields and local is authoritative.
+    const overlay = {};
+    if (consent.onboardingDone) overlay.onboardingDone = true;
+    if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
+    if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
+
+    return { ...sync, ...overlay };
   } catch (err) {
     console.error("[MUGA] getPrefs failed:", err);
     return { ...PREF_DEFAULTS };

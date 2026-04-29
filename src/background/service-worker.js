@@ -7,6 +7,7 @@
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
@@ -66,8 +67,10 @@ _domainRulesReady = _loadDomainRules();
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
 
-// Run migration once on startup (no-op if already done)
+// Run migrations once on startup (no-ops if already done).
+// Both are idempotent and best-effort — failures must not break startup.
 migrateStatsToLocal();
+migrateConsentToLocal();
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
