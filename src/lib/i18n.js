@@ -240,6 +240,12 @@ export const TRANSLATIONS = {
   ctx_copy_clean_link:      { en: "Copy clean link",                       es: "Copiar enlace limpio",                       pt: "Copiar link limpo",                       de: "Bereinigten Link kopieren" },
   ctx_copy_clean_selection: { en: "Copy clean links in selection",         es: "Copiar enlaces limpios de la selección",         pt: "Copiar links limpos da seleção",         de: "Bereinigte Links in Auswahl kopieren" },
 
+  // ── Toolbar tooltips (#358) ──────────────────────────────────────────────
+  tooltip_default:                { en: "MUGA",                                                  es: "MUGA",                                                  pt: "MUGA",                                                  de: "MUGA" },
+  tooltip_cleaned:                { en: "MUGA — tracking removed",                               es: "MUGA — rastreo eliminado",                              pt: "MUGA — rastreamento removido",                          de: "MUGA — Tracking entfernt" },
+  tooltip_preserved:              { en: "MUGA — creator referral preserved",                     es: "MUGA — referido del creador preservado",                pt: "MUGA — indicação do criador preservada",                de: "MUGA — Creator-Empfehlung erhalten" },
+  tooltip_cleaned_and_preserved:  { en: "MUGA — tracking removed, creator referral preserved",   es: "MUGA — rastreo eliminado, referido del creador preservado", pt: "MUGA — rastreamento removido, indicação do criador preservada", de: "MUGA — Tracking entfernt, Creator-Empfehlung erhalten" },
+
   // ── Content script toast ──────────────────────────────────────────────────
   toast_title:   { en: "MUGA found someone else's affiliate tag", es: "MUGA encontró el tag de afiliado de otro", pt: "MUGA encontrou a tag de afiliado de outra pessoa", de: "MUGA hat ein fremdes Affiliate-Tag gefunden" },
   toast_tag_msg: { en: "has an affiliate tag that isn't ours:", es: "tiene un tag de afiliado que no es nuestro:", pt: "tem uma tag de afiliado que não é nossa:", de: "hat ein Affiliate-Tag, das nicht unseres ist:" },
