@@ -675,9 +675,12 @@ describe("Preference interaction matrix — amazon.es with real tags", () => {
     assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
-  test("stripAll ON + our tag → our tag preserved (stripAll only removes others)", () => {
+  test("stripAll ON + inject OFF + our tag → our tag also stripped (no injection = no preservation, #353)", () => {
+    // Shared-link scenario: User A with inject ON copies a URL carrying MUGA's
+    // tag and shares it with User B who has inject OFF + stripAll ON. From
+    // User B's perspective, MUGA's tag is third-party and must be stripped.
     const { cleanUrl } = processUrl(WITH_OUR, { ...PREFS, stripAllAffiliates: true }, domainRules);
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
   // --- inject:ON, stripAll:ON (the key ethical test) ---

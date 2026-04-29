@@ -321,15 +321,16 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
 
-  // 4b. Strip third-party affiliate params. Our own tag is always preserved --
-  // "strip all" means "strip all from OTHER sources", as the UI label promises.
+  // 4b. Strip third-party affiliate params. Our own tag is preserved only when
+  // injection is enabled -- the user opted into supporting MUGA. If injection
+  // is off, "strip all" includes our own tag (covers shared-link case where a
+  // URL arrives with our tag already attached) (#353).
   // Whitelist entries are also respected: specific beats general.
   if (prefs.stripAllAffiliates) {
     for (const pattern of patterns) {
       const val = url.searchParams.get(pattern.param);
       if (val) {
-        // Our own tag is never stripped -- inject controls adding, not keeping
-        if (pattern.ourTag && val === pattern.ourTag) continue;
+        if (prefs.injectOwnAffiliate && pattern.ourTag && val === pattern.ourTag) continue;
         if (!whitelistedValues.has(`${pattern.param}::${val}`)) {
           url.searchParams.delete(pattern.param);
           if (action === "untouched") action = "cleaned";
