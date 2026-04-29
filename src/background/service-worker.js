@@ -8,6 +8,7 @@ import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
+import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
@@ -748,6 +749,27 @@ function openOnboardingOnce() {
   chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
 }
 
+/**
+ * Single decision function consulted by both the onInstalled and the
+ * background-load fallback paths (#365). Returns true when the
+ * onboarding tab should be opened — either because the user has never
+ * accepted, or because the required ToS version has advanced past
+ * what they accepted (soft or hard re-onboard).
+ *
+ * Today the manifest holds only "1.0" so this is functionally
+ * equivalent to the prior `!prefs.onboardingDone` check; the gate is
+ * in place for slice #370 which adds the delta / material rendering
+ * modes that consume the policy's `soft-reonboard` / `hard-reonboard`
+ * statuses.
+ *
+ * @param {object} prefs - Merged prefs (consent overlay applied by getPrefs).
+ * @returns {boolean}
+ */
+function shouldOpenOnboarding(prefs) {
+  const result = evaluateConsent({ stored: prefs });
+  return result.status !== "valid";
+}
+
 // --- On install: open onboarding on first run, sync DNR + maybe fetch rules ---
 chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
@@ -762,20 +784,21 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   if (details.reason === "install") {
     const installPrefs = await getPrefs();
-    if (!installPrefs.onboardingDone) {
+    if (shouldOpenOnboarding(installPrefs)) {
       openOnboardingOnce();
     }
   }
 });
 
 // --- Fallback: onInstalled is unreliable in Firefox MV2 temporary add-ons ---
-// If onboarding was never completed, open it on background load. This also
-// covers edge cases where onInstalled fires before the module registers its
-// listener. The dedup flag ensures only one tab opens even if both paths fire.
+// If onboarding was never completed (or required ToS version has advanced),
+// open it on background load. This also covers edge cases where onInstalled
+// fires before the module registers its listener. The dedup flag ensures
+// only one tab opens even if both paths fire.
 (async () => {
   try {
     const prefs = await getPrefs();
-    if (!prefs.onboardingDone) {
+    if (shouldOpenOnboarding(prefs)) {
       openOnboardingOnce();
     }
     // Also ensure context menus are registered on first load
