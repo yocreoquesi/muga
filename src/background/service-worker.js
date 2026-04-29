@@ -18,6 +18,9 @@ import {
   REMOTE_RULE_ID,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
+import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
+import { createTabPresenterState } from "../lib/tab-presenter-state.js";
+import { createToolbarPresenter } from "../lib/toolbar-presenter.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -66,6 +69,23 @@ _domainRulesReady = _loadDomainRules();
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
+
+// --- Toolbar presenter (#358) ---
+// All toolbar surface mutations (tooltip, badge text, badge color, icon) flow
+// through this presenter via the event bus. No code outside the presenter calls
+// chrome.action.set* directly.
+const toolbarBus   = createToolbarEventBus();
+const toolbarState = createTabPresenterState();
+createToolbarPresenter({
+  bus: toolbarBus,
+  state: toolbarState,
+  actionApi,
+  // The presenter calls t(key) without a lang. Resolve from cachedPrefs at
+  // call time so the user's current language is used. Defaults to "en"
+  // before the cache is warm, which is fine — tooltip update fires after
+  // URL processing, by which point prefs are loaded.
+  t: (key) => t(key, cachedPrefs?.language || "en"),
+});
 
 // Run migrations once on startup (no-ops if already done).
 // Both are idempotent and best-effort — failures must not break startup.
@@ -308,10 +328,14 @@ async function syncContextMenus(enabled) {
   });
 }
 
-// Set badge appearance once on startup
-actionApi.setBadgeBackgroundColor?.({ color: "#2563eb" });
+// Badge background color is set by the toolbar presenter at startup (#358).
 
 // --- Badge helpers ---
+//
+// The badge text and tooltip are now driven by the ToolbarPresenter (#358).
+// updateTabBadge emits a urlCleaned event; the presenter accumulates the
+// count and writes the badge text. Session storage is still used so the
+// count survives service-worker termination across the same tab lifecycle.
 
 async function updateTabBadge(tabId, junkRemoved) {
   if (!tabId || junkRemoved <= 0) return;
@@ -319,20 +343,21 @@ async function updateTabBadge(tabId, junkRemoved) {
   const data = await sessionStorage.get({ [key]: 0 });
   const newCount = data[key] + junkRemoved;
   await sessionStorage.set({ [key]: newCount });
-  actionApi.setBadgeText?.({ text: String(newCount), tabId });
+  toolbarBus.emit({ type: "urlCleaned", tabId, paramsRemoved: junkRemoved });
 }
 
 // Clear badge when a tab starts navigating to a new page
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     sessionStorage.remove(`tab_${tabId}`);
-    actionApi.setBadgeText?.({ text: "", tabId });
+    toolbarBus.emit({ type: "navigationStarted", tabId });
   }
 });
 
 // Clean up session data when a tab closes
 chrome.tabs.onRemoved.addListener((tabId) => {
   sessionStorage.remove(`tab_${tabId}`);
+  toolbarBus.emit({ type: "tabClosed", tabId });
 });
 
 // --- Session history helpers ---
@@ -396,6 +421,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
+        if (typeof tabId === "number" && result.preservedAffiliate) {
+          toolbarBus.emit({ type: "creatorReferralPreserved", tabId });
+        }
         sendResponse(result);
       })
       .catch(err => {
