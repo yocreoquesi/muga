@@ -10,7 +10,13 @@ import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { createToolbarEventBus } from "../../src/lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../../src/lib/tab-presenter-state.js";
-import { createToolbarPresenter } from "../../src/lib/toolbar-presenter.js";
+import {
+  createToolbarPresenter,
+  badgeColorFor,
+  BADGE_COLOR_DEFAULT,
+  BADGE_COLOR_PRESERVED,
+  BADGE_COLOR_DETECTED,
+} from "../../src/lib/toolbar-presenter.js";
 
 function makeRecordingActionApi() {
   const calls = [];
@@ -44,7 +50,91 @@ describe("toolbar-presenter — startup", () => {
     const { actionApi } = setup();
     const colorCalls = actionApi.calls.filter(([k]) => k === "setBadgeBackgroundColor");
     assert.equal(colorCalls.length, 1);
-    assert.deepEqual(colorCalls[0][1], { color: "#2563eb" });
+    assert.deepEqual(colorCalls[0][1], { color: BADGE_COLOR_DEFAULT });
+  });
+});
+
+describe("badgeColorFor (#367)", () => {
+  test("default state returns the default (blue)", () => {
+    assert.equal(badgeColorFor({}), BADGE_COLOR_DEFAULT);
+    assert.equal(badgeColorFor({ paramsRemoved: 0 }), BADGE_COLOR_DEFAULT);
+  });
+
+  test("cleaned state still uses the default blue", () => {
+    assert.equal(badgeColorFor({ paramsRemoved: 5 }), BADGE_COLOR_DEFAULT);
+  });
+
+  test("creator referral preserved beats cleaned — green wins", () => {
+    assert.equal(
+      badgeColorFor({ paramsRemoved: 5, creatorReferralPreserved: true }),
+      BADGE_COLOR_PRESERVED
+    );
+    assert.equal(
+      badgeColorFor({ creatorReferralPreserved: true }),
+      BADGE_COLOR_PRESERVED
+    );
+  });
+
+  test("foreign affiliate detected returns yellow", () => {
+    assert.equal(
+      badgeColorFor({ foreignAffiliateDetected: true }),
+      BADGE_COLOR_DETECTED
+    );
+  });
+
+  test("preserved + detected → preserved (green) wins", () => {
+    // The semantic ordering: preserved is the strongest positive signal,
+    // wins over detected (which is a passive notice).
+    assert.equal(
+      badgeColorFor({ creatorReferralPreserved: true, foreignAffiliateDetected: true }),
+      BADGE_COLOR_PRESERVED
+    );
+  });
+});
+
+describe("toolbar-presenter — semantic badge color (#367)", () => {
+  test("urlCleaned alone keeps badge color at blue", () => {
+    const { bus, actionApi } = setup();
+    actionApi.calls.length = 0;
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 3 });
+    const colorCalls = actionApi.calls.filter(([k]) => k === "setBadgeBackgroundColor");
+    // No change — already blue from startup, no per-tab override needed
+    assert.equal(colorCalls.length, 0);
+  });
+
+  test("creatorReferralPreserved sets per-tab green", () => {
+    const { bus, actionApi } = setup();
+    actionApi.calls.length = 0;
+    bus.emit({ type: "creatorReferralPreserved", tabId: 5 });
+    const colorCall = actionApi.calls.find(([k]) => k === "setBadgeBackgroundColor");
+    assert.deepEqual(colorCall?.[1], { tabId: 5, color: BADGE_COLOR_PRESERVED });
+  });
+
+  test("foreignAffiliateDetected sets per-tab yellow", () => {
+    const { bus, actionApi } = setup();
+    actionApi.calls.length = 0;
+    bus.emit({ type: "foreignAffiliateDetected", tabId: 7 });
+    const colorCall = actionApi.calls.find(([k]) => k === "setBadgeBackgroundColor");
+    assert.deepEqual(colorCall?.[1], { tabId: 7, color: BADGE_COLOR_DETECTED });
+  });
+
+  test("navigationStarted resets per-tab color back to blue", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "creatorReferralPreserved", tabId: 9 });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "navigationStarted", tabId: 9 });
+    const colorCall = actionApi.calls.find(([k]) => k === "setBadgeBackgroundColor");
+    assert.deepEqual(colorCall?.[1], { tabId: 9, color: BADGE_COLOR_DEFAULT });
+  });
+
+  test("idempotent — same color twice does not call setBadgeBackgroundColor again", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
+    actionApi.calls.length = 0;
+    // Re-emitting preserved on the same tab — color is already green, no API call
+    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
+    const colorCalls = actionApi.calls.filter(([k]) => k === "setBadgeBackgroundColor");
+    assert.equal(colorCalls.length, 0);
   });
 });
 

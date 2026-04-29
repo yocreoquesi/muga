@@ -19,7 +19,30 @@
  * Subsequent slices add semantic badge color (#367) and icon variant (#368).
  */
 
-const DEFAULT_BADGE_COLOR = "#2563eb";
+// Semantic badge colors (#367). The tab's most recent event determines which
+// color the badge wears.
+//
+//   BLUE   — routine cleaning happened.
+//   GREEN  — a creator referral was preserved on this tab's navigation.
+//   YELLOW — a foreign affiliate was detected and the user has the toast
+//            disabled (so this is the only ambient signal for that case).
+//
+// The set is closed and small. Adding a fourth color requires a deliberate
+// design decision (see PRD #350).
+export const BADGE_COLOR_DEFAULT  = "#2563eb"; // blue
+export const BADGE_COLOR_CLEANED  = "#2563eb"; // blue (same as default; explicit alias for clarity)
+export const BADGE_COLOR_PRESERVED = "#16a34a"; // green
+export const BADGE_COLOR_DETECTED  = "#ca8a04"; // yellow
+
+/**
+ * Returns the semantic badge color for a given tab state.
+ * Pure function. Exported for tests.
+ */
+export function badgeColorFor(s) {
+  if (s.creatorReferralPreserved) return BADGE_COLOR_PRESERVED;
+  if (s.foreignAffiliateDetected) return BADGE_COLOR_DETECTED;
+  return BADGE_COLOR_CLEANED; // blue is the default whether or not anything cleaned
+}
 
 /**
  * Creates a toolbar presenter and wires it to the bus. Returns the
@@ -35,9 +58,9 @@ const DEFAULT_BADGE_COLOR = "#2563eb";
  * @returns {object} Presenter with introspection helpers.
  */
 export function createToolbarPresenter({ bus, state, actionApi, t }) {
-  // Set the default badge background color once. Future slices (#367) replace
-  // this with semantic colors driven by tab state.
-  actionApi.setBadgeBackgroundColor?.({ color: DEFAULT_BADGE_COLOR });
+  // Default badge background color at startup. Per-tab calls below override
+  // this when a tab's state warrants a semantic color (#367).
+  actionApi.setBadgeBackgroundColor?.({ color: BADGE_COLOR_DEFAULT });
 
   function tooltipFor(s) {
     const cleaned   = s.paramsRemoved > 0;
@@ -56,6 +79,15 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
       actionApi.setTitle?.({ tabId, title: nextTitle });
     }
 
+    // Badge color. Only call setBadgeBackgroundColor if the resolved
+    // color changed for this tab — setBadgeBackgroundColor with a tabId
+    // sets the per-tab override; we avoid redundant calls.
+    const prevColor = badgeColorFor(prev);
+    const nextColor = badgeColorFor(next);
+    if (prevColor !== nextColor) {
+      actionApi.setBadgeBackgroundColor?.({ tabId, color: nextColor });
+    }
+
     // Badge text. Mirrors the pre-existing behavior: numeric count of
     // params removed on this tab; empty when zero.
     if (next.paramsRemoved !== prev.paramsRemoved) {
@@ -68,6 +100,7 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
     state.reset(tabId);
     actionApi.setBadgeText?.({ tabId, text: "" });
     actionApi.setTitle?.({ tabId, title: t("tooltip_default") });
+    actionApi.setBadgeBackgroundColor?.({ tabId, color: BADGE_COLOR_DEFAULT });
   }
 
   bus.subscribe((event) => {

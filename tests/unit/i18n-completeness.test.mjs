@@ -26,6 +26,7 @@ const EN_ES_IDENTICAL_EXCEPTIONS = new Set([
   "share_copy_prefix",           // "📋 " — emoji only
   "dev_url_tester_placeholder",  // example URL, not user-facing copy
   "dev_url_error",               // "Error:" reads identically in EN/ES
+  "tooltip_default",             // "MUGA" — brand name, universal across locales
 ]);
 
 describe("i18n completeness — every key has en + es", () => {
