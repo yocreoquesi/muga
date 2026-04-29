@@ -133,3 +133,17 @@
 - No `Co-Authored-By` or AI attribution in commits.
 - All code comments and commit messages in English.
 - Version must be consistent across `package.json`, `manifest.json`, `manifest.v2.json`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked on GitHub at `yocreoquesi/muga`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical labels with default names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo. `CONTEXT.md` and `docs/adr/` at the root, created lazily. See `docs/agents/domain.md`.
