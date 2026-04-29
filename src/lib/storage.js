@@ -8,6 +8,8 @@
 
 // Per-device consent overlay for getPrefs (#355, ADR-0001).
 import { getConsent } from "./consent-storage.js";
+// Per-device pref overrides on top of synced behavioural prefs (#364).
+import { getOverrides as getPerDeviceOverrides } from "./per-device-prefs.js";
 
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //
@@ -107,16 +109,17 @@ export const PREF_DEFAULTS = {
  * `chrome.storage.sync` (cross-device). Consent fields
  * (`onboardingDone`, `consentVersion`, `consentDate`) are overlaid
  * from per-device `chrome.storage.local` via consent-storage (#355,
- * see ADR-0001) — local wins when present, falling back to the sync
- * values during the migration window before sync-migration runs.
+ * ADR-0001). Per-device behavioural overrides (`injectOwnAffiliate`,
+ * `remoteRulesEnabled` after a user declines a sync-inherited prompt)
+ * are overlaid from per-device-prefs (#364) — local wins.
  *
- * Reads sync and local in parallel for minimum latency.
+ * Reads in parallel for minimum latency.
  *
  * @returns {Promise<object>} Preferences merged with PREF_DEFAULTS.
  */
 export async function getPrefs() {
   try {
-    const [sync, consent] = await Promise.all([
+    const [sync, consent, overrides] = await Promise.all([
       new Promise((resolve, reject) => {
         chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
           if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
@@ -124,18 +127,19 @@ export async function getPrefs() {
         });
       }),
       getConsent(),
+      getPerDeviceOverrides(),
     ]);
 
-    // Local consent wins when present. During the migration window
-    // (legacy sync values still around), the sync read above provides
-    // the fallback. Once migrate-sync-to-local has run, sync no longer
-    // has these fields and local is authoritative.
+    // Consent overlay (#355). Local wins over sync.
     const overlay = {};
     if (consent.onboardingDone) overlay.onboardingDone = true;
     if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
     if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
 
-    return { ...sync, ...overlay };
+    // Per-device pref overlay (#364). Any key set in overrides wins
+    // over sync. Boolean shape is enforced at the source (overrides
+    // can only be set via per-device-prefs.setOverrides).
+    return { ...sync, ...overlay, ...overrides };
   } catch (err) {
     console.error("[MUGA] getPrefs failed:", err);
     return { ...PREF_DEFAULTS };
