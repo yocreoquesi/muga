@@ -6,6 +6,9 @@
  *   chrome.storage.local: stats and ephemeral state (device-only, 10MB quota)
  */
 
+// Per-device consent overlay for getPrefs (#355, ADR-0001).
+import { getConsent } from "./consent-storage.js";
+
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //
 // In Chrome MV3, chrome.* APIs return Promises when called without a callback.
@@ -104,27 +107,24 @@ export const PREF_DEFAULTS = {
  * `chrome.storage.sync` (cross-device). Consent fields
  * (`onboardingDone`, `consentVersion`, `consentDate`) are overlaid
  * from per-device `chrome.storage.local` via consent-storage (#355,
- * see ADR-0001) — local wins when both have data, falling back to
- * the sync values during the migration window.
+ * see ADR-0001) — local wins when present, falling back to the sync
+ * values during the migration window before sync-migration runs.
+ *
+ * Reads sync and local in parallel for minimum latency.
  *
  * @returns {Promise<object>} Preferences merged with PREF_DEFAULTS.
  */
 export async function getPrefs() {
   try {
-    const sync = await new Promise((resolve, reject) => {
-      chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(result);
-        }
-      });
-    });
-
-    // Overlay per-device consent. Lazily import to avoid circular load
-    // order issues with consent-storage during early startup.
-    const { getConsent } = await import("./consent-storage.js");
-    const consent = await getConsent();
+    const [sync, consent] = await Promise.all([
+      new Promise((resolve, reject) => {
+        chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(result);
+        });
+      }),
+      getConsent(),
+    ]);
 
     // Local consent wins when present. During the migration window
     // (legacy sync values still around), the sync read above provides

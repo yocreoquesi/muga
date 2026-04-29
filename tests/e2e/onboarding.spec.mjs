@@ -71,16 +71,22 @@ test.describe("Onboarding", () => {
     const verifyPage = await context.newPage();
     await verifyPage.goto(`chrome-extension://${extensionId}/popup/popup.html`);
 
-    const prefs = await verifyPage.evaluate(() => {
+    // Consent fields live in chrome.storage.local (#355 / ADR-0001);
+    // behavioural prefs continue to live in chrome.storage.sync.
+    const { sync, consent } = await verifyPage.evaluate(() => {
       return new Promise((resolve) => {
-        chrome.storage.sync.get(null, resolve);
+        chrome.storage.sync.get(null, (syncPrefs) => {
+          chrome.storage.local.get({ mugaConsent: {} }, (local) => {
+            resolve({ sync: syncPrefs, consent: local.mugaConsent || {} });
+          });
+        });
       });
     });
 
-    expect(prefs.onboardingDone).toBe(true);
-    expect(prefs.injectOwnAffiliate).toBe(true);
-    expect(prefs.consentVersion).toBe("1.0");
-    expect(prefs.consentDate).toBeGreaterThan(0);
+    expect(consent.onboardingDone).toBe(true);
+    expect(sync.injectOwnAffiliate).toBe(true);
+    expect(consent.consentVersion).toBe("1.0");
+    expect(consent.consentDate).toBeGreaterThan(0);
 
     await verifyPage.close();
   });
