@@ -6,6 +6,9 @@
  *   chrome.storage.local: stats and ephemeral state (device-only, 10MB quota)
  */
 
+// Per-device consent overlay for getPrefs (#355, ADR-0001).
+import { getConsent } from "./consent-storage.js";
+
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //
 // In Chrome MV3, chrome.* APIs return Promises when called without a callback.
@@ -100,20 +103,39 @@ export const PREF_DEFAULTS = {
 };
 
 /**
- * Reads all user preferences from chrome.storage.sync with defaults.
+ * Reads all user preferences. Behavioural prefs come from
+ * `chrome.storage.sync` (cross-device). Consent fields
+ * (`onboardingDone`, `consentVersion`, `consentDate`) are overlaid
+ * from per-device `chrome.storage.local` via consent-storage (#355,
+ * see ADR-0001) — local wins when present, falling back to the sync
+ * values during the migration window before sync-migration runs.
+ *
+ * Reads sync and local in parallel for minimum latency.
+ *
  * @returns {Promise<object>} Preferences merged with PREF_DEFAULTS.
  */
 export async function getPrefs() {
   try {
-    return await new Promise((resolve, reject) => {
-      chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(result);
-        }
-      });
-    });
+    const [sync, consent] = await Promise.all([
+      new Promise((resolve, reject) => {
+        chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(result);
+        });
+      }),
+      getConsent(),
+    ]);
+
+    // Local consent wins when present. During the migration window
+    // (legacy sync values still around), the sync read above provides
+    // the fallback. Once migrate-sync-to-local has run, sync no longer
+    // has these fields and local is authoritative.
+    const overlay = {};
+    if (consent.onboardingDone) overlay.onboardingDone = true;
+    if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
+    if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
+
+    return { ...sync, ...overlay };
   } catch (err) {
     console.error("[MUGA] getPrefs failed:", err);
     return { ...PREF_DEFAULTS };
