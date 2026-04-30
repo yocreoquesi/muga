@@ -35,7 +35,7 @@
 <body>
 
   <h1>Terms of Use</h1>
-  <p class="meta">MUGA: Fair to every click &nbsp;&middot;&nbsp; Version 1.1 &nbsp;&middot;&nbsp; Last updated: 2026-03-23</p>
+  <p class="meta">MUGA: Fair to every click &nbsp;&middot;&nbsp; Version 1.1 &nbsp;&middot;&nbsp; Last updated: 2026-05-01</p>
 
   <div class="highlight">
     MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3</a>. You control what MUGA does. MUGA never acts behind your back. Nothing happens without your action.
@@ -63,11 +63,13 @@
     <li>By default, MUGA <strong>does not replace</strong> an affiliate tag that is already present in a URL. Replacing requires a separate, deliberate opt-in by the user</li>
     <li>Affiliate tag injection only applies to the supported stores explicitly listed in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">source code</a></li>
     <li>You can disable affiliate tag injection at any time in the Extension's Settings, no questions asked</li>
+    <li>The "Remove all affiliate tags from other sources" option strips third-party tags. MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>. If you have injection off, MUGA's tag is treated like any other and removed too — symmetric with your stated preference</li>
     <li>The developer may earn commissions from qualifying purchases through supported affiliate programs. This disclosure is required by the operating agreements of those programs</li>
   </ul>
 
   <h2>4. No data collection</h2>
-  <p>MUGA does not collect, transmit, or store your browsing data. Every feature is transparent and configurable. MUGA has no analytics, no telemetry, and no crash-reporting services. Optional features that contact an external service (such as rule updates or URL shortening) never send your browsing history and require your explicit action. Your preferences are stored in <code>chrome.storage.sync</code> and sync via your browser account. They are never visible to the developer.</p>
+  <p>MUGA does not collect, transmit, or store your browsing data. Every feature is transparent and configurable. MUGA has no analytics, no telemetry, and no crash-reporting services. Optional features that contact an external service (such as rule updates) never send your browsing history and require your explicit action.</p>
+  <p>Your data lives in two places, neither of which is visible to the developer: behavioural preferences (language, blacklist, whitelist, the affiliate toggles' default values) are stored in <code>chrome.storage.sync</code> and follow you across your own devices via your browser account; consent metadata and per-device decisions are stored in <code>chrome.storage.local</code> on each device individually. Acceptance of these Terms is recorded per device, not per browser account — the rationale is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
   <p>For full details, see the <a href="privacy.html">Privacy Policy</a>.</p>
 
   <h2>5. Third-party services</h2>
@@ -90,13 +92,12 @@
   <p>This limitation does not apply to liability that cannot be excluded or limited under applicable law, including liability for wilful misconduct or gross negligence under Spanish law.</p>
 
   <h2>10. Changes to these Terms</h2>
-  <p>The developer may update these Terms from time to time. When material changes are made:</p>
+  <p>The developer may update these Terms from time to time. The Extension distinguishes between two kinds of update:</p>
   <ul>
-    <li>The version number and "Last updated" date at the top of this document will be updated</li>
-    <li>The Extension will display a notice and ask you to review and re-accept the updated Terms before you can continue using MUGA</li>
-    <li>If you do not accept the updated Terms, you may uninstall the Extension</li>
+    <li><strong>Material changes</strong> (changes that alter your existing rights or obligations under previously accepted Terms): the version number and "Last updated" date at the top of this document are updated, and the Extension displays a re-acceptance flow on each device. Affected features are gated until you re-accept. If you do not accept, you may uninstall the Extension.</li>
+    <li><strong>Additive changes</strong> (clauses that are added without altering existing ones): the version number and "Last updated" date are updated, and the Extension displays a delta-review flow on each device showing only the new clauses. If you decline the delta, you continue under the previously accepted Terms; only the behaviours gated by the new clauses stay disabled.</li>
   </ul>
-  <p>Non-material changes (such as formatting or clarifications that do not alter your rights) may be made without re-acceptance, but the updated document will always be available inside the Extension.</p>
+  <p>Non-material changes (such as formatting, typos, or clarifications that do not alter your rights) may be made without re-acceptance, but the updated document will always be available inside the Extension.</p>
 
   <h2>11. Governing law and jurisdiction</h2>
   <p>These Terms are governed by and construed in accordance with the laws of Spain. Any disputes arising out of or in connection with these Terms shall be submitted to the competent courts of Spain.</p>
