@@ -158,12 +158,9 @@ test.describe("Local cleaning: click path (#409)", () => {
     await stubFromAndTo(page, captured);
 
     await page.goto(`https://${FROM_HOST}/index.html`);
-    // REASON: getContentPrefs() is async (sendMessage round-trip to the
-    // SW). Until _contentPrefs is set, the click handler bails on the
-    // !enabled / !onboardingDone gate; DNR cleans the URL silently and
-    // BADGE_AND_STATS is never emitted, so stats stay flat. Cold-SW
-    // startup on CI runners is slower than locally — 800ms is the
-    // empirical floor that keeps this stable.
+    // REASON: getContentPrefs() is async; until _contentPrefs is set,
+    // the click bails on !enabled and DNR silently cleans the URL,
+    // skipping BADGE_AND_STATS. 800ms covers cold-SW CI variance.
     await page.waitForTimeout(800);
     await page.locator("#affiliate-link").click();
     await page.waitForLoadState("domcontentloaded");
