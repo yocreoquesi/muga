@@ -1,10 +1,13 @@
 /**
  * MUGA — Unit tests for redirect-unwrap URL extraction logic
  *
- * The content script (src/content/redirect-unwrap.js) cannot be imported
- * in Node.js (uses chrome.* APIs and IIFE pattern). These tests replicate
- * the core URL extraction logic — same REDIRECT_PARAMS list, same rules —
- * so any change to the content script must be reflected here.
+ * Per #371 the redirect-unwrap logic was merged into src/content/cleaner.js;
+ * the original standalone redirect-unwrap.js file no longer exists.
+ *
+ * The content script cannot be imported in Node.js (uses chrome.* APIs and
+ * IIFE pattern). These tests replicate the core URL extraction logic — same
+ * REDIRECT_PARAMS list, same rules — so any change to the content script
+ * must be reflected here.
  *
  * Logic under test:
  *   Given a URL, find the first query param in REDIRECT_PARAMS whose value
@@ -21,7 +24,7 @@ import { join, dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REDIRECT_UNWRAP_SOURCE = readFileSync(
-  join(__dirname, "../../src/content/redirect-unwrap.js"),
+  join(__dirname, "../../src/content/cleaner.js"),
   "utf8"
 );
 
