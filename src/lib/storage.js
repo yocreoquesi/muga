@@ -10,6 +10,8 @@
 import { getConsent } from "./consent-storage.js";
 // Per-device pref overrides on top of synced behavioural prefs (#364).
 import { getOverrides as getPerDeviceOverrides } from "./per-device-prefs.js";
+// Consent version-comparison for feature gating during hard re-onboard (#370).
+import { evaluate as evaluateConsentPolicy } from "./consent-policy.js";
 
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //
@@ -135,6 +137,16 @@ export async function getPrefs() {
     if (consent.onboardingDone) overlay.onboardingDone = true;
     if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
     if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
+
+    // Hard-reonboard gate (#370). When ConsentPolicy says material change
+    // pending, force `onboardingDone: false` so existing feature gates
+    // (`if (!prefs.onboardingDone) return`) bail until the user re-accepts.
+    // Soft re-onboard does NOT gate features — the user's prior consent
+    // remains valid for previously accepted behaviour.
+    const policy = evaluateConsentPolicy({ stored: consent });
+    if (policy.status === "hard-reonboard") {
+      overlay.onboardingDone = false;
+    }
 
     // Per-device pref overlay (#364). Any key set in overrides wins
     // over sync. Boolean shape is enforced at the source (overrides
