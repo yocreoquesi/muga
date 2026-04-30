@@ -69,7 +69,27 @@ async function _loadDomainRules() {
 _domainRulesReady = _loadDomainRules();
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
-const actionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
+const _rawActionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
+
+// E2E action-API call counter (#408). Increments on every presenter-side
+// mutation so e2e specs can assert idempotency (no redundant calls when
+// the resolved state hasn't changed). Reset / read via __TEST__ handlers
+// (see below) gated on the test-mode sentinel. Production never reads
+// these counts; the cost is one integer increment per action call.
+let _testActionCalls = { setTitle: 0, setBadgeText: 0, setBadgeBackgroundColor: 0, setIcon: 0 };
+const actionApi = new Proxy(_rawActionApi, {
+  get(target, prop) {
+    const orig = target[prop];
+    if (typeof orig !== "function") return orig;
+    if (prop in _testActionCalls) {
+      return function (...args) {
+        _testActionCalls[prop]++;
+        return orig.apply(target, args);
+      };
+    }
+    return orig.bind(target);
+  },
+});
 
 // --- Toolbar presenter (#358) ---
 // All toolbar surface mutations (tooltip, badge text, badge color, icon) flow
@@ -469,6 +489,51 @@ async function handleTestMessage(message, sender) {
       // observable end-state (local populated, sync cleaned).
       const report = await migrateConsentToLocal();
       return { ok: true, ...report };
+    }
+    case "__TEST__emitToolbarEvent": {
+      // Drive a synthetic toolbar event onto the same bus the
+      // production code uses. Lets the e2e suite assert the
+      // chrome.action surface state for any presenter input
+      // (urlCleaned / creatorReferralPreserved / foreignAffiliateDetected
+      // / navigationStarted / tabClosed) without reproducing the URL
+      // navigation that would otherwise generate the event.
+      // The inner event lives under `message.event` so its `type` does
+      // not collide with the dispatch `type`.
+      const inner = message.event;
+      if (!inner || typeof inner.type !== "string") {
+        return { ok: false, error: "missing event.type" };
+      }
+      const tabIdNum = Number(inner.tabId);
+      if (!Number.isFinite(tabIdNum) || tabIdNum < 0) {
+        return { ok: false, error: "invalid tabId" };
+      }
+      const event = { type: inner.type, tabId: tabIdNum };
+      if (inner.type === "urlCleaned") {
+        event.paramsRemoved = Number(inner.paramsRemoved) || 0;
+      }
+      toolbarBus.emit(event);
+      return { ok: true };
+    }
+    case "__TEST__getActiveTabId": {
+      // Returns the active tab's id in the last-focused window. Used by
+      // e2e specs so they can address chrome.action with a real tabId
+      // — fictional tabIds make per-tab setBadgeText / setIcon a no-op
+      // because the action API only retains state for live tabs.
+      const tabs = await new Promise((resolve) => {
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (r) => resolve(r || []));
+      });
+      const tab = tabs[0];
+      if (!tab || typeof tab.id !== "number") {
+        return { ok: false, error: "no active tab" };
+      }
+      return { ok: true, tabId: tab.id };
+    }
+    case "__TEST__resetActionApiCounts": {
+      _testActionCalls = { setTitle: 0, setBadgeText: 0, setBadgeBackgroundColor: 0, setIcon: 0 };
+      return { ok: true };
+    }
+    case "__TEST__readActionApiCounts": {
+      return { ok: true, counts: { ..._testActionCalls } };
     }
     default:
       return { ok: false, error: `unknown __TEST__ message: ${message.type}` };
