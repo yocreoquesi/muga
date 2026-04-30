@@ -455,6 +455,14 @@ async function handleTestMessage(message, sender) {
         state: { ...tabState },
       };
     }
+    case "__TEST__runConsentMigration": {
+      // Force a re-run of the sync→local consent migration. Production
+      // calls this once on service-worker startup; the e2e suite needs
+      // to call it on demand AFTER seeding sync so it can assert the
+      // observable end-state (local populated, sync cleaned).
+      const report = await migrateConsentToLocal();
+      return { ok: true, ...report };
+    }
     default:
       return { ok: false, error: `unknown __TEST__ message: ${message.type}` };
   }
