@@ -81,7 +81,7 @@ The popup shows what MUGA cleaned on the current page: which parameters were rem
 
 ![Popup showing cleaned URL on a store page](docs/assets/screenshot-ss2-popup.png)
 
-Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. Available in English, Spanish, Portuguese, and German.
+Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. The UI ships in English and Spanish (officially maintained); Portuguese and German are community-contributed and may have gaps that fall back to English.
 
 ![Settings page](docs/assets/screenshot-ss3-options.png)
 
@@ -117,7 +117,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Toast notification when a third-party affiliate is detected (opt-in)
 - **Remote rule updates**: weekly signed updates to the tracking-param list from a public GitHub Pages endpoint. **Off by default while the signing infrastructure stabilizes** — the default may flip in a future release; the [CHANGELOG](CHANGELOG.md) will record the change when it happens. The fetch is a plain GET to a public URL — no user data is sent.
 - Export / Import settings as JSON
-- 4 languages: English, Spanish, Portuguese, German
+- Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English)
 
 ---
 

@@ -133,6 +133,9 @@ export const TRANSLATIONS = {
   section_language: { en: "Language", es: "Idioma", pt: "Idioma", de: "Sprache" },
   lang_label:  { en: "Display language", es: "Idioma de la interfaz", pt: "Idioma da interface", de: "Anzeigesprache" },
   lang_hint:   { en: "Affects the popup and settings page. Does not affect URL processing.", es: "Afecta al popup y a esta página. No afecta al procesamiento de URLs.", pt: "Afeta o popup e a página de configurações. Não afeta o processamento de URLs.", de: "Betrifft das Popup und die Einstellungsseite. Hat keinen Einfluss auf die URL-Verarbeitung." },
+  // Community-maintained note (#360). Surfaces when PT or DE is selected so
+  // users understand the support level they should expect for those locales.
+  lang_community_note: { en: "Community-maintained — contributions welcome.", es: "Mantenido por la comunidad — se aceptan contribuciones.", pt: "Mantido pela comunidade — contribuições são bem-vindas.", de: "Von der Community gepflegt — Beiträge willkommen." },
 
   row_dnr_label:         { en: "Strip tracking parameters before navigation", es: "Eliminar parámetros de rastreo antes de navegar", pt: "Remover parâmetros de rastreamento antes de navegar", de: "Tracking-Parameter vor der Navigation entfernen" },
   row_dnr_hint:          { en: "Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.", es: "Limpia URLs mientras escribes en la barra de direcciones, desde marcadores y enlaces de otras apps. Antes de que cargue la página.", pt: "Limpa URLs enquanto você digita na barra de endereços, de favoritos e links de outros apps. Antes de a página carregar.", de: "Bereinigt URLs während du in der Adressleiste tippst, aus Lesezeichen und Links aus anderen Apps. Vor dem Laden der Seite." },

@@ -142,7 +142,7 @@ YOUR RULES
 . Strip all third-party affiliates: one toggle to remove every affiliate tag globally
 . Per-domain disable: opt entire domains out of MUGA
 . Export / Import settings as JSON: back up or move your config across devices
-. Language: English, Spanish, Portuguese, German — switchable any time
+. Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English) — switchable any time
 . Settings sync across Chrome devices automatically
 
 
@@ -254,7 +254,7 @@ Your rules
 . Strip all third-party affiliates: one toggle to remove every affiliate tag globally
 . Per-domain disable: opt entire domains out of MUGA
 . Export/Import settings as JSON
-. English, Spanish, Portuguese, German — switchable any time
+. Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English) — switchable any time
 
 
 Open source. GPL v3. Read every line.
