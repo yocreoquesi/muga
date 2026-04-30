@@ -44,6 +44,32 @@ export function badgeColorFor(s) {
   return BADGE_COLOR_CLEANED; // blue is the default whether or not anything cleaned
 }
 
+// Icon variants (#368). The default icon ships at icons/{16,48,128}.png;
+// the "creator referral preserved" variant ships at icons/{16,48,128}-preserved.png.
+// The variant adds a green check badge in the lower-right corner, signalling
+// that MUGA preserved a creator's affiliate tag during this navigation.
+// Master at icons/mugavariant.png (1254×1254) — the three sizes are downscaled
+// from it via ImageMagick `-filter Lanczos`.
+export const ICON_DEFAULT = Object.freeze({
+  16:  "icons/16.png",
+  48:  "icons/48.png",
+  128: "icons/128.png",
+});
+export const ICON_PRESERVED = Object.freeze({
+  16:  "icons/16-preserved.png",
+  48:  "icons/48-preserved.png",
+  128: "icons/128-preserved.png",
+});
+
+/**
+ * Returns the icon path-set for a given tab state. Pure function.
+ * Exported for tests.
+ */
+export function iconForState(s) {
+  if (s.creatorReferralPreserved) return ICON_PRESERVED;
+  return ICON_DEFAULT;
+}
+
 /**
  * Creates a toolbar presenter and wires it to the bus. Returns the
  * presenter for testing / direct calls (not generally needed in
@@ -88,6 +114,15 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
       actionApi.setBadgeBackgroundColor?.({ tabId, color: nextColor });
     }
 
+    // Icon variant (#368). setIcon is more expensive than setTitle /
+    // setBadgeBackgroundColor (it ships image bytes), so only call it
+    // when the variant actually changes for this tab.
+    const prevIcon = iconForState(prev);
+    const nextIcon = iconForState(next);
+    if (prevIcon !== nextIcon) {
+      actionApi.setIcon?.({ tabId, path: nextIcon });
+    }
+
     // Badge text. Mirrors the pre-existing behavior: numeric count of
     // params removed on this tab; empty when zero.
     if (next.paramsRemoved !== prev.paramsRemoved) {
@@ -101,6 +136,7 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
     actionApi.setBadgeText?.({ tabId, text: "" });
     actionApi.setTitle?.({ tabId, title: t("tooltip_default") });
     actionApi.setBadgeBackgroundColor?.({ tabId, color: BADGE_COLOR_DEFAULT });
+    actionApi.setIcon?.({ tabId, path: ICON_DEFAULT });
   }
 
   bus.subscribe((event) => {

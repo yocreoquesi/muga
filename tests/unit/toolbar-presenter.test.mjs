@@ -16,6 +16,9 @@ import {
   BADGE_COLOR_DEFAULT,
   BADGE_COLOR_PRESERVED,
   BADGE_COLOR_DETECTED,
+  iconForState,
+  ICON_DEFAULT,
+  ICON_PRESERVED,
 } from "../../src/lib/toolbar-presenter.js";
 
 function makeRecordingActionApi() {
@@ -331,5 +334,57 @@ describe("tab-presenter-state", () => {
     state.evict(1);
     assert.equal(state.size(), 1);
     assert.equal(state.get(1).paramsRemoved, 0);
+  });
+});
+
+describe("iconForState (#368)", () => {
+  test("default state returns the default icon paths", () => {
+    assert.equal(iconForState({}), ICON_DEFAULT);
+    assert.equal(iconForState({ paramsRemoved: 5 }), ICON_DEFAULT);
+  });
+
+  test("creator referral preserved returns the variant icon paths", () => {
+    assert.equal(iconForState({ creatorReferralPreserved: true }), ICON_PRESERVED);
+    assert.equal(iconForState({ paramsRemoved: 3, creatorReferralPreserved: true }), ICON_PRESERVED);
+  });
+
+  test("foreign affiliate detected alone keeps default icon (color signals it)", () => {
+    assert.equal(iconForState({ foreignAffiliateDetected: true }), ICON_DEFAULT);
+  });
+});
+
+describe("toolbar-presenter — icon variant (#368)", () => {
+  test("urlCleaned alone does NOT swap icon", () => {
+    const { bus, actionApi } = setup();
+    actionApi.calls.length = 0;
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 3 });
+    const iconCalls = actionApi.calls.filter(([k]) => k === "setIcon");
+    assert.equal(iconCalls.length, 0);
+  });
+
+  test("creatorReferralPreserved sets per-tab variant icon", () => {
+    const { bus, actionApi } = setup();
+    actionApi.calls.length = 0;
+    bus.emit({ type: "creatorReferralPreserved", tabId: 5 });
+    const iconCall = actionApi.calls.find(([k]) => k === "setIcon");
+    assert.deepEqual(iconCall?.[1], { tabId: 5, path: ICON_PRESERVED });
+  });
+
+  test("navigationStarted resets icon to default", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "creatorReferralPreserved", tabId: 7 });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "navigationStarted", tabId: 7 });
+    const iconCall = actionApi.calls.find(([k]) => k === "setIcon");
+    assert.deepEqual(iconCall?.[1], { tabId: 7, path: ICON_DEFAULT });
+  });
+
+  test("idempotent — repeated preserved events do not re-call setIcon", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
+    const iconCalls = actionApi.calls.filter(([k]) => k === "setIcon");
+    assert.equal(iconCalls.length, 0);
   });
 });
