@@ -8,6 +8,7 @@ import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
+import { createMigrationPrompt } from "../lib/migration-prompt.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -324,6 +325,52 @@ async function init() {
       console.error("[MUGA] reactive re-render:", err);
     }
   });
+
+  // --- Migration prompt (#369) ----------------------------------------
+  // Wires the migration banner. Today MIGRATIONS is empty, so the
+  // banner never renders. When a future release adds a spec entry,
+  // refresh() picks it up automatically on the next popup open.
+  await wireMigrationPrompt(lang);
+}
+
+async function wireMigrationPrompt(lang) {
+  const root = document.getElementById("migration-banner");
+  if (!root) return; // popup variant without the banner — nothing to do
+  const prompt = createMigrationPrompt({
+    root,
+    titleEl:    document.getElementById("migration-banner-title"),
+    bodyEl:     document.getElementById("migration-banner-body"),
+    acceptBtn:  document.getElementById("migration-banner-accept"),
+    declineBtn: document.getElementById("migration-banner-decline"),
+    dismissBtn: document.getElementById("migration-banner-dismiss"),
+    counterEl:  document.getElementById("migration-banner-counter"),
+    readState: async () => {
+      // The MV3 manifest version drives both previousVersion and
+      // currentVersion in this minimal wiring. A future enhancement
+      // could persist the previous-installed version separately, but
+      // that requires a SW write on update which is its own slice.
+      const manifest = chrome.runtime.getManifest?.() || {};
+      const currentVersion = manifest.version || "0.0.0";
+      const stored = await new Promise((resolve) => {
+        chrome.storage.local.get({ mugaPrevVersion: currentVersion }, (r) => resolve(r));
+      });
+      const previousVersion = stored.mugaPrevVersion || currentVersion;
+      const prefs = await getPrefs();
+      return { previousVersion, currentVersion, prefs };
+    },
+    applyPrefs: async (proposedValue) => {
+      // Migrations affect synced behavioural prefs. Write to sync;
+      // existing storage.onChanged listeners will pick the change up.
+      await new Promise((resolve, reject) => {
+        chrome.storage.sync.set(proposedValue, () => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve();
+        });
+      });
+    },
+    t: (key) => t(key, lang),
+  });
+  await prompt.refresh();
 }
 
 /**

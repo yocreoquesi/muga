@@ -27,6 +27,21 @@
   </header>
 
   <main>
+  <!-- Migration prompt (#369). Hidden by default; revealed when
+       MigrationEvaluator returns pending migrations on popup open. -->
+  <section class="migration-banner" id="migration-banner" hidden role="region" aria-live="polite">
+    <div class="migration-banner-header">
+      <strong id="migration-banner-title"></strong>
+      <button type="button" id="migration-banner-dismiss" class="migration-banner-dismiss" aria-label="Dismiss"><span aria-hidden="true">×</span></button>
+    </div>
+    <p id="migration-banner-body"></p>
+    <div class="migration-banner-actions">
+      <button type="button" id="migration-banner-decline" data-i18n="migration_decline">No thanks</button>
+      <button type="button" id="migration-banner-accept" class="primary" data-i18n="migration_accept">Enable</button>
+    </div>
+    <small id="migration-banner-counter" class="migration-banner-counter" hidden></small>
+  </section>
+
   <section class="stats">
     <div class="stat stat-clickable" id="stat-urls-wrap" role="button" tabindex="0" title="Show history" data-i18n-title="show_history" aria-expanded="false">
       <span class="stat-value" id="stat-urls">0</span>
