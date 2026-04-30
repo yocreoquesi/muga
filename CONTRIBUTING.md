@@ -142,6 +142,24 @@ Before adding to `preserveParams`, consider:
 
 The consistency test catches the rule-level violation. It does not catch poor judgment about scope. That is your call — this section exists so the call is made deliberately.
 
+## Translations
+
+MUGA ships UI in English, Spanish, Portuguese, and German. The maintainer is a native Spanish speaker (English fluent); PT and DE are best-effort. The project's policy is:
+
+- **Officially maintained**: `en` and `es`. Every translation key in `src/lib/i18n.js` must have a non-empty value in both. The completeness test in `tests/unit/i18n-completeness.test.mjs` enforces this floor — a PR that adds a key without an EN+ES pair fails CI.
+
+- **Community-maintained**: `pt` and `de`. New keys may ship without these initially; the runtime fallback chain at `i18n.js:281` lands missing entries on EN cleanly. PT and DE PRs do not require native-speaker review by the maintainer (the maintainer is not a native speaker of either) — the EN+ES floor is what gates a merge.
+
+To find which keys are missing in PT or DE, run:
+
+```bash
+node tools/missing-translations.mjs           # both languages
+node tools/missing-translations.mjs pt        # PT only
+node tools/missing-translations.mjs de        # DE only
+```
+
+The script's output is markdown suitable for pasting into the per-language tracking issues. Submit a PR editing the matching entries in `TRANSLATIONS` and the CI suite will validate the EN+ES floor for you.
+
 ## Adding affiliate stores
 
 Edit `src/lib/affiliates.js` and add an entry to `AFFILIATE_PATTERNS`:
