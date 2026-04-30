@@ -55,6 +55,7 @@ export function createMigrationPrompt({
   readState,
   applyPrefs,
   t,
+  migrations,  // optional override; defaults to MIGRATIONS via evaluateMigrations
 }) {
   // The migration currently being shown. Updated on every refresh.
   let active = null;
@@ -91,6 +92,7 @@ export function createMigrationPrompt({
         currentVersion: state.currentVersion,
         responses,
         prefs: state.prefs,
+        ...(migrations ? { migrations } : {}),
       });
       if (pending.length === 0) { hide(); return; }
       render(pending[0], pending.length);

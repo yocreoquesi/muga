@@ -9,6 +9,7 @@ import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
+import { getTestFixtures } from "../lib/test-fixtures.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -336,6 +337,18 @@ async function init() {
 async function wireMigrationPrompt(lang) {
   const root = document.getElementById("migration-banner");
   if (!root) return; // popup variant without the banner — nothing to do
+
+  // E2E fixtures (#407): null in production. Lets tests inject a
+  // fixture migration spec + i18n keys so the dormant banner path
+  // can be exercised end-to-end.
+  const fixtures = await getTestFixtures();
+  const fixtureMigrations = fixtures?.migrations || null;
+  const fixtureI18n = fixtures?.i18nOverrides || null;
+  const tWithFixtures = fixtureI18n
+    ? (key) => (fixtureI18n[key] != null ? fixtureI18n[key] : t(key, lang))
+    : (key) => t(key, lang);
+  const currentVersionOverride = fixtures?.currentVersion || null;
+
   const prompt = createMigrationPrompt({
     root,
     titleEl:    document.getElementById("migration-banner-title"),
@@ -350,7 +363,7 @@ async function wireMigrationPrompt(lang) {
       // could persist the previous-installed version separately, but
       // that requires a SW write on update which is its own slice.
       const manifest = chrome.runtime.getManifest?.() || {};
-      const currentVersion = manifest.version || "0.0.0";
+      const currentVersion = currentVersionOverride || manifest.version || "0.0.0";
       const stored = await new Promise((resolve) => {
         chrome.storage.local.get({ mugaPrevVersion: currentVersion }, (r) => resolve(r));
       });
@@ -368,7 +381,8 @@ async function wireMigrationPrompt(lang) {
         });
       });
     },
-    t: (key) => t(key, lang),
+    t: tWithFixtures,
+    ...(fixtureMigrations ? { migrations: fixtureMigrations } : {}),
   });
   await prompt.refresh();
 }
