@@ -31,11 +31,6 @@
       "matches": ["<all_urls>"],
       "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/cleaner.js"],
       "run_at": "document_start"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/amp-redirect.js"],
-      "run_at": "document_end"
     }
   ],
 
@@ -70,6 +65,11 @@
         "id": "tracking_params",
         "enabled": true,
         "path": "rules/tracking-params.json"
+      },
+      {
+        "id": "amp_redirect",
+        "enabled": true,
+        "path": "rules/amp-redirect.json"
       }
     ]
   },
