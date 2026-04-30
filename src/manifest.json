@@ -29,7 +29,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/cleaner.js"],
+      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/cleaner.js"],
       "run_at": "document_start"
     },
     {
