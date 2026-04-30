@@ -56,6 +56,30 @@
   let _contentPrefs = null;
   let _contentPrefsPending = null;
 
+  // Module-level domain-rules cache (#356/#366). Hoisted to the top of the
+  // IIFE for the same reason as _contentPrefs — event handlers below
+  // reference it via getDomainRulesCached() / direct read on the click and
+  // copy paths.
+  let _domainRulesCache = null;
+  let _domainRulesPending = null;
+  function getDomainRulesCached() {
+    if (_domainRulesCache) return Promise.resolve(_domainRulesCache);
+    if (_domainRulesPending) return _domainRulesPending;
+    _domainRulesPending = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
+      .then(r => r.json())
+      .then(data => { _domainRulesCache = data; _domainRulesPending = null; return data; })
+      .catch(err => {
+        console.error("[MUGA] domain-rules fetch failed:", err);
+        _domainRulesPending = null;
+        return [];
+      });
+    return _domainRulesPending;
+  }
+  // Eagerly start the fetch so click/copy handlers find the cache populated
+  // by the time the user actually clicks. The fetch is local (extension
+  // package), takes <10ms.
+  getDomainRulesCached();
+
   // Rewrite loop guard: prevents infinite URL rewriting if another extension
   // or the page itself re-injects tracking params after MUGA cleans them.
   const _rewriteLog = new Map(); // hostname -> { count, firstTs }
@@ -155,12 +179,28 @@
         return true;
       }
 
-      // 4. Ask service worker to clean each URL
-      Promise.all(
-        allUrls.map(url => chrome.runtime.sendMessage({ type: "PROCESS_URL", url, skipNotify: true, skipStats: true }))
-      ).then(results => {
-        const urlMap = new Map(allUrls.map((url, i) => [url, results[i]?.cleanUrl ?? url]));
+      // 4. Clean each URL locally (#366). No SW round-trip per URL.
+      if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") {
+        // Bundle didn't load — copy plain text as fallback.
+        navigator.clipboard.writeText(sel.toString())
+          .then(() => sendResponse({ ok: true }))
+          .catch(() => sendResponse({ ok: false }));
+        return true;
+      }
 
+      const domainRules = _domainRulesCache || [];
+      const urlMap = new Map();
+      for (const url of allUrls) {
+        let r;
+        try {
+          r = window.__mugaCleaner.processUrl(url, _contentPrefs, domainRules);
+        } catch { r = null; }
+        urlMap.set(url, r?.cleanUrl ?? url);
+      }
+
+      // Defer the rest in a microtask so the original Promise-then chain
+      // shape is preserved for the rest of this branch.
+      Promise.resolve().then(() => {
         // Apply to anchors
         anchors.forEach(a => {
           const orig = a.getAttribute("href");
@@ -206,7 +246,7 @@
    *   and puts the modified text on the clipboard, leaving all non-URL text intact.
    * Note: address bar copies are a browser UI element and cannot be intercepted.
    */
-  document.addEventListener("copy", async (e) => {
+  document.addEventListener("copy", (e) => {
     // Do nothing when extension is disabled or onboarding not done.
     if (!_contentPrefs?.enabled || !_contentPrefs?.onboardingDone) return;
 
@@ -220,6 +260,9 @@
     const matches = [...trimmed.matchAll(URL_RE)];
     if (matches.length === 0) return;
 
+    // Local cleaning (#366). No SW round-trip per URL.
+    if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") return;
+
     e.preventDefault();
 
     try {
@@ -228,23 +271,35 @@
       // preventing a shorter URL that is a prefix of a longer one from
       // corrupting the longer URL during replaceAll.
       const sortedMatches = [...matches].sort((a, b) => b[0].length - a[0].length);
-      let result = trimmed;
+      const domainRules = _domainRulesCache || [];
+      let resultText = trimmed;
+      let totalJunkRemoved = 0;
+      const allRemovedTracking = [];
       for (const match of sortedMatches) {
         const rawUrl = match[0];
-        // Strip trailing punctuation that is unlikely to be part of the URL
         const cleanCandidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
-
-        const response = await chrome.runtime.sendMessage({
-          type: "PROCESS_URL",
-          url: cleanCandidate,
-          skipNotify: true,
-        });
-        if (response?.cleanUrl && response.cleanUrl !== cleanCandidate) {
-          result = result.replaceAll(cleanCandidate, response.cleanUrl);
+        let r;
+        try {
+          r = window.__mugaCleaner.processUrl(cleanCandidate, _contentPrefs, domainRules);
+        } catch { continue; }
+        if (r?.cleanUrl && r.cleanUrl !== cleanCandidate) {
+          resultText = resultText.replaceAll(cleanCandidate, r.cleanUrl);
+          totalJunkRemoved += r.junkRemoved ?? 0;
+          if (Array.isArray(r.removedTracking)) allRemovedTracking.push(...r.removedTracking);
         }
       }
 
-      await copyToClipboard(result);
+      copyToClipboard(resultText);
+
+      // Single fire-and-forget for the whole copy event — counts as ONE
+      // urlsCleaned increment regardless of how many URLs were in the
+      // selection (matches the prior skipStats=true semantics).
+      if (totalJunkRemoved > 0) {
+        chrome.runtime.sendMessage({
+          type: "INCREMENT_STAT",
+          key: "urlsCleaned",
+        }).catch(() => { /* expected: channel may close */ });
+      }
     } catch {
       navigator.clipboard.writeText(trimmed).catch(() => { /* best-effort fallback */ });
     }
@@ -260,27 +315,9 @@
   // on every page load, which previously meant a 3s timeout fall-through if
   // the SW was cold-killed.
   //
-  // Domain rules are fetched from the extension package on first call and
-  // cached in module scope so subsequent same-page work hits the cache.
-  // The fetch is local (chrome.runtime.getURL) — no network.
-  //
-  // Stats and badge updates fire-and-forget via runtime.sendMessage; if the
-  // SW is dead, badges lag by a navigation but the URL is still cleaned.
-  let _domainRulesCache = null;
-  let _domainRulesPending = null;
-  function getDomainRulesCached() {
-    if (_domainRulesCache) return Promise.resolve(_domainRulesCache);
-    if (_domainRulesPending) return _domainRulesPending;
-    _domainRulesPending = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
-      .then(r => r.json())
-      .then(data => { _domainRulesCache = data; _domainRulesPending = null; return data; })
-      .catch(err => {
-        console.error("[MUGA] domain-rules fetch failed:", err);
-        _domainRulesPending = null;
-        return [];
-      });
-    return _domainRulesPending;
-  }
+  // Domain rules are fetched once at IIFE start (see getDomainRulesCached
+  // hoisted above). Stats and badge updates fire-and-forget; SW death is
+  // not fatal — only the badge lags by one nav.
 
   Promise.all([getContentPrefs(), getDomainRulesCached()]).then(([prefs, domainRules]) => {
     if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
@@ -368,40 +405,70 @@
 
     e.preventDefault();
 
-    // Wrap sendMessage in a 3-second timeout so that if the service worker is
-    // dead or unresponsive the user is not left with a dead click. On timeout
-    // we fall through to the catch block which navigates to the original href.
-    const sendWithTimeout = (msg) => Promise.race([
-      chrome.runtime.sendMessage(msg),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("muga_sw_timeout")), 3000)),
-    ]);
-
-    try {
-      const response = await sendWithTimeout({
-        type: "PROCESS_URL",
-        url: href,
-      });
-
-      if (!response || !response.cleanUrl) {
-        navigate(href, opensNewTab);
-        return;
-      }
-
-      const { cleanUrl, action, detectedAffiliate } = response;
-
-      if (action === "detected_foreign" && detectedAffiliate) {
-        showAffiliateNotice(detectedAffiliate, href, cleanUrl, response.withOurAffiliate, (choice) => {
-          if (choice === "original") navigate(href, opensNewTab);
-          else if (choice === "clean") {
-            // If user has injection enabled, navigate with our tag; otherwise clean URL
-            navigate(response.withOurAffiliate || cleanUrl, opensNewTab);
-          }
-        });
-      } else {
-        navigate(cleanUrl, opensNewTab);
-      }
-    } catch {
+    // Local cleaning (#366). Synchronous, no service-worker round-trip,
+    // no 3-second timeout fall-through. The cleaner library is bundled
+    // into this content script via cleaner-bundle.js (#356) which
+    // attaches window.__mugaCleaner. If the bundle did not load (should
+    // never happen in production), silent-degrade by navigating to the
+    // original href.
+    if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") {
       navigate(href, opensNewTab);
+      return;
+    }
+
+    let result;
+    try {
+      const domainRules = _domainRulesCache || [];
+      result = window.__mugaCleaner.processUrl(href, _contentPrefs, domainRules);
+    } catch (err) {
+      console.error("[MUGA] local click clean failed:", err);
+      navigate(href, opensNewTab);
+      return;
+    }
+
+    if (!result || !result.cleanUrl) {
+      navigate(href, opensNewTab);
+      return;
+    }
+
+    const { cleanUrl, action, detectedAffiliate } = result;
+
+    // Compute withOurAffiliate locally (was previously added by the SW
+    // in handleProcessUrl). Mirrors the SW logic exactly: if injection
+    // is enabled and the detected pattern has an ourTag, build the
+    // alternative URL the user can pick from the toast's "Remove it"
+    // action.
+    let withOurAffiliate;
+    if (action === "detected_foreign"
+        && detectedAffiliate?.pattern?.ourTag
+        && _contentPrefs?.injectOwnAffiliate) {
+      try {
+        const u = new URL(cleanUrl);
+        u.searchParams.set(detectedAffiliate.pattern.param, detectedAffiliate.pattern.ourTag);
+        withOurAffiliate = u.toString();
+      } catch { /* malformed cleanUrl — toast falls back to cleanUrl */ }
+    }
+
+    // Fire-and-forget stats + history. SW death is no longer fatal.
+    chrome.runtime.sendMessage({
+      type: "BADGE_AND_STATS",
+      junkRemoved: result.junkRemoved ?? 0,
+      removedTracking: result.removedTracking ?? [],
+      cleanUrl,
+      originalUrl: href,
+      action,
+    }).catch(() => { /* SW dead — badge will catch up next nav */ });
+
+    if (action === "detected_foreign" && detectedAffiliate
+        && _contentPrefs?.notifyForeignAffiliate) {
+      showAffiliateNotice(detectedAffiliate, href, cleanUrl, withOurAffiliate, (choice) => {
+        if (choice === "original") navigate(href, opensNewTab);
+        else if (choice === "clean") {
+          navigate(withOurAffiliate || cleanUrl, opensNewTab);
+        }
+      });
+    } else {
+      navigate(cleanUrl, opensNewTab);
     }
   }, true);
 
