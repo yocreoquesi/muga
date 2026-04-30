@@ -434,23 +434,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep the channel open for the async response
   }
 
-  // Fire-and-forget side-channel for the local-cleaning path (#356). The
-  // content script does the actual URL cleaning locally via the bundled
-  // cleaner and only asks the SW to update badge text, increment stats,
-  // and append history. No response is required — failure here doesn't
-  // affect the user-visible URL change that already happened.
+  // Fire-and-forget side-channel for the local-cleaning path (#356/#366).
+  // The content script does the actual URL cleaning locally via the
+  // bundled cleaner and only asks the SW to update badge text, increment
+  // stats, append history, and emit toolbar bus events. No response is
+  // required — failure here doesn't affect the user-visible URL change
+  // that already happened.
+  //
+  // Stat-increment semantics mirror handleProcessUrl exactly:
+  //   - urlsCleaned + junkRemoved fire only when action !== "untouched"
+  //     AND (urlChanged OR junkRemoved > 0).
+  //   - referralsSpotted fires when action === "detected_foreign".
+  //   - domainStats fires only when prefs.domainStats is on AND junk > 0.
   if (message.type === "BADGE_AND_STATS") {
     const tabId = sender.tab?.id;
     const junkRemoved = Number(message.junkRemoved) || 0;
     const removedTracking = Array.isArray(message.removedTracking) ? message.removedTracking : [];
+    const action = String(message.action || "");
+    const cleanUrl = typeof message.cleanUrl === "string" ? message.cleanUrl : "";
+    const originalUrl = typeof message.originalUrl === "string" ? message.originalUrl : "";
+    const urlChanged = cleanUrl && originalUrl && cleanUrl !== originalUrl;
+
     if (junkRemoved > 0) updateTabBadge(tabId, junkRemoved);
-    incrementStat("urlsCleaned");
-    if (junkRemoved > 0) incrementStat("junkRemoved", junkRemoved);
-    if (typeof message.cleanUrl === "string" && typeof message.originalUrl === "string") {
-      appendHistory(message.originalUrl, message.cleanUrl, removedTracking).catch(err => {
-        console.warn("[MUGA] BADGE_AND_STATS appendHistory:", err);
-      });
+
+    if (action !== "untouched" && (urlChanged || junkRemoved > 0)) {
+      incrementStat("urlsCleaned");
+      if (junkRemoved > 0) incrementStat("junkRemoved", junkRemoved);
+      // Domain stats requires the user's pref. Best-effort read; failure
+      // skips the increment without affecting the rest.
+      getPrefsWithCache().then(prefs => {
+        if (prefs.domainStats && junkRemoved > 0) {
+          try {
+            const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
+            incrementDomainStat(hostname, junkRemoved);
+          } catch { /* invalid URL, skip */ }
+        }
+      }).catch(() => { /* prefs unavailable, skip */ });
+      if (originalUrl && cleanUrl) {
+        appendHistory(originalUrl, cleanUrl, removedTracking).catch(err => {
+          console.warn("[MUGA] BADGE_AND_STATS appendHistory:", err);
+        });
+      }
     }
+
+    if (action === "detected_foreign") {
+      incrementStat("referralsSpotted");
+    }
+
     try { sendResponse({ ok: true }); } catch { /* channel closed */ }
     return false;
   }
