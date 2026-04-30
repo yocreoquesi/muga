@@ -7,3 +7,4 @@
 export { seedStorage, installTestModeSentinel, clearTestModeSentinel } from "./storage.mjs";
 export { killServiceWorker, simulateUnresponsiveSW } from "./sw-control.mjs";
 export { readActionSurface } from "./action-surface.mjs";
+export { withFixtureManifest, clearFixtures } from "./fixtures.mjs";

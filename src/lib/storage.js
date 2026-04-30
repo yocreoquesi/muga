@@ -12,6 +12,8 @@ import { getConsent } from "./consent-storage.js";
 import { getOverrides as getPerDeviceOverrides } from "./per-device-prefs.js";
 // Consent version-comparison for feature gating during hard re-onboard (#370).
 import { evaluate as evaluateConsentPolicy } from "./consent-policy.js";
+// E2E fixture overrides (#407). Returns null in production.
+import { getTestFixtures } from "./test-fixtures.js";
 
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //
@@ -121,7 +123,7 @@ export const PREF_DEFAULTS = {
  */
 export async function getPrefs() {
   try {
-    const [sync, consent, overrides] = await Promise.all([
+    const [sync, consent, overrides, fixtures] = await Promise.all([
       new Promise((resolve, reject) => {
         chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
           if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
@@ -130,6 +132,7 @@ export async function getPrefs() {
       }),
       getConsent(),
       getPerDeviceOverrides(),
+      getTestFixtures(),
     ]);
 
     // Consent overlay (#355). Local wins over sync.
@@ -143,7 +146,13 @@ export async function getPrefs() {
     // (`if (!prefs.onboardingDone) return`) bail until the user re-accepts.
     // Soft re-onboard does NOT gate features — the user's prior consent
     // remains valid for previously accepted behaviour.
-    const policy = evaluateConsentPolicy({ stored: consent });
+    // Under e2e fixtures (#407), the gate fires against the fixture
+    // manifest + required version so tests can drive the dormant path.
+    const policy = evaluateConsentPolicy({
+      stored: consent,
+      ...(fixtures?.requiredConsentVersion ? { requiredVersion: fixtures.requiredConsentVersion } : {}),
+      ...(fixtures?.consentManifest ? { manifest: fixtures.consentManifest } : {}),
+    });
     if (policy.status === "hard-reonboard") {
       overlay.onboardingDone = false;
     }

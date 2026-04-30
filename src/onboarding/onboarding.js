@@ -28,7 +28,8 @@ import {
   CONSENT_VERSION_MANIFEST,
   REQUIRED_CONSENT_VERSION,
 } from "../lib/consent-version-manifest.js";
-import { clausesForDelta } from "../lib/consent-clauses.js";
+import { clausesForDelta, CONSENT_CLAUSES_BY_VERSION } from "../lib/consent-clauses.js";
+import { getTestFixtures } from "../lib/test-fixtures.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const tosCheck         = document.getElementById("tos-check");
@@ -48,7 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyTranslations(lang);
 
   // --- Read state ----------------------------------------------------------
-  const [syncPrefs, localConsent, existingOverrides] = await Promise.all([
+  const [syncPrefs, localConsent, existingOverrides, fixtures] = await Promise.all([
     new Promise((resolve) => {
       chrome.storage.sync.get(
         { injectOwnAffiliate: false, remoteRulesEnabled: false },
@@ -57,10 +58,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     }),
     getConsent(),
     getOverrides(),
+    getTestFixtures(),
   ]);
 
+  // Test-only overrides (#407). Fixtures are null in production.
+  const activeManifest = fixtures?.consentManifest || CONSENT_VERSION_MANIFEST;
+  const activeRequiredVersion = fixtures?.requiredConsentVersion || REQUIRED_CONSENT_VERSION;
+  const activeClausesByVersion = fixtures?.consentClausesByVersion || CONSENT_CLAUSES_BY_VERSION;
+
   // --- Re-onboard mode dispatch (#370) ------------------------------------
-  const policy = evaluateConsent({ stored: localConsent });
+  const policy = evaluateConsent({
+    stored: localConsent,
+    requiredVersion: activeRequiredVersion,
+    manifest: activeManifest,
+  });
   const mode = policy.status === "soft-reonboard"
     ? "delta"
     : policy.status === "hard-reonboard"
@@ -76,7 +87,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const clauseKeys = clausesForDelta({
         acceptedVersion: policy.acceptedVersion,
         requiredVersion: policy.requiredVersion,
-        manifest: CONSENT_VERSION_MANIFEST,
+        manifest: activeManifest,
+        clausesByVersion: activeClausesByVersion,
       });
       if (reonboardDeltaClauses) {
         // Build the clause list with createElement + textContent (no innerHTML).
@@ -144,12 +156,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         syncWrites.injectOwnAffiliate = affiliateCheck.checked;
       }
 
-      // Consent record carries REQUIRED_CONSENT_VERSION — moves the user
-      // forward whether this is fresh, delta, or material acceptance.
+      // Consent record carries the active required version — moves the
+      // user forward whether this is fresh, delta, or material acceptance.
+      // Under test fixtures (#407), activeRequiredVersion may differ from
+      // the static REQUIRED_CONSENT_VERSION export.
       const ops = [
         setConsent({
           onboardingDone: true,
-          consentVersion: REQUIRED_CONSENT_VERSION,
+          consentVersion: activeRequiredVersion,
           consentDate:    Date.now(),
         }),
         new Promise((resolve, reject) => {

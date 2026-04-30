@@ -379,6 +379,13 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // and local changes that affect the merged cache (remoteParams — REQ-MERGE-5).
   if (area === "local") {
     if (changes.remoteParams) _invalidatePrefsCache();
+    // E2E fixture overrides (#407): when fixtures change, prefs may
+    // produce a different effective onboardingDone (hard-reonboard
+    // gate) — drop the cache so the next read picks up the fixture.
+    // The sentinel + fixture keys are never written in production.
+    if (changes.__muga_test_mode || changes.__muga_test_fixtures) {
+      _invalidatePrefsCache();
+    }
     return;
   }
   if (area !== "sync") return;
