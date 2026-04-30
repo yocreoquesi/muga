@@ -1,8 +1,8 @@
 # MUGA: Store Listings
 
 > Version: 1.11.0
-> Last updated: 2026-04-26
-> Status: Final listing for Chrome Web Store and Firefox AMO. Lead headline rewritten to surface the "fair to creators" wedge per the 2026-04-26 strategic review (consensus across three independent analyses).
+> Last updated: 2026-05-01
+> Status: Final listing for Chrome Web Store and Firefox AMO. Lead headline rewritten to surface the "fair to creators" wedge per the 2026-04-26 strategic review (consensus across three independent analyses). Aligned with the post-grill privacy-policy and ToS rollout (#399, #400) — per-device consent, local cleaning architecture, and #353 conditional preservation of MUGA's own tag.
 
 ---
 
@@ -139,11 +139,11 @@ YOUR RULES
 . Whitelist a tag: protect a specific creator's affiliate link so MUGA never touches it
 . Custom tracking params: add your own parameter names to strip on any site
 . Affiliate notifications: enable a toast when a third-party affiliate is detected
-. Strip all third-party affiliates: one toggle to remove every affiliate tag globally
+. Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. MUGA's own tag is preserved only when you also have affiliate injection enabled on this device — symmetric with your stated preference.
 . Per-domain disable: opt entire domains out of MUGA
 . Export / Import settings as JSON: back up or move your config across devices
 . Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English) — switchable any time
-. Settings sync across Chrome devices automatically
+. Behavioural preferences sync across your Chrome devices automatically. Acceptance of these terms is recorded per device — installing on a new device asks you to read and accept again (privacy decision, not a bug). See the privacy policy.
 
 
 ======================================
@@ -251,10 +251,11 @@ Your rules
 . Blacklist a domain: strip everything on that site, no affiliate injection
 . Whitelist a tag: protect a specific creator's affiliate link
 . Custom tracking params: add your own parameter names to strip
-. Strip all third-party affiliates: one toggle to remove every affiliate tag globally
+. Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. MUGA's own tag is preserved only when you also have affiliate injection enabled on this device — symmetric with your stated preference.
 . Per-domain disable: opt entire domains out of MUGA
 . Export/Import settings as JSON
 . Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English) — switchable any time
+. Behavioural preferences sync across your Firefox account. Acceptance of these terms is recorded per device — installing on a new device asks you to read and accept again. See the privacy policy.
 
 
 Open source. GPL v3. Read every line.
