@@ -158,13 +158,20 @@ test.describe("Local cleaning: click path (#409)", () => {
     await stubFromAndTo(page, captured);
 
     await page.goto(`https://${FROM_HOST}/index.html`);
+    // Give the content script time to load _contentPrefs from the SW.
+    // Without this wait, the click can race ahead of the prefs message
+    // round-trip and the click handler bails on `!_contentPrefs?.enabled`,
+    // leaving DNR to clean the URL silently — which produces a clean
+    // navigation but no BADGE_AND_STATS message and no stats increment.
+    // 800ms covers cold-SW startup variance on CI runners.
+    await page.waitForTimeout(800);
     await page.locator("#affiliate-link").click();
     await page.waitForLoadState("domcontentloaded");
 
-    // The SW handles BADGE_AND_STATS asynchronously after the click.
-    // Poll the stats for a short window before asserting.
+    // The SW batches stats writes through a 50ms flush timer; on CI the
+    // round-trip takes longer than locally. Poll for up to 5s.
     let after;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 50; i++) {
       after = await readStats(context, extensionId);
       if ((after.urlsCleaned || 0) > beforeUrls) break;
       await new Promise(r => setTimeout(r, 100));
