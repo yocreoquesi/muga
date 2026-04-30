@@ -46,8 +46,10 @@ export function badgeColorFor(s) {
 
 // Icon variants (#368). The default icon ships at icons/{16,48,128}.png;
 // the "creator referral preserved" variant ships at icons/{16,48,128}-preserved.png.
-// The variant PNGs in this PR are placeholders (copies of the default) — they
-// need a real design pass; see PR description.
+// The variant adds a green check badge in the lower-right corner, signalling
+// that MUGA preserved a creator's affiliate tag during this navigation.
+// Master at icons/mugavariant.png (1254×1254) — the three sizes are downscaled
+// from it via ImageMagick `-filter Lanczos`.
 export const ICON_DEFAULT = Object.freeze({
   16:  "icons/16.png",
   48:  "icons/48.png",
