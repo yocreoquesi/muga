@@ -168,6 +168,30 @@
     .tos-check-label a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
     .tos-required-hint { display: block; color: var(--text-3); margin-top: 4px; font-size: 11.5px; }
 
+    /* Re-onboard banners (#370) */
+    .reonboard-banner {
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: var(--r-lg);
+      padding: 16px 18px;
+      margin-bottom: 24px;
+    }
+    .reonboard-banner strong {
+      display: block; font-weight: 500; font-size: 14px;
+      margin-bottom: 6px; color: var(--text-1); letter-spacing: -0.005em;
+    }
+    .reonboard-banner p {
+      font-size: 13px; color: var(--text-2); line-height: 1.55; margin: 0;
+    }
+    .reonboard-banner.reonboard-material {
+      background: var(--surface-2); border-color: var(--accent-strong);
+    }
+    .reonboard-clauses {
+      margin: 12px 0 0 18px;
+      font-size: 13px; color: var(--text-2); line-height: 1.6;
+    }
+    .reonboard-clauses li { margin-bottom: 4px; }
+
     /* CTA */
     .cta { margin-top: 24px; }
     .btn-primary {
@@ -204,8 +228,20 @@
       <small style="font-size:12px;color:var(--text2)" data-i18n="ob_tagline_values">We may get things wrong, but we will always be honest about it and work to fix it. You stay in control.</small>
     </p>
 
+    <!-- Re-onboard banners (#370). Hidden by default; the JS reveals one
+         based on ConsentPolicy.evaluate() at load time. -->
+    <div class="reonboard-banner" id="reonboard-delta" hidden>
+      <strong data-i18n="ob_reonboard_delta_title">A few terms have been added since you last accepted</strong>
+      <p data-i18n="ob_reonboard_delta_desc">Your existing acceptance still applies. Review the new clauses below; accepting unlocks the new behaviours, declining keeps MUGA running under your previously accepted terms.</p>
+      <ul id="reonboard-delta-clauses" class="reonboard-clauses"></ul>
+    </div>
+    <div class="reonboard-banner reonboard-material" id="reonboard-material" hidden>
+      <strong data-i18n="ob_reonboard_material_title">Important: terms have changed materially</strong>
+      <p data-i18n="ob_reonboard_material_desc">MUGA's terms have been updated in a way that affects what you previously agreed to. Continued use of the extension requires accepting the new terms. Please review the linked Terms of Use and Privacy Policy below.</p>
+    </div>
+
     <!-- What MUGA does -->
-    <div class="section">
+    <div class="section" id="features-section">
       <div class="section-title" data-i18n="ob_step1_title">What MUGA does, automatically</div>
       <div class="section-body">
         <div class="feature-row">

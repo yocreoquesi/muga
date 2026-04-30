@@ -1,0 +1,127 @@
+/**
+ * MUGA — consent-clauses (#370)
+ *
+ * Pure-logic tests for clausesForDelta. Covers the version-walk that
+ * the onboarding page uses to surface only the clauses introduced
+ * after the user's last accepted version.
+ */
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import { clausesForDelta, CONSENT_CLAUSES_BY_VERSION } from "../../src/lib/consent-clauses.js";
+
+const FIXTURE_MANIFEST = Object.freeze([
+  Object.freeze({ version: "1.0", additive: false }),
+  Object.freeze({ version: "1.1", additive: true }),
+  Object.freeze({ version: "1.2", additive: true }),
+  Object.freeze({ version: "2.0", additive: false }),
+]);
+
+const FIXTURE_CLAUSES = Object.freeze({
+  "1.0": Object.freeze([]),
+  "1.1": Object.freeze(["clause_a", "clause_b"]),
+  "1.2": Object.freeze(["clause_c"]),
+  "2.0": Object.freeze(["clause_d", "clause_e"]),
+});
+
+describe("clausesForDelta — empty cases", () => {
+  test("empty manifest returns []", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.0",
+      requiredVersion: "1.1",
+      manifest: [],
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, []);
+  });
+
+  test("required version not in manifest returns []", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.0",
+      requiredVersion: "9.9",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, []);
+  });
+
+  test("user already at required (no delta)", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.1",
+      requiredVersion: "1.1",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, []);
+  });
+});
+
+describe("clausesForDelta — single-version delta", () => {
+  test("user at 1.0, required 1.1 → returns 1.1 clauses", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.0",
+      requiredVersion: "1.1",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, ["clause_a", "clause_b"]);
+  });
+});
+
+describe("clausesForDelta — multi-version delta", () => {
+  test("user at 1.0, required 1.2 → returns 1.1 + 1.2 clauses in order", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.0",
+      requiredVersion: "1.2",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, ["clause_a", "clause_b", "clause_c"]);
+  });
+
+  test("user at 1.0, required 2.0 → all clauses across the path", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.0",
+      requiredVersion: "2.0",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, ["clause_a", "clause_b", "clause_c", "clause_d", "clause_e"]);
+  });
+
+  test("user at 1.1, required 2.0 → 1.2 + 2.0 clauses (skips already-accepted 1.1)", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.1",
+      requiredVersion: "2.0",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, ["clause_c", "clause_d", "clause_e"]);
+  });
+});
+
+describe("clausesForDelta — null acceptedVersion (legacy / never-accepted)", () => {
+  test("null acceptedVersion → all clauses up to required", () => {
+    const r = clausesForDelta({
+      acceptedVersion: null,
+      requiredVersion: "1.2",
+      manifest: FIXTURE_MANIFEST,
+      clausesByVersion: FIXTURE_CLAUSES,
+    });
+    assert.deepEqual(r, ["clause_a", "clause_b", "clause_c"]);
+  });
+});
+
+describe("clausesForDelta — default CONSENT_CLAUSES_BY_VERSION", () => {
+  test("baseline 1.0 has no surfaceable clauses (delta-mode never fires for 1.0 alone)", () => {
+    const r = clausesForDelta({
+      acceptedVersion: null,
+      requiredVersion: "1.0",
+      manifest: [{ version: "1.0", additive: false }],
+    });
+    assert.deepEqual(r, []);
+  });
+
+  test("CONSENT_CLAUSES_BY_VERSION is frozen", () => {
+    assert.ok(Object.isFrozen(CONSENT_CLAUSES_BY_VERSION));
+  });
+});
