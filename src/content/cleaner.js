@@ -254,21 +254,65 @@
   getContentPrefs();
 
   // ── Self-clean: clean the current page URL on load ────────────────────────
-  // DNR (Chrome MV3) strips tracking params before the page loads, but Firefox
-  // MV2 has no DNR. This fallback asks the service worker to clean the current
-  // URL and, if it changed, updates the address bar via history.replaceState.
-  // This also acts as a safety net for Chrome when DNR rules don't cover a param.
-  getContentPrefs().then((prefs) => {
+  // (#356) Cleans locally via the bundled cleaner attached to
+  // `window.__mugaCleaner` by content/cleaner-bundle.js (loaded just before
+  // this script per the manifest). Eliminates the service-worker round-trip
+  // on every page load, which previously meant a 3s timeout fall-through if
+  // the SW was cold-killed.
+  //
+  // Domain rules are fetched from the extension package on first call and
+  // cached in module scope so subsequent same-page work hits the cache.
+  // The fetch is local (chrome.runtime.getURL) — no network.
+  //
+  // Stats and badge updates fire-and-forget via runtime.sendMessage; if the
+  // SW is dead, badges lag by a navigation but the URL is still cleaned.
+  let _domainRulesCache = null;
+  let _domainRulesPending = null;
+  function getDomainRulesCached() {
+    if (_domainRulesCache) return Promise.resolve(_domainRulesCache);
+    if (_domainRulesPending) return _domainRulesPending;
+    _domainRulesPending = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
+      .then(r => r.json())
+      .then(data => { _domainRulesCache = data; _domainRulesPending = null; return data; })
+      .catch(err => {
+        console.error("[MUGA] domain-rules fetch failed:", err);
+        _domainRulesPending = null;
+        return [];
+      });
+    return _domainRulesPending;
+  }
+
+  Promise.all([getContentPrefs(), getDomainRulesCached()]).then(([prefs, domainRules]) => {
     if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
     const href = window.location.href;
-    if (href.startsWith("http")) {
-      chrome.runtime.sendMessage({ type: "PROCESS_URL", url: href, skipNotify: false }, (result) => {
-        void chrome.runtime.lastError;
-        if (!result || !result.cleanUrl || result.cleanUrl === href) return;
-        try {
-          history.replaceState(history.state, "", result.cleanUrl);
-        } catch { /* cross-origin or sandboxed — ignore */ }
-      });
+    if (!href.startsWith("http")) return;
+    if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") {
+      // Bundle didn't load — should never happen in production. Silent
+      // degrade: leave the URL alone rather than crash.
+      return;
+    }
+    let result;
+    try {
+      result = window.__mugaCleaner.processUrl(href, prefs, domainRules);
+    } catch (err) {
+      console.error("[MUGA] local self-clean failed:", err);
+      return;
+    }
+    if (!result || !result.cleanUrl || result.cleanUrl === href) return;
+    try {
+      history.replaceState(history.state, "", result.cleanUrl);
+    } catch { /* cross-origin or sandboxed — ignore */ }
+    // Fire-and-forget: tell the SW to update badge + stats. Failure here
+    // doesn't roll back the URL change — the user's address bar already
+    // reflects the cleaned URL.
+    if (result.junkRemoved > 0) {
+      chrome.runtime.sendMessage({
+        type: "BADGE_AND_STATS",
+        junkRemoved: result.junkRemoved,
+        removedTracking: result.removedTracking,
+        cleanUrl: result.cleanUrl,
+        originalUrl: href,
+      }).catch(() => { /* SW dead — badge will catch up next nav */ });
     }
   });
 

@@ -4,10 +4,11 @@
   "description": "Privacy without breaking creator links. Strips 450+ tracking params, preserves creator affiliate referrals. Open source.",
   "type": "module",
   "scripts": {
-    "dev:chrome": "web-ext run --source-dir src/ --target chromium",
-    "dev:firefox": "bash scripts/with-firefox-manifest.sh web-ext run --source-dir src/ --target firefox-desktop",
-    "build:chrome": "web-ext build --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest",
-    "build:firefox": "bash scripts/with-firefox-manifest.sh web-ext build --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest",
+    "dev:chrome": "npm run build:content && web-ext run --source-dir src/ --target chromium",
+    "dev:firefox": "npm run build:content && bash scripts/with-firefox-manifest.sh web-ext run --source-dir src/ --target firefox-desktop",
+    "build:content": "node tools/bundle-content.mjs",
+    "build:chrome": "npm run build:content && web-ext build --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest",
+    "build:firefox": "npm run build:content && bash scripts/with-firefox-manifest.sh web-ext build --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest",
     "build": "npm run build:chrome && npm run build:firefox",
     "lint": "bash scripts/with-firefox-manifest.sh npx --no-install web-ext lint --source-dir src/",
     "test": "node --test --test-reporter=spec tests/unit/*.mjs",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
+    "esbuild": "^0.28.0",
     "playwright": "^1.58.2",
     "web-ext": "^8.0.0"
   }

@@ -434,6 +434,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep the channel open for the async response
   }
 
+  // Fire-and-forget side-channel for the local-cleaning path (#356). The
+  // content script does the actual URL cleaning locally via the bundled
+  // cleaner and only asks the SW to update badge text, increment stats,
+  // and append history. No response is required — failure here doesn't
+  // affect the user-visible URL change that already happened.
+  if (message.type === "BADGE_AND_STATS") {
+    const tabId = sender.tab?.id;
+    const junkRemoved = Number(message.junkRemoved) || 0;
+    const removedTracking = Array.isArray(message.removedTracking) ? message.removedTracking : [];
+    if (junkRemoved > 0) updateTabBadge(tabId, junkRemoved);
+    incrementStat("urlsCleaned");
+    if (junkRemoved > 0) incrementStat("junkRemoved", junkRemoved);
+    if (typeof message.cleanUrl === "string" && typeof message.originalUrl === "string") {
+      appendHistory(message.originalUrl, message.cleanUrl, removedTracking).catch(err => {
+        console.warn("[MUGA] BADGE_AND_STATS appendHistory:", err);
+      });
+    }
+    try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+    return false;
+  }
+
   if (message.type === "ADD_TO_WHITELIST" || message.type === "ADD_TO_BLACKLIST") {
     // List mutations must originate from a tab (content script). Reject messages
     // from extension pages (popup, options) that lack a sender.tab — they cannot

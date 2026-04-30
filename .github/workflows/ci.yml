@@ -37,6 +37,16 @@ jobs:
             exit 1
           fi
 
+      - name: Bundle content script (#356)
+        run: npm run build:content
+
+      - name: Check content bundle is up to date
+        run: |
+          if ! git diff --exit-code src/content/cleaner-bundle.js; then
+            echo "ERROR: cleaner-bundle.js is out of sync with its source. Run 'npm run build:content' and commit the result."
+            exit 1
+          fi
+
       - name: Verify browser-polyfill integrity (#97)
         run: node tools/verify-polyfill-integrity.mjs
 
@@ -61,6 +71,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Bundle content script (#356)
+        run: npm run build:content
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
