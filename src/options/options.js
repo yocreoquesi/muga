@@ -402,9 +402,19 @@ function renderStores() {
 /** Initializes the language dropdown and binds change handler. */
 function initLanguageSelect() {
   const select = document.getElementById("lang-select");
+  const communityNote = document.getElementById("lang-community-note");
+  // Community-maintained languages (#360 / #351). Visible in the language
+  // section so users selecting PT or DE understand the support level they
+  // should expect.
+  const COMMUNITY_LANGS = new Set(["pt", "de"]);
+  function updateCommunityNote(lang) {
+    if (communityNote) communityNote.hidden = !COMMUNITY_LANGS.has(lang);
+  }
   select.value = _currentLang;
+  updateCommunityNote(_currentLang);
   select.addEventListener("change", async () => {
     _currentLang = select.value;
+    updateCommunityNote(_currentLang);
     try { await setPrefs({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
     document.documentElement.lang = _currentLang;
     applyTranslations(_currentLang);
