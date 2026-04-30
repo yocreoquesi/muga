@@ -1,23 +1,34 @@
 /**
  * MUGA: Onboarding page
  *
- * Renders the consent flow on first install. Surfaces:
- *   - ToS acceptance (mandatory: button stays disabled until checked).
- *   - Affiliate opt-in (optional: activates injectOwnAffiliate if checked).
- *   - Per-device confirmation prompts (#364) for sync-inherited prefs
- *     that need explicit acceptance on this device.
+ * Renders one of three modes based on the consent state of THIS device:
  *
- * On "Get started": saves consent metadata to local storage; saves
- * behavioural prefs to sync; records per-device overrides for any
- * sync-inherited prefs the user declined here.
+ *   fresh    — first install, never accepted. Full flow.
+ *   delta    — soft re-onboard. User has accepted an older version;
+ *              every intermediate ToS bump up to required is additive.
+ *              Surfaces only the new clauses; declining keeps the
+ *              previously accepted version valid.
+ *   material — hard re-onboard. At least one intermediate bump is
+ *              material. Features stay gated until the user re-accepts.
+ *
+ * Mode is selected by ConsentPolicy.evaluate() (#365). The actual
+ * acceptance write uses REQUIRED_CONSENT_VERSION (#365), so a user
+ * who completes a re-onboard moves their stored consent forward.
+ *
+ * Per-device confirmation prompts (#364) for sync-inherited prefs are
+ * still surfaced when applicable, alongside the re-onboard rendering.
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { setConsent, getConsent } from "../lib/consent-storage.js";
 import { setOverrides, getOverrides } from "../lib/per-device-prefs.js";
 import { pendingConfirmations } from "../lib/synced-affiliate-pref-guard.js";
-
-const CONSENT_VERSION = "1.0";
+import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
+import {
+  CONSENT_VERSION_MANIFEST,
+  REQUIRED_CONSENT_VERSION,
+} from "../lib/consent-version-manifest.js";
+import { clausesForDelta } from "../lib/consent-clauses.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const tosCheck         = document.getElementById("tos-check");
@@ -26,16 +37,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const remoteRulesSection = document.getElementById("remote-rules-section");
   const remoteRulesCheck = document.getElementById("remote-rules-check");
   const startBtn         = document.getElementById("start-btn");
+  const featuresSection  = document.getElementById("features-section");
+  const reonboardDelta   = document.getElementById("reonboard-delta");
+  const reonboardDeltaClauses = document.getElementById("reonboard-delta-clauses");
+  const reonboardMaterial = document.getElementById("reonboard-material");
 
   // Apply translations using the shared i18n module
   const lang = await getStoredLang();
   document.documentElement.lang = lang;
   applyTranslations(lang);
 
-  // --- Per-device confirmation prompt setup (#364) ----------------------
-  // Read sync prefs + local consent + existing overrides. If sync brought
-  // any guarded pref enabled and the user has not yet confirmed it on
-  // this device, surface the matching prompt(s).
+  // --- Read state ----------------------------------------------------------
   const [syncPrefs, localConsent, existingOverrides] = await Promise.all([
     new Promise((resolve) => {
       chrome.storage.sync.get(
@@ -47,20 +59,53 @@ document.addEventListener("DOMContentLoaded", async () => {
     getOverrides(),
   ]);
 
+  // --- Re-onboard mode dispatch (#370) ------------------------------------
+  const policy = evaluateConsent({ stored: localConsent });
+  const mode = policy.status === "soft-reonboard"
+    ? "delta"
+    : policy.status === "hard-reonboard"
+      ? "material"
+      : "fresh";
+
+  if (mode === "delta") {
+    // Soft re-onboard: feature explainer hidden; delta banner with the
+    // new clauses since the user's last accepted version.
+    if (featuresSection) featuresSection.hidden = true;
+    if (reonboardDelta) {
+      reonboardDelta.hidden = false;
+      const clauseKeys = clausesForDelta({
+        acceptedVersion: policy.acceptedVersion,
+        requiredVersion: policy.requiredVersion,
+        manifest: CONSENT_VERSION_MANIFEST,
+      });
+      if (reonboardDeltaClauses) {
+        // Build the clause list with createElement + textContent (no innerHTML).
+        for (const key of clauseKeys) {
+          const li = document.createElement("li");
+          li.textContent = t(key, lang);
+          reonboardDeltaClauses.appendChild(li);
+        }
+      }
+    }
+  } else if (mode === "material") {
+    // Hard re-onboard: feature explainer hidden; banner explains the
+    // material change. Full ToS link + checkbox + button stay visible.
+    if (featuresSection) featuresSection.hidden = true;
+    if (reonboardMaterial) reonboardMaterial.hidden = false;
+  }
+
+  // --- Per-device confirmation prompt setup (#364) ------------------------
   const pending = new Set(
     pendingConfirmations({ syncPrefs, localConsent, overrides: existingOverrides })
   );
 
   if (pending.has("injectOwnAffiliate")) {
-    // Pre-check the existing affiliate checkbox; show the synced note.
     affiliateCheck.checked = true;
-    affiliateSynced.hidden = false;
+    if (affiliateSynced) affiliateSynced.hidden = false;
   }
-
   if (pending.has("remoteRulesEnabled")) {
-    // Reveal the remote-rules confirmation section, pre-checked.
-    remoteRulesSection.hidden = false;
-    remoteRulesCheck.checked = true;
+    if (remoteRulesSection) remoteRulesSection.hidden = false;
+    if (remoteRulesCheck) remoteRulesCheck.checked = true;
   }
 
   function updateButton() {
@@ -73,6 +118,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // before interacting with the page (same pattern as options.html; avoids
   // fixture-ready races where clicks land before listeners are registered).
   document.body.dataset.mugaReady = "1";
+  document.body.dataset.mugaReonboardMode = mode;
 
   startBtn.addEventListener("click", async () => {
     if (!tosCheck.checked) return;
@@ -89,26 +135,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         overrideUpdates.remoteRulesEnabled = false;
       }
 
-      // Sync writes: only push values that were not sync-inherited. If
-      // sync already had injectOwnAffiliate=true and the user kept it
-      // checked, we leave sync alone. If sync had it false and user
-      // now checked it, write true.
+      // Sync writes: only push values that were not sync-inherited.
       const syncWrites = {
         notifyForeignAffiliate: false,
         language: lang,
       };
       if (!pending.has("injectOwnAffiliate")) {
-        // No sync-override needed; this is the first-device flow.
         syncWrites.injectOwnAffiliate = affiliateCheck.checked;
       }
-      // Note: remoteRulesEnabled is intentionally not written to sync from
-      // onboarding even on a first-device install (it stays as the default
-      // off; the user enables it later via Settings if they want it).
 
+      // Consent record carries REQUIRED_CONSENT_VERSION — moves the user
+      // forward whether this is fresh, delta, or material acceptance.
       const ops = [
         setConsent({
           onboardingDone: true,
-          consentVersion: CONSENT_VERSION,
+          consentVersion: REQUIRED_CONSENT_VERSION,
           consentDate:    Date.now(),
         }),
         new Promise((resolve, reject) => {
