@@ -21,7 +21,7 @@ import {
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
-import { createToolbarPresenter } from "../lib/toolbar-presenter.js";
+import { createToolbarPresenter, iconForState } from "../lib/toolbar-presenter.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -397,6 +397,69 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   }
 });
 
+// --- E2E test handlers (#398) ---
+//
+// Dispatched by the main message listener below when the message type
+// starts with "__TEST__" AND the test-mode sentinel is set in
+// chrome.storage.local. Production builds never set the sentinel, so
+// these handlers are unreachable at runtime in production.
+//
+// Each handler reads state that is otherwise inaccessible from a
+// content-script's world (e.g. chrome.action surface). Future slices
+// add handlers for fixture-manifest / fixture-migrations overrides.
+async function handleTestMessage(message, sender) {
+  switch (message.type) {
+    case "__TEST__readActionSurface": {
+      const tabId = Number(message.tabId);
+      if (!Number.isFinite(tabId) || tabId < 0) {
+        return { ok: false, error: "invalid tabId" };
+      }
+      // chrome.action.getXxx returns a Promise on Chrome MV3 (NOT callback-
+      // compatible there: passing a callback returns the Promise but the
+      // callback is never invoked). On Firefox MV2 browserAction.getXxx
+      // requires a callback. Detect by inspecting the return value.
+      const callGet = (apiName, fallback) => {
+        const method = actionApi[apiName];
+        if (typeof method !== "function") return Promise.resolve(fallback);
+        try {
+          const result = method.call(actionApi, { tabId });
+          if (result && typeof result.then === "function") {
+            return result.catch(() => fallback);
+          }
+          // Callback form: invoke with explicit resolver.
+          return new Promise(resolve => {
+            try { method.call(actionApi, { tabId }, resolve); }
+            catch { resolve(fallback); }
+          });
+        } catch {
+          return Promise.resolve(fallback);
+        }
+      };
+      const [title, badgeText, badgeColor] = await Promise.all([
+        callGet("getTitle", ""),
+        callGet("getBadgeText", ""),
+        callGet("getBadgeBackgroundColor", []),
+      ]);
+      // chrome.action has no getIcon — derive the variant from the
+      // presenter's per-tab state. iconForState is a pure function.
+      const tabState = toolbarState.get(tabId);
+      const iconPaths = iconForState(tabState);
+      const iconKind = (iconPaths && iconPaths === iconForState({ creatorReferralPreserved: true })) ? "preserved" : "default";
+      return {
+        ok: true,
+        title,
+        badgeText,
+        badgeColor,
+        iconKind,
+        iconPaths,
+        state: { ...tabState },
+      };
+    }
+    default:
+      return { ok: false, error: `unknown __TEST__ message: ${message.type}` };
+  }
+}
+
 // --- Main message listener from content scripts ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Validate that messages come from our own extension
@@ -407,6 +470,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(prefs => sendResponse({ ...prefs, _affiliateDomains }))
       .catch(() => { try { sendResponse(null); } catch { /* channel closed */ } });
     return true;
+  }
+
+  // ── E2E test-mode handlers (#398) ───────────────────────────────────────
+  // Gated on chrome.storage.local["__muga_test_mode"]. Production builds
+  // never set this sentinel; e2e tests set it via installTestModeSentinel
+  // (tests/e2e/helpers/storage.mjs) and clear it on teardown. The handlers
+  // expose read-side state that is otherwise unreadable from a content
+  // script's world (toolbar action surface).
+  if (typeof message.type === "string" && message.type.startsWith("__TEST__")) {
+    chrome.storage.local.get({ __muga_test_mode: false }, (r) => {
+      if (!r.__muga_test_mode) {
+        try { sendResponse({ ok: false, error: "test mode not active" }); } catch { /* channel closed */ }
+        return;
+      }
+      handleTestMessage(message, sender)
+        .then(result => { try { sendResponse(result); } catch { /* channel closed */ } })
+        .catch(err => {
+          console.error("[MUGA] __TEST__ handler:", err);
+          try { sendResponse({ ok: false, error: String(err?.message || err) }); } catch { /* channel closed */ }
+        });
+    });
+    return true; // async response
   }
 
   if (message.type === "PROCESS_URL") {

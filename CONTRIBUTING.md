@@ -15,10 +15,23 @@ npm install
 ## Running tests
 
 ```bash
-npm test
+npm test               # unit tests (Node.js built-in test runner)
+npm run test:e2e       # Playwright e2e suite (Chromium, headed)
 ```
 
-Uses the Node.js built-in test runner. All tests live in `tests/unit/*.mjs`.
+Unit tests live under `tests/unit/*.mjs`. E2E specs live under `tests/e2e/*.spec.mjs` with shared helpers in `tests/e2e/helpers/`.
+
+### E2E test-mode sentinel
+
+The e2e suite needs to read state that is otherwise inaccessible from a content-script's world (the toolbar action surface, in particular). This is gated through a single `__TEST__`-prefixed runtime-message handler in the service worker, which short-circuits unless the sentinel `chrome.storage.local["__muga_test_mode"]` is set to `true`.
+
+Production builds **never** set the sentinel. The only setters are e2e fixtures (see `tests/e2e/helpers/storage.mjs`'s `installTestModeSentinel` / `clearTestModeSentinel`). Tests must clear the sentinel on teardown so subsequent tests in the same persistent context start clean.
+
+Adding a new `__TEST__` message handler:
+
+1. Add the case in `handleTestMessage` in `src/background/service-worker.js`.
+2. Document the read/write contract in the helper that calls it (under `tests/e2e/helpers/`).
+3. The gate (sentinel check) is shared, you do not re-implement it.
 
 ## Project structure
 
