@@ -1,0 +1,44 @@
+[
+  {
+    "id": 100,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "regexSubstitution": "https://\\1"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(?:www\\.)?google\\.[^/]+/amp/s/(.+)$",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 101,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "regexSubstitution": "https://\\1"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://cdn\\.ampproject\\.org/c/s/(.+)$",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 102,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "regexSubstitution": "https://\\1\\2"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://amp\\.([^/]+)(/.*)?$",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]
