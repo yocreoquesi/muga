@@ -30,7 +30,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["content/amp-redirect.js", "content/redirect-unwrap.js"],
+      "js": ["content/amp-redirect.js"],
       "run_at": "document_end"
     }
   ],

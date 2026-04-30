@@ -315,11 +315,20 @@
   // on every page load, which previously meant a 3s timeout fall-through if
   // the SW was cold-killed.
   //
+  // (#371) Skipped on Chrome MV3 — DNR strips tracking params at the network
+  // layer BEFORE document_start fires, so by the time this code runs,
+  // window.location.href is already clean and processUrl() returns it
+  // unchanged. The self-clean is only meaningful on Firefox MV2 (no DNR).
+  // We feature-detect rather than hardcode-target so a future browser that
+  // ships DNR also skips automatically.
+  //
   // Domain rules are fetched once at IIFE start (see getDomainRulesCached
   // hoisted above). Stats and badge updates fire-and-forget; SW death is
   // not fatal — only the badge lags by one nav.
 
-  Promise.all([getContentPrefs(), getDomainRulesCached()]).then(([prefs, domainRules]) => {
+  const _hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
+
+  if (!_hasDNR) Promise.all([getContentPrefs(), getDomainRulesCached()]).then(([prefs, domainRules]) => {
     if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
     const href = window.location.href;
     if (!href.startsWith("http")) return;
@@ -658,4 +667,188 @@
       // beacons. Ping blocking is handled via <a ping> attribute removal instead.
     }
   });
+
+  // ── Redirect unwrap (#371) ────────────────────────────────────────────────
+  // Merged from the previously separate src/content/redirect-unwrap.js. The
+  // unwrap logic needs document_end timing (it reads <meta http-equiv="refresh">
+  // for Pepper deal sites), so we defer to DOMContentLoaded inside this
+  // document_start-loaded script.
+  function safeSessionGet(key) {
+    try { return sessionStorage.getItem(key); } catch { return null; /* incognito/quota */ }
+  }
+  function safeSessionSet(key, value) {
+    try { sessionStorage.setItem(key, value); } catch { /* incognito/quota */ }
+  }
+
+  function runRedirectUnwrap() {
+    chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+      void chrome.runtime.lastError;
+      if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.unwrapRedirects) return;
+
+      const currentUrl = window.location.href;
+
+      // Common redirect wrapper patterns: look for a destination URL in query params.
+      // "location", "return", "continue" intentionally excluded: too generic,
+      // common in SPA routing and OAuth flows, high false-positive risk.
+      // "destination" intentionally excluded: used in SSO/corporate flows to indicate
+      // where to redirect AFTER authentication. Unwrapping it would bypass login. (#158)
+      const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "dest", "goto", "returnurl", "return_url"];
+
+      // Affiliate network redirect domains: these intermediaries embed the real
+      // destination in a domain-specific param. We unwrap them client-side so the
+      // user goes straight to the store without passing through the tracking server.
+      const AFFILIATE_REDIRECT_PARAMS = {
+        "awin1.com":              "ued",
+        "shareasale.com":         "urllink",
+        "ad.admitad.com":         "ulp",
+        "alitems.com":            "ulp",
+        "redirect.viglink.com":   "u",
+        "clk.tradedoubler.com":   "url",
+      };
+
+      let parsed;
+      try {
+        parsed = new URL(currentUrl);
+      } catch {
+        return;
+      }
+
+      // --- Affiliate network redirect unwrap (domain-specific params) ---
+      const currentHost = parsed.hostname.replace(/^www\./, "");
+      const affiliateParam = AFFILIATE_REDIRECT_PARAMS[currentHost];
+      if (affiliateParam) {
+        const raw = parsed.searchParams.get(affiliateParam);
+        if (raw && raw.length <= 2000) {
+          let dest;
+          try {
+            dest = new URL(raw);
+          } catch {
+            try { dest = new URL(decodeURIComponent(raw)); } catch { /* skip */ }
+          }
+          if (dest && ["http:", "https:"].includes(dest.protocol) && dest.hostname && dest.hostname !== parsed.hostname) {
+            const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
+            if (!safeSessionGet(sessionKey)) {
+              safeSessionSet(sessionKey, "1");
+              window.location.replace(dest.href);
+              return;
+            }
+          }
+        }
+      }
+
+      // --- Pepper network deal sites (Chollometro, mydealz, dealabs, etc.) ---
+      // /visit/{section}/{dealId} pages use a <meta http-equiv="refresh"> to
+      // bounce through digidip.net or path.*.com intermediaries before the
+      // store. We extract the final destination from the intermediary's
+      // "url" param and navigate directly, skipping all tracking servers.
+      const PEPPER_DOMAINS = [
+        "chollometro.com", "mydealz.de", "dealabs.com", "hotukdeals.com",
+        "pepper.pl", "pepper.it", "pepper.ru", "pepper.com",
+        "promodescuentos.com", "pelando.com.br", "preisjaeger.at",
+        "nl.pepper.com", "pepper.se", "pepper.fr",
+      ];
+      // Known Pepper intermediary hostnames. We only extract ?url= from these
+      // domains. Any injected <meta refresh> pointing to a non-allowlisted
+      // intermediary is ignored. Matching rules:
+      //   digidip.net  — any subdomain (e.g. chollometro.digidip.net)
+      //   path.*.com   — Pepper CDN subdomains (e.g. path.chollometro.com)
+      const PEPPER_INTERMEDIARY_ALLOWLIST = Object.freeze(["digidip.net", "path"]);
+      function isPepperIntermediary(hostname) {
+        if (hostname === "digidip.net" || hostname.endsWith(".digidip.net")) return true;
+        const parts = hostname.split(".");
+        if (parts.length >= 3 && parts[0] === "path") return true;
+        return false;
+      }
+      // Suppress unused-variable lint: PEPPER_INTERMEDIARY_ALLOWLIST is documentation.
+      void PEPPER_INTERMEDIARY_ALLOWLIST;
+      if (/^\/visit\//.test(parsed.pathname) && PEPPER_DOMAINS.some(d => currentHost === d || currentHost === "www." + d)) {
+        const meta = document.querySelector('meta[http-equiv="refresh"]');
+        if (meta) {
+          const content = meta.getAttribute("content") || "";
+          const urlMatch = content.match(/url=['"]*([^'">\s]+)/i);
+          if (urlMatch) {
+            let intermediary;
+            try { intermediary = new URL(urlMatch[1]); } catch { /* skip */ }
+            if (intermediary && isPepperIntermediary(intermediary.hostname)) {
+              const destRaw = intermediary.searchParams.get("url");
+              if (destRaw && destRaw.length <= 2000) {
+                let dest;
+                try { dest = new URL(destRaw); } catch {
+                  try { dest = new URL(decodeURIComponent(destRaw)); } catch { /* skip */ }
+                }
+                if (dest && ["http:", "https:"].includes(dest.protocol)) {
+                  const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
+                  if (!safeSessionGet(sessionKey)) {
+                    safeSessionSet(sessionKey, "1");
+                    window.location.replace(dest.href);
+                    return;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // --- Amazon Sponsored Products redirect unwrap ---
+      if (parsed.pathname === "/sspa/click") {
+        const raw = parsed.searchParams.get("url");
+        if (raw && raw.length <= 2000) {
+          let decoded;
+          try { decoded = decodeURIComponent(raw); } catch { decoded = raw; }
+          let dest;
+          try { dest = new URL(decoded, parsed.origin); } catch { /* skip */ }
+          if (dest && ["http:", "https:"].includes(dest.protocol)) {
+            const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
+            if (!safeSessionGet(sessionKey)) {
+              safeSessionSet(sessionKey, "1");
+              window.location.replace(dest.href);
+              return;
+            }
+          }
+        }
+      }
+
+      // --- Generic redirect wrapper unwrap ---
+      const REDIRECT_PATH_RE = /\/(redirect|bounce|out|away|leave|goto|jump|click|track|link|redir|forward|proxy|url|exit)\b/i;
+      if (!REDIRECT_PATH_RE.test(location.pathname)) return;
+
+      for (const [rawKey, value] of parsed.searchParams) {
+        const param = rawKey.toLowerCase();
+        if (!REDIRECT_PARAMS.includes(param)) continue;
+        if (!value || value.length > 2000) continue;
+
+        let destination;
+        try {
+          destination = new URL(value);
+        } catch {
+          try {
+            destination = new URL(decodeURIComponent(value));
+          } catch {
+            continue;
+          }
+        }
+
+        if (!["http:", "https:"].includes(destination.protocol)) continue;
+        if (!destination.hostname) continue;
+        if (destination.hostname === parsed.hostname) continue;
+
+        const sessionKey = "__muga_ruw_" + location.hostname + location.pathname;
+        if (safeSessionGet(sessionKey)) return;
+        safeSessionSet(sessionKey, "1");
+
+        window.location.replace(destination.href);
+        return;
+      }
+    });
+  }
+
+  // Defer redirect-unwrap to DOMContentLoaded so the Pepper meta-refresh
+  // detection sees a parsed DOM (the original document_end timing of the
+  // standalone redirect-unwrap.js content script).
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runRedirectUnwrap);
+  } else {
+    runRedirectUnwrap();
+  }
 })();
