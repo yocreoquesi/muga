@@ -71,7 +71,7 @@
 <body>
 
   <h1>Transparency Report</h1>
-  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.11.0 &nbsp;&middot;&nbsp; 2026-04-26 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+  <p class="meta">MUGA: Clean URLs, Fair to Every Click &nbsp;&middot;&nbsp; Version 1.11.0 &nbsp;&middot;&nbsp; 2026-05-01 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
 
   <div class="highlight">
     Privacy policies say "we don't collect your data." This page shows the evidence behind that claim — what MUGA actually does, which permissions it uses and why, and how you can verify every statement yourself.
@@ -98,7 +98,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Third-party dependencies</span>
-      <span class="at-a-glance-value">1 (browser-polyfill.min.js for Firefox compatibility)</span>
+      <span class="at-a-glance-value">1 runtime (browser-polyfill.min.js for Firefox compatibility) + 1 build-time (<code>esbuild</code>, used only to bundle the cleaning library into the content script — output is committed to the repo)</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Open source license</span>
@@ -108,15 +108,35 @@
 
   <h2>What MUGA Does With Your Data</h2>
 
-  <p><strong>URLs</strong> — Cleaned locally inside your browser. Never stored beyond the current session. Session history (recently cleaned URLs, per-tab badge counts, debug logs) lives in <code>chrome.storage.session</code> and is automatically cleared when the browser restarts.</p>
+  <p><strong>URLs</strong> — Cleaned locally inside your browser by the content script's bundled cleaning library. The cleaning runs inline in the page's content script — it does <em>not</em> round-trip through the service worker or any external server. URLs are never stored beyond the current session. Session history (recently cleaned URLs, per-tab badge counts, debug logs) lives in <code>chrome.storage.session</code> and is automatically cleared when the browser restarts.</p>
 
-  <p><strong>Preferences</strong> — Stored in <code>chrome.storage.sync</code>. Encrypted and managed by your browser, synced to your Google or Firefox account — not to any server we control or can access.</p>
+  <p><strong>Behavioural preferences</strong> — Stored in <code>chrome.storage.sync</code>: language, blacklist, whitelist, custom tracking parameters, and the default values for the affiliate toggles and remote-rule-updates toggle. Encrypted and managed by your browser, synced to your Google or Firefox account — not to any server we control or can access.</p>
+
+  <p><strong>Consent and per-device decisions</strong> — Stored in <code>chrome.storage.local</code> (this device only): your acceptance of the Terms (<code>onboardingDone</code>, <code>consentVersion</code>, <code>consentDate</code>), and per-device overrides for <code>injectOwnAffiliate</code> and <code>remoteRulesEnabled</code> when a synced preference arrives enabled and you decline to inherit it. The reasoning is captured in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>: consent is an act between you and the device you are using; inheriting it across devices silently would deny each device's user the chance to read and decide.</p>
 
   <p><strong>Stats</strong> — Local counters only: URLs cleaned, parameters removed, referrals spotted. Stored in <code>chrome.storage.local</code>. No personally identifiable information. No timestamps tied to individual URLs.</p>
 
   <p><strong>Domain stats</strong> — Domain names and parameter counts only. No full URLs, no paths, no timestamps. Stored locally, capped at 50 domains to prevent unbounded growth. Never transmitted.</p>
 
-  <p><strong>Affiliate tags</strong> — Injected locally by the extension when you visit a supported store with no existing tag. No API call is made to decide when or where to inject. The logic runs entirely in your browser against a list of domains that ships with the extension.</p>
+  <p><strong>Affiliate tags</strong> — Injected locally by the content script when you visit a supported store with no existing tag. No API call is made to decide when or where to inject. The logic runs entirely in your browser against a list of domains that ships with the extension. If you also enable <em>"Remove all affiliate tags from other sources"</em>, MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong> — symmetric with your stated preference.</p>
+
+  <h2>Architecture: Where the Work Happens</h2>
+
+  <p>MUGA is split into two small components that talk to each other only when strictly necessary:</p>
+
+  <p><strong>The content script.</strong> Runs in every page (subject to your blacklist/whitelist). It owns the user-visible work: URL cleaning on click, on copy, and on page load; <code>&lt;a ping&gt;</code> attribute removal; redirect-wrapper unwrapping; and (on Firefox) AMP-to-canonical redirect. The cleaning library ships <em>inside</em> the content script as a pre-built bundle (<code>src/content/cleaner-bundle.js</code>), generated from the ES module sources under <code>src/lib/</code> by <code>tools/bundle-content.mjs</code>. The bundle is committed to the repository so reviewers can verify it matches the unbundled source byte-for-byte.</p>
+
+  <p><strong>The service worker.</strong> Runs in the background. It owns three things: (1) cross-cutting state that the content script doesn't need to compute itself — incrementing the badge counter and stats on a fire-and-forget message (the <code>BADGE_AND_STATS</code> side-channel), (2) cross-page coordination such as the toolbar action surface, the context-menu entries, and the optional weekly remote-rules fetch, and (3) the consent state machine — onboarding, soft and hard re-onboard, and the migration from legacy sync-stored consent to local. The service worker does <em>not</em> see or process URLs in transit; cleaning is finished before the service worker hears about it.</p>
+
+  <p><strong>Why this split matters for transparency.</strong> Most extensions route URLs through their service worker so the worker can decide what to do. MUGA does the opposite: the cleaning runs in the page where you clicked, the service worker hears only the post-cleaning summary it needs to update the badge. There is no central pipeline that observes your URLs.</p>
+
+  <h2>Per-Device Consent</h2>
+
+  <p>MUGA records your acceptance of its Terms and Privacy Policy <strong>per device</strong>, not per browser account. If you install MUGA on a second device, you'll be asked to read and accept the documents on that device too, even if you already accepted them somewhere else. Behavioural preferences (language, toggles) still follow your account through sync — but the <em>consent</em> to act on them is local. The full reasoning is in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
+
+  <p><strong>Re-onboarding.</strong> If we materially change the Terms, MUGA surfaces a re-acceptance flow on each device the next time the service worker wakes up; affected features are gated until you re-accept. If we only add clauses (without changing existing ones), MUGA shows you the new clauses and lets you accept or decline; declining keeps you under the previously accepted Terms.</p>
+
+  <p><strong>Migration on upgrade.</strong> If you previously installed MUGA before per-device consent shipped and your acceptance was stored across devices via sync, MUGA migrates that acceptance to local storage on the first run after upgrade. The migration is one-way (sync &rarr; local) and idempotent — you keep your acceptance state without re-onboarding. Implemented in <code>src/lib/sync-migration.js</code>.</p>
 
   <h2>What We Deliberately Don't Do</h2>
 
@@ -124,7 +144,7 @@
     <li><strong>No telemetry or usage analytics.</strong> We have no idea how often you use MUGA or which features you use.</li>
     <li><strong>No crash reporting.</strong> If the extension throws an error, it logs to your browser console — nowhere else.</li>
     <li><strong>No remote configuration or feature flags.</strong> Every toggle is a local preference. There is no server that can change your extension's behavior remotely.</li>
-    <li><strong>No CDN for rules — by default.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension. The default install makes zero outbound requests. If you opt into <strong>Remote Rules</strong> in Settings (off by default), the extension fetches a signed parameter list weekly from <code>yocreoquesi.github.io</code> via HTTPS GET with <code>credentials: "omit"</code> and <code>cache: "no-store"</code> — no browsing data is sent, no cookies, no identifiers of any kind.</li>
+    <li><strong>No CDN for rules — by default, today.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension. A default install makes no outbound requests. If you opt into <strong>Remote rule updates</strong> in Settings (off by default in current releases), the extension fetches a signed parameter list at most once per 7 days from <code>yocreoquesi.github.io</code> via HTTPS GET with <code>credentials: "omit"</code> and <code>cache: "no-store"</code> — no browsing data is sent, no cookies, no identifiers of any kind. <strong>Interim engineering note:</strong> the off-by-default posture is a stabilization choice while the rule-signing infrastructure matures, not a permanent value statement; the default <em>may flip in a future release</em>. When it does, the change will be announced in the changelog and surfaced in the existing soft re-onboard flow so you see it before it takes effect.</li>
     <li><strong>No server-side redirect for affiliate links.</strong> We evaluated 10+ affiliate programs that require routing your click through an external tracking server. We rejected every one of them.</li>
     <li><strong>No A/B testing infrastructure.</strong> Every user runs the same code.</li>
     <li><strong>No user accounts or sign-in.</strong> We have no concept of a MUGA user identity.</li>
@@ -156,7 +176,7 @@
 
   <div class="permission-block">
     <div class="permission-name">declarativeNetRequest <em>(Firefox)</em> / declarativeNetRequestWithHostAccess <em>(Chrome)</em></div>
-    <div class="permission-why">Strip tracking parameters from URLs before the page loads, using the browser's own built-in rule engine. The rules run entirely inside the browser. No request is sent to an external service to evaluate them. The <code>WithHostAccess</code> variant on Chrome is required to apply redirect rules across all sites.</div>
+    <div class="permission-why">Strip tracking parameters and (on Chrome) redirect AMP pages to their canonical URLs before the page loads, using the browser's own built-in rule engine. The rules run entirely inside the browser. No request is sent to an external service to evaluate them. The <code>WithHostAccess</code> variant on Chrome is required to apply redirect rules across all sites. On Firefox MV2, the AMP redirect happens locally via the content script instead of the network-layer engine, because the equivalent dynamic-rules API is not available.</div>
   </div>
 
   <div class="permission-block">
@@ -175,16 +195,18 @@
 
   <ul>
     <li><strong>Read the source code</strong> — <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a>. Every line that runs in your browser is published there.</li>
-    <li><strong>Build from source</strong> — Clone the repo and run <code>npm run build</code>. The output is the same extension distributed on the Chrome Web Store and Firefox AMO.</li>
+    <li><strong>Build from source</strong> — Clone the repo and run <code>npm ci &amp;&amp; npm run build</code>. The output is the same extension distributed on the Chrome Web Store and Firefox AMO.</li>
+    <li><strong>Verify the content-script bundle matches its source</strong> — The cleaning library is bundled into the content script via esbuild (<code>tools/bundle-content.mjs</code>, ~30 lines) because MV3 content scripts cannot use ES module imports portably across Chrome and Firefox MV2. The unbundled source lives under <code>src/lib/</code> and the committed bundle output is <code>src/content/cleaner-bundle.js</code>. Run <code>npm run build:content</code> and diff the regenerated output against the committed file — it must match exactly. The bundle is the only build-time transformation in the project; everything else is plain vanilla JavaScript (no TypeScript, no Babel, no JSX).</li>
     <li><strong>Diff the published extension</strong> — Unpack the installed extension (Chrome: <code>chrome://extensions</code> in developer mode; Firefox: extract the XPI) and diff the files against the published source. They should match exactly.</li>
-    <li><strong>Check network requests yourself</strong> — Open your browser's DevTools Network tab while using MUGA. On a default install (Remote rule updates off) you will see zero outbound requests initiated by the extension. If Remote rule updates are enabled, you will see one HTTPS GET to <code>yocreoquesi.github.io</code> per week at most.</li>
-    <li><strong>Read the coding standards</strong> — <code>AGENTS.md</code> in the repository documents the automated review rules that enforce these constraints on every pull request.</li>
+    <li><strong>Check network requests yourself</strong> — Open your browser's DevTools Network tab while using MUGA. On a default install (Remote rule updates off) you will see no outbound requests initiated by the extension. If Remote rule updates are enabled, you will see at most one HTTPS GET to <code>yocreoquesi.github.io</code> per 7 days.</li>
+    <li><strong>Read the coding standards</strong> — <code>AGENTS.md</code> and <code>CONTRIBUTING.md</code> in the repository document the automated review rules that enforce these constraints on every pull request.</li>
+    <li><strong>Read the architectural decision records</strong> — <a href="https://github.com/yocreoquesi/muga/tree/main/docs/adr" target="_blank" rel="noopener noreferrer"><code>docs/adr/</code></a> captures the reasoning behind decisions like per-device consent. If you want to know <em>why</em> something is built the way it is, the ADRs are where the trade-offs are written down.</li>
   </ul>
 
   <hr>
 
   <div class="footer">
-    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v1.9.10 — 2026-04-13 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
+    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v1.11.0 — 2026-05-01 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
   </div>
 
 </body>
