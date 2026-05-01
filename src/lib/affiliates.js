@@ -886,6 +886,27 @@ export const AFFILIATE_PATTERNS = [
   //   - Linear: no public referral / affiliate program at the time of writing.
   //     "Linear for Startups" is a discount program, not a referral commission.
   //
+  // Programs evaluated in slice #457 and intentionally NOT added:
+  //   - Shopify "native" referral: there is no Shopify-native referral or
+  //     affiliate parameter at the platform level. Shopify documentation
+  //     and major Shopify-ecosystem sources (Yotpo, ReferralCandy, Rivo)
+  //     all confirm that referral tracking is delegated to third-party apps
+  //     (ReferralCandy, UpPromote, Refersion, GoAffPro, etc.), each using
+  //     its own parameter scheme. A wildcard ?ref= match across every
+  //     Shopify-hosted store would produce massive false positives — `ref`
+  //     is widely used for non-affiliate purposes (anchors, navigation
+  //     context). Per-shop entries are theoretically supportable but out
+  //     of scope for the current host-based matcher.
+  //   - AliExpress aff_short_key on direct URLs: AliExpress's affiliate
+  //     attribution requires the click to pass through s.click.aliexpress.com
+  //     where parameters like `af` (offer ID), `cn` (affiliate ID), `dp`
+  //     (tracking ID), and `aff_short_key` are processed. The same
+  //     parameters appearing on a clean aliexpress.com/item/* URL do NOT
+  //     attribute a sale; the redirect is the attribution mechanism, not
+  //     the URL parameter. AliExpress is therefore handled as a
+  //     network-redirect through muga-unwrap's allowlist (which includes
+  //     s.click.aliexpress.com), not as a direct-injection program here.
+  //
   // AWIN network removed: redirect-based tracking only (awin1.com/pclick.php).
   // Cannot inject awc parameter directly; requires redirecting through AWIN servers.
   //
