@@ -2474,6 +2474,61 @@ describe("A3 — Vercel direct-injection affiliate", () => {
   });
 });
 
+describe("A4 — Humble Bundle direct-injection affiliate", () => {
+  test("preserves a third-party ?partner= value on humblebundle.com", () => {
+    const result = processUrl(
+      "https://humblebundle.com/games/some-game?partner=charity",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("partner=charity"));
+  });
+
+  test("preserves partner while stripping utm trackers", () => {
+    const result = processUrl(
+      "https://humblebundle.com/store/foo?partner=youtuber-21&utm_source=email&utm_campaign=summer",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("partner=youtuber-21"));
+    assert.ok(!result.cleanUrl.includes("utm_source"));
+    assert.ok(!result.cleanUrl.includes("utm_campaign"));
+  });
+
+  test("matches www.humblebundle.com", () => {
+    const result = processUrl(
+      "https://www.humblebundle.com/?partner=charity",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("partner=charity"));
+  });
+});
+
+describe("A4 — Lemon Squeezy direct-injection affiliate", () => {
+  test("preserves a third-party ?aff= value on a seller subdomain", () => {
+    const result = processUrl(
+      "https://seller-name.lemonsqueezy.com/checkout/buy/abc-123?aff=affiliate42",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("aff=affiliate42"));
+  });
+
+  test("preserves aff while stripping utm trackers", () => {
+    const result = processUrl(
+      "https://seller.lemonsqueezy.com/?aff=42&utm_source=newsletter",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("aff=42"));
+    assert.ok(!result.cleanUrl.includes("utm_source"));
+  });
+
+  test("matches the bare lemonsqueezy.com host too", () => {
+    const result = processUrl(
+      "https://lemonsqueezy.com/?aff=42",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("aff=42"));
+  });
+});
+
 describe("A3 — DigitalOcean direct-injection affiliate", () => {
   test("preserves a third-party ?refcode= value on digitalocean.com", () => {
     const result = processUrl(

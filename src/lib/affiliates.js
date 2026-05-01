@@ -841,7 +841,45 @@ export const AFFILIATE_PATTERNS = [
     type: "affiliate",
     ourTag: "",  // TODO: fill in your DigitalOcean referral code
   },
-  // Programs evaluated and INTENTIONALLY NOT added in this slice:
+  {
+    // https://www.humblebundle.com/partners — Humble Bundle's Partner program
+    // attributes via ?partner=<name> on humblebundle.com (first-party URL).
+    // The partner identifier is a verified slug agreed with Humble; values
+    // appear human-readable rather than opaque IDs.
+    id: "humble_bundle",
+    name: "Humble Bundle",
+    group: "Humble Bundle",
+    domains: ["humblebundle.com", "www.humblebundle.com"],
+    param: "partner",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Humble Bundle partner slug
+  },
+  {
+    // https://docs.lemonsqueezy.com/help/affiliates/affiliate-system — Lemon
+    // Squeezy attributes via ?aff=<id> on the seller's lemonsqueezy.com
+    // store URL. The platform supports direct-injection without forcing the
+    // click through a network's server.
+    id: "lemonsqueezy",
+    name: "Lemon Squeezy",
+    group: "Lemon Squeezy",
+    // Lemon Squeezy stores live on per-seller subdomains
+    // (e.g. <seller>.lemonsqueezy.com). The base domain is also kept for
+    // marketing pages, though most traffic flows through the subdomains.
+    domains: ["lemonsqueezy.com"],
+    param: "aff",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Lemon Squeezy affiliate id
+  },
+  // Programs evaluated and INTENTIONALLY NOT added in this slice (#456):
+  //   - Gumroad: their affiliate model attributes per-product via custom
+  //     URLs that vary by seller (e.g. <seller>.gumroad.com/l/<product>/<aff>).
+  //     This requires per-seller pattern handling, not a single (host, param)
+  //     entry. Defer until either a uniform query parameter is documented
+  //     or per-seller pattern support lands in MUGA's matching engine.
+  //   - Paddle: Paddle is a B2B payments platform; their partner program
+  //     is for software resellers, not creator-style referrals. Not a fit.
+  //
+  // Programs evaluated in slice #455 and intentionally NOT added:
   //   - Notion: affiliate program runs through Impact Radius (network-redirect),
   //     not direct-injection. Adding here would conflict with our privacy model.
   //     Reconsider when/if Notion launches a first-party referral mechanism.
