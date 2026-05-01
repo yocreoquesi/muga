@@ -4,6 +4,7 @@
  */
 
 import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "./affiliates.js";
+import { unwrap } from "./wrapper-engine.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -211,6 +212,19 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+  }
+
+  // Step 0: unwrap recognized redirect wrappers (Awin etc.). The destination
+  // URL becomes the input to the rest of the pipeline so tracking strip and
+  // affiliate logic operate on the merchant URL directly.
+  const unwrapResult = unwrap(rawUrl);
+  if (unwrapResult) {
+    rawUrl = unwrapResult.unwrapped;
+    try {
+      url = new URL(rawUrl);
+    } catch {
+      return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+    }
   }
 
   const hostname = url.hostname;
