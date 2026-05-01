@@ -1,0 +1,137 @@
+name: Import upstream tracking params
+
+on:
+  schedule:
+    # Sunday 04:00 UTC. Off-peak so the PR notification arrives at the start
+    # of the maintainer's week without competing with weekday CI traffic.
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Concurrency: only one importer in flight; queued, no cancellation.
+concurrency:
+  group: import-upstream
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch upstream and diff
+        id: diff
+        run: |
+          set -eo pipefail
+          IMPORT_REPORT_PATH="$GITHUB_WORKSPACE/import-report.json" \
+            node tools/import-upstream.mjs
+          COUNT=$(jq -r '.new_candidates_count' "$GITHUB_WORKSPACE/import-report.json")
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Candidates discovered: $COUNT"
+
+      - name: Exit early if no new candidates
+        if: steps.diff.outputs.count == '0'
+        run: echo "No new candidates from upstream this week. Exiting cleanly."
+
+      - name: Configure git for the bot commit
+        if: steps.diff.outputs.count != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch and commit candidates
+        if: steps.diff.outputs.count != '0'
+        id: branch
+        run: |
+          set -eo pipefail
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="auto-import/$DATE"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+
+          # If a branch from a previous failed run exists, recreate from main.
+          git checkout -B "$BRANCH"
+
+          mkdir -p tools/import-candidates
+          cp "$GITHUB_WORKSPACE/import-report.json" "tools/import-candidates/report-$DATE.json"
+
+          git add tools/import-candidates/
+          COUNT=${{ steps.diff.outputs.count }}
+          git commit -m "auto-import: $COUNT tracking-param candidates from AdGuard Filter 17 ($DATE)"
+          git push -u origin "$BRANCH" --force-with-lease
+
+      - name: Open or update pull request
+        if: steps.diff.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eo pipefail
+          DATE="${{ steps.branch.outputs.date }}"
+          BRANCH="${{ steps.branch.outputs.branch }}"
+          COUNT="${{ steps.diff.outputs.count }}"
+          REPORT="$GITHUB_WORKSPACE/import-report.json"
+
+          # Build the candidate list as a markdown bulleted block.
+          CANDIDATES=$(jq -r '.new_candidates[] | "- `" + . + "`"' "$REPORT")
+
+          BODY=$(cat <<EOF
+          Weekly automated diff against [AdGuard URL Tracking Protection (Filter 17)](https://filters.adtidy.org/extension/safari/filters/17.txt).
+
+          **Source:** AdGuard Filter 17
+          **Fetched at:** $(jq -r '.fetched_at' "$REPORT")
+          **Params in upstream:** $(jq -r '.total_in_source' "$REPORT")
+          **Params in MUGA:** $(jq -r '.total_in_muga' "$REPORT")
+          **New candidates (not in MUGA):** $COUNT
+
+          ## Candidates
+
+          $CANDIDATES
+
+          ## Reviewer checklist
+
+          - [ ] Each candidate is a real tracking parameter (not a functional or affiliate one for any host MUGA already preserves)
+          - [ ] Categorize each candidate into the appropriate \`TRACKING_PARAM_CATEGORIES\` group in \`src/lib/affiliates.js\`
+          - [ ] Append to \`TRACKING_PARAMS\` array in the same file
+          - [ ] Run \`npm run build:rules\` to regenerate the DNR ruleset
+          - [ ] Run \`npm run build:content\` to regenerate the content-script bundle
+          - [ ] Add unit tests for any candidate with non-trivial behaviour
+          - [ ] Once all candidates are triaged, delete \`tools/import-candidates/report-$DATE.json\`
+
+          **DO NOT auto-merge.** Each candidate requires human judgment to confirm
+          it is not a functional parameter on some site and to assign it to the
+          right category. Marketers occasionally add their own tracking under
+          parameter names that look ambiguous.
+
+          The raw import report is committed to this branch at
+          \`tools/import-candidates/report-$DATE.json\` for archival.
+          EOF
+          )
+
+          # Re-use existing PR if one is already open against this branch.
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --title "[auto-import] $COUNT tracking-param candidates from AdGuard Filter 17 ($DATE)" --body "$BODY"
+            echo "Updated existing PR #$EXISTING"
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "[auto-import] $COUNT tracking-param candidates from AdGuard Filter 17 ($DATE)" \
+              --body "$BODY" \
+              --label "needs-triage,category:ops"
+          fi
