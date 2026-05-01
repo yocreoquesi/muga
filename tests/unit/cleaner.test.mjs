@@ -2434,6 +2434,84 @@ describe("scheme validation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// A3 (#455) — SaaS / dev affiliate patterns: Vercel + DigitalOcean
+// ---------------------------------------------------------------------------
+describe("A3 — Vercel direct-injection affiliate", () => {
+  test("preserves a third-party ?ref= value on vercel.com", () => {
+    const result = processUrl(
+      "https://vercel.com/?ref=devblogger",
+      PREFS
+    );
+    assert.strictEqual(result.cleanUrl, "https://vercel.com/?ref=devblogger");
+    // action stays "untouched" when nothing else is removed; the affiliate
+    // param is preserved but no work was performed on the URL otherwise.
+    assert.strictEqual(result.action, "untouched");
+  });
+
+  test("preserves the ref= value while stripping unrelated tracking", () => {
+    const result = processUrl(
+      "https://vercel.com/dashboard?ref=devblogger&utm_source=newsletter&fbclid=abc",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("ref=devblogger"));
+    assert.ok(!result.cleanUrl.includes("utm_source"));
+    assert.ok(!result.cleanUrl.includes("fbclid"));
+  });
+
+  test("strips utm tracking on vercel.com when no ref= is present", () => {
+    const result = processUrl(
+      "https://vercel.com/?utm_source=fb",
+      PREFS
+    );
+    assert.strictEqual(result.cleanUrl, "https://vercel.com/");
+  });
+
+  test("matches www.vercel.com and the bare vercel.com", () => {
+    const a = processUrl("https://www.vercel.com/?ref=devblogger", PREFS);
+    const b = processUrl("https://vercel.com/?ref=devblogger", PREFS);
+    assert.ok(a.cleanUrl.includes("ref=devblogger"));
+    assert.ok(b.cleanUrl.includes("ref=devblogger"));
+  });
+});
+
+describe("A3 — DigitalOcean direct-injection affiliate", () => {
+  test("preserves a third-party ?refcode= value on digitalocean.com", () => {
+    const result = processUrl(
+      "https://digitalocean.com/?refcode=abc123",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("refcode=abc123"));
+  });
+
+  test("preserves refcode while stripping utm trackers", () => {
+    const result = processUrl(
+      "https://digitalocean.com/products/droplets?refcode=abc123&utm_source=email",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("refcode=abc123"));
+    assert.ok(!result.cleanUrl.includes("utm_source"));
+  });
+
+  test("matches the m.do.co short host", () => {
+    const result = processUrl(
+      "https://m.do.co/c/abc123def456?utm_source=email",
+      PREFS
+    );
+    // m.do.co is in DigitalOcean's domains list; refcode logic still applies.
+    // Without refcode, just strip utm.
+    assert.ok(!result.cleanUrl.includes("utm_source"));
+  });
+
+  test("matches cloud.digitalocean.com", () => {
+    const result = processUrl(
+      "https://cloud.digitalocean.com/?refcode=abc123",
+      PREFS
+    );
+    assert.ok(result.cleanUrl.includes("refcode=abc123"));
+  });
+});
+
+// ---------------------------------------------------------------------------
 // C11 sync verification (continued)
 // ---------------------------------------------------------------------------
 describe("C11 — popup.js formatStat sync", () => {
