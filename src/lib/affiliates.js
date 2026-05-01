@@ -809,6 +809,45 @@ export const AFFILIATE_PATTERNS = [
     type: "affiliate",
     ourTag: "5339147108",
   },
+  // ── SaaS / developer-economy direct-injection programs (#455) ──
+  // These programs attribute via a parameter on the merchant's first-party
+  // URL — no redirect through a network's server. Each entry is verified
+  // against public program documentation linked in the comment above.
+  //
+  // ourTag is empty until an account is registered; preservation of
+  // third-party referrals works regardless of whether ourTag is set
+  // (preservation only requires the (host, paramName) tuple to match).
+  {
+    // https://vercel.com/help/referral-program — Vercel referrals attribute
+    // via ?ref=<username> on vercel.com (first-party URL, no redirect).
+    id: "vercel",
+    name: "Vercel",
+    group: "Vercel",
+    domains: ["vercel.com", "www.vercel.com"],
+    param: "ref",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your Vercel referral username
+  },
+  {
+    // https://www.digitalocean.com/referral-program — DigitalOcean referrals
+    // attribute via ?refcode=<code> on digitalocean.com (first-party URL).
+    id: "digitalocean",
+    name: "DigitalOcean",
+    group: "DigitalOcean",
+    domains: ["digitalocean.com", "www.digitalocean.com",
+              "cloud.digitalocean.com", "try.digitalocean.com",
+              "m.do.co"],
+    param: "refcode",
+    type: "affiliate",
+    ourTag: "",  // TODO: fill in your DigitalOcean referral code
+  },
+  // Programs evaluated and INTENTIONALLY NOT added in this slice:
+  //   - Notion: affiliate program runs through Impact Radius (network-redirect),
+  //     not direct-injection. Adding here would conflict with our privacy model.
+  //     Reconsider when/if Notion launches a first-party referral mechanism.
+  //   - Linear: no public referral / affiliate program at the time of writing.
+  //     "Linear for Startups" is a discount program, not a referral commission.
+  //
   // AWIN network removed: redirect-based tracking only (awin1.com/pclick.php).
   // Cannot inject awc parameter directly; requires redirecting through AWIN servers.
   //
