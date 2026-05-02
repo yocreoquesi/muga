@@ -116,6 +116,10 @@ async function init() {
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
+  // Experimental shape-based param heuristic (#544). Default OFF. Plumbed
+  // here as a plain bindToggle — cleaner.js reads the flag through the same
+  // prefs object and routes the heuristic accordingly.
+  bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
   // Per-creator allowlist editor (#445, B13). Lives in the Advanced card,
   // visible without dev-mode (parallel to the honor-creator-mode toggle).
   initCreatorAllowlist(prefs.creatorAllowlist || []);

@@ -1,0 +1,12 @@
+{
+  "category": "heuristic-negatives",
+  "description": "True-negative auth/session candidates for the experimental shape-based param heuristic (#544). These look identical to trackers (long, high-entropy, tracker-shaped charset, suspicious key prefix) but they are oauth / csrf / session keys on the SHAPE_KEY_ALLOWLIST. Even with the flag ON, these MUST stay `untouched` — stripping any of them would break login flows or CSRF protection on real sites.",
+  "entries": [
+    { "url": "https://example.com/?state=oauth-csrf-state-value-12345abcdef67890", "expectedAction": "untouched", "notes": "#544 negative: oauth `state` is in SHAPE_KEY_ALLOWLIST — preserved even when flag ON." },
+    { "url": "https://example.com/?code=abcdef123456789012345678abcdef00", "expectedAction": "untouched", "notes": "#544 negative: oauth `code` is in SHAPE_KEY_ALLOWLIST — preserved even when flag ON." },
+    { "url": "https://example.com/?session_id=PHPSESSIDabc1234567890XYZdefghi", "expectedAction": "untouched", "notes": "#544 negative: `session_id` is in SHAPE_KEY_ALLOWLIST — preserved even when flag ON." },
+    { "url": "https://example.com/?id_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9abcdef", "expectedAction": "untouched", "notes": "#544 negative: JWT `id_token` is in SHAPE_KEY_ALLOWLIST — preserved even when flag ON." },
+    { "url": "https://example.com/?csrf_token=AbCdEf12GhIj34KlMnOpQrStUvWxYz", "expectedAction": "untouched", "notes": "#544 negative: `csrf_token` is in SHAPE_KEY_ALLOWLIST — preserved even when flag ON." },
+    { "url": "https://example.com/?access_token=AbCdEf12GhIj34KlMnOpQrStUvWxYz", "expectedAction": "untouched", "notes": "#544 negative: `access_token` is in SHAPE_KEY_ALLOWLIST — preserved even when flag ON." }
+  ]
+}

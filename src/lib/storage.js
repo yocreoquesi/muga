@@ -140,6 +140,16 @@ export const PREF_DEFAULTS = {
   // Privacy-sensitive (it carries URLs), so we expose it as its own
   // toggle even though the data is local-only.
   attributionLedgerEnabled: true,
+  // EXPERIMENTAL shape-based param heuristic (#544). Default OFF: a multi-
+  // signal heuristic that strips params whose VALUE SHAPE matches a tracker
+  // pattern (suspicious key prefix + length>16 + Shannon entropy>4.0 +
+  // base64/hex/uuid charset — ALL four required). False-positive risk is
+  // real (auth tokens / session IDs LOOK like trackers), so it ships behind
+  // a flag and is gated by a hard-coded allowlist of well-known oauth /
+  // session keys (state, code, csrf_token, access_token, …) that never
+  // strip even when all four signals fire. With the flag OFF, behaviour is
+  // byte-identical to the #530 baseline (the benchmark stays 117/117).
+  experimentalParamClassesEnabled: false,
   // User-promoted custom strip rules (#536). Populated by the popup's
   // "Strip locally" button on flagged Suspicious-params rows. Each entry
   // is a bare param name (lowercased on read by the cleaner) that
