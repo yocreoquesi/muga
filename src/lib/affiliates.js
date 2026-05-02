@@ -263,6 +263,7 @@ export const TRACKING_PARAMS = [
 
   // AT Internet / Piano Analytics (AdGuard + ClearURLs)
   "xtor",       // AT Internet campaign
+  "xts",        // AT Internet timestamp/session — paired with xtor
   "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
 
   // Webtrekk (AdGuard + Neat URL)
@@ -426,7 +427,7 @@ export const TRACKING_PARAMS = [
   "maf", "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
   "personaclick_input_query", "personaclick_search_query",
   "recommended_by", "recommended_code", "rtkcid",
-  "spot_im_redirect_source", "srclt", "sscid", "tcsack",
+  "sb_referer_host", "spot_im_redirect_source", "srclt", "sscid", "tcsack",
   "user_email_address", "uzcid", "vc_lpp", "vero_conv",
   "vs_campaign_id", "vsm_cid", "vsm_pid", "vsm_type",
   "winflncrtag",
@@ -503,7 +504,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "mtm_campaign", "mtm_keyword", "mtm_source", "mtm_medium", "mtm_content",
       "mtm_group", "mtm_placement", "mtm_cid",
       // AT Internet / Piano Analytics
-      "xtor", "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
+      "xtor", "xts", "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
       // Webtrekk
       "wt_zmc",
       // Triple Whale
@@ -719,7 +720,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "mt_link_id", "mt_medium", "mt_network", "mnv_sid",
       "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
       "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
-      "pk_vid", "spot_im_redirect_source", "tcsack",
+      "pk_vid", "sb_referer_host", "spot_im_redirect_source", "tcsack",
       "uzcid", "vc_lpp", "vero_conv",
       "vsm_cid", "vsm_pid", "vsm_type",
       "winflncrtag", "yj_r", "ymid",

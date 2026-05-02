@@ -9,10 +9,10 @@
     { "url": "https://example.com/?mkt_tok=eyJabc123def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Marketo token" },
     { "url": "https://example.com/?at_medium=email&at_campaign=launch", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "AT Internet" },
     { "url": "https://example.com/?CMP=ABC123&NLID=def", "expectedAction": "untouched", "notes": "GAP — Generic newsletter trackers (CMP, NLID) not in TRACKING_PARAMS" },
-    { "url": "https://example.com/?xtor=RSS-1-abc&xts=12345", "expectedAction": "cleaned", "expectedClean": "https://example.com/?xts=12345", "notes": "Xiti xtor stripped; xts kept (gap)" },
+    { "url": "https://example.com/?xtor=RSS-1-abc&xts=12345", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Xiti xtor + xts both stripped (xts added to TRACKING_PARAMS via #508)" },
     { "url": "https://example.com/?spr=abc&sprtype=def", "expectedAction": "untouched", "notes": "GAP — Sprinklr spr/sprtype not in TRACKING_PARAMS" },
     { "url": "https://example.com/?elqTrackId=abc&elqaid=def&elqat=g", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Eloqua" },
     { "url": "https://example.com/?soc_src=abc&soc_trk=def", "expectedAction": "untouched", "notes": "GAP — Generic social tracking (soc_src/soc_trk) not in TRACKING_PARAMS" },
-    { "url": "https://example.com/?sb_referer_host=abc", "expectedAction": "untouched", "notes": "GAP — sb_referer_host (Splash) not in TRACKING_PARAMS" }
+    { "url": "https://example.com/?sb_referer_host=abc", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Splash sb_referer_host (added to TRACKING_PARAMS via #508)" }
   ]
 }
