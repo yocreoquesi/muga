@@ -106,6 +106,12 @@ export const PREF_DEFAULTS = {
   // Remote rules toggle — lives in sync so the opt-in preference follows the user
   // across devices. Default false per REQ-OPT-1: zero network activity on fresh install.
   remoteRulesEnabled: false,
+  // Honor Creator Mode toggle (#435, B12). Pure plumbing for B13/B14: no
+  // behaviour change. Default false so existing users see no functional
+  // difference. The feature is opt-in because honoring creator referral
+  // chains may route through redirect networks the user did not consent to
+  // contact otherwise.
+  honorCreatorMode: false,
 };
 
 /**
