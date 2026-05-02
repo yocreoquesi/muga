@@ -77,6 +77,11 @@
         "id": "amp_redirect",
         "enabled": true,
         "path": "rules/amp-redirect.json"
+      },
+      {
+        "id": "wrapper_unwrap",
+        "enabled": true,
+        "path": "rules/wrapper-dnr-rules.json"
       }
     ]
   },
