@@ -45,10 +45,23 @@ export function compareEntry(entry, result) {
 }
 
 /**
+ * Round a fraction to one decimal percentage point. Returns 0 when the
+ * denominator is 0 (an empty category should not be NaN in the report).
+ */
+function pct(numerator, denominator) {
+  if (denominator === 0) return 0;
+  return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+/**
  * Build the report object summarising a benchmark run.
  *
+ * The per-category bucket gains a `matchRate` field (0..100, one decimal)
+ * so report readers can scan for the worst-covered categories without
+ * recomputing percentages.
+ *
  * @param {{ corpus: Array<{url:string, category:string, expectedAction:string}>, results: Array<{ok:boolean, expected:object, actual:object, diff?:string}>, generatedAt?: string, runner?: string }} params
- * @returns {{ generatedAt:string, runner:string, totalEntries:number, matched:number, mismatched:number, byCategory: Record<string,{total:number,matched:number,mismatched:number}>, mismatches: Array<object> }}
+ * @returns {{ generatedAt:string, runner:string, totalEntries:number, matched:number, mismatched:number, matchRate:number, byCategory: Record<string,{total:number,matched:number,mismatched:number,matchRate:number}>, mismatches: Array<object> }}
  */
 export function buildReport({ corpus, results, generatedAt, runner = "muga" }) {
   if (corpus.length !== results.length) {
@@ -61,7 +74,7 @@ export function buildReport({ corpus, results, generatedAt, runner = "muga" }) {
     const entry = corpus[i];
     const result = results[i];
     const cat = entry.category;
-    if (!byCategory[cat]) byCategory[cat] = { total: 0, matched: 0, mismatched: 0 };
+    if (!byCategory[cat]) byCategory[cat] = { total: 0, matched: 0, mismatched: 0, matchRate: 0 };
     byCategory[cat].total += 1;
     if (result.ok) {
       matched += 1;
@@ -77,12 +90,16 @@ export function buildReport({ corpus, results, generatedAt, runner = "muga" }) {
       });
     }
   }
+  for (const cat of Object.keys(byCategory)) {
+    byCategory[cat].matchRate = pct(byCategory[cat].matched, byCategory[cat].total);
+  }
   return {
     generatedAt: generatedAt || new Date().toISOString(),
     runner,
     totalEntries: corpus.length,
     matched,
     mismatched: corpus.length - matched,
+    matchRate: pct(matched, corpus.length),
     byCategory,
     mismatches,
   };

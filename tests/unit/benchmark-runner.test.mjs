@@ -97,6 +97,54 @@ test("buildReport — corpus/results length mismatch throws", () => {
   assert.throws(() => buildReport({ corpus: [{ url: "a", category: "utm", expectedAction: "cleaned" }], results: [] }));
 });
 
+test("buildReport — matchRate is a percentage (0..100, one decimal)", () => {
+  const corpus = [
+    { url: "u1", category: "utm", expectedAction: "cleaned" },
+    { url: "u2", category: "utm", expectedAction: "cleaned" },
+    { url: "u3", category: "utm", expectedAction: "cleaned" },
+    { url: "u4", category: "utm", expectedAction: "cleaned" },
+  ];
+  const results = [
+    { ok: true, expected: {}, actual: {} },
+    { ok: true, expected: {}, actual: {} },
+    { ok: true, expected: {}, actual: {} },
+    { ok: false, expected: {}, actual: {}, diff: "x" },
+  ];
+  const report = buildReport({ corpus, results });
+  assert.equal(report.matchRate, 75);
+  assert.equal(report.byCategory.utm.matchRate, 75);
+});
+
+test("buildReport — matchRate rounds to one decimal place", () => {
+  const corpus = Array.from({ length: 7 }, (_, i) => ({
+    url: `u${i}`,
+    category: "utm",
+    expectedAction: "cleaned",
+  }));
+  const results = corpus.map((_, i) => ({ ok: i < 5, expected: {}, actual: {}, diff: i < 5 ? undefined : "x" }));
+  const report = buildReport({ corpus, results });
+  // 5/7 = 0.71428... → 71.4% (one decimal)
+  assert.equal(report.matchRate, 71.4);
+  assert.equal(report.byCategory.utm.matchRate, 71.4);
+});
+
+test("buildReport — empty corpus gives matchRate 0 (no NaN)", () => {
+  const report = buildReport({ corpus: [], results: [], generatedAt: "2026-05-02T00:00:00Z" });
+  assert.equal(report.matchRate, 0);
+});
+
+test("buildReport — perfect run gives matchRate 100", () => {
+  const corpus = [
+    { url: "u1", category: "utm", expectedAction: "cleaned" },
+    { url: "u2", category: "clean-urls", expectedAction: "untouched" },
+  ];
+  const results = corpus.map(() => ({ ok: true, expected: {}, actual: {} }));
+  const report = buildReport({ corpus, results });
+  assert.equal(report.matchRate, 100);
+  assert.equal(report.byCategory.utm.matchRate, 100);
+  assert.equal(report.byCategory["clean-urls"].matchRate, 100);
+});
+
 test("exitCodeFromReport — 0 when all matched", () => {
   assert.equal(exitCodeFromReport({ mismatched: 0 }), 0);
 });
