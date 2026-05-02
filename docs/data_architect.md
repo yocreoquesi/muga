@@ -32,6 +32,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `showReportButton` | boolean | `true` | Show "Report a problem" button in popup |
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
 | `remoteRulesEnabled` | boolean | `false` | Opt-in: fetch signed remote parameter updates weekly. Default off (zero network activity on fresh install) |
+| `honorCreatorMode` | boolean | `false` | Opt-in (#435, B12): preserve creator referral chains on trusted redirect networks. Plumbing only — no behaviour wired yet. |
 
 ### List entry format
 

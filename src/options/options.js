@@ -109,6 +109,9 @@ async function init() {
   bindToggle("block-pings", "blockPings", prefs);
   bindToggle("amp-redirect", "ampRedirect", prefs);
   bindToggle("unwrap-redirects", "unwrapRedirects", prefs);
+  // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
+  // downstream slices (B13/B14) can read it. No behaviour change here.
+  bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
 
   // Toast duration select
   const durationSelect = document.getElementById("toast-duration-select");
