@@ -4,7 +4,8 @@
  */
 
 import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "./affiliates.js";
-import { unwrap } from "./wrapper-engine.js";
+import { unwrap, detectWrapper } from "./wrapper-engine.js";
+import { extractCanonical } from "./canonical-extractor.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -200,9 +201,17 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
  *
  * @param {string} rawUrl - The original URL to process.
  * @param {object} prefs  - User preferences from chrome.storage.sync.
+ * @param {Array}  [domainRules=[]] - Domain-rules array (preserveParams/stripParams).
+ * @param {{linkCanonical?: string|null, jsonLdId?: string|null}|undefined} [canonicalBundle]
+ *   Optional "canonical bundle" produced by the content script from the
+ *   page DOM (B7, #442). Used as a SECOND-TIER destination source only
+ *   when the wrapper engine detected a wrapper but extraction failed
+ *   (opaque wrapper case — t.co, link.medium.com, …). Background-worker
+ *   call sites that lack DOM access pass undefined and the canonical
+ *   tier no-ops.
  * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null }}
  */
-export function processUrl(rawUrl, prefs, domainRules = []) {
+export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
   let url;
   try {
     url = new URL(rawUrl);
@@ -224,6 +233,26 @@ export function processUrl(rawUrl, prefs, domainRules = []) {
       url = new URL(rawUrl);
     } catch {
       return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+    }
+  } else if (
+    // Step 0b: Canonical Extractor tier (#442, B7). When the URL was
+    // identified as a wrapper but extraction failed (opaque wrapper —
+    // t.co, link.medium.com, …), give the page DOM a chance to volunteer
+    // the canonical destination via a bundle prepared by the content
+    // script. Default ON; bypass via prefs.canonicalExtractorEnabled=false.
+    // No-op when no bundle was supplied (background-worker case).
+    prefs.canonicalExtractorEnabled !== false &&
+    canonicalBundle &&
+    detectWrapper(rawUrl)
+  ) {
+    const canonical = extractCanonical(canonicalBundle);
+    if (canonical) {
+      rawUrl = canonical;
+      try {
+        url = new URL(rawUrl);
+      } catch {
+        return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+      }
     }
   }
 

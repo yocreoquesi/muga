@@ -33,6 +33,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
 | `remoteRulesEnabled` | boolean | `false` | Opt-in: fetch signed remote parameter updates weekly. Default off (zero network activity on fresh install) |
 | `honorCreatorMode` | boolean | `false` | Opt-in (#435, B12): preserve creator referral chains on trusted redirect networks. Plumbing only — no behaviour wired yet. |
+| `canonicalExtractorEnabled` | boolean | `true` | (#442, B7) When the wrapper engine detects an opaque wrapper (host matched but no destination in URL), consult content-script-supplied `<link rel=canonical>` / JSON-LD `@id` before giving up. Default ON. |
 
 ### List entry format
 
