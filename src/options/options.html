@@ -171,6 +171,14 @@
       </div>
       <div class="row">
         <div class="row-label">
+          <strong data-i18n="exp_param_classes_label">Experimental: shape-based param stripping</strong>
+          <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
+          <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
+        </div>
+        <label class="toggle"><input type="checkbox" id="experimental-param-classes" aria-label="Experimental shape-based param stripping"><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <div class="row-label">
           <strong data-i18n="advanced_mode_label">Show advanced settings</strong>
           <small data-i18n="advanced_mode_hint">Fine-grained control over URL cleaning, privacy, and developer tools</small>
         </div>

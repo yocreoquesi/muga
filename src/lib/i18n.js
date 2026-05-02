@@ -369,6 +369,28 @@ export const TRANSLATIONS = {
   creator_allowlist_remove_btn:   { en: "Remove",                                                                                                                                        es: "Eliminar",                                                                                                                                                            pt: "Remover" /* FIXME: needs native speaker review */,                                                                                                                            de: "Entfernen" /* FIXME: needs native speaker review */ },
   creator_allowlist_err_empty:    { en: "Enter a domain or creator handle (e.g. youtube.com/@creator).",                                                                                 es: "Introduce un dominio o handle de creador (ej: youtube.com/@creador).",                                                                                                pt: "Insira um domínio ou identificador de criador (ex: youtube.com/@criador)." /* FIXME: needs native speaker review */,                                                          de: "Gib eine Domain oder einen Creator-Handle ein (z.B. youtube.com/@creator)." /* FIXME: needs native speaker review */ },
   creator_allowlist_err_duplicate:{ en: "That creator is already on your allowlist.",                                                                                                    es: "Ese creador ya está en tu lista.",                                                                                                                                    pt: "Esse criador já está na sua lista." /* FIXME: needs native speaker review */,                                                                                                de: "Dieser Creator steht bereits auf deiner Liste." /* FIXME: needs native speaker review */ },
+  // Experimental shape-based param heuristic (#544). Default OFF; toggle
+  // sits in the Advanced card next to Honor Creator Mode. Warning copy is a
+  // SEPARATE key so the UI can render it with a distinct visual treatment
+  // (warning hint) without translators needing to embed inline HTML.
+  exp_param_classes_label: {
+    en: "Experimental: shape-based param stripping",
+    es: "Experimental: limpieza de parámetros por forma",
+    pt: "Experimental: remoção de parâmetros por forma" /* FIXME: needs native speaker review */,
+    de: "Experimentell: Parameter nach Form entfernen" /* FIXME: needs native speaker review */,
+  },
+  exp_param_classes_hint: {
+    en: "Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.",
+    es: "Elimina parámetros cuyo valor tiene forma de identificador de tracker (largos, alta entropía, base64/hex/uuid). Va detrás de este flag porque los falsos positivos pueden romper algunos sitios.",
+    pt: "Remove parâmetros cujo valor tem forma de identificador de tracker (longos, alta entropia, base64/hex/uuid). Atrás deste flag porque falsos positivos podem quebrar alguns sites." /* FIXME: needs native speaker review */,
+    de: "Entfernt Parameter, deren Wertform einem Tracker-Muster entspricht (lang, hohe Entropie, base64/hex/uuid). Hinter diesem Flag, weil False Positives einige Seiten beschädigen können." /* FIXME: needs native speaker review */,
+  },
+  exp_param_classes_warn: {
+    en: "May break some sites. Disable if you see issues.",
+    es: "Puede romper algunos sitios. Desactivalo si ves problemas.",
+    pt: "Pode quebrar alguns sites. Desative se vir problemas." /* FIXME: needs native speaker review */,
+    de: "Kann einige Seiten beschädigen. Deaktiviere es bei Problemen." /* FIXME: needs native speaker review */,
+  },
   creator_allowlist_err_max:      { en: "You've reached the 100-creator limit. Remove an entry to add a new one.",                                                                       es: "Has alcanzado el límite de 100 creadores. Elimina una entrada para añadir otra.",                                                                                     pt: "Você atingiu o limite de 100 criadores. Remova uma entrada para adicionar outra." /* FIXME: needs native speaker review */,                                                   de: "Du hast das Limit von 100 Creatorn erreicht. Entferne einen Eintrag, um einen neuen hinzuzufügen." /* FIXME: needs native speaker review */ },
   section_dev_tools:          { en: "Developer tools",                                                   es: "Herramientas de desarrollo",                                                   pt: "Ferramentas de desenvolvedor",                                                   de: "Entwicklertools" },
   dev_preview_notify_label:   { en: "Preview affiliate notification",                                   es: "Previsualizar notificación de afiliado",                                   pt: "Pré-visualizar notificação de afiliado",                                   de: "Affiliate-Benachrichtigung vorschauen" },

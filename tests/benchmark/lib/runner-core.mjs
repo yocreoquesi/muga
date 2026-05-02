@@ -202,6 +202,12 @@ const ALLOWED_CATEGORIES = new Set([
   "clean-urls",
   "path-trackers",
   "misc-tracking",
+  // #544: experimental shape-based heuristic seed corpora. Positive cases
+  // pass through as `untouched` with the default-OFF flag (the runner uses
+  // baseline PREFS); negatives are oauth/session keys that must stay
+  // `untouched` even when the flag is enabled in test mode.
+  "heuristic-positives",
+  "heuristic-negatives",
 ]);
 
 const ALLOWED_ACTIONS = new Set([
