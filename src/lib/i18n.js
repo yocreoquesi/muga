@@ -160,6 +160,55 @@ export const TRANSLATIONS = {
     pt: "{n} regras personalizadas ativas" /* FIXME: needs native speaker review */,
     de: "{n} benutzerdefinierte Regeln aktiv" /* FIXME: needs native speaker review */,
   },
+
+  // ── Popup: Report upstream per-row button (#537) ────────────────────────
+  // Opens a deep-linked GitHub issue pre-filled with ONLY the param name and
+  // the count of distinct first-party domains the user has observed it on.
+  // The issue title and body templates carry {paramName} and {count} place-
+  // holders; the body MUST include a privacy disclaimer because the contract
+  // for this slice is "MUGA never sees the value, hash, or domains".
+  report_upstream_btn: {
+    en: "Report upstream",
+    es: "Reportar al repo",
+    pt: "Reportar ao repo" /* FIXME: needs native speaker review */,
+    de: "Upstream melden" /* FIXME: needs native speaker review */,
+  },
+  report_upstream_issue_title: {
+    en: "[Param] {paramName} — observed across {count} domains",
+    es: "[Parámetro] {paramName} — observado en {count} dominios",
+    pt: "[Parâmetro] {paramName} — observado em {count} domínios" /* FIXME: needs native speaker review */,
+    de: "[Parameter] {paramName} — auf {count} Domains beobachtet" /* FIXME: needs native speaker review */,
+  },
+  report_upstream_issue_body: {
+    en:
+      "## Suspicious tracking parameter\n\n" +
+      "Reported from the MUGA popup's Suspicious params section.\n\n" +
+      "- **Param name:** `{paramName}`\n" +
+      "- **Distinct first-party domains observed:** {count}\n\n" +
+      "## Privacy disclaimer\n\n" +
+      "MUGA never sees the value, hash, or domains — this report contains only the two fields above.\n",
+    es:
+      "## Parámetro de rastreo sospechoso\n\n" +
+      "Reportado desde la sección \"Parámetros sospechosos\" del popup de MUGA.\n\n" +
+      "- **Nombre del parámetro:** `{paramName}`\n" +
+      "- **Dominios first-party distintos observados:** {count}\n\n" +
+      "## Aviso de privacidad\n\n" +
+      "MUGA nunca ve el valor, ni el hash, ni los dominios — este reporte contiene únicamente los dos campos de arriba.\n",
+    pt:
+      "## Parâmetro de rastreamento suspeito\n\n" +
+      "Reportado da seção \"Parâmetros suspeitos\" do popup do MUGA.\n\n" +
+      "- **Nome do parâmetro:** `{paramName}`\n" +
+      "- **Domínios first-party distintos observados:** {count}\n\n" +
+      "## Aviso de privacidade\n\n" +
+      "O MUGA nunca vê o valor, o hash nem os domínios — este relatório contém apenas os dois campos acima.\n" /* FIXME: needs native speaker review */,
+    de:
+      "## Verdächtiger Tracking-Parameter\n\n" +
+      "Gemeldet aus dem Abschnitt \"Verdächtige Parameter\" des MUGA-Popups.\n\n" +
+      "- **Parametername:** `{paramName}`\n" +
+      "- **Beobachtete unterschiedliche First-Party-Domains:** {count}\n\n" +
+      "## Datenschutzhinweis\n\n" +
+      "MUGA sieht weder den Wert noch den Hash noch die Domains — dieser Bericht enthält nur die beiden Felder oben.\n" /* FIXME: needs native speaker review */,
+  },
   domain_stats_empty:    { en: "No domain stats yet. Keep browsing!", es: "Aún no hay estadísticas. ¡Sigue navegando!", pt: "Sem estatísticas ainda. Continue navegando!", de: "Noch keine Domain-Statistiken. Weiter surfen!" },
   domain_stats_params:   { en: "params stripped", es: "parámetros eliminados", pt: "parâmetros removidos", de: "Parameter entfernt" },
   domain_stats_urls:     { en: "URLs cleaned", es: "URLs limpiadas", pt: "URLs limpas", de: "URLs bereinigt" },
