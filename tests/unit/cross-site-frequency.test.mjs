@@ -31,6 +31,11 @@ import {
   MAX_TRACKED_PARAMS,
   DOMAIN_THRESHOLD,
   VALUE_THRESHOLD,
+  CANDIDATE_DOMAIN_THRESHOLD,
+  CANDIDATE_VALUE_THRESHOLD,
+  CANDIDATE_ENTROPY_THRESHOLD,
+  CANDIDATE_NAME_LENGTH_MIN,
+  valueEntropy,
 } from "../../src/lib/cross-site-frequency.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -263,5 +268,226 @@ describe("createInMemoryAdapter — shape", () => {
     await a.set({ params: { z: { domains: ["a.com"], values: ["h:v1"], lastSeen: 1 } } });
     const dataB = await b.get();
     assert.deepEqual(dataB.params || {}, {});
+  });
+});
+
+// ── Graduation pipeline (issue #532, slice extension of B16) ─────────────────
+//
+// The tracker now carries an explicit per-param state machine:
+//   observed → suspicious → candidate
+//
+// `observed`   — first time we see the param on any domain.
+// `suspicious` — meets the existing B16 flagging threshold (≥3 domains AND
+//                ≥3 distinct value-hashes). `getFlagged()` continues to return
+//                this set, so consumers (popup) keep working unchanged.
+// `candidate`  — strong cross-site-tracker signal: ≥5 domains AND ≥10 values
+//                AND entropyAvg > 3.0 AND param name length ≥ 4. The length
+//                guard excludes generic 3-letter params (id/pid/ref) that the
+//                PRD (muga#529) explicitly rejects.
+//
+// State is computed LAZILY in getState() / getFlagged() — we do NOT pay the
+// cost on the hot observe() path. The only thing observe() updates is the
+// running mean entropy, which is O(1).
+
+describe("valueEntropy — Shannon entropy helper", () => {
+  test("returns 0 for an empty / null-ish input (no information)", () => {
+    assert.equal(valueEntropy(""), 0);
+    assert.equal(valueEntropy(null), 0);
+    assert.equal(valueEntropy(undefined), 0);
+  });
+
+  test("returns 0 for a single-character string (only one symbol)", () => {
+    assert.equal(valueEntropy("x"), 0);
+  });
+
+  test("returns 0 for a constant-character string (only one symbol)", () => {
+    assert.equal(valueEntropy("aaaa"), 0);
+  });
+
+  test("a uniform 2-symbol string has entropy 1.0 (one bit per symbol)", () => {
+    assert.equal(valueEntropy("ab"), 1);
+    assert.equal(valueEntropy("abab"), 1);
+  });
+
+  test("higher-variety strings produce strictly higher entropy than low-variety ones", () => {
+    const low = valueEntropy("aaab");
+    const high = valueEntropy("abcdefghij");
+    assert.ok(high > low, `expected ${high} > ${low}`);
+  });
+
+  test("a long random-ish hex-style id crosses the 3.0 candidate threshold", () => {
+    // Real-world cross-site IDs (UUIDs, base64 tokens) live well above 3.0.
+    const e = valueEntropy("9f3c1ea2b48d6701ffac5e2d");
+    assert.ok(e > 3.0, `expected entropy > 3, got ${e}`);
+  });
+});
+
+describe("createTracker — graduation thresholds export", () => {
+  test("exports CANDIDATE_DOMAIN_THRESHOLD = 5", () => {
+    assert.equal(CANDIDATE_DOMAIN_THRESHOLD, 5);
+  });
+  test("exports CANDIDATE_VALUE_THRESHOLD = 10", () => {
+    assert.equal(CANDIDATE_VALUE_THRESHOLD, 10);
+  });
+  test("exports CANDIDATE_ENTROPY_THRESHOLD = 3.0", () => {
+    assert.equal(CANDIDATE_ENTROPY_THRESHOLD, 3.0);
+  });
+  test("exports CANDIDATE_NAME_LENGTH_MIN = 4", () => {
+    assert.equal(CANDIDATE_NAME_LENGTH_MIN, 4);
+  });
+});
+
+describe("createTracker — getState() state machine", () => {
+  test("unknown param returns 'observed' (defensive default)", async () => {
+    const { tracker } = makeTracker();
+    assert.equal(await tracker.getState("nope"), "observed");
+  });
+
+  test("first observation on a single domain → 'observed'", async () => {
+    const { tracker } = makeTracker();
+    await tracker.observe("a.com", "uid", "v1");
+    assert.equal(await tracker.getState("uid"), "observed");
+  });
+
+  test("3 domains × 3 values → 'suspicious' (matches existing B16 flag)", async () => {
+    const { tracker } = makeTracker();
+    await tracker.observe("a.com", "uid", "v1");
+    await tracker.observe("b.com", "uid", "v2");
+    await tracker.observe("c.com", "uid", "v3");
+    assert.equal(await tracker.getState("uid"), "suspicious");
+    // And getFlagged still surfaces it, unchanged.
+    const flagged = await tracker.getFlagged();
+    assert.equal(flagged.length, 1);
+    assert.equal(flagged[0].param, "uid");
+  });
+
+  test("5 domains × 10 high-entropy values + name length ≥4 → 'candidate'", async () => {
+    // Use the real defaultHasher would slow tests; the stub hasher is fine
+    // because state evaluation looks at counts + entropyAvg, and entropyAvg
+    // is computed from the RAW value (pre-hash), so we can drive it directly.
+    const { tracker } = makeTracker();
+    const highEntropyValues = [
+      "9f3c1ea2b48d6701ffac5e2d",
+      "8a14bd0fe21c95773bbe44a1",
+      "7c0d59e6bb4827419fe10cda",
+      "6b21e8a44dc91075ffac88e3",
+      "5d39b07a6e15cc8842b990fe",
+      "4e54c01b8a76dd9711e205bb",
+      "3c61d52f9b8c11ea7700ff43",
+      "2a78e0419fcd203baa551c66",
+      "1b86f1538e0c34cd99cc7700",
+      "0a93021647db17ee4471ad58",
+    ];
+    const domains = ["a.com", "b.com", "c.com", "d.com", "e.com"];
+    // 5 domains × 10 values = 50 observations. Spread values across domains
+    // so we hit BOTH thresholds.
+    for (let i = 0; i < highEntropyValues.length; i++) {
+      const d = domains[i % domains.length];
+      await tracker.observe(d, "userid", highEntropyValues[i]);
+    }
+    // Make sure all 5 domains are touched at least once.
+    for (const d of domains) await tracker.observe(d, "userid", "9f3c1ea2b48d6701ffac5e2d");
+    assert.equal(await tracker.getState("userid"), "candidate");
+  });
+
+  test("5 domains × 10 high-entropy values BUT param length 3 → still 'suspicious' (length guard rejects)", async () => {
+    // PRD muga#529: 3-letter generic params (id, pid, ref) MUST NOT graduate.
+    const { tracker } = makeTracker();
+    const values = [
+      "9f3c1ea2b48d6701ffac5e2d", "8a14bd0fe21c95773bbe44a1",
+      "7c0d59e6bb4827419fe10cda", "6b21e8a44dc91075ffac88e3",
+      "5d39b07a6e15cc8842b990fe", "4e54c01b8a76dd9711e205bb",
+      "3c61d52f9b8c11ea7700ff43", "2a78e0419fcd203baa551c66",
+      "1b86f1538e0c34cd99cc7700", "0a93021647db17ee4471ad58",
+    ];
+    const domains = ["a.com", "b.com", "c.com", "d.com", "e.com"];
+    for (let i = 0; i < values.length; i++) {
+      await tracker.observe(domains[i % domains.length], "ref", values[i]);
+    }
+    for (const d of domains) await tracker.observe(d, "ref", "9f3c1ea2b48d6701ffac5e2d");
+    assert.equal(await tracker.getState("ref"), "suspicious");
+  });
+
+  test("5 domains × 10 LOW-entropy values → still 'suspicious' (entropy guard rejects)", async () => {
+    // Sequential numeric IDs have low Shannon entropy per character — they
+    // look like an enumerated user list, not a high-entropy tracking ID.
+    const { tracker } = makeTracker();
+    const values = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    const domains = ["a.com", "b.com", "c.com", "d.com", "e.com"];
+    for (let i = 0; i < values.length; i++) {
+      await tracker.observe(domains[i % domains.length], "userid", values[i]);
+    }
+    for (const d of domains) await tracker.observe(d, "userid", "1");
+    const state = await tracker.getState("userid");
+    assert.equal(state, "suspicious", `got ${state} — entropy guard should have rejected this`);
+  });
+});
+
+describe("createTracker — entry metadata extensions", () => {
+  test("entry carries firstSeen, lastSeen, entropyAvg after observation", async () => {
+    const { tracker, adapter } = makeTracker();
+    await tracker.observe("a.com", "uid", "v1");
+    const stored = await adapter.get();
+    const e = stored.params.uid;
+    assert.equal(typeof e.firstSeen, "number");
+    assert.equal(typeof e.lastSeen, "number");
+    assert.equal(typeof e.entropyAvg, "number");
+    assert.ok(e.entropyAvg >= 0);
+  });
+
+  test("firstSeen ≤ lastSeen across many observations (monotonic)", async () => {
+    const { tracker, adapter } = makeTracker();
+    for (let i = 0; i < 5; i++) {
+      await tracker.observe("a.com", "uid", `v${i}`);
+    }
+    const e = (await adapter.get()).params.uid;
+    assert.ok(e.firstSeen <= e.lastSeen, `firstSeen ${e.firstSeen} > lastSeen ${e.lastSeen}`);
+  });
+
+  test("entropyAvg is a finite number ≥ 0 after many observations (running-mean property)", async () => {
+    const { tracker, adapter } = makeTracker();
+    const samples = ["abc", "aaaa", "9f3c1ea2", "xy", "qqqq", "abcdef"];
+    for (const v of samples) await tracker.observe("a.com", "uid", v);
+    const e = (await adapter.get()).params.uid;
+    assert.ok(Number.isFinite(e.entropyAvg), `entropyAvg not finite: ${e.entropyAvg}`);
+    assert.ok(e.entropyAvg >= 0, `entropyAvg negative: ${e.entropyAvg}`);
+  });
+
+  test("entropyAvg of constant-value observations stays 0", async () => {
+    const { tracker, adapter } = makeTracker();
+    for (let i = 0; i < 4; i++) await tracker.observe("a.com", "uid", "aaaa");
+    const e = (await adapter.get()).params.uid;
+    assert.equal(e.entropyAvg, 0);
+  });
+});
+
+describe("createTracker — LRU and graduation interact cleanly", () => {
+  test("a 'candidate' entry can be evicted by LRU just like any other entry", async () => {
+    // No special handling: the state machine is read-side only. If something
+    // graduates to candidate but then sits idle while 1000 newer params come
+    // in, it gets evicted along with everything else. That's intentional —
+    // the LRU is the storage budget; promotion doesn't pin entries.
+    const { tracker, adapter } = makeTracker();
+    // Promote "userid" to candidate first.
+    const values = [
+      "9f3c1ea2b48d6701ffac5e2d", "8a14bd0fe21c95773bbe44a1",
+      "7c0d59e6bb4827419fe10cda", "6b21e8a44dc91075ffac88e3",
+      "5d39b07a6e15cc8842b990fe", "4e54c01b8a76dd9711e205bb",
+      "3c61d52f9b8c11ea7700ff43", "2a78e0419fcd203baa551c66",
+      "1b86f1538e0c34cd99cc7700", "0a93021647db17ee4471ad58",
+    ];
+    const domains = ["a.com", "b.com", "c.com", "d.com", "e.com"];
+    for (let i = 0; i < values.length; i++) {
+      await tracker.observe(domains[i % domains.length], "userid", values[i]);
+    }
+    assert.equal(await tracker.getState("userid"), "candidate");
+    // Now flood with MAX unique params. "userid" is the OLDEST → evicted.
+    for (let i = 0; i < MAX_TRACKED_PARAMS; i++) {
+      await tracker.observe("z.com", `flood${i}`, "v");
+    }
+    const stored = await adapter.get();
+    assert.ok(!stored.params.userid, "candidate entry should have been evicted by LRU");
+    // After eviction, getState falls back to defensive default.
+    assert.equal(await tracker.getState("userid"), "observed");
   });
 });
