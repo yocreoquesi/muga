@@ -266,9 +266,10 @@ test("buildReport — competitorResults present → byCompetitor summary", () =>
   const report = buildReport({ corpus, results, competitorResults });
   assert.ok(report.byCompetitor);
   assert.equal(report.byCompetitor.identity.total, 2);
+  assert.equal(report.byCompetitor.identity.withExpectedClean, 1);
   assert.equal(report.byCompetitor.identity.changedFromInput, 0); // identity never changes
   assert.equal(report.byCompetitor.identity.matchedExpectedClean, 0); // first entry has expectedClean but identity didn't match it
-  assert.equal(report.byCompetitor.identity.matchRate, 0);
+  assert.equal(report.byCompetitor.identity.matchRate, 0); // 0 of 1 scoreable entry matched
 });
 
 test("buildReport — byCompetitor matchRate counts entries WITH expectedClean only", () => {
@@ -283,6 +284,53 @@ test("buildReport — byCompetitor matchRate counts entries WITH expectedClean o
     { perfect: { cleanUrl: "https://b.com/" } },
   ];
   const report = buildReport({ corpus, results, competitorResults });
+  assert.equal(report.byCompetitor.perfect.withExpectedClean, 2);
   assert.equal(report.byCompetitor.perfect.matchedExpectedClean, 2);
   assert.equal(report.byCompetitor.perfect.matchRate, 100);
+});
+
+test("buildReport — perfect adapter on scoreable subset isn't punished by unscoreable entries", () => {
+  // 4 entries: 2 with expectedClean, 2 without. Perfect adapter
+  // matches expectedClean on both that have it; the 2 without are
+  // unscoreable. matchRate must be 100, not 50 — the unscoreable
+  // entries cannot fairly count against the adapter.
+  const corpus = [
+    { url: "https://a.com/?utm=x", category: "utm", expectedAction: "cleaned", expectedClean: "https://a.com/" },
+    { url: "https://b.com/?utm=y", category: "utm", expectedAction: "cleaned", expectedClean: "https://b.com/" },
+    { url: "https://c.com/?id=42", category: "utm", expectedAction: "cleaned" }, // no expectedClean
+    { url: "https://d.com/?id=99", category: "utm", expectedAction: "cleaned" }, // no expectedClean
+  ];
+  const results = corpus.map(() => ({ ok: true, expected: {}, actual: {} }));
+  const competitorResults = [
+    { perfect: { cleanUrl: "https://a.com/" } },
+    { perfect: { cleanUrl: "https://b.com/" } },
+    { perfect: { cleanUrl: "https://c.com/?id=42" } }, // produced anything; can't score
+    { perfect: { cleanUrl: "https://d.com/?id=99" } },
+  ];
+  const report = buildReport({ corpus, results, competitorResults });
+  assert.equal(report.byCompetitor.perfect.total, 4);
+  assert.equal(report.byCompetitor.perfect.withExpectedClean, 2);
+  assert.equal(report.byCompetitor.perfect.matchedExpectedClean, 2);
+  assert.equal(
+    report.byCompetitor.perfect.matchRate,
+    100,
+    "matchRate must be 100 — 2 of 2 scoreable entries matched. Counting unscoreable entries in the denominator would punish a perfect adapter.",
+  );
+});
+
+test("buildReport — competitor with no expectedClean entries gives matchRate 0 (no NaN)", () => {
+  // Edge case: corpus has zero entries with expectedClean.
+  // matchRate denominator would be 0; pct() guards against NaN.
+  const corpus = [
+    { url: "https://a.com/", category: "clean-urls", expectedAction: "untouched" },
+    { url: "https://b.com/", category: "clean-urls", expectedAction: "untouched" },
+  ];
+  const results = corpus.map(() => ({ ok: true, expected: {}, actual: {} }));
+  const competitorResults = [
+    { identity: { cleanUrl: "https://a.com/" } },
+    { identity: { cleanUrl: "https://b.com/" } },
+  ];
+  const report = buildReport({ corpus, results, competitorResults });
+  assert.equal(report.byCompetitor.identity.withExpectedClean, 0);
+  assert.equal(report.byCompetitor.identity.matchRate, 0);
 });
