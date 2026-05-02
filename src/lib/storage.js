@@ -132,6 +132,14 @@ export const PREF_DEFAULTS = {
   // data never leaves the device — turning it off makes observe() a
   // no-op and hides the freq subgroup in the suspicious-params section.
   crossSiteFrequencyEnabled: true,
+  // Attribution Ledger persistence (#460, A2). When ON (default), the SW
+  // writes the rolling ring buffer of recent navigation events to
+  // chrome.storage.local under "attributionLedger" so the popup can
+  // render a "Recent activity" section that survives SW restarts. When
+  // OFF, the writer is gated to a no-op; the section just stays empty.
+  // Privacy-sensitive (it carries URLs), so we expose it as its own
+  // toggle even though the data is local-only.
+  attributionLedgerEnabled: true,
 };
 
 /**

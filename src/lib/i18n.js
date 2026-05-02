@@ -56,6 +56,80 @@ export const TRANSLATIONS = {
     de: "Über {network} weitergeleitet, um {creator} zu ehren" /* FIXME: needs native speaker review */,
   },
 
+  // ── Popup: Attribution Ledger / Recent activity section (#460, A2) ──────
+  // Surfaces a rolling list of the last navigations with badge, optional
+  // creator credit ("Supporting @creator"), optional network attribution
+  // ("via {network}" — visible for Honor Creator Mode rows), and a copy
+  // button per cleaned URL. Translation happens HERE (the popup glue),
+  // not in the pure presenter — so the same ledger can be re-rendered
+  // when the user switches language without rebuilding event history.
+  ledger_section_title: {
+    en: "Recent activity",
+    es: "Actividad reciente",
+    pt: "Atividade recente" /* FIXME: needs native speaker review */,
+    de: "Letzte Aktivität" /* FIXME: needs native speaker review */,
+  },
+  ledger_empty: {
+    en: "No recent navigations yet. Start browsing — MUGA will list cleaned URLs here.",
+    es: "Aún no hay navegaciones recientes. Empezá a navegar — MUGA listará las URLs limpiadas acá.",
+    pt: "Sem navegações recentes ainda. Comece a navegar — MUGA listará as URLs limpas aqui." /* FIXME: needs native speaker review */,
+    de: "Noch keine letzten Navigationen. Fang an zu surfen — MUGA listet bereinigte URLs hier auf." /* FIXME: needs native speaker review */,
+  },
+  ledger_badge_cleaned: {
+    en: "Cleaned",
+    es: "Limpiada",
+    pt: "Limpa" /* FIXME: needs native speaker review */,
+    de: "Bereinigt" /* FIXME: needs native speaker review */,
+  },
+  ledger_badge_preserve_affiliate: {
+    en: "Creator referral preserved",
+    es: "Referido del creador preservado",
+    pt: "Indicação do criador preservada" /* FIXME: needs native speaker review */,
+    de: "Creator-Empfehlung beibehalten" /* FIXME: needs native speaker review */,
+  },
+  ledger_badge_inject_affiliate: {
+    en: "Affiliate added",
+    es: "Afiliado añadido",
+    pt: "Afiliado adicionado" /* FIXME: needs native speaker review */,
+    de: "Affiliate hinzugefügt" /* FIXME: needs native speaker review */,
+  },
+  ledger_badge_honor_creator: {
+    en: "Honored creator routing",
+    es: "Ruta de creador honrada",
+    pt: "Rota de criador honrada" /* FIXME: needs native speaker review */,
+    de: "Creator-Weiterleitung respektiert" /* FIXME: needs native speaker review */,
+  },
+  ledger_badge_blocked_opaque: {
+    en: "Opaque wrapper blocked",
+    es: "Envoltura opaca bloqueada",
+    pt: "Wrapper opaco bloqueado" /* FIXME: needs native speaker review */,
+    de: "Undurchsichtiger Wrapper blockiert" /* FIXME: needs native speaker review */,
+  },
+  ledger_creator_credit_template: {
+    en: "Supporting {creator}",
+    es: "Apoyando a {creator}",
+    pt: "Apoiando {creator}" /* FIXME: needs native speaker review */,
+    de: "Unterstützt {creator}" /* FIXME: needs native speaker review */,
+  },
+  ledger_network_template: {
+    en: "via {network}",
+    es: "vía {network}",
+    pt: "via {network}" /* FIXME: needs native speaker review */,
+    de: "über {network}" /* FIXME: needs native speaker review */,
+  },
+  ledger_copy_btn_label: {
+    en: "Copy clean URL",
+    es: "Copiar URL limpia",
+    pt: "Copiar URL limpa" /* FIXME: needs native speaker review */,
+    de: "Bereinigte URL kopieren" /* FIXME: needs native speaker review */,
+  },
+  ledger_copy_btn_copied: {
+    en: "Copied!",
+    es: "¡Copiado!",
+    pt: "Copiado!" /* FIXME: needs native speaker review */,
+    de: "Kopiert!" /* FIXME: needs native speaker review */,
+  },
+
   // ── Popup: suspicious-params section (B15 entropy + B16 cross-site freq) ──
   suspicious_params_label:           { en: "Suspicious params",                                   es: "Parámetros sospechosos",                                  pt: "Parâmetros suspeitos",                                  de: "Verdächtige Parameter" },
   suspicious_params_entropy_group:   { en: "On this page (entropy)",                              es: "En esta página (entropía)",                               pt: "Nesta página (entropia)",                               de: "Auf dieser Seite (Entropie)" },
