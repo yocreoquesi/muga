@@ -108,6 +108,45 @@ function extractFromAnyParam(paramNames) {
   };
 }
 
+/**
+ * Builds a generic extract() that pulls the destination URL embedded in the
+ * URL's query string WITHOUT a key — the so-called "naked query" shape used
+ * by privacy proxies like href.li and anonym.to:
+ *
+ *   https://href.li/?https://destination.example.com/article
+ *   https://anonym.to/?https://destination.example.com/landing%20page
+ *
+ * In `new URL()` parsing, that destination ends up as `url.search`, beginning
+ * with `?http`. We strip the leading `?` and validate the remainder as a
+ * well-formed http(s) URL. URL-encoded characters in the destination
+ * (`%20`, `%2F`, …) round-trip cleanly because `url.search` preserves the
+ * raw text after `?` verbatim.
+ *
+ * WHY this is a separate helper (not extractFromParam): the destination has
+ * no parameter name, so `searchParams.get(...)` cannot retrieve it. Encoding
+ * this shape declaratively keeps wrapper entries one-line additions to the
+ * WRAPPERS table — same authoring ergonomics as `extractFromParam('u')`.
+ *
+ * @returns {(url: URL) => string|null}
+ */
+function extractFromUrlAfterQuery() {
+  return (url) => {
+    // url.search includes the leading "?"; strip it. Empty (no query) → null.
+    const raw = url.search.startsWith("?") ? url.search.slice(1) : url.search;
+    if (!raw) return null;
+    // Cheap pre-check: must start with http:// or https:// to be a destination.
+    // Avoids wasting a try/catch on tracker tokens like "?id=abc".
+    if (!/^https?:\/\//i.test(raw)) return null;
+    try {
+      const dest = new URL(raw);
+      if (dest.protocol !== "https:" && dest.protocol !== "http:") return null;
+      return raw;
+    } catch {
+      return null;
+    }
+  };
+}
+
 export const WRAPPERS = [
   {
     id: "awin",
@@ -185,6 +224,66 @@ export const WRAPPERS = [
     hostPatterns: ["l.instagram.com"],
     pathPatterns: null,
     extract: extractFromParam("u"),
+  },
+  {
+    id: "reddit-out",
+    name: "Reddit Outbound",
+    // WHY exact host: only out.reddit.com is the outbound wrapper. The apex
+    // reddit.com (and www./old./new.) are the social network itself and must
+    // never be flagged.
+    hostPatterns: ["out.reddit.com"],
+    pathPatterns: null,
+    extract: extractFromParam("url"),
+  },
+  {
+    id: "medium-link",
+    name: "Medium Short Link",
+    // WHY exact host + best-effort: link.medium.com is path-based and resolves
+    // through an HTTP redirect the engine cannot perform. We register it so
+    // detectWrapper() flags the host (useful for metrics + caps validator) and
+    // try ?url= as a query fallback — same pattern as t.co (issue #440).
+    hostPatterns: ["link.medium.com"],
+    pathPatterns: null,
+    extract: extractFromAnyParam(["url", "u"]),
+  },
+  {
+    id: "vk-away",
+    name: "VK Away",
+    // WHY exact host + path: VK's outbound wrapper lives only at
+    // away.vk.com/away.php. The apex vk.com is the social network itself.
+    hostPatterns: ["away.vk.com"],
+    pathPatterns: ["/away.php"],
+    extract: extractFromParam("to"),
+  },
+  {
+    id: "snap-exit",
+    name: "Snap Exit",
+    // WHY exact host: exit.sc is Snap's exit-redirect host (separate from
+    // snapchat.com). No path constraint — the destination travels in ?url=
+    // off the root.
+    hostPatterns: ["exit.sc"],
+    pathPatterns: null,
+    extract: extractFromParam("url"),
+  },
+  {
+    id: "hrefli",
+    name: "href.li (privacy proxy)",
+    // WHY exact host + path-embedded extractor: href.li is a "naked query"
+    // privacy proxy — the destination URL appears directly after `?` with no
+    // parameter key (e.g. `https://href.li/?https://example.com/article`).
+    // It must NOT survive in the final URL — see processUrl integration tests.
+    hostPatterns: ["href.li"],
+    pathPatterns: null,
+    extract: extractFromUrlAfterQuery(),
+  },
+  {
+    id: "anonymto",
+    name: "anonym.to (privacy proxy)",
+    // WHY same shape as href.li: anonym.to uses the identical naked-query
+    // proxy pattern. Tracked separately so metrics distinguish the two.
+    hostPatterns: ["anonym.to"],
+    pathPatterns: null,
+    extract: extractFromUrlAfterQuery(),
   },
   {
     id: "impact",
