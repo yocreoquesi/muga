@@ -19,7 +19,15 @@ import { writeFileSync, mkdirSync } from "node:fs";
 
 import { processUrl } from "../../src/lib/cleaner.js";
 import { loadCorpus } from "./lib/corpus-loader.mjs";
-import { compareEntry, buildReport, exitCodeFromReport } from "./lib/runner-core.mjs";
+import { compareEntry, buildReport, exitCodeFromReport, runCompetitors } from "./lib/runner-core.mjs";
+
+// Phase 2 of A6 (#506) ships the competitor adapter contract but no
+// real adapter yet. ClearURLs / AdGuard / Brave / Firefox each get
+// their own slice (phase 2a / 2b / 2c / 2d). Each will append to this
+// list. See tests/benchmark/competitors/README-CONTRACT.txt for the
+// adapter contract. Today this stays empty — runCompetitors handles
+// the no-adapters case gracefully.
+const COMPETITOR_ADAPTERS = [];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = join(__dirname, "corpus");
@@ -47,7 +55,8 @@ function main() {
     const result = processUrl(entry.url, PREFS, []);
     return compareEntry(entry, result);
   });
-  const report = buildReport({ corpus: entries, results, runner: "muga" });
+  const competitorResults = entries.map((entry) => runCompetitors(entry, COMPETITOR_ADAPTERS));
+  const report = buildReport({ corpus: entries, results, competitorResults, runner: "muga" });
   mkdirSync(REPORTS_DIR, { recursive: true });
   const stamp = report.generatedAt.replace(/[:.]/g, "-");
   const out = join(REPORTS_DIR, `${stamp}-muga.json`);

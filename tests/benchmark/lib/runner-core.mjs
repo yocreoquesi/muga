@@ -54,16 +54,51 @@ function pct(numerator, denominator) {
 }
 
 /**
+ * Run every competitor adapter against an entry, returning a record of
+ * { [adapter.name]: { cleanUrl } } per the contract in
+ * tests/benchmark/competitors/README-CONTRACT.txt.
+ *
+ * Adapter `clean()` errors are caught and the input URL is returned
+ * unchanged for that adapter — no single competitor's bug should crash
+ * the whole run.
+ *
+ * @param {{url:string}} entry
+ * @param {Array<{name:string, clean:(url:string)=>string}>} adapters
+ * @returns {Record<string, {cleanUrl:string}>}
+ */
+export function runCompetitors(entry, adapters) {
+  const out = {};
+  if (!Array.isArray(adapters)) return out;
+  for (const adapter of adapters) {
+    if (!adapter || typeof adapter.name !== "string" || typeof adapter.clean !== "function") continue;
+    let cleanUrl = entry.url;
+    try {
+      const result = adapter.clean(entry.url);
+      if (typeof result === "string") cleanUrl = result;
+    } catch {
+      // Swallow per contract — adapter bugs must not crash the run.
+    }
+    out[adapter.name] = { cleanUrl };
+  }
+  return out;
+}
+
+/**
  * Build the report object summarising a benchmark run.
  *
  * The per-category bucket gains a `matchRate` field (0..100, one decimal)
  * so report readers can scan for the worst-covered categories without
  * recomputing percentages.
  *
- * @param {{ corpus: Array<{url:string, category:string, expectedAction:string}>, results: Array<{ok:boolean, expected:object, actual:object, diff?:string}>, generatedAt?: string, runner?: string }} params
- * @returns {{ generatedAt:string, runner:string, totalEntries:number, matched:number, mismatched:number, matchRate:number, byCategory: Record<string,{total:number,matched:number,mismatched:number,matchRate:number}>, mismatches: Array<object> }}
+ * Optional `competitorResults` (parallel to `results`) carries per-entry
+ * competitor adapter outputs — when present, the report gains a
+ * `byCompetitor` summary keyed by adapter name. This is phase 2 of A6
+ * (#506) — phase 1 (#505) shipped MUGA-only.
+ *
+ * @param {{ corpus: Array<{url:string, category:string, expectedAction:string}>, results: Array<{ok:boolean, expected:object, actual:object, diff?:string}>, competitorResults?: Array<Record<string, {cleanUrl:string}>>, generatedAt?: string, runner?: string }} params
+ * @returns {{ generatedAt:string, runner:string, totalEntries:number, matched:number, mismatched:number, matchRate:number, byCategory: Record<string,{total:number,matched:number,mismatched:number,matchRate:number}>, byCompetitor?: Record<string,{total:number,changedFromInput:number,matchedExpectedClean:number,matchRate:number}>, mismatches: Array<object> }}
  */
-export function buildReport({ corpus, results, generatedAt, runner = "muga" }) {
+export function buildReport({ corpus, results, competitorResults, generatedAt, runner = "muga" }) {
   if (corpus.length !== results.length) {
     throw new Error(`buildReport: corpus length ${corpus.length} != results length ${results.length}`);
   }
@@ -93,7 +128,42 @@ export function buildReport({ corpus, results, generatedAt, runner = "muga" }) {
   for (const cat of Object.keys(byCategory)) {
     byCategory[cat].matchRate = pct(byCategory[cat].matched, byCategory[cat].total);
   }
-  return {
+
+  // Optional competitor summary. We only assert on `expectedClean` when
+  // the corpus entry declared one — same precedence rule as compareEntry.
+  let byCompetitor;
+  if (Array.isArray(competitorResults) && competitorResults.length === corpus.length) {
+    byCompetitor = {};
+    for (let i = 0; i < corpus.length; i++) {
+      const entry = corpus[i];
+      const adapterMap = competitorResults[i] || {};
+      for (const [name, { cleanUrl }] of Object.entries(adapterMap)) {
+        if (!byCompetitor[name]) {
+          byCompetitor[name] = { total: 0, changedFromInput: 0, matchedExpectedClean: 0, matchRate: 0 };
+        }
+        const bucket = byCompetitor[name];
+        bucket.total += 1;
+        if (cleanUrl !== entry.url) bucket.changedFromInput += 1;
+        if (entry.expectedClean !== undefined && cleanUrl === entry.expectedClean) {
+          bucket.matchedExpectedClean += 1;
+        }
+      }
+    }
+    // matchRate here is "fraction of corpus entries that have an
+    // `expectedClean` AND the competitor produced exactly it". It's a
+    // strict measure — competitors that produce a different-but-also-
+    // clean URL won't score. Fine for ranking comparison, less fine
+    // for raw "did they remove tracking?" coverage. Phase 3 reports
+    // can layer richer metrics on top.
+    for (const name of Object.keys(byCompetitor)) {
+      byCompetitor[name].matchRate = pct(
+        byCompetitor[name].matchedExpectedClean,
+        byCompetitor[name].total,
+      );
+    }
+  }
+
+  const out = {
     generatedAt: generatedAt || new Date().toISOString(),
     runner,
     totalEntries: corpus.length,
@@ -103,6 +173,8 @@ export function buildReport({ corpus, results, generatedAt, runner = "muga" }) {
     byCategory,
     mismatches,
   };
+  if (byCompetitor) out.byCompetitor = byCompetitor;
+  return out;
 }
 
 /**

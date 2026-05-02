@@ -8,7 +8,9 @@ import {
   buildReport,
   exitCodeFromReport,
   validateCorpusFile,
+  runCompetitors,
 } from "../benchmark/lib/runner-core.mjs";
+import { identityAdapter } from "../benchmark/competitors/identity.mjs";
 
 test("compareEntry — action-only match returns ok", () => {
   const r = compareEntry(
@@ -187,4 +189,100 @@ test("validateCorpusFile — rejects non-string expectedClean", () => {
   });
   assert.equal(v.ok, false);
   assert.ok(v.errors.some((e) => e.includes("expectedClean")));
+});
+
+// ── A6 phase 2 (#506) — competitor adapter contract ──────────────────
+
+test("runCompetitors — empty adapters list returns empty record", () => {
+  const out = runCompetitors({ url: "https://example.com/" }, []);
+  assert.deepEqual(out, {});
+});
+
+test("runCompetitors — null/undefined adapters list returns empty record", () => {
+  assert.deepEqual(runCompetitors({ url: "https://example.com/" }, null), {});
+  assert.deepEqual(runCompetitors({ url: "https://example.com/" }, undefined), {});
+});
+
+test("runCompetitors — identity adapter returns rawUrl unchanged", () => {
+  const out = runCompetitors({ url: "https://example.com/?utm_source=x" }, [identityAdapter]);
+  assert.deepEqual(out, { identity: { cleanUrl: "https://example.com/?utm_source=x" } });
+});
+
+test("runCompetitors — adapter throw is caught; cleanUrl falls back to input", () => {
+  const buggyAdapter = {
+    name: "buggy",
+    label: "Buggy fixture",
+    source: "n/a",
+    clean() { throw new Error("oops"); },
+  };
+  const out = runCompetitors({ url: "https://example.com/" }, [buggyAdapter]);
+  assert.deepEqual(out, { buggy: { cleanUrl: "https://example.com/" } });
+});
+
+test("runCompetitors — non-string adapter return falls back to input", () => {
+  const badReturnAdapter = {
+    name: "bad-return",
+    label: "Returns null",
+    source: "n/a",
+    clean() { return null; },
+  };
+  const out = runCompetitors({ url: "https://example.com/" }, [badReturnAdapter]);
+  assert.deepEqual(out, { "bad-return": { cleanUrl: "https://example.com/" } });
+});
+
+test("runCompetitors — skips malformed adapter entries (no name, no clean)", () => {
+  const out = runCompetitors({ url: "https://example.com/" }, [
+    null,
+    {},
+    { name: "no-clean" },
+    { clean: () => "x" }, // no name
+    identityAdapter,
+  ]);
+  assert.deepEqual(out, { identity: { cleanUrl: "https://example.com/" } });
+});
+
+test("buildReport — competitorResults absent → no byCompetitor in report", () => {
+  const corpus = [{ url: "u", category: "utm", expectedAction: "cleaned" }];
+  const results = [{ ok: true, expected: {}, actual: {} }];
+  const report = buildReport({ corpus, results });
+  assert.equal(report.byCompetitor, undefined);
+});
+
+test("buildReport — competitorResults present → byCompetitor summary", () => {
+  const corpus = [
+    { url: "https://example.com/?utm_source=x", category: "utm", expectedAction: "cleaned", expectedClean: "https://example.com/" },
+    { url: "https://example.com/article", category: "clean-urls", expectedAction: "untouched" },
+  ];
+  const results = [
+    { ok: true, expected: {}, actual: {} },
+    { ok: true, expected: {}, actual: {} },
+  ];
+  const competitorResults = [
+    // First entry: identity returns input unchanged (didn't strip utm_source)
+    { identity: { cleanUrl: "https://example.com/?utm_source=x" } },
+    // Second entry: identity returns input unchanged (correct — already clean)
+    { identity: { cleanUrl: "https://example.com/article" } },
+  ];
+  const report = buildReport({ corpus, results, competitorResults });
+  assert.ok(report.byCompetitor);
+  assert.equal(report.byCompetitor.identity.total, 2);
+  assert.equal(report.byCompetitor.identity.changedFromInput, 0); // identity never changes
+  assert.equal(report.byCompetitor.identity.matchedExpectedClean, 0); // first entry has expectedClean but identity didn't match it
+  assert.equal(report.byCompetitor.identity.matchRate, 0);
+});
+
+test("buildReport — byCompetitor matchRate counts entries WITH expectedClean only", () => {
+  const corpus = [
+    { url: "https://a.com/?utm=x", category: "utm", expectedAction: "cleaned", expectedClean: "https://a.com/" },
+    { url: "https://b.com/?utm=y", category: "utm", expectedAction: "cleaned", expectedClean: "https://b.com/" },
+  ];
+  const results = corpus.map(() => ({ ok: true, expected: {}, actual: {} }));
+  const competitorResults = [
+    // Adapter "perfect" produces the expectedClean for both
+    { perfect: { cleanUrl: "https://a.com/" } },
+    { perfect: { cleanUrl: "https://b.com/" } },
+  ];
+  const report = buildReport({ corpus, results, competitorResults });
+  assert.equal(report.byCompetitor.perfect.matchedExpectedClean, 2);
+  assert.equal(report.byCompetitor.perfect.matchRate, 100);
 });
