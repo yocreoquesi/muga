@@ -24,6 +24,7 @@ import {
   getAffiliateDomains,
   getPatternsForHost,
 } from "../lib/affiliates.js";
+import { detectWrapper, unwrap, WRAPPERS } from "../lib/wrapper-engine.js";
 
 // Attach onto the isolated-world window. Content scripts in the same
 // content_scripts entry share a window object; cleaner.js (loaded after
@@ -42,5 +43,8 @@ if (!window.__mugaCleaner) {
     AFFILIATE_PATTERNS,
     getAffiliateDomains,
     getPatternsForHost,
+    detectWrapper,
+    unwrap,
+    WRAPPERS,
   });
 }
