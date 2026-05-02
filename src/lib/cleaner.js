@@ -6,6 +6,7 @@
 import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
 import { extractCanonical } from "./canonical-extractor.js";
+import { shouldHonor } from "./honor-creator.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -201,6 +202,8 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
  * Processes a URL according to user preferences and blacklist/whitelist rules.
  *
  * Logic order:
+ *   0a. Honor Creator Mode (#452): pass redirect-network wrapper through
+ *       UNMODIFIED when user opted in AND referrer matches creatorAllowlist
  *   1. Blacklist check: domain-only entry → strip ALL params (Scenario D)
  *   2. Whitelist check: find protected affiliate values (never touch these)
  *   3. Foreign affiliate detection (Scenario C): skip whitelisted values
@@ -226,9 +229,27 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
  *   hostname — i.e. the page being cleaned. Failures from the tracker are
  *   swallowed: the cleaner pipeline must never break on storage errors.
  *   Pass `undefined`/`null` (or omit) in contexts where no tracker exists.
- * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null }}
+ * @param {string|null|undefined} [referrer]
+ *   Optional navigation referrer (#452, B14). When provided AND
+ *   `prefs.honorCreatorMode === true` AND the URL is a recognized redirect
+ *   wrapper AND the referrer matches an entry in `prefs.creatorAllowlist`,
+ *   the pipeline short-circuits with `action: "honored-creator"` and
+ *   leaves the wrapper URL unmodified so the creator's referral chain is
+ *   preserved. Background-only contexts that lack a referrer (or that
+ *   omit this argument) never enter the honor path — defaulting to
+ *   pre-feature behaviour.
+ * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, network?: string, creator?: string }}
+ *   `action` is one of:
+ *     `"untouched"`         — URL unchanged
+ *     `"cleaned"`           — tracking params and/or path tokens stripped
+ *     `"injected"`          — our affiliate tag was added
+ *     `"detected_foreign"`  — a third-party affiliate tag was detected
+ *     `"blacklisted"`       — domain-only blacklist stripped everything
+ *     `"honored-creator"`   — Honor Creator Mode passed the wrapper through
+ *                             unmodified; `network` (wrapper id) and
+ *                             `creator` (matching allowlist entry) are set.
  */
-export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker) {
+export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer) {
   let url;
   try {
     url = new URL(rawUrl);
@@ -238,6 +259,26 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+  }
+
+  // Step 0a: Honor Creator Mode (#452, B14). When the user opted in AND the
+  // navigation referrer matches an allowlisted creator AND the URL is a
+  // recognized redirect wrapper, pass it through UNMODIFIED so the creator's
+  // referral chain stays intact. Decision lives in src/lib/honor-creator.js
+  // (pure module, reuses Wrapper Engine for network classification).
+  // Background-only contexts (no referrer) never enter this branch.
+  const honor = shouldHonor({ url: rawUrl, referrer, prefs });
+  if (honor.honor) {
+    return {
+      cleanUrl: rawUrl,
+      action: "honored-creator",
+      removedTracking: [],
+      junkRemoved: 0,
+      detectedAffiliate: null,
+      preservedAffiliate: null,
+      network: honor.network,
+      creator: honor.creator,
+    };
   }
 
   // Step 0: unwrap recognized redirect wrappers (Awin etc.). The destination

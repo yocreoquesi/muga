@@ -225,6 +225,17 @@
       return true;
     }
 
+    // B14 (#452): popup asks the active tab for its document.referrer so
+    // the cleaner can decide whether to honor the creator's referral chain.
+    // No prefs gate — returning an empty string when nothing is known is
+    // safe (the cleaner treats no-referrer as "do not honor").
+    if (message.type === "GET_REFERRER") {
+      try {
+        sendResponse({ ok: true, referrer: document.referrer || "" });
+      } catch { /* channel closed */ }
+      return true;
+    }
+
     if (message.type === "SHOW_TEST_TOAST") {
       showAffiliateNotice(
         { param: "tag", value: "somestore-21" },
