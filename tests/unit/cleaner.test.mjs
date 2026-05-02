@@ -24,6 +24,10 @@ import { join, dirname } from "node:path";
 import { createRequire } from "node:module";
 import { processUrl, parseListEntry } from "../../src/lib/cleaner.js";
 import { AFFILIATE_PATTERNS } from "../../src/lib/affiliates.js";
+import {
+  createInMemoryAdapter,
+  createTracker,
+} from "../../src/lib/cross-site-frequency.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -2656,6 +2660,182 @@ describe("T1.5 — remoteParams consumed by processUrl", () => {
     assert.strictEqual(action, "cleaned");
     assert.ok(cleanUrl.includes("legit=1"), "non-tracking params must be preserved");
     assert.ok(!cleanUrl.includes("utm_source"), "built-in params must still be stripped");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// #495 — Cross-Site Frequency Tracker integration
+//
+// processUrl accepts an optional `frequencyTracker` (5th positional arg) that
+// implements `observe(domain, paramName, value)`. When supplied AND the user
+// has not opted out (`prefs.crossSiteFrequencyEnabled !== false`), the cleaner
+// records every stripped tracking param against the URL's first-party domain.
+//
+// Contract:
+//   - One observe() call per stripped tracking param (NOT per re-observation
+//     of the same URL by the caller).
+//   - Original VALUE — captured before deletion — is what we feed the tracker.
+//   - `id` (not a tracking param) must NOT be observed.
+//   - When the tracker is absent, behavior is identical to pre-#495 baseline.
+//   - When `crossSiteFrequencyEnabled === false`, the tracker is not invoked.
+//   - Promise rejections from observe() must NOT break the cleaner pipeline.
+// ---------------------------------------------------------------------------
+describe("#495 — frequency tracker integration with processUrl", () => {
+
+  /** Drains microtasks so fire-and-forget tracker calls settle before assertions. */
+  const flush = () => new Promise((r) => setImmediate(r));
+
+  // Hasher used by the in-memory tracker. Deterministic; no SubtleCrypto.
+  const stubHasher = async (s) => `h:${s}`;
+
+  test("invokes observe(domain, name, value) once per stripped tracking param, "
+    + "and skips non-tracking params like 'id'", async () => {
+    const calls = [];
+    const fakeTracker = {
+      observe: async (domain, name, value) => {
+        calls.push({ domain, name, value });
+      },
+    };
+    const { removedTracking } = processUrl(
+      "https://news.example/?utm_source=marketing&id=42",
+      PREFS,
+      [],
+      undefined,
+      fakeTracker,
+    );
+    await flush();
+    assert.deepEqual(removedTracking, ["utm_source"]);
+    assert.equal(calls.length, 1, "exactly one observe call");
+    assert.equal(calls[0].domain, "news.example");
+    assert.equal(calls[0].name, "utm_source");
+    assert.equal(calls[0].value, "marketing");
+  });
+
+  test("when no tracker is supplied, processUrl behaves identically to baseline", () => {
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://news.example/?utm_source=marketing&id=42",
+      PREFS,
+    );
+    assert.equal(action, "cleaned");
+    assert.equal(cleanUrl, "https://news.example/?id=42");
+    assert.deepEqual(removedTracking, ["utm_source"]);
+  });
+
+  test("when prefs.crossSiteFrequencyEnabled === false, observe is NOT called", async () => {
+    const calls = [];
+    const fakeTracker = {
+      observe: async (domain, name, value) => {
+        calls.push({ domain, name, value });
+      },
+    };
+    const prefs = { ...PREFS, crossSiteFrequencyEnabled: false };
+    processUrl(
+      "https://news.example/?utm_source=marketing",
+      prefs,
+      [],
+      undefined,
+      fakeTracker,
+    );
+    await flush();
+    assert.equal(calls.length, 0);
+  });
+
+  test("when prefs.crossSiteFrequencyEnabled is omitted (default), observe IS called", async () => {
+    const calls = [];
+    const fakeTracker = {
+      observe: async (domain, name, value) => {
+        calls.push({ domain, name, value });
+      },
+    };
+    processUrl(
+      "https://news.example/?utm_source=marketing",
+      PREFS, // no crossSiteFrequencyEnabled key
+      [],
+      undefined,
+      fakeTracker,
+    );
+    await flush();
+    assert.equal(calls.length, 1);
+  });
+
+  test("a rejecting observe() does NOT throw out of processUrl and does not corrupt the result", async () => {
+    const fakeTracker = {
+      observe: () => Promise.reject(new Error("storage offline")),
+    };
+    let result;
+    assert.doesNotThrow(() => {
+      result = processUrl(
+        "https://news.example/?utm_source=marketing",
+        PREFS,
+        [],
+        undefined,
+        fakeTracker,
+      );
+    });
+    // Wait so the rejection settles inside the suppressed catch handler.
+    await flush();
+    await flush();
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking, ["utm_source"]);
+  });
+
+  test("strips multiple tracking params and observes each one with its original value", async () => {
+    const calls = [];
+    const fakeTracker = {
+      observe: async (domain, name, value) => {
+        calls.push({ domain, name, value });
+      },
+    };
+    processUrl(
+      "https://news.example/?utm_source=marketing&utm_medium=email&fbclid=abc123",
+      PREFS,
+      [],
+      undefined,
+      fakeTracker,
+    );
+    await flush();
+    // Order is the order the cleaner stripped them in. Sort defensively for assertion.
+    const byName = Object.fromEntries(calls.map((c) => [c.name, c]));
+    assert.equal(calls.length, 3);
+    assert.equal(byName.utm_source.value, "marketing");
+    assert.equal(byName.utm_medium.value, "email");
+    assert.equal(byName.fbclid.value, "abc123");
+    for (const c of calls) {
+      assert.equal(c.domain, "news.example");
+    }
+  });
+
+  test("threshold-crossing integration: 3 unrelated domains × 3 distinct values → "
+    + "utm_source flagged via getFlagged()", async () => {
+    const adapter = createInMemoryAdapter();
+    const realTracker = createTracker({ adapter, hasher: stubHasher });
+
+    // Serialize observe() calls so the in-memory adapter's read-modify-write
+    // sequence doesn't race when processUrl fires-and-forgets multiple
+    // observations in quick succession. In production, navigation cadence is
+    // far slower than storage I/O so this isn't a real concern; the wrapper
+    // exists purely so the deterministic test doesn't depend on timing.
+    let chain = Promise.resolve();
+    const serializedTracker = {
+      observe: (domain, name, value) => {
+        const next = chain.then(() => realTracker.observe(domain, name, value));
+        chain = next.catch(() => {});
+        return next;
+      },
+    };
+
+    processUrl("https://a.example/?utm_source=marketing", PREFS, [], undefined, serializedTracker);
+    processUrl("https://b.example/?utm_source=email",     PREFS, [], undefined, serializedTracker);
+    processUrl("https://c.example/?utm_source=twitter",   PREFS, [], undefined, serializedTracker);
+    // Wait for the serialized chain to fully drain.
+    await chain;
+
+    const flagged = await realTracker.getFlagged();
+    assert.equal(flagged.length, 1);
+    assert.equal(flagged[0].param, "utm_source");
+    assert.ok(flagged[0].domains >= 3);
+    assert.ok(flagged[0].values >= 3);
   });
 
 });

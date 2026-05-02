@@ -155,7 +155,10 @@ function isAliExpressItemPage(hostname, pathname) {
 
 /**
  * Strips tracking params from a URL object, respecting affiliate, preserved,
- * and disabled-category params.  Returns { removed, junkCount }.
+ * and disabled-category params.  Returns { removed, removedValues, junkCount }
+ * where `removedValues` is a parallel array carrying the original values of
+ * each stripped param (captured BEFORE deletion) so callers can feed the
+ * cross-site-frequency tracker the (paramName, value) tuple. (#495)
  */
 function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
   const hostname = url.hostname;
@@ -175,17 +178,23 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
   }
 
   const removed = [];
+  const removedValues = [];
   for (const param of [...url.searchParams.keys()]) {
     const lower = param.toLowerCase();
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
     if (disabledParams.has(lower)) continue;
     if (isTrackingParam(lower, customParams, domainStrip, remoteParams)) {
+      // Capture the value BEFORE delete so we can feed it to the
+      // frequency tracker without re-parsing the URL. searchParams.get()
+      // returns "" for empty values; that's fine — the tracker hashes
+      // the empty string consistently.
+      removedValues.push(url.searchParams.get(param) ?? "");
       url.searchParams.delete(param);
       removed.push(param);
     }
   }
-  return { removed, junkCount: removed.length };
+  return { removed, removedValues, junkCount: removed.length };
 }
 
 /**
@@ -209,9 +218,17 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
  *   (opaque wrapper case — t.co, link.medium.com, …). Background-worker
  *   call sites that lack DOM access pass undefined and the canonical
  *   tier no-ops.
+ * @param {{ observe: (domain: string, paramName: string, value: string) => Promise<void> } | null | undefined} [frequencyTracker]
+ *   Optional cross-site-frequency tracker (#446 / #495). When provided AND
+ *   `prefs.crossSiteFrequencyEnabled !== false`, every stripped tracking
+ *   param triggers a fire-and-forget `tracker.observe(firstPartyDomain,
+ *   name, value)` call. The tracker's first-party domain is the URL's
+ *   hostname — i.e. the page being cleaned. Failures from the tracker are
+ *   swallowed: the cleaner pipeline must never break on storage errors.
+ *   Pass `undefined`/`null` (or omit) in contexts where no tracker exists.
  * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null }}
  */
-export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
+export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker) {
   let url;
   try {
     url = new URL(rawUrl);
@@ -298,6 +315,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
 
   const patterns = getPatternsForHost(hostname);
   const removedTracking = [];
+  const removedTrackingValues = [];
   let detectedAffiliate = null;
   let action = "untouched";
 
@@ -308,8 +326,12 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
   if (domainWhitelisted) {
     // Still strip tracking params, but leave all affiliate params untouched and skip injection
     const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
-    const { removed: removedTrackingForSkip } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip);
+    const {
+      removed: removedTrackingForSkip,
+      removedValues: removedValuesForSkip,
+    } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip);
     const actionForSkip = (removedTrackingForSkip.length > 0 || pathCleaned) ? "cleaned" : "untouched";
+    recordFrequency(frequencyTracker, prefs, hostname, removedTrackingForSkip, removedValuesForSkip);
     return {
       cleanUrl: url.toString(),
       action: actionForSkip,
@@ -354,12 +376,16 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
     const { preserved } = getDomainParamSets(hostname, domainRules);
     for (const param of [...url.searchParams.keys()]) {
       if (preserved.has(param.toLowerCase())) continue;
+      // Capture original value BEFORE delete so the frequency tracker can
+      // record the (paramName, value) tuple. (#495)
+      removedTrackingValues.push(url.searchParams.get(param) ?? "");
       url.searchParams.delete(param);
       removedTracking.push(param);
     }
   } else {
-    const { removed } = stripTrackingParams(url, prefs, domainRules, disabledCategories);
+    const { removed, removedValues } = stripTrackingParams(url, prefs, domainRules, disabledCategories);
     removedTracking.push(...removed);
+    removedTrackingValues.push(...removedValues);
   }
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
@@ -427,6 +453,8 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
     }
   }
 
+  recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
+
   return {
     cleanUrl: url.toString(),
     action,
@@ -435,4 +463,44 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle) {
     detectedAffiliate,
     preservedAffiliate: detectPreservedAffiliate(url, patterns),
   };
+}
+
+/**
+ * Fire-and-forget bridge from the cleaner to the cross-site-frequency
+ * tracker (#446 / #495). One observe() call per stripped tracking param,
+ * with the URL's hostname as the first-party domain and the param's
+ * ORIGINAL value (captured before deletion) as the value.
+ *
+ * No-op when:
+ *   - no tracker was injected (bookkeeping callers / background contexts
+ *     that don't have a tracker wired);
+ *   - the user opted out via `prefs.crossSiteFrequencyEnabled === false`
+ *     (default-on; only an explicit `false` disables);
+ *   - the firstPartyDomain can't be derived (defensive).
+ *
+ * Failures are swallowed via `.catch(() => {})` because storage errors
+ * MUST NOT break the cleaner pipeline. The cleaner's job is to clean URLs;
+ * frequency tracking is an opportunistic side-channel.
+ *
+ * @param {{ observe: Function } | null | undefined} tracker
+ * @param {object} prefs
+ * @param {string} firstPartyDomain
+ * @param {string[]} names
+ * @param {string[]} values - parallel array; values[i] corresponds to names[i]
+ */
+function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
+  if (!tracker || typeof tracker.observe !== "function") return;
+  if (prefs?.crossSiteFrequencyEnabled === false) return;
+  if (!firstPartyDomain) return;
+  if (!names || names.length === 0) return;
+  for (let i = 0; i < names.length; i++) {
+    try {
+      const ret = tracker.observe(firstPartyDomain, names[i], values[i] ?? "");
+      if (ret && typeof ret.catch === "function") {
+        ret.catch(() => {});
+      }
+    } catch {
+      // Synchronous throw from observe() — swallow. Cleaner must not break.
+    }
+  }
 }
