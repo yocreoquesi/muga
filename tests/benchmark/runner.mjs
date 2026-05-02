@@ -20,14 +20,17 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { processUrl } from "../../src/lib/cleaner.js";
 import { loadCorpus } from "./lib/corpus-loader.mjs";
 import { compareEntry, buildReport, exitCodeFromReport, runCompetitors } from "./lib/runner-core.mjs";
+import { baselineAdapter } from "./competitors/baseline.mjs";
 
-// Phase 2 of A6 (#506) ships the competitor adapter contract but no
-// real adapter yet. ClearURLs / AdGuard / Brave / Firefox each get
-// their own slice (phase 2a / 2b / 2c / 2d). Each will append to this
-// list. See tests/benchmark/competitors/README-CONTRACT.txt for the
-// adapter contract. Today this stays empty — runCompetitors handles
-// the no-adapters case gracefully.
-const COMPETITOR_ADAPTERS = [];
+// A6 phase 2 (#506) competitor adapter list.
+//
+// Phase 2a ships the synthetic baseline (UTM + common click IDs) — a
+// floor reference line. Phases 2b/2c/2d/2e will add the real
+// competitors (ClearURLs / AdGuard / Brave / Firefox) — each is a
+// separate slice that vendors a rule snapshot under
+// tests/benchmark/competitors/data/ and appends an adapter here.
+// See tests/benchmark/competitors/README-CONTRACT.txt for the contract.
+const COMPETITOR_ADAPTERS = [baselineAdapter];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = join(__dirname, "corpus");
