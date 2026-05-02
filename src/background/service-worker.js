@@ -605,7 +605,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // that onStartup can't reach. Runs in parallel with URL processing.
     maybeFetchRemoteRules(_remoteRulesDeps());
     const tabId = sender.tab?.id;
-    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats })
+    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         if (typeof tabId === "number" && result.preservedAffiliate) {
@@ -831,7 +831,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 });
 
-async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false } = {}) {
+async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, referrer = "" } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   // _domainRulesReady is nulled on fetch failure to allow retry on the next call
   if (!_domainRulesReady) _domainRulesReady = _loadDomainRules();
@@ -854,7 +854,11 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     // (#446 / #495). Cleaner side fires-and-forgets one observe() per
     // stripped tracking param, gated on prefs.crossSiteFrequencyEnabled.
     // Null-safe: cleaner no-ops when the tracker is missing.
-    result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker);
+    // 6th arg `referrer` (#452 / B14) wires Honor Creator Mode — when the
+    // user enabled the toggle AND the navigation referrer matches an
+    // allowlisted creator, the cleaner short-circuits with action
+    // "honored-creator". Empty string for non-navigation contexts.
+    result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker, referrer);
   } catch (err) {
     console.error("[MUGA] processUrl failed:", err, rawUrl);
     return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };

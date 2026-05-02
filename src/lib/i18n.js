@@ -44,6 +44,18 @@ export const TRANSLATIONS = {
   confirm_ok:            { en: "OK", es: "OK", pt: "OK", de: "OK" },
   domain_stats_label:    { en: "Your top trackers", es: "Tus principales rastreadores", pt: "Seus principais rastreadores", de: "Deine häufigsten Tracker" },
 
+  // ── Popup: Honor Creator Mode badge (#452, B14) ─────────────────────────
+  // Surfaced when MUGA passes a redirect-network wrapper through unmodified
+  // because the navigation referrer matched an allowlisted creator. {network}
+  // is the wrapper id (e.g. "skimlinks"); {creator} is the matching entry
+  // (e.g. "youtube.com/@LinusTechTips").
+  popup_badge_honored_creator: {
+    en: "Routed through {network} to honor {creator}",
+    es: "Pasamos por {network} para honrar a {creator}",
+    pt: "Passando por {network} para honrar {creator}" /* FIXME: needs native speaker review */,
+    de: "Über {network} weitergeleitet, um {creator} zu ehren" /* FIXME: needs native speaker review */,
+  },
+
   // ── Popup: suspicious-params section (B15 entropy + B16 cross-site freq) ──
   suspicious_params_label:           { en: "Suspicious params",                                   es: "Parámetros sospechosos",                                  pt: "Parâmetros suspeitos",                                  de: "Verdächtige Parameter" },
   suspicious_params_entropy_group:   { en: "On this page (entropy)",                              es: "En esta página (entropía)",                               pt: "Nesta página (entropia)",                               de: "Auf dieser Seite (Entropie)" },

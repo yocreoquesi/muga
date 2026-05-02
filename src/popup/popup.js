@@ -495,6 +495,13 @@ function _resetPreviewDom() {
     const tag = document.getElementById("preview-preserved-tag");
     if (tag) tag.textContent = "";
   }
+  // B14 (#452): honored-creator badge slot. Reset every render so a previous
+  // navigation's badge never bleeds into the next.
+  const previewHonored = el("preview-honored");
+  if (previewHonored) {
+    previewHonored.hidden = true;
+    previewHonored.textContent = "";
+  }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
   const reportUncleanLink = el("report-unclean");
@@ -553,7 +560,36 @@ async function showUrlPreview(prefs, lang) {
     if (resp.ok) domainRules = await resp.json();
   } catch (_) { /* non-critical: preview works without domain rules */ }
 
-  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules);
+  // B14 (#452): fetch the active tab's `document.referrer` from the content
+  // script so the cleaner can decide whether to honor the creator chain.
+  // Best-effort: missing/silent content scripts (chrome:// pages, popups,
+  // first-load before injection completes) collapse to no referrer, which
+  // disables honoring entirely — same as background-only contexts.
+  let referrer = "";
+  if (tab?.id) {
+    try {
+      const resp = await chrome.tabs.sendMessage(tab.id, { type: "GET_REFERRER" });
+      if (resp && typeof resp.referrer === "string") referrer = resp.referrer;
+    } catch { /* content script not loaded — ignore */ }
+  }
+
+  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules, undefined, undefined, referrer);
+
+  // B14 (#452): honored-creator badge. Surfaced when the wrapper URL was
+  // passed through unmodified to honor a creator referral chain. The
+  // template carries {network} and {creator} placeholders sourced from the
+  // cleaner result. textContent is used (no innerHTML) so user-controllable
+  // creator strings can never become an injection vector.
+  if (result.action === "honored-creator") {
+    const honoredEl = document.getElementById("preview-honored");
+    if (honoredEl) {
+      const template = t("popup_badge_honored_creator", lang);
+      honoredEl.textContent = template
+        .replace("{network}", String(result.network ?? ""))
+        .replace("{creator}", String(result.creator ?? ""));
+      honoredEl.hidden = false;
+    }
+  }
 
   // Wedge feedback: when MUGA preserved a third-party creator's affiliate tag,
   // surface it visibly. This is the core "fair to creators" promise made
