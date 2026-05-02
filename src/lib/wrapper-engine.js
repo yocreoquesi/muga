@@ -76,6 +76,38 @@ function extractFromParam(paramName) {
   };
 }
 
+/**
+ * Tries each query-parameter name in order and returns the first that yields
+ * a well-formed http(s) URL. Returns null when none succeed. Used by short
+ * URLs whose canonical destination lives behind an HTTP redirect (which the
+ * engine cannot follow) but where the destination is sometimes attached as
+ * a query fallback by upstream tooling.
+ *
+ * WHY: t.co is path-based (`/abcdef`) and the real destination only resolves
+ * via a 301 the engine cannot perform. Per #440, we register the host so
+ * detectWrapper() flags it, and try a small allowlist of conventional query
+ * keys (`url`, `u`) before giving up. The host is still identified as a
+ * wrapper (useful for caps-validator and metrics) even when extraction fails.
+ * @param {string[]} paramNames
+ * @returns {(url: URL) => string|null}
+ */
+function extractFromAnyParam(paramNames) {
+  return (url) => {
+    for (const name of paramNames) {
+      const value = url.searchParams.get(name);
+      if (!value) continue;
+      try {
+        const dest = new URL(value);
+        if (dest.protocol !== "https:" && dest.protocol !== "http:") continue;
+        return value;
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  };
+}
+
 export const WRAPPERS = [
   {
     id: "awin",
@@ -109,6 +141,48 @@ export const WRAPPERS = [
     id: "tradetracker",
     name: "TradeTracker",
     hostPatterns: ["tc.tradetracker.net"],
+    pathPatterns: null,
+    extract: extractFromParam("u"),
+  },
+  {
+    id: "tco",
+    name: "Twitter t.co",
+    // WHY exact host: t.co is the only label; subdomains like api.t.co are
+    // unrelated services and must not be flagged as wrappers.
+    hostPatterns: ["t.co"],
+    pathPatterns: null,
+    // WHY query fallback: t.co's canonical form is path-based and resolves
+    // through an HTTP 301 the engine cannot follow. We try ?url= / ?u= which
+    // some upstream tools attach, and otherwise return null gracefully.
+    extract: extractFromAnyParam(["url", "u"]),
+  },
+  {
+    id: "facebook-l",
+    name: "Facebook Outbound (web)",
+    // WHY only l.facebook.com (not facebook.com / www.facebook.com): the
+    // outbound link wrapper lives exclusively on the l. subdomain. Matching
+    // the parent would catch unrelated profile/post URLs.
+    hostPatterns: ["l.facebook.com"],
+    pathPatterns: ["/l.php"],
+    extract: extractFromParam("u"),
+  },
+  {
+    id: "facebook-lm",
+    name: "Facebook Outbound (mobile)",
+    // WHY separate id: l. and lm. carry the same wrapper schema but represent
+    // different surfaces (web vs. mobile-web). Tracking them separately lets
+    // metrics distinguish where outbound clicks originate.
+    hostPatterns: ["lm.facebook.com"],
+    pathPatterns: ["/l.php"],
+    extract: extractFromParam("u"),
+  },
+  {
+    id: "instagram-l",
+    name: "Instagram Outbound",
+    // WHY only l.instagram.com: parent instagram.com is the social network
+    // itself and must never be flagged. The outbound wrapper has no fixed
+    // path prefix — the destination travels in ?u= directly off the root.
+    hostPatterns: ["l.instagram.com"],
     pathPatterns: null,
     extract: extractFromParam("u"),
   },
