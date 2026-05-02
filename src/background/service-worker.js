@@ -22,6 +22,11 @@ import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
 import { createToolbarPresenter, iconForState } from "../lib/toolbar-presenter.js";
+import {
+  createTracker as createFrequencyTracker,
+  createChromeLocalAdapter as createFrequencyChromeAdapter,
+  defaultHasher as defaultFrequencyHasher,
+} from "../lib/cross-site-frequency.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -140,6 +145,22 @@ const _origError = console.error.bind(console);
 console.error = (...args) => { _origError(...args); appendSessionLog("error", args); };
 const _origWarn = console.warn.bind(console);
 console.warn = (...args) => { _origWarn(...args); appendSessionLog("warn", args); };
+
+// --- Cross-site frequency tracker singleton (#446 / #495) ---
+//
+// The tracker is wired ONCE per service-worker lifetime. We pass it into
+// every processUrl() call from this SW so the cleaner can record the
+// (firstPartyDomain, paramName, value) tuple for each stripped tracking
+// param. Storage lives in chrome.storage.local — never sync.
+//
+// `createChromeLocalAdapter()` is feature-detected: in test contexts (and
+// in the rare runtime where chrome.storage.local is missing), it returns
+// null and we leave the tracker undefined. The cleaner already treats a
+// missing tracker as a no-op, so we don't need any extra guards.
+const _frequencyAdapter = createFrequencyChromeAdapter();
+const frequencyTracker = _frequencyAdapter
+  ? createFrequencyTracker({ adapter: _frequencyAdapter, hasher: defaultFrequencyHasher })
+  : null;
 
 // --- Prefs cache ---
 
@@ -829,7 +850,11 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
 
   let result;
   try {
-    result = processUrl(rawUrl, effectivePrefs, domainRules);
+    // 5th arg `frequencyTracker` is the cross-site-frequency singleton
+    // (#446 / #495). Cleaner side fires-and-forgets one observe() per
+    // stripped tracking param, gated on prefs.crossSiteFrequencyEnabled.
+    // Null-safe: cleaner no-ops when the tracker is missing.
+    result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker);
   } catch (err) {
     console.error("[MUGA] processUrl failed:", err, rawUrl);
     return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
