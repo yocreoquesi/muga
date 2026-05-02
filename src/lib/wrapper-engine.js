@@ -55,24 +55,62 @@
  *   extract: (url: URL) => string|null,
  * }>}
  */
+/**
+ * Builds a generic extract() that pulls `paramName` from the URL's query
+ * string and validates the result is a well-formed HTTP(S) URL. Centralizes
+ * the try/catch + protocol guard so each network entry stays declarative.
+ * @param {string} paramName
+ * @returns {(url: URL) => string|null}
+ */
+function extractFromParam(paramName) {
+  return (url) => {
+    const value = url.searchParams.get(paramName);
+    if (!value) return null;
+    try {
+      const dest = new URL(value);
+      if (dest.protocol !== "https:" && dest.protocol !== "http:") return null;
+      return value;
+    } catch {
+      return null;
+    }
+  };
+}
+
 export const WRAPPERS = [
   {
     id: "awin",
     name: "Awin",
     hostPatterns: ["awin1.com", "www.awin1.com"],
     pathPatterns: ["/cread.php", "/awclick.php"],
-    extract: (url) => {
-      const p = url.searchParams.get("p");
-      if (!p) return null;
-      // The URL API has already URL-decoded p; verify it's a valid HTTP(S) URL.
-      try {
-        const dest = new URL(p);
-        if (dest.protocol !== "https:" && dest.protocol !== "http:") return null;
-        return p;
-      } catch {
-        return null;
-      }
-    },
+    extract: extractFromParam("p"),
+  },
+  {
+    id: "skimlinks",
+    name: "Skimlinks",
+    hostPatterns: ["go.redirectingat.com", "go.skimresources.com"],
+    pathPatterns: null,
+    extract: extractFromParam("url"),
+  },
+  {
+    id: "shareasale",
+    name: "ShareASale",
+    hostPatterns: ["shareasale.com", "www.shareasale.com"],
+    pathPatterns: ["/r.cfm"],
+    extract: extractFromParam("urllink"),
+  },
+  {
+    id: "rakuten",
+    name: "Rakuten LinkShare",
+    hostPatterns: ["click.linksynergy.com"],
+    pathPatterns: ["/deeplink"],
+    extract: extractFromParam("murl"),
+  },
+  {
+    id: "tradetracker",
+    name: "TradeTracker",
+    hostPatterns: ["tc.tradetracker.net"],
+    pathPatterns: null,
+    extract: extractFromParam("u"),
   },
 ];
 
