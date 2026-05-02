@@ -62,6 +62,15 @@
     <div id="domain-stats-list"></div>
   </details>
 
+  <!-- Suspicious params section (#446, B16). Surfaces both the entropy
+       heuristic flags (B15, this page) AND the cross-site frequency
+       flags (across visited sites). Hidden until at least one subgroup
+       has content so a fresh install never sees a chrome-less header. -->
+  <details class="suspicious-params" id="suspicious-params" hidden>
+    <summary data-i18n="suspicious_params_label">Suspicious params</summary>
+    <div id="suspicious-params-list"></div>
+  </details>
+
   <details class="history" id="history" hidden>
     <summary class="history-summary" data-i18n="history_label">This session</summary>
     <div id="history-list"></div>

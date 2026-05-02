@@ -34,6 +34,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `remoteRulesEnabled` | boolean | `false` | Opt-in: fetch signed remote parameter updates weekly. Default off (zero network activity on fresh install) |
 | `honorCreatorMode` | boolean | `false` | Opt-in (#435, B12): preserve creator referral chains on trusted redirect networks. Plumbing only — no behaviour wired yet. |
 | `canonicalExtractorEnabled` | boolean | `true` | (#442, B7) When the wrapper engine detects an opaque wrapper (host matched but no destination in URL), consult content-script-supplied `<link rel=canonical>` / JSON-LD `@id` before giving up. Default ON. |
+| `crossSiteFrequencyEnabled` | boolean | `true` | (#446, B16) Local-only Cross-Site Frequency Tracker: maintains a `(paramName, sha256(value))` map keyed per first-party domain so the popup can flag params that appear on 3+ domains AND have 3+ distinct values. LRU-capped at 1000 unique params. NEVER transmitted. Toggle off to make observations a no-op and hide the freq subgroup. |
 
 ### List entry format
 
@@ -63,6 +64,7 @@ Device-only. ~10 MB quota.
 | `domainStats` | object | `{}` | Per-domain tracker counts map (`{ domain: { params, urls } }`). Capped at 50 domains (LRU eviction) |
 | `remoteParams` | string[] | `[]` | Cached remote tracking params from the last signed fetch (only populated when remoteRulesEnabled) |
 | `remoteRulesMeta` | object | see below | Metadata for the last remote-rules fetch: `{ version, fetchedAt, paramCount, lastError, published }` |
+| `crossSiteFreq` | object | `{ params: {} }` | (#446, B16) Local-only frequency tracker state. Shape: `{ params: { [paramName]: { domains: string[], values: string[] /* sha256 hex */, lastSeen: number } } }`. LRU-capped at 1000 paramNames. NEVER transmitted. |
 
 ---
 

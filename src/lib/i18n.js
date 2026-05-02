@@ -43,6 +43,12 @@ export const TRANSLATIONS = {
   confirm_cancel:        { en: "Cancel", es: "Cancelar", pt: "Cancelar", de: "Abbrechen" },
   confirm_ok:            { en: "OK", es: "OK", pt: "OK", de: "OK" },
   domain_stats_label:    { en: "Your top trackers", es: "Tus principales rastreadores", pt: "Seus principais rastreadores", de: "Deine häufigsten Tracker" },
+
+  // ── Popup: suspicious-params section (B15 entropy + B16 cross-site freq) ──
+  suspicious_params_label:           { en: "Suspicious params",                                   es: "Parámetros sospechosos",                                  pt: "Parâmetros suspeitos",                                  de: "Verdächtige Parameter" },
+  suspicious_params_entropy_group:   { en: "On this page (entropy)",                              es: "En esta página (entropía)",                               pt: "Nesta página (entropia)",                               de: "Auf dieser Seite (Entropie)" },
+  suspicious_params_frequency_group: { en: "Across sites you've visited",                         es: "En varios sitios que has visitado",                       pt: "Em vários sites que você visitou",                      de: "Über besuchte Sites hinweg" },
+  suspicious_params_freq_detail:     { en: "{domains} domains • {values} distinct values",        es: "{domains} dominios • {values} valores distintos",         pt: "{domains} domínios • {values} valores distintos",       de: "{domains} Domains • {values} verschiedene Werte" },
   domain_stats_empty:    { en: "No domain stats yet. Keep browsing!", es: "Aún no hay estadísticas. ¡Sigue navegando!", pt: "Sem estatísticas ainda. Continue navegando!", de: "Noch keine Domain-Statistiken. Weiter surfen!" },
   domain_stats_params:   { en: "params stripped", es: "parámetros eliminados", pt: "parâmetros removidos", de: "Parameter entfernt" },
   domain_stats_urls:     { en: "URLs cleaned", es: "URLs limpiadas", pt: "URLs limpas", de: "URLs bereinigt" },

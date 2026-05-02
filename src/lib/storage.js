@@ -118,6 +118,13 @@ export const PREF_DEFAULTS = {
   // bundle" (<link rel=canonical> + JSON-LD @id) BEFORE giving up. Disable
   // here to bypass that tier entirely without uninstalling content scripts.
   canonicalExtractorEnabled: true,
+  // Cross-Site Frequency Tracker toggle (#446, B16). Default ON: a local-
+  // only correlation map of (paramName, hashedValue) per first-party
+  // domain, used to surface likely cross-site identifiers in the popup.
+  // Privacy-sensitive enough to deserve its own toggle even though the
+  // data never leaves the device — turning it off makes observe() a
+  // no-op and hides the freq subgroup in the suspicious-params section.
+  crossSiteFrequencyEnabled: true,
 };
 
 /**
