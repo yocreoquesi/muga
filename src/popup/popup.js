@@ -16,6 +16,7 @@ import {
   createChromeLocalAdapter as createFrequencyAdapter,
   defaultHasher as frequencyHasher,
 } from "../lib/cross-site-frequency.js";
+import { buildUpstreamPayload } from "../lib/csft-upstream.js";
 import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 
@@ -815,7 +816,11 @@ async function showSuspiciousParams(prefs, lang) {
   } catch { /* tab query may fail in tests; entropy stays empty */ }
 
   // ── Frequency subgroup: gated on the dedicated pref toggle ──
+  // We also fetch the raw tracker state once so the per-row "Report
+  // upstream" button (#537) can extract its privacy-bounded payload via
+  // the csft-upstream module — without re-reading storage per click.
   let frequencyFlags = [];
+  let trackerState = null;
   if (prefs.crossSiteFrequencyEnabled !== false) {
     try {
       const adapter = createFrequencyAdapter();
@@ -826,6 +831,10 @@ async function showSuspiciousParams(prefs, lang) {
           enabled: true,
         });
         frequencyFlags = await tracker.getFlagged();
+        // Pull the raw {params: {...}} shape so csft-upstream can resolve
+        // the first-party domain count for any flagged param. The module
+        // tolerates this wrapped shape natively.
+        try { trackerState = await adapter.get(); } catch { /* best-effort */ }
       }
     } catch { /* best-effort; freq subgroup just stays empty */ }
   }
@@ -865,6 +874,12 @@ async function showSuspiciousParams(prefs, lang) {
       // stays visible after promotion (collapses button into a "done"
       // disabled state) so the user keeps the visual receipt.
       _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
+      // #537: per-row Report upstream button. Opens a deep-linked GitHub
+      // issue pre-filled with ONLY the param name + first-party-domain
+      // count via the csft-upstream privacy module. Entropy-flagged params
+      // typically aren't in the tracker store yet → count resolves to 0,
+      // which is the correct, privacy-preserving default.
+      _appendReportUpstreamButton(row, flag.param, trackerState, lang);
 
       list.appendChild(row);
     }
@@ -896,6 +911,8 @@ async function showSuspiciousParams(prefs, lang) {
       row.appendChild(detailEl);
 
       _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
+      // #537: per-row Report upstream button (see entropy block above).
+      _appendReportUpstreamButton(row, flag.param, trackerState, lang);
 
       list.appendChild(row);
     }
@@ -975,6 +992,63 @@ function _appendStripLocallyButton(row, paramName, alreadyPromoted, prefs, lang)
       }
     });
   }
+  row.appendChild(btn);
+}
+
+/**
+ * Appends the per-row "Report upstream" button to a Suspicious-params row
+ * (#537). Clicking opens a deep-linked GitHub issue pre-filled with ONLY
+ * the param name and the count of distinct first-party domains the user
+ * has observed it on.
+ *
+ * Privacy contract: the deep-link payload comes EXCLUSIVELY from
+ * `buildUpstreamPayload` (csft-upstream.js), whose return type is a fresh
+ * 2-field object literal. There is no path through which a value, hash,
+ * or domain string can leak into the URL — even if this glue is later
+ * refactored carelessly. The structural enforcement lives in the module,
+ * not in this caller.
+ *
+ * Anchor opens via window.open(url, '_blank', 'noopener,noreferrer') per
+ * the project security rule (no opener leakage; no referrer to GitHub).
+ *
+ * @param {HTMLElement}        row          The .suspicious-row being built.
+ * @param {string}             paramName    Original-case param name.
+ * @param {object|null}        trackerState Raw cross-site-frequency state
+ *                                          ({params:{...}}) or null when the
+ *                                          frequency tracker is disabled or
+ *                                          the param was entropy-only-flagged.
+ * @param {string}             lang         Active UI language code.
+ */
+function _appendReportUpstreamButton(row, paramName, trackerState, lang) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "report-upstream-btn";
+  btn.dataset.param = paramName;
+  btn.textContent = t("report_upstream_btn", lang);
+  btn.setAttribute("aria-label", t("report_upstream_btn", lang));
+  btn.addEventListener("click", () => {
+    try {
+      // Privacy boundary lives INSIDE buildUpstreamPayload — its return
+      // type is a fresh 2-field object literal, so nothing else can ride
+      // along. We only ever read the two fields back out below.
+      const payload = buildUpstreamPayload(trackerState, paramName);
+      const titleTpl = t("report_upstream_issue_title", lang);
+      const bodyTpl = t("report_upstream_issue_body", lang);
+      const title = titleTpl
+        .replace("{paramName}", payload.paramName)
+        .replace("{count}", String(payload.firstPartyDomainCount));
+      const body = bodyTpl
+        .replace("{paramName}", payload.paramName)
+        .replace("{count}", String(payload.firstPartyDomainCount));
+      const url = `https://github.com/yocreoquesi/muga/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=needs-triage`;
+      // _blank + noopener + noreferrer per the project security rule —
+      // GitHub never sees document.referrer and the new tab can't
+      // touch window.opener.
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error("[MUGA] report-upstream open:", err);
+    }
+  });
   row.appendChild(btn);
 }
 

@@ -784,8 +784,8 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 
 .suspicious-row {
   display: grid;
-  /* #536: name | detail | strip-locally button */
-  grid-template-columns: 1fr auto auto;
+  /* #536 + #537: name | detail | strip-locally button | report-upstream button */
+  grid-template-columns: 1fr auto auto auto;
   gap: 8px;
   align-items: center;
   padding: 4px 14px;
@@ -813,6 +813,23 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   opacity: 0.6;
   cursor: default;
   border-color: transparent;
+}
+
+/* #537: per-row "Report upstream" button. Same pill aesthetic as the
+ * Strip locally button so they read as a paired action set within the
+ * Suspicious params row. */
+.report-upstream-btn {
+  background: transparent;
+  border: 1px solid var(--border-1, #ccc);
+  color: var(--text-1, inherit);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.report-upstream-btn:hover:not(:disabled) {
+  background: var(--bg-2, rgba(0, 0, 0, 0.04));
 }
 
 .strip-locally-count {
