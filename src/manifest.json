@@ -36,7 +36,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/history-defuser.js", "content/window-name-defuser.js", "content/dom-link-rewriter.js", "content/cleaner.js"],
+      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/history-defuser.js", "content/window-name-defuser.js", "content/dom-link-rewriter.js", "content/dom-link-rewriter-click.js", "content/cleaner.js"],
       "run_at": "document_start"
     }
   ],
