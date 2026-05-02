@@ -112,6 +112,17 @@ export const WRAPPERS = [
     pathPatterns: null,
     extract: extractFromParam("u"),
   },
+  {
+    id: "impact",
+    name: "Impact Radius",
+    // WHY regex: Impact assigns brand-specific subdomains on pxf.io
+    // (gohealth.pxf.io, target.pxf.io, …). Anchors require ≥1 subdomain
+    // label and a literal ".pxf.io" suffix to block apex pxf.io and
+    // suffix look-alikes (notpxf.io, pxf.iox).
+    hostPatterns: [/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.pxf\.io$/],
+    pathPatterns: null,
+    extract: extractFromParam("u"),
+  },
 ];
 
 /**
