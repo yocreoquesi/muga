@@ -7,6 +7,7 @@ import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
 import { extractCanonical } from "./canonical-extractor.js";
 import { shouldHonor } from "./honor-creator.js";
+import { classify as classifyParams } from "./param-classifier.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -161,7 +162,7 @@ function isAliExpressItemPage(hostname, pathname) {
  * each stripped param (captured BEFORE deletion) so callers can feed the
  * cross-site-frequency tracker the (paramName, value) tuple. (#495)
  */
-function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
+function stripTrackingParams(url, prefs, domainRules, disabledCategories, classifierStripSet) {
   const hostname = url.hostname;
   const patterns = getPatternsForHost(hostname);
   const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
@@ -178,6 +179,13 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
     }
   }
 
+  // Bounded-scope classifier strip set (#530). Lowercased for case-insensitive
+  // membership check. Affiliate precedence is enforced here too: a param is
+  // never stripped if it's in the affiliate set, regardless of classifier.
+  const classifierLower = classifierStripSet
+    ? new Set([...classifierStripSet].map(p => p.toLowerCase()))
+    : null;
+
   const removed = [];
   const removedValues = [];
   for (const param of [...url.searchParams.keys()]) {
@@ -185,7 +193,8 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories) {
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
     if (disabledParams.has(lower)) continue;
-    if (isTrackingParam(lower, customParams, domainStrip, remoteParams)) {
+    const isClassified = classifierLower && classifierLower.has(lower);
+    if (isClassified || isTrackingParam(lower, customParams, domainStrip, remoteParams)) {
       // Capture the value BEFORE delete so we can feed it to the
       // frequency tracker without re-parsing the URL. searchParams.get()
       // returns "" for empty values; that's fine — the tracker hashes
@@ -367,10 +376,19 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   if (domainWhitelisted) {
     // Still strip tracking params, but leave all affiliate params untouched and skip injection
     const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
+    // Bounded-scope classifier (#530): even on whitelisted domains, ambiguous
+    // params co-occurring with anchor trackers should be stripped — affiliate
+    // params are independently protected by the affiliateParamSet check inside
+    // stripTrackingParams, so passing the classifier set here is safe.
+    const wlAffiliateParamSet = new Set(getPatternsForHost(hostname).map(p => p.param.toLowerCase()));
+    const wlClassification = classifyParams(url.toString(), {
+      ...prefs,
+      _affiliateParamSet: wlAffiliateParamSet,
+    });
     const {
       removed: removedTrackingForSkip,
       removedValues: removedValuesForSkip,
-    } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip);
+    } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams));
     const actionForSkip = (removedTrackingForSkip.length > 0 || pathCleaned) ? "cleaned" : "untouched";
     recordFrequency(frequencyTracker, prefs, hostname, removedTrackingForSkip, removedValuesForSkip);
     return {
@@ -424,7 +442,21 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
       removedTracking.push(param);
     }
   } else {
-    const { removed, removedValues } = stripTrackingParams(url, prefs, domainRules, disabledCategories);
+    // Bounded-scope classifier (#530): runs between unwrap and tracking-strip.
+    // Strips ambiguous params (PARAM_PAIRS) only when an anchor tracker is
+    // present in the same URL. Affiliate params are protected via
+    // _affiliateParamSet — they go to preserveParams instead.
+    const classification = classifyParams(url.toString(), {
+      ...prefs,
+      _affiliateParamSet: affiliateParamSet,
+    });
+    const { removed, removedValues } = stripTrackingParams(
+      url,
+      prefs,
+      domainRules,
+      disabledCategories,
+      new Set(classification.stripParams),
+    );
     removedTracking.push(...removed);
     removedTrackingValues.push(...removedValues);
   }
