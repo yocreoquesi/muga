@@ -299,8 +299,139 @@ export const WRAPPERS = [
 ];
 
 /**
+ * Allowlist of conventional redirect-style query parameter keys probed by the
+ * generic wrapper code path (issue #531). Order matters — the first key whose
+ * value passes ALL safety guards wins. Kept short on purpose: every additional
+ * key widens the surface for false positives on legitimate non-redirect URLs.
+ * @type {string[]}
+ */
+export const GENERIC_WRAPPER_PARAMS = [
+  "url",
+  "u",
+  "redirect",
+  "dest",
+  "target",
+];
+
+/**
+ * Maximum length of a destination URL accepted by the generic extractor.
+ * Mirrors the cap used in canonical-extractor.js and content/cleaner.js so the
+ * whole pipeline shares one consistent ceiling.
+ */
+const GENERIC_DEST_LENGTH_CAP = 2000;
+
+/**
+ * Substring fragments that, when present anywhere in the destination pathname,
+ * make the generic path REFUSE to unwrap. These are the conventional shapes of
+ * authentication, single-sign-on and checkout flows where the wrapper URL is
+ * legitimately the entry point — not a tracking redirect — and unwrapping
+ * would silently break login or payment.
+ * @type {string[]}
+ */
+const GENERIC_AUTH_PATH_FRAGMENTS = [
+  "/oauth",
+  "/oauth2",
+  "/auth",
+  "/sso",
+  "/callback",
+  "/login",
+  "/signin",
+  "/checkout",
+  "/payment",
+  "/pay",
+  "/saml",
+  "/authorize",
+];
+
+/**
+ * Returns the input host with a leading `www.` stripped, lowercased.
+ * Used by the generic same-host guard so `www.example.com` and `example.com`
+ * compare as equal — they are the same site for redirect-flow purposes.
+ * @param {string} host
+ * @returns {string}
+ */
+function effectiveHost(host) {
+  const lower = host.toLowerCase();
+  return lower.startsWith("www.") ? lower.slice(4) : lower;
+}
+
+/**
+ * Tries each `GENERIC_WRAPPER_PARAMS` key on `url` and returns the first value
+ * that decodes to a well-formed http(s) URL passing every safety guard, plus
+ * the matching key. Returns `null` when nothing qualifies.
+ *
+ * Guards (all MUST pass):
+ *   - `new URL(value)` succeeds
+ *   - protocol is `http:` or `https:` (no `javascript:`, `data:`, `mailto:`, …)
+ *   - destination effective host (lowercased, `www.` stripped) DIFFERS from
+ *     the wrapper effective host — protects OAuth return-to flows
+ *   - destination pathname contains NONE of `GENERIC_AUTH_PATH_FRAGMENTS`
+ *   - destination string length ≤ `GENERIC_DEST_LENGTH_CAP`
+ *
+ * @param {URL} url
+ * @returns {{ value: string, paramName: string }|null}
+ */
+function tryGenericExtract(url) {
+  const wrapperHost = effectiveHost(url.hostname);
+  for (const name of GENERIC_WRAPPER_PARAMS) {
+    const value = url.searchParams.get(name);
+    if (!value) continue;
+    if (value.length > GENERIC_DEST_LENGTH_CAP) continue;
+    let dest;
+    try {
+      dest = new URL(value);
+    } catch {
+      continue;
+    }
+    if (dest.protocol !== "https:" && dest.protocol !== "http:") continue;
+    if (effectiveHost(dest.hostname) === wrapperHost) continue;
+    const path = dest.pathname.toLowerCase();
+    if (GENERIC_AUTH_PATH_FRAGMENTS.some((frag) => path.includes(frag))) continue;
+    return { value, paramName: name };
+  }
+  return null;
+}
+
+/**
+ * Builds a generic wrapper entry compatible with the WRAPPERS schema so the
+ * downstream `unwrap()` loop, processUrl integration and metrics treat it
+ * exactly like an explicit per-host wrapper.
+ *
+ * The entry's `extract()` re-runs the same guards over a freshly parsed URL —
+ * not a closure over the captured value — so it stays correct if the loop
+ * later calls `extract()` on a different (but structurally identical) URL.
+ *
+ * @param {string} host    matched host (lowercased)
+ * @param {string} paramName  the generic key that won
+ * @returns {{
+ *   id: string,
+ *   isGeneric: true,
+ *   hostPatterns: string[],
+ *   pathPatterns: null,
+ *   extract: (url: URL) => string|null,
+ * }}
+ */
+function buildGenericWrapper(host, paramName) {
+  return {
+    id: `generic-${paramName}`,
+    isGeneric: true,
+    hostPatterns: [host],
+    pathPatterns: null,
+    extract: (url) => {
+      const hit = tryGenericExtract(url);
+      return hit ? hit.value : null;
+    },
+  };
+}
+
+/**
  * Returns the matching wrapper config for a URL, or null if none match.
  * Pure inspection — does not extract or unwrap.
+ *
+ * Precedence: explicit entries in WRAPPERS always win. Only when no explicit
+ * host matches do we probe the generic redirect-param path (#531). This keeps
+ * the 16 tested explicit wrappers authoritative — generic NEVER overrides.
+ *
  * @param {string} rawUrl
  * @returns {object|null}
  */
@@ -326,6 +457,9 @@ export function detectWrapper(rawUrl) {
     }
     return wrapper;
   }
+  // Generic fallback — only fires when no explicit wrapper matched.
+  const generic = tryGenericExtract(url);
+  if (generic) return buildGenericWrapper(host, generic.paramName);
   return null;
 }
 

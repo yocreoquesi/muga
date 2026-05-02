@@ -81,31 +81,37 @@ describe("Wrapper Engine — Impact Radius brand subdomains", () => {
 // Negative: subdomain matching boundaries
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — Impact Radius non-matches", () => {
-  test("apex pxf.io WITHOUT a subdomain does NOT match", () => {
+  // WHY assert against the Impact id (not against null): after #531 the
+  // generic wrapper code path may legitimately match these URLs as
+  // `generic-u` — a different host with a valid http(s) destination is a
+  // valid generic redirect. What matters here is that the IMPACT explicit
+  // entry boundary still holds, so we assert the matched wrapper is never
+  // the Impact entry.
+  test("apex pxf.io WITHOUT a subdomain does NOT match Impact", () => {
     const input = "https://pxf.io/c/1/2/3?u=" + encodeURIComponent("https://x.com");
-    assert.equal(detectWrapper(input), null);
-    assert.equal(unwrap(input), null);
+    const w = detectWrapper(input);
+    assert.notEqual(w?.id, "impact");
   });
 
-  test("notpxf.io does NOT match (suffix false positive guard)", () => {
+  test("notpxf.io does NOT match Impact (suffix false positive guard)", () => {
     const input =
       "https://notpxf.io/c/1/2/3?u=" + encodeURIComponent("https://x.com");
-    assert.equal(detectWrapper(input), null);
-    assert.equal(unwrap(input), null);
+    const w = detectWrapper(input);
+    assert.notEqual(w?.id, "impact");
   });
 
-  test("evil-notpxf.io does NOT match (subdomain look-alike guard)", () => {
+  test("evil-notpxf.io does NOT match Impact (subdomain look-alike guard)", () => {
     const input =
       "https://sub.notpxf.io/c/1/2/3?u=" + encodeURIComponent("https://x.com");
-    assert.equal(detectWrapper(input), null);
-    assert.equal(unwrap(input), null);
+    const w = detectWrapper(input);
+    assert.notEqual(w?.id, "impact");
   });
 
-  test("pxf.iox does NOT match (TLD suffix false positive guard)", () => {
+  test("pxf.iox does NOT match Impact (TLD suffix false positive guard)", () => {
     const input =
       "https://brand.pxf.iox/c/1/2/3?u=" + encodeURIComponent("https://x.com");
-    assert.equal(detectWrapper(input), null);
-    assert.equal(unwrap(input), null);
+    const w = detectWrapper(input);
+    assert.notEqual(w?.id, "impact");
   });
 
   test("returns null when Impact URL has no u parameter", () => {

@@ -128,10 +128,15 @@ describe("Wrapper Engine — l.facebook.com", () => {
     assert.equal(unwrap(input), null);
   });
 
-  test("does not match l.facebook.com paths other than /l.php", () => {
+  test("does not match l.facebook.com paths other than /l.php as Facebook", () => {
+    // After #531 the generic wrapper path may legitimately match this URL as
+    // `generic-u` (different host, valid http(s) destination). What this test
+    // guards is the EXPLICIT Facebook entry's path-prefix boundary, so we
+    // assert the matched id is not the Facebook explicit one.
     const input =
       "https://l.facebook.com/other?u=" + encodeURIComponent("https://merchant.com");
-    assert.equal(unwrap(input), null);
+    const w = detectWrapper(input);
+    assert.notEqual(w?.id, "facebook-l");
   });
 
   test("preserves query string on the unwrapped Facebook destination", () => {
@@ -163,37 +168,39 @@ describe("Wrapper Engine — lm.facebook.com (mobile)", () => {
     assert.equal(unwrap(input), null);
   });
 
-  test("does not match lm.facebook.com paths other than /l.php", () => {
+  test("does not match lm.facebook.com paths other than /l.php as Facebook", () => {
+    // See sibling test on l.facebook.com: after #531 generic path may match.
+    // This guards the EXPLICIT facebook-lm entry's path boundary.
     const input =
       "https://lm.facebook.com/other?u=" + encodeURIComponent("https://merchant.com");
-    assert.equal(unwrap(input), null);
+    const w = detectWrapper(input);
+    assert.notEqual(w?.id, "facebook-lm");
   });
 });
 
 describe("Wrapper Engine — Facebook parent-domain false-positive guard", () => {
   test("facebook.com (apex) does NOT match either Facebook wrapper", () => {
     // Only the l. and lm. subdomains carry outbound link wrappers; the apex
-    // is the social network itself and must never be flagged.
+    // is the social network itself and must never be flagged AS FACEBOOK.
+    // After #531 the generic path may match the ?u= variant — assert the
+    // matched id is never one of the Facebook explicit entries.
     assert.equal(detectWrapper("https://facebook.com/user/posts/1"), null);
-    assert.equal(
-      detectWrapper("https://facebook.com/l.php?u=https%3A%2F%2Fx.com"),
-      null
-    );
+    const w = detectWrapper("https://facebook.com/l.php?u=https%3A%2F%2Fx.com");
+    assert.notEqual(w?.id, "facebook-l");
+    assert.notEqual(w?.id, "facebook-lm");
   });
 
   test("www.facebook.com does NOT match either Facebook wrapper", () => {
     assert.equal(detectWrapper("https://www.facebook.com/user/posts/1"), null);
-    assert.equal(
-      detectWrapper("https://www.facebook.com/l.php?u=https%3A%2F%2Fx.com"),
-      null
-    );
+    const w = detectWrapper("https://www.facebook.com/l.php?u=https%3A%2F%2Fx.com");
+    assert.notEqual(w?.id, "facebook-l");
+    assert.notEqual(w?.id, "facebook-lm");
   });
 
-  test("m.facebook.com (mobile main) does NOT match (only lm. does)", () => {
-    assert.equal(
-      detectWrapper("https://m.facebook.com/l.php?u=https%3A%2F%2Fx.com"),
-      null
-    );
+  test("m.facebook.com (mobile main) does NOT match Facebook (only lm. does)", () => {
+    const w = detectWrapper("https://m.facebook.com/l.php?u=https%3A%2F%2Fx.com");
+    assert.notEqual(w?.id, "facebook-l");
+    assert.notEqual(w?.id, "facebook-lm");
   });
 
   test("l and lm hosts produce DIFFERENT wrapper ids", () => {
