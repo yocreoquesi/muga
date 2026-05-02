@@ -8,6 +8,10 @@ import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
+import {
+  addEntry as addCreatorAllowlistEntry,
+  removeEntry as removeCreatorAllowlistEntry,
+} from "../lib/creator-allowlist.js";
 
 let _currentLang = "en";
 
@@ -112,6 +116,9 @@ async function init() {
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
+  // Per-creator allowlist editor (#445, B13). Lives in the Advanced card,
+  // visible without dev-mode (parallel to the honor-creator-mode toggle).
+  initCreatorAllowlist(prefs.creatorAllowlist || []);
 
   // Toast duration select
   const durationSelect = document.getElementById("toast-duration-select");
@@ -215,6 +222,122 @@ function bindListButtons() {
     addEntry("blacklist", "bl-input", "blacklist-items"));
   document.getElementById("wl-add-btn").addEventListener("click", () =>
     addEntry("whitelist", "wl-input", "whitelist-items"));
+}
+
+// ── Creator allowlist editor (#445, B13) ────────────────────────────────────
+
+/**
+ * Initialises the per-creator allowlist editor. Renders the current list,
+ * binds the add button + Enter key, and wires per-row remove buttons.
+ * Persists to chrome.storage.sync via setPrefs. The pure CRUD logic lives
+ * in creator-allowlist.js — this function is the DOM/storage glue.
+ *
+ * @param {string[]} initial - Initial allowlist (read from PREF_DEFAULTS-merged prefs).
+ */
+function initCreatorAllowlist(initial) {
+  const list = Array.isArray(initial) ? [...initial] : [];
+  const containerId = "creator-allowlist-items";
+  const errorEl = document.getElementById("cal-error");
+  const input   = document.getElementById("cal-input");
+  const addBtn  = document.getElementById("cal-add-btn");
+  if (!input || !addBtn || !errorEl) return;
+
+  function showError(messageKey) {
+    errorEl.textContent = t(messageKey, _currentLang);
+    errorEl.hidden = false;
+  }
+
+  function clearError() {
+    errorEl.textContent = "";
+    errorEl.hidden = true;
+  }
+
+  function render(currentList) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.textContent = "";
+    if (currentList.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = t("empty_list", _currentLang);
+      container.appendChild(empty);
+      return;
+    }
+    currentList.forEach((entry, i) => {
+      const row = document.createElement("div");
+      row.className = "list-item";
+
+      const span = document.createElement("span");
+      span.textContent = entry;
+
+      const btn = document.createElement("button");
+      btn.className = "del-btn";
+      btn.dataset.index = String(i);
+      btn.textContent = "×";
+      btn.setAttribute("aria-label", t("creator_allowlist_remove_btn", _currentLang) + " " + entry);
+      btn.addEventListener("click", () => onRemove(entry));
+
+      row.appendChild(span);
+      row.appendChild(btn);
+      container.appendChild(row);
+    });
+  }
+
+  /** Serializes allowlist mutations to prevent read-modify-write races. */
+  let _calMutex = Promise.resolve();
+  function withLock(fn) {
+    _calMutex = _calMutex.then(fn, fn);
+    return _calMutex;
+  }
+
+  function onAdd() {
+    return withLock(async () => {
+      const raw = input.value;
+      const result = addCreatorAllowlistEntry(list, raw);
+      if (result.error === "empty") {
+        showError("creator_allowlist_err_empty");
+        return;
+      }
+      if (result.error === "duplicate") {
+        showError("creator_allowlist_err_duplicate");
+        return;
+      }
+      if (result.error === "max") {
+        showError("creator_allowlist_err_max");
+        return;
+      }
+      list.length = 0;
+      list.push(...result.list);
+      try { await setPrefs({ creatorAllowlist: result.list }); }
+      catch (err) { console.error("[MUGA] save creator allowlist:", err); }
+      input.value = "";
+      clearError();
+      render(list);
+    });
+  }
+
+  function onRemove(entry) {
+    return withLock(async () => {
+      const next = removeCreatorAllowlistEntry(list, entry);
+      list.length = 0;
+      list.push(...next);
+      try { await setPrefs({ creatorAllowlist: next }); }
+      catch (err) { console.error("[MUGA] save creator allowlist:", err); }
+      clearError();
+      render(list);
+    });
+  }
+
+  addBtn.addEventListener("click", onAdd);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onAdd();
+    }
+  });
+  input.addEventListener("input", clearError);
+
+  render(list);
 }
 
 /** Renders tracking category toggle cards. */
