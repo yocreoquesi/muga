@@ -1,0 +1,11 @@
+{
+  "category": "path-trackers",
+  "description": "URLs with tracking parameters mixed with content. Verifies cleaner preserves path while stripping query trackers.",
+  "entries": [
+    { "url": "https://example.com/blog/2026/03/post-title?utm_source=rss", "expectedAction": "cleaned", "expectedClean": "https://example.com/blog/2026/03/post-title" },
+    { "url": "https://example.com/products/category/widgets?utm_source=ad&utm_medium=cpc&color=blue", "expectedAction": "cleaned", "expectedClean": "https://example.com/products/category/widgets?color=blue" },
+    { "url": "https://example.com/u/alice/photos?utm_source=share&album=summer", "expectedAction": "cleaned", "expectedClean": "https://example.com/u/alice/photos?album=summer" },
+    { "url": "https://example.com/v/abc-123-xyz?gclid=ABC", "expectedAction": "cleaned", "expectedClean": "https://example.com/v/abc-123-xyz" },
+    { "url": "https://example.com/r/2026/q1/?fbclid=abc", "expectedAction": "cleaned", "expectedClean": "https://example.com/r/2026/q1/" }
+  ]
+}

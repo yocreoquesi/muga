@@ -1,0 +1,11 @@
+{
+  "category": "aliexpress",
+  "description": "AliExpress item-page URLs with sk/spm/traffic params — known cleaner.js edge case.",
+  "entries": [
+    { "url": "https://www.aliexpress.com/item/1005001234567890.html?spm=a2g0o.detail.123&pdp_ext_f=abc", "expectedAction": "cleaned", "notes": "AliExpress spm + pdp_ext_f" },
+    { "url": "https://www.aliexpress.com/item/1005009876543210.html?sk=Z123&spm=abc", "expectedAction": "cleaned", "notes": "AliExpress sk + spm" },
+    { "url": "https://www.aliexpress.com/item/1005000000000001.html?traffic_analysisId=abc", "expectedAction": "cleaned", "notes": "AliExpress traffic analysis" },
+    { "url": "https://es.aliexpress.com/item/1005009999999999.html?gatewayAdapt=glo2esp", "expectedAction": "cleaned", "notes": "AliExpress regional gateway" },
+    { "url": "https://www.aliexpress.com/item/1005001111111111.html", "expectedAction": "untouched", "notes": "Clean AliExpress item URL" }
+  ]
+}
