@@ -140,6 +140,16 @@ export const PREF_DEFAULTS = {
   // Privacy-sensitive (it carries URLs), so we expose it as its own
   // toggle even though the data is local-only.
   attributionLedgerEnabled: true,
+  // User-promoted custom strip rules (#536). Populated by the popup's
+  // "Strip locally" button on flagged Suspicious-params rows. Each entry
+  // is a bare param name (lowercased on read by the cleaner) that
+  // processUrl strips on EVERY host — the user has explicitly trusted
+  // the rule. Affiliate-preservation still wins (the affiliateParamSet
+  // skip in stripTrackingParams runs before custom-rule matching), so a
+  // user can never accidentally strip their own creator's referral tag.
+  // Lives in sync so the rule list follows the user across devices.
+  // Default empty — opt-in by user click only.
+  userCustomRules: [],
 };
 
 /**

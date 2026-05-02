@@ -69,6 +69,9 @@
   <details class="suspicious-params" id="suspicious-params" hidden>
     <summary data-i18n="suspicious_params_label">Suspicious params</summary>
     <div id="suspicious-params-list"></div>
+    <!-- #536: counter rendered when prefs.userCustomRules.length > 0.
+         Hidden on a fresh install so a chrome-less header never appears. -->
+    <div id="strip-locally-count" class="strip-locally-count" hidden aria-live="polite"></div>
   </details>
 
   <details class="history" id="history" hidden>

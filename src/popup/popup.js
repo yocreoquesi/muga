@@ -324,7 +324,7 @@ async function init() {
   // customParams. We refetch full prefs instead of diffing to stay simple.
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area !== "sync") return;
-    if (!changes.enabled && !changes.blacklist && !changes.whitelist && !changes.customParams) return;
+    if (!changes.enabled && !changes.blacklist && !changes.whitelist && !changes.customParams && !changes.userCustomRules) return;
     try {
       const fresh = await getPrefs();
       // Keep the popup's own toggle in sync with any external change
@@ -332,6 +332,11 @@ async function init() {
         enabledToggle.checked = fresh.enabled;
       }
       await showUrlPreview(fresh, lang);
+      // #536: re-render the Suspicious-params section too so the per-row
+      // button reflects the new userCustomRules state without a popup reopen.
+      if (changes.userCustomRules) {
+        await showSuspiciousParams(fresh, lang);
+      }
     } catch (err) {
       console.error("[MUGA] reactive re-render:", err);
     }
@@ -787,6 +792,12 @@ async function showSuspiciousParams(prefs, lang) {
   // Reset so repeated calls (storage.onChanged) stay idempotent.
   list.replaceChildren();
 
+  // #536: snapshot of current user-promoted rules. The lower-cased view
+  // backs idempotency for the per-row button — we never add a duplicate
+  // and we hide the button when the param is already promoted.
+  const userCustomRules = Array.isArray(prefs.userCustomRules) ? prefs.userCustomRules : [];
+  const userCustomRulesLower = new Set(userCustomRules.map(p => p.toLowerCase()));
+
   // ── Entropy subgroup: synchronous, scans current tab URL only ──
   let entropyFlags = [];
   try {
@@ -849,6 +860,12 @@ async function showSuspiciousParams(prefs, lang) {
       detailEl.textContent = `score ${flag.score}`;
       row.appendChild(detailEl);
 
+      // #536: per-row Strip locally button. Promotes the flagged param
+      // into prefs.userCustomRules so future navigations strip it. Row
+      // stays visible after promotion (collapses button into a "done"
+      // disabled state) so the user keeps the visual receipt.
+      _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
+
       list.appendChild(row);
     }
   }
@@ -878,9 +895,101 @@ async function showSuspiciousParams(prefs, lang) {
         .replace("{values}", String(flag.values));
       row.appendChild(detailEl);
 
+      _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
+
       list.appendChild(row);
     }
   }
+
+  // #536: counter widget — surfaces the total number of user-promoted
+  // strip rules so the user has a reference for what they own. Hidden
+  // when zero so a fresh install never sees a 0-count widget.
+  _renderStripLocallyCount(userCustomRules.length, lang);
+}
+
+/**
+ * Appends the per-row "Strip locally" button to a Suspicious-params row.
+ * If the param is already in userCustomRulesLower, renders a disabled
+ * "Stripped locally ✓" pill instead — the row stays visible so the user
+ * keeps the visual receipt of what they promoted (design choice for #536:
+ * keep-row-with-done-state, NOT remove-row, so re-promoting after a
+ * popup close stays one click away).
+ *
+ * @param {HTMLElement} row              The .suspicious-row element being built.
+ * @param {string}      paramName        Original-case param name (preserved).
+ * @param {Set<string>} alreadyPromoted  Lowercased snapshot of current rules.
+ * @param {object}      prefs            Reactive prefs object (mutated locally on click).
+ * @param {string}      lang             Active UI language code.
+ */
+function _appendStripLocallyButton(row, paramName, alreadyPromoted, prefs, lang) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "strip-locally-btn";
+  btn.dataset.param = paramName;
+
+  const isPromoted = alreadyPromoted.has(paramName.toLowerCase());
+  if (isPromoted) {
+    btn.textContent = t("strip_locally_btn_done", lang);
+    btn.classList.add("is-done");
+    btn.disabled = true;
+    btn.setAttribute("aria-label", t("strip_locally_btn_done", lang));
+  } else {
+    btn.textContent = t("strip_locally_btn", lang);
+    btn.setAttribute("aria-label", t("strip_locally_btn", lang));
+    btn.addEventListener("click", async () => {
+      // Read-modify-write against chrome.storage.sync. We re-read inside
+      // the handler so concurrent popup actions (or another device's
+      // sync) don't blow away each other's rules.
+      try {
+        const current = await new Promise((resolve, reject) => {
+          chrome.storage.sync.get({ userCustomRules: [] }, (r) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve(r);
+          });
+        });
+        const list = Array.isArray(current.userCustomRules) ? current.userCustomRules : [];
+        const lowerSet = new Set(list.map(p => p.toLowerCase()));
+        if (!lowerSet.has(paramName.toLowerCase())) {
+          list.push(paramName);
+        }
+        await new Promise((resolve, reject) => {
+          chrome.storage.sync.set({ userCustomRules: list }, () => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve();
+          });
+        });
+        // Mutate the in-flight prefs object so a follow-up re-render
+        // (from the storage.onChanged listener or otherwise) sees the
+        // new state without an extra round-trip.
+        prefs.userCustomRules = list;
+        // Optimistic re-render: collapse the button to the "done" state
+        // and refresh the counter inline so the user gets immediate
+        // feedback even before chrome.storage.onChanged fires.
+        btn.textContent = t("strip_locally_btn_done", lang);
+        btn.classList.add("is-done");
+        btn.disabled = true;
+        btn.setAttribute("aria-label", t("strip_locally_btn_done", lang));
+        _renderStripLocallyCount(list.length, lang);
+      } catch (err) {
+        console.error("[MUGA] strip-locally save:", err);
+      }
+    });
+  }
+  row.appendChild(btn);
+}
+
+/** Renders the active-rules counter inside the suspicious-params section. */
+function _renderStripLocallyCount(count, lang) {
+  const el = document.getElementById("strip-locally-count");
+  if (!el) return;
+  if (count <= 0) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  // textContent + manual {n} replace — never innerHTML.
+  el.textContent = t("strip_locally_active_count", lang).replace("{n}", String(count));
+  el.hidden = false;
 }
 
 /**
