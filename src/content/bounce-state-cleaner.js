@@ -12,16 +12,15 @@
  * here lets us reuse the same `muga:history-gate` event the rest of the
  * isolated-world scripts already publish — no extra prefs round-trip.
  *
- * Why a re-replicated WRAPPERS table (not `window.__mugaCleaner`):
- *   The cleaner bundle attaches `window.__mugaCleaner` from
- *   content/cleaner-bundle.js, but that bundle's content-side namespace
- *   does NOT currently expose `detectWrapper`. We could expand the
- *   exported surface, but the wrapper detection logic is small and pure;
- *   re-stating the host patterns here is cheaper than waiting for the
- *   cleaner bundle to attach (we run at document_start, before the
- *   bundle's IIFE has finished). If `window.__mugaCleaner.detectWrapper`
- *   is ever published we PREFER that — see the resolveEngine() shim
- *   below.
+ * Wrapper detection: prefers the cleaner bundle, falls back to the
+ *   re-replicated WRAPPERS table below. As of PR #511, the bundle DOES
+ *   expose `detectWrapper` (and a full WRAPPERS table — was awin-only
+ *   before #511). The resolveEngine() shim picks the bundled engine at
+ *   call time, so the inline copy is now defense-in-depth: if a future
+ *   change accidentally drops the export, or if the bundle script
+ *   somehow hasn't attached by the time the gate event fires, we still
+ *   have working detection. Keep both copies in sync when adding new
+ *   wrappers.
  *
  * ── Cookies (intentionally not requested) ────────────────────────────────
  * This module does NOT clear cookies. Doing so would require the
