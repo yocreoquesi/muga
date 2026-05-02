@@ -21,6 +21,7 @@ import { processUrl } from "../../src/lib/cleaner.js";
 import { loadCorpus } from "./lib/corpus-loader.mjs";
 import { compareEntry, buildReport, exitCodeFromReport, runCompetitors } from "./lib/runner-core.mjs";
 import { renderMarkdown } from "./lib/report-md.mjs";
+import { renderHtml } from "./lib/report-html.mjs";
 import { baselineAdapter } from "./competitors/baseline.mjs";
 
 // A6 phase 2 (#506) competitor adapter list.
@@ -65,12 +66,15 @@ function main() {
   const stamp = report.generatedAt.replace(/[:.]/g, "-");
   const jsonOut = join(REPORTS_DIR, `${stamp}-muga.json`);
   const mdOut = join(REPORTS_DIR, `${stamp}-muga.md`);
+  const htmlOut = join(REPORTS_DIR, `${stamp}-muga.html`);
   writeFileSync(jsonOut, JSON.stringify(report, null, 2) + "\n");
   writeFileSync(mdOut, renderMarkdown(report));
+  writeFileSync(htmlOut, renderHtml(report));
   process.stdout.write(
     `[muga-benchmark] corpus files: ${files.length}, entries: ${report.totalEntries}, matched: ${report.matched}, mismatched: ${report.mismatched}\n` +
       `[muga-benchmark] reports: ${jsonOut}\n` +
-      `                         ${mdOut}\n`,
+      `                         ${mdOut}\n` +
+      `                         ${htmlOut}\n`,
   );
   if (report.mismatched > 0) {
     process.stdout.write(`[muga-benchmark] mismatches:\n`);
