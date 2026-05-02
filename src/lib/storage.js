@@ -112,6 +112,12 @@ export const PREF_DEFAULTS = {
   // chains may route through redirect networks the user did not consent to
   // contact otherwise.
   honorCreatorMode: false,
+  // Canonical Extractor toggle (#442, B7). Default ON: when the wrapper
+  // engine detects an opaque wrapper (host matched but no destination in
+  // the URL), the cleaner consults a content-script-supplied "canonical
+  // bundle" (<link rel=canonical> + JSON-LD @id) BEFORE giving up. Disable
+  // here to bypass that tier entirely without uninstalling content scripts.
+  canonicalExtractorEnabled: true,
 };
 
 /**
