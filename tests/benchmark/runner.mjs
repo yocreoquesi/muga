@@ -20,6 +20,7 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { processUrl } from "../../src/lib/cleaner.js";
 import { loadCorpus } from "./lib/corpus-loader.mjs";
 import { compareEntry, buildReport, exitCodeFromReport, runCompetitors } from "./lib/runner-core.mjs";
+import { renderMarkdown } from "./lib/report-md.mjs";
 import { baselineAdapter } from "./competitors/baseline.mjs";
 
 // A6 phase 2 (#506) competitor adapter list.
@@ -62,11 +63,14 @@ function main() {
   const report = buildReport({ corpus: entries, results, competitorResults, runner: "muga" });
   mkdirSync(REPORTS_DIR, { recursive: true });
   const stamp = report.generatedAt.replace(/[:.]/g, "-");
-  const out = join(REPORTS_DIR, `${stamp}-muga.json`);
-  writeFileSync(out, JSON.stringify(report, null, 2) + "\n");
+  const jsonOut = join(REPORTS_DIR, `${stamp}-muga.json`);
+  const mdOut = join(REPORTS_DIR, `${stamp}-muga.md`);
+  writeFileSync(jsonOut, JSON.stringify(report, null, 2) + "\n");
+  writeFileSync(mdOut, renderMarkdown(report));
   process.stdout.write(
     `[muga-benchmark] corpus files: ${files.length}, entries: ${report.totalEntries}, matched: ${report.matched}, mismatched: ${report.mismatched}\n` +
-      `[muga-benchmark] report: ${out}\n`,
+      `[muga-benchmark] reports: ${jsonOut}\n` +
+      `                         ${mdOut}\n`,
   );
   if (report.mismatched > 0) {
     process.stdout.write(`[muga-benchmark] mismatches:\n`);
