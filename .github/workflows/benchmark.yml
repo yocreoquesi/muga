@@ -1,0 +1,56 @@
+name: Benchmark
+
+# A6 phase 3c (#507): runs the URL-cleaning benchmark on every release
+# tag (v*) and uploads the JSON/Markdown/HTML reports as workflow
+# artifacts so they can be attached to the GitHub Release manually or
+# via a follow-up step.
+#
+# Why a separate workflow (not part of ci.yml): ci.yml gates every PR.
+# Benchmarks are larger, optional, and only meaningful at release time.
+# Keeping them split means a flaky benchmark never blocks a feature PR.
+#
+# Trigger: push of any v* tag. Manual dispatch is also enabled so the
+# benchmark can be re-run on demand from the Actions tab without
+# cutting a fresh release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run benchmark
+        run: npm run benchmark
+
+      - name: Upload report artifacts
+        # FIXME: this repo's convention is to SHA-pin actions (see ci.yml).
+        # Using the version tag here as a placeholder — the orchestrator
+        # author could not verify a SHA for upload-artifact@v4 without
+        # external lookup. Replace with the canonical SHA before this
+        # workflow first fires on a release tag. Tracked separately.
+        uses: actions/upload-artifact@v4
+        with:
+          name: muga-benchmark-${{ github.ref_name }}
+          path: tests/benchmark/reports/*
+          if-no-files-found: error
+          retention-days: 90
