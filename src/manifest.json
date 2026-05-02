@@ -29,14 +29,14 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/history-defuser-mainworld.js"],
+      "js": ["content/history-defuser-mainworld.js", "content/window-name-defuser-mainworld.js"],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": false
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/history-defuser.js", "content/cleaner.js"],
+      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/history-defuser.js", "content/window-name-defuser.js", "content/cleaner.js"],
       "run_at": "document_start"
     }
   ],
