@@ -112,6 +112,13 @@ export const PREF_DEFAULTS = {
   // chains may route through redirect networks the user did not consent to
   // contact otherwise.
   honorCreatorMode: false,
+  // Per-creator allowlist (#445, B13). Referrer-domain-shaped strings
+  // (e.g., "youtube.com/@LinusTechTips", "dot-css-news.com") that the user
+  // has explicitly opted into for Honor Creator Mode. Empty by default.
+  // Capped at 100 entries (storage hygiene): 100 × ~80 chars ≈ 8 KB, within
+  // sync's 8 KB-per-item / 100 KB-total budget. CRUD lives in
+  // src/lib/creator-allowlist.js (pure module, immutable arrays).
+  creatorAllowlist: [],
   // Canonical Extractor toggle (#442, B7). Default ON: when the wrapper
   // engine detects an opaque wrapper (host matched but no destination in
   // the URL), the cleaner consults a content-script-supplied "canonical

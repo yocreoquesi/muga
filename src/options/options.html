@@ -159,6 +159,16 @@
         </div>
         <label class="toggle"><input type="checkbox" id="honor-creator-mode" aria-label="Honor Creator Mode"><span class="slider"></span></label>
       </div>
+      <div class="list-section creator-allowlist-section">
+        <strong class="creator-allowlist-title" data-i18n="creator_allowlist_label">Creators you support</strong>
+        <div class="list-items creator-allowlist-list" id="creator-allowlist-items"></div>
+        <div class="add-row">
+          <input id="cal-input" type="text" data-i18n-placeholder="creator_allowlist_placeholder" aria-label="Creator allowlist entry">
+          <button class="add-btn" id="cal-add-btn" data-i18n="creator_allowlist_add_btn">+ Add creator</button>
+        </div>
+        <p class="hint" id="cal-error" role="alert" hidden></p>
+        <p class="hint" data-i18n-html="creator_allowlist_hint"></p>
+      </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="advanced_mode_label">Show advanced settings</strong>

@@ -243,6 +243,22 @@ h2 {
 }
 .del-btn:hover { color: var(--danger); background: var(--danger-soft); }
 
+/* ---------- Creator allowlist editor (#445, B13) ----------------------- */
+.creator-allowlist-section {
+  border-top: 1px solid var(--border-1);
+}
+.creator-allowlist-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-1);
+  margin-bottom: 8px;
+}
+.creator-allowlist-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
 /* ---------- Inputs / buttons -------------------------------------------- */
 .add-row {
   display: flex;

@@ -33,6 +33,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
 | `remoteRulesEnabled` | boolean | `false` | Opt-in: fetch signed remote parameter updates weekly. Default off (zero network activity on fresh install) |
 | `honorCreatorMode` | boolean | `false` | Opt-in (#435, B12): preserve creator referral chains on trusted redirect networks. Plumbing only — no behaviour wired yet. |
+| `creatorAllowlist` | string[] | `[]` | (#445, B13) Per-creator allowlist consumed by Honor Creator Mode. Referrer-domain-shaped strings (e.g. `youtube.com/@LinusTechTips`, `dot-css-news.com`). Capped at 100 entries (storage hygiene). CRUD in `src/lib/creator-allowlist.js`. |
 | `canonicalExtractorEnabled` | boolean | `true` | (#442, B7) When the wrapper engine detects an opaque wrapper (host matched but no destination in URL), consult content-script-supplied `<link rel=canonical>` / JSON-LD `@id` before giving up. Default ON. |
 | `crossSiteFrequencyEnabled` | boolean | `true` | (#446, B16) Local-only Cross-Site Frequency Tracker: maintains a `(paramName, sha256(value))` map keyed per first-party domain so the popup can flag params that appear on 3+ domains AND have 3+ distinct values. LRU-capped at 1000 unique params. NEVER transmitted. Toggle off to make observations a no-op and hide the freq subgroup. |
 
