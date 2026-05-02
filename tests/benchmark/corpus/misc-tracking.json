@@ -4,15 +4,22 @@
   "entries": [
     { "url": "https://example.com/?_kx=abc-123", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Klaviyo" },
     { "url": "https://example.com/?adjust_t=abc&adjust_campaign=def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Adjust" },
-    { "url": "https://example.com/?af_xp=qr&pid=campaign", "expectedAction": "cleaned", "expectedClean": "https://example.com/?pid=campaign", "notes": "AppsFlyer af_xp stripped; pid not classified (kept)" },
-    { "url": "https://example.com/?icid=abc&icmp=def", "expectedAction": "untouched", "notes": "GAP — icid/icmp internal-campaign IDs not in TRACKING_PARAMS today" },
+    { "url": "https://example.com/?af_xp=qr&pid=campaign", "expectedAction": "cleaned", "expectedClean": "https://example.com/?pid=campaign", "notes": "AppsFlyer af_xp stripped; pid preserved (no anchor tracker — bounded scoping protects functional URLs, #530)" },
+    { "url": "https://example.com/?icid=abc&icmp=def", "expectedAction": "untouched", "notes": "Bounded scoping: icid/icmp stand-alone are preserved (#530). Strip only when anchor tracker present." },
+    { "url": "https://example.com/?utm_source=email&icid=abc&icmp=def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Bounded scoping (#530): icid + icmp stripped because utm_source anchor is present." },
     { "url": "https://example.com/?mkt_tok=eyJabc123def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Marketo token" },
     { "url": "https://example.com/?at_medium=email&at_campaign=launch", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "AT Internet" },
-    { "url": "https://example.com/?CMP=ABC123&NLID=def", "expectedAction": "untouched", "notes": "GAP — Generic newsletter trackers (CMP, NLID) not in TRACKING_PARAMS" },
+    { "url": "https://example.com/?CMP=ABC123&NLID=def", "expectedAction": "untouched", "notes": "Bounded scoping: CMP/NLID stand-alone preserved (#530). Strip only when anchor tracker present." },
     { "url": "https://example.com/?xtor=RSS-1-abc&xts=12345", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Xiti xtor + xts both stripped (xts added to TRACKING_PARAMS via #508)" },
     { "url": "https://example.com/?spr=abc&sprtype=def", "expectedAction": "untouched", "notes": "GAP — Sprinklr spr/sprtype not in TRACKING_PARAMS" },
     { "url": "https://example.com/?elqTrackId=abc&elqaid=def&elqat=g", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Eloqua" },
-    { "url": "https://example.com/?soc_src=abc&soc_trk=def", "expectedAction": "untouched", "notes": "GAP — Generic social tracking (soc_src/soc_trk) not in TRACKING_PARAMS" },
-    { "url": "https://example.com/?sb_referer_host=abc", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Splash sb_referer_host (added to TRACKING_PARAMS via #508)" }
+    { "url": "https://example.com/?soc_src=abc&soc_trk=def", "expectedAction": "untouched", "notes": "Bounded scoping: soc_src stand-alone preserved (#530); soc_trk not in any list. Strip soc_src only when anchor tracker present." },
+    { "url": "https://example.com/?sb_referer_host=abc", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Splash sb_referer_host (added to TRACKING_PARAMS via #508)" },
+    { "url": "https://example.com/?gclid=ABC&pid=campaign", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Bounded scoping (#530): pid stripped because gclid anchor co-occurs." },
+    { "url": "https://example.com/?fbclid=X&CMP=newsletter", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Bounded scoping (#530): CMP stripped because fbclid anchor co-occurs." },
+    { "url": "https://example.com/?utm_source=email&NLID=abc", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Bounded scoping (#530): NLID stripped because utm_source anchor co-occurs." },
+    { "url": "https://example.com/?utm_source=foo&soc_src=fb", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Bounded scoping (#530): soc_src stripped because utm_source anchor co-occurs." },
+    { "url": "https://example.com/?pid=42", "expectedAction": "untouched", "notes": "Bounded scoping (#530) NEGATIVE: stand-alone pid preserved — protects functional URLs (e.g. GitHub project IDs)." },
+    { "url": "https://example.com/?ref=https://github.com", "expectedAction": "untouched", "notes": "Bounded scoping (#530) NEGATIVE: ref preserved — no anchor tracker present." }
   ]
 }
