@@ -1,0 +1,11 @@
+{
+  "category": "privacy-proxies",
+  "description": "Privacy-proxy wrappers that store the destination as the unkeyed query string. Verifies the proxy host is removed from the final URL. When destination is clean, processUrl returns action=untouched on the destination URL — the user-visible win is in cleanUrl (proxy host gone).",
+  "entries": [
+    { "url": "https://href.li/?https://example.com/article", "expectedAction": "untouched", "expectedClean": "https://example.com/article", "notes": "href.li unkeyed query — destination clean" },
+    { "url": "https://href.li/?https://merchant.example.com/?utm_source=foo", "expectedAction": "cleaned", "expectedClean": "https://merchant.example.com/", "notes": "href.li wrapping a UTM URL — both layers cleaned" },
+    { "url": "https://anonym.to/?https://example.com/post", "expectedAction": "untouched", "expectedClean": "https://example.com/post", "notes": "anonym.to unkeyed query — destination clean" },
+    { "url": "https://anonym.to/?https://shop.example.com/?gclid=ABC123", "expectedAction": "cleaned", "expectedClean": "https://shop.example.com/", "notes": "anonym.to wrapping a gclid URL" },
+    { "url": "https://href.li/?not-a-url", "expectedAction": "untouched", "notes": "Malformed — extractor returns null, host not in tracking list" }
+  ]
+}

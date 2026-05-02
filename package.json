@@ -19,6 +19,7 @@
     "promo-tiles": "python3 tools/generate-promo-tiles.py",
     "build:rules": "node tools/generate-dnr-rules.mjs",
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
+    "benchmark": "node tests/benchmark/runner.mjs",
     "test:e2e": "npx playwright test"
   },
   "devDependencies": {

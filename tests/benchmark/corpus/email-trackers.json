@@ -1,0 +1,14 @@
+{
+  "category": "email-trackers",
+  "description": "Email-marketing tracking parameters from Mailchimp, HubSpot, Omnisend, etc.",
+  "entries": [
+    { "url": "https://example.com/landing?mc_cid=abc123&mc_eid=def456", "expectedAction": "cleaned", "expectedClean": "https://example.com/landing", "notes": "Mailchimp" },
+    { "url": "https://example.com/blog/post?_hsenc=p2ABC&_hsmi=12345", "expectedAction": "cleaned", "expectedClean": "https://example.com/blog/post", "notes": "HubSpot" },
+    { "url": "https://example.com/?hsCtaTracking=abc-123", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "HubSpot CTA tracking" },
+    { "url": "https://example.com/?oly_anon_id=abc&oly_enc_id=def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Omeda Olytics" },
+    { "url": "https://example.com/post?vero_id=abc&vero_conv=def", "expectedAction": "cleaned", "expectedClean": "https://example.com/post", "notes": "Vero email" },
+    { "url": "https://example.com/?ref=newsletter&utm_source=newsletter", "expectedAction": "cleaned", "expectedClean": "https://example.com/?ref=newsletter", "notes": "ref=newsletter is preserved (not tracking by default); utm stripped" },
+    { "url": "https://example.com/?_branch_match_id=abc", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Branch deep-link" },
+    { "url": "https://example.com/?ef_id=ABC&s_kwcid=def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Adobe Experience Cloud" }
+  ]
+}

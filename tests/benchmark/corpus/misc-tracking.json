@@ -1,0 +1,18 @@
+{
+  "category": "misc-tracking",
+  "description": "Miscellaneous tracker parameters. Some are stripped today; others surface as gaps (notes flag the gap so future improvements can fill them in).",
+  "entries": [
+    { "url": "https://example.com/?_kx=abc-123", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Klaviyo" },
+    { "url": "https://example.com/?adjust_t=abc&adjust_campaign=def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Adjust" },
+    { "url": "https://example.com/?af_xp=qr&pid=campaign", "expectedAction": "cleaned", "expectedClean": "https://example.com/?pid=campaign", "notes": "AppsFlyer af_xp stripped; pid not classified (kept)" },
+    { "url": "https://example.com/?icid=abc&icmp=def", "expectedAction": "untouched", "notes": "GAP — icid/icmp internal-campaign IDs not in TRACKING_PARAMS today" },
+    { "url": "https://example.com/?mkt_tok=eyJabc123def", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Marketo token" },
+    { "url": "https://example.com/?at_medium=email&at_campaign=launch", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "AT Internet" },
+    { "url": "https://example.com/?CMP=ABC123&NLID=def", "expectedAction": "untouched", "notes": "GAP — Generic newsletter trackers (CMP, NLID) not in TRACKING_PARAMS" },
+    { "url": "https://example.com/?xtor=RSS-1-abc&xts=12345", "expectedAction": "cleaned", "expectedClean": "https://example.com/?xts=12345", "notes": "Xiti xtor stripped; xts kept (gap)" },
+    { "url": "https://example.com/?spr=abc&sprtype=def", "expectedAction": "untouched", "notes": "GAP — Sprinklr spr/sprtype not in TRACKING_PARAMS" },
+    { "url": "https://example.com/?elqTrackId=abc&elqaid=def&elqat=g", "expectedAction": "cleaned", "expectedClean": "https://example.com/", "notes": "Eloqua" },
+    { "url": "https://example.com/?soc_src=abc&soc_trk=def", "expectedAction": "untouched", "notes": "GAP — Generic social tracking (soc_src/soc_trk) not in TRACKING_PARAMS" },
+    { "url": "https://example.com/?sb_referer_host=abc", "expectedAction": "untouched", "notes": "GAP — sb_referer_host (Splash) not in TRACKING_PARAMS" }
+  ]
+}
