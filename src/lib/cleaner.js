@@ -32,11 +32,17 @@ const TRACKING_PREFIXES = [
 ];
 
 /** Returns true if the param is a known tracking param (exact match or prefix). */
-function isTrackingParam(lower, customParams, domainStrip, remoteParams) {
+function isTrackingParam(lower, customParams, domainStrip, remoteParams, userCustomRules) {
   if (TRACKING_PARAMS_SET.has(lower)) return true;
   if (customParams.has(lower)) return true;
   if (domainStrip.has(lower)) return true;
   if (remoteParams.has(lower)) return true;  // T1.5: additive remote params (ADR-D10)
+  // #536: user-promoted custom strip rules. Global across hosts because
+  // the user explicitly clicked "Strip locally" on a flagged param. The
+  // affiliateParamSet skip in stripTrackingParams() runs BEFORE this
+  // function is consulted, so a user-listed "tag" cannot wipe an
+  // Amazon creator's affiliate referral.
+  if (userCustomRules && userCustomRules.has(lower)) return true;
   for (const prefix of TRACKING_PREFIXES) {
     if (lower.startsWith(prefix)) return true;
   }
@@ -168,6 +174,9 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
   const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
   const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
   const remoteParams = new Set((prefs.remoteParams || []).map(p => p.toLowerCase()));  // T1.5: ADR-D10
+  // #536: user-promoted strip rules. Lowercased once for case-insensitive
+  // membership; consulted last so built-in/affiliate paths still win.
+  const userCustomRules = new Set((prefs.userCustomRules || []).map(p => p.toLowerCase()));
   const { preserved, domainStrip } = getDomainParamSets(hostname, domainRules);
 
   const disabledParams = new Set();
@@ -194,7 +203,7 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
     if (preserved.has(lower)) continue;
     if (disabledParams.has(lower)) continue;
     const isClassified = classifierLower && classifierLower.has(lower);
-    if (isClassified || isTrackingParam(lower, customParams, domainStrip, remoteParams)) {
+    if (isClassified || isTrackingParam(lower, customParams, domainStrip, remoteParams, userCustomRules)) {
       // Capture the value BEFORE delete so we can feed it to the
       // frequency tracker without re-parsing the URL. searchParams.get()
       // returns "" for empty values; that's fine — the tracker hashes

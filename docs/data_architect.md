@@ -37,6 +37,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `canonicalExtractorEnabled` | boolean | `true` | (#442, B7) When the wrapper engine detects an opaque wrapper (host matched but no destination in URL), consult content-script-supplied `<link rel=canonical>` / JSON-LD `@id` before giving up. Default ON. |
 | `crossSiteFrequencyEnabled` | boolean | `true` | (#446, B16) Local-only Cross-Site Frequency Tracker: maintains a `(paramName, sha256(value))` map keyed per first-party domain so the popup can flag params that appear on 3+ domains AND have 3+ distinct values. LRU-capped at 1000 unique params. NEVER transmitted. Toggle off to make observations a no-op and hide the freq subgroup. |
 | `attributionLedgerEnabled` | boolean | `true` | (#460, A2) Persist the Attribution Ledger ring buffer to `chrome.storage.local["attributionLedger"]` so the popup's "Recent activity" section survives service-worker restarts. Toggle off to gate the SW writer (no local-storage writes; popup section stays empty). |
+| `userCustomRules` | string[] | `[]` | (#536) Per-user custom strip rules promoted from the popup's "Strip locally" button on flagged Suspicious-params rows. Each entry is a bare param name (matched case-insensitively by the cleaner) stripped on EVERY host. Lives in sync so promotions follow the user across devices. Affiliate-preservation always wins (the affiliateParamSet skip in `stripTrackingParams` runs first), so a user can never accidentally strip their own creator referral tag. |
 
 ### List entry format
 

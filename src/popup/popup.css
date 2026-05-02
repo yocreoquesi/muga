@@ -784,11 +784,42 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 
 .suspicious-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* #536: name | detail | strip-locally button */
+  grid-template-columns: 1fr auto auto;
   gap: 8px;
   align-items: center;
   padding: 4px 14px;
   font-size: 11px;
+}
+
+/* #536: per-row "Strip locally" button. Keeps the row visible after
+ * promotion (collapses into a disabled "done" pill) so the user sees
+ * the receipt of what they have promoted. */
+.strip-locally-btn {
+  background: transparent;
+  border: 1px solid var(--border-1, #ccc);
+  color: var(--text-1, inherit);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.strip-locally-btn:hover:not(:disabled) {
+  background: var(--bg-2, rgba(0, 0, 0, 0.04));
+}
+.strip-locally-btn.is-done,
+.strip-locally-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  border-color: transparent;
+}
+
+.strip-locally-count {
+  font-size: 10px;
+  color: var(--text-3);
+  padding: 6px 14px 4px;
+  font-style: italic;
 }
 
 .suspicious-name {

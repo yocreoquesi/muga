@@ -135,6 +135,31 @@ export const TRANSLATIONS = {
   suspicious_params_entropy_group:   { en: "On this page (entropy)",                              es: "En esta página (entropía)",                               pt: "Nesta página (entropia)",                               de: "Auf dieser Seite (Entropie)" },
   suspicious_params_frequency_group: { en: "Across sites you've visited",                         es: "En varios sitios que has visitado",                       pt: "Em vários sites que você visitou",                      de: "Über besuchte Sites hinweg" },
   suspicious_params_freq_detail:     { en: "{domains} domains • {values} distinct values",        es: "{domains} dominios • {values} valores distintos",         pt: "{domains} domínios • {values} valores distintos",       de: "{domains} Domains • {values} verschiedene Werte" },
+
+  // ── Popup: Strip locally per-row button (#536) ──────────────────────────
+  // Promotes a flagged Suspicious-params row into prefs.userCustomRules so
+  // the cleaner strips the param on every subsequent navigation. The "_done"
+  // variant replaces the button text after a successful click; the active
+  // count surfaces total active custom rules so the user has a reference
+  // for what they have promoted.
+  strip_locally_btn: {
+    en: "Strip locally",
+    es: "Eliminar localmente",
+    pt: "Remover localmente" /* FIXME: needs native speaker review */,
+    de: "Lokal entfernen" /* FIXME: needs native speaker review */,
+  },
+  strip_locally_btn_done: {
+    en: "Stripped locally ✓",
+    es: "Eliminado localmente ✓",
+    pt: "Removido localmente ✓" /* FIXME: needs native speaker review */,
+    de: "Lokal entfernt ✓" /* FIXME: needs native speaker review */,
+  },
+  strip_locally_active_count: {
+    en: "{n} custom rules active",
+    es: "{n} reglas personalizadas activas",
+    pt: "{n} regras personalizadas ativas" /* FIXME: needs native speaker review */,
+    de: "{n} benutzerdefinierte Regeln aktiv" /* FIXME: needs native speaker review */,
+  },
   domain_stats_empty:    { en: "No domain stats yet. Keep browsing!", es: "Aún no hay estadísticas. ¡Sigue navegando!", pt: "Sem estatísticas ainda. Continue navegando!", de: "Noch keine Domain-Statistiken. Weiter surfen!" },
   domain_stats_params:   { en: "params stripped", es: "parámetros eliminados", pt: "parâmetros removidos", de: "Parameter entfernt" },
   domain_stats_urls:     { en: "URLs cleaned", es: "URLs limpiadas", pt: "URLs limpas", de: "URLs bereinigt" },
