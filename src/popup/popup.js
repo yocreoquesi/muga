@@ -10,6 +10,12 @@ import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
+import { findSuspiciousParams } from "../lib/entropy-heuristic.js";
+import {
+  createTracker as createFrequencyTracker,
+  createChromeLocalAdapter as createFrequencyAdapter,
+  defaultHasher as frequencyHasher,
+} from "../lib/cross-site-frequency.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -306,6 +312,7 @@ async function init() {
   await showUrlPreview(prefs, lang);
   await showHistory(prefs, lang);
   await showDomainStats(prefs, lang);
+  await showSuspiciousParams(prefs, lang);
 
   // Reactivity: re-render the preview when the user flips relevant settings —
   // either from the popup itself (the enabled toggle already calls showUrlPreview
@@ -715,6 +722,125 @@ async function showDomainStats(prefs, lang) {
     row.appendChild(paramsEl);
     row.appendChild(urlsEl);
     list.appendChild(row);
+  }
+}
+
+/**
+ * Renders the "Suspicious params" section combining:
+ *   1. Entropy heuristic flags (B15, #436) — params on the CURRENT URL
+ *      whose values look like opaque tracking IDs by shape alone.
+ *   2. Cross-site frequency flags (B16, #446) — params seen on 3+
+ *      first-party domains AND with 3+ distinct values, drawn from the
+ *      local frequency tracker store.
+ *
+ * Both are INFORMATIONAL. Auto-stripping unknown params is exactly what
+ * breaks creator referrals (#160), so this section just surfaces the
+ * signal — it does NOT modify any URLs on its own.
+ *
+ * The frequency subgroup is gated on prefs.crossSiteFrequencyEnabled so
+ * a privacy-conscious user can hide it without uninstalling the feature.
+ */
+async function showSuspiciousParams(prefs, lang) {
+  const section = document.getElementById("suspicious-params");
+  const list = document.getElementById("suspicious-params-list");
+  if (!section || !list) return;
+
+  // Reset so repeated calls (storage.onChanged) stay idempotent.
+  list.replaceChildren();
+
+  // ── Entropy subgroup: synchronous, scans current tab URL only ──
+  let entropyFlags = [];
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab?.url;
+    if (
+      url &&
+      !url.startsWith("chrome://") &&
+      !url.startsWith("about:") &&
+      !url.startsWith("moz-extension://") &&
+      !url.startsWith("chrome-extension://")
+    ) {
+      entropyFlags = findSuspiciousParams(url);
+    }
+  } catch { /* tab query may fail in tests; entropy stays empty */ }
+
+  // ── Frequency subgroup: gated on the dedicated pref toggle ──
+  let frequencyFlags = [];
+  if (prefs.crossSiteFrequencyEnabled !== false) {
+    try {
+      const adapter = createFrequencyAdapter();
+      if (adapter) {
+        const tracker = createFrequencyTracker({
+          adapter,
+          hasher: frequencyHasher,
+          enabled: true,
+        });
+        frequencyFlags = await tracker.getFlagged();
+      }
+    } catch { /* best-effort; freq subgroup just stays empty */ }
+  }
+
+  // Hide the whole section when both subgroups are empty. Fresh installs
+  // and clean pages should not get a noise-y empty header.
+  if (entropyFlags.length === 0 && frequencyFlags.length === 0) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  if (entropyFlags.length > 0) {
+    const groupLabel = document.createElement("div");
+    groupLabel.className = "suspicious-group-label";
+    groupLabel.textContent = t("suspicious_params_entropy_group", lang);
+    list.appendChild(groupLabel);
+
+    for (const flag of entropyFlags) {
+      const row = document.createElement("div");
+      row.className = "suspicious-row";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "suspicious-name";
+      nameEl.textContent = flag.param;
+      row.appendChild(nameEl);
+
+      const detailEl = document.createElement("span");
+      detailEl.className = "suspicious-detail";
+      // Score gives the user a defensible "why this looks fishy" without
+      // forcing them to read the heuristic's reason codes.
+      detailEl.textContent = `score ${flag.score}`;
+      row.appendChild(detailEl);
+
+      list.appendChild(row);
+    }
+  }
+
+  if (frequencyFlags.length > 0) {
+    const groupLabel = document.createElement("div");
+    groupLabel.className = "suspicious-group-label";
+    groupLabel.textContent = t("suspicious_params_frequency_group", lang);
+    list.appendChild(groupLabel);
+
+    const detailTemplate = t("suspicious_params_freq_detail", lang);
+    for (const flag of frequencyFlags) {
+      const row = document.createElement("div");
+      row.className = "suspicious-row";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "suspicious-name";
+      nameEl.textContent = flag.param;
+      row.appendChild(nameEl);
+
+      const detailEl = document.createElement("span");
+      detailEl.className = "suspicious-detail";
+      // Avoid innerHTML — replace placeholders manually so the i18n
+      // template can never become an injection vector.
+      detailEl.textContent = detailTemplate
+        .replace("{domains}", String(flag.domains))
+        .replace("{values}", String(flag.values));
+      row.appendChild(detailEl);
+
+      list.appendChild(row);
+    }
   }
 }
 

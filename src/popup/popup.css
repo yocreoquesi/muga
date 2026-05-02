@@ -745,3 +745,63 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   display: block; margin-top: 6px;
   font-size: 11px; color: var(--text-3); text-align: right;
 }
+
+/* ── Suspicious params section (#446, B16) ───────────────────────────── */
+/* Mirrors .domain-stats so the two collapsible panels read as siblings. */
+.suspicious-params { border-top: 1px solid var(--border-1); }
+
+.suspicious-params > summary {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 500;
+}
+.suspicious-params > summary::-webkit-details-marker { display: none; }
+.suspicious-params > summary::after {
+  content: '›';
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform var(--dur) var(--ease);
+}
+.suspicious-params[open] > summary::after { transform: rotate(90deg); }
+
+#suspicious-params-list { padding: 0 0 6px; }
+
+.suspicious-group-label {
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 8px 14px 4px;
+}
+
+.suspicious-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 14px;
+  font-size: 11px;
+}
+
+.suspicious-name {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suspicious-detail {
+  color: var(--text-3);
+  white-space: nowrap;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
