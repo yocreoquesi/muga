@@ -27,6 +27,12 @@ import {
   createChromeLocalAdapter as createFrequencyChromeAdapter,
   defaultHasher as defaultFrequencyHasher,
 } from "../lib/cross-site-frequency.js";
+import {
+  createLedger as createAttributionLedger,
+  pushEvent as pushAttributionEvent,
+  fromCleanerResult as attributionEventFromCleanerResult,
+  DEFAULT_LEDGER_CAPACITY,
+} from "../lib/attribution-ledger.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -161,6 +167,82 @@ const _frequencyAdapter = createFrequencyChromeAdapter();
 const frequencyTracker = _frequencyAdapter
   ? createFrequencyTracker({ adapter: _frequencyAdapter, hasher: defaultFrequencyHasher })
   : null;
+
+// --- Attribution Ledger (#460, A2) ---
+//
+// Rolling ring buffer of cleaner-pipeline events feeding the popup
+// "Recent activity" section. Persisted to chrome.storage.local under
+// "attributionLedger" so the popup can render after SW restart.
+//
+// In-memory ledger is the source of truth during a SW lifetime; the
+// local-storage write is a fire-and-forget mirror. On SW cold start the
+// in-memory copy is empty and the popup reads directly from local
+// storage — both surfaces converge once the next event lands.
+//
+// Gated on prefs.attributionLedgerEnabled (default true). When false,
+// pushAttributionAndPersist short-circuits without touching storage.
+let _attributionLedger = createAttributionLedger(DEFAULT_LEDGER_CAPACITY);
+
+async function _hydrateAttributionLedger() {
+  try {
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(
+        { attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } },
+        (r) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(r);
+        },
+      );
+    });
+    if (data?.attributionLedger && Array.isArray(data.attributionLedger.events)) {
+      _attributionLedger = {
+        events: data.attributionLedger.events.slice(),
+        capacity: Number(data.attributionLedger.capacity) || DEFAULT_LEDGER_CAPACITY,
+      };
+    }
+  } catch {
+    // Best-effort: stay with the empty in-memory ledger. The first push
+    // will overwrite local-storage cleanly.
+  }
+}
+_hydrateAttributionLedger();
+
+/**
+ * Builds an attribution event from a cleaner result and persists the
+ * updated ledger. Fire-and-forget — never blocks the caller. Gated on
+ * prefs.attributionLedgerEnabled so users can opt out of URL persistence
+ * without disabling the rest of MUGA.
+ *
+ * @param {string} rawUrl
+ * @param {object} result - return value from processUrl
+ * @param {object} prefs  - cached prefs (already resolved)
+ */
+function pushAttributionAndPersist(rawUrl, result, prefs) {
+  // Privacy gate: skip both in-memory accumulation AND storage write so
+  // a user who flips the toggle off mid-session sees the ring buffer
+  // freeze immediately.
+  if (prefs?.attributionLedgerEnabled === false) return;
+  let event;
+  try {
+    event = attributionEventFromCleanerResult(rawUrl, result);
+  } catch (err) {
+    console.warn("[MUGA] attribution: fromCleanerResult failed:", err);
+    return;
+  }
+  if (!event) return;
+  _attributionLedger = pushAttributionEvent(_attributionLedger, event);
+  // Best-effort write — failures are silent because the ledger is a UX
+  // affordance, not authoritative state.
+  try {
+    chrome.storage.local.set({ attributionLedger: _attributionLedger }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn("[MUGA] attribution: ledger write failed:", chrome.runtime.lastError);
+      }
+    });
+  } catch (err) {
+    console.warn("[MUGA] attribution: ledger write threw:", err);
+  }
+}
 
 // --- Prefs cache ---
 
@@ -942,6 +1024,11 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
       } catch { /* malformed cleanUrl — skip injection */ }
     }
   }
+
+  // #460 (A2): mirror the cleaner outcome into the Attribution Ledger
+  // so the popup's "Recent activity" section can render. Fire-and-forget
+  // so a write hiccup never affects the caller's URL processing.
+  pushAttributionAndPersist(rawUrl, result, prefs);
 
   return result;
 }

@@ -16,6 +16,8 @@ import {
   createChromeLocalAdapter as createFrequencyAdapter,
   defaultHasher as frequencyHasher,
 } from "../lib/cross-site-frequency.js";
+import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
+import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -313,6 +315,7 @@ async function init() {
   await showHistory(prefs, lang);
   await showDomainStats(prefs, lang);
   await showSuspiciousParams(prefs, lang);
+  await showRecentActivity(lang);
 
   // Reactivity: re-render the preview when the user flips relevant settings —
   // either from the popup itself (the enabled toggle already calls showUrlPreview
@@ -877,6 +880,134 @@ async function showSuspiciousParams(prefs, lang) {
 
       list.appendChild(row);
     }
+  }
+}
+
+/**
+ * Renders the Attribution Ledger "Recent activity" section (#460, A2).
+ *
+ * The SW persists the ledger to `chrome.storage.local["attributionLedger"]`
+ * after every processUrl() return so it survives SW restarts. We re-read
+ * here on each popup open — re-rendering live via storage.onChanged is
+ * deliberately deferred (a popup open is short-lived; the cost of a live
+ * subscription rarely pays off, and the section is read-only).
+ *
+ * Empty state: if the ledger is unset, has no events, or storage read
+ * fails, the empty-state paragraph stays visible and the list slot stays
+ * empty. The summary still renders so the user can discover the section
+ * after their first navigation.
+ *
+ * Per-row copy button uses navigator.clipboard.writeText. Failures
+ * silently restore the icon — clipboard access can be denied in some
+ * popup contexts and a clean URL is still visible for manual copy.
+ */
+async function showRecentActivity(lang) {
+  const section = document.getElementById("recent-activity");
+  const list = document.getElementById("recent-activity-list");
+  const emptyEl = document.getElementById("recent-activity-empty");
+  if (!section || !list || !emptyEl) return;
+
+  // Re-render is idempotent: storage.onChanged could fire if a future
+  // slice subscribes the popup, and we don't want stale rows to bleed.
+  list.replaceChildren();
+
+  let ledger = { events: [], capacity: DEFAULT_LEDGER_CAPACITY };
+  try {
+    const data = await chrome.storage.local.get({
+      attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY },
+    });
+    if (data?.attributionLedger && Array.isArray(data.attributionLedger.events)) {
+      ledger = data.attributionLedger;
+    }
+  } catch (err) {
+    console.warn("[MUGA] showRecentActivity: ledger read failed:", err);
+    // Fall through with an empty ledger — empty-state still renders.
+  }
+
+  const view = presentLedger(ledger);
+  const rows = renderLedgerEntries(view, (key, vars) => {
+    const template = t(key, lang);
+    if (!vars) return template;
+    let out = template;
+    for (const [k, v] of Object.entries(vars)) {
+      // textContent is the final sink, but defensive String() ensures the
+      // template never receives a non-string and end up with "undefined".
+      out = out.replace(`{${k}}`, String(v));
+    }
+    return out;
+  });
+
+  if (rows.length === 0) {
+    // Translate the empty-state message inline so a language switch
+    // applied by applyTranslations() lands here too. The data-i18n
+    // attribute already covers the boot path; this covers re-renders.
+    emptyEl.textContent = t("ledger_empty", lang);
+    emptyEl.hidden = false;
+    return;
+  }
+  emptyEl.hidden = true;
+
+  for (const row of rows) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "recent-activity-row";
+
+    // URL line: truncated for display, full URL kept on the row dataset
+    // so the copy button reads the original (clipboard accuracy beats
+    // visual fidelity).
+    const urlEl = document.createElement("div");
+    urlEl.className = "recent-activity-url";
+    urlEl.textContent = row.urlDisplay;
+    urlEl.title = row.url;
+    rowEl.appendChild(urlEl);
+
+    // Meta line: badge + creator credit + network. We keep them on a
+    // single line with the badge first so the user's eye lands on the
+    // outcome before the attribution detail.
+    const metaEl = document.createElement("div");
+    metaEl.className = "recent-activity-meta";
+
+    if (row.badgeText) {
+      const badgeEl = document.createElement("span");
+      badgeEl.className = "recent-activity-badge";
+      badgeEl.textContent = row.badgeText;
+      metaEl.appendChild(badgeEl);
+    }
+    if (row.creatorCreditText) {
+      const creditEl = document.createElement("span");
+      creditEl.className = "recent-activity-creator";
+      creditEl.textContent = row.creatorCreditText;
+      metaEl.appendChild(creditEl);
+    }
+    if (row.networkText) {
+      const netEl = document.createElement("span");
+      netEl.className = "recent-activity-network";
+      netEl.textContent = row.networkText;
+      metaEl.appendChild(netEl);
+    }
+    if (metaEl.childNodes.length > 0) rowEl.appendChild(metaEl);
+
+    // Copy button. Per-row so the user can grab any cleaned URL from the
+    // ring buffer without hunting through history. Copies the FULL url
+    // (not the truncated display).
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "recent-activity-copy";
+    copyBtn.type = "button";
+    copyBtn.textContent = t("ledger_copy_btn_label", lang);
+    copyBtn.setAttribute("aria-label", t("ledger_copy_btn_label", lang));
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(row.url);
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = t("ledger_copy_btn_copied", lang);
+        setTimeout(() => { copyBtn.textContent = orig; }, 1200);
+      } catch {
+        // Clipboard API may be denied in some popup contexts. Stay quiet —
+        // the URL is still visible for the user to copy manually.
+      }
+    });
+    rowEl.appendChild(copyBtn);
+
+    list.appendChild(rowEl);
   }
 }
 

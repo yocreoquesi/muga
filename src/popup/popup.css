@@ -805,3 +805,101 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Recent activity (#460, A2) ─────────────────────────────────────────────
+ * Mirrors the .suspicious-params <details> chrome (uppercase summary,
+ * chevron, no native marker) so the popup keeps a consistent visual
+ * rhythm. The list itself is scrollable: the ring buffer is bounded at
+ * ~10 entries today, but a user with a large reading session could see
+ * the section grow if the capacity is ever raised.
+ */
+.recent-activity { border-top: 1px solid var(--border-1); }
+
+.recent-activity > summary {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 500;
+}
+.recent-activity > summary::-webkit-details-marker { display: none; }
+.recent-activity > summary::after {
+  content: '›';
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform var(--dur) var(--ease);
+}
+.recent-activity[open] > summary::after { transform: rotate(90deg); }
+
+.recent-activity-list {
+  padding: 0 0 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.recent-activity-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 8px;
+  align-items: start;
+  padding: 6px 14px;
+  font-size: 11px;
+  border-top: 1px solid var(--border-1);
+}
+
+.recent-activity-url {
+  grid-column: 1;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-activity-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.recent-activity-badge {
+  background: var(--surface-2);
+  color: var(--text-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.recent-activity-creator,
+.recent-activity-network {
+  color: var(--text-3);
+}
+
+.recent-activity-copy {
+  grid-column: 2;
+  grid-row: 1;
+  background: transparent;
+  border: 1px solid var(--border-1);
+  color: var(--text-2);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.recent-activity-copy:hover { background: var(--surface-2); }
+
+.recent-activity-empty {
+  padding: 8px 14px 12px;
+  color: var(--text-3);
+  font-size: 11px;
+  margin: 0;
+}

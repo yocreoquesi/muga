@@ -95,6 +95,20 @@
     <a class="report-link" id="report-unclean" href="#" hidden data-i18n="report_unclean_url">Still see tracking? Help us improve</a>
   </section>
 
+  <!-- Recent activity section (#460, A2). Surfaces the Attribution Ledger
+       ring buffer (last N navigations) BELOW the per-page badge area
+       (#preview). Same <details> pattern as #suspicious-params. The list
+       slot is filled at runtime; the empty-state slot carries the
+       data-i18n key so a fresh install still gets a translated message
+       even before the JS layer reads chrome.storage.local. -->
+  <details class="recent-activity" id="recent-activity">
+    <summary data-i18n="ledger_section_title">Recent activity</summary>
+    <div id="recent-activity-list" class="recent-activity-list"></div>
+    <p id="recent-activity-empty" class="recent-activity-empty" data-i18n="ledger_empty">
+      No recent navigations yet. Start browsing — MUGA will list cleaned URLs here.
+    </p>
+  </details>
+
   <div class="growth-bar" id="growth-bar" hidden>
     <button class="growth-btn" id="rate-btn" hidden><span aria-hidden="true">⭐ </span><span data-i18n="rate_muga_short">Rate MUGA</span></button>
     <button class="growth-btn" id="share-btn"><span aria-hidden="true">📋 </span><span data-i18n="share_btn">Share</span></button>

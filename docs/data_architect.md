@@ -36,6 +36,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `creatorAllowlist` | string[] | `[]` | (#445, B13) Per-creator allowlist consumed by Honor Creator Mode. Referrer-domain-shaped strings (e.g. `youtube.com/@LinusTechTips`, `dot-css-news.com`). Capped at 100 entries (storage hygiene). CRUD in `src/lib/creator-allowlist.js`. |
 | `canonicalExtractorEnabled` | boolean | `true` | (#442, B7) When the wrapper engine detects an opaque wrapper (host matched but no destination in URL), consult content-script-supplied `<link rel=canonical>` / JSON-LD `@id` before giving up. Default ON. |
 | `crossSiteFrequencyEnabled` | boolean | `true` | (#446, B16) Local-only Cross-Site Frequency Tracker: maintains a `(paramName, sha256(value))` map keyed per first-party domain so the popup can flag params that appear on 3+ domains AND have 3+ distinct values. LRU-capped at 1000 unique params. NEVER transmitted. Toggle off to make observations a no-op and hide the freq subgroup. |
+| `attributionLedgerEnabled` | boolean | `true` | (#460, A2) Persist the Attribution Ledger ring buffer to `chrome.storage.local["attributionLedger"]` so the popup's "Recent activity" section survives service-worker restarts. Toggle off to gate the SW writer (no local-storage writes; popup section stays empty). |
 
 ### List entry format
 
@@ -66,6 +67,7 @@ Device-only. ~10 MB quota.
 | `remoteParams` | string[] | `[]` | Cached remote tracking params from the last signed fetch (only populated when remoteRulesEnabled) |
 | `remoteRulesMeta` | object | see below | Metadata for the last remote-rules fetch: `{ version, fetchedAt, paramCount, lastError, published }` |
 | `crossSiteFreq` | object | `{ params: {} }` | (#446, B16) Local-only frequency tracker state. Shape: `{ params: { [paramName]: { domains: string[], values: string[] /* sha256 hex */, lastSeen: number } } }`. LRU-capped at 1000 paramNames. NEVER transmitted. |
+| `attributionLedger` | object | `{ events: [], capacity: 10 }` | (#460, A2) Rolling ring buffer of the last cleaner-pipeline events feeding the popup "Recent activity" section. Shape: `{ events: Array<{type, url, network?, creator?}>, capacity: number }`. Capacity caps the event count so the popup render is bounded. SW writes after every `processUrl` return; gated on `attributionLedgerEnabled`. Pure presenter lives in `src/lib/attribution-ledger.js`; popup view layer in `src/lib/attribution-ledger-view.js`. |
 
 ---
 
