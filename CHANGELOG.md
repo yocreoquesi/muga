@@ -4,6 +4,29 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-05-04
+
+PRD #529 first wave — adaptive URL coverage expansion. Six user-visible features land together. The wave shifts MUGA from purely curated rules toward a mix of curated + bounded-scope contextual + user-mediated discovery, while keeping the false-positive principle intact and the zero-telemetry promise unchanged.
+
+### Added
+
+- **PARAM_PAIRS bounded-scoping classifier** ([`src/lib/param-classifier.js`](src/lib/param-classifier.js)). Generic ambiguous parameters (`pid`, `icid`, `icmp`, `CMP`, `NLID`, `soc_src`) are now stripped — but ONLY when a definitive **anchor tracker** (`gclid`, `fbclid`, `msclkid`, `dclid`, `twclid`, `gbraid`, `wbraid`, `utm_source`, `utm_medium`, `utm_campaign`, `mc_eid`, `mc_cid`) co-occurs in the same URL. Standalone `pid=42` on a clean GitHub URL is preserved (functional). The same `pid` next to `gclid=…` on a marketing URL is stripped. Affiliate-precedence still wins: a pair that is also a creator-referral param for the host stays preserved. Unlocks 6+ benchmark-corpus URLs that were previously left untouched. (#530)
+- **Generic wrapper templates** in [`src/lib/wrapper-engine.js`](src/lib/wrapper-engine.js). When no explicit per-host wrapper recipe matches, the engine falls through to a generic code path that probes 5 common destination-parameter keys (`url`, `u`, `redirect`, `dest`, `target`) with 4 safety guards (destination must be absolute http(s), destination host ≠ wrapper host, destination must not be an auth/checkout shape, length cap). Catches new redirect networks the spec doesn't yet enumerate, without wide false-positive risk. Explicit per-host wrappers still take precedence. (#531)
+- **CSFT graduation pipeline** ([`src/lib/cross-site-frequency.js`](src/lib/cross-site-frequency.js)). Each tracked param record now carries a `state` field with three values: `observed → suspicious → candidate`. Promotion happens locally based on first-party domain count + value entropy + recurrence thresholds. Surfaces in the popup's "Suspicious params" section as evidence-graded recommendations, not just raw counters. New exports: `getState(paramName)`, `valueEntropy(s)`. The 17 pre-existing B16 unit tests still pass alongside new state-machine tests. (#532)
+- **"Strip locally" button** per flagged param in the popup's Suspicious section. One click promotes the param into a new local `userCustomRules: []` array in `chrome.storage.sync`. The cleaner consults the array on every navigation; affiliate-preservation still beats it. Per-user expansion of coverage with zero latency to upstream. (#536)
+- **"Report upstream" button** per flagged param in the same Suspicious section. One click opens a deep-linked GitHub issue in the muga repo containing strictly the parameter name and the count of distinct first-party domains the user observed it on — no value, no hash, no domain history, no telemetry. Privacy contract enforced structurally by the new [`src/lib/csft-upstream.js`](src/lib/csft-upstream.js) deep pure module: the only fields the payload-builder can produce are `paramName` and `firstPartyDomainCount`. (#537)
+- **Experimental param-class shape heuristic** behind `experimentalParamClassesEnabled` flag (default OFF). When enabled, the cleaner additionally strips parameters whose VALUE SHAPE matches a tracker pattern: suspicious key prefix (`*_id`, `*clid`, `*_token`, `*_uid`, `*_session`) AND value length > 16 AND Shannon entropy > 4.0 AND base64/hex/uuid charset. All four signals must hit (multi-signal AND). A small allowlist (`state`, `code`, `nonce`, `csrf`, `csrf_token`, `_csrf`, `oauth_token`, `oauth_verifier`, `access_token`, `refresh_token`, `id_token`, `session_id`, `sessionid`, `jsessionid`, `phpsessid`, `sid`, `aspsessionid`) is ALWAYS exempt to protect login flows. With the flag OFF, cleaner behaviour is byte-identical to the #530 baseline. (#544)
+
+### Changed
+
+- **`PREF_DEFAULTS`** in [`src/lib/storage.js`](src/lib/storage.js) gains two new fields: `userCustomRules: []` (per-user locally-promoted params from #536) and `experimentalParamClassesEnabled: false` (the #544 flag, default OFF).
+- **i18n keys** added in en + es for the two new popup buttons + the experimental-flag label. pt + de FIXME-flagged per project convention.
+- **CHANGELOG.md** structure: this 1.13.0 release sits above the previously-documented 1.12.0 (post-grill rollout). v1.12.0 was bumped in code on 2026-04-26 but never tagged into the wild; users on Chrome Web Store / Firefox AMO updating from v1.11.0 receive both waves under the v1.13.0 tag.
+
+### Internal
+
+- **Benchmark phase 2 + 3** ([`tests/benchmark/`](tests/benchmark/)): synthetic-baseline competitor adapter (#506 phase 2a — 9 UTM + 10 click IDs floor); Markdown report writer (#507 phase 3a); HTML report writer (#507 phase 3b); CI workflow on release-tag push (#507 phase 3c — `.github/workflows/benchmark.yml` with 90-day artifact retention). A6 #458 fully closed across phases 1-3.
+
 ## [1.12.0] - 2026-05-01
 
 This is the post-grill rollout release. The architectural surface that v1.11.0 took for granted was retrospectively interrogated in late April 2026; this release ships the resulting changes. Most of the user-visible behavior is unchanged — the work was structural: where consent lives, how the URL pipeline runs, and what the toolbar tells you at a glance.
@@ -575,7 +598,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.13.0
 [1.12.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/yocreoquesi/muga/compare/v1.10.2...v1.11.0
 [1.10.2]: https://github.com/yocreoquesi/muga/compare/v1.10.1...v1.10.2
