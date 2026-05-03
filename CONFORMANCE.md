@@ -23,11 +23,11 @@ The Contextual extension is enforced by a CI gate on every PR (see `.github/work
 npm run conformance:contextual
 ```
 
-This drives every vector in `vendor/caps-spec/test-vectors/contextual.json` through `src/lib/cleaner.js`'s `processUrl` and asserts the observable behaviour matches the spec's expected outputs:
+This drives every vector in `src/vendor/caps-spec/test-vectors/contextual.json` through `src/lib/cleaner.js`'s `processUrl` and asserts the observable behaviour matches the spec's expected outputs:
 
 - params listed in `expected.preservedParams` MUST be present in the cleaned URL with the expected value
 - params listed in `expected.removedParams` MUST NOT be present in the cleaned URL
-- on `network-redirect` hosts (wrappers in `vendor/caps-spec/wrappers.json`), the bounded-scope rule MUST short-circuit per SPEC §3.2 step 6 — the harness asserts `PARAM_PAIRS` entries survive on those hosts
+- on `network-redirect` hosts (wrappers in `src/vendor/caps-spec/wrappers.json`), the bounded-scope rule MUST short-circuit per SPEC §3.2 step 6 — the harness asserts `PARAM_PAIRS` entries survive on those hosts
 
 The harness lives at `tests/unit/conformance-contextual.test.mjs`.
 
@@ -35,11 +35,11 @@ The harness lives at `tests/unit/conformance-contextual.test.mjs`.
 
 The Contextual algorithm is implemented in `src/lib/param-classifier.js` (`PARAM_PAIRS`, `ANCHOR_TRACKERS`, `classify()`), and integrated into the cleaner pipeline in `src/lib/cleaner.js` between the unwrap and tracker-strip phases.
 
-The network-redirect short-circuit is wired in `src/lib/cleaner.js`: when `detectWrapper(url)` returns a recipe (signalling the host is a redirect-network wrapper), the classifier is invoked with `_skipBoundedScope: true` and the bounded-scope rule does not fire. Wrapper-network classification itself comes from `vendor/caps-spec/wrappers.json`, the Ed25519-signed normative artifact.
+The network-redirect short-circuit is wired in `src/lib/cleaner.js`: when `detectWrapper(url)` returns a recipe (signalling the host is a redirect-network wrapper), the classifier is invoked with `_skipBoundedScope: true` and the bounded-scope rule does not fire. Wrapper-network classification itself comes from `src/vendor/caps-spec/wrappers.json`, the Ed25519-signed normative artifact.
 
 ## Vendored artifacts
 
-The `vendor/caps-spec/` directory holds the snapshots MUGA verifies against:
+The `src/vendor/caps-spec/` directory holds the snapshots MUGA verifies against:
 
 - `wrappers.json` (+ `.sig`, `worker-pubkey.txt`) — the redirect-network recipe table, signature verified at sync time
 - `test-vectors/contextual.json` — the conformance test vectors
