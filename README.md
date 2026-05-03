@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.12.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-1.13.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-2531_pass-brightgreen)](#development)
 # MUGA: Privacy Without Breaking Creator Links
 
