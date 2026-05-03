@@ -1,0 +1,138 @@
+[
+  {
+    "name": "anchor-strips-pid",
+    "description": "An anchor tracker (utm_source) co-occurs with the ambiguous param `pid`. Contextual rule fires: pid stripped.",
+    "input": { "url": "https://example.com/page?utm_source=newsletter&pid=abc123" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "pid", "value": "abc123" }]
+    },
+    "citation": "SPEC §3.2 step 6 — bounded scoping fires when an anchor is present."
+  },
+  {
+    "name": "no-anchor-preserves-pid",
+    "description": "Standalone `pid` on a non-affiliate host with NO anchor tracker. Functional URL — Contextual rule MUST NOT fire.",
+    "input": { "url": "https://github.com/yocreoquesi/muga/issues?pid=42" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 6 — without an anchor, ambiguous params are functional and MUST be preserved."
+  },
+  {
+    "name": "anchor-strips-multiple-pairs",
+    "description": "Three ambiguous pairs co-occur with a click-id anchor. All three are stripped in one pass.",
+    "input": { "url": "https://news.example.com/article?gclid=xyz&pid=p&icid=i&CMP=c" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [
+        { "name": "pid", "value": "p" },
+        { "name": "icid", "value": "i" },
+        { "name": "CMP", "value": "c" }
+      ]
+    },
+    "citation": "SPEC §3.2 step 6 — every PARAM_PAIRS entry present in the URL is added to removedParams when an anchor co-occurs."
+  },
+  {
+    "name": "anchor-coexists-with-creator-referral",
+    "description": "Amazon affiliate link with both a creator referral (tag) and an anchor + an ambiguous pair. The referral is preserved (Basic), the pair is stripped (Contextual). The two layers compose.",
+    "input": { "url": "https://amazon.com/dp/B08N5WRWNW?tag=creator-21&gclid=xxx&pid=42" },
+    "expected": {
+      "decision": ["preserve", "strip"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": [{ "name": "pid", "value": "42" }]
+    },
+    "citation": "SPEC §4.4 — Contextual extension composes with the Basic algorithm; affiliate-precedence still wins for creator-referral params."
+  },
+  {
+    "name": "anchor-uppercase-matched-case-insensitively",
+    "description": "Anchor name in upper case (GCLID). Matching MUST be case-insensitive per §3.2 step 6.",
+    "input": { "url": "https://blog.example.com/?GCLID=x&pid=42" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "pid", "value": "42" }]
+    },
+    "citation": "SPEC §3.2 step 6 paragraph: 'Matching of anchor names and pair names MUST be case-insensitive.'"
+  },
+  {
+    "name": "pair-uppercase-matched-case-insensitively",
+    "description": "Pair name in upper case (PID). Matching MUST be case-insensitive; the original casing is preserved in the output.",
+    "input": { "url": "https://blog.example.com/?gclid=x&PID=42" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "PID", "value": "42" }]
+    },
+    "citation": "SPEC §3.2 step 6 — case-insensitive matching, original casing preserved."
+  },
+  {
+    "name": "anchor-without-any-pair-stays-defer",
+    "description": "An anchor is present but the URL carries no ambiguous pair. Nothing for the Contextual extension to strip — algorithm defers.",
+    "input": { "url": "https://example.com/?gclid=onlymarker" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 6 — anchor presence is necessary but not sufficient; a pair must also be present to strip."
+  },
+  {
+    "name": "anchor-and-empty-value-pair-still-strips",
+    "description": "Pair value is empty. The Contextual rule fires on KEY presence alone — empty value does not exempt the param.",
+    "input": { "url": "https://example.com/?gclid=x&pid=" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "pid", "value": "" }]
+    },
+    "citation": "SPEC §3.2 step 6 — rule fires on the (anchor present, pair key present) tuple. Value emptiness is irrelevant for stripping decisions."
+  },
+  {
+    "name": "duplicate-pair-is-deduped",
+    "description": "Same pair appears twice in the URL. The Contextual rule emits a single entry in removedParams (de-duped on lowercased name).",
+    "input": { "url": "https://example.com/?gclid=x&pid=a&pid=b" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "pid", "value": "a" }]
+    },
+    "citation": "SPEC §3.2 step 6 — implementations MUST emit at most one removedParams entry per unique lowercased pair name."
+  },
+  {
+    "name": "mailchimp-anchor-strips-pair",
+    "description": "Exercises the mc_eid Mailchimp anchor family. Behavior mirrors gclid and the others.",
+    "input": { "url": "https://store.example.com/landing?mc_eid=abcdef&icid=campaign42" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "icid", "value": "campaign42" }]
+    },
+    "citation": "SPEC §3.2 step 6 — anchor list normatively includes mc_eid and mc_cid."
+  },
+  {
+    "name": "utm-medium-anchor-strips-pair",
+    "description": "Exercises utm_medium as the anchor (not utm_source). Any UTM core entry MUST trigger the rule.",
+    "input": { "url": "https://example.com/?utm_medium=cpc&NLID=newsletter-7" },
+    "expected": {
+      "decision": ["defer", "strip"],
+      "preservedParams": [],
+      "removedParams": [{ "name": "NLID", "value": "newsletter-7" }]
+    },
+    "citation": "SPEC §3.2 step 6 — utm_source, utm_medium, and utm_campaign are all anchors."
+  },
+  {
+    "name": "network-redirect-host-bypasses-contextual",
+    "description": "Host is a network-redirect program (Awin). Algorithm short-circuits with decision=network-redirect; Contextual rule MUST NOT add strips. Different action class.",
+    "input": { "url": "https://awin1.com/cread.php?awc=12345&gclid=x&pid=42" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 5 takes precedence over step 6. Implementations resolve the redirect at a different layer; param-level strips don't apply."
+  }
+]

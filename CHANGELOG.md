@@ -4,6 +4,14 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **CAPS-Basic + Contextual conformance claim** ([`CONFORMANCE.md`](CONFORMANCE.md)). MUGA now formally conforms to the [Creator Affiliate Preservation Standard](https://github.com/yocreoquesi/caps-spec) at the Basic level + Contextual extension. Every vector in `caps-spec/test-vectors/contextual.json` is enforced as a CI gate (`npm run conformance:contextual`) on every PR — regressions fail the build before merge. Test vectors are vendored at `vendor/caps-spec/test-vectors/contextual.json`. README badge updated. (#543)
+
+### Changed
+
+- **Network-redirect short-circuit** in [`src/lib/cleaner.js`](src/lib/cleaner.js) and [`src/lib/param-classifier.js`](src/lib/param-classifier.js). Per CAPS SPEC §3.2 step 6, the bounded-scope rule (#530) MUST NOT fire on `network-redirect` hosts. When `detectWrapper(url)` returns non-null and the URL was not unwrapped (no extractable destination), the cleaner now passes `_skipBoundedScope: true` to the classifier and `PARAM_PAIRS` entries survive on the wrapper host. Required for Contextual conformance vector #12. (#543)
+
 ## [1.13.2] - 2026-05-04
 
 Recovery release. No functional or user-visible changes vs v1.13.1 — same code, same rules, same behavior. The v1.13.1 release was tagged but its `Release` workflow failed at the unit-test step because the `[Unreleased]` reference link at the bottom of `CHANGELOG.md` still pointed at `v1.13.0...HEAD` after the bump. The `tests/unit/changelog-links.test.mjs` guard correctly flagged the drift, which blocked the AMO publish step from running. AMO therefore stayed on v1.11.0.

@@ -328,6 +328,14 @@ export function classify(url, prefs) {
     return empty;
   }
 
+  // CAPS-Contextual short-circuit (issue #543, SPEC §3.2 step 6): when the
+  // URL's host is a network-redirect (the cleaner sets this when
+  // detectWrapper() returns non-null on a URL we couldn't unwrap), the
+  // bounded-scope rule MUST NOT fire — even if an anchor co-occurs with a
+  // PARAM_PAIRS entry. The shape heuristic (#544) is independent of the
+  // contextual rule and is allowed to run when its experimental flag is on.
+  const skipBoundedScope = !!(prefs && prefs._skipBoundedScope);
+
   // Detect anchor presence (case-insensitive — params are conventionally
   // lowercase but the URL spec is case-sensitive, so we normalize for the
   // check while keeping original casing in the output).
@@ -339,7 +347,7 @@ export function classify(url, prefs) {
     }
   }
 
-  if (!hasAnchor) {
+  if (!hasAnchor || skipBoundedScope) {
     // No bounded-scope hits, but shape may still have fired (#544). When
     // the flag is OFF, shape is empty and this just returns the same
     // `empty` shape as before — preserving #530 byte-identical behaviour.
