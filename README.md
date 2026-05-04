@@ -3,6 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.13.2-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-2531_pass-brightgreen)](#development)
+[![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: Privacy Without Breaking Creator Links
 
 ### Install now

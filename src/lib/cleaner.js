@@ -455,9 +455,17 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     // Strips ambiguous params (PARAM_PAIRS) only when an anchor tracker is
     // present in the same URL. Affiliate params are protected via
     // _affiliateParamSet — they go to preserveParams instead.
+    //
+    // CAPS-Contextual short-circuit (#543, SPEC §3.2 step 6): if we're still
+    // looking at a known wrapper host (unwrap returned null because the
+    // destination was unextractable), the bounded-scope rule MUST NOT fire
+    // — wrapper URLs are network-redirect categorised in the spec, and the
+    // contextual algorithm short-circuits there.
+    const isNetworkRedirect = !!detectWrapper(url.toString());
     const classification = classifyParams(url.toString(), {
       ...prefs,
       _affiliateParamSet: affiliateParamSet,
+      _skipBoundedScope: isNetworkRedirect,
     });
     const { removed, removedValues } = stripTrackingParams(
       url,

@@ -53,6 +53,9 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: CAPS-Contextual conformance gate (#543)
+        run: npm run conformance:contextual
+
       - name: Lint extension
         run: npm run lint
 
