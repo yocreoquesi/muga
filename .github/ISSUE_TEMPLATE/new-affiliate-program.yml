@@ -1,0 +1,49 @@
+name: New affiliate program support
+description: Suggest adding a new store / affiliate program to MUGA.
+title: "[Affiliate] "
+labels: ["enhancement", "affiliate"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        MUGA only adds affiliate programs that allow **direct parameter injection** —
+        we refuse programs that require routing every click through an external tracking server.
+        See [`CONTRIBUTING.md` → Adding affiliate stores](../../CONTRIBUTING.md#adding-affiliate-stores) for the mechanism we accept and the rationale.
+  - type: input
+    id: store
+    attributes:
+      label: Store / program name
+      placeholder: Booking.com Partner Program
+    validations:
+      required: true
+  - type: dropdown
+    id: mechanism
+    attributes:
+      label: Attribution mechanism
+      description: How does the program track the referral?
+      options:
+        - Direct parameter injection (e.g. `?aid=`, `?ref=`, `?tag=`)
+        - Mandatory redirect through a tracking domain
+        - Cookie-only (no URL parameter)
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof of direct-injection support
+      description: Link to the program's official documentation showing the URL parameter format. Required for inclusion — we only act on first-party documented mechanisms.
+      placeholder: https://partners.example.com/docs/deep-linking
+    validations:
+      required: true
+  - type: input
+    id: tos-link
+    attributes:
+      label: Program ToS link
+      description: Public Terms of Service URL — needed to verify direct-injection is permitted.
+      placeholder: https://partners.example.com/terms
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Optional. Examples: param name + a generic value placeholder, expected user surface, related issues.

@@ -2,6 +2,16 @@
 
 Thanks for your interest in contributing! This document covers how to set up the project, run tests, and submit changes.
 
+## How to contribute without code
+
+Most contributions don't need a pull request. The fastest paths in:
+
+- **A site MUGA broke?** Use the [broken-site issue template](.github/ISSUE_TEMPLATE/broken-site.yml). The popup's "Report broken site" button prefills it for you.
+- **A tracking parameter MUGA missed?** Use the [missed-tracking-param template](.github/ISSUE_TEMPLATE/missed-tracking-param.yml). Names only — never values or full URLs.
+- **A new affiliate program to add?** Use the [new-affiliate-program template](.github/ISSUE_TEMPLATE/new-affiliate-program.yml). We only support direct-injection programs (see [Adding affiliate stores](#adding-affiliate-stores)).
+- **General question or design discussion?** Open a [GitHub Discussion](https://github.com/yocreoquesi/muga/discussions) instead of an Issue.
+- **Suspected security issue?** [Open a private security advisory](https://github.com/yocreoquesi/muga/security/advisories/new), not a public Issue.
+
 ## Development setup
 
 **Requirements:** Node.js 20+, npm, git

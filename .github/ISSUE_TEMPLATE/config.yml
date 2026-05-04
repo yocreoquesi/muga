@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or general discussion
+    url: https://github.com/yocreoquesi/muga/discussions
+    about: For "how do I…", design questions, or open conversation — please use Discussions instead of opening an Issue.
+  - name: Security vulnerability
+    url: https://github.com/yocreoquesi/muga/security/advisories/new
+    about: Suspected security issue? Use a private security advisory rather than a public Issue.
