@@ -11,6 +11,13 @@
  * Pure module — no DOM, no network, no clock. Deterministic over its inputs
  * and the WRAPPERS configuration table.
  *
+ * ── Source of truth (issue #538) ─────────────────────────────────────────
+ * The recipe table is no longer authored inline. It is sourced from the
+ * caps-spec normative artifact (`wrappers.json`, Ed25519-signed) vendored at
+ * `src/vendor/caps-spec/wrappers.data.js` so it ships with the extension. To
+ * edit a wrapper recipe, change it in
+ * caps-spec, re-sign, then run `npm run sync:wrappers` to refresh the vendor.
+ *
  * ── Schema ────────────────────────────────────────────────────────────────
  * Each entry in WRAPPERS has the shape:
  *   {
@@ -147,156 +154,110 @@ function extractFromUrlAfterQuery() {
   };
 }
 
-export const WRAPPERS = [
-  {
-    id: "awin",
-    name: "Awin",
-    hostPatterns: ["awin1.com", "www.awin1.com"],
-    pathPatterns: ["/cread.php", "/awclick.php"],
-    extract: extractFromParam("p"),
-  },
-  {
-    id: "skimlinks",
-    name: "Skimlinks",
-    hostPatterns: ["go.redirectingat.com", "go.skimresources.com"],
-    pathPatterns: null,
-    extract: extractFromParam("url"),
-  },
-  {
-    id: "shareasale",
-    name: "ShareASale",
-    hostPatterns: ["shareasale.com", "www.shareasale.com"],
-    pathPatterns: ["/r.cfm"],
-    extract: extractFromParam("urllink"),
-  },
-  {
-    id: "rakuten",
-    name: "Rakuten LinkShare",
-    hostPatterns: ["click.linksynergy.com"],
-    pathPatterns: ["/deeplink"],
-    extract: extractFromParam("murl"),
-  },
-  {
-    id: "tradetracker",
-    name: "TradeTracker",
-    hostPatterns: ["tc.tradetracker.net"],
-    pathPatterns: null,
-    extract: extractFromParam("u"),
-  },
-  {
-    id: "tco",
-    name: "Twitter t.co",
-    // WHY exact host: t.co is the only label; subdomains like api.t.co are
-    // unrelated services and must not be flagged as wrappers.
-    hostPatterns: ["t.co"],
-    pathPatterns: null,
-    // WHY query fallback: t.co's canonical form is path-based and resolves
-    // through an HTTP 301 the engine cannot follow. We try ?url= / ?u= which
-    // some upstream tools attach, and otherwise return null gracefully.
-    extract: extractFromAnyParam(["url", "u"]),
-  },
-  {
-    id: "facebook-l",
-    name: "Facebook Outbound (web)",
-    // WHY only l.facebook.com (not facebook.com / www.facebook.com): the
-    // outbound link wrapper lives exclusively on the l. subdomain. Matching
-    // the parent would catch unrelated profile/post URLs.
-    hostPatterns: ["l.facebook.com"],
-    pathPatterns: ["/l.php"],
-    extract: extractFromParam("u"),
-  },
-  {
-    id: "facebook-lm",
-    name: "Facebook Outbound (mobile)",
-    // WHY separate id: l. and lm. carry the same wrapper schema but represent
-    // different surfaces (web vs. mobile-web). Tracking them separately lets
-    // metrics distinguish where outbound clicks originate.
-    hostPatterns: ["lm.facebook.com"],
-    pathPatterns: ["/l.php"],
-    extract: extractFromParam("u"),
-  },
-  {
-    id: "instagram-l",
-    name: "Instagram Outbound",
-    // WHY only l.instagram.com: parent instagram.com is the social network
-    // itself and must never be flagged. The outbound wrapper has no fixed
-    // path prefix — the destination travels in ?u= directly off the root.
-    hostPatterns: ["l.instagram.com"],
-    pathPatterns: null,
-    extract: extractFromParam("u"),
-  },
-  {
-    id: "reddit-out",
-    name: "Reddit Outbound",
-    // WHY exact host: only out.reddit.com is the outbound wrapper. The apex
-    // reddit.com (and www./old./new.) are the social network itself and must
-    // never be flagged.
-    hostPatterns: ["out.reddit.com"],
-    pathPatterns: null,
-    extract: extractFromParam("url"),
-  },
-  {
-    id: "medium-link",
-    name: "Medium Short Link",
-    // WHY exact host + best-effort: link.medium.com is path-based and resolves
-    // through an HTTP redirect the engine cannot perform. We register it so
-    // detectWrapper() flags the host (useful for metrics + caps validator) and
-    // try ?url= as a query fallback — same pattern as t.co (issue #440).
-    hostPatterns: ["link.medium.com"],
-    pathPatterns: null,
-    extract: extractFromAnyParam(["url", "u"]),
-  },
-  {
-    id: "vk-away",
-    name: "VK Away",
-    // WHY exact host + path: VK's outbound wrapper lives only at
-    // away.vk.com/away.php. The apex vk.com is the social network itself.
-    hostPatterns: ["away.vk.com"],
-    pathPatterns: ["/away.php"],
-    extract: extractFromParam("to"),
-  },
-  {
-    id: "snap-exit",
-    name: "Snap Exit",
-    // WHY exact host: exit.sc is Snap's exit-redirect host (separate from
-    // snapchat.com). No path constraint — the destination travels in ?url=
-    // off the root.
-    hostPatterns: ["exit.sc"],
-    pathPatterns: null,
-    extract: extractFromParam("url"),
-  },
-  {
-    id: "hrefli",
-    name: "href.li (privacy proxy)",
-    // WHY exact host + path-embedded extractor: href.li is a "naked query"
-    // privacy proxy — the destination URL appears directly after `?` with no
-    // parameter key (e.g. `https://href.li/?https://example.com/article`).
-    // It must NOT survive in the final URL — see processUrl integration tests.
-    hostPatterns: ["href.li"],
-    pathPatterns: null,
-    extract: extractFromUrlAfterQuery(),
-  },
-  {
-    id: "anonymto",
-    name: "anonym.to (privacy proxy)",
-    // WHY same shape as href.li: anonym.to uses the identical naked-query
-    // proxy pattern. Tracked separately so metrics distinguish the two.
-    hostPatterns: ["anonym.to"],
-    pathPatterns: null,
-    extract: extractFromUrlAfterQuery(),
-  },
-  {
-    id: "impact",
-    name: "Impact Radius",
-    // WHY regex: Impact assigns brand-specific subdomains on pxf.io
-    // (gohealth.pxf.io, target.pxf.io, …). Anchors require ≥1 subdomain
-    // label and a literal ".pxf.io" suffix to block apex pxf.io and
-    // suffix look-alikes (notpxf.io, pxf.iox).
-    hostPatterns: [/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.pxf\.io$/],
-    pathPatterns: null,
-    extract: extractFromParam("u"),
-  },
-];
+import { WRAPPERS_RAW } from "../vendor/caps-spec/wrappers.data.js";
+
+/**
+ * Wrapper schema mapping caps-spec/wrappers.json (the published normative
+ * artifact) to the engine's internal table shape.
+ *
+ * INTENTIONAL CONSOLIDATION — `skimlinks-redirectingat` + `skimlinks-skimresources`:
+ * The spec splits Skimlinks into two ids so a future consumer can attribute
+ * metrics per surface. MUGA's engine, attribution-ledger, and prior chrome
+ * storage all use a single `skimlinks` id. To preserve test behavior and
+ * stored event compatibility (acceptance criterion of issue #538: behavior
+ * unchanged), the mapper merges both spec entries back into a single engine
+ * entry `id: "skimlinks"` with the union of hostPatterns. Re-introduce the
+ * split when (and if) muga's attribution starts to depend on per-surface
+ * granularity.
+ */
+const SKIMLINKS_SPEC_IDS = new Set([
+  "skimlinks-redirectingat",
+  "skimlinks-skimresources",
+]);
+
+/**
+ * Per-id compatibility overrides applied AFTER the spec→engine mapping.
+ *
+ * The caps-spec wrappers schema currently only supports a single `pathPrefix`
+ * per entry. MUGA's pre-existing engine accepts multiple paths for some
+ * networks. To preserve behaviour (issue #538 acceptance criterion: tests must
+ * still pass) without forking the schema, we extend the engine table with the
+ * extra prefix here and track a follow-up in caps-spec to allow multi-prefix
+ * entries (then this override goes away).
+ */
+const PATH_PREFIX_EXTENSIONS = {
+  awin: ["/awclick.php"],
+};
+
+function buildExtractor(extractor) {
+  switch (extractor.kind) {
+    case "fromParam":
+      return extractFromParam(extractor.paramName);
+    case "fromAnyParam":
+      return extractFromAnyParam(extractor.paramName);
+    case "fromUrlAfterQuery":
+      return extractFromUrlAfterQuery();
+    default:
+      throw new Error(
+        `wrapper-engine: unknown extractor kind "${extractor.kind}" in vendored wrappers.json`,
+      );
+  }
+}
+
+/**
+ * Compile a hostPattern from the spec form (string) to the engine form
+ * (string | RegExp). The spec wraps regex source strings in `^...$` per its
+ * schema; everything else is a literal lowercase host.
+ */
+function buildHostPattern(p) {
+  if (typeof p === "string" && p.startsWith("^") && p.endsWith("$")) {
+    return new RegExp(p);
+  }
+  return p;
+}
+
+/**
+ * Map the raw spec entries to the engine's WRAPPERS table.
+ * Skimlinks consolidation is the only id-level transform.
+ */
+function buildWrappers(rawList) {
+  const result = [];
+  let skimlinksMerged = null;
+  for (const entry of rawList) {
+    const basePaths = entry.pathPrefix ? [entry.pathPrefix] : null;
+    const extraPaths = PATH_PREFIX_EXTENSIONS[entry.id];
+    const pathPatterns = extraPaths
+      ? [...(basePaths ?? []), ...extraPaths]
+      : basePaths;
+    const wrapper = {
+      id: entry.id,
+      name: entry.label,
+      hostPatterns: entry.hostPatterns.map(buildHostPattern),
+      pathPatterns,
+      extract: buildExtractor(entry.extractor),
+    };
+    if (SKIMLINKS_SPEC_IDS.has(entry.id)) {
+      if (skimlinksMerged) {
+        skimlinksMerged.hostPatterns = [
+          ...skimlinksMerged.hostPatterns,
+          ...wrapper.hostPatterns,
+        ];
+      } else {
+        skimlinksMerged = {
+          ...wrapper,
+          id: "skimlinks",
+          name: "Skimlinks",
+        };
+        result.push(skimlinksMerged);
+      }
+    } else {
+      result.push(wrapper);
+    }
+  }
+  return result;
+}
+
+export const WRAPPERS = buildWrappers(WRAPPERS_RAW);
 
 /**
  * Allowlist of conventional redirect-style query parameter keys probed by the

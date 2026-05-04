@@ -34,6 +34,7 @@ const VECTORS_PATH = join(
   __dirname,
   "..",
   "..",
+  "src",
   "vendor",
   "caps-spec",
   "test-vectors",
