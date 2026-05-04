@@ -4,6 +4,14 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-05-04
+
+Recovery release. No functional or user-visible changes vs v1.13.0 — same code, same rules, same behavior. The v1.13.0 release reached Chrome Web Store but never reached Firefox AMO: the upload was rejected with HTTP 400 because the auto-generated `release_notes` (full CHANGELOG slice) was 4938 characters, over Mozilla's 3000-character cap. The release workflow had `continue-on-error: true` on the AMO step plus a lenient AND-gate on the summary, so the failure shipped green while AMO got nothing.
+
+### Fixed
+- **Release pipeline**: AMO `release_notes` are now truncated to 2900 characters (100-char headroom under Mozilla's 3000 cap) with a link back to the GitHub Release for the full notes. Truncation logic lives in `tools/amo-build-metadata.mjs` (testable) and is pinned by `tests/unit/amo-release-notes-truncation.test.mjs`. (#556)
+- **Release pipeline**: `release.yml` `Check store submissions` step now fails the workflow if **any** store step fails (AMO, CWS upload, CWS publish), with per-store error annotations. The previous gate only failed if both stores failed, which masked the v1.13.0 AMO regression. (#556)
+
 ## [1.13.0] - 2026-05-04
 
 PRD #529 first wave — adaptive URL coverage expansion. Six user-visible features land together. The wave shifts MUGA from purely curated rules toward a mix of curated + bounded-scope contextual + user-mediated discovery, while keeping the false-positive principle intact and the zero-telemetry promise unchanged.
@@ -599,6 +607,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - MIT License, README
 
 [Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.0...HEAD
+[1.13.1]: https://github.com/yocreoquesi/muga/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.13.0
 [1.12.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/yocreoquesi/muga/compare/v1.10.2...v1.11.0
