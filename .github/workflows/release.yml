@@ -157,21 +157,35 @@ jobs:
           fi
 
       # ── Submission summary ──────────────────────────────────────────
+      # Fail if EITHER store fails. The previous "fail only if both failed" gate
+      # masked a real AMO failure on v1.13.0 (release_notes >3000 chars) — the
+      # workflow shipped green while Firefox got nothing. If a re-run trips on
+      # "version already exists" because one store published the first time, the
+      # operator should re-tag with a bumped patch or skip the offending step.
       - name: Check store submissions
         if: always()
         run: |
           AMO="${{ steps.amo.outcome }}"
           CWS_UP="${{ steps.cws-upload.outcome }}"
           CWS_PUB="${{ steps.cws-publish.outcome }}"
-          echo "## Store submission results" >> "$GITHUB_STEP_SUMMARY"
-          echo "- AMO: ${AMO}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- CWS upload: ${CWS_UP}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- CWS publish: ${CWS_PUB}" >> "$GITHUB_STEP_SUMMARY"
-          # Fail only if BOTH stores failed
-          if [ "$AMO" = "failure" ] && [ "$CWS_UP" = "failure" -o "$CWS_PUB" = "failure" ]; then
-            echo "::error::Both AMO and CWS submissions failed"
-            exit 1
+          {
+            echo "## Store submission results"
+            echo "- AMO: ${AMO}"
+            echo "- CWS upload: ${CWS_UP}"
+            echo "- CWS publish: ${CWS_PUB}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          FAILED=0
+          if [ "$AMO" = "failure" ]; then
+            echo "::error::AMO submission failed — see 'Submit to Firefox AMO' step"
+            FAILED=1
           fi
-          [ "$AMO" = "failure" ] && echo "::warning::AMO submission failed (version may already exist)"
-          [ "$CWS_UP" = "failure" -o "$CWS_PUB" = "failure" ] && echo "::warning::CWS submission failed"
-          exit 0
+          if [ "$CWS_UP" = "failure" ]; then
+            echo "::error::CWS upload failed — see 'Upload to Chrome Web Store' step"
+            FAILED=1
+          fi
+          if [ "$CWS_PUB" = "failure" ]; then
+            echo "::error::CWS publish failed — see 'Publish on Chrome Web Store' step"
+            FAILED=1
+          fi
+          [ "$FAILED" -eq 1 ] && exit 1
+          echo "All store submissions succeeded"
