@@ -4,6 +4,13 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-05-04
+
+Recovery release. No functional or user-visible changes vs v1.13.1 — same code, same rules, same behavior. The v1.13.1 release was tagged but its `Release` workflow failed at the unit-test step because the `[Unreleased]` reference link at the bottom of `CHANGELOG.md` still pointed at `v1.13.0...HEAD` after the bump. The `tests/unit/changelog-links.test.mjs` guard correctly flagged the drift, which blocked the AMO publish step from running. AMO therefore stayed on v1.11.0.
+
+### Fixed
+- **Release pipeline**: `[Unreleased]` link in `CHANGELOG.md` now tracks the latest released tag, satisfying the `changelog-links` test that gates the `Release` workflow. Without this, every bump that forgot to update the link would silently skip AMO publish.
+
 ## [1.13.1] - 2026-05-04
 
 Recovery release. No functional or user-visible changes vs v1.13.0 — same code, same rules, same behavior. The v1.13.0 release reached Chrome Web Store but never reached Firefox AMO: the upload was rejected with HTTP 400 because the auto-generated `release_notes` (full CHANGELOG slice) was 4938 characters, over Mozilla's 3000-character cap. The release workflow had `continue-on-error: true` on the AMO step plus a lenient AND-gate on the summary, so the failure shipped green while AMO got nothing.
@@ -606,7 +613,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.2...HEAD
+[1.13.2]: https://github.com/yocreoquesi/muga/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/yocreoquesi/muga/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.13.0
 [1.12.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.12.0
