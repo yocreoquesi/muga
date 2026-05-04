@@ -2,6 +2,10 @@
 # Reads the latest CHANGELOG.md entry and injects release_notes into amo-metadata.json.
 # Usage: bash scripts/prepare-amo-metadata.sh [version]
 #   version: optional, defaults to package.json version
+#
+# Truncation to AMO's 3000-char release_notes cap lives in tools/amo-build-metadata.mjs
+# (testable). v1.13.0's release notes were 4938 chars and silently broke the AMO upload —
+# do not reintroduce inline truncation logic here.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,12 +19,4 @@ if [ -z "$NOTES" ]; then
   NOTES="Bug fixes and improvements. See https://github.com/yocreoquesi/muga/releases"
 fi
 
-# Build the release_notes JSON with node (handles escaping properly)
-node -e "
-const fs = require('fs');
-const meta = JSON.parse(fs.readFileSync('$ROOT/amo-metadata.json', 'utf8'));
-const notes = $(node -e "console.log(JSON.stringify(process.argv[1]))" -- "$NOTES");
-meta.version.release_notes = { 'en-US': notes };
-fs.writeFileSync('$ROOT/amo-metadata.json', JSON.stringify(meta, null, 2) + '\n');
-console.log('amo-metadata.json updated with release notes for v' + '$VERSION');
-"
+printf '%s' "$NOTES" | node "$ROOT/tools/amo-build-metadata.mjs" "$VERSION"
