@@ -410,12 +410,19 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     };
   }
 
-  // 2b. Collect whitelisted affiliate values for this host (never touch these)
-  const whitelistedValues = new Set(
-    parsedWhitelist
-      .filter(e => domainMatches(hostname, e.domain) && e.param && e.value)
-      .map(e => `${e.param}::${e.value}`)
-  );
+  // 2b. Collect whitelisted affiliate values for this host (never touch these).
+  // Two shapes are supported (#301):
+  //   - exact:    domain::param::value  -> protects only that param/value pair
+  //   - wildcard: domain::param::*      -> protects any value of that param
+  const whitelistedValues = new Set();
+  const whitelistedParams = new Set();
+  for (const e of parsedWhitelist) {
+    if (!domainMatches(hostname, e.domain) || !e.param || !e.value) continue;
+    if (e.value === "*") whitelistedParams.add(e.param);
+    else whitelistedValues.add(`${e.param}::${e.value}`);
+  }
+  const isWhitelisted = (param, value) =>
+    whitelistedParams.has(param) || whitelistedValues.has(`${param}::${value}`);
 
   // 3. Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
   if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
@@ -424,7 +431,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
         const value = url.searchParams.get(pattern.param);
         if (value && value !== pattern.ourTag) {
           // Skip if this affiliate is whitelisted by the user
-          if (!whitelistedValues.has(`${pattern.param}::${value}`)) {
+          if (!isWhitelisted(pattern.param, value)) {
             detectedAffiliate = { param: pattern.param, value, pattern };
             action = "detected_foreign";
             break;
@@ -490,7 +497,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
       const val = url.searchParams.get(pattern.param);
       if (val) {
         if (prefs.injectOwnAffiliate && pattern.ourTag && val === pattern.ourTag) continue;
-        if (!whitelistedValues.has(`${pattern.param}::${val}`)) {
+        if (!isWhitelisted(pattern.param, val)) {
           url.searchParams.delete(pattern.param);
           if (action === "untouched") action = "cleaned";
         }
@@ -506,25 +513,31 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
       const current = url.searchParams.get(entry.param);
-      if (current === entry.value) {
-        url.searchParams.delete(entry.param);
-        blacklistStripped++;
-        // If this param is an affiliate param for this host, flag injection suppression
-        if (affiliateParamSet.has(entry.param.toLowerCase())) {
-          blacklistRemovedAffiliate = true;
-        }
-        // If this was the detected foreign affiliate, clear it. The toast must not fire
-        // for a parameter we already removed via the blacklist.
-        if (
-          detectedAffiliate &&
-          detectedAffiliate.param === entry.param &&
-          detectedAffiliate.value === entry.value
-        ) {
-          detectedAffiliate = null;
-          action = "cleaned";
-        } else if (action === "untouched") {
-          action = "cleaned";
-        }
+      if (current === null) continue;
+      const isWildcard = entry.value === "*";
+      const matches = isWildcard || current === entry.value;
+      if (!matches) continue;
+      // Whitelist always wins over blacklist for the same param (#301).
+      // Applies to both wildcard (`domain::param::*`) and exact-match entries
+      // so the user-facing priority rule stays consistent and easy to explain.
+      if (isWhitelisted(entry.param, current)) continue;
+      url.searchParams.delete(entry.param);
+      blacklistStripped++;
+      // If this param is an affiliate param for this host, flag injection suppression
+      if (affiliateParamSet.has(entry.param.toLowerCase())) {
+        blacklistRemovedAffiliate = true;
+      }
+      // If this was the detected foreign affiliate, clear it. The toast must not fire
+      // for a parameter we already removed via the blacklist.
+      if (
+        detectedAffiliate &&
+        detectedAffiliate.param === entry.param &&
+        (isWildcard || detectedAffiliate.value === entry.value)
+      ) {
+        detectedAffiliate = null;
+        action = "cleaned";
+      } else if (action === "untouched") {
+        action = "cleaned";
       }
     }
   }

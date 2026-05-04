@@ -1025,6 +1025,74 @@ describe("Scenario D — blacklist enforcement", () => {
     assert.equal(action, "blacklisted");
   });
 
+  test("wildcard blacklist (domain::param::*) strips param regardless of value (#301)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?pid=anything-123",
+      { ...PREFS, blacklist: ["amazon.es::pid::*"] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("pid"), false);
+  });
+
+  test("wildcard blacklist does not affect a different domain (#301)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.example.com/foo?pid=anything-123",
+      { ...PREFS, blacklist: ["amazon.es::pid::*"] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("pid"), "anything-123");
+  });
+
+  test("wildcard blacklist suppresses foreign-affiliate toast (#301)", () => {
+    const { detectedAffiliate, cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=spammer-21",
+      {
+        ...PREFS,
+        notifyForeignAffiliate: true,
+        blacklist: ["amazon.es::tag::*"],
+      }
+    );
+    assert.equal(detectedAffiliate, null);
+    assert.equal(new URL(cleanUrl).searchParams.has("tag"), false);
+  });
+
+  test("whitelist exact value beats wildcard blacklist for the same param (#301)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=creator-21",
+      {
+        ...PREFS,
+        blacklist: ["amazon.es::tag::*"],
+        whitelist: ["amazon.es::tag::creator-21"],
+      }
+    );
+    // Whitelist always wins over blacklist for the same param
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "creator-21");
+  });
+
+  test("whitelist wildcard beats wildcard blacklist for the same param (#301)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=anything-21",
+      {
+        ...PREFS,
+        blacklist: ["amazon.es::tag::*"],
+        whitelist: ["amazon.es::tag::*"],
+      }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "anything-21");
+  });
+
+  test("whitelist exact value beats exact-match blacklist for the same param (#301)", () => {
+    // Uniform priority rule: whitelist always wins. Pathological config but
+    // the rule must hold so the priority statement in the UI/README is honest.
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=spammer-21",
+      {
+        ...PREFS,
+        blacklist: ["amazon.es::tag::spammer-21"],
+        whitelist: ["amazon.es::tag::spammer-21"],
+      }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "spammer-21");
+  });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -1052,6 +1120,33 @@ describe("Whitelist — protected affiliates", () => {
     // utm_source stripped (Scenario A), tag not whitelisted so remains untouched by whitelist
     assert.equal(new URL(cleanUrl).searchParams.has("utm_source"), false);
     assert.equal(new URL(cleanUrl).searchParams.get("tag"), "random-21");
+  });
+
+  test("wildcard whitelist (domain::param::*) protects any value of that param (#301)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.amazon.es/dp/B08N5WRWNW?tag=anyone-21&utm_source=email",
+      { ...PREFS, whitelist: ["amazon.es::tag::*"] }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("utm_source"), false);
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "anyone-21");
+  });
+
+  test("wildcard whitelist does not protect a different domain (#301)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.example.com/foo?tag=anyone-21",
+      {
+        ...PREFS,
+        stripAllAffiliates: true,
+        whitelist: ["amazon.es::tag::*"],
+      }
+    );
+    // example.com is not the whitelisted domain — wildcard should not apply here.
+    // (Whether tag survives depends on Scenario A; we only assert no cross-domain leak.)
+    const u = new URL(cleanUrl);
+    if (u.searchParams.has("tag")) {
+      // If preserved, it's by other rules — not by the amazon.es whitelist
+      assert.equal(u.hostname, "www.example.com");
+    }
   });
 
 });

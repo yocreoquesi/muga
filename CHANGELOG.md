@@ -6,6 +6,7 @@ All notable changes to MUGA will be documented in this file.
 
 ### Added
 
+- **Wildcard value support in Blocked Domains and Whitelist** (`domain.com::param::*`). Strips or protects a parameter on a specific domain regardless of its value — useful for params like `pid` that share legitimate and tracking uses. Both lists now accept the new shape. Priority rule made uniform and explicit: a Whitelist match always wins over a Blacklist match for the same parameter. Documented in the options page hints and README. ([`src/lib/cleaner.js`](src/lib/cleaner.js), [`src/lib/validation.js`](src/lib/validation.js), [`src/lib/i18n.js`](src/lib/i18n.js)). (#301)
 - **CAPS-Basic + Contextual conformance claim** ([`CONFORMANCE.md`](CONFORMANCE.md)). MUGA now formally conforms to the [Creator Affiliate Preservation Standard](https://github.com/yocreoquesi/caps-spec) at the Basic level + Contextual extension. Every vector in `caps-spec/test-vectors/contextual.json` is enforced as a CI gate (`npm run conformance:contextual`) on every PR — regressions fail the build before merge. Test vectors are vendored at `vendor/caps-spec/test-vectors/contextual.json`. README badge updated. (#543)
 
 ### Changed

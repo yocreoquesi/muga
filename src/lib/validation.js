@@ -13,6 +13,7 @@
  *   - "domain.com"                   (strip all params on this domain)
  *   - "domain.com::disabled"         (disable cleaning on this domain)
  *   - "domain.com::param::value"     (match a specific affiliate param/value)
+ *   - "domain.com::param::*"         (match the param regardless of value)
  *
  * @param {*} entry - Value to validate.
  * @returns {boolean} True if the entry is valid, false otherwise.

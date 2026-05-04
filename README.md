@@ -109,9 +109,9 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Configurable
 
-- Per-domain blacklist: strip everything on a specific site
+- Per-domain blacklist: strip everything on a specific site, a single param value (`domain::param::value`), or a param regardless of its value (`domain::param::*`)
 - Per-domain disable (`domain::disabled`): opt entire domains out of MUGA
-- Whitelist: protect specific creator affiliate tags from detection
+- Whitelist: protect specific creator affiliate tags from detection — supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
 - Custom tracking params: add your own parameter names
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
