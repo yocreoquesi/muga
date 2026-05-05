@@ -12,8 +12,8 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { TRANSLATIONS } from "../../src/lib/i18n.js";
 
-describe("Regression: i18n keys exist for share/confirm buttons", () => {
-  const requiredKeys = ["share_copied", "share_btn", "confirm_cancel", "confirm_ok"];
+describe("Regression: i18n keys exist for confirm buttons", () => {
+  const requiredKeys = ["confirm_cancel", "confirm_ok"];
   for (const key of requiredKeys) {
     test(`i18n key "${key}" exists with en and es`, () => {
       assert.ok(TRANSLATIONS[key], `Missing i18n key: ${key}`);

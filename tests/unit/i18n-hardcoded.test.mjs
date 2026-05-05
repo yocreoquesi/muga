@@ -97,31 +97,10 @@ describe("Previously hardcoded English strings are gone from source", () => {
   }
 });
 
-// ── Share button: no hardcoded aria-label in HTML ──────────────────────────
+// ── Rate button: no hardcoded aria-label in HTML ──────────────────────────
 
-describe("Share / rate buttons use data-i18n, not hardcoded text", () => {
+describe("Rate button uses data-i18n, not hardcoded text", () => {
   const popupHtml = readFileSync(join(ROOT, "src/popup/popup.html"), "utf8");
-
-  test('popup.html: share-btn has no hardcoded aria-label="Share MUGA"', () => {
-    assert.ok(
-      !popupHtml.includes('id="share-btn" aria-label='),
-      'share-btn must not have a hardcoded aria-label — visible text via data-i18n is the accessible name'
-    );
-  });
-
-  test('popup.html: share-btn has data-i18n="share_btn"', () => {
-    assert.ok(
-      popupHtml.includes('data-i18n="share_btn"'),
-      'share_btn key must be wired with data-i18n on the share button'
-    );
-  });
-
-  test('popup.html: share emoji is in an aria-hidden span', () => {
-    assert.ok(
-      popupHtml.includes('aria-hidden="true">📋'),
-      'The 📋 emoji must be in an aria-hidden span so screen readers skip it'
-    );
-  });
 
   test('popup.html: rate-btn has data-i18n="rate_muga_short"', () => {
     assert.ok(

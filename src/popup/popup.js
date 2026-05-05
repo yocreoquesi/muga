@@ -191,7 +191,6 @@ async function init() {
   // Growth features
   const growthBar = document.getElementById("growth-bar");
   const rateBtn = document.getElementById("rate-btn");
-  const shareBtn = document.getElementById("share-btn");
   const urlsCleaned = local.stats?.urlsCleaned ?? 0;
 
   // Easter eggs: milestone titles on the logo
@@ -208,8 +207,6 @@ async function init() {
     const milestone = milestones.find(([threshold]) => urlsCleaned >= threshold);
     if (milestone) logoEl.title = milestone[1];
   }
-
-  growthBar.hidden = false;
 
   // Rate nudge: 200+ URLs AND 7+ days since install, max 3 nudges,
   // at least 3 days apart, then permanent silence.
@@ -228,6 +225,7 @@ async function init() {
     && !nudgeSession.nudgeSessionSeen;
 
   if (shouldNudge) {
+    growthBar.hidden = false;
     rateBtn.hidden = false;
     const rateBtnLabel = rateBtn.querySelector("[data-i18n='rate_muga_short']") || rateBtn;
     rateBtnLabel.textContent = t("rate_nudge_btn_short", lang);
@@ -245,56 +243,6 @@ async function init() {
       chrome.tabs.create({ url: storeUrl });
     });
   }
-
-  shareBtn.addEventListener("click", () => {
-    const isFirefox = detectFirefox();
-    const storeUrl = isFirefox
-      ? "https://addons.mozilla.org/firefox/addon/muga/"
-      : "https://chromewebstore.google.com/detail/muga/";
-
-    const junk = local.stats?.junkRemoved ?? 0;
-    const cleaned = local.stats?.urlsCleaned ?? 0;
-
-    // Seasonal easter eggs
-    const now = new Date();
-    const mmdd = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const seasonalKeys = {
-      "01-01": "share_seasonal_0101",
-      "02-14": "share_seasonal_0214",
-      "03-14": "share_seasonal_0314",
-      "04-01": "share_seasonal_0401",
-      "05-04": "share_seasonal_0504",
-      "10-31": "share_seasonal_1031",
-      "12-25": "share_seasonal_1225",
-      "12-31": "share_seasonal_1231",
-    };
-    const seasonal = Object.fromEntries(
-      Object.entries(seasonalKeys).map(([date, key]) => [date, t(key, lang)])
-    );
-
-    // Fun phrases: rotated randomly, with backronym hooks
-    const phraseReplace = (s) => s.replace("%junk%", junk).replace("%cleaned%", cleaned);
-    const phrases = [
-      phraseReplace(t("share_phrase_1", lang)),
-      phraseReplace(t("share_phrase_2", lang)),
-      phraseReplace(t("share_phrase_3", lang)),
-      phraseReplace(t("share_phrase_4", lang)),
-      phraseReplace(t("share_phrase_5", lang)),
-      phraseReplace(t("share_phrase_6", lang)),
-      phraseReplace(t("share_phrase_7", lang)),
-      phraseReplace(t("share_phrase_8", lang)),
-      phraseReplace(t("share_phrase_9", lang)),
-    ];
-
-    const pick = seasonal[mmdd] || phrases[Math.floor(Math.random() * phrases.length)];
-    const text = `${pick}\n\n${storeUrl}`;
-
-    const shareBtnLabel = shareBtn.querySelector("[data-i18n='share_btn']") || shareBtn;
-    navigator.clipboard.writeText(text).then(() => {
-      shareBtnLabel.textContent = t("share_copied_prefix", lang) + t("share_copied", lang);
-      setTimeout(() => { shareBtnLabel.textContent = t("share_copy_prefix", lang) + t("share_btn", lang); }, 1500);
-    }).catch(() => {}); // clipboard may fail in restricted contexts; share is non-critical
-  });
 
   // Clicking the URLs-cleaned stat always toggles the history panel (#178, #237)
   const statUrlsWrap = document.getElementById("stat-urls-wrap");
