@@ -80,6 +80,11 @@ describe("isValidListEntry — valid formats", () => {
     assert.ok(isValidListEntry("shop.example.com::ref::abc"));
   });
 
+  test("accepts domain::param::* (wildcard, #301)", () => {
+    assert.ok(isValidListEntry("amazon.es::tag::*"));
+    assert.ok(isValidListEntry("booking.com::aid::*"));
+  });
+
   test("accepts single-label domain", () => {
     assert.ok(isValidListEntry("localhost"));
   });
