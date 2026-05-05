@@ -465,7 +465,8 @@
               "vsm_cid",
               "vsm_pid",
               "vsm_type",
-              "winflncrtag"
+              "winflncrtag",
+              "link_source"
             ]
           }
         }

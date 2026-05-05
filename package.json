@@ -25,6 +25,7 @@
     "benchmark": "node tests/benchmark/runner.mjs",
     "benchmark:refresh-competitors": "node scripts/refresh-competitor-snapshots.mjs",
     "benchmark:update-comparison-page": "npm run benchmark && node tools/generate-comparison-benchmark.mjs",
+    "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test"
   },
   "devDependencies": {

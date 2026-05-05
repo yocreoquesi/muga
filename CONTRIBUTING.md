@@ -135,7 +135,25 @@ A parameter belongs in the universal list when **all** of the following hold:
 
 If any of those fails, the param does not belong in the universal list. Pick a domain-specific carrier instead.
 
-To add to the universal list:
+To add to the universal list, the **fastest path is `npm run add-rule`**:
+
+```sh
+npm run add-rule
+# or non-interactive:
+npm run add-rule -- --name=link_source --category=ads --source="AdGuard filter 17"
+```
+
+The script:
+
+1. Appends the param to the `TRACKING_PARAMS` array in `src/lib/affiliates.js`.
+2. Appends it to the matching `TRACKING_PARAM_CATEGORIES.<cat>.params` array (categories: `utm`, `ads`, `email`, `social`, `platform_noise`, `generic`).
+3. Regenerates `src/rules/tracking-params.json` (`npm run build:rules`).
+4. Regenerates `src/content/cleaner-bundle.js` (`npm run build:content`).
+5. Appends a regression entry in `tests/unit/cleaner-add-rule-regression.test.mjs` that asserts the param strips on a synthetic URL.
+6. Runs the unit-test suite to confirm no regression.
+7. Stages the diff for review (does **not** commit — that step stays in your hands).
+
+Manual path (if you prefer):
 
 1. Add the param to the `TRACKING_PARAMS` array in `src/lib/affiliates.js`.
 2. Regenerate the DNR rules file: `npm run build:rules`.
