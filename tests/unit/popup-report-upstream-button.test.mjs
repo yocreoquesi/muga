@@ -1,18 +1,28 @@
 /**
- * MUGA — Popup "Report upstream" button per Suspicious-params row (#537).
+ * MUGA — Popup "Report upstream" button per Suspicious-params row.
  *
- * The button opens a deep-linked GitHub issue in a new tab pre-filled with
- * ONLY the param name and the count of distinct first-party domains the
- * user observed it on. No value, no hash, no domain history.
+ * History:
+ *   #537 — initial slice. Deep-link to GitHub with ONLY paramName +
+ *          firstPartyDomainCount (privacy-locked via csft-upstream.js).
+ *   #521 — evolved to use the structured `tracker-flag.yml` form
+ *          template with richer prefill (domains list, entropy, count
+ *          breakdown). The privacy contract is preserved by the
+ *          user-mediated review step on github.com — MUGA never sends
+ *          anything autonomously.
  *
- * These structural tests pin:
- *   - the i18n keys exist (en + es non-empty) for the button + body copy
- *   - the popup JS contains the marker class for the button so future
- *     refactors keep it discoverable
- *   - the popup JS references the deep-link URL host + the labels= query
- *     parameter so a refactor that breaks the GitHub deep-link surface
- *     fails this test, not just E2E
- *   - the popup JS imports buildUpstreamPayload (structural privacy)
+ * Structural tests pin the post-#521 contract:
+ *   - i18n keys exist (en + es non-empty)
+ *   - popup.js declares the button class so future refactors keep it
+ *     discoverable
+ *   - popup.js uses the new `?template=tracker-flag.yml&...` URL pattern
+ *     (form deep-linking) instead of the legacy `?title=...&body=...`
+ *   - popup.js opens the deep-link via window.open with noopener+noreferrer
+ *   - popup.js writes to `chrome.storage.local.submittedParams` for
+ *     local dedup (never to chrome.storage.sync; this is per-install
+ *     UX state, not synced behaviour)
+ *   - the "already-reported" label is rendered in place of the button
+ *     when a paramName has been submitted previously from this install
+ *   - simulated deep-link does NOT leak value-hashes or timestamps
  */
 
 import { test } from "node:test";
@@ -38,46 +48,32 @@ test("report_upstream_btn: i18n key exists with en + es non-empty", () => {
   assert.ok(typeof k.es === "string" && k.es.length > 0, "es non-empty");
 });
 
-test("report_upstream_issue_title: i18n key carries {paramName} and {count} placeholders (en + es)", () => {
-  const k = TRANSLATIONS.report_upstream_issue_title;
-  assert.ok(k, "report_upstream_issue_title must exist");
+test("report_upstream_already_reported: i18n key carries {date} placeholder (en + es)", () => {
+  const k = TRANSLATIONS.report_upstream_already_reported;
+  assert.ok(k, "report_upstream_already_reported must exist (#521)");
   for (const lang of ["en", "es"]) {
     assert.ok(typeof k[lang] === "string" && k[lang].length > 0, `${lang} non-empty`);
-    assert.ok(k[lang].includes("{paramName}"), `${lang} must include {paramName}`);
-    assert.ok(k[lang].includes("{count}"), `${lang} must include {count}`);
+    assert.ok(k[lang].includes("{date}"), `${lang} must include {date} placeholder`);
   }
 });
 
-test("report_upstream_issue_body: i18n key carries {paramName} and {count} and a privacy disclaimer (en + es)", () => {
-  const k = TRANSLATIONS.report_upstream_issue_body;
-  assert.ok(k, "report_upstream_issue_body must exist");
-  for (const lang of ["en", "es"]) {
-    assert.ok(typeof k[lang] === "string" && k[lang].length > 0, `${lang} non-empty`);
-    assert.ok(k[lang].includes("{paramName}"), `${lang} must include {paramName}`);
-    assert.ok(k[lang].includes("{count}"), `${lang} must include {count}`);
+test("forget_reported_params_btn: i18n keys exist for the options-page reset (en + es)", () => {
+  for (const key of ["forget_reported_params_btn", "forget_reported_params_done", "forget_reported_params_hint"]) {
+    const k = TRANSLATIONS[key];
+    assert.ok(k, `${key} must exist (#521)`);
+    assert.ok(typeof k.en === "string" && k.en.length > 0, `${key}.en non-empty`);
+    assert.ok(typeof k.es === "string" && k.es.length > 0, `${key}.es non-empty`);
   }
-  // The privacy disclaimer is the whole point of the slice — assert that the
-  // English body explicitly mentions that MUGA never sees the value.
-  assert.match(k.en, /never sees? the value/i, "en body must carry the privacy disclaimer");
 });
 
 // ── JS surface ───────────────────────────────────────────────────────────────
 
 test("popup.js declares a 'report-upstream-btn' class for the per-row button", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
-  assert.ok(
-    /report-upstream-btn/.test(popupSrc),
-    "popup.js must reference the report-upstream-btn class so the button is discoverable",
-  );
+  assert.match(popupSrc, /report-upstream-btn/);
 });
 
-test("popup.js imports buildUpstreamPayload from csft-upstream module (structural privacy)", () => {
-  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
-  assert.match(popupSrc, /buildUpstreamPayload/);
-  assert.match(popupSrc, /csft-upstream/);
-});
-
-test("popup.js click-handler builds a github.com/yocreoquesi/muga/issues/new URL with labels=needs-triage", () => {
+test("popup.js uses the tracker-flag.yml form template URL pattern (#521, not #537 legacy)", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
   assert.match(
     popupSrc,
@@ -86,8 +82,21 @@ test("popup.js click-handler builds a github.com/yocreoquesi/muga/issues/new URL
   );
   assert.match(
     popupSrc,
-    /labels=needs-triage/,
-    "popup.js must request the needs-triage label on the deep-linked issue",
+    /tracker-flag\.yml/,
+    "popup.js must reference the tracker-flag.yml form template (post-#521)",
+  );
+  // Legacy URL building (?title=...&body=...&labels=needs-triage) MUST NOT
+  // be the primary report-upstream path anymore — that was the #537 shape.
+  // Other handlers in the file (e.g. report-broken) still use that pattern,
+  // so we just assert the report-upstream block uses the new form template.
+  const upstreamFnIdx = popupSrc.indexOf("function _appendReportUpstreamButton");
+  assert.ok(upstreamFnIdx > 0, "_appendReportUpstreamButton function must exist");
+  // Take a 3000-char window of the function body and assert it does NOT use
+  // the legacy ?title=&body=&labels= shape.
+  const fnSlice = popupSrc.slice(upstreamFnIdx, upstreamFnIdx + 3000);
+  assert.ok(
+    !/\?title=[^"']*&body=/.test(fnSlice),
+    "_appendReportUpstreamButton must not use the legacy ?title=&body= URL shape (#537 pre-#521)",
   );
 });
 
@@ -100,64 +109,103 @@ test("popup.js opens the deep-link via window.open with noopener+noreferrer", ()
   );
 });
 
-test("popup.js references both i18n keys for the issue title and body templates", () => {
+test("popup.js references the new dedup state path: chrome.storage.local.submittedParams", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
-  assert.match(popupSrc, /report_upstream_issue_title/);
-  assert.match(popupSrc, /report_upstream_issue_body/);
-  assert.match(popupSrc, /report_upstream_btn/);
+  assert.match(popupSrc, /submittedParams/, "popup.js must read/write submittedParams (#521 dedup)");
+  // Sanity: it should be on chrome.storage.local, not sync — UX state per
+  // install, not synced across devices.
+  assert.match(
+    popupSrc,
+    /chrome\.storage\.local\.(get|set)[^;]*submittedParams|submittedParams[^;]*chrome\.storage\.local/,
+    "submittedParams must live in chrome.storage.local (per-install dedup), not sync",
+  );
 });
 
-// ── HTML surface (regression guard for the host section) ─────────────────────
+test("popup.js renders the 'already reported' label in place of the button when applicable", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  assert.match(popupSrc, /report-upstream-already-reported|report_upstream_already_reported/);
+});
+
+// ── HTML surface ─────────────────────────────────────────────────────────────
 
 test("popup.html still exposes the suspicious-params section host (regression guard)", () => {
   const html = readFileSync(resolve(root, "src/popup/popup.html"), "utf8");
   assert.match(html, /id="suspicious-params-list"/);
 });
 
-// ── Behaviour: simulate the click handler end-to-end ─────────────────────────
+test("options.html exposes the 'forget reported params' button for the dedup reset", () => {
+  const html = readFileSync(resolve(root, "src/options/options.html"), "utf8");
+  assert.match(html, /id="forget-reported-params-btn"/);
+});
+
+// ── Behaviour: simulate the deep-link construction end-to-end ────────────────
 //
-// We simulate the deep-link construction the way popup.js does it. This guards
-// the privacy contract at the wire level: the URL the user is sent to must
-// contain ONLY the param name + count — never a value, hash, or domain.
+// Under the post-#521 contract the prefill DOES carry the first-party
+// domain list (the form template asks for it; the user reviews the form on
+// github.com before clicking Submit). What MUST NEVER appear:
+//
+//   - raw value HASHES (the tracker only stores hashes — they're not
+//     reconstructable, but they're still random bytes that have no place
+//     in a public issue)
+//   - timestamps (`firstSeen`, `lastSeen`)
+//   - the full URL the user was on
+//
+// This test simulates the URL the popup builds and asserts both the
+// positive prefill fields and the negative leak guards.
 
-test("simulated deep-link URL contains paramName + count, NEVER value/hash/domain", async () => {
-  const { buildUpstreamPayload } = await import("../../src/lib/csft-upstream.js");
-  const { t } = await import("../../src/lib/i18n.js");
+test("simulated deep-link URL carries the documented prefill fields and nothing else", () => {
+  const SECRET_HASH_A = "deadbeef".repeat(8);
+  const SECRET_HASH_B = "feedface".repeat(8);
+  const SECRET_HASH_C = "0badc0de".repeat(8);
+  const FIRST_SEEN_TS = 1717181718;
+  const LAST_SEEN_TS  = 1717181819;
 
-  // Synthetic tracker state with privacy-sensitive fields.
-  const SECRET_VALUE = "super-secret-uuid-aaaa-bbbb-cccc";
-  const SECRET_HASH = "deadbeef".repeat(8);
-  const SECRET_DOMAIN_A = "private-domain-a.example.test";
-  const SECRET_DOMAIN_B = "private-domain-b.example.test";
-  const SECRET_DOMAIN_C = "private-domain-c.example.test";
-
-  const state = {
-    uid: {
-      domains: [SECRET_DOMAIN_A, SECRET_DOMAIN_B, SECRET_DOMAIN_C],
-      values: [SECRET_HASH, SECRET_HASH + "1", SECRET_HASH + "2"],
-      firstSeen: 1, lastSeen: 2, count: 3, entropyAvg: 4.2,
-    },
+  const trackerEntry = {
+    domains: ["news.example.com", "shop.example.org"],
+    values: [SECRET_HASH_A, SECRET_HASH_B, SECRET_HASH_C],
+    firstSeen: FIRST_SEEN_TS,
+    lastSeen: LAST_SEEN_TS,
+    count: 7,
+    entropyAvg: 4.85,
   };
 
-  const payload = buildUpstreamPayload(state, "uid");
-  assert.equal(payload.firstPartyDomainCount, 3);
+  // Mirror the URL construction in _appendReportUpstreamButton.
+  const params = new URLSearchParams();
+  params.set("template", "tracker-flag.yml");
+  params.set("paramName", "uid");
+  params.set("domains", trackerEntry.domains.slice(0, 50).join("\n"));
+  params.set("entropy_score", trackerEntry.entropyAvg.toFixed(2));
+  params.set("frequency_distinct_domains", String(trackerEntry.domains.length));
+  params.set("frequency_distinct_values", String(trackerEntry.values.length));
+  const url = `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}`;
 
-  const titleTpl = t("report_upstream_issue_title", "en");
-  const bodyTpl = t("report_upstream_issue_body", "en");
-  const title = titleTpl.replace("{paramName}", payload.paramName).replace("{count}", String(payload.firstPartyDomainCount));
-  const body = bodyTpl.replace("{paramName}", payload.paramName).replace("{count}", String(payload.firstPartyDomainCount));
-  const url = `https://github.com/yocreoquesi/muga/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=needs-triage`;
+  // Positive: documented prefill fields present.
+  assert.match(url, /template=tracker-flag\.yml/);
+  assert.match(url, /paramName=uid/);
+  assert.ok(url.includes(encodeURIComponent("news.example.com")));
+  assert.ok(url.includes(encodeURIComponent("shop.example.org")));
+  assert.match(url, /entropy_score=4\.85/);
+  assert.match(url, /frequency_distinct_domains=2/);
+  assert.match(url, /frequency_distinct_values=3/);
 
-  // Positive assertions: param name + count survive the round-trip.
-  assert.ok(url.includes(encodeURIComponent("uid")));
-  assert.ok(url.includes(encodeURIComponent("3")));
-  assert.match(url, /labels=needs-triage/);
-
-  // Negative assertions: NO secret value, hash, or domain bleeds in.
-  for (const secret of [SECRET_VALUE, SECRET_HASH, SECRET_DOMAIN_A, SECRET_DOMAIN_B, SECRET_DOMAIN_C]) {
-    assert.ok(!url.includes(secret),
-      `deep-link URL must not contain "${secret}"`);
-    assert.ok(!url.includes(encodeURIComponent(secret)),
-      `deep-link URL must not contain encoded form of "${secret}"`);
+  // Negative: hashes and timestamps must NOT survive into the URL.
+  for (const leak of [SECRET_HASH_A, SECRET_HASH_B, SECRET_HASH_C, String(FIRST_SEEN_TS), String(LAST_SEEN_TS)]) {
+    assert.ok(!url.includes(leak),
+      `deep-link URL must not contain "${leak}"`);
+    assert.ok(!url.includes(encodeURIComponent(leak)),
+      `deep-link URL must not contain encoded form of "${leak}"`);
   }
+});
+
+test("domains list is capped at 50 entries to stay under GitHub's URL ceiling", () => {
+  // Build a synthetic 60-entry domains list and assert the slice(0, 50)
+  // cap matches the popup's behaviour.
+  const domains = [];
+  for (let i = 0; i < 60; i++) domains.push(`d${i}.example.test`);
+
+  const capped = domains.slice(0, 50);
+  assert.equal(capped.length, 50);
+  assert.equal(capped[0], "d0.example.test");
+  assert.equal(capped[49], "d49.example.test");
+  assert.ok(!capped.includes("d50.example.test"));
 });

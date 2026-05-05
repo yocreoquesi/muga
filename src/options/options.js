@@ -641,6 +641,19 @@ function initStatsSection() {
       showToast(t("stats_reset_done", _currentLang));
     } catch (err) { console.error("[MUGA] reset stats:", err); }
   });
+
+  // #521: clear the per-install dedup list of params that have been
+  // reported to the muga issue tracker. Lets the user re-submit the
+  // same param after a previous submission was dismissed / fixed.
+  const forgetBtn = document.getElementById("forget-reported-params-btn");
+  if (forgetBtn) {
+    forgetBtn.addEventListener("click", async () => {
+      try {
+        await chrome.storage.local.set({ submittedParams: {} });
+        showToast(t("forget_reported_params_done", _currentLang));
+      } catch (err) { console.error("[MUGA] forget reported params:", err); }
+    });
+  }
 }
 
 /** Initializes export/import settings functionality. */

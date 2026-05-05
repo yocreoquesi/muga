@@ -16,7 +16,6 @@ import {
   createChromeLocalAdapter as createFrequencyAdapter,
   defaultHasher as frequencyHasher,
 } from "../lib/cross-site-frequency.js";
-import { buildUpstreamPayload } from "../lib/csft-upstream.js";
 import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 
@@ -736,8 +735,8 @@ async function showSuspiciousParams(prefs, lang) {
 
   // ── Frequency subgroup: gated on the dedicated pref toggle ──
   // We also fetch the raw tracker state once so the per-row "Report
-  // upstream" button (#537) can extract its privacy-bounded payload via
-  // the csft-upstream module — without re-reading storage per click.
+  // upstream" button (#537/#521) can extract its privacy-bounded payload
+  // — without re-reading storage per click.
   let frequencyFlags = [];
   let trackerState = null;
   if (prefs.crossSiteFrequencyEnabled !== false) {
@@ -750,13 +749,25 @@ async function showSuspiciousParams(prefs, lang) {
           enabled: true,
         });
         frequencyFlags = await tracker.getFlagged();
-        // Pull the raw {params: {...}} shape so csft-upstream can resolve
-        // the first-party domain count for any flagged param. The module
-        // tolerates this wrapped shape natively.
+        // Pull the raw {params: {...}} shape so the report-upstream button
+        // can read per-param entry data (domains, entropyAvg, value-hash
+        // count) for the form prefill.
         try { trackerState = await adapter.get(); } catch { /* best-effort */ }
       }
     } catch { /* best-effort; freq subgroup just stays empty */ }
   }
+
+  // #521: read submittedParams once for the section render. Each per-row
+  // button reads from this snapshot to decide whether to render the
+  // button or the "Reported on YYYY-MM-DD" label. Storage write happens
+  // on click; re-render after that swap is inline (no full re-render).
+  let submittedParams = {};
+  try {
+    const stored = await new Promise((resolve) => {
+      chrome.storage.local.get({ submittedParams: {} }, (r) => resolve(r));
+    });
+    submittedParams = stored.submittedParams || {};
+  } catch { /* best-effort; dedup is UX, not a privacy gate */ }
 
   // Hide the whole section when both subgroups are empty. Fresh installs
   // and clean pages should not get a noise-y empty header.
@@ -798,7 +809,7 @@ async function showSuspiciousParams(prefs, lang) {
       // count via the csft-upstream privacy module. Entropy-flagged params
       // typically aren't in the tracker store yet → count resolves to 0,
       // which is the correct, privacy-preserving default.
-      _appendReportUpstreamButton(row, flag.param, trackerState, lang);
+      _appendReportUpstreamButton(row, flag.param, trackerState, lang, submittedParams);
 
       list.appendChild(row);
     }
@@ -831,7 +842,7 @@ async function showSuspiciousParams(prefs, lang) {
 
       _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
       // #537: per-row Report upstream button (see entropy block above).
-      _appendReportUpstreamButton(row, flag.param, trackerState, lang);
+      _appendReportUpstreamButton(row, flag.param, trackerState, lang, submittedParams);
 
       list.appendChild(row);
     }
@@ -916,53 +927,112 @@ function _appendStripLocallyButton(row, paramName, alreadyPromoted, prefs, lang)
 
 /**
  * Appends the per-row "Report upstream" button to a Suspicious-params row
- * (#537). Clicking opens a deep-linked GitHub issue pre-filled with ONLY
- * the param name and the count of distinct first-party domains the user
- * has observed it on.
+ * (#521 evolution of #537). Clicking opens a deep-linked GitHub issue
+ * using the structured `tracker-flag.yml` form template with prefilled
+ * fields sourced from the local cross-site-frequency tracker.
  *
- * Privacy contract: the deep-link payload comes EXCLUSIVELY from
- * `buildUpstreamPayload` (csft-upstream.js), whose return type is a fresh
- * 2-field object literal. There is no path through which a value, hash,
- * or domain string can leak into the URL — even if this glue is later
- * refactored carelessly. The structural enforcement lives in the module,
- * not in this caller.
+ * Privacy contract: the deep-link only carries fields the user is about
+ * to review and submit themselves on github.com. Nothing is sent
+ * automatically. The fields prefilled are:
+ *   - paramName (the flagged param)
+ *   - domains   (first-party hosts where the param was seen)
+ *   - entropy_score, frequency_distinct_domains, frequency_distinct_values
+ * Raw values, raw URLs, value hashes, and timestamps are NEVER passed.
  *
- * Anchor opens via window.open(url, '_blank', 'noopener,noreferrer') per
- * the project security rule (no opener leakage; no referrer to GitHub).
+ * Local dedup (#521): once submitted, the button is replaced with a
+ * "Reported on YYYY-MM-DD" label so the same param doesn't get reported
+ * twice from the same install. The user can clear the dedup list from
+ * the options page ("Forget reported params"). The dedup state lives in
+ * `chrome.storage.local.submittedParams` as `{ [paramName]: "YYYY-MM-DD" }`.
  *
- * @param {HTMLElement}        row          The .suspicious-row being built.
- * @param {string}             paramName    Original-case param name.
- * @param {object|null}        trackerState Raw cross-site-frequency state
- *                                          ({params:{...}}) or null when the
- *                                          frequency tracker is disabled or
- *                                          the param was entropy-only-flagged.
- * @param {string}             lang         Active UI language code.
+ * @param {HTMLElement} row              The .suspicious-row being built.
+ * @param {string}      paramName        Original-case param name.
+ * @param {object|null} trackerState     Raw cross-site-frequency state
+ *                                       ({params:{...}}) or null when the
+ *                                       frequency tracker is disabled or
+ *                                       the param was entropy-only-flagged.
+ * @param {string}      lang             Active UI language code.
+ * @param {object}      submittedParams  { [name]: "YYYY-MM-DD" } map read
+ *                                       once at section-render time.
  */
-function _appendReportUpstreamButton(row, paramName, trackerState, lang) {
+function _appendReportUpstreamButton(row, paramName, trackerState, lang, submittedParams) {
+  // Already-reported short-circuit: render a small label, no button.
+  const submittedDate = submittedParams && submittedParams[paramName];
+  if (submittedDate) {
+    const label = document.createElement("span");
+    label.className = "report-upstream-already-reported";
+    label.textContent = t("report_upstream_already_reported", lang).replace("{date}", submittedDate);
+    label.setAttribute("title", label.textContent);
+    row.appendChild(label);
+    return;
+  }
+
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "report-upstream-btn";
   btn.dataset.param = paramName;
   btn.textContent = t("report_upstream_btn", lang);
   btn.setAttribute("aria-label", t("report_upstream_btn", lang));
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     try {
-      // Privacy boundary lives INSIDE buildUpstreamPayload — its return
-      // type is a fresh 2-field object literal, so nothing else can ride
-      // along. We only ever read the two fields back out below.
-      const payload = buildUpstreamPayload(trackerState, paramName);
-      const titleTpl = t("report_upstream_issue_title", lang);
-      const bodyTpl = t("report_upstream_issue_body", lang);
-      const title = titleTpl
-        .replace("{paramName}", payload.paramName)
-        .replace("{count}", String(payload.firstPartyDomainCount));
-      const body = bodyTpl
-        .replace("{paramName}", payload.paramName)
-        .replace("{count}", String(payload.firstPartyDomainCount));
-      const url = `https://github.com/yocreoquesi/muga/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=needs-triage`;
+      // Resolve the tracker entry. Both raw and wrapped shapes are accepted
+      // (mirrors buildUpstreamPayload's defensive normalisation).
+      let entry = null;
+      if (trackerState && typeof trackerState === "object") {
+        const entries = trackerState.params && typeof trackerState.params === "object"
+          ? trackerState.params
+          : trackerState;
+        entry = entries && entries[paramName] ? entries[paramName] : null;
+      }
+      const domains = entry && Array.isArray(entry.domains) ? entry.domains : [];
+      const distinctValues = entry && Array.isArray(entry.values) ? entry.values.length : 0;
+      const entropyAvg = entry && typeof entry.entropyAvg === "number" ? entry.entropyAvg : null;
+
+      // Cap the domains list at 50 entries to stay well under GitHub's
+      // ~8 KB URL ceiling. The form's textarea accepts free input, so the
+      // user can add more before submitting if their list is longer.
+      const cappedDomains = domains.slice(0, 50);
+
+      const params = new URLSearchParams();
+      params.set("template", "tracker-flag.yml");
+      params.set("paramName", paramName);
+      if (cappedDomains.length > 0) params.set("domains", cappedDomains.join("\n"));
+      if (entropyAvg !== null) params.set("entropy_score", entropyAvg.toFixed(2));
+      if (domains.length > 0) params.set("frequency_distinct_domains", String(domains.length));
+      if (distinctValues > 0) params.set("frequency_distinct_values", String(distinctValues));
+
+      const url = `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}`;
+
+      // Mark submitted BEFORE opening — if the user closes the tab without
+      // hitting Submit on GitHub, MUGA still treats it as "reported" until
+      // they clear the list from settings. That's the lesser evil vs.
+      // tracking issue state via the GitHub API (would require polling and
+      // breaks the zero-telemetry promise).
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        const stored = await new Promise((resolve) => {
+          chrome.storage.local.get({ submittedParams: {} }, (r) => resolve(r));
+        });
+        const updated = { ...(stored.submittedParams || {}), [paramName]: today };
+        await new Promise((resolve) => {
+          chrome.storage.local.set({ submittedParams: updated }, resolve);
+        });
+      } catch (storageErr) {
+        // Non-fatal: dedup is a UX nicety, not a privacy gate. Open the URL
+        // anyway so the user's intent isn't lost to a storage hiccup.
+        console.warn("[MUGA] report-upstream dedup save:", storageErr);
+      }
+
+      // Replace the button with the "already reported" label inline so
+      // the user sees immediate feedback without a popup re-render.
+      const label = document.createElement("span");
+      label.className = "report-upstream-already-reported";
+      label.textContent = t("report_upstream_already_reported", lang).replace("{date}", today);
+      btn.replaceWith(label);
+
       // _blank + noopener + noreferrer per the project security rule —
-      // GitHub never sees document.referrer and the new tab can't
-      // touch window.opener.
+      // GitHub never sees document.referrer and the new tab can't touch
+      // window.opener.
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
       console.error("[MUGA] report-upstream open:", err);
