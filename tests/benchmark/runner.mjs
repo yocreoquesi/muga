@@ -23,16 +23,17 @@ import { compareEntry, buildReport, exitCodeFromReport, runCompetitors } from ".
 import { renderMarkdown } from "./lib/report-md.mjs";
 import { renderHtml } from "./lib/report-html.mjs";
 import { baselineAdapter } from "./competitors/baseline.mjs";
+import { clearurlsAdapter } from "./competitors/clearurls.mjs";
 
 // A6 phase 2 (#506) competitor adapter list.
 //
-// Phase 2a ships the synthetic baseline (UTM + common click IDs) — a
-// floor reference line. Phases 2b/2c/2d/2e will add the real
-// competitors (ClearURLs / AdGuard / Brave / Firefox) — each is a
-// separate slice that vendors a rule snapshot under
-// tests/benchmark/competitors/data/ and appends an adapter here.
-// See tests/benchmark/competitors/README-CONTRACT.txt for the contract.
-const COMPETITOR_ADAPTERS = [baselineAdapter];
+// Phase 2a — synthetic baseline (UTM + common click IDs) — floor.
+// Phase 2b — ClearURLs (data.minify.json default config).
+// Phases 2c/2d/2e will add AdGuard / Brave / Firefox built-in.
+// Each new adapter vendors its rule snapshot under
+// tests/benchmark/competitors/data/ and appends here. See
+// tests/benchmark/competitors/README-CONTRACT.txt for the contract.
+const COMPETITOR_ADAPTERS = [baselineAdapter, clearurlsAdapter];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = join(__dirname, "corpus");
