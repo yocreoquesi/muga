@@ -337,8 +337,8 @@ header {
 
 .preview-preserved {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   margin-top: 8px;
   padding: 6px 8px;
   border-radius: 4px;
@@ -346,7 +346,12 @@ header {
   border-left: 2px solid var(--success);
   font-size: 11px;
   line-height: 1.35;
-  cursor: help;
+}
+.preview-preserved-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
 }
 .preview-preserved-label { color: var(--success); font-weight: 600; }
 .preview-preserved-tag {
@@ -357,6 +362,11 @@ header {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+.preview-preserved-hint {
+  color: var(--text-2);
+  font-size: 10.5px;
+  line-height: 1.45;
 }
 
 .report-link {

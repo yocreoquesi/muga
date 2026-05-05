@@ -89,13 +89,15 @@
     <div class="preview-count" id="preview-count" hidden aria-live="polite"></div>
     <div class="preview-removed" id="preview-removed" hidden aria-live="polite"></div>
     <div class="preview-preserved" id="preview-preserved" hidden aria-live="polite">
-      <span class="preview-preserved-label" data-i18n="preview_preserved_creator">Creator referral preserved</span>
-      <span class="preview-preserved-tag" id="preview-preserved-tag"></span>
+      <div class="preview-preserved-row">
+        <span class="preview-preserved-label" data-i18n="preview_preserved_creator">Creator referral preserved</span>
+        <span class="preview-preserved-tag" id="preview-preserved-tag"></span>
+      </div>
+      <small class="preview-preserved-hint" data-i18n="preview_preserved_creator_hint">MUGA never touches an affiliate tag that isn't ours, so the creator who recommended this still gets credit.</small>
     </div>
     <div class="preview-honored" id="preview-honored" hidden aria-live="polite"></div>
     <div class="preview-url clean" id="preview-clean" hidden></div>
     <a class="report-link" id="report-broken" href="#" hidden data-i18n="report_dirty_url">Report a problem with this URL</a>
-    <a class="report-link" id="report-unclean" href="#" hidden data-i18n="report_unclean_url">Still see tracking? Help us improve</a>
   </section>
 
   <!-- Recent activity section (#460, A2). Surfaces the Attribution Ledger
@@ -114,7 +116,6 @@
 
   <div class="growth-bar" id="growth-bar" hidden>
     <button class="growth-btn" id="rate-btn" hidden><span aria-hidden="true">⭐ </span><span data-i18n="rate_muga_short">Rate MUGA</span></button>
-    <button class="growth-btn" id="share-btn"><span aria-hidden="true">📋 </span><span data-i18n="share_btn">Share</span></button>
   </div>
 
   </main>

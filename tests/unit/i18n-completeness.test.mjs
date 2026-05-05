@@ -22,8 +22,6 @@ import { TRANSLATIONS } from "../../src/lib/i18n.js";
 // languages). Do NOT add a key to silence a real translation gap.
 const EN_ES_IDENTICAL_EXCEPTIONS = new Set([
   "confirm_ok",                  // "OK" is universal
-  "share_copied_prefix",         // "✓ " — symbol only
-  "share_copy_prefix",           // "📋 " — emoji only
   "dev_url_tester_placeholder",  // example URL, not user-facing copy
   "dev_url_error",               // "Error:" reads identically in EN/ES
   "tooltip_default",             // "MUGA" — brand name, universal across locales
