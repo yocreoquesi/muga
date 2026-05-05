@@ -249,25 +249,25 @@ describe("manifest.json integrity", () => {
     );
   });
 
-  test("MV3 optional_host_permissions includes yocreoquesi.github.io (remote rules endpoint)", () => {
+  test("MV3 optional_host_permissions includes rules.muga.app (remote rules endpoint)", () => {
     assert.ok(
       Array.isArray(mv3.optional_host_permissions),
       "manifest.json must have optional_host_permissions array"
     );
     assert.ok(
-      mv3.optional_host_permissions.includes("https://yocreoquesi.github.io/*"),
-      'manifest.json optional_host_permissions must include "https://yocreoquesi.github.io/*"'
+      mv3.optional_host_permissions.includes("https://rules.muga.app/*"),
+      'manifest.json optional_host_permissions must include "https://rules.muga.app/*"'
     );
   });
 
-  test("MV2 optional_permissions includes yocreoquesi.github.io (remote rules endpoint)", () => {
+  test("MV2 optional_permissions includes rules.muga.app (remote rules endpoint)", () => {
     assert.ok(
       Array.isArray(mv2.optional_permissions),
       "manifest.v2.json must have optional_permissions array"
     );
     assert.ok(
-      mv2.optional_permissions.includes("https://yocreoquesi.github.io/*"),
-      'manifest.v2.json optional_permissions must include "https://yocreoquesi.github.io/*"'
+      mv2.optional_permissions.includes("https://rules.muga.app/*"),
+      'manifest.v2.json optional_permissions must include "https://rules.muga.app/*"'
     );
   });
 });

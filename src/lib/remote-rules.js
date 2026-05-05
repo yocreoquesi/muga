@@ -21,7 +21,7 @@ import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
 
 /** Fetch endpoint — compile-time constant, NOT user-configurable (REQ-FETCH-2). */
 export const REMOTE_RULES_URL =
-  "https://yocreoquesi.github.io/muga/rules/v1/params.json";
+  "https://rules.muga.app/rules/v1/params.json";
 
 /**
  * DNR rule ID for remote params. Re-exported from lib/dnr-ids.js for

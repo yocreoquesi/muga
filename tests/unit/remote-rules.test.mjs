@@ -141,7 +141,7 @@ describe("Constants — shape and values", () => {
   test("REMOTE_RULES_URL is the correct endpoint", () => {
     assert.strictEqual(
       REMOTE_RULES_URL,
-      "https://yocreoquesi.github.io/muga/rules/v1/params.json"
+      "https://rules.muga.app/rules/v1/params.json"
     );
   });
 

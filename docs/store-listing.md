@@ -126,7 +126,7 @@ Every URL is processed entirely inside your browser. MUGA never sends data anywh
 . Zero analytics, zero telemetry, zero data collection
 . No account, no sign-in, no cloud
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
-. Optional host permission yocreoquesi.github.io/*: granted only when you enable "Remote rule updates" in Settings. Used to fetch a signed tracking-parameter payload over HTTPS — a single GET check at most once per 7 days, piggybacked on natural service-worker wake events (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time via browser settings.
+. Optional host permission rules.muga.app/*: granted only when you enable "Remote rule updates" in Settings. Used to fetch a signed tracking-parameter payload over HTTPS — a single GET check at most once per 7 days, piggybacked on natural service-worker wake events (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time via browser settings.
 
 We rejected 10+ affiliate networks because they require redirect-based tracking. On those stores, MUGA actively strips the affiliate tracking parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
@@ -154,7 +154,7 @@ The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit
 
 https://github.com/yocreoquesi/muga
 
-Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://yocreoquesi.github.io/muga/comparison.html
+Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://rules.muga.app/comparison.html
 
 ---
 
@@ -243,7 +243,7 @@ Every URL is processed entirely inside your browser. MUGA never sends data anywh
 . Zero analytics, zero telemetry, zero data collection
 . No account, no sign-in, no cloud
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequest, clipboardWrite
-. Optional permission yocreoquesi.github.io/*: granted only when you enable "Remote rule updates". Used to fetch a signed tracking-parameter payload — a single HTTPS GET check at most once per 7 days, piggybacked on natural browser activity (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time.
+. Optional permission rules.muga.app/*: granted only when you enable "Remote rule updates". Used to fetch a signed tracking-parameter payload — a single HTTPS GET check at most once per 7 days, piggybacked on natural browser activity (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time.
 
 
 Your rules
@@ -264,7 +264,7 @@ The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit
 
 https://github.com/yocreoquesi/muga
 
-Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://yocreoquesi.github.io/muga/comparison.html
+Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://rules.muga.app/comparison.html
 
 ---
 
@@ -277,4 +277,4 @@ Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL)
 - Tags: privacy, tracking, url-cleaner, affiliate, creator-friendly
 - Website: https://github.com/yocreoquesi/muga
 
-Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://yocreoquesi.github.io/muga/comparison.html
+Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://rules.muga.app/comparison.html

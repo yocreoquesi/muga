@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Remote rules endpoint moved to `rules.muga.app`** (#481). The signed `params.json` is now served from `https://rules.muga.app/rules/v1/params.json` (was `https://yocreoquesi.github.io/muga/rules/v1/params.json`). DNS-only CNAME points at GitHub Pages — same hosting, branded subdomain, no public-facing dependency on a personal GitHub username. The optional permission users grant when enabling Remote rule updates is now scoped to `https://rules.muga.app/*` (Chrome MV3 `optional_host_permissions` / Firefox MV2 `optional_permissions`). Existing installs that opted in to remote rules will need to re-grant on first 7-day refresh after upgrading — the host changed, so the previous grant no longer applies. Files: [`src/manifest.json`](src/manifest.json), [`src/manifest.v2.json`](src/manifest.v2.json), [`src/lib/remote-rules.js`](src/lib/remote-rules.js), [`src/options/options.js`](src/options/options.js), [`docs/CNAME`](docs/CNAME), [`.github/workflows/publish-rules.yml`](.github/workflows/publish-rules.yml).
+
 ## [1.13.4] - 2026-05-05
 
 Coverage + standards-compliance + CI hygiene release. Headline: MUGA now consumes `caps-spec/manifest.json` as the source of truth for affiliate program identity, and the preserve set is decoupled from MUGA's own affiliate accounts — creator referrals are honored on Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy even though MUGA has no direct account on those programs.
