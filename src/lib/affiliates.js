@@ -447,6 +447,9 @@ export const TRACKING_PARAMS = [
   "user_email_address", "uzcid", "vc_lpp", "vero_conv",
   "vs_campaign_id", "vsm_cid", "vsm_pid", "vsm_type",
   "winflncrtag",
+  // Added via npm run add-rule (#335): AdGuard filter 17 generic — Telegram Ads click tracking
+  "link_source",
+
 ];
 
 export const TRACKING_PARAM_CATEGORIES = {
@@ -557,6 +560,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "a8", "btag", "erid", "external_click_id", "ftag",
       "jmtyclid", "maf", "rtkcid", "sscid",
       "usqp", "vs_campaign_id",
+      "link_source",
     ],
   },
   email: {
