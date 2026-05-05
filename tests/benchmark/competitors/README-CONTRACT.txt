@@ -66,3 +66,11 @@ AdGuard URL Tracking Protection (filter #17) — phase 2c (#506)
   bytes:     165456
   sha256:    1e874321b5610c693e2f3006d8ba84781c6ca1f60a36f08bf68cccd1a3057d27
   adapter:   adguard.mjs (adguardAdapter)
+
+Firefox built-in URL Query Stripping — phase 2e (#506)
+  source:    https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/query-stripping/records
+  file:      data/firefox.json
+  captured:  2026-05-05
+  bytes:     642
+  sha256:    70614f1da0d2e500623abc62aad07b388c45f67f7bb1fec5862b24e605472f74
+  adapter:   firefox.mjs (firefoxAdapter)

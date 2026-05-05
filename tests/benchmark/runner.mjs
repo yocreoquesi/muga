@@ -25,17 +25,19 @@ import { renderHtml } from "./lib/report-html.mjs";
 import { baselineAdapter } from "./competitors/baseline.mjs";
 import { clearurlsAdapter } from "./competitors/clearurls.mjs";
 import { adguardAdapter } from "./competitors/adguard.mjs";
+import { firefoxAdapter } from "./competitors/firefox.mjs";
 
 // A6 phase 2 (#506) competitor adapter list.
 //
 // Phase 2a — synthetic baseline (UTM + common click IDs) — floor.
 // Phase 2b — ClearURLs (data.minify.json default config).
 // Phase 2c — AdGuard URL Tracking Protection (filter #17).
-// Phases 2d/2e will add Brave Shields / Firefox built-in.
+// Phase 2e — Firefox built-in (Remote Settings query-stripping).
+// Phase 2d will add Brave Shields.
 // Each new adapter vendors its rule snapshot under
 // tests/benchmark/competitors/data/ and appends here. See
 // tests/benchmark/competitors/README-CONTRACT.txt for the contract.
-const COMPETITOR_ADAPTERS = [baselineAdapter, clearurlsAdapter, adguardAdapter];
+const COMPETITOR_ADAPTERS = [baselineAdapter, clearurlsAdapter, adguardAdapter, firefoxAdapter];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORPUS_DIR = join(__dirname, "corpus");
