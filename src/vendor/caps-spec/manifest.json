@@ -1,0 +1,292 @@
+{
+  "caps_version": "1.0.0-rc1",
+  "manifest_version": 0,
+  "supported_caps_range": ">=1.0.0-rc1 <2.0.0",
+  "signed_at": null,
+  "signer_pubkey": null,
+  "signature": null,
+  "programs": [
+    {
+      "id": "amazon-associates",
+      "name": "Amazon Associates",
+      "programType": "direct-injection",
+      "domains": ["amazon.com", "amazon.es", "amazon.de", "amazon.fr", "amazon.it", "amazon.co.uk"],
+      "param": "tag",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (6 marketplace entries amazon_es/de/fr/it/co_uk/com consolidated into one CAPS entry; ourTag is per-implementer and lives outside the manifest).",
+      "references": [
+        {
+          "url": "https://affiliate-program.amazon.com/help/topic/t10",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://affiliate-program.amazon.com/help/topic/t10"
+        }
+      ]
+    },
+    {
+      "id": "ebay-partner-network",
+      "name": "eBay Partner Network",
+      "programType": "direct-injection",
+      "domains": ["ebay.com", "ebay.es", "ebay.de", "ebay.co.uk", "ebay.fr", "ebay.it"],
+      "param": "campid",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (single eBay entry covering 6 marketplace hosts).",
+      "references": [
+        {
+          "url": "https://partnernetwork.ebay.com/",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://partnernetwork.ebay.com/"
+        }
+      ]
+    },
+    {
+      "id": "booking",
+      "name": "Booking.com Affiliate Programme",
+      "programType": "direct-injection",
+      "domains": ["booking.com"],
+      "param": "aid",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js.",
+      "references": [
+        {
+          "url": "https://www.booking.com/affiliate-program/v2/",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.booking.com/affiliate-program/v2/"
+        }
+      ]
+    },
+    {
+      "id": "vercel",
+      "name": "Vercel Referrals",
+      "programType": "direct-injection",
+      "domains": ["vercel.com"],
+      "param": "ref",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js.",
+      "references": [
+        {
+          "url": "https://vercel.com/help/referral-program",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://vercel.com/help/referral-program"
+        }
+      ]
+    },
+    {
+      "id": "digitalocean",
+      "name": "DigitalOcean Referrals",
+      "programType": "direct-injection",
+      "domains": ["digitalocean.com", "cloud.digitalocean.com", "try.digitalocean.com", "m.do.co"],
+      "param": "refcode",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (4 first-party hostnames including the m.do.co short domain).",
+      "references": [
+        {
+          "url": "https://www.digitalocean.com/referral-program",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.digitalocean.com/referral-program"
+        }
+      ]
+    },
+    {
+      "id": "humble-bundle",
+      "name": "Humble Bundle Partners",
+      "programType": "direct-injection",
+      "domains": ["humblebundle.com"],
+      "param": "partner",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (id renamed humble_bundle → humble-bundle for kebab-case consistency).",
+      "references": [
+        {
+          "url": "https://www.humblebundle.com/partners",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.humblebundle.com/partners"
+        }
+      ]
+    },
+    {
+      "id": "lemon-squeezy",
+      "name": "Lemon Squeezy Affiliates",
+      "programType": "direct-injection",
+      "domains": ["lemonsqueezy.com"],
+      "param": "aff",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js. Sellers live on per-seller subdomains <seller>.lemonsqueezy.com; canonical-host matching covers the apex only — adopters that need subdomain matching should track upstream issue.",
+      "references": [
+        {
+          "url": "https://www.lemonsqueezy.com/",
+          "archivedAt": "2026-05-04",
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.lemonsqueezy.com/"
+        }
+      ]
+    },
+    {
+      "id": "anonym-to",
+      "name": "anonym.to (privacy proxy)",
+      "programType": "network-redirect",
+      "domains": ["anonym.to"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#anonymto. Naked-query privacy proxy: destination travels directly after `?` with no parameter key. The `param` field is informational only for network-redirect (SPEC §5.1).",
+      "references": [{ "url": "https://anonym.to/" }]
+    },
+    {
+      "id": "awin",
+      "name": "Awin",
+      "programType": "network-redirect",
+      "domains": ["awin1.com"],
+      "param": "p",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#awin. Click endpoint `/cread.php` carries the destination merchant URL in `p`.",
+      "references": [{ "url": "https://www.awin.com/" }]
+    },
+    {
+      "id": "facebook-l",
+      "name": "Facebook Outbound (web)",
+      "programType": "network-redirect",
+      "domains": ["l.facebook.com"],
+      "param": "u",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#facebook-l. Outbound link wrapper on the `l.` subdomain only — the apex facebook.com MUST NOT match.",
+      "references": [{ "url": "https://www.facebook.com/help/" }]
+    },
+    {
+      "id": "facebook-lm",
+      "name": "Facebook Outbound (mobile)",
+      "programType": "network-redirect",
+      "domains": ["lm.facebook.com"],
+      "param": "u",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#facebook-lm. Mobile-web counterpart to facebook-l; tracked separately so adopters can attribute outbound clicks per surface.",
+      "references": [{ "url": "https://www.facebook.com/help/" }]
+    },
+    {
+      "id": "href-li",
+      "name": "href.li (privacy proxy)",
+      "programType": "network-redirect",
+      "domains": ["href.li"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#hrefli. Naked-query privacy proxy.",
+      "references": [{ "url": "https://href.li/" }]
+    },
+    {
+      "id": "impact-radius",
+      "name": "Impact Radius",
+      "programType": "network-redirect",
+      "domains": ["pxf.io"],
+      "param": "u",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#impact. Impact assigns brand-specific subdomains (gohealth.pxf.io, target.pxf.io, ...). The apex pxf.io is recorded here; CAPS's exact-host matching does not catch subdomains — adopters that need broader coverage should match by `*.pxf.io` suffix in their own code until a future schema bump introduces wildcard domain entries.",
+      "references": [{ "url": "https://impact.com/" }]
+    },
+    {
+      "id": "instagram-l",
+      "name": "Instagram Outbound",
+      "programType": "network-redirect",
+      "domains": ["l.instagram.com"],
+      "param": "u",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#instagram-l. Only `l.instagram.com` — apex instagram.com is the social network itself.",
+      "references": [{ "url": "https://help.instagram.com/" }]
+    },
+    {
+      "id": "medium-link",
+      "name": "Medium Short Link",
+      "programType": "network-redirect",
+      "domains": ["link.medium.com"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#medium-link. Path-based short link; query fallback `?url=`/`?u=` covers upstream-attached destinations.",
+      "references": [{ "url": "https://help.medium.com/" }]
+    },
+    {
+      "id": "rakuten-linkshare",
+      "name": "Rakuten LinkShare",
+      "programType": "network-redirect",
+      "domains": ["click.linksynergy.com"],
+      "param": "murl",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#rakuten. Deeplink endpoint `/deeplink` carries the merchant URL in `murl`.",
+      "references": [{ "url": "https://rakutenadvertising.com/" }]
+    },
+    {
+      "id": "reddit-out",
+      "name": "Reddit Outbound",
+      "programType": "network-redirect",
+      "domains": ["out.reddit.com"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#reddit-out. Only `out.reddit.com` is the wrapper; the apex (and www./old./new.) is the social network itself.",
+      "references": [{ "url": "https://www.redditinc.com/policies" }]
+    },
+    {
+      "id": "shareasale",
+      "name": "ShareASale",
+      "programType": "network-redirect",
+      "domains": ["shareasale.com"],
+      "param": "urllink",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#shareasale. Redirect endpoint `/r.cfm` carries the destination merchant URL in `urllink`.",
+      "references": [{ "url": "https://www.shareasale.com/" }]
+    },
+    {
+      "id": "skimlinks-redirectingat",
+      "name": "Skimlinks (go.redirectingat.com)",
+      "programType": "network-redirect",
+      "domains": ["go.redirectingat.com"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#skimlinks-redirectingat.",
+      "references": [{ "url": "https://skimlinks.com/" }]
+    },
+    {
+      "id": "skimlinks-skimresources",
+      "name": "Skimlinks (go.skimresources.com)",
+      "programType": "network-redirect",
+      "domains": ["go.skimresources.com"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#skimlinks-skimresources. Alternate Skimlinks publisher redirect host; same shape as go.redirectingat.com.",
+      "references": [{ "url": "https://skimlinks.com/" }]
+    },
+    {
+      "id": "snap-exit",
+      "name": "Snap Exit",
+      "programType": "network-redirect",
+      "domains": ["exit.sc"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#snap-exit. Snap's outbound wrapper on a separate hostname from snapchat.com.",
+      "references": [{ "url": "https://help.snapchat.com/" }]
+    },
+    {
+      "id": "tco",
+      "name": "Twitter t.co",
+      "programType": "network-redirect",
+      "domains": ["t.co"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#tco. Exact host only — `t.co`. Subdomains like `api.t.co` are unrelated services and MUST NOT be flagged. Canonical form is path-based and resolves via 301; allowlist of `?url=`/`?u=` is a best-effort fallback.",
+      "references": [{ "url": "https://help.x.com/en/using-x/url-shortener" }]
+    },
+    {
+      "id": "tradetracker",
+      "name": "TradeTracker",
+      "programType": "network-redirect",
+      "domains": ["tc.tradetracker.net"],
+      "param": "u",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#tradetracker. EU affiliate network click endpoint carries the destination URL in `u`.",
+      "references": [{ "url": "https://tradetracker.com/" }]
+    },
+    {
+      "id": "vk-away",
+      "name": "VK Away",
+      "programType": "network-redirect",
+      "domains": ["away.vk.com"],
+      "param": "to",
+      "valueShape": "non-empty",
+      "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#vk-away. Only `away.vk.com/away.php`; apex vk.com is the social network itself.",
+      "references": [{ "url": "https://vk.com/about" }]
+    }
+  ]
+}
