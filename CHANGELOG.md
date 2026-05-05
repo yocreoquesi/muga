@@ -4,6 +4,19 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.3] - 2026-05-05
+
+User-visible polish release. Two critical fixes for users on v1.13.0–v1.13.2 (broken toolbar icon, stuck onboarding) plus a copy/visual pass on the onboarding and a popup cleanup. Also bundles two feature PRs that had been sitting on `[Unreleased]` since the 1.13.2 cut: wildcard whitelist/blacklist values and the CAPS-Basic + Contextual conformance claim.
+
+### Fixed
+
+- **Toolbar icon was invisible on Firefox and Chrome** (#564). The 16/48/128 PNGs introduced in v1.13.0 were 96–99% transparent — only 6/256, 13/2304, and 32/16384 pixels respectively were opaque. The accompanying `*-preserved.png` files in the tree were the intact RGB sources, mistakenly left as the optimization input rather than the shipped output. This release copies those bytes over the broken files. Users on v1.13.0–v1.13.2 will see the working icon on the next AMO/Chrome Store update.
+- **Onboarding "Start browsing clean" button did nothing** (#565). The CTA was natively `disabled` until the ToS checkbox was checked, so clicks were silently swallowed. Users who didn't notice the ToS gate clicked repeatedly with no feedback and assumed the onboarding was broken. Now the button uses `aria-disabled` so the click event still fires; the handler flashes the ToS card (respects `prefers-reduced-motion`), smooth-scrolls it into view, focuses the checkbox, and announces the requirement via an `sr-only` `aria-live` region. Playwright's `toBeDisabled()` recognises the new state, so existing e2e coverage carries over.
+- **Onboarding tagline pinned to a narrow left column** (#565). The header had `max-width: 26ch / 48ch / 52ch` while the rest of the page used the full container width, leaving the tagline visually orphaned. Now flows to container width like the feature cards beneath.
+- **Redundant "Still see tracking?" link in the popup** (#567). Two report links (`#report-broken`, `#report-unclean`) were splitting a single user intent — "this didn't work as expected" — across two GitHub queues. Removed `#report-unclean`; the remaining `#report-broken` absorbs both intents.
+- **Share button doubled the 📋 emoji on click** (#567). The static `<span aria-hidden="true">📋 </span>` already held the icon and the click handler also wrote `share_copy_prefix` (another 📋) into the visible label, producing `📋📋 Share`. The fix removes the entire share feature (see Removed below) — the bug dies with it.
+- **Creator-referral hint hidden behind a `cursor: help` tooltip** (#567). The OS-level tooltip surfaces slowly (and not at all on touch), and the help cursor implied a click action that never existed. Now the hint renders inline as a small line below the badge — visible without interaction.
+
 ### Added
 
 - **Wildcard value support in Blocked Domains and Whitelist** (`domain.com::param::*`). Strips or protects a parameter on a specific domain regardless of its value — useful for params like `pid` that share legitimate and tracking uses. Both lists now accept the new shape. Priority rule made uniform and explicit: a Whitelist match always wins over a Blacklist match for the same parameter. Documented in the options page hints and README. ([`src/lib/cleaner.js`](src/lib/cleaner.js), [`src/lib/validation.js`](src/lib/validation.js), [`src/lib/i18n.js`](src/lib/i18n.js)). (#301)
@@ -11,7 +24,13 @@ All notable changes to MUGA will be documented in this file.
 
 ### Changed
 
+- **Onboarding copy trimmed to the user-facing wedge** (#566). Removed `ob_tagline_values` (a meta-statement about being honest when wrong — slowed the flow without earning trust on its own); rewrote `ob_tagline_sub` from "Open source. Transparent. Built to protect your privacy." to "No servers. No telemetry. URLs never leave your browser." (concrete mechanisms vs jargon); renamed `ob_step2_title` from "Fair to every click" (which duplicated the page tagline word-for-word) to "How MUGA stays free"; dropped "Open source, GPL v3." from `ob_cta_note` — the licence does not influence a regular user's install decision.
+- **Onboarding visuals**: replaced the CSS-pattern logo decoration and the unrelated unicode glyphs (✕, ◆, →) on feature rows with coherent stroke-only SVGs (sparkle for the wordmark — same mark as the popup; X-in-circle, shield-with-check, and link icon for the three feature rows). a11y test rewritten to assert that every `.feature-icon` container is `aria-hidden`, regardless of inner shape. (#566)
 - **Network-redirect short-circuit** in [`src/lib/cleaner.js`](src/lib/cleaner.js) and [`src/lib/param-classifier.js`](src/lib/param-classifier.js). Per CAPS SPEC §3.2 step 6, the bounded-scope rule (#530) MUST NOT fire on `network-redirect` hosts. When `detectWrapper(url)` returns non-null and the URL was not unwrapped (no extractable destination), the cleaner now passes `_skipBoundedScope: true` to the classifier and `PARAM_PAIRS` entries survive on the wrapper host. Required for Contextual conformance vector #12. (#543)
+
+### Removed
+
+- **Popup share button and its supporting copy** (#567). A low-leverage growth surface (clipboard-only sharing of a marketing blurb plus a Store URL) that carried real maintenance cost: 9 phrase translations × 4 locales, 8 seasonal easter-egg keys, the prefix/suffix indirection, and the `📋📋` rendering bug above. The "Rate MUGA" nudge (gated on 200 URLs cleaned + 7 days since install + max-3 nudges spacing) and the always-visible footer "Rate MUGA" link continue to cover word-of-mouth. The growth bar now hides whenever the rate nudge does not fire, instead of always rendering an empty container.
 
 ## [1.13.2] - 2026-05-04
 
@@ -622,7 +641,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.2...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.3...HEAD
+[1.13.3]: https://github.com/yocreoquesi/muga/compare/v1.13.2...v1.13.3
 [1.13.2]: https://github.com/yocreoquesi/muga/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/yocreoquesi/muga/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/yocreoquesi/muga/compare/v1.11.0...v1.13.0
