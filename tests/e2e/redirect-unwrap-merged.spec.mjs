@@ -91,15 +91,32 @@ test.describe("Redirect unwrap merged module (#410)", () => {
     // a digidip.net intermediary. The intermediary URL embeds the
     // real destination in `?url=`. Unwrap should reach the destination
     // directly without ever loading digidip.net.
+    //
+    // Flake-hardening (#574): the content script's unwrap runs on
+    // DOMContentLoaded after a `chrome.runtime.sendMessage(getPrefs)`
+    // round-trip (~10-50ms). The browser's native meta-refresh, if
+    // armed with `content="0;..."`, can race that and win — landing
+    // the page on the un-stubbed digidip host (ERR_ABORTED, frame
+    // detached, waitForURL blows up). Two fixes layered:
+    //
+    //   1. Set the meta-refresh timeout to 60s. The browser will not
+    //      fire it within the test window (5s); the content script
+    //      finds the meta tag in the DOM the moment DOMContentLoaded
+    //      fires, regardless of the timeout value.
+    //   2. Stub `chollometro.digidip.net` as a safety net so that even
+    //      if the content script DOES somehow lose the race, the
+    //      browser navigation lands on a 200 placeholder instead of
+    //      ERR_ABORTED — producing a clearer test failure mode.
     await page.route("**://www.chollometro.com/visit/**", (route) =>
       route.fulfill({
         status: 200,
         contentType: "text/html",
         body: `<!doctype html><html><head>
-          <meta http-equiv="refresh" content="0;url=https://chollometro.digidip.net/visit?url=https%3A%2F%2Fdestination.test%2Fdeal%2F42">
+          <meta http-equiv="refresh" content="60;url=https://chollometro.digidip.net/visit?url=https%3A%2F%2Fdestination.test%2Fdeal%2F42">
         </head><body>chollometro</body></html>`,
       })
     );
+    await stubHost(page, "chollometro.digidip.net");
     await stubHost(page, "destination.test");
 
     await page.goto("https://www.chollometro.com/visit/category/12345");
