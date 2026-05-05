@@ -171,42 +171,37 @@ export const TRANSLATIONS = {
     pt: "Reportar ao repo" /* FIXME: needs native speaker review */,
     de: "Upstream melden" /* FIXME: needs native speaker review */,
   },
-  report_upstream_issue_title: {
-    en: "[Param] {paramName} — observed across {count} domains",
-    es: "[Parámetro] {paramName} — observado en {count} dominios",
-    pt: "[Parâmetro] {paramName} — observado em {count} domínios" /* FIXME: needs native speaker review */,
-    de: "[Parameter] {paramName} — auf {count} Domains beobachtet" /* FIXME: needs native speaker review */,
+  // #521: per-param dedup label shown in place of the Report-upstream
+  // button after the user has reported that param from this install.
+  // Cleared via the options page "Forget reported params" control.
+  report_upstream_already_reported: {
+    en: "Reported {date}",
+    es: "Reportado el {date}",
+    pt: "Reportado em {date}" /* FIXME: needs native speaker review */,
+    de: "Gemeldet am {date}" /* FIXME: needs native speaker review */,
   },
-  report_upstream_issue_body: {
-    en:
-      "## Suspicious tracking parameter\n\n" +
-      "Reported from the MUGA popup's Suspicious params section.\n\n" +
-      "- **Param name:** `{paramName}`\n" +
-      "- **Distinct first-party domains observed:** {count}\n\n" +
-      "## Privacy disclaimer\n\n" +
-      "MUGA never sees the value, hash, or domains — this report contains only the two fields above.\n",
-    es:
-      "## Parámetro de rastreo sospechoso\n\n" +
-      "Reportado desde la sección \"Parámetros sospechosos\" del popup de MUGA.\n\n" +
-      "- **Nombre del parámetro:** `{paramName}`\n" +
-      "- **Dominios first-party distintos observados:** {count}\n\n" +
-      "## Aviso de privacidad\n\n" +
-      "MUGA nunca ve el valor, ni el hash, ni los dominios — este reporte contiene únicamente los dos campos de arriba.\n",
-    pt:
-      "## Parâmetro de rastreamento suspeito\n\n" +
-      "Reportado da seção \"Parâmetros suspeitos\" do popup do MUGA.\n\n" +
-      "- **Nome do parâmetro:** `{paramName}`\n" +
-      "- **Domínios first-party distintos observados:** {count}\n\n" +
-      "## Aviso de privacidade\n\n" +
-      "O MUGA nunca vê o valor, o hash nem os domínios — este relatório contém apenas os dois campos acima.\n" /* FIXME: needs native speaker review */,
-    de:
-      "## Verdächtiger Tracking-Parameter\n\n" +
-      "Gemeldet aus dem Abschnitt \"Verdächtige Parameter\" des MUGA-Popups.\n\n" +
-      "- **Parametername:** `{paramName}`\n" +
-      "- **Beobachtete unterschiedliche First-Party-Domains:** {count}\n\n" +
-      "## Datenschutzhinweis\n\n" +
-      "MUGA sieht weder den Wert noch den Hash noch die Domains — dieser Bericht enthält nur die beiden Felder oben.\n" /* FIXME: needs native speaker review */,
+  // #521: options-page button to clear the per-install dedup list
+  // (chrome.storage.local.submittedParams). The user can resubmit a
+  // previously-reported param after using this.
+  forget_reported_params_btn: {
+    en: "Forget reported params",
+    es: "Olvidar parámetros reportados",
+    pt: "Esquecer parâmetros reportados" /* FIXME: needs native speaker review */,
+    de: "Gemeldete Parameter vergessen" /* FIXME: needs native speaker review */,
   },
+  forget_reported_params_done: {
+    en: "Reported list cleared",
+    es: "Lista de reportes borrada",
+    pt: "Lista de reportes limpa" /* FIXME: needs native speaker review */,
+    de: "Liste der Meldungen gelöscht" /* FIXME: needs native speaker review */,
+  },
+  forget_reported_params_hint: {
+    en: "Clears the local list of params you've already reported. The same param can then be reported again.",
+    es: "Borra la lista local de parámetros que ya reportaste. El mismo parámetro se podrá volver a reportar.",
+    pt: "Limpa a lista local de parâmetros já reportados. O mesmo parâmetro poderá ser reportado novamente." /* FIXME: needs native speaker review */,
+    de: "Löscht die lokale Liste bereits gemeldeter Parameter. Derselbe Parameter kann danach erneut gemeldet werden." /* FIXME: needs native speaker review */,
+  },
+
   domain_stats_empty:    { en: "No domain stats yet. Keep browsing!", es: "Aún no hay estadísticas. ¡Sigue navegando!", pt: "Sem estatísticas ainda. Continue navegando!", de: "Noch keine Domain-Statistiken. Weiter surfen!" },
   domain_stats_params:   { en: "params stripped", es: "parámetros eliminados", pt: "parâmetros removidos", de: "Parameter entfernt" },
   domain_stats_urls:     { en: "URLs cleaned", es: "URLs limpiadas", pt: "URLs limpas", de: "URLs bereinigt" },
