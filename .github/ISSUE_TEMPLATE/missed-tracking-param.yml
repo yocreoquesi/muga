@@ -1,0 +1,54 @@
+name: Missed tracking parameter
+description: Report a tracking parameter that MUGA did not strip.
+title: "[Unclean] "
+labels: ["unclean-url", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us catch tracking parameters in the wild.
+
+        **Privacy contract:** report the **parameter name only**, not values, not full URLs.
+        A bare `utm_xyz` is enough — no IDs, no email hashes, no domain history.
+  - type: input
+    id: hostname
+    attributes:
+      label: Domain where you saw the param
+      description: Hostname only — e.g. `news.example.com`.
+      placeholder: news.example.com
+    validations:
+      required: true
+  - type: input
+    id: param-names
+    attributes:
+      label: Suspected tracking param name(s)
+      description: Comma-separated. **Names only** — never values.
+      placeholder: xyz_tracking, mc_eid_v2
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where did the link come from?
+      options:
+        - Email / newsletter
+        - Social media (Twitter, Mastodon, etc.)
+        - Search results
+        - Ad
+        - Direct from a website
+        - Other / unknown
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Optional context — pattern of values (length, charset), apparent purpose, how you confirmed it's tracking. **Do not include actual param values.**
+      placeholder: e.g. "Always 22 characters, base64-looking. Same value across two pages on the same site."
+  - type: checkboxes
+    id: privacy-ack
+    attributes:
+      label: Privacy acknowledgement
+      options:
+        - label: I have NOT included param values, full URLs, or any user-identifying data.
+          required: true

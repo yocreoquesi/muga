@@ -1,0 +1,52 @@
+name: Site broken by MUGA
+description: Report a site that stopped working after MUGA cleaned a URL.
+title: "[Broken] "
+labels: ["broken-site", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Please do not paste full URLs** — domain + symptom is enough.
+        If you arrived here from the popup's "Report broken site" button, the prefilled body
+        already follows this contract.
+  - type: input
+    id: hostname
+    attributes:
+      label: Domain
+      description: Hostname only (e.g. `example.com`). No paths, no query strings.
+      placeholder: example.com
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: What stopped working?
+      description: One or two sentences. e.g. "Search results don't load", "Login redirects in a loop".
+      placeholder: Describe the broken behaviour after MUGA cleaned the URL.
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Chrome / Firefox / Edge / etc., plus version if known.
+      placeholder: Firefox 130
+  - type: input
+    id: version
+    attributes:
+      label: MUGA version
+      description: Visible in `chrome://extensions` or `about:addons`. The popup prefill includes it automatically.
+      placeholder: 1.13.2
+  - type: textarea
+    id: params
+    attributes:
+      label: Params MUGA removed (if known)
+      description: Comma-separated list. Leave blank if unknown.
+      placeholder: utm_source, fbclid
+  - type: checkboxes
+    id: privacy-ack
+    attributes:
+      label: Privacy acknowledgement
+      options:
+        - label: I have NOT pasted the full URL or any user-identifying values.
+          required: true

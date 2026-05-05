@@ -600,19 +600,27 @@ async function showUrlPreview(prefs, lang) {
             prefs.ampRedirect && "AMP-redirect",
             prefs.unwrapRedirects && "redirect-unwrap",
           ].filter(Boolean).join(", ") || "default";
-          const title = encodeURIComponent(`[Report] ${hostname}`);
-          const body = encodeURIComponent(
-            `## Broken site report\n\n` +
-            `**Domain:** ${hostname}\n` +
-            `**MUGA version:** ${version}\n` +
-            `**Browser:** ${navigator.userAgent}\n` +
-            `**Action:** ${action}\n` +
-            `**Params removed:** ${removed}\n` +
-            `**Features active:** ${features}\n\n` +
-            `## What broke?\n\n` +
-            `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
-          );
-          chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site` });
+          // Form-based template (#333). Field IDs in
+          // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params.
+          // GitHub forms ignore ?body= when ?template= is set, so we prefill
+          // each field individually. Free-text "symptom" stays empty for the user.
+          const params = new URLSearchParams({
+            template: "broken-site.yml",
+            title: `[Broken] ${hostname}`,
+            hostname,
+            browser: navigator.userAgent,
+            version,
+            // Defensive: the YAML template applies labels=broken-site,bug
+            // automatically, but pass it explicitly so the label is applied
+            // even if the template file ever fails to load on GitHub's side.
+            labels: "broken-site",
+          });
+          if (removed && removed !== "none") params.set("params", removed);
+          // `action` and `features active` don't have dedicated form fields;
+          // we fold them into params.notes-style context isn't supported here,
+          // but the user can paste them into the symptom textarea if needed.
+          // Action: ${action} | Features: ${features}
+          chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
         } catch { /* invalid URL */ }
       });
 
