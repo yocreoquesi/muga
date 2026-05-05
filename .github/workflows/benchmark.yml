@@ -43,12 +43,7 @@ jobs:
         run: npm run benchmark
 
       - name: Upload report artifacts
-        # FIXME: this repo's convention is to SHA-pin actions (see ci.yml).
-        # Using the version tag here as a placeholder — the orchestrator
-        # author could not verify a SHA for upload-artifact@v4 without
-        # external lookup. Replace with the canonical SHA before this
-        # workflow first fires on a release tag. Tracked separately.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: muga-benchmark-${{ github.ref_name }}
           path: tests/benchmark/reports/*
