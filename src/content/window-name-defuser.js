@@ -32,6 +32,33 @@
   if (window.__mugaWindowNameDefuserGate) return;
   window.__mugaWindowNameDefuserGate = true;
 
+  // ── Firefox MV2 page-world bootstrap (#509 / B12) ────────────────────
+  //
+  // Same rationale as `history-defuser.js`: Chrome MV3 loads the page-
+  // world wrap automatically via `world: "MAIN"`; Firefox MV2 has no
+  // such directive, so this isolated-world script injects the
+  // `window-name-defuser-mainworld.js` resource as a page-world
+  // `<script>` element. The wrap installs the property accessor on
+  // `window.name` BEFORE the document parser starts running page
+  // scripts (synchronous insert at document_start).
+  //
+  // The `web_accessible_resources` entry in manifest.v2.json is what
+  // makes `chrome.runtime.getURL("content/window-name-defuser-mainworld.js")`
+  // loadable as a `<script src>` from the page origin.
+  try {
+    const mv = chrome.runtime.getManifest && chrome.runtime.getManifest().manifest_version;
+    if (mv === 2) {
+      const s = document.createElement("script");
+      s.src = chrome.runtime.getURL("content/window-name-defuser-mainworld.js");
+      s.async = false;
+      const target = document.head || document.documentElement;
+      if (target) {
+        target.appendChild(s);
+        s.remove();
+      }
+    }
+  } catch { /* manifest unavailable / DOM not ready — leave the page-world wrap absent */ }
+
   // Intentionally empty body. Gate dispatch is handled by
   // `history-defuser.js` via the `muga:history-gate` event, which the
   // window-name main-world wrap also listens to. See the docblock for
