@@ -56,6 +56,19 @@ jobs:
       - name: CAPS-Contextual conformance gate (#543)
         run: npm run conformance:contextual
 
+      - name: Regenerate docs/comparison.html benchmark section (#461)
+        run: |
+          npm run benchmark
+          node tools/generate-comparison-benchmark.mjs
+
+      - name: Check docs/comparison.html benchmark section is up to date (#461)
+        run: |
+          if ! git diff --exit-code docs/comparison.html; then
+            echo "ERROR: docs/comparison.html benchmark section is out of sync."
+            echo "Run 'npm run benchmark:update-comparison-page' and commit the result."
+            exit 1
+          fi
+
       - name: Lint extension
         run: npm run lint
 
