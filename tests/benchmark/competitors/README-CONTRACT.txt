@@ -45,4 +45,16 @@ When phase 2a/2b/etc. ship, append their adapters' source snapshot
 metadata to a "Snapshots" section appended below this contract.
 
 ----- Snapshots ------------------------------------------------------
-(none yet — phase 2a will add the first)
+
+Each entry pins WHEN the snapshot was captured + the upstream URL it
+came from + the SHA-256 of the file at capture time. Reviewers can
+compare hashes against a known upstream commit when auditing the
+diff. Refresh via `npm run benchmark:refresh-competitors`.
+
+ClearURLs — phase 2b (#506)
+  source:    https://rules2.clearurls.xyz/data.minify.json
+  file:      data/clearurls.json
+  captured:  2026-05-05
+  bytes:     37176
+  sha256:    df97eb5c1aeeb9f96d0c28a6a60604f3cb2b1f9e7776eee228258e1b2bae1424
+  adapter:   clearurls.mjs (clearurlsAdapter)

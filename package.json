@@ -23,6 +23,7 @@
     "sync:wrappers": "node scripts/sync-wrappers.mjs",
     "sync:manifest": "node scripts/sync-affiliate-manifest.mjs",
     "benchmark": "node tests/benchmark/runner.mjs",
+    "benchmark:refresh-competitors": "node scripts/refresh-competitor-snapshots.mjs",
     "test:e2e": "npx playwright test"
   },
   "devDependencies": {
