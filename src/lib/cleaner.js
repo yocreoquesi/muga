@@ -112,25 +112,30 @@ export function getPreservedParams(hostname, domainRules = []) {
  * Detects whether the FINAL URL still carries a third-party affiliate tag for
  * a known store — i.e. a tag MUGA decided to preserve. Independent of
  * notifyForeignAffiliate (read-only signal for UI feedback). Skips empty
- * ourTag patterns: those are programs without a registered account, so any
- * value present cannot be classified as "ours" vs "someone else's".
+ * #523 phase 3: preserve set is now declarative (sourced from caps-spec),
+ * not gated on ourTag. A creator referral on Booking, Vercel, DigitalOcean,
+ * Humble Bundle, or Lemon Squeezy is preserved even when MUGA has no
+ * affiliate account on those programs. The only short-circuit is when the
+ * URL's value matches MUGA's own tag for THIS hostname — that's our
+ * injection, not a foreign creator.
  *
  * @param {URL}   url
  * @param {Array} patterns - Affiliate patterns scoped to the hostname.
  * @returns {{param:string,value:string,store:string,group:string}|null}
  */
 function detectPreservedAffiliate(url, patterns) {
+  const host = url.hostname.replace(/^www\./, "");
   for (const pattern of patterns) {
-    if (!pattern.ourTag) continue;
     const value = url.searchParams.get(pattern.param);
-    if (value && value !== pattern.ourTag) {
-      return {
-        param: pattern.param,
-        value,
-        store: pattern.name,
-        group: pattern.group || pattern.name,
-      };
-    }
+    if (!value) continue;
+    const ourTagForHost = pattern.ourTag[host] || pattern.ourTag[url.hostname] || "";
+    if (ourTagForHost && value === ourTagForHost) continue; // our own injection, skip
+    return {
+      param: pattern.param,
+      value,
+      store: pattern.name,
+      group: pattern.group || pattern.name,
+    };
   }
   return null;
 }
@@ -425,18 +430,21 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     whitelistedParams.has(param) || whitelistedValues.has(`${param}::${value}`);
 
   // 3. Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
+  // #523 phase 3: detection no longer gates on ourTag — a creator referral
+  // is preserved even on programs MUGA has no account on (Booking, Vercel,
+  // DigitalOcean, Humble Bundle, Lemon Squeezy). The only short-circuit is
+  // when the value matches MUGA's OWN tag for this host (we injected it).
   if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
+    const hostKey = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
-      if (pattern.ourTag) {
-        const value = url.searchParams.get(pattern.param);
-        if (value && value !== pattern.ourTag) {
-          // Skip if this affiliate is whitelisted by the user
-          if (!isWhitelisted(pattern.param, value)) {
-            detectedAffiliate = { param: pattern.param, value, pattern };
-            action = "detected_foreign";
-            break;
-          }
-        }
+      const value = url.searchParams.get(pattern.param);
+      if (!value) continue;
+      const ourTagForHost = pattern.ourTag[hostKey] || pattern.ourTag[hostname] || "";
+      if (ourTagForHost && value === ourTagForHost) continue;
+      if (!isWhitelisted(pattern.param, value)) {
+        detectedAffiliate = { param: pattern.param, value, pattern };
+        action = "detected_foreign";
+        break;
       }
     }
   }
@@ -493,10 +501,12 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // URL arrives with our tag already attached) (#353).
   // Whitelist entries are also respected: specific beats general.
   if (prefs.stripAllAffiliates) {
+    const hostKeyStrip = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
       const val = url.searchParams.get(pattern.param);
       if (val) {
-        if (prefs.injectOwnAffiliate && pattern.ourTag && val === pattern.ourTag) continue;
+        const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
+        if (prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost) continue;
         if (!isWhitelisted(pattern.param, val)) {
           url.searchParams.delete(pattern.param);
           if (action === "untouched") action = "cleaned";
@@ -547,9 +557,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // 6. Inject our affiliate tag when the link has none (skip if foreign detected, stripAllAffiliates,
   //    or if a blacklist rule already removed an affiliate for this URL (blacklist takes priority, #183)
   if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
+    const hostKeyInject = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
-      if (pattern.ourTag && !url.searchParams.has(pattern.param)) {
-        url.searchParams.set(pattern.param, pattern.ourTag);
+      const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
+      if (ourTagForHost && !url.searchParams.has(pattern.param)) {
+        url.searchParams.set(pattern.param, ourTagForHost);
         action = "injected";
         break;
       }

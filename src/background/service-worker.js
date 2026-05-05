@@ -1014,13 +1014,20 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
       store: d?.pattern?.name ?? null,
       action: result.action,
     });
-    // If injection is enabled, build the URL with our tag so "Remove it" can use it
-    if (prefs.injectOwnAffiliate && result.detectedAffiliate?.pattern?.ourTag) {
+    // If injection is enabled, build the URL with our tag so "Remove it" can use it.
+    // #523 phase 3: pattern.ourTag is now a { host -> tag } map, not a flat string.
+    // Pick the tag for the cleanUrl's hostname; if we have no tag for this
+    // marketplace, skip the with-our-affiliate variant.
+    if (prefs.injectOwnAffiliate && result.detectedAffiliate?.pattern) {
       try {
         const url = new URL(result.cleanUrl);
         const p = result.detectedAffiliate.pattern;
-        url.searchParams.set(p.param, p.ourTag);
-        result.withOurAffiliate = url.toString();
+        const host = url.hostname.replace(/^www\./, "");
+        const ourTagForHost = p.ourTag?.[host] || p.ourTag?.[url.hostname] || "";
+        if (ourTagForHost) {
+          url.searchParams.set(p.param, ourTagForHost);
+          result.withOurAffiliate = url.toString();
+        }
       } catch { /* malformed cleanUrl — skip injection */ }
     }
   }

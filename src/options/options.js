@@ -404,14 +404,21 @@ function renderCategories(disabledCategories) {
 
 /** Renders the supported affiliate stores grid. */
 function renderStores() {
-  const allStores = getSupportedStores();
-  const activeStores = allStores.filter(s => s.ourTag && s.ourTag.trim() !== "");
+  // #523 phase 3: each program has a `{ host -> tag }` map for ourTag.
+  // Active = at least one host has a non-empty tag. We expand each
+  // program into per-marketplace "store" rows so the UI looks the same
+  // post-consolidation as it did when the legacy AFFILIATE_PATTERNS
+  // array carried one entry per marketplace.
+  const allPrograms = getSupportedStores();
+  const activePrograms = allPrograms.filter(
+    (p) => Object.values(p.ourTag).some((tag) => tag && tag.trim() !== ""),
+  );
 
   const grid = document.getElementById("stores-grid");
   const hintEl = document.getElementById("stores-hint");
   grid.innerHTML = "";
 
-  if (activeStores.length === 0) {
+  if (activePrograms.length === 0) {
     grid.hidden = true;
     if (hintEl) hintEl.hidden = true;
     const placeholder = document.createElement("p");
@@ -426,12 +433,20 @@ function renderStores() {
   grid.hidden = false;
   if (hintEl) hintEl.hidden = false;
 
-  // Group stores by brand
+  // Group programs by display brand. Today caps-spec programs have a
+  // 1:1 relationship with display groups, but we keep the grouping so
+  // a future caps-spec change (e.g. Amazon Vendor Central as a separate
+  // entry sharing the "Amazon" brand) reuses the same UI shape.
   const groups = new Map();
-  for (const s of activeStores) {
-    const key = s.group || s.name;
+  for (const p of activePrograms) {
+    const key = p.group || p.name;
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(s);
+    // Expand each program into one row per (host, tag) pair so the
+    // marketplace-level detail surfaces in the UI.
+    for (const [host, tag] of Object.entries(p.ourTag)) {
+      if (!tag || tag.trim() === "") continue;
+      groups.get(key).push({ name: host, param: p.param, ourTag: tag });
+    }
   }
 
   for (const [groupName, stores] of groups) {
