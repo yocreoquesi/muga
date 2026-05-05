@@ -466,7 +466,12 @@
               "vsm_pid",
               "vsm_type",
               "winflncrtag",
-              "link_source"
+              "link_source",
+              "tgclid",
+              "utm_compaign",
+              "utm_emailid",
+              "utm_email",
+              "utm_newsletterid"
             ]
           }
         }
