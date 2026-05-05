@@ -68,7 +68,9 @@
   "web_accessible_resources": [
     "onboarding/onboarding.html",
     "privacy/privacy.html",
-    "privacy/tos.html"
+    "privacy/tos.html",
+    "content/history-defuser-mainworld.js",
+    "content/window-name-defuser-mainworld.js"
   ],
 
   "declarative_net_request": {
