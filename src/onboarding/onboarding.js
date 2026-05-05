@@ -121,10 +121,35 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateButton() {
-    startBtn.disabled = !tosCheck.checked;
+    if (tosCheck.checked) {
+      startBtn.removeAttribute("aria-disabled");
+    } else {
+      startBtn.setAttribute("aria-disabled", "true");
+    }
   }
 
   tosCheck.addEventListener("change", updateButton);
+
+  // Flash the ToS card when the user clicks the CTA without accepting.
+  // Without this, the disabled state was silent — clicks went nowhere
+  // and users couldn't discover the gating reason.
+  const tosLabel = document.getElementById("tos-label");
+  const ctaGatedMsg = document.getElementById("cta-gated-msg");
+  function flashTosGate() {
+    if (!tosLabel) return;
+    tosLabel.classList.remove("is-flashing");
+    // Force reflow so the animation can re-trigger on consecutive clicks.
+    void tosLabel.offsetWidth;
+    tosLabel.classList.add("is-flashing");
+    tosLabel.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (tosCheck && typeof tosCheck.focus === "function") tosCheck.focus({ preventScroll: true });
+    if (ctaGatedMsg) {
+      ctaGatedMsg.textContent = "";
+      // Re-write on the next tick so aria-live announces it even if the
+      // text didn't change since the last gated click.
+      setTimeout(() => { ctaGatedMsg.textContent = t("ob_cta_gated_msg", lang); }, 50);
+    }
+  }
 
   // Signal that DOMContentLoaded setup is complete — tests wait for this flag
   // before interacting with the page (same pattern as options.html; avoids
@@ -133,7 +158,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.body.dataset.mugaReonboardMode = mode;
 
   startBtn.addEventListener("click", async () => {
-    if (!tosCheck.checked) return;
+    if (!tosCheck.checked) {
+      flashTosGate();
+      return;
+    }
 
     try {
       // Compute per-device overrides for any synced pref the user

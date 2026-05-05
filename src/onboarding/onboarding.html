@@ -58,19 +58,16 @@
     .tagline {
       font-size: 22px; line-height: 1.35;
       color: var(--text-1);
-      margin-bottom: 8px;
+      margin-bottom: 36px;
       font-weight: 500;
       letter-spacing: -0.01em;
-      max-width: 26ch;
       text-wrap: balance;
     }
-    .tagline span:nth-child(2) { display: block; font-size: 15px; color: var(--text-2); font-weight: 400; margin-top: 6px; max-width: 48ch; }
+    .tagline span:nth-child(2) { display: block; font-size: 15px; color: var(--text-2); font-weight: 400; margin-top: 6px; }
     .tagline small {
       display: block; margin-top: 12px;
       font-size: 12.5px !important; color: var(--text-3) !important; line-height: 1.6;
-      max-width: 52ch;
     }
-    .tagline { margin-bottom: 36px; }
 
     /* Sections */
     .section { margin-bottom: 24px; }
@@ -206,11 +203,29 @@
       transition: filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
       text-align: center;
     }
-    .btn-primary:disabled {
+    .btn-primary[aria-disabled="true"] {
       opacity: .35; cursor: not-allowed;
       background: var(--surface-3); color: var(--text-3); border-color: var(--border-2);
     }
-    .btn-primary:not(:disabled):hover { filter: brightness(1.08); }
+    .btn-primary:not([aria-disabled="true"]):hover { filter: brightness(1.08); }
+    /* CTA gated state: when the user clicks the button without accepting
+       the ToS, we flash the ToS card so they discover the requirement
+       instead of seeing nothing happen. Animation runs once per click. */
+    .tos-check.is-flashing {
+      animation: tos-flash 600ms var(--ease);
+    }
+    @keyframes tos-flash {
+      0%   { box-shadow: 0 0 0 0 var(--accent); }
+      40%  { box-shadow: 0 0 0 4px var(--accent-soft); border-color: var(--accent); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tos-check.is-flashing { animation: none; border-color: var(--accent); }
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
     .cta-note {
       font-size: 11.5px; color: var(--text-3);
       margin-top: 12px; text-align: center;
@@ -324,8 +339,9 @@
 
     <!-- CTA -->
     <div class="cta">
-      <button class="btn-primary" id="start-btn" disabled data-i18n="ob_cta_btn">Start browsing clean</button>
+      <button class="btn-primary" id="start-btn" aria-disabled="true" data-i18n="ob_cta_btn">Start browsing clean</button>
       <p class="cta-note" data-i18n="ob_cta_note">Open source, GPL v3. Change any setting anytime.</p>
+      <p id="cta-gated-msg" class="sr-only" aria-live="polite"></p>
     </div>
   </div>
   </main>
