@@ -67,7 +67,12 @@ function findLatestReport(dir) {
  * markers. Pure: takes a parsed report object, returns the HTML string.
  */
 export function renderBenchmarkSection(report) {
-  const generatedAt = report.generatedAt || new Date().toISOString();
+  // Note: the report's `generatedAt` field is intentionally NOT used
+  // in the page output — its per-run drift would defeat the CI drift
+  // gate that compares a freshly-generated page against the committed
+  // one. The freshness signal users get from this page comes from the
+  // git history of comparison.html itself, plus the snapshot hashes in
+  // README-CONTRACT.txt (committed alongside each adapter refresh).
   const total = report.totalEntries || 0;
   const muga = {
     matched: report.matched || 0,
@@ -119,7 +124,7 @@ export function renderBenchmarkSection(report) {
   <h2>Auditable benchmark — corpus match rate</h2>
   <p>Numbers below come from running each tool against MUGA's open URL corpus (<a href="https://github.com/yocreoquesi/muga/tree/main/tests/benchmark/corpus" target="_blank" rel="noopener noreferrer">tests/benchmark/corpus/</a>). Each adapter consumes its own upstream rule set verbatim — no MUGA logic leaks in. The corpus + adapters + this report are all in the repo; reproduce locally with <code>npm run benchmark</code>.</p>
 
-  <p class="meta">Last benchmark run: <code>${escapeHtml(generatedAt)}</code> &nbsp;·&nbsp; Corpus size: <strong>${total}</strong> URLs &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga/blob/main/tests/benchmark/competitors/README-CONTRACT.txt" target="_blank" rel="noopener noreferrer">Adapter contract + snapshot hashes</a></p>
+  <p class="meta">Corpus size: <strong>${total}</strong> URLs &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga/blob/main/tests/benchmark/competitors/README-CONTRACT.txt" target="_blank" rel="noopener noreferrer">Adapter contract + snapshot hashes</a> &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga/commits/main/docs/comparison.html" target="_blank" rel="noopener noreferrer">Last refreshed (git history)</a></p>
 
   <div class="table-wrap">
     <table>
