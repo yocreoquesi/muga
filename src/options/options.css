@@ -552,3 +552,14 @@ input[type="text"]:not(.add-row input) {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ---------- Support MUGA section (#340) -------------------------------- */
+.support-links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.support-links a.add-btn {
+  text-decoration: none;
+  text-align: center;
+}
