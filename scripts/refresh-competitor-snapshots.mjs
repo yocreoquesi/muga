@@ -41,8 +41,12 @@ const SNAPSHOTS = [
     url: "https://filters.adtidy.org/extension/chromium/filters/17.txt",
     file: "adguard.txt",
   },
-  // Future: Brave Shields, Firefox built-in
-  // — each as its own entry once the matching adapter ships.
+  {
+    name: "Firefox",
+    url: "https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/query-stripping/records",
+    file: "firefox.json",
+  },
+  // Future: Brave Shields — its own entry once the matching adapter ships.
 ];
 
 async function fetchBytes(url) {
