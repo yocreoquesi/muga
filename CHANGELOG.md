@@ -4,18 +4,26 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.4] - 2026-05-05
+
+Coverage + standards-compliance + CI hygiene release. Headline: MUGA now consumes `caps-spec/manifest.json` as the source of truth for affiliate program identity, and the preserve set is decoupled from MUGA's own affiliate accounts — creator referrals are honored on Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy even though MUGA has no direct account on those programs.
+
 ### Added
 
+- **`caps-spec/manifest.json` consumed as source of truth for the affiliate preserve set** (#523, landed via #576/#577/#578). The 12-entry hand-maintained `AFFILIATE_PATTERNS` array is replaced by 7 consolidated entries generated at module load by joining the vendored `caps-spec` direct-injection programs with MUGA's hand-maintained `OUR_TAGS` map. New `scripts/sync-affiliate-manifest.mjs` mirrors the existing `sync-wrappers.mjs` pattern (Ed25519 signature verification when available, `--allow-unsigned` for the interim). Files: [`scripts/sync-affiliate-manifest.mjs`](scripts/sync-affiliate-manifest.mjs), [`src/vendor/caps-spec/manifest.data.js`](src/vendor/caps-spec/manifest.data.js), [`src/lib/affiliates.js`](src/lib/affiliates.js).
 - **Sprinklr campaign-manager params (`spr`, `sprtype`) added to universal `TRACKING_PARAMS`** ([`src/lib/affiliates.js`](src/lib/affiliates.js), [`src/rules/tracking-params.json`](src/rules/tracking-params.json)). Stripped on every domain. False-positive risk is low — these identify the campaign and asset that referred a click inside Sprinklr's backend and have no functional payload from the user's perspective. Closes the last "low-risk universal" gap from the #508 acceptance list (the merchant-specific gaps remain). (#508)
 - **`tracker-flag.yml` issue template** ([`.github/ISSUE_TEMPLATE/tracker-flag.yml`](.github/ISSUE_TEMPLATE/tracker-flag.yml)). Wires Channel 1 of CAPS decision 6 — receives structured tracker reports prefilled by MUGA's local heuristics (entropy + cross-site frequency). Schema mirrors the privacy contract already enforced by `csft-upstream.js`: only the SHAPE of the observation, never raw URLs or raw values. The existing `tracking-param.md` template is preserved (different intent — hand-written carrier-aware param requests). (#522)
 - **`tracker-candidate` repo label** to receive auto-labelled issues from the new form.
 
 ### Changed
 
+- **Preserve set is now declarative, not gated on MUGA's own affiliate account.** The `if (!pattern.ourTag) continue` short-circuit in `detectPreservedAffiliate` (cleaner.js line 124 pre-#523) is removed. Result: when a user clicks a Booking, Vercel, DigitalOcean, Humble Bundle, or Lemon Squeezy link that carries someone's affiliate tag, MUGA preserves it and shows the "Creator referral preserved" badge in the popup — even though MUGA has no account on those programs. Aligns with the wedge ("MUGA preserves any creator's tag") and with caps-spec's declarative semantics. (#523 phase 3)
+- **`pattern.ourTag` shape**: was a flat string per legacy per-marketplace entry. Now a `{ host -> tag }` map per consolidated program. Cleaner-side comparisons read `pattern.ourTag[hostname]`. Service-worker, options page, and the legacy unit-test patterns updated to match. (#523 phase 3)
 - **Release pipeline submission gate now distinguishes "version already submitted" from real store errors** ([`.github/workflows/release.yml`](.github/workflows/release.yml)). Each store step (AMO, CWS upload, CWS publish) emits a `result` output of `success | noop | failure`. The summary gate fails the workflow only on `failure`; `noop` is treated as success-or-no-op. This unblocks the partial-recovery scenario from v1.13.1 — a maintainer can re-tag a patch release without the gate spuriously failing on the store that already published the previous tag. Detection patterns are conservative; real failures still surface. (#557)
 
 ### Fixed (CI / hygiene)
 
+- **Branch protection on `main`** now requires both `test` and `e2e` jobs to pass before merge. Fixes the gap that allowed PRs #487-#490 to land with `cleaner-bundle.js` drift even though CI flagged it. `enforce_admins: false` preserves the admin-merge escape hatch for legitimate flakes. (#513)
 - **`actions/upload-artifact@v4` SHA-pinned in `benchmark.yml`** to commit `ea165f8` (v4.6.2). Brings the workflow in line with the existing pin convention used for `actions/checkout` and `actions/setup-node` in the same file and across `ci.yml`. The previous tag-only reference shipped with a `FIXME` comment from the original workflow author. (#528)
 
 ### Internal
@@ -659,7 +667,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.3...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.4...HEAD
+[1.13.4]: https://github.com/yocreoquesi/muga/compare/v1.13.3...v1.13.4
 [1.13.3]: https://github.com/yocreoquesi/muga/compare/v1.13.2...v1.13.3
 [1.13.2]: https://github.com/yocreoquesi/muga/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/yocreoquesi/muga/compare/v1.13.0...v1.13.1
