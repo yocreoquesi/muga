@@ -450,6 +450,21 @@ export const TRACKING_PARAMS = [
   // Added via npm run add-rule (#335): AdGuard filter 17 generic — Telegram Ads click tracking
   "link_source",
 
+  // Added via npm run add-rule (#335): AdGuard filter 17 generic — Telegram Ads click ID
+  "tgclid",
+
+  // Added via npm run add-rule (#335): AdGuard filter 17 generic — typo variant of utm_campaign
+  "utm_compaign",
+
+  // Added via npm run add-rule (#335): AdGuard filter 17 generic — email-marketing UTM extension
+  "utm_emailid",
+
+  // Added via npm run add-rule (#335): AdGuard filter 17 generic — email-marketing UTM extension
+  "utm_email",
+
+  // Added via npm run add-rule (#335): AdGuard filter 17 generic — newsletter UTM extension
+  "utm_newsletterid",
+
 ];
 
 export const TRACKING_PARAM_CATEGORIES = {
@@ -465,6 +480,10 @@ export const TRACKING_PARAM_CATEGORIES = {
     params: [
       "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
       "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
+      "utm_compaign",
+      "utm_emailid",
+      "utm_email",
+      "utm_newsletterid",
     ],
   },
   ads: {
@@ -561,6 +580,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "jmtyclid", "maf", "rtkcid", "sscid",
       "usqp", "vs_campaign_id",
       "link_source",
+      "tgclid",
     ],
   },
   email: {

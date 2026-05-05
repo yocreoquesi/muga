@@ -44,3 +44,23 @@ test(`link_source — added via add-rule`, () => {
   assertStrips("link_source", "AdGuard filter 17 generic — Telegram Ads click tracking");
 });
 
+test(`tgclid — added via add-rule`, () => {
+  assertStrips("tgclid", "AdGuard filter 17 generic — Telegram Ads click ID");
+});
+
+test(`utm_compaign — added via add-rule`, () => {
+  assertStrips("utm_compaign", "AdGuard filter 17 generic — typo variant of utm_campaign");
+});
+
+test(`utm_emailid — added via add-rule`, () => {
+  assertStrips("utm_emailid", "AdGuard filter 17 generic — email-marketing UTM extension");
+});
+
+test(`utm_email — added via add-rule`, () => {
+  assertStrips("utm_email", "AdGuard filter 17 generic — email-marketing UTM extension");
+});
+
+test(`utm_newsletterid — added via add-rule`, () => {
+  assertStrips("utm_newsletterid", "AdGuard filter 17 generic — newsletter UTM extension");
+});
+
