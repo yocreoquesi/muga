@@ -36,7 +36,12 @@ const SNAPSHOTS = [
     url: "https://rules2.clearurls.xyz/data.minify.json",
     file: "clearurls.json",
   },
-  // Future: AdGuard URL Tracking Protection, Brave Shields, Firefox built-in
+  {
+    name: "AdGuard",
+    url: "https://filters.adtidy.org/extension/chromium/filters/17.txt",
+    file: "adguard.txt",
+  },
+  // Future: Brave Shields, Firefox built-in
   // — each as its own entry once the matching adapter ships.
 ];
 

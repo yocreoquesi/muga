@@ -58,3 +58,11 @@ ClearURLs — phase 2b (#506)
   bytes:     37176
   sha256:    df97eb5c1aeeb9f96d0c28a6a60604f3cb2b1f9e7776eee228258e1b2bae1424
   adapter:   clearurls.mjs (clearurlsAdapter)
+
+AdGuard URL Tracking Protection (filter #17) — phase 2c (#506)
+  source:    https://filters.adtidy.org/extension/chromium/filters/17.txt
+  file:      data/adguard.txt
+  captured:  2026-05-05
+  bytes:     165456
+  sha256:    1e874321b5610c693e2f3006d8ba84781c6ca1f60a36f08bf68cccd1a3057d27
+  adapter:   adguard.mjs (adguardAdapter)
