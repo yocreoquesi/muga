@@ -81,34 +81,17 @@ describe("#open-options is a button element (not an anchor)", () => {
 // ── Decorative icons are aria-hidden ──────────────────────────────────────────
 
 describe("Decorative feature icons in onboarding.html are aria-hidden", () => {
-  const decorativeIcons = ["✕", "◆", "→"];
+  test("every .feature-icon container is aria-hidden", () => {
+    // Match any opening tag with class="feature-icon" (e.g. <div> or <span>).
+    const allIcons = onboardHtml.match(/<\w+[^>]*class="feature-icon"[^>]*>/g) || [];
+    assert.ok(allIcons.length > 0, "Expected at least one .feature-icon in onboarding.html");
 
-  for (const icon of decorativeIcons) {
-    test(`onboarding.html: "${icon}" feature-icon div has aria-hidden="true"`, () => {
-      // Find the feature-icon div containing this icon
-      const re = new RegExp(`feature-icon"[^>]*>\\s*${icon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-      const withAriaHidden = new RegExp(`feature-icon"[^>]*aria-hidden="true"[^>]*>\\s*${icon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-      const withAriaHiddenBefore = new RegExp(`feature-icon"\\s+aria-hidden="true"[^>]*>\\s*${icon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-
-      // Check that the icon appears in an aria-hidden context
-      const hasIcon = re.test(onboardHtml);
-      assert.ok(hasIcon, `Could not find feature-icon containing "${icon}" in onboarding.html`);
-
-      // aria-hidden="true" must appear on the same element
-      const iconIdx = onboardHtml.indexOf(`"feature-icon"`);
-      // Find all feature-icon divs and check each one containing this icon
-      const divPattern = new RegExp(`<div[^>]*class="feature-icon"[^>]*>(\\s*${icon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*)<\/div>`, 'g');
-      const ariaPattern = new RegExp(`<div[^>]*class="feature-icon"[^>]*aria-hidden="true"[^>]*>(\\s*${icon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*)<\/div>`, 'g');
-
-      const total     = (onboardHtml.match(divPattern) || []).length;
-      const withAria  = (onboardHtml.match(ariaPattern) || []).length;
-
-      // All occurrences of this icon must be aria-hidden
-      assert.ok(
-        total > 0 && withAria === total,
-        `feature-icon "${icon}" in onboarding.html must have aria-hidden="true" ` +
-        `(found ${total} occurrences, ${withAria} with aria-hidden)`
-      );
-    });
-  }
+    const ariaHidden = allIcons.filter(tag => /aria-hidden="true"/.test(tag));
+    assert.strictEqual(
+      ariaHidden.length,
+      allIcons.length,
+      `All .feature-icon containers must carry aria-hidden="true" — ` +
+      `found ${allIcons.length}, ${ariaHidden.length} aria-hidden`
+    );
+  });
 });
