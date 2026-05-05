@@ -448,7 +448,6 @@ function _resetPreviewDom() {
   const previewPreserved = el("preview-preserved");
   if (previewPreserved) {
     previewPreserved.hidden = true;
-    previewPreserved.removeAttribute("title");
     const tag = document.getElementById("preview-preserved-tag");
     if (tag) tag.textContent = "";
   }
@@ -556,7 +555,6 @@ async function showUrlPreview(prefs, lang) {
       if (tagEl) {
         tagEl.textContent = `${result.preservedAffiliate.param}=${result.preservedAffiliate.value}`;
       }
-      preservedEl.title = t("preview_preserved_creator_hint", lang);
       preservedEl.hidden = false;
     }
   }
