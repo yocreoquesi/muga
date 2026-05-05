@@ -49,7 +49,10 @@ const TEST_PATTERN = {
   domains: ["shop.test.muga", "www.shop.test.muga"],
   param: "aff",
   type: "affiliate",
-  ourTag: "muga-test-99",
+  // #523 phase 3: ourTag is now a { host -> tag } map. The cleaner reads
+  // by stripped hostname (no `www.` prefix), so the test pattern must key
+  // on the bare host to be picked up.
+  ourTag: { "shop.test.muga": "muga-test-99" },
 };
 
 // S11 — Original length of AFFILIATE_PATTERNS, used by after() hooks to
@@ -530,14 +533,16 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
-  test("ourTag empty string → does NOT inject (safety guard)", () => {
-    // Temporarily blank the ourTag
-    TEST_PATTERN.ourTag = "";
+  test("ourTag empty (no host entries) → does NOT inject (safety guard)", () => {
+    // #523 phase 3: ourTag is a { host -> tag } map. Empty map = no
+    // tag for any host = injection skipped on this program.
+    const original = TEST_PATTERN.ourTag;
+    TEST_PATTERN.ourTag = {};
     const { action } = processUrl(
       "https://shop.test.muga/product",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    TEST_PATTERN.ourTag = "muga-test-99"; // restore
+    TEST_PATTERN.ourTag = original; // restore
     assert.notEqual(action, "injected");
   });
 
@@ -832,14 +837,19 @@ describe("Scenario C — foreign affiliate detection", () => {
     assert.notEqual(action, "detected_foreign");
   });
 
-  test("notifyForeignAffiliate: true but ourTag empty → NOT detected (no comparison point)", () => {
-    TEST_PATTERN.ourTag = "";
+  test("notifyForeignAffiliate: true + ourTag empty → IS detected (decoupled, #523 phase 3)", () => {
+    // #523 phase 3 — Decision 2: preserve set is declarative (sourced from
+    // caps-spec), no longer gated on ourTag. With ourTag = {} for this
+    // host, ANY value present is foreign — there's nothing of MUGA's own
+    // to compare against, so the value cannot be the user's own tag.
+    const original = TEST_PATTERN.ourTag;
+    TEST_PATTERN.ourTag = {};
     const { action } = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99",
       { ...PREFS, notifyForeignAffiliate: true }
     );
-    TEST_PATTERN.ourTag = "muga-test-99";
-    assert.notEqual(action, "detected_foreign");
+    TEST_PATTERN.ourTag = original;
+    assert.equal(action, "detected_foreign");
   });
 
 });
@@ -915,14 +925,19 @@ describe("preservedAffiliate — UI feedback signal", () => {
     assert.equal(preservedAffiliate, null);
   });
 
-  test("ourTag empty → preservedAffiliate null even if a third-party-looking value is present", () => {
-    TEST_PATTERN.ourTag = "";
+  test("ourTag empty → preservedAffiliate IS populated (decoupled, #523 phase 3)", () => {
+    // Phase 3 — Decision 2: preserve set is declarative. A third-party
+    // creator tag on a program MUGA has no account on (empty ourTag map)
+    // is still preserved and surfaced for the user.
+    const original = TEST_PATTERN.ourTag;
+    TEST_PATTERN.ourTag = {};
     const { preservedAffiliate } = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99",
       { ...PREFS }
     );
-    TEST_PATTERN.ourTag = "muga-test-99";
-    assert.equal(preservedAffiliate, null);
+    TEST_PATTERN.ourTag = original;
+    assert.ok(preservedAffiliate, "preservedAffiliate must be populated even with empty ourTag");
+    assert.equal(preservedAffiliate.value, "someone-else-99");
   });
 
   test("early-return paths return preservedAffiliate: null", () => {
@@ -1630,7 +1645,8 @@ const AMAZON_ES_TEST_PATTERN = {
   domains: ["amazon.es", "www.amazon.es"],
   param: "tag",
   type: "affiliate",
-  ourTag: "muga-es-21",
+  // #523 phase 3: ourTag is now a { host -> tag } map.
+  ourTag: { "amazon.es": "muga-es-21" },
 };
 
 describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
@@ -2033,14 +2049,18 @@ describe("C12 — foreign affiliate detection provides ourTag for withOurAffilia
   before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
   after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
 
-  test("detectedAffiliate.pattern.ourTag contains the correct ourTag", () => {
+  test("detectedAffiliate.pattern.ourTag contains the host→tag map (#523 phase 3)", () => {
     const { detectedAffiliate } = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99",
       { ...PREFS, notifyForeignAffiliate: true }
     );
     assert.ok(detectedAffiliate, "detectedAffiliate must not be null");
-    assert.equal(detectedAffiliate.pattern.ourTag, "muga-test-99",
-      "detectedAffiliate.pattern.ourTag must match the pattern ourTag");
+    // ourTag is now a { host -> tag } map. The cleaner-side comparison
+    // uses pattern.ourTag[host] to pick the per-marketplace tag for the
+    // hostname under inspection.
+    assert.equal(typeof detectedAffiliate.pattern.ourTag, "object");
+    assert.equal(detectedAffiliate.pattern.ourTag["shop.test.muga"], "muga-test-99",
+      "detectedAffiliate.pattern.ourTag map must carry the per-host tag");
   });
 
   test("detectedAffiliate.pattern.param matches the affiliate param", () => {
@@ -2058,7 +2078,7 @@ describe("C12 — foreign affiliate detection provides ourTag for withOurAffilia
     );
     assert.equal(action, "detected_foreign");
     assert.ok(detectedAffiliate, "detectedAffiliate must be present");
-    assert.equal(detectedAffiliate.pattern.ourTag, "muga-test-99");
+    assert.equal(detectedAffiliate.pattern.ourTag["shop.test.muga"], "muga-test-99");
   });
 
   test("withOurAffiliate URL can be reconstructed from processUrl output (simulates service-worker logic)", () => {
@@ -2067,13 +2087,15 @@ describe("C12 — foreign affiliate detection provides ourTag for withOurAffilia
       { ...PREFS, notifyForeignAffiliate: true }
     );
     assert.equal(result.action, "detected_foreign");
-    // Simulate service-worker.js handleProcessUrl logic:
+    // Simulate service-worker.js handleProcessUrl logic (#523 phase 3 shape):
     const url = new URL(result.cleanUrl);
     const p = result.detectedAffiliate.pattern;
-    url.searchParams.set(p.param, p.ourTag);
+    const host = url.hostname.replace(/^www\./, "");
+    const ourTagForHost = p.ourTag[host] || p.ourTag[url.hostname] || "";
+    url.searchParams.set(p.param, ourTagForHost);
     const withOurAffiliate = url.toString();
     assert.ok(withOurAffiliate.includes("aff=muga-test-99"),
-      "reconstructed withOurAffiliate URL must contain ourTag");
+      "reconstructed withOurAffiliate URL must contain the per-host ourTag");
     assert.ok(!withOurAffiliate.includes("utm_source"),
       "tracking params must still be stripped in withOurAffiliate URL");
   });

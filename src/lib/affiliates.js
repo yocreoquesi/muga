@@ -1,18 +1,31 @@
 /**
  * MUGA: Affiliate and tracking parameter database
  *
- * Each entry defines:
- *   - id:      unique identifier
- *   - name:    human-readable store name
- *   - domains: domains where the pattern applies
- *   - param:   the URL parameter name
- *   - type:    'affiliate' | 'tracking'
- *   - ourTag:  our affiliate value (empty until affiliate account is registered)
+ * AFFILIATE_PATTERNS is the consolidated view of caps-spec's
+ * direct-injection programs joined with MUGA's hand-maintained OUR_TAGS
+ * map. The program identity (id, name, domains, param) is sourced from
+ * the vendored `caps-spec/manifest.json` (#523 phase 1, run
+ * `npm run sync:manifest` to refresh). The per-host affiliate tag values
+ * MUGA injects on its own behalf live in OUR_TAGS in this file — they
+ * are intentionally NOT in the open standard.
  *
- * To add a new program:
- * 1. Add an entry to AFFILIATE_PATTERNS
- * 2. Register an account with the corresponding program
- * 3. Fill in ourTag with your affiliate ID
+ * Entry shape:
+ *   {
+ *     id:         caps-spec program id (e.g. "amazon-associates")
+ *     name:       human-readable program name
+ *     group:      MUGA display label ("Amazon", "eBay", "Booking.com", ...)
+ *     domains:    array of host strings the program covers
+ *     param:      URL query parameter that carries the tag value
+ *     type:       always "affiliate" (legacy field preserved for clarity)
+ *     ourTag:     { host -> tag } map. Programs MUGA has no account on
+ *                 carry an empty {} — preservation still works (caps-spec
+ *                 declares it preservable); only injection is skipped.
+ *     references: array of source citations from caps-spec
+ *   }
+ *
+ * To add a NEW per-marketplace tag for an existing program: edit
+ * OUR_TAGS only. To add a NEW program: it must first land in caps-spec,
+ * then `npm run sync:manifest` updates the vendored module.
  */
 
 import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../vendor/caps-spec/manifest.data.js";
@@ -731,225 +744,21 @@ export const TRACKING_PARAM_CATEGORIES = {
   },
 };
 
-export const AFFILIATE_PATTERNS = [
-  {
-    id: "amazon_es",
-    name: "Amazon España",
-    group: "Amazon",
-    domains: ["amazon.es", "www.amazon.es"],
-    param: "tag",
-    type: "affiliate",
-    ourTag: "muga0b-21",
-  },
-  {
-    id: "amazon_de",
-    name: "Amazon Deutschland",
-    group: "Amazon",
-    domains: ["amazon.de", "www.amazon.de"],
-    param: "tag",
-    type: "affiliate",
-    ourTag: "muga0f-21",
-  },
-  {
-    id: "amazon_fr",
-    name: "Amazon France",
-    group: "Amazon",
-    domains: ["amazon.fr", "www.amazon.fr"],
-    param: "tag",
-    type: "affiliate",
-    ourTag: "muga08a-21",
-  },
-  {
-    id: "amazon_it",
-    name: "Amazon Italia",
-    group: "Amazon",
-    domains: ["amazon.it", "www.amazon.it"],
-    param: "tag",
-    type: "affiliate",
-    ourTag: "muga04f-21",
-  },
-  {
-    id: "amazon_co_uk",
-    name: "Amazon UK",
-    group: "Amazon",
-    domains: ["amazon.co.uk", "www.amazon.co.uk"],
-    param: "tag",
-    type: "affiliate",
-    ourTag: "muga0a-21",
-  },
-  {
-    id: "amazon_com",
-    name: "Amazon US",
-    group: "Amazon",
-    domains: ["amazon.com", "www.amazon.com"],
-    param: "tag",
-    type: "affiliate",
-    ourTag: "muga0b-20",
-  },
-  {
-    id: "booking",
-    name: "Booking.com",
-    group: "Booking.com",
-    domains: ["booking.com", "www.booking.com"],
-    param: "aid",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Booking Partner ID
-  },
-  // AliExpress removed: uses redirect-based tracking (s.click.aliexpress.com).
-  // Direct parameter injection (aff_fcid=) is not recognized for commission attribution.
-  // Supporting AliExpress would require redirecting user URLs through an external server,
-  // which violates our privacy policy ("MUGA never silently sends your data anywhere").
-  //
-  // PcComponentes, El Corte Inglés removed: both use Awin redirect-based tracking.
-  // No direct URL parameter injection supported. Same privacy constraint applies.
-  {
-    id: "ebay",
-    name: "eBay",
-    group: "eBay",
-    domains: ["ebay.com", "www.ebay.com", "ebay.es", "www.ebay.es",
-              "ebay.de", "www.ebay.de", "ebay.co.uk", "www.ebay.co.uk",
-              "ebay.fr", "www.ebay.fr", "ebay.it", "www.ebay.it"],
-    param: "campid",
-    type: "affiliate",
-    ourTag: "5339147108",
-  },
-  // ── SaaS / developer-economy direct-injection programs (#455) ──
-  // These programs attribute via a parameter on the merchant's first-party
-  // URL — no redirect through a network's server. Each entry is verified
-  // against public program documentation linked in the comment above.
-  //
-  // ourTag is empty until an account is registered; preservation of
-  // third-party referrals works regardless of whether ourTag is set
-  // (preservation only requires the (host, paramName) tuple to match).
-  {
-    // https://vercel.com/help/referral-program — Vercel referrals attribute
-    // via ?ref=<username> on vercel.com (first-party URL, no redirect).
-    id: "vercel",
-    name: "Vercel",
-    group: "Vercel",
-    domains: ["vercel.com", "www.vercel.com"],
-    param: "ref",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Vercel referral username
-  },
-  {
-    // https://www.digitalocean.com/referral-program — DigitalOcean referrals
-    // attribute via ?refcode=<code> on digitalocean.com (first-party URL).
-    id: "digitalocean",
-    name: "DigitalOcean",
-    group: "DigitalOcean",
-    domains: ["digitalocean.com", "www.digitalocean.com",
-              "cloud.digitalocean.com", "try.digitalocean.com",
-              "m.do.co"],
-    param: "refcode",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your DigitalOcean referral code
-  },
-  {
-    // https://www.humblebundle.com/partners — Humble Bundle's Partner program
-    // attributes via ?partner=<name> on humblebundle.com (first-party URL).
-    // The partner identifier is a verified slug agreed with Humble; values
-    // appear human-readable rather than opaque IDs.
-    id: "humble_bundle",
-    name: "Humble Bundle",
-    group: "Humble Bundle",
-    domains: ["humblebundle.com", "www.humblebundle.com"],
-    param: "partner",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Humble Bundle partner slug
-  },
-  {
-    // https://docs.lemonsqueezy.com/help/affiliates/affiliate-system — Lemon
-    // Squeezy attributes via ?aff=<id> on the seller's lemonsqueezy.com
-    // store URL. The platform supports direct-injection without forcing the
-    // click through a network's server.
-    id: "lemonsqueezy",
-    name: "Lemon Squeezy",
-    group: "Lemon Squeezy",
-    // Lemon Squeezy stores live on per-seller subdomains
-    // (e.g. <seller>.lemonsqueezy.com). The base domain is also kept for
-    // marketing pages, though most traffic flows through the subdomains.
-    domains: ["lemonsqueezy.com"],
-    param: "aff",
-    type: "affiliate",
-    ourTag: "",  // TODO: fill in your Lemon Squeezy affiliate id
-  },
-  // Programs evaluated and INTENTIONALLY NOT added in this slice (#456):
-  //   - Gumroad: their affiliate model attributes per-product via custom
-  //     URLs that vary by seller (e.g. <seller>.gumroad.com/l/<product>/<aff>).
-  //     This requires per-seller pattern handling, not a single (host, param)
-  //     entry. Defer until either a uniform query parameter is documented
-  //     or per-seller pattern support lands in MUGA's matching engine.
-  //   - Paddle: Paddle is a B2B payments platform; their partner program
-  //     is for software resellers, not creator-style referrals. Not a fit.
-  //
-  // Programs evaluated in slice #455 and intentionally NOT added:
-  //   - Notion: affiliate program runs through Impact Radius (network-redirect),
-  //     not direct-injection. Adding here would conflict with our privacy model.
-  //     Reconsider when/if Notion launches a first-party referral mechanism.
-  //   - Linear: no public referral / affiliate program at the time of writing.
-  //     "Linear for Startups" is a discount program, not a referral commission.
-  //
-  // Programs evaluated in slice #457 and intentionally NOT added:
-  //   - Shopify "native" referral: there is no Shopify-native referral or
-  //     affiliate parameter at the platform level. Shopify documentation
-  //     and major Shopify-ecosystem sources (Yotpo, ReferralCandy, Rivo)
-  //     all confirm that referral tracking is delegated to third-party apps
-  //     (ReferralCandy, UpPromote, Refersion, GoAffPro, etc.), each using
-  //     its own parameter scheme. A wildcard ?ref= match across every
-  //     Shopify-hosted store would produce massive false positives — `ref`
-  //     is widely used for non-affiliate purposes (anchors, navigation
-  //     context). Per-shop entries are theoretically supportable but out
-  //     of scope for the current host-based matcher.
-  //   - AliExpress aff_short_key on direct URLs: AliExpress's affiliate
-  //     attribution requires the click to pass through s.click.aliexpress.com
-  //     where parameters like `af` (offer ID), `cn` (affiliate ID), `dp`
-  //     (tracking ID), and `aff_short_key` are processed. The same
-  //     parameters appearing on a clean aliexpress.com/item/* URL do NOT
-  //     attribute a sale; the redirect is the attribution mechanism, not
-  //     the URL parameter. AliExpress is therefore handled as a
-  //     network-redirect through muga-unwrap's allowlist (which includes
-  //     s.click.aliexpress.com), not as a direct-injection program here.
-  //
-  // AWIN network removed: redirect-based tracking only (awin1.com/pclick.php).
-  // Cannot inject awc parameter directly; requires redirecting through AWIN servers.
-  //
-  // Temu removed: proprietary affiliate program with opaque ToS; high legal risk. (#222)
-  //
-  // The following stores were evaluated and removed because they all use redirect-based
-  // affiliate tracking through networks (Awin, ShareASale, Admitad, Skimlinks, Impact Radius).
-  // None support direct URL parameter injection. Supporting them would require redirecting
-  // user URLs through external servers, violating our privacy policy.
-  //   - Zalando (ES, DE): Awin redirect
-  //   - SHEIN: Awin/ShareASale/Admitad redirect
-  //   - Fnac (ES, FR): Skimlinks/VigLink redirect
-  //   - MediaMarkt (ES, DE): Awin/Sovrn redirect
-  //
-  // Only stores that support direct parameter injection (like Amazon tag= and eBay campid=)
-  // are compatible with MUGA's privacy-first model.
-];
 
 // ────────────────────────────────────────────────────────────────────────
-// CAPS-spec consolidated view (#523 phase 2)
+// AFFILIATE_PATTERNS — caps-spec direct-injection programs joined with
+// MUGA's per-host affiliate tag values (#523).
 // ────────────────────────────────────────────────────────────────────────
 //
-// Below is the CONSOLIDATED_PATTERNS array — the eventual one-source-of-truth
-// for affiliate detection, generated by joining
-// `vendor/caps-spec/manifest.data.js` (the synced caps-spec direct-injection
-// programs) with the hand-maintained OUR_TAGS map below.
+// The program identity (id, name, domains, param) is sourced from
+// `vendor/caps-spec/manifest.data.js`. The per-host tag values MUGA
+// injects on its own behalf live in OUR_TAGS below — they are
+// intentionally NOT in the open standard (per caps-spec design,
+// `ourTag` is per-implementer).
 //
-// Phase 2 (this commit) keeps both CONSOLIDATED_PATTERNS and the legacy
-// AFFILIATE_PATTERNS exported in parallel — nothing in `src/lib/cleaner.js`
-// or any consumer reads from CONSOLIDATED_PATTERNS yet. Phase 3 (#578) flips
-// the consumers and retires the legacy export.
-//
-// OUR_TAGS keys are caps-spec program ids; values are { hostname → tag }
-// maps. Programs MUGA does not yet have an affiliate account on get an
-// empty `{}` and Phase 3 will still preserve creator referrals on those
-// programs (decoupling preserve from `ourTag` per Decision 2 in the PRD).
-//
-// To add a NEW per-marketplace tag: edit OUR_TAGS only. To add a NEW
-// program: it must first land in caps-spec, then `npm run sync:manifest`.
+// To add a NEW per-marketplace tag for an existing program: edit
+// OUR_TAGS only. To add a NEW program: land it in caps-spec first,
+// then run `npm run sync:manifest` to refresh the vendored data.
 const OUR_TAGS = {
   "amazon-associates": {
     "amazon.com":   "muga0b-20",
@@ -960,9 +769,10 @@ const OUR_TAGS = {
     "amazon.co.uk": "muga0a-21",
   },
   "ebay-partner-network": {
-    // eBay shares one campid across all marketplaces, but we still key per-host
-    // so the consolidated shape is uniform and Phase 3's injection lookup is
-    // a single `pattern.ourTag[hostname]` regardless of program.
+    // eBay shares one campid across all marketplaces, but we still key
+    // per-host so the consolidated shape is uniform and the cleaner's
+    // injection lookup is a single `pattern.ourTag[hostname]` regardless
+    // of program.
     "ebay.com":   "5339147108",
     "ebay.es":    "5339147108",
     "ebay.de":    "5339147108",
@@ -977,10 +787,10 @@ const OUR_TAGS = {
   "lemon-squeezy": {}, // pending Lemon Squeezy affiliate id
 };
 
-// Maps caps-spec program names to MUGA's existing display "group" so the
-// popup / attribution-ledger UI keeps showing familiar labels after Phase 3.
-// Phase 3 may simplify this — for now the map preserves what the legacy
-// AFFILIATE_PATTERNS entries used.
+// Maps caps-spec program ids to MUGA's existing display "group" so the
+// popup / attribution-ledger UI keeps showing familiar labels (e.g.
+// "Amazon" instead of "Amazon Associates"). Programs not listed here
+// fall back to the caps-spec `name`.
 const GROUP_OVERRIDES = {
   "amazon-associates":    "Amazon",
   "ebay-partner-network": "eBay",
@@ -992,15 +802,18 @@ function _deriveGroup(prog) {
 }
 
 /**
- * Consolidated affiliate-pattern view sourced from the vendored caps-spec
- * manifest joined with MUGA's OUR_TAGS map. Phase 2 publishes this in
- * parallel with AFFILIATE_PATTERNS; Phase 3 flips consumers.
+ * Affiliate-pattern table consumed by `cleaner.js` and friends.
+ * Built once at module load by joining caps-spec direct-injection
+ * programs with the hand-maintained OUR_TAGS map.
  *
  * Entry shape:
  *   { id, name, group, domains, param, type, ourTag, references }
  * where `ourTag` is a `{ hostname → tag }` map (NOT a flat string).
+ * Programs MUGA has no account on carry an empty `ourTag: {}` —
+ * preservation still works (caps-spec declares them preservable);
+ * only injection is skipped on those.
  */
-export const CONSOLIDATED_PATTERNS = CAPS_DIRECT_INJECTION_PROGRAMS.map((prog) => ({
+export const AFFILIATE_PATTERNS = CAPS_DIRECT_INJECTION_PROGRAMS.map((prog) => ({
   id: prog.id,
   name: prog.name,
   group: _deriveGroup(prog),
@@ -1010,18 +823,6 @@ export const CONSOLIDATED_PATTERNS = CAPS_DIRECT_INJECTION_PROGRAMS.map((prog) =
   ourTag: OUR_TAGS[prog.id] || {},
   references: prog.references || [],
 }));
-
-// Programs that exist in caps-spec but where MUGA has no affiliate account
-// yet. The Phase 2 cross-check test uses this allowlist to permit
-// CONSOLIDATED_PATTERNS entries with no matching legacy AFFILIATE_PATTERNS
-// entry (which today is gated by ourTag presence).
-export const PENDING_ACCOUNT_PROGRAM_IDS = new Set([
-  "booking",
-  "vercel",
-  "digitalocean",
-  "humble-bundle",
-  "lemon-squeezy",
-]);
 
 const _hostIndex = new Map();
 let _indexedLength = 0;
