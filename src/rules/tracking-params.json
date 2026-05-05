@@ -452,6 +452,8 @@
               "rtkcid",
               "sb_referer_host",
               "spot_im_redirect_source",
+              "spr",
+              "sprtype",
               "srclt",
               "sscid",
               "tcsack",
