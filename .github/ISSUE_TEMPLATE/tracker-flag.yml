@@ -1,0 +1,108 @@
+name: Tracker flag (from popup)
+description: |
+  Submit a tracker candidate that MUGA's local heuristics flagged on your
+  device. Intended to be opened from the popup's "Report upstream" button —
+  most fields auto-prefill from the entropy + cross-site-frequency signals
+  the extension already computed locally.
+title: "[tracker-flag] <param-name>"
+labels:
+  - tracker-candidate
+  - category:product
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **What this is**
+        > MUGA observed a query parameter on your browsing that matched the
+        > tracker-shape heuristics ([B15 entropy](https://github.com/yocreoquesi/muga/blob/main/src/lib/entropy-heuristic.js) +
+        > [B16 cross-site frequency](https://github.com/yocreoquesi/muga/blob/main/src/lib/cross-site-frequency.js)).
+        > You are forwarding only the *shape* of what was observed — **never the raw URL,
+        > the raw parameter value, or any user-identifying data**. The privacy
+        > contract is enforced structurally by [`csft-upstream.js`](https://github.com/yocreoquesi/muga/blob/main/src/lib/csft-upstream.js).
+        >
+        > Wires Channel 1 of CAPS (see [yocreoquesi/caps-spec#3](https://github.com/yocreoquesi/caps-spec/issues/3))
+        > and consolidates the tracker-side of #333. Sibling popup submit button
+        > tracked in #521. Parent PRD: #423.
+
+  - type: input
+    id: paramName
+    attributes:
+      label: Parameter name
+      description: The query parameter MUGA flagged.
+      placeholder: e.g. xyz_id
+    validations:
+      required: true
+
+  - type: textarea
+    id: domains
+    attributes:
+      label: First-party domains observed on
+      description: |
+        One domain per line. List the registrable hosts where the param was
+        seen (e.g. `news.example.com`, not `https://news.example.com/article?...`).
+        Do **not** paste full URLs — only domains.
+      placeholder: |
+        example.com
+        news.example.org
+        store.example.net
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: valueShape_length_range
+    attributes:
+      label: Value length range
+      description: Approximate length range observed across distinct values (low–high).
+      placeholder: e.g. 16-32
+
+  - type: dropdown
+    id: valueShape_charset
+    attributes:
+      label: Value charset profile
+      description: The character class the values fall into.
+      options:
+        - alnum
+        - hex
+        - base64
+        - mixed
+
+  - type: input
+    id: entropy_score
+    attributes:
+      label: Entropy score (0.0–6.0)
+      description: Shannon entropy as computed by `entropy-heuristic.js`. Higher = more tracker-shaped.
+      placeholder: e.g. 4.7
+
+  - type: input
+    id: frequency_distinct_domains
+    attributes:
+      label: Distinct first-party domains
+      description: Count of unrelated registrable domains where the param was seen.
+      placeholder: e.g. 5
+
+  - type: input
+    id: frequency_distinct_values
+    attributes:
+      label: Distinct values
+      description: Count of distinct value hashes recorded for this param.
+      placeholder: e.g. 12
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: |
+        Optional free text. If you saw this param in a specific marketing
+        context, or you suspect a particular ad network, mention it here.
+        Do **not** paste raw URLs or raw values.
+
+  - type: markdown
+    attributes:
+      value: |
+        ### What happens next
+        A maintainer evaluates whether this param qualifies for inclusion in
+        `TRACKING_PARAMS` (universal strip) or for the signed remote-rules
+        payload, weighing the false-positive risk on functional uses across
+        the listed domains. Promotion is a manual review step — heuristic
+        flags are signals, not auto-strips.
