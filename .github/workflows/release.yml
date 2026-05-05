@@ -94,7 +94,12 @@ jobs:
         id: amo
         continue-on-error: true
         run: |
-          bash scripts/with-firefox-manifest.sh \
+          # Capture stdout+stderr so the gate below can distinguish a benign
+          # "version already submitted" response (re-run of an existing tag)
+          # from a real failure (auth, network, schema). web-ext sign exits
+          # non-zero in both cases — only the message tells us which.
+          set +e
+          OUTPUT=$(bash scripts/with-firefox-manifest.sh \
             npx web-ext sign \
               --source-dir=src/ \
               --channel=listed \
@@ -102,7 +107,19 @@ jobs:
               --upload-source-code=muga-source.zip \
               --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
               --api-secret="${{ secrets.AMO_JWT_SECRET }}" \
-              --approval-timeout=0
+              --approval-timeout=0 2>&1)
+          EXIT=$?
+          echo "$OUTPUT"
+          # AMO returns variants of "version already used / submitted / signed"
+          # when the same version was uploaded on a previous run. Treat as no-op
+          # so a tag re-run after a partial failure does not flag a fake error.
+          if echo "$OUTPUT" | grep -qiE "already (been )?(signed|submitted|uploaded|used|exists)|version (conflict|is taken|number .* is the same)|HTTP ?409"; then
+            echo "result=noop" >> "$GITHUB_OUTPUT"
+            echo "::notice::AMO reports this version was already submitted — treating as no-op"
+            exit 0
+          fi
+          echo "result=$([ $EXIT -eq 0 ] && echo success || echo failure)" >> "$GITHUB_OUTPUT"
+          exit $EXIT
 
       # ── Chrome Web Store submission ─────────────────────────────────
       # CWS API does not support release notes — changelog is in the
@@ -132,13 +149,26 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
           echo "$BODY"
+          # CWS returns a JSON body containing an `itemError` array on failure.
+          # When the version was uploaded by a previous run, the body marks the
+          # version as already published (e.g. ITEM_NOT_UPDATABLE / "version
+          # ... is the same as the latest"). Treat as no-op for tag re-runs.
+          if echo "$BODY" | grep -qiE "ITEM_NOT_UPDATABLE|version.*(is the same|already (uploaded|exists|published))|cannot.*update.*same version"; then
+            echo "result=noop" >> "$GITHUB_OUTPUT"
+            echo "::notice::CWS reports this version was already uploaded — treating as no-op"
+            exit 0
+          fi
           if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "result=failure" >> "$GITHUB_OUTPUT"
             echo "::error::CWS upload failed with HTTP $HTTP_CODE"
             exit 1
           fi
+          echo "result=success" >> "$GITHUB_OUTPUT"
 
       - name: Publish on Chrome Web Store
-        if: steps.cws-upload.outcome == 'success'
+        # Skip when the upload step decided the version was already in CWS
+        # (no-op path) — there is nothing new to publish.
+        if: steps.cws-upload.outputs.result == 'success'
         id: cws-publish
         continue-on-error: true
         run: |
@@ -152,22 +182,37 @@ jobs:
           BODY=$(echo "$RESPONSE" | sed '$d')
           echo "$BODY"
           if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "result=failure" >> "$GITHUB_OUTPUT"
             echo "::error::CWS publish failed with HTTP $HTTP_CODE"
             exit 1
           fi
+          echo "result=success" >> "$GITHUB_OUTPUT"
 
       # ── Submission summary ──────────────────────────────────────────
-      # Fail if EITHER store fails. The previous "fail only if both failed" gate
-      # masked a real AMO failure on v1.13.0 (release_notes >3000 chars) — the
-      # workflow shipped green while Firefox got nothing. If a re-run trips on
-      # "version already exists" because one store published the first time, the
-      # operator should re-tag with a bumped patch or skip the offending step.
+      # Fail only when a store reports a REAL error. Each store step now
+      # publishes a `result` output of `success | noop | failure`:
+      #   - success — store accepted the new version
+      #   - noop    — store reports this version is already submitted
+      #               (typically a re-run of the same tag after a partial
+      #               failure on the OTHER store)
+      #   - failure — auth / schema / network / quota error
+      # A "noop" outcome is treated as success-or-no-op so a tag re-run after
+      # a partial failure does not flag the already-published store as broken.
+      # The original "fail only if both failed" gate (pre v1.13.0) masked the
+      # real AMO failure on v1.13.0; this gate is strict on real failures and
+      # tolerant only of the explicit "version already submitted" path.
       - name: Check store submissions
         if: always()
         run: |
-          AMO="${{ steps.amo.outcome }}"
-          CWS_UP="${{ steps.cws-upload.outcome }}"
-          CWS_PUB="${{ steps.cws-publish.outcome }}"
+          AMO="${{ steps.amo.outputs.result || steps.amo.outcome }}"
+          CWS_UP="${{ steps.cws-upload.outputs.result || steps.cws-upload.outcome }}"
+          # cws-publish is skipped (and emits no `result`) when the upload
+          # step went the noop path. Treat skipped-after-noop as noop too.
+          if [ "${{ steps.cws-upload.outputs.result }}" = "noop" ]; then
+            CWS_PUB="noop"
+          else
+            CWS_PUB="${{ steps.cws-publish.outputs.result || steps.cws-publish.outcome }}"
+          fi
           {
             echo "## Store submission results"
             echo "- AMO: ${AMO}"
@@ -188,4 +233,4 @@ jobs:
             FAILED=1
           fi
           [ "$FAILED" -eq 1 ] && exit 1
-          echo "All store submissions succeeded"
+          echo "All store submissions succeeded (success or no-op)"
