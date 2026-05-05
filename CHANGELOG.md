@@ -4,9 +4,13 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.5] - 2026-05-05
+
+Branded-domain release. The signed remote-rules endpoint moves under `rules.muga.app` so the public surface no longer depends on a personal GitHub username. No user-visible behavior change on a default install.
+
 ### Changed
 
-- **Remote rules endpoint moved to `rules.muga.app`** (#481). The signed `params.json` is now served from `https://rules.muga.app/rules/v1/params.json` (was `https://yocreoquesi.github.io/muga/rules/v1/params.json`). DNS-only CNAME points at GitHub Pages — same hosting, branded subdomain, no public-facing dependency on a personal GitHub username. The optional permission users grant when enabling Remote rule updates is now scoped to `https://rules.muga.app/*` (Chrome MV3 `optional_host_permissions` / Firefox MV2 `optional_permissions`). Existing installs that opted in to remote rules will need to re-grant on first 7-day refresh after upgrading — the host changed, so the previous grant no longer applies. Files: [`src/manifest.json`](src/manifest.json), [`src/manifest.v2.json`](src/manifest.v2.json), [`src/lib/remote-rules.js`](src/lib/remote-rules.js), [`src/options/options.js`](src/options/options.js), [`docs/CNAME`](docs/CNAME), [`.github/workflows/publish-rules.yml`](.github/workflows/publish-rules.yml).
+- **Remote rules endpoint moved to `rules.muga.app`** (#481, landed via #596). The signed `params.json` is now served from `https://rules.muga.app/rules/v1/params.json` (was `https://yocreoquesi.github.io/muga/rules/v1/params.json`). DNS-only CNAME points at GitHub Pages — same hosting, branded subdomain. The optional permission users grant when enabling Remote rule updates is now scoped to `https://rules.muga.app/*` (Chrome MV3 `optional_host_permissions` / Firefox MV2 `optional_permissions`). Existing installs that opted in to remote rules on v1.13.4 or earlier will be re-prompted to grant the new host on the next 7-day refresh — the host changed, so the previous grant no longer applies. Files: [`src/manifest.json`](src/manifest.json), [`src/manifest.v2.json`](src/manifest.v2.json), [`src/lib/remote-rules.js`](src/lib/remote-rules.js), [`src/options/options.js`](src/options/options.js), [`docs/CNAME`](docs/CNAME), [`.github/workflows/publish-rules.yml`](.github/workflows/publish-rules.yml).
 
 ## [1.13.4] - 2026-05-05
 
@@ -671,7 +675,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.4...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.5...HEAD
+[1.13.5]: https://github.com/yocreoquesi/muga/compare/v1.13.4...v1.13.5
 [1.13.4]: https://github.com/yocreoquesi/muga/compare/v1.13.3...v1.13.4
 [1.13.3]: https://github.com/yocreoquesi/muga/compare/v1.13.2...v1.13.3
 [1.13.2]: https://github.com/yocreoquesi/muga/compare/v1.13.1...v1.13.2
