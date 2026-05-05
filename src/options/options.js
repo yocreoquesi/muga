@@ -1251,7 +1251,7 @@ async function initRemoteRules() {
     let granted = false;
     try {
       granted = await chrome.permissions.request({
-        origins: ["https://yocreoquesi.github.io/*"],
+        origins: ["https://rules.muga.app/*"],
       });
     } catch {
       granted = false;

@@ -14,7 +14,7 @@
   ],
 
   "optional_host_permissions": [
-    "https://yocreoquesi.github.io/*"
+    "https://rules.muga.app/*"
   ],
 
   "host_permissions": [

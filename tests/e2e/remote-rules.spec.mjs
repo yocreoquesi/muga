@@ -4,7 +4,7 @@
  * Tests the remote-rules opt-in feature: service-worker key injection,
  * signed-payload fetch, signature verification, dedup, and Options UI rendering.
  *
- * Network isolation: all requests to yocreoquesi.github.io are intercepted via
+ * Network isolation: all requests to rules.muga.app are intercepted via
  * context.route() — no egress to the real endpoint during test runs.
  *
  * Key injection: a throw-away Ed25519 keypair is generated at test setup via
@@ -58,7 +58,7 @@ async function injectTestKey(context, publicKeyB64Raw) {
 async function grantHostPermission(page) {
   await page.evaluate(async () => {
     if (typeof chrome?.permissions?.request === "function") {
-      await chrome.permissions.request({ origins: ["https://yocreoquesi.github.io/*"] });
+      await chrome.permissions.request({ origins: ["https://rules.muga.app/*"] });
     }
   });
 }
@@ -146,7 +146,7 @@ test.describe("Remote rules — E2E", () => {
    */
   test.beforeEach(async ({ context, extensionId }) => {
     // Intercept at context level so service-worker fetches are also stubbed
-    await context.route("**/yocreoquesi.github.io/**", (route) => {
+    await context.route("**/rules.muga.app/**", (route) => {
       route.fulfill({
         status: 200,
         contentType: "application/json",

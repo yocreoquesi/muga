@@ -19,7 +19,7 @@ On stores whose affiliate model forces your clicks through external tracking ser
 
 > **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
-[Privacy policy](https://yocreoquesi.github.io/muga/) · [Comparison vs other URL cleaners](https://yocreoquesi.github.io/muga/comparison.html) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+[Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -134,7 +134,7 @@ When you navigate to a supported store and there is **no existing affiliate tag*
 - On compatible stores: if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
 - On incompatible stores: MUGA actively strips affiliate tracking parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
 
-This is explained during onboarding before the feature is enabled, disclosed in the extension description, documented in the [privacy policy](https://yocreoquesi.github.io/muga/), and verifiable in the source code.
+This is explained during onboarding before the feature is enabled, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/), and verifiable in the source code.
 
 - Only fires when the link has **no affiliate tag at all**
 - The tag is added as a standard URL parameter. Nothing hidden, nothing obfuscated.

@@ -97,4 +97,4 @@ jobs:
                --retry 3 \
                --retry-delay 30 \
                --retry-all-errors \
-               https://yocreoquesi.github.io/muga/rules/v1/params.json
+               https://rules.muga.app/rules/v1/params.json
