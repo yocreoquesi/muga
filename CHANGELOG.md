@@ -4,6 +4,24 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Sprinklr campaign-manager params (`spr`, `sprtype`) added to universal `TRACKING_PARAMS`** ([`src/lib/affiliates.js`](src/lib/affiliates.js), [`src/rules/tracking-params.json`](src/rules/tracking-params.json)). Stripped on every domain. False-positive risk is low — these identify the campaign and asset that referred a click inside Sprinklr's backend and have no functional payload from the user's perspective. Closes the last "low-risk universal" gap from the #508 acceptance list (the merchant-specific gaps remain). (#508)
+- **`tracker-flag.yml` issue template** ([`.github/ISSUE_TEMPLATE/tracker-flag.yml`](.github/ISSUE_TEMPLATE/tracker-flag.yml)). Wires Channel 1 of CAPS decision 6 — receives structured tracker reports prefilled by MUGA's local heuristics (entropy + cross-site frequency). Schema mirrors the privacy contract already enforced by `csft-upstream.js`: only the SHAPE of the observation, never raw URLs or raw values. The existing `tracking-param.md` template is preserved (different intent — hand-written carrier-aware param requests). (#522)
+- **`tracker-candidate` repo label** to receive auto-labelled issues from the new form.
+
+### Changed
+
+- **Release pipeline submission gate now distinguishes "version already submitted" from real store errors** ([`.github/workflows/release.yml`](.github/workflows/release.yml)). Each store step (AMO, CWS upload, CWS publish) emits a `result` output of `success | noop | failure`. The summary gate fails the workflow only on `failure`; `noop` is treated as success-or-no-op. This unblocks the partial-recovery scenario from v1.13.1 — a maintainer can re-tag a patch release without the gate spuriously failing on the store that already published the previous tag. Detection patterns are conservative; real failures still surface. (#557)
+
+### Fixed (CI / hygiene)
+
+- **`actions/upload-artifact@v4` SHA-pinned in `benchmark.yml`** to commit `ea165f8` (v4.6.2). Brings the workflow in line with the existing pin convention used for `actions/checkout` and `actions/setup-node` in the same file and across `ci.yml`. The previous tag-only reference shipped with a `FIXME` comment from the original workflow author. (#528)
+
+### Internal
+
+- **Playwright spec for DNR wrapper rules** ([`tests/e2e/dnr-wrapper-rules.spec.mjs`](tests/e2e/dnr-wrapper-rules.spec.mjs)). The first CI run answered the empirical question raised by the issue: Chromium's `regexSubstitution` copies the captured group **verbatim** into the redirect URL, so a percent-encoded destination becomes a malformed URL and the redirect is silently dropped. Per-wrapper redirect tests are enumerated but `.skip`ped with the finding inline; the negative-case test (regex must not over-match `awin1.com` paths without `p=`) stays active. Follow-up belongs to the maintainer: drop the inert wrapper rules, reshape them when Chromium adds decode support, or live with the partial coverage. (#510)
+
 ## [1.13.3] - 2026-05-05
 
 User-visible polish release. Two critical fixes for users on v1.13.0–v1.13.2 (broken toolbar icon, stuck onboarding) plus a copy/visual pass on the onboarding and a popup cleanup. Also bundles two feature PRs that had been sitting on `[Unreleased]` since the 1.13.2 cut: wildcard whitelist/blacklist values and the CAPS-Basic + Contextual conformance claim.
