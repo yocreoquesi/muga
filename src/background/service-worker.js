@@ -21,7 +21,7 @@ import {
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
-import { createToolbarPresenter, iconForState } from "../lib/toolbar-presenter.js";
+import { createToolbarPresenter } from "../lib/toolbar-presenter.js";
 import {
   createTracker as createFrequencyTracker,
   createChromeLocalAdapter as createFrequencyChromeAdapter,
@@ -622,18 +622,19 @@ async function handleTestMessage(message, sender) {
         callGet("getBadgeText", ""),
         callGet("getBadgeBackgroundColor", []),
       ]);
-      // chrome.action has no getIcon — derive the variant from the
-      // presenter's per-tab state. iconForState is a pure function.
+      // Icon variant retired 2026-05-07 — the wedge cue lives in the
+      // tooltip + badge color + popup-internal badge instead. The
+      // iconKind / iconPaths fields are kept in the response shape for
+      // backwards compatibility with any caller that still asserts on
+      // them; both report the constant default-icon value.
       const tabState = toolbarState.get(tabId);
-      const iconPaths = iconForState(tabState);
-      const iconKind = (iconPaths && iconPaths === iconForState({ creatorReferralPreserved: true })) ? "preserved" : "default";
       return {
         ok: true,
         title,
         badgeText,
         badgeColor,
-        iconKind,
-        iconPaths,
+        iconKind: "default",
+        iconPaths: null,
         state: { ...tabState },
       };
     }
