@@ -4,13 +4,30 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.6] - 2026-05-06
+
+Onboarding hardening release. Headline: the first-run onboarding flow on Firefox no longer leaves the user staring at an unchanged tab after they accept — the silent regression that made "Start browsing clean" appear to do nothing is fixed, the cleaner is now provably off until acceptance, and the toolbar surfaces a "!" badge while consent is pending. Plus a separate gate fix: opening Settings right after a clean acceptance no longer bounces back to onboarding.
+
 ### Added
 
 - **Apple Services Performance Partners as a direct-injection program** (#594, partial — Apple half). Refresh of the vendored caps-spec snapshot brought in `apple-phg` (caps-spec PR #45), so MUGA now preserves `?at=` affiliate tokens on `music.apple.com`, `geo.music.apple.com`, `tv.apple.com`, `books.apple.com`, `podcasts.apple.com`, `apps.apple.com`, and `itunes.apple.com`. The "Creator referral preserved" badge fires on those hosts when a third-party `at` token is present, even though MUGA has no Apple Performance Partners account (per the #523 decoupling). The companion `?ct=` parameter is intentionally NOT matched as a creator referral — it is the campaign-name field, not the attribution token. The Bookshop.org half of #594 remains blocked on caps-spec#46 (RFC for path-based affiliate program schema).
+- **Toolbar consent-required cue.** A global `"!"` badge surfaces on the toolbar icon while `onboardingDone === false` (including hard-reonboard, where `getPrefs()` forces the flag back to false). Cleared on acceptance. Wired through `onInstalled`, the cold-start fallback, and a new `mugaConsent` branch in the storage `onChanged` listener that re-runs DNR + badge in one shot. Files: [`src/background/service-worker.js`](src/background/service-worker.js).
+- **Onboarding success state.** After consent persistence, the page renders an in-place "You're all set / Close tab" confirmation and attempts a best-effort tab close (`window.close()` then `chrome.tabs.remove`). Firefox refuses `window.close()` on tabs not opened by JS, so the in-place state is the safety net that proves to the user the click landed. Files: [`src/onboarding/onboarding.js`](src/onboarding/onboarding.js), [`src/onboarding/onboarding.html`](src/onboarding/onboarding.html), [`src/lib/i18n.js`](src/lib/i18n.js) (en/es/pt/de).
 
 ### Changed
 
 - **`booking` and `humble-bundle` programs removed from the direct-injection preserve set.** Both were deprecated upstream in caps-spec (Booking terminated direct affiliate partnerships May 2025 and migrated to Awin globally; Humble Bundle migrated affiliate onboarding to Impact). The sync script filters out `programType=deprecated`, so the consolidated `AFFILIATE_PATTERNS` no longer contains them. Coverage of those click flows continues through the existing `awin` and `impact-radius` network-redirect entries — users clicking a Booking or Humble Bundle link with someone else's affiliate redirect URL still see the unwrap path. The orphaned `OUR_TAGS["booking"]` and `OUR_TAGS["humble-bundle"]` placeholder entries were removed (dead code post-deprecation).
+- **DNR cleaner is now gated on `onboardingDone`.** `applyDnrState` previously only checked `enabled && dnrEnabled`. Content scripts already short-circuited on `!onboardingDone`, but the declarative `tracking_params` ruleset was firing before acceptance. Now the ruleset is disabled until the user accepts, mirroring the dynamic path. Files: [`src/background/service-worker.js`](src/background/service-worker.js).
+
+### Fixed
+
+- **Onboarding completion was a silent no-op on Firefox.** Clicking "Start browsing clean" persisted consent but `window.close()` on a tab the user did not open via JS is rejected by Firefox; the page sat unchanged and people assumed the click failed. The completion path now renders an in-place success state before attempting close, so the confirmation survives any browser that refuses both close paths. Files: [`src/onboarding/onboarding.js`](src/onboarding/onboarding.js).
+- **Settings bounced back to onboarding right after a clean acceptance.** `options.js` was reading `onboardingDone` from `chrome.storage.sync`, but consent fields moved to `chrome.storage.local` under `mugaConsent` in #355 (ADR-0001). The sync read silently returned the `PREF_DEFAULTS` default `false`, so the consent gate redirected every visit. Now `options.js` reads consent through `getConsent()` like the popup and service worker already do. The test fixture `completeOnboarding` had the same bug (write to sync, not local) and hid the regression — both are fixed in lockstep. Files: [`src/options/options.js`](src/options/options.js), [`tests/e2e/fixtures.mjs`](tests/e2e/fixtures.mjs).
+- **Consent-required `"!"` badge disappeared on every tab the user touched.** `chrome.tabs.onUpdated` emitted `navigationStarted` on every page load, which made the toolbar-presenter clear the per-tab badge to `""` — overriding the global `"!"` for that tab. Visible on `addons.mozilla.org` and any other tab opened post-install. The emit is now gated on `onboardingDone`: while pending there are no per-tab counts to clear anyway. Files: [`src/background/service-worker.js`](src/background/service-worker.js).
+
+### Tests
+
+- **`tests/e2e/onboarding-regression.spec.mjs`**: five regression tests covering the success state render, the global `"!"` badge toggle, the badge surviving real tab navigation, the DNR ruleset toggle, and the options page not bouncing back to onboarding after acceptance. Two new `__TEST__` handlers (`readGlobalBadge`, `readDnrEnabledRulesets`) expose the SW state the assertions need.
 
 ## [1.13.5] - 2026-05-05
 
@@ -683,7 +700,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.5...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.6...HEAD
+[1.13.6]: https://github.com/yocreoquesi/muga/compare/v1.13.5...v1.13.6
 [1.13.5]: https://github.com/yocreoquesi/muga/compare/v1.13.4...v1.13.5
 [1.13.4]: https://github.com/yocreoquesi/muga/compare/v1.13.3...v1.13.4
 [1.13.3]: https://github.com/yocreoquesi/muga/compare/v1.13.2...v1.13.3

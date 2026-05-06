@@ -219,11 +219,16 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     // chrome.runtime.openOptionsPage / window.location nav).
     const options = await context.newPage();
     await options.goto(`chrome-extension://${extensionId}/options/options.html`);
-    await options.waitForLoadState("domcontentloaded");
-    // Give the consent gate a fair chance to redirect (the production
-    // bug was a synchronous window.location.href set inside the early
-    // async block — it would resolve well within 2s).
-    await options.waitForTimeout(800);
+
+    // mugaReady is set at the end of options.js init — only reachable
+    // when the consent gate did NOT short-circuit with a redirect. If
+    // the gate fires, the page navigates to onboarding and this wait
+    // would error out, which is also a deterministic signal of the
+    // bug. Either way: no wall-clock waitForTimeout needed.
+    await options.waitForFunction(
+      () => document.body.dataset.mugaReady === "1",
+      { timeout: 5000 }
+    );
 
     expect(options.url()).toContain("/options/options.html");
     expect(options.url()).not.toContain("/onboarding/");

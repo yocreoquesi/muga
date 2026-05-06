@@ -1,6 +1,6 @@
 {
   "name": "muga",
-  "version": "1.13.5",
+  "version": "1.13.6",
   "description": "Privacy without breaking creator links. Strips 450+ tracking params, preserves creator affiliate referrals. Open source.",
   "type": "module",
   "scripts": {

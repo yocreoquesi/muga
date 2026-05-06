@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.13.5-blue)](#)
+[![Version](https://img.shields.io/badge/version-1.13.6-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-2531_pass-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: Privacy Without Breaking Creator Links
@@ -13,9 +13,9 @@
 
 ---
 
-**MUGA strips tracking from every URL — without breaking the affiliate links of the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone** — and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
+**MUGA strips tracking from every URL, without breaking the affiliate links of the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone**, and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
 
-On stores whose affiliate model forces your clicks through external tracking servers, MUGA strips their tracking parameters anyway — we do not believe forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
+On stores whose affiliate model forces your clicks through external tracking servers, MUGA strips their tracking parameters anyway. We do not believe forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
 
 > **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
 
@@ -29,7 +29,7 @@ On stores whose affiliate model forces your clicks through external tracking ser
 
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
-MUGA intercepts URLs as you browse and strips tracking parameters before the page loads. The result is a shorter, cleaner URL with no tracking noise — your browsing stays the same, minus the surveillance.
+MUGA intercepts URLs as you browse and strips tracking parameters before the page loads. The result is a shorter, cleaner URL with no tracking noise: your browsing stays the same, minus the surveillance.
 
 <details>
 <summary><strong>More examples</strong></summary>
@@ -111,12 +111,12 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 - Per-domain blacklist: strip everything on a specific site, a single param value (`domain::param::value`), or a param regardless of its value (`domain::param::*`)
 - Per-domain disable (`domain::disabled`): opt entire domains out of MUGA
-- Whitelist: protect specific creator affiliate tags from detection — supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
+- Whitelist: protect specific creator affiliate tags from detection. Supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
 - Custom tracking params: add your own parameter names
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
-- **Remote rule updates**: weekly signed updates to the tracking-param list from a public GitHub Pages endpoint. **Off by default while the signing infrastructure stabilizes** — the default may flip in a future release; the [CHANGELOG](CHANGELOG.md) will record the change when it happens. The fetch is a plain GET to a public URL — no user data is sent.
+- **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **Off by default while the signing infrastructure stabilizes**; the default may flip in a future release, and the [CHANGELOG](CHANGELOG.md) will record the change when it happens. The fetch is a plain GET to a public URL: no user data is sent.
 - Export / Import settings as JSON
 - Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English)
 
@@ -128,7 +128,7 @@ MUGA is an open-source project maintained by real people. To keep it maintained 
 
 When you navigate to a supported store and there is **no existing affiliate tag** in the link, MUGA adds ours. The price you pay is exactly the same. The store just knows you arrived via MUGA. That's how affiliate programs work.
 
-**Not every store is compatible.** We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking -- your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected every one of these programs and chose to give up that revenue rather than compromise your privacy.
+**Not every store is compatible.** We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking: your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected every one of these programs and chose to give up that revenue rather than compromise your privacy.
 
 **What this means in practice:**
 - On compatible stores: if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
@@ -155,7 +155,9 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 ## Supported stores
 
-2 active affiliate programs across multiple markets (ES, DE, FR, IT, UK, US).
+MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners. The full allowlist lives in the open [CAPS spec](https://github.com/yocreoquesi/caps-spec) so any URL cleaner can claim conformance.
+
+On two of those programs, Amazon (ES, DE, FR, IT, UK, US) and eBay (US, ES, DE, UK, FR, IT), MUGA also has its own affiliate account active. That is where the optional affiliate-injection feature can add MUGA's tag when a link arrives with no tag at all.
 
 Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based tracking, because routing your clicks through external servers would violate our privacy policy.
 
@@ -165,9 +167,9 @@ Affiliate injection is only active on stores where an account is registered and 
 
 ## Installation
 
-**Firefox** — [Install from AMO](https://addons.mozilla.org/firefox/addon/muga/)
+**Firefox.** [Install from AMO](https://addons.mozilla.org/firefox/addon/muga/)
 
-**Chrome** — [Install from Chrome Web Store](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
+**Chrome.** [Install from Chrome Web Store](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
 
 Or install from source:
 
