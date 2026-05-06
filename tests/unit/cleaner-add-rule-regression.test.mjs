@@ -64,3 +64,7 @@ test(`utm_newsletterid — added via add-rule`, () => {
   assertStrips("utm_newsletterid", "AdGuard filter 17 generic — newsletter UTM extension");
 });
 
+test(`_t — added via add-rule`, () => {
+  assertStrips("_t", "TikTok share token (sister to _r). Issue #508.");
+});
+

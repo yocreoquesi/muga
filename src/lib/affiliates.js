@@ -465,6 +465,9 @@ export const TRACKING_PARAMS = [
   // Added via npm run add-rule (#335): AdGuard filter 17 generic — newsletter UTM extension
   "utm_newsletterid",
 
+  // Added via npm run add-rule (#335): TikTok share token (sister to _r). Issue #508.
+  "_t",
+
 ];
 
 export const TRACKING_PARAM_CATEGORIES = {
@@ -731,6 +734,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "adjust_t", "adjust_campaign", "adjust_adgroup", "adjust_creative",
       // A/B test
       "ab_channel", "ab_version",
+      "_t",
     ],
   },
   generic: {

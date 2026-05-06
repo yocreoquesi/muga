@@ -471,7 +471,8 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "_t"
             ]
           }
         }

@@ -61,6 +61,7 @@
       "page"
     ],
     "stripParams": [
+      "aff_fcid",
       "aff_fsk",
       "aff_platform",
       "sk",
@@ -81,7 +82,7 @@
       "initiative_id",
       "utparam-url"
     ],
-    "note": "Search and filters: functional. AliExpress internal tracking and affiliate redirect params stripped."
+    "note": "Search and filters: functional. AliExpress internal tracking and affiliate redirect params stripped (#508 — aff_fcid is the CPS click ID, transient and not creator-attributing)."
   },
   {
     "domain": "alternate.de",
@@ -1493,6 +1494,22 @@
       "at_bbc_team"
     ],
     "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
+  },
+  {
+    "domain": "bestbuy.com",
+    "preserveParams": [
+      "id",
+      "intl",
+      "page",
+      "q"
+    ],
+    "stripParams": [
+      "irclickid",
+      "irgwc",
+      "loc",
+      "ref"
+    ],
+    "note": "US electronics retailer. Search/product/pagination: functional. ref + loc are referral source + campaign location codes (#508). irclickid/irgwc are Impact Radius affiliate ad-attribution params."
   },
   {
     "domain": "bhphotovideo.com",
@@ -3464,12 +3481,14 @@
     ],
     "stripParams": [
       "athbdg",
+      "athcpid",
       "athena",
       "from",
       "povid",
+      "sourceid",
       "wmlspartner"
     ],
-    "note": "Search and filters: functional. Internal recommendation/affiliate tracking stripped."
+    "note": "Search and filters: functional. Internal recommendation/affiliate tracking stripped (#508 — athcpid is Walmart's per-impression content ID, sourceid is the campaign source tag)."
   },
   {
     "domain": "wayfair.com",

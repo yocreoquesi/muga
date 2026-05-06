@@ -9,7 +9,7 @@
     { "url": "https://twitter.com/user/status/123?utm_source=share", "expectedAction": "cleaned", "expectedClean": "https://twitter.com/user/status/123" },
     { "url": "https://www.youtube.com/watch?v=abc123&feature=share&utm_source=youtube", "expectedAction": "cleaned", "notes": "Strips utm_source + feature" },
     { "url": "https://www.linkedin.com/feed/update/urn:li:activity:1234?utm_campaign=share", "expectedAction": "cleaned", "expectedClean": "https://www.linkedin.com/feed/update/urn:li:activity:1234" },
-    { "url": "https://www.tiktok.com/@user/video/123?_t=ABC&_r=1", "expectedAction": "cleaned", "expectedClean": "https://www.tiktok.com/@user/video/123?_t=ABC", "notes": "_r stripped; _t kept (TikTok gap)" },
+    { "url": "https://www.tiktok.com/@user/video/123?_t=ABC&_r=1", "expectedAction": "cleaned", "expectedClean": "https://www.tiktok.com/@user/video/123", "notes": "Both _r and _t stripped — _t added to universal TRACKING_PARAMS (platform_noise) in #508 (TikTok share token, not functional for the web URL)." },
     { "url": "https://www.facebook.com/share/p/abcdef/?mibextid=xxx", "expectedAction": "cleaned", "expectedClean": "https://www.facebook.com/share/p/abcdef/" },
     { "url": "https://www.instagram.com/p/ABC123/?igsh=xxx", "expectedAction": "cleaned", "expectedClean": "https://www.instagram.com/p/ABC123/" }
   ]

@@ -15,7 +15,7 @@
 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 
 import { processUrl } from "../../src/lib/cleaner.js";
 import { loadCorpus } from "./lib/corpus-loader.mjs";
@@ -59,10 +59,20 @@ const PREFS = {
   notifyForeignAffiliate: true,
 };
 
+// Load the bundled domain-rules.json once. Pre-#508 the runner passed
+// `[]` here, which silently exempted every domain-scoped strip
+// (target.afid, etsy.ref, walmart.athcpid, etc.) from coverage and
+// kept stale "GAP — not in TRACKING_PARAMS today" notes around long
+// after the rule had landed. The benchmark now sees what the
+// extension actually does at runtime.
+const DOMAIN_RULES = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "src", "rules", "domain-rules.json"), "utf8"),
+);
+
 function main() {
   const { entries, files } = loadCorpus(CORPUS_DIR);
   const results = entries.map((entry) => {
-    const result = processUrl(entry.url, PREFS, []);
+    const result = processUrl(entry.url, PREFS, DOMAIN_RULES);
     return compareEntry(entry, result);
   });
   const competitorResults = entries.map((entry) => runCompetitors(entry, COMPETITOR_ADAPTERS));

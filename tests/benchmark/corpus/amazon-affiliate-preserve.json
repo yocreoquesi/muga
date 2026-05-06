@@ -6,11 +6,11 @@
     { "url": "https://www.amazon.com/dp/B0XYZ?tag=creator-20&utm_source=youtube", "expectedAction": "detected_foreign", "notes": "Tag preserved + utm_source stripped" },
     { "url": "https://amzn.to/abc123", "expectedAction": "untouched", "notes": "Short link — no tracking, no tag" },
     { "url": "https://www.ebay.com/itm/1234?campid=5337123456&toolid=10001", "expectedAction": "detected_foreign", "notes": "eBay Partner Network tags — preserve" },
-    { "url": "https://www.aliexpress.com/item/1005001234567890.html?aff_fcid=abc", "expectedAction": "cleaned", "notes": "GAP — aff_fcid is currently stripped, not preserved as foreign affiliate. Future: classify as affiliate so it survives Scenario C." },
-    { "url": "https://www.target.com/p/-/A-12345?afid=creatorname", "expectedAction": "untouched", "notes": "GAP — Target afid not in AFFILIATE_PATTERNS today; passes through untouched (not stripped, not classified)" },
-    { "url": "https://www.walmart.com/ip/12345?sourceid=abc&athcpid=def", "expectedAction": "untouched", "notes": "GAP — Walmart sourceid/athcpid not in TRACKING_PARAMS today" },
-    { "url": "https://www.bestbuy.com/site/123?ref=NS_Search&loc=HMP", "expectedAction": "untouched", "notes": "GAP — BestBuy ref/loc not in TRACKING_PARAMS today" },
-    { "url": "https://www.etsy.com/listing/123?ref=share_v4_lx", "expectedAction": "untouched", "notes": "GAP — Etsy ref not in TRACKING_PARAMS today" },
+    { "url": "https://www.aliexpress.com/item/1005001234567890.html?aff_fcid=abc", "expectedAction": "cleaned", "expectedClean": "https://www.aliexpress.com/item/1005001234567890.html", "notes": "AliExpress item pages strip ALL params (cleaner.js isAliExpressItemPage). aff_fcid is also explicitly listed in aliexpress.com.stripParams as the CPS click ID (#508)." },
+    { "url": "https://www.target.com/p/-/A-12345?afid=creatorname", "expectedAction": "cleaned", "expectedClean": "https://www.target.com/p/-/A-12345", "notes": "Target afid stripped via target.com.stripParams (#508 — domain-scoped because `afid` overlaps with functional uses elsewhere)." },
+    { "url": "https://www.walmart.com/ip/12345?sourceid=abc&athcpid=def", "expectedAction": "cleaned", "expectedClean": "https://www.walmart.com/ip/12345", "notes": "Walmart sourceid (campaign source) and athcpid (per-impression content ID) stripped via walmart.com.stripParams (#508)." },
+    { "url": "https://www.bestbuy.com/site/123?ref=NS_Search&loc=HMP", "expectedAction": "cleaned", "expectedClean": "https://www.bestbuy.com/site/123", "notes": "BestBuy ref + loc stripped via bestbuy.com.stripParams (#508 — new domain entry; both are referral-source and campaign-location codes)." },
+    { "url": "https://www.etsy.com/listing/123?ref=share_v4_lx", "expectedAction": "cleaned", "expectedClean": "https://www.etsy.com/listing/123", "notes": "Etsy ref stripped via etsy.com.stripParams (#508 — domain-scoped because `ref` is `referrer` on github.com etc.)." },
     { "url": "https://www.amazon.co.uk/dp/B0ABC?tag=ukcreator-21", "expectedAction": "detected_foreign", "notes": "Amazon UK tag" }
   ]
 }
