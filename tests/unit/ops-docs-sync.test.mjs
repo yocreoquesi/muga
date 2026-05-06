@@ -1,5 +1,5 @@
 /**
- * MUGA: Ops-docs sync test (#414)
+ * MUGA: Ops-docs sync test (#414, #397)
  *
  * Mechanical drift checks for the runbooks under docs/ops/. Catches
  * the obvious sync failures without trying to evaluate substance.
@@ -17,12 +17,17 @@
  *      cycle bumps the major version and the playbook stays on the
  *      old example, this catches it.
  *
+ *   3. Every relative `./*.md` link in docs/ops/ points to a file that
+ *      actually exists. Catches typo-rot (e.g. `rollback.md` vs
+ *      `rollback-playbook.md`) the moment it lands rather than at the
+ *      next incident, when the link gets clicked under stress.
+ *
  * Run with: npm test
  */
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -96,4 +101,45 @@ describe("Ops-docs sync — rollback playbook references CHANGELOG versions", ()
       ].join("\n  ")
     );
   });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Every relative .md link inside docs/ops/ resolves to an existing file.
+//
+// Pre-#397 health-signals.md referenced `docs/ops/rollback.md` and
+// `./rollback.md` in two places, but the actual filename is
+// `rollback-playbook.md`. Nothing caught it because no test looked at
+// link-target existence. A maintainer reading the runbook mid-incident
+// would click a broken link — exactly the worst time to discover one.
+// ---------------------------------------------------------------------------
+describe("Ops-docs sync — relative links resolve", () => {
+  // Match `[label](./target.md)`, `[label](target.md)`, or
+  // `[label](docs/ops/target.md)` — three forms that show up in the
+  // current docs. Hash fragments and absolute http(s) URLs are skipped.
+  const LINK_RE = /\[[^\]]+\]\(([^)\s#]+\.md)(?:#[^)]*)?\)/g;
+
+  for (const file of readdirSync(opsDir).filter((f) => f.endsWith(".md"))) {
+    test(`${file}: every relative .md link points to an existing file`, () => {
+      const body = read(`docs/ops/${file}`);
+      const broken = [];
+      for (const match of body.matchAll(LINK_RE)) {
+        const target = match[1];
+        if (target.startsWith("http://") || target.startsWith("https://")) continue;
+        // Resolve relative to the current file's directory.
+        const resolved = target.startsWith("./") || !target.includes("/")
+          ? join(opsDir, target.replace(/^\.\//, ""))
+          : join(root, target);
+        if (!existsSync(resolved)) broken.push({ target, resolved });
+      }
+      assert.equal(
+        broken.length,
+        0,
+        [
+          `docs/ops/${file} has broken relative .md link(s):`,
+          ...broken.map((b) => `  - ${b.target} → ${b.resolved} (missing)`),
+          "Either fix the link target or remove the reference.",
+        ].join("\n"),
+      );
+    });
+  }
 });

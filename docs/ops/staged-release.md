@@ -89,16 +89,25 @@ The schedule is guidance. A high-confidence release (e.g. a tiny isolated fix) c
 
 A short, append-only log. The maintainer adds one entry per release. Future-maintainer reads this section to understand prior choices.
 
-### v1.12.0 — TBD
+The log starts at v1.13.5 — the first release after this doc landed. Earlier releases (v1.11.0 through v1.13.4) shipped before the staged-release process was documented and are out of scope for this log.
 
-- **Staged?** TBD
-- **Why or why not.** TBD — fill in before tagging. Reference §4 criteria.
-- **Ramp followed.** TBD — fill in during the rollout (e.g. "1% → 10% (T+24h) → 50% (T+48h) → 100% (T+72h), no holds").
-- **Outcome.** TBD — fill in after T+72h close-out: clean ramp, regression caught at stage X, etc.
+### v1.13.5 — 2026-05-05
 
-### v1.13.0 — placeholder
+- **Staged?** No — full rollout on Chrome.
+- **Why.** Branded-domain release: signed remote-rules endpoint moved from `yocreoquesi.github.io/muga` to `rules.muga.app`. No behaviour change on a default install (remote rules are off by default). Falls under §4 "skip staging" — the change does not run on every navigation and the optional permission re-prompt was already understood by users who had opted in.
+- **Ramp followed.** Full submission on tag push.
+- **Outcome.** Clean. No regression reports inside the 72h window.
 
-(Add a new H3 entry per release. Do not edit older entries — the log is append-only.)
+### v1.13.6 — 2026-05-06
+
+- **Staged?** No — full rollout on Chrome.
+- **Why.** Onboarding hardening. The Firefox `window.close()` regression was visible to every new install on Firefox; staging on Chrome (which was unaffected) would have delayed the fix on the platform that was already working without addressing the broken one. Pre-launch install base is residual; blast radius of "ship full" is bounded. Falls under §4 "isolated bug fix."
+- **Ramp followed.** Full submission on tag push.
+- **Outcome.** Clean. No regression reports inside the 72h window. The companion #508 coverage work landed without staging for the same reason.
+
+### Next release — placeholder
+
+(Add a new H3 entry per release. Do not edit older entries — the log is append-only. If a release was not staged, say so and reference the §4 skip criterion that applied.)
 
 ## Appendix: AMO and the asymmetry problem
 

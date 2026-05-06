@@ -7,6 +7,7 @@ All notable changes to MUGA will be documented in this file.
 ### Added
 
 - **`OBJECTIVES.md`** — public North Star metric (Firefox AMO weekly active users), 6-month targets, explicit non-goals, and the four decision principles used to triage every new proposal. Closes [#338](https://github.com/yocreoquesi/muga/issues/338). Linked from the README header.
+- **`docs/ops/` finalised** — the three runbooks (`health-signals.md`, `rollback-playbook.md`, `staged-release.md`) plus the `README.md` index are now wired up end to end. Closes [#397](https://github.com/yocreoquesi/muga/issues/397). Two broken `rollback.md` references in `health-signals.md` were fixed (the actual filename is `rollback-playbook.md`); a third integrity check was added to `tests/unit/ops-docs-sync.test.mjs` that asserts every relative `.md` link inside `docs/ops/` points to a file that exists, so a future typo cannot ship silently. The `staged-release.md` decision log was reset to start at v1.13.5 / v1.13.6 with real entries instead of TBD placeholders. README header now links to `docs/ops/README.md` alongside Contributing.
 
 ### Coverage
 

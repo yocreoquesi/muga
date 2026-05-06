@@ -103,7 +103,7 @@ The release just shipped (CWS rollout opened, AMO submission entered review or g
 
 - [ ] Same as overnight pass, plus:
 - [ ] Read the actual text of any new CWS or AMO reviews — not just the count.
-- [ ] If any same-symptom cluster has formed (3+ issues, same root cause): treat as confirmed regression. Open the rollback playbook (`docs/ops/rollback.md`).
+- [ ] If any same-symptom cluster has formed (3+ issues, same root cause): treat as confirmed regression. Open the rollback playbook ([`docs/ops/rollback-playbook.md`](./rollback-playbook.md)).
 - [ ] If staged release: ramp to next stage if green, hold or revert if not.
 
 ### T+48h to T+72h — third-day pass
@@ -137,5 +137,5 @@ The pattern: the higher the latency of a signal, the less often you need to chec
 
 This doc tells you when to act. The companion docs tell you how:
 
-- **`docs/ops/rollback.md`** — rollback playbook. When to revert, how to revert per store, what to communicate.
-- **`docs/ops/staged-release.md`** — staged-release process. Stage gates, ramp criteria, abort criteria.
+- [`docs/ops/rollback-playbook.md`](./rollback-playbook.md) — rollback playbook. When to revert, how to revert per store, what to communicate.
+- [`docs/ops/staged-release.md`](./staged-release.md) — staged-release process. Stage gates, ramp criteria, abort criteria.
