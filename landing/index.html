@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MUGA — Strip trackers without breaking referrals</title>
+<title>MUGA: Strip trackers without breaking referrals</title>
 <meta name="description" content="MUGA is an open-source browser extension that strips 450+ tracking parameters from URLs while preserving creator affiliate referrals. 100% local, GPL v3.">
 <meta name="color-scheme" content="light dark">
 
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://muga.app/">
-<meta property="og:title" content="MUGA — Strip trackers without breaking referrals">
+<meta property="og:title" content="MUGA: Strip trackers without breaking referrals">
 <meta property="og:description" content="450+ tracking parameters stripped automatically. Creator affiliate referrals preserved. Open source, 100% local.">
 <meta property="og:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MUGA — Strip trackers without breaking referrals">
+<meta name="twitter:title" content="MUGA: Strip trackers without breaking referrals">
 <meta name="twitter:description" content="450+ tracking parameters stripped automatically. Creator affiliate referrals preserved. Open source, 100% local.">
 <meta name="twitter:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
 
@@ -220,7 +220,7 @@
   .url-box .junk.struck::after { right: 0; }
 
   /* sequence: junk1..7 strike at staggered times, then fade to a faint
-     retired state. Layout stays stable — collapsing max-width while
+     retired state. Layout stays stable; collapsing max-width while
      siblings are still visible caused them to overlap mid-animation. */
   @keyframes strike { from { right: 100%; } to { right: 0; } }
   @keyframes fade  { 0%, 60% { opacity: .6; } 100% { opacity: .14; } }
@@ -424,7 +424,7 @@
       <div class="eyebrow"><span class="dot"></span> v1.13.5 · Chrome + Firefox · GPL v3</div>
       <h1>Clean URLs.<br><span class="mark">Fair to creators.</span></h1>
       <p class="lede">
-        MUGA strips <b>450+ tracking parameters</b> from every link you open — locally, in your browser.
+        MUGA strips <b>450+ tracking parameters</b> from every link you open. Locally, in your browser.
         Unlike other URL cleaners, it preserves the affiliate referrals that fund the creators you actually follow.
       </p>
 
@@ -496,7 +496,7 @@
         <div class="stat">
           <div class="num">450<span class="unit">+</span></div>
           <div class="label">Tracking params</div>
-          <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more — stripped at request time.</div>
+          <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more, stripped at request time.</div>
         </div>
         <div class="stat">
           <div class="num">6</div>
@@ -519,7 +519,7 @@
           <div class="section-label">The wedge</div>
           <h2>URL cleaners shouldn't punish the creators you follow.</h2>
           <p>
-            When you click a YouTuber's Amazon link, that <code>?tag=…</code> parameter is how they get paid — usually a few cents per sale, no extra cost to you.
+            When you click a YouTuber's Amazon link, that <code>?tag=…</code> parameter is how they get paid. Usually a few cents per sale, no extra cost to you.
             Most cleaners strip it along with the trackers. MUGA doesn't.
           </p>
           <p>
@@ -527,7 +527,7 @@
             When MUGA detects one of those tags, it preserves the referral and shows a small <span class="chip warm">Creator referral preserved</span> toast so you know it happened.
           </p>
           <p>
-            We've open-sourced the rules as <b>CAPS</b> — the Creator Affiliate Preservation Standard — so any URL cleaner can do the same.
+            We've open-sourced the rules as <b>CAPS</b> (the Creator Affiliate Preservation Standard), so any URL cleaner can do the same.
           </p>
         </div>
 
@@ -573,7 +573,7 @@
         <div class="trust-cell">
           <span class="ic">03 · honest</span>
           <h3>We document the tradeoffs</h3>
-          <p>Including the cases where MUGA may inject its own affiliate tag if a page has none — opt-in, fully disclosed. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
+          <p>Including the cases where MUGA may inject its own affiliate tag if a page has none. Opt-in, fully disclosed. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
         </div>
       </div>
 
@@ -662,7 +662,7 @@
 
   // Console easter egg
   console.log(
-    "%cMUGA%c  Welcome to muga.app — view source, you'll like what you see.\nNo analytics. No third-party requests. No build step.\nhttps://github.com/yocreoquesi/muga",
+    "%cMUGA%c  Welcome to muga.app. View source, you'll like what you see.\nNo analytics. No third-party requests. No build step.\nhttps://github.com/yocreoquesi/muga",
     "background:#d97706;color:#fff;padding:4px 8px;border-radius:4px;font-weight:600;",
     "color:#555;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;"
   );
