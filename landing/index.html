@@ -218,15 +218,14 @@
     transition: right .4s ease;
   }
   .url-box .junk.struck::after { right: 0; }
-  .url-box .junk.gone { opacity: 0; max-width: 0; display: inline-block; overflow: hidden; }
 
-  /* sequence: junk1..7 strike at staggered times, then collapse, then "after" reveals */
+  /* sequence: junk1..7 strike at staggered times, then fade to a faint
+     retired state. Layout stays stable — collapsing max-width while
+     siblings are still visible caused them to overlap mid-animation. */
   @keyframes strike { from { right: 100%; } to { right: 0; } }
-  @keyframes fade  { 0%, 60% { opacity: .6; } 100% { opacity: 0; max-width: 0; } }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+  @keyframes fade  { 0%, 60% { opacity: .6; } 100% { opacity: .14; } }
 
   .url-box.before .junk {
-    display: inline-block;
     animation: fade 9s infinite;
   }
   .url-box.before .junk::after {
@@ -241,7 +240,7 @@
   .url-box.before .junk:nth-of-type(7) { animation-delay: 3.4s; } .url-box.before .junk:nth-of-type(7)::after { animation-delay: 3.4s; }
 
   @media (prefers-reduced-motion: reduce) {
-    .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .55; }
+    .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .35; }
     .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent); }
   }
 
