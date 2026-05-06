@@ -404,7 +404,13 @@ async function syncCustomParamsDNR(customParams) {
 
 async function applyDnrState(prefs) {
   if (!hasDNR) return;
-  if (prefs.enabled && prefs.dnrEnabled) {
+  // Gate DNR on onboardingDone too (#consent-gate). Content scripts
+  // already short-circuit on `!prefs.onboardingDone`, but the DNR
+  // ruleset is declarative — it would still fire before the user
+  // accepts unless we explicitly disable it here. This makes "the
+  // extension is disabled until the user accepts the ToS" hold across
+  // both the dynamic and declarative cleaning paths.
+  if (prefs.enabled && prefs.dnrEnabled && prefs.onboardingDone) {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       enableRulesetIds: ["tracking_params"],
     }).catch(() => {}); // no-op if already enabled
@@ -415,6 +421,33 @@ async function applyDnrState(prefs) {
     }).catch(() => { /* no-op if already disabled */ });
     await syncCustomParamsDNR([]);
   }
+}
+
+/**
+ * Global toolbar badge for the consent-required state. Shown as "!"
+ * with an accent background while the user has not yet accepted the
+ * ToS — including hard-reonboard, where getPrefs() forces
+ * onboardingDone:false. Cleared on acceptance.
+ *
+ * Uses the global setBadgeText (no tabId), so it surfaces on every tab
+ * the user looks at. Per-tab badges set later by toolbar-presenter
+ * never run while onboardingDone is false (URL processing is gated),
+ * so they cannot overwrite this one.
+ */
+async function applyOnboardingBadge(prefs) {
+  if (!actionApi || typeof actionApi.setBadgeText !== "function") return;
+  try {
+    if (!prefs.onboardingDone) {
+      await actionApi.setBadgeText({ text: "!" });
+      if (typeof actionApi.setBadgeBackgroundColor === "function") {
+        // Accent (matches the onboarding CTA). Keeps the cue clearly
+        // about "action required" rather than an error.
+        await actionApi.setBadgeBackgroundColor({ color: "#B8862C" });
+      }
+    } else {
+      await actionApi.setBadgeText({ text: "" });
+    }
+  } catch { /* best-effort: action API may be unavailable in some contexts */ }
 }
 
 // Matches http/https URLs in arbitrary text. Used by the "selection" context menu handler.
@@ -508,6 +541,16 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
     // The sentinel + fixture keys are never written in production.
     if (changes.__muga_test_mode || changes.__muga_test_fixtures) {
       _invalidatePrefsCache();
+    }
+    // Consent record changed (onboarding completed, hard-reonboard
+    // accepted, etc.). Re-sync the cleaner gate + badge in one shot so
+    // both DNR and the toolbar reflect the new state without needing a
+    // browser restart.
+    if (changes.mugaConsent) {
+      _invalidatePrefsCache();
+      const prefs = await getPrefsWithCache();
+      await applyDnrState(prefs);
+      await applyOnboardingBadge(prefs);
     }
     return;
   }
@@ -637,6 +680,45 @@ async function handleTestMessage(message, sender) {
     }
     case "__TEST__readActionApiCounts": {
       return { ok: true, counts: { ..._testActionCalls } };
+    }
+    case "__TEST__readGlobalBadge": {
+      // Reads the global (non-tab-specific) badge text. Per-tab badges
+      // set by toolbar-presenter on navigationStarted would mask the
+      // global one if we read via {tabId}, so this handler is the only
+      // reliable way for the consent-gate spec to assert the global
+      // applyOnboardingBadge() output.
+      if (typeof actionApi.getBadgeText !== "function") {
+        return { ok: true, badgeText: "" };
+      }
+      try {
+        const result = actionApi.getBadgeText({});
+        if (result && typeof result.then === "function") {
+          const text = await result.catch(() => "");
+          return { ok: true, badgeText: text };
+        }
+        const text = await new Promise(resolve => {
+          try { actionApi.getBadgeText({}, resolve); }
+          catch { resolve(""); }
+        });
+        return { ok: true, badgeText: text };
+      } catch (err) {
+        return { ok: false, error: String(err) };
+      }
+    }
+    case "__TEST__readDnrEnabledRulesets": {
+      // Lets the consent-gate regression spec assert that the
+      // declarative cleaner is actually disabled while onboarding is
+      // pending. Without this hook the test would pass on any code
+      // path that merely silenced the badge.
+      if (!hasDNR || typeof chrome.declarativeNetRequest?.getEnabledRulesets !== "function") {
+        return { ok: true, ruleIds: [] };
+      }
+      try {
+        const ids = await chrome.declarativeNetRequest.getEnabledRulesets();
+        return { ok: true, ruleIds: Array.isArray(ids) ? ids : [] };
+      } catch (err) {
+        return { ok: false, error: String(err) };
+      }
     }
     default:
       return { ok: false, error: `unknown __TEST__ message: ${message.type}` };
@@ -1113,6 +1195,7 @@ function shouldOpenOnboarding(prefs) {
 chrome.runtime.onInstalled.addListener(async (details) => {
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
+  await applyOnboardingBadge(prefs);
   // Opportunistic fetch: fires on install/update if user had enabled remote rules
   // before the update and the stored payload is stale (or absent).
   maybeFetchRemoteRules(_remoteRulesDeps());
@@ -1140,6 +1223,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     if (shouldOpenOnboarding(prefs)) {
       openOnboardingOnce();
     }
+    // Surface the consent-required badge on every cold start, not just
+    // on first install. onInstalled does not fire on browser restart or
+    // on Firefox temporary add-ons.
+    await applyOnboardingBadge(prefs);
     // Also ensure context menus are registered on first load
     if (prefs.contextMenuEnabled !== false) {
       await syncContextMenus(true);

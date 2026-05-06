@@ -415,6 +415,15 @@ export const TRANSLATIONS = {
 
   // ── Error messages ───────────────────────────────────────────────────────
   ob_save_error:   { en: "Error — please try again", es: "Error — por favor intentalo de nuevo", pt: "Erro — por favor tente novamente", de: "Fehler — bitte versuche es erneut" },
+
+  // ── Onboarding success state (#firefox-window-close fallback) ────────────
+  // Rendered in-place after consent is persisted. Visible only when the
+  // browser blocks the window.close() / chrome.tabs.remove() fallbacks
+  // (Firefox refuses window.close() on tabs not opened by JS). The state
+  // confirms persistence so the user does not assume the click failed.
+  ob_success_title:     { en: "You're all set",                                  es: "Todo listo",                                                pt: "Tudo pronto",                                            de: "Alles erledigt" },
+  ob_success_msg:       { en: "MUGA is now active. You can close this tab.",     es: "MUGA ya está activo. Podés cerrar esta pestaña.",          pt: "O MUGA já está ativo. Você pode fechar esta aba.",       de: "MUGA ist jetzt aktiv. Du kannst diesen Tab schließen." },
+  ob_success_close_btn: { en: "Close tab",                                       es: "Cerrar pestaña",                                            pt: "Fechar aba",                                             de: "Tab schließen" },
   dev_url_error:   { en: "Error:", es: "Error:", pt: "Erro:", de: "Fehler:" },
 
   // ── Dev-mode nudge panel (developer-facing, intentionally minimal) ────────

@@ -205,7 +205,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         ops.push(setOverrides(overrideUpdates));
       }
       await Promise.all(ops);
-      window.close();
+
+      // Persistence is done. Now confirm visually + try to close.
+      // Firefox refuses window.close() on tabs it did not open via JS, so
+      // relying on it would leave the user staring at the unchanged
+      // onboarding page assuming the click failed (the original bug).
+      // Render an in-place success state first, then attempt close — if
+      // both attempts fail, the success state remains as the safety net.
+      renderSuccess(lang);
+      attemptCloseTab();
     } catch (err) {
       console.error("[MUGA] onboarding save:", err);
       startBtn.textContent = t("ob_save_error", lang);
@@ -213,3 +221,63 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 });
+
+/**
+ * Replaces the onboarding form with a success confirmation. Pure DOM —
+ * no innerHTML, so we do not need to re-sanitize anything.
+ */
+function renderSuccess(lang) {
+  const container = document.querySelector(".container");
+  if (!container) return;
+
+  const wrap = document.createElement("div");
+  wrap.className = "ob-success";
+  wrap.setAttribute("role", "status");
+  wrap.setAttribute("aria-live", "polite");
+  wrap.dataset.testid = "ob-success";
+
+  const title = document.createElement("h1");
+  title.className = "ob-success-title";
+  title.textContent = t("ob_success_title", lang);
+
+  const msg = document.createElement("p");
+  msg.className = "ob-success-msg";
+  msg.textContent = t("ob_success_msg", lang);
+
+  const btn = document.createElement("button");
+  btn.className = "btn-primary";
+  btn.id = "ob-success-close";
+  btn.textContent = t("ob_success_close_btn", lang);
+  btn.addEventListener("click", attemptCloseTab);
+
+  wrap.appendChild(title);
+  wrap.appendChild(msg);
+  wrap.appendChild(btn);
+
+  // Replace container content. We keep <main> wrapper styles by swapping
+  // the inner container.
+  while (container.firstChild) container.removeChild(container.firstChild);
+  container.appendChild(wrap);
+  document.body.dataset.mugaOnboardingDone = "1";
+  btn.focus();
+}
+
+/**
+ * Best-effort tab close. Tries window.close() (works in Chrome for
+ * tabs the extension opened), falls back to chrome.tabs.remove on the
+ * current tab id (works in Firefox even without the "tabs" permission
+ * for the extension's own tabs). Both throwing is fine — the success
+ * state is already visible.
+ */
+function attemptCloseTab() {
+  try { window.close(); } catch { /* Firefox blocks this on non-script-opened tabs */ }
+  try {
+    if (chrome?.tabs?.getCurrent && chrome?.tabs?.remove) {
+      chrome.tabs.getCurrent((tab) => {
+        if (tab && typeof tab.id === "number") {
+          try { chrome.tabs.remove(tab.id); } catch { /* best-effort */ }
+        }
+      });
+    }
+  } catch { /* tabs API unavailable in some contexts */ }
+}
