@@ -32,14 +32,17 @@ const REQUIRED_FIELDS = [
 // Locked-in roster as of the initial sync (caps-spec v1.0.0-rc1).
 // Adding programs here without a corresponding caps-spec release is a
 // shape break — the sync script is the only legal source.
+//
+// `booking` and `humble-bundle` were removed when caps-spec deprecated
+// those programs upstream (the sync filters out programType=deprecated).
+// `apple-phg` was added when caps-spec#45 landed.
 const EXPECTED_PROGRAM_IDS = [
   "amazon-associates",
   "ebay-partner-network",
-  "booking",
   "vercel",
   "digitalocean",
-  "humble-bundle",
   "lemon-squeezy",
+  "apple-phg",
 ];
 
 describe("vendored CAPS manifest — direct-injection programs (#523 phase 1)", () => {
