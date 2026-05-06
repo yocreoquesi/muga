@@ -49,24 +49,6 @@ export const CAPS_DIRECT_INJECTION_PROGRAMS = [
     ]
   },
   {
-    "id": "booking",
-    "name": "Booking.com Affiliate Programme",
-    "programType": "direct-injection",
-    "domains": [
-      "booking.com"
-    ],
-    "param": "aid",
-    "valueShape": "non-empty",
-    "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js.",
-    "references": [
-      {
-        "url": "https://www.booking.com/affiliate-program/v2/",
-        "archivedAt": "2026-05-04",
-        "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.booking.com/affiliate-program/v2/"
-      }
-    ]
-  },
-  {
     "id": "vercel",
     "name": "Vercel Referrals",
     "programType": "direct-injection",
@@ -106,24 +88,6 @@ export const CAPS_DIRECT_INJECTION_PROGRAMS = [
     ]
   },
   {
-    "id": "humble-bundle",
-    "name": "Humble Bundle Partners",
-    "programType": "direct-injection",
-    "domains": [
-      "humblebundle.com"
-    ],
-    "param": "partner",
-    "valueShape": "non-empty",
-    "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (id renamed humble_bundle → humble-bundle for kebab-case consistency).",
-    "references": [
-      {
-        "url": "https://www.humblebundle.com/partners",
-        "archivedAt": "2026-05-04",
-        "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.humblebundle.com/partners"
-      }
-    ]
-  },
-  {
     "id": "lemon-squeezy",
     "name": "Lemon Squeezy Affiliates",
     "programType": "direct-injection",
@@ -138,6 +102,30 @@ export const CAPS_DIRECT_INJECTION_PROGRAMS = [
         "url": "https://www.lemonsqueezy.com/",
         "archivedAt": "2026-05-04",
         "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.lemonsqueezy.com/"
+      }
+    ]
+  },
+  {
+    "id": "apple-phg",
+    "name": "Apple Services Performance Partners",
+    "programType": "direct-injection",
+    "domains": [
+      "music.apple.com",
+      "geo.music.apple.com",
+      "tv.apple.com",
+      "books.apple.com",
+      "podcasts.apple.com",
+      "apps.apple.com",
+      "itunes.apple.com"
+    ],
+    "param": "at",
+    "valueShape": "non-empty",
+    "notes": "Apple's affiliate program — historically the iTunes Affiliate Program, rebranded to Performance Partners with the back-end migrated to Partnerize. The affiliate token travels in `?at=` (max 40 chars per Apple's linking guide). The `?ct=` parameter exists but is the optional campaign-name field, NOT the attribution token, and adopters MUST NOT match on it. Multiple Apple service hostnames carry the same `at` mechanism — listed individually under the exact-host matching rule (SPEC §3.2 step 5). The corporate apex apple.com is intentionally excluded — it does not host commerce surfaces and a partner token there has no effect. The geo.music.apple.com host is the country-redirector front for Apple Music links and is included because publisher tooling (Apple's own Marketing Toolbox) issues `at`-tagged URLs against it.",
+    "references": [
+      {
+        "url": "https://performance-partners.apple.com/linking",
+        "archivedAt": "2026-05-06",
+        "archivedUrl": "https://web.archive.org/web/20260506000000/https://performance-partners.apple.com/linking"
       }
     ]
   }

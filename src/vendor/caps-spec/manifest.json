@@ -41,11 +41,13 @@
     {
       "id": "booking",
       "name": "Booking.com Affiliate Programme",
-      "programType": "direct-injection",
+      "programType": "deprecated",
       "domains": ["booking.com"],
       "param": "aid",
       "valueShape": "non-empty",
-      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js.",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js. Soft-deprecated 2026-05-05: Booking.com terminated direct affiliate partnerships in May 2025 and migrated affiliates to its third-party network channels (primarily Awin globally; CJ Affiliate in some regions). The new path is covered by the existing `awin` network-redirect entry; a future PR may add `cj-affiliate` for the regional CJ channel.",
+      "deprecatedAt": "2026-05-05",
+      "deprecationReason": "Upstream change of nature: in May 2025 Booking.com sent mass termination notices to direct affiliate partners (typical wording: \"determined that our current strategic focus unfortunately does not support continuing our partnership\") and required migration to network channels. Affiliate management is now handled via Awin globally, with CJ Affiliate as a secondary regional option. The `?aid=` direct-attribution path on booking.com is no longer the documented onboarding for new partners. Coverage continues under the existing `awin` network-redirect entry. See incident filed via .github/ISSUE_TEMPLATE/incident-disclosure.yml.",
       "references": [
         {
           "url": "https://www.booking.com/affiliate-program/v2/",
@@ -89,11 +91,13 @@
     {
       "id": "humble-bundle",
       "name": "Humble Bundle Partners",
-      "programType": "direct-injection",
+      "programType": "deprecated",
       "domains": ["humblebundle.com"],
       "param": "partner",
       "valueShape": "non-empty",
-      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (id renamed humble_bundle → humble-bundle for kebab-case consistency).",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (id renamed humble_bundle → humble-bundle for kebab-case consistency). Soft-deprecated 2026-05-05: program migrated to Impact (impact.com); attribution now flows via network-redirect through *.pxf.io and is covered by the existing impact-radius entry.",
+      "deprecatedAt": "2026-05-05",
+      "deprecationReason": "Upstream change of nature: Humble Bundle migrated affiliate onboarding and attribution to Impact (impact.com). The current Affiliate Program Terms describe link issuance and payout exclusively through the Impact platform, with no reference to a `partner` URL parameter on humblebundle.com. Coverage continues under the existing `impact-radius` network-redirect entry (*.pxf.io). See incident #35.",
       "references": [
         {
           "url": "https://www.humblebundle.com/partners",
@@ -119,6 +123,30 @@
       ]
     },
     {
+      "id": "apple-phg",
+      "name": "Apple Services Performance Partners",
+      "programType": "direct-injection",
+      "domains": [
+        "music.apple.com",
+        "geo.music.apple.com",
+        "tv.apple.com",
+        "books.apple.com",
+        "podcasts.apple.com",
+        "apps.apple.com",
+        "itunes.apple.com"
+      ],
+      "param": "at",
+      "valueShape": "non-empty",
+      "notes": "Apple's affiliate program — historically the iTunes Affiliate Program, rebranded to Performance Partners with the back-end migrated to Partnerize. The affiliate token travels in `?at=` (max 40 chars per Apple's linking guide). The `?ct=` parameter exists but is the optional campaign-name field, NOT the attribution token, and adopters MUST NOT match on it. Multiple Apple service hostnames carry the same `at` mechanism — listed individually under the exact-host matching rule (SPEC §3.2 step 5). The corporate apex apple.com is intentionally excluded — it does not host commerce surfaces and a partner token there has no effect. The geo.music.apple.com host is the country-redirector front for Apple Music links and is included because publisher tooling (Apple's own Marketing Toolbox) issues `at`-tagged URLs against it.",
+      "references": [
+        {
+          "url": "https://performance-partners.apple.com/linking",
+          "archivedAt": "2026-05-06",
+          "archivedUrl": "https://web.archive.org/web/20260506000000/https://performance-partners.apple.com/linking"
+        }
+      ]
+    },
+    {
       "id": "anonym-to",
       "name": "anonym.to (privacy proxy)",
       "programType": "network-redirect",
@@ -137,6 +165,22 @@
       "valueShape": "non-empty",
       "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#awin. Click endpoint `/cread.php` carries the destination merchant URL in `p`.",
       "references": [{ "url": "https://www.awin.com/" }]
+    },
+    {
+      "id": "cj-affiliate",
+      "name": "CJ Affiliate (Commission Junction)",
+      "programType": "network-redirect",
+      "domains": ["anrdoezrs.net", "dpbolvw.net", "jdoqocy.com", "kqzyfj.com", "tkqlhce.com", "emjcd.com", "qksrv.net", "cj.dotomi.com"],
+      "param": "url",
+      "valueShape": "non-empty",
+      "notes": "CJ Affiliate (formerly Commission Junction) cycles multiple click-tracking domains as an anti-cloaking measure. Publisher links follow the path-based pattern `https://www.{domain}/click-{PID}-{AID}?url={destination}`, where PID is the 7-digit publisher (Promotional Property) ID and AID is the 8-digit ad/link ID; the destination merchant URL travels in `?url=`. CAPS categorisation matches by host alone (SPEC §3.2 step 5); the `param` field documents the destination-URL parameter for completeness, analogous to impact-radius. The 8 domains listed here are the well-documented core cycling pool. CJ has used additional historical domains (apmebf.com, afcyhf.com, ftjcfx.com, lduhtrp.net, tqlkg.com) that are less commonly observed and can be added in a future PR as evidence accumulates. Domain list and link pattern confirmed across multiple independent third-party sources (Adloop URL templates guide, Geniuslink help docs, EFF HTTPS Everywhere atlas, Ghostery WhoTracks.Me); CJ's own developer documentation is gated behind a publisher login, so primary-source confirmation is via real publisher tutorials and tracker indices rather than CJ's dashboard.",
+      "references": [
+        {
+          "url": "https://www.cj.com/en-gb/publisher/partners/booking.com",
+          "archivedAt": "2026-03-22",
+          "archivedUrl": "https://web.archive.org/web/20260322143848/https://www.cj.com/en-gb/publisher/partners/booking.com"
+        }
+      ]
     },
     {
       "id": "facebook-l",

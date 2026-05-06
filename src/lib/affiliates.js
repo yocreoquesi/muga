@@ -804,12 +804,16 @@ const OUR_TAGS = {
     "ebay.fr":    "5339147108",
     "ebay.it":    "5339147108",
   },
-  "booking":       {}, // pending Booking Partner account
   "vercel":        {}, // pending Vercel referral username
   "digitalocean":  {}, // pending DigitalOcean referral code
-  "humble-bundle": {}, // pending Humble Bundle partner slug
   "lemon-squeezy": {}, // pending Lemon Squeezy affiliate id
+  "apple-phg":     {}, // pending Apple Performance Partners application
 };
+// booking and humble-bundle were removed when caps-spec deprecated those
+// programs upstream (Booking terminated direct affiliate partnerships May
+// 2025 → migrated to Awin; Humble Bundle migrated to Impact). The sync
+// script filters out programType=deprecated, so an entry here would be
+// dead code — coverage continues via network-redirect (awin / impact-radius).
 
 // Maps caps-spec program ids to MUGA's existing display "group" so the
 // popup / attribution-ledger UI keeps showing familiar labels (e.g.
@@ -818,7 +822,7 @@ const OUR_TAGS = {
 const GROUP_OVERRIDES = {
   "amazon-associates":    "Amazon",
   "ebay-partner-network": "eBay",
-  "booking":              "Booking.com",
+  "apple-phg":            "Apple",
 };
 
 function _deriveGroup(prog) {

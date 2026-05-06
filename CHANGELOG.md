@@ -4,6 +4,14 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Apple Services Performance Partners as a direct-injection program** (#594, partial — Apple half). Refresh of the vendored caps-spec snapshot brought in `apple-phg` (caps-spec PR #45), so MUGA now preserves `?at=` affiliate tokens on `music.apple.com`, `geo.music.apple.com`, `tv.apple.com`, `books.apple.com`, `podcasts.apple.com`, `apps.apple.com`, and `itunes.apple.com`. The "Creator referral preserved" badge fires on those hosts when a third-party `at` token is present, even though MUGA has no Apple Performance Partners account (per the #523 decoupling). The companion `?ct=` parameter is intentionally NOT matched as a creator referral — it is the campaign-name field, not the attribution token. The Bookshop.org half of #594 remains blocked on caps-spec#46 (RFC for path-based affiliate program schema).
+
+### Changed
+
+- **`booking` and `humble-bundle` programs removed from the direct-injection preserve set.** Both were deprecated upstream in caps-spec (Booking terminated direct affiliate partnerships May 2025 and migrated to Awin globally; Humble Bundle migrated affiliate onboarding to Impact). The sync script filters out `programType=deprecated`, so the consolidated `AFFILIATE_PATTERNS` no longer contains them. Coverage of those click flows continues through the existing `awin` and `impact-radius` network-redirect entries — users clicking a Booking or Humble Bundle link with someone else's affiliate redirect URL still see the unwrap path. The orphaned `OUR_TAGS["booking"]` and `OUR_TAGS["humble-bundle"]` placeholder entries were removed (dead code post-deprecation).
+
 ## [1.13.5] - 2026-05-05
 
 Branded-domain release. The signed remote-rules endpoint moves under `rules.muga.app` so the public surface no longer depends on a personal GitHub username. No user-visible behavior change on a default install.
