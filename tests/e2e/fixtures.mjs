@@ -33,18 +33,38 @@ async function completeOnboarding(context, extensionId) {
   }
 
   await extPage.evaluate(() => {
+    // Consent fields (onboardingDone, consentVersion, consentDate) live
+    // in chrome.storage.local under "mugaConsent" since #355 / ADR-0001.
+    // Behavioural prefs stay in chrome.storage.sync. Writing
+    // onboardingDone to sync (the pre-#355 location) silently appears to
+    // work but no production reader looks there — popup, options, and
+    // service-worker all go through getPrefs / getConsent which read
+    // from local. Splitting the write here is what guarantees fixtures
+    // mirror the real post-acceptance state.
     return new Promise((resolve) => {
-      chrome.storage.sync.set(
-        {
-          onboardingDone: true,
-          consentVersion: "1.0",
-          consentDate: Date.now(),
-          injectOwnAffiliate: false,
-          notifyForeignAffiliate: false,
-          language: "en",
-        },
-        resolve
+      const syncWrite = new Promise((r) =>
+        chrome.storage.sync.set(
+          {
+            injectOwnAffiliate: false,
+            notifyForeignAffiliate: false,
+            language: "en",
+          },
+          r
+        )
       );
+      const localWrite = new Promise((r) =>
+        chrome.storage.local.set(
+          {
+            mugaConsent: {
+              onboardingDone: true,
+              consentVersion: "1.0",
+              consentDate: Date.now(),
+            },
+          },
+          r
+        )
+      );
+      Promise.all([syncWrite, localWrite]).then(() => resolve());
     });
   });
 

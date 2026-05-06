@@ -178,6 +178,59 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     if (!page.isClosed()) await page.close();
   });
 
+  test("global '!' badge survives tab navigation while onboardingDone is false", async ({ context, extensionId }) => {
+    // Reproduces the bug the user hit on addons.mozilla.org: navigating
+    // any tab made toolbar-presenter clear the per-tab badge to "",
+    // masking the global "!" until the next SW restart. The fix gates
+    // the navigationStarted emit on onboardingDone — when false, no
+    // per-tab override is written.
+    await expect.poll(
+      () => readGlobalBadge(context, extensionId),
+      { timeout: 5000 }
+    ).toBe("!");
+
+    // Drive a real navigation through the loading state.
+    const tab = await context.newPage();
+    await tab.goto("data:text/html,<title>nav-trigger</title>");
+    await tab.waitForLoadState("domcontentloaded");
+
+    // Badge must still be "!" — pre-fix this returned "".
+    await expect.poll(
+      () => readGlobalBadge(context, extensionId),
+      { timeout: 5000 }
+    ).toBe("!");
+
+    await tab.close();
+  });
+
+  test("after completing onboarding, opening Settings does NOT bounce back to onboarding", async ({ context, extensionId }) => {
+    // Reproduces the user-facing bug: options.js was reading
+    // onboardingDone from chrome.storage.sync, but the consent fields
+    // moved to chrome.storage.local in #355 (ADR-0001). After a clean
+    // first acceptance, clicking Settings re-rendered onboarding
+    // because the gate always saw the sync default `false`.
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+    await completeOnboardingAndKeepPageOpen(page);
+    if (!page.isClosed()) await page.close();
+
+    // Open the options page directly (the popup link does the same
+    // chrome.runtime.openOptionsPage / window.location nav).
+    const options = await context.newPage();
+    await options.goto(`chrome-extension://${extensionId}/options/options.html`);
+    await options.waitForLoadState("domcontentloaded");
+    // Give the consent gate a fair chance to redirect (the production
+    // bug was a synchronous window.location.href set inside the early
+    // async block — it would resolve well within 2s).
+    await options.waitForTimeout(800);
+
+    expect(options.url()).toContain("/options/options.html");
+    expect(options.url()).not.toContain("/onboarding/");
+
+    await options.close();
+  });
+
   test("DNR tracking_params ruleset is disabled until onboardingDone, enabled after", async ({ context, extensionId }) => {
     // Pre-onboarding: ruleset must be disabled. Poll so the result
     // does not race with applyDnrState() after the beforeEach clear.

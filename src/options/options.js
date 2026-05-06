@@ -5,6 +5,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
+import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -99,7 +100,13 @@ async function init() {
   try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
 
   // --- Consent gate: redirect to onboarding if user hasn't accepted ToS ---
-  if (!prefs.onboardingDone) {
+  // Consent fields moved out of chrome.storage.sync into chrome.storage.local
+  // in #355 (ADR-0001). Reading onboardingDone from sync silently returns
+  // the PREF_DEFAULTS false and bounced everyone back to onboarding even
+  // after a successful acceptance. Use the dedicated consent-storage read
+  // so the gate matches the popup + service-worker source of truth.
+  const consent = await getConsent();
+  if (!consent.onboardingDone) {
     window.location.href = chrome.runtime.getURL("onboarding/onboarding.html");
     return;
   }

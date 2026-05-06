@@ -425,25 +425,23 @@ async function applyDnrState(prefs) {
 
 /**
  * Global toolbar badge for the consent-required state. Shown as "!"
- * with an accent background while the user has not yet accepted the
- * ToS — including hard-reonboard, where getPrefs() forces
- * onboardingDone:false. Cleared on acceptance.
+ * while the user has not yet accepted the ToS — including
+ * hard-reonboard, where getPrefs() forces onboardingDone:false.
+ * Cleared on acceptance.
  *
- * Uses the global setBadgeText (no tabId), so it surfaces on every tab
- * the user looks at. Per-tab badges set later by toolbar-presenter
- * never run while onboardingDone is false (URL processing is gated),
- * so they cannot overwrite this one.
+ * Uses the global setBadgeText (no tabId), so it surfaces on every
+ * tab. We deliberately do NOT touch setBadgeBackgroundColor here:
+ * toolbar-presenter sets the global default color at startup and
+ * relies on that as the fallback when no per-tab override is active.
+ * Overriding the global color from this function broke that contract
+ * and made unrelated toolbar-visibility tests read the wrong color
+ * for cleaning states.
  */
 async function applyOnboardingBadge(prefs) {
   if (!actionApi || typeof actionApi.setBadgeText !== "function") return;
   try {
     if (!prefs.onboardingDone) {
       await actionApi.setBadgeText({ text: "!" });
-      if (typeof actionApi.setBadgeBackgroundColor === "function") {
-        // Accent (matches the onboarding CTA). Keeps the cue clearly
-        // about "action required" rather than an error.
-        await actionApi.setBadgeBackgroundColor({ color: "#B8862C" });
-      }
     } else {
       await actionApi.setBadgeText({ text: "" });
     }
@@ -503,12 +501,23 @@ async function updateTabBadge(tabId, junkRemoved) {
   toolbarBus.emit({ type: "urlCleaned", tabId, paramsRemoved: junkRemoved });
 }
 
-// Clear badge when a tab starts navigating to a new page
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "loading") {
-    sessionStorage.remove(`tab_${tabId}`);
-    toolbarBus.emit({ type: "navigationStarted", tabId });
-  }
+// Clear badge when a tab starts navigating to a new page.
+// While onboarding is pending we deliberately skip the toolbar bus
+// emit: the presenter responds to navigationStarted by writing a
+// per-tab badge "" via setBadgeText({tabId, text:""}), which in
+// Firefox (and Chrome) overrides the global "!" badge for that tab.
+// The result was that the consent-required cue silently disappeared
+// from any tab the user navigated. Since the cleaner is gated on
+// onboardingDone, there are no per-tab counts to clear in this state,
+// so skipping the emit is safe.
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (changeInfo.status !== "loading") return;
+  sessionStorage.remove(`tab_${tabId}`);
+  try {
+    const prefs = await getPrefsWithCache();
+    if (!prefs.onboardingDone) return;
+  } catch { /* fall through and emit — toolbar reset is the safer default */ }
+  toolbarBus.emit({ type: "navigationStarted", tabId });
 });
 
 // Clean up session data when a tab closes
