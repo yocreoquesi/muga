@@ -4,6 +4,21 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`OBJECTIVES.md`** — public North Star metric (Firefox AMO weekly active users), 6-month targets, explicit non-goals, and the four decision principles used to triage every new proposal. Closes [#338](https://github.com/yocreoquesi/muga/issues/338). Linked from the README header.
+
+### Coverage
+
+- **TikTok `_t` added to universal TRACKING_PARAMS** ([`src/lib/affiliates.js`](src/lib/affiliates.js), platform_noise category). Sister to existing `_r` — share token, not functional for the web URL. Closes the corresponding [#508](https://github.com/yocreoquesi/muga/issues/508) gap.
+- **AliExpress `aff_fcid`** added to `aliexpress.com.stripParams` in [`src/rules/domain-rules.json`](src/rules/domain-rules.json). Domain-scoped — CPS click ID, transient and not creator-attributing.
+- **Walmart `sourceid` + `athcpid`** added to `walmart.com.stripParams`. Campaign source tag and per-impression content ID respectively.
+- **`bestbuy.com`** is a new domain-rules entry (#508). Strips `ref` (referral source) + `loc` (campaign location) + `irclickid` + `irgwc` (Impact Radius affiliate ad-attribution); preserves `q` / `id` / `intl` / `page`.
+
+### Fixed
+
+- **`tests/benchmark/runner.mjs` was loading `[]` for domain-rules**, silently exempting every domain-scoped strip from the benchmark and keeping stale "GAP — not in TRACKING_PARAMS today" notes around long after the rule had landed. The runner now loads `src/rules/domain-rules.json` once and feeds it into every `processUrl` call. Benchmark coverage went from a misleading 99.2% (with hidden gaps) to a real 100% (129/129).
+
 ## [1.13.6] - 2026-05-06
 
 Onboarding hardening release. Headline: the first-run onboarding flow on Firefox no longer leaves the user staring at an unchanged tab after they accept — the silent regression that made "Start browsing clean" appear to do nothing is fixed, the cleaner is now provably off until acceptance, and the toolbar surfaces a "!" badge while consent is pending. Plus a separate gate fix: opening Settings right after a clean acceptance no longer bounces back to onboarding.
