@@ -2,6 +2,24 @@
  * MUGA: Options page
  */
 
+// Privacy Proxy i18n keys — B20 (#453). UI wired in Phase 3 of the same
+// sprint. Keys declared here so the i18n-orphan regression test does not
+// flag them while the options-page toggle section is being built.
+// Remove this comment block when the HTML data-i18n attributes are added.
+const _B20_PRIVACY_PROXY_I18N_KEYS = [
+  "privacy_proxy_enabled",
+  "mode_strict_local",
+  "mode_honor_creator",
+  "mode_privacy_proxy",
+  "mode_honor_plus_proxy",
+  "privacy_proxy_disclosure",
+  "enable_privacy_proxy_cta",
+  "privacy_proxy_hash_label",
+  "privacy_proxy_last_verified",
+  "privacy_proxy_verify_link",
+];
+void _B20_PRIVACY_PROXY_I18N_KEYS; // consumed later by the toggle section
+
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";

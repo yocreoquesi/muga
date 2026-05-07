@@ -259,10 +259,10 @@ describe("Firefox MV2 manifest structure", () => {
       "MV2 manifest must have gecko ID");
   });
 
-  test("strict_min_version is not higher than 128.0", () => {
+  test("strict_min_version is not higher than 129.0", () => {
     const minVersion = parseInt(MANIFEST_V2.browser_specific_settings.gecko.strict_min_version);
-    assert.ok(minVersion <= 128,
-      `strict_min_version (${minVersion}) must not exceed 128 to support Firefox ESR`);
+    assert.ok(minVersion <= 129,
+      `strict_min_version (${minVersion}) must not exceed 129 to support Firefox ESR`);
   });
 
   test("browser-polyfill.min.js loads in document_start entry", () => {

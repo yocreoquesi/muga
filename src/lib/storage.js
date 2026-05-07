@@ -160,6 +160,13 @@ export const PREF_DEFAULTS = {
   // Lives in sync so the rule list follows the user across devices.
   // Default empty — opt-in by user click only.
   userCustomRules: [],
+  // Privacy Proxy toggle (#453, B20). When ON, opaque affiliate-network
+  // redirect URLs that cannot be unwrapped client-side are sent to
+  // unwrap.muga.app (a Cloudflare Worker) for resolution. Every response
+  // is verified with an Ed25519 signature before navigation. Default OFF:
+  // requires explicit user consent because it involves a network request
+  // with the full affiliate URL.
+  privacyProxyEnabled: false,
 };
 
 /**
