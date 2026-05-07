@@ -5,6 +5,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { deriveModeLabel } from "../lib/mode-label.js";
 export { deriveModeLabel };
+import { formatRelativeTime } from "../lib/relative-time.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
@@ -1360,25 +1361,8 @@ function showProxyPermissionDeniedToast() {
   showToast(t("optionsRemoteRulesPermDenied", _currentLang));
 }
 
-/**
- * Formats a relative time string from a UTC millisecond timestamp.
- * Simple helper: covers "just now", minutes, hours, yesterday, and older.
- *
- * @param {number|null} fetchedAt - Millisecond timestamp or null
- * @returns {string} Human-readable relative time
- */
-function formatRelativeTime(fetchedAt) {
-  if (!fetchedAt) return "—";
-  const diffMs = Date.now() - fetchedAt;
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 2) return t("time_just_now", _currentLang) || "just now";
-  if (diffMin < 60) return (t("time_minutes_ago", _currentLang) || "%s minutes ago").replace("%s", diffMin);
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return (t("time_hours_ago", _currentLang) || "%s hours ago").replace("%s", diffHours);
-  if (diffHours < 48) return t("time_yesterday", _currentLang) || "yesterday";
-  const diffDays = Math.floor(diffHours / 24);
-  return (t("time_days_ago", _currentLang) || "%s days ago").replace("%s", diffDays);
-}
+// formatRelativeTime is imported from ../lib/relative-time.js above.
+// It accepts (fetchedAt, lang) and returns a localized relative time string.
 
 /**
  * Reads workerBuildHash and workerBuildHashFetchedAt from chrome.storage.local
@@ -1398,7 +1382,7 @@ function renderWorkerBuildHashState() {
           : "—";
       }
       if (timeEl) {
-        timeEl.textContent = formatRelativeTime(data.workerBuildHashFetchedAt);
+        timeEl.textContent = formatRelativeTime(data.workerBuildHashFetchedAt, _currentLang);
       }
     }
   );

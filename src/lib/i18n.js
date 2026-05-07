@@ -555,6 +555,41 @@ export const TRANSLATIONS = {
     de: 'FIXME: translate' /* FIXME: needs native speaker review */,
   },
 
+  // ── Relative time strings (#453, B20 Group A) ─────────────────────────────
+  // Used by formatRelativeTime() in src/lib/relative-time.js (and the
+  // build-hash cluster in options.js). Parameterized strings use the %s
+  // placeholder convention — replaced at call site via .replace("%s", n).
+  time_just_now: {
+    en: 'just now',
+    es: 'hace un momento',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_minutes_ago: {
+    en: '%s minutes ago',
+    es: 'hace %s minutos',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_hours_ago: {
+    en: '%s hours ago',
+    es: 'hace %s horas',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_yesterday: {
+    en: 'yesterday',
+    es: 'ayer',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_days_ago: {
+    en: '%s days ago',
+    es: 'hace %s días',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+
 };
 
 /**
