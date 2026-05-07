@@ -527,11 +527,66 @@
         }
       });
     } else {
-      // B20 (#453): If the destination is an opaque affiliate network host that
-      // cannot be unwrapped client-side, and Privacy Proxy is disabled, surface
-      // the CTA toast. Navigation proceeds normally — the toast is non-blocking.
-      if (!_contentPrefs?.privacyProxyEnabled && _isOpaqueNetworkHost(url.hostname)) {
-        showProxyCta("enable_cta", _contentPrefs?.language || "en");
+      // B20 (#453): opaque affiliate network — cannot be unwrapped client-side.
+      if (_isOpaqueNetworkHost(url.hostname)) {
+        if (_contentPrefs?.privacyProxyEnabled) {
+          // Proxy ON: attempt to resolve via UNWRAP_VIA_PROXY.
+          // Only enter this path when detectWrapper recognises the URL AND unwrap
+          // returns null (confirming the destination is truly opaque).
+          const _detectWrapper = window.__mugaCleaner?.detectWrapper;
+          const _unwrap = window.__mugaCleaner?.unwrap;
+          if (
+            typeof _detectWrapper === "function" &&
+            typeof _unwrap === "function" &&
+            _detectWrapper(href) &&
+            _unwrap(href) === null
+          ) {
+            // Async proxy path — do NOT call navigate() here.
+            // The outer e.preventDefault() already fired; we resolve
+            // the destination ourselves and navigate when the SW responds.
+            (async () => {
+              const _PROXY_TIMEOUT_MS = 6000;
+              let response;
+              try {
+                response = await Promise.race([
+                  chrome.runtime.sendMessage({ type: "UNWRAP_VIA_PROXY", url: href }),
+                  new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("proxy-navigate timeout")), _PROXY_TIMEOUT_MS)
+                  ),
+                ]);
+              } catch {
+                // SW message failed or timed out — fall back to original URL.
+                navigate(href, opensNewTab);
+                return;
+              }
+              if (response?.ok === true) {
+                const dest = response.destination;
+                // Defense in depth: validate scheme and length (SW already validated,
+                // but content script must not blindly trust the response).
+                if (
+                  typeof dest === "string" &&
+                  dest.length <= 2000 &&
+                  (dest.startsWith("https://") || dest.startsWith("http://"))
+                ) {
+                  try {
+                    const destParsed = new URL(dest);
+                    if (destParsed.protocol === "http:" || destParsed.protocol === "https:") {
+                      navigate(dest, opensNewTab);
+                      return;
+                    }
+                  } catch { /* fall through */ }
+                }
+              }
+              // SW returned ok:false, or destination failed validation — fall back.
+              navigate(href, opensNewTab);
+            })();
+            return; // Async branch took over; skip the synchronous navigate below.
+          }
+        } else {
+          // Proxy OFF: surface the CTA toast so the user can enable the feature.
+          // Navigation proceeds normally — the toast is non-blocking.
+          showProxyCta("enable_cta", _contentPrefs?.language || "en");
+        }
       }
       navigate(cleanUrl, opensNewTab);
     }

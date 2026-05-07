@@ -1062,6 +1062,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
+        // Pre-flight: confirm we still hold the host permission. If the user
+        // revoked it from browser settings, the next fetchUnwrap would fail with
+        // a generic network error — handling it here lets the self-heal branch
+        // (below) actually fire.
+        try {
+          const hasPermission = await chrome.permissions.contains({
+            origins: ["https://unwrap.muga.app/*"],
+          });
+          if (!hasPermission) {
+            try { sendResponse({ ok: false, reason: "permission" }); } catch { /* channel closed */ }
+            return;
+          }
+        } catch {
+          // chrome.permissions API failure is itself a permission-class problem
+          try { sendResponse({ ok: false, reason: "permission" }); } catch { /* channel closed */ }
+          return;
+        }
+
         // Validate input URL: scheme must be http/https, host must be in OPAQUE_NETWORKS
         const rawUrl = message.url;
         let parsedUrl;

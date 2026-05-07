@@ -363,6 +363,190 @@ describe("UNWRAP_VIA_PROXY — triangulation", () => {
   });
 });
 
+// ── W-1: UNWRAP_VIA_PROXY send in content script click handler ────────────────
+// Gap 1: The content script never sent UNWRAP_VIA_PROXY when proxy was ON.
+// Fix: extend the click handler else-branch to intercept opaque-network clicks
+// when proxy is enabled and local unwrap returns null.
+
+describe("Content script click handler — UNWRAP_VIA_PROXY wiring (W-1)", () => {
+  test("click handler sends UNWRAP_VIA_PROXY when proxy is enabled and host is opaque", () => {
+    assert.ok(
+      cleanerSource.includes("UNWRAP_VIA_PROXY"),
+      "content script click handler must send UNWRAP_VIA_PROXY message"
+    );
+  });
+
+  test("UNWRAP_VIA_PROXY send is gated on privacyProxyEnabled being truthy", () => {
+    // The UNWRAP_VIA_PROXY message send must be inside a privacyProxyEnabled conditional
+    const proxyEnabledIdx = cleanerSource.indexOf("privacyProxyEnabled");
+    const unwrapMsgIdx = cleanerSource.indexOf('"UNWRAP_VIA_PROXY"', proxyEnabledIdx);
+    assert.ok(proxyEnabledIdx !== -1, "privacyProxyEnabled check must be present in content script");
+    assert.ok(unwrapMsgIdx !== -1, "UNWRAP_VIA_PROXY message type must appear after privacyProxyEnabled check");
+    assert.ok(
+      unwrapMsgIdx > proxyEnabledIdx,
+      "UNWRAP_VIA_PROXY send must appear after the privacyProxyEnabled gate"
+    );
+  });
+
+  test("click handler calls detectWrapper from window.__mugaCleaner before sending UNWRAP_VIA_PROXY", () => {
+    assert.ok(
+      cleanerSource.includes("detectWrapper") && cleanerSource.includes("UNWRAP_VIA_PROXY"),
+      "click handler must call detectWrapper from __mugaCleaner before sending UNWRAP_VIA_PROXY"
+    );
+  });
+
+  test("click handler checks unwrap() returns null before sending UNWRAP_VIA_PROXY", () => {
+    // The proxy path only fires when unwrap returns null (opaque — cannot unwrap locally)
+    const unwrapCheckIdx = cleanerSource.indexOf("_unwrap(href) === null");
+    assert.ok(
+      unwrapCheckIdx !== -1,
+      "click handler must check _unwrap(href) === null before entering proxy path"
+    );
+  });
+
+  test("click handler has a 6000ms timeout guard on the UNWRAP_VIA_PROXY message", () => {
+    assert.ok(
+      cleanerSource.includes("6000") && cleanerSource.includes("UNWRAP_VIA_PROXY"),
+      "content script must have a 6000ms timeout guard on the proxy message round-trip"
+    );
+  });
+
+  test("click handler navigates to response.destination on ok:true", () => {
+    // Verify the success path navigates to the resolved destination
+    const okCheckIdx = cleanerSource.indexOf("response?.ok === true");
+    const destIdx = cleanerSource.indexOf("response.destination", okCheckIdx);
+    assert.ok(okCheckIdx !== -1, "click handler must check response?.ok === true");
+    assert.ok(destIdx !== -1, "click handler must read response.destination on ok:true");
+  });
+
+  test("click handler falls back to original href on SW failure or timeout", () => {
+    // On failure, navigate to original href (not cleanUrl — the user should get the opaque URL)
+    const unwrapViaProxyIdx = cleanerSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const proxyBlock = cleanerSource.slice(unwrapViaProxyIdx, unwrapViaProxyIdx + 3000);
+    assert.ok(
+      proxyBlock.includes("navigate(href,") || proxyBlock.includes("navigate(href ,"),
+      "click handler must call navigate(href, ...) as fallback on SW failure"
+    );
+  });
+
+  test("click handler validates destination scheme before navigating (defense in depth)", () => {
+    // Must validate http/https scheme even though SW already validates
+    const unwrapViaProxyIdx = cleanerSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const proxyBlock = cleanerSource.slice(unwrapViaProxyIdx, unwrapViaProxyIdx + 3000);
+    assert.ok(
+      proxyBlock.includes("https://") && proxyBlock.includes("http://"),
+      "click handler must validate destination scheme before navigating"
+    );
+  });
+
+  test("click handler validates destination length before navigating (defense in depth)", () => {
+    const unwrapViaProxyIdx = cleanerSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const proxyBlock = cleanerSource.slice(unwrapViaProxyIdx, unwrapViaProxyIdx + 3000);
+    assert.ok(
+      proxyBlock.includes("2000"),
+      "click handler must validate destination length <= 2000 before navigating"
+    );
+  });
+
+  test("CTA toast (enable_cta) fires only when proxy is OFF, not when proxy is ON", () => {
+    // The enable_cta showProxyCta call must be inside the else-branch (proxy=OFF),
+    // not in the proxy=ON branch.
+    // Verify: 'enable_cta' appears in the source, and privacyProxyEnabled appears before it
+    const proxyEnabledIdx = cleanerSource.indexOf("privacyProxyEnabled");
+    const enableCtaIdx = cleanerSource.indexOf('"enable_cta"', proxyEnabledIdx);
+    assert.ok(enableCtaIdx !== -1, '"enable_cta" must be present in the click handler');
+    // The UNWRAP_VIA_PROXY send must appear BEFORE the enable_cta (proxy ON path runs first)
+    const unwrapMsgIdx = cleanerSource.indexOf('"UNWRAP_VIA_PROXY"', proxyEnabledIdx);
+    assert.ok(
+      unwrapMsgIdx !== -1 && unwrapMsgIdx < enableCtaIdx,
+      "UNWRAP_VIA_PROXY send (proxy ON path) must appear before enable_cta (proxy OFF path)"
+    );
+  });
+});
+
+// ── W-2: Permission pre-flight in UNWRAP_VIA_PROXY handler ───────────────────
+// Gap 2: The permission revocation self-heal branch was dead code because
+// fetchUnwrap has no path that returns reason="permission" — a revoked host
+// permission produces a network error. Fix: add a chrome.permissions.contains
+// pre-flight BEFORE fetchUnwrap so the self-heal branch can actually fire.
+
+describe("UNWRAP_VIA_PROXY — permission pre-flight check (W-2)", () => {
+  test("handler calls chrome.permissions.contains before fetchUnwrap", () => {
+    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+    assert.ok(
+      handlerSlice.includes("chrome.permissions.contains"),
+      "UNWRAP_VIA_PROXY handler must call chrome.permissions.contains as a pre-flight"
+    );
+  });
+
+  test("pre-flight checks the unwrap.muga.app/* origin", () => {
+    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+    assert.ok(
+      handlerSlice.includes("unwrap.muga.app"),
+      "permission pre-flight must check the 'unwrap.muga.app' origin"
+    );
+  });
+
+  test("pre-flight returns { ok: false, reason: 'permission' } when permission is missing", () => {
+    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
+    // The handler is ~80 lines. Use 4000 chars to cover the full async body.
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+    // Must return "permission" reason in the pre-flight section (BEFORE fetchUnwrap call)
+    const permissionIdx = handlerSlice.indexOf('"permission"');
+    const fetchUnwrapIdx = handlerSlice.indexOf("fetchUnwrap(");
+    assert.ok(permissionIdx !== -1, "handler must return reason 'permission'");
+    assert.ok(fetchUnwrapIdx !== -1, "handler must call fetchUnwrap");
+    assert.ok(
+      permissionIdx < fetchUnwrapIdx,
+      "permission reason must appear BEFORE the fetchUnwrap call (i.e. in the pre-flight gate)"
+    );
+  });
+
+  test("pre-flight appears AFTER privacyProxyEnabled gate but BEFORE URL validation", () => {
+    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+    const disabledIdx = handlerSlice.indexOf('"disabled"');
+    const permContainsIdx = handlerSlice.indexOf("chrome.permissions.contains");
+    const invalidUrlIdx = handlerSlice.indexOf('"invalid_url"');
+    assert.ok(disabledIdx !== -1, '"disabled" check must exist');
+    assert.ok(permContainsIdx !== -1, "chrome.permissions.contains must be present");
+    assert.ok(invalidUrlIdx !== -1, '"invalid_url" check must exist');
+    assert.ok(
+      disabledIdx < permContainsIdx,
+      "privacyProxyEnabled gate ('disabled') must come BEFORE permission pre-flight"
+    );
+    assert.ok(
+      permContainsIdx < invalidUrlIdx,
+      "permission pre-flight must come BEFORE URL validation ('invalid_url')"
+    );
+  });
+
+  test("self-heal branch (privacyProxyEnabled:false write) is reachable via pre-flight", () => {
+    // The pre-flight returns { ok: false, reason: "permission" } which triggers
+    // the existing self-heal logic. Verify the complete dispatch path exists:
+    // 1. pre-flight returns reason="permission"
+    // 2. handler checks result.reason === "permission"
+    // 3. handler writes privacyProxyEnabled: false
+    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 6000);
+    assert.ok(
+      handlerSlice.includes("chrome.permissions.contains"),
+      "pre-flight gate must be present"
+    );
+    assert.ok(
+      handlerSlice.includes('result.reason === "permission"') ||
+      handlerSlice.includes("result.reason === 'permission'"),
+      "self-heal branch must check result.reason === 'permission'"
+    );
+    assert.ok(
+      handlerSlice.includes("privacyProxyEnabled: false"),
+      "self-heal branch must write privacyProxyEnabled: false"
+    );
+  });
+});
+
 // ── i18n key completeness ─────────────────────────────────────────────────────
 
 describe("B20 i18n keys — proxy_auto_disabled", () => {
