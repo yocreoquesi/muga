@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.13.7] - 2026-05-07
+
+Toolbar icon recovery release. Headline: the toolbar action icon now renders consistently in both Firefox and Chrome — the gray placeholder some users were seeing on `about:addons` and across tabs is fixed. The "creator referral preserved" green-check icon variant, which had been retired earlier the same day on a misdiagnosis, is also restored.
+
 ### Added
 
 - **`OBJECTIVES.md`** — public North Star metric (Firefox AMO weekly active users), 6-month targets, explicit non-goals, and the four decision principles used to triage every new proposal. Closes [#338](https://github.com/yocreoquesi/muga/issues/338). Linked from the README header.
@@ -18,6 +22,7 @@ All notable changes to MUGA will be documented in this file.
 
 ### Fixed
 
+- **Toolbar icon was rendering as a gray placeholder in Firefox and Chrome.** Two compounding bugs collapsed onto each other: (1) PR [#564](https://github.com/yocreoquesi/muga/issues/564) had restored the v1.13.0 icons by copying the `*-preserved.png` (creator-referral check-mark variant) bytes over `src/icons/{16,48,128}.png`, leaving both the default and the preserved variant pointing at the same image; (2) commit `3b06111` later retired the `setIcon` swap on the (then-correct) observation that the swap had no visible effect, deleting `src/icons/{16,48,128}-preserved.png` in the process. After the retirement the only icons in the bundle were the check-mark variants masquerading as the default — and Firefox was showing a gray placeholder for them in the toolbar and `about:addons`. The original A1 Navy+Gold default (white M on navy with amber stripe — `8b2a652` design) is restored from git, the check-mark variant is restored as `*-preserved.png` (now genuinely distinct from the default), and the `setIcon` swap that surfaces the "creator referral preserved" cue is reinstated. Files: [`src/icons/`](src/icons/), [`src/lib/toolbar-presenter.js`](src/lib/toolbar-presenter.js), [`src/background/service-worker.js`](src/background/service-worker.js), [`tests/unit/toolbar-presenter.test.mjs`](tests/unit/toolbar-presenter.test.mjs), [`tests/e2e/toolbar-visibility.spec.mjs`](tests/e2e/toolbar-visibility.spec.mjs).
 - **`tests/benchmark/runner.mjs` was loading `[]` for domain-rules**, silently exempting every domain-scoped strip from the benchmark and keeping stale "GAP — not in TRACKING_PARAMS today" notes around long after the rule had landed. The runner now loads `src/rules/domain-rules.json` once and feeds it into every `processUrl` call. Benchmark coverage went from a misleading 99.2% (with hidden gaps) to a real 100% (129/129).
 
 ## [1.13.6] - 2026-05-06
@@ -716,7 +721,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.6...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.7...HEAD
+[1.13.7]: https://github.com/yocreoquesi/muga/compare/v1.13.6...v1.13.7
 [1.13.6]: https://github.com/yocreoquesi/muga/compare/v1.13.5...v1.13.6
 [1.13.5]: https://github.com/yocreoquesi/muga/compare/v1.13.4...v1.13.5
 [1.13.4]: https://github.com/yocreoquesi/muga/compare/v1.13.3...v1.13.4

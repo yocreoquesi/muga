@@ -3,24 +3,20 @@
  *
  * Single point of design control over the browser-action toolbar surface
  * (tooltip via setTitle, badge text via setBadgeText, badge color via
- * setBadgeBackgroundColor). No code outside this module may call those
- * APIs directly.
+ * setBadgeBackgroundColor, icon via setIcon). No code outside this module
+ * may call those APIs directly.
  *
  * Subscribes to a ToolbarEventBus and translates semantic events into
  * the right per-tab surface state. State is cached in TabPresenterState
  * so the same surface call is not issued twice for the same value.
  *
- * Surface channels carrying the wedge cue:
- *   - Tooltip text (setTitle) — explicit "Creator referral preserved".
- *   - Badge color (setBadgeBackgroundColor) — green when preserved.
- *   - Popup-internal "Creator referral preserved" badge (rendered by
- *     popup.js, not by this module).
+ * This slice (#358) wires:
+ *   - The dynamic per-tab tooltip via setTitle.
+ *   - The existing badge text behavior, preserved unchanged (count of
+ *     params stripped on this tab; cleared on navigation; cleared on
+ *     tab close; fixed blue background — semantic colors arrive in #367).
  *
- * Icon variants were retired 2026-05-07: the on-disk preserved PNGs
- * were byte-identical to the default icons (silent no-op), so swapping
- * them produced no visible change while still emitting setIcon calls
- * that occasionally caused per-tab icon flicker on Firefox. The wedge
- * is now communicated through the three channels above.
+ * Subsequent slices add semantic badge color (#367) and icon variant (#368).
  */
 
 // Semantic badge colors (#367). The tab's most recent event determines which
@@ -46,6 +42,33 @@ export function badgeColorFor(s) {
   if (s.creatorReferralPreserved) return BADGE_COLOR_PRESERVED;
   if (s.foreignAffiliateDetected) return BADGE_COLOR_DETECTED;
   return BADGE_COLOR_CLEANED; // blue is the default whether or not anything cleaned
+}
+
+// Icon variants (#368). The default icon ships at icons/{16,48,128}.png;
+// the "creator referral preserved" variant ships at icons/{16,48,128}-preserved.png.
+// The variant adds a green check badge in the lower-right corner, signalling
+// that MUGA preserved a creator's affiliate tag during this navigation.
+// Master at tools/brand/mugavariant.png (1254×1254) — the three sizes are
+// downscaled from it via ImageMagick `-filter Lanczos`. Kept outside src/ so
+// the 1.1MB master does not ship in the .xpi/.zip bundle.
+export const ICON_DEFAULT = Object.freeze({
+  16:  "icons/16.png",
+  48:  "icons/48.png",
+  128: "icons/128.png",
+});
+export const ICON_PRESERVED = Object.freeze({
+  16:  "icons/16-preserved.png",
+  48:  "icons/48-preserved.png",
+  128: "icons/128-preserved.png",
+});
+
+/**
+ * Returns the icon path-set for a given tab state. Pure function.
+ * Exported for tests.
+ */
+export function iconForState(s) {
+  if (s.creatorReferralPreserved) return ICON_PRESERVED;
+  return ICON_DEFAULT;
 }
 
 /**
@@ -92,6 +115,15 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
       actionApi.setBadgeBackgroundColor?.({ tabId, color: nextColor });
     }
 
+    // Icon variant (#368). setIcon is more expensive than setTitle /
+    // setBadgeBackgroundColor (it ships image bytes), so only call it
+    // when the variant actually changes for this tab.
+    const prevIcon = iconForState(prev);
+    const nextIcon = iconForState(next);
+    if (prevIcon !== nextIcon) {
+      actionApi.setIcon?.({ tabId, path: nextIcon });
+    }
+
     // Badge text. Mirrors the pre-existing behavior: numeric count of
     // params removed on this tab; empty when zero.
     if (next.paramsRemoved !== prev.paramsRemoved) {
@@ -105,6 +137,7 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
     actionApi.setBadgeText?.({ tabId, text: "" });
     actionApi.setTitle?.({ tabId, title: t("tooltip_default") });
     actionApi.setBadgeBackgroundColor?.({ tabId, color: BADGE_COLOR_DEFAULT });
+    actionApi.setIcon?.({ tabId, path: ICON_DEFAULT });
   }
 
   bus.subscribe((event) => {

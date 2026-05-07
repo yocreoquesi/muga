@@ -126,12 +126,11 @@ test.describe("Toolbar visibility (#408)", () => {
     expect(surface.badgeText).toBe("3");
 
     // Now creatorReferralPreserved fires too → tooltip becomes the
-    // combined string. iconKind stays "default" (icon variants retired
-    // 2026-05-07; the wedge cue lives in tooltip + badge color now).
+    // combined string.
     await emitToolbarEvent(context, extensionId, { type: "creatorReferralPreserved", tabId });
     surface = await readActionSurface(context, extensionId, tabId);
     expect(surface.title).not.toBe(cleanedTitle);
-    expect(surface.iconKind).toBe("default");
+    expect(surface.iconKind).toBe("preserved");
 
     await hostPage.close();
   });
@@ -185,21 +184,13 @@ test.describe("Toolbar visibility (#408)", () => {
     await hostPage.close();
   });
 
-  test("icon variant retired: creatorReferralPreserved keeps iconKind=default", async ({ context, extensionId }) => {
-    // Pin the no-swap behaviour. Pre-2026-05-07 this test asserted the
-    // icon swapped between default and preserved variants on
-    // creatorReferralPreserved + navigationStarted; the on-disk
-    // preserved PNGs were byte-identical to the defaults, so the swap
-    // produced no visible change while still emitting setIcon calls
-    // that occasionally caused per-tab icon flicker on Firefox. The
-    // wedge cue now lives in tooltip + badge color + popup-internal
-    // badge.
+  test("icon variant: creatorReferralPreserved switches the icon, navigation reset returns to default", async ({ context, extensionId }) => {
     const { page: hostPage, tabId } = await openHostPageWithTabId(context, extensionId);
     await emitToolbarEvent(context, extensionId, { type: "tabClosed", tabId });
 
     await emitToolbarEvent(context, extensionId, { type: "creatorReferralPreserved", tabId });
     let surface = await readActionSurface(context, extensionId, tabId);
-    expect(surface.iconKind).toBe("default");
+    expect(surface.iconKind).toBe("preserved");
 
     await emitToolbarEvent(context, extensionId, { type: "navigationStarted", tabId });
     surface = await readActionSurface(context, extensionId, tabId);
@@ -221,18 +212,16 @@ test.describe("Toolbar visibility (#408)", () => {
     await emitToolbarEvent(context, extensionId, { type: "creatorReferralPreserved", tabId });
     const after2 = await readActionApiCounts(context, extensionId);
 
-    // setTitle / setBadgeBackgroundColor must NOT have been called
-    // again — the resolved values are the same. setIcon is no longer
-    // called by the presenter at all (icon variants retired 2026-05-07);
-    // the counter must stay at zero across both emits.
+    // setTitle / setBadgeBackgroundColor / setIcon must NOT have been
+    // called again — the resolved values are the same.
     // Sanity check: the FIRST emit must have produced calls — otherwise
     // the equality below passes vacuously when nothing fires at all.
     expect(after1.setTitle).toBeGreaterThan(0);
-    expect(after1.setIcon).toBe(0);
+    expect(after1.setIcon).toBeGreaterThan(0);
 
     expect(after2.setTitle).toBe(after1.setTitle);
     expect(after2.setBadgeBackgroundColor).toBe(after1.setBadgeBackgroundColor);
-    expect(after2.setIcon).toBe(0);
+    expect(after2.setIcon).toBe(after1.setIcon);
 
     await hostPage.close();
   });
