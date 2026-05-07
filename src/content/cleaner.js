@@ -528,6 +528,13 @@
       });
     } else {
       // B20 (#453): opaque affiliate network — cannot be unwrapped client-side.
+      // SYNC NOTE: the proxy-navigation logic below is inlined from
+      // src/lib/proxy-navigate.js (handleProxyNavigation). Content scripts
+      // are IIFE and cannot import ES modules, so the pure helper exists
+      // for unit testing while this block is the runtime copy. If you change
+      // the trigger conditions, timeout, or fallback shape here, mirror the
+      // change in proxy-navigate.js — drift is caught by the structural tests
+      // in tests/unit/service-worker-privacy-proxy.test.mjs.
       if (_isOpaqueNetworkHost(url.hostname)) {
         if (_contentPrefs?.privacyProxyEnabled) {
           // Proxy ON: attempt to resolve via UNWRAP_VIA_PROXY.

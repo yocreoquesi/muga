@@ -9,6 +9,13 @@
  * in Node.js without DOM or Chrome API globals. The cleaner.js wrapper injects
  * all real implementations as dependencies.
  *
+ * SYNC NOTE: src/content/cleaner.js inlines this same logic because content
+ * scripts are IIFE and cannot import ES modules. Drift between the two is
+ * caught at CI time by the structural tests in
+ * tests/unit/service-worker-privacy-proxy.test.mjs and the trigger-condition
+ * tests in tests/unit/proxy-navigate.test.mjs. If you change either, change
+ * both — and re-run those tests.
+ *
  * Return values
  * ─────────────
  *   "proxy-navigate"   — SW resolved successfully; caller navigated to destination
