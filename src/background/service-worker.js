@@ -1004,6 +1004,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── Privacy Proxy: force-refresh Worker build hash ───────────────────────────
+  // Triggered from the options page when the user enables Privacy Proxy.
+  // Bypasses the 24h staleness gate so the user gets fresh data immediately.
+  // Sender has already been validated at the top of this listener.
+  if (message.type === "REFRESH_BUILD_HASH_NOW") {
+    (async () => {
+      try {
+        const prefs = await getPrefsWithCache();
+        if (!prefs.privacyProxyEnabled) {
+          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          return;
+        }
+        const hasPermission = await new Promise((resolve) => {
+          chrome.permissions.contains(
+            { origins: ["https://unwrap.muga.app/*"] },
+            (result) => { void chrome.runtime.lastError; resolve(!!result); }
+          );
+        });
+        if (!hasPermission) {
+          try { sendResponse({ ok: false, reason: "permission" }); } catch { /* channel closed */ }
+          return;
+        }
+        // Force-fetch, ignoring the 24h gate
+        const resp = await fetch("https://unwrap.muga.app/healthz");
+        if (!resp.ok) {
+          try { sendResponse({ ok: false, reason: "network" }); } catch { /* channel closed */ }
+          return;
+        }
+        const data = await resp.json();
+        if (typeof data.commit_sha === "string" && data.commit_sha.length > 0) {
+          await new Promise((resolve) => {
+            chrome.storage.local.set(
+              { workerBuildHash: data.commit_sha, workerBuildHashFetchedAt: Date.now() },
+              () => { void chrome.runtime.lastError; resolve(); }
+            );
+          });
+        }
+        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] REFRESH_BUILD_HASH_NOW handler failed:", err);
+        try { sendResponse({ ok: false, reason: "network" }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
   // ── Privacy Proxy: unwrap opaque affiliate redirect via unwrap.muga.app ─────
   // Sender has already been validated at the top of this listener
   // (sender.id !== chrome.runtime.id returns false before reaching here).

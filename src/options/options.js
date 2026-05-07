@@ -2,25 +2,9 @@
  * MUGA: Options page
  */
 
-// Privacy Proxy i18n keys — B20 (#453). UI wired in Phase 3 of the same
-// sprint. Keys declared here so the i18n-orphan regression test does not
-// flag them while the options-page toggle section is being built.
-// Remove this comment block when the HTML data-i18n attributes are added.
-const _B20_PRIVACY_PROXY_I18N_KEYS = [
-  "privacy_proxy_enabled",
-  "mode_strict_local",
-  "mode_honor_creator",
-  "mode_privacy_proxy",
-  "mode_honor_plus_proxy",
-  "privacy_proxy_disclosure",
-  "enable_privacy_proxy_cta",
-  "privacy_proxy_hash_label",
-  "privacy_proxy_last_verified",
-  "privacy_proxy_verify_link",
-];
-void _B20_PRIVACY_PROXY_I18N_KEYS; // consumed later by the toggle section
-
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
+import { deriveModeLabel } from "../lib/mode-label.js";
+export { deriveModeLabel };
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
@@ -141,6 +125,12 @@ async function init() {
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
+  // Wire updateCurrentModeLabel to the honor-creator-mode toggle so the live
+  // mode display stays in sync with both toggles (PR-07 requirement).
+  {
+    const honorEl = document.getElementById("honor-creator-mode");
+    if (honorEl) honorEl.addEventListener("change", updateCurrentModeLabel);
+  }
   // Experimental shape-based param heuristic (#544). Default OFF. Plumbed
   // here as a plain bindToggle — cleaner.js reads the flag through the same
   // prefs object and routes the heuristic accordingly.
@@ -183,6 +173,9 @@ async function init() {
   // Remote rule updates section — feature-detect then wire (REQ-UI-5)
   await initRemoteRules();
 
+  // Privacy Proxy toggle section (#453, B20)
+  await initPrivacyProxy(prefs);
+
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
   if (rateLink) {
@@ -196,6 +189,11 @@ async function init() {
   // async storage reads (e.g. clicking the dev-mode checkbox before the
   // stored value has been applied to the DOM).
   document.body.dataset.mugaReady = "1";
+
+  // Scroll to the section indicated by the session-storage anchor, if any.
+  // Called AFTER all prefs and i18n are applied so the section is fully
+  // rendered when the scroll fires.
+  await readOptionsAnchor();
 }
 
 /** Binds a checkbox to a sync storage preference key. */
@@ -710,6 +708,7 @@ function initExportImport() {
       paramBreakdown: prefs.paramBreakdown,
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
+      privacyProxyEnabled: prefs.privacyProxyEnabled,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -748,7 +747,7 @@ function initExportImport() {
         throw new Error("invalid");
       }
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "privacyProxyEnabled"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -1317,6 +1316,159 @@ async function initRemoteRules() {
       }
     }
   });
+}
+
+// ── Privacy Proxy section (#453, B20) ──────────────────────────────────────
+
+/**
+ * Reads both checkbox states (NOT storage — synchronous update per PR-07) and
+ * updates the #current-mode-label span with the i18n-translated mode name.
+ */
+function updateCurrentModeLabel() {
+  const honorEl = document.getElementById("honor-creator-mode");
+  const proxyEl = document.getElementById("privacyProxyEnabled");
+  const labelEl = document.getElementById("current-mode-label");
+  if (!labelEl) return;
+  const honor = honorEl ? honorEl.checked : false;
+  const proxy = proxyEl ? proxyEl.checked : false;
+  const key = deriveModeLabel(honor, proxy);
+  labelEl.textContent = t(key, _currentLang);
+}
+
+/**
+ * Requests the optional host permission for the proxy origin.
+ * CRITICAL: must be called as the FIRST await in the enable path (Firefox MV2
+ * gesture-frame requirement — mirrors the remote-rules pattern).
+ *
+ * @returns {Promise<boolean>}
+ */
+async function requestProxyPermission() {
+  try {
+    return await chrome.permissions.request({
+      origins: ["https://unwrap.muga.app/*"],
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Shows the permission-denied error in the privacy-proxy section.
+ * Reuses the same error-display pattern as initRemoteRules on denial.
+ */
+function showProxyPermissionDeniedToast() {
+  showToast(t("optionsRemoteRulesPermDenied", _currentLang));
+}
+
+/**
+ * Formats a relative time string from a UTC millisecond timestamp.
+ * Simple helper: covers "just now", minutes, hours, yesterday, and older.
+ *
+ * @param {number|null} fetchedAt - Millisecond timestamp or null
+ * @returns {string} Human-readable relative time
+ */
+function formatRelativeTime(fetchedAt) {
+  if (!fetchedAt) return "—";
+  const diffMs = Date.now() - fetchedAt;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 2) return t("time_just_now", _currentLang) || "just now";
+  if (diffMin < 60) return (t("time_minutes_ago", _currentLang) || "%s minutes ago").replace("%s", diffMin);
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return (t("time_hours_ago", _currentLang) || "%s hours ago").replace("%s", diffHours);
+  if (diffHours < 48) return t("time_yesterday", _currentLang) || "yesterday";
+  const diffDays = Math.floor(diffHours / 24);
+  return (t("time_days_ago", _currentLang) || "%s days ago").replace("%s", diffDays);
+}
+
+/**
+ * Reads workerBuildHash and workerBuildHashFetchedAt from chrome.storage.local
+ * and populates the build-hash display cluster (hash, last-verified, verify link).
+ * Updates via textContent only — no innerHTML.
+ */
+function renderWorkerBuildHashState() {
+  chrome.storage.local.get(
+    { workerBuildHash: null, workerBuildHashFetchedAt: null },
+    (data) => {
+      if (chrome.runtime.lastError) return;
+      const hashEl = document.getElementById("worker-build-hash");
+      const timeEl = document.getElementById("worker-build-hash-time");
+      if (hashEl) {
+        hashEl.textContent = data.workerBuildHash
+          ? String(data.workerBuildHash).slice(0, 7)
+          : "—";
+      }
+      if (timeEl) {
+        timeEl.textContent = formatRelativeTime(data.workerBuildHashFetchedAt);
+      }
+    }
+  );
+}
+
+/**
+ * Initialises the Privacy Proxy toggle section (#453, B20).
+ * Mirrors the initRemoteRules pattern.
+ *
+ * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
+ */
+async function initPrivacyProxy(prefs) {
+  const checkbox = document.getElementById("privacyProxyEnabled");
+  if (!checkbox) return;
+  checkbox.checked = !!prefs.privacyProxyEnabled;
+  // Set aria-label from the CTA key so screen readers announce the action
+  checkbox.setAttribute("aria-label", t("enable_privacy_proxy_cta", _currentLang));
+
+  // Initial render of the build-hash + last-verified cluster
+  renderWorkerBuildHashState();
+  // Initial current-mode label
+  updateCurrentModeLabel();
+
+  checkbox.addEventListener("change", async () => {
+    if (checkbox.checked) {
+      // CRITICAL: chrome.permissions.request MUST be the FIRST await in the
+      // enable branch (Firefox MV2 gesture-frame requirement — REQ-OPT-4).
+      const granted = await requestProxyPermission();
+      if (!granted) {
+        checkbox.checked = false;
+        showProxyPermissionDeniedToast();
+        updateCurrentModeLabel();
+        return;
+      }
+      try { await setPrefs({ privacyProxyEnabled: true }); }
+      catch (err) { console.error("[MUGA] save privacyProxyEnabled:", err); }
+      // Trigger build-hash fetch — SW will keep refreshing on its own schedule
+      try { void chrome.runtime.sendMessage({ type: "REFRESH_BUILD_HASH_NOW" }); }
+      catch { /* best-effort — SW may not be awake yet */ }
+      renderWorkerBuildHashState();
+    } else {
+      try { await setPrefs({ privacyProxyEnabled: false }); }
+      catch (err) { console.error("[MUGA] save privacyProxyEnabled:", err); }
+    }
+    updateCurrentModeLabel();
+  });
+}
+
+/**
+ * Reads the optionsAnchor key from chrome.storage.session on boot and scrolls
+ * the matching element into view. Single-shot: clears the key after reading
+ * so a page refresh does not re-jump.
+ */
+async function readOptionsAnchor() {
+  if (typeof chrome.storage?.session === "undefined") return; // MV2 fallback: no-op
+  try {
+    const data = await chrome.storage.session.get({ optionsAnchor: null });
+    if (data.optionsAnchor) {
+      // Defer scroll until after DOM is ready and i18n has populated text
+      // (so target element exists at full rendered height).
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(data.optionsAnchor);
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      // Single-shot — clear so refresh does not re-jump.
+      void chrome.storage.session.remove("optionsAnchor");
+    }
+  } catch {
+    // best-effort; session storage unavailability is non-fatal
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
