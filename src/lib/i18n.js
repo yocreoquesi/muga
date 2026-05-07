@@ -546,6 +546,14 @@ export const TRANSLATIONS = {
     pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
     de: 'FIXME: translate' /* FIXME: needs native speaker review */,
   },
+  // B20 (#453): shown as a toast when the Worker returns a permission error
+  // and the feature is auto-disabled after revocation.
+  proxy_auto_disabled: {
+    en: 'Privacy Proxy auto-disabled: permission was revoked.',
+    es: 'Proxy de Privacidad desactivado automáticamente: el permiso fue revocado.',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
 
 };
 

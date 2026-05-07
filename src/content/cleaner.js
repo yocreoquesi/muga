@@ -246,6 +246,16 @@
       );
       return;
     }
+
+    // B20 (#453): show Privacy Proxy CTA toast.
+    // Sent by the SW when:
+    //   (a) variant="auto_disabled" — feature was just auto-disabled after permission revocation, OR
+    //   (b) variant="enable_cta"   — user is on an opaque-network URL and feature is off.
+    if (message.type === "SHOW_PROXY_CTA") {
+      showProxyCta(message.variant, message.lang, message.text);
+      return;
+    }
+
     if (message.type !== "COPY_TO_CLIPBOARD") return;
     copyToClipboard(message.text);
   });
@@ -373,6 +383,35 @@
     }
   });
 
+  // B20 (#453): Opaque affiliate networks — mirrors src/lib/opaque-networks.js.
+  // Kept inline because content scripts cannot import ES modules.
+  // Update in sync with opaque-networks.js whenever a new network is added.
+  const _OPAQUE_NETWORK_HOSTS = Object.freeze([
+    "s.click.aliexpress.com",
+    "anrdoezrs.net",
+    "dpbolvw.net",
+    "jdoqocy.com",
+    "kqzyfj.com",
+    "tkqlhce.com",
+    "emjcd.com",
+    "qksrv.net",
+    "cj.dotomi.com",
+    "ad.admitad.com",
+  ]);
+
+  /**
+   * Returns true when the given hostname is a known opaque affiliate network
+   * that cannot be unwrapped client-side.
+   *
+   * @param {string} hostname - URL.hostname (already lower-cased by the URL parser)
+   * @returns {boolean}
+   */
+  function _isOpaqueNetworkHost(hostname) {
+    if (!hostname) return false;
+    const h = hostname.replace(/^www\./, "");
+    return _OPAQUE_NETWORK_HOSTS.includes(h) || _OPAQUE_NETWORK_HOSTS.includes(hostname);
+  }
+
   /**
    * Checks if a hostname matches any known affiliate store domain.
    * Used to decide whether a click needs interception for affiliate logic.
@@ -488,6 +527,12 @@
         }
       });
     } else {
+      // B20 (#453): If the destination is an opaque affiliate network host that
+      // cannot be unwrapped client-side, and Privacy Proxy is disabled, surface
+      // the CTA toast. Navigation proceeds normally — the toast is non-blocking.
+      if (!_contentPrefs?.privacyProxyEnabled && _isOpaqueNetworkHost(url.hostname)) {
+        showProxyCta("enable_cta", _contentPrefs?.language || "en");
+      }
       navigate(cleanUrl, opensNewTab);
     }
   }, true);
@@ -506,6 +551,115 @@
     } else {
       window.location.href = url;
     }
+  }
+
+  // B20 (#453): Proxy CTA toast strings — kept inline because content scripts
+  // cannot import ES modules. EN/ES required; PT/DE: FIXME stubs.
+  const PROXY_CTA_STRINGS = {
+    en: {
+      enable_privacy_proxy_cta: "Enable Privacy Proxy",
+      proxy_auto_disabled: "Privacy Proxy auto-disabled: permission was revoked.",
+    },
+    es: {
+      enable_privacy_proxy_cta: "Activar Proxy de Privacidad",
+      proxy_auto_disabled: "Proxy de Privacidad desactivado automáticamente: el permiso fue revocado.",
+    },
+    pt: {
+      enable_privacy_proxy_cta: "FIXME: translate",
+      proxy_auto_disabled: "FIXME: translate",
+    },
+    de: {
+      enable_privacy_proxy_cta: "FIXME: translate",
+      proxy_auto_disabled: "FIXME: translate",
+    },
+  };
+  const PROXY_SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1 };
+
+  /**
+   * Shows a non-intrusive toast for Privacy Proxy CTA.
+   *
+   * Variants:
+   *   "auto_disabled" — feature was auto-disabled after permission revocation.
+   *                     Shows an informational message only.
+   *   "enable_cta"    — user is on an opaque-network URL with feature off.
+   *                     Shows an "Enable Privacy Proxy" button.
+   *
+   * @param {string} [variant="enable_cta"] - Toast variant
+   * @param {string} [lang="en"]            - UI language
+   * @param {string} [resolvedText]         - Pre-resolved text from SW (optional)
+   */
+  function showProxyCta(variant, lang, resolvedText) {
+    const effectiveLang = (lang && lang in PROXY_SUPPORTED_LANGS) ? lang : "en";
+    const ps = PROXY_CTA_STRINGS[effectiveLang];
+
+    if (_toastTimer) clearTimeout(_toastTimer);
+    document.getElementById("muga-proxy-cta")?.remove();
+
+    const notice = document.createElement("div");
+    notice.id = "muga-proxy-cta";
+    notice.setAttribute("role", "alert");
+    notice.setAttribute("aria-live", "assertive");
+    notice.style.cssText = [
+      "position:fixed", "bottom:20px", "right:20px",
+      "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
+      "padding:12px 16px",
+      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+      "font-size:13px", "line-height:1.5", "max-width:300px",
+      "z-index:2147483647", "box-shadow:0 4px 20px rgba(0,0,0,0.3)",
+      "border:0.5px solid rgba(255,255,255,0.1)",
+    ].join(";");
+
+    const msgDiv = document.createElement("div");
+    msgDiv.style.cssText = "margin-bottom:10px;font-size:12px;color:#ddd";
+
+    if (variant === "auto_disabled") {
+      // Prefer SW-resolved text (built with t()); fall back to inline strings.
+      msgDiv.textContent = (typeof resolvedText === "string" && resolvedText.length > 0)
+        ? resolvedText
+        : ps.proxy_auto_disabled;
+      notice.appendChild(msgDiv);
+    } else {
+      // "enable_cta" variant — show a button to open the Options page
+      msgDiv.textContent = ps.enable_privacy_proxy_cta;
+
+      const ctaBtn = document.createElement("button");
+      ctaBtn.style.cssText = "display:block;width:100%;margin-top:8px;padding:6px 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);color:#f0f0f0;font-size:11px;cursor:pointer";
+      ctaBtn.textContent = ps.enable_privacy_proxy_cta;
+      ctaBtn.setAttribute("aria-label", ps.enable_privacy_proxy_cta);
+
+      ctaBtn.addEventListener("click", () => {
+        notice.remove();
+        // MV3 path: write anchor then open options page
+        // MV2 / Firefox: chrome.storage.session unavailable — skip anchor, open options directly
+        if (typeof chrome.storage.session !== "undefined") {
+          chrome.storage.session.set({ optionsAnchor: "privacy-proxy" }).catch(() => { /* fire-and-forget */ });
+        }
+        chrome.runtime.openOptionsPage();
+      });
+
+      notice.appendChild(msgDiv);
+      notice.appendChild(ctaBtn);
+    }
+
+    // Dismiss button
+    const dismissBtn = document.createElement("button");
+    dismissBtn.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
+    dismissBtn.textContent = s.toast_dismiss;
+    dismissBtn.setAttribute("aria-label", s.toast_dismiss);
+    dismissBtn.addEventListener("click", () => {
+      if (_toastTimer) clearTimeout(_toastTimer);
+      _toastTimer = null;
+      notice.remove();
+    });
+    notice.appendChild(dismissBtn);
+
+    document.body.appendChild(notice);
+
+    const duration = 15000;
+    _toastTimer = setTimeout(() => {
+      _toastTimer = null;
+      notice.remove();
+    }, duration);
   }
 
   /**

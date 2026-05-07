@@ -19,6 +19,8 @@ import {
   REMOTE_RULE_ID,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
+import { fetchUnwrap } from "../lib/proxy-client.js";
+import { OPAQUE_NETWORKS } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
 import { createToolbarPresenter, iconForState } from "../lib/toolbar-presenter.js";
@@ -1002,6 +1004,81 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── Privacy Proxy: unwrap opaque affiliate redirect via unwrap.muga.app ─────
+  // Sender has already been validated at the top of this listener
+  // (sender.id !== chrome.runtime.id returns false before reaching here).
+  if (message.type === "UNWRAP_VIA_PROXY") {
+    (async () => {
+      try {
+        const prefs = await getPrefsWithCache();
+        if (!prefs.privacyProxyEnabled) {
+          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          return;
+        }
+
+        // Validate input URL: scheme must be http/https, host must be in OPAQUE_NETWORKS
+        const rawUrl = message.url;
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(rawUrl);
+        } catch {
+          try { sendResponse({ ok: false, reason: "invalid_url" }); } catch { /* channel closed */ }
+          return;
+        }
+        if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+          try { sendResponse({ ok: false, reason: "invalid_url" }); } catch { /* channel closed */ }
+          return;
+        }
+        const hostname = parsedUrl.hostname;
+        if (!OPAQUE_NETWORKS.includes(hostname)) {
+          try { sendResponse({ ok: false, reason: "invalid_url" }); } catch { /* channel closed */ }
+          return;
+        }
+
+        // Delegate to proxy-client — it handles signature verification internally.
+        // proxy-client.js already imports PROXY_TRUSTED_PUBLIC_KEYS, so we do not
+        // need to pass it through here.
+        const result = await fetchUnwrap(rawUrl);
+
+        // Task 3.3: Permission-revocation self-heal.
+        // If the Worker returns permission (origin not allowlisted / revoked),
+        // auto-disable the feature so subsequent clicks fall back silently.
+        if (!result.ok && result.reason === "permission") {
+          try {
+            await chrome.storage.sync.set({ privacyProxyEnabled: false });
+            _invalidatePrefsCache();
+          } catch (err) {
+            console.warn("[MUGA] UNWRAP_VIA_PROXY: failed to auto-disable proxy pref:", err);
+          }
+          // Surface a notice to the active tab via content-script toast
+          try {
+            const [activeTab] = await new Promise(resolve =>
+              chrome.tabs.query({ active: true, currentWindow: true }, tabs => resolve(tabs || []))
+            );
+            if (activeTab?.id) {
+              const lang = prefs.language || "en";
+              // The SW resolves the translated string so the content script
+              // IIFE (which has no ES module imports) receives ready-to-use text.
+              const autoDisabledText = t("proxy_auto_disabled", lang);
+              chrome.tabs.sendMessage(activeTab.id, {
+                type: "SHOW_PROXY_CTA",
+                variant: "auto_disabled",
+                lang,
+                text: autoDisabledText,
+              }, () => void chrome.runtime.lastError);
+            }
+          } catch { /* best-effort toast — not fatal */ }
+        }
+
+        try { sendResponse(result); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] UNWRAP_VIA_PROXY handler failed:", err);
+        try { sendResponse({ ok: false, reason: "network" }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, referrer = "" } = {}) {
@@ -1161,6 +1238,68 @@ function _remoteRulesDeps() {
   };
 }
 
+// --- Build-hash refresh (Task 3.2) ---
+// Fetches the Cloudflare Worker build hash from /healthz at most once per 24h.
+// Called on onInstalled and onStartup — NOT on every SW wake to keep the path cheap.
+const _BUILD_HASH_INTERVAL_MS = 86400000; // 24 hours
+
+/**
+ * Fetches the build hash from https://unwrap.muga.app/healthz when:
+ *   (a) privacyProxyEnabled is true, AND
+ *   (b) the extension has the required host permission, AND
+ *   (c) at least 24h have passed since the last successful fetch (or no prior fetch).
+ *
+ * On success: writes { workerBuildHash, workerBuildHashFetchedAt } to chrome.storage.local.
+ * On error: keeps the stale cache and logs a warning. Never throws.
+ */
+async function refreshBuildHashIfStale() {
+  try {
+    const stored = await new Promise((resolve) => {
+      chrome.storage.local.get(
+        { workerBuildHash: null, workerBuildHashFetchedAt: null },
+        (r) => { if (chrome.runtime.lastError) resolve({}); else resolve(r); }
+      );
+    });
+    const fetchedAt = stored.workerBuildHashFetchedAt;
+    const isStale = !fetchedAt || (Date.now() - fetchedAt) >= _BUILD_HASH_INTERVAL_MS;
+    if (!isStale) return;
+
+    // Gate 1: feature must be enabled
+    const prefs = await getPrefsWithCache();
+    if (!prefs.privacyProxyEnabled) return;
+
+    // Gate 2: host permission must still be granted
+    const hasPermission = await new Promise((resolve) => {
+      if (typeof chrome.permissions?.contains !== "function") { resolve(false); return; }
+      chrome.permissions.contains({ origins: ["https://unwrap.muga.app/*"] }, (result) => {
+        if (chrome.runtime.lastError) resolve(false);
+        else resolve(!!result);
+      });
+    });
+    if (!hasPermission) return;
+
+    const resp = await fetch("https://unwrap.muga.app/healthz", {
+      credentials: "omit",
+      cache: "no-store",
+    });
+    if (!resp.ok) {
+      console.warn("[MUGA] build-hash fetch failed: HTTP", resp.status);
+      return;
+    }
+    const data = await resp.json();
+    if (typeof data.commit_sha === "string" && data.commit_sha.length > 0) {
+      await new Promise((resolve) => {
+        chrome.storage.local.set(
+          { workerBuildHash: data.commit_sha, workerBuildHashFetchedAt: Date.now() },
+          () => { void chrome.runtime.lastError; resolve(); }
+        );
+      });
+    }
+  } catch (err) {
+    console.warn("[MUGA] build-hash fetch failed:", err);
+  }
+}
+
 // --- On startup: apply DNR state + opportunistic remote-rules fetch ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
@@ -1169,6 +1308,8 @@ chrome.runtime.onStartup.addListener(async () => {
   // is older than REMOTE_REFRESH_INTERVAL_MS or absent. Also short-circuits
   // immediately if remoteRulesEnabled is false.
   maybeFetchRemoteRules(_remoteRulesDeps());
+  // B20: refresh Worker build hash at most once per 24h
+  refreshBuildHashIfStale();
 });
 
 // --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
@@ -1208,6 +1349,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Opportunistic fetch: fires on install/update if user had enabled remote rules
   // before the update and the stored payload is stale (or absent).
   maybeFetchRemoteRules(_remoteRulesDeps());
+  // B20: refresh Worker build hash at most once per 24h
+  refreshBuildHashIfStale();
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);
