@@ -48,4 +48,4 @@ jobs:
           name: muga-benchmark-${{ github.ref_name }}
           path: tests/benchmark/reports/*
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 14
