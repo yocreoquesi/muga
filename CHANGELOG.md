@@ -4,6 +4,33 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-05-08
+
+Privacy Proxy release. Headline: MUGA can now resolve opaque affiliate wrappers — links where the destination URL is hidden inside a redirector your browser would normally have to load — through `unwrap.muga.app`, an open-source Cloudflare Worker that follows the redirect chain server-side and returns the resolved destination signed with Ed25519. The opaque host never loads on your machine. Fully opt-in via a new "Privacy Proxy" toggle in Settings, off by default; the existing Strict Local and Honor Creator modes are unchanged. Closes [#453](https://github.com/yocreoquesi/muga/issues/453).
+
+### Added
+
+- **Privacy Proxy mode for opaque affiliate networks** ([#453](https://github.com/yocreoquesi/muga/issues/453)). When enabled and a click hits an opaque wrapper (AliExpress `s.click.aliexpress.com`, CJ Affiliate's eight redirector domains, Admitad `ad.admitad.com`), MUGA's content script intercepts the navigation, posts the URL to the `unwrap.muga.app` Worker, verifies the Ed25519 signature on the response locally against a hardcoded public key, and navigates the tab directly to the resolved destination. The opaque host never loads. On signature failure, network failure, or any error path, the original click proceeds unmodified — Privacy Proxy is a privacy enhancement, never a navigation gate. Files: [`src/lib/proxy-client.js`](src/lib/proxy-client.js), [`src/lib/proxy-navigate.js`](src/lib/proxy-navigate.js), [`src/lib/opaque-networks.js`](src/lib/opaque-networks.js), [`src/content/cleaner.js`](src/content/cleaner.js), [`src/background/service-worker.js`](src/background/service-worker.js).
+- **Three-mode matrix UI in Settings.** A new "Privacy Proxy" section in the options page exposes two toggles (`Honor Creator`, `Privacy Proxy`) that combine into three modes: **Strict Local** (both off — default; behavior unchanged from v1.13.x), **Honor Creator** (creator referral preserved on direct affiliate links; behavior unchanged from v1.13.x), and **Honor + Proxy** (Honor Creator behavior plus opaque-wrapper resolution via the Worker). The active mode is shown above the toggles in plain English so users can confirm what they're enabling. The pure `deriveModeLabel` helper ([`src/lib/mode-label.js`](src/lib/mode-label.js)) is unit-tested independently of the UI. Files: [`src/options/options.html`](src/options/options.html), [`src/options/options.js`](src/options/options.js).
+- **Worker build hash disclosure with 24h auto-refresh.** The options page surfaces the `unwrap.muga.app` Worker's deployed commit SHA so users can verify the running code matches the audited source. The hash is fetched once per browser-session and refreshed every 24 hours via `chrome.alarms`; manual refresh is available from the section. Files: [`src/lib/relative-time.js`](src/lib/relative-time.js), [`src/options/options.js`](src/options/options.js).
+- **Self-heal on permission revocation.** If the user revokes the `unwrap.muga.app` host permission outside the extension (browser settings page), the service worker detects the missing permission on the next proxy request, automatically disables `privacyProxyEnabled` in storage, and surfaces a `proxy_auto_disabled` toast with a one-click CTA to re-enable. Avoids the silent-failure mode where Privacy Proxy is on in storage but every request 403s. Files: [`src/background/service-worker.js`](src/background/service-worker.js).
+- **Sixteen new i18n keys** for the Privacy Proxy section (English + Spanish locked, Portuguese and German added as `FIXME` stubs for community translation). Files: [`src/lib/i18n.js`](src/lib/i18n.js).
+- **`PROXY_TRUSTED_PUBLIC_KEYS` registry.** The Ed25519 public key used to verify Worker responses lives alongside the existing remote-rules key registry, so key rotation follows the same audited path. Files: [`src/lib/remote-rules-keys.js`](src/lib/remote-rules-keys.js).
+
+### Changed
+
+- **`browser_specific_settings.gecko.strict_min_version` raised from `128.0` to `129.0`** in the Firefox manifest. Required because `crypto.subtle.verify({ name: "Ed25519" }, ...)` — the primitive that verifies Worker response signatures locally — only ships in Firefox 129+. Users on Firefox 128 will not receive this update through AMO; AMO weekly active stats will quantify the breakage post-release. The alternative (feature-gating Privacy Proxy on FF 128 while still shipping the rest of v1.14) was rejected during the SDD design phase: Privacy Proxy is the headline of this release and a partial install would surface a permanently-disabled toggle on FF 128 with no clear remediation. Files: [`src/manifest.v2.json`](src/manifest.v2.json).
+- **Optional `unwrap.muga.app` host permission added** to both manifests. Granted only when the user enables Privacy Proxy in Settings; never requested at install time. Mirrors the pattern used by the existing optional `rules.muga.app` permission for Remote rule updates. Files: [`src/manifest.json`](src/manifest.json), [`src/manifest.v2.json`](src/manifest.v2.json).
+- **`privacyProxyEnabled` pref added to the export/import bool key set.** Settings export/import preserves the toggle state across reinstalls. Files: [`src/lib/storage.js`](src/lib/storage.js), [`src/options/options.js`](src/options/options.js).
+
+### Tests
+
+- **Six new unit specs and one e2e spec, net +106 tests vs v1.13.7.** Coverage hits the canonical-JSON signature-verification path ([`tests/unit/proxy-client.test.mjs`](tests/unit/proxy-client.test.mjs)), the content-script proxy-navigation flow ([`tests/unit/proxy-navigate.test.mjs`](tests/unit/proxy-navigate.test.mjs)), the opaque-networks predicate including the IIFE-replica sync test that asserts the content-script copy can never drift from the source-of-truth list ([`tests/unit/opaque-networks.test.mjs`](tests/unit/opaque-networks.test.mjs), [`tests/unit/opaque-networks-content-sync.test.mjs`](tests/unit/opaque-networks-content-sync.test.mjs)), the mode-label derivation ([`tests/unit/derive-mode-label.test.mjs`](tests/unit/derive-mode-label.test.mjs)), the relative-time helper used by the Worker-build-hash UI ([`tests/unit/relative-time.test.mjs`](tests/unit/relative-time.test.mjs)), and the service-worker handlers for `UNWRAP_VIA_PROXY` and `REFRESH_BUILD_HASH_NOW` including the permission pre-flight and self-heal paths ([`tests/unit/service-worker-privacy-proxy.test.mjs`](tests/unit/service-worker-privacy-proxy.test.mjs)). The e2e spec ([`tests/e2e/privacy-proxy.spec.mjs`](tests/e2e/privacy-proxy.spec.mjs)) covers four end-to-end paths in a real Firefox+Chrome environment; five SW-fetch interception scenarios are documented `test.skip` pending a `__TEST__` sentinel pattern that lets Playwright stub the SW fetch (followup).
+
+### Operational notes
+
+- **Worker abuse mitigations on `unwrap.muga.app` (wave 1)** shipped pre-release in `muga-unwrap` v0.2.1 (commit `eca0d60`): origin allowlist for `chrome-extension://*` and `moz-extension://*`, code-level per-IP rate limit, plus Cloudflare dashboard configuration (per-IP rate limit rule on URI path `/unwrap` and Bot Fight Mode toggled on for the zone). Wave 2 (required `X-MUGA-Client` header gate) lands after this release reaches 100% rollout on AMO + CWS, tracked in [#602](https://github.com/yocreoquesi/muga/issues/602).
+
 ## [1.13.7] - 2026-05-07
 
 Toolbar icon recovery release. Headline: the toolbar action icon now renders consistently in both Firefox and Chrome — the gray placeholder some users were seeing on `about:addons` and across tabs is fixed. The "creator referral preserved" green-check icon variant, which had been retired earlier the same day on a misdiagnosis, is also restored.
@@ -721,7 +748,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.13.7...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/yocreoquesi/muga/compare/v1.13.7...v1.14.0
 [1.13.7]: https://github.com/yocreoquesi/muga/compare/v1.13.6...v1.13.7
 [1.13.6]: https://github.com/yocreoquesi/muga/compare/v1.13.5...v1.13.6
 [1.13.5]: https://github.com/yocreoquesi/muga/compare/v1.13.4...v1.13.5
