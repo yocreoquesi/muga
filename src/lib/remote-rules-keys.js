@@ -26,3 +26,19 @@ export const TRUSTED_PUBLIC_KEYS = Object.freeze([
   // Fingerprint SHA-256 DER: 3w+KJI71uQeCy9tvmyl272ThQZSp+OHwSGdyOCx3Dks=
   "20Kz2HkuE2/GxXJX6DDIUzxQ2XQRJ7aUAG1J1qJNfg4=",
 ]);
+
+// Trusted public keys for the Privacy Proxy Worker (unwrap.muga.app).
+// Separate from the remote-rules key bundle: the worker has its own
+// signing identity even when it currently shares the same key material —
+// keeping the export separate means a future independent rotation
+// touches one file, not two.
+//
+// Rotation follows the same 3-release cycle documented above.
+//
+// Test-only key override: tests define their own TEST_PUBLIC_KEY
+// in-process and pass it directly to verifyUnwrapResponse.
+export const PROXY_TRUSTED_PUBLIC_KEYS = Object.freeze([
+  // "worker-2026-b" — production Cloudflare Worker key. Mirrored from
+  // caps-spec/worker-pubkey.txt and muga-unwrap/wrangler.toml SIGNING_PUBLIC_KEY.
+  "ya3eMwaMswn4Y2hO+7rnKhthc3qkPEeAQQcL8Y8+TCk=",
+]);

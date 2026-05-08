@@ -14,7 +14,8 @@
   ],
 
   "optional_host_permissions": [
-    "https://rules.muga.app/*"
+    "https://rules.muga.app/*",
+    "https://unwrap.muga.app/*"
   ],
 
   "host_permissions": [

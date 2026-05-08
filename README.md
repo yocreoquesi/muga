@@ -120,6 +120,19 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Export / Import settings as JSON
 - Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English)
 
+### Mode model
+
+MUGA combines two independent toggles — **Honor Creator Mode** and **Privacy Proxy** — into four named operating modes:
+
+| Mode | Honor Creator | Privacy Proxy | What it does |
+|------|:---:|:---:|---|
+| **Strict Local** | Off | Off | Strips all tracking params locally. No creator-referral preservation. No network requests. Default. |
+| **Honor Creator** | On | Off | Strips tracking, but preserves creator referral chains on trusted redirect networks so independent creators get credit for the recommendation. |
+| **Privacy Proxy** | Off | On | Strips tracking locally; sends opaque affiliate redirect URLs to `unwrap.muga.app` (a Cloudflare Worker operated by MUGA) to retrieve the final destination. Every response is verified with an Ed25519 signature before navigation. Requires an optional host permission. |
+| **Honor + Proxy** | On | On | Full coverage: creator-referral preservation plus proxy-assisted resolution of opaque redirects. Both features active simultaneously. |
+
+Privacy Proxy can be toggled on and off at any time from Settings. Disabling it revokes no permissions automatically — you can remove the host permission from your browser's extension manager if desired.
+
 ---
 
 ## Affiliate model: the honest version

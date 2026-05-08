@@ -483,6 +483,113 @@ export const TRANSLATIONS = {
   migration_accept:   { en: "Enable",                                                                          es: "Activar",                                                                          pt: "Ativar",                                                                          de: "Aktivieren" },
   migration_decline:  { en: "No thanks",                                                                       es: "No, gracias",                                                                       pt: "Não, obrigado",                                                                     de: "Nein, danke" },
   migration_counter:  { en: "{n} of {total}",                                                                  es: "{n} de {total}",                                                                  pt: "{n} de {total}",                                                                    de: "{n} von {total}" },  ob_cta_note:              { en: "Change any setting anytime.",                                            es: "Cambia cualquier ajuste cuando quieras.",                                  pt: "Altere qualquer configuração quando quiser.",                              de: "Jede Einstellung jederzeit änderbar." },
+  // ── Privacy Proxy (#453, B20) ─────────────────────────────────────────────
+  // UI copy for the Privacy Proxy toggle section in Options (Phase 3).
+  // EN/ES: locked copy per product spec. PT/DE: FIXME stubs pending native-speaker review.
+  privacy_proxy_enabled: {
+    en: 'Enable Privacy Proxy',
+    es: 'Activar Proxy de Privacidad',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  mode_strict_local: {
+    en: 'Strict Local',
+    es: 'Estricto Local',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  mode_honor_creator: {
+    en: 'Honor Creator',
+    es: 'Respetar Creador',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  mode_privacy_proxy: {
+    en: 'Privacy Proxy',
+    es: 'Proxy de Privacidad',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  mode_honor_plus_proxy: {
+    en: 'Honor + Proxy',
+    es: 'Respetar + Proxy',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  privacy_proxy_disclosure: {
+    en: 'When Privacy Proxy is enabled, the full URL of unresolvable affiliate links is sent to unwrap.muga.app — a Cloudflare Worker operated by MUGA — to retrieve the final destination. Every response is verified with an Ed25519 digital signature before your browser navigates anywhere; a tampered response is rejected entirely. No browsing history is stored by the Worker. You can disable this feature at any time by toggling this switch off.',
+    es: 'Cuando el Proxy de Privacidad está activado, la URL completa de los enlaces de afiliado irreconocibles se envía a unwrap.muga.app — un Worker de Cloudflare operado por MUGA — para obtener el destino final. Cada respuesta se verifica con una firma digital Ed25519 antes de que el navegador abra cualquier página; una respuesta alterada se rechaza por completo. El Worker no almacena historial de navegación. Puedes desactivar esta función en cualquier momento usando este interruptor.',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  enable_privacy_proxy_cta: {
+    en: 'Enable Privacy Proxy',
+    es: 'Activar Proxy de Privacidad',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  privacy_proxy_hash_label: {
+    en: 'Worker build hash',
+    es: 'Hash de build del Worker',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  privacy_proxy_last_verified: {
+    en: 'Last verified',
+    es: 'Última verificación',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  privacy_proxy_verify_link: {
+    en: 'Verify',
+    es: 'Verificar',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  // B20 (#453): shown as a toast when the Worker returns a permission error
+  // and the feature is auto-disabled after revocation.
+  proxy_auto_disabled: {
+    en: 'Privacy Proxy auto-disabled: permission was revoked.',
+    es: 'Proxy de Privacidad desactivado automáticamente: el permiso fue revocado.',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+
+  // ── Relative time strings (#453, B20 Group A) ─────────────────────────────
+  // Used by formatRelativeTime() in src/lib/relative-time.js (and the
+  // build-hash cluster in options.js). Parameterized strings use the %s
+  // placeholder convention — replaced at call site via .replace("%s", n).
+  time_just_now: {
+    en: 'just now',
+    es: 'hace un momento',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_minutes_ago: {
+    en: '%s minutes ago',
+    es: 'hace %s minutos',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_hours_ago: {
+    en: '%s hours ago',
+    es: 'hace %s horas',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_yesterday: {
+    en: 'yesterday',
+    es: 'ayer',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+  time_days_ago: {
+    en: '%s days ago',
+    es: 'hace %s días',
+    pt: 'FIXME: translate' /* FIXME: needs native speaker review */,
+    de: 'FIXME: translate' /* FIXME: needs native speaker review */,
+  },
+
 };
 
 /**
