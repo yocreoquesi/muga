@@ -4,6 +4,13 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **3 new opaque redirector hosts** in `src/lib/opaque-networks.js` (#607 batch 3): `lnkd.in` (LinkedIn share tracker), `fb.me` (Facebook universal shortener), `ebay.to` (eBay branded shortener). All three verified STANDARD redirect shape (server-side 30x with `Location` header) via curl probe on 2026-05-09. Same pattern as v1.15.0's bit.ly / tinyurl.com / prf.hn / px.a8.net / amzn.to additions.
+- **Worker allowlist entries** for the same three hosts in [muga-unwrap](https://github.com/yocreoquesi/muga-unwrap) (`src/lib/allowlist.ts`) shipped first per AD-05 cross-repo merge order, with matching tests in `muga-unwrap/tests/allowlist.test.ts`.
+- **Extension unit tests** in `tests/unit/opaque-networks.test.mjs`: per-host inclusion assertions plus a corrective negative assertion that `aliexpress.us` is NOT in the list (probe verdict 2026-05-09: apex `.us` TLD redirect, not a shortener).
+- **End-to-end integration test** `tests/integration/proxy-client-contract.test.mjs` (#608) — calls the live production Worker at `unwrap.muga.app` with an extension-shaped request and verifies the signed envelope round-trip. Wired into CI as `npm run test:integration`. Catches contract drift of the kind that caused the v1.14.0 → v1.15.1 silent failure (path drift, param-shape drift, public-key drift).
+
 ## [1.15.1] - 2026-05-09
 
 Hotfix release. Headline: Privacy Proxy now actually works end-to-end. Three contract bugs were preventing the toggle from doing anything in v1.14.0 and v1.15.0 — the extension was calling the Worker on the wrong path (`/v1/unwrap` vs `/unwrap`) and with the wrong query param shape (`?url=raw` vs `?u=base64url`). Both were silent because the cleaner's failure mode is to fall back to the original navigation. The Worker contract is unchanged; this fix aligns the extension to it. Users who had Privacy Proxy enabled but never saw any difference will start getting actual server-side resolution after upgrading.
