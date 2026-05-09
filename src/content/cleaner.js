@@ -383,35 +383,6 @@
     }
   });
 
-  // B20 (#453): Opaque affiliate networks — mirrors src/lib/opaque-networks.js.
-  // Kept inline because content scripts cannot import ES modules.
-  // Update in sync with opaque-networks.js whenever a new network is added.
-  const _OPAQUE_NETWORK_HOSTS = Object.freeze([
-    "s.click.aliexpress.com",
-    "anrdoezrs.net",
-    "dpbolvw.net",
-    "jdoqocy.com",
-    "kqzyfj.com",
-    "tkqlhce.com",
-    "emjcd.com",
-    "qksrv.net",
-    "cj.dotomi.com",
-    "ad.admitad.com",
-  ]);
-
-  /**
-   * Returns true when the given hostname is a known opaque affiliate network
-   * that cannot be unwrapped client-side.
-   *
-   * @param {string} hostname - URL.hostname (already lower-cased by the URL parser)
-   * @returns {boolean}
-   */
-  function _isOpaqueNetworkHost(hostname) {
-    if (!hostname) return false;
-    const h = hostname.replace(/^www\./, "");
-    return _OPAQUE_NETWORK_HOSTS.includes(h) || _OPAQUE_NETWORK_HOSTS.includes(hostname);
-  }
-
   /**
    * Checks if a hostname matches any known affiliate store domain.
    * Used to decide whether a click needs interception for affiliate logic.
@@ -528,6 +499,11 @@
       });
     } else {
       // B20 (#453): opaque affiliate network — cannot be unwrapped client-side.
+      // redirector-coverage-expansion (T12): isOpaqueNetworkHost is now provided
+      // by the content bundle (window.__mugaCleaner) — the inline _OPAQUE_NETWORK_HOSTS
+      // replica and _isOpaqueNetworkHost function have been removed. Single source of
+      // truth lives in src/lib/opaque-networks.js; adding a new host requires editing
+      // exactly one file. See cleaner-bundle-src.mjs for the bundle export.
       // SYNC NOTE: the proxy-navigation logic below is inlined from
       // src/lib/proxy-navigate.js (handleProxyNavigation). Content scripts
       // are IIFE and cannot import ES modules, so the pure helper exists
@@ -535,7 +511,7 @@
       // the trigger conditions, timeout, or fallback shape here, mirror the
       // change in proxy-navigate.js — drift is caught by the structural tests
       // in tests/unit/service-worker-privacy-proxy.test.mjs.
-      if (_isOpaqueNetworkHost(url.hostname)) {
+      if (window.__mugaCleaner?.isOpaqueNetworkHost(url.hostname)) {
         if (_contentPrefs?.privacyProxyEnabled) {
           // Proxy ON: attempt to resolve via UNWRAP_VIA_PROXY.
           // Only enter this path when detectWrapper recognises the URL AND unwrap
