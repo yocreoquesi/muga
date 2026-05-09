@@ -1,34 +1,27 @@
 /**
- * MUGA — toolbar presenter (#358)
+ * MUGA — toolbar presenter
  *
  * Verifies the contract: given an event sequence, the presenter writes
- * the right per-tab tooltip and badge state. Tests assert the API calls
- * the presenter would make against a recording stub — not screenshots,
- * not real chrome APIs.
+ * the right per-tab tooltip. Tests assert the API calls the presenter
+ * would make against a recording stub — not screenshots, not real
+ * chrome APIs.
+ *
+ * Badge text/color and icon variant surfaces were removed (the icon
+ * swap caused a flash-and-disappear regression in Firefox MV2 and the
+ * per-tab counter was confusing). The tooltip is the only dynamic
+ * surface the presenter currently writes.
  */
-import { test, describe, beforeEach } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createToolbarEventBus } from "../../src/lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../../src/lib/tab-presenter-state.js";
-import {
-  createToolbarPresenter,
-  badgeColorFor,
-  BADGE_COLOR_DEFAULT,
-  BADGE_COLOR_PRESERVED,
-  BADGE_COLOR_DETECTED,
-  iconForState,
-  ICON_DEFAULT,
-  ICON_PRESERVED,
-} from "../../src/lib/toolbar-presenter.js";
+import { createToolbarPresenter } from "../../src/lib/toolbar-presenter.js";
 
 function makeRecordingActionApi() {
   const calls = [];
   return {
     calls,
-    setBadgeBackgroundColor(arg) { calls.push(["setBadgeBackgroundColor", arg]); },
-    setBadgeText(arg)            { calls.push(["setBadgeText", arg]); },
-    setTitle(arg)                { calls.push(["setTitle", arg]); },
-    setIcon(arg)                 { calls.push(["setIcon", arg]); },
+    setTitle(arg) { calls.push(["setTitle", arg]); },
   };
 }
 
@@ -49,123 +42,24 @@ function setup() {
 }
 
 describe("toolbar-presenter — startup", () => {
-  test("sets the default badge background color once at construction", () => {
+  test("does not write to the action surface at construction", () => {
     const { actionApi } = setup();
-    const colorCalls = actionApi.calls.filter(([k]) => k === "setBadgeBackgroundColor");
-    assert.equal(colorCalls.length, 1);
-    assert.deepEqual(colorCalls[0][1], { color: BADGE_COLOR_DEFAULT });
-  });
-});
-
-describe("badgeColorFor (#367)", () => {
-  test("default state returns the default (blue)", () => {
-    assert.equal(badgeColorFor({}), BADGE_COLOR_DEFAULT);
-    assert.equal(badgeColorFor({ paramsRemoved: 0 }), BADGE_COLOR_DEFAULT);
-  });
-
-  test("cleaned state still uses the default blue", () => {
-    assert.equal(badgeColorFor({ paramsRemoved: 5 }), BADGE_COLOR_DEFAULT);
-  });
-
-  test("creator referral preserved beats cleaned — green wins", () => {
-    assert.equal(
-      badgeColorFor({ paramsRemoved: 5, creatorReferralPreserved: true }),
-      BADGE_COLOR_PRESERVED
-    );
-    assert.equal(
-      badgeColorFor({ creatorReferralPreserved: true }),
-      BADGE_COLOR_PRESERVED
-    );
-  });
-
-  test("foreign affiliate detected returns yellow", () => {
-    assert.equal(
-      badgeColorFor({ foreignAffiliateDetected: true }),
-      BADGE_COLOR_DETECTED
-    );
-  });
-
-  test("preserved + detected → preserved (green) wins", () => {
-    // The semantic ordering: preserved is the strongest positive signal,
-    // wins over detected (which is a passive notice).
-    assert.equal(
-      badgeColorFor({ creatorReferralPreserved: true, foreignAffiliateDetected: true }),
-      BADGE_COLOR_PRESERVED
-    );
-  });
-});
-
-describe("toolbar-presenter — semantic badge color (#367)", () => {
-  test("urlCleaned alone keeps badge color at blue", () => {
-    const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
-    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 3 });
-    const colorCalls = actionApi.calls.filter(([k]) => k === "setBadgeBackgroundColor");
-    // No change — already blue from startup, no per-tab override needed
-    assert.equal(colorCalls.length, 0);
-  });
-
-  test("creatorReferralPreserved sets per-tab green", () => {
-    const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
-    bus.emit({ type: "creatorReferralPreserved", tabId: 5 });
-    const colorCall = actionApi.calls.find(([k]) => k === "setBadgeBackgroundColor");
-    assert.deepEqual(colorCall?.[1], { tabId: 5, color: BADGE_COLOR_PRESERVED });
-  });
-
-  test("foreignAffiliateDetected sets per-tab yellow", () => {
-    const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
-    bus.emit({ type: "foreignAffiliateDetected", tabId: 7 });
-    const colorCall = actionApi.calls.find(([k]) => k === "setBadgeBackgroundColor");
-    assert.deepEqual(colorCall?.[1], { tabId: 7, color: BADGE_COLOR_DETECTED });
-  });
-
-  test("navigationStarted resets per-tab color back to blue", () => {
-    const { bus, actionApi } = setup();
-    bus.emit({ type: "creatorReferralPreserved", tabId: 9 });
-    actionApi.calls.length = 0;
-    bus.emit({ type: "navigationStarted", tabId: 9 });
-    const colorCall = actionApi.calls.find(([k]) => k === "setBadgeBackgroundColor");
-    assert.deepEqual(colorCall?.[1], { tabId: 9, color: BADGE_COLOR_DEFAULT });
-  });
-
-  test("idempotent — same color twice does not call setBadgeBackgroundColor again", () => {
-    const { bus, actionApi } = setup();
-    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
-    actionApi.calls.length = 0;
-    // Re-emitting preserved on the same tab — color is already green, no API call
-    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
-    const colorCalls = actionApi.calls.filter(([k]) => k === "setBadgeBackgroundColor");
-    assert.equal(colorCalls.length, 0);
+    assert.equal(actionApi.calls.length, 0);
   });
 });
 
 describe("toolbar-presenter — urlCleaned", () => {
-  test("first cleaning sets the badge to count and tooltip to cleaned", () => {
+  test("first cleaning sets tooltip to cleaned", () => {
     const { bus, actionApi } = setup();
     bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
-    assert.deepEqual(
-      actionApi.calls.find(([k]) => k === "setBadgeText")?.[1],
-      { tabId: 7, text: "3" }
-    );
     assert.deepEqual(
       actionApi.calls.find(([k]) => k === "setTitle")?.[1],
       { tabId: 7, title: "MUGA — tracking removed" }
     );
   });
 
-  test("subsequent cleaning accumulates the count", () => {
-    const { bus, actionApi } = setup();
-    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
-    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 2 });
-    const last = actionApi.calls.filter(([k]) => k === "setBadgeText").pop();
-    assert.deepEqual(last?.[1], { tabId: 7, text: "5" });
-  });
-
   test("zero or negative paramsRemoved is a no-op", () => {
     const { bus, actionApi } = setup();
-    actionApi.calls.length = 0; // discard startup call
     bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 0 });
     bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: -5 });
     assert.equal(actionApi.calls.length, 0);
@@ -173,14 +67,11 @@ describe("toolbar-presenter — urlCleaned", () => {
 });
 
 describe("toolbar-presenter — creatorReferralPreserved", () => {
-  test("on a clean tab, sets tooltip to preserved (no badge change)", () => {
+  test("on a clean tab, sets tooltip to preserved", () => {
     const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
     bus.emit({ type: "creatorReferralPreserved", tabId: 9 });
     const titleCall = actionApi.calls.find(([k]) => k === "setTitle");
     assert.deepEqual(titleCall?.[1], { tabId: 9, title: "MUGA — creator referral preserved" });
-    // No badge text call because paramsRemoved is unchanged at zero
-    assert.equal(actionApi.calls.find(([k]) => k === "setBadgeText"), undefined);
   });
 
   test("after a cleaning event, sets tooltip to combined", () => {
@@ -197,21 +88,16 @@ describe("toolbar-presenter — creatorReferralPreserved", () => {
 });
 
 describe("toolbar-presenter — navigationStarted", () => {
-  test("clears badge text and resets tooltip to default", () => {
+  test("resets tooltip to default and clears tab state", () => {
     const { bus, state, actionApi } = setup();
     bus.emit({ type: "urlCleaned", tabId: 5, paramsRemoved: 2 });
     bus.emit({ type: "creatorReferralPreserved", tabId: 5 });
     actionApi.calls.length = 0;
     bus.emit({ type: "navigationStarted", tabId: 5 });
     assert.deepEqual(
-      actionApi.calls.find(([k]) => k === "setBadgeText")?.[1],
-      { tabId: 5, text: "" }
-    );
-    assert.deepEqual(
       actionApi.calls.find(([k]) => k === "setTitle")?.[1],
       { tabId: 5, title: "MUGA" }
     );
-    // State for the tab is reset
     assert.equal(state.get(5).paramsRemoved, 0);
     assert.equal(state.get(5).creatorReferralPreserved, false);
   });
@@ -223,10 +109,7 @@ describe("toolbar-presenter — tabClosed", () => {
     bus.emit({ type: "urlCleaned", tabId: 3, paramsRemoved: 1 });
     actionApi.calls.length = 0;
     bus.emit({ type: "tabClosed", tabId: 3 });
-    // No setBadgeText / setTitle on close — the browser handles tab teardown
-    assert.equal(actionApi.calls.find(([k]) => k === "setBadgeText"), undefined);
     assert.equal(actionApi.calls.find(([k]) => k === "setTitle"), undefined);
-    // State map no longer holds the tab
     assert.equal(state.size(), 0);
   });
 
@@ -234,7 +117,6 @@ describe("toolbar-presenter — tabClosed", () => {
     const { bus, state } = setup();
     bus.emit({ type: "urlCleaned", tabId: 11, paramsRemoved: 7 });
     bus.emit({ type: "tabClosed", tabId: 11 });
-    // Browser reuses tabId 11 for a new tab later
     assert.equal(state.get(11).paramsRemoved, 0);
     assert.equal(state.get(11).creatorReferralPreserved, false);
   });
@@ -243,8 +125,7 @@ describe("toolbar-presenter — tabClosed", () => {
 describe("toolbar-presenter — robustness", () => {
   test("ignores events without a valid tabId", () => {
     const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
-    bus.emit({ type: "urlCleaned", paramsRemoved: 2 }); // missing tabId
+    bus.emit({ type: "urlCleaned", paramsRemoved: 2 });
     bus.emit({ type: "urlCleaned", tabId: -1, paramsRemoved: 2 });
     bus.emit({ type: "urlCleaned", tabId: "x", paramsRemoved: 2 });
     assert.equal(actionApi.calls.length, 0);
@@ -252,15 +133,12 @@ describe("toolbar-presenter — robustness", () => {
 
   test("ignores unknown event types", () => {
     const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
     bus.emit({ type: "neverHeardOfIt", tabId: 1 });
     assert.equal(actionApi.calls.length, 0);
   });
 
   test("does not call setTitle redundantly when state-equivalent updates land", () => {
     const { bus, actionApi } = setup();
-    // Two cleanings on the same tab. Tooltip stays at "tracking removed"
-    // both times — setTitle should only be called once.
     bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 1 });
     bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 1 });
     const titleCalls = actionApi.calls.filter(([k]) => k === "setTitle");
@@ -334,57 +212,5 @@ describe("tab-presenter-state", () => {
     state.evict(1);
     assert.equal(state.size(), 1);
     assert.equal(state.get(1).paramsRemoved, 0);
-  });
-});
-
-describe("iconForState (#368)", () => {
-  test("default state returns the default icon paths", () => {
-    assert.equal(iconForState({}), ICON_DEFAULT);
-    assert.equal(iconForState({ paramsRemoved: 5 }), ICON_DEFAULT);
-  });
-
-  test("creator referral preserved returns the variant icon paths", () => {
-    assert.equal(iconForState({ creatorReferralPreserved: true }), ICON_PRESERVED);
-    assert.equal(iconForState({ paramsRemoved: 3, creatorReferralPreserved: true }), ICON_PRESERVED);
-  });
-
-  test("foreign affiliate detected alone keeps default icon (color signals it)", () => {
-    assert.equal(iconForState({ foreignAffiliateDetected: true }), ICON_DEFAULT);
-  });
-});
-
-describe("toolbar-presenter — icon variant (#368)", () => {
-  test("urlCleaned alone does NOT swap icon", () => {
-    const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
-    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 3 });
-    const iconCalls = actionApi.calls.filter(([k]) => k === "setIcon");
-    assert.equal(iconCalls.length, 0);
-  });
-
-  test("creatorReferralPreserved sets per-tab variant icon", () => {
-    const { bus, actionApi } = setup();
-    actionApi.calls.length = 0;
-    bus.emit({ type: "creatorReferralPreserved", tabId: 5 });
-    const iconCall = actionApi.calls.find(([k]) => k === "setIcon");
-    assert.deepEqual(iconCall?.[1], { tabId: 5, path: ICON_PRESERVED });
-  });
-
-  test("navigationStarted resets icon to default", () => {
-    const { bus, actionApi } = setup();
-    bus.emit({ type: "creatorReferralPreserved", tabId: 7 });
-    actionApi.calls.length = 0;
-    bus.emit({ type: "navigationStarted", tabId: 7 });
-    const iconCall = actionApi.calls.find(([k]) => k === "setIcon");
-    assert.deepEqual(iconCall?.[1], { tabId: 7, path: ICON_DEFAULT });
-  });
-
-  test("idempotent — repeated preserved events do not re-call setIcon", () => {
-    const { bus, actionApi } = setup();
-    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
-    actionApi.calls.length = 0;
-    bus.emit({ type: "creatorReferralPreserved", tabId: 1 });
-    const iconCalls = actionApi.calls.filter(([k]) => k === "setIcon");
-    assert.equal(iconCalls.length, 0);
   });
 });

@@ -1,75 +1,19 @@
 /**
  * MUGA: Toolbar Presenter
  *
- * Single point of design control over the browser-action toolbar surface
- * (tooltip via setTitle, badge text via setBadgeText, badge color via
- * setBadgeBackgroundColor, icon via setIcon). No code outside this module
- * may call those APIs directly.
+ * Single point of design control over the browser-action toolbar surface.
+ * Currently manages only the dynamic per-tab tooltip via setTitle.
  *
- * Subscribes to a ToolbarEventBus and translates semantic events into
- * the right per-tab surface state. State is cached in TabPresenterState
- * so the same surface call is not issued twice for the same value.
+ * Subscribes to a ToolbarEventBus, tracks per-tab semantic state (cleaned,
+ * creator-referral preserved, foreign affiliate detected) and translates
+ * it into the right tooltip string. State is cached in TabPresenterState
+ * so the same setTitle call is not issued twice for the same value.
  *
- * This slice (#358) wires:
- *   - The dynamic per-tab tooltip via setTitle.
- *   - The existing badge text behavior, preserved unchanged (count of
- *     params stripped on this tab; cleared on navigation; cleared on
- *     tab close; fixed blue background — semantic colors arrive in #367).
- *
- * Subsequent slices add semantic badge color (#367) and icon variant (#368).
+ * The badge text/color and icon variant surfaces were removed: the per-tab
+ * count was confusing and the icon swap to the *-preserved.png variant
+ * caused the toolbar icon to flash and disappear in Firefox MV2. The
+ * extension now ships a single static icon declared in the manifest.
  */
-
-// Semantic badge colors (#367). The tab's most recent event determines which
-// color the badge wears.
-//
-//   BLUE   — routine cleaning happened.
-//   GREEN  — a creator referral was preserved on this tab's navigation.
-//   YELLOW — a foreign affiliate was detected and the user has the toast
-//            disabled (so this is the only ambient signal for that case).
-//
-// The set is closed and small. Adding a fourth color requires a deliberate
-// design decision (see PRD #350).
-export const BADGE_COLOR_DEFAULT  = "#2563eb"; // blue
-export const BADGE_COLOR_CLEANED  = "#2563eb"; // blue (same as default; explicit alias for clarity)
-export const BADGE_COLOR_PRESERVED = "#16a34a"; // green
-export const BADGE_COLOR_DETECTED  = "#ca8a04"; // yellow
-
-/**
- * Returns the semantic badge color for a given tab state.
- * Pure function. Exported for tests.
- */
-export function badgeColorFor(s) {
-  if (s.creatorReferralPreserved) return BADGE_COLOR_PRESERVED;
-  if (s.foreignAffiliateDetected) return BADGE_COLOR_DETECTED;
-  return BADGE_COLOR_CLEANED; // blue is the default whether or not anything cleaned
-}
-
-// Icon variants (#368). The default icon ships at icons/{16,48,128}.png;
-// the "creator referral preserved" variant ships at icons/{16,48,128}-preserved.png.
-// The variant adds a green check badge in the lower-right corner, signalling
-// that MUGA preserved a creator's affiliate tag during this navigation.
-// Master at tools/brand/mugavariant.png (1254×1254) — the three sizes are
-// downscaled from it via ImageMagick `-filter Lanczos`. Kept outside src/ so
-// the 1.1MB master does not ship in the .xpi/.zip bundle.
-export const ICON_DEFAULT = Object.freeze({
-  16:  "icons/16.png",
-  48:  "icons/48.png",
-  128: "icons/128.png",
-});
-export const ICON_PRESERVED = Object.freeze({
-  16:  "icons/16-preserved.png",
-  48:  "icons/48-preserved.png",
-  128: "icons/128-preserved.png",
-});
-
-/**
- * Returns the icon path-set for a given tab state. Pure function.
- * Exported for tests.
- */
-export function iconForState(s) {
-  if (s.creatorReferralPreserved) return ICON_PRESERVED;
-  return ICON_DEFAULT;
-}
 
 /**
  * Creates a toolbar presenter and wires it to the bus. Returns the
@@ -85,10 +29,6 @@ export function iconForState(s) {
  * @returns {object} Presenter with introspection helpers.
  */
 export function createToolbarPresenter({ bus, state, actionApi, t }) {
-  // Default badge background color at startup. Per-tab calls below override
-  // this when a tab's state warrants a semantic color (#367).
-  actionApi.setBadgeBackgroundColor?.({ color: BADGE_COLOR_DEFAULT });
-
   function tooltipFor(s) {
     const cleaned   = s.paramsRemoved > 0;
     const preserved = s.creatorReferralPreserved;
@@ -99,45 +39,16 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
   }
 
   function applyTab(tabId, prev, next) {
-    // Tooltip. Only call setTitle if the resolved string changed.
     const prevTitle = tooltipFor(prev);
     const nextTitle = tooltipFor(next);
     if (prevTitle !== nextTitle) {
       actionApi.setTitle?.({ tabId, title: nextTitle });
     }
-
-    // Badge color. Only call setBadgeBackgroundColor if the resolved
-    // color changed for this tab — setBadgeBackgroundColor with a tabId
-    // sets the per-tab override; we avoid redundant calls.
-    const prevColor = badgeColorFor(prev);
-    const nextColor = badgeColorFor(next);
-    if (prevColor !== nextColor) {
-      actionApi.setBadgeBackgroundColor?.({ tabId, color: nextColor });
-    }
-
-    // Icon variant (#368). setIcon is more expensive than setTitle /
-    // setBadgeBackgroundColor (it ships image bytes), so only call it
-    // when the variant actually changes for this tab.
-    const prevIcon = iconForState(prev);
-    const nextIcon = iconForState(next);
-    if (prevIcon !== nextIcon) {
-      actionApi.setIcon?.({ tabId, path: nextIcon });
-    }
-
-    // Badge text. Mirrors the pre-existing behavior: numeric count of
-    // params removed on this tab; empty when zero.
-    if (next.paramsRemoved !== prev.paramsRemoved) {
-      const text = next.paramsRemoved > 0 ? String(next.paramsRemoved) : "";
-      actionApi.setBadgeText?.({ tabId, text });
-    }
   }
 
   function clearTab(tabId) {
     state.reset(tabId);
-    actionApi.setBadgeText?.({ tabId, text: "" });
     actionApi.setTitle?.({ tabId, title: t("tooltip_default") });
-    actionApi.setBadgeBackgroundColor?.({ tabId, color: BADGE_COLOR_DEFAULT });
-    actionApi.setIcon?.({ tabId, path: ICON_DEFAULT });
   }
 
   bus.subscribe((event) => {
@@ -177,9 +88,6 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
   });
 
   return {
-    // Test/introspection: returns the tooltip string the presenter would
-    // show for a given state. Useful for unit tests without mocking
-    // setTitle round-trips.
     _tooltipFor: tooltipFor,
   };
 }

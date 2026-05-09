@@ -23,7 +23,7 @@ import { fetchUnwrap } from "../lib/proxy-client.js";
 import { OPAQUE_NETWORKS } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
-import { createToolbarPresenter, iconForState } from "../lib/toolbar-presenter.js";
+import { createToolbarPresenter } from "../lib/toolbar-presenter.js";
 import {
   createTracker as createFrequencyTracker,
   createChromeLocalAdapter as createFrequencyChromeAdapter,
@@ -89,7 +89,7 @@ const _rawActionApi = globalThis.chrome?.action || globalThis.chrome?.browserAct
 // the resolved state hasn't changed). Reset / read via __TEST__ handlers
 // (see below) gated on the test-mode sentinel. Production never reads
 // these counts; the cost is one integer increment per action call.
-let _testActionCalls = { setTitle: 0, setBadgeText: 0, setBadgeBackgroundColor: 0, setIcon: 0 };
+let _testActionCalls = { setTitle: 0, setBadgeText: 0 };
 const actionApi = new Proxy(_rawActionApi, {
   get(target, prop) {
     const orig = target[prop];
@@ -431,13 +431,7 @@ async function applyDnrState(prefs) {
  * hard-reonboard, where getPrefs() forces onboardingDone:false.
  * Cleared on acceptance.
  *
- * Uses the global setBadgeText (no tabId), so it surfaces on every
- * tab. We deliberately do NOT touch setBadgeBackgroundColor here:
- * toolbar-presenter sets the global default color at startup and
- * relies on that as the fallback when no per-tab override is active.
- * Overriding the global color from this function broke that contract
- * and made unrelated toolbar-visibility tests read the wrong color
- * for cleaning states.
+ * Uses the global setBadgeText (no tabId), so it surfaces on every tab.
  */
 async function applyOnboardingBadge(prefs) {
   if (!actionApi || typeof actionApi.setBadgeText !== "function") return;
@@ -619,23 +613,15 @@ async function handleTestMessage(message, sender) {
           return Promise.resolve(fallback);
         }
       };
-      const [title, badgeText, badgeColor] = await Promise.all([
+      const [title, badgeText] = await Promise.all([
         callGet("getTitle", ""),
         callGet("getBadgeText", ""),
-        callGet("getBadgeBackgroundColor", []),
       ]);
-      // chrome.action has no getIcon — derive the variant from the
-      // presenter's per-tab state. iconForState is a pure function.
       const tabState = toolbarState.get(tabId);
-      const iconPaths = iconForState(tabState);
-      const iconKind = (iconPaths && iconPaths === iconForState({ creatorReferralPreserved: true })) ? "preserved" : "default";
       return {
         ok: true,
         title,
         badgeText,
-        badgeColor,
-        iconKind,
-        iconPaths,
         state: { ...tabState },
       };
     }
@@ -686,7 +672,7 @@ async function handleTestMessage(message, sender) {
       return { ok: true, tabId: tab.id };
     }
     case "__TEST__resetActionApiCounts": {
-      _testActionCalls = { setTitle: 0, setBadgeText: 0, setBadgeBackgroundColor: 0, setIcon: 0 };
+      _testActionCalls = { setTitle: 0, setBadgeText: 0 };
       return { ok: true };
     }
     case "__TEST__readActionApiCounts": {

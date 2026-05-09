@@ -77,10 +77,7 @@ test.describe("Test-mode sentinel + __TEST__ message handler (#398)", () => {
     // verify is the SHAPE: every documented field is present.
     expect(response).toHaveProperty("title");
     expect(response).toHaveProperty("badgeText");
-    expect(response).toHaveProperty("badgeColor");
-    expect(response).toHaveProperty("iconKind");
     expect(response).toHaveProperty("state");
-    expect(["default", "preserved"]).toContain(response.iconKind);
 
     await page.close();
   });
@@ -93,7 +90,6 @@ test.describe("Test-mode sentinel + __TEST__ message handler (#398)", () => {
     expect(surface.ok).toBe(true);
     expect(surface).toHaveProperty("title");
     expect(surface).toHaveProperty("badgeText");
-    expect(surface).toHaveProperty("iconKind");
   });
 
   test("__TEST__ handler rejects unknown sub-types even when sentinel is set", async ({ context, extensionId }) => {

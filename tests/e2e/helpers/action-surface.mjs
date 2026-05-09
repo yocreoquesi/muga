@@ -18,7 +18,7 @@
  * @param {import('@playwright/test').BrowserContext} context
  * @param {string} extensionId
  * @param {number} tabId
- * @returns {Promise<{ title: string, badgeText: string, badgeColor: string|number[], iconPath: string|object|null }>}
+ * @returns {Promise<{ ok: boolean, title: string, badgeText: string, state: object }>}
  */
 export async function readActionSurface(context, extensionId, tabId) {
   const extOrigin = `chrome-extension://${extensionId}`;
