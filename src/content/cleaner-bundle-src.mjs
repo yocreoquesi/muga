@@ -25,6 +25,10 @@ import {
   getPatternsForHost,
 } from "../lib/affiliates.js";
 import { detectWrapper, unwrap, WRAPPERS } from "../lib/wrapper-engine.js";
+// redirector-coverage-expansion (T11): expose the single-source opaque-network
+// list and its hostname matcher via the bundle so cleaner.js can delegate to
+// window.__mugaCleaner.isOpaqueNetworkHost instead of carrying an inline replica.
+import { OPAQUE_NETWORKS, isOpaqueNetworkHost } from "../lib/opaque-networks.js";
 
 // Attach onto the isolated-world window. Content scripts in the same
 // content_scripts entry share a window object; cleaner.js (loaded after
@@ -46,5 +50,7 @@ if (!window.__mugaCleaner) {
     detectWrapper,
     unwrap,
     WRAPPERS,
+    OPAQUE_NETWORKS,
+    isOpaqueNetworkHost,
   });
 }

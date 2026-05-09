@@ -296,27 +296,36 @@ describe("Block-prompt toast CTA — structural (content script)", () => {
 // ── 4.1 CTA trigger in content script click handler ──────────────────────────
 
 describe("Block-prompt CTA — click handler integration", () => {
-  test("_isOpaqueNetworkHost helper is defined in content script", () => {
+  // redirector-coverage-expansion (T12): the inline _OPAQUE_NETWORK_HOSTS array
+  // and _isOpaqueNetworkHost function were removed from cleaner.js. The opaque-host
+  // check is now delegated to window.__mugaCleaner.isOpaqueNetworkHost, which is
+  // provided by the content bundle (cleaner-bundle-src.mjs → cleaner-bundle.js).
+  // Single source of truth lives in src/lib/opaque-networks.js.
+  test("opaque-host check delegates to window.__mugaCleaner.isOpaqueNetworkHost (bundle)", () => {
     assert.ok(
-      cleanerSource.includes("_isOpaqueNetworkHost"),
-      "content script must define _isOpaqueNetworkHost helper"
+      cleanerSource.includes("window.__mugaCleaner?.isOpaqueNetworkHost"),
+      "content script must delegate opaque-host check to window.__mugaCleaner.isOpaqueNetworkHost"
     );
   });
 
-  test("_OPAQUE_NETWORK_HOSTS inline list mirrors the lib module", async () => {
-    const { OPAQUE_NETWORKS } = await import("../../src/lib/opaque-networks.js");
-    for (const host of OPAQUE_NETWORKS) {
-      assert.ok(
-        cleanerSource.includes(host),
-        `content script must contain opaque host '${host}' in its inline list`
-      );
-    }
+  test("inline _OPAQUE_NETWORK_HOSTS declaration is removed (single-source refactor)", () => {
+    assert.ok(
+      !cleanerSource.includes("const _OPAQUE_NETWORK_HOSTS"),
+      "content script must NOT declare an inline _OPAQUE_NETWORK_HOSTS array — single-source refactor landed"
+    );
   });
 
-  test("click handler checks _isOpaqueNetworkHost when privacyProxyEnabled is false", () => {
+  test("inline _isOpaqueNetworkHost function declaration is removed (single-source refactor)", () => {
     assert.ok(
-      cleanerSource.includes("_isOpaqueNetworkHost") && cleanerSource.includes("privacyProxyEnabled"),
-      "click handler must gate CTA on both privacyProxyEnabled and _isOpaqueNetworkHost"
+      !cleanerSource.includes("function _isOpaqueNetworkHost"),
+      "content script must NOT define _isOpaqueNetworkHost — it is now supplied by the content bundle"
+    );
+  });
+
+  test("click handler checks isOpaqueNetworkHost when privacyProxyEnabled is false", () => {
+    assert.ok(
+      cleanerSource.includes("isOpaqueNetworkHost") && cleanerSource.includes("privacyProxyEnabled"),
+      "click handler must gate CTA on both privacyProxyEnabled and isOpaqueNetworkHost"
     );
   });
 

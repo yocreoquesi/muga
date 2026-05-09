@@ -260,3 +260,28 @@ test.describe("PR-09 — export/import round-trip for privacyProxyEnabled", () =
     expect(restoredValue).toBe(true);
   });
 });
+
+// ── redirector-coverage-expansion: amzn.to proxy → cleaner integration ───────
+//
+// This scenario is blocked by the same SW-context limitation documented at lines
+// 14–32 of this file: Playwright page.route() / context.route() cannot intercept
+// fetch() calls made from MV3 service workers in Chrome. The unit-level gate for
+// amzn.to tag= preservation lives in tests/unit/amzn-to-tag-preservation.test.mjs
+// (AD-03) and is the D7 shipping gate that controls whether amzn.to ships.
+//
+// When the __TEST__grantProxyPermission sentinel lands (muga#453 follow-up), this
+// placeholder becomes a real test that exercises amzn.to end-to-end.
+//
+// See: design sdd/redirector-coverage-expansion/design (#422), section AD-03.
+
+test.describe("redirector-coverage-expansion — amzn.to proxy integration (placeholder)", () => {
+  test.skip(
+    "amzn.to proxy → cleaner pipeline: tag= preserved in final URL (requires __TEST__ sentinel)",
+    // Skipped: the SW fetch to unwrap.muga.app/unwrap for amzn.to resolution goes
+    // through the SW context. Playwright context.route() does not intercept SW
+    // fetches in Chrome MV3. The D7 shipping gate (tag= preservation) is covered
+    // at the unit level in tests/unit/amzn-to-tag-preservation.test.mjs.
+    // Track in: muga#453 follow-up / "Add __TEST__grantProxyPermission sentinel"
+    async () => {}
+  );
+});

@@ -15,6 +15,13 @@
 //       — CJ Affiliate (Commission Junction) redirect domains
 //         (caps-spec manifest.json, program id: cj-affiliate)
 //   - ad.admitad.com — Admitad CPA network
+//   - bit.ly          — Generic URL shortener (redirector-coverage-expansion, PR-02)
+//   - tinyurl.com     — Generic URL shortener (redirector-coverage-expansion, PR-03)
+//   - prf.hn          — Partnerize / Performance Horizon affiliate (redirector-coverage-expansion, PR-04)
+//   - px.a8.net       — A8.net Japan affiliate; px.a8.net confirmed via T00 STANDARD probe
+//   - amzn.to         — Amazon branded shortener; tag= preservation gated via G3/T19
+//   - t.co            — Twitter/X URL shortener; extension-only activation (Worker already accepts via caps-spec)
+//   - link.medium.com — Medium URL shortener; extension-only activation (Worker already accepts via caps-spec)
 
 export const OPAQUE_NETWORKS = Object.freeze([
   // AliExpress affiliate click tracker
@@ -32,4 +39,40 @@ export const OPAQUE_NETWORKS = Object.freeze([
 
   // Admitad CPA network
   "ad.admitad.com",
+
+  // Generic URL shorteners (redirector-coverage-expansion)
+  "bit.ly",
+  "tinyurl.com",
+
+  // Partnerize / Performance Horizon affiliate (opaque path — no client-side extractor)
+  "prf.hn",
+
+  // A8.net Japan affiliate — hostname px.a8.net confirmed STANDARD via T00 probe
+  "px.a8.net",
+
+  // Amazon branded shortener — tag= preservation verified via G3 regression test
+  "amzn.to",
+
+  // Extension-only activations: Worker already accepts these via caps-spec buildSpecAllowlist
+  "t.co",
+  "link.medium.com",
 ]);
+
+/**
+ * Returns true when the given hostname is a known opaque network host that
+ * cannot be unwrapped client-side.
+ *
+ * Centralises the www. normalization that previously lived inline inside the
+ * content-script IIFE in src/content/cleaner.js. After the T10–T12 refactor,
+ * cleaner.js delegates to window.__mugaCleaner.isOpaqueNetworkHost (provided
+ * by the content bundle) which re-exports this function.
+ *
+ * @param {string|null|undefined} hostname - URL.hostname (already lower-cased
+ *   by the URL parser in most callers, but normalisation is applied defensively)
+ * @returns {boolean}
+ */
+export function isOpaqueNetworkHost(hostname) {
+  if (!hostname) return false;
+  const h = hostname.replace(/^www\./, "");
+  return OPAQUE_NETWORKS.includes(h) || OPAQUE_NETWORKS.includes(hostname);
+}
