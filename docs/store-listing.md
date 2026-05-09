@@ -1,6 +1,6 @@
 # MUGA: Store Listings
 
-> Version: 1.15.0
+> Version: 1.15.1
 > Last updated: 2026-05-09
 > Status: Final listing for Chrome Web Store and Firefox AMO. Lead headline rewritten to surface the "fair to creators" wedge per the 2026-04-26 strategic review (consensus across three independent analyses). Aligned with the post-grill privacy-policy and ToS rollout (#399, #400): per-device consent, local cleaning architecture, and #353 conditional preservation of MUGA's own tag.
 

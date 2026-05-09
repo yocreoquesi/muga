@@ -4,6 +4,25 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.15.1] - 2026-05-09
+
+Hotfix release. Headline: Privacy Proxy now actually works end-to-end. Three contract bugs were preventing the toggle from doing anything in v1.14.0 and v1.15.0 — the extension was calling the Worker on the wrong path (`/v1/unwrap` vs `/unwrap`) and with the wrong query param shape (`?url=raw` vs `?u=base64url`). Both were silent because the cleaner's failure mode is to fall back to the original navigation. The Worker contract is unchanged; this fix aligns the extension to it. Users who had Privacy Proxy enabled but never saw any difference will start getting actual server-side resolution after upgrading.
+
+### Fixed
+
+- **`src/lib/proxy-client.js` PROXY_URL path corrected** from `https://unwrap.muga.app/v1/unwrap` to `https://unwrap.muga.app/unwrap`. The `/v1/unwrap` path was never deployed on the Worker; every Privacy Proxy request returned `404 Not Found` and silently fell back to the wrapper navigation. Discovered via direct curl probe of the production Worker.
+- **`src/lib/proxy-client.js` query param contract corrected** from `?url=<raw>` to `?u=<base64url-encoded>`. The Worker handler reads the `u` param and base64url-decodes it (`muga-unwrap/src/handlers/unwrap.ts:110-111`); the extension was sending the raw URL under the wrong key, which would have returned `400 missing_u_parameter` even if the path had been correct.
+
+### Added
+
+- **`base64UrlEncode(str)` helper** exported from `src/lib/proxy-client.js`. Symmetric to the Worker's `decodeBase64Url` decoder. Uses `TextEncoder` for Unicode safety (theoretical IRIs in URLs).
+- **Endpoint-contract regression tests** in `tests/unit/proxy-client.test.mjs`. Three new assertions: PROXY_URL points to `/unwrap`, fetch is called with `?u=` (NOT `?url=`), and the encoded value round-trips through `atob` to the original input. The pre-existing fetch-stubbing tests asserted on response shape but not on request shape — that gap is now closed.
+
+### Operational notes
+
+- The Worker side (muga-unwrap) is unchanged. The canonical Worker contract `?u=<base64url>` was always correct; the bug was purely client-side.
+- Smoke probe in `muga-unwrap/.github/workflows/deploy.yml` (added in v0.2.x post-mortem hardening) was already exercising the correct path and param shape — that's why deploy CI never caught the extension-side bug. Future-proofing: a separate smoke probe on the *extension* side that verifies the actual request shape would have caught this; out of scope for this hotfix.
+
 ## [1.15.0] - 2026-05-09
 
 Redirector coverage release. Headline: Privacy Proxy now covers seven more redirector hosts — the generic shorteners `bit.ly`, `tinyurl.com`, `t.co`, and `link.medium.com`; the Partnerize affiliate redirector `prf.hn`; A8.net Japan's `px.a8.net`; and Amazon's branded shortener `amzn.to`. The toggle disclosure copy is reworded so the broader scope is honest — what was "opaque affiliate links" is now "opaque redirector links (affiliate networks and generic shorteners)." A foundational refactor eliminates the duplicate opaque-host list that previously lived in two files; adding a host now requires a one-line edit in `src/lib/opaque-networks.js`. The Worker side (cross-repo) landed first in [muga-unwrap#29](https://github.com/yocreoquesi/muga-unwrap/pull/29).
@@ -779,7 +798,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.15.1...HEAD
+[1.15.1]: https://github.com/yocreoquesi/muga/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/yocreoquesi/muga/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/yocreoquesi/muga/compare/v1.13.7...v1.14.0
 [1.13.7]: https://github.com/yocreoquesi/muga/compare/v1.13.6...v1.13.7

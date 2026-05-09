@@ -59,6 +59,8 @@ import {
   canonicalJSON,
   verifyUnwrapResponse,
   fetchUnwrap,
+  PROXY_URL,
+  base64UrlEncode,
 } from "../../src/lib/proxy-client.js";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -180,6 +182,70 @@ describe("verifyUnwrapResponse — missing required fields", () => {
       assert.strictEqual(ok, false);
     });
   }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// fetchUnwrap — endpoint contract (regression: v1.15.1 hotfix)
+// ────────────────────────────────────────────────────────────────────────────
+
+describe("base64UrlEncode — round-trip with Worker decoder", () => {
+  test("encodes ASCII URL to base64url that round-trips through atob", () => {
+    const input = "https://s.click.aliexpress.com/e/abc123";
+    const encoded = base64UrlEncode(input);
+    // No padding, no + or /
+    assert.strictEqual(encoded.indexOf("="), -1);
+    assert.strictEqual(encoded.indexOf("+"), -1);
+    assert.strictEqual(encoded.indexOf("/"), -1);
+    // Round-trip through standard base64
+    const stdB64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = stdB64 + "=".repeat((4 - stdB64.length % 4) % 4);
+    const decoded = atob(padded);
+    assert.strictEqual(decoded, input);
+  });
+
+  test("encodes URL with query string + path correctly", () => {
+    const input = "https://amzn.to/dp/B0?tag=mycreator-20";
+    const encoded = base64UrlEncode(input);
+    const stdB64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = stdB64 + "=".repeat((4 - stdB64.length % 4) % 4);
+    assert.strictEqual(atob(padded), input);
+  });
+});
+
+describe("fetchUnwrap — endpoint contract (Worker API alignment)", () => {
+  test("PROXY_URL points to /unwrap (NOT /v1/unwrap)", () => {
+    assert.strictEqual(PROXY_URL, "https://unwrap.muga.app/unwrap");
+  });
+
+  test("calls Worker with `u` param holding base64url-encoded URL (NOT raw `url`)", async () => {
+    const inputUrl = "https://s.click.aliexpress.com/e/abc123";
+    const savedFetch = globalThis.fetch;
+    let capturedUrl;
+    globalThis.fetch = async (callUrl) => {
+      capturedUrl = callUrl;
+      // Return a 404 to short-circuit the rest — we only care about the request shape
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+    try {
+      await fetchUnwrap(inputUrl);
+
+      const parsed = new URL(capturedUrl);
+      assert.strictEqual(parsed.origin, "https://unwrap.muga.app");
+      assert.strictEqual(parsed.pathname, "/unwrap");
+
+      const u = parsed.searchParams.get("u");
+      assert.ok(u, "must include `u` param");
+      assert.strictEqual(parsed.searchParams.get("url"), null,
+        "must NOT include `url` param (legacy contract bug)");
+
+      // u must base64url-decode to the original input URL
+      const stdB64 = u.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = stdB64 + "=".repeat((4 - stdB64.length % 4) % 4);
+      assert.strictEqual(atob(padded), inputUrl);
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
 });
 
 // ────────────────────────────────────────────────────────────────────────────

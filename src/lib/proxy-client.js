@@ -15,7 +15,27 @@
 import { PROXY_TRUSTED_PUBLIC_KEYS } from "./remote-rules-keys.js";
 
 /** Proxy endpoint — compile-time constant, NOT user-configurable. */
-export const PROXY_URL = "https://unwrap.muga.app/v1/unwrap";
+export const PROXY_URL = "https://unwrap.muga.app/unwrap";
+
+/**
+ * Encodes a string as base64url (RFC 4648 §5) — URL-safe base64 with no padding.
+ * The Worker decodes the `u` query param this way (`decodeBase64Url` in
+ * `muga-unwrap/src/lib/base64url.ts`); symmetric encoding here is required for
+ * the round-trip to succeed.
+ *
+ * Uses TextEncoder so non-ASCII chars in URLs (theoretical IRIs) survive.
+ *
+ * @param {string} str - The string to encode.
+ * @returns {string} base64url-encoded string (no padding, `-_` instead of `+/`).
+ */
+export function base64UrlEncode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 /** Default fetch timeout in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -230,7 +250,7 @@ export async function fetchUnwrap(url, opts) {
   let responseBody;
   try {
     const endpoint = new URL(PROXY_URL);
-    endpoint.searchParams.set("url", url);
+    endpoint.searchParams.set("u", base64UrlEncode(url));
 
     const response = await fetch(endpoint.toString(), {
       signal: controller.signal,
