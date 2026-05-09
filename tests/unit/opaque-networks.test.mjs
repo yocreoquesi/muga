@@ -60,10 +60,11 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
   });
 
   // redirector-coverage-expansion (T24): assert all 7 new/activated hosts present
-  test("has at least 13 entries (original 6 + 7 redirector-coverage-expansion additions)", () => {
+  // Batch 3 (#607): plus 3 branded shorteners (lnkd.in, fb.me, ebay.to)
+  test("has at least 16 entries (original 6 + 7 redirector-coverage + 3 batch-3)", () => {
     assert.ok(
-      OPAQUE_NETWORKS.length >= 13,
-      `Expected >= 13 entries, got ${OPAQUE_NETWORKS.length}`,
+      OPAQUE_NETWORKS.length >= 16,
+      `Expected >= 16 entries, got ${OPAQUE_NETWORKS.length}`,
     );
   });
 
@@ -100,5 +101,25 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
 
   test("includes link.medium.com (PR-08 — extension-only activation; Worker already accepts via caps-spec)", () => {
     assert.ok(OPAQUE_NETWORKS.includes("link.medium.com"));
+  });
+
+  // Batch 3 (#607 — verified STANDARD via curl probe 2026-05-09)
+  test("includes lnkd.in (#607 — LinkedIn share tracker)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("lnkd.in"));
+  });
+
+  test("includes fb.me (#607 — Facebook universal shortener)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("fb.me"));
+  });
+
+  test("includes ebay.to (#607 — eBay branded shortener)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("ebay.to"));
+  });
+
+  test("does NOT include aliexpress.us (#607 — probed 2026-05-09 NOT a redirector, apex .us TLD)", () => {
+    assert.ok(
+      !OPAQUE_NETWORKS.includes("aliexpress.us"),
+      "aliexpress.us must NOT be in the list — it's the apex of the .us TLD, not a shortener",
+    );
   });
 });

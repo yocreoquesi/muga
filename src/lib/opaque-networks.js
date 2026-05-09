@@ -22,6 +22,9 @@
 //   - amzn.to         — Amazon branded shortener; tag= preservation gated via G3/T19
 //   - t.co            — Twitter/X URL shortener; extension-only activation (Worker already accepts via caps-spec)
 //   - link.medium.com — Medium URL shortener; extension-only activation (Worker already accepts via caps-spec)
+//   - lnkd.in         — LinkedIn share tracker; STANDARD probe verdict 2026-05-09 (#607)
+//   - fb.me           — Facebook universal shortener; STANDARD probe verdict 2026-05-09 (#607)
+//   - ebay.to         — eBay branded shortener; STANDARD probe verdict 2026-05-09 (#607)
 
 export const OPAQUE_NETWORKS = Object.freeze([
   // AliExpress affiliate click tracker
@@ -56,6 +59,11 @@ export const OPAQUE_NETWORKS = Object.freeze([
   // Extension-only activations: Worker already accepts these via caps-spec buildSpecAllowlist
   "t.co",
   "link.medium.com",
+
+  // Branded shorteners (#607 — verified STANDARD via curl probe 2026-05-09; Worker hardcoded entries)
+  "lnkd.in",
+  "fb.me",
+  "ebay.to",
 ]);
 
 /**
