@@ -4,6 +4,33 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **7 new / activated opaque redirector hosts** in `src/lib/opaque-networks.js`:
+  - `bit.ly` — generic URL shortener (PR-02).
+  - `tinyurl.com` — generic URL shortener (PR-03).
+  - `prf.hn` — Partnerize / Performance Horizon affiliate; resolved via Worker HEAD chain, no client-side path-segment extractor (PR-04).
+  - `px.a8.net` — A8.net Japan affiliate; hostname confirmed via T00 STANDARD curl probe (`r.a8.net` does not resolve) (PR-05).
+  - `amzn.to` — Amazon branded shortener; ships conditional on G3 regression gate (PR-06); `tag=` preservation verified.
+  - `t.co` — Twitter/X URL shortener; extension-only activation — Worker already accepts `t.co` via caps-spec `buildSpecAllowlist` (PR-07).
+  - `link.medium.com` — Medium URL shortener; extension-only activation, same pattern as `t.co` (PR-08).
+- **`isOpaqueNetworkHost(hostname)` helper** exported from `src/lib/opaque-networks.js`. Centralises the `www.` normalization that previously lived inline inside the content-script IIFE. The helper is re-exported through the content bundle (`src/content/cleaner-bundle-src.mjs`) so that `cleaner.js` can delegate to `window.__mugaCleaner.isOpaqueNetworkHost` without a private replica.
+- **`amzn.to` tag= preservation regression test** (`tests/unit/amzn-to-tag-preservation.test.mjs`). Four cases: `.com` with Honor Creator mode, `.es` with Honor Creator mode, control case (stripAllAffiliates strips tag), and noise-param stripping alongside tag survival. D7 shipping gate per design AD-03.
+- **New helpers unit test** (`tests/unit/opaque-networks-helpers.test.mjs`). Covers `isOpaqueNetworkHost` contract: bare host match, www-stripped match, false for non-opaque host, false for empty/null/undefined. Replaces the obsolete sync test.
+
+### Changed
+
+- **Privacy Proxy disclosure copy** (`privacy_proxy_disclosure` i18n key) updated in EN + ES. "Unresolvable affiliate links" reworded to "unresolvable opaque redirector links (affiliate networks and generic shorteners such as bit.ly)" to accurately reflect the broader scope after adding generic shorteners. PT and DE remain `FIXME: translate` stubs per project convention.
+- **Single source of truth for opaque host detection.** The inline `_OPAQUE_NETWORK_HOSTS` array and `_isOpaqueNetworkHost` function previously duplicated in `src/content/cleaner.js` are removed. Adding a new opaque host now requires editing exactly one file (`src/lib/opaque-networks.js`). Drift is structurally impossible.
+
+### Removed
+
+- **`tests/unit/opaque-networks-content-sync.test.mjs` deleted.** The drift it guarded against is now structurally impossible after the single-source refactor. Coverage transferred to `cleaner-bundle-sync.test.mjs` (existing) and the new `opaque-networks-helpers.test.mjs`.
+
+### Cross-repo
+
+- **CJ Affiliate 4-vs-8 Worker gap closed** in [muga-unwrap#29](https://github.com/yocreoquesi/muga-unwrap/pull/29): `dpbolvw.net`, `emjcd.com`, `qksrv.net`, `cj.dotomi.com` added to the Worker allowlist (these were already in the extension; the Worker only had 4 of the 8 CJ domains). Also adds `bit.ly`, `tinyurl.com`, `prf.hn`, `px.a8.net`, and `amzn.to` to the Worker. Merged and deployed to Cloudflare Workers production before this extension release per AD-05 cross-repo merge order.
+
 ## [1.14.0] - 2026-05-08
 
 Privacy Proxy release. Headline: MUGA can now resolve opaque affiliate wrappers — links where the destination URL is hidden inside a redirector your browser would normally have to load — through `unwrap.muga.app`, an open-source Cloudflare Worker that follows the redirect chain server-side and returns the resolved destination signed with Ed25519. The opaque host never loads on your machine. Fully opt-in via a new "Privacy Proxy" toggle in Settings, off by default; the existing Strict Local and Honor Creator modes are unchanged. Closes [#453](https://github.com/yocreoquesi/muga/issues/453).
