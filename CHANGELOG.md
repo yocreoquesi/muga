@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-05-09
+
+Redirector coverage release. Headline: Privacy Proxy now covers seven more redirector hosts — the generic shorteners `bit.ly`, `tinyurl.com`, `t.co`, and `link.medium.com`; the Partnerize affiliate redirector `prf.hn`; A8.net Japan's `px.a8.net`; and Amazon's branded shortener `amzn.to`. The toggle disclosure copy is reworded so the broader scope is honest — what was "opaque affiliate links" is now "opaque redirector links (affiliate networks and generic shorteners)." A foundational refactor eliminates the duplicate opaque-host list that previously lived in two files; adding a host now requires a one-line edit in `src/lib/opaque-networks.js`. The Worker side (cross-repo) landed first in [muga-unwrap#29](https://github.com/yocreoquesi/muga-unwrap/pull/29).
+
 ### Added
 
 - **7 new / activated opaque redirector hosts** in `src/lib/opaque-networks.js`:
@@ -775,7 +779,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/yocreoquesi/muga/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/yocreoquesi/muga/compare/v1.13.7...v1.14.0
 [1.13.7]: https://github.com/yocreoquesi/muga/compare/v1.13.6...v1.13.7
 [1.13.6]: https://github.com/yocreoquesi/muga/compare/v1.13.5...v1.13.6
