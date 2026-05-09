@@ -53,6 +53,15 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Run integration tests against live Worker (#608)
+        # Hits unwrap.muga.app to verify the extension-Worker contract
+        # (path, param shape, Origin gate, signed-envelope verifiability).
+        # Catches contract drift that the unit-level fetch stubs cannot —
+        # specifically the v1.15.1 hotfix class of bugs.
+        # If transient flakiness becomes a problem, investigate the Worker
+        # availability rather than disabling — stub coverage already exists.
+        run: npm run test:integration
+
       - name: CAPS-Contextual conformance gate (#543)
         run: npm run conformance:contextual
 
