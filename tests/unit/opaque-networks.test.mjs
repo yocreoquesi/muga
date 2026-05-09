@@ -58,4 +58,47 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
     const unique = new Set(OPAQUE_NETWORKS);
     assert.strictEqual(unique.size, OPAQUE_NETWORKS.length);
   });
+
+  // redirector-coverage-expansion (T24): assert all 7 new/activated hosts present
+  test("has at least 13 entries (original 6 + 7 redirector-coverage-expansion additions)", () => {
+    assert.ok(
+      OPAQUE_NETWORKS.length >= 13,
+      `Expected >= 13 entries, got ${OPAQUE_NETWORKS.length}`,
+    );
+  });
+
+  test("includes bit.ly (PR-02 — generic shortener)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("bit.ly"));
+  });
+
+  test("includes tinyurl.com (PR-03 — generic shortener)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("tinyurl.com"));
+  });
+
+  test("includes prf.hn (PR-04 — Partnerize / Performance Horizon affiliate)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("prf.hn"));
+  });
+
+  test("includes px.a8.net (PR-05 — A8.net Japan affiliate, T00 STANDARD probe)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("px.a8.net"));
+  });
+
+  test("does NOT include r.a8.net (T00 corrected hostname — r.a8.net does not resolve)", () => {
+    assert.ok(
+      !OPAQUE_NETWORKS.includes("r.a8.net"),
+      "r.a8.net must NOT be in the list — the real A8.net hostname is px.a8.net",
+    );
+  });
+
+  test("includes amzn.to (PR-06 — Amazon branded shortener, G3 gate passed)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("amzn.to"));
+  });
+
+  test("includes t.co (PR-07 — extension-only activation; Worker already accepts via caps-spec)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("t.co"));
+  });
+
+  test("includes link.medium.com (PR-08 — extension-only activation; Worker already accepts via caps-spec)", () => {
+    assert.ok(OPAQUE_NETWORKS.includes("link.medium.com"));
+  });
 });
