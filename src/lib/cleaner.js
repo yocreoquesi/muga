@@ -166,6 +166,19 @@ function isAliExpressItemPage(hostname, pathname) {
   return /^\/item\/\d+\.html?\/?$/i.test(pathname);
 }
 
+// Bookshop.org affiliate attribution is path-based, not query-string-based:
+// `/a/{id}/...` at entry sets a session cookie that carries through subsequent
+// product pages. We detect the entry path so the cleaner does NOT strip it
+// and so the existing creator-referral wedge cue still fires for users.
+//
+// Out-of-band escape hatch authorised by caps-spec#46 (deferred). The narrow
+// shape is intentional: when a second path-based program lands as a real
+// request, generalise this and reopen the RFC with N>1 data.
+function isBookshopPathReferral(url) {
+  if (url.hostname.replace(/^www\./, "") !== "bookshop.org") return false;
+  return /^\/a\/[^/]+\//.test(url.pathname);
+}
+
 /**
  * Strips tracking params from a URL object, respecting affiliate, preserved,
  * and disabled-category params.  Returns { removed, removedValues, junkCount }
@@ -261,7 +274,7 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   preserved. Background-only contexts that lack a referrer (or that
  *   omit this argument) never enter the honor path — defaulting to
  *   pre-feature behaviour.
- * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, network?: string, creator?: string }}
+ * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, network?: string, creator?: string }}
  *   `action` is one of:
  *     `"untouched"`         — URL unchanged
  *     `"cleaned"`           — tracking params and/or path tokens stripped
@@ -277,11 +290,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   try {
     url = new URL(rawUrl);
   } catch {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
   }
 
   // Step 0a: Honor Creator Mode (#452, B14). When the user opted in AND the
@@ -299,6 +312,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
       junkRemoved: 0,
       detectedAffiliate: null,
       preservedAffiliate: null,
+      creatorReferralPreserved: false,
       network: honor.network,
       creator: honor.creator,
     };
@@ -313,7 +327,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     try {
       url = new URL(rawUrl);
     } catch {
-      return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+      return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
     }
   } else if (
     // Step 0b: Canonical Extractor tier (#442, B7). When the URL was
@@ -332,10 +346,16 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
       try {
         url = new URL(rawUrl);
       } catch {
-        return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+        return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
       }
     }
   }
+
+  // Bookshop.org path-based creator-referral detection. Computed once
+  // post-unwrap so wrapper redirects that land on bookshop are covered.
+  // The flag is read by the service worker (toolbar wedge cue) and
+  // surfaced as a top-level boolean for callers that care.
+  const creatorReferralPreserved = isBookshopPathReferral(url);
 
   const hostname = url.hostname;
   const blacklist = prefs.blacklist || [];
@@ -351,7 +371,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const lowerPath = url.pathname.toLowerCase();
   const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
   if (AUTH_PATH_RE.test(lowerPath)) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved };
   }
 
   // 0b. Per-domain disable: user wants MUGA to do nothing on this domain
@@ -359,7 +379,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain)
   );
   if (domainDisabled) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved };
   }
 
   const originalPathname = url.pathname;
@@ -374,7 +394,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     // C10: count params removed so junkRemoved is reported correctly
     const blacklistedParamCount = [...url.searchParams.keys()].length;
     url.search = "";
-    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0), detectedAffiliate: null, preservedAffiliate: null };
+    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0), detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved };
   }
 
   const patterns = getPatternsForHost(hostname);
@@ -412,6 +432,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
       junkRemoved: removedTrackingForSkip.length + (pathCleaned ? 1 : 0),
       detectedAffiliate: null,
       preservedAffiliate: detectPreservedAffiliate(url, patterns),
+      creatorReferralPreserved,
     };
   }
 
@@ -577,6 +598,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     junkRemoved,
     detectedAffiliate,
     preservedAffiliate: detectPreservedAffiliate(url, patterns),
+    creatorReferralPreserved,
   };
 }
 

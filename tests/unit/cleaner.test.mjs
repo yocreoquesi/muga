@@ -2956,3 +2956,69 @@ describe("#495 — frequency tracker integration with processUrl", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// Bookshop.org — in-cleaner path-based affiliate exception (#603, caps-spec#46
+// deferred). Bookshop's affiliate attribution is path-based (`/a/{id}/`), not
+// query-string-based. The cleaner detects the entry path so it does NOT strip
+// the `/a/` segment and so the standard creator-referral wedge cue still fires.
+// ---------------------------------------------------------------------------
+describe("Bookshop.org path-based creator referral (#603)", () => {
+
+  test("preserves /a/{id}/lists/... entry path and flags creatorReferralPreserved", () => {
+    const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026";
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input, "URL must be untouched");
+    assert.equal(action, "untouched");
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("preserves a foreign creator's /a/{id}/p/books/... path", () => {
+    const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
+    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("strips utm_source on /p/... product pages and does NOT flag preserved (no /a/ entry)", () => {
+    const input = "https://bookshop.org/p/books/9780000000000?utm_source=newsletter";
+    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.ok(removedTracking.includes("utm_source"), "utm_source must be stripped");
+    assert.ok(!cleanUrl.includes("utm_source="));
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("does NOT flag preserved on /a/ with empty id (matches no creator)", () => {
+    const input = "https://bookshop.org/a/";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("matches the www. variant of bookshop.org", () => {
+    const input = "https://www.bookshop.org/a/yocreoquesi/";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("path /a/{id} without trailing slash does NOT match (entry path requires /a/{id}/)", () => {
+    const input = "https://bookshop.org/a/yocreoquesi";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("the /a/{id}/ exception is scoped to bookshop.org — other hosts ignore the pattern", () => {
+    const input = "https://example.com/a/yocreoquesi/lists/best-of-2026";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("entry path is preserved AND co-occurring tracking params are still stripped", () => {
+    const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026?utm_campaign=spring";
+    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.ok(removedTracking.includes("utm_campaign"));
+    assert.ok(cleanUrl.includes("/a/yocreoquesi/lists/best-of-2026"), "entry path stays");
+    assert.ok(!cleanUrl.includes("utm_campaign="));
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+});
