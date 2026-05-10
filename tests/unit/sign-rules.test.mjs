@@ -8,6 +8,14 @@
  *   - Private key is written to os.tmpdir(), passed via MUGA_SIGNING_KEY_PATH env var.
  *   - The script must NOT contain hard-coded private key file paths.
  *
+ * Filesystem invariants:
+ *   - The test MUST NOT touch the canonical source (`tools/rules-source/params.json`)
+ *     or the canonical output (`docs/rules/v1/params.json`). Both are CI-owned;
+ *     `docs/rules/v1/params.json` is auto-committed by `.github/workflows/publish-rules.yml`.
+ *   - All script invocations point MUGA_SOURCE_FILE and MUGA_OUTPUT_FILE at
+ *     a per-process tmp dir. Running `npm test` therefore leaves the working
+ *     tree clean.
+ *
  * Coverage (T6.1):
  *   - Happy path: valid source + valid key → exit 0, signed output with valid sig
  *   - Missing MUGA_SIGNING_KEY_PATH → exit 2
@@ -28,8 +36,6 @@ import {
 } from "node:crypto";
 import {
   writeFileSync,
-  unlinkSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   existsSync,
@@ -41,8 +47,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(__dirname, "../../tools/sign-rules.mjs");
-const SOURCE_DIR = join(__dirname, "../../tools/rules-source");
-const OUTPUT_DIR = join(__dirname, "../../docs/rules/v1");
 
 // ---------------------------------------------------------------------------
 // Test-only keypair — generated ONCE per test run, thrown away after.
@@ -51,13 +55,21 @@ const OUTPUT_DIR = join(__dirname, "../../docs/rules/v1");
 let testPrivKeyPath;
 let testPubKeyBase64;
 let tmpTestDir;
+let tmpSourceFile;
+let tmpOutputFile;
 
 before(() => {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 
-  // Write private key PEM to a temp file
+  // Per-process tmp dir: holds the throw-away private key, the source fixture
+  // we'll feed to the script via MUGA_SOURCE_FILE, and the signed output the
+  // script will write via MUGA_OUTPUT_FILE. Keeping all three out of the
+  // working tree is what makes `npm test` non-destructive on a feature branch.
   tmpTestDir = mkdtempSync(join(tmpdir(), "muga-sign-test-"));
   testPrivKeyPath = join(tmpTestDir, "test-signing.key");
+  tmpSourceFile = join(tmpTestDir, "source-params.json");
+  tmpOutputFile = join(tmpTestDir, "output-params.json");
+
   writeFileSync(testPrivKeyPath, privateKey.export({ type: "pkcs8", format: "pem" }), {
     mode: 0o600,
   });
@@ -75,56 +87,22 @@ after(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Helper: write a source params.json fixture and run the script
+// Helper: write a source params.json fixture into the tmp dir and run the
+// script with MUGA_SOURCE_FILE / MUGA_OUTPUT_FILE pointed at that dir.
+// `sourceFile` (when provided) overrides MUGA_SOURCE_FILE without writing a
+// fixture — used by the IO-error test that needs to point at a missing path.
 // ---------------------------------------------------------------------------
 function runScript({ envOverrides = {}, sourceContent, sourceFile } = {}) {
-  const actualSourceFile = sourceFile ?? join(SOURCE_DIR, "params.json");
-
-  // Write the fixture to the actual source file location unless caller overrides
-  if (sourceContent !== undefined && sourceFile === undefined) {
-    // Back up existing file if any
-    let backup;
-    try {
-      backup = readFileSync(actualSourceFile, "utf8");
-    } catch {
-      backup = null;
-    }
-
-    try {
-      mkdirSync(SOURCE_DIR, { recursive: true });
-      writeFileSync(actualSourceFile, sourceContent);
-    } catch {
-      // ignore
-    }
-
-    const result = spawnSync("node", [SCRIPT], {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        MUGA_SIGNING_KEY_PATH: testPrivKeyPath,
-        ...envOverrides,
-      },
-    });
-
-    // Restore backup
-    try {
-      if (backup !== null) {
-        writeFileSync(actualSourceFile, backup);
-      } else if (existsSync(actualSourceFile)) {
-        unlinkSync(actualSourceFile);
-      }
-    } catch {
-      // ignore
-    }
-
-    return result;
+  if (sourceContent !== undefined) {
+    writeFileSync(tmpSourceFile, sourceContent);
   }
-
   return spawnSync("node", [SCRIPT], {
     encoding: "utf8",
     env: {
       ...process.env,
       MUGA_SIGNING_KEY_PATH: testPrivKeyPath,
+      MUGA_SOURCE_FILE: sourceFile ?? tmpSourceFile,
+      MUGA_OUTPUT_FILE: tmpOutputFile,
       ...envOverrides,
     },
   });
@@ -173,11 +151,10 @@ describe("sign-rules.mjs happy path", () => {
       `Expected exit 0 but got ${result.status}. stderr: ${result.stderr}`
     );
 
-    // Read the output file
-    const outFile = join(OUTPUT_DIR, "params.json");
-    assert.ok(existsSync(outFile), "Output file docs/rules/v1/params.json must exist");
+    // Read the output file (written to the tmp dir, NOT the canonical path)
+    assert.ok(existsSync(tmpOutputFile), "Output file must exist in tmp dir after signing");
 
-    const output = JSON.parse(readFileSync(outFile, "utf8"));
+    const output = JSON.parse(readFileSync(tmpOutputFile, "utf8"));
     assert.strictEqual(typeof output.version, "number");
     assert.strictEqual(typeof output.published, "string");
     assert.ok(Array.isArray(output.params));
@@ -194,8 +171,7 @@ describe("sign-rules.mjs happy path", () => {
     const result = runScript({ sourceContent: fixture });
     assert.strictEqual(result.status, 0);
 
-    const outFile = join(OUTPUT_DIR, "params.json");
-    const output = JSON.parse(readFileSync(outFile, "utf8"));
+    const output = JSON.parse(readFileSync(tmpOutputFile, "utf8"));
 
     // Reconstruct canonical message per REQ-VERIFY-3
     const canonical = `${output.version}|${output.published}|${output.params.join(",")}`;
@@ -225,7 +201,7 @@ describe("sign-rules.mjs happy path", () => {
     const result = runScript({ sourceContent: fixture });
     assert.strictEqual(result.status, 0);
 
-    const output = JSON.parse(readFileSync(join(OUTPUT_DIR, "params.json"), "utf8"));
+    const output = JSON.parse(readFileSync(tmpOutputFile, "utf8"));
     // base64url must not contain +, /, or = padding
     assert.ok(!/[+/=]/.test(output.sig), "sig must be base64url (no +, /, or = chars)");
   });
@@ -376,17 +352,10 @@ describe("sign-rules.mjs exit code 1 (source validation error)", () => {
 // ---------------------------------------------------------------------------
 describe("sign-rules.mjs exit code 3 (IO error)", () => {
   test("exits 3 when the source file cannot be read", () => {
-    // Pass a non-existent source file via the specific env var (not CLI arg)
-    // The script reads from tools/rules-source/params.json — we use a temp env
-    // to point it to a non-existent file path via MUGA_SOURCE_FILE env override
-    const result = spawnSync("node", [SCRIPT], {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        MUGA_SIGNING_KEY_PATH: testPrivKeyPath,
-        MUGA_SOURCE_FILE: "/nonexistent/path/params.json",
-      },
-    });
+    // Point MUGA_SOURCE_FILE at a path that does not exist. runScript also
+    // sets MUGA_OUTPUT_FILE to the tmp dir defensively, so even if the
+    // script ever reordered its checks the canonical output path stays clean.
+    const result = runScript({ sourceFile: "/nonexistent/path/params.json" });
     assert.strictEqual(
       result.status,
       3,
