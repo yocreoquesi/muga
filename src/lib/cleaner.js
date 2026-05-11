@@ -166,18 +166,27 @@ function isAliExpressItemPage(hostname, pathname) {
   return /^\/item\/\d+\.html?\/?$/i.test(pathname);
 }
 
-// Bookshop.org affiliate attribution is path-based, not query-string-based:
-// `/a/{id}/...` at entry sets a session cookie that carries through subsequent
-// product pages. We detect the entry path so the cleaner does NOT strip it
-// and so the existing creator-referral wedge cue still fires for users.
+// Bookshop.org affiliate attribution is path-based, not query-string-based.
+// Two entry paths set the `override_affiliate` session cookie:
+//   /a/{id}/...   creator referral (requires trailing slash to be valid)
+//   /shop/{slug}  storefront (with or without trailing slash; terminal)
+// Both flow through to product pages via the cookie. The cleaner detects
+// either entry so it does NOT touch the path AND so the existing creator-
+// referral wedge cue fires for users.
 //
 // Out-of-band escape hatch authorised by caps-spec#46 (deferred). The narrow
 // shape is intentional: when a second path-based program lands as a real
 // request, generalise this and reopen the RFC with N>1 data.
 function isBookshopPathReferral(url) {
   if (url.hostname.replace(/^www\./, "") !== "bookshop.org") return false;
-  return /^\/a\/[^/]+\//.test(url.pathname);
+  return /^(?:\/a\/[^/]+\/|\/shop\/[^/]+\/?$)/.test(url.pathname);
 }
+
+// MUGA's Bookshop.org affiliate ID for injection on unattributed product
+// pages. Lives next to the path-referral detector because both pieces share
+// the same caps-spec#46 escape-hatch rationale. TODO: move into OUR_TAGS in
+// affiliates.js once caps-spec adopts Bookshop as a direct-injection program.
+const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
 
 /**
  * Strips tracking params from a URL object, respecting affiliate, preserved,
@@ -587,6 +596,23 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
         break;
       }
     }
+  }
+
+  // 6b. Bookshop.org MUGA-affiliate injection. Bookshop is not in
+  // AFFILIATE_PATTERNS (caps-spec#46 deferred), so step 6 above never fires
+  // for it. We inject ?affiliate={MUGA_ID} on unattributed product pages
+  // only — never on /shop/{slug} (someone else's storefront) or /a/{id}/
+  // (creator referral). The creatorReferralPreserved flag captures both.
+  if (
+    prefs.injectOwnAffiliate &&
+    !prefs.stripAllAffiliates &&
+    hostname.replace(/^www\./, "") === "bookshop.org" &&
+    !creatorReferralPreserved &&
+    url.pathname.startsWith("/p/") &&
+    !url.searchParams.has("affiliate")
+  ) {
+    url.searchParams.set("affiliate", MUGA_BOOKSHOP_AFFILIATE_ID);
+    action = "injected";
   }
 
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
