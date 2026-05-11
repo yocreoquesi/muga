@@ -17,8 +17,8 @@ const domainRules = require("../../src/rules/domain-rules.json");
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all 168 entries have domain, preserveParams (non-empty array), and note", () => {
-    assert.equal(domainRules.length, 168, `Expected 168 entries, got ${domainRules.length}`);
+  test("all 169 entries have domain, preserveParams (non-empty array), and note", () => {
+    assert.equal(domainRules.length, 169, `Expected 169 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);

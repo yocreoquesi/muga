@@ -3266,6 +3266,13 @@
     "note": "Shinsegae Group online department store"
   },
   {
+    "domain": "steampowered.com",
+    "preserveParams": [
+      "curator_clanid"
+    ],
+    "note": "Steam Curator attribution (#614). curator_clanid identifies the curator account whose recommendation card is surfaced inline on the store page when the visitor arrives with this param. Non-monetary creator attribution — same MUGA philosophy as Bookshop /a/{id}/ referrals (#612). Subdomain-aware match covers store.steampowered.com."
+  },
+  {
     "domain": "stackoverflow.com",
     "preserveParams": [
       "tab",
