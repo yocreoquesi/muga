@@ -2,7 +2,9 @@
 
 All notable changes to MUGA will be documented in this file.
 
-## [Unreleased]
+## [1.16.0] - 2026-05-11
+
+Feature release. Headline: full Bookshop.org affiliate support — both creator-referral preservation (`/a/{id}/` and `/shop/{slug}` entry paths) and MUGA's own affiliate injection on unattributed product pages. Out-of-band escape hatch authorised by caps-spec#46 itself. Also bundled: three additional opaque redirector hosts (lnkd.in, fb.me, ebay.to), a live end-to-end integration test against the production Worker contract, and a toolbar polish (drop icon variant + per-tab junk badge counter).
 
 ### Added
 
@@ -11,6 +13,10 @@ All notable changes to MUGA will be documented in this file.
 - **Extension unit tests** in `tests/unit/opaque-networks.test.mjs`: per-host inclusion assertions plus a corrective negative assertion that `aliexpress.us` is NOT in the list (probe verdict 2026-05-09: apex `.us` TLD redirect, not a shortener).
 - **End-to-end integration test** `tests/integration/proxy-client-contract.test.mjs` (#608) — calls the live production Worker at `unwrap.muga.app` with an extension-shaped request and verifies the signed envelope round-trip. Wired into CI as `npm run test:integration`. Catches contract drift of the kind that caused the v1.14.0 → v1.15.1 silent failure (path drift, param-shape drift, public-key drift).
 - **Bookshop.org affiliate support** (#603, caps-spec#46 deferred). Bookshop's affiliate attribution lives in the path and sets a session cookie at entry — there is no `?aff=` query param ever. Two entry shapes are covered: `/a/{id}/...` (creator referral, requires trailing slash) and `/shop/{slug}` (storefront, terminal). The cleaner detects either entry on `bookshop.org` (and `www.` variant), preserves it intact, and surfaces a top-level `creatorReferralPreserved: boolean` on `processUrl`. The service worker ORs that flag with the existing `preservedAffiliate` check so the standard "Creator referral preserved" toolbar wedge cue fires for both entry shapes. Additionally, when `injectOwnAffiliate` is on, MUGA injects its own `?affiliate=124046` on unattributed `/p/books/...` product URLs — never on `/shop/{slug}` or `/a/{id}/` (those are someone else's attribution) and never when a foreign `?affiliate=` is already present. Out-of-band escape hatch authorised by caps-spec#46 itself; the implementation is deliberately narrow (single-host, two well-known patterns) so caps-spec stays uninflated until a second path-based program lands and the RFC reopen criteria fire.
+
+### Fixed
+
+- **Toolbar icon variant dropped + per-tab badge counter** (commit f6a6e2b). The toolbar now uses a single icon variant and the junk-removed counter is scoped per tab, replacing the previous global-counter behavior that could surface stale numbers when switching tabs.
 
 ## [1.15.1] - 2026-05-09
 
