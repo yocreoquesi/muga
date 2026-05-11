@@ -811,13 +811,18 @@ const OUR_TAGS = {
   "vercel":        {}, // pending Vercel referral username
   "digitalocean":  {}, // pending DigitalOcean referral code
   "lemon-squeezy": {}, // pending Lemon Squeezy affiliate id
-  "apple-phg":     {}, // pending Apple Performance Partners application
 };
 // booking and humble-bundle were removed when caps-spec deprecated those
 // programs upstream (Booking terminated direct affiliate partnerships May
 // 2025 → migrated to Awin; Humble Bundle migrated to Impact). The sync
 // script filters out programType=deprecated, so an entry here would be
 // dead code — coverage continues via network-redirect (awin / impact-radius).
+//
+// apple-phg is intentionally NOT in OUR_TAGS: Apple Performance Partners is
+// a curated program closed to small publishers (volume + quality gate). We
+// preserve third-party at= tags via caps-spec (moat-aligned) but skip
+// injection. Fallback `OUR_TAGS[prog.id] || {}` keeps preservation working
+// without a placeholder entry.
 
 // Maps caps-spec program ids to MUGA's existing display "group" so the
 // popup / attribution-ledger UI keeps showing familiar labels (e.g.
@@ -826,7 +831,6 @@ const OUR_TAGS = {
 const GROUP_OVERRIDES = {
   "amazon-associates":    "Amazon",
   "ebay-partner-network": "eBay",
-  "apple-phg":            "Apple",
 };
 
 function _deriveGroup(prog) {
