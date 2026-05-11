@@ -2,6 +2,12 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Steam Curator attribution preservation** (#614). Adds an explicit `steampowered.com` entry to `src/rules/domain-rules.json` preserving `curator_clanid` — the query param Steam uses to surface a curator's recommendation card inline on the store page. Steam Curator is functionally analogous to the Bookshop `/a/{id}/` creator-referral pattern shipped in #612: non-monetary, but real attribution value (analytics, follower-conversion surfacing). Subdomain-aware match covers `store.steampowered.com` automatically. Out of scope: Steam's internal nav telemetry (`snr`, host-emitted `utm_*`) and MUGA-own curator injection — see the issue for the rationale.
+
 ## [1.16.0] - 2026-05-11
 
 Feature release. Headline: full Bookshop.org affiliate support — both creator-referral preservation (`/a/{id}/` and `/shop/{slug}` entry paths) and MUGA's own affiliate injection on unattributed product pages. Out-of-band escape hatch authorised by caps-spec#46 itself. Also bundled: three additional opaque redirector hosts (lnkd.in, fb.me, ebay.to), a live end-to-end integration test against the production Worker contract, and a toolbar polish (drop icon variant + per-tab junk badge counter).

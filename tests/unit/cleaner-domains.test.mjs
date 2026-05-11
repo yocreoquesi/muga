@@ -11,7 +11,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { processUrl } from "../../src/lib/cleaner.js";
+import { processUrl, getDomainParamSets } from "../../src/lib/cleaner.js";
 
 const require = createRequire(import.meta.url);
 const domainRules = require("../../src/rules/domain-rules.json");
@@ -463,6 +463,47 @@ describe("Namu.wiki URL cleaning", () => {
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("q"), "Python");
     assert.equal(u.searchParams.has("from"), false);
+  });
+});
+
+describe("Steam Curator — curator_clanid preserved as creator attribution (#614)", () => {
+  test("preserves curator_clanid standalone on store.steampowered.com", () => {
+    const { cleanUrl } = clean(
+      "https://store.steampowered.com/app/2769240/Wax_Heads/?curator_clanid=2540"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("curator_clanid"), "2540");
+  });
+
+  test("preserves curator_clanid while stripping co-occurring utm_*", () => {
+    const { cleanUrl } = clean(
+      "https://store.steampowered.com/app/2769240/Wax_Heads/?curator_clanid=2540&utm_source=newsletter&utm_campaign=promo"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("curator_clanid"), "2540");
+    assert.ok(!u.searchParams.has("utm_source"), "utm_source must be stripped");
+    assert.ok(!u.searchParams.has("utm_campaign"), "utm_campaign must be stripped");
+  });
+
+  test("preserves curator_clanid on apex steampowered.com (subdomain-aware rule)", () => {
+    const { cleanUrl } = clean(
+      "https://steampowered.com/app/2769240/?curator_clanid=2540"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("curator_clanid"), "2540");
+  });
+
+  test("rule is host-scoped: curator_clanid is NOT in the preserve set for non-Steam hosts", () => {
+    const steam = getDomainParamSets("store.steampowered.com", domainRules).preserved;
+    assert.ok(steam.has("curator_clanid"), "Steam rule must preserve curator_clanid");
+
+    for (const host of ["example.com", "store.epicgames.com", "www.google.com"]) {
+      const preserved = getDomainParamSets(host, domainRules).preserved;
+      assert.ok(
+        !preserved.has("curator_clanid"),
+        `Rule must NOT preserve curator_clanid on ${host}`
+      );
+    }
   });
 });
 
