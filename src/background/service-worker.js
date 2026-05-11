@@ -769,7 +769,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
-        if (typeof tabId === "number" && result.preservedAffiliate) {
+        if (typeof tabId === "number" && (result.preservedAffiliate || result.creatorReferralPreserved)) {
           toolbarBus.emit({ type: "creatorReferralPreserved", tabId });
         }
         sendResponse(result);

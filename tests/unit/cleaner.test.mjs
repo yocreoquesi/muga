@@ -2956,3 +2956,179 @@ describe("#495 — frequency tracker integration with processUrl", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// Bookshop.org — in-cleaner path-based affiliate exception (#603, caps-spec#46
+// deferred). Bookshop's affiliate attribution is path-based (`/a/{id}/`), not
+// query-string-based. The cleaner detects the entry path so it does NOT strip
+// the `/a/` segment and so the standard creator-referral wedge cue still fires.
+// ---------------------------------------------------------------------------
+describe("Bookshop.org path-based creator referral (#603)", () => {
+
+  test("preserves /a/{id}/lists/... entry path and flags creatorReferralPreserved", () => {
+    const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026";
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input, "URL must be untouched");
+    assert.equal(action, "untouched");
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("preserves a foreign creator's /a/{id}/p/books/... path", () => {
+    const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
+    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("strips utm_source on /p/... product pages and does NOT flag preserved (no /a/ entry)", () => {
+    const input = "https://bookshop.org/p/books/9780000000000?utm_source=newsletter";
+    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.ok(removedTracking.includes("utm_source"), "utm_source must be stripped");
+    assert.ok(!cleanUrl.includes("utm_source="));
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("does NOT flag preserved on /a/ with empty id (matches no creator)", () => {
+    const input = "https://bookshop.org/a/";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("matches the www. variant of bookshop.org", () => {
+    const input = "https://www.bookshop.org/a/yocreoquesi/";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("path /a/{id} without trailing slash does NOT match (entry path requires /a/{id}/)", () => {
+    const input = "https://bookshop.org/a/yocreoquesi";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("the /a/{id}/ exception is scoped to bookshop.org — other hosts ignore the pattern", () => {
+    const input = "https://example.com/a/yocreoquesi/lists/best-of-2026";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("entry path is preserved AND co-occurring tracking params are still stripped", () => {
+    const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026?utm_campaign=spring";
+    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.ok(removedTracking.includes("utm_campaign"));
+    assert.ok(cleanUrl.includes("/a/yocreoquesi/lists/best-of-2026"), "entry path stays");
+    assert.ok(!cleanUrl.includes("utm_campaign="));
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("preserves /shop/{slug} storefront path with trailing slash", () => {
+    const input = "https://bookshop.org/shop/muga/";
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("preserves /shop/{slug} storefront path without trailing slash", () => {
+    const input = "https://bookshop.org/shop/muga";
+    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("matches the www. variant for /shop/{slug}", () => {
+    const input = "https://www.bookshop.org/shop/muga";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("/shop without a slug does NOT match (storefront path requires /shop/{slug})", () => {
+    const input = "https://bookshop.org/shop/";
+    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Bookshop.org — MUGA affiliate injection (follow-up to #603, caps-spec#46).
+// Inject ?affiliate=124046 only on unattributed /p/books/... product pages.
+// NEVER on /shop/{slug} or /a/{id}/ — those are someone else's attribution
+// (or our own storefront, which Bookshop already attributes via cookie).
+// ---------------------------------------------------------------------------
+describe("Bookshop.org MUGA affiliate injection", () => {
+  const INJECT = { ...PREFS, injectOwnAffiliate: true };
+
+  test("injects ?affiliate=124046 on a clean /p/books/... product URL", () => {
+    const input = "https://bookshop.org/p/books/the-bee-sting-paul-murray/123456";
+    const { cleanUrl, action } = processUrl(input, INJECT);
+    assert.equal(action, "injected");
+    assert.ok(cleanUrl.includes("affiliate=124046"));
+  });
+
+  test("matches www.bookshop.org for injection", () => {
+    const input = "https://www.bookshop.org/p/books/the-bee-sting/123456";
+    const { cleanUrl, action } = processUrl(input, INJECT);
+    assert.equal(action, "injected");
+    assert.ok(cleanUrl.includes("affiliate=124046"));
+  });
+
+  test("does NOT inject on /shop/{slug} — someone else's storefront", () => {
+    const input = "https://bookshop.org/shop/some-other-bookstore";
+    const { cleanUrl, action } = processUrl(input, INJECT);
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+  });
+
+  test("does NOT inject on /a/{id}/ — creator referral", () => {
+    const input = "https://bookshop.org/a/some-creator/lists/best-of-2026";
+    const { cleanUrl, action } = processUrl(input, INJECT);
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+  });
+
+  test("does NOT inject on the homepage", () => {
+    const input = "https://bookshop.org/";
+    const { cleanUrl, action } = processUrl(input, INJECT);
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+  });
+
+  test("does NOT inject when injectOwnAffiliate=false", () => {
+    const input = "https://bookshop.org/p/books/the-bee-sting/123456";
+    const { cleanUrl, action } = processUrl(input, PREFS);
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+  });
+
+  test("does NOT overwrite an existing ?affiliate= (foreign affiliate preserved)", () => {
+    const input = "https://bookshop.org/p/books/the-bee-sting/123456?affiliate=999999";
+    const { cleanUrl } = processUrl(input, INJECT);
+    assert.ok(cleanUrl.includes("affiliate=999999"));
+    assert.ok(!cleanUrl.includes("affiliate=124046"));
+  });
+
+  test("does NOT inject when stripAllAffiliates is true", () => {
+    const input = "https://bookshop.org/p/books/the-bee-sting/123456";
+    const { cleanUrl, action } = processUrl(input, { ...INJECT, stripAllAffiliates: true });
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+  });
+
+  test("injects and strips co-occurring utm tracking params in the same pass", () => {
+    const input = "https://bookshop.org/p/books/the-bee-sting/123456?utm_source=twitter";
+    const { cleanUrl, action, removedTracking } = processUrl(input, INJECT);
+    assert.equal(action, "injected");
+    assert.ok(cleanUrl.includes("affiliate=124046"));
+    assert.ok(!cleanUrl.includes("utm_source"));
+    assert.ok(removedTracking.includes("utm_source"));
+  });
+
+  test("does NOT inject on a non-bookshop host that happens to have /p/books/", () => {
+    const input = "https://example.com/p/books/anything";
+    const { cleanUrl, action } = processUrl(input, INJECT);
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+  });
+
+});
