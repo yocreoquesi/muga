@@ -345,8 +345,6 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   }
 
   const patterns = getPatternsForHost(hostname);
-  let detectedAffiliate = null;
-  let action = "untouched";
 
   // 2. Whitelist domain-only check: if the domain itself is whitelisted, skip all affiliate processing
   if (parsedWhitelist.some(e => !e.param && domainMatches(hostname, e.domain))) {
@@ -357,129 +355,25 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     return payload;
   }
 
-  // 2b. Collect whitelisted affiliate values for this host (never touch these).
-  // Two shapes are supported (#301):
-  //   - exact:    domain::param::value  -> protects only that param/value pair
-  //   - wildcard: domain::param::*      -> protects any value of that param
-  const whitelistedValues = new Set();
-  const whitelistedParams = new Set();
-  for (const e of parsedWhitelist) {
-    if (!domainMatches(hostname, e.domain) || !e.param || !e.value) continue;
-    if (e.value === "*") whitelistedParams.add(e.param);
-    else whitelistedValues.add(`${e.param}::${e.value}`);
-  }
-  const isWhitelisted = (param, value) =>
-    whitelistedParams.has(param) || whitelistedValues.has(`${param}::${value}`);
-
-  // 3. Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
-  // #523 phase 3: detection no longer gates on ourTag — a creator referral
-  // is preserved even on programs MUGA has no account on (Booking, Vercel,
-  // DigitalOcean, Humble Bundle, Lemon Squeezy). The only short-circuit is
-  // when the value matches MUGA's OWN tag for this host (we injected it).
-  if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
-    const hostKey = hostname.replace(/^www\./, "");
-    for (const pattern of patterns) {
-      const value = url.searchParams.get(pattern.param);
-      if (!value) continue;
-      const ourTagForHost = pattern.ourTag[hostKey] || pattern.ourTag[hostname] || "";
-      if (ourTagForHost && value === ourTagForHost) continue;
-      if (!isWhitelisted(pattern.param, value)) {
-        detectedAffiliate = { param: pattern.param, value, pattern };
-        action = "detected_foreign";
-        break;
-      }
-    }
-  }
-
-  // 4. Strip known tracking parameters (built-in + user-defined custom params)
-  // Step 5 of design §3: delegate to classifyAndStripTracking (AliExpress + standard path).
-  const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  // Step 5 — Tracking strip (Scenario A core)
   const { removed: removedTracking, removedValues: removedTrackingValues } =
     classifyAndStripTracking(url, prefs, domainRules);
-  if (pathCleaned && action === "untouched") action = "cleaned";
-  if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
 
-  // 4b. Strip third-party affiliate params. Our own tag is preserved only when
-  // injection is enabled -- the user opted into supporting MUGA. If injection
-  // is off, "strip all" includes our own tag (covers shared-link case where a
-  // URL arrives with our tag already attached) (#353).
-  // Whitelist entries are also respected: specific beats general.
-  if (prefs.stripAllAffiliates) {
-    const hostKeyStrip = hostname.replace(/^www\./, "");
-    for (const pattern of patterns) {
-      const val = url.searchParams.get(pattern.param);
-      if (val) {
-        const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
-        if (prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost) continue;
-        if (!isWhitelisted(pattern.param, val)) {
-          url.searchParams.delete(pattern.param);
-          if (action === "untouched") action = "cleaned";
-        }
-      }
-    }
-  }
+  // Step 6 — Affiliate pipeline (Scenarios B + C + blacklist-value strip)
+  const { action: pipeAction, detectedAffiliate, blacklistStripped } =
+    handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname);
 
-  // 5. Strip specific blacklisted affiliate values
-  let blacklistStripped = 0;
-  // Track whether a blacklist rule removed an affiliate param. If so, injection must be suppressed.
-  // Without this guard, a blacklisted third-party tag would be silently replaced by ourTag (#183).
-  let blacklistRemovedAffiliate = false;
-  for (const entry of parsedBlacklist) {
-    if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
-      const current = url.searchParams.get(entry.param);
-      if (current === null) continue;
-      const isWildcard = entry.value === "*";
-      const matches = isWildcard || current === entry.value;
-      if (!matches) continue;
-      // Whitelist always wins over blacklist for the same param (#301).
-      // Applies to both wildcard (`domain::param::*`) and exact-match entries
-      // so the user-facing priority rule stays consistent and easy to explain.
-      if (isWhitelisted(entry.param, current)) continue;
-      url.searchParams.delete(entry.param);
-      blacklistStripped++;
-      // If this param is an affiliate param for this host, flag injection suppression
-      if (affiliateParamSet.has(entry.param.toLowerCase())) {
-        blacklistRemovedAffiliate = true;
-      }
-      // If this was the detected foreign affiliate, clear it. The toast must not fire
-      // for a parameter we already removed via the blacklist.
-      if (
-        detectedAffiliate &&
-        detectedAffiliate.param === entry.param &&
-        (isWildcard || detectedAffiliate.value === entry.value)
-      ) {
-        detectedAffiliate = null;
-        action = "cleaned";
-      } else if (action === "untouched") {
-        action = "cleaned";
-      }
-    }
-  }
-
-  const junkRemoved = removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0);
-
-  // 6. Inject our affiliate tag when the link has none (skip if foreign detected, stripAllAffiliates,
-  //    or if a blacklist rule already removed an affiliate for this URL (blacklist takes priority, #183)
-  if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
-    const hostKeyInject = hostname.replace(/^www\./, "");
-    for (const pattern of patterns) {
-      const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
-      if (ourTagForHost && !url.searchParams.has(pattern.param)) {
-        url.searchParams.set(pattern.param, ourTagForHost);
-        action = "injected";
-        break;
-      }
-    }
-  }
+  // Step 7 — Action resolution + Bookshop injection + recordFrequency + final payload
+  let action = pipeAction;
+  if (action === "untouched" && (pathCleaned || removedTracking.length > 0)) action = "cleaned";
 
   // 6b. Bookshop.org MUGA-affiliate injection. Bookshop is not in
-  // AFFILIATE_PATTERNS (caps-spec#46 deferred), so step 6 above never fires
-  // for it. We inject ?affiliate={MUGA_ID} on unattributed product pages
-  // only — never on /shop/{slug} (someone else's storefront) or /a/{id}/
-  // (creator referral). The creatorReferralPreserved flag captures both.
+  // AFFILIATE_PATTERNS (caps-spec#46 deferred), so the pipeline above never
+  // fires for it. Needs creatorReferralPreserved from unwrapAndExtract.
   if (
     prefs.injectOwnAffiliate &&
     !prefs.stripAllAffiliates &&
+    action !== "detected_foreign" &&
     hostname.replace(/^www\./, "") === "bookshop.org" &&
     !creatorReferralPreserved &&
     url.pathname.startsWith("/p/") &&
@@ -492,7 +386,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
 
   return buildReturnPayload(action, url, removedTracking, detectedAffiliate, {
-    junkRemoved,
+    junkRemoved: removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0),
     preservedAffiliate: detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
   });
@@ -617,6 +511,130 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle) {
   const creatorReferralPreserved = isBookshopPathReferral(url);
 
   return { kind: "continue", rawUrl, url, creatorReferralPreserved };
+}
+
+// ── handleAffiliatePipeline ───────────────────────────────────────────────────
+
+/**
+ * Steps 3 + 4b + 5 + 6 + 6b: foreign-affiliate detection, stripAllAffiliates,
+ * blacklist-value strip, own-affiliate injection (incl. Bookshop).
+ *
+ * Mutates url.searchParams in place. Does NOT call recordFrequency.
+ * The frequencyTracker is intentionally excluded — orchestrator owns both
+ * recordFrequency call sites (design §6 Risk #1 mitigation).
+ *
+ * @param {URL} url
+ * @param {object} prefs
+ * @param {Array} patterns        Affiliate patterns for this hostname
+ * @param {Array} parsedBlacklist
+ * @param {Array} parsedWhitelist
+ * @param {string} hostname
+ * @returns {{ action: string, detectedAffiliate: object|null, blacklistStripped: number }}
+ */
+function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname) {
+  // Build isWhitelisted closure for this host
+  const whitelistedValues = new Set();
+  const whitelistedParams = new Set();
+  for (const e of parsedWhitelist) {
+    if (!domainMatches(hostname, e.domain) || !e.param || !e.value) continue;
+    if (e.value === "*") whitelistedParams.add(e.param);
+    else whitelistedValues.add(`${e.param}::${e.value}`);
+  }
+  const isWhitelisted = (param, value) =>
+    whitelistedParams.has(param) || whitelistedValues.has(`${param}::${value}`);
+
+  let detectedAffiliate = null;
+  let action = "untouched";
+
+  // Step 3: Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
+  // #523 phase 3: detection no longer gates on ourTag.
+  if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
+    const hostKey = hostname.replace(/^www\./, "");
+    for (const pattern of patterns) {
+      const value = url.searchParams.get(pattern.param);
+      if (!value) continue;
+      const ourTagForHost = pattern.ourTag[hostKey] || pattern.ourTag[hostname] || "";
+      if (ourTagForHost && value === ourTagForHost) continue;
+      if (!isWhitelisted(pattern.param, value)) {
+        detectedAffiliate = { param: pattern.param, value, pattern };
+        action = "detected_foreign";
+        break;
+      }
+    }
+  }
+
+  // Step 4b: Strip third-party affiliate params (stripAllAffiliates path)
+  if (prefs.stripAllAffiliates) {
+    const hostKeyStrip = hostname.replace(/^www\./, "");
+    for (const pattern of patterns) {
+      const val = url.searchParams.get(pattern.param);
+      if (val) {
+        const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
+        if (prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost) continue;
+        if (!isWhitelisted(pattern.param, val)) {
+          url.searchParams.delete(pattern.param);
+          if (action === "untouched") action = "cleaned";
+        }
+      }
+    }
+  }
+
+  // Step 5: Strip specific blacklisted affiliate values
+  let blacklistStripped = 0;
+  // Track whether a blacklist rule removed an affiliate param (injection suppression, #183).
+  // INTERNAL — does NOT cross the function boundary.
+  let blacklistRemovedAffiliate = false;
+  const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  for (const entry of parsedBlacklist) {
+    if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
+      const current = url.searchParams.get(entry.param);
+      if (current === null) continue;
+      const isWildcard = entry.value === "*";
+      const matches = isWildcard || current === entry.value;
+      if (!matches) continue;
+      // Whitelist always wins over blacklist (#301).
+      if (isWhitelisted(entry.param, current)) continue;
+      url.searchParams.delete(entry.param);
+      blacklistStripped++;
+      if (affiliateParamSet.has(entry.param.toLowerCase())) {
+        blacklistRemovedAffiliate = true;
+      }
+      // If this was the detected foreign affiliate, clear it.
+      if (
+        detectedAffiliate &&
+        detectedAffiliate.param === entry.param &&
+        (isWildcard || detectedAffiliate.value === entry.value)
+      ) {
+        detectedAffiliate = null;
+        action = "cleaned";
+      } else if (action === "untouched") {
+        action = "cleaned";
+      }
+    }
+  }
+
+  // Step 6: Inject own affiliate tag (generic — AFFILIATE_PATTERNS)
+  if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
+    const hostKeyInject = hostname.replace(/^www\./, "");
+    for (const pattern of patterns) {
+      const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
+      if (ourTagForHost && !url.searchParams.has(pattern.param)) {
+        url.searchParams.set(pattern.param, ourTagForHost);
+        action = "injected";
+        break;
+      }
+    }
+  }
+
+  // Step 6b: Bookshop.org MUGA-affiliate injection (#caps-spec#46).
+  // Bookshop is not in AFFILIATE_PATTERNS so step 6 above never fires for it.
+  // NOTE: creatorReferralPreserved is NOT a parameter here — the orchestrator
+  // has it from unwrapAndExtract and passes it to buildReturnPayload directly.
+  // We access it via closure: it's NOT available here. This means the Bookshop
+  // injection must stay in the ORCHESTRATOR (after pipeline returns), not here.
+  // Design §3 skeleton shows Bookshop injection AFTER handleAffiliatePipeline call.
+
+  return { action, detectedAffiliate, blacklistStripped };
 }
 
 // ── handleWhitelistedDomain ───────────────────────────────────────────────────
@@ -756,4 +774,4 @@ function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffili
 // strict TDD (RED → GREEN → REFACTOR) without polluting the module's public
 // surface. Bundle-sync tests must allowlist this key.
 
-export const __test__ = { buildReturnPayload, classifyAndStripTracking, unwrapAndExtract, handleWhitelistedDomain };
+export const __test__ = { buildReturnPayload, classifyAndStripTracking, unwrapAndExtract, handleWhitelistedDomain, handleAffiliatePipeline };
