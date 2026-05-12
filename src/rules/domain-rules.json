@@ -3628,17 +3628,17 @@
     "preserveParams": [
       "t",
       "list",
-      "index",
-      "start_radio"
+      "index"
     ],
     "stripParams": [
       "feature",
       "pp",
       "si",
       "cbrd",
-      "ucbcb"
+      "ucbcb",
+      "start_radio"
     ],
-    "note": "YouTube short links: timestamp and playlist functional. si (share token) stripped."
+    "note": "YouTube short links: timestamp and playlist functional. si (share token) stripped. start_radio is redundant UI flag — list=RD... already defines the radio mix."
   },
   {
     "domain": "youtube.com",
@@ -3647,7 +3647,6 @@
       "t",
       "list",
       "index",
-      "start_radio",
       "ab_channel",
       "search_query",
       "lc"
@@ -3662,9 +3661,10 @@
       "ucbcb",
       "embeds_referring_euri",
       "embeds_referring_origin",
-      "kw"
+      "kw",
+      "start_radio"
     ],
-    "note": "Video ID, timestamp, playlist, channel, comment link: functional. si (share token), feature/pp, embed referrer tracking stripped."
+    "note": "Video ID, timestamp, playlist, channel, comment link: functional. si (share token), feature/pp, embed referrer tracking stripped. start_radio is redundant UI flag — list=RD... already defines the radio mix."
   },
   {
     "domain": "zalando.de",
