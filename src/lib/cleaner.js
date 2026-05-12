@@ -299,11 +299,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   try {
     url = new URL(rawUrl);
   } catch {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
+    return buildReturnPayload("untouched", rawUrl, [], null, {});
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
+    return buildReturnPayload("untouched", rawUrl, [], null, {});
   }
 
   // Step 0a: Honor Creator Mode (#452, B14). When the user opted in AND the
@@ -314,17 +314,10 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // Background-only contexts (no referrer) never enter this branch.
   const honor = shouldHonor({ url: rawUrl, referrer, prefs });
   if (honor.honor) {
-    return {
-      cleanUrl: rawUrl,
-      action: "honored-creator",
-      removedTracking: [],
-      junkRemoved: 0,
-      detectedAffiliate: null,
-      preservedAffiliate: null,
-      creatorReferralPreserved: false,
+    return buildReturnPayload("honored-creator", rawUrl, [], null, {
       network: honor.network,
       creator: honor.creator,
-    };
+    });
   }
 
   // Step 0: unwrap recognized redirect wrappers (Awin etc.). The destination
@@ -336,7 +329,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     try {
       url = new URL(rawUrl);
     } catch {
-      return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
+      return buildReturnPayload("untouched", rawUrl, [], null, {});
     }
   } else if (
     // Step 0b: Canonical Extractor tier (#442, B7). When the URL was
@@ -355,7 +348,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
       try {
         url = new URL(rawUrl);
       } catch {
-        return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved: false };
+        return buildReturnPayload("untouched", rawUrl, [], null, {});
       }
     }
   }
@@ -380,7 +373,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const lowerPath = url.pathname.toLowerCase();
   const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
   if (AUTH_PATH_RE.test(lowerPath)) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved };
+    return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });
   }
 
   // 0b. Per-domain disable: user wants MUGA to do nothing on this domain
@@ -388,7 +381,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain)
   );
   if (domainDisabled) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved };
+    return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });
   }
 
   const originalPathname = url.pathname;
@@ -403,7 +396,10 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     // C10: count params removed so junkRemoved is reported correctly
     const blacklistedParamCount = [...url.searchParams.keys()].length;
     url.search = "";
-    return { cleanUrl: url.toString(), action: "blacklisted", removedTracking: [], junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0), detectedAffiliate: null, preservedAffiliate: null, creatorReferralPreserved };
+    return buildReturnPayload("blacklisted", url, [], null, {
+      junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0),
+      creatorReferralPreserved,
+    });
   }
 
   const patterns = getPatternsForHost(hostname);
@@ -434,15 +430,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams));
     const actionForSkip = (removedTrackingForSkip.length > 0 || pathCleaned) ? "cleaned" : "untouched";
     recordFrequency(frequencyTracker, prefs, hostname, removedTrackingForSkip, removedValuesForSkip);
-    return {
-      cleanUrl: url.toString(),
-      action: actionForSkip,
-      removedTracking: removedTrackingForSkip,
+    return buildReturnPayload(actionForSkip, url, removedTrackingForSkip, null, {
       junkRemoved: removedTrackingForSkip.length + (pathCleaned ? 1 : 0),
-      detectedAffiliate: null,
       preservedAffiliate: detectPreservedAffiliate(url, patterns),
       creatorReferralPreserved,
-    };
+    });
   }
 
   // 2b. Collect whitelisted affiliate values for this host (never touch these).
@@ -617,15 +609,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
 
-  return {
-    cleanUrl: url.toString(),
-    action,
-    removedTracking,
+  return buildReturnPayload(action, url, removedTracking, detectedAffiliate, {
     junkRemoved,
-    detectedAffiliate,
     preservedAffiliate: detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
-  };
+  });
 }
 
 /**
@@ -667,3 +655,48 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
     }
   }
 }
+
+// ── buildReturnPayload ────────────────────────────────────────────────────────
+
+/**
+ * Factory for all 6 processUrl return shapes (S1–S6, spec §3).
+ *
+ * Accepts an `extras` bag for fields that differ across shapes:
+ *   junkRemoved             — defaults to 0
+ *   creatorReferralPreserved — defaults to false
+ *   preservedAffiliate      — defaults to null
+ *   network                 — included ONLY when present in extras (S3 only)
+ *   creator                 — included ONLY when present in extras (S3 only)
+ *
+ * @param {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} action
+ * @param {string|URL} rawUrlOrUrl  String → used as cleanUrl directly; URL → .toString()
+ * @param {string[]} removedTracking
+ * @param {object|null} detectedAffiliate
+ * @param {{ junkRemoved?: number, creatorReferralPreserved?: boolean, preservedAffiliate?: object|null, network?: string, creator?: string }} [extras]
+ * @returns {object}
+ */
+function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffiliate, extras = {}) {
+  const cleanUrl = (rawUrlOrUrl instanceof URL) ? rawUrlOrUrl.toString() : rawUrlOrUrl;
+  const payload = {
+    cleanUrl,
+    action,
+    removedTracking,
+    junkRemoved: extras.junkRemoved ?? 0,
+    detectedAffiliate,
+    preservedAffiliate: extras.preservedAffiliate ?? null,
+    creatorReferralPreserved: extras.creatorReferralPreserved ?? false,
+  };
+  // network and creator are present ONLY on the honored-creator shape (S3).
+  // Omitting them entirely (not undefined-keyed) matches today's literal returns.
+  if ("network" in extras) payload.network = extras.network;
+  if ("creator" in extras) payload.creator = extras.creator;
+  return payload;
+}
+
+// ── Test-only namespace export ────────────────────────────────────────────────
+// Private helpers are not part of the public cleaner API. They are exposed
+// here under a single namespace so unit tests can import them directly for
+// strict TDD (RED → GREEN → REFACTOR) without polluting the module's public
+// surface. Bundle-sync tests must allowlist this key.
+
+export const __test__ = { buildReturnPayload };
