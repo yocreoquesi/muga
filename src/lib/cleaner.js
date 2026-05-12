@@ -349,32 +349,12 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   let action = "untouched";
 
   // 2. Whitelist domain-only check: if the domain itself is whitelisted, skip all affiliate processing
-  const domainWhitelisted = parsedWhitelist.some(
-    e => !e.param && domainMatches(hostname, e.domain)
-  );
-  if (domainWhitelisted) {
-    // Still strip tracking params, but leave all affiliate params untouched and skip injection
-    const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
-    // Bounded-scope classifier (#530): even on whitelisted domains, ambiguous
-    // params co-occurring with anchor trackers should be stripped — affiliate
-    // params are independently protected by the affiliateParamSet check inside
-    // stripTrackingParams, so passing the classifier set here is safe.
-    const wlAffiliateParamSet = new Set(getPatternsForHost(hostname).map(p => p.param.toLowerCase()));
-    const wlClassification = classifyParams(url.toString(), {
-      ...prefs,
-      _affiliateParamSet: wlAffiliateParamSet,
-    });
-    const {
-      removed: removedTrackingForSkip,
-      removedValues: removedValuesForSkip,
-    } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams));
-    const actionForSkip = (removedTrackingForSkip.length > 0 || pathCleaned) ? "cleaned" : "untouched";
-    recordFrequency(frequencyTracker, prefs, hostname, removedTrackingForSkip, removedValuesForSkip);
-    return buildReturnPayload(actionForSkip, url, removedTrackingForSkip, null, {
-      junkRemoved: removedTrackingForSkip.length + (pathCleaned ? 1 : 0),
-      preservedAffiliate: detectPreservedAffiliate(url, patterns),
-      creatorReferralPreserved,
-    });
+  if (parsedWhitelist.some(e => !e.param && domainMatches(hostname, e.domain))) {
+    const { payload, removed, removedValues } = handleWhitelistedDomain(
+      url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved,
+    );
+    recordFrequency(frequencyTracker, prefs, hostname, removed, removedValues);
+    return payload;
   }
 
   // 2b. Collect whitelisted affiliate values for this host (never touch these).
@@ -639,6 +619,46 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle) {
   return { kind: "continue", rawUrl, url, creatorReferralPreserved };
 }
 
+// ── handleWhitelistedDomain ───────────────────────────────────────────────────
+
+/**
+ * Whitelist-domain early-return path: strip tracking params while leaving
+ * all affiliate params untouched and skipping injection (FR-3).
+ *
+ * Does NOT call recordFrequency — orchestrator fires Site A after this returns.
+ *
+ * @param {URL} url           Mutable URL object
+ * @param {object} prefs
+ * @param {Array} domainRules
+ * @param {Array} patterns    Affiliate patterns for this hostname
+ * @param {string} hostname
+ * @param {boolean} pathCleaned  Whether Amazon path cleaning fired
+ * @param {boolean} creatorReferralPreserved
+ * @returns {{ payload: object, removed: string[], removedValues: string[] }}
+ */
+function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved) {
+  const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
+  // Bounded-scope classifier (#530): even on whitelisted domains, ambiguous
+  // params co-occurring with anchor trackers should be stripped. Affiliate
+  // params are independently protected by affiliateParamSet inside stripTrackingParams.
+  const wlAffiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  const wlClassification = classifyParams(url.toString(), {
+    ...prefs,
+    _affiliateParamSet: wlAffiliateParamSet,
+  });
+  const {
+    removed,
+    removedValues,
+  } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams));
+  const actionForSkip = (removed.length > 0 || pathCleaned) ? "cleaned" : "untouched";
+  const payload = buildReturnPayload(actionForSkip, url, removed, null, {
+    junkRemoved: removed.length + (pathCleaned ? 1 : 0),
+    preservedAffiliate: detectPreservedAffiliate(url, patterns),
+    creatorReferralPreserved,
+  });
+  return { payload, removed, removedValues };
+}
+
 // ── classifyAndStripTracking ──────────────────────────────────────────────────
 
 /**
@@ -736,4 +756,4 @@ function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffili
 // strict TDD (RED → GREEN → REFACTOR) without polluting the module's public
 // surface. Bundle-sync tests must allowlist this key.
 
-export const __test__ = { buildReturnPayload, classifyAndStripTracking, unwrapAndExtract };
+export const __test__ = { buildReturnPayload, classifyAndStripTracking, unwrapAndExtract, handleWhitelistedDomain };
