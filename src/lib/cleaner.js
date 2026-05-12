@@ -295,69 +295,11 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *                             `creator` (matching allowlist entry) are set.
  */
 export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer) {
-  let url;
-  try {
-    url = new URL(rawUrl);
-  } catch {
-    return buildReturnPayload("untouched", rawUrl, [], null, {});
-  }
-
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return buildReturnPayload("untouched", rawUrl, [], null, {});
-  }
-
-  // Step 0a: Honor Creator Mode (#452, B14). When the user opted in AND the
-  // navigation referrer matches an allowlisted creator AND the URL is a
-  // recognized redirect wrapper, pass it through UNMODIFIED so the creator's
-  // referral chain stays intact. Decision lives in src/lib/honor-creator.js
-  // (pure module, reuses Wrapper Engine for network classification).
-  // Background-only contexts (no referrer) never enter this branch.
-  const honor = shouldHonor({ url: rawUrl, referrer, prefs });
-  if (honor.honor) {
-    return buildReturnPayload("honored-creator", rawUrl, [], null, {
-      network: honor.network,
-      creator: honor.creator,
-    });
-  }
-
-  // Step 0: unwrap recognized redirect wrappers (Awin etc.). The destination
-  // URL becomes the input to the rest of the pipeline so tracking strip and
-  // affiliate logic operate on the merchant URL directly.
-  const unwrapResult = unwrap(rawUrl);
-  if (unwrapResult) {
-    rawUrl = unwrapResult.unwrapped;
-    try {
-      url = new URL(rawUrl);
-    } catch {
-      return buildReturnPayload("untouched", rawUrl, [], null, {});
-    }
-  } else if (
-    // Step 0b: Canonical Extractor tier (#442, B7). When the URL was
-    // identified as a wrapper but extraction failed (opaque wrapper —
-    // t.co, link.medium.com, …), give the page DOM a chance to volunteer
-    // the canonical destination via a bundle prepared by the content
-    // script. Default ON; bypass via prefs.canonicalExtractorEnabled=false.
-    // No-op when no bundle was supplied (background-worker case).
-    prefs.canonicalExtractorEnabled !== false &&
-    canonicalBundle &&
-    detectWrapper(rawUrl)
-  ) {
-    const canonical = extractCanonical(canonicalBundle);
-    if (canonical) {
-      rawUrl = canonical;
-      try {
-        url = new URL(rawUrl);
-      } catch {
-        return buildReturnPayload("untouched", rawUrl, [], null, {});
-      }
-    }
-  }
-
-  // Bookshop.org path-based creator-referral detection. Computed once
-  // post-unwrap so wrapper redirects that land on bookshop are covered.
-  // The flag is read by the service worker (toolbar wedge cue) and
-  // surfaced as a top-level boolean for callers that care.
-  const creatorReferralPreserved = isBookshopPathReferral(url);
+  // Step 1 — Unwrap + Honor + Canonical (steps 0a, 0, 0b)
+  const unwrapStep = unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle);
+  if (unwrapStep.kind === "done") return unwrapStep.payload;
+  const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved } = unwrapStep;
+  rawUrl = unwrappedRawUrl;
 
   const hostname = url.hostname;
   const blacklist = prefs.blacklist || [];
@@ -616,6 +558,87 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
   }
 }
 
+// ── unwrapAndExtract ──────────────────────────────────────────────────────────
+
+/**
+ * Steps 0a + 0 + 0b: Honor Creator check, then unwrap, then canonical
+ * fallback for opaque wrappers. Returns a discriminated union.
+ *
+ * Malformed-input contract: if `prefs` is undefined, this function MUST
+ * crash at `prefs.canonicalExtractorEnabled` access. DO NOT add prefs ?? {}
+ * defaulting. The 1-arg dom-link-rewriter*.js callers depend on the throw
+ * to fall back to inlineCleanUrl.
+ *
+ * @param {string} rawUrl
+ * @param {object} prefs
+ * @param {string|null|undefined} referrer
+ * @param {{linkCanonical?: string|null, jsonLdId?: string|null}|undefined} canonicalBundle
+ * @returns {
+ *     { kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean }
+ *   | { kind: "done", payload: object }
+ * }
+ */
+function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle) {
+  // Step 1: parse initial URL
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
+  }
+
+  // Step 2: protocol guard
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
+  }
+
+  // Step 3: Honor Creator Mode (#452, B14)
+  const honor = shouldHonor({ url: rawUrl, referrer, prefs });
+  if (honor.honor) {
+    return {
+      kind: "done",
+      payload: buildReturnPayload("honored-creator", rawUrl, [], null, {
+        network: honor.network,
+        creator: honor.creator,
+      }),
+    };
+  }
+
+  // Step 4: unwrap recognized redirect wrappers (Awin etc.)
+  const unwrapResult = unwrap(rawUrl);
+  if (unwrapResult) {
+    rawUrl = unwrapResult.unwrapped;
+    try {
+      url = new URL(rawUrl);
+    } catch {
+      return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
+    }
+  } else if (
+    // Step 5: Canonical Extractor tier (#442, B7) — gated on prefs access.
+    // NOTE: prefs.canonicalExtractorEnabled is the FIRST prefs access here,
+    // matching the malformed-input crash boundary for 1-arg callers (FR-7).
+    prefs.canonicalExtractorEnabled !== false &&
+    canonicalBundle &&
+    detectWrapper(rawUrl)
+  ) {
+    const canonical = extractCanonical(canonicalBundle);
+    if (canonical) {
+      rawUrl = canonical;
+      try {
+        url = new URL(rawUrl);
+      } catch {
+        return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
+      }
+    }
+  }
+
+  // Step 6: Bookshop.org path-based creator-referral detection. Computed once
+  // post-unwrap so wrapper redirects that land on bookshop are covered.
+  const creatorReferralPreserved = isBookshopPathReferral(url);
+
+  return { kind: "continue", rawUrl, url, creatorReferralPreserved };
+}
+
 // ── classifyAndStripTracking ──────────────────────────────────────────────────
 
 /**
@@ -713,4 +736,4 @@ function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffili
 // strict TDD (RED → GREEN → REFACTOR) without polluting the module's public
 // surface. Bundle-sync tests must allowlist this key.
 
-export const __test__ = { buildReturnPayload, classifyAndStripTracking };
+export const __test__ = { buildReturnPayload, classifyAndStripTracking, unwrapAndExtract };
