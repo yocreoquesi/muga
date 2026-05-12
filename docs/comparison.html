@@ -265,70 +265,62 @@
           <th>Brave (built-in)</th>
           <th>Neat URL</th>
           <th>uBlock Origin</th>
-          <th>Honey (PayPal)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><strong>Surfaces preserved creator tag in UI</strong></td>
-          <td class="muga yes">Yes, visible badge<sup>16</sup></td>
+          <td class="muga yes">Yes, visible badge<sup>14</sup></td>
           <td class="no">No</td>
           <td class="no">No</td>
           <td class="no">No</td>
           <td class="no">No</td>
-          <td class="bad">No (silently overwrites)<sup>7</sup></td>
         </tr>
         <tr>
           <td>Replaces creator affiliates</td>
           <td class="muga yes">Never</td>
-          <td class="partial">Sometimes (rule-dependent)<sup>17</sup></td>
-          <td class="partial">Sometimes<sup>18</sup></td>
-          <td class="partial">Sometimes<sup>17</sup></td>
+          <td class="partial">Sometimes (rule-dependent)<sup>15</sup></td>
+          <td class="partial">Sometimes<sup>16</sup></td>
+          <td class="partial">Sometimes<sup>15</sup></td>
           <td class="partial">Filter-list-dependent</td>
-          <td class="bad">Yes (silently)<sup>7</sup></td>
         </tr>
         <tr>
           <td>Refuses redirect-based affiliate networks</td>
-          <td class="muga yes">Yes, rejected 10+<sup>19</sup></td>
+          <td class="muga yes">Yes, rejected 10+<sup>17</sup></td>
           <td class="na">N/A (no affiliate model)</td>
           <td class="na">N/A</td>
           <td class="na">N/A</td>
           <td class="na">N/A</td>
-          <td class="bad">No (uses them)</td>
         </tr>
         <tr>
           <td>Tracker count celebration in popup</td>
-          <td class="muga yes">"Removed N trackers"<sup>16</sup></td>
+          <td class="muga yes">"Removed N trackers"<sup>14</sup></td>
           <td class="no">No</td>
           <td class="no">No (browser-level)</td>
           <td class="no">No</td>
           <td class="partial">Badge counter only</td>
-          <td class="no">No</td>
         </tr>
         <tr>
           <td>Tracking params stripped</td>
           <td class="muga">450+ params<sup>1</sup></td>
           <td>~300<sup>2</sup></td>
-          <td>~150<sup>18</sup></td>
+          <td>~150<sup>16</sup></td>
           <td>~200<sup>3</sup></td>
           <td class="partial">Limited (via filter lists)<sup>4</sup></td>
-          <td class="na">0</td>
         </tr>
         <tr>
           <td>Domain-specific rules</td>
           <td class="muga">150+ domains<sup>1</sup></td>
           <td>~100<sup>2</sup></td>
-          <td>Built-in list<sup>18</sup></td>
+          <td>Built-in list<sup>16</sup></td>
           <td>Manual (user-defined)</td>
           <td class="partial">Via filter lists</td>
-          <td class="na">N/A</td>
         </tr>
         <tr>
           <td>AMP redirect</td>
           <td class="yes muga">Yes</td>
           <td class="no">No</td>
           <td class="yes">Yes (browser-level)</td>
-          <td class="no">No</td>
           <td class="no">No</td>
           <td class="no">No</td>
         </tr>
@@ -339,7 +331,6 @@
           <td class="partial">Limited</td>
           <td class="no">No</td>
           <td class="partial">Partial (via filters)</td>
-          <td class="no">No</td>
         </tr>
         <tr>
           <td>Ping blocking</td>
@@ -348,70 +339,62 @@
           <td class="yes">Yes (Shields)</td>
           <td class="no">No</td>
           <td class="yes">Yes</td>
-          <td class="no">No</td>
         </tr>
         <tr>
           <td>Signed remote-rules updates (opt-in)</td>
-          <td class="muga yes">Ed25519, weekly, opt-in<sup>20</sup></td>
-          <td class="partial">Unsigned, on-demand<sup>11</sup></td>
+          <td class="muga yes">Ed25519, weekly, opt-in<sup>18</sup></td>
+          <td class="partial">Unsigned, on-demand<sup>10</sup></td>
           <td class="partial">Browser updates</td>
           <td class="no">Manual</td>
           <td class="partial">Filter list updates</td>
-          <td class="bad">Continuous (browsing data)</td>
         </tr>
         <tr>
           <td>Open source</td>
           <td class="muga">GPL v3</td>
-          <td>LGPL v3<sup>8</sup></td>
-          <td>MPL 2.0 (browser)<sup>21</sup></td>
-          <td>GPL v2<sup>9</sup></td>
-          <td>GPL v3<sup>10</sup></td>
-          <td class="bad">No</td>
+          <td>LGPL v3<sup>7</sup></td>
+          <td>MPL 2.0 (browser)<sup>19</sup></td>
+          <td>GPL v2<sup>8</sup></td>
+          <td>GPL v3<sup>9</sup></td>
         </tr>
         <tr>
           <td>External server calls (default)</td>
           <td class="muga yes">0</td>
-          <td class="yes">0<sup>11</sup></td>
+          <td class="yes">0<sup>10</sup></td>
           <td class="partial">Browser telemetry (configurable)</td>
           <td class="yes">0</td>
           <td class="partial">Filter list updates</td>
-          <td class="bad">Yes (PayPal servers)<sup>12</sup></td>
         </tr>
         <tr>
           <td>Data collected</td>
           <td class="muga yes">None</td>
           <td class="yes">None</td>
-          <td class="partial">Anonymous metrics<sup>21</sup></td>
+          <td class="partial">Anonymous metrics<sup>19</sup></td>
           <td class="yes">None</td>
           <td class="yes">None</td>
-          <td class="bad">Browsing data<sup>12</sup></td>
         </tr>
         <tr>
           <td>Manifest V3</td>
           <td class="muga yes">Yes (native)</td>
-          <td class="partial">Partial (MV3 branch in progress)<sup>13</sup></td>
+          <td class="partial">Partial (MV3 branch in progress)<sup>11</sup></td>
           <td class="na">N/A (browser)</td>
           <td class="no">No (Firefox only)</td>
-          <td class="yes">Yes</td>
           <td class="yes">Yes</td>
         </tr>
         <tr>
           <td>Works in any browser</td>
           <td class="muga">Chrome, Firefox</td>
-          <td>Chrome, Firefox, Edge, Opera<sup>14</sup></td>
+          <td>Chrome, Firefox, Edge, Opera<sup>12</sup></td>
           <td class="bad">Brave only</td>
-          <td>Firefox only<sup>9</sup></td>
+          <td>Firefox only<sup>8</sup></td>
           <td>Chrome, Firefox, Edge, Opera</td>
-          <td>Chrome, Firefox, Edge, Opera, Safari</td>
         </tr>
         <tr>
           <td>Interface languages (i18n)</td>
           <td class="muga">EN, ES, PT, DE</td>
-          <td>EN, DE (partial)<sup>15</sup></td>
+          <td>EN, DE (partial)<sup>13</sup></td>
           <td>50+ languages</td>
           <td>EN</td>
           <td>50+ languages</td>
-          <td>10+ languages</td>
         </tr>
         <tr>
           <td>Per-domain param stats</td>
@@ -420,12 +403,10 @@
           <td class="no">No</td>
           <td class="no">No</td>
           <td class="no">No</td>
-          <td class="no">No</td>
         </tr>
         <tr>
           <td>Param breakdown (education)</td>
           <td class="muga yes">Yes</td>
-          <td class="no">No</td>
           <td class="no">No</td>
           <td class="no">No</td>
           <td class="no">No</td>
@@ -488,17 +469,6 @@
     filter list) has the advantage.
   </div>
 
-  <div class="note honest">
-    <strong>About Honey.</strong>
-    Honey was acquired by PayPal for $4 billion. That price reflects the value of the browsing
-    data it collects, not the coupons it finds. Honey's own privacy policy confirms it collects
-    information about every page you visit on shopping sites.<sup>12</sup>
-    Additionally, multiple independent reports found that Honey silently overwrites affiliate
-    links created by content creators without notifying the user or the creator.<sup>7</sup>
-    MUGA takes the opposite approach: all processing is local, nothing leaves your browser
-    on a default install, and affiliate tag handling is always disclosed with a visible notification.
-  </div>
-
   <h2>Methodology</h2>
   <p>MUGA numbers (tracking params, domain rules, redirect networks) are taken directly from the
   source files in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">public repository</a>.
@@ -515,12 +485,10 @@
       <li>uBlock Origin strips tracking params via the <code>removeparam</code> filter cosmetic option. Coverage depends on the filter lists the user has enabled. <a href="https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#removeparam" target="_blank" rel="noopener noreferrer">uBlock Origin docs: removeparam</a>.</li>
       <li>MUGA unwraps redirects from: Awin, ShareASale, Admitad, Admitad/AliExpress (alitems.com), Sovrn/VigLink, and Tradedoubler. See <a href="https://github.com/yocreoquesi/muga/blob/main/src/content/redirect-unwrap.js" target="_blank" rel="noopener noreferrer">src/content/redirect-unwrap.js</a>.</li>
       <li>ClearURLs redirect handling: <a href="https://github.com/ClearURLs/Rules/blob/master/data.min.json" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Rules</a>. Includes <code>redirections</code> entries.</li>
-      <li>Honey affiliate replacement reports: <a href="https://www.pcmag.com/news/paypal-honey-browser-extension-is-stealing-credit-from-influencers" target="_blank" rel="noopener noreferrer">PCMag: PayPal Honey stealing credit from influencers</a>; <a href="https://megaphone.fm/ADL9840478058" target="_blank" rel="noopener noreferrer">MegaLag: video investigation</a>. Honey's own ToS does not prohibit this behavior.</li>
       <li>ClearURLs license: <a href="https://github.com/ClearURLs/Addon/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon/LICENSE</a>.</li>
       <li>Neat URL license and browser support: <a href="https://github.com/Smile4ever/Neat-URL" target="_blank" rel="noopener noreferrer">github.com/Smile4ever/Neat-URL</a>. Firefox Add-ons only; no Chrome version available.</li>
       <li>uBlock Origin license: <a href="https://github.com/gorhill/uBlock/blob/master/LICENSE.txt" target="_blank" rel="noopener noreferrer">github.com/gorhill/uBlock/LICENSE</a>.</li>
       <li>ClearURLs external calls: the extension fetches its rules from a remote URL on first install and on updates. No browsing data is sent. See <a href="https://github.com/ClearURLs/Addon" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon</a>.</li>
-      <li>Honey privacy policy: <a href="https://www.joinhoney.com/privacy" target="_blank" rel="noopener noreferrer">joinhoney.com/privacy</a>. Honey collects page visit data on shopping sites and transmits it to PayPal servers.</li>
       <li>ClearURLs MV3 status: <a href="https://github.com/ClearURLs/Addon/issues" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon issues</a>. MV3 migration is tracked but not yet complete as of early 2026.</li>
       <li>ClearURLs browser support: available on Chrome Web Store, Firefox Add-ons, and Edge Add-ons. <a href="https://clearurls.xyz" target="_blank" rel="noopener noreferrer">clearurls.xyz</a>.</li>
       <li>ClearURLs i18n: the extension ships with English and German UI strings. Community translations exist but are incomplete.</li>

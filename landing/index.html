@@ -397,6 +397,28 @@
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
   }
 
+  /* ---------- comparison table ---------- */
+  .compare-wrap { overflow-x: auto; margin: 24px 0 12px; }
+  .compare-tbl {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+    font-family: var(--sans, system-ui);
+  }
+  .compare-tbl th, .compare-tbl td {
+    text-align: left; padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .compare-tbl thead th {
+    font-weight: 600; font-size: 12px;
+    letter-spacing: .04em; text-transform: uppercase;
+    color: var(--ink-3); background: var(--bg-2);
+  }
+  .compare-tbl tbody td:not(:first-child) { text-align: center; }
+  .compare-tbl .yes { color: var(--accent); font-weight: 600; }
+  .compare-tbl .no  { color: var(--ink-3); }
+  .compare-tbl .muga-col { background: rgba(37,99,235,0.04); }
+  .compare-note { font-size: 13px; color: var(--ink-3); margin-top: 12px; }
+
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 </style>
 </head>
@@ -550,6 +572,80 @@
           <div class="row"><span class="k">action</span><span class="v">redirect → preserve referral · show toast</span></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-label">Side by side</div>
+      <h2>How MUGA differs from other URL cleaners.</h2>
+      <p>Other cleaners treat every parameter as junk and strip aggressively. MUGA distinguishes a tracking parameter from a creator's affiliate tag — the YouTuber who recommended the link still gets paid.</p>
+
+      <div class="compare-wrap">
+        <table class="compare-tbl">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th class="muga-col">MUGA</th>
+              <th>uBlock Origin</th>
+              <th>ClearURLs</th>
+              <th>Brave Shields</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Strips tracking params</td>
+              <td class="muga-col yes">✓ 450+</td>
+              <td class="yes">✓ via filter list</td>
+              <td class="yes">✓ ~150</td>
+              <td class="yes">✓ ~200</td>
+            </tr>
+            <tr>
+              <td><strong>Preserves creator affiliate tags</strong></td>
+              <td class="muga-col yes">✓</td>
+              <td class="no">✗</td>
+              <td class="no">✗</td>
+              <td class="no">✗</td>
+            </tr>
+            <tr>
+              <td>Per-URL "what was removed" UI</td>
+              <td class="muga-col yes">✓</td>
+              <td class="no">logger only</td>
+              <td class="no">✗</td>
+              <td class="no">✗</td>
+            </tr>
+            <tr>
+              <td>Refuses redirect-based affiliate networks</td>
+              <td class="muga-col yes">✓</td>
+              <td class="no">n/a</td>
+              <td class="no">n/a</td>
+              <td class="no">n/a</td>
+            </tr>
+            <tr>
+              <td>Signed remote rule updates</td>
+              <td class="muga-col yes">✓ Ed25519, opt-in</td>
+              <td class="no">filter-list-dependent</td>
+              <td class="no">unsigned</td>
+              <td class="no">bundled w/ browser</td>
+            </tr>
+            <tr>
+              <td>Ad / script blocking</td>
+              <td class="muga-col no">✗ (out of scope)</td>
+              <td class="yes">✓</td>
+              <td class="no">✗</td>
+              <td class="yes">✓ (Shields)</td>
+            </tr>
+            <tr>
+              <td>Works on Chromium &amp; Firefox</td>
+              <td class="muga-col yes">✓</td>
+              <td class="yes">✓</td>
+              <td class="yes">✓</td>
+              <td class="no">Brave only</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="compare-note">MUGA is the only one of the four that distinguishes a tracker from a creator's affiliate tag — and the only one whose popup tells you that distinction was made. Full comparison with sources and counts: <a href="https://rules.muga.app/comparison.html">rules.muga.app/comparison.html</a>.</p>
     </div>
   </section>
 
