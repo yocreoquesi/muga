@@ -149,21 +149,12 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
           echo "$BODY"
-          # CWS returns a JSON body containing an `itemError` array on failure.
-          # When the version was uploaded by a previous run, the body marks the
-          # version as already published (e.g. ITEM_NOT_UPDATABLE / "version
-          # ... is the same as the latest"). Treat as no-op for tag re-runs.
-          if echo "$BODY" | grep -qiE "ITEM_NOT_UPDATABLE|version.*(is the same|already (uploaded|exists|published))|cannot.*update.*same version"; then
-            echo "result=noop" >> "$GITHUB_OUTPUT"
-            echo "::notice::CWS reports this version was already uploaded — treating as no-op"
-            exit 0
-          fi
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "result=failure" >> "$GITHUB_OUTPUT"
-            echo "::error::CWS upload failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          echo "result=success" >> "$GITHUB_OUTPUT"
+          # CWS returns HTTP 200 with an `itemError` array in the body when it
+          # rejects an upload. Checking only HTTP code silently masks failures
+          # (issue #616: v1.13.4..v1.16.0 all silently failed PKG_INVALID_ZIP).
+          # cws-check-response.mjs prints `result=...` and exits non-zero on
+          # real failures; noop covers legit tag re-runs.
+          node scripts/cws-check-response.mjs "$HTTP_CODE" "$BODY" >> "$GITHUB_OUTPUT"
 
       - name: Publish on Chrome Web Store
         # Skip when the upload step decided the version was already in CWS
@@ -181,12 +172,8 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
           echo "$BODY"
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "result=failure" >> "$GITHUB_OUTPUT"
-            echo "::error::CWS publish failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          echo "result=success" >> "$GITHUB_OUTPUT"
+          # Same HTTP-200-with-errors-in-body quirk as the upload endpoint.
+          node scripts/cws-check-response.mjs "$HTTP_CODE" "$BODY" >> "$GITHUB_OUTPUT"
 
       # ── Submission summary ──────────────────────────────────────────
       # Fail only when a store reports a REAL error. Each store step now
