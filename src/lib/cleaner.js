@@ -403,8 +403,6 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   }
 
   const patterns = getPatternsForHost(hostname);
-  const removedTracking = [];
-  const removedTrackingValues = [];
   let detectedAffiliate = null;
   let action = "untouched";
 
@@ -472,48 +470,10 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   }
 
   // 4. Strip known tracking parameters (built-in + user-defined custom params)
+  // Step 5 of design §3: delegate to classifyAndStripTracking (AliExpress + standard path).
   const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
-  const disabledCategories = new Set(prefs.disabledCategories || []);
-
-  // 4a-pre. AliExpress item pages: strip ALL params (item pages need zero params),
-  // except params explicitly preserved by domain-rules.json.
-  if (isAliExpressItemPage(hostname, url.pathname)) {
-    const { preserved } = getDomainParamSets(hostname, domainRules);
-    for (const param of [...url.searchParams.keys()]) {
-      if (preserved.has(param.toLowerCase())) continue;
-      // Capture original value BEFORE delete so the frequency tracker can
-      // record the (paramName, value) tuple. (#495)
-      removedTrackingValues.push(url.searchParams.get(param) ?? "");
-      url.searchParams.delete(param);
-      removedTracking.push(param);
-    }
-  } else {
-    // Bounded-scope classifier (#530): runs between unwrap and tracking-strip.
-    // Strips ambiguous params (PARAM_PAIRS) only when an anchor tracker is
-    // present in the same URL. Affiliate params are protected via
-    // _affiliateParamSet — they go to preserveParams instead.
-    //
-    // CAPS-Contextual short-circuit (#543, SPEC §3.2 step 6): if we're still
-    // looking at a known wrapper host (unwrap returned null because the
-    // destination was unextractable), the bounded-scope rule MUST NOT fire
-    // — wrapper URLs are network-redirect categorised in the spec, and the
-    // contextual algorithm short-circuits there.
-    const isNetworkRedirect = !!detectWrapper(url.toString());
-    const classification = classifyParams(url.toString(), {
-      ...prefs,
-      _affiliateParamSet: affiliateParamSet,
-      _skipBoundedScope: isNetworkRedirect,
-    });
-    const { removed, removedValues } = stripTrackingParams(
-      url,
-      prefs,
-      domainRules,
-      disabledCategories,
-      new Set(classification.stripParams),
-    );
-    removedTracking.push(...removed);
-    removedTrackingValues.push(...removedValues);
-  }
+  const { removed: removedTracking, removedValues: removedTrackingValues } =
+    classifyAndStripTracking(url, prefs, domainRules);
   if (pathCleaned && action === "untouched") action = "cleaned";
   if (removedTracking.length > 0 && action === "untouched") action = "cleaned";
 
@@ -656,6 +616,60 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
   }
 }
 
+// ── classifyAndStripTracking ──────────────────────────────────────────────────
+
+/**
+ * Step 4: bounded-scope classifier + stripTrackingParams (with AliExpress
+ * special path for item pages where ALL non-preserved params are stripped).
+ *
+ * Mutates url.searchParams in place. Does NOT call recordFrequency.
+ *
+ * @param {URL} url
+ * @param {object} prefs
+ * @param {Array} domainRules
+ * @returns {{ removed: string[], removedValues: string[] }}
+ */
+function classifyAndStripTracking(url, prefs, domainRules) {
+  const hostname = url.hostname;
+  const removed = [];
+  const removedValues = [];
+
+  if (isAliExpressItemPage(hostname, url.pathname)) {
+    // AliExpress item pages: strip ALL params except domain-rules preserveParams.
+    const { preserved } = getDomainParamSets(hostname, domainRules);
+    for (const param of [...url.searchParams.keys()]) {
+      if (preserved.has(param.toLowerCase())) continue;
+      removedValues.push(url.searchParams.get(param) ?? "");
+      url.searchParams.delete(param);
+      removed.push(param);
+    }
+  } else {
+    // Standard path: bounded-scope classifier (#530) + stripTrackingParams.
+    const patterns = getPatternsForHost(hostname);
+    const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+    const disabledCategories = new Set(prefs.disabledCategories || []);
+    // CAPS-Contextual short-circuit (#543): skip bounded-scope rule when URL
+    // is still a known wrapper host (destination was unextractable).
+    const isNetworkRedirect = !!detectWrapper(url.toString());
+    const classification = classifyParams(url.toString(), {
+      ...prefs,
+      _affiliateParamSet: affiliateParamSet,
+      _skipBoundedScope: isNetworkRedirect,
+    });
+    const { removed: r, removedValues: rv } = stripTrackingParams(
+      url,
+      prefs,
+      domainRules,
+      disabledCategories,
+      new Set(classification.stripParams),
+    );
+    removed.push(...r);
+    removedValues.push(...rv);
+  }
+
+  return { removed, removedValues };
+}
+
 // ── buildReturnPayload ────────────────────────────────────────────────────────
 
 /**
@@ -699,4 +713,4 @@ function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffili
 // strict TDD (RED → GREEN → REFACTOR) without polluting the module's public
 // surface. Bundle-sync tests must allowlist this key.
 
-export const __test__ = { buildReturnPayload };
+export const __test__ = { buildReturnPayload, classifyAndStripTracking };
