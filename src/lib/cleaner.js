@@ -302,27 +302,18 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   rawUrl = unwrappedRawUrl;
 
   const hostname = url.hostname;
-  const blacklist = prefs.blacklist || [];
-  const whitelist = prefs.whitelist || [];
-
   // Use pre-parsed lists from the caller (service worker cache) when available
-  const parsedBlacklist = prefs._parsedBlacklist || blacklist.map(parseListEntry);
-  const parsedWhitelist = prefs._parsedWhitelist || whitelist.map(parseListEntry);
+  const parsedBlacklist = prefs._parsedBlacklist || (prefs.blacklist || []).map(parseListEntry);
+  const parsedWhitelist = prefs._parsedWhitelist || (prefs.whitelist || []).map(parseListEntry);
 
-  // 0a. OAuth / auth / payment flow exemption: never touch params on these paths.
-  // Each segment must appear as a full path component (bounded by / or end-of-path)
-  // to avoid false positives like "/authorize-your-creativity".
-  const lowerPath = url.pathname.toLowerCase();
+  // OAuth / auth / payment flow exemption: never touch params on these paths.
   const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
-  if (AUTH_PATH_RE.test(lowerPath)) {
+  if (AUTH_PATH_RE.test(url.pathname.toLowerCase())) {
     return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });
   }
 
-  // 0b. Per-domain disable: user wants MUGA to do nothing on this domain
-  const domainDisabled = parsedBlacklist.some(
-    e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain)
-  );
-  if (domainDisabled) {
+  // Per-domain disable: user wants MUGA to do nothing on this domain
+  if (parsedBlacklist.some(e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain))) {
     return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });
   }
 
@@ -330,13 +321,9 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   url.pathname = cleanAmazonPath(hostname, url.pathname);
   const pathCleaned = url.pathname !== originalPathname;
 
-  // 1. Scenario D: domain is fully blacklisted. Strip everything, no injection
-  const domainBlacklisted = parsedBlacklist.some(
-    e => !e.param && domainMatches(hostname, e.domain)
-  );
-  if (domainBlacklisted) {
-    // C10: count params removed so junkRemoved is reported correctly
-    const blacklistedParamCount = [...url.searchParams.keys()].length;
+  // Scenario D: domain is fully blacklisted — strip everything, no injection
+  if (parsedBlacklist.some(e => !e.param && domainMatches(hostname, e.domain))) {
+    const blacklistedParamCount = [...url.searchParams.keys()].length;  // C10: count before wipe
     url.search = "";
     return buildReturnPayload("blacklisted", url, [], null, {
       junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0),
