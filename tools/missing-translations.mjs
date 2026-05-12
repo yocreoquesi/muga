@@ -16,7 +16,7 @@
  */
 import { TRANSLATIONS } from "../src/lib/i18n.js";
 
-const COMMUNITY_LOCALES = ["pt", "de"];
+const COMMUNITY_LOCALES = ["pt", "de", "fr", "it", "ja"];
 
 /**
  * Returns the list of keys missing in `lang`. A key is "missing" if
