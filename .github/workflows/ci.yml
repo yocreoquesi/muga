@@ -50,6 +50,9 @@ jobs:
       - name: Verify browser-polyfill integrity (#97)
         run: node tools/verify-polyfill-integrity.mjs
 
+      - name: Check i18n quality (no FIXME / stubs / empty locale slots) (#621)
+        run: npm run check:i18n
+
       - name: Run unit tests
         run: npm test
 

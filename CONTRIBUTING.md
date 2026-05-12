@@ -201,6 +201,16 @@ node tools/missing-translations.mjs de        # DE only
 
 The script's output is markdown suitable for pasting into the per-language tracking issues. Submit a PR editing the matching entries in `TRANSLATIONS` and the CI suite will validate the EN+ES floor for you.
 
+### PT / DE: native-speaker review welcome
+
+The current PT and DE strings in `src/lib/i18n.js` were produced with AI assistance. They are linguistically sound but have not been signed off by a native speaker. If you spot a string that reads awkward, regional, or just wrong, a PR fixing only that single key is a great first contribution:
+
+1. Find the key in `src/lib/i18n.js`.
+2. Edit the `pt:` or `de:` value in place.
+3. Add a one-line note in the PR description explaining your variant (e.g., "PT-BR prefers `contatar` over `contactar`", "DE consistency with rest of file uses du-form").
+
+The CI guard `tools/check-i18n-fixme.mjs` fails the build on FIXME markers, empty locale slots, or `'FIXME: translate'` stubs — it does not require native-speaker review to pass. The native review pipeline is purely social.
+
 ## Adding affiliate stores
 
 Edit `src/lib/affiliates.js` and add an entry to `AFFILIATE_PATTERNS`:
