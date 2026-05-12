@@ -218,3 +218,78 @@ describe("Version consistency — build artifacts", () => {
     assert.ok(testIdx < buildIdx, "npm test must run before build:chrome");
   });
 });
+
+// Issue #616: regression guards against the silent CWS-upload failure that
+// affected v1.13.4..v1.16.0 (HTTP 200 with itemError in body interpreted as
+// success) and against the manifest.v2.json leaking into the Chrome bundle.
+describe("Version consistency — CWS pipeline hardening (issue #616)", () => {
+
+  test("release.yml routes CWS upload through cws-check-response.mjs", () => {
+    const yml = read(".github/workflows/release.yml");
+    const uploadStepIdx = yml.indexOf("Upload to Chrome Web Store");
+    assert.ok(uploadStepIdx > 0, "Upload step must exist");
+    // Inspect only the upload step body (until the next named step).
+    const nextStepIdx = yml.indexOf("- name:", uploadStepIdx + 1);
+    const uploadStep = yml.slice(uploadStepIdx, nextStepIdx);
+    assert.ok(
+      uploadStep.includes("scripts/cws-check-response.mjs"),
+      "Upload step must invoke scripts/cws-check-response.mjs — never check $HTTP_CODE alone (issue #616)"
+    );
+  });
+
+  test("release.yml routes CWS publish through cws-check-response.mjs", () => {
+    const yml = read(".github/workflows/release.yml");
+    const publishStepIdx = yml.indexOf("Publish on Chrome Web Store");
+    assert.ok(publishStepIdx > 0, "Publish step must exist");
+    const nextStepIdx = yml.indexOf("- name:", publishStepIdx + 1);
+    const publishStep = yml.slice(publishStepIdx, nextStepIdx);
+    assert.ok(
+      publishStep.includes("scripts/cws-check-response.mjs"),
+      "Publish step must invoke scripts/cws-check-response.mjs (same HTTP-200-with-errors quirk as upload)"
+    );
+  });
+
+  test("release.yml CWS upload step does NOT gate on HTTP_CODE alone", () => {
+    // The pre-#616 logic only ran `if [ "$HTTP_CODE" -ge 400 ]; then
+    // result=failure`, which silently masked PKG_INVALID_ZIP responses that
+    // CWS returns under HTTP 200. Keep that anti-pattern out.
+    const yml = read(".github/workflows/release.yml");
+    const uploadStepIdx = yml.indexOf("Upload to Chrome Web Store");
+    const nextStepIdx = yml.indexOf("- name:", uploadStepIdx + 1);
+    const uploadStep = yml.slice(uploadStepIdx, nextStepIdx);
+    const hasInlineHttpGate = /if\s*\[\s*"\$HTTP_CODE"\s*-ge\s*400\s*\]/.test(
+      uploadStep
+    );
+    assert.ok(
+      !hasInlineHttpGate,
+      "Upload step reintroduced inline HTTP_CODE gate — must defer to cws-check-response.mjs (issue #616)"
+    );
+  });
+
+  test("build:chrome excludes manifest.v2.json from the Chrome bundle", () => {
+    // manifest.v2.json is the Firefox MV2 manifest. It must not ship inside
+    // the Chrome zip — it is build-time machinery, not extension content.
+    const pkg = JSON.parse(read("package.json"));
+    const buildChrome = pkg.scripts["build:chrome"];
+    assert.ok(buildChrome, "package.json must define build:chrome");
+    assert.match(
+      buildChrome,
+      /--ignore-files\s+[^&]*\bmanifest\.v2\.json\b/,
+      "build:chrome --ignore-files must include manifest.v2.json"
+    );
+  });
+
+  test("build:firefox excludes manifest.v2.json from the Firefox bundle", () => {
+    // After with-firefox-manifest.sh swaps the MV2 manifest into place as
+    // manifest.json, the file `manifest.v2.json` still exists in src/ and
+    // would otherwise ship as a duplicate.
+    const pkg = JSON.parse(read("package.json"));
+    const buildFirefox = pkg.scripts["build:firefox"];
+    assert.ok(buildFirefox, "package.json must define build:firefox");
+    assert.match(
+      buildFirefox,
+      /--ignore-files\s+[^&]*\bmanifest\.v2\.json\b/,
+      "build:firefox --ignore-files must include manifest.v2.json"
+    );
+  });
+});

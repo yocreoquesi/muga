@@ -4,6 +4,11 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Chrome Web Store release pipeline silently masking upload failures** (#616). The CWS upload API returns HTTP 200 with an `itemError` array in the body when it rejects an upload — `release.yml` was only checking the HTTP status code, so every release from v1.13.4 through v1.16.0 reported "All store submissions succeeded" while CWS actually rejected the package with `PKG_INVALID_ZIP` or `ITEM_NOT_UPDATABLE`. Chrome users stayed on v1.13.3 for over a week before the regression was caught manually. Fixes the upload + publish steps by delegating response parsing to `scripts/cws-check-response.mjs`, which inspects the body for `itemError` regardless of HTTP status and only treats `ITEM_NOT_UPDATABLE` as a no-op when the `error_detail` actually confirms the version is unchanged. Adds 17 unit tests covering the real response shapes seen in the failing runs.
+- **Firefox MV2 manifest leaking into the Chrome bundle** (#616). `manifest.v2.json` is build-time machinery used by `scripts/with-firefox-manifest.sh` to swap manifests during the Firefox build — it does not belong inside either bundle. Extended `--ignore-files` in both `build:chrome` and `build:firefox` to exclude it.
+
 ### Added
 
 - **Steam Curator attribution preservation** (#614). Adds an explicit `steampowered.com` entry to `src/rules/domain-rules.json` preserving `curator_clanid` — the query param Steam uses to surface a curator's recommendation card inline on the store page. Steam Curator is functionally analogous to the Bookshop `/a/{id}/` creator-referral pattern shipped in #612: non-monetary, but real attribution value (analytics, follower-conversion surfacing). Subdomain-aware match covers `store.steampowered.com` automatically. Out of scope: Steam's internal nav telemetry (`snr`, host-emitted `utm_*`) and MUGA-own curator injection — see the issue for the rationale.
