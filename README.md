@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.16.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-3804_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-3793_pass-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: Privacy Without Breaking Creator Links
 
@@ -229,7 +229,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 3804 unit tests
+npm test               # 3793 unit tests
 npm run test:e2e       # 90 E2E tests (Playwright, requires headed Chromium; 13 skipped)
 npm run build:chrome
 npm run build:firefox

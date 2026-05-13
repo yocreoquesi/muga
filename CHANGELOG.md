@@ -4,6 +4,23 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **CAPS rules consolidated into the muga repo** (#???). The separate `caps-spec` repository (privately hosted, single-editor governance, no external implementers) has been folded into muga. The rules are MUGA's published documentation, not a multi-party standard; the consolidation removes the operational fiction that there was a separately governed spec body. Concretely:
+  - `caps-spec/SPEC.md` → [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md) (header reframed as internal documentation, not a normative standard).
+  - `caps-spec/manifest.json` + schema → [`src/rules/caps-manifest.json`](src/rules/caps-manifest.json) (+ `.schema.json`); the Ed25519 signed artefact distribution at `caps.muga.app/manifest.json` is unchanged.
+  - `caps-spec/wrappers.json` + sig + schema → [`src/rules/caps-wrappers.json`](src/rules/caps-wrappers.json) (+ `.json.sig`, `.schema.json`); served unchanged at `caps.muga.app/wrappers.json`.
+  - `caps-spec/test-vectors/` → [`tests/rules-vectors/`](tests/rules-vectors/) (used by `npm run conformance:contextual`).
+  - `caps-spec/signer-pubkey.txt` / `worker-pubkey.txt` / `crawler-pubkey.txt` → [`src/rules/keys/`](src/rules/keys/) with rewritten companion `.md` files describing trust-root separation.
+  - `caps-spec/scripts/sign-manifest.mjs` etc. → [`scripts/sign-caps-manifest.mjs`](scripts/sign-caps-manifest.mjs) and friends.
+  - `src/vendor/caps-spec/`, `scripts/sync-affiliate-manifest.mjs`, `scripts/sync-wrappers.mjs`, `tests/unit/caps-manifest-sync.test.mjs`, `tests/unit/vendor-wrappers-sync.test.mjs` — removed; the rules now live directly in `src/rules/` instead of being vendored from an upstream.
+  - `validator/` package (TypeScript) — removed; never published, no external consumers, behaviour duplicated in `src/lib/`.
+  - Top-level docs (`README.md`, `CONFORMANCE.md`, `ECOSYSTEM.md`, `OBJECTIVES.md`, `docs/faq.md`, `landing/index.html`, `docs/launch/*.md`) reworded to drop "open standard" / "conforming implementation" framing in favour of "documented and verifiable internal rules".
+  - `OBJECTIVES.md` non-goals updated: "Operating CAPS as a multi-party standard" is now an explicit non-goal until an external implementer adopts the rules independently.
+  - `caps-crawler` (separate repo) retargeted: its weekly auto-PR now goes to `yocreoquesi/muga/src/rules/discovered/` instead of `yocreoquesi/caps-spec/discovered/`, and the required GitHub secret renames from `CAPS_SPEC_PR_TOKEN` to `MUGA_PR_TOKEN`.
+  - **Operational TODO**: the `CAPS_MANIFEST_SIGNING_KEY` GitHub Actions secret (used by the deferred `manifest-auto-sign.yml` workflow) needs to be re-created on the muga repo before the auto-sign path is reactivated. The crawler's `MUGA_PR_TOKEN` is the symmetric TODO on the caps-crawler side. Both documented inline (`src/rules/keys/signer-pubkey.md`, `caps-crawler/README.md`).
+  - Test count: 3804 → 3793 (the two sync tests that pinned the vendor folder against the upstream caps-spec were removed; they no longer apply when the rules live in-repo).
+
 ### Fixed
 
 - **Chrome Web Store release pipeline silently masking upload failures** (#616). The CWS upload API returns HTTP 200 with an `itemError` array in the body when it rejects an upload — `release.yml` was only checking the HTTP status code, so every release from v1.13.4 through v1.16.0 reported "All store submissions succeeded" while CWS actually rejected the package with `PKG_INVALID_ZIP` or `ITEM_NOT_UPDATABLE`. Chrome users stayed on v1.13.3 for over a week before the regression was caught manually. Fixes the upload + publish steps by delegating response parsing to `scripts/cws-check-response.mjs`, which inspects the body for `itemError` regardless of HTTP status and only treats `ITEM_NOT_UPDATABLE` as a no-op when the `error_detail` actually confirms the version is unchanged. Adds 17 unit tests covering the real response shapes seen in the failing runs.
