@@ -32,7 +32,7 @@ const DOMAIN_RULES_PATH = join(ROOT, "src", "rules", "domain-rules.json");
 const RULES = JSON.parse(readFileSync(RULES_PATH, "utf8"));
 const DOMAIN_RULES = JSON.parse(readFileSync(DOMAIN_RULES_PATH, "utf8"));
 
-// Mirror the filter in tools/generate-dnr-rules.mjs: params that appear
+// Mirror the filter in tools/generate-rules.mjs: params that appear
 // in any domain-rule's preserveParams are excluded from the global DNR
 // strip (the content script handles them with domain-specific logic).
 const PRESERVED_BY_DOMAIN = new Set();

@@ -154,7 +154,7 @@ export function buildManifest() {
 
 /**
  * Builds the DNR rule array (tracking-params.json format).
- * Output MUST be byte-identical to tools/generate-dnr-rules.mjs for the same input.
+ * Output uses the same filter logic as the previous DNR generator.
  * Pure function — no file I/O.
  *
  * @returns {Array} DNR rule array
