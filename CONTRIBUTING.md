@@ -229,3 +229,22 @@ Edit `src/lib/affiliates.js` and add an entry to `AFFILIATE_PATTERNS`:
 ```
 
 Leave `ourTag` empty. It is filled in privately by the repository owner.
+
+## Tracking-param contribution workflow
+
+To add a new tracking parameter to MUGA's universal strip set:
+
+1. **Edit `src/lib/affiliates.js`** — append the param name to `TRACKING_PARAMS` and add it to the appropriate `TRACKING_PARAM_CATEGORIES.<category>.params` array. The six valid category keys are: `utm`, `ads`, `email`, `social`, `platform_noise`, `generic`.
+
+2. **Run `npm run add-rule`** (or `npm run add-rule -- --name=<param> --category=<category>` for a non-interactive run). The script internally calls `npm run compile:rules`, which regenerates both `src/rules/tracking-params.json` and `src/rules/rules-manifest.json` in a single pass. It also rebuilds `src/content/cleaner-bundle.js` and appends a regression test entry to `tests/unit/cleaner-add-rule-regression.test.mjs`.
+
+3. **Commit the staged diff** — `add-rule` leaves the following files staged for you to review before committing:
+   - `src/lib/affiliates.js` — the source edit
+   - `src/rules/tracking-params.json` — updated DNR rule (Chrome MV3 + Firefox MV2)
+   - `src/rules/rules-manifest.json` — updated documentation-grade manifest
+   - `src/content/cleaner-bundle.js` — rebuilt content-script bundle
+   - `tests/unit/cleaner-add-rule-regression.test.mjs` — new regression entry
+
+4. You can also run **`npm run compile:rules`** manually at any time to regenerate both `src/rules/rules-manifest.json` and `src/rules/tracking-params.json` from the current state of `affiliates.js` without going through `add-rule`.
+
+> **Note:** `npm run build:rules` is kept as an alias to `npm run compile:rules` for one release cycle (backward compatibility). Prefer `compile:rules` in new scripts or documentation.
