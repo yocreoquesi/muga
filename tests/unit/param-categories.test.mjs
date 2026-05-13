@@ -3,7 +3,7 @@
  *
  * Validates the TRACKING_PARAM_CATEGORIES export from affiliates.js:
  *   - Shape: every category has label, labelEs, and params
- *   - Cross-reference: params in categories cover at least 80% of DNR removeParams
+ *   - Cross-reference: 100% of TRACKING_PARAMS source entries are covered by some category
  *   - i18n: all new impact-dashboard keys exist in both EN and ES
  *
  * Run with: node --test tests/unit/param-categories.test.mjs
@@ -11,13 +11,8 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
-import { TRACKING_PARAM_CATEGORIES } from "../../src/lib/affiliates.js";
+import { TRACKING_PARAM_CATEGORIES, TRACKING_PARAMS } from "../../src/lib/affiliates.js";
 import { TRANSLATIONS } from "../../src/lib/i18n.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── T1-1: Category shape ─────────────────────────────────────────────────────
 
@@ -75,56 +70,24 @@ describe("TRACKING_PARAM_CATEGORIES — shape validation", () => {
   });
 });
 
-// ── T1-2: Cross-reference with DNR tracking-params.json ──────────────────────
+// ── T1-2: 100% coverage of TRACKING_PARAMS source ───────────────────────────
 
-describe("TRACKING_PARAM_CATEGORIES — DNR cross-reference", () => {
-  test("at least 80% of DNR removeParams are covered by some category", () => {
-    const trackingParamsJson = JSON.parse(
-      readFileSync(join(__dirname, "../../src/rules/tracking-params.json"), "utf8")
-    );
-
-    // Collect all removeParams from all DNR rules
-    const dnrParams = new Set();
-    for (const rule of trackingParamsJson) {
-      const removeParams = rule.action?.redirect?.transform?.queryTransform?.removeParams
-        ?? rule.action?.requestHeaders // guard for non-removeParams rules
-        ?? [];
-      if (Array.isArray(rule.action?.redirect?.transform?.queryTransform?.removeParams)) {
-        for (const p of rule.action.redirect.transform.queryTransform.removeParams) {
-          dnrParams.add(p.toLowerCase());
-        }
-      }
-    }
-
-    // Build the full set of categorised params (lowercase)
-    const categorisedParams = new Set();
+describe("TRACKING_PARAM_CATEGORIES — 100% source coverage", () => {
+  test("100% of TRACKING_PARAMS are covered by some category", () => {
+    // Build the full set of categorised params (lowercase) from the SOURCE,
+    // not from the downstream DNR artifact. This is the stricter, correct anchor.
+    const categorised = new Set();
     for (const catData of Object.values(TRACKING_PARAM_CATEGORIES)) {
-      for (const param of catData.params) {
-        categorisedParams.add(param.toLowerCase());
+      for (const p of catData.params) {
+        categorised.add(p.toLowerCase());
       }
     }
 
-    // Count coverage
-    let covered = 0;
-    const uncovered = [];
-    for (const param of dnrParams) {
-      if (categorisedParams.has(param)) {
-        covered++;
-      } else {
-        uncovered.push(param);
-      }
-    }
-
-    const total = dnrParams.size;
-    const coveragePct = total > 0 ? (covered / total) * 100 : 100;
-
-    assert.ok(
-      total > 0,
-      "tracking-params.json must have at least one removeParams rule"
-    );
-    assert.ok(
-      coveragePct >= 80,
-      `Coverage is ${coveragePct.toFixed(1)}% (${covered}/${total}). Uncovered: ${uncovered.join(", ")}`
+    const uncovered = TRACKING_PARAMS.filter(p => !categorised.has(p.toLowerCase()));
+    assert.equal(
+      uncovered.length,
+      0,
+      `Uncategorized params (${uncovered.length}): ${uncovered.join(", ")}`
     );
   });
 });
