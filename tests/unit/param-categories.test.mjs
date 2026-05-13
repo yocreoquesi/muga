@@ -92,6 +92,36 @@ describe("TRACKING_PARAM_CATEGORIES — 100% source coverage", () => {
   });
 });
 
+// ── T1-3: No param appears in more than one category ────────────────────────
+
+describe("TRACKING_PARAM_CATEGORIES — no cross-category duplicates", () => {
+  test("no param appears in more than one category's params array", () => {
+    // Each param must belong to exactly one category. If a param is listed in
+    // multiple categories the generator resolves it via priority order at build
+    // time, but the source data itself should remain unambiguous. A duplicate
+    // here means affiliates.js was edited without noticing the conflict.
+    const seenInCategory = {};
+    const duplicates = [];
+
+    for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+      for (const param of catData.params) {
+        const key = param.toLowerCase();
+        if (seenInCategory[key] !== undefined) {
+          duplicates.push(`"${param}" in both "${seenInCategory[key]}" and "${catKey}"`);
+        } else {
+          seenInCategory[key] = catKey;
+        }
+      }
+    }
+
+    assert.equal(
+      duplicates.length,
+      0,
+      `Params appearing in multiple categories (${duplicates.length}):\n  ${duplicates.join("\n  ")}`
+    );
+  });
+});
+
 // ── T1-5: i18n keys ──────────────────────────────────────────────────────────
 
 describe("i18n — impact-dashboard param breakdown keys", () => {
