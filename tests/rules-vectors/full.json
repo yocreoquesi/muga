@@ -1,0 +1,269 @@
+[
+  {
+    "name": "awin-network-redirect-categorize",
+    "description": "Awin host → categorise as network-redirect, short-circuit before referral scanning.",
+    "input": { "url": "https://awin1.com/cread.php?awc=clickid&p=https%3A%2F%2Fmerchant.com" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 5 — network-redirect categorisation."
+  },
+  {
+    "name": "cj-anrdoezrs-network-redirect",
+    "description": "CJ Affiliate primary cycling domain (anrdoezrs.net) categorises as network-redirect; the path-based publisher and ad IDs are not extracted, only the host triggers categorisation.",
+    "input": { "url": "https://www.anrdoezrs.net/click-3941837-11938573?url=https%3A%2F%2Fbooking.com%2Fhotel%2Ffoo" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 5 — host-based categorisation. Sample link pattern documented at https://intercom.geni.us/en/articles/4275228-how-to-add-your-cj-affiliate-ids."
+  },
+  {
+    "name": "cj-dotomi-subdomain-network-redirect",
+    "description": "CJ Affiliate also cycles cj.dotomi.com (a dotted subdomain on dotomi.com); the manifest lists the exact host so canonicalisation matches it without subdomain stripping (SPEC §3.2 step 1).",
+    "input": { "url": "https://cj.dotomi.com/click-7654321-87654321?url=https%3A%2F%2Fmerchant.com%2Fpath" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — exact host matching (no subdomain reduction). Confirms cj.dotomi.com matches when listed verbatim in domains[]."
+  },
+  {
+    "name": "skimlinks-redirectingat-categorize",
+    "description": "go.redirectingat.com is one of two Skimlinks hostnames — both are categorised as network-redirect.",
+    "input": { "url": "https://go.redirectingat.com/?id=12345&url=https%3A%2F%2Fmerchant.com" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "Skimlinks documentation — go.redirectingat.com and go.skimresources.com both appear in user-facing affiliate URLs."
+  },
+  {
+    "name": "skimlinks-skimresources-categorize",
+    "description": "go.skimresources.com (the other Skimlinks hostname) categorises as network-redirect.",
+    "input": { "url": "https://go.skimresources.com/?id=12345&url=https%3A%2F%2Fmerchant.com" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "Skimlinks documentation — alternative network host."
+  },
+  {
+    "name": "impact-radius-pxf-io-categorize",
+    "description": "Impact Radius pxf.io host categorises as network-redirect.",
+    "input": { "url": "https://pxf.io/c/12345/abc?u=https%3A%2F%2Fmerchant.com" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "Impact Radius documentation — pxf.io is the canonical short host."
+  },
+  {
+    "name": "network-redirect-short-circuits-creator-shaped-params",
+    "description": "Network-redirect categorisation runs first; even if a `tag=` parameter is present on awin1.com, the URL is still categorised as network-redirect and no params are preserved.",
+    "input": { "url": "https://awin1.com/cread.php?awc=cid&tag=looks-like-amazon" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 5 — network-redirect short-circuits the algorithm."
+  },
+  {
+    "name": "www-awin-canonical",
+    "description": "Leading www. is stripped before network-redirect host matching too.",
+    "input": { "url": "https://www.awin1.com/cread.php?awc=cid" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — canonicalisation applies before BOTH direct-injection and network-redirect matching."
+  },
+  {
+    "name": "similar-host-not-awin-defer",
+    "description": "A host that contains the substring 'awin1.com' but is a different domain MUST NOT match.",
+    "input": { "url": "https://awin1.com.evil.tld/?awc=cid" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "Defense in depth: matching is on canonicalised host equality, not substring."
+  },
+  {
+    "name": "amazon-creator-first-with-other-tracking",
+    "description": "Creator-first conflict survives unrelated tracking params (utm_source, fbclid). The validator only forms an opinion on the creator referral; other params are left for the implementer.",
+    "input": {
+      "url": "https://amazon.com/dp/B08?tag=muga0b-20&tag=creator-21&utm_source=google&fbclid=abc",
+      "ownerTag": "muga0b-20"
+    },
+    "expected": {
+      "decision": ["preserve", "strip"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": [{ "name": "tag", "value": "muga0b-20" }]
+    },
+    "citation": "SPEC §3.2 step 4 — params that are not creator referrals are out of scope for the validator."
+  },
+  {
+    "name": "amazon-es-locale-preserve",
+    "description": "Amazon Associates is per-locale; the manifest lists amazon.es separately from amazon.com. A creator tag on amazon.es is preserved against the amazon-es program.",
+    "input": { "url": "https://amazon.es/dp/B08?tag=creator-es-21" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-es-21" }],
+      "removedParams": []
+    },
+    "citation": "Amazon Associates terms — each Amazon storefront has its own affiliate program enrolment."
+  },
+  {
+    "name": "anonym-to-categorize",
+    "description": "anonym.to naked-query privacy proxy categorises as network-redirect.",
+    "input": { "url": "https://anonym.to/?https://merchant.example/path" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#anonymto — anonym.to is a privacy-proxy wrapper, treated as network-redirect for categorisation."
+  },
+  {
+    "name": "facebook-l-categorize",
+    "description": "l.facebook.com outbound wrapper categorises as network-redirect; the apex facebook.com MUST NOT.",
+    "input": { "url": "https://l.facebook.com/l.php?u=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#facebook-l — Facebook outbound link wrapper on the l. subdomain only."
+  },
+  {
+    "name": "facebook-lm-categorize",
+    "description": "lm.facebook.com (mobile-web) categorises as network-redirect.",
+    "input": { "url": "https://lm.facebook.com/l.php?u=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#facebook-lm — mobile-web counterpart to facebook-l."
+  },
+  {
+    "name": "href-li-categorize",
+    "description": "href.li naked-query privacy proxy categorises as network-redirect.",
+    "input": { "url": "https://href.li/?https://merchant.example/path" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#hrefli — naked-query privacy proxy."
+  },
+  {
+    "name": "instagram-l-categorize",
+    "description": "l.instagram.com outbound wrapper categorises as network-redirect; apex instagram.com MUST NOT.",
+    "input": { "url": "https://l.instagram.com/?u=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#instagram-l — Instagram outbound on the l. subdomain only."
+  },
+  {
+    "name": "medium-link-categorize",
+    "description": "link.medium.com short link categorises as network-redirect.",
+    "input": { "url": "https://link.medium.com/abc?url=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#medium-link — Medium path-based short link."
+  },
+  {
+    "name": "rakuten-linkshare-categorize",
+    "description": "click.linksynergy.com (Rakuten LinkShare) categorises as network-redirect.",
+    "input": { "url": "https://click.linksynergy.com/deeplink?id=abc&murl=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#rakuten — Rakuten Advertising deeplink endpoint."
+  },
+  {
+    "name": "reddit-out-categorize",
+    "description": "out.reddit.com outbound wrapper categorises as network-redirect; the apex reddit.com MUST NOT.",
+    "input": { "url": "https://out.reddit.com/?url=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#reddit-out — Reddit outbound on the out. subdomain only."
+  },
+  {
+    "name": "shareasale-categorize",
+    "description": "shareasale.com /r.cfm endpoint categorises as network-redirect.",
+    "input": { "url": "https://shareasale.com/r.cfm?b=1&u=2&urllink=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#shareasale — ShareASale redirect endpoint."
+  },
+  {
+    "name": "snap-exit-categorize",
+    "description": "exit.sc (Snap Exit) categorises as network-redirect; separate hostname from snapchat.com.",
+    "input": { "url": "https://exit.sc/?url=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#snap-exit — Snap's exit-redirect host."
+  },
+  {
+    "name": "tco-categorize",
+    "description": "t.co (Twitter) categorises as network-redirect; subdomains like api.t.co MUST NOT match.",
+    "input": { "url": "https://t.co/abc?url=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#tco — Twitter t.co URL shortener; exact host only."
+  },
+  {
+    "name": "tradetracker-categorize",
+    "description": "tc.tradetracker.net click endpoint categorises as network-redirect.",
+    "input": { "url": "https://tc.tradetracker.net/?c=1&u=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#tradetracker — TradeTracker EU affiliate network."
+  },
+  {
+    "name": "vk-away-categorize",
+    "description": "away.vk.com outbound wrapper categorises as network-redirect; apex vk.com MUST NOT.",
+    "input": { "url": "https://away.vk.com/away.php?to=https%3A%2F%2Fmerchant.example%2F" },
+    "expected": {
+      "decision": ["network-redirect"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "wrappers.json#vk-away — VK outbound on the away. subdomain only."
+  }
+]

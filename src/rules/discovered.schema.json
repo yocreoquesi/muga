@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caps.muga.app/discovered.schema.json",
+  "title": "CAPS Discovered Candidates Artifact",
+  "description": "A signed report emitted by the caps-crawler repo and proposed (via PR) for inclusion under caps-spec/discovered/<date>.json. Each artifact records candidate tracking parameters observed in a single crawl run. caps-spec maintainers review the PR against the false-positive principle, accept/reject/scope the candidates, and merge — never auto-merge.",
+  "type": "object",
+  "required": ["discovered_at", "crawler_version", "corpus", "candidates", "signature"],
+  "additionalProperties": false,
+  "properties": {
+    "discovered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp at which the crawl run completed (e.g. 2026-05-03T18:42:00Z)."
+    },
+    "crawler_version": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$",
+      "description": "Git SHA of the caps-crawler commit that produced this artifact. Lowercase hex, 7-40 chars. Provides a reproducible link back to the exact crawler binary."
+    },
+    "corpus": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "format": "hostname", "minLength": 1 },
+      "description": "Lowercase hostnames visited during this run. The rotating corpus list lives in caps-crawler; this field captures the actual subset visited so a reviewer can reproduce the run scope."
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["param", "first_seen_on", "injected_by", "occurrence_count"],
+        "additionalProperties": false,
+        "properties": {
+          "param": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Parameter name observed in the post-load URL but absent from the original href. Case-sensitive."
+          },
+          "first_seen_on": {
+            "type": "string",
+            "format": "hostname",
+            "minLength": 1,
+            "description": "Lowercase hostname where this candidate was first observed during the run."
+          },
+          "injected_by": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identifier of the redirect chain or script that injected the candidate (e.g. wrapper id, script hostname). Used by reviewers to attribute and triage."
+          },
+          "occurrence_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of distinct first-party domains in this run on which the candidate was observed. Higher count = stronger signal."
+          }
+        }
+      },
+      "description": "Candidate tracking parameters surfaced by this run. An empty array is permitted (a clean run is still a meaningful signed receipt)."
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$",
+      "minLength": 128,
+      "maxLength": 128,
+      "description": "Ed25519 signature, hex-encoded (lowercase, 64 bytes -> 128 chars). Computed over the canonicalized JSON of this object with the `signature` field removed. Canonicalization: JSON.stringify with object keys sorted alphabetically at every level. Verifier key: crawler-pubkey.txt at the root of this repo."
+    }
+  }
+}

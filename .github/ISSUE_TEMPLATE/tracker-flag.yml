@@ -20,7 +20,8 @@ body:
         > the raw parameter value, or any user-identifying data**. The privacy
         > contract is enforced structurally by [`csft-upstream.js`](https://github.com/yocreoquesi/muga/blob/main/src/lib/csft-upstream.js).
         >
-        > Wires Channel 1 of CAPS (see [yocreoquesi/caps-spec#3](https://github.com/yocreoquesi/caps-spec/issues/3))
+        > Wires Channel 1 of the CAPS rules (Discovery channel; see
+        > [`docs/rules/decision-algorithm.md`](https://github.com/yocreoquesi/muga/blob/main/docs/rules/decision-algorithm.md))
         > and consolidates the tracker-side of #333. Sibling popup submit button
         > tracked in #521. Parent PRD: #423.
 

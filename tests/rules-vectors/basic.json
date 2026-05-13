@@ -1,0 +1,173 @@
+[
+  {
+    "name": "amazon-tag-preserve",
+    "description": "Single Amazon affiliate tag → preserve.",
+    "input": { "url": "https://amazon.com/dp/B08N5WRWNW?tag=creator-21" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": []
+    },
+    "citation": "https://affiliate-program.amazon.com/help/topic/t10 — tag is the canonical Associate ID parameter."
+  },
+  {
+    "name": "ebay-campid-preserve",
+    "description": "Single eBay campid → preserve.",
+    "input": { "url": "https://ebay.com/itm/123456789?campid=5339147108" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "campid", "value": "5339147108" }],
+      "removedParams": []
+    },
+    "citation": "https://partnernetwork.ebay.com/ — campid is the EPN affiliate parameter."
+  },
+  {
+    "name": "vercel-ref-preserve",
+    "description": "SaaS-tier direct-injection program (Vercel) preserves the `ref` parameter.",
+    "input": { "url": "https://vercel.com/?ref=devblogger" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "ref", "value": "devblogger" }],
+      "removedParams": []
+    },
+    "citation": "https://vercel.com/docs/accounts/referrals — ref carries the referrer's identifier on the merchant's first-party URL."
+  },
+  {
+    "name": "amazon-tag-empty-defer",
+    "description": "Empty value → not a creator referral per SPEC §2 → defer.",
+    "input": { "url": "https://amazon.com/dp/B08?tag=" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §2 terminology: 'Creator referral ... whose value is not empty.'"
+  },
+  {
+    "name": "amazon-no-tag-defer",
+    "description": "Manifest host but no creator-referral parameter present → defer.",
+    "input": { "url": "https://amazon.com/dp/B08?utm_source=google" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 4: parameters that are not creator referrals are left to the implementer's tracker-removal logic."
+  },
+  {
+    "name": "unrelated-host-defer",
+    "description": "Host not in the manifest → defer regardless of param shape.",
+    "input": { "url": "https://random-store.com/?tag=anything&campid=42" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1: matching is `(host, paramName)` tuples — a tag parameter on a non-manifest host is not a creator referral."
+  },
+  {
+    "name": "creator-first-third-party-wins",
+    "description": "Implementer's own tag and a third-party tag are both present → preserve third-party, strip own.",
+    "input": {
+      "url": "https://amazon.com/dp/B08?tag=muga0b-20&tag=creator-21",
+      "ownerTag": "muga0b-20"
+    },
+    "expected": {
+      "decision": ["preserve", "strip"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": [{ "name": "tag", "value": "muga0b-20" }]
+    },
+    "citation": "SPEC §3.2 step 2 — creator-first rule: third-party referral takes precedence over the implementer's own tag."
+  },
+  {
+    "name": "creator-first-only-owner-preserves-owner",
+    "description": "Only the implementer's own tag is present → preserve it (no conflict to resolve).",
+    "input": {
+      "url": "https://amazon.com/dp/B08?tag=muga0b-20",
+      "ownerTag": "muga0b-20"
+    },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "muga0b-20" }],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 2 — when no third-party referral is present, the implementer's own tag is preserved."
+  },
+  {
+    "name": "multiple-third-party-prefer-first",
+    "description": "Multiple third-party tags (no owner conflict) → preserve the one that appears first by URL position.",
+    "input": { "url": "https://amazon.com/dp/B08?tag=creator-A&tag=creator-B" },
+    "expected": {
+      "decision": ["preserve", "strip"],
+      "preservedParams": [{ "name": "tag", "value": "creator-A" }],
+      "removedParams": [{ "name": "tag", "value": "creator-B" }]
+    },
+    "citation": "SPEC §3.2 step 2 last bullet — preserve the parameter that appears first in the URL's query string."
+  },
+  {
+    "name": "www-amazon-canonical",
+    "description": "A leading www. is stripped before host matching → preserve the tag.",
+    "input": { "url": "https://www.amazon.com/dp/B08?tag=creator-21" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — canonicalisation lowercases and strips a leading 'www.'."
+  },
+  {
+    "name": "booking-aid-deprecated-defer",
+    "description": "Booking.com's `aid` direct-injection entry was soft-deprecated 2026-05-05 after Booking terminated direct affiliate partnerships (May 2025) and migrated to network channels (primarily Awin). Per SPEC §3.2 step 1, deprecated entries MUST NOT match — `?aid=` on booking.com is no longer a creator referral and falls through to defer.",
+    "input": { "url": "https://booking.com/hotel/foo.html?aid=12345" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 + §5.1.1 — deprecated entries are inert. Coverage continues under awin network-redirect for booking's new affiliate channel."
+  },
+  {
+    "name": "digitalocean-refcode-preserve",
+    "description": "DigitalOcean referrals attribute via ?refcode= on digitalocean.com (first-party URL, no redirect).",
+    "input": { "url": "https://digitalocean.com/?refcode=creator-do-1234" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "refcode", "value": "creator-do-1234" }],
+      "removedParams": []
+    },
+    "citation": "https://www.digitalocean.com/referral-program — refcode is the referral identifier on the merchant's first-party URL."
+  },
+  {
+    "name": "humble-bundle-partner-deprecated-defer",
+    "description": "Humble Bundle's `partner` direct-injection entry was soft-deprecated 2026-05-05 after the program migrated to Impact (network-redirect via *.pxf.io). Per SPEC §3.2 step 1, deprecated entries MUST NOT match — `?partner=` on humblebundle.com is no longer a creator referral and falls through to defer.",
+    "input": { "url": "https://humblebundle.com/store?partner=creator-humble" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 + §5.1.1 — deprecated entries are inert. Incident #35; coverage continues under impact-radius for *.pxf.io redirects."
+  },
+  {
+    "name": "lemon-squeezy-aff-preserve",
+    "description": "Lemon Squeezy attributes via ?aff= on the seller's lemonsqueezy.com store URL (first-party URL, no redirect).",
+    "input": { "url": "https://lemonsqueezy.com/some-store/buy?aff=affiliate-id-42" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "aff", "value": "affiliate-id-42" }],
+      "removedParams": []
+    },
+    "citation": "https://docs.lemonsqueezy.com/help/affiliates/affiliate-system — aff carries the affiliate's identifier on the seller's first-party URL."
+  },
+  {
+    "name": "apple-phg-at-preserve",
+    "description": "Apple Performance Partners attributes via ?at= on the merchant's first-party Apple Services URL (no redirect — the affiliate token is appended directly to music.apple.com / tv.apple.com / books.apple.com / podcasts.apple.com / apps.apple.com / itunes.apple.com / geo.music.apple.com).",
+    "input": { "url": "https://music.apple.com/us/album/chromatica/1500951604?at=1010lcs1" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "at", "value": "1010lcs1" }],
+      "removedParams": []
+    },
+    "citation": "https://performance-partners.apple.com/linking — at is the affiliate token appended directly to the Apple service URL with no redirect; ct is a separate optional campaign-name field that MUST NOT be matched as a creator referral."
+  }
+]

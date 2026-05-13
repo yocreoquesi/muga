@@ -1,33 +1,33 @@
-# CAPS Conformance
+# CAPS rules — internal contract
 
-MUGA implements the [Creator Affiliate Preservation Standard](https://github.com/yocreoquesi/caps-spec) (CAPS) and claims conformance at the levels listed below. The standard is the formal contract for what a privacy tool MUST preserve so creators get paid, and what it MUST strip so users do not get tracked across sites.
+MUGA's decision algorithm for distinguishing creator-affiliate parameters from cross-site trackers is documented in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md) (referred to internally as the **CAPS rules**: Creator Attribution Preservation). This file describes which contracts the test suite enforces, and how to verify them.
 
-## Claimed level
+We do not operate the CAPS rules as a multi-party standard — there is one editor (the maintainer) and one implementation (MUGA itself). The documentation exists so that every decision is auditable from outside the project, not so that adopters can claim conformance to a label.
 
-**CAPS-Basic + Contextual** against `caps-spec` v1.0.0-rc1.
+## What the tests guarantee
 
-| Level | Status | Source of truth |
+**Basic + Contextual contracts**, enforced on every PR by CI (`.github/workflows/ci.yml`).
+
+| Contract | Status | Test corpus |
 |---|---|---|
-| Basic | claimed | [`caps-spec/test-vectors/basic/`](https://github.com/yocreoquesi/caps-spec/tree/main/test-vectors/basic) |
-| Full | not yet claimed | — |
-| Strict | not yet claimed | — |
-| Contextual extension | claimed | [`caps-spec/test-vectors/contextual.json`](https://github.com/yocreoquesi/caps-spec/blob/main/test-vectors/contextual.json) |
+| Basic | enforced | [`tests/rules-vectors/basic.json`](tests/rules-vectors/basic.json) |
+| Contextual extension | enforced | [`tests/rules-vectors/contextual.json`](tests/rules-vectors/contextual.json) |
+| Full | not enforced — no behavioural commitment yet | — |
+| Strict | not enforced — no behavioural commitment yet | — |
 
-The Contextual extension is independent of the base levels per [SPEC §4.4](https://github.com/yocreoquesi/caps-spec/blob/main/SPEC.md#44-contextual-extension-normative-optional). MUGA's combined claim is `Basic + Contextual`.
+The Contextual extension is independent of the base contracts per [decision-algorithm.md §4.4](docs/rules/decision-algorithm.md). MUGA's combined contract is `Basic + Contextual`.
 
-## How to verify
-
-The Contextual extension is enforced by a CI gate on every PR (see `.github/workflows/ci.yml`). To run the same check locally:
+## How to verify locally
 
 ```bash
 npm run conformance:contextual
 ```
 
-This drives every vector in `src/vendor/caps-spec/test-vectors/contextual.json` through `src/lib/cleaner.js`'s `processUrl` and asserts the observable behaviour matches the spec's expected outputs:
+This drives every vector in `tests/rules-vectors/contextual.json` through `src/lib/cleaner.js`'s `processUrl` and asserts the observable behaviour matches the documented outputs:
 
 - params listed in `expected.preservedParams` MUST be present in the cleaned URL with the expected value
 - params listed in `expected.removedParams` MUST NOT be present in the cleaned URL
-- on `network-redirect` hosts (wrappers in `src/vendor/caps-spec/wrappers.json`), the bounded-scope rule MUST short-circuit per SPEC §3.2 step 6 — the harness asserts `PARAM_PAIRS` entries survive on those hosts
+- on `network-redirect` hosts (wrappers in `src/rules/caps-wrappers.json`), the bounded-scope rule MUST short-circuit per [decision-algorithm.md §3.2 step 6](docs/rules/decision-algorithm.md) — the harness asserts `PARAM_PAIRS` entries survive on those hosts
 
 The harness lives at `tests/unit/conformance-contextual.test.mjs`.
 
@@ -35,29 +35,23 @@ The harness lives at `tests/unit/conformance-contextual.test.mjs`.
 
 The Contextual algorithm is implemented in `src/lib/param-classifier.js` (`PARAM_PAIRS`, `ANCHOR_TRACKERS`, `classify()`), and integrated into the cleaner pipeline in `src/lib/cleaner.js` between the unwrap and tracker-strip phases.
 
-The network-redirect short-circuit is wired in `src/lib/cleaner.js`: when `detectWrapper(url)` returns a recipe (signalling the host is a redirect-network wrapper), the classifier is invoked with `_skipBoundedScope: true` and the bounded-scope rule does not fire. Wrapper-network classification itself comes from `src/vendor/caps-spec/wrappers.json`, the Ed25519-signed normative artifact.
+The network-redirect short-circuit is wired in `src/lib/cleaner.js`: when `detectWrapper(url)` returns a recipe (signalling the host is a redirect-network wrapper), the classifier is invoked with `_skipBoundedScope: true` and the bounded-scope rule does not fire. Wrapper-network classification itself comes from `src/rules/caps-wrappers.json`, the Ed25519-signed wrapper-recipe table (served externally at `caps.muga.app/wrappers.json` so downstream consumers can verify).
 
-## Vendored artifacts
+## Rule artifacts
 
-The `src/vendor/caps-spec/` directory holds the snapshots MUGA verifies against:
+The `src/rules/` directory holds the rule snapshots the cleaner relies on:
 
-- `wrappers.json` (+ `.sig`, `worker-pubkey.txt`) — the redirect-network recipe table, signature verified at sync time
-- `test-vectors/contextual.json` — the conformance test vectors
+- `caps-manifest.json` (+ `.schema.json`) — direct-injection affiliate programs MUGA preserves
+- `caps-wrappers.json` (+ `.sig`, `.schema.json`) — the redirect-network recipe table, Ed25519 signed
+- `keys/signer-pubkey.txt`, `keys/worker-pubkey.txt`, `keys/crawler-pubkey.txt` — public keys verifiers use against the corresponding signed artifacts
+- `caps-manifest.data.js`, `caps-wrappers.data.js` — ESM wrappers consumed at runtime (the signed `.json` files are the source of truth; the `.data.js` modules mirror them for code-load convenience and a consistency test asserts they do not drift)
 
-To refresh the snapshot from the upstream caps-spec checkout:
+## Reporting a regression
 
-```bash
-npm run sync:wrappers
-```
-
-This verifies the Ed25519 signature on `wrappers.json` fail-closed before writing anything.
-
-## Reporting a conformance regression
-
-If you observe MUGA stripping a creator referral that the spec says to preserve, or preserving a tracker that the spec says to strip, please open an issue with:
+If you observe MUGA stripping a creator referral the documented algorithm says to preserve, or preserving a tracker the algorithm says to strip, please open an issue with:
 
 1. The exact input URL.
-2. The expected behaviour per the relevant SPEC section.
+2. The expected behaviour per the relevant section of [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
 3. The cleaned URL MUGA actually returned.
 
-This is what makes CAPS valuable: a third party can hold MUGA accountable to a written contract instead of trusting our blog post.
+This is what makes the documentation valuable: a third party can hold MUGA accountable to a written contract instead of trusting our blog post.

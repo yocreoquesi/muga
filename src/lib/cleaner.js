@@ -112,7 +112,7 @@ export function getPreservedParams(hostname, domainRules = []) {
  * Detects whether the FINAL URL still carries a third-party affiliate tag for
  * a known store — i.e. a tag MUGA decided to preserve. Independent of
  * notifyForeignAffiliate (read-only signal for UI feedback). Skips empty
- * #523 phase 3: preserve set is now declarative (sourced from caps-spec),
+ * #523 phase 3: preserve set is now declarative (sourced from the CAPS rules),
  * not gated on ourTag. A creator referral on Booking, Vercel, DigitalOcean,
  * Humble Bundle, or Lemon Squeezy is preserved even when MUGA has no
  * affiliate account on those programs. The only short-circuit is when the
@@ -174,7 +174,7 @@ function isAliExpressItemPage(hostname, pathname) {
 // either entry so it does NOT touch the path AND so the existing creator-
 // referral wedge cue fires for users.
 //
-// Out-of-band escape hatch authorised by caps-spec#46 (deferred). The narrow
+// Out-of-band escape hatch authorised by #46 (deferred). The narrow
 // shape is intentional: when a second path-based program lands as a real
 // request, generalise this and reopen the RFC with N>1 data.
 function isBookshopPathReferral(url) {
@@ -184,8 +184,8 @@ function isBookshopPathReferral(url) {
 
 // MUGA's Bookshop.org affiliate ID for injection on unattributed product
 // pages. Lives next to the path-referral detector because both pieces share
-// the same caps-spec#46 escape-hatch rationale. TODO: move into OUR_TAGS in
-// affiliates.js once caps-spec adopts Bookshop as a direct-injection program.
+// the same #46 escape-hatch rationale. TODO: move into OUR_TAGS in
+// affiliates.js once the CAPS rules adopt Bookshop as a direct-injection program.
 const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
 
 /**
@@ -599,7 +599,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   }
 
   // 6b. Bookshop.org MUGA-affiliate injection. Bookshop is not in
-  // AFFILIATE_PATTERNS (caps-spec#46 deferred), so step 6 above never fires
+  // AFFILIATE_PATTERNS (#46 deferred), so step 6 above never fires
   // for it. We inject ?affiliate={MUGA_ID} on unattributed product pages
   // only — never on /shop/{slug} (someone else's storefront) or /a/{id}/
   // (creator referral). The creatorReferralPreserved flag captures both.

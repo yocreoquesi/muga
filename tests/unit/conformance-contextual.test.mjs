@@ -1,7 +1,7 @@
 /**
  * MUGA — CAPS-Contextual conformance harness (issue #543).
  *
- * Drives every vector in caps-spec/test-vectors/contextual.json through
+ * Drives every vector in `tests/rules-vectors/contextual.json` through
  * MUGA's processUrl and asserts that:
  *
  *   - every param listed in expected.preservedParams IS present in the
@@ -10,14 +10,14 @@
  *   - every param listed in expected.removedParams is NOT present in the
  *     cleaned URL (the bounded-scope strip contract).
  *
- * Only those two contracts are asserted: the spec's `decision` array and
- * `notes` are validator-internal metadata that MUGA's processUrl does not
- * surface at all (it returns a cleaned URL string + summary). Asserting on
- * them would tie this harness to a specific implementation strategy rather
- * than to the observable behaviour the spec defines for adopters.
+ * Only those two contracts are asserted: the rules' `decision` array and
+ * `notes` are internal metadata that MUGA's processUrl does not surface
+ * at all (it returns a cleaned URL string + summary). Asserting on them
+ * would tie this harness to a specific implementation strategy rather
+ * than to the observable behaviour the rules define.
  *
- * If any vector fails here, MUGA does NOT conform at the Contextual level
- * and the README badge / CONFORMANCE.md must NOT claim it.
+ * If any vector fails here, MUGA does NOT match its own Contextual rules
+ * and the regression must be investigated before merge.
  */
 
 import { test } from "node:test";
@@ -33,11 +33,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const VECTORS_PATH = join(
   __dirname,
   "..",
-  "..",
-  "src",
-  "vendor",
-  "caps-spec",
-  "test-vectors",
+  "rules-vectors",
   "contextual.json",
 );
 const VECTORS = JSON.parse(readFileSync(VECTORS_PATH, "utf8"));

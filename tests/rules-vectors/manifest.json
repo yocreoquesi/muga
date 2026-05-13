@@ -13,12 +13,12 @@
       "domains": ["amazon.com", "amazon.es", "amazon.de", "amazon.fr", "amazon.it", "amazon.co.uk"],
       "param": "tag",
       "valueShape": "non-empty",
-      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (6 marketplace entries amazon_es/de/fr/it/co_uk/com consolidated into one CAPS entry; ourTag is per-implementer and lives outside the manifest).",
+      "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js (6 marketplace entries amazon_es/de/fr/it/co_uk/com consolidated into one CAPS entry; ourTag is per-implementer and lives outside the manifest). Reference URL upgraded 2026-05-06 from `/help/topic/t10` (volatile navigation hub) to `/help/operating/agreement` (stable authoritative legal text confirming 'tagged' link formats) after the monthly reverification CI flagged similarity drift in #32.",
       "references": [
         {
-          "url": "https://affiliate-program.amazon.com/help/topic/t10",
-          "archivedAt": "2026-05-04",
-          "archivedUrl": "https://web.archive.org/web/20260504000000/https://affiliate-program.amazon.com/help/topic/t10"
+          "url": "https://affiliate-program.amazon.com/help/operating/agreement",
+          "archivedAt": "2026-05-06",
+          "archivedUrl": "https://web.archive.org/web/20260506070712/https://affiliate-program.amazon.com/help/operating/agreement"
         }
       ]
     },
@@ -116,9 +116,9 @@
       "notes": "Seeded from yocreoquesi/muga@582b60e2:src/lib/affiliates.js. Sellers live on per-seller subdomains <seller>.lemonsqueezy.com; canonical-host matching covers the apex only — adopters that need subdomain matching should track upstream issue.",
       "references": [
         {
-          "url": "https://www.lemonsqueezy.com/",
+          "url": "https://docs.lemonsqueezy.com/help/affiliates/affiliate-system",
           "archivedAt": "2026-05-04",
-          "archivedUrl": "https://web.archive.org/web/20260504000000/https://www.lemonsqueezy.com/"
+          "archivedUrl": "https://web.archive.org/web/20260504000000/https://docs.lemonsqueezy.com/help/affiliates/affiliate-system"
         }
       ]
     },
@@ -310,7 +310,7 @@
       "param": "url",
       "valueShape": "non-empty",
       "notes": "Seeded from yocreoquesi/caps-spec:wrappers.json#tco. Exact host only — `t.co`. Subdomains like `api.t.co` are unrelated services and MUST NOT be flagged. Canonical form is path-based and resolves via 301; allowlist of `?url=`/`?u=` is a best-effort fallback.",
-      "references": [{ "url": "https://help.x.com/en/using-x/url-shortener" }]
+      "references": [{ "url": "https://help.twitter.com/en/using-twitter/url-shortener" }]
     },
     {
       "id": "tradetracker",

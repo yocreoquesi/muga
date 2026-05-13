@@ -1,0 +1,122 @@
+[
+  {
+    "name": "subdomain-not-listed-defers",
+    "description": "Manifest lists `amazon.com`. A subdomain like `smile.amazon.com` is a different host. canonicalize() does not strip arbitrary subdomains — only a leading 'www.'.",
+    "input": { "url": "https://smile.amazon.com/dp/B08?tag=creator-21" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — canonical host is the URL's hostname after lowercasing and stripping a leading 'www.', no subdomain reduction."
+  },
+  {
+    "name": "case-insensitive-host-match",
+    "description": "Hostname matching is case-insensitive across the canonicalisation step.",
+    "input": { "url": "https://AMAZON.com/dp/B08?tag=creator-21" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — lowercasing applies before equality check."
+  },
+  {
+    "name": "param-name-case-sensitive",
+    "description": "Parameter NAMES are case-sensitive. `Tag=creator-21` (capital T) does NOT match the manifest's `tag` entry. The validator defers.",
+    "input": { "url": "https://amazon.com/dp/B08?Tag=creator-21" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — paramName is matched literally against manifest entries; only the host is canonicalised."
+  },
+  {
+    "name": "owner-tag-without-conflict-no-strip",
+    "description": "If only the implementer's own tag is present and ownerTag is set, the validator preserves it without producing a 'strip' decision.",
+    "input": {
+      "url": "https://amazon.com/dp/B08?tag=muga0b-20",
+      "ownerTag": "muga0b-20"
+    },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "muga0b-20" }],
+      "removedParams": []
+    },
+    "citation": "Sanity check on the creator-first conflict-resolution branching."
+  },
+  {
+    "name": "two-distinct-programs-amazon-and-vercel-not-applicable",
+    "description": "A URL on amazon.com containing a `ref=` parameter does NOT match the Vercel program (which is keyed on vercel.com). Only `tag` matches, only one program is identified.",
+    "input": { "url": "https://amazon.com/dp/B08?tag=creator-21&ref=somerefvalue" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — `(host, paramName)` matching is per-program."
+  },
+  {
+    "name": "humble-bundle-partner-deprecated-defer",
+    "description": "Humble Bundle's `partner` direct-injection entry was soft-deprecated 2026-05-05 after the program migrated to Impact. Even at Strict level, deprecated entries MUST NOT match per SPEC §3.2 step 1 + §5.1.1.",
+    "input": { "url": "https://humblebundle.com/games/some-game?partner=charity" },
+    "expected": {
+      "decision": ["defer"],
+      "preservedParams": [],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 + §5.1.1 — deprecated entries are inert at all conformance levels. Incident #35."
+  },
+  {
+    "name": "digitalocean-refcode-preserve",
+    "description": "DigitalOcean uses `refcode=` rather than `ref=`. Distinct from Vercel's `ref=` even though both are SaaS programs.",
+    "input": { "url": "https://digitalocean.com/?refcode=abc123" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "refcode", "value": "abc123" }],
+      "removedParams": []
+    },
+    "citation": "https://www.digitalocean.com/referral-program — refcode is the program parameter name."
+  },
+  {
+    "name": "hash-fragment-ignored",
+    "description": "URL hash fragments are ignored by the validator — the algorithm operates on host + query string only.",
+    "input": { "url": "https://amazon.com/dp/B08?tag=creator-21#section" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — matching is on hostname; pathname and fragment are not consulted for direct-injection programs. The fragment is delivered to the destination as-is by the implementer."
+  },
+  {
+    "name": "trailing-slash-and-query-do-not-affect-match",
+    "description": "Trailing path slash and additional query params do not affect host-based program matching.",
+    "input": { "url": "https://amazon.com/?tag=creator-21" },
+    "expected": {
+      "decision": ["preserve"],
+      "preservedParams": [{ "name": "tag", "value": "creator-21" }],
+      "removedParams": []
+    },
+    "citation": "SPEC §3.2 step 1 — matching is on hostname; pathname is not consulted for direct-injection programs."
+  },
+  {
+    "name": "owner-tag-conflict-with-three-third-party",
+    "description": "ownerTag plus three different third-party values: preserve the first third-party by position, strip the implementer's own AND the surplus third-party duplicates.",
+    "input": {
+      "url": "https://amazon.com/dp/B08?tag=muga0b-20&tag=creator-A&tag=creator-B&tag=creator-C",
+      "ownerTag": "muga0b-20"
+    },
+    "expected": {
+      "decision": ["preserve", "strip"],
+      "preservedParams": [{ "name": "tag", "value": "creator-A" }],
+      "removedParams": [
+        { "name": "tag", "value": "muga0b-20" },
+        { "name": "tag", "value": "creator-B" },
+        { "name": "tag", "value": "creator-C" }
+      ]
+    },
+    "citation": "SPEC §3.2 step 2 — third-party preferred over owner; among multiple third-party values, preserve a single instance."
+  }
+]

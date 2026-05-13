@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caps-spec.example/test-vectors/vector.schema.json",
+  "title": "CAPS Test Vector",
+  "description": "A single conformance test vector. Conforming implementations of the CAPS decision algorithm MUST match the expected output for every vector at the level they claim.",
+  "type": "object",
+  "required": ["name", "input", "expected", "citation"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Stable, human-readable identifier (kebab-case)."
+    },
+    "description": {
+      "type": "string",
+      "description": "What this vector exercises in the algorithm."
+    },
+    "input": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "ownerTag": { "type": "string" }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "required": ["decision", "preservedParams", "removedParams"],
+      "properties": {
+        "decision": {
+          "type": "array",
+          "items": {
+            "enum": ["preserve", "strip", "defer", "network-redirect"]
+          },
+          "uniqueItems": true
+        },
+        "preservedParams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "value"],
+            "properties": {
+              "name": { "type": "string" },
+              "value": { "type": "string" }
+            }
+          }
+        },
+        "removedParams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "value"],
+            "properties": {
+              "name": { "type": "string" },
+              "value": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "citation": {
+      "type": "string",
+      "description": "URL or text explaining why this vector exists (program docs, real captured URL, regression report)."
+    }
+  }
+}

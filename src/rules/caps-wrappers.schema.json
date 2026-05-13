@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caps.muga.app/wrappers.schema.json",
+  "title": "CAPS Wrappers Normative Artifact",
+  "description": "Recipe table for redirect-wrapper detection and unwrap. Consumed by browser-extension cleaners (which detect and unwrap locally) and by the muga-unwrap Privacy Proxy Worker (which uses hostPatterns as an allowlist for what hosts it will fetch on the user's behalf).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "label", "hostPatterns", "extractor", "notes", "addedIn"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$",
+        "description": "Stable kebab-case identifier. MUST NOT be reused once published."
+      },
+      "label": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Human-readable network name."
+      },
+      "hostPatterns": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string", "minLength": 1 },
+        "description": "Array of either lowercase exact hostnames OR regex source strings. A regex source string MUST start with `^` and end with `$` so consumers can detect and compile it as a full-host anchored pattern."
+      },
+      "pathPrefix": {
+        "type": "string",
+        "pattern": "^/",
+        "description": "Optional pathname prefix the wrapper lives under (e.g. `/cread.php`). When present, consumers MUST require url.pathname to start with this string before treating the URL as a wrapper."
+      },
+      "extractor": {
+        "type": "object",
+        "oneOf": [
+          {
+            "required": ["kind", "paramName"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "fromParam" },
+              "paramName": { "type": "string", "minLength": 1 }
+            }
+          },
+          {
+            "required": ["kind", "paramName"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "fromAnyParam" },
+              "paramName": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          {
+            "required": ["kind"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "const": "fromUrlAfterQuery" }
+            }
+          }
+        ]
+      },
+      "notes": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Audit context: source of the recipe, rationale, gotchas. Required for traceability."
+      },
+      "addedIn": {
+        "type": "string",
+        "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+        "description": "SemVer of the wrappers.json publication where this entry first appeared."
+      }
+    }
+  }
+}

@@ -47,12 +47,16 @@ A few architectural notes that I think will land here:
    page (rules.muga.app/transparency.html) lists every byte the extension
    stores and what triggers each storage write.
 
-4. CAPS, the Creator Affiliate Preservation Standard. I extracted the rule
-   shapes into a separate spec repo with Ed25519-signed normative artifacts.
-   MUGA is the first conforming implementation; the spec is shaped so
-   muga-unwrap (a Cloudflare Worker variant) and any future tool can claim
-   conformance against the same test vectors. SPEC.md and conformance levels
-   are public.
+4. CAPS, Creator Attribution Preservation. Every rule MUGA applies — what
+   counts as a creator affiliate, what counts as a tracker, how the bounded-
+   scope strip is gated, which redirect networks are wrappers — is documented
+   in `docs/rules/decision-algorithm.md` and encoded in signed JSON artefacts
+   under `src/rules/`. The decision algorithm is open source; the manifest and
+   wrapper recipe table are Ed25519-signed so anyone consuming them
+   (including muga-unwrap) can verify what they got matches what we
+   published. This is not run as a multi-party standard — there is one
+   editor and one implementation — but every rule is verifiable from outside
+   the project.
 
 5. No build step beyond a 30-line esbuild bundler. No TypeScript. No Babel,
    no JSX, no Webpack, no Rollup. The cleaning library is plain ES modules.

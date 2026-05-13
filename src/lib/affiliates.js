@@ -1,34 +1,37 @@
 /**
  * MUGA: Affiliate and tracking parameter database
  *
- * AFFILIATE_PATTERNS is the consolidated view of caps-spec's
- * direct-injection programs joined with MUGA's hand-maintained OUR_TAGS
- * map. The program identity (id, name, domains, param) is sourced from
- * the vendored `caps-spec/manifest.json` (#523 phase 1, run
- * `npm run sync:manifest` to refresh). The per-host affiliate tag values
+ * AFFILIATE_PATTERNS is the consolidated view of the CAPS direct-injection
+ * programs joined with MUGA's hand-maintained OUR_TAGS map. The program
+ * identity (id, name, domains, param) is sourced from
+ * `src/rules/caps-manifest.json` (#523 phase 1) via the ESM wrapper
+ * `src/rules/caps-manifest.data.js`. The per-host affiliate tag values
  * MUGA injects on its own behalf live in OUR_TAGS in this file — they
- * are intentionally NOT in the open standard.
+ * are intentionally NOT in the published manifest (`ourTag` is
+ * per-implementer and outside the documented contract).
  *
  * Entry shape:
  *   {
- *     id:         caps-spec program id (e.g. "amazon-associates")
+ *     id:         CAPS program id (e.g. "amazon-associates")
  *     name:       human-readable program name
  *     group:      MUGA display label ("Amazon", "eBay", "Booking.com", ...)
  *     domains:    array of host strings the program covers
  *     param:      URL query parameter that carries the tag value
  *     type:       always "affiliate" (legacy field preserved for clarity)
  *     ourTag:     { host -> tag } map. Programs MUGA has no account on
- *                 carry an empty {} — preservation still works (caps-spec
- *                 declares it preservable); only injection is skipped.
- *     references: array of source citations from caps-spec
+ *                 carry an empty {} — preservation still works (the
+ *                 manifest declares it preservable); only injection
+ *                 is skipped.
+ *     references: array of source citations from the manifest
  *   }
  *
  * To add a NEW per-marketplace tag for an existing program: edit
- * OUR_TAGS only. To add a NEW program: it must first land in caps-spec,
- * then `npm run sync:manifest` updates the vendored module.
+ * OUR_TAGS only. To add a NEW program: edit `src/rules/caps-manifest.json`
+ * and its companion `caps-manifest.data.js` together (see the data file
+ * header for the consistency contract).
  */
 
-import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../vendor/caps-spec/manifest.data.js";
+import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../rules/caps-manifest.data.js";
 
 export const TRACKING_PARAMS = [
   // Google / Meta / Microsoft
@@ -774,19 +777,19 @@ export const TRACKING_PARAM_CATEGORIES = {
 
 
 // ────────────────────────────────────────────────────────────────────────
-// AFFILIATE_PATTERNS — caps-spec direct-injection programs joined with
+// AFFILIATE_PATTERNS — CAPS direct-injection programs joined with
 // MUGA's per-host affiliate tag values (#523).
 // ────────────────────────────────────────────────────────────────────────
 //
 // The program identity (id, name, domains, param) is sourced from
-// `vendor/caps-spec/manifest.data.js`. The per-host tag values MUGA
+// `src/rules/caps-manifest.data.js`. The per-host tag values MUGA
 // injects on its own behalf live in OUR_TAGS below — they are
-// intentionally NOT in the open standard (per caps-spec design,
-// `ourTag` is per-implementer).
+// intentionally NOT in the published manifest (`ourTag` is
+// per-implementer and outside the documented contract).
 //
 // To add a NEW per-marketplace tag for an existing program: edit
-// OUR_TAGS only. To add a NEW program: land it in caps-spec first,
-// then run `npm run sync:manifest` to refresh the vendored data.
+// OUR_TAGS only. To add a NEW program: edit both `caps-manifest.json`
+// and `caps-manifest.data.js` (see the data file header).
 const OUR_TAGS = {
   "amazon-associates": {
     "amazon.com":   "muga0b-20",
@@ -812,22 +815,22 @@ const OUR_TAGS = {
   "digitalocean":  {}, // pending DigitalOcean referral code
   "lemon-squeezy": {}, // pending Lemon Squeezy affiliate id
 };
-// booking and humble-bundle were removed when caps-spec deprecated those
-// programs upstream (Booking terminated direct affiliate partnerships May
-// 2025 → migrated to Awin; Humble Bundle migrated to Impact). The sync
-// script filters out programType=deprecated, so an entry here would be
+// booking and humble-bundle were removed when the CAPS rules deprecated those
+// programs (Booking terminated direct affiliate partnerships May
+// 2025 → migrated to Awin; Humble Bundle migrated to Impact). The rules
+// filter out programType=deprecated, so an entry here would be
 // dead code — coverage continues via network-redirect (awin / impact-radius).
 //
 // apple-phg is intentionally NOT in OUR_TAGS: Apple Performance Partners is
 // a curated program closed to small publishers (volume + quality gate). We
-// preserve third-party at= tags via caps-spec (moat-aligned) but skip
+// preserve third-party at= tags per the CAPS rules (moat-aligned) but skip
 // injection. Fallback `OUR_TAGS[prog.id] || {}` keeps preservation working
 // without a placeholder entry.
 
-// Maps caps-spec program ids to MUGA's existing display "group" so the
+// Maps CAPS program ids to MUGA's existing display "group" so the
 // popup / attribution-ledger UI keeps showing familiar labels (e.g.
 // "Amazon" instead of "Amazon Associates"). Programs not listed here
-// fall back to the caps-spec `name`.
+// fall back to the program `name` from `src/rules/`.
 const GROUP_OVERRIDES = {
   "amazon-associates":    "Amazon",
   "ebay-partner-network": "eBay",

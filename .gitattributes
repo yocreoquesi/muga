@@ -1,8 +1,12 @@
-# Vendor: pin caps-spec artifacts to LF so the Ed25519 signature over
-# wrappers.json verifies identically on Windows, macOS, and Linux. Without
-# this, Windows checkouts with core.autocrlf=true would byte-modify the file
-# at checkout and break verification.
-src/vendor/caps-spec/wrappers.json       text eol=lf
-src/vendor/caps-spec/wrappers.json.sig   text eol=lf
-src/vendor/caps-spec/worker-pubkey.txt   text eol=lf
-src/vendor/caps-spec/wrappers.data.js    text eol=lf
+# Pin signed CAPS rule artifacts to LF so the Ed25519 signature over
+# caps-wrappers.json (and the public keys referenced by signature verification)
+# verifies identically on Windows, macOS, and Linux. Without this, Windows
+# checkouts with core.autocrlf=true would byte-modify the files at checkout
+# and break verification.
+src/rules/caps-wrappers.json        text eol=lf
+src/rules/caps-wrappers.json.sig    text eol=lf
+src/rules/caps-wrappers.data.js     text eol=lf
+src/rules/caps-manifest.json        text eol=lf
+src/rules/keys/signer-pubkey.txt    text eol=lf
+src/rules/keys/worker-pubkey.txt    text eol=lf
+src/rules/keys/crawler-pubkey.txt   text eol=lf

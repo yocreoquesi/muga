@@ -13,10 +13,11 @@
  *
  * ── Source of truth (issue #538) ─────────────────────────────────────────
  * The recipe table is no longer authored inline. It is sourced from the
- * caps-spec normative artifact (`wrappers.json`, Ed25519-signed) vendored at
- * `src/vendor/caps-spec/wrappers.data.js` so it ships with the extension. To
- * edit a wrapper recipe, change it in
- * caps-spec, re-sign, then run `npm run sync:wrappers` to refresh the vendor.
+ * Ed25519-signed `src/rules/caps-wrappers.json` (served at
+ * `caps.muga.app/wrappers.json` for downstream verification) and consumed
+ * via the ESM wrapper `src/rules/caps-wrappers.data.js` so it ships with
+ * the extension. To edit a wrapper recipe, edit both files together
+ * (see the data file header for the consistency contract) and re-sign.
  *
  * ── Schema ────────────────────────────────────────────────────────────────
  * Each entry in WRAPPERS has the shape:
@@ -154,11 +155,11 @@ function extractFromUrlAfterQuery() {
   };
 }
 
-import { WRAPPERS_RAW } from "../vendor/caps-spec/wrappers.data.js";
+import { WRAPPERS_RAW } from "../rules/caps-wrappers.data.js";
 
 /**
- * Wrapper schema mapping caps-spec/wrappers.json (the published normative
- * artifact) to the engine's internal table shape.
+ * Wrapper schema mapping `src/rules/caps-wrappers.json` (the signed
+ * published artifact) to the engine's internal table shape.
  *
  * INTENTIONAL CONSOLIDATION — `skimlinks-redirectingat` + `skimlinks-skimresources`:
  * The spec splits Skimlinks into two ids so a future consumer can attribute

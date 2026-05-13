@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caps-spec.example/manifest.schema.json",
+  "title": "CAPS Manifest",
+  "description": "CAPS manifest schema. Mirrors SPEC.md §5.",
+  "type": "object",
+  "required": ["caps_version", "manifest_version", "programs"],
+  "properties": {
+    "caps_version": {
+      "type": "string",
+      "description": "SemVer of the CAPS specification this manifest conforms to."
+    },
+    "manifest_version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonically increasing integer. Bumped on every published manifest."
+    },
+    "supported_caps_range": {
+      "type": "string",
+      "description": "Informational SemVer range string indicating which caps_versions adopters should support, e.g., '>=1.0.0 <2.0.0'. Adopters MAY use this to advertise compatibility expectations and to reject manifests outside the range."
+    },
+    "signed_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "signer_pubkey": {
+      "type": ["string", "null"],
+      "description": "Ed25519 public key, base64-encoded. Null in pre-release manifests."
+    },
+    "signature": {
+      "type": ["string", "null"],
+      "description": "Ed25519 signature over the canonical JSON of all other top-level fields. Null in pre-release manifests."
+    },
+    "programs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "programType", "domains", "param"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "programType": {
+            "type": "string",
+            "enum": ["direct-injection", "network-redirect", "deprecated"],
+            "description": "Active classification of the program. 'deprecated' entries are retained for transparency but MUST NOT be matched by the decision algorithm (SPEC §3.2)."
+          },
+          "domains": { "type": "array", "items": { "type": "string" } },
+          "param": { "type": "string" },
+          "valueShape": { "type": "string" },
+          "notes": { "type": "string" },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["url"],
+              "properties": {
+                "url": { "type": "string", "format": "uri" },
+                "archivedAt": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "ISO 8601 date (YYYY-MM-DD) when the snapshot was captured."
+                },
+                "archivedUrl": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://(web\\.archive\\.org|archive\\.(today|ph|is|li|md))/",
+                  "description": "Snapshot URL on web.archive.org or archive.today (incl. ph/is/li/md aliases)."
+                }
+              }
+            }
+          },
+          "deprecatedAt": {
+            "type": "string",
+            "format": "date",
+            "description": "ISO 8601 date when the program was soft-deprecated. REQUIRED when programType is 'deprecated'."
+          },
+          "deprecationReason": {
+            "type": "string",
+            "description": "Human-readable rationale for the deprecation. REQUIRED when programType is 'deprecated'."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "programType": { "const": "deprecated" } },
+              "required": ["programType"]
+            },
+            "then": {
+              "required": ["deprecatedAt", "deprecationReason"]
+            }
+          },
+          {
+            "if": {
+              "properties": { "programType": { "const": "direct-injection" } },
+              "required": ["programType"]
+            },
+            "then": {
+              "properties": {
+                "references": {
+                  "type": "array",
+                  "items": {
+                    "required": ["url", "archivedAt", "archivedUrl"]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

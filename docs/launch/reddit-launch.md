@@ -125,7 +125,7 @@ no values, no full URLs).
 
 ### "How do you classify what's an affiliate tag vs a tracker?"
 
-> Static lookup table in `src/lib/affiliates.js` plus per-domain rules in `src/rules/domain-rules.json`. No ML, no inference, no remote service. You can read every classification and PR a fix if any of them is wrong. The CAPS spec (separate repo) defines the test vectors so the classification is auditable against a written contract.
+> Static lookup table in `src/lib/affiliates.js` plus per-domain rules in `src/rules/domain-rules.json`. No ML, no inference, no remote service. You can read every classification and PR a fix if any of them is wrong. The decision algorithm and its test vectors are published in `docs/rules/decision-algorithm.md` and `tests/rules-vectors/` so the classification is auditable against a written contract.
 
 ### "What's stopping you from going closed-source after I install?"
 
