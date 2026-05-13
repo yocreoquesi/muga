@@ -21,6 +21,7 @@
     "promo-tile": "node tools/screenshots/capture-promo.mjs",
     "promo-tiles": "python3 tools/generate-promo-tiles.py",
     "build:rules": "node tools/generate-dnr-rules.mjs",
+    "compile:rules": "node tools/generate-rules.mjs",
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "sync:wrappers": "node scripts/sync-wrappers.mjs",
     "sync:manifest": "node scripts/sync-affiliate-manifest.mjs",
