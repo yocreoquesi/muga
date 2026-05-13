@@ -1,17 +1,17 @@
-# Creator Attribution Preservation Spec (CAPS)
+# CAPS — Creator Attribution Preservation rules
 
 **Version:** 1.0.0-rc1
-**Status:** Working draft. Not yet normative. This document becomes normative when the maintainer judges the reference implementation (MUGA) stable against the test-vector corpus and tags v1.0 per the self-paced release process in [GOVERNANCE.md](GOVERNANCE.md). External review is preserved as a future-conditional path in `GOVERNANCE.md` and is not a gate on v1.0 normativity.
+**Status:** Internal MUGA documentation. The CAPS rules are not operated as a multi-party standard — they are MUGA's own decision algorithm and rule artefacts, documented here so every decision is auditable from outside the project. See [`../../OBJECTIVES.md` → Non-goals](../../OBJECTIVES.md) for the explicit decision not to pursue standards-body governance until external implementers emerge.
 **Editor:** yocreoquesi
-**License:** [CC-BY-4.0](LICENSE)
+**License:** GPL-3.0 (same as the parent MUGA repository)
 
 ---
 
 ## Abstract
 
-This specification defines an open standard for URL-cleaning tools (browser extensions, filter lists, browser built-in cleaners, server-side proxies) that wish to distinguish legitimate creator referrals from cross-site tracking. CAPS provides a normative terminology, a deterministic decision algorithm, three conformance levels, a machine-readable manifest format for recognized affiliate programs, and a reference-implementation contract.
+This document describes the decision algorithm MUGA applies to distinguish legitimate creator referrals from cross-site tracking. It defines terminology, a deterministic decision algorithm using RFC 2119 keywords for precision, a machine-readable manifest format for recognized affiliate programs (`src/rules/caps-manifest.json`), and the contract MUGA's runtime tests enforce.
 
-CAPS is descriptive, not prescriptive. It specifies *which parameters constitute legitimate creator attribution* and *what categories of action exist for handling them*. It does not dictate user-interface choices, default modes, permissions, or product positioning. Conforming implementations remain free to differ on every aspect outside the binding sections below.
+CAPS is descriptive of MUGA's behaviour, not prescriptive of anyone else's. It specifies *which parameters constitute legitimate creator attribution* and *what categories of action exist for handling them*. It does not dictate user-interface choices, default modes, permissions, or product positioning. Any third-party tool that finds the algorithm useful is welcome to read and implement it; we will not run a conformance programme around it.
 
 ## 1. Conventions
 
@@ -263,7 +263,7 @@ The manifest carries its own version (`manifest_version`) independent of the spe
 
 ### 5.5 Discovered Candidates Artifact (Normative)
 
-The `discovered/` directory of this repository hosts signed candidate-tracker reports proposed by automated discovery tooling — currently the [`caps-crawler`](https://github.com/yocreoquesi/caps-crawler) repository — for human review by caps-spec maintainers. Each report is one JSON file conforming to `discovered.schema.json` at the repository root.
+The `src/rules/discovered/` directory (when present) hosts signed candidate-tracker reports proposed by the [`caps-crawler`](https://github.com/yocreoquesi/caps-crawler) repository for human review by the MUGA maintainer. Each report is one JSON file conforming to `src/rules/discovered.schema.json`.
 
 **Required fields** (top-level object, no others):
 
@@ -290,7 +290,7 @@ The `discovered/` directory of this repository hosts signed candidate-tracker re
 
 1. The crawler signs and opens a PR adding `discovered/<date>.json`.
 2. CI runs the schema validator and signature check (`validator/discovered-schema.test.mjs`); both MUST pass before merge.
-3. A caps-spec maintainer reviews the candidates against the false-positive principle and accepts, rejects, or scopes them.
+3. The MUGA maintainer reviews the candidates against the false-positive principle and accepts, rejects, or scopes them.
 4. Merge is always a deliberate human action. Automated merge of `discovered/` PRs is prohibited.
 
 The directory's [`README.md`](discovered/README.md) carries the operational reviewer checklist.

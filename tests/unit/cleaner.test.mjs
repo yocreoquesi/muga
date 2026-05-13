@@ -839,7 +839,7 @@ describe("Scenario C — foreign affiliate detection", () => {
 
   test("notifyForeignAffiliate: true + ourTag empty → IS detected (decoupled, #523 phase 3)", () => {
     // #523 phase 3 — Decision 2: preserve set is declarative (sourced from
-    // caps-spec), no longer gated on ourTag. With ourTag = {} for this
+    // the CAPS rules), no longer gated on ourTag. With ourTag = {} for this
     // host, ANY value present is foreign — there's nothing of MUGA's own
     // to compare against, so the value cannot be the user's own tag.
     const original = TEST_PATTERN.ourTag;
@@ -2958,8 +2958,8 @@ describe("#495 — frequency tracker integration with processUrl", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bookshop.org — in-cleaner path-based affiliate exception (#603, caps-spec#46
-// deferred). Bookshop's affiliate attribution is path-based (`/a/{id}/`), not
+// Bookshop.org — in-cleaner path-based affiliate exception (#603; CAPS-rules
+// adoption deferred). Bookshop's affiliate attribution is path-based (`/a/{id}/`), not
 // query-string-based. The cleaner detects the entry path so it does NOT strip
 // the `/a/` segment and so the standard creator-referral wedge cue still fires.
 // ---------------------------------------------------------------------------
@@ -3051,7 +3051,7 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bookshop.org — MUGA affiliate injection (follow-up to #603, caps-spec#46).
+// Bookshop.org — MUGA affiliate injection (follow-up to #603; CAPS-rules adoption pending).
 // Inject ?affiliate=124046 only on unattributed /p/books/... product pages.
 // NEVER on /shop/{slug} or /a/{id}/ — those are someone else's attribution
 // (or our own storefront, which Bookshop already attributes via cookie).

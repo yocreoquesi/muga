@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://caps.muga.app/discovered.schema.json",
   "title": "CAPS Discovered Candidates Artifact",
-  "description": "A signed report emitted by the caps-crawler repo and proposed (via PR) for inclusion under caps-spec/discovered/<date>.json. Each artifact records candidate tracking parameters observed in a single crawl run. caps-spec maintainers review the PR against the false-positive principle, accept/reject/scope the candidates, and merge — never auto-merge.",
+  "description": "A signed report emitted by the caps-crawler repo and proposed (via PR) for inclusion in the MUGA rules. Each artifact records candidate tracking parameters observed in a single crawl run. The MUGA maintainer reviews the PR against the false-positive principle, accepts/rejects/scopes the candidates, and merges — never auto-merge.",
   "type": "object",
   "required": ["discovered_at", "crawler_version", "corpus", "candidates", "signature"],
   "additionalProperties": false,

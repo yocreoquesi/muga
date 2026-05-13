@@ -95,11 +95,11 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
     assert.ok(OPAQUE_NETWORKS.includes("amzn.to"));
   });
 
-  test("includes t.co (PR-07 — extension-only activation; Worker already accepts via caps-spec)", () => {
+  test("includes t.co (PR-07 — extension-only activation; Worker already accepts via the wrappers manifest)", () => {
     assert.ok(OPAQUE_NETWORKS.includes("t.co"));
   });
 
-  test("includes link.medium.com (PR-08 — extension-only activation; Worker already accepts via caps-spec)", () => {
+  test("includes link.medium.com (PR-08 — extension-only activation; Worker already accepts via the wrappers manifest)", () => {
     assert.ok(OPAQUE_NETWORKS.includes("link.medium.com"));
   });
 

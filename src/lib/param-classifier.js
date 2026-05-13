@@ -20,8 +20,9 @@
  * bounded params are preserved (functional URL protected).
  *
  * ── Forward compatibility ─────────────────────────────────────────────────
- * This implements what will be formalized as the CAPS Contextual conformance
- * level (tracked in muga#541, caps-spec follow-up). The function shape
+ * This implements what is documented as the CAPS Contextual conformance
+ * level (tracked in muga#541; see docs/rules/decision-algorithm.md §4.4).
+ * The function shape
  * `(url, prefs) → { stripParams, preserveParams, ruleHits }` is deliberately
  * tracker-agnostic so future per-domain or per-anchor pairs can be added
  * without rewriting cleaner.js integration.

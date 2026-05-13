@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Sign manifest.json in place with the CAPS manifest signer key.
+ * Sign src/rules/caps-manifest.json in place with the CAPS manifest signer key.
  *
- * Decision 1 of caps-spec#3. This is the shared signing tool used by both
- * the CI auto-sign path (.github/workflows/manifest-auto-sign.yml) and the
- * offline manual-signing ritual documented in GOVERNANCE.md.
+ * Shared signing tool used by both the CI auto-sign path
+ * (.github/workflows/manifest-auto-sign.yml, pending migration as part of the
+ * caps-spec → muga consolidation) and the offline manual-signing ritual.
  *
- * Procedure (SPEC §5.2):
+ * Procedure (per docs/rules/decision-algorithm.md §5.2):
  *   1. Set signed_at to now (ISO 8601), signer_pubkey to the published key,
  *      signature to null.
  *   2. Canonicalize the manifest with the signature field elided.

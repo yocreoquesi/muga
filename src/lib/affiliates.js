@@ -842,14 +842,14 @@ function _deriveGroup(prog) {
 
 /**
  * Affiliate-pattern table consumed by `cleaner.js` and friends.
- * Built once at module load by joining caps-spec direct-injection
+ * Built once at module load by joining the CAPS rules' direct-injection
  * programs with the hand-maintained OUR_TAGS map.
  *
  * Entry shape:
  *   { id, name, group, domains, param, type, ourTag, references }
  * where `ourTag` is a `{ hostname → tag }` map (NOT a flat string).
  * Programs MUGA has no account on carry an empty `ourTag: {}` —
- * preservation still works (caps-spec declares them preservable);
+ * preservation still works (the CAPS rules declare them preservable);
  * only injection is skipped on those.
  */
 export const AFFILIATE_PATTERNS = CAPS_DIRECT_INJECTION_PROGRAMS.map((prog) => ({

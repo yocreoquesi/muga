@@ -19,11 +19,10 @@
  * the Contextual conformance extension defined in SPEC §4.4.
  *
  * Used by:
- *   - The validator package's own test suite
- *   - CI on every push to caps-spec/main
- *   - Adopters who want to claim conformance — drop this script into their
- *     project, point it at their implementation, and verify they pass every
- *     vector for the level they claim.
+ *   - MUGA's own CI on every push (drives the `conformance:contextual` script)
+ *   - Anyone who wants to verify their CAPS-rules implementation: drop this
+ *     script into their project, point it at their implementation, and run it
+ *     against every vector at the level they claim.
  */
 
 import { readFileSync } from "node:fs";

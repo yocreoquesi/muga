@@ -412,9 +412,9 @@ describe("getAffiliateDomains — affiliate domain list", () => {
     const domains = getAffiliateDomains();
     assert.ok(domains.includes("amazon.es"), "must include amazon.es");
     assert.ok(domains.includes("amazon.com"), "must include amazon.com");
-    // Apple Performance Partners hosts (added when caps-spec#45 landed).
+    // Apple Performance Partners hosts (added when CAPS-rules entry #45 landed).
     // booking.com was previously checked here but Booking deprecated their
-    // direct affiliate program (May 2025) and caps-spec moved the entry to
+    // direct affiliate program (May 2025) and the CAPS rules moved the entry to
     // programType=deprecated, so it no longer appears in AFFILIATE_PATTERNS.
     // Coverage continues via network-redirect (awin).
     assert.ok(domains.includes("music.apple.com"), "must include music.apple.com");

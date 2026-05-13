@@ -457,9 +457,9 @@ function renderStores() {
   grid.hidden = false;
   if (hintEl) hintEl.hidden = false;
 
-  // Group programs by display brand. Today caps-spec programs have a
+  // Group programs by display brand. Today the CAPS rules' programs have a
   // 1:1 relationship with display groups, but we keep the grouping so
-  // a future caps-spec change (e.g. Amazon Vendor Central as a separate
+  // a future manifest change (e.g. Amazon Vendor Central as a separate
   // entry sharing the "Amazon" brand) reuses the same UI shape.
   const groups = new Map();
   for (const p of activePrograms) {

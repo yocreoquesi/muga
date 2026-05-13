@@ -39,6 +39,6 @@ export const TRUSTED_PUBLIC_KEYS = Object.freeze([
 // in-process and pass it directly to verifyUnwrapResponse.
 export const PROXY_TRUSTED_PUBLIC_KEYS = Object.freeze([
   // "worker-2026-b" — production Cloudflare Worker key. Mirrored from
-  // caps-spec/worker-pubkey.txt and muga-unwrap/wrangler.toml SIGNING_PUBLIC_KEY.
+  // src/rules/keys/worker-pubkey.txt and muga-unwrap/wrangler.toml SIGNING_PUBLIC_KEY.
   "ya3eMwaMswn4Y2hO+7rnKhthc3qkPEeAQQcL8Y8+TCk=",
 ]);

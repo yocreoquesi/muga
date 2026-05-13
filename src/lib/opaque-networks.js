@@ -1,7 +1,6 @@
 /** MUGA: Opaque affiliate networks — wrappers that cannot be unwrapped client-side */
 //
-// Adding entries here is security-relevant. Goes through proposal review
-// (caps-spec or muga RFC).
+// Adding entries here is security-relevant. Goes through proposal review.
 //
 // These are redirect-network intermediaries whose destination URL is NOT
 // embedded in the redirect URL (e.g. stored server-side behind a click ID).
@@ -13,15 +12,15 @@
 //   - anrdoezrs.net / dpbolvw.net / jdoqocy.com / kqzyfj.com /
 //     tkqlhce.com / emjcd.com / qksrv.net / cj.dotomi.com
 //       — CJ Affiliate (Commission Junction) redirect domains
-//         (caps-spec manifest.json, program id: cj-affiliate)
+//         (src/rules/caps-manifest.json, program id: cj-affiliate)
 //   - ad.admitad.com — Admitad CPA network
 //   - bit.ly          — Generic URL shortener (redirector-coverage-expansion, PR-02)
 //   - tinyurl.com     — Generic URL shortener (redirector-coverage-expansion, PR-03)
 //   - prf.hn          — Partnerize / Performance Horizon affiliate (redirector-coverage-expansion, PR-04)
 //   - px.a8.net       — A8.net Japan affiliate; px.a8.net confirmed via T00 STANDARD probe
 //   - amzn.to         — Amazon branded shortener; tag= preservation gated via G3/T19
-//   - t.co            — Twitter/X URL shortener; extension-only activation (Worker already accepts via caps-spec)
-//   - link.medium.com — Medium URL shortener; extension-only activation (Worker already accepts via caps-spec)
+//   - t.co            — Twitter/X URL shortener; extension-only activation (Worker already accepts via the wrappers manifest)
+//   - link.medium.com — Medium URL shortener; extension-only activation (Worker already accepts via the wrappers manifest)
 //   - lnkd.in         — LinkedIn share tracker; STANDARD probe verdict 2026-05-09 (#607)
 //   - fb.me           — Facebook universal shortener; STANDARD probe verdict 2026-05-09 (#607)
 //   - ebay.to         — eBay branded shortener; STANDARD probe verdict 2026-05-09 (#607)
@@ -30,7 +29,7 @@ export const OPAQUE_NETWORKS = Object.freeze([
   // AliExpress affiliate click tracker
   "s.click.aliexpress.com",
 
-  // CJ Affiliate (Commission Junction) — all redirect domains from caps-spec
+  // CJ Affiliate (Commission Junction) — all redirect domains from src/rules/caps-manifest.json
   "anrdoezrs.net",
   "dpbolvw.net",
   "jdoqocy.com",
@@ -56,7 +55,7 @@ export const OPAQUE_NETWORKS = Object.freeze([
   // Amazon branded shortener — tag= preservation verified via G3 regression test
   "amzn.to",
 
-  // Extension-only activations: Worker already accepts these via caps-spec buildSpecAllowlist
+  // Extension-only activations: Worker already accepts these via the wrappers manifest's buildSpecAllowlist
   "t.co",
   "link.medium.com",
 

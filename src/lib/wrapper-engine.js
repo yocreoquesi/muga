@@ -179,12 +179,12 @@ const SKIMLINKS_SPEC_IDS = new Set([
 /**
  * Per-id compatibility overrides applied AFTER the spec→engine mapping.
  *
- * The caps-spec wrappers schema currently only supports a single `pathPrefix`
+ * The `caps-wrappers.json` schema currently only supports a single `pathPrefix`
  * per entry. MUGA's pre-existing engine accepts multiple paths for some
  * networks. To preserve behaviour (issue #538 acceptance criterion: tests must
  * still pass) without forking the schema, we extend the engine table with the
- * extra prefix here and track a follow-up in caps-spec to allow multi-prefix
- * entries (then this override goes away).
+ * extra prefix here. A future schema bump to allow multi-prefix entries would
+ * let this override go away.
  */
 const PATH_PREFIX_EXTENSIONS = {
   awin: ["/awclick.php"],
