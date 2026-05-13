@@ -91,6 +91,14 @@ These principles are the same ones the strategic review used. They are intention
 
 ---
 
+## Risks
+
+Material risks to the North Star that are tracked outside the issue tracker because they outlive a single triage cycle. Each risk links to the audit or runbook that documents it.
+
+- **Amazon Associates account loss.** MUGA's affiliate revenue is concentrated across six Amazon storefronts (US, UK, ES, DE, FR, IT). An adverse reading of the Associates Operating Agreement — or an enforcement action against extension-based affiliation — collapses that revenue and forfeits escrowed earnings. The mitigation surface (current behaviour, disclosure flow, kill-switch gap) is audited in [`docs/affiliate-compliance.md`](docs/affiliate-compliance.md). Status: **DRAFT — pending legal verification of regional clauses**. Tracking: [#339](https://github.com/yocreoquesi/muga/issues/339).
+
+---
+
 ## Review cadence
 
 This document is reviewed:
