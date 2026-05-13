@@ -20,6 +20,7 @@ import { processUrl, parseListEntry, getDomainParamSets, getPreservedParams, get
 import {
   TRACKING_PARAMS,
   TRACKING_PARAM_CATEGORIES,
+  TRACKING_PREFIXES,
   AFFILIATE_PATTERNS,
   getAffiliateDomains,
   getPatternsForHost,
@@ -60,6 +61,7 @@ if (!window.__mugaCleaner) {
     getLandingPolicy,
     TRACKING_PARAMS,
     TRACKING_PARAM_CATEGORIES,
+    TRACKING_PREFIXES,
     AFFILIATE_PATTERNS,
     getAffiliateDomains,
     getPatternsForHost,
