@@ -75,6 +75,25 @@ describe("TS-2 — classifyAndStripTracking — AliExpress item-page strip-all",
     }
   });
 
+  test("preserves real production preserveParams (SearchText) from domain-rules.json", () => {
+    // Validates the mechanism against the REAL aliexpress.com entry in
+    // src/rules/domain-rules.json (preserveParams includes "SearchText",
+    // "catId", "page", etc.) — not a synthetic rule. Pins regression risk
+    // if someone later edits domain-rules.json and drops SearchText.
+    const url = new URL(
+      "https://www.aliexpress.com/wholesale" +
+      "?SearchText=mechanical+keyboard&utm_source=newsletter&aff_fcid=abc&pdp_npi=xyz",
+    );
+
+    const result = classifyAndStripTracking(url, BASE_PREFS, domainRules);
+
+    assert.ok(url.searchParams.has("SearchText"), "real preserveParams entry SearchText must survive");
+    assert.equal(url.searchParams.get("SearchText"), "mechanical keyboard",
+      "SearchText value must be preserved verbatim");
+    assert.ok(!result.removed.includes("SearchText"), "SearchText must not be in removed[]");
+    assert.ok(result.removed.length > 0, "tracking params must still be removed alongside the preserved entry");
+  });
+
   test("returns { removed, removedValues } shape (not removedTracking)", () => {
     const url = new URL("https://www.aliexpress.com/item/1005001234567890.html?utm_source=test");
 

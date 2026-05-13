@@ -356,7 +356,12 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   // 6b. Bookshop.org MUGA-affiliate injection. Bookshop is not in
   // AFFILIATE_PATTERNS (caps-spec#46 deferred), so the pipeline above never
-  // fires for it. Needs creatorReferralPreserved from unwrapAndExtract.
+  // fires for it. The `action !== "detected_foreign"` guard is defensive —
+  // structurally unreachable today (handleAffiliatePipeline cannot set
+  // detected_foreign for bookshop.org since no AFFILIATE_PATTERNS entry
+  // matches it), but it guards against overriding a foreign affiliate if
+  // bookshop ever gets added to AFFILIATE_PATTERNS. Needs
+  // creatorReferralPreserved from unwrapAndExtract.
   if (
     prefs.injectOwnAffiliate &&
     !prefs.stripAllAffiliates &&
