@@ -20,7 +20,7 @@
     "screenshots": "node tools/screenshots/capture.mjs",
     "promo-tile": "node tools/screenshots/capture-promo.mjs",
     "promo-tiles": "python3 tools/generate-promo-tiles.py",
-    "build:rules": "node tools/generate-dnr-rules.mjs",
+    "build:rules": "npm run compile:rules",
     "compile:rules": "node tools/generate-rules.mjs",
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "sync:wrappers": "node scripts/sync-wrappers.mjs",

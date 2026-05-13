@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TRACKING_PARAMS } from "../../src/lib/affiliates.js";
+import { DNR_STATIC_RULE_ID } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
@@ -49,7 +50,7 @@ test("tracking-params.json — has at least one DNR rule", () => {
 
 test("tracking-params.json — main rule shape (id, priority, action.redirect.transform.queryTransform.removeParams)", () => {
   const rule = RULES[0];
-  assert.equal(rule.id, 1);
+  assert.equal(rule.id, DNR_STATIC_RULE_ID);
   assert.equal(rule.priority, 1);
   assert.equal(rule.action?.type, "redirect");
   assert.ok(rule.action?.redirect?.transform?.queryTransform?.removeParams);
