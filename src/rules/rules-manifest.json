@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-13T15:36:44.601Z",
-  "generator": "tools/generate-rules.mjs@07a78cc",
+  "generatedAt": "2026-05-22T21:00:19.812Z",
+  "generator": "tools/generate-rules.mjs@909c8fc",
   "tracking": [
     {
       "param": "__hsfp",
