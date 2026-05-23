@@ -1,6 +1,6 @@
 # MUGA — Frequently Asked Questions
 
-A direct, evidence-cited FAQ for skeptics. Every factual claim below is backed
+A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web — it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed
 by a line in the source tree of this repository. If you find a discrepancy
 between what is written here and the code, the code wins — please open an
 issue.
@@ -17,14 +17,14 @@ already read the [Privacy policy](../src/privacy/privacy.html) and the
 
 Because they solve a different problem. The generic class of "URL cleaners
 and content blockers" (uBO with the privacy lists, Brave's built-in shields,
-ClearURLs, etc.) is built to **strip everything that looks like tracking** —
-which is the right default for a privacy tool, but it also strips affiliate
-parameters indiscriminately, because to a tracker-detector they look like
-tracking.
+ClearURLs, etc.) is built to **strip everything that looks like noise** —
+which is the right default for a general-purpose cleaner, but it also strips
+affiliate parameters indiscriminately, because to a noise-detector they look
+identical to tracking.
 
 MUGA's design point is narrower and more opinionated:
 
-1. **Strip the same tracking parameters those tools strip** — `utm_*`,
+1. **Remove the same noise parameters those tools remove** — `utm_*`,
    `fbclid`, `gclid`, `msclkid`, `mc_cid`, `igshid`, the rest of the usual
    set ([`src/lib/affiliates.js:33-100`](../src/lib/affiliates.js#L33-L100)).
 2. **Preserve affiliate parameters that belong to a creator** — even on
@@ -36,12 +36,12 @@ MUGA's design point is narrower and more opinionated:
    injection — and gate it behind an opt-in checkbox during onboarding
    ([`src/lib/storage.js:84-86`](../src/lib/storage.js#L84-L86)).
 
-If you only want trackers removed and don't care about creator attribution,
+If you only want noise removed and don't care about creator attribution,
 a generic cleaner is fine. If you want the YouTuber who recommended you
 that USB-C dock to actually get paid for the recommendation, you need a
-tool that knows the difference between a tracker and an affiliate tag.
+tool that knows the difference between a noise param and an affiliate tag.
 
-### Q: Doesn't preserving affiliate parameters defeat the privacy goal?
+### Q: Doesn't preserving affiliate parameters defeat the denoise goal?
 
 No, and the distinction matters. An affiliate tag like `?tag=somecreator-21`
 identifies **the recommender**, not you. A tracking parameter like
@@ -54,12 +54,12 @@ You can verify the distinction in the code: the `TRACKING_PARAMS` list
 ([`src/lib/affiliates.js:852`](../src/lib/affiliates.js#L852)) are
 separate sources and are joined by the cleaner only at strip time.
 
-### Q: What about parameters that are technically "tracking" but live inside a redirect wrapper?
+### Q: What about parameters that are technically "noise" but live inside a redirect wrapper?
 
 Those are stripped. MUGA categorises Awin / ShareASale / Admitad / Impact
 Radius and similar redirect-based networks as "network-redirect" affiliates
 and refuses to collaborate with them — the click is unwrapped to the
-destination and the wrapper's tracking is dropped. The architectural
+destination and the wrapper's noise is dropped. The architectural
 rationale is in the README's *How it works* section; the implementation
 lives in `src/lib/wrapper-engine.js` and is invoked from the cleaner.
 
@@ -185,8 +185,8 @@ back the resolved destination.
 ### Q: What are Remote Rules and how are they signed?
 
 Remote Rules is an opt-in feature that lets MUGA periodically refresh its
-tracking-parameter list from a signed public endpoint, so users get
-protection against new trackers without waiting for an extension release.
+noise-parameter list from a signed public endpoint, so users get
+protection against new noise sources without waiting for an extension release.
 
 - Default: **off**. See
   [`src/lib/storage.js:108`](../src/lib/storage.js#L108):
@@ -247,7 +247,7 @@ If you want to support the project without enabling injection, the
 By design, MUGA refuses to participate in affiliate programs whose model
 forces user clicks through external tracking servers (the "network-redirect"
 class — Awin, ShareASale, Admitad, Impact Radius, and similar). The
-extension still **strips** their tracking parameters when encountered;
+extension still **strips** their noise parameters when encountered;
 it just will not **inject** them on MUGA's behalf. The rationale is in
 the onboarding copy
 ([`src/onboarding/onboarding.html:329-330`](../src/onboarding/onboarding.html#L329-L330))

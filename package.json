@@ -1,7 +1,7 @@
 {
   "name": "muga",
-  "version": "1.17.0",
-  "description": "Privacy without breaking creator links. Strips 450+ tracking params, preserves creator affiliate referrals. Open source.",
+  "version": "2.0.0",
+  "description": "The denoise extension for the web. Removes 450+ noise patterns from URLs while honoring creator affiliate referrals. Open source.",
   "type": "module",
   "scripts": {
     "dev:chrome": "npm run build:content && web-ext run --source-dir src/ --target chromium",
@@ -24,9 +24,6 @@
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "sync:wrappers": "node scripts/sync-wrappers.mjs",
     "sync:manifest": "node scripts/sync-affiliate-manifest.mjs",
-    "benchmark": "node tests/benchmark/runner.mjs",
-    "benchmark:refresh-competitors": "node scripts/refresh-competitor-snapshots.mjs",
-    "benchmark:update-comparison-page": "npm run benchmark && node tools/generate-comparison-benchmark.mjs",
     "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test"
   },

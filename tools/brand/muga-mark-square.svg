@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-label="MUGA">
+  <!-- Square canvas (128x128) with the landscape M-arrow centered.
+       Source mark viewBox: 0 0 104 68. Scale by 1.0 to 104x68, then
+       translate by ((128-104)/2, (128-68)/2) = (12, 30). -->
+  <g transform="translate(12 30)" stroke="#6A2BCF" fill="none">
+    <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 80 37 L 98 50 L 80 63 Z" fill="#6A2BCF" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+</svg>

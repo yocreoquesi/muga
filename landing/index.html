@@ -3,21 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MUGA: Strip trackers without breaking referrals</title>
-<meta name="description" content="MUGA is an open-source browser extension that strips 450+ tracking parameters from URLs while preserving creator affiliate referrals. 100% local, GPL v3.">
+<title>MUGA: The denoise extension for the web</title>
+<meta name="description" content="MUGA quiets the noise in every URL — 450+ patterns removed automatically, creator affiliate referrals preserved. Open source, GPL v3.">
 <meta name="color-scheme" content="light dark">
 
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://muga.app/">
-<meta property="og:title" content="MUGA: Strip trackers without breaking referrals">
-<meta property="og:description" content="450+ tracking parameters stripped automatically. Creator affiliate referrals preserved. Open source, 100% local.">
+<meta property="og:title" content="MUGA: The denoise extension for the web">
+<meta property="og:description" content="450+ noise patterns quieted automatically. Creator affiliate referrals preserved. Open source.">
 <meta property="og:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MUGA: Strip trackers without breaking referrals">
-<meta name="twitter:description" content="450+ tracking parameters stripped automatically. Creator affiliate referrals preserved. Open source, 100% local.">
+<meta name="twitter:title" content="MUGA: The denoise extension for the web">
+<meta name="twitter:description" content="450+ noise patterns quieted automatically. Creator affiliate referrals preserved. Open source.">
 <meta name="twitter:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
 
-<link rel="icon" href="https://rules.muga.app/assets/mascot-icon-m.png">
+<link rel="icon" href="https://rules.muga.app/assets/muga-mark.svg">
 
 <script type="application/ld+json">
 {
@@ -26,47 +26,47 @@
   "name": "MUGA",
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Chrome, Firefox",
-  "description": "Open-source browser extension that strips 450+ tracking parameters from URLs while preserving creator affiliate referrals.",
+  "description": "Open-source browser extension that quiets 450+ noise patterns from URLs while preserving creator affiliate referrals.",
   "offers": { "@type": "Offer", "price": "0" },
-  "softwareVersion": "1.15.1",
+  "softwareVersion": "2.0.0",
   "license": "https://www.gnu.org/licenses/gpl-3.0.html"
 }
 </script>
 
 <style>
   :root {
-    --bg: oklch(99% 0.005 70);
-    --bg-2: oklch(96.5% 0.008 70);
-    --bg-inset: oklch(94% 0.01 70);
-    --ink: oklch(20% 0.01 60);
-    --ink-2: oklch(42% 0.012 60);
-    --ink-3: oklch(60% 0.012 60);
-    --rule: oklch(88% 0.012 70);
-    --rule-2: oklch(82% 0.015 70);
-    --accent: #d97706;
-    --accent-ink: #b45309;
-    --accent-soft: oklch(94% 0.05 65);
-    --good: #16a34a;
-    --good-soft: oklch(94% 0.05 145);
+    --bg: #FAFAFB;
+    --bg-2: #F3F2F5;
+    --bg-inset: #E9E8EC;
+    --ink: #18171C;
+    --ink-2: #4F4D58;
+    --ink-3: #6E6C78;
+    --rule: #E6E5EA;
+    --rule-2: #D4D3D9;
+    --accent: #6A2BCF;
+    --accent-ink: #5318B5;
+    --accent-soft: #EFE6FB;
+    --good: #2F6B3A;
+    --good-soft: #E1EFE2;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --maxw: 1080px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0a0a0a;
-      --bg-2: #141414;
-      --bg-inset: #1c1c1e;
-      --ink: #f0f0f0;
-      --ink-2: #aaa;
-      --ink-3: #777;
-      --rule: #262626;
-      --rule-2: #333;
-      --accent: #f59e0b;
-      --accent-ink: #fbbf24;
-      --accent-soft: #2a1c0c;
-      --good: #22c55e;
-      --good-soft: #0c2614;
+      --bg: #100F14;
+      --bg-2: #1A1820;
+      --bg-inset: #25232E;
+      --ink: #F2F0F5;
+      --ink-2: #B0AEBA;
+      --ink-3: #85838F;
+      --rule: #2C2A36;
+      --rule-2: #3A3848;
+      --accent: #9F7AE8;
+      --accent-ink: #B79CEF;
+      --accent-soft: #2A1C4A;
+      --good: #6FB57C;
+      --good-soft: #1F2F22;
     }
   }
 
@@ -397,28 +397,6 @@
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
   }
 
-  /* ---------- comparison table ---------- */
-  .compare-wrap { overflow-x: auto; margin: 24px 0 12px; }
-  .compare-tbl {
-    width: 100%; border-collapse: collapse; font-size: 14px;
-    font-family: var(--sans, system-ui);
-  }
-  .compare-tbl th, .compare-tbl td {
-    text-align: left; padding: 10px 12px;
-    border-bottom: 1px solid var(--rule);
-    vertical-align: top;
-  }
-  .compare-tbl thead th {
-    font-weight: 600; font-size: 12px;
-    letter-spacing: .04em; text-transform: uppercase;
-    color: var(--ink-3); background: var(--bg-2);
-  }
-  .compare-tbl tbody td:not(:first-child) { text-align: center; }
-  .compare-tbl .yes { color: var(--accent); font-weight: 600; }
-  .compare-tbl .no  { color: var(--ink-3); }
-  .compare-tbl .muga-col { background: rgba(37,99,235,0.04); }
-  .compare-note { font-size: 13px; color: var(--ink-3); margin-top: 12px; }
-
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 </style>
 </head>
@@ -427,12 +405,11 @@
 <header class="top">
   <div class="wrap top-inner">
     <a href="/" class="brand" aria-label="MUGA home">
-      <img class="brand-mark" src="https://rules.muga.app/assets/mascot-icon-m.png" alt="" width="22" height="22">
+      <img class="brand-mark" src="https://rules.muga.app/assets/muga-mark.svg" alt="" width="22" height="22">
       <span>muga.app</span>
-      <span class="ver">v1.15.1</span>
+      <span class="ver">v2.0.0</span>
     </a>
     <nav class="nav-links" aria-label="Primary">
-      <a href="https://rules.muga.app/comparison.html">Compare</a>
       <a href="https://rules.muga.app/transparency.html">Transparency</a>
       <a href="https://github.com/yocreoquesi/muga" class="gh" aria-label="GitHub repository">GitHub ↗</a>
     </nav>
@@ -443,11 +420,12 @@
 
   <section class="hero">
     <div class="wrap">
-      <div class="eyebrow"><span class="dot"></span> v1.15.1 · Chrome + Firefox · GPL v3</div>
-      <h1>Clean URLs.<br><span class="mark">Fair to creators.</span></h1>
+      <div class="eyebrow"><span class="dot"></span> v2.0.0 · Chrome + Firefox · GPL v3</div>
+      <h1>The web,<br><span class="mark">with the noise turned down.</span></h1>
       <p class="lede">
-        MUGA strips <b>450+ tracking parameters</b> from every link you open. Locally, in your browser.
+        MUGA quiets <b>450+ noise patterns</b> from every link you open. Locally, in your browser.
         Unlike other URL cleaners, it preserves the affiliate referrals that fund the creators you actually follow.
+        <b>Fair to creators · nice to you · honest about both.</b>
       </p>
 
       <div class="install">
@@ -506,7 +484,7 @@
         </div>
         <div class="demo-foot">
           <span class="toast">Creator referral preserved · ytcreator-21</span>
-          <span style="margin-left:auto">7 trackers stripped · 1 affiliate kept</span>
+          <span style="margin-left:auto">7 noise patterns quieted · 1 affiliate kept</span>
         </div>
       </div>
     </div>
@@ -517,8 +495,8 @@
       <div class="stats-grid">
         <div class="stat">
           <div class="num">450<span class="unit">+</span></div>
-          <div class="label">Tracking params</div>
-          <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more, stripped at request time.</div>
+          <div class="label">Noise patterns</div>
+          <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more, quieted at request time.</div>
         </div>
         <div class="stat">
           <div class="num">6</div>
@@ -526,9 +504,9 @@
           <div class="desc">Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners.</div>
         </div>
         <div class="stat">
-          <div class="num">100<span class="unit">%</span></div>
-          <div class="label">Local processing</div>
-          <div class="desc">Zero data sent. Zero requests on default install. Runs entirely in your browser.</div>
+          <div class="num">0</div>
+          <div class="label">Telemetry</div>
+          <div class="desc">No analytics, no telemetry, no account. We are not interested in collecting any of that.</div>
         </div>
       </div>
     </div>
@@ -542,7 +520,7 @@
           <h2>URL cleaners shouldn't punish the creators you follow.</h2>
           <p>
             When you click a YouTuber's Amazon link, that <code>?tag=…</code> parameter is how they get paid. Usually a few cents per sale, no extra cost to you.
-            Most cleaners strip it along with the trackers. MUGA doesn't.
+            Most cleaners strip it along with the noise. MUGA doesn't.
           </p>
           <p>
             We maintain an explicit allowlist of <b>6 affiliate programs</b>: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy and Apple Performance Partners.
@@ -575,79 +553,6 @@
     </div>
   </section>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="section-label">Side by side</div>
-      <h2>How MUGA differs from other URL cleaners.</h2>
-      <p>Other cleaners treat every parameter as junk and strip aggressively. MUGA distinguishes a tracking parameter from a creator's affiliate tag — the YouTuber who recommended the link still gets paid.</p>
-
-      <div class="compare-wrap">
-        <table class="compare-tbl">
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th class="muga-col">MUGA</th>
-              <th>uBlock Origin</th>
-              <th>ClearURLs</th>
-              <th>Brave Shields</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Strips tracking params</td>
-              <td class="muga-col yes">✓ 450+</td>
-              <td class="yes">✓ via filter list</td>
-              <td class="yes">✓ ~150</td>
-              <td class="yes">✓ ~200</td>
-            </tr>
-            <tr>
-              <td><strong>Preserves creator affiliate tags</strong></td>
-              <td class="muga-col yes">✓</td>
-              <td class="no">✗</td>
-              <td class="no">✗</td>
-              <td class="no">✗</td>
-            </tr>
-            <tr>
-              <td>Per-URL "what was removed" UI</td>
-              <td class="muga-col yes">✓</td>
-              <td class="no">logger only</td>
-              <td class="no">✗</td>
-              <td class="no">✗</td>
-            </tr>
-            <tr>
-              <td>Refuses redirect-based affiliate networks</td>
-              <td class="muga-col yes">✓</td>
-              <td class="no">n/a</td>
-              <td class="no">n/a</td>
-              <td class="no">n/a</td>
-            </tr>
-            <tr>
-              <td>Signed remote rule updates</td>
-              <td class="muga-col yes">✓ Ed25519, opt-in</td>
-              <td class="no">filter-list-dependent</td>
-              <td class="no">unsigned</td>
-              <td class="no">bundled w/ browser</td>
-            </tr>
-            <tr>
-              <td>Ad / script blocking</td>
-              <td class="muga-col no">✗ (out of scope)</td>
-              <td class="yes">✓</td>
-              <td class="no">✗</td>
-              <td class="yes">✓ (Shields)</td>
-            </tr>
-            <tr>
-              <td>Works on Chromium &amp; Firefox</td>
-              <td class="muga-col yes">✓</td>
-              <td class="yes">✓</td>
-              <td class="yes">✓</td>
-              <td class="no">Brave only</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="compare-note">MUGA is the only one of the four that distinguishes a tracker from a creator's affiliate tag — and the only one whose popup tells you that distinction was made. Full comparison with sources and counts: <a href="https://rules.muga.app/comparison.html">rules.muga.app/comparison.html</a>.</p>
-    </div>
-  </section>
 
   <section class="section">
     <div class="wrap">
@@ -697,11 +602,11 @@
     <div class="footer-grid">
       <div class="footer-col">
         <a href="/" class="brand" style="margin-bottom:12px">
-          <img class="brand-mark" src="https://rules.muga.app/assets/mascot-icon-m.png" alt="" width="22" height="22">
+          <img class="brand-mark" src="https://rules.muga.app/assets/muga-mark.svg" alt="" width="22" height="22">
           <span>muga.app</span>
         </a>
         <p style="font-size:13px; color:var(--ink-3); margin: 8px 0 0; max-width: 320px;">
-          Open-source URL cleaner that preserves creator affiliate referrals.
+          The denoise extension for the web. Preserves creator affiliate referrals.
           Built by independent developers. Free forever.
         </p>
       </div>
@@ -716,7 +621,6 @@
         <h4>Docs</h4>
         <ul>
           <li><a href="https://rules.muga.app/privacy-page.html">Privacy policy</a></li>
-          <li><a href="https://rules.muga.app/comparison.html">Compare cleaners</a></li>
           <li><a href="https://rules.muga.app/transparency.html">Transparency</a></li>
           <li><a href="https://github.com/yocreoquesi/muga/blob/main/docs/faq.md">FAQ</a></li>
         </ul>
@@ -732,7 +636,7 @@
     </div>
     <div class="footer-meta">
       <span>© 2026 muga.app · Released under GPL v3</span>
-      <span>v1.15.1 · published 2026-05-09</span>
+      <span>v2.0.0 · published 2026-05-24</span>
     </div>
   </div>
 </footer>
@@ -760,7 +664,7 @@
   // Console easter egg
   console.log(
     "%cMUGA%c  Welcome to muga.app. View source, you'll like what you see.\nNo analytics. No third-party requests. No build step.\nhttps://github.com/yocreoquesi/muga",
-    "background:#d97706;color:#fff;padding:4px 8px;border-radius:4px;font-weight:600;",
+    "background:#6A2BCF;color:#fff;padding:4px 8px;border-radius:4px;font-weight:600;",
     "color:#555;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;"
   );
 </script>

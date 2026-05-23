@@ -122,25 +122,13 @@
   }
   .ext-icon {
     width: 24px; height: 24px;
-    background: linear-gradient(160deg, #0d1b4b 0%, #1a3a6b 60%);
-    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 800;
-    position: relative;
-    overflow: hidden;
+    color: #6A2BCF;
     flex-shrink: 0;
   }
-  .ext-icon::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 5px;
-    background: linear-gradient(90deg, #d97706, #f59e0b);
-  }
+  .ext-icon svg { width: 100%; height: 100%; display: block; }
 
   /* Page content */
   .page-content {
@@ -176,12 +164,12 @@
   h1 {
     font-size: 42px;
     font-weight: 700;
-    color: #0d1b4b;
+    color: #18171C;
     line-height: 1.15;
     margin-bottom: 12px;
     letter-spacing: -0.02em;
   }
-  h1 em { color: #d97706; font-style: normal; }
+  h1 em { color: #6A2BCF; font-style: normal; }
   .subtitle {
     font-size: 17px;
     color: #555;
@@ -233,7 +221,7 @@
   }
   .arrow {
     font-size: 18px;
-    color: #d97706;
+    color: #6A2BCF;
     flex-shrink: 0;
     font-weight: 700;
   }
@@ -282,7 +270,7 @@
         </span>
       </div>
       <div class="ext-area">
-        <div class="ext-icon">M</div>
+        <div class="ext-icon" aria-label="MUGA"><svg viewBox="0 0 128 128" fill="none"><g transform="translate(12 30)" stroke="currentColor" fill="none"><path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke-width="2" stroke-linejoin="round"/></g></svg></div>
       </div>
     </div>
   </div>
@@ -291,10 +279,10 @@
     <div class="content-wrap">
       <div class="badge">
         <div class="badge-dot"></div>
-        MUGA active: URL cleaned automatically
+        MUGA active: noise removed automatically
       </div>
-      <h1>Drain the <em>tracking swamp.</em><br>Every link, every time.</h1>
-      <p class="subtitle">Every URL you click arrives loaded with tracking garbage. MUGA strips it silently, before the page even loads. Zero setup, zero clicks.</p>
+      <h1>The web, <em>with the noise turned down.</em><br>Every link, every time.</h1>
+      <p class="subtitle">Every URL arrives loaded with noise — tracking parameters, click IDs, share tokens. MUGA removes it silently, before the page even loads. Zero setup, zero clicks.</p>
 
       <div class="examples">
         <div class="example">

@@ -1,0 +1,21 @@
+# MUGA Landing — Cloudflare Worker config.
+#
+# Deploys landing/index.html (and any sibling static assets we add later)
+# to the existing "muga-landing" Worker via Workers Static Assets binding.
+# The Worker's custom domain (muga.app) is configured in the Cloudflare
+# dashboard and is intentionally NOT redeclared here — `wrangler deploy`
+# updates the script + assets for the existing Worker without touching
+# its triggers, so the live custom-domain binding stays untouched even
+# during the first deploy from this repo.
+#
+# Auth: deploy needs a CLOUDFLARE_API_TOKEN secret in the GitHub repo
+# (Workers Edit scope). See docs/ops/landing-deploy.md.
+
+name = "muga-landing"
+compatibility_date = "2026-05-24"
+main = "landing-worker/worker.js"
+
+[assets]
+directory = "./landing"
+binding = "ASSETS"
+not_found_handling = "404-page"

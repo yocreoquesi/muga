@@ -21,17 +21,17 @@ FONT_MONO  = "/usr/share/fonts/truetype/ubuntu/UbuntuSansMono[wght].ttf"
 
 W, H = 1400, 560
 
-# ── Palette ─────────────────────────────────────────────────────────────────
-BG          = (10,  14,  26)
-BLUE        = (37,  99, 235)
-BLUE_LIGHT  = (96, 165, 250)
-BLUE_MID    = (59, 130, 246)
+# ── Palette (violet/denoise rebrand) ────────────────────────────────────────
+BG          = (16,  15,  20)   # surface-0 dark
+BLUE        = (106, 43, 207)   # accent
+BLUE_LIGHT  = (159, 122, 232)  # accent dark mode
+BLUE_MID    = (83,  24, 181)   # accent-strong
 WHITE       = (255, 255, 255)
-GREY_DIM    = (75,  85,  99)
-GREY_DARK   = (31,  41,  55)
+GREY_DIM    = (133, 131, 143)  # text-3 dark
+GREY_DARK   = (42,  28,  74)   # accent-soft dark
 RED_MUTED   = (239, 68,  68)
-GREEN_CLEAN = (52, 211, 153)
-DIVIDER     = (37,  55, 100)
+GREEN_CLEAN = (111, 181, 124)  # success dark
+DIVIDER     = (44,  42,  54)   # border-1 dark
 
 def hex_alpha(rgb, a):
     return rgb + (a,)
@@ -147,12 +147,12 @@ LX = 72
 draw.text((LX, 80), "MUGA", font=f_logo, fill=WHITE)
 
 # Tagline
-draw.text((LX, 200), "Clean URLs, Fair to Every Click", font=f_tagline, fill=BLUE_LIGHT)
+draw.text((LX, 200), "The denoise extension for the web", font=f_tagline, fill=BLUE_LIGHT)
 
 # Pills
 pill_y = 238
 pill_x = LX
-for label in ["459+ trackers stripped", "3 active stores", "Zero data sent", "Open source"]:
+for label in ["450+ bits of noise removed", "6 affiliate programs preserved", "No telemetry", "Open source"]:
     adv = draw_pill(draw, rgba, pill_x, pill_y, label, f_pill)
     pill_x += adv
     if pill_x > LX + 310:
@@ -234,10 +234,10 @@ draw = ImageDraw.Draw(rgba)
 
 # ── Stats bar ─────────────────────────────────────────────────────────────────
 stats = [
-    ("459+", "tracking params"),
+    ("459+", "noise patterns"),
     ("167",  "domain rules"),
-    ("100%", "local processing"),
-    ("0",    "data sent"),
+    ("0",    "telemetry"),
+    ("0",    "analytics"),
 ]
 SY    = 326
 sx    = RX
@@ -261,7 +261,7 @@ for i, (num, label) in enumerate(stats):
         sx += sep_w + 28
 
 # ── Footer ────────────────────────────────────────────────────────────────────
-footer = "Every link. Cleaned. Before it loads."
+footer = "The web, with the noise turned down."
 fb = draw.textbbox((0, 0), footer, font=f_footer)
 fw = fb[2] - fb[0]
 draw.text((W - fw - 72, H - 36), footer, font=f_footer, fill=GREY_DIM)
