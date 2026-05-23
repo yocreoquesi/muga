@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/badge/version-1.17.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-3804_pass-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
-# MUGA: Privacy Without Breaking Creator Links
+# MUGA: The denoise extension for the web
 
 ### Install now
 
@@ -13,11 +13,11 @@
 
 ---
 
-**MUGA strips tracking from every URL, without breaking the affiliate links of the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone**, and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
+**MUGA turns the noise down on every URL, without taking credit from the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone** — we don't take credit from people who earned it — and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
 
-On stores whose affiliate model forces your clicks through external tracking servers, MUGA strips their tracking parameters anyway. We do not believe forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
+On stores whose affiliate model forces your clicks through external attribution servers, MUGA quiets the noise anyway. We do not believe forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
 
-> **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Make URLs Genuine Again.
+> **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
 [Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Maintainer ops docs](docs/ops/README.md)
 
@@ -29,7 +29,7 @@ On stores whose affiliate model forces your clicks through external tracking ser
 
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
-MUGA intercepts URLs as you browse and strips tracking parameters before the page loads. The result is a shorter, cleaner URL with no tracking noise: your browsing stays the same, minus the surveillance.
+MUGA intercepts URLs as you browse and removes noise patterns before the page loads. The result is a shorter, quieter URL: your browsing stays the same, minus the surveillance.
 
 <details>
 <summary><strong>More examples</strong></summary>
@@ -59,9 +59,9 @@ After:  https://www.ebay.es/itm/123456789
 
 ---
 
-## What it strips
+## What it quiets
 
-**459 tracking parameters** across 6 categories, on every site:
+**459 noise patterns** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -72,7 +72,7 @@ After:  https://www.ebay.es/itm/123456789
 | Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **167 domains** preserve functional query params (search queries, pagination, filters) while stripping noise.
+Domain-specific rules for **167 domains** preserve functional query params (search queries, pagination, filters) while removing the noise.
 
 ---
 
@@ -92,7 +92,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Always on, no configuration needed
 
-- Strip 459 tracking params on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Quiet 459 noise patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path noise (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
@@ -101,8 +101,8 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Optional, configured during first setup
 
-- **Pre-navigation cleaning**: browser-native DNR rules strip tracking params *before* the page loads, covering address-bar navigation, bookmarks, and external apps
-- **Block `<a ping>` beacons**: prevents background tracking requests on click
+- **Pre-navigation cleaning**: browser-native DNR rules quiet noise patterns *before* the page loads, covering address-bar navigation, bookmarks, and external apps
+- **Block `<a ping>` beacons**: prevents background ping requests on click
 - **AMP redirect**: silently redirects AMP pages to the canonical article URL
 - **Redirect-wrapper unwrapping**: detects and bypasses intermediary redirect wrappers so you land on the real URL
 - **Affiliate injection**: adds our tag when none is present *(you pay the same price; off by default, enabled during onboarding or manually in Settings at any time)*
@@ -112,7 +112,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Per-domain blacklist: strip everything on a specific site, a single param value (`domain::param::value`), or a param regardless of its value (`domain::param::*`)
 - Per-domain disable (`domain::disabled`): opt entire domains out of MUGA
 - Whitelist: protect specific creator affiliate tags from detection. Supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
-- Custom tracking params: add your own parameter names
+- Custom noise params: add your own parameter names
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
@@ -126,8 +126,8 @@ MUGA combines two independent toggles — **Honor Creator Mode** and **Privacy P
 
 | Mode | Honor Creator | Privacy Proxy | What it does |
 |------|:---:|:---:|---|
-| **Strict Local** | Off | Off | Strips all tracking params locally. No creator-referral preservation. No network requests. Default. |
-| **Honor Creator** | On | Off | Strips tracking, but preserves creator referral chains on trusted redirect networks so independent creators get credit for the recommendation. |
+| **Strict Local** | Off | Off | Removes all noise locally. No creator-referral preservation. No network requests. Default. |
+| **Honor Creator** | On | Off | Quiets the noise, but preserves creator referral chains on trusted redirect networks so independent creators get credit for the recommendation. |
 | **Privacy Proxy** | Off | On | Strips tracking locally; sends opaque affiliate redirect URLs to `unwrap.muga.app` (a Cloudflare Worker operated by MUGA) to retrieve the final destination. Every response is verified with an Ed25519 signature before navigation. Requires an optional host permission. |
 | **Honor + Proxy** | On | On | Full coverage: creator-referral preservation plus proxy-assisted resolution of opaque redirects. Both features active simultaneously. |
 
@@ -137,7 +137,7 @@ Privacy Proxy can be toggled on and off at any time from Settings. Disabling it 
 
 ## How it differs from other URL cleaners
 
-> Other cleaners treat every parameter as junk and strip aggressively. MUGA distinguishes a tracking parameter (`fbclid`, `utm_source`) from a creator's affiliate tag — the YouTuber who recommended the link still gets paid.
+> Other cleaners treat every parameter as junk and strip aggressively. MUGA distinguishes a noise param (`fbclid`, `utm_source`) from a creator's affiliate tag — the YouTuber who recommended the link still gets paid.
 
 | Feature                          | MUGA       | uBlock Origin   | ClearURLs   | Brave Shields  |
 |----------------------------------|:----------:|:---------------:|:-----------:|:--------------:|
@@ -149,7 +149,7 @@ Privacy Proxy can be toggled on and off at any time from Settings. Disabling it 
 | Ad / script blocking             | ✗ (out of scope) | ✓         | ✗           | ✓ (Shields)    |
 | Works on any Chromium / Firefox  | ✓          | ✓               | ✓           | Brave browser only |
 
-The wedge in one sentence: **MUGA is the only one of the four that distinguishes a tracker from a creator's affiliate tag, and the only one whose popup tells you that distinction was made.** Full comparison with sources and counts: [rules.muga.app/comparison.html](https://rules.muga.app/comparison.html).
+The wedge in one sentence: **MUGA is the only one of the four that distinguishes a noise param from a creator's affiliate tag, and the only one whose popup tells you that distinction was made.** Full comparison with sources and counts: [rules.muga.app/comparison.html](https://rules.muga.app/comparison.html).
 
 [^1]: MUGA tracking-param universe: [`src/rules/tracking-params.json`](src/rules/tracking-params.json) (universal DNR set) + [`src/rules/domain-rules.json`](src/rules/domain-rules.json) (per-domain rules across 150+ hosts).
 [^2]: uBlock Origin strips params via the `removeparam` static filter. Coverage depends on enabled filter lists. See [uBO docs](https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#removeparam).
@@ -167,15 +167,15 @@ The wedge in one sentence: **MUGA is the only one of the four that distinguishes
 
 ## Affiliate model: the honest version
 
-MUGA is an open-source project maintained by real people. To keep it maintained and improving over time, it uses a simple affiliate model.
+Creators come first. MUGA is an open-source project maintained by real people. To keep it maintained and improving over time, it uses a simple affiliate model.
 
 When you navigate to a supported store and there is **no existing affiliate tag** in the link, MUGA adds ours. The price you pay is exactly the same. The store just knows you arrived via MUGA. That's how affiliate programs work.
 
-**Not every store is compatible.** We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking: your click passes through an external server before reaching the store. We do not believe forcing users through external tracking servers is necessary or fair. We rejected every one of these programs and chose to give up that revenue rather than compromise your privacy.
+**Not every store is compatible.** We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based attribution: your click passes through an external server before reaching the store. We do not believe forcing users through external attribution servers is necessary or fair. We rejected every one of these programs and chose to give up that revenue rather than route your clicks through them.
 
 **What this means in practice:**
 - On compatible stores: if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
-- On incompatible stores: MUGA actively strips affiliate tracking parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
+- On incompatible stores: MUGA actively strips affiliate noise parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
 
 This is explained during onboarding before the feature is enabled, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/), and verifiable in the source code.
 
@@ -202,7 +202,7 @@ MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, D
 
 On two of those programs, Amazon (ES, DE, FR, IT, UK, US) and eBay (US, ES, DE, UK, FR, IT), MUGA also has its own affiliate account active. That is where the optional affiliate-injection feature can add MUGA's tag when a link arrives with no tag at all.
 
-Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based tracking, because routing your clicks through external servers would violate our privacy policy.
+Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based attribution, because routing your clicks through external servers would violate our privacy policy.
 
 Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source.
 
@@ -241,7 +241,7 @@ New release: tag `vX.Y.Z` → push → GitHub Actions builds and publishes autom
 
 ## Contributing
 
-PRs welcome for new tracking parameters, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions.
+PRs welcome for new noise patterns, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions.
 
 Key contribution points:
 
