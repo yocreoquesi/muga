@@ -1,6 +1,6 @@
 {
   "name": "muga",
-  "version": "1.17.0",
+  "version": "2.0.0",
   "description": "The denoise extension for the web. Removes 450+ noise patterns from URLs while honoring creator affiliate referrals. Open source.",
   "type": "module",
   "scripts": {

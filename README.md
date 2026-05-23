@@ -1,8 +1,8 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.17.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-3804_pass-brightgreen)](#development)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-3730_pass-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: The denoise extension for the web
 

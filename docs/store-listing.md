@@ -1,8 +1,8 @@
 # MUGA: Store Listings
 
-> Version: 1.17.0
-> Last updated: 2026-05-23
-> Status: Final listing for Chrome Web Store and Firefox AMO. Retagged to denoise positioning per 2026-05-23 rebrand (Phase 4). Lead headline now surfaces the "denoise" wedge. "Fair to creators · nice to you · honest about both" replaces "Fair to every click". Aligned with the post-grill privacy-policy and ToS rollout (#399, #400): per-device consent, local cleaning architecture, and #353 conditional preservation of MUGA's own tag.
+> Version: 2.0.0
+> Last updated: 2026-05-24
+> Status: Final listing for Chrome Web Store and Firefox AMO. Retagged to denoise positioning per the 2026-05 rebrand (v2.0.0). Lead headline surfaces the "denoise" wedge. Absolute local-first claims removed (no telemetry / no analytics remain firm). Aligned with the post-grill privacy-policy and ToS rollout (#399, #400): per-device consent, local cleaning architecture, and #353 conditional preservation of MUGA's own tag.
 
 ---
 

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MUGA: The denoise extension for the web",
   "short_name": "MUGA",
-  "version": "1.17.0",
+  "version": "2.0.0",
   "description": "Quiet the noise. Honor creator referrals. 450+ noise patterns auto-removed (utm, fbclid, gclid). No analytics, no telemetry. Open source.",
 
   "permissions": [

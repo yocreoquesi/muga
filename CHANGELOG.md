@@ -4,6 +4,28 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-24
+
+Major release. Headline: full brand pivot from "privacy-first URL cleaner" to "the denoise extension for the web." Six-commit, multi-phase rebrand covering visual identity, voice, all 7 supported locales, public surfaces, and a strategic retirement of the local-first claim and competitor-comparison apparatus. Internal behaviour is unchanged — this is a positioning, voice, and visual layer change.
+
+### Changed
+
+- **Brand positioning** pivoted from privacy-first ("Privacy Without Breaking Creator Links" / "Fair to Every Click") to denoise / clean-browsing experience ("MUGA — The denoise extension for the web" / "The web, with the noise turned down" / "Fair to creators · nice to you · honest about both"). Affiliate framing now leads with "Creators come first — we don't take credit from people who earned it." instead of the previous defensive "we deliberately rejected 10+ stores" lead.
+- **Visual identity** — replaced amber accent palette (`#B8862C` / `#8C651F` / `#F5EBD3`) with violet (`#6A2BCF` / `#5318B5` / `#EFE6FB`) across popup, options, onboarding, landing page, docs site, brand-asset generator, screenshot mock-ups and promo tiles. Replaced the moth glyph with a landscape M-arrow brand mark (`src/icons/muga-mark.svg` + square source `tools/brand/muga-mark-square.svg`); regenerated 16 / 48 / 128 PNG icons; de-tiled `.brand-mark` and `.logo-mark` backgrounds. Darkened `--text-3` from `#76747F` to `#6E6C78` so WCAG AA 4.5:1 holds against all three new light surfaces (the design's value was tuned for `--surface-1` only).
+- **Copy across the extension** — 26 i18n keys retagged in English (`stat_junk`, `domain_stats_label`, `tooltip_cleaned`, `ob_tagline`, `ob_step1_title`, `ob_feat1`/`2`/`3`, `ob_affiliate_desc`, `ob_cta_btn`, `ob_success_title`, `row_dnr_label`, `row_amp_label`, `row_pings_label`, `row_toast_duration_label`, `opts_subtitle`, `preview_count_*`, `dev_url_clean`, milestones, and others) — and propagated to es / pt / de / fr / it / ja with a consistent glossary (noise → ruido / ruído / Rauschen / bruit / rumore / ノイズ; denoise → reducir el ruido / tirar o ruído / entrauschen / réduire le bruit / togliere il rumore / ノイズを除去). HTML fallback text in `popup.html` / `options.html` / `onboarding.html` synced to the new EN values (enforced by `i18n-integrity.test.mjs`).
+- **Public surfaces** — `README.md`, `docs/store-listing.md` (CWS + AMO sections), `docs/index.html`, `docs/faq.md`, `docs/comparison.html`, `docs/transparency.html`, `landing/index.html`, `tools/brand-assets.html`, manifest descriptions, and `package.json` description all retagged to the new voice. The 4 mascot PNGs (`mascot-cartoon.png`, `mascot-icon-m.png`, `mascot-pixel.png`, `mascot-realistic.png`) were removed; `docs/assets/muga-mark.svg` was added as the canonical brand mark.
+- **`docs/transparency.html` "at-a-glance" table** — the absolute claim "Data sent anywhere: None. Not even to us." was softened to "Only what you opt into. By default nothing leaves your browser. Optional Remote rule updates and Privacy Proxy make HTTPS GETs only when you explicitly enable them in Settings." A new "Analytics / telemetry" row commits firmly to "None. No analytics, no telemetry, no usage reporting. We have no plans to add any."
+
+### Removed
+
+- **`docs/comparison.html` and its entire benchmark apparatus**. Under the new voice, single-axis comparison ("we preserve creator tags, they don't") reads defensive and the popup's "Creator referral preserved" badge already demonstrates the wedge in-product. Removed: the page itself, `tools/generate-comparison-benchmark.mjs`, the full `tests/benchmark/` tree (corpus, competitor adapters, runner, lib, reports), `scripts/refresh-competitor-snapshots.mjs`, 9 benchmark / comparison unit tests, two CI steps that regenerated and checked the page, and three npm scripts (`benchmark`, `benchmark:refresh-competitors`, `benchmark:update-comparison-page`). The README's comparison block (table + 9 footnotes) was also removed.
+- **"100% local" / "zero data sent" / "never sends data" claims** from headlines, store listings, manifests, landing, mockup templates and promo generators. Under the denoise voice these claims (a) lose argumentative weight — denoise users do not decide on local-first — and (b) constrain the roadmap, since the existing optional `rules.muga.app` Remote rule updates and `unwrap.muga.app` Privacy Proxy already make HTTPS GETs when enabled. The firm commitment that remains: **no analytics, no telemetry, no account, no sign-in.**
+
+### Tests
+
+- Test count dropped from 3 861 to 3 730 — exactly the 131 tests that lived under `tests/benchmark/` and `tests/unit/benchmark-*.test.mjs`. All remaining suites pass. The README badge floor in `version-consistency.test.mjs` re-derives from actual `test()` call sites so the badge does not have to be hand-counted on each release.
+- A11y contrast regression test (`tests/unit/a11y-contrast.test.mjs`) updated to check against the new violet surface tokens (`#FAFAFB`, `#FFFFFF`, `#F3F2F5`) instead of the retired amber surfaces.
+
 ## [1.17.0] - 2026-05-23
 
 Maintenance release. Headline: two more release-pipeline hygiene fixes — per-install Chrome ruleset cache and the ESM bundle source were both leaking into every shipped zip — alongside the Steam Curator attribution support and the CWS upload-error handling already pending on `main`.
@@ -828,7 +850,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/yocreoquesi/muga/compare/v1.17.0...v2.0.0
 [1.17.0]: https://github.com/yocreoquesi/muga/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/yocreoquesi/muga/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/yocreoquesi/muga/compare/v1.15.0...v1.15.1
