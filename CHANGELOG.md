@@ -4,10 +4,15 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-05-23
+
+Maintenance release. Headline: two more release-pipeline hygiene fixes — per-install Chrome ruleset cache and the ESM bundle source were both leaking into every shipped zip — alongside the Steam Curator attribution support and the CWS upload-error handling already pending on `main`.
+
 ### Fixed
 
 - **Chrome Web Store release pipeline silently masking upload failures** (#616). The CWS upload API returns HTTP 200 with an `itemError` array in the body when it rejects an upload — `release.yml` was only checking the HTTP status code, so every release from v1.13.4 through v1.16.0 reported "All store submissions succeeded" while CWS actually rejected the package with `PKG_INVALID_ZIP` or `ITEM_NOT_UPDATABLE`. Chrome users stayed on v1.13.3 for over a week before the regression was caught manually. Fixes the upload + publish steps by delegating response parsing to `scripts/cws-check-response.mjs`, which inspects the body for `itemError` regardless of HTTP status and only treats `ITEM_NOT_UPDATABLE` as a no-op when the `error_detail` actually confirms the version is unchanged. Adds 17 unit tests covering the real response shapes seen in the failing runs.
 - **Firefox MV2 manifest leaking into the Chrome bundle** (#616). `manifest.v2.json` is build-time machinery used by `scripts/with-firefox-manifest.sh` to swap manifests during the Firefox build — it does not belong inside either bundle. Extended `--ignore-files` in both `build:chrome` and `build:firefox` to exclude it.
+- **Per-install Chrome ruleset cache and ESM bundle source leaking into shipped zip** (#643). web-ext's CLI `--ignore-files` REPLACES the config's `ignoreFiles` array — it does not merge. Every release zip since `web-ext-config.mjs` was introduced shipped two unwanted artefacts: `_metadata/generated_indexed_rulesets/_ruleset{1,2,3}` (Chrome's per-installation DNR cache, regenerated on first load, ~12 KB) and `content/cleaner-bundle-src.mjs` (the ESM source whose `import` statements MV3 content scripts can't load). Moved the full ignore list onto the `build:chrome` / `build:firefox` CLI calls in `package.json` and added a top-of-file warning comment on `web-ext-config.mjs` explaining the shadowing. The config still keeps a `_metadata/**` glob because `web-ext run` (dev) does honor it — without it, Chrome rewriting the rulesets on every load creates a 2 Hz reload loop that makes the popup and onboarding flash unusably. Adds `tests/integration/release-zip-hygiene.test.mjs` which opens the latest `dist/{chrome,firefox}/*.zip` and fails on either pattern, so the regression can't sneak back in.
 
 ### Added
 
@@ -823,7 +828,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/yocreoquesi/muga/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/yocreoquesi/muga/compare/v1.15.1...v1.16.0
 [1.15.1]: https://github.com/yocreoquesi/muga/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/yocreoquesi/muga/compare/v1.14.0...v1.15.0
