@@ -69,9 +69,8 @@ try {
         color:#f0f0f0; z-index:9999; display:flex; flex-direction:column; gap:10px;
       ">
         <div style="display:flex; align-items:center; gap:10px;">
-          <div style="width:32px;height:32px;background:linear-gradient(160deg,#3B1A8A,#6A2BCF);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;position:relative;overflow:hidden;">
-            <span>M</span>
-            <span style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#6A2BCF,#9F7AE8);"></span>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#9F7AE8;flex-shrink:0;">
+            <svg viewBox="0 0 128 128" fill="none" style="width:100%;height:100%;display:block;"><g transform="translate(12 30)" stroke="currentColor" fill="none"><path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke-width="2" stroke-linejoin="round"/></g></svg>
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;line-height:1.3;">Referral tag added</div>
@@ -116,7 +115,7 @@ try {
           <div style="padding:6px 18px;color:#888;">Copy link address</div>
           <div style="border-top:1px solid #e8eaed;margin:4px 0;"></div>
           <div style="padding:7px 18px;background:#e8f0fe;color:#1a73e8;font-weight:600;display:flex;align-items:center;gap:10px;">
-            <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:linear-gradient(160deg,#3B1A8A,#6A2BCF);border-radius:3px;font-size:9px;font-weight:800;color:#fff;position:relative;overflow:hidden;flex-shrink:0;">M<span style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6A2BCF,#9F7AE8);"></span></span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;color:#6A2BCF;flex-shrink:0;"><svg viewBox="0 0 128 128" fill="none" style="width:100%;height:100%;display:block;"><g transform="translate(12 30)" stroke="currentColor" fill="none"><path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke-width="2" stroke-linejoin="round"/></g></svg></span>
             Copy clean link
           </div>
           <div style="border-top:1px solid #e8eaed;margin:4px 0;"></div>

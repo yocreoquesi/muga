@@ -99,17 +99,10 @@
   }
   .ext-icon {
     width: 20px; height: 20px;
-    background: linear-gradient(160deg, #3B1A8A 0%, #6A2BCF 60%);
-    border-radius: 3px;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 9px; font-weight: 800;
-    position: relative; overflow: hidden; flex-shrink: 0;
+    color: #6A2BCF; flex-shrink: 0;
   }
-  .ext-icon::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
-    background: linear-gradient(90deg, #6A2BCF, #9F7AE8);
-  }
+  .ext-icon svg { width: 100%; height: 100%; display: block; }
 
   /* Options content */
   .options-content {
@@ -248,7 +241,7 @@
       <div class="omnibox">
         🔒 <span>chrome-extension://muga/options/options.html</span>
       </div>
-      <div class="ext-icon">M</div>
+      <div class="ext-icon" aria-label="MUGA"><svg viewBox="0 0 128 128" fill="none"><g transform="translate(12 30)" stroke="currentColor" fill="none"><path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke-width="2" stroke-linejoin="round"/></g></svg></div>
     </div>
 
     <div class="options-content">

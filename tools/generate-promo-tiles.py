@@ -9,6 +9,7 @@ Run: python3 tools/generate-promo-tiles.py
 """
 
 from PIL import Image, ImageDraw, ImageFont
+from pathlib import Path
 import os
 
 # ── Palette: Violet / Denoise ─────────────────────────────────────────────────
@@ -67,30 +68,22 @@ def draw_bg(draw, w, h, stripe_h):
         t = (y - (h - stripe_h)) / max(1, stripe_h - 1)
         draw.line([(0, y), (w, y)], fill=lerp_color(STR1, STR2, t))
 
+_BRAND_MARK_PNG = Path(__file__).resolve().parent / 'brand' / 'muga-mark-512.png'
+
 def draw_icon_on(img, cx, cy, size):
-    r  = max(4, int(size * 0.18))
-    sh = int(size * 0.22)
+    """Paste the M-arrow brand mark centered at (cx, cy), scaled to `size`.
+
+    The mark lives at tools/brand/muga-mark-512.png as a transparent-bg PNG
+    of the canonical square version (rendered from tools/brand/muga-mark-square.svg).
+    Using the actual brand mark keeps promo tiles consistent with the
+    extension's installed icon and the in-product brand mark — earlier
+    revisions drew an approximation (a letter 'M' on a violet gradient
+    badge) that didn't match the rebrand.
+    """
+    mark = Image.open(_BRAND_MARK_PNG).convert('RGBA')
+    mark = mark.resize((size, size), Image.LANCZOS)
     x0, y0 = cx - size // 2, cy - size // 2
-
-    tmp = Image.new('RGB', (size, size))
-    td  = ImageDraw.Draw(tmp)
-    for sy in range(size):
-        t = sy / max(1, size - 1)
-        td.line([(0, sy), (size, sy)], fill=lerp_color(BG1, BG2, t))
-    for sy in range(size - sh, size):
-        t = (sy - (size - sh)) / max(1, sh - 1)
-        td.line([(0, sy), (size, sy)], fill=lerp_color(STR1, STR2, t))
-
-    mask = Image.new('L', (size, size), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, size - 1, size - 1], radius=r, fill=255)
-
-    font  = load_font(int(size * 0.60))
-    td2   = ImageDraw.Draw(tmp)
-    bb    = td2.textbbox((0, 0), 'M', font=font)
-    tw, th = bb[2] - bb[0], bb[3] - bb[1]
-    td2.text(((size - tw) / 2 - bb[0], ((size - sh) - th) / 2 - bb[1]), 'M', fill=WHITE, font=font)
-
-    img.paste(tmp, (x0, y0), mask)
+    img.paste(mark, (x0, y0), mark)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

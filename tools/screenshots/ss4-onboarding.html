@@ -42,19 +42,11 @@
     display: flex; align-items: center; gap: 12px;
   }
   .logo-icon {
-    width: 40px; height: 40px;
-    background: linear-gradient(160deg, #3B1A8A, #6A2BCF);
-    border: 2px solid rgba(159,122,232,0.6);
-    border-radius: 10px;
+    width: 56px; height: 56px;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 18px; font-weight: 800;
-    position: relative; overflow: hidden;
+    color: #9F7AE8;
   }
-  .logo-icon::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0; right: 0; height: 8px;
-    background: linear-gradient(90deg, #6A2BCF, #9F7AE8);
-  }
+  .logo-icon svg { width: 100%; height: 100%; display: block; }
   .logo-text {
     font-size: 16px;
     font-weight: 700;
@@ -207,7 +199,7 @@
 </head>
 <body>
   <div class="logo-badge">
-    <div class="logo-icon">M</div>
+    <div class="logo-icon" aria-label="MUGA"><svg viewBox="0 0 128 128" fill="none"><g transform="translate(12 30)" stroke="currentColor" fill="none"><path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke-width="2" stroke-linejoin="round"/></g></svg></div>
     <div class="logo-text">MUGA</div>
   </div>
 
