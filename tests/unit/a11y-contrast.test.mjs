@@ -55,8 +55,8 @@ function extractCssVar(css, varName) {
 // From the design tokens: --surface-2 and --surface-0 are the two tightest
 // backgrounds --text-3 is used on.
 const LIGHT_BACKGROUNDS = [
-  { name: "--surface-2 (#F3F2EC)", hex: "#F3F2EC" },
-  { name: "--surface-0 (#FAFAF7)", hex: "#FAFAF7" },
+  { name: "--surface-2 (#F3F2F5)", hex: "#F3F2F5" },
+  { name: "--surface-0 (#FAFAFB)", hex: "#FAFAFB" },
   { name: "--surface-1 (#FFFFFF)", hex: "#FFFFFF" },
 ];
 

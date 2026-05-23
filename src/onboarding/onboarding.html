@@ -8,10 +8,10 @@
     :root {
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
       --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-      --surface-0: #FAFAF7; --surface-1: #FFFFFF; --surface-2: #F3F2EC; --surface-3: #E9E8E0;
-      --text-1: #1A1916; --text-2: #53524C; --text-3: #7A7970;
-      --border-1: #E5E4DC; --border-2: #D4D3C9;
-      --accent: #B8862C; --accent-strong: #8C651F; --accent-soft: #F5EBD3; --on-accent: #FAFAF7;
+      --surface-0: #FAFAFB; --surface-1: #FFFFFF; --surface-2: #F3F2F5; --surface-3: #E9E8EC;
+      --text-1: #18171C; --text-2: #4F4D58; --text-3: #6E6C78;
+      --border-1: #E6E5EA; --border-2: #D4D3D9;
+      --accent: #6A2BCF; --accent-strong: #5318B5; --accent-soft: #EFE6FB; --on-accent: #FFFFFF;
       --success: #2F6B3A; --success-soft: #E1EFE2;
       --r-sm: 4px; --r-md: 6px; --r-lg: 10px;
       --shadow-1: 0 1px 2px rgba(26,25,22,.06), 0 1px 1px rgba(26,25,22,.04);
@@ -22,10 +22,10 @@
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --surface-0: #121210; --surface-1: #1C1B18; --surface-2: #26251F; --surface-3: #32302A;
-        --text-1: #F2F0E8; --text-2: #B3B1A6; --text-3: #8A887D;
-        --border-1: #2E2D27; --border-2: #3D3B34;
-        --accent: #D4A64A; --accent-strong: #E8BE66; --accent-soft: #3A2F15; --on-accent: #1A1916;
+        --surface-0: #100F14; --surface-1: #1A1820; --surface-2: #25232E; --surface-3: #312E3C;
+        --text-1: #F2F0F5; --text-2: #B0AEBA; --text-3: #85838F;
+        --border-1: #2C2A36; --border-2: #3A3848;
+        --accent: #9F7AE8; --accent-strong: #B79CEF; --accent-soft: #2A1C4A; --on-accent: #18171C;
         --success: #6FB57C; --success-soft: #1F2F22;
       }
     }
@@ -49,12 +49,11 @@
       color: var(--text-1); margin-bottom: 18px;
     }
     .logo-mark {
-      width: 28px; height: 28px; border-radius: var(--r-sm);
-      background: var(--accent-soft); color: var(--accent-strong);
-      display: inline-flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+      height: 22px;
+      color: var(--accent);
+      display: inline-flex; align-items: center; flex-shrink: 0;
     }
-    .logo-mark svg { width: 18px; height: 18px; }
+    .logo-mark svg { height: 100%; width: auto; display: block; }
     .tagline {
       font-size: 22px; line-height: 1.35;
       color: var(--text-1);
@@ -250,9 +249,9 @@
   <div class="container">
     <div class="logo">
       <span class="logo-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 4 L8 9 L4 8 L7 13 L4 16 L9 16 L12 20 L15 16 L20 16 L17 13 L20 8 L16 9 Z"/>
-          <circle cx="12" cy="12" r="1" fill="currentColor"/>
+        <svg viewBox="0 0 104 68" fill="none" aria-label="MUGA">
+          <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         </svg>
       </span>
       <span>MUGA</span>
