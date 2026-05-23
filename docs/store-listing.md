@@ -14,7 +14,7 @@ MUGA: The denoise extension for the web
 
 ### Short description (132 chars max)
 
-Quiet the noise in every URL. Creator referrals preserved. 450+ patterns removed automatically. Open source, zero data sent.
+Quiet the noise in every URL. Creator referrals preserved. 450+ patterns removed automatically. Open source.
 
 *(125 chars)*
 
@@ -118,15 +118,15 @@ This is disclosed during setup, in the privacy policy, and in the source code. E
 
 
 ======================================
-PRIVATE. REALLY.
+HONEST ABOUT WHAT GOES OVER THE WIRE
 ======================================
 
-Every URL is processed entirely inside your browser. MUGA never sends data anywhere on a default install.
+By default, MUGA processes URLs locally inside your browser. We don't run analytics, we don't run telemetry, and we have no plans to.
 
-. Zero analytics, zero telemetry, zero data collection
-. No account, no sign-in, no cloud
+. No analytics, no telemetry, no account, no sign-in
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
 . Optional host permission rules.muga.app/*: granted only when you enable "Remote rule updates" in Settings. Used to fetch a signed noise-param payload over HTTPS: a single GET check at most once per 7 days, piggybacked on natural service-worker wake events (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time via browser settings.
+. Optional host permission unwrap.muga.app/*: granted only when you enable "Privacy Proxy" in Settings. Used to resolve opaque redirect URLs server-side instead of letting the redirect network see your click. Off by default.
 
 We rejected 10+ affiliate networks because they require redirect-based attribution. On those stores, MUGA actively strips the affiliate noise parameters that redirect networks leave behind, and unwraps redirect URLs when possible so you go straight to the store.
 
@@ -154,7 +154,6 @@ The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit
 
 https://github.com/yocreoquesi/muga
 
-Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://rules.muga.app/comparison.html
 
 ---
 
@@ -172,7 +171,7 @@ MUGA: The denoise extension for the web
 
 ### Summary (250 chars max)
 
-Quiet the noise in every URL while preserving the affiliate referrals of creators who recommended you. 450+ patterns removed automatically. 100% local. Zero data sent. Open source, GPL v3. The only URL cleaner that respects creators.
+Quiet the noise in every URL while preserving the affiliate referrals of creators who recommended you. 450+ patterns removed automatically. No analytics. No telemetry. Open source, GPL v3. The URL cleaner that respects creators.
 
 *(240 chars)*
 
@@ -196,7 +195,7 @@ After:  amazon.es/dp/B00EXAMPLE?tag=reviewer-21
 The reviewer's affiliate tag stays. The tracking params are gone. The creator gets paid. The tracking platforms get nothing.
 
 
-450+ tracking parameters. 150+ domain-specific rulesets. Zero data collection.
+450+ noise patterns. 150+ domain-specific rulesets. No analytics, no telemetry.
 
 MUGA removes tracking from every site on the web. Domain-specific rules ensure functional parameters (search queries, pagination, filters) are always preserved. We only remove tracking. We never break a page.
 
@@ -237,13 +236,13 @@ By default, MUGA never touches what is not ours. If a link already has a creator
 MUGA has an optional affiliate feature (off by default). When enabled: if you navigate to a supported store and the link has no affiliate tag at all, MUGA adds ours. The price you pay is exactly the same. You can turn it off any time, globally or per domain.
 
 
-Private by design
+Honest about what goes over the wire
 
-Every URL is processed entirely inside your browser. MUGA never sends data anywhere on a default install.
-. Zero analytics, zero telemetry, zero data collection
-. No account, no sign-in, no cloud
+By default, MUGA processes URLs locally inside your browser. We don't run analytics, we don't run telemetry, and we have no plans to.
+. No analytics, no telemetry, no account, no sign-in
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequest, clipboardWrite
 . Optional permission rules.muga.app/*: granted only when you enable "Remote rule updates". Used to fetch a signed noise-param payload: a single HTTPS GET check at most once per 7 days, piggybacked on natural browser activity (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time.
+. Optional permission unwrap.muga.app/*: granted only when you enable "Privacy Proxy". Resolves opaque redirect URLs server-side. Off by default.
 
 
 Your rules
@@ -264,7 +263,6 @@ The entire codebase is public on GitHub under the GPL v3 license. Read it. Audit
 
 https://github.com/yocreoquesi/muga
 
-Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://rules.muga.app/comparison.html
 
 ---
 
@@ -277,4 +275,3 @@ Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL)
 - Tags: denoise, noise, url-cleaner, affiliate, creator-friendly
 - Website: https://github.com/yocreoquesi/muga
 
-Compare against other URL cleaners (ClearURLs, Brave built-in, uBlock, Neat URL): https://rules.muga.app/comparison.html

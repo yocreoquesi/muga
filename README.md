@@ -135,36 +135,6 @@ Privacy Proxy can be toggled on and off at any time from Settings. Disabling it 
 
 ---
 
-## How it differs from other URL cleaners
-
-> Other cleaners treat every parameter as junk and strip aggressively. MUGA distinguishes a noise param (`fbclid`, `utm_source`) from a creator's affiliate tag — the YouTuber who recommended the link still gets paid.
-
-| Feature                          | MUGA       | uBlock Origin   | ClearURLs   | Brave Shields  |
-|----------------------------------|:----------:|:---------------:|:-----------:|:--------------:|
-| Strips tracking params           | ✓ 450+ [^1]| ✓ via filter list [^2] | ✓ ~150 [^3] | ✓ ~200 [^4]   |
-| Preserves creator affiliate tags | **✓** [^5] | ✗               | ✗           | ✗              |
-| Per-URL "what was removed" UI    | ✓ [^6]     | ✗ (logger only) | ✗           | ✗              |
-| Refuses redirect-based affiliate networks | ✓ [^7] | n/a       | n/a         | n/a            |
-| Signed remote rule updates       | ✓ Ed25519, opt-in [^8] | filter-list-dependent | unsigned [^9] | bundled with browser updates |
-| Ad / script blocking             | ✗ (out of scope) | ✓         | ✗           | ✓ (Shields)    |
-| Works on any Chromium / Firefox  | ✓          | ✓               | ✓           | Brave browser only |
-
-The wedge in one sentence: **MUGA is the only one of the four that distinguishes a noise param from a creator's affiliate tag, and the only one whose popup tells you that distinction was made.** Full comparison with sources and counts: [rules.muga.app/comparison.html](https://rules.muga.app/comparison.html).
-
-[^1]: MUGA tracking-param universe: [`src/rules/tracking-params.json`](src/rules/tracking-params.json) (universal DNR set) + [`src/rules/domain-rules.json`](src/rules/domain-rules.json) (per-domain rules across 150+ hosts).
-[^2]: uBlock Origin strips params via the `removeparam` static filter. Coverage depends on enabled filter lists. See [uBO docs](https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#removeparam).
-[^3]: ClearURLs rules: [github.com/ClearURLs/Rules](https://github.com/ClearURLs/Rules/blob/master/data.min.json). Approximate count based on the current global rule set.
-[^4]: Brave's curated list ships with the browser: [brave-core query_filter/utils.cc](https://github.com/brave/brave-core/blob/master/components/query_filter/utils.cc). Brave strips creator affiliate parameters indiscriminately along with trackers.
-[^5]: MUGA preservation logic — see the `AFFILIATE_PATTERNS` table in [`src/lib/affiliates.js`](src/lib/affiliates.js) and the cleaner branch that gates injection on `!url.searchParams.has(pattern.param)` ([`src/lib/cleaner.js`](src/lib/cleaner.js)). The popup surfaces a "Creator referral preserved" badge whenever this branch fires.
-[^6]: MUGA popup renders the cleaned-param breakdown for the current URL — see [`src/popup/`](src/popup/). uBO's logger reaches the same data but requires opening a separate panel and is not URL-scoped by default.
-[^7]: MUGA's rejected-networks list (Awin, ShareASale, Admitad, Skimlinks, Sovrn, CJ, Impact Radius, Rakuten LinkShare, AliExpress redirect, Temu) is documented in [`src/lib/affiliates.js`](src/lib/affiliates.js). MUGA still **strips** their tracking params on encounter; it just refuses to inject through them.
-[^8]: Remote rules: Ed25519-signed payload, max 1 fetch per 7 days, opt-in. Verification entry: [`src/lib/remote-rules.js`](src/lib/remote-rules.js). Off by default while signing infrastructure stabilises.
-[^9]: ClearURLs fetches its ruleset from a remote URL on install/update; the file is not cryptographically signed. See [ClearURLs/Addon](https://github.com/ClearURLs/Addon).
-
-> uBlock Origin is not strictly a URL cleaner — it's a full content blocker that happens to do URL param stripping. The two are complementary: uBO filters network requests, MUGA cleans the URL bar and preserves creator credit. The table above scopes uBO to its URL-cleaning behaviour for an apples-to-apples comparison.
-
----
-
 ## Affiliate model: the honest version
 
 Creators come first. MUGA is an open-source project maintained by real people. To keep it maintained and improving over time, it uses a simple affiliate model.

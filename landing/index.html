@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MUGA: The denoise extension for the web</title>
-<meta name="description" content="MUGA quiets the noise in every URL — 450+ patterns removed automatically, creator affiliate referrals preserved. 100% local, open source, GPL v3.">
+<meta name="description" content="MUGA quiets the noise in every URL — 450+ patterns removed automatically, creator affiliate referrals preserved. Open source, GPL v3.">
 <meta name="color-scheme" content="light dark">
 
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://muga.app/">
 <meta property="og:title" content="MUGA: The denoise extension for the web">
-<meta property="og:description" content="450+ noise patterns quieted automatically. Creator affiliate referrals preserved. Open source, 100% local.">
+<meta property="og:description" content="450+ noise patterns quieted automatically. Creator affiliate referrals preserved. Open source.">
 <meta property="og:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MUGA: The denoise extension for the web">
-<meta name="twitter:description" content="450+ noise patterns quieted automatically. Creator affiliate referrals preserved. Open source, 100% local.">
+<meta name="twitter:description" content="450+ noise patterns quieted automatically. Creator affiliate referrals preserved. Open source.">
 <meta name="twitter:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
 
 <link rel="icon" href="https://rules.muga.app/assets/muga-mark.svg">
@@ -432,7 +432,6 @@
       <span class="ver">v1.15.1</span>
     </a>
     <nav class="nav-links" aria-label="Primary">
-      <a href="https://rules.muga.app/comparison.html">Compare</a>
       <a href="https://rules.muga.app/transparency.html">Transparency</a>
       <a href="https://github.com/yocreoquesi/muga" class="gh" aria-label="GitHub repository">GitHub ↗</a>
     </nav>
@@ -527,9 +526,9 @@
           <div class="desc">Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners.</div>
         </div>
         <div class="stat">
-          <div class="num">100<span class="unit">%</span></div>
-          <div class="label">Local processing</div>
-          <div class="desc">Zero data sent. Zero requests on default install. Runs entirely in your browser.</div>
+          <div class="num">0</div>
+          <div class="label">Telemetry</div>
+          <div class="desc">No analytics, no telemetry, no account. We are not interested in collecting any of that.</div>
         </div>
       </div>
     </div>
@@ -576,79 +575,6 @@
     </div>
   </section>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="section-label">Side by side</div>
-      <h2>How MUGA differs from other URL cleaners.</h2>
-      <p>Other cleaners treat every parameter as junk and strip aggressively. MUGA distinguishes a noise pattern from a creator's affiliate tag — the YouTuber who recommended the link still gets paid.</p>
-
-      <div class="compare-wrap">
-        <table class="compare-tbl">
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th class="muga-col">MUGA</th>
-              <th>uBlock Origin</th>
-              <th>ClearURLs</th>
-              <th>Brave Shields</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Strips tracking params</td>
-              <td class="muga-col yes">✓ 450+</td>
-              <td class="yes">✓ via filter list</td>
-              <td class="yes">✓ ~150</td>
-              <td class="yes">✓ ~200</td>
-            </tr>
-            <tr>
-              <td><strong>Preserves creator affiliate tags</strong></td>
-              <td class="muga-col yes">✓</td>
-              <td class="no">✗</td>
-              <td class="no">✗</td>
-              <td class="no">✗</td>
-            </tr>
-            <tr>
-              <td>Per-URL "what was removed" UI</td>
-              <td class="muga-col yes">✓</td>
-              <td class="no">logger only</td>
-              <td class="no">✗</td>
-              <td class="no">✗</td>
-            </tr>
-            <tr>
-              <td>Refuses redirect-based affiliate networks</td>
-              <td class="muga-col yes">✓</td>
-              <td class="no">n/a</td>
-              <td class="no">n/a</td>
-              <td class="no">n/a</td>
-            </tr>
-            <tr>
-              <td>Signed remote rule updates</td>
-              <td class="muga-col yes">✓ Ed25519, opt-in</td>
-              <td class="no">filter-list-dependent</td>
-              <td class="no">unsigned</td>
-              <td class="no">bundled w/ browser</td>
-            </tr>
-            <tr>
-              <td>Ad / script blocking</td>
-              <td class="muga-col no">✗ (out of scope)</td>
-              <td class="yes">✓</td>
-              <td class="no">✗</td>
-              <td class="yes">✓ (Shields)</td>
-            </tr>
-            <tr>
-              <td>Works on Chromium &amp; Firefox</td>
-              <td class="muga-col yes">✓</td>
-              <td class="yes">✓</td>
-              <td class="yes">✓</td>
-              <td class="no">Brave only</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="compare-note">MUGA is the only one of the four that distinguishes a noise pattern from a creator's affiliate tag — and the only one whose popup tells you that distinction was made. Full comparison with sources and counts: <a href="https://rules.muga.app/comparison.html">rules.muga.app/comparison.html</a>.</p>
-    </div>
-  </section>
 
   <section class="section">
     <div class="wrap">
@@ -717,7 +643,6 @@
         <h4>Docs</h4>
         <ul>
           <li><a href="https://rules.muga.app/privacy-page.html">Privacy policy</a></li>
-          <li><a href="https://rules.muga.app/comparison.html">Compare cleaners</a></li>
           <li><a href="https://rules.muga.app/transparency.html">Transparency</a></li>
           <li><a href="https://github.com/yocreoquesi/muga/blob/main/docs/faq.md">FAQ</a></li>
         </ul>

@@ -120,7 +120,7 @@ y += 28
 draw.line([(tx, y), (W - 16, y)], fill=(255, 255, 255), width=1)
 y += 10
 
-for feat in ['•  Removes 450+ bits of noise', '•  Silent. Automatic. Free.', '•  100% local — no data sent']:
+for feat in ['•  Removes 450+ bits of noise', '•  Silent. Automatic. Free.', '•  No analytics, no telemetry']:
     draw.text((tx, y), feat, fill=WHITE70, font=f_feat)
     y += 19
 
@@ -193,7 +193,7 @@ draw_pill(draw, 'AFTER', after_url, rx, ry, (12, 46, 22), (70, 180, 90), (110, 2
 ry += ph + 8
 
 # Feature badges
-badges = ['• Quiet', '• Local only', '• Free forever', '• Open source']
+badges = ['• Quiet', '• No telemetry', '• Free forever', '• Open source']
 bx = rx
 for badge in badges:
     bb_b = draw.textbbox((0, 0), badge, font=f_badge)

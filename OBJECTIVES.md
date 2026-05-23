@@ -25,7 +25,7 @@ One number. Publicly verifiable from outside the maintainer's account.
 3. **"Active" beats "installed".** An install that gets uninstalled in 24 hours is not success. Weekly active filters out drive-by installs and dead profiles.
 4. **One number.** Not three. Not a dashboard. A single metric the maintainer can recite and the community can argue with.
 
-**What this metric does not capture.** Privacy outcomes (params stripped per session, creator tags preserved per session) are also worth knowing, but they live in [`docs/transparency.html`](docs/transparency.html) and the [benchmark report](docs/comparison.html), not here. The North Star answers "is the project alive and growing?", not "is the project doing its job?". Both questions matter; only the first is the North Star.
+**What this metric does not capture.** Quality outcomes (noise patterns removed per session, creator tags preserved per session) are also worth knowing, but they live in [`docs/transparency.html`](docs/transparency.html), not here. The North Star answers "is the project alive and growing?", not "is the project doing its job?". Both questions matter; only the first is the North Star.
 
 ---
 

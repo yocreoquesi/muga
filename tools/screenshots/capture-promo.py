@@ -152,7 +152,7 @@ draw.text((LX, 200), "The denoise extension for the web", font=f_tagline, fill=B
 # Pills
 pill_y = 238
 pill_x = LX
-for label in ["450+ bits of noise removed", "6 affiliate programs preserved", "Zero data sent", "Open source"]:
+for label in ["450+ bits of noise removed", "6 affiliate programs preserved", "No telemetry", "Open source"]:
     adv = draw_pill(draw, rgba, pill_x, pill_y, label, f_pill)
     pill_x += adv
     if pill_x > LX + 310:
@@ -236,8 +236,8 @@ draw = ImageDraw.Draw(rgba)
 stats = [
     ("459+", "noise patterns"),
     ("167",  "domain rules"),
-    ("100%", "local processing"),
-    ("0",    "data sent"),
+    ("0",    "telemetry"),
+    ("0",    "analytics"),
 ]
 SY    = 326
 sx    = RX
