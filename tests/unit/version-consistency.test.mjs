@@ -118,6 +118,37 @@ describe("Version consistency — all files must match package.json", () => {
     assert.ok(match, "privacy-page.html must contain a Version string");
     assert.equal(match[1], VERSION, `privacy-page.html has "${match[1]}", expected "${VERSION}"`);
   });
+
+  // The landing at muga.app is served by a Cloudflare Worker that deploys
+  // landing/index.html via wrangler on push to main. The version stamps
+  // here MUST match package.json so the public site never lags the release.
+  test("landing/index.html softwareVersion matches", () => {
+    const html = read("landing/index.html");
+    const match = html.match(/"softwareVersion":\s*"(\d+\.\d+\.\d+)"/);
+    assert.ok(match, "landing/index.html must contain a softwareVersion in JSON-LD");
+    assert.equal(match[1], VERSION, `landing softwareVersion has "${match[1]}", expected "${VERSION}"`);
+  });
+
+  test("landing/index.html brand .ver tag matches", () => {
+    const html = read("landing/index.html");
+    const match = html.match(/<span class="ver">v(\d+\.\d+\.\d+)<\/span>/);
+    assert.ok(match, "landing/index.html must contain a <span class=\"ver\">vX.Y.Z</span>");
+    assert.equal(match[1], VERSION, `landing .ver has "${match[1]}", expected "${VERSION}"`);
+  });
+
+  test("landing/index.html hero eyebrow version matches", () => {
+    const html = read("landing/index.html");
+    const match = html.match(/class="dot"><\/span>\s*v(\d+\.\d+\.\d+)\s*·/);
+    assert.ok(match, "landing/index.html hero eyebrow must contain 'vX.Y.Z ·'");
+    assert.equal(match[1], VERSION, `landing eyebrow has "${match[1]}", expected "${VERSION}"`);
+  });
+
+  test("landing/index.html footer version matches", () => {
+    const html = read("landing/index.html");
+    const match = html.match(/<span>v(\d+\.\d+\.\d+)\s*·\s*published/);
+    assert.ok(match, "landing/index.html footer must contain 'vX.Y.Z · published'");
+    assert.equal(match[1], VERSION, `landing footer has "${match[1]}", expected "${VERSION}"`);
+  });
 });
 
 describe("Version consistency — README badges", () => {

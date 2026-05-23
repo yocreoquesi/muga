@@ -1,0 +1,58 @@
+name: Deploy landing
+
+# Auto-deploy of muga.app — uploads landing/index.html (and any future
+# sibling assets) to the existing Cloudflare Worker named "muga-landing"
+# via Workers Static Assets. The Worker's custom domain (muga.app) is
+# configured in the Cloudflare dashboard and is preserved across deploys.
+#
+# Trigger surface: a push to main that touches the landing assets, the
+# Worker shim, the wrangler config, or this workflow itself.
+#
+# Auth: needs a CLOUDFLARE_API_TOKEN repo secret with the "Edit Cloudflare
+# Workers" template scoped to this account. See docs/ops/landing-deploy.md
+# for the one-time setup. If the secret is missing the workflow does NOT
+# fail — it skips the deploy and emits a warning so CI stays green while
+# the secret is still being provisioned.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+      - "landing-worker/**"
+      - "wrangler.toml"
+      - ".github/workflows/deploy-landing.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect CLOUDFLARE_API_TOKEN
+        id: detect
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning title=CLOUDFLARE_API_TOKEN missing::Skipping deploy. Add CLOUDFLARE_API_TOKEN as a repository secret to enable auto-deploy of muga.app. See docs/ops/landing-deploy.md."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.detect.outputs.has_token == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Deploy to Cloudflare Workers (muga-landing)
+        if: steps.detect.outputs.has_token == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --yes wrangler@latest deploy

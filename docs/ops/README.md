@@ -22,6 +22,12 @@ Decision doc for whether a release ships staged on Chrome or full. Covers the as
 
 **Consult when:** at release time, choosing whether this build ships staged or full; or planning the AMO synchronize / stagger / accept-asymmetry option.
 
+### 4. [landing-deploy.md](./landing-deploy.md)
+
+One-time setup doc for the `muga.app` landing auto-deploy. Covers creating the Cloudflare API token, adding it as a `CLOUDFLARE_API_TOKEN` GitHub secret, confirming the existing Worker name, the trigger surface of `.github/workflows/deploy-landing.yml`, and the rollback path via the Cloudflare Deployments tab.
+
+**Consult when:** provisioning the deploy on a new account, rotating the API token, debugging a missing-secret skip in CI, or rolling back a bad landing deploy.
+
 ## When to consult each — quick reference
 
 | Situation | Doc |
