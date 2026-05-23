@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA: Clean URLs, Fair to Every Click | Nothing Hidden</title>
-  <meta name="description" content="MUGA strips 450+ tracking parameters from every URL automatically, before the page loads. Fair to you. Fair to creators. Open source, GPL v3.">
+  <title>MUGA: The denoise extension for the web</title>
+  <meta name="description" content="MUGA quiets the noise on every URL — 450+ noise patterns removed locally before the page loads, while honoring creator affiliate referrals.">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MUGA: Clean URLs, Fair to Every Click">
-  <meta property="og:description" content="450+ trackers stripped from every URL. Clean links. Nothing hidden. Open source.">
-  <meta property="og:image" content="https://rules.muga.app/assets/mascot-geometric.png">
+  <meta property="og:title" content="MUGA: The denoise extension for the web">
+  <meta property="og:description" content="450+ noise patterns removed automatically. Creator affiliate referrals preserved. Open source, 100% local.">
+  <meta property="og:image" content="https://rules.muga.app/assets/muga-mark.svg">
   <meta property="og:url" content="https://rules.muga.app/">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="MUGA: Clean URLs, Fair to Every Click">
-  <meta name="twitter:description" content="450+ trackers stripped from every URL. Clean links. Nothing hidden. Open source.">
-  <meta name="twitter:image" content="https://rules.muga.app/assets/mascot-geometric.png">
+  <meta name="twitter:title" content="MUGA: The denoise extension for the web">
+  <meta name="twitter:description" content="450+ noise patterns removed automatically. Creator affiliate referrals preserved. Open source, 100% local.">
+  <meta name="twitter:image" content="https://rules.muga.app/assets/muga-mark.svg">
 
   <!-- JSON-LD -->
   <script type="application/ld+json">
@@ -27,7 +27,7 @@
     "name": "MUGA",
     "applicationCategory": "BrowserApplication",
     "operatingSystem": "Chrome, Firefox",
-    "description": "Browser extension that strips 450+ tracking parameters from every URL automatically. Fair to every click.",
+    "description": "Browser extension that quiets 450+ noise patterns from every URL automatically. Creator affiliate referrals preserved. 100% local.",
     "url": "https://rules.muga.app/",
     "license": "https://www.gnu.org/licenses/gpl-3.0.html",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -37,15 +37,15 @@
 
   <style>
     :root {
-      --bg: #ffffff; --bg2: #f5f5f5; --text: #1a1a1a; --text2: #555;
-      --accent: #d97706; --accent-hover: #b45309; --border: rgba(0,0,0,0.08);
-      --success: #16a34a; --code-bg: #f0f0f0;
+      --bg: #FAFAFB; --bg2: #F3F2F5; --text: #18171C; --text2: #4F4D58;
+      --accent: #6A2BCF; --accent-hover: #5318B5; --border: #E6E5EA;
+      --success: #2F6B3A; --code-bg: #E9E8EC;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #0a0a0a; --bg2: #1c1c1e; --text: #f0f0f0; --text2: #aaa;
-        --accent: #f59e0b; --accent-hover: #fbbf24; --border: rgba(255,255,255,0.08);
-        --success: #4ade80; --code-bg: #2c2c2e;
+        --bg: #100F14; --bg2: #1A1820; --text: #F2F0F5; --text2: #B0AEBA;
+        --accent: #9F7AE8; --accent-hover: #B79CEF; --border: #2C2A36;
+        --success: #6FB57C; --code-bg: #25232E;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -136,10 +136,10 @@
 
   <section class="hero">
     <div class="container">
-      <img src="assets/mascot-geometric.png" alt="MUGA: The Golden Moth" class="hero-mascot" width="120" height="120">
+      <img src="https://rules.muga.app/assets/muga-mark.svg" alt="MUGA brand mark" class="hero-mascot" width="120" height="120">
       <h1>MUGA</h1>
-      <div class="tagline">Fair to every click.</div>
-      <p>You know those monster URLs with 14 tracking parameters? MUGA strips them all automatically, before the page loads. One install. Zero clicks. Clean links.</p>
+      <div class="tagline">The denoise extension for the web.</div>
+      <p>Every URL arrives loaded with noise — tracking parameters, click IDs, share tokens. MUGA removes it all automatically, before the page loads. One install. Zero clicks. The web, quieter.</p>
       <div class="backronym" id="backronym"></div>
       <div class="cta-row">
         <a class="cta cta-primary" href="#">Install for Chrome</a>
@@ -150,7 +150,7 @@
 
   <section class="container">
     <div class="stats">
-      <div class="stat-item"><div class="num">450+</div><div class="desc">tracking params stripped</div></div>
+      <div class="stat-item"><div class="num">450+</div><div class="desc">bits of noise removed</div></div>
       <div class="stat-item"><div class="num">150+</div><div class="desc">domain-specific rules</div></div>
       <div class="stat-item"><div class="num">0</div><div class="desc">data collected</div></div>
     </div>
@@ -172,8 +172,8 @@
     <h2>What it does</h2>
     <div class="feature-grid">
       <div class="feature-card">
-        <h3>450+ trackers, gone</h3>
-        <p>UTMs, fbclid, gclid, e-commerce noise, share tokens, click IDs, email beacons. All gone before the page loads.</p>
+        <h3>450+ bits of noise, gone</h3>
+        <p>UTMs, fbclid, gclid, e-commerce noise, share tokens, click IDs, email beacons. All removed before the page loads.</p>
       </div>
       <div class="feature-card">
         <h3>Never acts behind your back</h3>
@@ -223,7 +223,7 @@
       <a href="comparison.html">Compare vs other URL cleaners</a>
       <a href="https://github.com/yocreoquesi/muga">GitHub</a>
       <a href="https://github.com/yocreoquesi/muga/blob/main/LICENSE">GPL v3</a>
-      <p style="margin-top: 12px;">MUGA: Fair to every click.</p>
+      <p style="margin-top: 12px;">MUGA: The denoise extension for the web.</p>
     </div>
   </footer>
 

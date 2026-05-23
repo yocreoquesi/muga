@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA vs ClearURLs vs Brave vs uBlock: Honest URL Cleaner Comparison</title>
-  <meta name="description" content="Side-by-side comparison of URL cleaning extensions. MUGA is the only one that preserves creator affiliate referrals while stripping tracking. Honest, with footnotes.">
+  <title>MUGA vs ClearURLs vs Brave vs uBlock: Honest URL Noise-Removal Comparison</title>
+  <meta name="description" content="Side-by-side comparison of URL cleaning extensions. MUGA is the only one that removes noise params while preserving creator affiliate referrals. Honest, with footnotes.">
   <meta property="og:title" content="MUGA vs ClearURLs vs Brave vs uBlock">
-  <meta property="og:description" content="The only URL cleaner that preserves creator affiliate referrals. Honest comparison with sources.">
+  <meta property="og:description" content="The only URL denoiser that preserves creator affiliate referrals. Honest comparison with sources.">
   <meta property="og:type" content="website">
   <style>
     :root {
@@ -86,10 +86,10 @@
 <body>
 
   <h1>MUGA vs ClearURLs vs Brave vs uBlock</h1>
-  <p class="meta">MUGA: Privacy Without Breaking Creator Links &nbsp;·&nbsp; Last updated: 2026-04-26 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+  <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Last updated: 2026-04-26 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
 
   <div class="highlight">
-    <strong>The shortest version:</strong> every URL cleaner removes <code>utm_source</code>, <code>fbclid</code>, <code>gclid</code>, and the rest. MUGA does too. The difference is what they do with the affiliate tag of the creator who recommended you the link: the YouTube reviewer, the newsletter, the blog. Most cleaners strip it along with everything else; the creator gets nothing for the recommendation. <strong>MUGA leaves it alone</strong>, and the popup shows a "Creator referral preserved" badge so you know it happened. No other URL cleaner does this. None of them can without contradicting their own pitch.
+    <strong>The shortest version:</strong> every URL cleaner removes <code>utm_source</code>, <code>fbclid</code>, <code>gclid</code>, and the rest. MUGA does too — it quiets the noise on every URL it touches. The difference is what they do with the affiliate tag of the creator who recommended you the link: the YouTube reviewer, the newsletter, the blog. Most cleaners strip it along with everything else; the creator gets nothing for the recommendation. <strong>MUGA leaves it alone</strong>, and the popup shows a "Creator referral preserved" badge so you know it happened. No other URL denoiser does this. None of them can without contradicting their own pitch.
   </div>
 
   <div class="highlight">
@@ -293,15 +293,15 @@
           <td class="na">N/A</td>
         </tr>
         <tr>
-          <td>Tracker count celebration in popup</td>
-          <td class="muga yes">"Removed N trackers"<sup>14</sup></td>
+          <td>Noise removal count in popup</td>
+          <td class="muga yes">"Removed N bits of noise"<sup>14</sup></td>
           <td class="no">No</td>
           <td class="no">No (browser-level)</td>
           <td class="no">No</td>
           <td class="partial">Badge counter only</td>
         </tr>
         <tr>
-          <td>Tracking params stripped</td>
+          <td>Noise params removed</td>
           <td class="muga">450+ params<sup>1</sup></td>
           <td>~300<sup>2</sup></td>
           <td>~150<sup>16</sup></td>
@@ -419,9 +419,9 @@
   <h2>The wedge, in plain English</h2>
 
   <div class="note">
-    <strong>"Fair to creators" is one paragraph long.</strong>
+    <strong>"Creators come first" is one paragraph long.</strong>
     A YouTube reviewer takes time to compare three products and recommends one. They link to it with their affiliate tag. That's how independent creators get paid for the recommendation. You click the link. It arrives loaded with <code>utm_source=youtube</code>, <code>fbclid=...</code>, e-commerce session noise, AND the reviewer's <code>tag=reviewer-21</code>. ClearURLs strips the lot, including the reviewer's tag. So does Brave's built-in cleaner. So does Neat URL. The reviewer gets nothing for the recommendation.
-    <strong>MUGA strips the tracking and leaves the reviewer's tag alone.</strong> The popup tells you so with a "Creator referral preserved" badge. Same price for you, the creator gets paid, the tracking platforms get nothing. That's the wedge. No other tool does this, and the table above shows why: doing it would contradict the "strip everything" promise every other URL cleaner makes.
+    <strong>MUGA removes the noise params and leaves the reviewer's tag alone.</strong> The popup tells you so with a "Creator referral preserved" badge. Same price for you, the creator gets paid, the noise platforms get nothing. That's the wedge. No other tool does this, and the table above shows why: doing it would contradict the "strip everything" promise every other URL cleaner makes.
   </div>
 
   <h2>Honest notes</h2>
@@ -431,8 +431,8 @@
     uBlock Origin is a full-spectrum content blocker. URL parameter stripping is a small part of what it does,
     and it does it well for the most common cases. If you already use uBlock Origin, you do not need
     MUGA for basic UTM stripping. MUGA adds value on top: visible feedback when a creator's tag is preserved,
-    AMP redirects, and 150+ domain-specific rule sets that target tracker params unique to individual stores.
-    The two are complementary: uBlock filters network requests, MUGA cleans the URL bar.
+    AMP redirects, and 150+ domain-specific rule sets that target noise params unique to individual stores.
+    The two are complementary: uBlock filters network requests, MUGA quiets the URL bar.
   </div>
 
   <div class="note">
@@ -450,7 +450,7 @@
     well-integrated. The catch: it only works in Brave. If you use Chrome, Firefox, Edge, Opera,
     or any other browser, Brave's cleaner is irrelevant to you. MUGA exists because most of the
     web does not run on Brave, and because Brave (like every other tool in this list) does not
-    distinguish a creator's affiliate tag from a tracking parameter.
+    distinguish a creator's affiliate tag from a noise parameter.
   </div>
 
   <div class="note warn">
@@ -470,7 +470,7 @@
   </div>
 
   <h2>Methodology</h2>
-  <p>MUGA numbers (tracking params, domain rules, redirect networks) are taken directly from the
+  <p>MUGA numbers (noise params, domain rules, redirect networks) are taken directly from the
   source files in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">public repository</a>.
   Competitor numbers are based on public repository data, extension store listings, and published
   documentation linked in the footnotes below. Counts for competitors are approximations and may
@@ -492,9 +492,9 @@
       <li>ClearURLs MV3 status: <a href="https://github.com/ClearURLs/Addon/issues" target="_blank" rel="noopener noreferrer">github.com/ClearURLs/Addon issues</a>. MV3 migration is tracked but not yet complete as of early 2026.</li>
       <li>ClearURLs browser support: available on Chrome Web Store, Firefox Add-ons, and Edge Add-ons. <a href="https://clearurls.xyz" target="_blank" rel="noopener noreferrer">clearurls.xyz</a>.</li>
       <li>ClearURLs i18n: the extension ships with English and German UI strings. Community translations exist but are incomplete.</li>
-      <li>MUGA "Creator referral preserved" badge: introduced in v1.11.0. The popup surfaces a green badge with the preserved tag whenever MUGA leaves a third-party affiliate tag untouched on the current URL. The tracker count celebration in the same release displays "MUGA removed N trackers from this URL". See <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG</a> entries for v1.11.0 (#327, #326).</li>
+      <li>MUGA "Creator referral preserved" badge: introduced in v1.11.0. The popup surfaces a green badge with the preserved tag whenever MUGA leaves a third-party affiliate tag untouched on the current URL. The noise removal count in the same release displays "MUGA removed N bits of noise from this URL". See <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG</a> entries for v1.11.0 (#327, #326).</li>
       <li>"Replaces creator affiliates: sometimes" for ClearURLs and Neat URL: both tools strip whatever is in their tracker list. Whether a specific creator's affiliate parameter (e.g. <code>tag</code>, <code>aff_id</code>, <code>ref</code>) is on that list depends on the rule set version and the site. Neither tool exposes UI feedback when a creator's tag was preserved or stripped. The user has no way to tell either way.</li>
-      <li>Brave's built-in URL parameter stripping: <a href="https://github.com/brave/brave-core/blob/master/components/query_filter/utils.cc" target="_blank" rel="noopener noreferrer">brave/brave-core: query_filter/utils.cc</a>. The list is curated by the Brave team and ships with the browser. AMP redirect ("De-AMP") is also part of Brave Shields. Brave does not distinguish creator affiliate parameters from tracking parameters; both are stripped if matched.</li>
+      <li>Brave's built-in URL parameter stripping: <a href="https://github.com/brave/brave-core/blob/master/components/query_filter/utils.cc" target="_blank" rel="noopener noreferrer">brave/brave-core: query_filter/utils.cc</a>. The list is curated by the Brave team and ships with the browser. AMP redirect ("De-AMP") is also part of Brave Shields. Brave does not distinguish creator affiliate parameters from noise parameters; both are stripped if matched.</li>
       <li>MUGA's rejection of redirect-based affiliate networks: documented in <code>src/lib/affiliates.js</code> with the explicit list of evaluated-and-rejected programs (Awin, ShareASale, Admitad, Skimlinks, Sovrn, CJ Affiliate, Impact Radius, Rakuten LinkShare, AliExpress redirect, Temu, and others). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js" target="_blank" rel="noopener noreferrer">src/lib/affiliates.js</a>.</li>
       <li>MUGA signed remote-rules: optional, off by default while the signing infrastructure stabilizes (the default may flip in a future release; see CHANGELOG). Ed25519-signed payload fetched from a public GitHub Pages endpoint, verified against a public key shipped with the extension, max 1 fetch per 7 days, piggybacked on natural service-worker wake events. See <a href="https://github.com/yocreoquesi/muga/blob/main/docs/transparency.html" target="_blank" rel="noopener noreferrer">docs/transparency.html</a>.</li>
       <li>Brave Browser license and metrics policy: the browser is open source under MPL 2.0 (<a href="https://github.com/brave/brave-core/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">brave/brave-core LICENSE</a>). Brave collects anonymous, aggregated metrics by default (<a href="https://brave.com/privacy/browser/" target="_blank" rel="noopener noreferrer">brave.com/privacy/browser</a>); these can be disabled in Settings → Privacy and security.</li>

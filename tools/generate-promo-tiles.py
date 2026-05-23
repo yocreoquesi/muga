@@ -1,5 +1,5 @@
 """
-MUGA — Promo tile generator (A1 Navy+Gold palette)
+MUGA — Promo tile generator (violet/denoise palette)
 Generates:
   - tools/screenshots/out/promo-small-440x280.png   (Chrome Web Store small tile)
   - tools/screenshots/out/promo-marquee-1400x560.png (Chrome Web Store marquee tile)
@@ -11,29 +11,41 @@ Run: python3 tools/generate-promo-tiles.py
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-# ── Palette A1 ────────────────────────────────────────────────────────────────
-BG1     = (13,  27,  75)
-BG2     = (26,  58, 107)
-STR1    = (217, 119,   6)
-STR2    = (245, 158,  11)
+# ── Palette: Violet / Denoise ─────────────────────────────────────────────────
+BG1     = (26,  24,  32)   # surface-1 dark
+BG2     = (42,  28,  74)   # accent-soft dark
+STR1    = (106,  43, 207)  # accent
+STR2    = (159, 122, 232)  # accent light
 WHITE   = (255, 255, 255)
-WHITE70 = (179, 196, 222)
-GOLD    = (245, 158,  11)
+WHITE70 = (176, 174, 186)  # text-2 dark
+GOLD    = (159, 122, 232)  # accent light (replaces gold in text highlights)
 
 OUT = os.path.join(os.path.dirname(__file__), 'screenshots', 'out')
 os.makedirs(OUT, exist_ok=True)
 
 FONT_BOLD = [
+    # Linux
     '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
     '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
     '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
     '/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf',
+    # Windows
+    'C:/Windows/Fonts/segoeuib.ttf',
+    'C:/Windows/Fonts/arialbd.ttf',
+    # macOS
+    '/System/Library/Fonts/Helvetica.ttc',
 ]
 FONT_REG = [
+    # Linux
     '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
     '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
     '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
     '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf',
+    # Windows
+    'C:/Windows/Fonts/segoeui.ttf',
+    'C:/Windows/Fonts/arial.ttf',
+    # macOS
+    '/System/Library/Fonts/Helvetica.ttc',
 ]
 
 def load_font(size, bold=True):
@@ -99,16 +111,16 @@ f_logo = load_font(38)
 f_tag  = load_font(15, bold=False)
 f_feat = load_font(13, bold=False)
 
-bb = draw.textbbox((0, 0), 'MUGA', font=f_logo)
+bb = draw.textbbox((tx, 42), 'MUGA', font=f_logo)
 draw.text((tx, 42), 'MUGA', fill=WHITE, font=f_logo)
-y = 42 + (bb[3] - bb[1]) + 6
+y = bb[3] + 10
 
-draw.text((tx, y), 'Clean URLs, Fair to Every Click.', fill=GOLD, font=f_tag)
-y += 22
+draw.text((tx, y), 'The denoise extension for the web.', fill=GOLD, font=f_tag)
+y += 28
 draw.line([(tx, y), (W - 16, y)], fill=(255, 255, 255), width=1)
 y += 10
 
-for feat in ['✓  Strips 459+ tracking parameters', '✓  Silent. Automatic. Free.', '✓  100% local — no data sent']:
+for feat in ['•  Removes 450+ bits of noise', '•  Silent. Automatic. Free.', '•  100% local — no data sent']:
     draw.text((tx, y), feat, fill=WHITE70, font=f_feat)
     y += 19
 
@@ -138,11 +150,11 @@ f_mono  = load_font(14, bold=False)
 f_badge = load_font(13, bold=False)
 
 text_x = icon_cx + ICON // 2 + 38
-bb = draw.textbbox((0, 0), 'MUGA', font=f_muga)
+bb = draw.textbbox((text_x, 0), 'MUGA', font=f_muga)
 mh = bb[3] - bb[1]
-my = icon_cy - mh // 2 - 10
+my = icon_cy - mh // 2 - 30
 draw.text((text_x, my), 'MUGA', fill=WHITE, font=f_muga)
-draw.text((text_x, my + mh + 6), 'Clean URLs, Fair to Every Click.', fill=GOLD, font=f_sub)
+draw.text((text_x, my + bb[3] + 18), 'The denoise extension for the web.', fill=GOLD, font=f_sub)
 
 # Vertical divider
 div_x = 560
@@ -150,9 +162,9 @@ draw.line([(div_x, 56), (div_x, H - SH - 36)], fill=(255, 255, 255), width=1)
 
 # Right block
 rx, ry = div_x + 60, 52
-draw.text((rx, ry), 'Every link. Cleaned. Before it loads.', fill=WHITE, font=f_h2)
+draw.text((rx, ry), 'The web, with the noise turned down.', fill=WHITE, font=f_h2)
 ry += 44
-draw.text((rx, ry), 'Strips UTMs, fbclid, gclid, Amazon noise, YouTube tokens and 459+ more.', fill=WHITE70, font=f_body)
+draw.text((rx, ry), 'Removes UTMs, fbclid, gclid, Amazon noise, YouTube tokens and 450+ more.', fill=WHITE70, font=f_body)
 ry += 32
 
 # Before / After pills
@@ -174,14 +186,14 @@ ph = draw_pill(draw, 'BEFORE', before_url, rx, ry, (70, 18, 18), (200, 80, 80), 
 ry += ph
 
 bb_arr = draw.textbbox((0, 0), '→', font=f_body)
-draw.text((rx + 6, ry), '→', fill=GOLD, font=f_body)
+draw.text((rx + 6, ry), '→', fill=STR2, font=f_body)
 ry += (bb_arr[3] - bb_arr[1]) + 6
 
 draw_pill(draw, 'AFTER', after_url, rx, ry, (12, 46, 22), (70, 180, 90), (110, 220, 130), f_badge, f_mono)
 ry += ph + 8
 
 # Feature badges
-badges = ['✓ Silent', '✓ Local only', '✓ Free forever', '✓ Open source']
+badges = ['• Quiet', '• Local only', '• Free forever', '• Open source']
 bx = rx
 for badge in badges:
     bb_b = draw.textbbox((0, 0), badge, font=f_badge)
