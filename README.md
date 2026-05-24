@@ -15,11 +15,11 @@
 
 **MUGA turns the noise down on every URL, without taking credit from the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone** — we don't take credit from people who earned it — and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
 
-On stores whose affiliate model forces your clicks through external attribution servers, MUGA quiets the noise anyway. We do not believe forcing redirects on users is necessary or fair, and we refuse to collaborate with networks that do.
-
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
-[Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Maintainer ops docs](docs/ops/README.md)
+> **Active strategic direction**: 2.1 pivot to creator-agnostic denoise — see [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md). Some sections of this README, the public docs, and the in-extension copy still reflect the 2.0 framing and will be updated through the issues in [milestone v2.1.0](https://github.com/yocreoquesi/muga/milestone/5).
+
+[Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 
 </div>
 

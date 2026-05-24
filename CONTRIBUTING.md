@@ -2,13 +2,15 @@
 
 Thanks for your interest in contributing! This document covers how to set up the project, run tests, and submit changes.
 
+> **Active strategic direction**: MUGA is mid-pivot to creator-agnostic denoise (2.1) — see [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full rationale and surface inventory. Work is tracked under [milestone v2.1.0](https://github.com/yocreoquesi/muga/milestone/5). If your contribution touches product copy, affiliate handling, or the URL Unwrapper feature (ex Privacy Proxy), read the ADR first.
+
 ## How to contribute without code
 
 Most contributions don't need a pull request. The fastest paths in:
 
 - **A site MUGA broke?** Use the [broken-site issue template](.github/ISSUE_TEMPLATE/broken-site.yml). The popup's "Report broken site" button prefills it for you.
 - **A tracking parameter MUGA missed?** Use the [missed-tracking-param template](.github/ISSUE_TEMPLATE/missed-tracking-param.yml). Names only — never values or full URLs.
-- **A new affiliate program to add?** Use the [new-affiliate-program template](.github/ISSUE_TEMPLATE/new-affiliate-program.yml). We only support direct-injection programs (see [Adding affiliate stores](#adding-affiliate-stores)).
+- **A new affiliate program to add?** Use the [new-affiliate-program template](.github/ISSUE_TEMPLATE/new-affiliate-program.yml). Today MUGA injects on direct-injection programs only; preservation on redirect-based networks (AliExpress, CJ, Awin, Impact, Partnerize, Admitad) is being added under [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md). See [Adding affiliate stores](#adding-affiliate-stores) for the current shape and the ADR for where this is going.
 - **General question or design discussion?** Open a [GitHub Discussion](https://github.com/yocreoquesi/muga/discussions) instead of an Issue.
 - **Suspected security issue?** [Open a private security advisory](https://github.com/yocreoquesi/muga/security/advisories/new), not a public Issue.
 
