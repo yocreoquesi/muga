@@ -1,6 +1,6 @@
 # Affiliate networks attribution matrix
 
-**Version**: v0.1 (tier-1 + tier-2)
+**Version**: v1.0 (tier-1 + tier-2 + tier-3 — complete)
 **Last updated**: 2026-05-24
 **Next quarterly review**: 2026-08-24
 **Owner**: Antonio Rodriguez ([@yocreoquesi](https://github.com/yocreoquesi))
@@ -437,6 +437,190 @@ htag, iom_publisher_id → strippable always (analytics, not load-bearing)
 
 ---
 
+## A8.net (Japan)
+
+**Surface**
+
+- Redirect host: `px.a8.net`. Currently in `OPAQUE_NETWORKS` ([`opaque-networks.js:54`](../src/lib/opaque-networks.js)) confirmed via T00 STANDARD redirect probe. The Worker (`unwrap.muga.app`) has `px.a8.net` in its allowlist for server-side resolution (PR-05, see CHANGELOG.md:88).
+- Merchant landing: Japanese e-commerce sites — Rakuten Ichiba, Yahoo Shopping Japan, large Japanese retailers and SaaS. A8.net is the largest ASP (affiliate service provider) in Japan with ~3.6M publishers.
+- Endpoint shape: standard server-side 30x with `Location` header. Payload encoded into the redirect URL itself, not query-string visible.
+
+**Click flow**
+
+1. User clicks A8.net-wrapped link, e.g. `https://px.a8.net/svt/ejp?a8mat=<encoded payload>&a8ejpredirect=<dest>`.
+2. Browser hits `px.a8.net`.
+3. A8.net logs the click and issues a 30x to the merchant landing URL.
+4. Browser is redirected to the merchant page with A8.net's tracking parameters appended (`a8` is the click-context family of params).
+5. Merchant's A8.net SDK (integrated via their standard tracking tag) reads the params on landing and stores them in **a first-party cookie on the merchant's domain**.
+6. At checkout, the merchant's tag reads the cookie and posts the conversion back to A8.net.
+
+**Attribution mechanism**
+
+Inferred same family as the other 5 networks researched (cookie populated from URL param at landing). A8.net's public marketing materials describe "compatible with all major shopping carts and tag management software" — strongly suggests the same merchant-tag pattern. A8.net does NOT publish the specific param shape on landing in English; verification beyond this point requires partner-account access.
+
+Source: [A8.net About page](https://www.a8.net/en/about/), [A8.net Advertiser overview](https://www.a8.net/en/whya8/), [Halfmoon ASP comparison guide](https://www.halfmoon.co.jp/en/news/japan-asp-platform-comparison). All fetched 2026-05-24.
+
+**Cookie TTL / lookback window**
+
+- **[NEEDS PARTNER-ACCOUNT VERIFICATION]** for the default; Japanese ASP industry norm is 30–90 days per advertiser configuration.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `a8` | **required-at-landing** | A8.net click context param (already in MUGA's [`affiliates.js:436`](../src/lib/affiliates.js) under "various ad/analytics platforms"). Conservative preserve on landing per the pattern of the 5 other networks. |
+| `a8mat` (in px.a8.net URL) | n/a (redirect-internal) | Payload encoded in the redirect URL. Never strip — stripping breaks the redirect. |
+| `a8ejpredirect` (in px.a8.net URL) | n/a (redirect-internal) | Destination override in the redirect URL. |
+
+**Recommended cleaner policy**
+
+```
+hostname is a Japanese e-commerce merchant domain (broad — no fixed list)
+  AND document.referrer.hostname is px.a8.net
+  → preserve a8 (and any a8.net-prefixed params we observe) on this document
+  → safe-to-strip on subsequent same-site navigations
+```
+
+A8.net's merchant list is not publicly enumerable. Policy keys on the referrer (`px.a8.net`), same approach as Awin / CJ.
+
+**Verification status**
+
+- ✅ `px.a8.net` is the canonical redirect host — confirmed by MUGA T00 STANDARD probe (`r.a8.net` does NOT resolve and must NOT be added).
+- ✅ A8.net follows the standard merchant-tag pattern — strongly inferred from public marketing materials describing broad shopping-cart compatibility.
+- ⚠️ **All param verdicts** — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Public docs in English are marketing-grade only. Japanese-language partner-account docs would have the specifics. The matrix bias toward conservative preserve applies fully here.
+- ⚠️ Cookie TTL default — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Does not affect the strip policy itself.
+- ⚠️ Whether A8.net uses additional click-tracking params beyond the `a8` family (e.g. `a8mat` echoed onto the landing, partner subID echoes) — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**.
+
+---
+
+## Rakuten Advertising (LinkShare)
+
+**Surface**
+
+- Redirect host: `click.linksynergy.com`. NOT in `OPAQUE_NETWORKS` today — instead handled via the wrapper engine ([`src/vendor/caps-spec/wrappers.json:70-75`](../src/vendor/caps-spec/wrappers.json)) which extracts the destination from the `murl=` param via DNR/regex. Bounce-state-cleaner also targets `click.linksynergy.com` ([`bounce-state-cleaner.js:68`](../src/content/bounce-state-cleaner.js)).
+- Merchant landing: large US/global retailers — Macy's, Walmart (some regions), Lego, Sephora, Nordstrom, plus the entire Rakuten Ichiba ecosystem and many travel brands.
+- Endpoint shape: `https://click.linksynergy.com/deeplink?id=<11-char-pub-id>&mid=<merchant-id>&murl=<encoded merchant URL>[&subid=...]` or `/fs-bin/click?id=<...>&offerid=<...>&type=3&subid=...`.
+
+**Click flow**
+
+1. User clicks Rakuten/LinkShare-wrapped link.
+2. Browser hits `click.linksynergy.com`. The publisher's 11-char `id=` is what Rakuten reads to identify the affiliate.
+3. Rakuten logs the click and issues a 30x to the merchant landing URL.
+4. Browser is redirected with `ranMID=<merchant-id>` and `ranSiteID=<site-id>` appended (Rakuten echoes the merchant ID for the merchant's tag to consume; `ranEAID` is the encrypted account/affiliate ID).
+5. Merchant's Rakuten Advertising tag reads the `ran*` params on landing and stores them in a **first-party cookie on the merchant's domain**.
+6. At checkout, the merchant's conversion tag reads the cookie and posts the conversion back to Rakuten.
+
+**Attribution mechanism**
+
+Standard merchant-tag pattern. The `id=` in the redirect URL is the publisher identifier (load-bearing for attribution but lives in the redirect URL, not on the landing). The `ranMID` / `ranSiteID` / `ranEAID` params on the landing page are how the merchant's tag knows it came from Rakuten and which publisher to credit. Rakuten pushes S2S as the ITP-resilient alternative.
+
+Source: [LinkShare overview (Rakuten Advertising)](https://rakutenadvertising.com/content/linkshare/), [Tracking Links and Landing Page URLs (Rakuten Publisher Help)](https://pubhelp.rakutenadvertising.com/hc/en-us/articles/6890984802189-Tracking-Links-and-Landing-Page-URLs), [Understand Tracking Technology (Rakuten Publisher Help)](https://pubhelp.rakutenadvertising.com/hc/en-us/articles/14927247605517-Understand-Tracking-Technology), [Rakuten server-to-server tracking guide (Stape)](https://stape.io/blog/rakuten-server-to-server-tracking). All fetched 2026-05-24.
+
+**Cookie TTL / lookback window**
+
+- **Advertiser-configured per program**. Rakuten retail merchants typically run 7–45 day windows. Travel merchants commonly longer (60–90 days).
+- Last-click attribution by default.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `ranMID` (case-insensitive) | **required-at-landing** | Rakuten merchant ID echoed for the merchant tag. Currently in MUGA's [`affiliates.js:108`](../src/lib/affiliates.js) as `"ranmid"` (lowercase) — MUST be removed from universal strip in [#655](https://github.com/yocreoquesi/muga/issues/655). |
+| `ranSiteID` (case-insensitive) | **required-at-landing** | Rakuten site ID. Currently in `affiliates.js:108` as `"ransiteid"`. Same handling. |
+| `ranEAID` (case-insensitive) | **required-at-landing** | Encrypted account/affiliate ID. Currently in `affiliates.js:108` as `"raneaid"`. Same handling. |
+| `murl` (in click.linksynergy.com URL) | n/a (redirect-internal) | Destination encoded in the redirect URL itself. |
+| `id` (in click.linksynergy.com URL) | n/a (redirect-internal) | Publisher's 11-char ID in the redirect URL. |
+| `mid`, `offerid`, `subid` (in redirect URL) | n/a (redirect-internal) | Redirect-only context. |
+
+**Recommended cleaner policy**
+
+```
+hostname is any merchant domain
+  AND document.referrer.hostname is click.linksynergy.com
+  → preserve ranMID, ranSiteID, ranEAID (case-insensitive match) on this document
+  → safe-to-strip on subsequent same-site navigations
+```
+
+**Surface inversions required**:
+- `click.linksynergy.com` must move OUT of the wrapper engine (which extracts `murl=` and unwraps client-side) and INTO `AFFILIATE_REDIRECT_NETWORKS` as a pass-through. The DNR wrapper rule (`tests/e2e/dnr-wrapper-rules.spec.mjs:90-92`) must be retired or inverted.
+- The bounce-state-cleaner detection at [`bounce-state-cleaner.js:68`](../src/content/bounce-state-cleaner.js) must invert (no bounce cleaning for linksynergy).
+
+**Verification status**
+
+- ✅ `click.linksynergy.com` redirect host shape — confirmed by MUGA codebase + Rakuten's own help docs.
+- ✅ `ranMID` / `ranSiteID` / `ranEAID` are the canonical landing-page tracking family — confirmed by Rakuten publisher help.
+- ✅ 11-char `id=` is the publisher identifier in the redirect URL — confirmed.
+- ⚠️ Strict requirement of all three `ran*` params at landing vs. only `ranMID` — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Conservative preserve.
+- ⚠️ Case-sensitivity of the merchant tag's URL parsing — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Rakuten's docs show `ranMID` (camelCase); MUGA's `TRACKING_PARAMS` uses `ranmid` (lowercase) and applies `param.toLowerCase()` comparison. Safe by inspection but worth a harness test.
+
+---
+
+## TradeTracker
+
+**Surface**
+
+- Redirect host: `tc.tradetracker.net` (Tracker Cluster). NOT in `OPAQUE_NETWORKS` today — bounce-state-cleaner targets it ([`bounce-state-cleaner.js:69`](../src/content/bounce-state-cleaner.js)), and the wrapper engine has a corresponding entry ([`src/vendor/caps-spec/wrappers.json:128`](../src/vendor/caps-spec/wrappers.json)).
+- TradeTracker is Europe-only. Merchants tend to be European retailers and SaaS: Lyca Mobile, Bol.com (NL), Just Eat (regional), various European travel/finance.
+- Endpoint shape: `https://tc.tradetracker.net/?c=<campaign>&m=<merchant>&a=<affiliate-id>&u=<encoded dest>[&r=<reference>]`.
+
+**Click flow**
+
+1. User clicks TradeTracker-wrapped link.
+2. Browser hits `tc.tradetracker.net`. TradeTracker logs the click, sets a cookie on the tradetracker.net domain (ITP-vulnerable), and issues a 30x to the merchant landing.
+3. Browser is redirected with TradeTracker's tracking params appended (`ttaid`, `ttrk`, `ttcid` family).
+4. Merchant's TradeTracker integration reads the params on landing and stores them in a **first-party cookie on the merchant's domain**.
+5. At conversion, merchant's conversion pixel reads the cookie and posts back to TradeTracker.
+
+**Attribution mechanism**
+
+Standard merchant-tag pattern. TradeTracker also offers "Real Attribution" as an alternative model that rewards all touchpoints in the conversion path (linear/position-based) rather than last-click. The underlying landing-param mechanism is the same; only the attribution accounting differs.
+
+Source: [TradeTracker GB homepage](https://tradetracker.com/gb/), [TradeTracker Cookie Policy](https://tradetracker.com/gb/cookie-policy/), [Real Attribution Insights](https://tradetracker.com/us/real-attribution-insights-attribution-window/), [TradeTracker via Lightspeed eCom integration docs](https://ecom-support.lightspeedhq.com/hc/en-us/articles/360014464674-TradeTracker). All fetched 2026-05-24.
+
+**Cookie TTL / lookback window**
+
+- **Advertiser-configured per program**. Public docs do not state a default. Regional norm for European networks is 30 days for retail.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `ttaid` | **required-at-landing** | TradeTracker affiliate ID echoed for merchant tag. Currently in [`affiliates.js:111`](../src/lib/affiliates.js) — MUST be removed from universal strip in [#655](https://github.com/yocreoquesi/muga/issues/655). |
+| `ttrk` | **required-at-landing** | TradeTracker reference/click. Currently in `affiliates.js:111`. Same handling. |
+| `ttcid` | **required-at-landing** | TradeTracker campaign/click ID. Currently in `affiliates.js:111`. Same handling. |
+| `c`, `m`, `a`, `u`, `r` (in tc.tradetracker.net URL) | n/a (redirect-internal) | Redirect-only context. |
+
+**Recommended cleaner policy**
+
+```
+hostname is any merchant domain
+  AND document.referrer.hostname is tc.tradetracker.net
+  → preserve ttaid, ttrk, ttcid on this document
+  → safe-to-strip on subsequent same-site navigations
+```
+
+**Surface inversion**: same as Rakuten — `tc.tradetracker.net` moves out of the wrapper engine and INTO `AFFILIATE_REDIRECT_NETWORKS` as pass-through; bounce-state-cleaner detection inverts.
+
+**Verification status**
+
+- ✅ `tc.tradetracker.net` redirect host — confirmed by MUGA codebase (bounce-state + caps-spec wrapper entry).
+- ⚠️ All param verdicts — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. TradeTracker's public docs are marketing-grade. Conservative preserve applies.
+- ⚠️ Real Attribution model interaction with the matrix policy — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Likely no impact (the landing-param mechanism is unchanged), but worth confirming.
+
+---
+
+## Known-unknowns flagged for follow-up
+
+These networks are referenced in MUGA's codebase but were NOT bundled into the tier-1/2/3 classification and therefore do not have full matrix sections in v1.0. They become follow-up issues if observed in the wild:
+
+- **Tradedoubler** — params `tduid` ([`affiliates.js:64`](../src/lib/affiliates.js)) and redirect host `clk.tradedoubler.com` ([`src/content/cleaner.js:909`](../src/content/cleaner.js)) handled via `?url=` unwrap. Same surface-inversion category as the other tier-3 networks under 2.1 (pass-through, preserve `tduid` at landing).
+- **ShareASale** — wrapper engine handles `shareasale.com/?urllink=` unwrap (CHANGELOG.md:488). No specific params currently in `TRACKING_PARAMS`. Treat as the standard pattern until observed otherwise.
+- **VigLink** — `redirect.viglink.com/?u=` unwrap (CHANGELOG.md:488). Similar story.
+
+These three should get matrix entries in the next quarterly review or sooner if any of them surface a creator-payout regression during the 2.1 rollout.
+
+---
+
 ## Quarterly review checklist
 
 To run at the **2026-08-24** review (and every quarter after):
@@ -447,10 +631,10 @@ To run at the **2026-08-24** review (and every quarter after):
 4. Spot-check 5 random creator-affiliate flows in real browsers (one per tier-1 network, one through an aggregator like CJ-AliExpress, one fresh-discovery). Documented in the next QA report under `docs/qa/`.
 5. Update **Last updated** and **Next quarterly review** at the top of this file. Commit the diff as `docs: q3 review of affiliate networks matrix (#<issue>)`.
 
-## Out of scope for v0.1
+## Out of scope for v1.0
 
-- **Tier-3 networks** (A8.net, Rakuten/LinkShare, TradeTracker) — covered by [#648](https://github.com/yocreoquesi/muga/issues/648).
 - **The non-redirect direct-injection programs** (Amazon Associates, eBay Partner Network, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) — these use simple `?tag=` injection, are already handled correctly by `AFFILIATE_PATTERNS`, and are not affected by the 2.1 pivot.
+- **Tradedoubler, ShareASale, VigLink** — flagged in the "Known-unknowns" section above. Become matrix entries in the next quarterly review or on first observed payout regression.
 - **MUGA's own affiliate partnerships** with redirect networks — explicitly out of scope per ADR-0002. The matrix describes how to preserve **creator** attribution; MUGA opening its own AliExpress / CJ / Awin accounts is a 2.2+ roadmap question.
 
 ## References
@@ -496,6 +680,24 @@ Fetched 2026-05-24 unless otherwise noted.
 - [Admitad Academy — Attribution model and cookies (publishers)](https://academy.affiliate.admitad.com/en/publishers/attribution-and-cookies)
 - [Admitad Academy — Order tracking and attribution (advertisers)](https://academy.affiliate.admitad.com/en/advertisers/tracking)
 
+**A8.net (Japan)**
+- [A8.net About page](https://www.a8.net/en/about/)
+- [A8.net Advertiser overview](https://www.a8.net/en/whya8/)
+- [Halfmoon Japan ASP comparison guide](https://www.halfmoon.co.jp/en/news/japan-asp-platform-comparison)
+
+**Rakuten Advertising (LinkShare)**
+- [LinkShare overview (Rakuten Advertising)](https://rakutenadvertising.com/content/linkshare/)
+- [Tracking Links and Landing Page URLs (Publisher Help)](https://pubhelp.rakutenadvertising.com/hc/en-us/articles/6890984802189-Tracking-Links-and-Landing-Page-URLs)
+- [Understand Tracking Technology (Publisher Help)](https://pubhelp.rakutenadvertising.com/hc/en-us/articles/14927247605517-Understand-Tracking-Technology)
+- [Rakuten server-to-server tracking (Stape)](https://stape.io/blog/rakuten-server-to-server-tracking)
+- [Rakuten LinkShare tracker profile (WhoTracks.Me / Ghostery)](https://whotracks.me/trackers/linksynergy.com.html)
+
+**TradeTracker**
+- [TradeTracker GB homepage](https://tradetracker.com/gb/)
+- [TradeTracker Cookie Policy](https://tradetracker.com/gb/cookie-policy/)
+- [Real Attribution Insights](https://tradetracker.com/us/real-attribution-insights-attribution-window/)
+- [TradeTracker via Lightspeed eCom integration docs](https://ecom-support.lightspeedhq.com/hc/en-us/articles/360014464674-TradeTracker)
+
 **Internal codebase signals**
 - [`src/lib/opaque-networks.js`](../src/lib/opaque-networks.js) — current redirect host list and per-host source comments
 - [`src/lib/affiliates.js`](../src/lib/affiliates.js) — TRACKING_PARAMS with per-param notes
@@ -506,3 +708,6 @@ Fetched 2026-05-24 unless otherwise noted.
 - [`src/content/bounce-state-cleaner.js:80`](../src/content/bounce-state-cleaner.js) — current `*.pxf.io` bounce-state cleaning (MUST invert for 2.1)
 - [`tests/e2e/redirect-unwrap-merged.spec.mjs`](../tests/e2e/redirect-unwrap-merged.spec.mjs) — existing Awin/ShareASale unwrap tests (to be repurposed or retired under [#658](https://github.com/yocreoquesi/muga/issues/658))
 - [`tests/unit/redirect-unwrap.test.mjs:587-594`](../tests/unit/redirect-unwrap.test.mjs) — current Admitad/alitems.com unwrap tests (MUST be inverted to assert pass-through under 2.1)
+- [`src/content/bounce-state-cleaner.js:68-69`](../src/content/bounce-state-cleaner.js) — current `click.linksynergy.com` and `tc.tradetracker.net` bounce-state targets (MUST invert under 2.1)
+- [`tests/e2e/dnr-wrapper-rules.spec.mjs:90-92`](../tests/e2e/dnr-wrapper-rules.spec.mjs) — current Rakuten LinkSynergy DNR wrapper-unwrap test (MUST be retired or inverted under 2.1)
+- [`src/content/cleaner.js:909`](../src/content/cleaner.js) — current `clk.tradedoubler.com` `?url=` unwrap mapping (Tradedoubler — known-unknown; same surface-inversion category)
