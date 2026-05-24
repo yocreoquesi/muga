@@ -591,36 +591,39 @@
     }
   }
 
-  // B20 (#453): Proxy CTA toast strings — kept inline because content scripts
-  // cannot import ES modules. EN/ES required; PT/DE: FIXME stubs.
+  // B20 (#453): URL Unwrapper CTA toast strings (formerly "Privacy Proxy",
+  // renamed in #658 as part of the 2.1 denoise pivot). Kept inline because
+  // content scripts cannot import ES modules. The i18n key names are
+  // intentionally NOT renamed to keep PR diff minimal and avoid touching
+  // the content-bundle interface.
   const PROXY_CTA_STRINGS = {
     en: {
-      enable_privacy_proxy_cta: "Enable Privacy Proxy",
-      proxy_auto_disabled: "Privacy Proxy auto-disabled: permission was revoked.",
+      enable_privacy_proxy_cta: "Enable URL Unwrapper",
+      proxy_auto_disabled: "URL Unwrapper auto-disabled: permission was revoked.",
     },
     es: {
-      enable_privacy_proxy_cta: "Activar Proxy de Privacidad",
-      proxy_auto_disabled: "Proxy de Privacidad desactivado automáticamente: el permiso fue revocado.",
+      enable_privacy_proxy_cta: "Activar Desempaquetador de URL",
+      proxy_auto_disabled: "Desempaquetador de URL desactivado automáticamente: el permiso fue revocado.",
     },
     pt: {
-      enable_privacy_proxy_cta: "FIXME: translate",
-      proxy_auto_disabled: "FIXME: translate",
+      enable_privacy_proxy_cta: "Ativar Desempacotador de URL",
+      proxy_auto_disabled: "Desempacotador de URL desativado automaticamente: a permissão foi revogada.",
     },
     de: {
-      enable_privacy_proxy_cta: "FIXME: translate",
-      proxy_auto_disabled: "FIXME: translate",
+      enable_privacy_proxy_cta: "URL Unwrapper aktivieren",
+      proxy_auto_disabled: "URL Unwrapper automatisch deaktiviert: Berechtigung wurde widerrufen.",
     },
   };
   const PROXY_SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1 };
 
   /**
-   * Shows a non-intrusive toast for Privacy Proxy CTA.
+   * Shows a non-intrusive toast for URL Unwrapper CTA.
    *
    * Variants:
    *   "auto_disabled" — feature was auto-disabled after permission revocation.
    *                     Shows an informational message only.
    *   "enable_cta"    — user is on an opaque-network URL with feature off.
-   *                     Shows an "Enable Privacy Proxy" button.
+   *                     Shows an "Enable URL Unwrapper" button.
    *
    * @param {string} [variant="enable_cta"] - Toast variant
    * @param {string} [lang="en"]            - UI language
