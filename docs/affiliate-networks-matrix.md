@@ -1,6 +1,6 @@
 # Affiliate networks attribution matrix
 
-**Version**: v0 (tier-1 only)
+**Version**: v0.1 (tier-1 + tier-2)
 **Last updated**: 2026-05-24
 **Next quarterly review**: 2026-08-24
 **Owner**: Antonio Rodriguez ([@yocreoquesi](https://github.com/yocreoquesi))
@@ -247,6 +247,196 @@ A second policy branch covers AliExpress arriving through CJ/Awin/Admitad: in th
 
 ---
 
+## Impact Radius (impact.com)
+
+**Surface**
+
+- Redirect host pattern: `*.pxf.io` — Impact assigns brand-specific subdomains (`gohealth.pxf.io`, `target.pxf.io`, `walmart.pxf.io`, etc.). The apex `pxf.io` itself is not used as a redirect endpoint.
+- Merchant landing: any Impact-onboarded advertiser. Notable advertisers known to be on Impact: Walmart, Target, Adidas, Uber, Airbnb, McAfee. Humble Bundle migrated to Impact when its direct affiliate program was deprecated (see `src/vendor/caps-spec/manifest.json` deprecation note).
+- Endpoint shape: `<brand>.pxf.io/c/<click-id>/<advertiser-id>/<...>?subId1=<pubref>&...`. Path-encoded rather than purely query-string.
+- **Today MUGA treats `*.pxf.io` as a wrapper for unwrapping** via `src/content/bounce-state-cleaner.js` and the caps-spec `impact-radius` wrapper entry. Under 2.1 this MUST flip: `*.pxf.io` joins `AFFILIATE_REDIRECT_NETWORKS` and is passed through.
+
+**Click flow**
+
+1. User clicks publisher's Impact-wrapped link, e.g. `target.pxf.io/c/3456789/abc/<payload>`.
+2. Browser hits the brand-subdomain on `*.pxf.io`.
+3. Impact's edge logs the click, fingerprints the device, and issues a 30x redirect.
+4. Browser is redirected to the merchant landing URL with `?irclickid=<click-id>` (and sometimes `irgwc`, `ir_adid`, `ir_campaignid`, `ir_partnerid`, `iclid`) appended.
+5. Merchant's site reads `irclickid` from the URL and stores it in a **first-party cookie or `localStorage` on the merchant's domain**. Impact's third-party guidance explicitly recommends this pattern for ITP resilience.
+6. At checkout, the merchant's pixel (server-side postback or client-side tag) reads the stored `irclickid` and posts the conversion back to Impact.
+
+**Attribution mechanism**
+
+Same family as Awin / CJ — load-bearing piece is the merchant's first-party storage populated from `irclickid` at landing. Impact heavily promotes server-side postbacks ("S2S") as the ITP-resilient default. Either way, `irclickid` must reach the merchant page once.
+
+Source: [Impact + AnyTrack integration docs](https://anytrack.io/integrations/affiliate-networks/impact), [GA4Addon audit on irclickid attribution](https://www.ga4addon.com/google-analytics-audit/irclickid-should-be-affiliate), [Impact Postback URL docs (AnyTrack)](https://docs.anytrack.io/affiliate-networks-integrations/impact). Cross-referenced with [impact.com's "Tracking Link Parameters Explained" help article](https://help.impact.com/en/support/solutions/articles/155000000123-tracking-link-parameters-explained). All fetched 2026-05-24.
+
+**Cookie TTL / lookback window**
+
+- **Advertiser-configured per program**. Impact does not publish a default. Industry norm is 30 days for retail; longer for high-consideration (travel, SaaS).
+- Last-click attribution by default.
+- Impact pushes hybrid models (postback + tag) so the same conversion is double-tracked for resilience.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `irclickid` | **required-at-landing** | Primary click ID. Merchant tag/postback reads this from the URL on landing. Currently in `TRACKING_PARAMS` ([`affiliates.js:325`](../src/lib/affiliates.js)) — MUST be removed from universal strip in [#655](https://github.com/yocreoquesi/muga/issues/655). |
+| `irgwc` | **required-at-landing** | Older / alternate click ID form. Currently in `TRACKING_PARAMS` ([`affiliates.js:62`](../src/lib/affiliates.js)). Same handling. |
+| `iclid` | **required-at-landing** | Variant click ID seen in some integrations. Currently in `TRACKING_PARAMS` ([`affiliates.js:406`](../src/lib/affiliates.js)). Same handling on conservative bias. |
+| `ir_adid` | `cookie-only` | Ad ID, analytics. Not consumed by attribution tag. Safe to strip post-landing. |
+| `ir_campaignid` | `cookie-only` | Campaign ID, analytics. Safe to strip post-landing. |
+| `ir_partnerid` | `cookie-only` | Partner ID — already encoded in the click; redundant on the landing. Safe to strip post-landing. |
+
+**Recommended cleaner policy**
+
+```
+hostname is any merchant domain
+  AND document.referrer.hostname matches /\.pxf\.io$/
+  → preserve irclickid, irgwc, iclid on this document
+  → safe-to-strip on subsequent same-site navigations
+ir_adid, ir_campaignid, ir_partnerid → strippable always (analytics, not load-bearing)
+```
+
+Note that under 2.0, `src/content/bounce-state-cleaner.js` actively detects `*.pxf.io` for unwrap-cleaning. That detection must invert under 2.1 — Impact subdomains become "pass through, do not unwrap, do not bounce-clean".
+
+**Verification status**
+
+- ✅ Domain pattern `*.pxf.io` — confirmed by Impact's own customer integrations and multiple third-party tools.
+- ✅ `irclickid` is the canonical click ID and is required on the landing URL — confirmed by Impact integration docs.
+- ⚠️ Whether `irgwc` and `iclid` are interchangeable with `irclickid` or carry distinct semantics — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Conservative treatment as required-at-landing.
+- ⚠️ Exact cookie TTL across advertiser tiers — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Industry norm assumed; the matrix entry does not depend on the exact TTL — only on the "preserve at landing" verdict.
+- ⚠️ Whether `ir_*` params can be safely stripped on first landing or whether they're consumed by the conversion postback — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Current entry treats them as analytics-only (safe-to-strip); harness should specifically test this.
+
+---
+
+## Partnerize (Performance Horizon)
+
+**Surface**
+
+- Redirect host: `prf.hn`. Currently in `OPAQUE_NETWORKS` ([`opaque-networks.js:51`](../src/lib/opaque-networks.js)) with the comment "opaque path — no client-side extractor" and resolved server-side via the Worker HEAD chain (PR-04).
+- Merchant landing: any Partnerize-onboarded advertiser. Notable advertisers known to use Partnerize: Apple (Apple Performance Partners is curated; some regional Apple Services partnerships flow through Partnerize), British Airways, Expedia Partner Solutions (Vrbo), John Lewis, etc.
+- Endpoint shape: `https://prf.hn/click/camref:<camref>[?adref=...]` (`camref` = campaign reference, `adref` = optional ad-creative reference). Deep links can be passed via `destination` or as URL path encoding.
+
+**Click flow**
+
+1. User clicks publisher's Partnerize link, e.g. `prf.hn/click/camref:1011lABCD`.
+2. Browser hits `prf.hn`. Partnerize logs the click and issues a 30x redirect (the destination is opaque from the URL — Partnerize stores it server-side keyed by `camref` and the publisher's pre-configured destination).
+3. Browser is redirected to the merchant landing URL with `?clickref=<click-id>` appended (in some legacy integrations also `pubref` and `adref` echoes).
+4. Merchant's "Partnerize Tag" (first-party JS) reads `clickref` from the URL and stores it in a **first-party cookie on the merchant's domain**.
+5. At checkout, the Partnerize Tag reads `clickref` from the first-party cookie and fires the conversion pixel.
+
+**Attribution mechanism**
+
+Explicit and well-documented. From Partnerize's own docs: "Partnerize's first party tracking relies on a click ID (clickref) being stored either client or server side as a 1st party cookie. If the clickref isn't stored, then in most cases, Partnerize is unable to attribute the conversion to a click and the sale won't be attributed."
+
+This is the cleanest documented confirmation of the pattern across the entire matrix. **`clickref` MUST be present on the landing URL.** Stripping it before the Partnerize Tag fires kills 100% of attribution.
+
+Source: [Partnerize Tag First Party Integration (PHG Help)](https://help.phgsupport.com/hc/en-us/articles/360020029897-Tracking-Partnerize-Tag-First-Party-Integration), [Partnerize Clickref Pixel Integration (PHG Help)](https://help.phgsupport.com/hc/en-us/articles/4834811308957-Tracking-Partnerize-Clickref-Pixel-Integration), [Partnerize tracking platform](https://partnerize.com/platform/track), [Vrbo Partnerize Linking Guide](https://cdn.expediapartnersolutions.com/ean-rapid-site/Vrbo_Partnerize_Linking_Guide.pdf?mtime=20221123154015). All fetched 2026-05-24.
+
+**Cookie TTL / lookback window**
+
+- **Advertiser-configured per program**. Partnerize does not publish a default. Apple and major retailers commonly run 7–30 day windows.
+- Last-click attribution by default. Partnerize supports linear, position-based, and custom models for advertisers who opt in.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `clickref` | **required-at-landing** | Primary click ID. The Partnerize Tag reads this on landing to populate the first-party cookie. NOT currently in `TRACKING_PARAMS` — but also not yet in `AFFILIATE_PATTERNS` for preservation; gap to close in [#654](https://github.com/yocreoquesi/muga/issues/654). |
+| `pubref` | **required-at-landing** | Publisher reference echoed by Partnerize. Used by the merchant tag in some integrations to disambiguate publishers within a campaign. Conservative preserve. |
+| `adref` | **required-at-landing** | Ad/creative reference. Less load-bearing than `clickref` but still consumed by the Partnerize Tag in some integrations. Conservative preserve. |
+| `camref` (in prf.hn URL) | n/a (redirect-internal) | Campaign reference in the redirect URL itself, not on the landing page. |
+| `destination` (in prf.hn URL) | n/a (redirect-internal) | Override destination param. Same. |
+
+**Recommended cleaner policy**
+
+```
+hostname is any merchant domain
+  AND document.referrer.hostname is prf.hn
+  → preserve clickref, pubref, adref on this document
+  → safe-to-strip on subsequent same-site navigations
+```
+
+**Server-side implication for `unwrap.muga.app`**: today the Worker resolves `prf.hn` via HEAD chain (server-side unwrap). Under 2.1 this MUST stop — `prf.hn` joins `AFFILIATE_REDIRECT_NETWORKS` and is removed from the Worker's accepted host list (covered by [#659](https://github.com/yocreoquesi/muga/issues/659)).
+
+**Verification status**
+
+- ✅ `clickref` is the canonical click ID and is required at landing — **explicitly documented by Partnerize themselves**, strongest verification in the entire matrix.
+- ✅ `prf.hn` is the redirect domain — confirmed in MUGA codebase and Partnerize docs.
+- ✅ The merchant tag pattern (first-party cookie populated from `clickref`) — confirmed by Partnerize first-party tracking guide.
+- ⚠️ Strictness of `pubref` / `adref` requirement — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Conservative treatment as required-at-landing.
+- ⚠️ Default cookie TTL per advertiser tier — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Does not affect the strip policy.
+
+---
+
+## Admitad
+
+**Surface**
+
+- Redirect host: `ad.admitad.com`. Currently in `OPAQUE_NETWORKS` ([`opaque-networks.js:44`](../src/lib/opaque-networks.js)) and **actively unwrapped** today via `?ulp=<encoded URL>` in `src/content/cleaner.js:906` and the redirect-unwrap tests.
+- Admitad also operates `alitems.com` (specifically routes AliExpress affiliate links — Admitad has historical depth in CIS-market AliExpress affiliate flows). Today MUGA unwraps `alitems.com?ulp=` too.
+- Merchant landing: any Admitad-onboarded advertiser. Admitad's core market is CIS (Russia, Belarus, Kazakhstan, Ukraine pre-2022) plus broader Eastern Europe and increasing global coverage. Many AliExpress / GearBest / large-Chinese-marketplace flows route through Admitad.
+- Endpoint shape: `https://ad.admitad.com/g/<promo-id>/?ulp=<encoded merchant URL>[&subid=...]`. Destination is in `ulp`.
+
+**Click flow**
+
+1. User clicks publisher's Admitad-wrapped link.
+2. Browser hits `ad.admitad.com/g/<promo-id>/?ulp=<destination>`.
+3. Admitad's edge logs the click and issues a 30x redirect.
+4. Browser is redirected to the merchant landing URL with `?admitad_uid=<click-id>` (and sometimes `tagtag_uid`, `htag`, `iom_publisher_id` echoes) appended.
+5. Merchant's site (Admitad-provided integration JS or server-side script) reads `admitad_uid` from the URL and stores it in a **first-party cookie on the merchant's domain**.
+6. At conversion, the advertiser's order-confirmation tag checks for `admitad_uid` in the cookie. If present, the conversion is attributed to the click; the advertiser pings Admitad's S2S endpoint with the order details + `admitad_uid`.
+
+**Attribution mechanism**
+
+Explicit from Admitad's own academy: "admitad_uid is a unique click identifier... When a user clicks a publisher's affiliate link and goes to the advertiser's website, a cookie with admitad_uid value is recorded in their browser... When the user performs an action and goes to the thank you page, the advertiser system checks if the user's browser has admitad_uid."
+
+**`admitad_uid` MUST be present on the landing URL** for the merchant integration to capture it into the cookie. Stripping it kills attribution.
+
+Source: [Admitad Partner Network glossary (Mitgo support)](https://support.admitad.com/hc/en-us/articles/4403304880529-Admitad-Affiliate-glossary), [Admitad Academy — Attribution model and cookies (publishers)](https://academy.affiliate.admitad.com/en/publishers/attribution-and-cookies), [Admitad Academy — Order tracking and attribution (advertisers)](https://academy.affiliate.admitad.com/en/advertisers/tracking). All fetched 2026-05-24.
+
+**Cookie TTL / lookback window**
+
+- **Advertiser-configured per program**, range **1 to 365 days** (officially documented).
+- Last-click / "last paid click" attribution by default.
+- Cookie can be invalidated by: expiration, a subsequent click through another affiliate link, or completion of a target action.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `admitad_uid` | **required-at-landing** | Primary click ID. Merchant integration reads this on landing to populate the first-party cookie. Currently in `TRACKING_PARAMS` ([`affiliates.js:365`](../src/lib/affiliates.js)) — MUST be removed from universal strip in [#655](https://github.com/yocreoquesi/muga/issues/655). |
+| `tagtag_uid` | **required-at-landing** | Alternate ID used in some Admitad integrations (CIS-region in particular). Conservative preserve. |
+| `htag` | `cookie-only` | Publisher hash-tag, analytics. Safe to strip post-landing. |
+| `iom_publisher_id` | `cookie-only` | Publisher ID echoed from redirect. Analytics-only. |
+| `ulp` (in ad.admitad.com URL) | n/a (redirect-internal) | Destination encoded in the redirect URL itself. |
+| `subid` (in ad.admitad.com URL) | n/a (redirect-internal) | Sub-publisher ID encoded in the redirect URL. |
+
+**Recommended cleaner policy**
+
+```
+hostname is any merchant domain
+  AND (document.referrer.hostname is ad.admitad.com
+       OR document.referrer.hostname is alitems.com)
+  → preserve admitad_uid and tagtag_uid on this document
+  → safe-to-strip on subsequent same-site navigations
+htag, iom_publisher_id → strippable always (analytics, not load-bearing)
+```
+
+**Server-side and client-side implication**: under 2.0 MUGA actively unwraps `ad.admitad.com` and `alitems.com` via `?ulp=` (both `src/content/cleaner.js:906` and `tests/unit/redirect-unwrap.test.mjs:587-594`). Under 2.1 this MUST flip — both hosts join `AFFILIATE_REDIRECT_NETWORKS`, the `?ulp=` unwrap path is removed for these domains, and the redirect-unwrap tests are updated to assert pass-through behavior instead.
+
+**Verification status**
+
+- ✅ `admitad_uid` is the canonical click ID and is required at landing — **explicitly documented by Admitad's own academy**, strong verification.
+- ✅ Cookie window 1-365 days advertiser-configured — confirmed by Admitad academy.
+- ✅ Last-click attribution model — confirmed.
+- ✅ The merchant tag pattern (first-party cookie populated from `admitad_uid`) — confirmed by Admitad advertiser tracking docs.
+- ⚠️ Whether `tagtag_uid` carries attribution weight or is analytics-only — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Conservative preserve.
+- ⚠️ `alitems.com` exact landing-param shape (likely same as `ad.admitad.com` since both are Admitad infrastructure) — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**.
+
+---
+
 ## Quarterly review checklist
 
 To run at the **2026-08-24** review (and every quarter after):
@@ -257,9 +447,8 @@ To run at the **2026-08-24** review (and every quarter after):
 4. Spot-check 5 random creator-affiliate flows in real browsers (one per tier-1 network, one through an aggregator like CJ-AliExpress, one fresh-discovery). Documented in the next QA report under `docs/qa/`.
 5. Update **Last updated** and **Next quarterly review** at the top of this file. Commit the diff as `docs: q3 review of affiliate networks matrix (#<issue>)`.
 
-## Out of scope for v0
+## Out of scope for v0.1
 
-- **Tier-2 networks** (Impact Radius, Partnerize, Admitad) — covered by [#647](https://github.com/yocreoquesi/muga/issues/647).
 - **Tier-3 networks** (A8.net, Rakuten/LinkShare, TradeTracker) — covered by [#648](https://github.com/yocreoquesi/muga/issues/648).
 - **The non-redirect direct-injection programs** (Amazon Associates, eBay Partner Network, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) — these use simple `?tag=` injection, are already handled correctly by `AFFILIATE_PATTERNS`, and are not affected by the 2.1 pivot.
 - **MUGA's own affiliate partnerships** with redirect networks — explicitly out of scope per ADR-0002. The matrix describes how to preserve **creator** attribution; MUGA opening its own AliExpress / CJ / Awin accounts is a 2.2+ roadmap question.
@@ -288,9 +477,32 @@ Fetched 2026-05-24 unless otherwise noted.
 - [AliExpress Affiliate Program Review & Details (AFFCaptain)](https://affcaptain.com/affiliate-program/aliexpress-affiliate-program/)
 - [How to Start AliExpress Affiliate Marketing 2026 (Afflow)](https://afflow.co/blog/start-aliexpress-affiliate)
 
+**Impact Radius (impact.com)**
+- [Impact + AnyTrack integration docs](https://anytrack.io/integrations/affiliate-networks/impact)
+- [GA4Addon audit on irclickid attribution](https://www.ga4addon.com/google-analytics-audit/irclickid-should-be-affiliate)
+- [Impact Postback URL docs (AnyTrack)](https://docs.anytrack.io/affiliate-networks-integrations/impact)
+- [Tracking Link Parameters Explained (impact.com help)](https://help.impact.com/en/support/solutions/articles/155000000123-tracking-link-parameters-explained)
+- [impact.com Cookies Explained](https://help.impact.com/en/support/solutions/articles/48001235676-impact-com-cookies-explained)
+
+**Partnerize (Performance Horizon)**
+- [Tracking : Partnerize Tag First Party Integration (PHG Help)](https://help.phgsupport.com/hc/en-us/articles/360020029897-Tracking-Partnerize-Tag-First-Party-Integration)
+- [Tracking : Partnerize Clickref Pixel Integration (PHG Help)](https://help.phgsupport.com/hc/en-us/articles/4834811308957-Tracking-Partnerize-Clickref-Pixel-Integration)
+- [Partnerize Track platform](https://partnerize.com/platform/track)
+- [Vrbo Partnerize Linking Guide (PDF)](https://cdn.expediapartnersolutions.com/ean-rapid-site/Vrbo_Partnerize_Linking_Guide.pdf?mtime=20221123154015)
+- [Partnerize API (Apiary)](https://performancehorizon.docs.apiary.io/)
+
+**Admitad**
+- [Admitad Partner Network glossary (Mitgo support)](https://support.admitad.com/hc/en-us/articles/4403304880529-Admitad-Affiliate-glossary)
+- [Admitad Academy — Attribution model and cookies (publishers)](https://academy.affiliate.admitad.com/en/publishers/attribution-and-cookies)
+- [Admitad Academy — Order tracking and attribution (advertisers)](https://academy.affiliate.admitad.com/en/advertisers/tracking)
+
 **Internal codebase signals**
 - [`src/lib/opaque-networks.js`](../src/lib/opaque-networks.js) — current redirect host list and per-host source comments
 - [`src/lib/affiliates.js`](../src/lib/affiliates.js) — TRACKING_PARAMS with per-param notes
 - [`src/vendor/caps-spec/wrappers.json`](../src/vendor/caps-spec/wrappers.json) — Awin wrapper rule
-- [`src/vendor/caps-spec/manifest.json`](../src/vendor/caps-spec/manifest.json) — CJ affiliate program entry
+- [`src/vendor/caps-spec/manifest.json`](../src/vendor/caps-spec/manifest.json) — CJ Affiliate and Impact Radius network entries; Humble Bundle deprecation note documents the Impact migration
+- [`src/vendor/caps-spec/wrappers.json`](../src/vendor/caps-spec/wrappers.json) — Awin and Impact Radius (`*.pxf.io`) wrapper regex patterns
+- [`src/content/cleaner.js:906`](../src/content/cleaner.js) — current `ad.admitad.com` `?ulp=` unwrap mapping (MUST be removed for 2.1)
+- [`src/content/bounce-state-cleaner.js:80`](../src/content/bounce-state-cleaner.js) — current `*.pxf.io` bounce-state cleaning (MUST invert for 2.1)
 - [`tests/e2e/redirect-unwrap-merged.spec.mjs`](../tests/e2e/redirect-unwrap-merged.spec.mjs) — existing Awin/ShareASale unwrap tests (to be repurposed or retired under [#658](https://github.com/yocreoquesi/muga/issues/658))
+- [`tests/unit/redirect-unwrap.test.mjs:587-594`](../tests/unit/redirect-unwrap.test.mjs) — current Admitad/alitems.com unwrap tests (MUST be inverted to assert pass-through under 2.1)
