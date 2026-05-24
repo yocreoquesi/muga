@@ -28,7 +28,16 @@ import { detectWrapper, unwrap, WRAPPERS } from "../lib/wrapper-engine.js";
 // redirector-coverage-expansion (T11): expose the single-source opaque-network
 // list and its hostname matcher via the bundle so cleaner.js can delegate to
 // window.__mugaCleaner.isOpaqueNetworkHost instead of carrying an inline replica.
-import { OPAQUE_NETWORKS, isOpaqueNetworkHost } from "../lib/opaque-networks.js";
+// 2.1 denoise pivot (#653): also expose the split buckets (GENERIC_SHORTENERS,
+// AFFILIATE_REDIRECT_NETWORKS) and their helpers so callers can express intent.
+import {
+  OPAQUE_NETWORKS,
+  isOpaqueNetworkHost,
+  GENERIC_SHORTENERS,
+  AFFILIATE_REDIRECT_NETWORKS,
+  isGenericShortener,
+  isAffiliateRedirectNetwork,
+} from "../lib/opaque-networks.js";
 
 // Attach onto the isolated-world window. Content scripts in the same
 // content_scripts entry share a window object; cleaner.js (loaded after
@@ -52,5 +61,9 @@ if (!window.__mugaCleaner) {
     WRAPPERS,
     OPAQUE_NETWORKS,
     isOpaqueNetworkHost,
+    GENERIC_SHORTENERS,
+    AFFILIATE_REDIRECT_NETWORKS,
+    isGenericShortener,
+    isAffiliateRedirectNetwork,
   });
 }

@@ -1,32 +1,79 @@
-/** MUGA: Opaque affiliate networks — wrappers that cannot be unwrapped client-side */
+/** MUGA: Redirect/shortener hosts whose destination is not embedded in the URL */
 //
 // Adding entries here is security-relevant. Goes through proposal review
 // (caps-spec or muga RFC).
 //
-// These are redirect-network intermediaries whose destination URL is NOT
-// embedded in the redirect URL (e.g. stored server-side behind a click ID).
-// Client-side unwrapping is impossible; the Privacy Proxy tier handles them
-// when the user has opted in (privacyProxyEnabled = true).
+// 2.1 denoise pivot (#653): the historical OPAQUE_NETWORKS list is now split
+// into two semantic buckets — generic shorteners (safe to unwrap by design,
+// no attribution at stake) and affiliate redirect networks (attribution
+// belongs to whoever owns the redirect; we must NOT swap a server-side
+// unwrap for the original click). See docs/affiliate-networks-matrix.md
+// (matrix v1.0) for the per-network analysis driving this classification.
 //
-// Source references for each entry:
+// Buckets:
+//
+//   GENERIC_SHORTENERS — third-party URL shorteners with no attribution
+//   contract. Client-side or server-side unwrap is harmless; under 2.1 the
+//   client unwraps these directly when possible and the URL Unwrapper tier
+//   (formerly Privacy Proxy) resolves the rest. See matrix §"Generic
+//   shorteners" and §"Branded shorteners".
+//
+//   AFFILIATE_REDIRECT_NETWORKS — affiliate network intermediaries where
+//   the click itself IS the attribution event. The merchant's first-party
+//   cookie is populated from URL params at the landing page; replacing the
+//   redirect with the canonical destination kills the creator's commission.
+//   Under 2.1 these MUST pass through unchanged. See matrix §"Tier-1",
+//   §"Tier-2", §"Tier-3" per-network "Recommended cleaner policy".
+//
+//   PENDING_VERDICT — entries waiting for a P4.2 (#665) verdict. Kept in
+//   the legacy union to preserve existing behavior until the verdict
+//   lands; do NOT use the new helpers for these.
+//
+// Source references for each entry (cross-linked to matrix sections):
 //   - s.click.aliexpress.com  — AliExpress affiliate click tracker
+//                               (matrix §"AliExpress")
 //   - anrdoezrs.net / dpbolvw.net / jdoqocy.com / kqzyfj.com /
 //     tkqlhce.com / emjcd.com / qksrv.net / cj.dotomi.com
-//       — CJ Affiliate (Commission Junction) redirect domains
-//         (caps-spec manifest.json, program id: cj-affiliate)
-//   - ad.admitad.com — Admitad CPA network
-//   - bit.ly          — Generic URL shortener (redirector-coverage-expansion, PR-02)
-//   - tinyurl.com     — Generic URL shortener (redirector-coverage-expansion, PR-03)
-//   - prf.hn          — Partnerize / Performance Horizon affiliate (redirector-coverage-expansion, PR-04)
-//   - px.a8.net       — A8.net Japan affiliate; px.a8.net confirmed via T00 STANDARD probe
-//   - amzn.to         — Amazon branded shortener; tag= preservation gated via G3/T19
-//   - t.co            — Twitter/X URL shortener; extension-only activation (Worker already accepts via caps-spec)
-//   - link.medium.com — Medium URL shortener; extension-only activation (Worker already accepts via caps-spec)
-//   - lnkd.in         — LinkedIn share tracker; STANDARD probe verdict 2026-05-09 (#607)
-//   - fb.me           — Facebook universal shortener; STANDARD probe verdict 2026-05-09 (#607)
-//   - ebay.to         — eBay branded shortener; STANDARD probe verdict 2026-05-09 (#607)
+//                             — CJ Affiliate (Commission Junction) redirect
+//                               domains (matrix §"CJ Affiliate"; caps-spec
+//                               manifest.json program id: cj-affiliate)
+//   - ad.admitad.com          — Admitad CPA network (matrix §"Admitad")
+//   - prf.hn                  — Partnerize / Performance Horizon affiliate
+//                               (matrix §"Partnerize" — strongest documented
+//                               attribution verdict in the matrix)
+//   - px.a8.net               — A8.net Japan affiliate; px.a8.net confirmed
+//                               via T00 STANDARD probe (matrix §"A8.net")
+//   - bit.ly                  — Generic URL shortener (PR-02)
+//   - tinyurl.com             — Generic URL shortener (PR-03)
+//   - amzn.to                 — Amazon branded shortener; tag= preservation
+//                               gated via G3/T19; bucket verdict pending P4.2
+//   - t.co                    — Twitter/X URL shortener
+//   - link.medium.com         — Medium URL shortener
+//   - lnkd.in                 — LinkedIn share tracker (STANDARD probe #607)
+//   - fb.me                   — Facebook universal shortener (STANDARD probe #607)
+//   - ebay.to                 — eBay branded shortener (STANDARD probe #607)
 
-export const OPAQUE_NETWORKS = Object.freeze([
+/**
+ * Third-party URL shorteners with no affiliate attribution contract.
+ * Safe to unwrap; under 2.1 the URL Unwrapper tier accepts these by default.
+ */
+export const GENERIC_SHORTENERS = Object.freeze([
+  "bit.ly",
+  "tinyurl.com",
+  "t.co",
+  "link.medium.com",
+  "lnkd.in",
+  "fb.me",
+  "ebay.to",
+]);
+
+/**
+ * Affiliate-network redirect intermediaries. The click itself is the
+ * attribution event — the destination must be reached through the network's
+ * redirect, not via client-side unwrap. Under 2.1 these MUST pass through
+ * unchanged (#659 retires the Worker's resolution of these hosts).
+ */
+export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
   // AliExpress affiliate click tracker
   "s.click.aliexpress.com",
 
@@ -43,28 +90,64 @@ export const OPAQUE_NETWORKS = Object.freeze([
   // Admitad CPA network
   "ad.admitad.com",
 
-  // Generic URL shorteners (redirector-coverage-expansion)
-  "bit.ly",
-  "tinyurl.com",
-
-  // Partnerize / Performance Horizon affiliate (opaque path — no client-side extractor)
+  // Partnerize / Performance Horizon
   "prf.hn",
 
   // A8.net Japan affiliate — hostname px.a8.net confirmed STANDARD via T00 probe
   "px.a8.net",
-
-  // Amazon branded shortener — tag= preservation verified via G3 regression test
-  "amzn.to",
-
-  // Extension-only activations: Worker already accepts these via caps-spec buildSpecAllowlist
-  "t.co",
-  "link.medium.com",
-
-  // Branded shorteners (#607 — verified STANDARD via curl probe 2026-05-09; Worker hardcoded entries)
-  "lnkd.in",
-  "fb.me",
-  "ebay.to",
 ]);
+
+/**
+ * Hosts waiting for a P4.2 (#665) bucket verdict. Kept in the legacy
+ * OPAQUE_NETWORKS union for behavior compat; NOT addressed by the new
+ * isGenericShortener / isAffiliateRedirectNetwork helpers.
+ */
+const PENDING_VERDICT = Object.freeze([
+  // Amazon branded shortener — tag= preservation verified via G3 regression test;
+  // bucket assignment pending P4.2 (#665).
+  "amzn.to",
+]);
+
+/**
+ * Legacy union of every redirect/shortener host MUGA recognises. Retained
+ * for backwards compat with existing callers and tests. New code should
+ * prefer the bucket-specific arrays/helpers above so the caller's intent
+ * (shortener vs affiliate redirect) is explicit at the call site.
+ */
+export const OPAQUE_NETWORKS = Object.freeze([
+  ...AFFILIATE_REDIRECT_NETWORKS,
+  ...GENERIC_SHORTENERS,
+  ...PENDING_VERDICT,
+]);
+
+function matches(list, hostname) {
+  if (!hostname) return false;
+  const h = hostname.replace(/^www\./, "");
+  return list.includes(h) || list.includes(hostname);
+}
+
+/**
+ * Returns true when the given hostname is a known generic URL shortener
+ * with no affiliate attribution contract.
+ *
+ * @param {string|null|undefined} hostname
+ * @returns {boolean}
+ */
+export function isGenericShortener(hostname) {
+  return matches(GENERIC_SHORTENERS, hostname);
+}
+
+/**
+ * Returns true when the given hostname is an affiliate-network redirect
+ * intermediary whose click IS the attribution event. Hosts in this set
+ * must NOT be client-side unwrapped under the 2.1 pivot.
+ *
+ * @param {string|null|undefined} hostname
+ * @returns {boolean}
+ */
+export function isAffiliateRedirectNetwork(hostname) {
+  return matches(AFFILIATE_REDIRECT_NETWORKS, hostname);
+}
 
 /**
  * Returns true when the given hostname is a known opaque network host that
@@ -80,7 +163,5 @@ export const OPAQUE_NETWORKS = Object.freeze([
  * @returns {boolean}
  */
 export function isOpaqueNetworkHost(hostname) {
-  if (!hostname) return false;
-  const h = hostname.replace(/^www\./, "");
-  return OPAQUE_NETWORKS.includes(h) || OPAQUE_NETWORKS.includes(hostname);
+  return matches(OPAQUE_NETWORKS, hostname);
 }

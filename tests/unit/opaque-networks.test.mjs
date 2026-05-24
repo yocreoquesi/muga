@@ -6,7 +6,14 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { OPAQUE_NETWORKS } from "../../src/lib/opaque-networks.js";
+import {
+  OPAQUE_NETWORKS,
+  GENERIC_SHORTENERS,
+  AFFILIATE_REDIRECT_NETWORKS,
+  isOpaqueNetworkHost,
+  isGenericShortener,
+  isAffiliateRedirectNetwork,
+} from "../../src/lib/opaque-networks.js";
 
 describe("OPAQUE_NETWORKS — shape and content", () => {
   test("is an array", () => {
@@ -121,5 +128,135 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
       !OPAQUE_NETWORKS.includes("aliexpress.us"),
       "aliexpress.us must NOT be in the list — it's the apex of the .us TLD, not a shortener",
     );
+  });
+});
+
+// 2.1 denoise pivot (#653): semantic split — generic shorteners (no
+// attribution at stake) vs affiliate redirect networks (click IS the
+// attribution event). See docs/affiliate-networks-matrix.md.
+describe("GENERIC_SHORTENERS — split bucket", () => {
+  test("is a frozen array of non-empty lowercase hostname strings", () => {
+    assert.ok(Array.isArray(GENERIC_SHORTENERS));
+    assert.ok(Object.isFrozen(GENERIC_SHORTENERS));
+    for (const entry of GENERIC_SHORTENERS) {
+      assert.strictEqual(typeof entry, "string");
+      assert.ok(entry.length > 0);
+      assert.ok(entry.includes("."), `Entry "${entry}" has no dot`);
+      assert.strictEqual(entry, entry.toLowerCase(), `Entry "${entry}" is not lowercase`);
+    }
+  });
+
+  test("contains the seven expected generic shortener hosts", () => {
+    const expected = ["bit.ly", "tinyurl.com", "t.co", "link.medium.com", "lnkd.in", "fb.me", "ebay.to"];
+    for (const host of expected) {
+      assert.ok(GENERIC_SHORTENERS.includes(host), `Expected ${host} in GENERIC_SHORTENERS`);
+    }
+  });
+
+  test("does NOT contain any affiliate-redirect host (no bucket leakage)", () => {
+    const affiliateHosts = ["s.click.aliexpress.com", "ad.admitad.com", "prf.hn", "px.a8.net", "anrdoezrs.net"];
+    for (const host of affiliateHosts) {
+      assert.ok(!GENERIC_SHORTENERS.includes(host), `${host} must NOT be in GENERIC_SHORTENERS`);
+    }
+  });
+});
+
+describe("AFFILIATE_REDIRECT_NETWORKS — split bucket", () => {
+  test("is a frozen array of non-empty lowercase hostname strings", () => {
+    assert.ok(Array.isArray(AFFILIATE_REDIRECT_NETWORKS));
+    assert.ok(Object.isFrozen(AFFILIATE_REDIRECT_NETWORKS));
+    for (const entry of AFFILIATE_REDIRECT_NETWORKS) {
+      assert.strictEqual(typeof entry, "string");
+      assert.ok(entry.length > 0);
+      assert.ok(entry.includes("."), `Entry "${entry}" has no dot`);
+      assert.strictEqual(entry, entry.toLowerCase(), `Entry "${entry}" is not lowercase`);
+    }
+  });
+
+  test("contains AliExpress, all 8 CJ domains, Admitad, Partnerize, A8.net", () => {
+    const expected = [
+      "s.click.aliexpress.com",
+      "anrdoezrs.net", "dpbolvw.net", "jdoqocy.com", "kqzyfj.com",
+      "tkqlhce.com", "emjcd.com", "qksrv.net", "cj.dotomi.com",
+      "ad.admitad.com",
+      "prf.hn",
+      "px.a8.net",
+    ];
+    for (const host of expected) {
+      assert.ok(AFFILIATE_REDIRECT_NETWORKS.includes(host), `Expected ${host} in AFFILIATE_REDIRECT_NETWORKS`);
+    }
+  });
+
+  test("does NOT contain any generic shortener (no bucket leakage)", () => {
+    const shorteners = ["bit.ly", "tinyurl.com", "t.co", "link.medium.com", "lnkd.in", "fb.me", "ebay.to"];
+    for (const host of shorteners) {
+      assert.ok(!AFFILIATE_REDIRECT_NETWORKS.includes(host), `${host} must NOT be in AFFILIATE_REDIRECT_NETWORKS`);
+    }
+  });
+
+  test("does NOT contain amzn.to (pending P4.2 verdict — stays in legacy union only)", () => {
+    assert.ok(!AFFILIATE_REDIRECT_NETWORKS.includes("amzn.to"));
+    assert.ok(!GENERIC_SHORTENERS.includes("amzn.to"));
+    assert.ok(OPAQUE_NETWORKS.includes("amzn.to"), "amzn.to must remain in the legacy OPAQUE_NETWORKS union");
+  });
+});
+
+describe("OPAQUE_NETWORKS — legacy union", () => {
+  test("equals the union of the three split buckets", () => {
+    const union = new Set([...GENERIC_SHORTENERS, ...AFFILIATE_REDIRECT_NETWORKS, "amzn.to"]);
+    const legacy = new Set(OPAQUE_NETWORKS);
+    assert.deepStrictEqual([...legacy].sort(), [...union].sort());
+  });
+
+  test("split buckets are disjoint (no host appears in both)", () => {
+    const overlap = GENERIC_SHORTENERS.filter(h => AFFILIATE_REDIRECT_NETWORKS.includes(h));
+    assert.deepStrictEqual(overlap, [], `Overlapping hosts: ${overlap.join(", ")}`);
+  });
+});
+
+describe("isGenericShortener / isAffiliateRedirectNetwork / isOpaqueNetworkHost", () => {
+  test("isGenericShortener returns true for shorteners, false for affiliate redirects", () => {
+    assert.strictEqual(isGenericShortener("bit.ly"), true);
+    assert.strictEqual(isGenericShortener("tinyurl.com"), true);
+    assert.strictEqual(isGenericShortener("ebay.to"), true);
+    assert.strictEqual(isGenericShortener("prf.hn"), false);
+    assert.strictEqual(isGenericShortener("ad.admitad.com"), false);
+    assert.strictEqual(isGenericShortener("s.click.aliexpress.com"), false);
+  });
+
+  test("isAffiliateRedirectNetwork returns true for affiliate redirects, false for shorteners", () => {
+    assert.strictEqual(isAffiliateRedirectNetwork("prf.hn"), true);
+    assert.strictEqual(isAffiliateRedirectNetwork("ad.admitad.com"), true);
+    assert.strictEqual(isAffiliateRedirectNetwork("s.click.aliexpress.com"), true);
+    assert.strictEqual(isAffiliateRedirectNetwork("anrdoezrs.net"), true);
+    assert.strictEqual(isAffiliateRedirectNetwork("px.a8.net"), true);
+    assert.strictEqual(isAffiliateRedirectNetwork("bit.ly"), false);
+    assert.strictEqual(isAffiliateRedirectNetwork("t.co"), false);
+  });
+
+  test("isOpaqueNetworkHost matches every host in either bucket plus pending verdict", () => {
+    for (const host of [...GENERIC_SHORTENERS, ...AFFILIATE_REDIRECT_NETWORKS, "amzn.to"]) {
+      assert.strictEqual(isOpaqueNetworkHost(host), true, `isOpaqueNetworkHost should be true for ${host}`);
+    }
+  });
+
+  test("all three helpers handle www. prefix defensively", () => {
+    assert.strictEqual(isGenericShortener("www.bit.ly"), true);
+    assert.strictEqual(isAffiliateRedirectNetwork("www.prf.hn"), true);
+    assert.strictEqual(isOpaqueNetworkHost("www.amzn.to"), true);
+  });
+
+  test("all three helpers return false for null/undefined/empty", () => {
+    for (const value of [null, undefined, ""]) {
+      assert.strictEqual(isGenericShortener(value), false);
+      assert.strictEqual(isAffiliateRedirectNetwork(value), false);
+      assert.strictEqual(isOpaqueNetworkHost(value), false);
+    }
+  });
+
+  test("all three helpers return false for unknown hosts", () => {
+    assert.strictEqual(isGenericShortener("example.com"), false);
+    assert.strictEqual(isAffiliateRedirectNetwork("example.com"), false);
+    assert.strictEqual(isOpaqueNetworkHost("example.com"), false);
   });
 });
