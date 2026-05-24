@@ -23,6 +23,12 @@ import {
   AFFILIATE_PATTERNS,
   getAffiliateDomains,
   getPatternsForHost,
+  // 2.1 denoise pivot (#654): redirect-network patterns + lookup helpers.
+  // Consumed by #656 getLandingPolicy and the URL Unwrapper UI rebrand.
+  REDIRECT_NETWORK_PATTERNS,
+  getRedirectNetworkPatterns,
+  getRedirectNetworkForRedirectHost,
+  getLandingParamsForReferrer,
 } from "../lib/affiliates.js";
 import { detectWrapper, unwrap, WRAPPERS } from "../lib/wrapper-engine.js";
 // redirector-coverage-expansion (T11): expose the single-source opaque-network
@@ -56,6 +62,10 @@ if (!window.__mugaCleaner) {
     AFFILIATE_PATTERNS,
     getAffiliateDomains,
     getPatternsForHost,
+    REDIRECT_NETWORK_PATTERNS,
+    getRedirectNetworkPatterns,
+    getRedirectNetworkForRedirectHost,
+    getLandingParamsForReferrer,
     detectWrapper,
     unwrap,
     WRAPPERS,
