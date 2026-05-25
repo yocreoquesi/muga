@@ -20,7 +20,7 @@ import {
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { fetchUnwrap } from "../lib/proxy-client.js";
-import { OPAQUE_NETWORKS } from "../lib/opaque-networks.js";
+import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
 import { createToolbarPresenter } from "../lib/toolbar-presenter.js";
@@ -1066,7 +1066,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        // Validate input URL: scheme must be http/https, host must be in OPAQUE_NETWORKS
+        // Validate input URL: scheme must be http/https, host must be a known
+        // generic shortener. Under the 2.1 denoise pivot (#659) the URL Unwrapper
+        // tier must NOT resolve affiliate-redirect networks — their click IS the
+        // attribution event and must pass through unchanged.
         const rawUrl = message.url;
         let parsedUrl;
         try {
@@ -1080,7 +1083,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
         const hostname = parsedUrl.hostname;
-        if (!OPAQUE_NETWORKS.includes(hostname)) {
+        if (!isGenericShortener(hostname)) {
           try { sendResponse({ ok: false, reason: "invalid_url" }); } catch { /* channel closed */ }
           return;
         }

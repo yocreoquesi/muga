@@ -56,12 +56,18 @@ describe("UNWRAP_VIA_PROXY message handler — structural", () => {
     );
   });
 
-  test("validates hostname is in OPAQUE_NETWORKS before calling fetchUnwrap", () => {
+  test("validates hostname is a generic shortener before calling fetchUnwrap", () => {
     const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
     const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    // 2.1 pivot (#659): allowlist tightened to GENERIC_SHORTENERS only —
+    // affiliate-redirect networks must NEVER be sent to the Worker.
     assert.ok(
-      handlerSlice.includes("OPAQUE_NETWORKS"),
-      "handler must check OPAQUE_NETWORKS for the hostname"
+      handlerSlice.includes("isGenericShortener"),
+      "handler must check isGenericShortener for the hostname"
+    );
+    assert.ok(
+      !handlerSlice.includes("OPAQUE_NETWORKS"),
+      "handler must NOT gate on the legacy OPAQUE_NETWORKS union — affiliate redirects must pass through"
     );
   });
 
@@ -103,8 +109,8 @@ describe("UNWRAP_VIA_PROXY message handler — structural", () => {
 
   test("always calls sendResponse (async path returns true)", () => {
     const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    // The handler body is ~70 lines. Use a larger slice to cover it fully.
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+    // The handler body is ~90 lines. Use a generous slice to cover it fully.
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 5000);
     assert.ok(
       handlerSlice.includes("return true"),
       "handler must return true to keep the message channel open for async response"
@@ -118,10 +124,10 @@ describe("UNWRAP_VIA_PROXY message handler — structural", () => {
     );
   });
 
-  test("imports OPAQUE_NETWORKS from opaque-networks", () => {
+  test("imports isGenericShortener from opaque-networks", () => {
     assert.ok(
-      swSource.includes("OPAQUE_NETWORKS") && swSource.includes("opaque-networks"),
-      "service-worker must import OPAQUE_NETWORKS from opaque-networks.js"
+      swSource.includes("isGenericShortener") && swSource.includes("opaque-networks"),
+      "service-worker must import isGenericShortener from opaque-networks.js"
     );
   });
 });
@@ -337,25 +343,37 @@ describe("Block-prompt CTA — click handler integration", () => {
   });
 });
 
-// ── Triangulation: OPAQUE_NETWORKS import and validation shape ────────────────
+// ── Triangulation: GENERIC_SHORTENERS allowlist shape (post-#659) ────────────
 
 describe("UNWRAP_VIA_PROXY — triangulation", () => {
-  test("OPAQUE_NETWORKS is a frozen array of hostnames (no www. prefix expected)", async () => {
-    const { OPAQUE_NETWORKS } = await import("../../src/lib/opaque-networks.js");
-    assert.ok(Array.isArray(OPAQUE_NETWORKS), "OPAQUE_NETWORKS must be an array");
-    assert.ok(OPAQUE_NETWORKS.length > 0, "OPAQUE_NETWORKS must not be empty");
-    for (const host of OPAQUE_NETWORKS) {
+  test("GENERIC_SHORTENERS is a frozen array of hostnames (no www. prefix expected)", async () => {
+    const { GENERIC_SHORTENERS } = await import("../../src/lib/opaque-networks.js");
+    assert.ok(Array.isArray(GENERIC_SHORTENERS), "GENERIC_SHORTENERS must be an array");
+    assert.ok(GENERIC_SHORTENERS.length > 0, "GENERIC_SHORTENERS must not be empty");
+    for (const host of GENERIC_SHORTENERS) {
       assert.equal(typeof host, "string", "each entry must be a string");
       assert.ok(host.length > 0, "each entry must be non-empty");
       assert.ok(!host.startsWith("www."), `entry '${host}' must not have www. prefix`);
     }
   });
 
-  test("known opaque network hosts are present", async () => {
-    const { OPAQUE_NETWORKS } = await import("../../src/lib/opaque-networks.js");
-    assert.ok(OPAQUE_NETWORKS.includes("s.click.aliexpress.com"), "AliExpress host must be present");
-    assert.ok(OPAQUE_NETWORKS.includes("anrdoezrs.net"), "CJ Affiliate host must be present");
-    assert.ok(OPAQUE_NETWORKS.includes("ad.admitad.com"), "Admitad host must be present");
+  test("Worker allowlist excludes affiliate-redirect networks", async () => {
+    // 2.1 pivot (#659): the URL Unwrapper tier must NOT resolve affiliate
+    // redirects. Their click is the attribution event — sending them to the
+    // Worker would strip the creator's commission.
+    const { isGenericShortener } = await import("../../src/lib/opaque-networks.js");
+    assert.equal(isGenericShortener("s.click.aliexpress.com"), false, "AliExpress affiliate host must NOT be unwrappable");
+    assert.equal(isGenericShortener("anrdoezrs.net"), false, "CJ Affiliate host must NOT be unwrappable");
+    assert.equal(isGenericShortener("ad.admitad.com"), false, "Admitad host must NOT be unwrappable");
+    assert.equal(isGenericShortener("prf.hn"), false, "Partnerize host must NOT be unwrappable");
+    assert.equal(isGenericShortener("px.a8.net"), false, "A8.net host must NOT be unwrappable");
+  });
+
+  test("Worker allowlist includes known generic shorteners", async () => {
+    const { isGenericShortener } = await import("../../src/lib/opaque-networks.js");
+    assert.equal(isGenericShortener("bit.ly"), true);
+    assert.equal(isGenericShortener("tinyurl.com"), true);
+    assert.equal(isGenericShortener("t.co"), true);
   });
 
   test("handler sends 'disabled' reason (not 'permission' or 'network') when pref is off", () => {
