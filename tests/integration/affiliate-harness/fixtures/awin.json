@@ -1,0 +1,24 @@
+{
+  "network": "Awin",
+  "matrix_section": "docs/affiliate-networks-matrix.md#awin",
+  "pending_resolution": "Awin's redirect carries the merchant URL in `p=` / `ued=`, so MUGA currently local-unwraps it via wrapper-engine.js. Under 2.1 (matrix v1.0) the recommended policy is referrer-based preservation of `awc` / `wt_mc` at the merchant landing — which requires Awin to be in AFFILIATE_REDIRECT_NETWORKS (pass-through), not in the wrapper engine. Needs a design decision (separate issue) before the harness can validate G1 against Awin.",
+  "redirect_hosts": [
+    "awin1.com",
+    "www.awin1.com"
+  ],
+  "redirect_url_samples": [
+    "https://awin1.com/cread.php?awinmid=12345&awinaffid=99999&p=https%3A%2F%2Fwww.example.com%2Fproduct",
+    "https://awin1.com/cread.php?ued=https%3A%2F%2Fwww.example.com%2Fproduct",
+    "https://www.awin1.com/awclick.php?id=abc&clickref=def"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.example.com/product?awc=11111-12345-67890&wt_mc=campaign-spring&utm_source=newsletter&utm_medium=email&fbclid=xyz",
+      "expected": {
+        "preserve": ["awc", "wt_mc"],
+        "strip": ["utm_source", "utm_medium", "fbclid"]
+      },
+      "blocked_on": "#655"
+    }
+  ]
+}
