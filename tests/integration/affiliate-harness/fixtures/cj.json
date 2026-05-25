@@ -1,0 +1,28 @@
+{
+  "network": "CJ Affiliate",
+  "matrix_section": "docs/affiliate-networks-matrix.md#cj-affiliate-commission-junction",
+  "redirect_hosts": [
+    "anrdoezrs.net",
+    "dpbolvw.net",
+    "jdoqocy.com",
+    "kqzyfj.com",
+    "tkqlhce.com",
+    "emjcd.com",
+    "qksrv.net",
+    "cj.dotomi.com"
+  ],
+  "redirect_url_samples": [
+    "https://anrdoezrs.net/click-1234567-12345678?url=https%3A%2F%2Fwww.example.com%2Fproduct",
+    "https://jdoqocy.com/click-7654321-87654321"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.example.com/product?cjevent=abc-def-1234-5678&cjdata=encoded-extras&utm_source=affiliate&utm_campaign=summer&gclid=xyz123",
+      "expected": {
+        "preserve": ["cjevent", "cjdata"],
+        "strip": ["utm_source", "utm_campaign", "gclid"]
+      },
+      "blocked_on": "#655"
+    }
+  ]
+}
