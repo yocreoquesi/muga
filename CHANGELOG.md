@@ -4,6 +4,31 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-05-25
+
+Evolution of the 2.0 denoise positioning. 2.0 redefined the north — quiet every URL without taking credit from creators. 2.1 extends that north to creators who chose redirect-based attribution: their click is the attribution event, and MUGA now respects it instead of treating it as a redirect to defeat. The result is one coherent stance — fair to every creator, whatever affiliate model they chose — backed by code, tests, docs, and the matrix that drives the per-network policy.
+
+### Changed
+
+- **Creator-agnostic affiliate stance** ([ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md)). Where 2.0 deliberately rejected redirect-based affiliate programs as a privacy-first principle, 2.1 treats them as a legitimate attribution mechanism. Affiliate-redirect networks are now in `AFFILIATE_REDIRECT_NETWORKS` (`src/lib/opaque-networks.js`) — the cleaner preserves the redirect untouched so the network's 30x can populate the merchant's first-party cookie at landing. Generic URL shorteners stay in `GENERIC_SHORTENERS` and remain eligible for the URL Unwrapper.
+- **URL Unwrapper rename** (#658) — "Privacy Proxy" → "URL Unwrapper" across the UI, all 7 locales, the options page, the disclosure tooltip, and the inline content-script CTA strings. PT and DE FIXME stubs were resolved as part of the rename. The disclosure now states explicitly that affiliate redirects are NEVER sent to the Worker.
+- **URL Unwrapper client allowlist tightened** (#659, part) — `src/background/service-worker.js` UNWRAP_VIA_PROXY handler now gates on `isGenericShortener(hostname)` instead of the legacy `OPAQUE_NETWORKS` union. Affiliate-redirect hosts are rejected client-side with `reason:"invalid_url"` so the click reaches the network unchanged. Server-side enforcement on `unwrap.muga.app` lives in the `muga-unwrap` repo and is tracked separately.
+- **`OPAQUE_NETWORKS` split into semantic buckets** (#653) — the legacy union remains exported for backwards compat, but new code reads `GENERIC_SHORTENERS` / `AFFILIATE_REDIRECT_NETWORKS` / `PENDING_VERDICT` so the caller's intent (shortener vs affiliate redirect) is explicit at the call site. `amzn.to` sits in `PENDING_VERDICT` awaiting the G3/T19 probe verdict (#665, sub-bullet).
+- **Store listings rewritten** (#660) — Chrome Web Store and Firefox AMO listings retagged with the lead headline "Shorter, cleaner URLs — fair to every creator." The 2.0-era anti-redirect sections ("We rejected 10+ affiliate programs because they require redirect-based attribution") were deleted in both listings; the affiliate-model section now explicitly covers BOTH tag-based programs and redirect-based affiliate networks. URL Unwrapper disclosure rewritten with honest scope (generic shorteners only, list enumerated). Third-party retailer brand names removed after Chrome Web Store flagged the 2.0 list as keyword spam (rejection routing ID FZSL, 2026-05). Char counts: Chrome short 121/132, Firefox summary 200/250.
+
+### Added
+
+- **`REDIRECT_NETWORK_PATTERNS` + helpers** (#654) — 9 redirect-network entries in `src/lib/affiliates.js` (Awin, CJ, AliExpress, Impact, Partnerize, Admitad, A8.net, Rakuten/LinkShare, TradeTracker) plus three helpers (`getRedirectNetworkPatterns`, `getRedirectNetworkForRedirectHost`, `getLandingParamsForReferrer`). Introduces a wildcard host primitive (`*.<host>`) for suffix-matching subdomains — currently only Impact's `*.pxf.io` uses it. 34 new unit tests pin the data and the wildcard semantics.
+- **Affiliate networks attribution matrix v1.0** (#646, #647, #648, #649) at [`docs/affiliate-networks-matrix.md`](docs/affiliate-networks-matrix.md). Per-network surface, click flow, attribution mechanism, cookie TTL, param table, recommended cleaner policy, and verification status — across all 9 redirect networks the codebase recognises. This doc is the contract that drives `getLandingPolicy()` (#656), the `TRACKING_PARAMS` audit (#655), the synthetic harness (#650), and the URL Unwrapper allowlist (#659).
+- **`docs/adr/0002-denoise-pivot-creator-agnostic.md`** (#645) — the ADR that captures the pivot's context, decision, alternatives, consequences, and the full Fase 5 surface inventory.
+- **`docs/unwrap-observability.md`** (#651) — design for non-PII aggregate observability on `unwrap.muga.app` (counts only, no per-request data), plus the privacy-policy delta required to ship the endpoint. Implementation tracked in #652.
+- **Synthetic affiliate-flow test harness MVP** (#650) at [`tests/integration/affiliate-harness.test.mjs`](tests/integration/affiliate-harness.test.mjs). Fixture-driven contract test for tier-1 networks (Awin, CJ, AliExpress). Three guards: G1 redirect-host pass-through (HARD), G2 tracking-noise stripped at landing (HARD), G3 attribution params preserved at landing (skipped pending the #655 audit). Per-network summary table at end of run. Runs on every PR via `npm run test:integration`. Companion doc at [`docs/affiliate-test-harness.md`](docs/affiliate-test-harness.md). Tier-2 and tier-3 networks (Impact, Partnerize, Admitad, A8.net, Rakuten, TradeTracker) follow the same fixture shape — adding any is a single JSON edit.
+
+### Known known-unknowns
+
+- **`amzn.to` bucket verdict** — Amazon's branded shortener sits in `PENDING_VERDICT` until G3/T19 probes confirm whether `?tag=` survives the 30x. If yes → moves to `GENERIC_SHORTENERS`. If no → moves to `AFFILIATE_REDIRECT_NETWORKS` and exits the URL Unwrapper allowlist permanently.
+- **Awin redirect model conflict** (#681, surfaced by #680) — `awin1.com` is currently a wrapper-engine local-unwrap (the redirect carries the merchant URL in `?p=`), but the matrix recommends pass-through with referrer-based preservation of `awc`/`wt_mc`. Design decision pending; harness skips G1 for Awin via the `pending_resolution` escape hatch until the model is resolved.
+
 ## [2.0.0] - 2026-05-24
 
 Major release. Headline: full brand pivot from "privacy-first URL cleaner" to "the denoise extension for the web." Six-commit, multi-phase rebrand covering visual identity, voice, all 7 supported locales, public surfaces, and a strategic retirement of the local-first claim and competitor-comparison apparatus. Internal behaviour is unchanged — this is a positioning, voice, and visual layer change.
@@ -850,7 +875,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/yocreoquesi/muga/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/yocreoquesi/muga/compare/v1.17.0...v2.0.0
 [1.17.0]: https://github.com/yocreoquesi/muga/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/yocreoquesi/muga/compare/v1.15.1...v1.16.0
