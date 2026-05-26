@@ -119,6 +119,12 @@ In practice, "Awin advertiser merchant domain" is open-ended — Awin does not p
 - ⚠️ **`wt_mc` is required-at-landing** — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. The MediaMarkt/Webtrekk integration is documented inside Awin's advertiser portal, not public. The current MUGA codebase comment ([`src/lib/affiliates.js:66`](../src/lib/affiliates.js)) treats it as Awin click ID by association. Treat as preserve until confirmed.
 - ⚠️ Behavior of `awc` after the MasterTag fires — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Confidence is high that subsequent strips are safe, but the synthetic harness ([#650](https://github.com/yocreoquesi/muga/issues/650)) should specifically exercise "first landing → preserve, second navigation → strip" before this policy lands in production.
 
+**Implementation status (2026-05-26)**
+
+The matrix policy above is **accepted but not yet enforced in code**. Awin currently lives in `src/lib/wrapper-engine.js` as a local-unwrap entry inherited from 2.0 — the user never hits `awin1.com`, which loses the `awc` / `wt_mc` signal that the 30x would otherwise append. See [ADR-0003](./adr/0003-awin-redirect-model-resolution.md) for the resolution: Awin moves from `WRAPPERS` to `AFFILIATE_REDIRECT_NETWORKS` (pass-through), with `awc` / `wt_mc` preserved at landing via `getLandingPolicy(hostname, referrer)`.
+
+Implementation is blocked on [#656](https://github.com/yocreoquesi/muga/issues/656) (`getLandingPolicy`). Until the retirement PR ships, the synthetic harness ([#650](https://github.com/yocreoquesi/muga/issues/650)) reports Awin G1 as `pass-through:PENDING` rather than enforcing.
+
 ---
 
 ## CJ Affiliate (Commission Junction)
