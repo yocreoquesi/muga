@@ -1,0 +1,21 @@
+{
+  "network": "Partnerize (Performance Horizon)",
+  "matrix_section": "docs/affiliate-networks-matrix.md#partnerize-performance-horizon",
+  "redirect_hosts": [
+    "prf.hn"
+  ],
+  "redirect_url_samples": [
+    "https://prf.hn/click/camref:1011lABCD",
+    "https://prf.hn/click/camref:1100ABCD/destination:https%3A%2F%2Fwww.merchant.com%2F"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.com/page?clickref=abc-123&pubref=pub-xyz&adref=ad-789&utm_source=partner&fbclid=fb",
+      "referrer": "https://prf.hn/click/camref:1011lABCD",
+      "expected": {
+        "preserve": ["clickref", "pubref", "adref"],
+        "strip": ["utm_source", "fbclid"]
+      }
+    }
+  ]
+}

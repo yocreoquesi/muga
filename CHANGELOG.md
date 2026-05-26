@@ -4,6 +4,14 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Per-network regression coverage for landing-policy preservation** (#657). The synthetic affiliate-flow harness now ships an end-to-end G3 that calls `getLandingPolicy(landing_host, referrer)` and `processUrl(...)` for every network in the matrix, asserting matrix-required params survive while tracking noise strips. Six new fixtures cover Partnerize, Admitad, A8.net, Impact Radius, Rakuten LinkShare, and TradeTracker (the last three are flagged `pending_resolution` for the G1 surface-inversion follow-up to [ADR-0003](docs/adr/0003-awin-redirect-model-resolution.md), but G3 enforces today because the policy function resolves all networks via `REDIRECT_NETWORK_PATTERNS`). Existing Awin / CJ / AliExpress fixtures drop their `blocked_on:#655` annotations now that the audit has shipped.
+
+### Fixed
+
+- **AliExpress item-page wholesale strip now honours landing-policy preserve** (#657). The fast path in `classifyAndStripTracking` that strips ALL query params on `/item/<id>.html` URLs previously ignored the per-landing preservation policy, killing `aff_trace_key` and the `algo_*` family on first-touch from `s.click.aliexpress.com` before the AliExpress front-end tag could consume them. The branch now respects `landingPolicy.preserve` in addition to the existing domain-rules preserveParams set.
+
 ### Changed
 
 - **Retired the local-unwrap path for a redirect-attribution network** (#684, [ADR-0003](docs/adr/0003-awin-redirect-model-resolution.md)). The wrapper-engine entry that previously short-circuited `awin1.com/cread.php` and `/awclick.php` has been removed; the host is now declared in `AFFILIATE_REDIRECT_NETWORKS` so the browser follows the network's 30x and the merchant's first-party tag can populate the attribution cookie at landing. The MUGA-side exclusion lives in a new `MUGA_EXCLUDED_IDS` filter in `src/lib/wrapper-engine.js` — upstream `caps-spec` is unchanged. Cleaner's contextual-rule short-circuit (#543) extended to also cover `AFFILIATE_REDIRECT_NETWORKS` so the bounded-scope strip no longer fires on the network's own redirect page. DNR rule count drops from 7 to 6, synthetic harness fixture clears its `pending_resolution` annotation, and 3 new wrapper-engine tests assert the retirement.

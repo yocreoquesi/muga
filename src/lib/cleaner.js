@@ -760,10 +760,16 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
   const removedValues = [];
 
   if (isAliExpressItemPage(hostname, url.pathname)) {
-    // AliExpress item pages: strip ALL params except domain-rules preserveParams.
+    // AliExpress item pages: strip ALL params except domain-rules preserveParams
+    // AND the matrix-required landing-policy preserve set on first-touch from
+    // an affiliate redirect (e.g. s.click.aliexpress.com → aliexpress.com/item).
+    // Without the policy gate, this wholesale strip kills aff_trace_key + family
+    // before the AliExpress front-end tag can consume them on landing.
     const { preserved } = getDomainParamSets(hostname, domainRules);
     for (const param of [...url.searchParams.keys()]) {
-      if (preserved.has(param.toLowerCase())) continue;
+      const lower = param.toLowerCase();
+      if (preserved.has(lower)) continue;
+      if (landingPolicy.preserve.has(lower)) continue;
       removedValues.push(url.searchParams.get(param) ?? "");
       url.searchParams.delete(param);
       removed.push(param);

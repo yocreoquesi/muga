@@ -1,0 +1,20 @@
+{
+  "network": "A8.net (Japan)",
+  "matrix_section": "docs/affiliate-networks-matrix.md#a8net-japan",
+  "redirect_hosts": [
+    "px.a8.net"
+  ],
+  "redirect_url_samples": [
+    "https://px.a8.net/svt/ejp?a8mat=encoded-payload&a8ejpredirect=https%3A%2F%2Fwww.merchant.jp%2F"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.jp/product?a8=click-context-123&utm_source=ad&fbclid=fb",
+      "referrer": "https://px.a8.net/svt/ejp?a8mat=encoded-payload",
+      "expected": {
+        "preserve": ["a8"],
+        "strip": ["utm_source", "fbclid"]
+      }
+    }
+  ]
+}

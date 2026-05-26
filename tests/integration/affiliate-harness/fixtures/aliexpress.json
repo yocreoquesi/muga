@@ -11,11 +11,11 @@
   "landing_samples": [
     {
       "url": "https://www.aliexpress.com/item/1005006789012345.html?aff_trace_key=abc&aff_request_id=def&algo_pvid=p1&algo_expid=e1&btsid=bts1&ws_ab_test=ab1&afsmartredirect=y&gatewayadapt=glo2esp&mall_affr=ali&utm_source=blog",
+      "referrer": "https://s.click.aliexpress.com/e/_oBtAfD",
       "expected": {
         "preserve": ["aff_trace_key", "aff_request_id", "algo_pvid", "algo_expid", "btsid", "ws_ab_test"],
         "strip": ["afsmartredirect", "gatewayadapt", "mall_affr", "utm_source"]
-      },
-      "blocked_on": "#655"
+      }
     }
   ]
 }

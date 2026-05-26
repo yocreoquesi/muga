@@ -1,0 +1,22 @@
+{
+  "network": "Rakuten Advertising (LinkShare)",
+  "matrix_section": "docs/affiliate-networks-matrix.md#rakuten-advertising-linkshare",
+  "pending_resolution": "Surface inversion not yet shipped: click.linksynergy.com still lives in the wrapper engine (caps-spec rakuten-linkshare entry) and bounce-state-cleaner.js still detects it for cleaning. Pass-through migration into AFFILIATE_REDIRECT_NETWORKS is a follow-up to ADR-0003 (same shape as #684 was for Awin). G3 enforces today because getLandingPolicy already resolves click.linksynergy.com via REDIRECT_NETWORK_PATTERNS — the host's pass-through wiring is the remaining gap.",
+  "redirect_hosts": [
+    "click.linksynergy.com"
+  ],
+  "redirect_url_samples": [
+    "https://click.linksynergy.com/deeplink?id=ABCDEFGHIJK&mid=12345&murl=https%3A%2F%2Fwww.merchant.com%2F",
+    "https://click.linksynergy.com/fs-bin/click?id=ABCDEFGHIJK&offerid=9876&type=3&subid=pub-1"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.com/p?ranmid=12345&ransiteid=site-1&raneaid=eaid-9&utm_source=ls&gclid=g1",
+      "referrer": "https://click.linksynergy.com/deeplink?id=ABCDEFGHIJK&mid=12345",
+      "expected": {
+        "preserve": ["ranmid", "ransiteid", "raneaid"],
+        "strip": ["utm_source", "gclid"]
+      }
+    }
+  ]
+}

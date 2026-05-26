@@ -1,0 +1,21 @@
+{
+  "network": "Admitad",
+  "matrix_section": "docs/affiliate-networks-matrix.md#admitad",
+  "redirect_hosts": [
+    "ad.admitad.com"
+  ],
+  "redirect_url_samples": [
+    "https://ad.admitad.com/g/abc12345/?ulp=https%3A%2F%2Fwww.merchant.com%2F",
+    "https://ad.admitad.com/g/xyz98765/?ulp=https%3A%2F%2Fshop.example.com%2F&subid=pub1"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.com/page?admitad_uid=uid-abc-123&tagtag_uid=tag-xyz&htag=ht1&iom_publisher_id=pub42&utm_source=cpa&gclid=gc",
+      "referrer": "https://ad.admitad.com/g/abc12345/",
+      "expected": {
+        "preserve": ["admitad_uid", "tagtag_uid"],
+        "strip": ["utm_source", "gclid"]
+      }
+    }
+  ]
+}
