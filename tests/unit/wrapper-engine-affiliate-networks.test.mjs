@@ -6,8 +6,13 @@
  * Networks covered (extending B1's WRAPPERS table):
  *   - Skimlinks      (go.redirectingat.com, go.skimresources.com → url=)
  *   - ShareASale     (shareasale.com /r.cfm → urllink=)
- *   - Rakuten        (click.linksynergy.com /deeplink → murl=)
- *   - TradeTracker   (tc.tradetracker.net → u=)
+ *
+ * Rakuten LinkShare and TradeTracker were originally part of this suite.
+ * Both were retired from the wrapper engine in #692 per ADR-0003 follow-up:
+ * their redirect hosts are now in AFFILIATE_REDIRECT_NETWORKS (pass-through)
+ * so the network's 30x can populate the merchant's first-party cookie at
+ * landing. The retirement assertions live in tests/unit/wrapper-engine.test.mjs
+ * alongside the Awin retirement block.
  *
  * Each network has at minimum one positive fixture (real-shaped affiliate URL
  * extracts to expected destination) and one negative (same host but missing
@@ -123,100 +128,6 @@ describe("Wrapper Engine — ShareASale", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Rakuten LinkShare
-// ---------------------------------------------------------------------------
-describe("Wrapper Engine — Rakuten LinkShare", () => {
-  test("unwraps click.linksynergy.com/deeplink with murl= parameter", () => {
-    const dest = "https://merchant.com/category/shoes";
-    const input =
-      "https://click.linksynergy.com/deeplink?id=AbCdEf&mid=12345&murl=" +
-      encodeURIComponent(dest);
-    const result = unwrap(input);
-    assert.ok(result);
-    assert.equal(result.unwrapped, dest);
-    assert.equal(result.hops, 1);
-    assert.deepEqual(result.networks, ["rakuten"]);
-  });
-
-  test("returns null when Rakuten URL has no murl parameter", () => {
-    const input = "https://click.linksynergy.com/deeplink?id=AbCdEf&mid=12345";
-    assert.equal(unwrap(input), null);
-  });
-
-  test("returns null when Rakuten murl= is empty", () => {
-    const input = "https://click.linksynergy.com/deeplink?murl=";
-    assert.equal(unwrap(input), null);
-  });
-
-  test("returns null when Rakuten murl= is malformed", () => {
-    const input = "https://click.linksynergy.com/deeplink?murl=javascript%3Aalert(1)";
-    assert.equal(unwrap(input), null);
-  });
-
-  test("does not match Rakuten paths other than /deeplink", () => {
-    const input =
-      "https://click.linksynergy.com/other-path?murl=" +
-      encodeURIComponent("https://merchant.com");
-    assert.equal(unwrap(input), null);
-  });
-
-  test("preserves query string on the unwrapped Rakuten destination", () => {
-    const dest = "https://merchant.com/p?utm_source=rakuten&q=42";
-    const input =
-      "https://click.linksynergy.com/deeplink?id=1&mid=2&murl=" + encodeURIComponent(dest);
-    const result = unwrap(input);
-    assert.ok(result);
-    assert.equal(result.unwrapped, dest);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// TradeTracker
-// ---------------------------------------------------------------------------
-describe("Wrapper Engine — TradeTracker", () => {
-  test("unwraps tc.tradetracker.net with u= parameter", () => {
-    const dest = "https://merchant.com/offer";
-    const input =
-      "https://tc.tradetracker.net/?c=12345&m=67890&a=11111&r=&u=" +
-      encodeURIComponent(dest);
-    const result = unwrap(input);
-    assert.ok(result);
-    assert.equal(result.unwrapped, dest);
-    assert.equal(result.hops, 1);
-    assert.deepEqual(result.networks, ["tradetracker"]);
-  });
-
-  test("returns null when TradeTracker URL has no u parameter", () => {
-    const input = "https://tc.tradetracker.net/?c=12345&m=67890";
-    assert.equal(unwrap(input), null);
-  });
-
-  test("returns null when TradeTracker u= is empty", () => {
-    const input = "https://tc.tradetracker.net/?u=";
-    assert.equal(unwrap(input), null);
-  });
-
-  test("returns null when TradeTracker u= is malformed", () => {
-    const input = "https://tc.tradetracker.net/?u=not-a-url";
-    assert.equal(unwrap(input), null);
-  });
-
-  test("returns null when TradeTracker u= is non-HTTP(S)", () => {
-    const input =
-      "https://tc.tradetracker.net/?u=" + encodeURIComponent("file:///etc/passwd");
-    assert.equal(unwrap(input), null);
-  });
-
-  test("preserves query string on the unwrapped TradeTracker destination", () => {
-    const dest = "https://merchant.com/p?ref=tt&utm_source=tt";
-    const input = "https://tc.tradetracker.net/?u=" + encodeURIComponent(dest);
-    const result = unwrap(input);
-    assert.ok(result);
-    assert.equal(result.unwrapped, dest);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Edge cases shared across the new networks
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — B2 edge cases", () => {
@@ -245,37 +156,37 @@ describe("Wrapper Engine — B2 edge cases", () => {
     }
   });
 
-  test("Rakuten: a long but valid destination URL still extracts", () => {
+  test("Skimlinks: a long but valid destination URL still extracts", () => {
     // Long destination near (but under) the project-wide 2000-char cap that
     // downstream stages enforce. The wrapper extractor itself is contract-free
     // about length — it must simply return whatever the URL API parses.
     const longPath = "/p/" + "a".repeat(1500);
     const dest = "https://merchant.com" + longPath;
     const input =
-      "https://click.linksynergy.com/deeplink?murl=" + encodeURIComponent(dest);
+      "https://go.redirectingat.com/?id=1&url=" + encodeURIComponent(dest);
     const result = unwrap(input);
     assert.ok(result);
     assert.equal(result.unwrapped, dest);
   });
 
-  test("TradeTracker wrapping Skimlinks resolves through both networks", () => {
+  test("ShareASale wrapping Skimlinks resolves through both networks", () => {
     const merchant = "https://merchant.com/final";
     const skim =
       "https://go.redirectingat.com/?id=1&url=" + encodeURIComponent(merchant);
-    const outer = "https://tc.tradetracker.net/?u=" + encodeURIComponent(skim);
+    const outer = "https://shareasale.com/r.cfm?urllink=" + encodeURIComponent(skim);
     const result = unwrap(outer);
     assert.ok(result);
     assert.equal(result.unwrapped, merchant);
     assert.equal(result.hops, 2);
-    assert.deepEqual(result.networks, ["tradetracker", "skimlinks"]);
+    assert.deepEqual(result.networks, ["shareasale", "skimlinks"]);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Schema introspection — every new network is well-formed
+// Schema introspection — every still-active network is well-formed
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — B2 schema", () => {
-  for (const id of ["skimlinks", "shareasale", "rakuten", "tradetracker"]) {
+  for (const id of ["skimlinks", "shareasale"]) {
     test(`WRAPPERS contains ${id} with required schema fields`, () => {
       const w = WRAPPERS.find((entry) => entry.id === id);
       assert.ok(w, `${id} entry must exist in WRAPPERS`);
@@ -285,7 +196,7 @@ describe("Wrapper Engine — B2 schema", () => {
     });
   }
 
-  test("detectWrapper resolves each new network correctly", () => {
+  test("detectWrapper resolves still-active B2 networks correctly", () => {
     assert.equal(
       detectWrapper("https://go.redirectingat.com/?url=https%3A%2F%2Fx.com").id,
       "skimlinks"
@@ -297,14 +208,6 @@ describe("Wrapper Engine — B2 schema", () => {
     assert.equal(
       detectWrapper("https://shareasale.com/r.cfm?urllink=https%3A%2F%2Fx.com").id,
       "shareasale"
-    );
-    assert.equal(
-      detectWrapper("https://click.linksynergy.com/deeplink?murl=https%3A%2F%2Fx.com").id,
-      "rakuten"
-    );
-    assert.equal(
-      detectWrapper("https://tc.tradetracker.net/?u=https%3A%2F%2Fx.com").id,
-      "tradetracker"
     );
   });
 });

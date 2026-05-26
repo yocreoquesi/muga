@@ -10,8 +10,9 @@
  *   - Recursion: 2-hop and 3-hop chains
  *   - Recursion bounded by maxHops (default 3 + custom override + defensive defaults)
  *   - detectWrapper() introspection
- *   - WRAPPERS table no longer contains Awin (retired per ADR-0003 / #684);
- *     Awin is now pass-through via AFFILIATE_REDIRECT_NETWORKS
+ *   - WRAPPERS table no longer contains Awin (#684), Impact / Rakuten /
+ *     TradeTracker (#692, ADR-0003 follow-up); those 4 networks are now
+ *     pass-through via AFFILIATE_REDIRECT_NETWORKS
  *   - Integration with processUrl: unwrap before tracking strip; preserve
  *     creator affiliate tag on the unwrapped destination
  *
@@ -94,6 +95,72 @@ describe("Wrapper Engine — Awin retired (ADR-0003 / #684)", () => {
   test("unwrap returns null for awin1.com — passes through unchanged", () => {
     const input =
       "https://www.awin1.com/cread.php?awinmid=1&p=https%3A%2F%2Fmerchant.com";
+    assert.equal(unwrap(input), null);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Impact / Rakuten / TradeTracker retired (#692, ADR-0003 follow-up).
+// Same shape as the Awin retirement: WRAPPERS no longer carries the entry,
+// detectWrapper returns null, unwrap is a pass-through.
+// ---------------------------------------------------------------------------
+describe("Wrapper Engine — Impact retired (#692, ADR-0003 follow-up)", () => {
+  test("WRAPPERS table does NOT contain an impact entry", () => {
+    assert.equal(WRAPPERS.find(w => w.id === "impact"), undefined);
+  });
+
+  test("detectWrapper returns null for *.pxf.io subdomains", () => {
+    assert.equal(
+      detectWrapper("https://target.pxf.io/c/3456789/abc/15/?u=https%3A%2F%2Fmerchant.com"),
+      null,
+    );
+    assert.equal(
+      detectWrapper("https://gohealth.pxf.io/c/1/2/3?u=https%3A%2F%2Fexample.com"),
+      null,
+    );
+  });
+
+  test("unwrap returns null for *.pxf.io — passes through unchanged", () => {
+    const input =
+      "https://target.pxf.io/c/3456789/abc/15/?u=https%3A%2F%2Fwww.target.com%2Fp";
+    assert.equal(unwrap(input), null);
+  });
+});
+
+describe("Wrapper Engine — Rakuten retired (#692, ADR-0003 follow-up)", () => {
+  test("WRAPPERS table does NOT contain a rakuten entry", () => {
+    assert.equal(WRAPPERS.find(w => w.id === "rakuten"), undefined);
+  });
+
+  test("detectWrapper returns null for click.linksynergy.com URLs", () => {
+    assert.equal(
+      detectWrapper("https://click.linksynergy.com/deeplink?id=1&murl=https%3A%2F%2Fmerchant.com"),
+      null,
+    );
+  });
+
+  test("unwrap returns null for click.linksynergy.com — passes through unchanged", () => {
+    const input =
+      "https://click.linksynergy.com/deeplink?id=ABCDEFGHIJK&mid=12345&murl=https%3A%2F%2Fmerchant.com";
+    assert.equal(unwrap(input), null);
+  });
+});
+
+describe("Wrapper Engine — TradeTracker retired (#692, ADR-0003 follow-up)", () => {
+  test("WRAPPERS table does NOT contain a tradetracker entry", () => {
+    assert.equal(WRAPPERS.find(w => w.id === "tradetracker"), undefined);
+  });
+
+  test("detectWrapper returns null for tc.tradetracker.net URLs", () => {
+    assert.equal(
+      detectWrapper("https://tc.tradetracker.net/?c=1&m=2&u=https%3A%2F%2Fmerchant.com"),
+      null,
+    );
+  });
+
+  test("unwrap returns null for tc.tradetracker.net — passes through unchanged", () => {
+    const input =
+      "https://tc.tradetracker.net/?c=12345&m=67890&a=11111&u=https%3A%2F%2Fmerchant.com";
     assert.equal(unwrap(input), null);
   });
 });

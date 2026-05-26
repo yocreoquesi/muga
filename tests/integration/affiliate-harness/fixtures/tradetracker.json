@@ -1,7 +1,6 @@
 {
   "network": "TradeTracker",
   "matrix_section": "docs/affiliate-networks-matrix.md#tradetracker",
-  "pending_resolution": "Surface inversion not yet shipped: tc.tradetracker.net still lives in the wrapper engine and bounce-state-cleaner.js still detects it for cleaning. Pass-through migration into AFFILIATE_REDIRECT_NETWORKS is a follow-up to ADR-0003 (same shape as #684 was for Awin). G3 enforces today because getLandingPolicy already resolves tc.tradetracker.net via REDIRECT_NETWORK_PATTERNS — the host's pass-through wiring is the remaining gap.",
   "redirect_hosts": [
     "tc.tradetracker.net"
   ],

@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Retired the local-unwrap path for three more redirect-attribution networks** (#692, ADR-0003 follow-up). Impact Radius (`*.pxf.io`), Rakuten LinkShare (`click.linksynergy.com`), and TradeTracker (`tc.tradetracker.net`) join Awin (#684) in the pass-through bucket: each id is added to `MUGA_EXCLUDED_IDS` in `src/lib/wrapper-engine.js` and each host is declared in `AFFILIATE_REDIRECT_NETWORKS` in `src/lib/opaque-networks.js`. The membership check now supports a wildcard suffix primitive (`*.pxf.io`) that matches any subdomain but not the bare apex — mirrors the resolver in `affiliates.js`. `detectWrapper` gains an early pass-through guard so an affiliate-redirect host is never claimed by the generic-wrapper fallback even when its query string happens to carry `?u=`. The Rakuten DNR wrapper rule is removed (5 wrapper rules total, was 6). `bounce-state-cleaner.js` no longer detects the three hosts as intermediaries — their localStorage stays intact during the network's redirect step. The synthetic affiliate-harness drops `pending_resolution` from the three fixtures and G1 now enforces for all 9 matrix v1.0 networks.
+
 ### Added
 
 - **Per-network regression coverage for landing-policy preservation** (#657). The synthetic affiliate-flow harness now ships an end-to-end G3 that calls `getLandingPolicy(landing_host, referrer)` and `processUrl(...)` for every network in the matrix, asserting matrix-required params survive while tracking noise strips. Six new fixtures cover Partnerize, Admitad, A8.net, Impact Radius, Rakuten LinkShare, and TradeTracker (the last three are flagged `pending_resolution` for the G1 surface-inversion follow-up to [ADR-0003](docs/adr/0003-awin-redirect-model-resolution.md), but G3 enforces today because the policy function resolves all networks via `REDIRECT_NETWORK_PATTERNS`). Existing Awin / CJ / AliExpress fixtures drop their `blocked_on:#655` annotations now that the audit has shipped.

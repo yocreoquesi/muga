@@ -86,11 +86,8 @@ const WRAPPERS = [
     wrapperHost: "www.shareasale.com",
     url: `https://www.shareasale.com/r.cfm?b=1&u=2&m=3&urllink=${DEST_ENC}`,
   },
-  {
-    name: "Rakuten LinkSynergy",
-    wrapperHost: "click.linksynergy.com",
-    url: `https://click.linksynergy.com/deeplink?id=foo&mid=42&murl=${DEST_ENC}`,
-  },
+  // Rakuten LinkSynergy DNR rule retired in #692 (ADR-0003 follow-up).
+  // click.linksynergy.com is now in AFFILIATE_REDIRECT_NETWORKS (pass-through).
 ];
 
 test.describe("DNR wrapper-redirect rules (#510)", () => {

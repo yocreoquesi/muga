@@ -1,7 +1,6 @@
 {
   "network": "Impact Radius (impact.com)",
   "matrix_section": "docs/affiliate-networks-matrix.md#impact-radius-impactcom",
-  "pending_resolution": "Surface inversion not yet shipped: *.pxf.io still lives in the wrapper engine (caps-spec impact-radius). Pass-through migration into AFFILIATE_REDIRECT_NETWORKS is a follow-up to ADR-0003 (same shape as #684 was for Awin). G3 enforces today because getLandingPolicy already resolves *.pxf.io via REDIRECT_NETWORK_PATTERNS — the host's pass-through wiring is the remaining gap.",
   "redirect_hosts": [
     "target.pxf.io",
     "walmart.pxf.io",

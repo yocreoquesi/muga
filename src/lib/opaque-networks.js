@@ -101,6 +101,18 @@ export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
 
   // A8.net Japan affiliate — hostname px.a8.net confirmed STANDARD via T00 probe
   "px.a8.net",
+
+  // Impact Radius — retired from wrapper-engine in #692 per ADR-0003 follow-up.
+  // Wildcard entry: Impact assigns brand-specific subdomains on pxf.io
+  // (target.pxf.io, walmart.pxf.io, gohealth.pxf.io, …). The apex pxf.io is
+  // excluded by the wildcard semantics (requires at least one subdomain label).
+  "*.pxf.io",
+
+  // Rakuten Advertising (LinkShare) — retired from wrapper-engine in #692.
+  "click.linksynergy.com",
+
+  // TradeTracker — retired from wrapper-engine in #692.
+  "tc.tradetracker.net",
 ]);
 
 /**
@@ -129,7 +141,19 @@ export const OPAQUE_NETWORKS = Object.freeze([
 function matches(list, hostname) {
   if (!hostname) return false;
   const h = hostname.replace(/^www\./, "");
-  return list.includes(h) || list.includes(hostname);
+  if (list.includes(h) || list.includes(hostname)) return true;
+  // Wildcard suffix match: an entry of the form `*.<suffix>` matches any
+  // hostname whose suffix equals `<suffix>` AND has at least one subdomain
+  // label. Mirrors the wildcard semantics used by getRedirectNetworkForRedirectHost
+  // in affiliates.js (the matrix-side resolver). `*.pxf.io` matches
+  // `target.pxf.io` but NOT the bare apex `pxf.io`.
+  for (const entry of list) {
+    if (typeof entry !== "string" || !entry.startsWith("*.")) continue;
+    const suffix = entry.slice(1); // ".pxf.io"
+    if (h.length > suffix.length && h.endsWith(suffix)) return true;
+    if (hostname.length > suffix.length && hostname.endsWith(suffix)) return true;
+  }
+  return false;
 }
 
 /**

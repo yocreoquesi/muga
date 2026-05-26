@@ -159,6 +159,7 @@ function extractFromUrlAfterQuery() {
 }
 
 import { WRAPPERS_RAW } from "../vendor/caps-spec/wrappers.data.js";
+import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
 
 /**
  * Wrapper schema mapping caps-spec/wrappers.json (the published normative
@@ -193,10 +194,19 @@ const SKIMLINKS_SPEC_IDS = new Set([
  *   - `awin`: per ADR-0003 — Awin's attribution model appends `awc`/`wt_mc`
  *     at the 30x step, which local-unwrap silently drops. See
  *     docs/adr/0003-awin-redirect-model-resolution.md.
+ *   - `impact`: per ADR-0003 follow-up (#692). Impact's `irclickid` family
+ *     lands on the merchant via the network's 30x; local-unwrap of `*.pxf.io`
+ *     would drop the click context before the merchant tag fires.
+ *   - `rakuten`: per ADR-0003 follow-up (#692). The `ranmid`/`ransiteid`/
+ *     `raneaid` family lands on the merchant via the network's 30x;
+ *     `click.linksynergy.com` is now pass-through.
+ *   - `tradetracker`: per ADR-0003 follow-up (#692). The `ttaid`/`ttrk`/
+ *     `ttcid` family lands on the merchant via the network's 30x;
+ *     `tc.tradetracker.net` is now pass-through.
  *
  * Upstream caps-spec is unchanged — the exclusion is MUGA-policy, not data.
  */
-const MUGA_EXCLUDED_IDS = new Set(["awin"]);
+const MUGA_EXCLUDED_IDS = new Set(["awin", "impact", "rakuten", "tradetracker"]);
 
 /**
  * Per-id compatibility overrides applied AFTER the spec→engine mapping.
@@ -427,6 +437,12 @@ export function detectWrapper(rawUrl) {
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
   const host = url.hostname.toLowerCase();
+  // Pass-through guard (#692): hosts declared in AFFILIATE_REDIRECT_NETWORKS
+  // are never wrappers, even if their query string happens to carry a key in
+  // GENERIC_WRAPPER_PARAMS (e.g. `?u=` on *.pxf.io and tc.tradetracker.net).
+  // The 30x must execute in the browser so the network can populate the
+  // merchant's first-party cookie at landing.
+  if (isAffiliateRedirectNetwork(host)) return null;
   for (const wrapper of WRAPPERS) {
     const hostMatch = wrapper.hostPatterns.some((p) =>
       typeof p === "string" ? host === p.toLowerCase() : p.test(host)

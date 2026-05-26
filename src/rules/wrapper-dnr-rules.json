@@ -83,22 +83,5 @@
         "sub_frame"
       ]
     }
-  },
-  {
-    "id": 6,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "regexSubstitution": "\\1"
-      }
-    },
-    "condition": {
-      "regexFilter": "^https?://click\\.linksynergy\\.com/deeplink.*[?&]murl=([^&]+)",
-      "resourceTypes": [
-        "main_frame",
-        "sub_frame"
-      ]
-    }
   }
 ]
