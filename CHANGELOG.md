@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Retired the local-unwrap path for a redirect-attribution network** (#684, [ADR-0003](docs/adr/0003-awin-redirect-model-resolution.md)). The wrapper-engine entry that previously short-circuited `awin1.com/cread.php` and `/awclick.php` has been removed; the host is now declared in `AFFILIATE_REDIRECT_NETWORKS` so the browser follows the network's 30x and the merchant's first-party tag can populate the attribution cookie at landing. The MUGA-side exclusion lives in a new `MUGA_EXCLUDED_IDS` filter in `src/lib/wrapper-engine.js` — upstream `caps-spec` is unchanged. Cleaner's contextual-rule short-circuit (#543) extended to also cover `AFFILIATE_REDIRECT_NETWORKS` so the bounded-scope strip no longer fires on the network's own redirect page. DNR rule count drops from 7 to 6, synthetic harness fixture clears its `pending_resolution` annotation, and 3 new wrapper-engine tests assert the retirement.
+
 ### Added
 
 - **`getLandingPolicy(hostname, referrer)` per-landing preservation gate** (#656) in `src/lib/cleaner.js`. When `document.referrer` matches a redirect-network host declared in `REDIRECT_NETWORK_PATTERNS`, the function returns the matrix-required preservation Set for that network; the cleaner's strip pass honours it so the merchant's tag can read its attribution params on first-touch landings before any cleanup runs. Returns an empty no-op policy when the referrer is null, same-origin, or unknown — default strip behaviour unchanged. Exposed on `window.__mugaCleaner.getLandingPolicy` via the content-script bundle. 23 new unit tests cover each of the 9 matrix v1.0 networks, defensive referrer parsing, and the `processUrl` integration. Active stripping on subsequent same-site navigations is deliberately deferred — the matrix biases toward preservation, and the synthetic harness should cover the first-touch → second-nav flow end-to-end before that ships.

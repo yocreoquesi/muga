@@ -19,7 +19,7 @@
  *   - Destination URL > 2000 chars (length cap consistent with rest of repo).
  *
  * Precedence:
- *   - Explicit-over-generic: a host already in WRAPPERS (e.g. awin1.com) keeps
+ *   - Explicit-over-generic: a host already in WRAPPERS (e.g. l.facebook.com) keeps
  *     its tested behavior even if it also carries `?url=` — the generic path
  *     never overrides an explicit wrapper.
  *   - Unknown hosts with a generic redirect param → unwrap via generic path.
@@ -225,23 +225,23 @@ describe("Wrapper Engine — generic path length-cap guard", () => {
 // Precedence — explicit wrappers always win over the generic path
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — explicit-over-generic precedence", () => {
-  test("Awin URL with both p= and url= still uses Awin (explicit) extractor", () => {
+  test("l.facebook.com URL with both u= and url= still uses Facebook (explicit) extractor", () => {
     const realDest = "https://merchant.example.com/product";
     const decoy = "https://decoy.example.com/decoy";
     const input =
-      "https://www.awin1.com/cread.php?p=" +
+      "https://l.facebook.com/l.php?u=" +
       encodeURIComponent(realDest) +
       "&url=" +
       encodeURIComponent(decoy);
     const w = detectWrapper(input);
     assert.ok(w);
-    // Explicit Awin entry — NOT a generic entry.
-    assert.equal(w.id, "awin");
+    // Explicit facebook-l entry — NOT a generic entry.
+    assert.equal(w.id, "facebook-l");
     assert.notEqual(w.isGeneric, true);
     const result = unwrap(input);
     assert.ok(result);
     assert.equal(result.unwrapped, realDest);
-    assert.deepEqual(result.networks, ["awin"]);
+    assert.deepEqual(result.networks, ["facebook-l"]);
   });
 
   test("Skimlinks (host-only explicit) keeps explicit precedence even though it uses ?url=", () => {
@@ -271,14 +271,14 @@ describe("Wrapper Engine — explicit-over-generic precedence", () => {
 describe("Wrapper Engine — generic path integrates with unwrap loop", () => {
   test("generic → explicit chain unwraps both hops", () => {
     const finalDest = "https://merchant.example.com/p";
-    const awinUrl =
-      "https://www.awin1.com/cread.php?p=" + encodeURIComponent(finalDest);
+    const fbUrl =
+      "https://l.facebook.com/l.php?u=" + encodeURIComponent(finalDest);
     const input =
-      "https://unknown-redirector.test/go?url=" + encodeURIComponent(awinUrl);
+      "https://unknown-redirector.test/go?url=" + encodeURIComponent(fbUrl);
     const result = unwrap(input);
     assert.ok(result);
     assert.equal(result.unwrapped, finalDest);
     assert.equal(result.hops, 2);
-    assert.deepEqual(result.networks, ["generic-url", "awin"]);
+    assert.deepEqual(result.networks, ["generic-url", "facebook-l"]);
   });
 });

@@ -71,13 +71,24 @@ test("wrappers.data.js mirrors wrappers.json verbatim", () => {
   );
 });
 
-test("engine WRAPPERS covers every spec id (skimlinks split consolidated)", () => {
+test("engine WRAPPERS covers every spec id (skimlinks consolidated; MUGA-excluded ids skipped)", () => {
   const engineIds = new Set(WRAPPERS.map((w) => w.id));
   const SKIMLINKS_SPEC_IDS = new Set([
     "skimlinks-redirectingat",
     "skimlinks-skimresources",
   ]);
+  // MUGA-policy exclusions kept in sync with MUGA_EXCLUDED_IDS in wrapper-engine.js.
+  // See docs/adr/0003-awin-redirect-model-resolution.md.
+  const MUGA_EXCLUDED_IDS = new Set(["awin"]);
   for (const entry of WRAPPERS_RAW) {
+    if (MUGA_EXCLUDED_IDS.has(entry.id)) {
+      assert.equal(
+        engineIds.has(entry.id),
+        false,
+        `engine WRAPPERS unexpectedly includes excluded id "${entry.id}" — MUGA_EXCLUDED_IDS filter is bypassed`,
+      );
+      continue;
+    }
     if (SKIMLINKS_SPEC_IDS.has(entry.id)) {
       assert.ok(
         engineIds.has("skimlinks"),

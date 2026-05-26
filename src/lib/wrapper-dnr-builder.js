@@ -41,7 +41,6 @@
  * @type {ReadonlyArray<string>}
  */
 export const REGEX_PURE_WRAPPER_IDS = Object.freeze([
-  "awin",
   "facebook-l",
   "facebook-lm",
   "skimlinks-redirectingat",
@@ -73,13 +72,6 @@ export const REGEX_PURE_WRAPPER_IDS = Object.freeze([
  * }>}
  */
 const RECIPES = Object.freeze([
-  {
-    id: "awin",
-    sourceId: "awin",
-    hostRegex: "(?:www\\.)?awin1\\.com",
-    pathPrefix: null,
-    paramName: "p",
-  },
   {
     id: "facebook-l",
     sourceId: "facebook-l",

@@ -77,6 +77,12 @@ export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
   // AliExpress affiliate click tracker
   "s.click.aliexpress.com",
 
+  // Awin — retired from wrapper-engine in #684 per ADR-0003. Awin's
+  // attribution model appends awc/wt_mc at the 30x; pass-through lets the
+  // merchant's MasterTag populate the first-party cookie at landing.
+  "awin1.com",
+  "www.awin1.com",
+
   // CJ Affiliate (Commission Junction) — all redirect domains from caps-spec
   "anrdoezrs.net",
   "dpbolvw.net",
