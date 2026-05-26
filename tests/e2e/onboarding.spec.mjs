@@ -39,6 +39,20 @@ test.describe("Onboarding", () => {
     await expect(page.locator("#start-btn")).toBeVisible();
   });
 
+  test("ob_tagline_sub renders the 2.1 denoise-first wording (no 'Fair to creators')", async ({ onboardingPage: page }) => {
+    // 2.1 pivot replaced the creator-favouring 2.0 wording ("Fair to creators ·
+    // nice to you · honest about both") with a creator-agnostic denoise frame.
+    // See ADR-0002 and the original miss flagged in #704. This test guards
+    // against a regression that brings the moral-positioning copy back.
+    const tagline = page.locator('[data-i18n="ob_tagline_sub"]');
+    await expect(tagline).toBeVisible();
+    const text = await tagline.textContent();
+    expect(text).toContain("Denoise the web");
+    expect(text).toContain("zero telemetry");
+    expect(text).not.toContain("Fair to creators");
+    expect(text).not.toContain("honest about both");
+  });
+
   test("affiliate checkbox is optional and unchecked by default", async ({ onboardingPage: page }) => {
     const affiliateCheck = page.locator("#affiliate-check");
     await expect(affiliateCheck).not.toBeChecked();
