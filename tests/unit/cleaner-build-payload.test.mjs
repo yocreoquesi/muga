@@ -65,14 +65,14 @@ describe("TS-1 — buildReturnPayload — S2 (auth/disabled, live creatorReferra
 describe("TS-1 — buildReturnPayload — S3 (honored-creator)", () => {
   test("S3: includes network and creator keys in output", () => {
     const result = buildReturnPayload("honored-creator", RAW_URL, [], null, {
-      network: "awin",
+      network: "facebook-l",
       creator: "creator1",
       creatorReferralPreserved: false,
     });
 
     assert.equal(result.action, "honored-creator");
     assert.equal(result.cleanUrl, RAW_URL);
-    assert.equal(result.network, "awin", "S3 must include network");
+    assert.equal(result.network, "facebook-l", "S3 must include network");
     assert.equal(result.creator, "creator1", "S3 must include creator");
     assert.equal(result.creatorReferralPreserved, false, "S3 hardcodes false");
     assert.equal(result.preservedAffiliate, null);

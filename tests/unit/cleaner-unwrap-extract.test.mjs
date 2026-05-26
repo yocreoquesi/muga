@@ -36,8 +36,10 @@ const HONOR_PREFS = {
   creatorAllowlist: ["techreviewer.example.com"],
 };
 
-// ── A known Awin wrapper URL — unwrap() can extract destination from it
-const AWIN_WRAPPER = "https://www.awin1.com/cread.php?awinmid=1&p=https%3A%2F%2Fmerchant.com%2Fproduct%3Futm_source%3Dawin";
+// ── A known l.facebook.com wrapper URL — unwrap() can extract destination from it.
+// (Awin was retired from the wrapper engine in #684; using l.facebook.com here as
+// the canonical extractable-wrapper sample.)
+const AWIN_WRAPPER = "https://l.facebook.com/l.php?u=https%3A%2F%2Fmerchant.com%2Fproduct%3Futm_source%3Dfb&h=AT2abc";
 
 // ── A t.co opaque wrapper — detectWrapper() detects it, but unwrap() returns null
 const TCO_RAW = "https://t.co/AbcDef123";
@@ -160,15 +162,15 @@ describe("TS-14 — unwrapAndExtract — 1-arg crash boundary (FR-7)", () => {
   });
 });
 
-describe("unwrapAndExtract — continue path — Awin wrapper unwrapped", () => {
+describe("unwrapAndExtract — continue path — wrapper unwrapped", () => {
   test("known wrapper URL without honor → kind:continue with unwrapped destination", () => {
     const result = unwrapAndExtract(AWIN_WRAPPER, BASE_PREFS, undefined, undefined);
 
     assert.equal(result.kind, "continue");
     assert.ok(result.url instanceof URL, "url must be a URL instance");
     assert.ok(
-      result.url.hostname !== "www.awin1.com",
-      "url must be the unwrapped merchant, not the Awin wrapper",
+      result.url.hostname !== "l.facebook.com",
+      "url must be the unwrapped merchant, not the wrapper host",
     );
     assert.equal(typeof result.creatorReferralPreserved, "boolean");
   });
