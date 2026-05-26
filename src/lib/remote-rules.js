@@ -484,6 +484,17 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  * @returns {Promise<void>}
  */
 export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
+  // Defense-in-depth (#631 item 2): assert MAX_PARAM_COUNT before touching the
+  // DNR table. `validateRemotePayload` already enforces this cap on the input,
+  // but an explicit guard here makes the contract impossible to bypass if a
+  // future caller wires `mergeIntoCache` differently. Throws rather than
+  // silently truncating — a payload over the cap means the validator regressed
+  // and should fail loudly during development.
+  if (!Array.isArray(accepted) || accepted.length > MAX_PARAM_COUNT) {
+    throw new Error(
+      `mergeIntoCache: accepted param count ${Array.isArray(accepted) ? accepted.length : "(not-array)"} exceeds MAX_PARAM_COUNT (${MAX_PARAM_COUNT})`,
+    );
+  }
   await storage.set({
     remoteParams: accepted,
     remoteRulesMeta: meta,

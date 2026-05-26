@@ -359,6 +359,15 @@
       </div>
     </div>
 
+    <!-- Browser sync clarification (#631 item 4): the prefs the user opts into
+         above are persisted via chrome.storage.sync, which means they cross
+         devices ONLY if browser-native sync is on — that's the browser
+         vendor's sync, not MUGA's. Stated plainly so a privacy-paranoid user
+         doesn't misread the network trace. -->
+    <div class="section sync-note-section">
+      <p class="sync-note" data-i18n="ob_browser_sync_note">MUGA never sends data anywhere. If you have browser sync enabled, your preferences sync through the browser (Google for Chrome, Firefox Accounts for Firefox) — that's a browser feature, not MUGA.</p>
+    </div>
+
     <!-- ToS acceptance -->
     <div class="tos-section">
       <label class="tos-check" id="tos-label">
