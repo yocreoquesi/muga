@@ -39,15 +39,14 @@ describe("REGEX_PURE_WRAPPER_IDS", () => {
     "skimlinks-redirectingat",
     "skimlinks-skimresources",
     "shareasale",
-    "rakuten",
   ];
 
-  test("lists exactly the six in-scope wrapper ids (awin retired in #684)", () => {
+  test("lists exactly the five in-scope wrapper ids (awin retired #684, rakuten retired #692)", () => {
     assert.deepEqual([...REGEX_PURE_WRAPPER_IDS].sort(), [...expected].sort());
   });
 
-  test("has length 6", () => {
-    assert.equal(REGEX_PURE_WRAPPER_IDS.length, 6);
+  test("has length 5", () => {
+    assert.equal(REGEX_PURE_WRAPPER_IDS.length, 5);
   });
 });
 
@@ -57,8 +56,8 @@ describe("REGEX_PURE_WRAPPER_IDS", () => {
 describe("buildDnrRules — full WRAPPERS table", () => {
   const rules = buildDnrRules(WRAPPERS);
 
-  test("returns exactly 6 rules", () => {
-    assert.equal(rules.length, 6);
+  test("returns exactly 5 rules", () => {
+    assert.equal(rules.length, 5);
   });
 
   test("each rule has id, priority, action, condition", () => {
@@ -163,14 +162,10 @@ describe("buildDnrRules — host + param targeting", () => {
     assert.ok(f.includes("urllink"));
   });
 
-  test("Rakuten rule matches click.linksynergy.com/deeplink and ?murl= param", () => {
-    const f = filterFor("rakuten").regexFilter;
-    assert.match(
-      "https://click.linksynergy.com/deeplink?id=1&murl=https%3A%2F%2Fm.com",
-      new RegExp(f),
-    );
-    assert.ok(f.includes("linksynergy\\.com"));
-    assert.ok(f.includes("murl"));
+  test("no rule mentions linksynergy.com (Rakuten retired in #692)", () => {
+    for (const rule of rules) {
+      assert.doesNotMatch(rule.condition.regexFilter, /linksynergy/i);
+    }
   });
 });
 
@@ -220,7 +215,7 @@ describe("buildDnrRules — idempotency", () => {
 // validateDnrRules
 // ---------------------------------------------------------------------------
 describe("validateDnrRules", () => {
-  test("ok=true for the canonical 7-rule output", () => {
+  test("ok=true for the canonical 5-rule output", () => {
     const result = validateDnrRules(buildDnrRules(WRAPPERS));
     assert.equal(result.ok, true);
     assert.deepEqual(result.warnings, []);

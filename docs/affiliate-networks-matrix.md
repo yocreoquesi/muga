@@ -260,7 +260,7 @@ A second policy branch covers AliExpress arriving through CJ/Awin/Admitad: in th
 - Redirect host pattern: `*.pxf.io` — Impact assigns brand-specific subdomains (`gohealth.pxf.io`, `target.pxf.io`, `walmart.pxf.io`, etc.). The apex `pxf.io` itself is not used as a redirect endpoint.
 - Merchant landing: any Impact-onboarded advertiser. Notable advertisers known to be on Impact: Walmart, Target, Adidas, Uber, Airbnb, McAfee. Humble Bundle migrated to Impact when its direct affiliate program was deprecated (see `src/vendor/caps-spec/manifest.json` deprecation note).
 - Endpoint shape: `<brand>.pxf.io/c/<click-id>/<advertiser-id>/<...>?subId1=<pubref>&...`. Path-encoded rather than purely query-string.
-- **Today MUGA treats `*.pxf.io` as a wrapper for unwrapping** via `src/content/bounce-state-cleaner.js` and the caps-spec `impact-radius` wrapper entry. Under 2.1 this MUST flip: `*.pxf.io` joins `AFFILIATE_REDIRECT_NETWORKS` and is passed through.
+- **Retired from wrapper-engine in #692** (ADR-0003 follow-up). `*.pxf.io` is now in `AFFILIATE_REDIRECT_NETWORKS` (via the new wildcard primitive — entry `"*.pxf.io"`) and the `impact` caps-spec id is in `MUGA_EXCLUDED_IDS` in `src/lib/wrapper-engine.js`. `bounce-state-cleaner.js` no longer detects `*.pxf.io` as an intermediary.
 
 **Click flow**
 
@@ -503,7 +503,7 @@ A8.net's merchant list is not publicly enumerable. Policy keys on the referrer (
 
 **Surface**
 
-- Redirect host: `click.linksynergy.com`. NOT in `OPAQUE_NETWORKS` today — instead handled via the wrapper engine ([`src/vendor/caps-spec/wrappers.json:70-75`](../src/vendor/caps-spec/wrappers.json)) which extracts the destination from the `murl=` param via DNR/regex. Bounce-state-cleaner also targets `click.linksynergy.com` ([`bounce-state-cleaner.js:68`](../src/content/bounce-state-cleaner.js)).
+- Redirect host: `click.linksynergy.com`. **Retired from wrapper-engine in #692** (ADR-0003 follow-up). Now in `AFFILIATE_REDIRECT_NETWORKS` (pass-through); `rakuten` caps-spec id is in `MUGA_EXCLUDED_IDS`; DNR wrapper rule removed (6 → 5 rules); bounce-state-cleaner no longer targets it.
 - Merchant landing: large US/global retailers — Macy's, Walmart (some regions), Lego, Sephora, Nordstrom, plus the entire Rakuten Ichiba ecosystem and many travel brands.
 - Endpoint shape: `https://click.linksynergy.com/deeplink?id=<11-char-pub-id>&mid=<merchant-id>&murl=<encoded merchant URL>[&subid=...]` or `/fs-bin/click?id=<...>&offerid=<...>&type=3&subid=...`.
 
@@ -565,7 +565,7 @@ hostname is any merchant domain
 
 **Surface**
 
-- Redirect host: `tc.tradetracker.net` (Tracker Cluster). NOT in `OPAQUE_NETWORKS` today — bounce-state-cleaner targets it ([`bounce-state-cleaner.js:69`](../src/content/bounce-state-cleaner.js)), and the wrapper engine has a corresponding entry ([`src/vendor/caps-spec/wrappers.json:128`](../src/vendor/caps-spec/wrappers.json)).
+- Redirect host: `tc.tradetracker.net` (Tracker Cluster). **Retired from wrapper-engine in #692** (ADR-0003 follow-up). Now in `AFFILIATE_REDIRECT_NETWORKS` (pass-through); `tradetracker` caps-spec id is in `MUGA_EXCLUDED_IDS`; bounce-state-cleaner no longer targets it.
 - TradeTracker is Europe-only. Merchants tend to be European retailers and SaaS: Lyca Mobile, Bol.com (NL), Just Eat (regional), various European travel/finance.
 - Endpoint shape: `https://tc.tradetracker.net/?c=<campaign>&m=<merchant>&a=<affiliate-id>&u=<encoded dest>[&r=<reference>]`.
 

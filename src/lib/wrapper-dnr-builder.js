@@ -46,7 +46,6 @@ export const REGEX_PURE_WRAPPER_IDS = Object.freeze([
   "skimlinks-redirectingat",
   "skimlinks-skimresources",
   "shareasale",
-  "rakuten",
 ]);
 
 /**
@@ -106,13 +105,6 @@ const RECIPES = Object.freeze([
     hostRegex: "(?:www\\.)?shareasale\\.com",
     pathPrefix: "/r\\.cfm",
     paramName: "urllink",
-  },
-  {
-    id: "rakuten",
-    sourceId: "rakuten",
-    hostRegex: "click\\.linksynergy\\.com",
-    pathPrefix: "/deeplink",
-    paramName: "murl",
   },
 ]);
 

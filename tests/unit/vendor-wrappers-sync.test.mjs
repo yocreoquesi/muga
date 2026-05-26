@@ -78,8 +78,8 @@ test("engine WRAPPERS covers every spec id (skimlinks consolidated; MUGA-exclude
     "skimlinks-skimresources",
   ]);
   // MUGA-policy exclusions kept in sync with MUGA_EXCLUDED_IDS in wrapper-engine.js.
-  // See docs/adr/0003-awin-redirect-model-resolution.md.
-  const MUGA_EXCLUDED_IDS = new Set(["awin"]);
+  // See docs/adr/0003-awin-redirect-model-resolution.md (#684 for awin; #692 for the rest).
+  const MUGA_EXCLUDED_IDS = new Set(["awin", "impact", "rakuten", "tradetracker"]);
   for (const entry of WRAPPERS_RAW) {
     if (MUGA_EXCLUDED_IDS.has(entry.id)) {
       assert.equal(

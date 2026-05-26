@@ -65,8 +65,6 @@
     { hostPatterns: ["awin1.com", "www.awin1.com"], pathPatterns: ["/cread.php", "/awclick.php"] },
     { hostPatterns: ["go.redirectingat.com", "go.skimresources.com"], pathPatterns: null },
     { hostPatterns: ["shareasale.com", "www.shareasale.com"], pathPatterns: ["/r.cfm"] },
-    { hostPatterns: ["click.linksynergy.com"], pathPatterns: ["/deeplink"] },
-    { hostPatterns: ["tc.tradetracker.net"], pathPatterns: null },
     { hostPatterns: ["t.co"], pathPatterns: null },
     { hostPatterns: ["l.facebook.com"], pathPatterns: ["/l.php"] },
     { hostPatterns: ["lm.facebook.com"], pathPatterns: ["/l.php"] },
@@ -77,9 +75,12 @@
     { hostPatterns: ["exit.sc"], pathPatterns: null },
     { hostPatterns: ["href.li"], pathPatterns: null },
     { hostPatterns: ["anonym.to"], pathPatterns: null },
-    // Impact Radius — regex matches subdomain.pxf.io. The literal regex
-    // here is a copy of the one in src/lib/wrapper-engine.js.
-    { hostPatterns: [/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.pxf\.io$/], pathPatterns: null },
+    // Impact Radius (*.pxf.io), Rakuten (click.linksynergy.com), and
+    // TradeTracker (tc.tradetracker.net) previously lived in this list.
+    // Retired in #692 per ADR-0003 follow-up: those hosts are now in
+    // AFFILIATE_REDIRECT_NETWORKS (pass-through), and bounce-state cleanup
+    // must NOT wipe their localStorage during the redirect step — the
+    // network needs that state to attribute the click on landing.
   ];
 
   function inlineDetectWrapper(rawUrl) {

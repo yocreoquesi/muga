@@ -13,14 +13,16 @@
 //   - Partnerize     (prf.hn)
 //   - Admitad        (ad.admitad.com — alitems.com follow-up)
 //   - A8.net         (px.a8.net)
-//   - Impact Radius  (*.pxf.io)        — G1 PENDING (surface inversion)
-//   - Rakuten        (click.linksynergy.com) — G1 PENDING
-//   - TradeTracker   (tc.tradetracker.net)   — G1 PENDING
+//   - Impact Radius  (*.pxf.io)             — retired from wrapper in #692
+//   - Rakuten        (click.linksynergy.com) — retired from wrapper in #692
+//   - TradeTracker   (tc.tradetracker.net)   — retired from wrapper in #692
 //
 // Guards:
-//   G1 — Redirect-host pass-through invariants (HARD; skipped per-fixture
-//        when pending_resolution is set, since the host has not yet been
-//        migrated into AFFILIATE_REDIRECT_NETWORKS).
+//   G1 — Redirect-host pass-through invariants (HARD). The membership check
+//        uses isAffiliateRedirectNetwork() so wildcard entries (e.g. `*.pxf.io`)
+//        resolve correctly. The raw AFFILIATE_REDIRECT_NETWORKS export is no
+//        longer probed directly. pending_resolution still skips G1 per-fixture
+//        for any network that may need it in the future.
 //   G2 — Tracking-noise is universally stripped at landing (HARD).
 //   G3 — Attribution params preserved via getLandingPolicy + processUrl
 //        (HARD; always enforced — the policy function resolves all networks
@@ -35,7 +37,6 @@ import { join, dirname } from "node:path";
 import {
   isAffiliateRedirectNetwork,
   isGenericShortener,
-  AFFILIATE_REDIRECT_NETWORKS,
 } from "../../src/lib/opaque-networks.js";
 import { TRACKING_PARAMS } from "../../src/lib/affiliates.js";
 import { getLandingPolicy, processUrl } from "../../src/lib/cleaner.js";
@@ -104,16 +105,15 @@ describe("affiliate-harness — G1: redirect-host pass-through (HARD)", () => {
           );
         });
 
-        test(`${host} appears in the AFFILIATE_REDIRECT_NETWORKS export`, skip, () => {
-          // www-prefixed entries are normalised by the helper, but the raw
-          // export uses bare hosts. Strip the www. for the membership check.
-          // Wildcard hosts (e.g. target.pxf.io for *.pxf.io) only appear via
-          // the helper, not in the raw export — skip the membership check
-          // when pending (those networks haven't been migrated yet anyway).
-          const bare = host.replace(/^www\./, "");
-          assert.ok(
-            AFFILIATE_REDIRECT_NETWORKS.includes(bare),
-            `${bare} missing from AFFILIATE_REDIRECT_NETWORKS — fixture and source disagree`,
+        test(`${host} is recognised by isAffiliateRedirectNetwork (covers wildcard entries)`, skip, () => {
+          // Goes through the helper so wildcard suffix entries (e.g. `*.pxf.io`
+          // matching `target.pxf.io`) resolve. The raw AFFILIATE_REDIRECT_NETWORKS
+          // export contains literal entries AND `*.suffix` patterns; do NOT
+          // probe it with `.includes()` directly.
+          assert.equal(
+            isAffiliateRedirectNetwork(host),
+            true,
+            `${host} not recognised by isAffiliateRedirectNetwork — fixture and source disagree`,
           );
         });
       }
