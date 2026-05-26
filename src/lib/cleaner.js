@@ -7,6 +7,7 @@ import {
   TRACKING_PARAMS,
   TRACKING_PARAM_CATEGORIES,
   getPatternsForHost,
+  getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
 } from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
@@ -143,10 +144,38 @@ function domainMatches(hostname, entryDomain) {
 }
 
 /**
+ * Per-array index of `domainRules` keyed by `rule.domain`. The cleaner is
+ * called once per page navigation but `domainRules` is loaded ONCE in the
+ * service worker and reused across every call — so we build a `Map(domain →
+ * rule)` lazily, the first time we see an array, and reuse it for every
+ * subsequent call with the same array reference (#629 win 1). WeakMap so the
+ * index is GC'd if the SW rebuilds the rules.
+ */
+const _domainRulesIndex = new WeakMap();
+
+function _ensureDomainIndex(domainRules) {
+  if (!Array.isArray(domainRules) || domainRules.length === 0) return null;
+  let idx = _domainRulesIndex.get(domainRules);
+  if (idx) return idx;
+  idx = new Map();
+  for (const rule of domainRules) {
+    if (!rule || typeof rule.domain !== "string") continue;
+    // Last writer wins on identical keys — matches the linear-iteration
+    // semantics of the pre-#629 loop (which OR'd every match anyway).
+    idx.set(rule.domain, rule);
+  }
+  _domainRulesIndex.set(domainRules, idx);
+  return idx;
+}
+
+/**
  * Builds the set of params that must NOT be stripped and the set of
  * domain-specific params that MUST be stripped on the given hostname.
  *
  * Matching is subdomain-aware: "www.google.com" matches rule for "google.com".
+ *
+ * #629 win 1: lookup is O(suffix-count) — at most ~3-4 probes per call instead
+ * of linear scan over the entire domainRules array (~167 entries in production).
  *
  * @param {string} hostname
  * @param {Array}  domainRules  - Array of { domain, preserveParams[], stripParams[]? } objects
@@ -155,11 +184,26 @@ function domainMatches(hostname, entryDomain) {
 export function getDomainParamSets(hostname, domainRules = []) {
   const preserved = new Set();
   const domainStrip = new Set();
-  for (const rule of domainRules) {
-    if (hostname === rule.domain || hostname.endsWith("." + rule.domain)) {
-      (rule.preserveParams || []).forEach(p => preserved.add(p.toLowerCase()));
-      (rule.stripParams || []).forEach(p => domainStrip.add(p.toLowerCase()));
-    }
+  const idx = _ensureDomainIndex(domainRules);
+  if (!idx) return { preserved, domainStrip };
+
+  // Generate suffix candidates: for "a.b.c.com" probe a.b.c.com, b.c.com, c.com, com.
+  // Bounded by the dot count, which is small in practice (≤ 5 for real hosts).
+  const candidates = [];
+  candidates.push(hostname);
+  let rest = hostname;
+  while (true) {
+    const dot = rest.indexOf(".");
+    if (dot < 0) break;
+    rest = rest.slice(dot + 1);
+    if (!rest) break;
+    candidates.push(rest);
+  }
+  for (const candidate of candidates) {
+    const rule = idx.get(candidate);
+    if (!rule) continue;
+    (rule.preserveParams || []).forEach((p) => preserved.add(p.toLowerCase()));
+    (rule.stripParams || []).forEach((p) => domainStrip.add(p.toLowerCase()));
   }
   return { preserved, domainStrip };
 }
@@ -265,7 +309,8 @@ const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
 function stripTrackingParams(url, prefs, domainRules, disabledCategories, classifierStripSet, landingPolicy = EMPTY_LANDING_POLICY) {
   const hostname = url.hostname;
   const patterns = getPatternsForHost(hostname);
-  const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  // #629 win 2: cached Set, allocated once per host.
+  const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
   const remoteParams = new Set((prefs.remoteParams || []).map(p => p.toLowerCase()));  // T1.5: ADR-D10
   // #536: user-promoted strip rules. Lowercased once for case-insensitive
@@ -648,7 +693,8 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   // Track whether a blacklist rule removed an affiliate param (injection suppression, #183).
   // INTERNAL — does NOT cross the function boundary.
   let blacklistRemovedAffiliate = false;
-  const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  // #629 win 2: cached Set, allocated once per host.
+  const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
       const current = url.searchParams.get(entry.param);
@@ -723,7 +769,8 @@ function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pa
   // Bounded-scope classifier (#530): even on whitelisted domains, ambiguous
   // params co-occurring with anchor trackers should be stripped. Affiliate
   // params are independently protected by affiliateParamSet inside stripTrackingParams.
-  const wlAffiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+  // #629 win 2: cached Set, allocated once per host.
+  const wlAffiliateParamSet = getAffiliateParamSetForHost(hostname);
   const wlClassification = classifyParams(url.toString(), {
     ...prefs,
     _affiliateParamSet: wlAffiliateParamSet,
@@ -776,8 +823,9 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
     }
   } else {
     // Standard path: bounded-scope classifier (#530) + stripTrackingParams.
-    const patterns = getPatternsForHost(hostname);
-    const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
+    // #629 win 2: affiliateParamSet is cached per host inside affiliates.js,
+    // so the Set allocation only happens on first call for each hostname.
+    const affiliateParamSet = getAffiliateParamSetForHost(hostname);
     const disabledCategories = new Set(prefs.disabledCategories || []);
     // CAPS-Contextual short-circuit (#543): skip bounded-scope rule when URL
     // is on a network-redirect host. Covers both wrapper hosts (destination
