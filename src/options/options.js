@@ -206,6 +206,14 @@ function bindToggle(id, key, prefs) {
   });
 }
 
+// Defense-in-depth cap on user-list rendering (#631 item 3): even if
+// chrome.storage.sync somehow returns a malformed list with tens of thousands
+// of entries (corrupted sync state, hostile import, …), the DOM stays
+// bounded. Silent truncation — the legacy bloat case is too rare to warrant
+// a visible warning, and a user who hits the cap legitimately is already
+// well past any reasonable workflow.
+const RENDER_LIST_MAX_ITEMS = 1000;
+
 /** Renders a blacklist/whitelist/customParams list into its container. */
 function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
@@ -217,7 +225,10 @@ function renderList(containerId, items, listKey) {
     container.appendChild(p);
     return;
   }
-  items.forEach((entry, i) => {
+  const cappedItems = items.length > RENDER_LIST_MAX_ITEMS
+    ? items.slice(0, RENDER_LIST_MAX_ITEMS)
+    : items;
+  cappedItems.forEach((entry, i) => {
     const div = document.createElement("div");
     div.className = "list-item";
     const span = document.createElement("span");

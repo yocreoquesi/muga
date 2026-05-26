@@ -112,7 +112,6 @@ async function init() {
   // --- Consent gate: block popup until user accepts ToS in onboarding ---
   const prefsCheck = await getPrefs();
   if (!prefsCheck.onboardingDone) {
-    document.body.innerHTML = "";
     const gate = document.createElement("div");
     gate.className = "consent-gate";
     gate.setAttribute("role", "alertdialog");
@@ -133,7 +132,10 @@ async function init() {
     gate.appendChild(logo);
     gate.appendChild(msg);
     gate.appendChild(btn);
-    document.body.appendChild(gate);
+    // #631 item 5: replaceChildren() replaces the body content atomically with
+    // the consent gate. Same effect as innerHTML = "" + appendChild but with
+    // explicit intent — scanner-friendly and avoids the HTML-parser detour.
+    document.body.replaceChildren(gate);
     btn.focus();
     btn.addEventListener("click", () => {
       chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
