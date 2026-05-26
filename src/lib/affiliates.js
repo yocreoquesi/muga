@@ -65,7 +65,9 @@ export const TRACKING_PARAMS = [
 
   // Affiliate networks: click identifiers not covered by matrix v1.0.
   // Network click IDs in matrix v1.0 are declared in REDIRECT_NETWORK_PATTERNS.landingParams.
-  "tduid",    // Tradedoubler — not yet in matrix v1.0; candidate for future extension.
+  // (`tduid` was here — moved to REDIRECT_NETWORK_PATTERNS in #695 as part of
+  // the Tradedoubler matrix entry; required-at-landing means it MUST NOT be in
+  // the universal strip.)
 
   // Microsoft / Windows
   "ocid",
@@ -505,7 +507,8 @@ export const TRACKING_PARAM_CATEGORIES = {
       "msclkid", "tclid", "twclid",
       // Affiliate networks (only IDs NOT required-at-landing per matrix v1.0;
       // landingParams in REDIRECT_NETWORK_PATTERNS are excluded from this category).
-      "tduid",
+      // (`tduid` was here — moved to REDIRECT_NETWORK_PATTERNS.tradedoubler.landingParams
+      // in #695. Required-at-landing for the Tradedoubler advertiser tag.)
       // Google Shopping
       "srsltid",
       // LinkedIn Ads
@@ -1133,6 +1136,25 @@ export const REDIRECT_NETWORK_PATTERNS = Object.freeze([
     notes:
       "Same surface-inversion category as Rakuten. Real Attribution alternative " +
       "model noted in matrix but does not affect landing-param mechanics.",
+  },
+  {
+    id: "tradedoubler",
+    name: "Tradedoubler",
+    group: "Tradedoubler",
+    redirectHosts: ["clk.tradedoubler.com"],
+    // tduid is the canonical Tradedoubler click identifier. The advertiser
+    // tag (Tradedoubler "Conversion Tracking Script") reads tduid from the
+    // landing URL and stores it in a first-party cookie — universal-strip
+    // before the tag fires kills attribution. Moved out of TRACKING_PARAMS in #695.
+    landingParams: ["tduid"],
+    type: "redirect-network",
+    ourTag: {},
+    references: ["docs/affiliate-networks-matrix.md#tradedoubler"],
+    notes:
+      "Promoted from matrix-v1.0 known-unknowns in #695 alongside the content-" +
+      "script legacy-unwrap retirement. Same surface-inversion category as " +
+      "Rakuten / TradeTracker; tduid required-at-landing per public Tradedoubler " +
+      "tag integration docs.",
   },
 ]);
 

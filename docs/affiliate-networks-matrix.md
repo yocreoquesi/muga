@@ -615,15 +615,48 @@ hostname is any merchant domain
 
 ---
 
+## Tradedoubler
+
+**Surface**
+
+- Redirect host: `clk.tradedoubler.com`. **Promoted from known-unknowns in #695** alongside the content-script legacy-unwrap retirement. Now in `AFFILIATE_REDIRECT_NETWORKS` (pass-through) and `REDIRECT_NETWORK_PATTERNS` (with `tduid` as `landingParams`).
+- Merchant landing: any Tradedoubler-onboarded advertiser. Tradedoubler runs in Europe with notable retail / travel coverage.
+- Endpoint shape: `https://clk.tradedoubler.com/click?p=<programId>&a=<affiliateId>[&epi=<pub-ref>]&url=<encoded merchant URL>`.
+
+**Click flow (inferred — public docs only, no partner-account verification yet)**
+
+1. User clicks Tradedoubler-wrapped link.
+2. Browser hits `clk.tradedoubler.com/click`.
+3. Tradedoubler logs the click and issues a 30x redirect.
+4. Browser is redirected to the merchant with `?tduid=<click-id>` appended.
+5. Merchant's Tradedoubler tag reads `tduid` from the URL and stores it in a **first-party cookie on the merchant's domain**.
+6. At conversion, the merchant's tag reads the cookie and posts the conversion back to Tradedoubler.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `tduid` | **required-at-landing** | Canonical click identifier. Promoted from `TRACKING_PARAMS` to `REDIRECT_NETWORK_PATTERNS.tradedoubler.landingParams` in #695. |
+| `p`, `a`, `epi`, `url` (in clk.tradedoubler.com URL) | n/a (redirect-internal) | Program / affiliate / publisher-ref / destination in the redirect URL itself. |
+
+**Verification status**
+
+- ✅ `clk.tradedoubler.com` is the redirect host — confirmed by MUGA codebase + Tradedoubler publisher docs.
+- ✅ `tduid` is the canonical click ID — confirmed by Tradedoubler advertiser tag integration docs.
+- ⚠️ Cookie TTL — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Tradedoubler does not publish defaults; European retail norm is 30 days.
+- ⚠️ Surface-inversion impact on prior `clk.tradedoubler.com/?url=` unwrap — covered: legacy content-script unwrap retired in #695; full-pipeline tests pass.
+
+---
+
 ## Known-unknowns flagged for follow-up
 
-These networks are referenced in MUGA's codebase but were NOT bundled into the tier-1/2/3 classification and therefore do not have full matrix sections in v1.0. They become follow-up issues if observed in the wild:
+These networks are referenced in MUGA's codebase but do not have full matrix sections in v1.0. They become follow-up issues if observed in the wild:
 
-- **Tradedoubler** — params `tduid` ([`affiliates.js:64`](../src/lib/affiliates.js)) and redirect host `clk.tradedoubler.com` ([`src/content/cleaner.js:909`](../src/content/cleaner.js)) handled via `?url=` unwrap. Same surface-inversion category as the other tier-3 networks under 2.1 (pass-through, preserve `tduid` at landing).
-- **ShareASale** — wrapper engine handles `shareasale.com/?urllink=` unwrap (CHANGELOG.md:488). No specific params currently in `TRACKING_PARAMS`. Treat as the standard pattern until observed otherwise.
-- **VigLink** — `redirect.viglink.com/?u=` unwrap (CHANGELOG.md:488). Similar story.
+- **`alitems.com`** — Admitad's deep-link variant. Moved into `AFFILIATE_REDIRECT_NETWORKS` in #695 (pass-through, alongside the existing `ad.admitad.com` entry) per the matrix's bias toward preservation. Full per-network entry pending the next quarterly review.
+- **`redirect.viglink.com`** — VigLink wrapper used by some publishers. Moved into `AFFILIATE_REDIRECT_NETWORKS` in #695 (pass-through) under the same bias-toward-preservation rule. Full per-network entry pending.
+- **ShareASale** — `shareasale.com/?urllink=` wrapper. Genuine local-unwrap target (caps-spec recipe + DNR rule); NOT in `AFFILIATE_REDIRECT_NETWORKS`. Treated as the standard wrapper pattern until observed otherwise.
 
-These three should get matrix entries in the next quarterly review or sooner if any of them surface a creator-payout regression during the 2.1 rollout.
+`alitems.com` and `redirect.viglink.com` should get full matrix sections in the next quarterly review. Their pass-through status today is the safe default — the merchant's first-party tag (whichever it is) gets to run on the URL it expects.
 
 ---
 
