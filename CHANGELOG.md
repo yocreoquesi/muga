@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Tracking-param strip lists now respect matrix v1.0 attribution requirements** (#655). The universal strip list, the UI category mirrors, and the network-layer DNR rules previously included a set of click identifiers that the per-network attribution matrix declares as `required-at-landing`. Stripping them at the network layer killed the merchant's first-party cookie write before the conversion tag could fire. Those identifiers are now sourced exclusively from `REDIRECT_NETWORK_PATTERNS.landingParams` in `src/lib/affiliates.js` and excluded from `TRACKING_PARAMS`, every `TRACKING_PARAM_CATEGORIES.*.params` bucket, and `src/rules/tracking-params.json`. The per-landing policy that decides preserve-vs-strip on a per-page basis ships in `getLandingPolicy(hostname, referrer)` (#656); until then, the params travel through the URL untouched on first-touch and on subsequent navigations alike. A new regression test in `tests/unit/redirect-network-patterns.test.mjs` enforces the three-way invariant. 21 params removed from the strip surface; matrix-mapped to 9 redirect networks.
+
 ## [2.1.0] - 2026-05-25
 
 Evolution of the 2.0 denoise positioning. 2.0 redefined the north — quiet every URL without taking credit from creators. 2.1 extends that north to creators who chose redirect-based attribution: their click is the attribution event, and MUGA now respects it instead of treating it as a redirect to defeat. The result is one coherent stance — fair to every creator, whatever affiliate model they chose — backed by code, tests, docs, and the matrix that drives the per-network policy.

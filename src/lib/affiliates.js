@@ -30,6 +30,11 @@
 
 import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../vendor/caps-spec/manifest.data.js";
 
+// Click IDs declared as required-at-landing in REDIRECT_NETWORK_PATTERNS.landingParams
+// (below) are intentionally EXCLUDED from TRACKING_PARAMS per matrix v1.0
+// (docs/affiliate-networks-matrix.md). Stripping them universally would break creator
+// attribution — getLandingPolicy (#656) preserves them on first-touch landings and
+// strips on subsequent same-site navigations.
 export const TRACKING_PARAMS = [
   // Google / Meta / Microsoft
   "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
@@ -58,12 +63,9 @@ export const TRACKING_PARAMS = [
   "_hsenc", "_hsmi", "hsctatracking",
   "mkt_tok", "trk", "trkcampaign",
 
-  // Affiliate networks: click identifiers (not the affiliate tag itself, just the click ID)
-  "irgwc",    // Impact Radius
-  "cjevent",  // CJ Affiliate
-  "tduid",    // Tradedoubler
-  "awc",      // Awin click ID (redirect-based network, incompatible with MUGA privacy model)
-  "wt_mc",    // Webtrekk/Awin campaign tracking (MediaMarkt and others via Awin)
+  // Affiliate networks: click identifiers not covered by matrix v1.0.
+  // Network click IDs in matrix v1.0 are declared in REDIRECT_NETWORK_PATTERNS.landingParams.
+  "tduid",    // Tradedoubler — not yet in matrix v1.0; candidate for future extension.
 
   // Microsoft / Windows
   "ocid",
@@ -91,9 +93,10 @@ export const TRACKING_PARAMS = [
   // AFFILIATE_PATTERNS. Stripping it globally would break affiliate attribution. (#160)
   "mkevt", "mkcid", "mkrid", "toolid", "customid",
 
-  // AliExpress
-  "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
-  "afsmartredirect", "gatewayadapt", "aff_request_id", "mall_affr",
+  // AliExpress: non-attribution noise only. The aff_trace_key / algo_* / btsid /
+  // ws_ab_test / aff_request_id family is required-at-landing per matrix v1.0 and
+  // declared in REDIRECT_NETWORK_PATTERNS.landingParams.
+  "afsmartredirect", "gatewayadapt", "mall_affr",
 
   // Pinterest
   "e_t", "epik",
@@ -104,11 +107,8 @@ export const TRACKING_PARAMS = [
   // Reddit
   "rdt_cid",
 
-  // Rakuten / LinkShare
-  "ranmid", "raneaid", "ransiteid",
-
-  // TradeTracker
-  "ttaid", "ttrk", "ttcid",
+  // Rakuten / LinkShare and TradeTracker click IDs are declared in
+  // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
 
   // Naver (Korean search/ads)
   "nclid", "napm", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
@@ -282,7 +282,6 @@ export const TRACKING_PARAMS = [
   "at_campaign", "at_medium", "at_recipient_id", "at_recipient_list",
 
   // Webtrekk (AdGuard + Neat URL)
-  // wt_mc moved to affiliate network click IDs: no longer preserved (Awin redirect model)
   "wt_zmc",     // Zeit/Webtrekk campaign
 
   // HubSpot extended (AdGuard + Registry)
@@ -321,8 +320,8 @@ export const TRACKING_PARAMS = [
   // Wunderkind SMS (Brave + AdGuard)
   "sms_click", "sms_source", "sms_uph",
 
-  // Ad platforms (Brave + Registry)
-  "irclickid",        // Impact Radius click ID (alternate form)
+  // Ad platforms (Brave + Registry).
+  // Impact Radius `irclickid` is declared in REDIRECT_NETWORK_PATTERNS.landingParams.
   "unicorn_click_id", // Unicorn click tracking
   "rb_clickid",       // Russian ad click ID
   "ndclid",           // Nextdoor click ID
@@ -361,8 +360,9 @@ export const TRACKING_PARAMS = [
   "adj_campaign", "adj_creative", "adj_label", "adj_t",
   "adjust_referrer", "adjust_tracker", "adjust_tracker_limit",
 
-  // Admitad / Adsterra / misc ad networks
-  "admitad_uid", "adsterra_clid", "adsterra_placement_id",
+  // Adsterra / misc ad networks. Admitad's `admitad_uid` is declared in
+  // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
+  "adsterra_clid", "adsterra_placement_id",
   "adfrom", "adc_publisher", "adc_token", "aiad_clid",
 
   // AppsFlyer extended
@@ -376,9 +376,8 @@ export const TRACKING_PARAMS = [
   // Blueshift extended
   "bsft_aaid", "bsft_ek",
 
-  // CJ Affiliate
-  "cjdata",
-  // awc moved to affiliate network click IDs: no longer preserved (Awin redirect model)
+  // CJ Affiliate `cjevent` / `cjdata` and Awin `awc` are declared in
+  // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
 
   // Content recommendation (Connexity, Revcontent)
   "cx_click", "cx_recsorder", "cx_recswidget",
@@ -402,8 +401,9 @@ export const TRACKING_PARAMS = [
   // HubSpot extended
   "hsa_la", "hsa_ol",
 
-  // Impact Radius extended
-  "ir_adid", "ir_campaignid", "ir_partnerid", "iclid",
+  // Impact Radius extended (ad-network IDs, not attribution).
+  // `iclid` is declared in REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
+  "ir_adid", "ir_campaignid", "ir_partnerid",
 
   // Internal campaign params (used by many CMSes)
   "int_campaign", "int_content", "int_medium", "int_source", "int_term",
@@ -433,7 +433,8 @@ export const TRACKING_PARAMS = [
   "__io_lv", "_bdadid", "_bhlid", "_clde", "_cldee", "_io_session_id",
   "_ly_c", "_ly_r", "_ope",
   "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
-  "_zucks_suid", "a8",
+  // A8.net `a8` is declared in REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
+  "_zucks_suid",
   "analytics_context", "analytics_trace_id", "axr_tref", "asgtbndr",
   "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid", "ucx_ref",
   "btag", "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
@@ -502,12 +503,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Google / Meta / Microsoft core
       "fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid",
       "msclkid", "tclid", "twclid",
-      // Affiliate networks
-      "irgwc", "cjevent", "tduid", "awc", "wt_mc",
-      // Rakuten / LinkShare
-      "ranmid", "raneaid", "ransiteid",
-      // TradeTracker
-      "ttaid", "ttrk", "ttcid",
+      // Affiliate networks (only IDs NOT required-at-landing per matrix v1.0;
+      // landingParams in REDIRECT_NETWORK_PATTERNS are excluded from this category).
+      "tduid",
       // Google Shopping
       "srsltid",
       // LinkedIn Ads
@@ -538,8 +536,8 @@ export const TRACKING_PARAM_CATEGORIES = {
       "click_id", "ad_id",
       // Yandex
       "yclid", "ysclid", "_openstat", "ymclid",
-      // Ad platforms (Brave + Registry)
-      "irclickid", "unicorn_click_id", "rb_clickid", "ndclid", "vmcid", "syclid",
+      // Ad platforms (Brave + Registry; irclickid excluded per matrix v1.0)
+      "unicorn_click_id", "rb_clickid", "ndclid", "vmcid", "syclid",
       // Piwik / Matomo
       "pk_campaign", "pk_kwd", "pk_source", "pk_medium", "pk_cid",
       "mtm_campaign", "mtm_keyword", "mtm_source", "mtm_medium", "mtm_content",
@@ -569,17 +567,18 @@ export const TRACKING_PARAM_CATEGORIES = {
       // AdGuard filter 17 import: ad networks
       "adj_campaign", "adj_creative", "adj_label", "adj_t",
       "adjust_referrer", "adjust_tracker", "adjust_tracker_limit",
-      "admitad_uid", "adsterra_clid", "adsterra_placement_id",
+      // Admitad / Adsterra; admitad_uid excluded per matrix v1.0.
+      "adsterra_clid", "adsterra_placement_id",
       "adfrom", "adc_publisher", "adc_token", "aiad_clid",
       "af_click_lookback", "af_force_deeplink", "is_retargeting",
-      // awc moved to affiliate network click IDs: no longer preserved (Awin redirect model)
-      "cjdata",
-      "ir_adid", "ir_campaignid", "ir_partnerid", "iclid",
+      // CJ Affiliate cjdata and Impact iclid excluded per matrix v1.0.
+      "ir_adid", "ir_campaignid", "ir_partnerid",
       "gad_campaignid", "gci", "gps_adid",
       "fbadid", "fb_comment_id",
       "action_object_map", "action_ref_map", "action_type_map",
       "tw_medium", "tw_profile_id",
-      "a8", "btag", "erid", "external_click_id", "ftag",
+      // A8.net `a8` excluded per matrix v1.0.
+      "btag", "erid", "external_click_id", "ftag",
       "jmtyclid", "maf", "rtkcid", "sscid",
       "usqp", "vs_campaign_id",
       "link_source",
@@ -706,9 +705,10 @@ export const TRACKING_PARAM_CATEGORIES = {
       "ie",
       // eBay
       "mkevt", "mkcid", "mkrid", "toolid", "customid",
-      // AliExpress
-      "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test",
-      "afsmartredirect", "gatewayadapt", "aff_request_id", "mall_affr",
+      // AliExpress: non-attribution noise only. The aff_trace_key / algo_* /
+      // btsid / ws_ab_test / aff_request_id family is declared in
+      // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
+      "afsmartredirect", "gatewayadapt", "mall_affr",
       // Google search tracking
       "ved", "ei", "sca_esv", "sxsrf", "gs_lcp",
       // GA4 cross-domain

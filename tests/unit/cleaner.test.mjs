@@ -376,24 +376,22 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     assert.equal(action, "cleaned");
   });
 
-  test("strips Rakuten ranmid/raneaid/ransiteid", () => {
-    const { removedTracking } = processUrl(
+  test("preserves Rakuten ranmid/raneaid/ransiteid (matrix-required at landing)", () => {
+    const { action, cleanUrl } = processUrl(
       "https://example.com/?ranmid=42&raneaid=xyz&ransiteid=abc",
       PREFS
     );
-    assert.ok(removedTracking.includes("ranmid"));
-    assert.ok(removedTracking.includes("raneaid"));
-    assert.ok(removedTracking.includes("ransiteid"));
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://example.com/?ranmid=42&raneaid=xyz&ransiteid=abc");
   });
 
-  test("strips TradeTracker ttaid/ttrk/ttcid", () => {
-    const { removedTracking } = processUrl(
+  test("preserves TradeTracker ttaid/ttrk/ttcid (matrix-required at landing)", () => {
+    const { action, cleanUrl } = processUrl(
       "https://example.com/?ttaid=1&ttrk=click&ttcid=campaign",
       PREFS
     );
-    assert.ok(removedTracking.includes("ttaid"));
-    assert.ok(removedTracking.includes("ttrk"));
-    assert.ok(removedTracking.includes("ttcid"));
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://example.com/?ttaid=1&ttrk=click&ttcid=campaign");
   });
 
   test("strips srsltid (Google Shopping)", () => {
@@ -412,35 +410,33 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     assert.equal(action, "cleaned");
   });
 
-  test("strips awc (Awin click ID — redirect-based network, incompatible with MUGA)", () => {
-    const { action, cleanUrl, removedTracking } = processUrl(
+  test("preserves awc (Awin click ID — matrix-required at landing per v1.0)", () => {
+    const { action, cleanUrl } = processUrl(
       "https://www.zalando.es/product.html?awc=12345_1234567890_abc",
       PREFS
     );
-    assert.equal(action, "cleaned");
-    assert.ok(removedTracking.includes("awc"));
-    assert.equal(cleanUrl, "https://www.zalando.es/product.html");
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://www.zalando.es/product.html?awc=12345_1234567890_abc");
   });
 
-  test("strips wt_mc (Webtrekk/Awin campaign tracking)", () => {
-    const { action, cleanUrl, removedTracking } = processUrl(
+  test("preserves wt_mc (Webtrekk/Awin campaign tracking — matrix-required at landing)", () => {
+    const { action, cleanUrl } = processUrl(
       "https://www.mediamarkt.de/product/123?wt_mc=affiliate.awin.456",
       PREFS
     );
-    assert.equal(action, "cleaned");
-    assert.ok(removedTracking.includes("wt_mc"));
-    assert.equal(cleanUrl, "https://www.mediamarkt.de/product/123");
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://www.mediamarkt.de/product/123?wt_mc=affiliate.awin.456");
   });
 
-  test("strips awc alongside other tracking params", () => {
+  test("preserves awc but strips utm_* alongside (mixed URL still cleaned)", () => {
     const { cleanUrl, removedTracking } = processUrl(
       "https://www.shein.com/dress-p-12345.html?awc=999_abc&utm_source=awin&utm_medium=affiliate",
       PREFS
     );
-    assert.ok(removedTracking.includes("awc"));
+    assert.ok(!removedTracking.includes("awc"), "awc must be preserved per matrix v1.0");
     assert.ok(removedTracking.includes("utm_source"));
     assert.ok(removedTracking.includes("utm_medium"));
-    assert.equal(cleanUrl, "https://www.shein.com/dress-p-12345.html");
+    assert.equal(cleanUrl, "https://www.shein.com/dress-p-12345.html?awc=999_abc");
   });
 
 });
