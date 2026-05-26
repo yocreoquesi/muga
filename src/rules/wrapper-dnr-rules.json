@@ -9,7 +9,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://(?:www\\.)?awin1\\.com.*[?&]p=([^&]+)",
+      "regexFilter": "^https?://l\\.facebook\\.com/l\\.php.*[?&]u=([^&]+)",
       "resourceTypes": [
         "main_frame",
         "sub_frame"
@@ -26,7 +26,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://l\\.facebook\\.com/l\\.php.*[?&]u=([^&]+)",
+      "regexFilter": "^https?://lm\\.facebook\\.com/l\\.php.*[?&]u=([^&]+)",
       "resourceTypes": [
         "main_frame",
         "sub_frame"
@@ -43,7 +43,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://lm\\.facebook\\.com/l\\.php.*[?&]u=([^&]+)",
+      "regexFilter": "^https?://go\\.redirectingat\\.com.*[?&]url=([^&]+)",
       "resourceTypes": [
         "main_frame",
         "sub_frame"
@@ -60,7 +60,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://go\\.redirectingat\\.com.*[?&]url=([^&]+)",
+      "regexFilter": "^https?://go\\.skimresources\\.com.*[?&]url=([^&]+)",
       "resourceTypes": [
         "main_frame",
         "sub_frame"
@@ -77,23 +77,6 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://go\\.skimresources\\.com.*[?&]url=([^&]+)",
-      "resourceTypes": [
-        "main_frame",
-        "sub_frame"
-      ]
-    }
-  },
-  {
-    "id": 6,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "regexSubstitution": "\\1"
-      }
-    },
-    "condition": {
       "regexFilter": "^https?://(?:www\\.)?shareasale\\.com/r\\.cfm.*[?&]urllink=([^&]+)",
       "resourceTypes": [
         "main_frame",
@@ -102,7 +85,7 @@
     }
   },
   {
-    "id": 7,
+    "id": 6,
     "priority": 1,
     "action": {
       "type": "redirect",

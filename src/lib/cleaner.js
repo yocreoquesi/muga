@@ -10,6 +10,7 @@ import {
   getRedirectNetworkForRedirectHost,
 } from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
+import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
 import { extractCanonical } from "./canonical-extractor.js";
 import { shouldHonor } from "./honor-creator.js";
 import { classify as classifyParams } from "./param-classifier.js";
@@ -773,8 +774,12 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
     const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
     const disabledCategories = new Set(prefs.disabledCategories || []);
     // CAPS-Contextual short-circuit (#543): skip bounded-scope rule when URL
-    // is still a known wrapper host (destination was unextractable).
-    const isNetworkRedirect = !!detectWrapper(url.toString());
+    // is on a network-redirect host. Covers both wrapper hosts (destination
+    // unextractable) AND AFFILIATE_REDIRECT_NETWORKS pass-through hosts —
+    // both represent the network's own redirect page, where the contextual
+    // strip rule MUST NOT fire per spec §3.2 step 6.
+    const isNetworkRedirect =
+      !!detectWrapper(url.toString()) || isAffiliateRedirectNetwork(hostname);
     const classification = classifyParams(url.toString(), {
       ...prefs,
       _affiliateParamSet: affiliateParamSet,

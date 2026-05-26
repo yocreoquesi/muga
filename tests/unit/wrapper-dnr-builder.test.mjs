@@ -34,7 +34,6 @@ import { WRAPPERS } from "../../src/lib/wrapper-engine.js";
 // ---------------------------------------------------------------------------
 describe("REGEX_PURE_WRAPPER_IDS", () => {
   const expected = [
-    "awin",
     "facebook-l",
     "facebook-lm",
     "skimlinks-redirectingat",
@@ -43,12 +42,12 @@ describe("REGEX_PURE_WRAPPER_IDS", () => {
     "rakuten",
   ];
 
-  test("lists exactly the seven in-scope wrapper ids", () => {
+  test("lists exactly the six in-scope wrapper ids (awin retired in #684)", () => {
     assert.deepEqual([...REGEX_PURE_WRAPPER_IDS].sort(), [...expected].sort());
   });
 
-  test("has length 7", () => {
-    assert.equal(REGEX_PURE_WRAPPER_IDS.length, 7);
+  test("has length 6", () => {
+    assert.equal(REGEX_PURE_WRAPPER_IDS.length, 6);
   });
 });
 
@@ -58,8 +57,8 @@ describe("REGEX_PURE_WRAPPER_IDS", () => {
 describe("buildDnrRules — full WRAPPERS table", () => {
   const rules = buildDnrRules(WRAPPERS);
 
-  test("returns exactly 7 rules", () => {
-    assert.equal(rules.length, 7);
+  test("returns exactly 6 rules", () => {
+    assert.equal(rules.length, 6);
   });
 
   test("each rule has id, priority, action, condition", () => {
@@ -128,14 +127,6 @@ describe("buildDnrRules — host + param targeting", () => {
     return rules[idx].condition;
   };
 
-  test("Awin rule matches awin1.com host and ?p= param", () => {
-    const f = filterFor("awin").regexFilter;
-    assert.match("https://www.awin1.com/cread.php?p=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.match("https://www.awin1.com/cread.php?awinmid=1&p=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.doesNotMatch("https://other.com/cread.php?p=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.ok(f.includes("awin1"), `expected awin1 in regex, got: ${f}`);
-  });
-
   test("Facebook l.facebook.com rule matches l.facebook.com only and ?u= param", () => {
     const f = filterFor("facebook-l").regexFilter;
     assert.match("https://l.facebook.com/l.php?u=https%3A%2F%2Fm.com&h=abc", new RegExp(f));
@@ -189,8 +180,8 @@ describe("buildDnrRules — host + param targeting", () => {
 describe("buildDnrRules — defensive against regex hostPatterns", () => {
   test("an entry with a RegExp hostPattern is filtered out even if its id is allowlisted", () => {
     const fakeImpact = {
-      id: "awin", // pretend an allowlisted id, but with a regex hostPattern
-      name: "Bad Awin",
+      id: "facebook-l", // pretend an allowlisted id, but with a regex hostPattern
+      name: "Bad Facebook",
       hostPatterns: [/^[a-z]+\.example\.com$/],
       pathPatterns: null,
       extract: () => null,

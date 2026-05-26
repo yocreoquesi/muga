@@ -36,11 +36,15 @@
  *                              (missing or malformed parameter).
  *   }
  *
- * Worked example — Awin
- *   Input  : https://www.awin1.com/cread.php?awinmid=1&p=https%3A%2F%2Fmerchant.com%2Fp
- *   Match  : hostPatterns includes "awin1.com"; pathPatterns includes "/cread.php"
- *   Extract: searchParams.get("p") → "https://merchant.com/p" (URL-decoded by URL API)
- *   Result : { unwrapped: "https://merchant.com/p", hops: 1, networks: ["awin"] }
+ * Worked example — Facebook l.facebook.com
+ *   Input  : https://l.facebook.com/l.php?u=https%3A%2F%2Fmerchant.com%2Fp&h=abc
+ *   Match  : hostPatterns includes "l.facebook.com"; pathPatterns includes "/l.php"
+ *   Extract: searchParams.get("u") → "https://merchant.com/p" (URL-decoded by URL API)
+ *   Result : { unwrapped: "https://merchant.com/p", hops: 1, networks: ["facebook-l"] }
+ *
+ * Note: Awin was previously listed here. Retired in #684 per ADR-0003 — Awin
+ * is now passed through via AFFILIATE_REDIRECT_NETWORKS so the network's 30x
+ * can populate awc/wt_mc at the merchant landing.
  *
  * ── Recursion ─────────────────────────────────────────────────────────────
  * unwrap() will follow nested wrappers up to maxHops (default 3) deep, with
@@ -176,6 +180,25 @@ const SKIMLINKS_SPEC_IDS = new Set([
 ]);
 
 /**
+ * MUGA-side exclusions from the vendored caps-spec wrappers table.
+ *
+ * Entries listed here are dropped at WRAPPERS build time so MUGA does not
+ * local-unwrap them. They are still legitimate redirect networks in
+ * caps-spec; MUGA opts out because its 2.1 attribution policy requires the
+ * network's 30x to execute in the browser (pass-through via
+ * AFFILIATE_REDIRECT_NETWORKS in opaque-networks.js), with per-landing
+ * preservation via getLandingPolicy (#656).
+ *
+ * Currently excluded:
+ *   - `awin`: per ADR-0003 — Awin's attribution model appends `awc`/`wt_mc`
+ *     at the 30x step, which local-unwrap silently drops. See
+ *     docs/adr/0003-awin-redirect-model-resolution.md.
+ *
+ * Upstream caps-spec is unchanged — the exclusion is MUGA-policy, not data.
+ */
+const MUGA_EXCLUDED_IDS = new Set(["awin"]);
+
+/**
  * Per-id compatibility overrides applied AFTER the spec→engine mapping.
  *
  * The caps-spec wrappers schema currently only supports a single `pathPrefix`
@@ -185,9 +208,7 @@ const SKIMLINKS_SPEC_IDS = new Set([
  * extra prefix here and track a follow-up in caps-spec to allow multi-prefix
  * entries (then this override goes away).
  */
-const PATH_PREFIX_EXTENSIONS = {
-  awin: ["/awclick.php"],
-};
+const PATH_PREFIX_EXTENSIONS = {};
 
 function buildExtractor(extractor) {
   switch (extractor.kind) {
@@ -224,6 +245,7 @@ function buildWrappers(rawList) {
   const result = [];
   let skimlinksMerged = null;
   for (const entry of rawList) {
+    if (MUGA_EXCLUDED_IDS.has(entry.id)) continue;
     const basePaths = entry.pathPrefix ? [entry.pathPrefix] : null;
     const extraPaths = PATH_PREFIX_EXTENSIONS[entry.id];
     const pathPatterns = extraPaths

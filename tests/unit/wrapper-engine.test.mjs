@@ -3,16 +3,15 @@
  *
  * Run with: npm test
  *
- * Coverage (slice B1, issue #434):
- *   - Awin happy path (cread.php and awclick.php)
- *   - Malformed Awin URL (no p, malformed p)
+ * Coverage (slice B1, issue #434, updated by #684):
+ *   - Facebook l.facebook.com happy path (?u= param)
+ *   - Malformed wrapper URL (no u, malformed u)
  *   - Non-wrapper inputs (regular URLs, invalid URLs, non-HTTP)
  *   - Recursion: 2-hop and 3-hop chains
  *   - Recursion bounded by maxHops (default 3 + custom override + defensive defaults)
- *   - Loop detection guard (via maxHops; explicit loop tests added in B2 once
- *     a second wrapper makes constructible loops possible)
  *   - detectWrapper() introspection
- *   - WRAPPERS table is exported and contains Awin
+ *   - WRAPPERS table no longer contains Awin (retired per ADR-0003 / #684);
+ *     Awin is now pass-through via AFFILIATE_REDIRECT_NETWORKS
  *   - Integration with processUrl: unwrap before tracking strip; preserve
  *     creator affiliate tag on the unwrapped destination
  *
@@ -26,69 +25,75 @@ import assert from "node:assert/strict";
 import { unwrap, detectWrapper, WRAPPERS } from "../../src/lib/wrapper-engine.js";
 
 // ---------------------------------------------------------------------------
-// Awin happy paths
+// Facebook l.facebook.com happy paths — drop-in shape for the previous Awin
+// `?p=` family. Same param-extraction contract, no affiliate semantics.
 // ---------------------------------------------------------------------------
-describe("Wrapper Engine — Awin", () => {
-  test("unwraps awin1.com/cread.php with p= parameter", () => {
+describe("Wrapper Engine — Facebook l.facebook.com", () => {
+  test("unwraps l.facebook.com/l.php with u= parameter", () => {
     const input =
-      "https://www.awin1.com/cread.php?awinmid=1234&awinaffid=5678&clickref=&" +
-      "p=https%3A%2F%2Fwww.elcorteingles.es%2Fproducto%2F123";
+      "https://l.facebook.com/l.php?u=" +
+      encodeURIComponent("https://www.elcorteingles.es/producto/123") +
+      "&h=AT2abc";
     const result = unwrap(input);
     assert.ok(result, "expected an unwrap result");
     assert.equal(result.unwrapped, "https://www.elcorteingles.es/producto/123");
     assert.equal(result.hops, 1);
-    assert.deepEqual(result.networks, ["awin"]);
-  });
-
-  test("unwraps awin1.com/awclick.php variant", () => {
-    const input =
-      "https://www.awin1.com/awclick.php?mid=1234&id=5678&" +
-      "p=https%3A%2F%2Fmerchant.com%2Fproduct";
-    const result = unwrap(input);
-    assert.ok(result);
-    assert.equal(result.unwrapped, "https://merchant.com/product");
-    assert.equal(result.hops, 1);
-    assert.deepEqual(result.networks, ["awin"]);
-  });
-
-  test("matches awin1.com without www subdomain", () => {
-    const input = "https://awin1.com/cread.php?p=https%3A%2F%2Fmerchant.com%2Fproduct";
-    const result = unwrap(input);
-    assert.ok(result);
-    assert.equal(result.unwrapped, "https://merchant.com/product");
+    assert.deepEqual(result.networks, ["facebook-l"]);
   });
 
   test("preserves query string on the unwrapped destination", () => {
     const dest = "https://merchant.com/product?utm_source=google&id=42";
-    const input = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(dest);
+    const input = "https://l.facebook.com/l.php?u=" + encodeURIComponent(dest);
     const result = unwrap(input);
     assert.ok(result);
     assert.equal(result.unwrapped, dest);
   });
 
-  test("returns null when Awin URL has no p parameter", () => {
-    const input = "https://www.awin1.com/cread.php?awinmid=1234";
+  test("returns null when URL has no u parameter", () => {
+    const input = "https://l.facebook.com/l.php?h=abc";
     assert.equal(unwrap(input), null);
   });
 
-  test("returns null when p is empty", () => {
-    const input = "https://www.awin1.com/cread.php?p=";
+  test("returns null when u is empty", () => {
+    const input = "https://l.facebook.com/l.php?u=";
     assert.equal(unwrap(input), null);
   });
 
-  test("returns null for malformed p parameter (not a URL)", () => {
-    const input = "https://www.awin1.com/cread.php?p=not-a-url";
+  test("returns null for malformed u parameter (not a URL)", () => {
+    const input = "https://l.facebook.com/l.php?u=not-a-url";
     assert.equal(unwrap(input), null);
   });
 
-  test("returns null when p points to a non-HTTP(S) destination", () => {
+  test("returns null when u points to a non-HTTP(S) destination", () => {
     const input =
-      "https://www.awin1.com/cread.php?p=" + encodeURIComponent("ftp://example.com/file");
+      "https://l.facebook.com/l.php?u=" + encodeURIComponent("ftp://example.com/file");
     assert.equal(unwrap(input), null);
   });
+});
 
-  test("does not match Awin paths other than cread.php / awclick.php", () => {
-    const input = "https://www.awin1.com/some-other-page?p=https%3A%2F%2Fmerchant.com";
+// ---------------------------------------------------------------------------
+// Awin retired — confirm the wrapper no longer exists; pass-through path.
+// See docs/adr/0003-awin-redirect-model-resolution.md (#684).
+// ---------------------------------------------------------------------------
+describe("Wrapper Engine — Awin retired (ADR-0003 / #684)", () => {
+  test("WRAPPERS table does NOT contain an awin entry", () => {
+    assert.equal(WRAPPERS.find(w => w.id === "awin"), undefined);
+  });
+
+  test("detectWrapper returns null for awin1.com URLs", () => {
+    assert.equal(
+      detectWrapper("https://www.awin1.com/cread.php?p=https%3A%2F%2Fmerchant.com"),
+      null,
+    );
+    assert.equal(
+      detectWrapper("https://awin1.com/awclick.php?id=1"),
+      null,
+    );
+  });
+
+  test("unwrap returns null for awin1.com — passes through unchanged", () => {
+    const input =
+      "https://www.awin1.com/cread.php?awinmid=1&p=https%3A%2F%2Fmerchant.com";
     assert.equal(unwrap(input), null);
   });
 });
@@ -118,41 +123,43 @@ describe("Wrapper Engine — non-wrapper inputs", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Recursion (multi-hop)
+// Recursion (multi-hop) — exercised via l.facebook.com chains.
 // ---------------------------------------------------------------------------
+function lwrap(dest) {
+  return "https://l.facebook.com/l.php?u=" + encodeURIComponent(dest);
+}
+
 describe("Wrapper Engine — recursion", () => {
-  test("unwraps two hops (Awin wrapping Awin wrapping merchant)", () => {
-    const inner =
-      "https://www.awin1.com/cread.php?p=https%3A%2F%2Fmerchant.com%2Fproduct";
-    const outer =
-      "https://www.awin1.com/cread.php?p=" + encodeURIComponent(inner);
+  test("unwraps two hops (l.facebook wrapping l.facebook wrapping merchant)", () => {
+    const inner = lwrap("https://merchant.com/product");
+    const outer = lwrap(inner);
     const result = unwrap(outer);
     assert.ok(result);
     assert.equal(result.unwrapped, "https://merchant.com/product");
     assert.equal(result.hops, 2);
-    assert.deepEqual(result.networks, ["awin", "awin"]);
+    assert.deepEqual(result.networks, ["facebook-l", "facebook-l"]);
   });
 
   test("unwraps three hops (default maxHops boundary)", () => {
     const merchant = "https://merchant.com/product";
-    const lvl1 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(merchant);
-    const lvl2 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(lvl1);
-    const lvl3 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(lvl2);
+    const lvl1 = lwrap(merchant);
+    const lvl2 = lwrap(lvl1);
+    const lvl3 = lwrap(lvl2);
     const result = unwrap(lvl3);
     assert.ok(result);
     assert.equal(result.unwrapped, merchant);
     assert.equal(result.hops, 3);
-    assert.deepEqual(result.networks, ["awin", "awin", "awin"]);
+    assert.deepEqual(result.networks, ["facebook-l", "facebook-l", "facebook-l"]);
   });
 
   test("stops at maxHops=3 when there are more levels nested", () => {
     // 4 levels of nesting; with maxHops=3 we expect exactly 3 unwraps
-    // and the final URL to still be a wrapped Awin URL (the level-1 wrapper).
+    // and the final URL to still be a wrapped URL (the level-1 wrapper).
     const merchant = "https://merchant.com/product";
-    const lvl1 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(merchant);
-    const lvl2 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(lvl1);
-    const lvl3 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(lvl2);
-    const lvl4 = "https://www.awin1.com/cread.php?p=" + encodeURIComponent(lvl3);
+    const lvl1 = lwrap(merchant);
+    const lvl2 = lwrap(lvl1);
+    const lvl3 = lwrap(lvl2);
+    const lvl4 = lwrap(lvl3);
     const result = unwrap(lvl4);
     assert.ok(result);
     assert.equal(result.hops, 3);
@@ -160,10 +167,8 @@ describe("Wrapper Engine — recursion", () => {
   });
 
   test("respects custom maxHops option", () => {
-    const inner =
-      "https://www.awin1.com/cread.php?p=https%3A%2F%2Fmerchant.com%2Fproduct";
-    const outer =
-      "https://www.awin1.com/cread.php?p=" + encodeURIComponent(inner);
+    const inner = lwrap("https://merchant.com/product");
+    const outer = lwrap(inner);
     const result = unwrap(outer, { maxHops: 1 });
     assert.ok(result);
     assert.equal(result.hops, 1);
@@ -171,10 +176,8 @@ describe("Wrapper Engine — recursion", () => {
   });
 
   test("treats maxHops=0 or negative as the default", () => {
-    const inner =
-      "https://www.awin1.com/cread.php?p=https%3A%2F%2Fmerchant.com%2Fproduct";
-    const outer =
-      "https://www.awin1.com/cread.php?p=" + encodeURIComponent(inner);
+    const inner = lwrap("https://merchant.com/product");
+    const outer = lwrap(inner);
     const r0 = unwrap(outer, { maxHops: 0 });
     const rNeg = unwrap(outer, { maxHops: -5 });
     // Both should fall back to the default (3) and unwrap fully.
@@ -188,9 +191,9 @@ describe("Wrapper Engine — recursion", () => {
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — schema and detection", () => {
   test("detectWrapper returns the matching config for a wrapper URL", () => {
-    const config = detectWrapper("https://www.awin1.com/cread.php?p=foo");
+    const config = detectWrapper("https://l.facebook.com/l.php?u=foo");
     assert.ok(config);
-    assert.equal(config.id, "awin");
+    assert.equal(config.id, "facebook-l");
     assert.equal(typeof config.name, "string");
   });
 
@@ -203,13 +206,14 @@ describe("Wrapper Engine — schema and detection", () => {
     assert.equal(detectWrapper("not-a-url"), null);
   });
 
-  test("WRAPPERS table is exported and contains Awin", () => {
+  test("WRAPPERS table is exported and well-shaped", () => {
     assert.ok(Array.isArray(WRAPPERS));
-    const awin = WRAPPERS.find(w => w.id === "awin");
-    assert.ok(awin, "awin entry must exist in WRAPPERS");
-    assert.ok(typeof awin.name === "string" && awin.name.length > 0);
-    assert.ok(Array.isArray(awin.hostPatterns));
-    assert.ok(typeof awin.extract === "function");
+    assert.ok(WRAPPERS.length > 0, "WRAPPERS must not be empty");
+    const fb = WRAPPERS.find(w => w.id === "facebook-l");
+    assert.ok(fb, "facebook-l entry must exist in WRAPPERS");
+    assert.ok(typeof fb.name === "string" && fb.name.length > 0);
+    assert.ok(Array.isArray(fb.hostPatterns));
+    assert.ok(typeof fb.extract === "function");
   });
 
   test("each WRAPPERS entry has the required schema fields", () => {
@@ -226,7 +230,7 @@ describe("Wrapper Engine — schema and detection", () => {
 // Integration with cleaner.js — wrapper unwraps before tracking strip
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — integration with processUrl", () => {
-  test("processUrl unwraps Awin and then strips tracking on the destination", async () => {
+  test("processUrl unwraps l.facebook.com and then strips tracking on the destination", async () => {
     const { processUrl } = await import("../../src/lib/cleaner.js");
     const PREFS = {
       enabled: true,
@@ -235,11 +239,10 @@ describe("Wrapper Engine — integration with processUrl", () => {
       blacklist: [],
       whitelist: [],
     };
-    // Awin wraps a merchant URL that itself carries a UTM tracker.
+    // l.facebook.com wraps a merchant URL that itself carries a UTM tracker.
     // Expected: unwrap to merchant, then strip utm_source.
     const dest = "https://merchant.com/product?utm_source=google";
-    const wrapped =
-      "https://www.awin1.com/cread.php?awinmid=1&p=" + encodeURIComponent(dest);
+    const wrapped = lwrap(dest);
     const result = processUrl(wrapped, PREFS);
     assert.equal(result.cleanUrl, "https://merchant.com/product");
     assert.equal(result.action, "cleaned");
@@ -269,14 +272,32 @@ describe("Wrapper Engine — integration with processUrl", () => {
       blacklist: [],
       whitelist: [],
     };
-    // Awin wraps an Amazon URL with a creator's affiliate tag — must survive.
+    // l.facebook.com wraps an Amazon URL with a creator's affiliate tag — must survive.
     const dest = "https://www.amazon.com/dp/B08N5WRWNW?tag=creator-21&utm_source=fb";
-    const wrapped =
-      "https://www.awin1.com/cread.php?awinmid=1&p=" + encodeURIComponent(dest);
+    const wrapped = lwrap(dest);
     const result = processUrl(wrapped, PREFS);
     // Path is normalized by cleanAmazonPath; tag preserved; utm stripped.
     assert.ok(result.cleanUrl.includes("tag=creator-21"));
     assert.ok(!result.cleanUrl.includes("utm_source"));
-    assert.ok(!result.cleanUrl.includes("awin1.com"));
+    assert.ok(!result.cleanUrl.includes("l.facebook.com"));
+  });
+
+  test("processUrl on awin1.com URL passes through unchanged (retired wrapper)", async () => {
+    const { processUrl } = await import("../../src/lib/cleaner.js");
+    const PREFS = {
+      enabled: true,
+      injectOwnAffiliate: false,
+      notifyForeignAffiliate: false,
+      blacklist: [],
+      whitelist: [],
+    };
+    // After #684, Awin is no longer local-unwrapped. The browser must follow
+    // the 30x so the network's MasterTag can populate the merchant's cookie.
+    const wrapped =
+      "https://www.awin1.com/cread.php?awinmid=1&p=" +
+      encodeURIComponent("https://merchant.com/product");
+    const result = processUrl(wrapped, PREFS);
+    assert.equal(result.cleanUrl, wrapped);
+    assert.equal(result.action, "untouched");
   });
 });

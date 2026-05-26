@@ -218,9 +218,9 @@ describe("B7 canonical-extractor — pipeline integration", () => {
   });
 
   test("flag ON + wrapper that successfully extracted → bundle is ignored", () => {
-    // Awin successfully unwraps to the merchant; canonical tier must not run.
+    // l.facebook.com successfully unwraps to the merchant; canonical tier must not run.
     const merchant = "https://merchant.com/p";
-    const wrapper = `https://www.awin1.com/cread.php?awinmid=1&p=${encodeURIComponent(merchant)}`;
+    const wrapper = `https://l.facebook.com/l.php?u=${encodeURIComponent(merchant)}&h=abc`;
     const { cleanUrl } = processUrl(
       wrapper,
       { ...PREFS_BASE, canonicalExtractorEnabled: true },
