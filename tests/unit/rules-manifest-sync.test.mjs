@@ -76,6 +76,47 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
       `prefix_rules[] has ${manifest.prefix_rules.length} entries but TRACKING_PREFIXES has ${TRACKING_PREFIXES.length}`
     );
   });
+
+  // ── #642: each prefix_rules entry carries a non-empty `note` field that
+  //          matches the inline // comment in src/lib/affiliates.js. The note
+  //          is the only human-readable documentation of what each prefix
+  //          tracks, so its presence is load-bearing for the manifest's
+  //          "documentation-grade" promise.
+  test("every prefix_rules entry has a non-empty note field (#642)", () => {
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    for (const entry of manifest.prefix_rules) {
+      assert.ok(
+        typeof entry.note === "string" && entry.note.length > 0,
+        `prefix_rules entry "${entry.prefix}" is missing a non-empty note field`
+      );
+    }
+  });
+
+  test("each prefix note matches the inline // comment in affiliates.js (#642)", () => {
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    const affiliatesSource = readFileSync(
+      join(__dirname, "../../src/lib/affiliates.js"),
+      "utf8",
+    );
+    const blockMatch = affiliatesSource.match(
+      /export\s+const\s+TRACKING_PREFIXES\s*=\s*\[([\s\S]*?)\];/,
+    );
+    assert.ok(blockMatch, "TRACKING_PREFIXES block not found in affiliates.js");
+    const lineRe = /^\s*"([^"]+)"\s*,\s*\/\/\s*(.+?)\s*$/gm;
+    const sourceNotes = new Map();
+    let m;
+    while ((m = lineRe.exec(blockMatch[1])) !== null) {
+      sourceNotes.set(m[1], m[2]);
+    }
+    for (const entry of manifest.prefix_rules) {
+      const sourceNote = sourceNotes.get(entry.prefix);
+      assert.equal(
+        entry.note,
+        sourceNote,
+        `prefix_rules note for "${entry.prefix}" diverges from the inline comment in affiliates.js — run npm run compile:rules`,
+      );
+    }
+  });
 });
 
 // ── Sync check: committed manifest matches freshly-built manifest ─────────────
