@@ -47,18 +47,24 @@ test.describe("Redirect unwrap merged module (#410)", () => {
     await ensureUnwrapEnabled(context, extensionId);
   });
 
-  test("awin1.com unwrap follows ?ued= to the real destination", async ({ context }) => {
+  test("awin1.com is NOT unwrapped client-side (pass-through per #684 / #695)", async ({ context }) => {
+    // Awin moved to AFFILIATE_REDIRECT_NETWORKS in #684; the content-script
+    // legacy unwrap that previously local-extracted `?ued=` was retired in
+    // #695. The browser MUST stay on awin1.com so the network's 30x can
+    // populate awc / wt_mc on the merchant landing.
     const page = await context.newPage();
     await stubHost(page, "www.awin1.com");
     await stubHost(page, "destination.test");
 
-    await page.goto("https://www.awin1.com/cread.php?ued=https%3A%2F%2Fdestination.test%2Fproduct%2F1");
-    // REASON: the unwrap fires window.location.replace from the content
-    // script after DOMContentLoaded; we must wait for the resulting
-    // navigation to settle before reading page.url().
-    await page.waitForURL("https://destination.test/product/1", { timeout: 5000 });
+    const target = "https://www.awin1.com/cread.php?ued=https%3A%2F%2Fdestination.test%2Fproduct%2F1";
+    await page.goto(target);
+    // The pre-#695 behaviour would have replaced the URL within a few
+    // hundred ms of DOMContentLoaded. Wait that long, then assert we
+    // stayed put.
+    await page.waitForLoadState("domcontentloaded");
+    await new Promise((r) => setTimeout(r, 1000));
 
-    expect(page.url()).toBe("https://destination.test/product/1");
+    expect(page.url()).toBe(target);
     await page.close();
   });
 
