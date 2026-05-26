@@ -3,7 +3,12 @@
  * Exported as a module for use in the service worker.
  */
 
-import { TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, getPatternsForHost } from "./affiliates.js";
+import {
+  TRACKING_PARAMS,
+  TRACKING_PARAM_CATEGORIES,
+  getPatternsForHost,
+  getRedirectNetworkForRedirectHost,
+} from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
 import { extractCanonical } from "./canonical-extractor.js";
 import { shouldHonor } from "./honor-creator.js";
@@ -11,6 +16,67 @@ import { classify as classifyParams } from "./param-classifier.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
+
+const EMPTY_LANDING_POLICY = Object.freeze({
+  preserve: Object.freeze(new Set()),
+  network: null,
+});
+
+/**
+ * Per-landing param-preservation policy (#656, P3.1 of the 2.1 denoise pivot).
+ *
+ * When `document.referrer` matches a redirect-network host declared in
+ * `REDIRECT_NETWORK_PATTERNS` (the matrix v1.0 contract — see
+ * docs/affiliate-networks-matrix.md), this is a first-touch landing: the
+ * merchant's tag has not yet read its attribution params from the URL.
+ * The returned `preserve` Set instructs `stripTrackingParams` to skip those
+ * params on this document so the merchant's first-party cookie can be
+ * populated before the cleaner runs.
+ *
+ * For any other referrer (none, same-origin, unknown external), the policy
+ * is empty — `stripTrackingParams` behaves exactly as before. Active
+ * stripping of matrix-required params on subsequent same-site navigations
+ * ("eligible for cleanup" per the matrix's cross-cutting policy #2) is
+ * intentionally OUT of this slice. The matrix biases toward preservation
+ * when in doubt, and a future issue can revisit once the synthetic harness
+ * has end-to-end coverage of the first-touch → second-nav flow.
+ *
+ * @param {string|null|undefined} hostname
+ *   Landing URL's hostname. Used to detect same-origin navigation (which
+ *   returns the empty policy) so the cleaner does not double-preserve on
+ *   internal navigations within the merchant.
+ * @param {string|null|undefined} referrer
+ *   `document.referrer` value. May be a full URL string (typical), a bare
+ *   hostname, an empty string (direct nav / privacy referrer policy), or
+ *   nullish (background-worker contexts without DOM access).
+ * @returns {{ preserve: Set<string>, network: string|null }}
+ *   `preserve` is the lowercase param Set to skip during strip; `network`
+ *   is the matched network id (`"awin"`, `"cj-affiliate"`, …) or null when
+ *   no first-touch context was detected.
+ */
+export function getLandingPolicy(hostname, referrer) {
+  if (!referrer) return EMPTY_LANDING_POLICY;
+
+  let refHost;
+  try {
+    refHost = new URL(referrer).hostname;
+  } catch {
+    refHost = String(referrer);
+  }
+  if (!refHost) return EMPTY_LANDING_POLICY;
+
+  if (hostname && refHost.toLowerCase() === String(hostname).toLowerCase()) {
+    return EMPTY_LANDING_POLICY;
+  }
+
+  const network = getRedirectNetworkForRedirectHost(refHost);
+  if (!network) return EMPTY_LANDING_POLICY;
+
+  return {
+    preserve: new Set(network.landingParams.map(p => p.toLowerCase())),
+    network: network.id,
+  };
+}
 
 // Prefix-based tracking param detection: catches non-standard variants
 // without listing each one. Individual params are still in TRACKING_PARAMS
@@ -195,7 +261,7 @@ const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
  * each stripped param (captured BEFORE deletion) so callers can feed the
  * cross-site-frequency tracker the (paramName, value) tuple. (#495)
  */
-function stripTrackingParams(url, prefs, domainRules, disabledCategories, classifierStripSet) {
+function stripTrackingParams(url, prefs, domainRules, disabledCategories, classifierStripSet, landingPolicy = EMPTY_LANDING_POLICY) {
   const hostname = url.hostname;
   const patterns = getPatternsForHost(hostname);
   const affiliateParamSet = new Set(patterns.map(p => p.param.toLowerCase()));
@@ -228,6 +294,7 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
     const lower = param.toLowerCase();
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
+    if (landingPolicy.preserve.has(lower)) continue;
     if (disabledParams.has(lower)) continue;
     const isClassified = classifierLower && classifierLower.has(lower);
     if (isClassified || isTrackingParam(lower, customParams, domainStrip, remoteParams, userCustomRules)) {
@@ -302,6 +369,10 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   rawUrl = unwrappedRawUrl;
 
   const hostname = url.hostname;
+  // Per-landing matrix-required preservation (#656). Computed once and
+  // threaded through every strip call site below; empty when the referrer
+  // is not a known redirect-network host.
+  const landingPolicy = getLandingPolicy(hostname, referrer);
   // Use pre-parsed lists from the caller (service worker cache) when available
   const parsedBlacklist = prefs._parsedBlacklist || (prefs.blacklist || []).map(parseListEntry);
   const parsedWhitelist = prefs._parsedWhitelist || (prefs.whitelist || []).map(parseListEntry);
@@ -336,7 +407,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // 2. Whitelist domain-only check: if the domain itself is whitelisted, skip all affiliate processing
   if (parsedWhitelist.some(e => !e.param && domainMatches(hostname, e.domain))) {
     const { payload, removed, removedValues } = handleWhitelistedDomain(
-      url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved,
+      url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved, landingPolicy,
     );
     recordFrequency(frequencyTracker, prefs, hostname, removed, removedValues);
     return payload;
@@ -344,7 +415,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   // Step 5 — Tracking strip (Scenario A core)
   const { removed: removedTracking, removedValues: removedTrackingValues } =
-    classifyAndStripTracking(url, prefs, domainRules);
+    classifyAndStripTracking(url, prefs, domainRules, landingPolicy);
 
   // Step 6 — Affiliate pipeline (Scenarios B + C + blacklist-value strip)
   const { action: pipeAction, detectedAffiliate, blacklistStripped } =
@@ -646,7 +717,7 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
  * @param {boolean} creatorReferralPreserved
  * @returns {{ payload: object, removed: string[], removedValues: string[] }}
  */
-function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved) {
+function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved, landingPolicy = EMPTY_LANDING_POLICY) {
   const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
   // Bounded-scope classifier (#530): even on whitelisted domains, ambiguous
   // params co-occurring with anchor trackers should be stripped. Affiliate
@@ -659,7 +730,7 @@ function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pa
   const {
     removed,
     removedValues,
-  } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams));
+  } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams), landingPolicy);
   const actionForSkip = (removed.length > 0 || pathCleaned) ? "cleaned" : "untouched";
   const payload = buildReturnPayload(actionForSkip, url, removed, null, {
     junkRemoved: removed.length + (pathCleaned ? 1 : 0),
@@ -682,7 +753,7 @@ function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pa
  * @param {Array} domainRules
  * @returns {{ removed: string[], removedValues: string[] }}
  */
-function classifyAndStripTracking(url, prefs, domainRules) {
+function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY_LANDING_POLICY) {
   const hostname = url.hostname;
   const removed = [];
   const removedValues = [];
@@ -715,6 +786,7 @@ function classifyAndStripTracking(url, prefs, domainRules) {
       domainRules,
       disabledCategories,
       new Set(classification.stripParams),
+      landingPolicy,
     );
     removed.push(...r);
     removedValues.push(...rv);

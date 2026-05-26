@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`getLandingPolicy(hostname, referrer)` per-landing preservation gate** (#656) in `src/lib/cleaner.js`. When `document.referrer` matches a redirect-network host declared in `REDIRECT_NETWORK_PATTERNS`, the function returns the matrix-required preservation Set for that network; the cleaner's strip pass honours it so the merchant's tag can read its attribution params on first-touch landings before any cleanup runs. Returns an empty no-op policy when the referrer is null, same-origin, or unknown — default strip behaviour unchanged. Exposed on `window.__mugaCleaner.getLandingPolicy` via the content-script bundle. 23 new unit tests cover each of the 9 matrix v1.0 networks, defensive referrer parsing, and the `processUrl` integration. Active stripping on subsequent same-site navigations is deliberately deferred — the matrix biases toward preservation, and the synthetic harness should cover the first-touch → second-nav flow end-to-end before that ships.
+
 ### Changed
 
 - **Tracking-param strip lists now respect matrix v1.0 attribution requirements** (#655). The universal strip list, the UI category mirrors, and the network-layer DNR rules previously included a set of click identifiers that the per-network attribution matrix declares as `required-at-landing`. Stripping them at the network layer killed the merchant's first-party cookie write before the conversion tag could fire. Those identifiers are now sourced exclusively from `REDIRECT_NETWORK_PATTERNS.landingParams` in `src/lib/affiliates.js` and excluded from `TRACKING_PARAMS`, every `TRACKING_PARAM_CATEGORIES.*.params` bucket, and `src/rules/tracking-params.json`. The per-landing policy that decides preserve-vs-strip on a per-page basis ships in `getLandingPolicy(hostname, referrer)` (#656); until then, the params travel through the URL untouched on first-touch and on subsequent navigations alike. A new regression test in `tests/unit/redirect-network-patterns.test.mjs` enforces the three-way invariant. 21 params removed from the strip surface; matrix-mapped to 9 redirect networks.
