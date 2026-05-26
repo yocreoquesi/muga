@@ -4,6 +4,15 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Content-script legacy unwrap no longer defeats #684 / #693 pass-through** (#695). `src/content/cleaner.js`'s `AFFILIATE_REDIRECT_PARAMS` map — gated on `prefs.unwrapRedirects` (default `true`) — was still client-side-unwrapping `awin1.com` (via `?ued=`) and `ad.admitad.com` (via `?ulp=`) at DOMContentLoaded, even though both hosts had been moved into `AFFILIATE_REDIRECT_NETWORKS` for pass-through. The content script never reached the network's 30x, so the merchant's first-party attribution cookie (`awc` / `wt_mc` for Awin, `admitad_uid` / `tagtag_uid` for Admitad) never got populated at landing — silently breaking creator commissions. Both hosts are now retired from the legacy map alongside `alitems.com`, `clk.tradedoubler.com`, and `redirect.viglink.com`; only `shareasale.com` (a true wrapper) remains. A new regression test (`tests/unit/content-unwrap-no-affiliate-redirect.test.mjs`) asserts no `AFFILIATE_REDIRECT_NETWORKS` host can ever appear in the legacy map again.
+
+### Changed
+
+- **Tradedoubler retired from content-script legacy unwrap; promoted into the matrix** (#695). `clk.tradedoubler.com` joins `AFFILIATE_REDIRECT_NETWORKS` for pass-through, and `REDIRECT_NETWORK_PATTERNS` gains a Tradedoubler entry with `tduid` declared as `landingParams` — the same shape as the other 9 matrix v1.0 networks. `tduid` is removed from `TRACKING_PARAMS` and the `TRACKING_PARAM_CATEGORIES.affiliate_click_ids` mirror so it can survive on the merchant landing. New affiliate-harness fixture covers G1+G3 end-to-end.
+- **`alitems.com` and `redirect.viglink.com` declared pass-through** (#695). Per the matrix's bias toward preservation, both move into `AFFILIATE_REDIRECT_NETWORKS` even though their full per-network matrix entries are still pending (next quarterly review). The legacy content-script unwrap that previously local-extracted their `?ulp=` / `?u=` is retired.
+
 ### Performance
 
 - **Cleaner hot-path micro-optimisations** (#629). `getDomainParamSets` now consults a `Map(domain → rule)` index instead of scanning the entire `domainRules` array (~167 entries today) on every call — lookup is bounded by the hostname's suffix count (3–4 probes typical). Affiliate-pattern Set construction is cached per host: `getAffiliateParamSetForHost(hostname)` returns the same Set on repeated calls, eliminating ~3 redundant Set allocations per `processUrl`. The service-worker no longer eagerly fetches `domain-rules.json` at startup; the load is deferred to the first `PROCESS_URL` message (the existing `_domainRulesReady` gate already handles on-demand load + retry). Per-call savings are modest individually but compound across the cleaner's main pipeline. The fourth win listed in the issue (`URL.searchParams.clear()` on AliExpress item pages) was DEFERRED — its premise no longer holds after #657 added the landing-policy preserve gate inside that branch, and the resulting "clear-then-restore-preserved" shape is not cleaner than the current single-pass loop.

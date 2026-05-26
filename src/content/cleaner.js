@@ -901,15 +901,21 @@
       const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "dest", "goto", "returnurl", "return_url"];
 
       // Affiliate network redirect domains: these intermediaries embed the real
-      // destination in a domain-specific param. We unwrap them client-side so the
-      // user goes straight to the store without passing through the tracking server.
+      // destination in a domain-specific param.
+      //
+      // #695: hosts that live in AFFILIATE_REDIRECT_NETWORKS (the 2.1 pass-through
+      // bucket) MUST NOT appear here — client-side unwrap would silently defeat
+      // the network's 30x and kill the merchant's first-party attribution cookie.
+      // awin1.com / ad.admitad.com / alitems.com / clk.tradedoubler.com /
+      // redirect.viglink.com were retired from this map in #695; a regression
+      // test in tests/unit/content-unwrap-no-affiliate-redirect.test.mjs enforces
+      // the invariant.
+      //
+      // shareasale.com remains: it is a true wrapper (caps-spec `shareasale`
+      // recipe + DNR rule), not an affiliate-redirect host, so local-unwrap is
+      // the intended behaviour.
       const AFFILIATE_REDIRECT_PARAMS = {
-        "awin1.com":              "ued",
         "shareasale.com":         "urllink",
-        "ad.admitad.com":         "ulp",
-        "alitems.com":            "ulp",
-        "redirect.viglink.com":   "u",
-        "clk.tradedoubler.com":   "url",
       };
 
       let parsed;

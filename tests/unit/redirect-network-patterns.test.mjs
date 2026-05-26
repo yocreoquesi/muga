@@ -38,13 +38,14 @@ const EXPECTED_NETWORKS = [
   "a8net",
   "rakuten-linkshare",
   "tradetracker",
+  "tradedoubler",
 ];
 
 describe("REDIRECT_NETWORK_PATTERNS — shape", () => {
-  test("is a frozen array with 9 entries (one per matrix v1.0 network)", () => {
+  test("is a frozen array with 10 entries (matrix v1.0 + #695 Tradedoubler promotion)", () => {
     assert.ok(Array.isArray(REDIRECT_NETWORK_PATTERNS));
     assert.ok(Object.isFrozen(REDIRECT_NETWORK_PATTERNS));
-    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 9);
+    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 10);
   });
 
   test("contains every expected network id, no duplicates", () => {

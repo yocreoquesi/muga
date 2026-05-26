@@ -42,14 +42,15 @@ const REDIRECT_PARAMS = [
   "goto", "returnurl", "return_url",
 ];
 
-// Keep in sync with AFFILIATE_REDIRECT_PARAMS in src/content/redirect-unwrap.js
+// Keep in sync with AFFILIATE_REDIRECT_PARAMS in src/content/cleaner.js.
+// #695: most affiliate-redirect entries retired so the network's 30x can
+// populate the merchant cookie at landing. Only shareasale.com remains —
+// it is a true wrapper (caps-spec recipe + DNR rule), not an
+// AFFILIATE_REDIRECT_NETWORKS pass-through host. See
+// tests/unit/content-unwrap-no-affiliate-redirect.test.mjs for the
+// regression test that enforces the invariant.
 const AFFILIATE_REDIRECT_PARAMS = {
-  "awin1.com":              "ued",
   "shareasale.com":         "urllink",
-  "ad.admitad.com":         "ulp",
-  "alitems.com":            "ulp",
-  "redirect.viglink.com":   "u",
-  "clk.tradedoubler.com":   "url",
 };
 
 /**
@@ -570,13 +571,6 @@ describe("C11 — replica sync verification (redirect-unwrap.js)", () => {
 // ---------------------------------------------------------------------------
 describe("redirect-unwrap — affiliate network redirects", () => {
 
-  test("Awin (awin1.com) — unwraps ?ued= to store destination", () => {
-    const dest = extractAffiliateRedirectDestination(
-      "https://www.awin1.com/cread.php?awinmid=12345&ued=https%3A%2F%2Fwww.zalando.es%2Fproduct.html"
-    );
-    assert.equal(dest, "https://www.zalando.es/product.html");
-  });
-
   test("ShareASale — unwraps ?urllink= to store destination", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://www.shareasale.com/r.cfm?b=999&u=111&urllink=https%3A%2F%2Fwww.shein.com%2Fdress-p-12345.html"
@@ -584,39 +578,52 @@ describe("redirect-unwrap — affiliate network redirects", () => {
     assert.equal(dest, "https://www.shein.com/dress-p-12345.html");
   });
 
-  test("Admitad (ad.admitad.com) — unwraps ?ulp= to store destination", () => {
+  test("ShareASale — non-encoded destination URL is also extracted", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.shareasale.com/r.cfm?b=999&u=111&urllink=https://www.shein.com/dress.html"
+    );
+    assert.equal(dest, "https://www.shein.com/dress.html");
+  });
+
+  // ── Pass-through hosts (#695): these MUST NOT be unwrapped client-side ───
+  // The 2.1 attribution model requires the network's 30x to execute in the
+  // browser. AFFILIATE_REDIRECT_NETWORKS hosts are intentionally excluded
+  // from the legacy AFFILIATE_REDIRECT_PARAMS map; extractAffiliateRedirectDestination
+  // returns null so the user reaches the network's server.
+
+  test("Awin (awin1.com) is NOT unwrapped — pass-through per #684", () => {
+    const dest = extractAffiliateRedirectDestination(
+      "https://www.awin1.com/cread.php?awinmid=12345&ued=https%3A%2F%2Fwww.zalando.es%2Fproduct.html"
+    );
+    assert.equal(dest, null, "awin1.com must reach the Awin server so awc/wt_mc land on merchant");
+  });
+
+  test("Admitad (ad.admitad.com) is NOT unwrapped — pass-through per #695", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://ad.admitad.com/g/abc123/?ulp=https%3A%2F%2Fwww.aliexpress.com%2Fitem%2F1005001234.html"
     );
-    assert.equal(dest, "https://www.aliexpress.com/item/1005001234.html");
+    assert.equal(dest, null, "ad.admitad.com must reach the Admitad server so admitad_uid lands on merchant");
   });
 
-  test("Admitad via AliExpress (alitems.com) — unwraps ?ulp=", () => {
+  test("Admitad alitems.com is NOT unwrapped — pass-through per #695", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://alitems.com/g/abc/?ulp=https%3A%2F%2Fwww.aliexpress.com%2Fitem%2F999.html"
     );
-    assert.equal(dest, "https://www.aliexpress.com/item/999.html");
+    assert.equal(dest, null);
   });
 
-  test("VigLink (redirect.viglink.com) — unwraps ?u= to store", () => {
+  test("VigLink (redirect.viglink.com) is NOT unwrapped — pass-through per #695", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://redirect.viglink.com/?key=abc&u=https%3A%2F%2Fwww.mediamarkt.de%2Fproduct%2F123"
     );
-    assert.equal(dest, "https://www.mediamarkt.de/product/123");
+    assert.equal(dest, null);
   });
 
-  test("Tradedoubler (clk.tradedoubler.com) — unwraps ?url= to store", () => {
+  test("Tradedoubler (clk.tradedoubler.com) is NOT unwrapped — pass-through per #695", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://clk.tradedoubler.com/click?p=999&url=https%3A%2F%2Fwww.fnac.es%2Fproducto%2F456"
     );
-    assert.equal(dest, "https://www.fnac.es/producto/456");
-  });
-
-  test("non-encoded destination URL is also extracted", () => {
-    const dest = extractAffiliateRedirectDestination(
-      "https://www.awin1.com/cread.php?ued=https://www.zalando.de/shoes.html"
-    );
-    assert.equal(dest, "https://www.zalando.de/shoes.html");
+    assert.equal(dest, null, "clk.tradedoubler.com must reach the Tradedoubler server so tduid lands on merchant");
   });
 
 });

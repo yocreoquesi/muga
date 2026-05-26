@@ -113,6 +113,23 @@ export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
 
   // TradeTracker — retired from wrapper-engine in #692.
   "tc.tradetracker.net",
+
+  // Tradedoubler — retired from content-script legacy unwrap in #695. Matrix
+  // doc analysed `tduid` as required-at-landing (the conventional click-id
+  // family used by Tradedoubler advertiser integrations).
+  "clk.tradedoubler.com",
+
+  // Admitad alitems variant — sibling to ad.admitad.com (above). Retired from
+  // content-script legacy unwrap in #695. Matrix doc lists alitems as a
+  // known-unknown awaiting a full per-network entry (#646 follow-up); included
+  // here per the matrix's bias toward preservation while the formal entry
+  // gets researched.
+  "alitems.com",
+
+  // VigLink wrapper — retired from content-script legacy unwrap in #695.
+  // Same known-unknown status as alitems.com; full matrix entry pending
+  // (#646 follow-up). Pass-through is the conservative default.
+  "redirect.viglink.com",
 ]);
 
 /**

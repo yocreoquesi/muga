@@ -1,0 +1,21 @@
+{
+  "network": "Tradedoubler",
+  "matrix_section": "docs/affiliate-networks-matrix.md#tradedoubler",
+  "redirect_hosts": [
+    "clk.tradedoubler.com"
+  ],
+  "redirect_url_samples": [
+    "https://clk.tradedoubler.com/click?p=12345&a=67890&url=https%3A%2F%2Fwww.merchant.eu%2F",
+    "https://clk.tradedoubler.com/click?p=42&a=99&epi=pub-1&url=https%3A%2F%2Fshop.example.es%2F"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.eu/page?tduid=click-abc-123&utm_source=affiliate&fbclid=fb",
+      "referrer": "https://clk.tradedoubler.com/click?p=12345&a=67890",
+      "expected": {
+        "preserve": ["tduid"],
+        "strip": ["utm_source", "fbclid"]
+      }
+    }
+  ]
+}
