@@ -51,6 +51,11 @@ let _firstUsedSet = false;
 // first. Only falls back to fetch() on a cache miss. On persistent fetch failure
 // (up to 3 attempts) we log the error and leave domainRules as [] so the SW can
 // still operate without domain-specific rules.
+//
+// #629 win 3: lazy load. The fetch is deferred until the first PROCESS_URL
+// message — handleProcessUrl already gates on `_domainRulesReady` and triggers
+// `_loadDomainRules()` on demand. The pre-#629 eager call at module top-level
+// blocked SW cold start by ~10-15ms even on tabs the user never tries to clean.
 let domainRules = [];
 let _domainRulesReady = null;
 let _domainRulesFetchAttempts = 0;
@@ -78,8 +83,6 @@ async function _loadDomainRules() {
     _domainRulesReady = null;
   }
 }
-
-_domainRulesReady = _loadDomainRules();
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const _rawActionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};

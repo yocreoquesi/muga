@@ -894,6 +894,36 @@ export function getPatternsForHost(hostname) {
 }
 
 /**
+ * Per-patterns-array cached Set of lowercased affiliate param names.
+ * Callers used to build `new Set(patterns.map(p => p.param.toLowerCase()))`
+ * on every `processUrl` call — millions of redundant allocations. Now the
+ * Set is built once per patterns array (each value of `_hostIndex` is a
+ * stable reference) and reused. #629 win 2.
+ */
+const _affiliateParamSetCache = new WeakMap();
+
+/**
+ * Returns the lowercased affiliate param Set for the given hostname.
+ * The Set is cached per (host → patterns) array — building it once and
+ * reusing on subsequent calls (#629 win 2). Returns an empty Set when the
+ * host has no patterns.
+ *
+ * @param {string} hostname
+ * @returns {Set<string>}
+ */
+export function getAffiliateParamSetForHost(hostname) {
+  const patterns = getPatternsForHost(hostname);
+  if (!patterns || patterns.length === 0) return _EMPTY_AFFILIATE_PARAM_SET;
+  let cached = _affiliateParamSetCache.get(patterns);
+  if (cached) return cached;
+  cached = new Set(patterns.map((p) => p.param.toLowerCase()));
+  _affiliateParamSetCache.set(patterns, cached);
+  return cached;
+}
+
+const _EMPTY_AFFILIATE_PARAM_SET = new Set();
+
+/**
  * Returns the list of stores with active affiliate support for display in the UI.
  * Only includes entries with known domains.
  */
