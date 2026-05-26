@@ -9,12 +9,24 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   REDIRECT_NETWORK_PATTERNS,
+  TRACKING_PARAMS,
+  TRACKING_PARAM_CATEGORIES,
   getRedirectNetworkPatterns,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForReferrer,
 } from "../../src/lib/affiliates.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const dnrRulesPath = join(__dirname, "../../src/rules/tracking-params.json");
+const dnrRules = JSON.parse(readFileSync(dnrRulesPath, "utf8"));
+const dnrRemoveParams = new Set(
+  dnrRules.flatMap(r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? []),
+);
 
 const EXPECTED_NETWORKS = [
   "awin",
@@ -275,5 +287,43 @@ describe("getLandingParamsForReferrer()", () => {
     a.add("polluted");
     const b = getLandingParamsForReferrer("prf.hn");
     assert.ok(!b.has("polluted"));
+  });
+});
+
+describe("landingParams excluded from strip lists (matrix v1.0 / #655)", () => {
+  const allLandingParams = [
+    ...new Set(REDIRECT_NETWORK_PATTERNS.flatMap(n => n.landingParams)),
+  ];
+
+  test("every landingParam declared in REDIRECT_NETWORK_PATTERNS is absent from TRACKING_PARAMS", () => {
+    for (const p of allLandingParams) {
+      assert.ok(
+        !TRACKING_PARAMS.includes(p),
+        `"${p}" is declared as required-at-landing in REDIRECT_NETWORK_PATTERNS but ` +
+        `still appears in TRACKING_PARAMS — universal strip would kill creator attribution.`,
+      );
+    }
+  });
+
+  test("every landingParam is absent from every TRACKING_PARAM_CATEGORIES.params bucket", () => {
+    for (const [category, def] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+      for (const p of allLandingParams) {
+        assert.ok(
+          !def.params.includes(p),
+          `"${p}" appears in TRACKING_PARAM_CATEGORIES.${category}.params — ` +
+          `same invariant violation: matrix-required preservation must not be UI-categorised as strippable.`,
+        );
+      }
+    }
+  });
+
+  test("every landingParam is absent from DNR removeParams (src/rules/tracking-params.json)", () => {
+    for (const p of allLandingParams) {
+      assert.ok(
+        !dnrRemoveParams.has(p),
+        `"${p}" appears in DNR removeParams — the browser would strip it at the network ` +
+        `layer before getLandingPolicy can run, killing creator attribution.`,
+      );
+    }
   });
 });
