@@ -69,7 +69,7 @@
   <ul>
     <li><strong>AMP redirect:</strong> Redirects AMP pages to the original canonical URL. On Chrome, this happens at the network layer via the browser's built-in declarativeNetRequest engine, before the AMP page is loaded. On Firefox, it happens locally via the content script.</li>
     <li><strong>Ping blocking:</strong> Removes <code>&lt;a ping&gt;</code> attributes from links so the browser does not send tracking beacons when you click.</li>
-    <li><strong>Redirect unwrapping:</strong> Detects redirect-wrapper URLs (Awin, ShareASale, Admitad, and similar intermediary servers; Pepper deal-site meta-refresh; Amazon Sponsored Products redirects) and navigates directly to the real destination, bypassing the intermediary.</li>
+    <li><strong>Link-share unwrapping:</strong> Detects link-share wrappers where the destination URL is embedded directly in the redirect URL's query string (Facebook's <code>l.facebook.com/?u=</code>, Instagram's <code>l.instagram.com/?u=</code>, Twitter's <code>t.co</code> in some templates) and navigates straight to the embedded destination. This is not an affiliate-attribution event — these wrappers are share-link tracking, not commission-bearing redirects. Affiliate-redirect networks (Awin, CJ, AliExpress Portals, etc.) are deliberately NOT unwrapped — see "Affiliate networks" below.</li>
     <li><strong>Right-click "Copy clean link":</strong> Cleans URLs when you copy them via context menu. Also available via keyboard shortcut (Alt+Shift+C).</li>
   </ul>
   <p>All of these operate entirely within your browser. No external requests are made.</p>
@@ -82,19 +82,18 @@
 
   <h2>What MUGA never does</h2>
   <ul>
-    <li>Does not silently send your URLs or browsing data to any server.</li>
+    <li>Does not silently send your URLs or browsing data to any server. Every external request is gated on an explicit Settings toggle that is off by default.</li>
     <li>Does not collect your browsing history.</li>
     <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
+    <li>Does not strip affiliate-redirect networks (Awin, CJ Affiliate, AliExpress Portals, Impact, Partnerize, Admitad, A8.net, Rakuten, TradeTracker) from URLs. Their redirect IS the attribution event and MUGA respects it — the creator's commission survives.</li>
     <li>Does not collect, store, or transmit any personally identifiable information.</li>
     <li>Does not use analytics, telemetry, or crash reporting services.</li>
-    <li>Does not redirect your URLs through external servers, ever.</li>
   </ul>
 
-  <h2>Stores removed for privacy reasons</h2>
-  <p>MUGA evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based tracking: your click is routed through an external server before reaching the store. That server logs your visit, your referrer, and your destination.</p>
-  <p>We do not believe forcing users through external tracking servers is necessary or fair. Redirect-based affiliate tracking is a choice these networks make, not a technical requirement. We rejected every one of these programs and chose to give up that revenue rather than compromise your privacy.</p>
-  <p>Because these stores rely on redirect-based affiliate networks, MUGA actively strips their affiliate tracking parameters (awc, wt_mc, lgw_code, and others) from URLs you visit. These parameters were placed by the same redirect servers we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store, so the intermediary server is bypassed entirely.</p>
-  <p>Only stores that support direct URL parameter injection -- where the affiliate tag is a simple query parameter added locally, with no server involved -- are compatible with MUGA. We believe users deserve the freedom to reach any store directly, and we will apply this same standard to any affiliate program we evaluate in the future.</p>
+  <h2>Affiliate networks: redirect-tolerant</h2>
+  <p>MUGA recognises both styles of affiliate attribution and respects both. Some programs (Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners, Bookshop.org, Steam Curator) carry the creator's referral as a query parameter or path segment on the merchant's own URL. Other programs (Awin, CJ Affiliate, AliExpress Portals, Impact, Partnerize, Admitad, A8.net, Rakuten, TradeTracker) carry it as a redirect through the network's own servers, where the network's 30x sets a first-party cookie on the merchant's domain at landing. MUGA does not pick winners by attribution model.</p>
+  <p>Practically: when MUGA sees an affiliate-redirect URL, the redirect passes through your browser unchanged. The network's servers see your click (that's the entire point — without it the creator's commission cannot be paid) and the merchant's first-party cookie gets populated normally. MUGA does not interpose, does not log the redirect anywhere outside your device, and does not rewrite the URL beyond removing well-known tracking parameters (utm_*, fbclid, gclid, and the rest) from the merchant's landing page once you arrive. The matrix that drives this is published in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/affiliate-networks-matrix.md" target="_blank" rel="noopener noreferrer">docs/affiliate-networks-matrix.md</a> on each release.</p>
+  <p>Independently of any affiliate model, MUGA offers an optional "URL Unwrapper" feature that resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) so you can see where a short link actually leads before clicking. This feature contacts <code>unwrap.muga.app</code> and is off by default; affiliate redirect networks are NEVER sent to this endpoint. See the Permissions section below.</p>
 
   <h2>Third-party affiliate programs</h2>
   <p>When you navigate to a store via a MUGA-modified URL, the store's own analytics may record the visit as originating from an affiliate link. This is standard affiliate behaviour and is governed by the store's own privacy policy, not MUGA's.</p>
@@ -108,7 +107,12 @@
     <li><strong>contextMenus</strong>: to add the "Copy clean link" and "Copy clean selection" right-click options.</li>
     <li><strong>clipboardWrite</strong>: to copy clean URLs to your clipboard (fallback for pages where the Clipboard API is blocked).</li>
     <li><strong>declarativeNetRequestWithHostAccess</strong> (Chrome) / <strong>declarativeNetRequest</strong> (Firefox): to strip tracking parameters from URLs before the page loads, using the browser's built-in rule engine.</li>
-    <li><strong>host_permissions: all_urls</strong>: required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, redirect unwrapping) and for declarativeNetRequest redirect rules to apply on all sites.</li>
+    <li><strong>host_permissions: all_urls</strong>: required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, link-share unwrapping) and for declarativeNetRequest redirect rules to apply on all sites.</li>
+  </ul>
+  <p>Optional host permissions (off by default; granted only when you turn on the corresponding feature in Settings, revocable from browser settings at any time):</p>
+  <ul>
+    <li><strong>rules.muga.app/*</strong> — "Remote rule updates". A single HTTPS GET at most once per 7 days, piggybacked on natural service-worker wake events. The response is an Ed25519-signed payload verified against a public key shipped with the extension. Credentials-omit; no user data transmitted.</li>
+    <li><strong>unwrap.muga.app/*</strong> — "URL Unwrapper". Used ONLY to resolve generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) so you can see where a short link actually leads. Affiliate-redirect networks are NEVER sent to this endpoint. The request carries the shortened URL as a base64url-encoded query parameter and nothing else (no cookies, no Referer, no User-Agent identifying you). The response is an Ed25519-signed envelope verified before any navigation happens. The endpoint may publish non-PII aggregate metrics (hit counts per shortener host, per day) per <a href="https://github.com/yocreoquesi/muga/blob/main/docs/unwrap-observability.md" target="_blank" rel="noopener noreferrer">our published observability design</a>; no per-request data is retained.</li>
   </ul>
 
   <h2>Open source</h2>
