@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-22T21:00:19.812Z",
-  "generator": "tools/generate-rules.mjs@909c8fc",
+  "generatedAt": "2026-05-26T23:50:04.146Z",
+  "generator": "tools/generate-rules.mjs@5719fee",
   "tracking": [
     {
       "param": "__hsfp",
@@ -196,10 +196,6 @@
       "category": "generic"
     },
     {
-      "param": "a8",
-      "category": "ads"
-    },
-    {
       "param": "ab_channel",
       "category": "platform_noise",
       "preservedOnDomains": [
@@ -283,10 +279,6 @@
       "category": "ads"
     },
     {
-      "param": "admitad_uid",
-      "category": "ads"
-    },
-    {
       "param": "adobe_mc_ref",
       "category": "ads"
     },
@@ -351,28 +343,12 @@
       "category": "ads"
     },
     {
-      "param": "aff_request_id",
-      "category": "platform_noise"
-    },
-    {
-      "param": "aff_trace_key",
-      "category": "platform_noise"
-    },
-    {
       "param": "afsmartredirect",
       "category": "platform_noise"
     },
     {
       "param": "aiad_clid",
       "category": "ads"
-    },
-    {
-      "param": "algo_expid",
-      "category": "platform_noise"
-    },
-    {
-      "param": "algo_pvid",
-      "category": "platform_noise"
     },
     {
       "param": "analytics_context",
@@ -455,10 +431,6 @@
       "category": "email"
     },
     {
-      "param": "awc",
-      "category": "ads"
-    },
-    {
       "param": "axr_tref",
       "category": "generic"
     },
@@ -511,10 +483,6 @@
       "category": "ads"
     },
     {
-      "param": "btsid",
-      "category": "platform_noise"
-    },
-    {
       "param": "campaign",
       "category": "platform_noise"
     },
@@ -527,14 +495,6 @@
         "maps.google.com",
         "sharepoint.com"
       ]
-    },
-    {
-      "param": "cjdata",
-      "category": "ads"
-    },
-    {
-      "param": "cjevent",
-      "category": "ads"
     },
     {
       "param": "click_id",
@@ -889,10 +849,6 @@
       "category": "email"
     },
     {
-      "param": "iclid",
-      "category": "ads"
-    },
-    {
       "param": "ie",
       "category": "platform_noise",
       "preservedOnDomains": [
@@ -942,14 +898,6 @@
     },
     {
       "param": "ir_partnerid",
-      "category": "ads"
-    },
-    {
-      "param": "irclickid",
-      "category": "ads"
-    },
-    {
-      "param": "irgwc",
       "category": "ads"
     },
     {
@@ -1405,18 +1353,6 @@
       "category": "platform_noise"
     },
     {
-      "param": "raneaid",
-      "category": "ads"
-    },
-    {
-      "param": "ranmid",
-      "category": "ads"
-    },
-    {
-      "param": "ransiteid",
-      "category": "ads"
-    },
-    {
       "param": "rb_clickid",
       "category": "ads"
     },
@@ -1652,10 +1588,6 @@
       "category": "generic"
     },
     {
-      "param": "tduid",
-      "category": "ads"
-    },
-    {
       "param": "tgclid",
       "category": "ads"
     },
@@ -1696,19 +1628,7 @@
       "category": "platform_noise"
     },
     {
-      "param": "ttaid",
-      "category": "ads"
-    },
-    {
-      "param": "ttcid",
-      "category": "ads"
-    },
-    {
       "param": "ttclid",
-      "category": "ads"
-    },
-    {
-      "param": "ttrk",
       "category": "ads"
     },
     {
@@ -1858,14 +1778,6 @@
     {
       "param": "winflncrtag",
       "category": "generic"
-    },
-    {
-      "param": "ws_ab_test",
-      "category": "platform_noise"
-    },
-    {
-      "param": "wt_mc",
-      "category": "ads"
     },
     {
       "param": "wt_zmc",

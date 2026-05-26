@@ -20,7 +20,6 @@ import { classify as classifyParams } from "./param-classifier.js";
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
 
-<<<<<<< HEAD
 const EMPTY_LANDING_POLICY = Object.freeze({
   preserve: Object.freeze(new Set()),
   network: null,
