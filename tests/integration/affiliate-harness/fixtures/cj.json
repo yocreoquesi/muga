@@ -17,12 +17,12 @@
   ],
   "landing_samples": [
     {
-      "url": "https://www.example.com/product?cjevent=abc-def-1234-5678&cjdata=encoded-extras&utm_source=affiliate&utm_campaign=summer&gclid=xyz123",
+      "url": "https://www.walmart.com/ip/product/1?cjevent=abc-def-1234-5678&cjdata=encoded-extras&utm_source=affiliate&utm_campaign=summer&gclid=xyz123",
+      "referrer": "https://anrdoezrs.net/click-1234567-12345678",
       "expected": {
         "preserve": ["cjevent", "cjdata"],
         "strip": ["utm_source", "utm_campaign", "gclid"]
-      },
-      "blocked_on": "#655"
+      }
     }
   ]
 }

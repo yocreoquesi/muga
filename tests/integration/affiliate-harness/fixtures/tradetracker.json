@@ -1,0 +1,22 @@
+{
+  "network": "TradeTracker",
+  "matrix_section": "docs/affiliate-networks-matrix.md#tradetracker",
+  "pending_resolution": "Surface inversion not yet shipped: tc.tradetracker.net still lives in the wrapper engine and bounce-state-cleaner.js still detects it for cleaning. Pass-through migration into AFFILIATE_REDIRECT_NETWORKS is a follow-up to ADR-0003 (same shape as #684 was for Awin). G3 enforces today because getLandingPolicy already resolves tc.tradetracker.net via REDIRECT_NETWORK_PATTERNS — the host's pass-through wiring is the remaining gap.",
+  "redirect_hosts": [
+    "tc.tradetracker.net"
+  ],
+  "redirect_url_samples": [
+    "https://tc.tradetracker.net/?c=1234&m=5678&a=999&u=https%3A%2F%2Fwww.merchant.de%2F",
+    "https://tc.tradetracker.net/?c=4321&m=8765&a=888&u=https%3A%2F%2Fshop.example.nl%2F&r=ref-1"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.de/p?ttaid=aid-123&ttrk=rk-xyz&ttcid=cid-789&utm_source=tt&fbclid=fb",
+      "referrer": "https://tc.tradetracker.net/?c=1234&m=5678&a=999",
+      "expected": {
+        "preserve": ["ttaid", "ttrk", "ttcid"],
+        "strip": ["utm_source", "fbclid"]
+      }
+    }
+  ]
+}

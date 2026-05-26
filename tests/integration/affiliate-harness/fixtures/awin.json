@@ -12,12 +12,12 @@
   ],
   "landing_samples": [
     {
-      "url": "https://www.example.com/product?awc=11111-12345-67890&wt_mc=campaign-spring&utm_source=newsletter&utm_medium=email&fbclid=xyz",
+      "url": "https://www.zalando.es/product.html?awc=11111-12345-67890&wt_mc=campaign-spring&utm_source=newsletter&utm_medium=email&fbclid=xyz",
+      "referrer": "https://www.awin1.com/cread.php?awinmid=12345&awinaffid=99999",
       "expected": {
         "preserve": ["awc", "wt_mc"],
         "strip": ["utm_source", "utm_medium", "fbclid"]
-      },
-      "blocked_on": "#655"
+      }
     }
   ]
 }
