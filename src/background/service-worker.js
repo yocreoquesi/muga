@@ -390,36 +390,6 @@ async function maybeFetchRemoteRules(deps) {
 // Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
 const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
 
-/**
- * Syncs remote params (signed payload) to DNR rule 1001.
- *
- * Mirrors syncCustomParamsDNR for rule 1000 but operates exclusively on
- * REMOTE_RULE_ID (1001). Rule 1000 MUST NOT appear in removeRuleIds or addRules
- * from this function. (REQ-MERGE-2, REQ-MERGE-4)
- *
- * No-op when DNR is unsupported (Firefox MV2 graceful degradation).
- *
- * @param {string[]} params - Remote params to sync. Empty array removes the rule.
- */
-async function syncRemoteParamsDNR(params) {
-  if (!hasDNR) return;
-  try {
-    if (!params || params.length === 0) {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [REMOTE_RULE_ID],
-        addRules: [],
-      });
-      return;
-    }
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [REMOTE_RULE_ID],
-      addRules: [buildRemoteDnrRule(params)],
-    });
-  } catch (err) {
-    console.error("[MUGA] syncRemoteParamsDNR failed:", err);
-  }
-}
-
 async function syncCustomParamsDNR(customParams) {
   if (!hasDNR) return;
   try {
@@ -461,12 +431,12 @@ async function applyDnrState(prefs) {
   if (prefs.enabled && prefs.dnrEnabled && prefs.onboardingDone) {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       enableRulesetIds: ["tracking_params"],
-    }).catch(() => {}); // no-op if already enabled
+    }).catch(err => console.warn("[MUGA] applyDnrState enable:", err));
     await syncCustomParamsDNR(prefs.customParams);
   } else {
     await chrome.declarativeNetRequest.updateEnabledRulesets({
       disableRulesetIds: ["tracking_params"],
-    }).catch(() => { /* no-op if already disabled */ });
+    }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
     await syncCustomParamsDNR([]);
   }
 }
@@ -943,7 +913,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const ALLOWED_STAT_KEYS = ["urlsCleaned", "junkRemoved", "referralsSpotted"];
     if (ALLOWED_STAT_KEYS.includes(message.key)) incrementStat(message.key);
     sendResponse({ ok: true });
-    return true;
+    // incrementStat is fire-and-forget — the response above is synchronous.
+    // Returning true here keeps the message channel open for an async
+    // response that never comes, leaking one port slot per message (#706).
+    return false;
   }
 
   // exposed for future dev-tools use
@@ -1014,9 +987,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         // Feature-detect flags (REQ-UI-5). Since v1.10.1 the feature no
         // longer requires chrome.alarms — the only remaining runtime gate
-        // is DNR availability. `supportsAlarms` is kept as `true` for
-        // backwards compat with any cached UI bundle that still inspects it.
-        const supportsAlarms = true;
+        // is DNR availability.
         const supportsDNR = hasDNR;
         try {
           sendResponse({
@@ -1024,7 +995,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             enabled,
             meta: localData.remoteRulesMeta,
             remoteParams: localData.remoteParams,
-            supportsAlarms,
             supportsDNR,
           });
         } catch { /* channel closed */ }
