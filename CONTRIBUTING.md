@@ -161,7 +161,7 @@ Manual path (if you prefer):
 2. Regenerate the DNR rules file: `npm run build:rules`.
 3. Commit both `affiliates.js` and `src/rules/tracking-params.json`.
 
-`src/rules/tracking-params.json` is a **generated artifact** — do not edit it by hand. The single source of truth is `TRACKING_PARAMS` in `affiliates.js`. The CI pipeline runs `npm run build:rules` and fails if the generated file differs from what is committed.
+`src/rules/tracking-params.json` and `src/rules/rules-manifest.json` are **generated artifacts** — do not edit them by hand. The single source of truth is `TRACKING_PARAMS` (+ `TRACKING_PARAM_CATEGORIES`, `TRACKING_PREFIXES`) in `affiliates.js` and the input JSON files under `src/rules/` (e.g. `domain-rules.json`). The CI pipeline runs `npm run compile:rules` on every PR and fails if **any** file under `src/rules/` differs from what is committed (#626). The manifest is byte-deterministic (no timestamps, no SHAs) so a clean diff is always achievable.
 
 ### When to use per-domain `stripParams`
 

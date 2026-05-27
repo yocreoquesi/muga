@@ -5,9 +5,9 @@
  * consistent with the live affiliates.js source. Drift is caught at npm test
  * time so a forgotten `npm run compile:rules` doesn't silently ship stale data.
  *
- * The test ignores generatedAt and generator (both change on every run) and
- * compares all structural fields: version, tracking length, prefix_rules length,
- * all category keys, and path_rules emptiness.
+ * Compares all structural fields: version, tracking length, prefix_rules length,
+ * all category keys, and path_rules emptiness. The manifest is byte-deterministic
+ * (no timestamps or SHAs) so deepEqual against a freshly-built manifest is exact.
  *
  * Run with: node --test tests/unit/rules-manifest-sync.test.mjs
  */
@@ -122,20 +122,13 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
 // ── Sync check: committed manifest matches freshly-built manifest ─────────────
 
 describe("rules-manifest.json — sync with live affiliates.js source", () => {
-  test("committed manifest is structurally equal to buildManifest() output (ignores generatedAt/generator)", () => {
+  test("committed manifest is deeply equal to buildManifest() output", () => {
     const committed = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
     const rebuilt = buildManifest();
 
-    // Mask volatile fields before comparison
-    const normalize = (m) => ({
-      ...m,
-      generatedAt: "MASKED",
-      generator: "MASKED",
-    });
-
     assert.deepEqual(
-      normalize(committed),
-      normalize(rebuilt),
+      committed,
+      rebuilt,
       "committed rules-manifest.json is out of sync with affiliates.js — run npm run compile:rules"
     );
   });
