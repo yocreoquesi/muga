@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-26T23:50:04.146Z",
-  "generator": "tools/generate-rules.mjs@5719fee",
+  "generatedAt": "2026-05-26T23:51:18.922Z",
+  "generator": "tools/generate-rules.mjs@2391d52",
   "tracking": [
     {
       "param": "__hsfp",
@@ -1818,43 +1818,56 @@
   ],
   "prefix_rules": [
     {
-      "prefix": "utm_"
+      "prefix": "utm_",
+      "note": "Google Analytics: utm_source, utm_medium, utm_campaign, etc."
     },
     {
-      "prefix": "cm_sw_"
+      "prefix": "cm_sw_",
+      "note": "Amazon: click/share tracking (cm_sw_r_cp_api_*, cm_sw_r_cso_*)"
     },
     {
-      "prefix": "pd_rd_"
+      "prefix": "pd_rd_",
+      "note": "Amazon: product display referral data"
     },
     {
-      "prefix": "pf_rd_"
+      "prefix": "pf_rd_",
+      "note": "Amazon: placement referral data"
     },
     {
-      "prefix": "__mk_"
+      "prefix": "__mk_",
+      "note": "Amazon: marketplace/keyboard locale selector"
     },
     {
-      "prefix": "hsa_"
+      "prefix": "hsa_",
+      "note": "HubSpot: ad tracking (hsa_acc, hsa_cam, hsa_grp, hsa_kw, etc.)"
     },
     {
-      "prefix": "mt_"
+      "prefix": "mt_",
+      "note": "Matomo: campaign tracking (mt_campaign, mt_adset, mt_click_id, etc.)"
     },
     {
-      "prefix": "int_"
+      "prefix": "int_",
+      "note": "Internal campaign params (int_source, int_medium, int_campaign, etc.)"
     },
     {
-      "prefix": "ir_"
+      "prefix": "ir_",
+      "note": "Impact Radius: affiliate tracking (ir_adid, ir_campaignid, etc.)"
     },
     {
-      "prefix": "asc_"
+      "prefix": "asc_",
+      "note": "Amazon: affiliate sub-tag variants (asc_contentid, asc_campaign, etc.)"
     },
     {
-      "prefix": "cv_ct_"
+      "prefix": "cv_ct_",
+      "note": "Amazon: conversion tracking"
     },
     {
-      "prefix": "scm_"
+      "prefix": "scm_",
+      "note": "AliExpress / Alibaba: SCM tracking variants"
     },
     {
-      "prefix": "sb-ci-"
+      "prefix": "sb-ci-",
+      "note": "Amazon: search bar click ID"
     }
   ],
   "domains": [
