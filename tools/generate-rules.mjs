@@ -14,7 +14,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
-import { execSync } from "node:child_process";
 
 import {
   TRACKING_PARAMS,
@@ -86,20 +85,6 @@ function resolveCategory(param, categoriesMap) {
     );
   }
   return hits[0];
-}
-
-/**
- * Returns the git short SHA for the generator field.
- * Falls back to "local" if git is unavailable.
- *
- * @returns {string}
- */
-function getShortSha() {
-  try {
-    return execSync("git rev-parse --short HEAD", { cwd: ROOT, encoding: "utf8" }).trim();
-  } catch {
-    return "local";
-  }
 }
 
 /**
@@ -184,10 +169,11 @@ export function buildManifest() {
     note: prefixNotes.get(prefix),
   }));
 
+  // Manifest is byte-deterministic — no timestamps, no SHAs. CI gate (#626)
+  // re-runs `compile:rules` and asserts `git diff --exit-code -- src/rules/`
+  // is clean. Any volatile field added here would defeat that gate.
   const manifest = {
     version: 1,
-    generatedAt: new Date().toISOString(),
-    generator: `tools/generate-rules.mjs@${getShortSha()}`,
     tracking,
     prefix_rules,
     domains: domainRules,
