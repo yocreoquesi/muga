@@ -95,26 +95,13 @@ describe("PREF_DEFAULTS — shape and default values", () => {
 // Remote rules helpers — structural tests (T1.2)
 // Helpers call chrome.storage APIs which are unavailable in Node.
 // We verify the source exports and API usage structurally to ensure:
-//   - all helpers are exported
-//   - toggle (remoteRulesEnabled) lives in chrome.storage.sync
+//   - kept helpers are exported (getRemoteParams, setRemoteParams)
 //   - remoteParams and remoteRulesMeta live in chrome.storage.local
-//   - clearRemoteParams removes both remoteParams and remoteRulesMeta
+// Three orphan exports (getRemoteRulesState / setRemoteRulesState /
+// clearRemoteParams) were retired in #709 — zero production callers.
+// The negative assertions below pin that decision.
 // ---------------------------------------------------------------------------
 describe("remote rules helpers — structural assertions (T1.2)", () => {
-
-  test("storage.js exports getRemoteRulesState", () => {
-    assert.ok(
-      STORAGE_SOURCE.includes("export async function getRemoteRulesState"),
-      "getRemoteRulesState must be exported from storage.js"
-    );
-  });
-
-  test("storage.js exports setRemoteRulesState", () => {
-    assert.ok(
-      STORAGE_SOURCE.includes("export async function setRemoteRulesState"),
-      "setRemoteRulesState must be exported from storage.js"
-    );
-  });
 
   test("storage.js exports getRemoteParams", () => {
     assert.ok(
@@ -130,18 +117,29 @@ describe("remote rules helpers — structural assertions (T1.2)", () => {
     );
   });
 
-  test("storage.js exports clearRemoteParams", () => {
+  test("storage.js does NOT export getRemoteRulesState / setRemoteRulesState / clearRemoteParams (#709)", () => {
+    // Retired as orphan exports — zero production callers. clearRemoteCache
+    // in src/lib/remote-rules.js is the active clear path; the remoteRulesEnabled
+    // toggle is read/written directly via chrome.storage.sync in the SW (no helper).
     assert.ok(
-      STORAGE_SOURCE.includes("export async function clearRemoteParams"),
-      "clearRemoteParams must be exported from storage.js"
+      !STORAGE_SOURCE.includes("export async function getRemoteRulesState"),
+      "getRemoteRulesState was retired in #709 — do not reintroduce without a real caller"
+    );
+    assert.ok(
+      !STORAGE_SOURCE.includes("export async function setRemoteRulesState"),
+      "setRemoteRulesState was retired in #709 — do not reintroduce without a real caller"
+    );
+    assert.ok(
+      !STORAGE_SOURCE.includes("export async function clearRemoteParams"),
+      "clearRemoteParams was retired in #709 — clearRemoteCache in remote-rules.js owns this path"
     );
   });
 
   test("remoteRulesEnabled toggle uses chrome.storage.sync", () => {
-    // The helper must read/write remoteRulesEnabled from sync (cross-device pref)
+    // The SW writes the toggle directly via chrome.storage.sync (cross-device pref)
     assert.ok(
       STORAGE_SOURCE.includes("chrome.storage.sync"),
-      "storage.js must reference chrome.storage.sync for the toggle"
+      "storage.js must reference chrome.storage.sync"
     );
   });
 
@@ -154,17 +152,6 @@ describe("remote rules helpers — structural assertions (T1.2)", () => {
     assert.ok(
       STORAGE_SOURCE.includes("remoteRulesMeta"),
       "storage.js must reference remoteRulesMeta"
-    );
-  });
-
-  test("clearRemoteParams removes both remoteParams and remoteRulesMeta", () => {
-    // Verify that the clear function handles both keys (REQ-OPT-5)
-    const clearFnMatch = STORAGE_SOURCE.match(
-      /function clearRemoteParams[\s\S]{0,500}?remoteParams[\s\S]{0,200}?remoteRulesMeta/
-    );
-    assert.ok(
-      clearFnMatch !== null,
-      "clearRemoteParams must reference both remoteParams and remoteRulesMeta"
     );
   });
 });

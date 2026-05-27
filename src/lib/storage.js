@@ -585,48 +585,6 @@ export async function getCachedDomainRules() {
 // enough that sync's 100 KB quota is not appropriate.
 
 /**
- * Reads the remoteRulesEnabled toggle from chrome.storage.sync.
- * @returns {Promise<boolean>} Whether remote rule updates are enabled.
- */
-export async function getRemoteRulesState() {
-  try {
-    return await new Promise((resolve, reject) => {
-      chrome.storage.sync.get({ remoteRulesEnabled: false }, (result) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(!!result.remoteRulesEnabled);
-        }
-      });
-    });
-  } catch (err) {
-    console.error("[MUGA] getRemoteRulesState failed:", err);
-    return false;
-  }
-}
-
-/**
- * Writes the remoteRulesEnabled toggle to chrome.storage.sync.
- * @param {boolean} enabled
- * @returns {Promise<void>}
- */
-export async function setRemoteRulesState(enabled) {
-  try {
-    return await new Promise((resolve, reject) => {
-      chrome.storage.sync.set({ remoteRulesEnabled: !!enabled }, () => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve();
-        }
-      });
-    });
-  } catch (err) {
-    console.error("[MUGA] setRemoteRulesState failed:", err);
-  }
-}
-
-/**
  * Reads cached remote params and their metadata from chrome.storage.local.
  * Returns { remoteParams: string[], remoteRulesMeta: object }.
  * @returns {Promise<{ remoteParams: string[], remoteRulesMeta: object }>}
@@ -677,27 +635,6 @@ export async function setRemoteParams(params, meta) {
     });
   } catch (err) {
     console.error("[MUGA] setRemoteParams failed:", err);
-  }
-}
-
-/**
- * Clears remote params and metadata from chrome.storage.local.
- * Called when the user disables remote rules (REQ-OPT-5).
- * @returns {Promise<void>}
- */
-export async function clearRemoteParams() {
-  try {
-    return await new Promise((resolve, reject) => {
-      chrome.storage.local.remove(["remoteParams", "remoteRulesMeta"], () => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve();
-        }
-      });
-    });
-  } catch (err) {
-    console.error("[MUGA] clearRemoteParams failed:", err);
   }
 }
 

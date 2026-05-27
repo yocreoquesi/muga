@@ -208,18 +208,6 @@ const SKIMLINKS_SPEC_IDS = new Set([
  */
 const MUGA_EXCLUDED_IDS = new Set(["awin", "impact", "rakuten", "tradetracker"]);
 
-/**
- * Per-id compatibility overrides applied AFTER the spec→engine mapping.
- *
- * The caps-spec wrappers schema currently only supports a single `pathPrefix`
- * per entry. MUGA's pre-existing engine accepts multiple paths for some
- * networks. To preserve behaviour (issue #538 acceptance criterion: tests must
- * still pass) without forking the schema, we extend the engine table with the
- * extra prefix here and track a follow-up in caps-spec to allow multi-prefix
- * entries (then this override goes away).
- */
-const PATH_PREFIX_EXTENSIONS = {};
-
 function buildExtractor(extractor) {
   switch (extractor.kind) {
     case "fromParam":
@@ -256,11 +244,7 @@ function buildWrappers(rawList) {
   let skimlinksMerged = null;
   for (const entry of rawList) {
     if (MUGA_EXCLUDED_IDS.has(entry.id)) continue;
-    const basePaths = entry.pathPrefix ? [entry.pathPrefix] : null;
-    const extraPaths = PATH_PREFIX_EXTENSIONS[entry.id];
-    const pathPatterns = extraPaths
-      ? [...(basePaths ?? []), ...extraPaths]
-      : basePaths;
+    const pathPatterns = entry.pathPrefix ? [entry.pathPrefix] : null;
     const wrapper = {
       id: entry.id,
       name: entry.label,
@@ -298,13 +282,16 @@ export const WRAPPERS = buildWrappers(WRAPPERS_RAW);
  * key widens the surface for false positives on legitimate non-redirect URLs.
  * @type {string[]}
  */
-export const GENERIC_WRAPPER_PARAMS = [
+// #709 item 10: frozen for defense-in-depth. Security-relevant — drives
+// the generic-redirect heuristic. Mutation would silently widen MUGA's
+// surface for unwrap.
+export const GENERIC_WRAPPER_PARAMS = Object.freeze([
   "url",
   "u",
   "redirect",
   "dest",
   "target",
-];
+]);
 
 /**
  * Maximum length of a destination URL accepted by the generic extractor.
@@ -321,7 +308,10 @@ const GENERIC_DEST_LENGTH_CAP = 2000;
  * would silently break login or payment.
  * @type {string[]}
  */
-const GENERIC_AUTH_PATH_FRAGMENTS = [
+// #709 item 10: frozen for defense-in-depth. Mutation would silently
+// REMOVE auth/SSO/checkout protections from the generic unwrap path
+// (an "unwrap" of /login or /checkout breaks the user's session/payment).
+const GENERIC_AUTH_PATH_FRAGMENTS = Object.freeze([
   "/oauth",
   "/oauth2",
   "/auth",
@@ -334,7 +324,7 @@ const GENERIC_AUTH_PATH_FRAGMENTS = [
   "/pay",
   "/saml",
   "/authorize",
-];
+]);
 
 /**
  * Returns the input host with a leading `www.` stripped, lowercased.
