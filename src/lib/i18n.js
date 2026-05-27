@@ -246,6 +246,18 @@ export const TRANSLATIONS = {
     it: "Dimentica i parametri segnalati",
     ja: "報告済みパラメータをリセット",
   },
+  // #707: row label paired with forget_reported_params_btn. Previously both
+  // the row strong and the button reused forget_reported_params_btn, which
+  // rendered "Forget reported params" twice on the row.
+  forget_reported_params_label: {
+    en: "Reported params",
+    es: "Parámetros reportados",
+    pt: "Parâmetros reportados",
+    de: "Gemeldete Parameter",
+    fr: "Paramètres signalés",
+    it: "Parametri segnalati",
+    ja: "報告済みパラメータ",
+  },
   forget_reported_params_done: {
     en: "Reported list cleared",
     es: "Lista de reportes borrada",
@@ -400,7 +412,6 @@ export const TRANSLATIONS = {
   optionsRemoteRulesErrVersion:   { en: "Update was older than current. Ignored.",                                                                           es: "La actualización era más antigua que la actual. Ignorada.", pt: "Atualização era mais antiga que a atual. Ignorada.", de: "Aktualisierung war älter als die aktuelle. Ignoriert.", fr: "La mise à jour était plus ancienne que la version actuelle. Ignorée.", it: "L'aggiornamento era più vecchio di quello attuale. Ignorato.", ja: "更新が現在のバージョンより古いものでした。無視しました。" },
   optionsRemoteRulesErrStale:     { en: "Update file was too old. Ignored.",                                                                                 es: "El archivo de actualización era demasiado antiguo. Ignorado.", pt: "Arquivo de atualização era muito antigo. Ignorado.", de: "Aktualisierungsdatei war zu alt. Ignoriert.", fr: "Le fichier de mise à jour était trop ancien. Ignoré.", it: "Il file di aggiornamento era troppo vecchio. Ignorato.", ja: "更新ファイルが古すぎました。無視しました。" },
   optionsRemoteRulesErrUnknown:   { en: "Update failed. Check the console for details.",                                                                     es: "La actualización falló. Consulta la consola para más detalles.", pt: "Atualização falhou. Verifique o console para detalhes.", de: "Aktualisierung fehlgeschlagen. Details in der Konsole.", fr: "Échec de la mise à jour. Consultez la console pour plus de détails.", it: "Aggiornamento fallito. Controlla la console per i dettagli.", ja: "更新に失敗しました。詳細はコンソールを確認してください。" },
-  whatsNewRemoteRules:            { en: "New: you can enable optional updates to the tracking-parameter list in Settings. Off by default.",                                     es: "Novedad: podés activar actualizaciones opcionales de la lista de parámetros en Ajustes. Desactivado por defecto.", pt: "Novo: você pode ativar atualizações opcionais da lista de parâmetros em Configurações. Desativado por padrão.", de: "Neu: Optionale Aktualisierungen der Tracking-Parameter-Liste können in den Einstellungen aktiviert werden. Standardmäßig deaktiviert.", fr: "Nouveau : vous pouvez activer les mises à jour facultatives de la liste des paramètres de pistage dans Paramètres. Désactivé par défaut.", it: "Novità: puoi attivare aggiornamenti opzionali dell'elenco dei parametri di tracciamento nelle Impostazioni. Disattivato per impostazione predefinita.", ja: "新機能: トラッキングパラメータリストのオプション更新を設定で有効にできます。デフォルトでオフ。" },
   muga_disabled_for_domain:       { en: "MUGA is disabled on this site",                                                                                     es: "MUGA está desactivado en este sitio",                       pt: "MUGA está desativado neste site",             de: "MUGA ist auf dieser Seite deaktiviert", fr: "MUGA est désactivé sur ce site", it: "MUGA è disattivato su questo sito", ja: "MUGAはこのサイトで無効です" },
 
   // ── Advanced / Developer options ──────────────────────────────────────────
@@ -581,6 +592,17 @@ export const TRANSLATIONS = {
     it: "Attiva URL Unwrapper",
     ja: "URL Unwrapperを有効にする",
   },
+  // #707: section heading distinct from the toggle label so the section
+  // title and the row label don't both render "Enable URL Unwrapper".
+  privacy_proxy_section_title: {
+    en: 'URL Unwrapper',
+    es: 'Desempaquetador de URL',
+    pt: 'Desempacotador de URL',
+    de: 'URL Unwrapper',
+    fr: 'URL Unwrapper',
+    it: 'URL Unwrapper',
+    ja: 'URL Unwrapper',
+  },
   mode_strict_local: {
     en: 'Strict Local',
     es: 'Estricto Local',
@@ -724,6 +746,30 @@ export const TRANSLATIONS = {
     ja: "%s日前",
   },
 
+  // ── #707: aria-labels for options.html controls ─────────────────────────
+  // Until #707, these aria-labels were hardcoded English in options.html
+  // and screen-reader users on non-EN locales heard them untranslated.
+  // applyTranslations now resolves data-i18n-aria-label attributes; each
+  // control in options.html points at the matching key below.
+  aria_inject:               { en: "Enable affiliate injection",                es: "Activar la inyección de afiliado",               pt: "Ativar injeção de afiliado",                  de: "Affiliate-Injection aktivieren",                fr: "Activer l'injection d'affiliation",                it: "Attiva iniezione affiliato",                ja: "アフィリエイト注入を有効にする" },
+  aria_notify:               { en: "Enable foreign affiliate notification",     es: "Activar el aviso de afiliado ajeno",             pt: "Ativar aviso de afiliado externo",            de: "Hinweis auf fremden Affiliate aktivieren",      fr: "Activer la notification d'affiliation externe",    it: "Attiva avviso affiliato esterno",           ja: "外部アフィリエイト通知を有効にする" },
+  aria_strip_affiliates:     { en: "Remove all third-party affiliate tags",     es: "Eliminar todas las etiquetas de afiliado de terceros", pt: "Remover todas as tags de afiliado de terceiros", de: "Alle Affiliate-Tags von Dritten entfernen", fr: "Supprimer toutes les balises d'affiliation tierces", it: "Rimuovi tutti i tag di affiliazione di terzi", ja: "サードパーティのアフィリエイトタグをすべて削除" },
+  aria_context_menu:         { en: "Right-click copy clean link",               es: "Copiar enlace limpio con el botón derecho",      pt: "Copiar link limpo com clique direito",        de: "Sauberen Link per Rechtsklick kopieren",        fr: "Copier le lien propre par clic droit",             it: "Copia link pulito col tasto destro",        ja: "右クリックでクリーンリンクをコピー" },
+  aria_bl_entry:             { en: "Blacklist entry",                           es: "Entrada de la lista negra",                      pt: "Entrada da blacklist",                        de: "Blacklist-Eintrag",                             fr: "Entrée de la blacklist",                          it: "Voce della blacklist",                      ja: "ブラックリストの項目" },
+  aria_wl_entry:             { en: "Whitelist entry",                           es: "Entrada de la lista blanca",                     pt: "Entrada da whitelist",                        de: "Whitelist-Eintrag",                             fr: "Entrée de la whitelist",                          it: "Voce della whitelist",                      ja: "ホワイトリストの項目" },
+  aria_lang_select:          { en: "Display language",                          es: "Idioma de la interfaz",                          pt: "Idioma da interface",                         de: "Anzeigesprache",                                fr: "Langue d'affichage",                              it: "Lingua dell'interfaccia",                   ja: "表示言語" },
+  aria_remote_rules_toggle:  { en: "Enable remote rule updates",                es: "Activar las actualizaciones de reglas remotas",  pt: "Ativar atualizações de regras remotas",       de: "Updates externer Regeln aktivieren",            fr: "Activer les mises à jour de règles distantes",     it: "Attiva aggiornamenti regole remote",        ja: "リモートルール更新を有効にする" },
+  aria_honor_creator:        { en: "Honor Creator Mode",                        es: "Respetar el modo creador",                       pt: "Honrar Modo Criador",                         de: "Creator-Modus respektieren",                    fr: "Respecter le mode créateur",                      it: "Rispetta la modalità creatore",             ja: "クリエイターモードを尊重" },
+  aria_cal_entry:            { en: "Creator allowlist entry",                   es: "Entrada de la lista de creadores permitidos",    pt: "Entrada da lista de criadores",               de: "Eintrag der Creator-Allowlist",                 fr: "Entrée de la liste blanche des créateurs",         it: "Voce dell'allowlist creatori",              ja: "クリエイター許可リストの項目" },
+  aria_experimental_params:  { en: "Experimental shape-based param stripping",  es: "Eliminación experimental de parámetros por forma", pt: "Remoção experimental de parâmetros por forma", de: "Experimentelles formbasiertes Parameter-Stripping", fr: "Suppression expérimentale de paramètres par forme", it: "Rimozione sperimentale di parametri per forma", ja: "実験的な形状ベースのパラメータ除去" },
+  aria_dev_mode:             { en: "Show advanced settings",                    es: "Mostrar ajustes avanzados",                      pt: "Mostrar configurações avançadas",             de: "Erweiterte Einstellungen anzeigen",             fr: "Afficher les paramètres avancés",                 it: "Mostra impostazioni avanzate",              ja: "高度な設定を表示" },
+  aria_dnr_enabled:          { en: "Strip tracking parameters before navigation", es: "Eliminar parámetros de rastreo antes de navegar", pt: "Remover parâmetros de rastreamento antes de navegar", de: "Tracking-Parameter vor der Navigation entfernen", fr: "Supprimer les paramètres de pistage avant navigation", it: "Rimuovi parametri di tracciamento prima della navigazione", ja: "ナビゲーション前にトラッキングパラメータを削除" },
+  aria_unwrap_redirects:     { en: "Unwrap redirect wrappers",                  es: "Desempaquetar redirecciones",                    pt: "Desempacotar redirecionamentos",              de: "Weiterleitungs-Wrapper auflösen",               fr: "Désencapsuler les redirections",                  it: "Sbroglia i redirect",                       ja: "リダイレクトラッパーを展開" },
+  aria_block_pings:          { en: "Block tracking beacons",                    es: "Bloquear balizas de rastreo",                    pt: "Bloquear beacons de rastreamento",            de: "Tracking-Beacons blockieren",                   fr: "Bloquer les balises de pistage",                  it: "Blocca beacon di tracciamento",             ja: "トラッキングビーコンをブロック" },
+  aria_amp_redirect:         { en: "Redirect AMP pages to canonical URL",       es: "Redirigir páginas AMP a la URL canónica",        pt: "Redirecionar páginas AMP para URL canônica",  de: "AMP-Seiten zur kanonischen URL umleiten",       fr: "Rediriger les pages AMP vers l'URL canonique",     it: "Reindirizza pagine AMP all'URL canonico",   ja: "AMPページを正規URLにリダイレクト" },
+  aria_toast_duration:       { en: "Notification duration",                     es: "Duración de la notificación",                    pt: "Duração da notificação",                      de: "Benachrichtigungsdauer",                        fr: "Durée de la notification",                        it: "Durata della notifica",                     ja: "通知の表示時間" },
+  aria_cp_entry:             { en: "Custom tracking parameter",                 es: "Parámetro de rastreo personalizado",             pt: "Parâmetro de rastreamento personalizado",     de: "Eigener Tracking-Parameter",                    fr: "Paramètre de pistage personnalisé",               it: "Parametro di tracciamento personalizzato",  ja: "カスタムトラッキングパラメータ" },
+  aria_dev_url_input:        { en: "URL to test",                               es: "URL para probar",                                pt: "URL para testar",                             de: "Test-URL",                                      fr: "URL à tester",                                    it: "URL da testare",                            ja: "テスト用URL" },
 };
 
 /**
@@ -855,6 +901,14 @@ export function applyTranslations(lang) {
   document.querySelectorAll("[data-i18n-title]").forEach(el => {
     const key = el.getAttribute("data-i18n-title");
     el.title = t(key, lang);
+  });
+  // #707: data-i18n-aria-label handles screen-reader labels. Without this,
+  // every aria-label in markup is locked in source-language English and
+  // ES/PT/DE/FR/IT/JA users hear untranslated text. Always plain-string
+  // (aria-label is a text attribute, never HTML).
+  document.querySelectorAll("[data-i18n-aria-label]").forEach(el => {
+    const key = el.getAttribute("data-i18n-aria-label");
+    el.setAttribute("aria-label", t(key, lang));
   });
 }
 
