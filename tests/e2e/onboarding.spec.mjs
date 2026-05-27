@@ -53,6 +53,16 @@ test.describe("Onboarding", () => {
     expect(text).not.toContain("honest about both");
   });
 
+  test("ob_browser_sync_note paragraph is rendered with the chrome.storage.sync clarification", async ({ onboardingPage: page }) => {
+    const syncNote = page.locator(".sync-note");
+    await expect(syncNote).toBeVisible();
+    // The point of this paragraph is to prevent the misread "MUGA syncs my
+    // data": it must explicitly say MUGA doesn't send data anywhere AND that
+    // the sync is the browser's, not MUGA's. Both assertions, both load-bearing.
+    await expect(syncNote).toContainText("MUGA never sends data anywhere");
+    await expect(syncNote).toContainText("browser feature, not MUGA");
+  });
+
   test("affiliate checkbox is optional and unchecked by default", async ({ onboardingPage: page }) => {
     const affiliateCheck = page.locator("#affiliate-check");
     await expect(affiliateCheck).not.toBeChecked();
