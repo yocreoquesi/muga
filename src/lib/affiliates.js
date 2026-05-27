@@ -1010,7 +1010,19 @@ export function getAffiliateDomains() {
  * Affiliate redirect networks: preservation on, injection off.
  * @see docs/affiliate-networks-matrix.md
  */
-export const REDIRECT_NETWORK_PATTERNS = Object.freeze([
+// #709 item 9: deep-freeze applies Object.freeze recursively so consumers can't
+// .push() into inner arrays (redirectHosts, landingParams, references) and
+// silently corrupt the source-of-truth. The outer Object.freeze alone left
+// those inner arrays mutable.
+function deepFreeze(obj) {
+  if (obj && typeof obj === "object" && !Object.isFrozen(obj)) {
+    Object.freeze(obj);
+    for (const key of Object.keys(obj)) deepFreeze(obj[key]);
+  }
+  return obj;
+}
+
+export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
   {
     id: "awin",
     name: "Awin",
