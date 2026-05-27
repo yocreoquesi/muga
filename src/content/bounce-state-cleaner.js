@@ -62,7 +62,6 @@
   // shape of each entry, and any new wrapper added there should be
   // mirrored here for storage cleanup to apply.
   const WRAPPERS = [
-    { hostPatterns: ["awin1.com", "www.awin1.com"], pathPatterns: ["/cread.php", "/awclick.php"] },
     { hostPatterns: ["go.redirectingat.com", "go.skimresources.com"], pathPatterns: null },
     { hostPatterns: ["shareasale.com", "www.shareasale.com"], pathPatterns: ["/r.cfm"] },
     { hostPatterns: ["t.co"], pathPatterns: null },
@@ -75,19 +74,66 @@
     { hostPatterns: ["exit.sc"], pathPatterns: null },
     { hostPatterns: ["href.li"], pathPatterns: null },
     { hostPatterns: ["anonym.to"], pathPatterns: null },
-    // Impact Radius (*.pxf.io), Rakuten (click.linksynergy.com), and
-    // TradeTracker (tc.tradetracker.net) previously lived in this list.
-    // Retired in #692 per ADR-0003 follow-up: those hosts are now in
-    // AFFILIATE_REDIRECT_NETWORKS (pass-through), and bounce-state cleanup
-    // must NOT wipe their localStorage during the redirect step — the
-    // network needs that state to attribute the click on landing.
+    // Awin (awin1.com), Impact Radius (*.pxf.io), Rakuten
+    // (click.linksynergy.com), and TradeTracker (tc.tradetracker.net)
+    // previously lived in this list. Retired per ADR-0003 / #684 / #692:
+    // those hosts now live in AFFILIATE_REDIRECT_NETWORKS (pass-through),
+    // and bounce-state cleanup must NOT wipe their localStorage during
+    // the redirect step — the network needs that state to attribute the
+    // click on landing. The inlineDetectWrapper() guard below
+    // (INLINE_AFFILIATE_REDIRECT_NETWORKS) enforces the same invariant
+    // at runtime as defense-in-depth.
   ];
+
+  // ── Inline AFFILIATE_REDIRECT_NETWORKS guard (#703) ──────────────────
+  // Mirrors src/lib/opaque-networks.js AFFILIATE_REDIRECT_NETWORKS so the
+  // inline detector can hard-NULL any host that is in the 2.1 pass-through
+  // bucket — even if a future change accidentally re-adds one to WRAPPERS.
+  // Kept in sync by tests/unit/bounce-state-affiliate-redirect.test.mjs.
+  // Wildcard entries use the `*.suffix` shape (matches `endsWith(".suffix")`).
+  const INLINE_AFFILIATE_REDIRECT_NETWORKS = [
+    "s.click.aliexpress.com",
+    "awin1.com",
+    "www.awin1.com",
+    "anrdoezrs.net",
+    "dpbolvw.net",
+    "jdoqocy.com",
+    "kqzyfj.com",
+    "tkqlhce.com",
+    "emjcd.com",
+    "qksrv.net",
+    "cj.dotomi.com",
+    "ad.admitad.com",
+    "prf.hn",
+    "px.a8.net",
+    "*.pxf.io",
+    "click.linksynergy.com",
+    "tc.tradetracker.net",
+    "clk.tradedoubler.com",
+    "alitems.com",
+    "redirect.viglink.com",
+  ];
+
+  function isInlineAffiliateRedirectNetwork(host) {
+    for (const entry of INLINE_AFFILIATE_REDIRECT_NETWORKS) {
+      if (entry.startsWith("*.")) {
+        if (host.endsWith(entry.slice(1))) return true;
+      } else if (host === entry) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   function inlineDetectWrapper(rawUrl) {
     let url;
     try { url = new URL(rawUrl); } catch { return null; }
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
     const host = url.hostname.toLowerCase();
+    // 2.1 pass-through invariant: never report an affiliate-redirect host
+    // as a wrapper. The merchant's first-party cookie depends on landing
+    // state surviving the bounce; wiping it would silently break attribution.
+    if (isInlineAffiliateRedirectNetwork(host)) return null;
     for (const wrapper of WRAPPERS) {
       const hostMatch = wrapper.hostPatterns.some((p) =>
         typeof p === "string" ? host === p.toLowerCase() : p.test(host)
