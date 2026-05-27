@@ -19,21 +19,21 @@
           <strong data-i18n="row_inject_label">Inject our affiliate tag when a link has none</strong>
           <small data-i18n="row_inject_hint">Off by default. You always pay the same price. This is how you support an independent developer at zero cost to you.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="inject" aria-label="Enable affiliate injection"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="inject" data-i18n-aria-label="aria_inject"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_notify_label">Alert me when a link has someone else's affiliate tag</strong>
           <small data-i18n="row_notify_hint">Shows a quick notification with options. Auto-dismisses in 15 seconds</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="notify" aria-label="Enable foreign affiliate notification"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="notify" data-i18n-aria-label="aria_notify"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_strip_affiliates_label">Remove all affiliate tags from other sources</strong>
           <small data-i18n="row_strip_affiliates_hint">Removes affiliate tags placed by others from all links. If MUGA's affiliate injection is enabled, our tag is preserved; otherwise it is removed too.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-label="Remove all third-party affiliate tags"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="strip-affiliates" data-i18n-aria-label="aria_strip_affiliates"><span class="slider"></span></label>
       </div>
     </div>
   </section>
@@ -46,7 +46,7 @@
           <strong data-i18n="row_context_menu_label">Right-click → Copy clean link or selection</strong>
           <small data-i18n="row_context_menu_hint">Works on a single link, a text selection with multiple URLs, or plain-text URLs. Alt+Shift+C copies the current tab's clean URL. Ctrl+C also auto-cleans URLs in your selection.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="context-menu-toggle" aria-label="Right-click copy clean link"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="context-menu-toggle" data-i18n-aria-label="aria_context_menu"><span class="slider"></span></label>
       </div>
     </div>
   </section>
@@ -57,7 +57,7 @@
       <div class="list-section">
         <div class="list-items" id="blacklist-items"></div>
         <div class="add-row">
-          <input id="bl-input" type="text" data-i18n-placeholder="bl_placeholder" aria-label="Blacklist entry">
+          <input id="bl-input" type="text" data-i18n-placeholder="bl_placeholder" data-i18n-aria-label="aria_bl_entry">
           <button class="add-btn" id="bl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
         <p class="hint" id="bl-hint" data-i18n="bl_hint"></p>
@@ -71,7 +71,7 @@
       <div class="list-section">
         <div class="list-items" id="whitelist-items"></div>
         <div class="add-row">
-          <input id="wl-input" type="text" data-i18n-placeholder="wl_placeholder" aria-label="Whitelist entry">
+          <input id="wl-input" type="text" data-i18n-placeholder="wl_placeholder" data-i18n-aria-label="aria_wl_entry">
           <button class="add-btn" id="wl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
         <p class="hint" id="wl-hint" data-i18n="wl_hint"></p>
@@ -88,12 +88,9 @@
           <small data-i18n="lang_hint">Affects the popup and settings page. Does not affect URL processing.</small>
           <small id="lang-community-note" class="hint" data-i18n="lang_community_note" hidden>Community-maintained — contributions welcome.</small>
         </div>
-        <select class="lang-select" id="lang-select" aria-label="Display language">
-          <option value="en">English</option>
-          <option value="es">Español</option>
-          <option value="pt">Português</option>
-          <option value="de">Deutsch</option>
-        </select>
+        <!-- #707: <option>s populated at init from SUPPORTED_LANGS so new
+             locales added in i18n.js light up automatically. -->
+        <select class="lang-select" id="lang-select" data-i18n-aria-label="aria_lang_select"></select>
       </div>
     </div>
   </section>
@@ -110,7 +107,7 @@
       </div>
       <div class="row">
         <div class="row-label">
-          <strong data-i18n="forget_reported_params_btn">Forget reported params</strong>
+          <strong data-i18n="forget_reported_params_label">Reported params</strong>
           <small data-i18n="forget_reported_params_hint">Clears the local list of params you've already reported. The same param can then be reported again.</small>
         </div>
         <button class="add-btn" id="forget-reported-params-btn" data-i18n="forget_reported_params_btn">Forget reported params</button>
@@ -118,17 +115,17 @@
     </div>
   </section>
 
-  <section class="options-section" id="remote-rules-section" hidden>
+  <section id="remote-rules-section" hidden>
     <h2 data-i18n="optionsRemoteRulesTitle"></h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <p class="section-desc" data-i18n="optionsRemoteRulesDesc"></p>
+          <p data-i18n="optionsRemoteRulesDesc"></p>
         </div>
       </div>
       <div class="row">
         <label class="toggle">
-          <input type="checkbox" id="remote-rules-toggle" aria-label="Enable remote rule updates">
+          <input type="checkbox" id="remote-rules-toggle" data-i18n-aria-label="aria_remote_rules_toggle">
           <span class="slider"></span>
         </label>
         <span data-i18n="optionsRemoteRulesToggle"></span>
@@ -157,16 +154,16 @@
   </section>
 
   <section id="privacy-proxy">
-    <h2 data-i18n="privacy_proxy_enabled"></h2>
+    <h2 data-i18n="privacy_proxy_section_title"></h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <p class="section-desc" data-i18n="privacy_proxy_disclosure"></p>
+          <p data-i18n="privacy_proxy_disclosure"></p>
         </div>
       </div>
       <div class="row">
         <label class="toggle">
-          <input type="checkbox" id="privacyProxyEnabled" aria-label="Enable URL Unwrapper">
+          <input type="checkbox" id="privacyProxyEnabled" data-i18n-aria-label="enable_privacy_proxy_cta">
           <span class="slider"></span>
         </label>
         <span data-i18n="privacy_proxy_enabled"></span>
@@ -204,13 +201,13 @@
           <strong data-i18n="honor_creator_mode_label">Honor Creator Mode</strong>
           <small data-i18n="honor_creator_mode_hint">Preserve creator referral chains on trusted redirect networks. Off by default; enable to support creators you follow.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="honor-creator-mode" aria-label="Honor Creator Mode"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="honor-creator-mode" data-i18n-aria-label="aria_honor_creator"><span class="slider"></span></label>
       </div>
       <div class="list-section creator-allowlist-section">
         <strong class="creator-allowlist-title" data-i18n="creator_allowlist_label">Creators you support</strong>
         <div class="list-items creator-allowlist-list" id="creator-allowlist-items"></div>
         <div class="add-row">
-          <input id="cal-input" type="text" data-i18n-placeholder="creator_allowlist_placeholder" aria-label="Creator allowlist entry">
+          <input id="cal-input" type="text" data-i18n-placeholder="creator_allowlist_placeholder" data-i18n-aria-label="aria_cal_entry">
           <button class="add-btn" id="cal-add-btn" data-i18n="creator_allowlist_add_btn">+ Add creator</button>
         </div>
         <p class="hint" id="cal-error" role="alert" hidden></p>
@@ -222,14 +219,14 @@
           <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
           <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="experimental-param-classes" aria-label="Experimental shape-based param stripping"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="experimental-param-classes" data-i18n-aria-label="aria_experimental_params"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="advanced_mode_label">Show advanced settings</strong>
           <small data-i18n="advanced_mode_hint">Fine-grained control over URL cleaning, privacy, and developer tools</small>
         </div>
-        <label class="toggle"><input type="checkbox" id="dev-mode" aria-label="Show advanced settings"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="dev-mode" data-i18n-aria-label="aria_dev_mode"><span class="slider"></span></label>
       </div>
     </div>
     <div id="dev-tools-card" style="display:none;">
@@ -254,35 +251,35 @@
             <strong data-i18n="row_dnr_label">Denoise links before navigation</strong>
             <small data-i18n="row_dnr_hint">Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.</small>
           </div>
-          <label class="toggle"><input type="checkbox" id="dnr-enabled" aria-label="Strip tracking parameters before navigation"><span class="slider"></span></label>
+          <label class="toggle"><input type="checkbox" id="dnr-enabled" data-i18n-aria-label="aria_dnr_enabled"><span class="slider"></span></label>
         </div>
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
             <small data-i18n="row_unwrap_hint">Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)</small>
           </div>
-          <label class="toggle"><input type="checkbox" id="unwrap-redirects" aria-label="Unwrap redirect wrappers"><span class="slider"></span></label>
+          <label class="toggle"><input type="checkbox" id="unwrap-redirects" data-i18n-aria-label="aria_unwrap_redirects"><span class="slider"></span></label>
         </div>
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_pings_label">Block &lt;a ping&gt; beacons</strong>
             <small data-i18n="row_pings_hint">Removes ping attributes from links so the browser doesn't send tracking beacons on click</small>
           </div>
-          <label class="toggle"><input type="checkbox" id="block-pings" aria-label="Block tracking beacons"><span class="slider"></span></label>
+          <label class="toggle"><input type="checkbox" id="block-pings" data-i18n-aria-label="aria_block_pings"><span class="slider"></span></label>
         </div>
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_amp_label">Skip AMP detours</strong>
             <small data-i18n="row_amp_hint">Replaces AMP links with the original article URL</small>
           </div>
-          <label class="toggle"><input type="checkbox" id="amp-redirect" aria-label="Redirect AMP pages to canonical URL"><span class="slider"></span></label>
+          <label class="toggle"><input type="checkbox" id="amp-redirect" data-i18n-aria-label="aria_amp_redirect"><span class="slider"></span></label>
         </div>
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_toast_duration_label">Toast duration when a creator tag is detected</strong>
             <small data-i18n="row_toast_duration_hint">How long the notification stays visible before auto-dismissing</small>
           </div>
-          <select class="lang-select" id="toast-duration-select" aria-label="Notification duration">
+          <select class="lang-select" id="toast-duration-select" data-i18n-aria-label="aria_toast_duration">
             <option value="5">5s</option>
             <option value="10">10s</option>
             <option value="15" selected>15s</option>
@@ -302,7 +299,7 @@
         <div class="list-section">
           <div class="list-items" id="custom-params-items"></div>
           <div class="add-row">
-            <input id="cp-input" type="text" data-i18n-placeholder="cp_placeholder" aria-label="Custom tracking parameter">
+            <input id="cp-input" type="text" data-i18n-placeholder="cp_placeholder" data-i18n-aria-label="aria_cp_entry">
             <button class="add-btn" id="cp-add-btn" data-i18n="add_btn">+ Add</button>
           </div>
           <p class="hint" data-i18n="cp_hint"></p>
@@ -369,7 +366,7 @@
           <strong style="font-size:13.5px;font-weight:500;display:block;margin-bottom:6px;" data-i18n="dev_url_tester_label">URL tester</strong>
           <small style="color:var(--text2);font-size:12px;display:block;margin-bottom:10px;" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
           <div class="add-row">
-            <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder" aria-label="URL to test">
+            <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder" data-i18n-aria-label="aria_dev_url_input">
             <button class="add-btn" id="dev-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
           </div>
           <div id="dev-url-result" style="margin-top:10px;display:none;">

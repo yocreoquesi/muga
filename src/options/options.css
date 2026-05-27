@@ -304,6 +304,10 @@ input[type="text"]:not(.add-row input) {
   margin-top: 10px;
   line-height: 1.5;
 }
+/* #707: HTML applies `.hint.warn` and `.error` for semantic emphasis but
+   the rules were missing. Without them the classes are dead in the markup. */
+.hint.warn { color: var(--warning); }
+.error { color: var(--danger); }
 
 .empty {
   font-size: 12.5px;

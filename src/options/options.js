@@ -2,9 +2,8 @@
  * MUGA: Options page
  */
 
-import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
+import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
 import { deriveModeLabel } from "../lib/mode-label.js";
-export { deriveModeLabel };
 import { formatRelativeTime } from "../lib/relative-time.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
@@ -583,10 +582,22 @@ function renderStores() {
 function initLanguageSelect() {
   const select = document.getElementById("lang-select");
   const communityNote = document.getElementById("lang-community-note");
-  // Community-maintained languages (#360 / #351). Visible in the language
-  // section so users selecting PT or DE understand the support level they
-  // should expect.
-  const COMMUNITY_LANGS = new Set(["pt", "de"]);
+  // #707: populate <option>s from SUPPORTED_LANGS so every language registered
+  // in i18n.js shows up here automatically. Previously hardcoded en/es/pt/de
+  // hid fr/it/ja from the picker even though their translations were complete.
+  select.replaceChildren(
+    ...SUPPORTED_LANGS.map(({ code, label }) => {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = label;
+      return opt;
+    }),
+  );
+  // Community-maintained languages (#360 / #351 / #707). Visible in the
+  // language section so users selecting one of these understand the support
+  // level they should expect. PT/DE were the original two; FR/IT/JA join
+  // them now that the picker exposes them.
+  const COMMUNITY_LANGS = new Set(["pt", "de", "fr", "it", "ja"]);
   function updateCommunityNote(lang) {
     if (communityNote) communityNote.hidden = !COMMUNITY_LANGS.has(lang);
   }
@@ -1150,15 +1161,6 @@ async function testUrl() {
 
 // ── Error-code → i18n-key map for remote-rules status rendering ──────────────
 
-/**
- * i18n key used in the onboarding what's-new splash (REQ-UI-6).
- * Defined here so it is trackable by the orphan-key linter until Phase 4
- * wires it into the onboarding update splash.
- * @see {@link ../onboarding/onboarding.js}
- */
-const WHATS_NEW_REMOTE_RULES_KEY = "whatsNewRemoteRules";
-void WHATS_NEW_REMOTE_RULES_KEY; // prevent lint unused-var warning
-
 /** Maps remote-rules error codes to i18n keys (design §5). */
 const REMOTE_ERR_KEYS = Object.freeze({
   NETWORK_ERROR:      "optionsRemoteRulesErrNetwork",
@@ -1410,8 +1412,9 @@ async function initPrivacyProxy(prefs) {
   const checkbox = document.getElementById("privacyProxyEnabled");
   if (!checkbox) return;
   checkbox.checked = !!prefs.privacyProxyEnabled;
-  // Set aria-label from the CTA key so screen readers announce the action
-  checkbox.setAttribute("aria-label", t("enable_privacy_proxy_cta", _currentLang));
+  // aria-label is now handled by data-i18n-aria-label="enable_privacy_proxy_cta"
+  // on the input element (#707). applyTranslations sets it on every lang
+  // change; no manual setAttribute needed here.
 
   // Initial render of the build-hash + last-verified cluster
   renderWorkerBuildHashState();
