@@ -134,9 +134,14 @@ test.describe("Options — whitelist", () => {
 });
 
 test.describe("Options — language", () => {
-  test("language selector has 4 options", async ({ optionsPage: page }) => {
+  test("language selector covers every SUPPORTED_LANGS entry", async ({ optionsPage: page }) => {
+    // #707: options are populated at init from SUPPORTED_LANGS (en/es/pt/de/fr/it/ja).
+    // Test asserts the picker is fully data-driven — a new locale added to
+    // i18n.js lights up here automatically.
     const options = page.locator("#lang-select option");
-    await expect(options).toHaveCount(4);
+    await expect(options).toHaveCount(7);
+    const codes = await options.evaluateAll((els) => els.map((e) => e.value));
+    expect(codes).toEqual(["en", "es", "pt", "de", "fr", "it", "ja"]);
   });
 
   test("switching language updates UI text", async ({ optionsPage: page }) => {
