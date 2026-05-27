@@ -28,6 +28,7 @@ import {
   createInMemoryAdapter,
   createTracker,
 } from "../../src/lib/cross-site-frequency.js";
+import { pathStripRulesFixture, pathAffiliateRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -1249,7 +1250,7 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("strips path-based /ref= tracking after ASIN — preserves th", () => {
     const raw = "https://www.amazon.es/edihome/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=x&pd_rd_i=B0GQ4N9N33&th=1";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.ok(u.pathname.endsWith("/dp/B0GQ4N9N33/"), `path should end with /dp/ASIN/, got: ${u.pathname}`);
     assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
@@ -1257,14 +1258,14 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("does not modify non-Amazon path", () => {
     const raw = "https://www.example.com/product/ref=tracking?utm_source=x";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.ok(u.pathname.includes("/ref=tracking"), "non-Amazon path must not be modified");
   });
 
   test("full real URL 1 from issue #1 — slug stripped, th preserved", () => {
     const raw = "https://www.amazon.es/Emergencia-Homologada/dp/B0GF8C2S62/?_encoding=UTF8&content-id=amzn1.sym.0a1e4d50&ref_=pd_hp_d_atf_unk&th=1";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0GF8C2S62/", "slug must be stripped, ASIN path preserved");
     assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
@@ -1273,7 +1274,7 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("full real URL 2 from issue #1 — slug stripped, th preserved", () => {
     const raw = "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=amzn1.sym.8303e4e0&pd_rd_i=B0GQ4N9N33&th=1";
-    const { cleanUrl, junkRemoved } = processUrl(raw, PREFS);
+    const { cleanUrl, junkRemoved } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0GQ4N9N33/", "slug must be stripped, ASIN path preserved");
     assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
@@ -1330,13 +1331,13 @@ describe("stripAllAffiliates — strip all affiliate params", () => {
 describe("Amazon — root-level /ref= path tracking", () => {
 
   test("strips /ref=nav_logo from homepage URL", () => {
-    const { cleanUrl } = processUrl("https://www.amazon.es/ref=nav_logo", PREFS);
+    const { cleanUrl } = processUrl("https://www.amazon.es/ref=nav_logo", PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     assert.equal(new URL(cleanUrl).pathname, "/");
   });
 
   test("strips /ref= mid-path, preserves real path segments", () => {
     const { cleanUrl } = processUrl(
-      "https://www.amazon.es/s/ref=nb_sb_noss?k=iphone", PREFS
+      "https://www.amazon.es/s/ref=nb_sb_noss?k=iphone", PREFS, [], undefined, undefined, undefined, pathStripRulesFixture
     );
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/s");
@@ -1345,14 +1346,14 @@ describe("Amazon — root-level /ref= path tracking", () => {
 
   test("strips /ref= at end of deep path", () => {
     const { cleanUrl } = processUrl(
-      "https://www.amazon.es/gp/cart/view.html/ref=nav_cart", PREFS
+      "https://www.amazon.es/gp/cart/view.html/ref=nav_cart", PREFS, [], undefined, undefined, undefined, pathStripRulesFixture
     );
     assert.equal(new URL(cleanUrl).pathname, "/gp/cart/view.html");
   });
 
   test("does not modify /ref= paths on non-Amazon sites", () => {
     const raw = "https://www.example.com/blog/ref=social";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     assert.equal(new URL(cleanUrl).pathname, "/blog/ref=social");
   });
 
@@ -1517,7 +1518,7 @@ describe("Amazon extended cleaning", () => {
 
   test("product slug + ASIN path is cleaned: /UGREEN-Adaptador/dp/B0B9N3QSL3/ref=sr_1_7 → /dp/B0B9N3QSL3/", () => {
     const raw = "https://www.amazon.es/UGREEN-Adaptador/dp/B0B9N3QSL3/ref=sr_1_7";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0B9N3QSL3/",
       "slug before /dp/ must be removed and /ref= after ASIN must be removed");
@@ -1525,7 +1526,7 @@ describe("Amazon extended cleaning", () => {
 
   test("path without slug still cleaned correctly: /dp/B0B9N3QSL3/ref=sr_1_7 → /dp/B0B9N3QSL3", () => {
     const raw = "https://www.amazon.es/dp/B0B9N3QSL3/ref=sr_1_7";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0B9N3QSL3/",
       "/dp/ASIN path without slug must still have trailing /ref= stripped");
@@ -2012,7 +2013,7 @@ describe("S9 — cleanAmazonPath with /gp/product/ path", () => {
 
   test("/gp/product/ASIN/ref=tracking → /gp/product/ASIN/", () => {
     const raw = "https://www.amazon.es/gp/product/B0GQ4N9N33/ref=zg_bsnr?psc=1";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/gp/product/B0GQ4N9N33/",
       "/gp/product/ASIN path must be cleaned just like /dp/ASIN");
@@ -2020,7 +2021,7 @@ describe("S9 — cleanAmazonPath with /gp/product/ path", () => {
 
   test("/gp/product/ASIN without trailing noise is preserved", () => {
     const raw = "https://www.amazon.com/gp/product/B08N5WRWNW";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.ok(u.pathname.includes("/gp/product/B08N5WRWNW"),
       "/gp/product/ASIN path must not be modified when clean");
@@ -2028,7 +2029,7 @@ describe("S9 — cleanAmazonPath with /gp/product/ path", () => {
 
   test("/gp/product/ASIN/ref=ox_sc_saved_title → /gp/product/ASIN/", () => {
     const raw = "https://www.amazon.es/gp/product/B0GF8C2S62/ref=ox_sc_saved_title?psc=1&smid=ABC123";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/gp/product/B0GF8C2S62/",
       "/gp/product/ASIN/ref=... must be stripped");
@@ -2963,7 +2964,7 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 
   test("preserves /a/{id}/lists/... entry path and flags creatorReferralPreserved", () => {
     const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026";
-    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS);
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input, "URL must be untouched");
     assert.equal(action, "untouched");
     assert.equal(creatorReferralPreserved, true);
@@ -2971,14 +2972,14 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 
   test("preserves a foreign creator's /a/{id}/p/books/... path", () => {
     const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
-    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS);
+    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(creatorReferralPreserved, true);
   });
 
   test("strips utm_source on /p/... product pages and does NOT flag preserved (no /a/ entry)", () => {
     const input = "https://bookshop.org/p/books/9780000000000?utm_source=newsletter";
-    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS);
+    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.ok(removedTracking.includes("utm_source"), "utm_source must be stripped");
     assert.ok(!cleanUrl.includes("utm_source="));
     assert.equal(creatorReferralPreserved, false);
@@ -2986,31 +2987,31 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 
   test("does NOT flag preserved on /a/ with empty id (matches no creator)", () => {
     const input = "https://bookshop.org/a/";
-    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    const { creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(creatorReferralPreserved, false);
   });
 
   test("matches the www. variant of bookshop.org", () => {
     const input = "https://www.bookshop.org/a/yocreoquesi/";
-    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    const { creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(creatorReferralPreserved, true);
   });
 
   test("path /a/{id} without trailing slash does NOT match (entry path requires /a/{id}/)", () => {
     const input = "https://bookshop.org/a/yocreoquesi";
-    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    const { creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(creatorReferralPreserved, false);
   });
 
   test("the /a/{id}/ exception is scoped to bookshop.org — other hosts ignore the pattern", () => {
     const input = "https://example.com/a/yocreoquesi/lists/best-of-2026";
-    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    const { creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(creatorReferralPreserved, false);
   });
 
   test("entry path is preserved AND co-occurring tracking params are still stripped", () => {
     const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026?utm_campaign=spring";
-    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS);
+    const { cleanUrl, removedTracking, creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.ok(removedTracking.includes("utm_campaign"));
     assert.ok(cleanUrl.includes("/a/yocreoquesi/lists/best-of-2026"), "entry path stays");
     assert.ok(!cleanUrl.includes("utm_campaign="));
@@ -3019,7 +3020,7 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 
   test("preserves /shop/{slug} storefront path with trailing slash", () => {
     const input = "https://bookshop.org/shop/muga/";
-    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS);
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
     assert.equal(creatorReferralPreserved, true);
@@ -3027,20 +3028,20 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 
   test("preserves /shop/{slug} storefront path without trailing slash", () => {
     const input = "https://bookshop.org/shop/muga";
-    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS);
+    const { cleanUrl, creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(creatorReferralPreserved, true);
   });
 
   test("matches the www. variant for /shop/{slug}", () => {
     const input = "https://www.bookshop.org/shop/muga";
-    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    const { creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(creatorReferralPreserved, true);
   });
 
   test("/shop without a slug does NOT match (storefront path requires /shop/{slug})", () => {
     const input = "https://bookshop.org/shop/";
-    const { creatorReferralPreserved } = processUrl(input, PREFS);
+    const { creatorReferralPreserved } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(creatorReferralPreserved, false);
   });
 
@@ -3057,63 +3058,63 @@ describe("Bookshop.org MUGA affiliate injection", () => {
 
   test("injects ?affiliate=124046 on a clean /p/books/... product URL", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting-paul-murray/123456";
-    const { cleanUrl, action } = processUrl(input, INJECT);
+    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(action, "injected");
     assert.ok(cleanUrl.includes("affiliate=124046"));
   });
 
   test("matches www.bookshop.org for injection", () => {
     const input = "https://www.bookshop.org/p/books/the-bee-sting/123456";
-    const { cleanUrl, action } = processUrl(input, INJECT);
+    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(action, "injected");
     assert.ok(cleanUrl.includes("affiliate=124046"));
   });
 
   test("does NOT inject on /shop/{slug} — someone else's storefront", () => {
     const input = "https://bookshop.org/shop/some-other-bookstore";
-    const { cleanUrl, action } = processUrl(input, INJECT);
+    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });
 
   test("does NOT inject on /a/{id}/ — creator referral", () => {
     const input = "https://bookshop.org/a/some-creator/lists/best-of-2026";
-    const { cleanUrl, action } = processUrl(input, INJECT);
+    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });
 
   test("does NOT inject on the homepage", () => {
     const input = "https://bookshop.org/";
-    const { cleanUrl, action } = processUrl(input, INJECT);
+    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });
 
   test("does NOT inject when injectOwnAffiliate=false", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting/123456";
-    const { cleanUrl, action } = processUrl(input, PREFS);
+    const { cleanUrl, action } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });
 
   test("does NOT overwrite an existing ?affiliate= (foreign affiliate preserved)", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting/123456?affiliate=999999";
-    const { cleanUrl } = processUrl(input, INJECT);
+    const { cleanUrl } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.ok(cleanUrl.includes("affiliate=999999"));
     assert.ok(!cleanUrl.includes("affiliate=124046"));
   });
 
   test("does NOT inject when stripAllAffiliates is true", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting/123456";
-    const { cleanUrl, action } = processUrl(input, { ...INJECT, stripAllAffiliates: true });
+    const { cleanUrl, action } = processUrl(input, { ...INJECT, stripAllAffiliates: true }, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });
 
   test("injects and strips co-occurring utm tracking params in the same pass", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting/123456?utm_source=twitter";
-    const { cleanUrl, action, removedTracking } = processUrl(input, INJECT);
+    const { cleanUrl, action, removedTracking } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(action, "injected");
     assert.ok(cleanUrl.includes("affiliate=124046"));
     assert.ok(!cleanUrl.includes("utm_source"));
@@ -3122,7 +3123,7 @@ describe("Bookshop.org MUGA affiliate injection", () => {
 
   test("does NOT inject on a non-bookshop host that happens to have /p/books/", () => {
     const input = "https://example.com/p/books/anything";
-    const { cleanUrl, action } = processUrl(input, INJECT);
+    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });

@@ -1,0 +1,21 @@
+[
+  {
+    "domain": "amazon",
+    "domainPattern": "(?:^|\\.)amazon\\.[a-z.]+$",
+    "pathPatterns": [
+      "\\/[^/]+\\/dp\\/([A-Za-z0-9]{10})",
+      "(\\/dp\\/[A-Za-z0-9]{10})\\/.+",
+      "(\\/gp\\/product\\/[A-Za-z0-9]{10})\\/.+",
+      "\\/ref=[^/?#]*"
+    ],
+    "replacements": [
+      "/dp/$1",
+      "$1/",
+      "$1/",
+      ""
+    ],
+    "flags": ["", "", "", "g"],
+    "fallbackPathname": "/",
+    "note": "Amazon path-strip — all TLDs. Migrated from cleanAmazonPath() in src/lib/cleaner.js:243-251 (issue #625)."
+  }
+]

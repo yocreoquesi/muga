@@ -2,8 +2,9 @@
  * MUGA: Unified rules generator
  *
  * Reads TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, and TRACKING_PREFIXES from
- * src/lib/affiliates.js plus domain-rules.json and writes:
- *   - src/rules/rules-manifest.json  — documentation-grade manifest (v1 schema)
+ * src/lib/affiliates.js plus domain-rules.json, path-strip-rules.json, and
+ * path-affiliate-rules.json and writes:
+ *   - src/rules/rules-manifest.json  — documentation-grade manifest (v2 schema)
  *   - src/rules/tracking-params.json — DNR rule file (Chrome MV3 format)
  *
  * Usage:
@@ -24,10 +25,12 @@ import { DNR_STATIC_RULE_ID } from "../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const DOMAIN_RULES_PATH = resolve(ROOT, "src/rules/domain-rules.json");
-const MANIFEST_PATH = resolve(ROOT, "src/rules/rules-manifest.json");
-const DNR_PATH = resolve(ROOT, "src/rules/tracking-params.json");
-const AFFILIATES_PATH = resolve(ROOT, "src/lib/affiliates.js");
+const DOMAIN_RULES_PATH    = resolve(ROOT, "src/rules/domain-rules.json");
+const PATH_STRIP_PATH      = resolve(ROOT, "src/rules/path-strip-rules.json");
+const PATH_AFFILIATE_PATH  = resolve(ROOT, "src/rules/path-affiliate-rules.json");
+const MANIFEST_PATH        = resolve(ROOT, "src/rules/rules-manifest.json");
+const DNR_PATH             = resolve(ROOT, "src/rules/tracking-params.json");
+const AFFILIATES_PATH      = resolve(ROOT, "src/lib/affiliates.js");
 
 /**
  * Extracts inline `// comment` text next to each entry in the TRACKING_PREFIXES
@@ -88,7 +91,104 @@ function resolveCategory(param, categoriesMap) {
 }
 
 /**
- * Builds the v1 rules manifest as a plain object.
+ * Convenience: write a fatal error message to stderr and exit non-zero.
+ * @param {string} msg
+ */
+function fatal(msg) {
+  process.stderr.write(`generate-rules.mjs: ${msg}\n`);
+  process.exit(1);
+}
+
+/**
+ * Reads and validates src/rules/path-strip-rules.json.
+ * Validates: required fields present, arrays equal-length, all regex strings
+ * compile without error.  Exits non-zero on any violation.
+ *
+ * @returns {Array} parsed path-strip rules array
+ */
+function readAndValidatePathStrip() {
+  let rules;
+  try {
+    rules = JSON.parse(readFileSync(PATH_STRIP_PATH, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      process.stderr.write(
+        `generate-rules.mjs: path-strip-rules.json not found at ${PATH_STRIP_PATH}\n`
+      );
+      process.exit(1);
+    }
+    fatal(`failed to parse path-strip-rules.json: ${err.message}`);
+  }
+  if (!Array.isArray(rules)) fatal("path-strip-rules.json: root must be an array");
+  for (const [i, r] of rules.entries()) {
+    if (typeof r.domain !== "string")
+      fatal(`path-strip-rules[${i}]: "domain" string required`);
+    if (typeof r.domainPattern !== "string")
+      fatal(`path-strip-rules[${i}]: "domainPattern" string required`);
+    try { new RegExp(r.domainPattern); } catch {
+      fatal(`path-strip-rules[${i}].domainPattern is not a valid regex: ${r.domainPattern}`);
+    }
+    if (!Array.isArray(r.pathPatterns))
+      fatal(`path-strip-rules[${i}].pathPatterns must be an array`);
+    if (!Array.isArray(r.replacements))
+      fatal(`path-strip-rules[${i}].replacements must be an array`);
+    if (r.pathPatterns.length !== r.replacements.length)
+      fatal(
+        `path-strip-rules[${i}]: pathPatterns (${r.pathPatterns.length}) and ` +
+        `replacements (${r.replacements.length}) must have the same length`
+      );
+    for (const [j, p] of r.pathPatterns.entries()) {
+      try { new RegExp(p); } catch {
+        fatal(`path-strip-rules[${i}].pathPatterns[${j}] is not a valid regex: ${p}`);
+      }
+    }
+  }
+  return rules;
+}
+
+/**
+ * Reads and validates src/rules/path-affiliate-rules.json.
+ * Validates: required fields present, all referralPaths strings compile as
+ * RegExp, injectPath/Param/Value are strings.  Exits non-zero on any violation.
+ *
+ * @returns {Array} parsed path-affiliate rules array
+ */
+function readAndValidatePathAffiliate() {
+  let rules;
+  try {
+    rules = JSON.parse(readFileSync(PATH_AFFILIATE_PATH, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      process.stderr.write(
+        `generate-rules.mjs: path-affiliate-rules.json not found at ${PATH_AFFILIATE_PATH}\n`
+      );
+      process.exit(1);
+    }
+    fatal(`failed to parse path-affiliate-rules.json: ${err.message}`);
+  }
+  if (!Array.isArray(rules)) fatal("path-affiliate-rules.json: root must be an array");
+  for (const [i, r] of rules.entries()) {
+    if (typeof r.domain !== "string")
+      fatal(`path-affiliate-rules[${i}]: "domain" string required`);
+    if (!Array.isArray(r.referralPaths))
+      fatal(`path-affiliate-rules[${i}].referralPaths must be an array`);
+    for (const [j, p] of r.referralPaths.entries()) {
+      try { new RegExp(p); } catch {
+        fatal(`path-affiliate-rules[${i}].referralPaths[${j}] is not a valid regex: ${p}`);
+      }
+    }
+    if (typeof r.injectPath !== "string")
+      fatal(`path-affiliate-rules[${i}]: "injectPath" string required`);
+    if (typeof r.injectParam !== "string")
+      fatal(`path-affiliate-rules[${i}]: "injectParam" string required`);
+    if (typeof r.injectValue !== "string")
+      fatal(`path-affiliate-rules[${i}]: "injectValue" string required`);
+  }
+  return rules;
+}
+
+/**
+ * Builds the v2 rules manifest as a plain object.
  * Pure function — reads from module-level imports and disk path constants
  * but performs no file I/O itself.
  *
@@ -173,11 +273,14 @@ export function buildManifest() {
   // re-runs `compile:rules` and asserts `git diff --exit-code -- src/rules/`
   // is clean. Any volatile field added here would defeat that gate.
   const manifest = {
-    version: 1,
+    manifestVersion: 2,
+    version: 2,
     tracking,
     prefix_rules,
     domains: domainRules,
-    path_rules: [],
+    path_strip_rules:     readAndValidatePathStrip(),
+    path_affiliate_rules: readAndValidatePathAffiliate(),
+    // path_rules removed — v1 placeholder retired (#625)
   };
 
   return manifest;

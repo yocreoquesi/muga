@@ -12,6 +12,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { processUrl, getDomainParamSets } from "../../src/lib/cleaner.js";
+import { pathStripRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
 const require = createRequire(import.meta.url);
 const domainRules = require("../../src/rules/domain-rules.json");
@@ -30,6 +31,12 @@ const PREFS = {
 
 function clean(rawUrl) {
   return processUrl(rawUrl, PREFS, domainRules);
+}
+
+// Helper for tests that assert on path-strip behavior (Amazon slug/ref removal).
+// Passes pathStripRulesFixture loaded from src/rules/path-strip-rules.json.
+function cleanWithPath(rawUrl) {
+  return processUrl(rawUrl, PREFS, domainRules, undefined, undefined, undefined, pathStripRulesFixture);
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +182,7 @@ describe("Amazon — search params preserved, tracking stripped", () => {
 
 describe("Amazon: path cleaning regression tests", () => {
   test("lowercase ASIN in /dp/ path is cleaned", () => {
-    const { cleanUrl } = clean(
+    const { cleanUrl } = cleanWithPath(
       "https://www.amazon.com/dp/b0gq4n9n33/ref=cm_sw_r_cp_api?tag=creator-20"
     );
     assert.ok(!cleanUrl.includes("/ref="), "ref= path segment must be stripped even with lowercase ASIN");
@@ -184,14 +191,14 @@ describe("Amazon: path cleaning regression tests", () => {
   });
 
   test("mixed-case ASIN in /dp/ path is cleaned", () => {
-    const { cleanUrl } = clean(
+    const { cleanUrl } = cleanWithPath(
       "https://www.amazon.es/dp/B0Gq4N9n33/ref=sr_1_1?tag=test-21"
     );
     assert.ok(!cleanUrl.includes("/ref="), "ref= must be stripped with mixed-case ASIN");
   });
 
   test("notamazon.com does not trigger Amazon path cleaning", () => {
-    const { cleanUrl } = clean(
+    const { cleanUrl } = cleanWithPath(
       "https://notamazon.com/dp/B00EXAMPLE/ref=test123?utm_source=x"
     );
     // ref= in path should NOT be stripped (not a real Amazon domain)
@@ -210,7 +217,7 @@ describe("Amazon: path cleaning regression tests", () => {
   });
 
   test("Amazon sponsored product tracking stripped (aref, sp_csd)", () => {
-    const { cleanUrl } = clean(
+    const { cleanUrl } = cleanWithPath(
       "https://www.amazon.es/dp/B01N5VHLUG/ref=sspa_dk_detail_4?aref=Jc6HyeNHuL&sp_csd=d2lkZ2V0TmFtZT1zcF9kZXRhaWxfdGhlbWF0aWM&th=1"
     );
     const u = new URL(cleanUrl);

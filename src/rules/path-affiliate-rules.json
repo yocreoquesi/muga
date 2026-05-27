@@ -1,0 +1,14 @@
+[
+  {
+    "domain": "bookshop.org",
+    "referralPaths": [
+      "^\\/a\\/[^/]+\\/",
+      "^\\/shop\\/[^/]+\\/?$"
+    ],
+    "injectPath": "/p/",
+    "injectParam": "affiliate",
+    "injectValue": "124046",
+    "affiliateIdSource": "MUGA_OWN",
+    "note": "Bookshop creator-referral detection + own-affiliate injection. Migrated from isBookshopPathReferral() (cleaner.js:274-277), MUGA_BOOKSHOP_AFFILIATE_ID (cleaner.js:283), and injection block (cleaner.js:465-476) (issue #625). 5-condition injection guard split: [JSON] (1) domain match via 'domain' field; (2) path/param data via 'injectPath' + 'injectParam' (inject only when param absent). [CODE] (3) prefs.injectOwnAffiliate; (4) !prefs.stripAllAffiliates; (5) action !== 'detected_foreign'. Runtime: !creatorReferralPreserved. See getPathAffiliatePolicy() in src/lib/path-rules.js (data half) and processUrl() in src/lib/cleaner.js (runtime half)."
+  }
+]

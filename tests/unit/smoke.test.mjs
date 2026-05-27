@@ -12,6 +12,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { processUrl } from "../../src/lib/cleaner.js";
+import { pathStripRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
 const require = createRequire(import.meta.url);
 const domainRules = require("../../src/rules/domain-rules.json");
@@ -28,6 +29,11 @@ const PREFS = {
 
 function clean(url) {
   return processUrl(url, PREFS, domainRules);
+}
+
+// Helper for Smoke 15 (Amazon path cleaning) — passes path-strip rules fixture.
+function cleanWithPath(url) {
+  return processUrl(url, PREFS, domainRules, undefined, undefined, undefined, pathStripRulesFixture);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,7 +257,7 @@ describe("Smoke: Instagram share", () => {
 // ---------------------------------------------------------------------------
 describe("Smoke: Amazon path cleaning", () => {
   test("strips /ref=xxx from path and product slug", () => {
-    const { cleanUrl } = clean(
+    const { cleanUrl } = cleanWithPath(
       "https://www.amazon.es/UGREEN-Adaptador-Compatible/dp/B0B9N3QSL3/ref=sr_1_5?tag=test-21&dchild=1&qid=123"
     );
     const u = new URL(cleanUrl);

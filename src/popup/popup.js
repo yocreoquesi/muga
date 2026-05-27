@@ -528,6 +528,7 @@ async function showUrlPreview(prefs, lang) {
     } catch { /* content script not loaded — ignore */ }
   }
 
+  // Path-strip and path-affiliate args intentionally omitted — popup is a preview surface. Defaulted [] is a no-op (accepted regression per declarative-path-rules design §7).
   const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules, undefined, undefined, referrer);
 
   // B14 (#452): honored-creator badge. Surfaced when the wrapper URL was

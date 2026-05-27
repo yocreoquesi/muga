@@ -1099,6 +1099,7 @@ async function testUrl() {
     const { processUrl } = await import("../lib/cleaner.js");
     const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
     const domainRules = await resp.json();
+    // Path-strip and path-affiliate args intentionally omitted — options preview is a non-path surface. Defaulted [] is a no-op (accepted regression per declarative-path-rules design §7).
     const result = processUrl(input, { ...prefs, notifyForeignAffiliate: false }, domainRules);
     cleanEl.textContent = result.cleanUrl;
     if (result.removedTracking?.length > 0) {
