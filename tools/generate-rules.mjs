@@ -28,6 +28,40 @@ const ROOT = resolve(__dirname, "..");
 const DOMAIN_RULES_PATH = resolve(ROOT, "src/rules/domain-rules.json");
 const MANIFEST_PATH = resolve(ROOT, "src/rules/rules-manifest.json");
 const DNR_PATH = resolve(ROOT, "src/rules/tracking-params.json");
+const AFFILIATES_PATH = resolve(ROOT, "src/lib/affiliates.js");
+
+/**
+ * Extracts inline `// comment` text next to each entry in the TRACKING_PREFIXES
+ * literal in src/lib/affiliates.js. Returns a Map<prefix, note>.
+ *
+ * Build-time only — at runtime the comments are gone, but this is a generator.
+ * Matches lines of the form `  "prefix",   // note text` inside the
+ * `TRACKING_PREFIXES = [ ... ];` block. Lines without an inline comment yield
+ * no entry; an entry without a note is a fatal build error per #642 acceptance.
+ *
+ * @returns {Map<string,string>}
+ */
+function extractPrefixNotes() {
+  const source = readFileSync(AFFILIATES_PATH, "utf8");
+  const blockMatch = source.match(
+    /export\s+const\s+TRACKING_PREFIXES\s*=\s*\[([\s\S]*?)\];/
+  );
+  if (!blockMatch) {
+    process.stderr.write(
+      "generate-rules.mjs: could not locate TRACKING_PREFIXES block in src/lib/affiliates.js — has the literal moved?\n"
+    );
+    process.exit(1);
+  }
+  const body = blockMatch[1];
+  const notes = new Map();
+  // "prefix",  // note text
+  const lineRe = /^\s*"([^"]+)"\s*,\s*\/\/\s*(.+?)\s*$/gm;
+  let m;
+  while ((m = lineRe.exec(body)) !== null) {
+    notes.set(m[1], m[2]);
+  }
+  return notes;
+}
 
 // Deterministic category priority for tie-break (specificity-first).
 const CATEGORY_PRIORITY = ["utm", "ads", "email", "social", "platform_noise", "generic"];
@@ -133,11 +167,22 @@ export function buildManifest() {
   }
 
   // Build prefix_rules[] in source order (semantic ordering intentional).
-  const prefix_rules = TRACKING_PREFIXES.map((prefix) => {
-    // Extract inline comment from affiliates.js as the note — not available at
-    // runtime, so we derive a functional note from the prefix shape itself.
-    return { prefix };
-  });
+  // Each entry carries the inline comment from src/lib/affiliates.js as its
+  // `note` field (#642). This is build-time parsing — runtime imports lose
+  // comments, but the generator reads the file as text.
+  const prefixNotes = extractPrefixNotes();
+  const missingNotes = TRACKING_PREFIXES.filter((p) => !prefixNotes.has(p));
+  if (missingNotes.length > 0) {
+    process.stderr.write(
+      `generate-rules.mjs: TRACKING_PREFIXES entries missing inline // note in affiliates.js: ${missingNotes.join(", ")}\n` +
+      `  Each prefix must have a trailing comment explaining what it tracks. See #642.\n`
+    );
+    process.exit(1);
+  }
+  const prefix_rules = TRACKING_PREFIXES.map((prefix) => ({
+    prefix,
+    note: prefixNotes.get(prefix),
+  }));
 
   const manifest = {
     version: 1,
