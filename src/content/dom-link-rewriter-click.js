@@ -94,7 +94,7 @@
       try {
         const out = bundled.processUrl(raw);
         if (typeof out === "string") return out;
-        if (out && typeof out.url === "string") return out.url;
+        if (out && typeof out.cleanUrl === "string") return out.cleanUrl;
       } catch {
         // fall through to inline subset
       }

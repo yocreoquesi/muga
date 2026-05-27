@@ -114,11 +114,11 @@
     if (bundled && typeof bundled.processUrl === "function") {
       try {
         const out = bundled.processUrl(raw);
-        // processUrl returns an object on hit; the rewriter wants a
-        // string. Be defensive — if the bundled API ever changes shape,
+        // processUrl returns { cleanUrl, ... } on hit; the rewriter wants
+        // a string. Be defensive — if the bundled API ever changes shape,
         // we silently fall through to the inline subset.
         if (typeof out === "string") return out;
-        if (out && typeof out.url === "string") return out.url;
+        if (out && typeof out.cleanUrl === "string") return out.cleanUrl;
       } catch {
         // fall through to the inline subset
       }
