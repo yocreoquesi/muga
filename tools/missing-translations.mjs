@@ -77,7 +77,10 @@ export function formatReport(lang) {
 }
 
 // CLI entry. Skipped when this module is imported (e.g. by the smoke test).
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}` || import.meta.url.endsWith(process.argv[1].replace(/\\/g, "/"))) {
+// #708: guard against `process.argv[1]` being undefined (indirect imports via
+// stdin/eval). Without the guard, `.replace` throws on the undefined access.
+const _argvOne = (process.argv[1] || "").replace(/\\/g, "/");
+if (_argvOne && (import.meta.url === `file://${_argvOne}` || import.meta.url.endsWith(_argvOne))) {
   const arg = (process.argv[2] || "").toLowerCase();
   const targets = arg ? [arg] : COMMUNITY_LOCALES;
   for (const lang of targets) {

@@ -30,6 +30,16 @@ import { sign as cryptoSign, createPrivateKey, createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
+// #708: the denylist + affiliate guard live in src/lib/remote-rules.js as the
+// authoritative source. Importing here avoids the drift surface that the
+// previous inline copies created. The file is browser-targeted ESM but its
+// constant exports are pure data — no chrome/window references — so Node
+// imports cleanly. Sibling tools/validate-rules-source.mjs already does this.
+import {
+  REMOTE_PARAM_DENYLIST,
+  AFFILIATE_PARAM_GUARD,
+} from "../src/lib/remote-rules.js";
+
 // ── Path resolution ──────────────────────────────────────────────────────────
 
 const DEFAULT_SOURCE = new URL("../tools/rules-source/params.json", import.meta.url).pathname;
@@ -45,34 +55,6 @@ function normalizePath(p) {
 
 const SOURCE_FILE = process.env.MUGA_SOURCE_FILE || normalizePath(DEFAULT_SOURCE);
 const OUTPUT_FILE = process.env.MUGA_OUTPUT_FILE || normalizePath(DEFAULT_OUTPUT);
-
-// ── Denylist (mirrors src/lib/remote-rules.js REMOTE_PARAM_DENYLIST + AFFILIATE_PARAM_GUARD) ──
-// Duplicated here to avoid importing a browser-targeted ES module; kept in sync manually.
-
-const REMOTE_PARAM_DENYLIST = new Set([
-  "q", "query", "search", "s", "keyword", "keywords",
-  "id", "uid", "user", "userid", "session", "sid", "token", "access_token",
-  "api_key", "apikey", "key", "hash", "code", "auth", "signature",
-  "page", "p", "pg", "offset", "limit", "size", "per_page",
-  "sort", "order", "orderby", "dir", "direction",
-  "filter", "type", "category", "cat", "tag", "tab", "view", "mode", "format",
-  "output", "action", "op", "method",
-  "lang", "locale", "hl", "tz", "timezone", "region", "country",
-  "from", "to", "date", "year", "month", "day", "time", "t",
-  "state", "redirect", "redirect_uri", "return", "return_to", "return_url",
-  "url", "next", "continue", "callback", "error", "error_description",
-  "v", "w", "h", "width", "height", "color", "theme",
-]);
-
-const AFFILIATE_PARAM_GUARD = new Set([
-  "tag", "ascsubtag", "associatetag", "linkcode", "creativeasin",
-  "campid", "mkevt", "mkcid", "mkrid", "toolid", "customid",
-  "aid", "subid", "sid", "affiliate_id",
-  "awc", "irclickid", "irgwc", "clickid", "click_id",
-  "hmkeyword",
-  "afsrc", "af_id",
-  "partner", "partnerid", "affid", "aff_id", "refcode",
-]);
 
 const PARAM_FORMAT_RE = /^[a-zA-Z0-9_.\-]+$/;
 const MAX_PARAM_LEN = 64;
