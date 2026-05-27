@@ -16,6 +16,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { __test__ } from "../../src/lib/cleaner.js";
+import { pathAffiliateRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
 const { unwrapAndExtract } = __test__;
 
@@ -197,6 +198,7 @@ describe("unwrapAndExtract — Bookshop path-referral detection", () => {
       BASE_PREFS,
       undefined,
       undefined,
+      pathAffiliateRulesFixture,
     );
 
     assert.equal(result.kind, "continue");
@@ -210,6 +212,7 @@ describe("unwrapAndExtract — Bookshop path-referral detection", () => {
       BASE_PREFS,
       undefined,
       undefined,
+      pathAffiliateRulesFixture,
     );
 
     assert.equal(result.kind, "continue");

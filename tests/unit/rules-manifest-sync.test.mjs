@@ -5,8 +5,9 @@
  * consistent with the live affiliates.js source. Drift is caught at npm test
  * time so a forgotten `npm run compile:rules` doesn't silently ship stale data.
  *
- * Compares all structural fields: version, tracking length, prefix_rules length,
- * all category keys, and path_rules emptiness. The manifest is byte-deterministic
+ * Compares all structural fields of the v2 manifest: version + manifestVersion,
+ * tracking length, prefix_rules length, all category keys, path_strip_rules
+ * shape, and path_affiliate_rules shape. The manifest is byte-deterministic
  * (no timestamps or SHAs) so deepEqual against a freshly-built manifest is exact.
  *
  * Run with: node --test tests/unit/rules-manifest-sync.test.mjs
@@ -38,9 +39,10 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
     assert.doesNotThrow(() => JSON.parse(raw), "rules-manifest.json must be valid JSON");
   });
 
-  test("version equals 1", () => {
+  test("version equals 2", () => {
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
-    assert.equal(manifest.version, 1, "version must be integer 1");
+    assert.equal(manifest.version, 2, "version must be integer 2");
+    assert.equal(manifest.manifestVersion, 2, "manifestVersion must be 2");
   });
 
   test("tracking length equals TRACKING_PARAMS.length", () => {
@@ -62,10 +64,27 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
     }
   });
 
-  test("path_rules is an empty array", () => {
+  test("path_strip_rules and path_affiliate_rules are arrays with required per-entry shape", () => {
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
-    assert.ok(Array.isArray(manifest.path_rules), "path_rules must be an array");
-    assert.equal(manifest.path_rules.length, 0, "path_rules must be [] in v1");
+    assert.ok(Array.isArray(manifest.path_strip_rules), "path_strip_rules must be array");
+    assert.ok(manifest.path_strip_rules.length >= 1, "path_strip_rules must have at least 1 entry");
+    assert.ok(Array.isArray(manifest.path_affiliate_rules), "path_affiliate_rules must be array");
+    assert.ok(manifest.path_affiliate_rules.length >= 1, "path_affiliate_rules must have at least 1 entry");
+    for (const r of manifest.path_strip_rules) {
+      assert.ok(typeof r.domain === "string", "strip entry must have domain string");
+      assert.ok(typeof r.domainPattern === "string", "strip entry must have domainPattern string");
+      assert.ok(Array.isArray(r.pathPatterns), "strip entry must have pathPatterns array");
+      assert.ok(Array.isArray(r.replacements), "strip entry must have replacements array");
+      assert.equal(r.pathPatterns.length, r.replacements.length, "pathPatterns and replacements must be same length");
+    }
+    for (const r of manifest.path_affiliate_rules) {
+      assert.ok(typeof r.domain === "string", "affiliate entry must have domain string");
+      assert.ok(Array.isArray(r.referralPaths), "affiliate entry must have referralPaths array");
+      assert.ok(typeof r.injectPath === "string", "affiliate entry must have injectPath string");
+      assert.ok(typeof r.injectParam === "string", "affiliate entry must have injectParam string");
+      assert.ok(typeof r.injectValue === "string", "affiliate entry must have injectValue string");
+    }
+    assert.ok(!("path_rules" in manifest), "v1 path_rules key must be removed in v2");
   });
 
   test("prefix_rules length equals TRACKING_PREFIXES.length", () => {

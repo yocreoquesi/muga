@@ -15,6 +15,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { processUrl } from "../../src/lib/cleaner.js";
+import { pathAffiliateRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
 // ── Prefs that enable Bookshop injection (Scenario B / TS-12)
 const PREFS_INJECT = {
@@ -68,7 +69,7 @@ describe("TS-11 — recordFrequency fires after Bookshop injection (Site B order
       },
     };
 
-    processUrl(BOOKSHOP_URL, PREFS_INJECT, [], undefined, tracker, undefined);
+    processUrl(BOOKSHOP_URL, PREFS_INJECT, [], undefined, tracker, undefined, [], pathAffiliateRulesFixture);
 
     // recordFrequency is called once (Site B). Site A is only for whitelist-domain path.
     assert.equal(tracker.callCount, 1, "observe must be called exactly once on main path");
@@ -80,7 +81,7 @@ describe("TS-11 — recordFrequency fires after Bookshop injection (Site B order
       observe() { return Promise.resolve(); },
     };
 
-    const result = processUrl(BOOKSHOP_URL, PREFS_INJECT, [], undefined, tracker, undefined);
+    const result = processUrl(BOOKSHOP_URL, PREFS_INJECT, [], undefined, tracker, undefined, [], pathAffiliateRulesFixture);
 
     assert.equal(result.action, "injected", "action must be 'injected' for Bookshop injection");
     assert.ok(
@@ -116,6 +117,8 @@ describe("TS-11 — recordFrequency fires after Bookshop injection (Site B order
       undefined,
       undefined,
       undefined,
+      [],
+      pathAffiliateRulesFixture,
     );
 
     assert.equal(result.creatorReferralPreserved, true, "creatorReferralPreserved must be true for /a/ path");

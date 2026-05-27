@@ -84,6 +84,49 @@ async function _loadDomainRules() {
   }
 }
 
+// Path rules — declarative path-strip and path-affiliate arrays (issue #625).
+// Follows the same lazy-load / retry-cap pattern as domain rules above.
+// No session-cache layer: both JSON files are tiny (≪1KB combined) and the
+// cache-on-first-load complexity does not pay rent at this size.
+let pathStripRules = [];
+let pathAffiliateRules = [];
+let _pathRulesReady = null;
+let _pathRulesFetchAttempts = 0;
+const PATH_RULES_MAX_ATTEMPTS = 3;
+
+/**
+ * Fetch path-strip-rules.json and path-affiliate-rules.json in parallel and
+ * assign their parsed arrays to the module-level `pathStripRules` and
+ * `pathAffiliateRules` vars. Called lazily on the first PROCESS_URL message,
+ * in a single outer Promise.all alongside _loadDomainRules() so all three
+ * JSON files are in flight at once.
+ *
+ * On failure: both arrays are reset to [] (graceful-degradation — path logic
+ * becomes a no-op), a console.warn is emitted, and _pathRulesReady is nulled
+ * so the next call retries (up to PATH_RULES_MAX_ATTEMPTS).
+ */
+async function _loadPathRules() {
+  if (_pathRulesFetchAttempts >= PATH_RULES_MAX_ATTEMPTS) {
+    console.error("[MUGA] path-rules: max fetch attempts reached; path rules unavailable");
+    return;
+  }
+  try {
+    _pathRulesFetchAttempts++;
+    const [stripResp, affResp] = await Promise.all([
+      fetch(chrome.runtime.getURL("rules/path-strip-rules.json")),
+      fetch(chrome.runtime.getURL("rules/path-affiliate-rules.json")),
+    ]);
+    pathStripRules     = await stripResp.json();
+    pathAffiliateRules = await affResp.json();
+  } catch (err) {
+    console.warn("[MUGA] path rules fetch failed:", err);
+    pathStripRules     = [];
+    pathAffiliateRules = [];
+    // Null out so the next handleProcessUrl call retries (up to the cap)
+    _pathRulesReady = null;
+  }
+}
+
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const _rawActionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
 
@@ -1139,9 +1182,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, referrer = "" } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
-  // _domainRulesReady is nulled on fetch failure to allow retry on the next call
+  // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
+  // retry on the next call. Both loaders run in a single outer Promise.all so
+  // all three JSON files (domain + 2× path) are in flight at once.
   if (!_domainRulesReady) _domainRulesReady = _loadDomainRules();
-  await _domainRulesReady;
+  if (!_pathRulesReady)   _pathRulesReady   = _loadPathRules();
+  await Promise.all([_domainRulesReady, _pathRulesReady]);
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled || !prefs.onboardingDone) {
@@ -1164,7 +1210,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     // user enabled the toggle AND the navigation referrer matches an
     // allowlisted creator, the cleaner short-circuits with action
     // "honored-creator". Empty string for non-navigation contexts.
-    result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker, referrer);
+    result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker, referrer, pathStripRules, pathAffiliateRules);
   } catch (err) {
     console.error("[MUGA] processUrl failed:", err, rawUrl);
     return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };

@@ -16,6 +16,7 @@ import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
 import { extractCanonical } from "./canonical-extractor.js";
 import { shouldHonor } from "./honor-creator.js";
 import { classify as classifyParams } from "./param-classifier.js";
+import { applyPathStrip, getPathAffiliatePolicy } from "./path-rules.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -235,22 +236,6 @@ function detectPreservedAffiliate(url, patterns) {
 }
 
 /**
- * Strips Amazon path-based tracking segments that appear after the ASIN.
- * Amazon embeds referral tokens and session IDs directly in the path, e.g.:
- *   /dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601
- * The clean form is: /dp/B0GQ4N9N33/
- */
-function cleanAmazonPath(hostname, pathname) {
-  if (!/(?:^|\.)amazon\.[a-z.]+$/.test(hostname)) return pathname;
-  return pathname
-    // Strip product-name slug that precedes /dp/ASIN (e.g. /UGREEN-Adaptador/dp/B0B9N3QSL3/)
-    .replace(/\/[^/]+\/dp\/([A-Za-z0-9]{10})/, "/dp/$1")
-    .replace(/(\/dp\/[A-Za-z0-9]{10})\/.+/, "$1/")
-    .replace(/(\/gp\/product\/[A-Za-z0-9]{10})\/.+/, "$1/")
-    .replace(/\/ref=[^/?#]*/g, "") || "/";
-}
-
-/**
  * Returns true if this is an AliExpress product/item page where ALL query
  * params are tracking noise. Item pages load correctly with zero params.
  * Search and category pages (preserveParams in domain-rules) are excluded.
@@ -260,27 +245,11 @@ function isAliExpressItemPage(hostname, pathname) {
   return /^\/item\/\d+\.html?\/?$/i.test(pathname);
 }
 
-// Bookshop.org affiliate attribution is path-based, not query-string-based.
-// Two entry paths set the `override_affiliate` session cookie:
-//   /a/{id}/...   creator referral (requires trailing slash to be valid)
-//   /shop/{slug}  storefront (with or without trailing slash; terminal)
-// Both flow through to product pages via the cookie. The cleaner detects
-// either entry so it does NOT touch the path AND so the existing creator-
-// referral wedge cue fires for users.
-//
-// Out-of-band escape hatch authorised by caps-spec#46 (deferred). The narrow
-// shape is intentional: when a second path-based program lands as a real
-// request, generalise this and reopen the RFC with N>1 data.
-function isBookshopPathReferral(url) {
-  if (url.hostname.replace(/^www\./, "") !== "bookshop.org") return false;
-  return /^(?:\/a\/[^/]+\/|\/shop\/[^/]+\/?$)/.test(url.pathname);
-}
-
-// MUGA's Bookshop.org affiliate ID for injection on unattributed product
-// pages. Lives next to the path-referral detector because both pieces share
-// the same caps-spec#46 escape-hatch rationale. TODO: move into OUR_TAGS in
-// affiliates.js once caps-spec adopts Bookshop as a direct-injection program.
-const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
+// Path-based affiliate attribution (e.g. Bookshop.org) is now handled
+// declaratively via src/rules/path-affiliate-rules.json and
+// src/lib/path-rules.js#getPathAffiliatePolicy. Path-strip rules (e.g.
+// Amazon slug/ref removal) are in src/rules/path-strip-rules.json via
+// src/lib/path-rules.js#applyPathStrip.
 
 /**
  * Strips tracking params from a URL object, respecting affiliate, preserved,
@@ -379,6 +348,15 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   preserved. Background-only contexts that lack a referrer (or that
  *   omit this argument) never enter the honor path — defaulting to
  *   pre-feature behaviour.
+ * @param {Array} [pathStripRules=[]]
+ *   Path-strip rules loaded from `src/rules/path-strip-rules.json` via
+ *   `src/lib/path-rules.js`. Injected by the service worker at call time.
+ *   Defaults to `[]` (no-op) so call sites that have not yet migrated
+ *   (or test call sites that don't exercise path behavior) are unaffected.
+ * @param {Array} [pathAffiliateRules=[]]
+ *   Affiliate-injection rules loaded from `src/rules/path-affiliate-rules.json`
+ *   via `src/lib/path-rules.js`. Injected by the service worker at call time.
+ *   Defaults to `[]` (no-op) for the same reason as `pathStripRules`.
  * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, network?: string, creator?: string }}
  *   `action` is one of:
  *     `"untouched"`         — URL unchanged
@@ -390,9 +368,9 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *                             unmodified; `network` (wrapper id) and
  *                             `creator` (matching allowlist entry) are set.
  */
-export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer) {
+export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer, pathStripRules = [], pathAffiliateRules = []) {
   // Step 1 — Unwrap + Honor + Canonical (steps 0a, 0, 0b)
-  const unwrapStep = unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle);
+  const unwrapStep = unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules);
   if (unwrapStep.kind === "done") return unwrapStep.payload;
   const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved } = unwrapStep;
   rawUrl = unwrappedRawUrl;
@@ -418,7 +396,9 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   }
 
   const originalPathname = url.pathname;
-  url.pathname = cleanAmazonPath(hostname, url.pathname);
+  // Path-strip rules (e.g. Amazon slug/ref removal) loaded from
+  // src/rules/path-strip-rules.json via src/lib/path-rules.js.
+  url.pathname = applyPathStrip(hostname, url.pathname, pathStripRules);
   const pathCleaned = url.pathname !== originalPathname;
 
   // Scenario D: domain is fully blacklisted — strip everything, no injection
@@ -454,24 +434,22 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   let action = pipeAction;
   if (action === "untouched" && (pathCleaned || removedTracking.length > 0)) action = "cleaned";
 
-  // 6b. Bookshop.org MUGA-affiliate injection. Bookshop is not in
-  // AFFILIATE_PATTERNS (caps-spec#46 deferred), so the pipeline above never
-  // fires for it. The `action !== "detected_foreign"` guard is defensive —
-  // structurally unreachable today (handleAffiliatePipeline cannot set
-  // detected_foreign for bookshop.org since no AFFILIATE_PATTERNS entry
-  // matches it), but it guards against overriding a foreign affiliate if
-  // bookshop ever gets added to AFFILIATE_PATTERNS. Needs
-  // creatorReferralPreserved from unwrapAndExtract.
+  // 6b. Path-based MUGA-affiliate injection (e.g. Bookshop.org). Rules are
+  // loaded from src/rules/path-affiliate-rules.json via src/lib/path-rules.js.
+  // The `action !== "detected_foreign"` guard is defensive — structurally
+  // unreachable today for Bookshop (no AFFILIATE_PATTERNS entry matches it),
+  // but guards against overriding a foreign affiliate if a rule domain is ever
+  // added to AFFILIATE_PATTERNS. pathPrefix presence + param absence are
+  // checked inside getPathAffiliatePolicy (data-driven per spec REQ-3).
+  const _policy = getPathAffiliatePolicy(url, pathAffiliateRules);
   if (
+    _policy.pendingInjection &&
     prefs.injectOwnAffiliate &&
     !prefs.stripAllAffiliates &&
     action !== "detected_foreign" &&
-    hostname.replace(/^www\./, "") === "bookshop.org" &&
-    !creatorReferralPreserved &&
-    url.pathname.startsWith("/p/") &&
-    !url.searchParams.has("affiliate")
+    !creatorReferralPreserved
   ) {
-    url.searchParams.set("affiliate", MUGA_BOOKSHOP_AFFILIATE_ID);
+    url.searchParams.set(_policy.pendingInjection.param, _policy.pendingInjection.value);
     action = "injected";
   }
 
@@ -539,12 +517,16 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
  * @param {object} prefs
  * @param {string|null|undefined} referrer
  * @param {{linkCanonical?: string|null, jsonLdId?: string|null}|undefined} canonicalBundle
+ * @param {Array} [pathAffiliateRules=[]]
+ *   Affiliate-injection rules from `src/lib/path-rules.js`. Used for
+ *   Bookshop.org creator-referral detection (step 6). Defaults to `[]`
+ *   (no-op) for call sites that do not exercise path-affiliate behavior.
  * @returns {
  *     { kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean }
  *   | { kind: "done", payload: object }
  * }
  */
-function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle) {
+function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules = []) {
   // Step 1: parse initial URL
   let url;
   try {
@@ -598,9 +580,10 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle) {
     }
   }
 
-  // Step 6: Bookshop.org path-based creator-referral detection. Computed once
-  // post-unwrap so wrapper redirects that land on bookshop are covered.
-  const creatorReferralPreserved = isBookshopPathReferral(url);
+  // Step 6: Path-based creator-referral detection. Computed once post-unwrap so
+  // wrapper redirects that land on a referral path are covered. Rules come from
+  // src/lib/path-rules.js (loaded from src/rules/path-affiliate-rules.json).
+  const creatorReferralPreserved = getPathAffiliatePolicy(url, pathAffiliateRules).creatorReferralPreserved;
 
   return { kind: "continue", rawUrl, url, creatorReferralPreserved };
 }
@@ -719,13 +702,11 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     }
   }
 
-  // Step 6b: Bookshop.org MUGA-affiliate injection (#caps-spec#46).
-  // Bookshop is not in AFFILIATE_PATTERNS so step 6 above never fires for it.
-  // NOTE: creatorReferralPreserved is NOT a parameter here — the orchestrator
-  // has it from unwrapAndExtract and passes it to buildReturnPayload directly.
-  // We access it via closure: it's NOT available here. This means the Bookshop
-  // injection must stay in the ORCHESTRATOR (after pipeline returns), not here.
-  // Design §3 skeleton shows Bookshop injection AFTER handleAffiliatePipeline call.
+  // Step 6b: Path-based MUGA-affiliate injection (e.g. Bookshop.org) is now
+  // handled declaratively in the processUrl orchestrator via getPathAffiliatePolicy
+  // (src/lib/path-rules.js, rules from src/rules/path-affiliate-rules.json).
+  // creatorReferralPreserved is NOT available here — it lives in the orchestrator
+  // closure from unwrapAndExtract. Bookshop injection remains in the orchestrator.
 
   return { action, detectedAffiliate, blacklistStripped };
 }
