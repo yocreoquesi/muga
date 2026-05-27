@@ -30,15 +30,19 @@ jobs:
       - name: Compile rules artifacts (#626)
         run: npm run compile:rules
 
-      - name: Check src/rules/ is up to date (#626)
+      - name: Generate wrapper DNR rules (#708)
+        run: npm run build:dnr
+
+      - name: Check src/rules/ is up to date (#626 + #708)
         # Asserts every generated rules artifact matches its committed form.
-        # Covers tracking-params.json, rules-manifest.json, and any future
-        # files the generator emits. The manifest is byte-deterministic — no
-        # timestamps or SHAs — so a clean diff is achievable.
+        # Covers tracking-params.json, rules-manifest.json (compile:rules) AND
+        # wrapper-dnr-rules.json (build:dnr) — any drift between source and
+        # committed artifact fails CI loudly. Both generators are byte-
+        # deterministic, so a clean diff is always achievable.
         run: |
           if ! git diff --exit-code -- src/rules/; then
             echo "ERROR: src/rules/ artifacts are out of sync with their source."
-            echo "Run 'npm run compile:rules' locally and commit the resulting changes."
+            echo "Run 'npm run compile:rules' and 'npm run build:dnr' locally and commit the result."
             exit 1
           fi
 
