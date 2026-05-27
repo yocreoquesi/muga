@@ -160,24 +160,25 @@ describe("Bug #229 — whitelist/blacklist entry format", () => {
   });
 });
 
-// ── INCREMENT_STAT handler returns true ──────────────────────────────────────
+// ── INCREMENT_STAT handler returns false (#706) ──────────────────────────────
 
 describe("INCREMENT_STAT handler — response channel", () => {
-  test("INCREMENT_STAT handler returns true (keeps response channel open)", () => {
-    // All other branches return true to keep the sendResponse channel open.
-    // INCREMENT_STAT must also return true for consistency and future-safety.
+  test("INCREMENT_STAT handler returns false (fully synchronous response)", () => {
+    // incrementStat() is fire-and-forget; sendResponse({ ok: true }) is
+    // dispatched synchronously. Returning true here would keep the message
+    // channel open for an async response that never arrives, leaking one
+    // port slot per INCREMENT_STAT call (#706). Must return false.
     const handlerBlock = swSource.slice(
       swSource.indexOf('"INCREMENT_STAT"'),
       swSource.indexOf('"CLEAR_DEBUG_LOG"')
     );
-    // The block must NOT end with a bare `return;` (undefined)
     assert.ok(
-      !handlerBlock.includes("sendResponse({ ok: true });\n    return;\n"),
-      "INCREMENT_STAT must not use bare return (returns undefined, closes channel early)"
+      /return\s+false\s*;/.test(handlerBlock),
+      "INCREMENT_STAT handler must return false — sendResponse is synchronous, no async wait pending"
     );
     assert.ok(
-      handlerBlock.includes("return true;"),
-      "INCREMENT_STAT handler must return true to keep the sendResponse channel open"
+      !/return\s+true\s*;/.test(handlerBlock),
+      "INCREMENT_STAT handler must NOT return true — that would leak a port slot per call"
     );
   });
 });
@@ -550,12 +551,18 @@ describe("T2.3 — Message handler source patterns", () => {
     );
   });
 
-  test("GET_REMOTE_RULES_STATUS responds with enabled, meta, supportsAlarms, supportsDNR", () => {
+  test("GET_REMOTE_RULES_STATUS responds with enabled, meta, supportsDNR", () => {
+    // supportsAlarms was retired in #706 — zero consumers across the codebase.
+    // The field had been kept "for backwards compat with any cached UI bundle"
+    // but no such bundle existed; the assertion that pinned it was zombie code.
     const statusPos = swSource.indexOf('"GET_REMOTE_RULES_STATUS"');
     const statusBlock = swSource.slice(statusPos, statusPos + 1500);
-    assert.ok(statusBlock.includes("supportsAlarms"), "status must include supportsAlarms (REQ-UI-5)");
     assert.ok(statusBlock.includes("supportsDNR"), "status must include supportsDNR (REQ-UI-5)");
     assert.ok(statusBlock.includes("enabled"), "status must include enabled flag");
+    assert.ok(
+      !statusBlock.includes("supportsAlarms"),
+      "supportsAlarms must NOT be reintroduced — retired in #706 (zero consumers)"
+    );
   });
 
   test("all remote-rules message handlers return true (keep channel open)", () => {
@@ -660,25 +667,16 @@ describe("T2.4 — syncRemoteParamsDNR", () => {
     await assert.doesNotReject(() => syncRemoteParamsDNR(["utm_x"], undefined));
   });
 
-  test("service worker source defines syncRemoteParamsDNR function", () => {
+  test("service worker no longer defines syncRemoteParamsDNR (retired in #706)", () => {
+    // The SW-local syncRemoteParamsDNR had zero call sites — runRemoteRulesFetch
+    // in src/lib/remote-rules.js owns the rule-1001 DNR write directly. The
+    // helper was zombie code kept alive by source-presence test assertions
+    // (the audit pattern problem flagged in #706). The behavioral coverage of
+    // the operation lives in the T2.4 tests above against a local copy of the
+    // function shape, plus the integration coverage in remote-rules.test.mjs.
     assert.ok(
-      swSource.includes("syncRemoteParamsDNR"),
-      "SW must define syncRemoteParamsDNR function"
-    );
-  });
-
-  test("service worker syncRemoteParamsDNR only references REMOTE_RULE_ID (not custom)", () => {
-    // Find the syncRemoteParamsDNR function block in the SW source
-    const fnStart = swSource.indexOf("function syncRemoteParamsDNR");
-    assert.ok(fnStart !== -1, "syncRemoteParamsDNR must be defined in SW");
-    const fnBlock = swSource.slice(fnStart, fnStart + 600);
-    assert.ok(
-      fnBlock.includes("REMOTE_RULE_ID"),
-      "syncRemoteParamsDNR must use REMOTE_RULE_ID"
-    );
-    assert.ok(
-      !fnBlock.includes("DNR_CUSTOM_PARAMS_RULE_ID"),
-      "syncRemoteParamsDNR must NOT reference DNR_CUSTOM_PARAMS_RULE_ID"
+      !swSource.includes("function syncRemoteParamsDNR"),
+      "syncRemoteParamsDNR must NOT be reintroduced in SW — write happens inside runRemoteRulesFetch"
     );
   });
 });
