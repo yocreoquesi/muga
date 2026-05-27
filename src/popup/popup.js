@@ -461,6 +461,14 @@ function _resetPreviewDom() {
   }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
+  // #705 fix: remove any `.preview-breakdown` <details> appended by a
+  // prior render. The breakdown is dynamic (paramBreakdown pref), so the
+  // reset path must clear it the same way it clears the static slots
+  // above — otherwise repeated re-renders stack 2×, 3×, … copies.
+  const preview = el("preview");
+  if (preview) {
+    preview.querySelectorAll(".preview-breakdown").forEach((node) => node.remove());
+  }
 }
 
 /** Shows a live preview of URL cleaning for the current tab. Idempotent — callable multiple times. */
@@ -588,7 +596,15 @@ async function showUrlPreview(prefs, lang) {
 
     // Report broken site: visible to all users when URL was modified and feature flag is on
     if (prefs.showReportButton) {
-      const reportLink = document.getElementById("report-broken");
+      // #705 fix: clone the static #report-broken node before binding the
+      // click listener. showUrlPreview is invoked on init AND on every
+      // storage-change / enabled-toggle event — without the clone, the
+      // listener accumulates and a single click opens N GitHub tabs.
+      // The clone drops the accumulated listeners; the subsequent
+      // addEventListener attaches exactly one.
+      const oldLink = document.getElementById("report-broken");
+      const reportLink = oldLink.cloneNode(true);
+      oldLink.parentNode.replaceChild(reportLink, oldLink);
       reportLink.hidden = false;
       reportLink.addEventListener("click", (e) => {
         e.preventDefault();
