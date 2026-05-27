@@ -6,6 +6,7 @@
 import {
   TRACKING_PARAMS,
   TRACKING_PARAM_CATEGORIES,
+  TRACKING_PREFIXES,
   getPatternsForHost,
   getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
@@ -80,24 +81,6 @@ export function getLandingPolicy(hostname, referrer) {
   };
 }
 
-// Prefix-based tracking param detection: catches non-standard variants
-// without listing each one. Individual params are still in TRACKING_PARAMS
-// for DNR rules (which don't support prefix matching).
-const TRACKING_PREFIXES = [
-  "utm_",       // Google Analytics: utm_source, utm_medium, utm_campaign, etc.
-  "cm_sw_",     // Amazon: click/share tracking (cm_sw_r_cp_api_*, cm_sw_r_cso_*)
-  "pd_rd_",     // Amazon: product display referral data
-  "pf_rd_",     // Amazon: placement referral data
-  "__mk_",      // Amazon: marketplace/keyboard locale selector
-  "hsa_",       // HubSpot: ad tracking (hsa_acc, hsa_cam, hsa_grp, hsa_kw, etc.)
-  "mt_",        // Matomo: campaign tracking (mt_campaign, mt_adset, mt_click_id, etc.)
-  "int_",       // Internal campaign params (int_source, int_medium, int_campaign, etc.)
-  "ir_",        // Impact Radius: affiliate tracking (ir_adid, ir_campaignid, etc.)
-  "asc_",       // Amazon: affiliate sub-tag variants (asc_contentid, asc_campaign, etc.)
-  "cv_ct_",     // Amazon: conversion tracking
-  "scm_",       // AliExpress / Alibaba: SCM tracking variants
-  "sb-ci-",     // Amazon: search bar click ID
-];
 
 /** Returns true if the param is a known tracking param (exact match or prefix). */
 function isTrackingParam(lower, customParams, domainStrip, remoteParams, userCustomRules) {
