@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isValidListEntry } from "../../src/lib/validation.js";
+import { SUPPORTED_LANGS } from "../../src/lib/i18n.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPTIONS_SOURCE = readFileSync(join(__dirname, "../../src/options/options.js"), "utf8");
@@ -148,10 +149,17 @@ describe("import settings (source verification)", () => {
     );
   });
 
-  test("9. import validates language against supported locales", () => {
+  test("9. import validates language against the full SUPPORTED_LANGS list", () => {
+    // Regression for #729: the import allowlist must be data-driven from
+    // SUPPORTED_LANGS, NOT a hardcoded subset. A hardcoded array silently drops
+    // any locale added later (fr/it/ja, #707) on an export→import round-trip.
     assert.ok(
-      OPTIONS_SOURCE.includes('["en", "es", "pt", "de"].includes(data.language)'),
-      "Import must validate language against supported locale list"
+      OPTIONS_SOURCE.includes("SUPPORTED_LANGS.some(l => l.code === data.language)"),
+      "Import must validate language against SUPPORTED_LANGS, not a hardcoded subset"
+    );
+    assert.ok(
+      !/\[\s*"en",\s*"es",\s*"pt",\s*"de"\s*\]\.includes\(data\.language\)/.test(OPTIONS_SOURCE),
+      "Import must NOT use the legacy hardcoded en/es/pt/de language allowlist"
     );
   });
 
@@ -298,5 +306,44 @@ describe("isValidParam (extracted inline pattern)", () => {
   test("31. string over limit (500+ chars) -> false", () => {
     assert.strictEqual(isValidParam("a".repeat(500)), false);
     assert.strictEqual(isValidParam("a".repeat(501)), false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Language round-trip — regression for #729
+//
+// The import language allowlist must accept EVERY code exported by the picker.
+// Export writes `language: prefs.language` (any SUPPORTED_LANGS code), so import
+// must mirror that set. acceptLanguage() replicates the import guard against the
+// real SUPPORTED_LANGS so a future edit to one side without the other fails here.
+// ---------------------------------------------------------------------------
+describe("import language round-trip (#729)", () => {
+  // Mirror of the import-handler guard at options.js (data-driven, not hardcoded).
+  const acceptLanguage = (lang) => SUPPORTED_LANGS.some((l) => l.code === lang);
+
+  test("35. every SUPPORTED_LANGS code survives an export→import round-trip", () => {
+    for (const { code } of SUPPORTED_LANGS) {
+      assert.strictEqual(
+        acceptLanguage(code),
+        true,
+        `exported language "${code}" must be accepted on import`
+      );
+    }
+  });
+
+  test("36. fr/it/ja (added in #707) are accepted, not silently dropped", () => {
+    for (const code of ["fr", "it", "ja"]) {
+      assert.ok(
+        SUPPORTED_LANGS.some((l) => l.code === code),
+        `"${code}" must be a supported language`
+      );
+      assert.strictEqual(acceptLanguage(code), true, `"${code}" must round-trip`);
+    }
+  });
+
+  test("37. unknown/invalid language codes are rejected", () => {
+    for (const bad of ["", "xx", "EN", "en-US", "klingon", null, undefined, 42]) {
+      assert.strictEqual(acceptLanguage(bad), false, `"${String(bad)}" must be rejected`);
+    }
   });
 });
