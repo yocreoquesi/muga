@@ -84,6 +84,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (featuresSection) featuresSection.hidden = true;
     if (reonboardDelta) {
       reonboardDelta.hidden = false;
+      // Move focus to the revealed banner so screen-reader users land on (and
+      // hear) the terms-changed notice instead of it being silently shown (#740).
+      reonboardDelta.focus();
       const clauseKeys = clausesForDelta({
         acceptedVersion: policy.acceptedVersion,
         requiredVersion: policy.requiredVersion,
@@ -103,7 +106,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Hard re-onboard: feature explainer hidden; banner explains the
     // material change. Full ToS link + checkbox + button stay visible.
     if (featuresSection) featuresSection.hidden = true;
-    if (reonboardMaterial) reonboardMaterial.hidden = false;
+    if (reonboardMaterial) {
+      reonboardMaterial.hidden = false;
+      // Material mode is a hard gate the user MUST act on — move focus to the
+      // alert banner so it is announced and reachable, not silently shown (#740).
+      reonboardMaterial.focus();
+    }
   }
 
   // --- Per-device confirmation prompt setup (#364) ------------------------

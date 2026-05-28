@@ -263,12 +263,12 @@
 
     <!-- Re-onboard banners (#370). Hidden by default; the JS reveals one
          based on ConsentPolicy.evaluate() at load time. -->
-    <div class="reonboard-banner" id="reonboard-delta" hidden>
+    <div class="reonboard-banner" id="reonboard-delta" role="status" aria-live="polite" tabindex="-1" hidden>
       <strong data-i18n="ob_reonboard_delta_title">A few terms have been added since you last accepted</strong>
       <p data-i18n="ob_reonboard_delta_desc">Your existing acceptance still applies. Review the new clauses below; accepting unlocks the new behaviours, declining keeps MUGA running under your previously accepted terms.</p>
       <ul id="reonboard-delta-clauses" class="reonboard-clauses"></ul>
     </div>
-    <div class="reonboard-banner reonboard-material" id="reonboard-material" hidden>
+    <div class="reonboard-banner reonboard-material" id="reonboard-material" role="alert" tabindex="-1" hidden>
       <strong data-i18n="ob_reonboard_material_title">Important: terms have changed materially</strong>
       <p data-i18n="ob_reonboard_material_desc">MUGA's terms have been updated in a way that affects what you previously agreed to. Continued use of the extension requires accepting the new terms. Please review the linked Terms of Use and Privacy Policy below.</p>
     </div>
