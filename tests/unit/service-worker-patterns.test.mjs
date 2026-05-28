@@ -215,6 +215,21 @@ describe("Cache invalidation — version counter", () => {
     );
   });
 
+  test("local-area listener invalidates cache + reapplies DNR/badge on mugaPerDevicePrefs (#739)", () => {
+    // Regression #739: getPrefs() overlays per-device overrides last, so a
+    // mugaPerDevicePrefs change must drop the cache and re-apply DNR + badge.
+    // Previously the local-area branch returned without handling it, leaving
+    // cachedPrefs stale. Single source-string match (no brittle slice chains)
+    // captures the whole handling block and asserts its contents at once.
+    const m = swSource.match(
+      /if \(changes\.mugaPerDevicePrefs\)\s*\{\s*_invalidatePrefsCache\(\);\s*const prefs = await getPrefsWithCache\(\);\s*await applyDnrState\(prefs\);\s*await applyOnboardingBadge\(prefs\);\s*\}/
+    );
+    assert.ok(
+      m,
+      "local-area listener must handle changes.mugaPerDevicePrefs by invalidating the cache and re-applying DNR + onboarding badge"
+    );
+  });
+
   test("whitelist handler invalidates prefs cache via _invalidatePrefsCache()", () => {
     // Use the dedicated handler block (skip combined tab guard at the top)
     const whitelistStart = swSource.indexOf('if (message.type === "ADD_TO_WHITELIST")');
