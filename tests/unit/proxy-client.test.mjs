@@ -61,6 +61,7 @@ import {
   fetchUnwrap,
   PROXY_URL,
   base64UrlEncode,
+  isPrivateHost,
 } from "../../src/lib/proxy-client.js";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -482,5 +483,53 @@ describe("fetchUnwrap — destination URL length cap", () => {
     } finally {
       globalThis.fetch = savedFetch;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isPrivateHost SSRF guard — regression #737
+//
+// The guard receives URL.hostname (what fetchUnwrap passes). The helper below
+// derives the hostname exactly as production does so the compact IPv4-mapped
+// IPv6 form (::ffff:127.0.0.1 -> ::ffff:7f00:1) is exercised realistically.
+// ---------------------------------------------------------------------------
+describe("isPrivateHost SSRF guard (#737)", () => {
+  const hostOf = (h) => new URL("https://" + h + "/").hostname;
+
+  test("rejects the loopback/private forms the guard previously missed", () => {
+    for (const h of [
+      "0.0.0.0",              // 0.0.0.0/8 "this host"
+      "[::]",                 // IPv6 unspecified
+      "[::ffff:127.0.0.1]",   // IPv4-mapped IPv6 loopback (-> ::ffff:7f00:1)
+      "[::ffff:10.0.0.1]",    // IPv4-mapped IPv6 private
+    ]) {
+      assert.strictEqual(isPrivateHost(hostOf(h)), true, `${h} must be blocked`);
+    }
+  });
+
+  test("still rejects the classic private/loopback/link-local ranges", () => {
+    for (const h of [
+      "127.0.0.1", "10.0.0.1", "192.168.1.1", "172.16.0.1", "172.31.255.255",
+      "169.254.0.1", "169.254.169.254", "[::1]", "[fe80::1]", "localhost",
+      "metadata.google.internal",
+    ]) {
+      assert.strictEqual(isPrivateHost(hostOf(h)), true, `${h} must be blocked`);
+    }
+  });
+
+  test("does NOT block legitimate public destinations", () => {
+    for (const h of [
+      "example.com", "amazon.com", "8.8.8.8", "1.1.1.1",
+      "11.0.0.1",        // 11.x is public (not 10.x)
+      "172.32.0.1",      // just outside the 172.16-31 private block
+      "172.15.0.1",      // just below it
+    ]) {
+      assert.strictEqual(isPrivateHost(hostOf(h)), false, `${h} must be allowed`);
+    }
+  });
+
+  test("empty/garbage hostname is not private (caller handles invalid URLs)", () => {
+    assert.strictEqual(isPrivateHost(""), false);
+    assert.strictEqual(isPrivateHost(undefined), false);
   });
 });
