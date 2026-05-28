@@ -10,9 +10,11 @@
  * The user has three actions:
  *   accept  — applies the proposed pref change, records 'accept'.
  *   decline — leaves the pref unchanged, records 'decline'.
- *   dismiss — leaves the pref unchanged, records 'dismiss'. Treated as
- *             "not now"; the banner does not re-show within the same
- *             upgrade window.
+ *   dismiss — leaves the pref unchanged, records 'dismiss'. Like decline, a
+ *             recorded dismiss is terminal for this migration: the evaluator
+ *             skips any recorded response so the banner does not re-show for
+ *             it. (A true transient "not now" would require NOT persisting
+ *             dismiss — see #736 for that follow-up.)
  *
  * Banner copy is sourced via i18n. Each MigrationSpec entry's
  * `bannerCopyKey` is treated as a *prefix*: the title comes from
