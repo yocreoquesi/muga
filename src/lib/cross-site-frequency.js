@@ -110,6 +110,21 @@ export const CANDIDATE_ENTROPY_THRESHOLD = 3.0;
  */
 export const CANDIDATE_NAME_LENGTH_MIN = 4;
 
+// ── Per-entry storage ceilings (issue #731) ──────────────────────────────────
+//
+// MAX_TRACKED_PARAMS bounds the NUMBER of param names, but each entry's
+// `values`/`domains` arrays were unbounded — a single high-cardinality param
+// (gclid, fbclid, UUID-valued id) that mints a fresh value per page load would
+// accrue distinct hashes forever. Once an array is past the candidate
+// threshold, the classification verdict is identical whether it holds 12 or
+// 100,000 entries, so a small buffer above the threshold is LOSSLESS while
+// capping storage and keeping the O(n) includes() scans in observe() cheap.
+const PER_ENTRY_BUFFER = 2;
+/** Hard ceiling on distinct value-hashes retained per param. */
+export const MAX_VALUES_PER_PARAM = CANDIDATE_VALUE_THRESHOLD + PER_ENTRY_BUFFER;
+/** Hard ceiling on distinct first-party domains retained per param. */
+export const MAX_DOMAINS_PER_PARAM = CANDIDATE_DOMAIN_THRESHOLD + PER_ENTRY_BUFFER;
+
 // ── Shannon entropy helper ───────────────────────────────────────────────────
 
 /**
@@ -278,6 +293,18 @@ export function createTracker({ adapter, hasher, enabled = true }) {
     }
     if (!entry.domains.includes(domain)) entry.domains.push(domain);
     if (!entry.values.includes(hash)) entry.values.push(hash);
+    // Per-entry ceiling (#731). Classification only ever needs to know the
+    // count CROSSED the candidate thresholds — once an array is past its
+    // threshold (+ a small buffer), retaining more distinct hashes/domains adds
+    // zero classification value while growing storage unbounded (a single
+    // high-cardinality param like gclid would otherwise accrue ~6.4MB of hex)
+    // and degrading the O(n) includes() scans above. Clamp to the newest entries.
+    if (entry.values.length > MAX_VALUES_PER_PARAM) {
+      entry.values.splice(0, entry.values.length - MAX_VALUES_PER_PARAM);
+    }
+    if (entry.domains.length > MAX_DOMAINS_PER_PARAM) {
+      entry.domains.splice(0, entry.domains.length - MAX_DOMAINS_PER_PARAM);
+    }
     // Backfill defensive defaults for entries persisted by an older version of
     // this module (pre-#532). Cheap and idempotent.
     if (typeof entry.firstSeen !== "number") entry.firstSeen = now;
