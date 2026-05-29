@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/badge/version-2.1.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-3730_pass-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
-# MUGA: The denoise extension for the web
+# MUGA: The URL denoise extension for the web
 
 ### Install now
 
