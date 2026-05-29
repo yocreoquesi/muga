@@ -172,3 +172,57 @@ describe("#741 — onboarding consent write ordering", () => {
     assert.ok(!/startBtn\.disabled\s*=\s*false/.test(tail), "must not use the no-op startBtn.disabled = false");
   });
 });
+
+describe("#728 item 25 — gated-CTA flash + aria-live announcement", () => {
+  const ONBOARDING_HTML = readFileSync(
+    join(__dirname, "../../src/onboarding/onboarding.html"),
+    "utf8",
+  );
+
+  test("flashTosGate exists and re-triggers the flash animation", () => {
+    const fnIdx = ONBOARDING_JS.indexOf("function flashTosGate(");
+    assert.ok(fnIdx !== -1, "flashTosGate must exist in onboarding.js");
+    const body = ONBOARDING_JS.slice(fnIdx, fnIdx + 700);
+    assert.ok(
+      /classList\.remove\(\s*["']is-flashing["']\s*\)/.test(body),
+      "flashTosGate must remove is-flashing to reset the animation",
+    );
+    assert.ok(
+      /void\s+tosLabel\.offsetWidth/.test(body),
+      "flashTosGate must force a reflow so the flash re-triggers on consecutive clicks",
+    );
+    assert.ok(
+      /classList\.add\(\s*["']is-flashing["']\s*\)/.test(body),
+      "flashTosGate must add is-flashing to flash the gate",
+    );
+  });
+
+  test("flashTosGate re-writes #cta-gated-msg on a tick so aria-live re-announces", () => {
+    const fnIdx = ONBOARDING_JS.indexOf("function flashTosGate(");
+    const body = ONBOARDING_JS.slice(fnIdx, fnIdx + 700);
+    assert.ok(
+      /ctaGatedMsg\.textContent\s*=\s*""/.test(body),
+      "flashTosGate must clear #cta-gated-msg first",
+    );
+    assert.ok(
+      /setTimeout\([\s\S]{0,160}ctaGatedMsg\.textContent\s*=\s*t\(\s*["']ob_cta_gated_msg["']/.test(body),
+      "flashTosGate must re-write the gated message on a tick so a live region announces even when the text is unchanged",
+    );
+  });
+
+  test("#cta-gated-msg is an aria-live region in onboarding.html", () => {
+    const tagMatch = ONBOARDING_HTML.match(/<p[^>]+id="cta-gated-msg"[^>]*>/);
+    assert.ok(tagMatch, "#cta-gated-msg must exist as a <p>");
+    assert.ok(
+      /aria-live="polite"/.test(tagMatch[0]),
+      "#cta-gated-msg must be an aria-live=polite region for screen-reader announcement",
+    );
+  });
+
+  test("the start button's gated path triggers flashTosGate when ToS is unchecked", () => {
+    assert.ok(
+      /if\s*\(\s*!tosCheck\.checked\s*\)\s*\{[\s\S]{0,80}flashTosGate\(\)/.test(ONBOARDING_JS),
+      "an unchecked ToS on start-click must trigger flashTosGate()",
+    );
+  });
+});

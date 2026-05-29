@@ -48,6 +48,26 @@ function installChromeStub() {
   return { localStore, syncStore };
 }
 
+/**
+ * Installs a chrome stub whose storage callbacks fail by setting
+ * chrome.runtime.lastError (the way the real chrome.* APIs signal errors).
+ * lastError is set just for the duration of the synchronous callback, then
+ * cleared — mirroring chrome's per-call error surface.
+ */
+function installFailingChromeStub(failMessage = "storage quota exceeded") {
+  const fail = (...args) => {
+    const cb = args[args.length - 1];
+    chrome.runtime.lastError = { message: failMessage };
+    if (cb) cb({});
+    chrome.runtime.lastError = null;
+  };
+  const area = { get: fail, set: fail, remove: fail };
+  globalThis.chrome = {
+    storage: { local: area, sync: area },
+    runtime: { lastError: null },
+  };
+}
+
 describe("consent-storage", () => {
   let stores;
   let consentStorage;
@@ -115,5 +135,42 @@ describe("consent-storage", () => {
       consentDate: null,
     });
     assert.equal(stores.localStore.has("mugaConsent"), false);
+  });
+});
+
+describe("consent-storage — error / reject paths (#728 items 15/16)", () => {
+  let consentStorage;
+
+  beforeEach(async () => {
+    installFailingChromeStub();
+    consentStorage = await import("../../src/lib/consent-storage.js?cb=" + Math.random());
+  });
+
+  test("getConsent swallows a storage error and returns CONSENT_DEFAULTS (item 15)", async () => {
+    // Documented contract: getConsent never throws — on any error it returns
+    // the defaults so callers render the never-onboarded state safely.
+    const c = await consentStorage.getConsent();
+    assert.deepEqual(c, {
+      onboardingDone: false,
+      consentVersion: null,
+      consentDate: null,
+    });
+  });
+
+  test("setConsent rejects when the storage write fails (item 16)", async () => {
+    // setConsent must propagate the failure so onboarding can surface a save
+    // error. The reject value is chrome.runtime.lastError (a plain object, not
+    // an Error), so assert it rejects and carries the failure message.
+    await assert.rejects(
+      () => consentStorage.setConsent({ onboardingDone: true }),
+      (err) => err && err.message === "storage quota exceeded",
+    );
+  });
+
+  test("clearConsent rejects when the storage remove fails (item 16)", async () => {
+    await assert.rejects(
+      () => consentStorage.clearConsent(),
+      (err) => err && err.message === "storage quota exceeded",
+    );
   });
 });
