@@ -376,3 +376,27 @@ describe("T3.3 chrome.permissions.request is the first await in the enable branc
     );
   });
 });
+
+describe("addEntry — list-size caps mirror the import path (#728 item 28)", () => {
+  test("addEntry enforces the per-list cap before pushing", () => {
+    // The import path caps blacklist/whitelist at 500 and customParams at 200
+    // (options.js: `data.blacklist.length > 500 || ... customParams.length > 200`).
+    // The manual UI add path (addEntry) must apply the same ceiling.
+    assert.ok(
+      optionsJs.includes('listKey === "customParams" ? 200 : 500'),
+      "addEntry must derive the per-list cap (200 for customParams, 500 otherwise)"
+    );
+    assert.ok(
+      optionsJs.includes("list.length >= cap"),
+      "addEntry must reject when the list already sits at its cap"
+    );
+  });
+
+  test("import path still enforces its 500/500/200 caps (parity anchor)", () => {
+    assert.ok(
+      optionsJs.includes("data.blacklist.length > 500") &&
+        optionsJs.includes("data.customParams.length > 200"),
+      "import-path caps must remain the source of truth the UI path mirrors"
+    );
+  });
+});
