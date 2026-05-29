@@ -791,8 +791,10 @@ function initExportImport() {
       if (typeof data.toastDuration === "number") {
         toSave.toastDuration = Math.max(5, Math.min(60, data.toastDuration));
       }
-      // Handle language (any supported locale)
-      if (["en", "es", "pt", "de"].includes(data.language)) {
+      // Handle language (any supported locale) — validate against SUPPORTED_LANGS
+      // so codes added after the legacy en/es/pt/de set (fr/it/ja, #707) survive
+      // an export→import round-trip instead of being silently dropped.
+      if (SUPPORTED_LANGS.some(l => l.code === data.language)) {
         toSave.language = data.language;
       }
       await setPrefs(toSave);

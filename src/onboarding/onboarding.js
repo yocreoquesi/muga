@@ -84,6 +84,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (featuresSection) featuresSection.hidden = true;
     if (reonboardDelta) {
       reonboardDelta.hidden = false;
+      // Move focus to the revealed banner so screen-reader users land on (and
+      // hear) the terms-changed notice instead of it being silently shown (#740).
+      reonboardDelta.focus();
       const clauseKeys = clausesForDelta({
         acceptedVersion: policy.acceptedVersion,
         requiredVersion: policy.requiredVersion,
@@ -103,7 +106,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Hard re-onboard: feature explainer hidden; banner explains the
     // material change. Full ToS link + checkbox + button stay visible.
     if (featuresSection) featuresSection.hidden = true;
-    if (reonboardMaterial) reonboardMaterial.hidden = false;
+    if (reonboardMaterial) {
+      reonboardMaterial.hidden = false;
+      // Material mode is a hard gate the user MUST act on — move focus to the
+      // alert banner so it is announced and reachable, not silently shown (#740).
+      reonboardMaterial.focus();
+    }
   }
 
   // --- Per-device confirmation prompt setup (#364) ------------------------
@@ -184,16 +192,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         syncWrites.injectOwnAffiliate = affiliateCheck.checked;
       }
 
-      // Consent record carries the active required version — moves the
-      // user forward whether this is fresh, delta, or material acceptance.
-      // Under test fixtures (#407), activeRequiredVersion may differ from
-      // the static REQUIRED_CONSENT_VERSION export.
-      const ops = [
-        setConsent({
-          onboardingDone: true,
-          consentVersion: activeRequiredVersion,
-          consentDate:    Date.now(),
-        }),
+      // #741: write sync prefs + per-device overrides FIRST, and only mark
+      // consent complete (onboardingDone:true) AFTER they succeed. setConsent
+      // writes mugaConsent to storage.local independently, so running it in
+      // parallel meant a sync-write failure (quota / MAX_WRITE_OPERATIONS) left
+      // the local record with onboardingDone:true permanently — the user was
+      // told the save failed yet was treated as fully onboarded, with no
+      // rollback. Sequencing makes onboardingDone the last write, so any
+      // failure aborts before the gate flips and the user can safely retry.
+      const preConsentOps = [
         new Promise((resolve, reject) => {
           chrome.storage.sync.set(syncWrites, () => {
             if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
@@ -202,9 +209,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         }),
       ];
       if (Object.keys(overrideUpdates).length > 0) {
-        ops.push(setOverrides(overrideUpdates));
+        preConsentOps.push(setOverrides(overrideUpdates));
       }
-      await Promise.all(ops);
+      await Promise.all(preConsentOps);
+
+      // Consent record carries the active required version — moves the user
+      // forward whether this is fresh, delta, or material acceptance. Under
+      // test fixtures (#407), activeRequiredVersion may differ from the static
+      // REQUIRED_CONSENT_VERSION export. Written LAST (the gate flag).
+      await setConsent({
+        onboardingDone: true,
+        consentVersion: activeRequiredVersion,
+        consentDate:    Date.now(),
+      });
 
       // Persistence is done. Now confirm visually + try to close.
       // Firefox refuses window.close() on tabs it did not open via JS, so
@@ -217,7 +234,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       console.error("[MUGA] onboarding save:", err);
       startBtn.textContent = t("ob_save_error", lang);
-      startBtn.disabled = false;
+      // The button is gated via the aria-disabled attribute (updateButton),
+      // not the .disabled property, so the previous reset here was a no-op.
+      // Re-sync the gate to the checkbox so the user can retry (#741).
+      updateButton();
     }
   });
 });

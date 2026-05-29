@@ -44,6 +44,13 @@ export const MAX_PARAM_LEN = 64;
 
 /** Payload freshness window in days (REQ-VALIDATE-8). */
 export const STALE_DAYS = 180;
+/**
+ * Upper bound on how far a payload's `published` date may lead the current
+ * clock (#738). Without it, a future-dated payload makes (now - published)
+ * negative — never exceeding STALE_DAYS — so it would read as "fresh" forever,
+ * defeating the replay/restamp defense. 24h absorbs legitimate clock skew.
+ */
+export const CLOCK_SKEW_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 
 /** Allowed param format (REQ-VALIDATE-2). */
 export const PARAM_FORMAT_RE = /^[a-zA-Z0-9_.\-]+$/;
@@ -269,10 +276,13 @@ export function validatePayloadShape(obj) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
 
-  // published: must be a string
+  // published: must be a NON-EMPTY string. An empty/whitespace string is
+  // falsy, which would make the validateParams freshness check skip entirely,
+  // letting a signed-but-undated payload bypass the staleness guard (#738).
   if (
     !Object.prototype.hasOwnProperty.call(obj, "published") ||
-    typeof obj.published !== "string"
+    typeof obj.published !== "string" ||
+    obj.published.trim() === ""
   ) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
@@ -348,10 +358,18 @@ export function validateParams(params, stored, nowMs, opts = {}) {
     return { ok: false, code: ERR.VERSION_REGRESSION };
   }
 
-  // 6. Freshness (STALE_PAYLOAD)
+  // 6. Freshness (STALE_PAYLOAD). Reject payloads that are too OLD (beyond the
+  // staleness window) AND too far in the FUTURE (#738): a future `published`
+  // makes (nowMs - publishedMs) negative — never exceeding the window — so it
+  // would otherwise read as fresh indefinitely. CLOCK_SKEW_TOLERANCE_MS allows
+  // legitimate skew while closing the replay-restamp bypass.
   if (newPublished) {
     const publishedMs = Date.parse(newPublished);
-    if (isNaN(publishedMs) || (nowMs - publishedMs) > STALE_DAYS * 24 * 60 * 60 * 1000) {
+    if (
+      isNaN(publishedMs) ||
+      (nowMs - publishedMs) > STALE_DAYS * 24 * 60 * 60 * 1000 ||
+      (publishedMs - nowMs) > CLOCK_SKEW_TOLERANCE_MS
+    ) {
       return { ok: false, code: ERR.STALE_PAYLOAD };
     }
   }
