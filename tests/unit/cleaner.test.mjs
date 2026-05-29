@@ -1731,6 +1731,37 @@ describe("Bug #187 — deep subdomain matching in getPatternsForHost", () => {
 });
 
 // ---------------------------------------------------------------------------
+// #734 — isAliExpressItemPage host check must be anchored (no lookalikes)
+//
+// The old /aliexpress\.[a-z.]+$/ matched as a substring, so lookalike hosts
+// triggered the wholesale param strip on unrelated domains. The check now
+// mirrors domainMatches(): aliexpress.com or *.aliexpress.com only.
+// ---------------------------------------------------------------------------
+describe("#734 — AliExpress item-page host anchoring", () => {
+  const KEEP = "https://%HOST%/item/123.html?keep=1&utm_source=x";
+
+  test("lookalike hosts do NOT trigger the wholesale strip", () => {
+    for (const host of ["myaliexpress.com", "notaliexpress.com", "aliexpress.com.attacker.net"]) {
+      const { cleanUrl } = processUrl(KEEP.replace("%HOST%", host), PREFS);
+      assert.ok(
+        new URL(cleanUrl).searchParams.has("keep"),
+        `${host} must NOT be treated as an AliExpress item page (keep must survive)`
+      );
+    }
+  });
+
+  test("genuine aliexpress.com and subdomains still wholesale-strip", () => {
+    for (const host of ["www.aliexpress.com", "aliexpress.com", "es.aliexpress.com"]) {
+      const { cleanUrl } = processUrl(KEEP.replace("%HOST%", host), PREFS);
+      assert.ok(
+        !new URL(cleanUrl).searchParams.has("keep"),
+        `${host}/item/ must wholesale-strip all non-preserved params`
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Bug #229 — Toast Allow/Block must store entries in domain::param::value format
 // ---------------------------------------------------------------------------
 describe("Bug #229 — toast whitelist/blacklist entry format", () => {

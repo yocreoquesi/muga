@@ -241,7 +241,12 @@ function detectPreservedAffiliate(url, patterns) {
  * Search and category pages (preserveParams in domain-rules) are excluded.
  */
 function isAliExpressItemPage(hostname, pathname) {
-  if (!/aliexpress\.[a-z.]+$/.test(hostname)) return false;
+  // Mirror domainMatches() for the host check: the previous unanchored regex
+  // /aliexpress\.[a-z.]+$/ matched as a substring, so lookalikes like
+  // myaliexpress.com, notaliexpress.com, and aliexpress.com.attacker.net all
+  // passed — triggering the wholesale param strip on unrelated domains.
+  const host = hostname.replace(/^www\./, "");
+  if (host !== "aliexpress.com" && !host.endsWith(".aliexpress.com")) return false;
   return /^\/item\/\d+\.html?\/?$/i.test(pathname);
 }
 
