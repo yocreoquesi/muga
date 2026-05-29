@@ -3160,3 +3160,49 @@ describe("Bookshop.org MUGA affiliate injection", () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+// Repeated query-param keys — regression #733
+//
+// searchParams.keys() yields one entry per OCCURRENCE of a repeated key, but
+// delete() removes ALL occurrences on the first pass. Iterating raw keys would
+// over-count junkRemoved/badge and record a phantom empty value (get() returns
+// null after delete) into the frequency tracker. The strip loop now de-dups
+// keys with a Set, so each distinct param is counted once with its first value.
+// ---------------------------------------------------------------------------
+describe("Repeated query-param keys (#733)", () => {
+  test("a repeated tracking key is removed and counted exactly once", () => {
+    const { cleanUrl, removedTracking, junkRemoved } = processUrl(
+      "https://example.com/?utm_source=a&utm_source=b",
+      PREFS
+    );
+    assert.equal(cleanUrl, "https://example.com/");
+    assert.deepEqual(removedTracking, ["utm_source"], "must appear once, not twice");
+    assert.equal(junkRemoved, 1, "duplicate occurrence must not inflate junkRemoved");
+  });
+
+  test("frequency tracker receives the first value once, never a phantom empty value", () => {
+    const calls = [];
+    const spy = { observe: (domain, paramName, value) => { calls.push([domain, paramName, value]); } };
+    processUrl(
+      "https://example.com/?utm_source=a&utm_source=b",
+      PREFS,
+      [],
+      undefined,
+      spy
+    );
+    assert.equal(calls.length, 1, "observe must fire exactly once for the de-duped key");
+    assert.deepEqual(calls[0], ["example.com", "utm_source", "a"], "must record the first value, not the phantom empty string");
+    assert.ok(!calls.some(([, , v]) => v === ""), "no empty-value observation may be recorded");
+  });
+
+  test("mixed unique + repeated keys count correctly", () => {
+    const { removedTracking, junkRemoved } = processUrl(
+      "https://example.com/?utm_source=a&utm_source=b&utm_medium=cpc",
+      PREFS
+    );
+    assert.equal(junkRemoved, 2);
+    assert.equal(removedTracking.filter(p => p === "utm_source").length, 1);
+    assert.ok(removedTracking.includes("utm_medium"));
+  });
+});

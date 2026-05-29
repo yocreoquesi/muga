@@ -293,7 +293,12 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
 
   const removed = [];
   const removedValues = [];
-  for (const param of [...url.searchParams.keys()]) {
+  // De-dup the key list: searchParams.keys() yields one entry PER occurrence of
+  // a repeated key (?utm=a&utm=b → "utm" twice), but delete() removes ALL
+  // occurrences on the first pass. Without the Set, the second iteration would
+  // re-push the name (over-counting junkCount/badge) and record a phantom empty
+  // value (get() returns null after delete). The first get() captures value "a".
+  for (const param of new Set(url.searchParams.keys())) {
     const lower = param.toLowerCase();
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
@@ -782,7 +787,10 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
     // Without the policy gate, this wholesale strip kills aff_trace_key + family
     // before the AliExpress front-end tag can consume them on landing.
     const { preserved } = getDomainParamSets(hostname, domainRules);
-    for (const param of [...url.searchParams.keys()]) {
+    // De-dup keys (see stripTrackingParams): delete() removes all occurrences,
+    // so iterating raw keys() would double-count repeated keys and push a
+    // phantom empty value on the second pass.
+    for (const param of new Set(url.searchParams.keys())) {
       const lower = param.toLowerCase();
       if (preserved.has(lower)) continue;
       if (landingPolicy.preserve.has(lower)) continue;
