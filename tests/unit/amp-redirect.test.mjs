@@ -88,6 +88,8 @@ function isAmpPage({ hasAmpAttr, hasLightningAttr, currentUrl }) {
  */
 function shouldRedirect(currentUrl, canonicalUrl) {
   if (canonicalUrl === currentUrl) return false;
+  // Mirrors the 2000-char redirect cap in the source (#728 item 17).
+  if (canonicalUrl.length > 2000) return false;
   try {
     const canonical_ = new URL(canonicalUrl);
     const current_ = new URL(currentUrl);
@@ -184,6 +186,16 @@ describe("isAmpPage — AMP detection", () => {
   test("/vampire does NOT trigger AMP detection (#189)", () => {
     assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/vampire/castle" }), false);
   });
+
+  test("?amplitude does NOT trigger AMP detection — no '?amp' substring false positive (#728 item 18)", () => {
+    // The retired search.includes("?amp") condition matched ?amplitude / ?ampersand.
+    // searchParams.has("amp") correctly does not — the query key is "amplitude".
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/article?amplitude=1" }), false);
+  });
+
+  test("?ampersand does NOT trigger AMP detection — no '?amp' substring false positive (#728 item 18)", () => {
+    assert.equal(isAmpPage({ ...base, currentUrl: "https://example.com/article?ampersand=true" }), false);
+  });
 });
 
 describe("shouldRedirect — safety checks", () => {
@@ -260,6 +272,15 @@ describe("shouldRedirect — safety checks", () => {
       false
     );
   });
+
+  test("blocks redirect to a canonical URL exceeding the 2000-char cap (#728 item 17)", () => {
+    const longCanonical = "https://example.com/" + "a".repeat(2100);
+    assert.ok(longCanonical.length > 2000);
+    assert.equal(
+      shouldRedirect("https://amp.example.com/article", longCanonical),
+      false
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -312,6 +333,26 @@ describe("C11 — replica sync verification (amp-redirect.js)", () => {
     assert.ok(
       AMP_REDIRECT_SOURCE.includes("canonicalUrl === currentUrl"),
       "Source must contain the canonical === current check (no redirect when equal)"
+    );
+  });
+
+  test("source does NOT contain the retired '?amp' substring conditions (#728 item 18)", () => {
+    // These matched ?amplitude / ?ampersand as false positives and were redundant
+    // with searchParams.has("amp"). Pinning their ABSENCE stops the drift recurring.
+    assert.ok(
+      !AMP_REDIRECT_SOURCE.includes('search.includes("?amp")'),
+      "Source must not reintroduce search.includes(\"?amp\") (false-positive prone)"
+    );
+    assert.ok(
+      !AMP_REDIRECT_SOURCE.includes('search.startsWith("?amp")'),
+      "Source must not reintroduce search.startsWith(\"?amp\") (false-positive prone)"
+    );
+  });
+
+  test("source enforces the 2000-char redirect cap before replace (#728 item 17)", () => {
+    assert.ok(
+      AMP_REDIRECT_SOURCE.includes("canonicalUrl.length > 2000"),
+      "Source must cap canonicalUrl length before window.location.replace"
     );
   });
 });
