@@ -166,7 +166,7 @@ function extractFromUrlAfterQuery() {
   };
 }
 
-import { WRAPPERS_RAW } from "../vendor/caps-spec/wrappers.data.js";
+import { WRAPPERS_RAW } from "../rules/wrappers.data.js";
 import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
 
 /**

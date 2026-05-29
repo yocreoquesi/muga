@@ -28,7 +28,7 @@
  * then `npm run sync:manifest` updates the vendored module.
  */
 
-import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../vendor/caps-spec/manifest.data.js";
+import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../rules/manifest.data.js";
 
 // Click IDs declared as required-at-landing in REDIRECT_NETWORK_PATTERNS.landingParams
 // (below) are intentionally EXCLUDED from TRACKING_PARAMS per matrix v1.0

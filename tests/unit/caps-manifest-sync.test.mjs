@@ -18,7 +18,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../../src/vendor/caps-spec/manifest.data.js";
+import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../../src/rules/manifest.data.js";
 
 const REQUIRED_FIELDS = [
   "id",
