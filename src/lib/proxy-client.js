@@ -144,6 +144,7 @@ export async function verifyUnwrapResponse(payload, publicKey) {
  * address that should never be a valid affiliate redirect destination.
  *
  * Covers:
+ *   - 0.0.0.0/8        — "this host" (routes to local host on Linux/macOS)
  *   - 127.0.0.0/8      — IPv4 loopback
  *   - 10.0.0.0/8       — RFC 1918 private
  *   - 192.168.0.0/16   — RFC 1918 private
@@ -151,6 +152,8 @@ export async function verifyUnwrapResponse(payload, publicKey) {
  *   - 169.254.0.0/16   — link-local / APIPA
  *   - ::1              — IPv6 loopback
  *   - [::1]            — IPv6 loopback in bracket notation
+ *   - ::               — IPv6 unspecified (routes to local host)
+ *   - ::ffff:a.b.c.d   — IPv4-mapped IPv6 (loopback/private recovered & checked)
  *   - fe80::/10        — IPv6 link-local
  *   - 169.254.169.254  — Cloud instance metadata (AWS, GCP, Azure)
  *   - metadata.google.internal — GCP metadata
@@ -159,29 +162,57 @@ export async function verifyUnwrapResponse(payload, publicKey) {
  * @param {string} hostname - Hostname from URL.hostname (lower-cased by URL parser).
  * @returns {boolean}
  */
-function isPrivateHost(hostname) {
+function isPrivateIPv4(a, b) {
+  if (a === 0) return true;                          // 0.0.0.0/8 ("this host")
+  if (a === 127) return true;                        // 127.0.0.0/8 loopback
+  if (a === 10) return true;                         // 10.0.0.0/8
+  if (a === 192 && b === 168) return true;           // 192.168.0.0/16
+  if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16-31.0.0/12
+  if (a === 169 && b === 254) return true;           // 169.254.0.0/16 (link-local)
+  return false;
+}
+
+export function isPrivateHost(hostname) {
   if (!hostname) return false;
 
   // Strip brackets from IPv6 literals like [::1]
   const h = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
 
   if (h === "localhost") return true;
-  if (h === "::1") return true;
+  if (h === "::1") return true;          // IPv6 loopback
+  if (h === "::") return true;           // IPv6 unspecified (routes to local host)
   if (h === "metadata.google.internal") return true;
   if (h === "169.254.169.254") return true;
 
   // IPv6 link-local: fe80::/10
   if (/^fe[89ab][0-9a-f]:/i.test(h)) return true;
 
+  // IPv4-mapped IPv6 (::ffff:a.b.c.d, or the compact hex form ::ffff:7f00:1
+  // that the WHATWG URL parser emits for ::ffff:127.0.0.1). Recover the
+  // embedded IPv4 octets and apply the same private-range checks so a mapped
+  // loopback/private address cannot slip past the IPv6 branch.
+  const mapped = h.match(/^::ffff:(.+)$/i);
+  if (mapped) {
+    const rest = mapped[1];
+    let a, b;
+    if (rest.includes(".")) {
+      const p = rest.split(".");
+      if (p.length === 4) [a, b] = p.map(Number);
+    } else {
+      const g = rest.split(":");
+      if (g.length === 2) {
+        const hi = parseInt(g[0], 16);
+        if (Number.isFinite(hi)) { a = hi >> 8; b = hi & 0xff; }
+      }
+    }
+    if (a !== undefined && isPrivateIPv4(a, b)) return true;
+  }
+
   // IPv4 checks
   const parts = h.split(".");
   if (parts.length === 4) {
     const [a, b] = parts.map(Number);
-    if (a === 127) return true;                        // 127.0.0.0/8
-    if (a === 10) return true;                         // 10.0.0.0/8
-    if (a === 192 && b === 168) return true;           // 192.168.0.0/16
-    if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16-31.0.0/12
-    if (a === 169 && b === 254) return true;           // 169.254.0.0/16 (link-local)
+    if (isPrivateIPv4(a, b)) return true;
   }
 
   return false;
