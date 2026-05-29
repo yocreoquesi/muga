@@ -77,6 +77,10 @@ function extractFromParam(paramName) {
   return (url) => {
     const value = url.searchParams.get(paramName);
     if (!value) return null;
+    // Enforce the redirect-destination length cap on the explicit path too,
+    // not just the generic heuristic. AGENTS.md: destinations must be ≤ 2000
+    // chars; the local-unwrap flow has no downstream cap, so guard here.
+    if (value.length > GENERIC_DEST_LENGTH_CAP) return null;
     try {
       const dest = new URL(value);
       if (dest.protocol !== "https:" && dest.protocol !== "http:") return null;
@@ -107,6 +111,8 @@ function extractFromAnyParam(paramNames) {
     for (const name of paramNames) {
       const value = url.searchParams.get(name);
       if (!value) continue;
+      // Redirect-destination length cap (see extractFromParam).
+      if (value.length > GENERIC_DEST_LENGTH_CAP) continue;
       try {
         const dest = new URL(value);
         if (dest.protocol !== "https:" && dest.protocol !== "http:") continue;
@@ -145,6 +151,8 @@ function extractFromUrlAfterQuery() {
     // url.search includes the leading "?"; strip it. Empty (no query) → null.
     const raw = url.search.startsWith("?") ? url.search.slice(1) : url.search;
     if (!raw) return null;
+    // Redirect-destination length cap (see extractFromParam).
+    if (raw.length > GENERIC_DEST_LENGTH_CAP) return null;
     // Cheap pre-check: must start with http:// or https:// to be a destination.
     // Avoids wasting a try/catch on tracker tokens like "?id=abc".
     if (!/^https?:\/\//i.test(raw)) return null;
