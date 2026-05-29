@@ -13,11 +13,9 @@
  *   npm run build:dnr
  *   git add src/rules/wrapper-dnr-rules.json
  *
- * and re-run the suite. The CI gate path was *not* configured for this
- * artifact at all (build:dnr is missing from .github/workflows/ci.yml's
- * sync checks — the gate at lines 33-48 only covers tracking-params.json
- * and cleaner-bundle.js); this is the only line of defense for #504's
- * artifact.
+ * and re-run the suite. CI also gates this artifact: .github/workflows/ci.yml
+ * runs `npm run build:dnr` and fails on any `git diff` in `src/rules/` (added
+ * in #722), so drift is caught both here and in the pipeline.
  */
 
 import { test } from "node:test";

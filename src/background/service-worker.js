@@ -1292,8 +1292,9 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
 }
 
 // --- Remote-rules deps factory ---
-// Builds the deps object for runRemoteRulesFetch. Centralised so onAlarm
-// and ENABLE_REMOTE_RULES message handler use exactly the same deps.
+// Builds the deps object for runRemoteRulesFetch. Centralised so the
+// ENABLE_REMOTE_RULES message handler and the startup/wake fetch paths
+// (maybeFetchRemoteRules) use exactly the same deps.
 //
 // Test-only key override (design §13.5, T7.2):
 //   When globalThis.__MUGA_TRUSTED_KEYS__ is set, use it instead of the
