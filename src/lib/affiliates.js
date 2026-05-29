@@ -28,7 +28,7 @@
  * then `npm run sync:manifest` updates the vendored module.
  */
 
-import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../vendor/caps-spec/manifest.data.js";
+import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../rules/manifest.data.js";
 
 // Click IDs declared as required-at-landing in REDIRECT_NETWORK_PATTERNS.landingParams
 // (below) are intentionally EXCLUDED from TRACKING_PARAMS per matrix v1.0
@@ -804,14 +804,13 @@ export const TRACKING_PARAM_CATEGORIES = {
 // ────────────────────────────────────────────────────────────────────────
 //
 // The program identity (id, name, domains, param) is sourced from
-// `vendor/caps-spec/manifest.data.js`. The per-host tag values MUGA
+// `src/rules/manifest.data.js`. The per-host tag values MUGA
 // injects on its own behalf live in OUR_TAGS below — they are
-// intentionally NOT in the open standard (per caps-spec design,
-// `ourTag` is per-implementer).
+// intentionally NOT in the rule artifact (`ourTag` is per-implementer).
 //
 // To add a NEW per-marketplace tag for an existing program: edit
-// OUR_TAGS only. To add a NEW program: land it in caps-spec first,
-// then run `npm run sync:manifest` to refresh the vendored data.
+// OUR_TAGS only. To add a NEW program: update the rule artifact and
+// regenerate via the rules pipeline.
 const OUR_TAGS = {
   "amazon-associates": {
     "amazon.com":   "muga0b-20",

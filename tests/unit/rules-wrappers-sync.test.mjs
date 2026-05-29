@@ -1,25 +1,21 @@
 /**
- * MUGA: src/vendor/caps-spec/wrappers.json sync invariants (issue #538).
+ * MUGA: rule artifact integrity invariants for src/rules/wrappers.json (issue #538, #715).
  *
- * The wrapper recipe table is sourced from the caps-spec normative artifact,
- * vendored under src/vendor/caps-spec/. These tests pin three invariants:
+ * These tests pin four invariants over muga's internal rule artifacts
+ * under src/rules/:
  *
- *   1. The vendored wrappers.json signature is valid Ed25519 against the
- *      pinned worker-pubkey.txt — proves the snapshot is authentic.
- *   2. wrappers.data.js (auto-generated, ESM-friendly) matches wrappers.json
+ *   1. wrappers.json signature is valid Ed25519 against the pinned
+ *      worker-pubkey.txt — proves the artifact is authentic.
+ *   2. wrappers.data.js (ESM-friendly module) matches wrappers.json
  *      verbatim — proves no drift between the auditable source-of-truth and
  *      the module wrapper-engine.js actually imports.
  *   3. The engine's WRAPPERS table covers every spec entry id (modulo the
  *      documented skimlinks consolidation) and the spec→engine mapping is
  *      complete — catches any future spec entry that adds a new extractor
  *      kind not yet wired in the mapper.
+ *   4. Every extractor kind in the rule set is recognized by the mapper.
  *
- * If any of these fail, the typical fix is:
- *
- *     npm run sync:wrappers
- *     git add src/vendor/caps-spec/
- *     npm run build:content
- *     git add src/content/cleaner-bundle.js
+ * If any of these fail, regenerate via the rules pipeline.
  */
 
 import { test } from "node:test";
@@ -30,15 +26,15 @@ import { dirname, join } from "node:path";
 import { webcrypto as crypto } from "node:crypto";
 
 import { WRAPPERS } from "../../src/lib/wrapper-engine.js";
-import { WRAPPERS_RAW } from "../../src/vendor/caps-spec/wrappers.data.js";
+import { WRAPPERS_RAW } from "../../src/rules/wrappers.data.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const VENDOR = join(__dirname, "..", "..", "src", "vendor", "caps-spec");
+const RULES = join(__dirname, "..", "..", "src", "rules");
 
-test("vendored wrappers.json Ed25519 signature verifies against pinned worker-pubkey", async () => {
-  const body = readFileSync(join(VENDOR, "wrappers.json"));
-  const sigB64 = readFileSync(join(VENDOR, "wrappers.json.sig"), "utf8").trim();
-  const pubkeyB64 = readFileSync(join(VENDOR, "worker-pubkey.txt"), "utf8").trim();
+test("wrappers.json Ed25519 signature verifies against pinned worker-pubkey", async () => {
+  const body = readFileSync(join(RULES, "wrappers.json"));
+  const sigB64 = readFileSync(join(RULES, "wrappers.json.sig"), "utf8").trim();
+  const pubkeyB64 = readFileSync(join(RULES, "worker-pubkey.txt"), "utf8").trim();
 
   const pubkey = await crypto.subtle.importKey(
     "raw",
@@ -56,18 +52,18 @@ test("vendored wrappers.json Ed25519 signature verifies against pinned worker-pu
   assert.equal(
     ok,
     true,
-    "src/vendor/caps-spec/wrappers.json signature does not match worker-pubkey.txt — run `npm run sync:wrappers`",
+    "src/rules/wrappers.json signature does not match worker-pubkey.txt — regenerate via the rules pipeline",
   );
 });
 
 test("wrappers.data.js mirrors wrappers.json verbatim", () => {
   const json = JSON.parse(
-    readFileSync(join(VENDOR, "wrappers.json"), "utf8"),
+    readFileSync(join(RULES, "wrappers.json"), "utf8"),
   );
   assert.deepEqual(
     WRAPPERS_RAW,
     json,
-    "src/vendor/caps-spec/wrappers.data.js drifted from wrappers.json — run `npm run sync:wrappers`",
+    "src/rules/wrappers.data.js drifted from wrappers.json — regenerate via the rules pipeline",
   );
 });
 

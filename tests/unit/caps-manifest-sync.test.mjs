@@ -1,24 +1,18 @@
 /**
- * Phase 1 of #523 — invariant test for the vendored CAPS manifest.
+ * Invariant test for muga's internal CAPS manifest rule artifact (#523, #715).
  *
- * Pins the shape and roster of `src/vendor/caps-spec/manifest.data.js`,
- * which is produced by `scripts/sync-affiliate-manifest.mjs` from
- * `caps-spec/manifest.json` (filtered to `programType === "direct-injection"`).
+ * Pins the shape and roster of `src/rules/manifest.data.js` (muga's internal
+ * rule artifact). Filtered to `programType === "direct-injection"`.
  *
- * This phase does NOT touch any consumer of `AFFILIATE_PATTERNS`. The test
- * here ensures that when consumers DO start reading from the vendored
- * module (Phase 2 / Phase 3), the data is in the expected shape and
- * carries the expected program identities.
- *
- * If a future caps-spec release adds a new direct-injection program,
- * the EXPECTED_PROGRAM_IDS list below must be updated as part of that
- * sync — this test fails loudly so the change is reviewed, not silent.
+ * If a future rules update adds a new direct-injection program,
+ * the EXPECTED_PROGRAM_IDS list below must be updated — this test fails
+ * loudly so the change is reviewed, not silent.
  */
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../../src/vendor/caps-spec/manifest.data.js";
+import { CAPS_DIRECT_INJECTION_PROGRAMS } from "../../src/rules/manifest.data.js";
 
 const REQUIRED_FIELDS = [
   "id",
@@ -81,8 +75,7 @@ describe("vendored CAPS manifest — direct-injection programs (#523 phase 1)", 
     assert.deepStrictEqual(
       actual,
       expected,
-      "vendored roster differs from expected — re-run `npm run sync:manifest` after a caps-spec update, " +
-        "and update EXPECTED_PROGRAM_IDS in this test in the same PR.",
+      "roster differs from expected — update EXPECTED_PROGRAM_IDS in this test when the rules pipeline produces a new roster",
     );
   });
 

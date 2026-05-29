@@ -30,16 +30,7 @@ import { processUrl } from "../../src/lib/cleaner.js";
 import { PREF_DEFAULTS } from "../../src/lib/storage.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const VECTORS_PATH = join(
-  __dirname,
-  "..",
-  "..",
-  "src",
-  "vendor",
-  "caps-spec",
-  "test-vectors",
-  "contextual.json",
-);
+const VECTORS_PATH = join(__dirname, "..", "..", "tests", "rules-vectors", "contextual.json");
 const VECTORS = JSON.parse(readFileSync(VECTORS_PATH, "utf8"));
 
 function paramsOf(urlString) {

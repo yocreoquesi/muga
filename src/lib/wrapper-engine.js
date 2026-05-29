@@ -11,12 +11,12 @@
  * Pure module — no DOM, no network, no clock. Deterministic over its inputs
  * and the WRAPPERS configuration table.
  *
- * ── Source of truth (issue #538) ─────────────────────────────────────────
- * The recipe table is no longer authored inline. It is sourced from the
- * caps-spec normative artifact (`wrappers.json`, Ed25519-signed) vendored at
- * `src/vendor/caps-spec/wrappers.data.js` so it ships with the extension. To
- * edit a wrapper recipe, change it in
- * caps-spec, re-sign, then run `npm run sync:wrappers` to refresh the vendor.
+ * ── Source of truth (issue #538, #715) ──────────────────────────────────
+ * The recipe table is no longer authored inline. It is sourced from
+ * `src/rules/wrappers.json` (Ed25519-signed) and compiled to the ESM module
+ * `src/rules/wrappers.data.js` that ships with the extension. To edit a
+ * wrapper recipe, update the rule artifact and regenerate via the rules
+ * pipeline.
  *
  * ── Schema ────────────────────────────────────────────────────────────────
  * Each entry in WRAPPERS has the shape:
@@ -166,7 +166,7 @@ function extractFromUrlAfterQuery() {
   };
 }
 
-import { WRAPPERS_RAW } from "../vendor/caps-spec/wrappers.data.js";
+import { WRAPPERS_RAW } from "../rules/wrappers.data.js";
 import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
 
 /**
