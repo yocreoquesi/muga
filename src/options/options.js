@@ -647,6 +647,15 @@ function addEntry(listKey, inputId, containerId) {
     try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
     const list = prefs[listKey];
     if (!list.includes(value)) {
+      // Enforce the same per-list caps the import path applies (#728 item 28):
+      // customParams 200, blacklist/whitelist 500. Without this, the UI add path
+      // could grow a list past the size the importer would ever accept.
+      const cap = listKey === "customParams" ? 200 : 500;
+      if (list.length >= cap) {
+        showToast(t("import_error", _currentLang));
+        input.value = "";
+        return;
+      }
       list.push(value);
       try { await setPrefs({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
       renderList(containerId, list, listKey);

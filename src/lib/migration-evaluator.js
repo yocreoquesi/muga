@@ -77,6 +77,11 @@ export function evaluateMigrations({
     // would require NOT persisting it (a separate UX decision).
     if (responses[m.id]) continue;
 
+    // A migration with no proposedValue map cannot be evaluated for "already
+    // matches" — skip defensively instead of throwing on Object.keys(undefined).
+    // Matters at the override boundary (custom `migrations` arg in tests). (#728 item 21)
+    if (!m.proposedValue || typeof m.proposedValue !== "object") continue;
+
     // Pref state already matches the proposed value? Skip — nothing to ask.
     let alreadyMatches = true;
     for (const key of Object.keys(m.proposedValue)) {

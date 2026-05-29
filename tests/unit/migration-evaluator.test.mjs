@@ -27,6 +27,31 @@ const FIXTURE_NETWORK = {
   bannerCopyKey: "fixture_network_banner",
 };
 
+describe("evaluateMigrations — malformed migration guard (#728 item 21)", () => {
+  test("a migration with undefined proposedValue is skipped, not thrown", () => {
+    const malformed = {
+      id: "no-proposed-value",
+      fromVersion: "1.0.0",
+      toVersion: "2.0.0",
+      prefs: [],
+      networkRelated: false,
+      bannerCopyKey: "x",
+      // proposedValue intentionally omitted
+    };
+    let result;
+    assert.doesNotThrow(() => {
+      result = evaluateMigrations({
+        previousVersion: "1.0.0",
+        currentVersion: "2.0.0",
+        responses: {},
+        prefs: {},
+        migrations: [malformed],
+      });
+    });
+    assert.deepEqual(result, [], "a migration without proposedValue must be skipped, not presented");
+  });
+});
+
 describe("compareVersions", () => {
   test("returns negative for a < b", () => {
     assert.ok(compareVersions("1.0.0", "1.0.1") < 0);

@@ -18,6 +18,8 @@
  * `synced-affiliate-pref-guard.js`.
  */
 
+import { GUARDED_PREFS } from "./synced-affiliate-pref-guard.js";
+
 const STORAGE_KEY = "mugaPerDevicePrefs";
 
 /**
@@ -50,6 +52,18 @@ export async function getOverrides() {
 export async function setOverrides(partial) {
   if (!partial || typeof partial !== "object") {
     throw new TypeError("per-device-prefs.setOverrides: partial must be an object");
+  }
+  // Enforce the documented {Object<string, boolean>} shape (#728 item 24): only
+  // GUARDED_PREFS keys, only boolean values. Silently merging arbitrary keys or
+  // non-boolean values would smuggle junk into the local overrides map that
+  // getPrefs() later overlays on top of the synced prefs.
+  for (const [key, value] of Object.entries(partial)) {
+    if (!GUARDED_PREFS.includes(key)) {
+      throw new TypeError(`per-device-prefs.setOverrides: unknown override key "${key}"`);
+    }
+    if (typeof value !== "boolean") {
+      throw new TypeError(`per-device-prefs.setOverrides: override "${key}" must be a boolean`);
+    }
   }
   const current = await getOverrides();
   const next = { ...current, ...partial };
