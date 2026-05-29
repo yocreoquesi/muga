@@ -493,6 +493,49 @@ describe("createTracker — LRU and graduation interact cleanly", () => {
 });
 
 // ---------------------------------------------------------------------------
+// #731 — per-entry values/domains arrays must be bounded. Only the param
+// COUNT was LRU-capped; a single high-cardinality param could accrue unbounded
+// distinct hashes/domains. Capping just above the candidate thresholds is
+// lossless for classification (the caps exceed every threshold).
+// ---------------------------------------------------------------------------
+import {
+  MAX_VALUES_PER_PARAM,
+  MAX_DOMAINS_PER_PARAM,
+} from "../../src/lib/cross-site-frequency.js";
+
+describe("createTracker — per-entry array ceilings (#731)", () => {
+  test("caps sit above the candidate thresholds (lossless for classification)", () => {
+    assert.ok(MAX_VALUES_PER_PARAM >= CANDIDATE_VALUE_THRESHOLD);
+    assert.ok(MAX_DOMAINS_PER_PARAM >= CANDIDATE_DOMAIN_THRESHOLD);
+  });
+
+  test("a high-cardinality param does not grow values/domains without bound", async () => {
+    const { tracker, adapter } = makeTracker();
+    // One param, 60 distinct values across 20 distinct domains.
+    for (let i = 0; i < 60; i++) {
+      await tracker.observe(`d${i % 20}.com`, "gclid", `val-${i}`);
+    }
+    const stored = await adapter.get();
+    const entry = stored.params.gclid;
+    assert.ok(entry.values.length <= MAX_VALUES_PER_PARAM, `values capped (${entry.values.length} <= ${MAX_VALUES_PER_PARAM})`);
+    assert.ok(entry.domains.length <= MAX_DOMAINS_PER_PARAM, `domains capped (${entry.domains.length} <= ${MAX_DOMAINS_PER_PARAM})`);
+  });
+
+  test("capping does not change graduation — a candidate stays a candidate", async () => {
+    const { tracker } = makeTracker();
+    // Drive well past every candidate floor with high-entropy values.
+    for (let i = 0; i < 40; i++) {
+      await tracker.observe(`shop${i % 12}.com`, "trackingid", `b64-${i}-Zk9xQ${i}`);
+    }
+    // values capped at MAX_VALUES_PER_PARAM (>= CANDIDATE_VALUE_THRESHOLD) and
+    // domains capped at MAX_DOMAINS_PER_PARAM (>= CANDIDATE_DOMAIN_THRESHOLD),
+    // so the candidate verdict is preserved despite the clamp.
+    const state = await tracker.getState("trackingid");
+    assert.equal(state, "candidate", "param must still graduate to candidate after capping");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // #732 — observe() must serialize its read-modify-write so concurrent
 // fire-and-forget calls (recordFrequency loops over every stripped param
 // WITHOUT awaiting each) don't clobber each other's storage writes.
