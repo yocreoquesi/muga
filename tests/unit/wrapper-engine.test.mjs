@@ -368,3 +368,51 @@ describe("Wrapper Engine — integration with processUrl", () => {
     assert.equal(result.action, "untouched");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Redirect-destination length cap on the EXPLICIT extractors — regression #730
+//
+// AGENTS.md: redirect destinations must be ≤ 2000 chars. The generic heuristic
+// enforced this, but the three explicit extractors (extractFromParam,
+// extractFromAnyParam, extractFromUrlAfterQuery) validated protocol only. An
+// over-long destination would be returned by unwrap() and fed into navigation,
+// bypassing the contract. These tests pin the cap on every explicit path.
+// ---------------------------------------------------------------------------
+describe("Wrapper Engine — redirect destination length cap (#730)", () => {
+  const overLong = "https://example.com/" + "a".repeat(2100); // > 2000 chars
+  const withinCap = "https://example.com/" + "a".repeat(50);
+  assert.ok(overLong.length > 2000 && withinCap.length <= 2000, "fixture sanity");
+
+  test("extractFromParam (l.facebook.com ?u=): over-long destination is rejected", () => {
+    const url = "https://l.facebook.com/l.php?u=" + encodeURIComponent(overLong);
+    assert.ok(detectWrapper(url), "host should still be detected as a wrapper");
+    assert.equal(unwrap(url), null, "over-long destination must not be unwrapped");
+  });
+
+  test("extractFromParam: a destination within the cap still unwraps", () => {
+    const url = "https://l.facebook.com/l.php?u=" + encodeURIComponent(withinCap);
+    assert.equal(unwrap(url)?.unwrapped, withinCap);
+  });
+
+  test("extractFromAnyParam (t.co ?url=): over-long destination is rejected", () => {
+    const url = "https://t.co/?url=" + encodeURIComponent(overLong);
+    assert.ok(detectWrapper(url), "host should still be detected as a wrapper");
+    assert.equal(unwrap(url), null, "over-long destination must not be unwrapped");
+  });
+
+  test("extractFromAnyParam: a destination within the cap still unwraps", () => {
+    const url = "https://t.co/?url=" + encodeURIComponent(withinCap);
+    assert.equal(unwrap(url)?.unwrapped, withinCap);
+  });
+
+  test("extractFromUrlAfterQuery (href.li naked query): over-long destination is rejected", () => {
+    const url = "https://href.li/?" + overLong;
+    assert.ok(detectWrapper(url), "host should still be detected as a wrapper");
+    assert.equal(unwrap(url), null, "over-long destination must not be unwrapped");
+  });
+
+  test("extractFromUrlAfterQuery: a destination within the cap still unwraps", () => {
+    const url = "https://href.li/?" + withinCap;
+    assert.equal(unwrap(url)?.unwrapped, withinCap);
+  });
+});
