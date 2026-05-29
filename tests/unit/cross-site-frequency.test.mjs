@@ -491,3 +491,47 @@ describe("createTracker — LRU and graduation interact cleanly", () => {
     assert.equal(await tracker.getState("userid"), "observed");
   });
 });
+
+// ---------------------------------------------------------------------------
+// #732 — observe() must serialize its read-modify-write so concurrent
+// fire-and-forget calls (recordFrequency loops over every stripped param
+// WITHOUT awaiting each) don't clobber each other's storage writes.
+// ---------------------------------------------------------------------------
+describe("createTracker — concurrent observe() serialization (#732)", () => {
+  test("concurrent observe() of different params on the same tracker all persist", async () => {
+    const { tracker, adapter } = makeTracker();
+    // Mimic recordFrequency: fire one observe() per param WITHOUT awaiting each,
+    // then await them together. Pre-fix, all three read the same empty initial
+    // state and the last set() won — only one param survived.
+    const pending = [
+      tracker.observe("shop.com", "utm_source", "a"),
+      tracker.observe("shop.com", "utm_medium", "b"),
+      tracker.observe("shop.com", "gclid", "c"),
+    ];
+    await Promise.all(pending);
+
+    const stored = await adapter.get();
+    assert.ok(stored.params.utm_source, "utm_source must persist");
+    assert.ok(stored.params.utm_medium, "utm_medium must persist");
+    assert.ok(stored.params.gclid, "gclid must persist");
+    assert.equal(
+      Object.keys(stored.params).length,
+      3,
+      "all three concurrently-observed params must survive (no lost-update)"
+    );
+  });
+
+  test("concurrent observe() of the SAME param accumulates every distinct value", async () => {
+    const { tracker, adapter } = makeTracker();
+    const pending = [
+      tracker.observe("a.com", "uid", "v1"),
+      tracker.observe("b.com", "uid", "v2"),
+      tracker.observe("c.com", "uid", "v3"),
+    ];
+    await Promise.all(pending);
+
+    const stored = await adapter.get();
+    assert.equal(stored.params.uid.domains.length, 3, "all 3 domains accumulated");
+    assert.equal(stored.params.uid.values.length, 3, "all 3 values accumulated");
+  });
+});
