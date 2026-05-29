@@ -258,7 +258,7 @@ A second policy branch covers AliExpress arriving through CJ/Awin/Admitad: in th
 **Surface**
 
 - Redirect host pattern: `*.pxf.io` — Impact assigns brand-specific subdomains (`gohealth.pxf.io`, `target.pxf.io`, `walmart.pxf.io`, etc.). The apex `pxf.io` itself is not used as a redirect endpoint.
-- Merchant landing: any Impact-onboarded advertiser. Notable advertisers known to be on Impact: Walmart, Target, Adidas, Uber, Airbnb, McAfee. Humble Bundle migrated to Impact when its direct affiliate program was deprecated (see `src/vendor/caps-spec/manifest.json` deprecation note).
+- Merchant landing: any Impact-onboarded advertiser. Notable advertisers known to be on Impact: Walmart, Target, Adidas, Uber, Airbnb, McAfee. Humble Bundle migrated to Impact when its direct affiliate program was deprecated (see `src/rules/manifest.json` deprecation note).
 - Endpoint shape: `<brand>.pxf.io/c/<click-id>/<advertiser-id>/<...>?subId1=<pubref>&...`. Path-encoded rather than purely query-string.
 - **Retired from wrapper-engine in #692** (ADR-0003 follow-up). `*.pxf.io` is now in `AFFILIATE_REDIRECT_NETWORKS` (via the new wildcard primitive — entry `"*.pxf.io"`) and the `impact` caps-spec id is in `MUGA_EXCLUDED_IDS` in `src/lib/wrapper-engine.js`. `bounce-state-cleaner.js` no longer detects `*.pxf.io` as an intermediary.
 
@@ -740,9 +740,9 @@ Fetched 2026-05-24 unless otherwise noted.
 **Internal codebase signals**
 - [`src/lib/opaque-networks.js`](../src/lib/opaque-networks.js) — current redirect host list and per-host source comments
 - [`src/lib/affiliates.js`](../src/lib/affiliates.js) — TRACKING_PARAMS with per-param notes
-- [`src/vendor/caps-spec/wrappers.json`](../src/vendor/caps-spec/wrappers.json) — Awin wrapper rule
-- [`src/vendor/caps-spec/manifest.json`](../src/vendor/caps-spec/manifest.json) — CJ Affiliate and Impact Radius network entries; Humble Bundle deprecation note documents the Impact migration
-- [`src/vendor/caps-spec/wrappers.json`](../src/vendor/caps-spec/wrappers.json) — Awin and Impact Radius (`*.pxf.io`) wrapper regex patterns
+- [`src/rules/wrappers.json`](../src/rules/wrappers.json) — Awin wrapper rule
+- [`src/rules/manifest.json`](../src/rules/manifest.json) — CJ Affiliate and Impact Radius network entries; Humble Bundle deprecation note documents the Impact migration
+- [`src/rules/wrappers.json`](../src/rules/wrappers.json) — Awin and Impact Radius (`*.pxf.io`) wrapper regex patterns
 - [`src/content/cleaner.js:906`](../src/content/cleaner.js) — current `ad.admitad.com` `?ulp=` unwrap mapping (MUST be removed for 2.1)
 - [`src/content/bounce-state-cleaner.js:80`](../src/content/bounce-state-cleaner.js) — current `*.pxf.io` bounce-state cleaning (MUST invert for 2.1)
 - [`tests/e2e/redirect-unwrap-merged.spec.mjs`](../tests/e2e/redirect-unwrap-merged.spec.mjs) — existing Awin/ShareASale unwrap tests (to be repurposed or retired under [#658](https://github.com/yocreoquesi/muga/issues/658))

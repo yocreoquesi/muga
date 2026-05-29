@@ -1,10 +1,10 @@
 # muga in the MUGA Ecosystem
 
-> Short per-repo orientation. **For the full picture, read [`caps-spec/ECOSYSTEM.md`](https://github.com/yocreoquesi/caps-spec/blob/main/ECOSYSTEM.md).** This file gives you only what you need to act locally with awareness of the wider system.
+Short per-repo orientation. This file gives you what you need to act locally with awareness of the wider system.
 
 ## Your role
 
-You are the **browser extension** — the most-deployed consumer of the CAPS standard. You run in the user's Chrome (MV3) or Firefox (MV2) and intercept URLs at navigation time. You are where the false-positive principle is enforced in production, on real user clicks.
+You are the **browser extension** — the primary implementation of MUGA's internal URL rules. You run in the user's Chrome (MV3) or Firefox (MV2) and intercept URLs at navigation time. You are where the false-positive principle is enforced in production, on real user clicks.
 
 ## What you produce
 
@@ -12,7 +12,7 @@ You are the **browser extension** — the most-deployed consumer of the CAPS sta
 |---|---|---|
 | Distributable extension | Chrome Web Store + Firefox AMO | end users |
 | Signed remote-rules updates | Ed25519 + GitHub release artifacts | the deployed extension auto-fetches |
-| Popup "Report upstream" deep-links | GitHub issues opened by users | caps-spec maintainers |
+| Popup "Report upstream" deep-links | GitHub issues opened by users | maintainers |
 
 ## What you consume
 
@@ -28,40 +28,42 @@ You are the **browser extension** — the most-deployed consumer of the CAPS sta
 | File | Why it matters |
 |---|---|
 | [`src/lib/cleaner.js`](src/lib/cleaner.js) | The hot path. Every URL the user navigates flows through here. |
-| [`src/lib/param-classifier.js`](src/lib/param-classifier.js) | Source of truth for `PARAM_PAIRS` and `ANCHOR_TRACKERS` — the same lists transcribed verbatim into CAPS SPEC §4.4 (Contextual conformance). If you change either list here, propose a matching change to caps-spec. |
-| [`src/lib/wrapper-engine.js`](src/lib/wrapper-engine.js) | Detection + unwrap of redirect networks. Pulls from `wrappers.json` (slice [muga#538](https://github.com/yocreoquesi/muga/issues/538) — currently inline, migrating to caps-spec consumption). |
+| [`src/lib/param-classifier.js`](src/lib/param-classifier.js) | Source of truth for `PARAM_PAIRS` and `ANCHOR_TRACKERS` — the lists that drive the contextual bounded-scope layer (documented in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md)). |
+| [`src/lib/wrapper-engine.js`](src/lib/wrapper-engine.js) | Detection + unwrap of redirect networks. Pulls from `src/rules/wrappers.json`. |
+| [`src/rules/manifest.json`](src/rules/manifest.json) | The affiliate-program roster. Edit this to add or remove programs from MUGA's preservation list. |
+| [`src/rules/wrappers.json`](src/rules/wrappers.json) | The redirect-network recipe table (Ed25519-signed). Edit this to add or update wrapper entries, then re-sign and regenerate `wrappers.data.js`. |
 | [`src/lib/cross-site-frequency.js`](src/lib/cross-site-frequency.js) | Local tracker observation. Feeds the popup's "Suspicious params" UI. Pure module, never sends data off-device. |
 | [`src/lib/csft-upstream.js`](src/lib/csft-upstream.js) | Privacy-contract enforcer for the "Report upstream" button. Strictly emits `{paramName, firstPartyDomainCount}` — nothing else. |
-| [`src/lib/remote-rules.js`](src/lib/remote-rules.js) + [`src/lib/remote-rules-keys.js`](src/lib/remote-rules-keys.js) | The extension's own update-signing channel. Distinct from CAPS signing. |
+| [`src/lib/remote-rules.js`](src/lib/remote-rules.js) + [`src/lib/remote-rules-keys.js`](src/lib/remote-rules-keys.js) | The extension's own update-signing channel. Distinct from the rule-artifact signing. |
 | [`AGENTS.md`](AGENTS.md) | Project standards (vanilla JS, security rules, naming, error handling). MUST be followed for every change. |
 
 ## Trust boundaries you participate in
 
-- **You verify** signatures on `manifest.json` + `wrappers.json` before applying their contents (CAPS SPEC §5.2 + §5A.3).
+- **You verify** signatures on `manifest.json` + `wrappers.json` before applying their contents.
 - **You verify** signatures on muga-unwrap responses using the public key bundled at build time AND/OR fetched from `caps.muga.app/worker-pubkey.txt`.
 - **You verify** signatures on your own remote-rules updates using `TRUSTED_PUBLIC_KEYS` in `src/lib/remote-rules-keys.js`.
-- You do NOT verify the caps-crawler's discovery artifacts directly — those flow through caps-spec maintainer review first.
+- You do NOT verify the caps-crawler's discovery artifacts directly — those flow through maintainer review before landing in `src/rules/`.
 
 ## Things that ripple beyond this repo
 
-| If you change… | Notify / coordinate with… |
+| If you change… | Action required |
 |---|---|
-| `param-classifier.js` PARAM_PAIRS or ANCHOR_TRACKERS | open caps-spec PR to update SPEC §4.4 lists in lockstep |
-| `wrapper-engine.js` WRAPPERS table | open caps-spec PR to update `wrappers.json` (still source of truth post-#538) |
-| `remote-rules-keys.js` | release-event; rotation per ADR-D5 (3-release cycle) |
-| The popup's "Report upstream" payload shape | breaks the privacy contract if extra fields leak — review `csft-upstream.js` tests |
+| `param-classifier.js` PARAM_PAIRS or ANCHOR_TRACKERS | Update `docs/rules/decision-algorithm.md` in lockstep; update the conformance vectors in `tests/rules-vectors/contextual.json` if the observable behaviour changes |
+| `src/rules/wrappers.json` | Re-sign the artifact and regenerate `src/rules/wrappers.data.js`; the sync test (`tests/unit/rules-wrappers-sync.test.mjs`) will catch drift |
+| `src/rules/manifest.json` | Regenerate `src/rules/manifest.data.js`; update any relevant conformance vectors |
+| `remote-rules-keys.js` | Release event; rotation per ADR-D5 (3-release cycle) |
+| The popup's "Report upstream" payload shape | Breaks the privacy contract if extra fields leak — review `csft-upstream.js` tests |
 
 ## What sits upstream of you
 
-- `caps-spec` — the standard you implement. Spec changes (new conformance levels, new anchor tracker, new pair) land there first, then you update to match.
-- `caps-crawler` — runs weekly and may surface new candidates. Those candidates land in caps-spec via PR; eventually accepted ones promote to spec lists you implement.
+- `caps-crawler` — runs weekly and surfaces new redirect-wrapper and affiliate-program candidates. Those candidates are reviewed by the maintainer; accepted ones land in `src/rules/manifest.json` or `src/rules/wrappers.json` via a normal PR. The rule decision algorithm is documented in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
 
 ## What sits downstream of you
 
-- The deployed extension on user devices. Your release cadence (CWS review queue) determines how fast spec changes reach end users.
+- The deployed extension on user devices. Your release cadence (CWS review queue) determines how fast rule changes reach end users.
 - The muga-unwrap Worker doesn't depend on you, but its allowlist (`wrappers.json`) is what you use to decide when to call it.
 
-## Governing principles (full list in caps-spec/ECOSYSTEM.md)
+## Governing principles
 
 1. False-positive principle — never strip what could be legitimate
 2. Bounded scoping — ambiguous params only stripped under anchor co-occurrence

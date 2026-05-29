@@ -111,7 +111,7 @@ Likely questions + drafted answers:
 
 ### "Does this work for [my favorite store]?"
 
-> The supported stores are listed in caps-spec (the open standard MUGA implements). If yours isn't there and you can paste a documented example of how their direct-injection affiliate system works, the "New affiliate program" issue template will take it from there. Direct-injection only: MUGA refuses to inject a tag for programs that route every click through an external tracker (we evaluated 10+ of those and rejected every one on principle). Network-redirect programs ARE handled separately, just by unwrapping the tracker URL before your click reaches it.
+> The supported stores are listed in MUGA's internal affiliate-program rules (see `src/rules/manifest.json` and `docs/rules/decision-algorithm.md`). If yours isn't there and you can paste a documented example of how their direct-injection affiliate system works, the "New affiliate program" issue template will take it from there. Direct-injection only: MUGA refuses to inject a tag for programs that route every click through an external tracker (we evaluated 10+ of those and rejected every one on principle). Network-redirect programs ARE handled separately, just by unwrapping the tracker URL before your click reaches it.
 
 ---
 

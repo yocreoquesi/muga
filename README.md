@@ -168,7 +168,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 ## Supported stores
 
-MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners. The full allowlist lives in the open [CAPS spec](https://github.com/yocreoquesi/caps-spec) so any URL cleaner can claim conformance.
+MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners. The full allowlist is documented in [`src/rules/manifest.json`](src/rules/manifest.json); the decision algorithm that governs preservation is in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
 
 On two of those programs, Amazon (ES, DE, FR, IT, UK, US) and eBay (US, ES, DE, UK, FR, IT), MUGA also has its own affiliate account active. That is where the optional affiliate-injection feature can add MUGA's tag when a link arrives with no tag at all.
 
