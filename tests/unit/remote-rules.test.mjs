@@ -378,6 +378,14 @@ describe("validatePayloadShape — schema enforcement (REQ-VALIDATE-1)", () => {
     assert.strictEqual(result.code, ERR.SCHEMA_ERROR);
   });
 
+  test("published is an empty/whitespace string → SCHEMA_ERROR (#738)", () => {
+    for (const published of ["", "   ", "\t\n"]) {
+      const result = validatePayloadShape({ version: 1, published, params: [], sig: "abc" });
+      assert.strictEqual(result.ok, false, `published=${JSON.stringify(published)} must be rejected`);
+      assert.strictEqual(result.code, ERR.SCHEMA_ERROR);
+    }
+  });
+
   test("missing params → SCHEMA_ERROR", () => {
     const result = validatePayloadShape({ version: 1, published: "2026-04-01T00:00:00Z", sig: "abc" });
     assert.strictEqual(result.ok, false);
@@ -515,6 +523,21 @@ describe("validateParams — content validation (REQ-VALIDATE-2 through REQ-VALI
     const r = validateParams(["utm_stale"], { version: 0, published: null }, nowMs, { newVersion: 1, newPublished: stale });
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.code, ERR.STALE_PAYLOAD);
+  });
+
+  // Future-dated freshness (#738) — a payload stamped beyond the clock-skew
+  // tolerance must be rejected, not read as "fresh forever".
+  test("published 1 year in the future → STALE_PAYLOAD (#738)", () => {
+    const future = new Date(nowMs + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const r = validateParams(["utm_future"], { version: 0, published: null }, nowMs, { newVersion: 1, newPublished: future });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.code, ERR.STALE_PAYLOAD);
+  });
+
+  test("published within clock-skew tolerance (1h ahead) → not rejected for freshness (#738)", () => {
+    const slightlyAhead = new Date(nowMs + 60 * 60 * 1000).toISOString();
+    const r = validateParams(["utm_skew"], { version: 0, published: null }, nowMs, { newVersion: 1, newPublished: slightlyAhead });
+    assert.ok(r.ok || r.code !== ERR.STALE_PAYLOAD, `legitimate clock skew must not be STALE_PAYLOAD, got: ${r.code}`);
   });
 
   // Denylist (REQ-VALIDATE-4, SC-06)
