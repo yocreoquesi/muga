@@ -169,3 +169,53 @@ describe("renderList delete button aria-label is i18n (#742)", () => {
     }
   });
 });
+
+// ── store-group chip aria-label is i18n (#757) ───────────────────────────────
+//
+// Same defect class as #707 / #742 (a JS-set hardcoded English aria-label),
+// found on the store-group toggle chip. Unlike #742 it needed a NEW key with a
+// {name} placeholder. This guard is the catch-all the earlier per-control
+// guards lacked: it fails on ANY string-literal aria-label set from JS.
+describe("store-group chip aria-label is i18n + no JS-set hardcodes remain (#757)", () => {
+  test('no setAttribute("aria-label", <string-literal>) hardcodes remain in options.js', () => {
+    // A literal argument opens with ", ', or a backtick. t(...) calls and bare
+    // variables (e.g. a pre-translated `label`) are allowed.
+    const re = /setAttribute\(\s*["']aria-label["']\s*,\s*(["'\x60])/g;
+    const hits = [];
+    let m;
+    while ((m = re.exec(OPTIONS_JS)) !== null) {
+      hits.push(OPTIONS_JS.slice(m.index, m.index + 70).split("\n")[0]);
+    }
+    assert.deepEqual(
+      hits,
+      [],
+      "options.js sets an aria-label from a string literal — an a11y regression for " +
+        "non-en locales. Use t(\"<key>\", _currentLang). Offending call(s):\n  " +
+        hits.join("\n  "),
+    );
+  });
+
+  test('the store-group chip resolves its aria-label through t("store_group_toggle")', () => {
+    assert.ok(
+      /setAttribute\(\s*["']aria-label["']\s*,\s*t\(\s*["']store_group_toggle["']\s*,\s*_currentLang\s*\)\.replace\(/.test(
+        OPTIONS_JS,
+      ),
+      'the store-group chip must build its aria-label from t("store_group_toggle", _currentLang).replace("{name}", groupName)',
+    );
+  });
+
+  test("store_group_toggle exists, covers all SUPPORTED_LANGS, and keeps the {name} placeholder", () => {
+    const entry = TRANSLATIONS.store_group_toggle;
+    assert.ok(entry, "TRANSLATIONS.store_group_toggle must exist");
+    for (const { code } of SUPPORTED_LANGS) {
+      assert.ok(
+        typeof entry[code] === "string" && entry[code].length > 0,
+        `store_group_toggle is missing a non-empty "${code}" value`,
+      );
+      assert.ok(
+        entry[code].includes("{name}"),
+        `store_group_toggle["${code}"] must keep the {name} placeholder for interpolation`,
+      );
+    }
+  });
+});

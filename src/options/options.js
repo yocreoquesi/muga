@@ -558,7 +558,7 @@ function renderStores() {
 
       chip.setAttribute("role", "button");
       chip.setAttribute("tabindex", "0");
-      chip.setAttribute("aria-label", `Toggle ${groupName} stores`);
+      chip.setAttribute("aria-label", t("store_group_toggle", _currentLang).replace("{name}", groupName));
       chip.setAttribute("aria-expanded", "false");
       chip.addEventListener("click", () => {
         const wasOpen = !detail.hidden;
