@@ -30,10 +30,10 @@ import { dirname, join } from "node:path";
 import { webcrypto as crypto } from "node:crypto";
 
 import { WRAPPERS } from "../../src/lib/wrapper-engine.js";
-import { WRAPPERS_RAW } from "../../src/vendor/caps-spec/wrappers.data.js";
+import { WRAPPERS_RAW } from "../../src/rules/wrappers.data.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const VENDOR = join(__dirname, "..", "..", "src", "vendor", "caps-spec");
+const VENDOR = join(__dirname, "..", "..", "src", "rules");
 
 test("vendored wrappers.json Ed25519 signature verifies against pinned worker-pubkey", async () => {
   const body = readFileSync(join(VENDOR, "wrappers.json"));
@@ -56,7 +56,7 @@ test("vendored wrappers.json Ed25519 signature verifies against pinned worker-pu
   assert.equal(
     ok,
     true,
-    "src/vendor/caps-spec/wrappers.json signature does not match worker-pubkey.txt — run `npm run sync:wrappers`",
+    "src/rules/wrappers.json signature does not match worker-pubkey.txt — regenerate via the rules pipeline",
   );
 });
 
@@ -67,7 +67,7 @@ test("wrappers.data.js mirrors wrappers.json verbatim", () => {
   assert.deepEqual(
     WRAPPERS_RAW,
     json,
-    "src/vendor/caps-spec/wrappers.data.js drifted from wrappers.json — run `npm run sync:wrappers`",
+    "src/rules/wrappers.data.js drifted from wrappers.json — regenerate via the rules pipeline",
   );
 });
 
