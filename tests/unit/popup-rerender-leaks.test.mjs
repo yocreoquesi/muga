@@ -86,3 +86,36 @@ describe("#705 — popup re-render leaks", () => {
     }
   });
 });
+
+describe("#728 P3 — popup robustness (items 26/27)", () => {
+  test("_resetPreviewDom resets #tab-badge so a prior count does not bleed across renders (item 26)", () => {
+    const resetBlock = POPUP_SOURCE.match(/function\s+_resetPreviewDom\s*\([\s\S]*?\n\}/);
+    assert.ok(resetBlock, "_resetPreviewDom function must exist in popup.js");
+    const body = resetBlock[0];
+    assert.ok(
+      /el\(\s*["']tab-badge["']\s*\)|getElementById\(\s*["']tab-badge["']\s*\)/.test(body),
+      "_resetPreviewDom must look up #tab-badge",
+    );
+    assert.ok(
+      /tabBadge\.hidden\s*=\s*true/.test(body),
+      "_resetPreviewDom must hide #tab-badge on reset (idempotent-render invariant)",
+    );
+  });
+
+  test("storage.set writes surface async rejection via .catch, not a sync try/catch (item 27)", () => {
+    assert.ok(
+      /storage\.sync\.set\(\{ enabled[\s\S]{0,80}?\}\)\.catch\(/.test(POPUP_SOURCE),
+      "the enabled-toggle write must chain .catch on the storage.set Promise",
+    );
+    assert.ok(
+      /storage\.local\.set\(\{ nudgeDismissed[\s\S]{0,40}?\}\)\.catch\(/.test(POPUP_SOURCE),
+      "the nudge-dismiss write must chain .catch on the storage.set Promise",
+    );
+    // Neither write may sit inside the old inline `try { chrome.storage.*.set(...) }` —
+    // a synchronous try/catch cannot observe the Promise rejection.
+    assert.ok(
+      !/try\s*\{\s*chrome\.storage\.(?:sync|local)\.set\(/.test(POPUP_SOURCE),
+      "no storage.set call may be wrapped in a synchronous try/catch (cannot catch async rejection)",
+    );
+  });
+});

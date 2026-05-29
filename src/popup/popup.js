@@ -165,7 +165,9 @@ async function init() {
   enabledToggle.checked = prefs.enabled;
 
   enabledToggle.addEventListener("change", async () => {
-    try { chrome.storage.sync.set({ enabled: enabledToggle.checked }); } catch (err) { console.error("[MUGA] save enabled:", err); }
+    // storage.sync.set returns a Promise in MV3 — a sync try/catch can't catch
+    // its async rejection, so surface failures via .catch (#728 item 27).
+    chrome.storage.sync.set({ enabled: enabledToggle.checked }).catch((err) => console.error("[MUGA] save enabled:", err));
     // Optimistic re-render — the storage.onChanged listener below will also fire
     // once the write lands, but we don't want the user to wait for that roundtrip.
     try {
@@ -240,7 +242,8 @@ async function init() {
       ? "https://addons.mozilla.org/firefox/addon/muga/"
       : "https://chromewebstore.google.com/detail/muga/";
     rateBtn.addEventListener("click", () => {
-      try { chrome.storage.local.set({ nudgeDismissed: true }); } catch (err) { console.error("[MUGA] save nudge dismiss:", err); }
+      // Async rejection can't be caught by a sync try/catch — use .catch (#728 item 27).
+      chrome.storage.local.set({ nudgeDismissed: true }).catch((err) => console.error("[MUGA] save nudge dismiss:", err));
       chrome.tabs.create({ url: storeUrl });
     });
   }
@@ -458,6 +461,15 @@ function _resetPreviewDom() {
   if (previewHonored) {
     previewHonored.hidden = true;
     previewHonored.textContent = "";
+  }
+  // #728 item 26: reset the per-tab badge (#89) too. It is only re-shown when
+  // the new render has count > 0, so without this a prior tab's badge would
+  // bleed into a later render with no count — breaking the idempotent-render
+  // invariant every other slot above upholds.
+  const tabBadge = el("tab-badge");
+  if (tabBadge) {
+    tabBadge.hidden = true;
+    tabBadge.textContent = "";
   }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
