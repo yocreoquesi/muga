@@ -887,8 +887,7 @@
   }
 
   function runRedirectUnwrap() {
-    chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
-      void chrome.runtime.lastError;
+    const apply = (prefs) => {
       if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.unwrapRedirects) return;
 
       const currentUrl = window.location.href;
@@ -1052,6 +1051,14 @@
         window.location.replace(destination.href);
         return;
       }
+    };
+    // #726: prefer the module-scoped prefs cache (populated by the IIFE init)
+    // and skip the getPrefs round-trip. Fall back to sendMessage only when the
+    // cache is still null (very early in the content-script lifecycle).
+    if (_contentPrefs) { apply(_contentPrefs); return; }
+    chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
+      void chrome.runtime.lastError;
+      apply(prefs);
     });
   }
 
