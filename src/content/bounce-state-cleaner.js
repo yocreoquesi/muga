@@ -223,8 +223,9 @@
   // decision and only act once the gate confirms enabled. Because the
   // storage state is persistent, a late-arriving gate event (after the
   // page has already loaded) still has work to do — we re-attempt on
-  // each gate-open event until we successfully observe a non-zero
-  // cleanup OR the URL stops being an intermediary.
+  // each gate-open event until the first time the cleaner acts on an
+  // intermediary URL (result.cleaned === true), which performs the clear
+  // regardless of how many keys were present. After that we latch off.
   let _haveCleaned = false;
 
   function attemptCleanup() {

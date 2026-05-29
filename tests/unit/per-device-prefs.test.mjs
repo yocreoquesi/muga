@@ -97,4 +97,20 @@ describe("per-device-prefs", () => {
     await assert.rejects(() => mod.setOverrides(null));
     await assert.rejects(() => mod.setOverrides("string"));
   });
+
+  test("setOverrides rejects an unknown (non-guarded) override key (#728 item 24)", async () => {
+    await assert.rejects(() => mod.setOverrides({ enabled: false }));
+    await assert.rejects(() => mod.setOverrides({ notAPref: true }));
+  });
+
+  test("setOverrides rejects a non-boolean value for a guarded key (#728 item 24)", async () => {
+    await assert.rejects(() => mod.setOverrides({ injectOwnAffiliate: "false" }));
+    await assert.rejects(() => mod.setOverrides({ remoteRulesEnabled: 0 }));
+  });
+
+  test("a rejected setOverrides writes nothing (validation runs before the store write) (#728 item 24)", async () => {
+    await assert.rejects(() => mod.setOverrides({ injectOwnAffiliate: "nope" }));
+    const o = await mod.getOverrides();
+    assert.deepEqual(o, {}, "a rejected setOverrides must not persist a partial record");
+  });
 });
