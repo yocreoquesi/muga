@@ -29,8 +29,6 @@
       parsedCurrent.pathname.startsWith("/amp/") ||
       parsedCurrent.pathname === "/amp" ||
       parsedCurrent.pathname.endsWith("/amp") ||
-      parsedCurrent.search.includes("?amp") ||
-      parsedCurrent.search.startsWith("?amp") ||
       parsedCurrent.searchParams.has("amp")
     );
     const isAmp =
@@ -40,6 +38,10 @@
 
     if (!isAmp) return;
     if (canonicalUrl === currentUrl) return;
+    // Cap the redirect-target length (parity with the 2000-char redirect cap
+    // enforced in wrapper-engine.js) before window.location.replace — guards
+    // against pathological canonical hrefs on the Firefox MV2 path. (#728 item 17)
+    if (canonicalUrl.length > 2000) return;
 
     try {
       const canonical_ = new URL(canonicalUrl);
