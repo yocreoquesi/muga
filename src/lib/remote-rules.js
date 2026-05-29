@@ -427,8 +427,10 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
         signal: ac.signal,
       });
     } catch (err) {
-      const msg = err?.name === "AbortError" ? ERR.NETWORK_ERROR : ERR.NETWORK_ERROR;
-      const e = new Error(msg);
+      // fetch() rejects on transport failure AND on timeout abort (err.name
+      // === "AbortError"); both collapse to NETWORK_ERROR — there is no
+      // distinct timeout code in ERR, so they are deliberately the same.
+      const e = new Error(ERR.NETWORK_ERROR);
       e.code = ERR.NETWORK_ERROR;
       throw e;
     }
