@@ -26,6 +26,9 @@ const OPTIONS_JS = readFileSync(
 const CLEANER_JS = readFileSync(
   join(__dirname, "../../src/content/cleaner.js"), "utf8"
 );
+const ONBOARDING_JS = readFileSync(
+  join(__dirname, "../../src/onboarding/onboarding.js"), "utf8"
+);
 
 // ---------------------------------------------------------------------------
 // Consent gate: extension must not function until user accepts ToS
@@ -132,5 +135,40 @@ describe("Onboarding dedup — prevent double tabs", () => {
       afterFallback.includes("openOnboardingOnce()"),
       "fallback IIFE must call openOnboardingOnce()"
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #741 — consent persistence must be atomic-ish: sync writes first,
+// onboardingDone (the gate flag) written LAST so a sync failure can't leave
+// the user gated-open after seeing a save error.
+// ---------------------------------------------------------------------------
+describe("#741 — onboarding consent write ordering", () => {
+  test("sync prefs are written and awaited BEFORE setConsent(onboardingDone:true)", () => {
+    const allIdx = ONBOARDING_JS.indexOf("await Promise.all(preConsentOps)");
+    const consentIdx = ONBOARDING_JS.indexOf("onboardingDone: true");
+    assert.ok(allIdx !== -1, "must await the pre-consent ops (sync set + overrides)");
+    assert.ok(consentIdx !== -1, "must write onboardingDone: true");
+    assert.ok(
+      allIdx < consentIdx,
+      "setConsent({ onboardingDone: true }) must run AFTER the sync writes resolve"
+    );
+  });
+
+  test("the pre-consent batch carries the sync write, not setConsent", () => {
+    const start = ONBOARDING_JS.indexOf("const preConsentOps");
+    const end = ONBOARDING_JS.indexOf("await Promise.all(preConsentOps)");
+    assert.ok(start !== -1 && end > start, "preConsentOps batch must exist");
+    const batch = ONBOARDING_JS.slice(start, end);
+    assert.ok(batch.includes("chrome.storage.sync.set(syncWrites"), "sync write belongs in the pre-consent batch");
+    assert.ok(!batch.includes("setConsent("), "setConsent must NOT be in the parallel pre-consent batch");
+  });
+
+  test("save-error catch restores the gate via updateButton(), not the dead .disabled no-op", () => {
+    const catchIdx = ONBOARDING_JS.indexOf('t("ob_save_error"');
+    assert.ok(catchIdx !== -1, "error path must exist");
+    const tail = ONBOARDING_JS.slice(catchIdx, catchIdx + 500);
+    assert.ok(tail.includes("updateButton()"), "catch must re-sync the aria-disabled gate via updateButton()");
+    assert.ok(!/startBtn\.disabled\s*=\s*false/.test(tail), "must not use the no-op startBtn.disabled = false");
   });
 });

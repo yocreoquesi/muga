@@ -36,7 +36,11 @@ const PATTERNS_TEST_PATH = join(
 // Baseline count after #706 cleanup. Decrement is always allowed
 // (behavioral migration of an existing assertion). Increment requires a
 // human override of this constant + commit-message rationale.
-const MAX_SOURCE_STRING_ASSERTIONS = 70;
+// 70 → 71 (#739): added ONE source-string match guarding the new
+// mugaPerDevicePrefs cache-invalidation branch in the onChanged listener.
+// service-worker.js cannot be imported in Node (top-level chrome.* calls), so
+// a single regex match is the least-brittle available regression for it.
+const MAX_SOURCE_STRING_ASSERTIONS = 71;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 
