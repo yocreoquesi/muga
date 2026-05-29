@@ -47,12 +47,11 @@ A few architectural notes that I think will land here:
    page (rules.muga.app/transparency.html) lists every byte the extension
    stores and what triggers each storage write.
 
-4. CAPS, the Creator Affiliate Preservation Standard. I extracted the rule
-   shapes into a separate spec repo with Ed25519-signed normative artifacts.
-   MUGA is the first conforming implementation; the spec is shaped so
-   muga-unwrap (a Cloudflare Worker variant) and any future tool can claim
-   conformance against the same test vectors. SPEC.md and conformance levels
-   are public.
+4. Documented, verifiable URL rules. The rule definitions (what gets preserved,
+   what gets stripped, and why) live in docs/rules/decision-algorithm.md and
+   src/rules/ alongside Ed25519-signed normative artifacts. A CI-gated
+   conformance test suite runs on every PR so regressions are caught before
+   they ship.
 
 5. No build step beyond a 30-line esbuild bundler. No TypeScript. No Babel,
    no JSX, no Webpack, no Rollup. The cleaning library is plain ES modules.
@@ -75,7 +74,7 @@ Comparison: https://rules.muga.app/comparison.html
 Landing: https://muga.app/
 
 Happy to discuss the MV3 architecture, the rule-signing pipeline, or the
-conformance spec design; that's the part I find most interesting. Feedback
+verifiable rule design; that's the part I find most interesting. Feedback
 welcome.
 ```
 

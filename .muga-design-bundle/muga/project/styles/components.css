@@ -1,0 +1,210 @@
+/* =========================================================================
+   MUGA — Shared Components
+   ========================================================================= */
+
+/* ---------- Buttons ------------------------------------------------------ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--sp-2);
+  height: 32px; padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-13); line-height: 1;
+  font-weight: 500; letter-spacing: -0.005em;
+  color: var(--text-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn:active { transform: translateY(0.5px); }
+.btn[disabled], .btn[aria-disabled="true"] {
+  opacity: .5; cursor: not-allowed; pointer-events: none;
+}
+
+.btn--primary {
+  background: var(--surface-inverse); color: var(--text-inverse);
+  border-color: var(--surface-inverse);
+}
+.btn--primary:hover { background: var(--text-1); opacity: .92; }
+
+.btn--accent {
+  background: var(--accent-strong); color: var(--on-accent);
+  border-color: var(--accent-strong);
+}
+.btn--accent:hover { filter: brightness(1.05); }
+
+.btn--ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn--ghost:hover { background: var(--surface-2); color: var(--text-1); }
+
+.btn--danger { color: var(--danger); border-color: var(--border-2); }
+.btn--danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+
+.btn--sm { height: 26px; padding: 0 10px; font-size: var(--fs-12); border-radius: var(--r-sm); }
+.btn--lg { height: 40px; padding: 0 var(--sp-4); font-size: var(--fs-14); }
+.btn--icon { width: 32px; padding: 0; }
+.btn--block { width: 100%; }
+
+/* ---------- Toggle (checkbox) -------------------------------------------- */
+.toggle {
+  --h: 20px; --w: 34px;
+  position: relative; display: inline-block; width: var(--w); height: var(--h);
+  flex-shrink: 0;
+}
+.toggle input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; margin: 0;
+}
+.toggle__track {
+  position: absolute; inset: 0;
+  background: var(--border-2); border-radius: var(--r-pill);
+  transition: background var(--dur-2) var(--ease);
+}
+.toggle__thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: calc(var(--h) - 4px); height: calc(var(--h) - 4px);
+  background: var(--surface-1); border-radius: 50%;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-2) var(--ease);
+}
+.toggle input:checked ~ .toggle__track { background: var(--accent-strong); }
+.toggle input:checked ~ .toggle__thumb { transform: translateX(calc(var(--w) - var(--h))); }
+.toggle input:focus-visible ~ .toggle__track {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.toggle input:disabled ~ .toggle__track { opacity: .4; }
+
+/* ---------- Form row ----------------------------------------------------- */
+.row {
+  display: flex; align-items: flex-start; gap: var(--sp-4);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--border-1);
+}
+.row:last-child { border-bottom: 0; }
+.row__body { flex: 1; min-width: 0; }
+.row__title {
+  font-size: var(--fs-14); line-height: var(--lh-14);
+  font-weight: 500; color: var(--text-1); margin: 0 0 2px;
+}
+.row__desc {
+  font-size: var(--fs-13); line-height: var(--lh-13);
+  color: var(--text-2); margin: 0;
+}
+.row__control { flex-shrink: 0; padding-top: 2px; }
+
+/* ---------- Input -------------------------------------------------------- */
+.input, .textarea, .select {
+  display: block; width: 100%;
+  height: 32px; padding: 0 var(--sp-3);
+  font-size: var(--fs-13); line-height: 1;
+  color: var(--text-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.input:hover, .textarea:hover, .select:hover { border-color: var(--border-strong); }
+.input:focus-visible, .textarea:focus-visible, .select:focus-visible {
+  border-color: var(--accent); outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 20%, transparent);
+}
+.textarea { height: auto; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-13); }
+.input--mono { font-family: var(--font-mono); }
+
+.field-label {
+  display: block; font-size: var(--fs-12); line-height: var(--lh-12);
+  font-weight: 500; color: var(--text-2); margin-bottom: 6px;
+  letter-spacing: .02em; text-transform: uppercase;
+}
+
+/* ---------- Badge / Chip ------------------------------------------------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px;
+  font-size: var(--fs-11); line-height: 14px;
+  font-weight: 500;
+  border-radius: var(--r-sm);
+  background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border-1);
+}
+.badge--accent { background: var(--accent-soft); color: var(--accent-strong); border-color: transparent; }
+.badge--success { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.badge--warning { background: var(--warning-soft); color: var(--warning); border-color: transparent; }
+.badge--danger  { background: var(--danger-soft);  color: var(--danger);  border-color: transparent; }
+.badge--info    { background: var(--info-soft);    color: var(--info);    border-color: transparent; }
+
+/* Param chip (for diff) */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 6px 1px 4px;
+  font-family: var(--font-mono); font-size: var(--fs-11);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-2);
+  background: var(--surface-1);
+  color: var(--text-2);
+}
+.chip__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
+.chip--strip { color: var(--diff-strip); border-color: color-mix(in oklch, var(--diff-strip) 40%, transparent); background: var(--diff-strip-bg); }
+.chip--strip .chip__dot { background: var(--diff-strip); }
+
+/* ---------- Category icon tile ------------------------------------------ */
+.cat {
+  width: 24px; height: 24px; border-radius: var(--r-sm);
+  display: grid; place-items: center;
+  background: var(--surface-2); color: var(--text-2);
+  flex-shrink: 0;
+}
+.cat svg { width: 14px; height: 14px; }
+
+/* ---------- Card -------------------------------------------------------- */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.card__header {
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-1);
+}
+.card__title {
+  margin: 0; font-size: var(--fs-13); line-height: var(--lh-13);
+  font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-2);
+}
+.card__body { padding: var(--sp-4) var(--sp-5); }
+
+/* ---------- Section separator ------------------------------------------- */
+.hline {
+  height: 1px; background: var(--border-1); border: 0; margin: 0;
+}
+.vline {
+  width: 1px; background: var(--border-1); align-self: stretch;
+}
+
+/* ---------- Icon ---------------------------------------------------------- */
+.icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.icon--sm { width: 14px; height: 14px; }
+.icon--lg { width: 20px; height: 20px; }
+
+/* ---------- Kbd ---------------------------------------------------------- */
+.kbd {
+  display: inline-flex; align-items: center; padding: 1px 6px;
+  font-family: var(--font-mono); font-size: var(--fs-11);
+  border: 1px solid var(--border-2); border-bottom-width: 2px;
+  border-radius: var(--r-sm); background: var(--surface-1);
+  color: var(--text-2);
+}
+
+/* ---------- Empty / info blocks ----------------------------------------- */
+.notice {
+  display: flex; gap: var(--sp-3); align-items: flex-start;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: var(--fs-13); line-height: var(--lh-13);
+  color: var(--text-2);
+}
+.notice--info { background: var(--info-soft); color: var(--info); }
+.notice--warn { background: var(--warning-soft); color: var(--warning); }
+.notice svg { flex-shrink: 0; margin-top: 2px; }

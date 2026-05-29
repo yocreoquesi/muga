@@ -1,8 +1,6 @@
 # MUGA URL Decision Algorithm
 
-> **STUB** — Full normative prose is deferred to PR2 (issue #715). This file
-> satisfies the "doc exists, internal-framed" acceptance criterion. Content is
-> seeded from in-repo descriptions; it does not reproduce external specifications.
+This is MUGA's authoritative internal definition of the URL processing rules: what it preserves for creators and what it strips for privacy.
 
 ## Scope
 

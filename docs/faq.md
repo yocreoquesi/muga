@@ -30,7 +30,7 @@ MUGA's design point is narrower and more opinionated:
 2. **Preserve affiliate parameters that belong to a creator** — even on
    programs MUGA itself has no commercial relationship with (Booking,
    Vercel, DigitalOcean, etc.). The preservation table is sourced from
-   the open [caps-spec](https://github.com/yocreoquesi/muga) manifest
+   MUGA's documented affiliate-program rules
    ([`src/lib/affiliates.js:852-861`](../src/lib/affiliates.js#L852-L861)).
 3. **Be explicit about the one case where MUGA itself benefits** — affiliate
    injection — and gate it behind an opt-in checkbox during onboarding
