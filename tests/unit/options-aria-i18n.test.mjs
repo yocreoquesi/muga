@@ -137,3 +137,35 @@ describe("#707 — i18n keys retired or added by this change", () => {
     );
   });
 });
+
+// ── renderList delete-button aria-label is i18n (#742) ───────────────────────
+//
+// The per-item delete button in renderList previously hardcoded an English
+// `Remove ${entry}` aria-label — the exact a11y regression #707 set out to
+// kill, but the #707 guard only scanned options.html, never JS-set labels.
+describe("renderList delete button aria-label is i18n (#742)", () => {
+  test("renderList no longer hardcodes the English `Remove ${entry}` aria-label", () => {
+    assert.ok(
+      !/setAttribute\(\s*["']aria-label["']\s*,\s*`Remove\s/.test(OPTIONS_JS),
+      "renderList must not hardcode `Remove ${entry}` — use t() so non-en locales are covered",
+    );
+  });
+
+  test("renderList resolves the delete aria-label through t()", () => {
+    // Both renderList and the creator-allowlist renderer use this translated
+    // key; there must be at least two t(\"creator_allowlist_remove_btn\") calls.
+    const matches = OPTIONS_JS.match(/setAttribute\(\s*["']aria-label["']\s*,\s*t\("creator_allowlist_remove_btn"/g) || [];
+    assert.ok(
+      matches.length >= 2,
+      `renderList + creator-allowlist must both i18n the remove aria-label via t(); found ${matches.length}`,
+    );
+    // The reused key must exist for every supported locale.
+    assert.ok(Object.prototype.hasOwnProperty.call(TRANSLATIONS, "creator_allowlist_remove_btn"));
+    for (const { code } of SUPPORTED_LANGS) {
+      assert.ok(
+        TRANSLATIONS.creator_allowlist_remove_btn[code],
+        `creator_allowlist_remove_btn must have a ${code} translation`,
+      );
+    }
+  });
+});

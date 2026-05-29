@@ -238,7 +238,10 @@ function renderList(containerId, items, listKey) {
     btn.dataset.list = listKey;
     btn.dataset.index = i;
     btn.textContent = "×";
-    btn.setAttribute("aria-label", `Remove ${entry}`);
+    // i18n the aria-label (#742). Reuse the creator-allowlist remove key — same
+    // verb, already translated for all SUPPORTED_LANGS — so screen-reader users
+    // on es/pt/de/fr/it/ja don't hear an English "Remove" on these lists.
+    btn.setAttribute("aria-label", t("creator_allowlist_remove_btn", _currentLang) + " " + entry);
 
     div.appendChild(span);
     div.appendChild(btn);
