@@ -263,6 +263,28 @@ export async function defaultHasher(input) {
 export function createTracker({ adapter, hasher, enabled = true }) {
   let _enabled = enabled !== false;
 
+  // Serialization chain (#732). observe() is a read-modify-write over the
+  // whole state (adapter.get → mutate → adapter.set). recordFrequency() fires
+  // one observe() PER stripped param in a tight loop WITHOUT awaiting each, so
+  // for a multi-param URL all calls would read the SAME initial state and the
+  // last adapter.set() would clobber the others (lost-update — some params'
+  // domain/value accumulation silently dropped). Chaining each call onto the
+  // previous guarantees each read-modify-write completes before the next reads.
+  let _chain = Promise.resolve();
+
+  /**
+   * Public, serialized observe(). Queues each observation behind the previous
+   * one and returns a promise for THIS observation's completion. The chain
+   * itself swallows rejections so one failed write can't stall later writes;
+   * the returned promise still rejects so callers that await can observe errors
+   * (recordFrequency attaches its own .catch).
+   */
+  function observe(domain, paramName, value) {
+    const run = _chain.then(() => _doObserve(domain, paramName, value));
+    _chain = run.catch(() => {});
+    return run;
+  }
+
   /**
    * Records that `paramName=value` was seen on `domain`. No-op when the
    * tracker is disabled. Touches `lastSeen` on every observation so the
@@ -273,7 +295,7 @@ export function createTracker({ adapter, hasher, enabled = true }) {
    * mean keeps observe() at O(1) — no per-observation array growth, no
    * recomputation over historical values.
    */
-  async function observe(domain, paramName, value) {
+  async function _doObserve(domain, paramName, value) {
     if (!_enabled) return;
     if (!domain || !paramName) return;
 

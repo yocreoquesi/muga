@@ -573,6 +573,17 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       await applyDnrState(prefs);
       await applyOnboardingBadge(prefs);
     }
+    // Per-device overrides changed (per-device-prefs.setOverrides /
+    // clearOverrides). getPrefs() overlays these last, so a change flips the
+    // EFFECTIVE prefs (e.g. injectOwnAffiliate) that drive DNR + badge. Without
+    // this the cache stays stale; previously correctness relied on overrides
+    // only ever being written alongside a mugaConsent write — a fragile coupling.
+    if (changes.mugaPerDevicePrefs) {
+      _invalidatePrefsCache();
+      const prefs = await getPrefsWithCache();
+      await applyDnrState(prefs);
+      await applyOnboardingBadge(prefs);
+    }
     return;
   }
   if (area !== "sync") return;
