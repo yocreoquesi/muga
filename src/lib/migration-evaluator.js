@@ -70,7 +70,11 @@ export function evaluateMigrations({
     if (compareVersions(previousVersion, m.fromVersion) > 0) continue;
     if (compareVersions(currentVersion, m.toVersion) < 0) continue;
 
-    // Already responded? Skip.
+    // Already responded? Skip. ANY recorded response (accept/decline/dismiss)
+    // is terminal for this migration — dismiss behaves like decline here (#736).
+    // Re-prompting across versions is handled by the upgrade-window gate above,
+    // not by the response value. Making dismiss a true transient "not now"
+    // would require NOT persisting it (a separate UX decision).
     if (responses[m.id]) continue;
 
     // Pref state already matches the proposed value? Skip — nothing to ask.
