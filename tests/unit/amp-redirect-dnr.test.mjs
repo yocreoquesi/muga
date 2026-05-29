@@ -114,6 +114,23 @@ describe("amp-redirect.json — amp.* subdomain (rule 102)", () => {
     const r = applyAnyRule("https://www.amp.example.com/article");
     assert.equal(r, null);
   });
+
+  // #735: the captured remainder must be a multi-label domain. A single-label
+  // host like amp.com (a real registered domain) previously collapsed to the
+  // unresolvable https://com/. The remainder now requires at least one dot.
+  test("does NOT mangle single-label hosts (amp.com → must NOT redirect to https://com/)", () => {
+    for (const url of ["https://amp.com/", "https://amp.com/path", "https://amp.localhost/"]) {
+      const r = applyAnyRule(url);
+      assert.equal(r, null, `${url} must be left untouched, not redirected to a bare TLD`);
+    }
+  });
+
+  test("still redirects multi-label and multi-level hosts", () => {
+    assert.deepEqual(
+      applyAnyRule("https://amp.example.co.uk/x"),
+      { ruleId: 102, redirect: "https://example.co.uk/x" }
+    );
+  });
 });
 
 describe("amp-redirect.json — non-AMP traffic", () => {

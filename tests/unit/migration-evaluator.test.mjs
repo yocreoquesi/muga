@@ -163,7 +163,11 @@ describe("evaluateMigrations — response gating", () => {
     assert.deepEqual(result, []);
   });
 
-  test("dismissed migration is not re-presented", () => {
+  test("dismissed migration is not re-presented (dismiss is terminal, like decline — #736)", () => {
+    // INTENTIONAL per #736: a recorded "dismiss" is terminal for the migration,
+    // identical to "decline" at the evaluator level. Cross-version re-prompting
+    // is governed by the version-window gate, not the response value. A true
+    // transient "not now" would require NOT persisting dismiss (a UX follow-up).
     const result = evaluateMigrations({
       previousVersion: "1.0.0",
       currentVersion: "2.0.0",
@@ -172,6 +176,19 @@ describe("evaluateMigrations — response gating", () => {
       migrations: [FIXTURE],
     });
     assert.deepEqual(result, []);
+  });
+
+  test("any recorded response (accept/decline/dismiss) is terminal for the migration (#736)", () => {
+    for (const response of ["accept", "decline", "dismiss"]) {
+      const result = evaluateMigrations({
+        previousVersion: "1.0.0",
+        currentVersion: "2.0.0",
+        responses: { "fixture-pref-flip": response },
+        prefs: { fixturePref: false },
+        migrations: [FIXTURE],
+      });
+      assert.deepEqual(result, [], `response="${response}" must suppress the banner`);
+    }
   });
 });
 

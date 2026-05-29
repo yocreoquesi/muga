@@ -241,7 +241,12 @@ function detectPreservedAffiliate(url, patterns) {
  * Search and category pages (preserveParams in domain-rules) are excluded.
  */
 function isAliExpressItemPage(hostname, pathname) {
-  if (!/aliexpress\.[a-z.]+$/.test(hostname)) return false;
+  // Mirror domainMatches() for the host check: the previous unanchored regex
+  // /aliexpress\.[a-z.]+$/ matched as a substring, so lookalikes like
+  // myaliexpress.com, notaliexpress.com, and aliexpress.com.attacker.net all
+  // passed — triggering the wholesale param strip on unrelated domains.
+  const host = hostname.replace(/^www\./, "");
+  if (host !== "aliexpress.com" && !host.endsWith(".aliexpress.com")) return false;
   return /^\/item\/\d+\.html?\/?$/i.test(pathname);
 }
 
@@ -288,7 +293,12 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
 
   const removed = [];
   const removedValues = [];
-  for (const param of [...url.searchParams.keys()]) {
+  // De-dup the key list: searchParams.keys() yields one entry PER occurrence of
+  // a repeated key (?utm=a&utm=b → "utm" twice), but delete() removes ALL
+  // occurrences on the first pass. Without the Set, the second iteration would
+  // re-push the name (over-counting junkCount/badge) and record a phantom empty
+  // value (get() returns null after delete). The first get() captures value "a".
+  for (const param of new Set(url.searchParams.keys())) {
     const lower = param.toLowerCase();
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
@@ -777,7 +787,10 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
     // Without the policy gate, this wholesale strip kills aff_trace_key + family
     // before the AliExpress front-end tag can consume them on landing.
     const { preserved } = getDomainParamSets(hostname, domainRules);
-    for (const param of [...url.searchParams.keys()]) {
+    // De-dup keys (see stripTrackingParams): delete() removes all occurrences,
+    // so iterating raw keys() would double-count repeated keys and push a
+    // phantom empty value on the second pass.
+    for (const param of new Set(url.searchParams.keys())) {
       const lower = param.toLowerCase();
       if (preserved.has(lower)) continue;
       if (landingPolicy.preserve.has(lower)) continue;
