@@ -965,3 +965,30 @@ describe("C11 — replica sync verification (Pepper network)", () => {
     );
   });
 });
+
+describe("#726 — runRedirectUnwrap consults the prefs cache before messaging", () => {
+  // Pins acceptance criterion #1: when _contentPrefs is populated, no getPrefs
+  // round-trip happens. Protects the perf fix from silently regressing back to
+  // an unconditional sendMessage on every page load.
+  const fnIdx = REDIRECT_UNWRAP_SOURCE.indexOf("function runRedirectUnwrap(");
+  const deferIdx = REDIRECT_UNWRAP_SOURCE.indexOf("Defer redirect-unwrap", fnIdx);
+  const fnBody = REDIRECT_UNWRAP_SOURCE.slice(fnIdx, deferIdx);
+
+  test("runRedirectUnwrap checks _contentPrefs and applies it synchronously when present", () => {
+    assert.ok(fnIdx !== -1, "runRedirectUnwrap must exist in cleaner.js");
+    assert.ok(
+      /if\s*\(\s*_contentPrefs\s*\)\s*\{\s*apply\(\s*_contentPrefs\s*\)\s*;\s*return\s*;/.test(fnBody),
+      "runRedirectUnwrap must apply the cached _contentPrefs and return before any sendMessage",
+    );
+  });
+
+  test("the sendMessage round-trip is the fallback, placed AFTER the cache check", () => {
+    const cacheIdx = fnBody.indexOf("_contentPrefs");
+    const msgIdx = fnBody.indexOf('sendMessage({ type: "getPrefs"');
+    assert.ok(cacheIdx !== -1 && msgIdx !== -1, "both the cache check and the getPrefs fallback must exist");
+    assert.ok(
+      cacheIdx < msgIdx,
+      "the _contentPrefs cache check must come before the getPrefs sendMessage fallback",
+    );
+  });
+});
