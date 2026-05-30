@@ -47,3 +47,8 @@ test-results/
 tests/benchmark/reports/*.json
 tests/benchmark/reports/*.md
 tests/benchmark/reports/*.html
+
+# Rule-ingestion quarantine (#772): raw upstream signals — never committed.
+# Clean-room posture: upstream bytes stay ephemeral; only re-derived candidates
+# may land. Enforced by tools/rule-ingestion/verify-quarantine.mjs in CI.
+tools/rule-ingestion/quarantine/

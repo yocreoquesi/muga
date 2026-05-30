@@ -59,6 +59,12 @@ jobs:
       - name: Verify browser-polyfill integrity (#97)
         run: node tools/verify-polyfill-integrity.mjs
 
+      - name: Verify rule-ingestion quarantine (#772)
+        # Clean-room gate: raw upstream signals must never be committed or
+        # bundled. Fails CI if anything is tracked under the quarantine dir,
+        # if the path drops out of .gitignore, or if it moves under src/.
+        run: npm run verify:quarantine
+
       - name: Check i18n quality (no FIXME / stubs / empty locale slots) (#621)
         run: npm run check:i18n
 
