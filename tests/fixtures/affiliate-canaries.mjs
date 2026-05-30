@@ -100,4 +100,6 @@ export const LANDING_CANARIES = Object.freeze([
   { name: "a8net", landingHost: "rakuten.co.jp", referrer: "https://px.a8.net/svt/ejp?id=1", mustPreserve: ["a8"], network: "a8net" },
   { name: "rakuten-linkshare", landingHost: "ebay.com", referrer: "https://click.linksynergy.com/deeplink?id=1", mustPreserve: ["raneaid", "ranmid", "ransiteid"], network: "rakuten-linkshare" },
   { name: "tradetracker", landingHost: "merchant.de", referrer: "https://tc.tradetracker.net/?c=1&m=2", mustPreserve: ["ttaid", "ttcid", "ttrk"], network: "tradetracker" },
+  // #770: Tradedoubler was the one matrix-v1.0 network with zero canary coverage.
+  { name: "tradedoubler", landingHost: "merchant.com", referrer: "https://clk.tradedoubler.com/click?p=1&a=2&url=https%3A%2F%2Fmerchant.com", mustPreserve: ["tduid"], network: "tradedoubler" },
 ]);
