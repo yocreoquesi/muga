@@ -13,7 +13,9 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { processUrl, getLandingPolicy } from "../../src/lib/cleaner.js";
+import { REDIRECT_NETWORK_PATTERNS } from "../../src/lib/affiliates.js";
 import { PRESERVE_CANARIES, LANDING_CANARIES } from "../fixtures/affiliate-canaries.mjs";
+import { runAffiliateCanaries } from "../fixtures/canary-runner.mjs";
 
 describe("affiliate canaries — preserve (processUrl)", () => {
   for (const canary of PRESERVE_CANARIES) {
@@ -56,12 +58,39 @@ describe("affiliate canaries — fixture shape", () => {
   });
 
   test("landing canaries are well-formed and non-empty", () => {
-    assert.ok(LANDING_CANARIES.length >= 9, "expected one canary per matrix v1.0 network");
+    assert.ok(LANDING_CANARIES.length >= 10, "expected one canary per matrix v1.0 network");
     for (const c of LANDING_CANARIES) {
       assert.equal(typeof c.landingHost, "string");
       assert.equal(typeof c.referrer, "string");
       assert.ok(Array.isArray(c.mustPreserve) && c.mustPreserve.length > 0);
       assert.equal(typeof c.network, "string");
     }
+  });
+});
+
+// #770 — drift guard: every declared redirect network must have a canary.
+describe("affiliate canaries — REDIRECT_NETWORK_PATTERNS coverage", () => {
+  test("every redirect network has a named LANDING canary (no silent gaps)", () => {
+    const covered = new Set(LANDING_CANARIES.map((c) => c.network));
+    for (const net of REDIRECT_NETWORK_PATTERNS) {
+      assert.ok(covered.has(net.id), `redirect network "${net.id}" has no LANDING canary`);
+    }
+  });
+});
+
+// #771 — the programmatic runner the pipeline's GATE 3 will call.
+describe("affiliate canaries — programmatic runner", () => {
+  test("runAffiliateCanaries() passes against the current cleaner", () => {
+    const result = runAffiliateCanaries();
+    assert.equal(result.ok, true, `canary failures: ${JSON.stringify(result.failures, null, 2)}`);
+    assert.equal(result.failures.length, 0);
+    assert.equal(result.total, PRESERVE_CANARIES.length + LANDING_CANARIES.length);
+  });
+
+  test("runAffiliateCanaries() returns the structured verdict shape", () => {
+    const result = runAffiliateCanaries();
+    assert.equal(typeof result.ok, "boolean");
+    assert.ok(Array.isArray(result.failures));
+    assert.equal(typeof result.total, "number");
   });
 });

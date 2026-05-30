@@ -570,14 +570,7 @@ describe("Amazon affiliate tags — real tag injection per marketplace", () => {
       assert.equal(new URL(cleanUrl).searchParams.get("tag"), tag);
     });
 
-    test(`amazon.${name}: does NOT replace existing foreign tag`, () => {
-      const { cleanUrl } = processUrl(
-        `https://${domain}/dp/B08N5WRWNW?tag=creator-21`,
-        INJECT_PREFS
-      );
-      assert.equal(new URL(cleanUrl).searchParams.get("tag"), "creator-21");
-    });
-
+    // (foreign-tag-survives canary moved to tests/fixtures/affiliate-canaries.mjs, #769)
     test(`amazon.${name}: own tag is not flagged as foreign`, () => {
       const { action } = processUrl(
         `https://${domain}/dp/B08N5WRWNW?tag=${tag}`,
@@ -613,14 +606,7 @@ describe("eBay affiliate tags — real tag injection per marketplace", () => {
       assert.equal(new URL(cleanUrl).searchParams.get("campid"), "5339147108");
     });
 
-    test(`ebay.${name}: does NOT replace existing foreign campid`, () => {
-      const { cleanUrl } = processUrl(
-        `https://${domain}/itm/123456789?campid=9999999999`,
-        INJECT_PREFS
-      );
-      assert.equal(new URL(cleanUrl).searchParams.get("campid"), "9999999999");
-    });
-
+    // (foreign-campid-survives canary moved to tests/fixtures/affiliate-canaries.mjs, #769)
     test(`ebay.${name}: own campid is not flagged as foreign`, () => {
       const { action } = processUrl(
         `https://${domain}/itm/123456789?campid=5339147108`,
@@ -1455,32 +1441,8 @@ describe("whitelist priority over stripAllAffiliates", () => {
 // ---------------------------------------------------------------------------
 describe("affiliate param / tracking param collision", () => {
 
-  test("pccomponentes: ref= param is NOT stripped when pccomponentes is a matched host", () => {
-    const { cleanUrl, removedTracking } = processUrl(
-      "https://www.pccomponentes.com/producto?ref=some-affiliate-tag&utm_source=google",
-      { ...PREFS, injectOwnAffiliate: false }
-    );
-    const clean = new URL(cleanUrl);
-    assert.equal(clean.searchParams.get("ref"), "some-affiliate-tag",
-      "ref= must be preserved as affiliate param on pccomponentes");
-    assert.ok(removedTracking.includes("utm_source"),
-      "utm_source must still be stripped");
-  });
-
-  test("eBay: campid= param is NOT stripped when eBay is a matched host", () => {
-    const { cleanUrl, removedTracking } = processUrl(
-      "https://www.ebay.es/itm/123456?campid=some-affiliate-id&mkevt=1&utm_source=google",
-      { ...PREFS, injectOwnAffiliate: false }
-    );
-    const clean = new URL(cleanUrl);
-    assert.equal(clean.searchParams.get("campid"), "some-affiliate-id",
-      "campid= must be preserved as affiliate param on eBay");
-    assert.ok(removedTracking.includes("mkevt"),
-      "mkevt must still be stripped");
-    assert.ok(removedTracking.includes("utm_source"),
-      "utm_source must still be stripped");
-  });
-
+  // (pccomponentes ref + eBay campid collisions moved to the shared canary
+  //  fixtures — tests/fixtures/affiliate-canaries.mjs, #769)
   test("ref= is NOT stripped on a non-affiliate host (e.g., example.com) — ref removed from global TRACKING_PARAMS (#160)", () => {
     // 'ref' was removed from TRACKING_PARAMS because it is the affiliate param for
     // PcComponentes and MediaMarkt. Applying it globally stripped it before the

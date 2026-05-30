@@ -11,6 +11,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { getLandingPolicy, processUrl } from "../../src/lib/cleaner.js";
+import { LANDING_CANARIES } from "../fixtures/affiliate-canaries.mjs";
 
 const PREFS = Object.freeze({
   enabled: true,
@@ -61,78 +62,16 @@ describe("getLandingPolicy — empty policy contract", () => {
 });
 
 describe("getLandingPolicy — first-touch from each matrix v1.0 network", () => {
-  test("awin1.com referrer → preserve awc + wt_mc, network=awin", () => {
-    const policy = getLandingPolicy("zalando.es", "https://www.awin1.com/cread.php?id=1");
-    assert.deepStrictEqual([...policy.preserve].sort(), ["awc", "wt_mc"]);
-    assert.equal(policy.network, "awin");
-  });
-
-  test("CJ redirect referrer → preserve cjevent + cjdata", () => {
-    const policy = getLandingPolicy("walmart.com", "https://anrdoezrs.net/click-123-456");
-    assert.deepStrictEqual([...policy.preserve].sort(), ["cjdata", "cjevent"]);
-    assert.equal(policy.network, "cj-affiliate");
-  });
-
-  test("s.click.aliexpress.com referrer → preserve aff_* + algo_* family", () => {
-    const policy = getLandingPolicy(
-      "aliexpress.com",
-      "https://s.click.aliexpress.com/e/_DnZbqGr",
-    );
-    assert.deepStrictEqual(
-      [...policy.preserve].sort(),
-      ["aff_request_id", "aff_trace_key", "algo_expid", "algo_pvid", "btsid", "ws_ab_test"],
-    );
-    assert.equal(policy.network, "aliexpress-affiliate");
-  });
-
-  test("Impact *.pxf.io subdomain → preserve irclickid + irgwc + iclid", () => {
-    const policy = getLandingPolicy(
-      "target.com",
-      "https://target.pxf.io/c/1234/abc",
-    );
-    assert.deepStrictEqual([...policy.preserve].sort(), ["iclid", "irclickid", "irgwc"]);
-    assert.equal(policy.network, "impact-radius");
-  });
-
-  test("prf.hn referrer → preserve clickref + pubref + adref", () => {
-    const policy = getLandingPolicy("partner.com", "https://prf.hn/click/123");
-    assert.deepStrictEqual([...policy.preserve].sort(), ["adref", "clickref", "pubref"]);
-    assert.equal(policy.network, "partnerize");
-  });
-
-  test("Admitad redirect (both hosts) → preserve admitad_uid + tagtag_uid", () => {
-    const a = getLandingPolicy("shop.com", "https://ad.admitad.com/g/abc");
-    assert.deepStrictEqual([...a.preserve].sort(), ["admitad_uid", "tagtag_uid"]);
-    assert.equal(a.network, "admitad");
-
-    const b = getLandingPolicy("aliexpress.com", "https://alitems.com/g/xyz");
-    assert.deepStrictEqual([...b.preserve].sort(), ["admitad_uid", "tagtag_uid"]);
-    assert.equal(b.network, "admitad");
-  });
-
-  test("px.a8.net referrer → preserve a8", () => {
-    const policy = getLandingPolicy("rakuten.co.jp", "https://px.a8.net/svt/ejp?id=1");
-    assert.deepStrictEqual([...policy.preserve], ["a8"]);
-    assert.equal(policy.network, "a8net");
-  });
-
-  test("click.linksynergy.com referrer → preserve ranmid + ransiteid + raneaid", () => {
-    const policy = getLandingPolicy(
-      "ebay.com",
-      "https://click.linksynergy.com/deeplink?id=1",
-    );
-    assert.deepStrictEqual([...policy.preserve].sort(), ["raneaid", "ranmid", "ransiteid"]);
-    assert.equal(policy.network, "rakuten-linkshare");
-  });
-
-  test("tc.tradetracker.net referrer → preserve ttaid + ttrk + ttcid", () => {
-    const policy = getLandingPolicy(
-      "merchant.de",
-      "https://tc.tradetracker.net/?c=1&m=2",
-    );
-    assert.deepStrictEqual([...policy.preserve].sort(), ["ttaid", "ttcid", "ttrk"]);
-    assert.equal(policy.network, "tradetracker");
-  });
+  // Cases are the shared canary fixtures — single source of truth (#768/#769).
+  // Exact-set equality keeps the original strength; coverage now also includes
+  // Tradedoubler (tduid), which previously had none.
+  for (const c of LANDING_CANARIES) {
+    test(`${c.network}: ${c.referrer} preserves ${c.mustPreserve.join(" + ")}`, () => {
+      const policy = getLandingPolicy(c.landingHost, c.referrer);
+      assert.deepStrictEqual([...policy.preserve].sort(), [...c.mustPreserve].sort());
+      assert.equal(policy.network, c.network);
+    });
+  }
 });
 
 describe("getLandingPolicy — defensive parsing of the referrer arg", () => {
