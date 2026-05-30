@@ -30,8 +30,10 @@
 import { TRACKING_PARAMS } from "../src/lib/affiliates.js";
 import { writeFileSync } from "node:fs";
 
+// The `safari` platform path was deprecated by AdGuard and now 404s; `chromium`
+// serves the same Filter 17 (URL Tracking Protection) list.
 const ADGUARD_FILTER_17_URL =
-  "https://filters.adtidy.org/extension/safari/filters/17.txt";
+  "https://filters.adtidy.org/extension/chromium/filters/17.txt";
 
 /**
  * Parses an Adblock Plus filter list and extracts every removeparam parameter
