@@ -167,6 +167,16 @@ export const PREF_DEFAULTS = {
   // requires explicit user consent because it involves a network request
   // with the full affiliate URL.
   privacyProxyEnabled: false,
+  // Follow shortener redirects natively (ADR-0004 phase 2, #699). When ON,
+  // MUGA resolves the eight generic shorteners in-browser via
+  // fetch(redirect:"manual") instead of the proxy. Default OFF: requires the
+  // eight shortener host permissions, granted from the options toggle.
+  followShortenersEnabled: false,
+  // Dual-path selector for shortener resolution (ADR-0004 phase 3, #699).
+  // When ON, the service worker routes through the native in-browser resolver;
+  // when OFF, through the unwrap.muga.app proxy. Default OFF; exposed in
+  // advanced settings (dev-mode gated) for first-wave testing.
+  useNativeShortenerResolution: false,
 };
 
 /**

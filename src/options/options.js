@@ -15,6 +15,7 @@ import {
   addEntry as addCreatorAllowlistEntry,
   removeEntry as removeCreatorAllowlistEntry,
 } from "../lib/creator-allowlist.js";
+import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 
 let _currentLang = "en";
 
@@ -135,6 +136,9 @@ async function init() {
   // here as a plain bindToggle — cleaner.js reads the flag through the same
   // prefs object and routes the heuristic accordingly.
   bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
+  // Native shortener resolution flag (ADR-0004 phase 3, #699). Dev-mode-gated
+  // in the UI; routes the SW UNWRAP_VIA_PROXY handler to the native resolver.
+  bindToggle("useNativeShortenerResolution", "useNativeShortenerResolution", prefs);
   // Per-creator allowlist editor (#445, B13). Lives in the Advanced card,
   // visible without dev-mode (parallel to the honor-creator-mode toggle).
   initCreatorAllowlist(prefs.creatorAllowlist || []);
@@ -175,6 +179,9 @@ async function init() {
 
   // Privacy Proxy toggle section (#453, B20)
   await initPrivacyProxy(prefs);
+
+  // Follow-shortener-redirects toggle section (ADR-0004 phase 2, #699)
+  await initFollowShorteners(prefs);
 
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
@@ -744,6 +751,7 @@ function initExportImport() {
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
       privacyProxyEnabled: prefs.privacyProxyEnabled,
+      followShortenersEnabled: prefs.followShortenersEnabled,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1457,6 +1465,58 @@ async function initPrivacyProxy(prefs) {
       catch (err) { console.error("[MUGA] save privacyProxyEnabled:", err); }
     }
     updateCurrentModeLabel();
+  });
+}
+
+/**
+ * Requests the optional host permissions for the eight shortener origins.
+ * CRITICAL: must be the FIRST await in the enable path (Firefox MV2
+ * gesture-frame requirement — mirrors requestProxyPermission). Origins are
+ * derived from GENERIC_SHORTENERS so the permission list and the resolver
+ * allowlist share a single source of truth.
+ *
+ * @returns {Promise<boolean>}
+ */
+async function requestShortenerPermissions() {
+  try {
+    return await chrome.permissions.request({
+      origins: GENERIC_SHORTENERS.map((host) => `https://${host}/*`),
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Initialises the "Follow shortener redirects" toggle (ADR-0004 phase 2, #699).
+ * Mirrors initPrivacyProxy: the permission request is the first await in the
+ * enable path, the pref persists to chrome.storage.sync, and a denial reverts
+ * the checkbox. Routing into the native resolver lands in phase 3 — for now
+ * this toggle only grants the host permissions and records intent.
+ *
+ * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
+ */
+async function initFollowShorteners(prefs) {
+  const checkbox = document.getElementById("followShortenersEnabled");
+  if (!checkbox) return;
+  checkbox.checked = !!prefs.followShortenersEnabled;
+
+  checkbox.addEventListener("change", async () => {
+    if (checkbox.checked) {
+      // CRITICAL: chrome.permissions.request MUST be the FIRST await in the
+      // enable branch (Firefox MV2 gesture-frame requirement).
+      const granted = await requestShortenerPermissions();
+      if (!granted) {
+        checkbox.checked = false;
+        showToast(t("optionsRemoteRulesPermDenied", _currentLang));
+        return;
+      }
+      try { await setPrefs({ followShortenersEnabled: true }); }
+      catch (err) { console.error("[MUGA] save followShortenersEnabled:", err); }
+    } else {
+      try { await setPrefs({ followShortenersEnabled: false }); }
+      catch (err) { console.error("[MUGA] save followShortenersEnabled:", err); }
+    }
   });
 }
 

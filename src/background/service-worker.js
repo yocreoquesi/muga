@@ -20,6 +20,7 @@ import {
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { fetchUnwrap } from "../lib/proxy-client.js";
+import { resolveShortener } from "../lib/native-shortener-resolver.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
@@ -1115,14 +1116,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        // Delegate to proxy-client — it handles signature verification internally.
-        // proxy-client.js already imports PROXY_TRUSTED_PUBLIC_KEYS, so we do not
-        // need to pass it through here.
-        const result = await fetchUnwrap(rawUrl);
+        // ADR-0004 phase 3 dual path: the dev-mode-gated flag picks the backend.
+        const result = prefs.useNativeShortenerResolution ? await resolveShortener(rawUrl) : await fetchUnwrap(rawUrl);
 
         // Task 3.3: Permission-revocation self-heal.
         // If the Worker returns permission (origin not allowlisted / revoked),
         // auto-disable the feature so subsequent clicks fall back silently.
+        // (resolveShortener never returns reason "permission", so this branch
+        // stays effectively proxy-only.)
         if (!result.ok && result.reason === "permission") {
           try {
             await chrome.storage.sync.set({ privacyProxyEnabled: false });

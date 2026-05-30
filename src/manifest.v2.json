@@ -16,7 +16,14 @@
 
   "optional_permissions": [
     "https://rules.muga.app/*",
-    "https://unwrap.muga.app/*"
+    "https://unwrap.muga.app/*",
+    "https://bit.ly/*",
+    "https://tinyurl.com/*",
+    "https://t.co/*",
+    "https://link.medium.com/*",
+    "https://lnkd.in/*",
+    "https://fb.me/*",
+    "https://ebay.to/*"
   ],
 
   "background": {
