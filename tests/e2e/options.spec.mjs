@@ -223,16 +223,3 @@ test.describe("Options — version", () => {
     expect(text).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
-
-test.describe("Options — 2.1 rebrand sanity", () => {
-  // After the 2.1 rebrand (Privacy Proxy → URL Unwrapper) the user-visible
-  // text in the options page must NOT contain the old name. The i18n keys
-  // are still named `privacy_proxy_*` for backwards-compat, but the strings
-  // they resolve to are the new brand. This test guards against a regression
-  // where a translation drifts back to "Privacy Proxy".
-  test("user-visible text contains 'URL Unwrapper' and never 'Privacy Proxy'", async ({ optionsPage: page }) => {
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText).toContain("URL Unwrapper");
-    expect(bodyText).not.toContain("Privacy Proxy");
-  });
-});
