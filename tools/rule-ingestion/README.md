@@ -91,6 +91,39 @@ Run locally with `npm run ingest:rules` (writes `quarantine/candidates.json`).
 clause makes it off-limits for MUGA, a commercial extension. Do NOT add a DDG
 adapter. Full ledger: `PROVENANCE.md` (#774).
 
+## GATE 1 — affiliate-guard (#775)
+
+`tools/rule-ingestion/gates/affiliate-guard.mjs`
+
+**What it does:** Rejects any ingestion candidate whose bare `param` name collides
+with a known affiliate-attribution or redirect-landing parameter. The gate NEVER
+adds to or removes from `TRACKING_PARAMS` — it is a pure read-only check.
+
+**Public exports:**
+- `checkAffiliateGuard(candidate)` — returns `{ rejected: false }` or
+  `{ rejected: true, reason: "affiliate-collision", collidingPrograms: [{ id, source }] }`.
+- `partitionCandidates(candidates)` — batch helper; splits an array into
+  `{ accepted, rejected }` in a single pass, order preserved.
+
+**Asymmetric-risk rationale:** A false-accept (letting an affiliate param through
+into `TRACKING_PARAMS`) causes unbounded revenue loss for creators whose attribution
+cookies are silently stripped. A false-reject (blocking a new tracker that shares a
+name with an affiliate param) is trivially recoverable — the candidate can be
+reviewed and re-promoted manually. GATE 1 is therefore intentionally conservative.
+
+**SURPRISING-BUT-CORRECT — `ref` and `at` are rejected globally:**
+`ref` is the Vercel referral param; `at` is the Apple PHG affiliate tag. Both are
+rejected at ingestion even though the runtime cleaner strips them per-domain via
+`getAffiliateParamSetForHost`. GATE 1 is domain-agnostic by design — it has no
+URL context at ingestion time, so global rejection is the only safe policy.
+
+**Live-derived preserve set:** The 32-name preserve set is built at module load
+from `AFFILIATE_PATTERNS[].param` (6 CAPS direct-injection programs) and
+`REDIRECT_NETWORK_PATTERNS[].landingParams` (26 redirect-network params). No
+edits to this gate are needed when a new program or network is added to those
+source arrays (today hand-maintained in `src/lib/affiliates.js` and
+`src/rules/manifest.data.js`) — the set expands automatically.
+
 ## CI gate
 
 `verify-quarantine.mjs` runs in CI ([`ci.yml`](../../.github/workflows/ci.yml))
