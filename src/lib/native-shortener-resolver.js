@@ -1,7 +1,7 @@
 /** MUGA: Native shortener resolver — resolves branded URL shorteners in-extension */
 //
-// Replaces the unwrap.muga.app proxy path for the eight GENERIC_SHORTENERS
-// (ADR-0004). Performs the same HTTP redirect the browser would perform,
+// Sole shortener resolution path as of ADR-0004 phase 5 (proxy decommissioned).
+// Performs the same HTTP redirect the browser would perform,
 // reads the `Location` header, and returns the destination — no server hop.
 //
 // This module is PURE resolution logic: it is NOT wired into the service
@@ -31,10 +31,10 @@
 import { GENERIC_SHORTENERS, isGenericShortener } from "./opaque-networks.js";
 export { GENERIC_SHORTENERS };
 
-/** Default fetch timeout in milliseconds. Mirrors proxy-client.js. */
+/** Default fetch timeout in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 5000;
 
-/** Maximum destination URL length accepted. Mirrors the cleaner.js / proxy 2000-char cap. */
+/** Maximum destination URL length accepted. Mirrors the cleaner.js 2000-char cap. */
 const MAX_DESTINATION_LENGTH = 2000;
 
 /** Maximum number of allowlisted-shortener hops to follow before failing closed. */
@@ -43,9 +43,8 @@ const MAX_HOPS = 5;
 /** HTTP status codes that carry a `Location` redirect. */
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
-// ── Private-host detection (ported from proxy-client.js) ─────────────────────
-// Intentionally self-contained: proxy-client.js is scheduled for deletion in
-// ADR-0004 phase 5, so the native resolver must not depend on it.
+// ── Private-host detection ────────────────────────────────────────────────────
+// Self-contained: does not depend on any deleted proxy module.
 
 function isPrivateIPv4(a, b) {
   if (a === 0) return true;                          // 0.0.0.0/8 ("this host")

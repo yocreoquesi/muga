@@ -6,7 +6,7 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -19,7 +19,6 @@ import {
   REMOTE_RULE_ID,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
-import { fetchUnwrap } from "../lib/proxy-client.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
@@ -1018,85 +1017,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // ── Privacy Proxy: force-refresh Worker build hash ───────────────────────────
-  // Triggered from the options page when the user enables Privacy Proxy.
-  // Bypasses the 24h staleness gate so the user gets fresh data immediately.
-  // Sender has already been validated at the top of this listener.
-  if (message.type === "REFRESH_BUILD_HASH_NOW") {
-    (async () => {
-      try {
-        const prefs = await getPrefsWithCache();
-        if (!prefs.privacyProxyEnabled) {
-          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
-          return;
-        }
-        const hasPermission = await new Promise((resolve) => {
-          chrome.permissions.contains(
-            { origins: ["https://unwrap.muga.app/*"] },
-            (result) => { void chrome.runtime.lastError; resolve(!!result); }
-          );
-        });
-        if (!hasPermission) {
-          try { sendResponse({ ok: false, reason: "permission" }); } catch { /* channel closed */ }
-          return;
-        }
-        // Force-fetch, ignoring the 24h gate
-        const resp = await fetch("https://unwrap.muga.app/healthz");
-        if (!resp.ok) {
-          try { sendResponse({ ok: false, reason: "network" }); } catch { /* channel closed */ }
-          return;
-        }
-        const data = await resp.json();
-        if (typeof data.commit_sha === "string" && data.commit_sha.length > 0) {
-          await new Promise((resolve) => {
-            chrome.storage.local.set(
-              { workerBuildHash: data.commit_sha, workerBuildHashFetchedAt: Date.now() },
-              () => { void chrome.runtime.lastError; resolve(); }
-            );
-          });
-        }
-        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
-      } catch (err) {
-        console.error("[MUGA] REFRESH_BUILD_HASH_NOW handler failed:", err);
-        try { sendResponse({ ok: false, reason: "network" }); } catch { /* channel closed */ }
-      }
-    })();
-    return true;
-  }
-
-  // ── Privacy Proxy: unwrap opaque affiliate redirect via unwrap.muga.app ─────
+  // ── Shortener resolution: resolve generic shortener via native fetch ─────────
+  // ADR-0004 phase 5 (#701): proxy path removed. Native resolver is the SOLE
+  // path. On failure (permission denied, fetch throws, no Location header):
+  // the response ok:false is returned and the content script falls back to
+  // the original navigation — per ADR-0004 option-D rejection reasoning
+  // (surface/skip rather than silently forward).
+  //
   // Sender has already been validated at the top of this listener
   // (sender.id !== chrome.runtime.id returns false before reaching here).
-  if (message.type === "UNWRAP_VIA_PROXY") {
+  if (message.type === "RESOLVE_SHORTENER") {
     (async () => {
       try {
         const prefs = await getPrefsWithCache();
-        if (!prefs.privacyProxyEnabled) {
+        if (!prefs.followShortenersEnabled) {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
-          return;
-        }
-
-        // Pre-flight: confirm we still hold the host permission. If the user
-        // revoked it from browser settings, the next fetchUnwrap would fail with
-        // a generic network error — handling it here lets the self-heal branch
-        // (below) actually fire.
-        try {
-          const hasPermission = await chrome.permissions.contains({
-            origins: ["https://unwrap.muga.app/*"],
-          });
-          if (!hasPermission) {
-            try { sendResponse({ ok: false, reason: "permission" }); } catch { /* channel closed */ }
-            return;
-          }
-        } catch {
-          // chrome.permissions API failure is itself a permission-class problem
-          try { sendResponse({ ok: false, reason: "permission" }); } catch { /* channel closed */ }
           return;
         }
 
         // Validate input URL: scheme must be http/https, host must be a known
-        // generic shortener. Under the 2.1 denoise pivot (#659) the URL Unwrapper
-        // tier must NOT resolve affiliate-redirect networks — their click IS the
+        // generic shortener. Under the 2.1 denoise pivot (#659) this tier must
+        // NOT resolve affiliate-redirect networks — their click IS the
         // attribution event and must pass through unchanged.
         const rawUrl = message.url;
         let parsedUrl;
@@ -1116,54 +1057,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        // ADR-0004 phase 3 dual path: the dev-mode-gated flag picks the backend.
-        // Phase 4 (#700): native is now the default (useNativeShortenerResolution=true).
-        // Pass/fail counters are incremented only on the native path — the proxy
-        // path has no per-shortener observability (server-side only).
-        let result;
-        if (prefs.useNativeShortenerResolution) {
-          result = await resolveShortener(rawUrl);
-          // ADR-0004 phase 4: per-shortener pass/fail counter (local-only, never transmitted).
-          incrementShortenerStat(hostname, result.ok ? "pass" : "fail").catch(() => {});
-        } else {
-          result = await fetchUnwrap(rawUrl);
-        }
-
-        // Task 3.3: Permission-revocation self-heal.
-        // If the Worker returns permission (origin not allowlisted / revoked),
-        // auto-disable the feature so subsequent clicks fall back silently.
-        // (resolveShortener never returns reason "permission", so this branch
-        // stays effectively proxy-only.)
-        if (!result.ok && result.reason === "permission") {
-          try {
-            await chrome.storage.sync.set({ privacyProxyEnabled: false });
-            _invalidatePrefsCache();
-          } catch (err) {
-            console.warn("[MUGA] UNWRAP_VIA_PROXY: failed to auto-disable proxy pref:", err);
-          }
-          // Surface a notice to the active tab via content-script toast
-          try {
-            const [activeTab] = await new Promise(resolve =>
-              chrome.tabs.query({ active: true, currentWindow: true }, tabs => resolve(tabs || []))
-            );
-            if (activeTab?.id) {
-              const lang = prefs.language || "en";
-              // The SW resolves the translated string so the content script
-              // IIFE (which has no ES module imports) receives ready-to-use text.
-              const autoDisabledText = t("proxy_auto_disabled", lang);
-              chrome.tabs.sendMessage(activeTab.id, {
-                type: "SHOW_PROXY_CTA",
-                variant: "auto_disabled",
-                lang,
-                text: autoDisabledText,
-              }, () => void chrome.runtime.lastError);
-            }
-          } catch { /* best-effort toast — not fatal */ }
-        }
+        // Native resolution — sole path as of ADR-0004 phase 5.
+        const result = await resolveShortener(rawUrl);
+        // ADR-0004 phase 4: per-shortener pass/fail counter (local-only, never transmitted).
+        incrementShortenerStat(hostname, result.ok ? "pass" : "fail").catch(() => {});
 
         try { sendResponse(result); } catch { /* channel closed */ }
       } catch (err) {
-        console.error("[MUGA] UNWRAP_VIA_PROXY handler failed:", err);
+        console.error("[MUGA] RESOLVE_SHORTENER handler failed:", err);
         try { sendResponse({ ok: false, reason: "network" }); } catch { /* channel closed */ }
       }
     })();
@@ -1333,68 +1234,6 @@ function _remoteRulesDeps() {
   };
 }
 
-// --- Build-hash refresh (Task 3.2) ---
-// Fetches the Cloudflare Worker build hash from /healthz at most once per 24h.
-// Called on onInstalled and onStartup — NOT on every SW wake to keep the path cheap.
-const _BUILD_HASH_INTERVAL_MS = 86400000; // 24 hours
-
-/**
- * Fetches the build hash from https://unwrap.muga.app/healthz when:
- *   (a) privacyProxyEnabled is true, AND
- *   (b) the extension has the required host permission, AND
- *   (c) at least 24h have passed since the last successful fetch (or no prior fetch).
- *
- * On success: writes { workerBuildHash, workerBuildHashFetchedAt } to chrome.storage.local.
- * On error: keeps the stale cache and logs a warning. Never throws.
- */
-async function refreshBuildHashIfStale() {
-  try {
-    const stored = await new Promise((resolve) => {
-      chrome.storage.local.get(
-        { workerBuildHash: null, workerBuildHashFetchedAt: null },
-        (r) => { if (chrome.runtime.lastError) resolve({}); else resolve(r); }
-      );
-    });
-    const fetchedAt = stored.workerBuildHashFetchedAt;
-    const isStale = !fetchedAt || (Date.now() - fetchedAt) >= _BUILD_HASH_INTERVAL_MS;
-    if (!isStale) return;
-
-    // Gate 1: feature must be enabled
-    const prefs = await getPrefsWithCache();
-    if (!prefs.privacyProxyEnabled) return;
-
-    // Gate 2: host permission must still be granted
-    const hasPermission = await new Promise((resolve) => {
-      if (typeof chrome.permissions?.contains !== "function") { resolve(false); return; }
-      chrome.permissions.contains({ origins: ["https://unwrap.muga.app/*"] }, (result) => {
-        if (chrome.runtime.lastError) resolve(false);
-        else resolve(!!result);
-      });
-    });
-    if (!hasPermission) return;
-
-    const resp = await fetch("https://unwrap.muga.app/healthz", {
-      credentials: "omit",
-      cache: "no-store",
-    });
-    if (!resp.ok) {
-      console.warn("[MUGA] build-hash fetch failed: HTTP", resp.status);
-      return;
-    }
-    const data = await resp.json();
-    if (typeof data.commit_sha === "string" && data.commit_sha.length > 0) {
-      await new Promise((resolve) => {
-        chrome.storage.local.set(
-          { workerBuildHash: data.commit_sha, workerBuildHashFetchedAt: Date.now() },
-          () => { void chrome.runtime.lastError; resolve(); }
-        );
-      });
-    }
-  } catch (err) {
-    console.warn("[MUGA] build-hash fetch failed:", err);
-  }
-}
-
 // --- On startup: apply DNR state + opportunistic remote-rules fetch ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
@@ -1403,8 +1242,9 @@ chrome.runtime.onStartup.addListener(async () => {
   // is older than REMOTE_REFRESH_INTERVAL_MS or absent. Also short-circuits
   // immediately if remoteRulesEnabled is false.
   maybeFetchRemoteRules(_remoteRulesDeps());
-  // B20: refresh Worker build hash at most once per 24h
-  refreshBuildHashIfStale();
+  // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
+  // on first startup after upgrade. Best-effort; failure must not break startup.
+  migrateLegacyProxyPref().catch(() => {});
 });
 
 // --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
@@ -1444,8 +1284,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Opportunistic fetch: fires on install/update if user had enabled remote rules
   // before the update and the stored payload is stale (or absent).
   maybeFetchRemoteRules(_remoteRulesDeps());
-  // B20: refresh Worker build hash at most once per 24h
-  refreshBuildHashIfStale();
+  // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
+  migrateLegacyProxyPref().catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

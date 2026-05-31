@@ -3,7 +3,6 @@
  */
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
-import { deriveModeLabel } from "../lib/mode-label.js";
 import { formatRelativeTime } from "../lib/relative-time.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
@@ -126,19 +125,13 @@ async function init() {
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
-  // Wire updateCurrentModeLabel to the honor-creator-mode toggle so the live
-  // mode display stays in sync with both toggles (PR-07 requirement).
-  {
-    const honorEl = document.getElementById("honor-creator-mode");
-    if (honorEl) honorEl.addEventListener("change", updateCurrentModeLabel);
-  }
+  // ADR-0004 phase 5 (#701): mode-label display removed along with Privacy Proxy section.
   // Experimental shape-based param heuristic (#544). Default OFF. Plumbed
   // here as a plain bindToggle — cleaner.js reads the flag through the same
   // prefs object and routes the heuristic accordingly.
   bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
-  // Native shortener resolution flag (ADR-0004 phase 3, #699). Dev-mode-gated
-  // in the UI; routes the SW UNWRAP_VIA_PROXY handler to the native resolver.
-  bindToggle("useNativeShortenerResolution", "useNativeShortenerResolution", prefs);
+  // ADR-0004 phase 5 (#701): useNativeShortenerResolution flag removed — native
+  // resolution is now the only path, the toggle is vestigial and has been deleted.
   // Per-creator allowlist editor (#445, B13). Lives in the Advanced card,
   // visible without dev-mode (parallel to the honor-creator-mode toggle).
   initCreatorAllowlist(prefs.creatorAllowlist || []);
@@ -176,9 +169,6 @@ async function init() {
 
   // Remote rule updates section — feature-detect then wire (REQ-UI-5)
   await initRemoteRules();
-
-  // Privacy Proxy toggle section (#453, B20)
-  await initPrivacyProxy(prefs);
 
   // Follow-shortener-redirects toggle section (ADR-0004 phase 2, #699)
   await initFollowShorteners(prefs);
@@ -750,7 +740,6 @@ function initExportImport() {
       paramBreakdown: prefs.paramBreakdown,
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
-      privacyProxyEnabled: prefs.privacyProxyEnabled,
       followShortenersEnabled: prefs.followShortenersEnabled,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -790,7 +779,7 @@ function initExportImport() {
         throw new Error("invalid");
       }
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "privacyProxyEnabled"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled"];
       const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -1433,119 +1422,6 @@ async function initRemoteRules() {
   });
 }
 
-// ── Privacy Proxy section (#453, B20) ──────────────────────────────────────
-
-/**
- * Reads both checkbox states (NOT storage — synchronous update per PR-07) and
- * updates the #current-mode-label span with the i18n-translated mode name.
- */
-function updateCurrentModeLabel() {
-  const honorEl = document.getElementById("honor-creator-mode");
-  const proxyEl = document.getElementById("privacyProxyEnabled");
-  const labelEl = document.getElementById("current-mode-label");
-  if (!labelEl) return;
-  const honor = honorEl ? honorEl.checked : false;
-  const proxy = proxyEl ? proxyEl.checked : false;
-  const key = deriveModeLabel(honor, proxy);
-  labelEl.textContent = t(key, _currentLang);
-}
-
-/**
- * Requests the optional host permission for the proxy origin.
- * CRITICAL: must be called as the FIRST await in the enable path (Firefox MV2
- * gesture-frame requirement — mirrors the remote-rules pattern).
- *
- * @returns {Promise<boolean>}
- */
-async function requestProxyPermission() {
-  try {
-    return await chrome.permissions.request({
-      origins: ["https://unwrap.muga.app/*"],
-    });
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Shows the permission-denied error in the privacy-proxy section.
- * Reuses the same error-display pattern as initRemoteRules on denial.
- */
-function showProxyPermissionDeniedToast() {
-  showToast(t("optionsRemoteRulesPermDenied", _currentLang));
-}
-
-// formatRelativeTime is imported from ../lib/relative-time.js above.
-// It accepts (fetchedAt, lang) and returns a localized relative time string.
-
-/**
- * Reads workerBuildHash and workerBuildHashFetchedAt from chrome.storage.local
- * and populates the build-hash display cluster (hash, last-verified, verify link).
- * Updates via textContent only — no innerHTML.
- */
-function renderWorkerBuildHashState() {
-  chrome.storage.local.get(
-    { workerBuildHash: null, workerBuildHashFetchedAt: null },
-    (data) => {
-      if (chrome.runtime.lastError) return;
-      const hashEl = document.getElementById("worker-build-hash");
-      const timeEl = document.getElementById("worker-build-hash-time");
-      if (hashEl) {
-        hashEl.textContent = data.workerBuildHash
-          ? String(data.workerBuildHash).slice(0, 7)
-          : "—";
-      }
-      if (timeEl) {
-        timeEl.textContent = formatRelativeTime(data.workerBuildHashFetchedAt, _currentLang);
-      }
-    }
-  );
-}
-
-/**
- * Initialises the Privacy Proxy toggle section (#453, B20).
- * Mirrors the initRemoteRules pattern.
- *
- * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
- */
-async function initPrivacyProxy(prefs) {
-  const checkbox = document.getElementById("privacyProxyEnabled");
-  if (!checkbox) return;
-  checkbox.checked = !!prefs.privacyProxyEnabled;
-  // aria-label is now handled by data-i18n-aria-label="enable_privacy_proxy_cta"
-  // on the input element (#707). applyTranslations sets it on every lang
-  // change; no manual setAttribute needed here.
-
-  // Initial render of the build-hash + last-verified cluster
-  renderWorkerBuildHashState();
-  // Initial current-mode label
-  updateCurrentModeLabel();
-
-  checkbox.addEventListener("change", async () => {
-    if (checkbox.checked) {
-      // CRITICAL: chrome.permissions.request MUST be the FIRST await in the
-      // enable branch (Firefox MV2 gesture-frame requirement — REQ-OPT-4).
-      const granted = await requestProxyPermission();
-      if (!granted) {
-        checkbox.checked = false;
-        showProxyPermissionDeniedToast();
-        updateCurrentModeLabel();
-        return;
-      }
-      try { await setPrefs({ privacyProxyEnabled: true }); }
-      catch (err) { console.error("[MUGA] save privacyProxyEnabled:", err); }
-      // Trigger build-hash fetch — SW will keep refreshing on its own schedule
-      try { void chrome.runtime.sendMessage({ type: "REFRESH_BUILD_HASH_NOW" }); }
-      catch { /* best-effort — SW may not be awake yet */ }
-      renderWorkerBuildHashState();
-    } else {
-      try { await setPrefs({ privacyProxyEnabled: false }); }
-      catch (err) { console.error("[MUGA] save privacyProxyEnabled:", err); }
-    }
-    updateCurrentModeLabel();
-  });
-}
-
 /**
  * Requests the optional host permissions for the eight shortener origins.
  * CRITICAL: must be the FIRST await in the enable path (Firefox MV2
@@ -1567,10 +1443,9 @@ async function requestShortenerPermissions() {
 
 /**
  * Initialises the "Follow shortener redirects" toggle (ADR-0004 phase 2, #699).
- * Mirrors initPrivacyProxy: the permission request is the first await in the
- * enable path, the pref persists to chrome.storage.sync, and a denial reverts
- * the checkbox. Routing into the native resolver lands in phase 3 — for now
- * this toggle only grants the host permissions and records intent.
+ * The permission request is the first await in the enable path (Firefox MV2
+ * gesture-frame requirement). The pref persists to chrome.storage.sync, and a
+ * denial reverts the checkbox.
  *
  * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
  */

@@ -163,25 +163,21 @@ export const PREF_DEFAULTS = {
   // Lives in sync so the rule list follows the user across devices.
   // Default empty — opt-in by user click only.
   userCustomRules: [],
-  // Privacy Proxy toggle (#453, B20). When ON, opaque affiliate-network
-  // redirect URLs that cannot be unwrapped client-side are sent to
-  // unwrap.muga.app (a Cloudflare Worker) for resolution. Every response
-  // is verified with an Ed25519 signature before navigation. Default OFF:
-  // requires explicit user consent because it involves a network request
-  // with the full affiliate URL.
-  privacyProxyEnabled: false,
-  // Follow shortener redirects natively (ADR-0004 phase 2, #699). When ON,
-  // MUGA resolves the eight generic shorteners in-browser via
-  // fetch(redirect:"manual") instead of the proxy. Default OFF: requires the
-  // eight shortener host permissions, granted from the options toggle.
+  // Follow shortener redirects natively (ADR-0004 phase 2, #699; renamed from
+  // privacyProxyEnabled in phase 5, #701). When ON, MUGA resolves the eight
+  // generic shorteners in-browser via fetch(redirect:"manual"). Default OFF:
+  // requires the eight shortener host permissions, granted from the options toggle.
+  // Migration: on startup, if chrome.storage.sync contains privacyProxyEnabled=true,
+  // this field is set to true and the old key is deleted (see migrateLegacyProxyPref).
   followShortenersEnabled: false,
-  // Dual-path selector for shortener resolution (ADR-0004 phase 3, #699;
-  // default flipped to true in phase 4, #700). When ON, the service worker
-  // routes through the native in-browser resolver; when OFF, through the
-  // unwrap.muga.app proxy. Default TRUE as of 2.2.0-beta.1 — native is the
-  // primary path; the proxy remains as fallback for permission-denied / fetch
-  // failures. Exposed in advanced settings (dev-mode gated).
-  useNativeShortenerResolution: true,
+  // NOTE (ADR-0004 phase 5, 2026-06-01): privacyProxyEnabled was the Privacy Proxy
+  // toggle removed in phase 5. Retained as a deprecation comment only — do NOT add
+  // it back to PREF_DEFAULTS. Any live value is migrated to followShortenersEnabled
+  // on first startup by migrateLegacyProxyPref().
+  //
+  // NOTE (ADR-0004 phase 5, 2026-06-01): useNativeShortenerResolution was the
+  // dual-path selector removed in phase 5. Native resolution is now the ONLY path.
+  // Do NOT add it back to PREF_DEFAULTS.
 };
 
 /**
@@ -758,4 +754,53 @@ export async function migrateStatsToLocal() {
       else resolve();
     })
   ).catch(() => {}); // best-effort: old keys already migrated, removal is non-critical
+}
+
+/**
+ * One-time migration (ADR-0004 phase 5, #701): renames `privacyProxyEnabled` →
+ * `followShortenersEnabled` in chrome.storage.sync. Safe to call on every
+ * startup. Exits immediately if the old key is absent.
+ *
+ * If the user had `privacyProxyEnabled = true` they were using native shortener
+ * resolution (the default since phase 4 / 2.2.0-beta.1), so we preserve their
+ * intent by setting `followShortenersEnabled = true`. A false value needs no
+ * migration because `followShortenersEnabled` already defaults to false.
+ */
+export async function migrateLegacyProxyPref() {
+  try {
+    const data = await new Promise((resolve, reject) =>
+      chrome.storage.sync.get({ privacyProxyEnabled: null }, (result) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(result);
+      })
+    ).catch(() => ({ privacyProxyEnabled: null }));
+
+    if (data.privacyProxyEnabled === null) return; // key absent — nothing to do
+
+    const updates = {};
+    if (data.privacyProxyEnabled === true) {
+      // Preserve user's intent: they had the feature enabled.
+      updates.followShortenersEnabled = true;
+    }
+    // Write followShortenersEnabled only when migrating a `true` value; a false
+    // or absent old value needs no write (the new key already defaults to false).
+    // The old key is removed unconditionally below regardless.
+    if (Object.keys(updates).length > 0) {
+      await new Promise((resolve, reject) =>
+        chrome.storage.sync.set(updates, () => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve();
+        })
+      );
+    }
+    // Remove the deprecated key.
+    await new Promise((resolve) =>
+      chrome.storage.sync.remove("privacyProxyEnabled", () => {
+        void chrome.runtime.lastError; // non-critical
+        resolve();
+      })
+    );
+  } catch {
+    // Migration is best-effort — a failure here must never break startup.
+  }
 }
