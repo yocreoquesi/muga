@@ -1,5 +1,5 @@
 /**
- * MUGA rule-ingestion adapter registry (#773).
+ * MUGA rule-ingestion adapter registry (#773, #776).
  *
  * Lists the license-compatible signal sources MUGA ingests, and records the
  * sources DELIBERATELY EXCLUDED so the exclusion is visible in code review, not
@@ -15,18 +15,21 @@
  */
 
 import { adguardTp } from "./adguard-tp.mjs";
+import { clearurls } from "./clearurls.mjs";
 
 /**
  * Enabled, license-compatible signal sources.
  * - AdGuard TP: GPL-3.0 (compatible with MUGA's GPL v3) — a large, consolidated,
- *   well-maintained list. Single source in B2.
- *
- * A second independent source (and cross-corroboration scoring) is deferred to
- * #776, where the corroboration gate actually consumes it. The adapter array
- * means adding one later is a registry edit, not a contract change.
+ *   well-maintained list. First signal source.
+ * - ClearURLs: LGPL-3.0 (library copyleft — ships alongside MUGA without
+ *   relicensing the extension) — second independent source that makes
+ *   cross-source corroboration real. A param appearing in BOTH AdGuard TP AND
+ *   ClearURLs accumulates signals.length === 2, passing GATE 2 (corroboration-
+ *   gate, #776). Single-source params remain at signals.length === 1 and are
+ *   quarantined (recoverable false-positive guard).
  * @type {Adapter[]}
  */
-export const ENABLED_ADAPTERS = [adguardTp];
+export const ENABLED_ADAPTERS = [adguardTp, clearurls];
 
 /**
  * Sources excluded ON PURPOSE — do NOT add adapters for these.

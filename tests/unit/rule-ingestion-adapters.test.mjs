@@ -46,10 +46,10 @@ test("adguardTp.parse extracts literal params and skips regex specs", () => {
   assert.ok(!params.has("/^utm_/"));
 });
 
-test("registry enables only AdGuard TP in B2", () => {
+test("registry enables AdGuard TP and ClearURLs (two independent signal sources for GATE 2, #776)", () => {
   assert.deepEqual(
     ENABLED_ADAPTERS.map((a) => a.id),
-    ["adguard-tp"],
+    ["adguard-tp", "clearurls"],
   );
 });
 
