@@ -6,7 +6,7 @@
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -1117,7 +1117,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         // ADR-0004 phase 3 dual path: the dev-mode-gated flag picks the backend.
-        const result = prefs.useNativeShortenerResolution ? await resolveShortener(rawUrl) : await fetchUnwrap(rawUrl);
+        // Phase 4 (#700): native is now the default (useNativeShortenerResolution=true).
+        // Pass/fail counters are incremented only on the native path — the proxy
+        // path has no per-shortener observability (server-side only).
+        let result;
+        if (prefs.useNativeShortenerResolution) {
+          result = await resolveShortener(rawUrl);
+          // ADR-0004 phase 4: per-shortener pass/fail counter (local-only, never transmitted).
+          incrementShortenerStat(hostname, result.ok ? "pass" : "fail").catch(() => {});
+        } else {
+          result = await fetchUnwrap(rawUrl);
+        }
 
         // Task 3.3: Permission-revocation self-heal.
         // If the Worker returns permission (origin not allowlisted / revoked),

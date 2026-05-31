@@ -127,7 +127,8 @@ describe("manifest.json integrity", () => {
   // Prevent issue #272: custom keys cause Firefox warnings
   test("MV2 has no custom/non-standard keys at root level", () => {
     const standardMV2Keys = new Set([
-      "manifest_version", "name", "short_name", "version", "description",
+      "manifest_version", "name", "short_name", "version", "version_name",
+      "description",
       "permissions", "optional_permissions", "background", "content_scripts",
       "commands", "browser_action", "page_action", "options_ui",
       "web_accessible_resources", "declarative_net_request", "icons",
@@ -148,7 +149,7 @@ describe("manifest.json integrity", () => {
 
   test("MV3 has no custom/non-standard keys at root level", () => {
     const standardMV3Keys = new Set([
-      "manifest_version", "name", "short_name", "version", "description",
+      "manifest_version", "name", "short_name", "version", "version_name", "description",
       "permissions", "optional_permissions", "optional_host_permissions", "host_permissions",
       "background", "content_scripts", "commands", "action",
       "options_ui", "options_page", "web_accessible_resources",
