@@ -124,6 +124,61 @@ edits to this gate are needed when a new program or network is added to those
 source arrays (today hand-maintained in `src/lib/affiliates.js` and
 `src/rules/manifest.data.js`) — the set expands automatically.
 
+## GATE 3 — canary-gate (#777)
+
+`tools/rule-ingestion/gates/canary-gate.mjs`
+
+**What it does:** Replays the ingestion candidate via `remoteParams` against
+all 16 `PRESERVE_CANARIES` (the affiliate-survival moat). For each canary it
+calls the real `processUrl` with `{ remoteParams: [candidate.param] }` and
+checks that every `mustSurvive` attribute still holds. Any canary break causes
+REJECTION. The gate is pure — it never mutates `TRACKING_PARAMS`,
+`TRACKING_PARAMS_SET`, or any module-level singleton.
+
+**Public exports:**
+- `checkCanaryGate(candidate, opts?)` — returns `{ rejected: false }` when the
+  candidate param does not break any canary, or
+  `{ rejected: true, reason: "canary-break", brokenCanaries: CanaryFailure[] }`
+  when at least one canary breaks. `CanaryFailure = { name, kind: "preserve", reason }`.
+  `brokenCanaries` is PARAM-LEVEL and collect-all (no short-circuit).
+- `partitionCandidates(candidates, opts?)` — batch helper; returns
+  `{ accepted: Candidate[], rejected: Array<{ candidate, reason, brokenCanaries }> }`,
+  input order preserved in both arrays. `opts` is forwarded to each individual
+  `checkCanaryGate` call (testability seam works at batch level too).
+
+**Asymmetric-risk rationale:** A false-accept (failing to catch a param that
+strips an affiliate attribution cookie at runtime) causes unbounded revenue loss
+for creators. A false-reject (blocking a tracker whose name happens to match an
+inert URL param in a canary) is recoverable by manual review. GATE 3 is
+therefore intentionally conservative — it only promotes a candidate once it has
+proved that injecting that param as a runtime strip rule leaves every canary
+intact.
+
+**GATE-1 complementarity (`tag` example):** GATE 1 rejects `{ param: "tag" }`
+structurally (the name collides with the Amazon Associates tag param). GATE 3
+returns `{ rejected: false }` for the same candidate — because `cleaner.js:303`
+runs `if (affiliateParamSet.has(lower)) continue;` before `isTrackingParam`,
+making affiliate-protected params like `tag` and `campid` immune to
+`remoteParams` stripping at runtime. The two gates are COMPLEMENTARY (GATE 1 =
+structural; GATE 3 = behavioral), not redundant. A candidate rejected by GATE 1
+never reaches GATE 3.
+
+**LANDING_CANARIES excluded — WHY:** `LANDING_CANARIES` exercise
+`getLandingPolicy()`, an orthogonal code-path driven by referrer heuristics
+rather than `remoteParams` stripping. Including them in GATE 3 would simulate a
+wrong behavior. GATE 3 imports `PRESERVE_CANARIES` only.
+
+**Affiliate-safety domain:** The canaries and the shared break-evaluator now
+live in `tools/affiliate-safety/`:
+- `canaries.mjs` — exports `PRESERVE_CANARIES` and `LANDING_CANARIES`
+  (relocated from `tests/fixtures/` in #777, EPIC C).
+- `evaluate.mjs` — exports `evaluateCanary(canary, processUrlFn, extraRemoteParams?)`
+  — the shared break-evaluator used by BOTH the A4 runner
+  (`tools/affiliate-safety/runner.mjs`) AND GATE 3. Single source of truth;
+  zero drift.
+- `runner.mjs` — exports `runAffiliateCanaries()` (relocated from
+  `tests/fixtures/`; PRESERVE loop now delegates to `evaluateCanary`).
+
 ## CI gate
 
 `verify-quarantine.mjs` runs in CI ([`ci.yml`](../../.github/workflows/ci.yml))
