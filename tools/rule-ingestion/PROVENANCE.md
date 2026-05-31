@@ -58,7 +58,7 @@ Verified against each project's actual `LICENSE` file. Status reflects use as a
 | Source | Data license | Status | Notes |
 |---|---|---|---|
 | **AdGuard URL Tracking Protection (Filter 17)** | GPL-3.0 | ✅ **Enabled** (B2) | Strong copyleft, compatible with MUGA's GPL v3. Large, consolidated, actively maintained. Sole source in B2. |
-| **ClearURLs Rules** | LGPL-3.0 | ⏸️ Candidate (#776) | Library copyleft — ships alongside MUGA without relicensing the extension. Per-provider JSON; `rules` (tracking) only, **never** `referralMarketing` (affiliate — MUGA's preserve set). Re-added when cross-corroboration lands. |
+| **ClearURLs Rules** | LGPL-3.0 | ✅ **Enabled** (#776) | Library copyleft — ships alongside MUGA without relicensing the extension. Per-provider JSON; `rules` (tracking) only, **never** `referralMarketing` (affiliate — MUGA's preserve set). Second independent source enabling cross-source corroboration via GATE 2. |
 | **Brave adblock-lists** (`clean-urls.json`, `debounce.json`) | MPL-2.0 | ⏸️ Candidate | File-level copyleft, friendliest for commercial use. Not yet wired. |
 | **uBlock Origin / uAssets** | GPL-3.0 | ⏸️ Candidate | Strong copyleft, compatible. Overlaps heavily with AdGuard. |
 | **Neat URL** | GPL-2.0-or-later | ⏸️ Candidate | Compatible. Small list. |
