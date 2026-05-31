@@ -16,7 +16,6 @@
 
   "optional_host_permissions": [
     "https://rules.muga.app/*",
-    "https://unwrap.muga.app/*",
     "https://bit.ly/*",
     "https://tinyurl.com/*",
     "https://t.co/*",
@@ -96,7 +95,7 @@
   },
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app https://unwrap.muga.app; style-src 'self' 'unsafe-inline'"
+    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app; style-src 'self' 'unsafe-inline'"
   },
 
   "icons": {

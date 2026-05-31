@@ -1,7 +1,7 @@
 # ADR-0004: Decommission `unwrap.muga.app`, migrate shortener resolution to native
 
 **Date**: 2026-05-27
-**Status**: Accepted
+**Status**: Implemented (phase 5 shipped 2026-06-01; phase 6 pending)
 **Issue**: TBD (this ADR + three implementation issues to be filed under milestone v2.2.0)
 **Supersedes**: nothing
 **Builds on**: [ADR-0002](./0002-denoise-pivot-creator-agnostic.md) (denoise pivot — creator-agnostic)
@@ -49,6 +49,8 @@ The phases ship as separate PRs in this order. Phase 5 (proxy removal) is **gate
 
 If either gate fails, phase 5 is held and phase 3's flag default flips back to `false` while the cause is investigated.
 
+> **Phase 5 beta gate WAIVED — 2026-06-01**: The 7-day ≥99% native-success beta gate was consciously waived by the operator on 2026-06-01. Rationale: solo-operator project with no active user base on the beta channel at the time of the waiver; native resolution shipped as the unconditional default in phase 4 / PR #801 / 2.2.0-beta.1 immediately prior; no open `native-resolver` critical issues. Phase 6 (Cloudflare Worker shutdown, DNS record removal, `muga-unwrap` repo archive) remains an external operation outside this codebase.
+
 ## Alternatives considered
 
 **Option B — keep `unwrap.muga.app`, update the pitch.** Acknowledge in the onboarding and privacy policy that shorteners resolve through MUGA's server. Add the aggregate-metrics endpoint ([#652](https://github.com/yocreoquesi/muga/issues/652)) and the server-side enforcement ([#659](https://github.com/yocreoquesi/muga/issues/659)). Position the server as a privacy-preserving intermediary rather than a contradiction.
@@ -94,7 +96,7 @@ The decommission is verified across four checkpoints:
 
 1. **Phase 1 (native resolver)** — `npm test` includes the new resolver unit tests; all pass on the same Node version CI uses.
 2. **Phase 4 (beta)** — at the end of the beta window, the per-shortener pass/fail counters show ≥99% native success rate for each of the eight hosts, **and** zero open critical-severity issues tagged `native-resolver` for the trailing 7 days. The numbers and the issue audit are recorded in the v2.2.0 release-readiness issue.
-3. **Phase 5 (proxy removal)** — grep-based assertion in CI: `git grep -F unwrap.muga.app src/` returns no matches except in changelog / ADR text. `grep -F PrivacyProxy src/` returns no matches except in deprecation comments scheduled for removal in 2.3.
+3. **Phase 5 (proxy removal)** — grep-based assertion in CI: `git grep -F unwrap.muga.app src/` returns no matches except in changelog / ADR text. `grep -F PrivacyProxy src/` returns no matches except in deprecation comments scheduled for removal in 2.3. **COMPLETED 2026-06-01** — `git grep -F unwrap.muga.app src/` returns zero matches. `proxy-client.js`, `proxy-navigate.js`, `fetchUnwrap`, `UNWRAP_VIA_PROXY`, `refreshBuildHashIfStale`, and `privacyProxyEnabled` (except a migration comment in `storage.js`) are removed from `src/`. The pref rename `privacyProxyEnabled` → `followShortenersEnabled` ships with one-time migration on startup. `useNativeShortenerResolution` is removed as vestigial. Beta gate waived (see note above).
 4. **Phase 6 (server shutdown)** — `curl https://unwrap.muga.app/unwrap` returns 404 or DNS NXDOMAIN. Recorded in the shutdown PR's description as an external-state observation.
 
 The ADR moves from Accepted to Implemented when all four checkpoints are recorded. A follow-up ADR-0005 may be filed if any phase surfaces a decision the present ADR did not anticipate (for example, a shortener that requires per-host special handling in the native resolver).

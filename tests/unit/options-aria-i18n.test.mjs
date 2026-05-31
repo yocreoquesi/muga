@@ -79,16 +79,12 @@ describe("#707 — options-page aria-labels are i18n-driven", () => {
     }
   });
 
-  test("options.js no longer manually overrides aria-label for privacyProxyEnabled", () => {
-    // The override at the privacyProxyEnabled init path was redundant once
-    // data-i18n-aria-label="enable_privacy_proxy_cta" was added in HTML
-    // (#707). Re-adding setAttribute("aria-label", ...) on that checkbox
-    // would shadow applyTranslations on every lang change.
+  test("options.js does not contain privacyProxyEnabled references (section removed in phase 5)", () => {
+    // ADR-0004 phase 5: privacyProxyEnabled and the entire URL Unwrapper section
+    // were removed. No reference to this old pref key should remain in options.js.
     assert.ok(
-      !/setAttribute\(\s*["']aria-label["']\s*,\s*t\(\s*["']enable_privacy_proxy_cta["']/.test(
-        OPTIONS_JS,
-      ),
-      "options.js must not manually setAttribute aria-label on #privacyProxyEnabled — let data-i18n-aria-label handle it",
+      !OPTIONS_JS.includes("privacyProxyEnabled"),
+      "options.js must not contain privacyProxyEnabled (Privacy Proxy section decommissioned in phase 5)",
     );
   });
 });
@@ -130,10 +126,11 @@ describe("#707 — i18n keys retired or added by this change", () => {
     );
   });
 
-  test("privacy_proxy_section_title is added (#707 i18n key split)", () => {
+  test("privacy_proxy_section_title is removed (ADR-0004 phase 5: proxy section decommissioned)", () => {
+    // The entire URL Unwrapper / Privacy Proxy section was removed in phase 5.
     assert.ok(
-      Object.prototype.hasOwnProperty.call(TRANSLATIONS, "privacy_proxy_section_title"),
-      "privacy_proxy_section_title must exist — split from privacy_proxy_enabled so the section h2 and the toggle label differ",
+      !Object.prototype.hasOwnProperty.call(TRANSLATIONS, "privacy_proxy_section_title"),
+      "privacy_proxy_section_title must NOT exist after phase 5 proxy decommission",
     );
   });
 });

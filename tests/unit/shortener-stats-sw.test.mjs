@@ -1,11 +1,13 @@
 /**
- * MUGA — Phase 4: shortener counter wiring in service-worker + default flip
- * (ADR-0004 phase 4, #700)
+ * MUGA — Phase 5: native-only shortener resolution in service-worker
+ * (ADR-0004 phase 5, #701)
  *
- * Structural source-scan tests, mirroring the service-worker-privacy-proxy.test.mjs
+ * Structural source-scan tests, mirroring the service-worker-patterns.test.mjs
  * style (import not possible due to Chrome API bindings).
  *
- * Tests RED-first.
+ * Phase 4 tests for proxy fallback (fetchUnwrap, proxy-client import) are
+ * replaced here with native-only assertions. The removed proxy fallback tests
+ * are intentionally deleted — not left to assert removed behavior.
  */
 
 import { describe, test } from "node:test";
@@ -25,73 +27,231 @@ const pkg = require("../../package.json");
 const mv3 = require("../../src/manifest.json");
 const mv2 = require("../../src/manifest.v2.json");
 
-// ── 1. Default flip ──────────────────────────────────────────────────────────
+// ── 1. Pref cleanup (phase 5) ────────────────────────────────────────────────
 
-describe("ADR-0004 phase 4: useNativeShortenerResolution default is true", () => {
-  test("PREF_DEFAULTS has useNativeShortenerResolution: true", () => {
-    // Match the line: `  useNativeShortenerResolution: true`
+describe("ADR-0004 phase 5: useNativeShortenerResolution removed from PREF_DEFAULTS", () => {
+  test("PREF_DEFAULTS does NOT contain useNativeShortenerResolution (vestigial flag removed)", () => {
+    // The flag was the dual-path selector; with proxy gone it is meaningless.
+    // It must NOT be in PREF_DEFAULTS — this would re-sync it to all devices.
     assert.ok(
-      /useNativeShortenerResolution\s*:\s*true/.test(storageSource),
-      "storage.js PREF_DEFAULTS must have useNativeShortenerResolution: true (phase 4 default flip)"
+      !/useNativeShortenerResolution\s*:/.test(storageSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? ""),
+      "PREF_DEFAULTS must NOT contain useNativeShortenerResolution after phase 5"
     );
   });
 
-  test("PREF_DEFAULTS no longer has useNativeShortenerResolution: false", () => {
-    // The value must not be false anymore
-    const match = storageSource.match(/useNativeShortenerResolution\s*:\s*(\w+)/);
-    assert.ok(match, "useNativeShortenerResolution must be in PREF_DEFAULTS");
-    assert.notEqual(match[1], "false", "useNativeShortenerResolution must not be false (phase 4 flips the default)");
+  test("PREF_DEFAULTS does NOT contain privacyProxyEnabled (deprecated key removed)", () => {
+    const prefsBlock = storageSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? "";
+    assert.ok(
+      !/privacyProxyEnabled\s*:/.test(prefsBlock),
+      "PREF_DEFAULTS must NOT contain privacyProxyEnabled after phase 5"
+    );
+  });
+
+  test("PREF_DEFAULTS still contains followShortenersEnabled", () => {
+    const prefsBlock = storageSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? "";
+    assert.ok(
+      /followShortenersEnabled\s*:/.test(prefsBlock),
+      "PREF_DEFAULTS must contain followShortenersEnabled"
+    );
   });
 });
 
-// ── 2. Shortener stat increments in service worker ───────────────────────────
+// ── 2. Migration function exported from storage.js ───────────────────────────
 
-describe("ADR-0004 phase 4: shortener stat increments in service-worker", () => {
-  test("service-worker imports incrementShortenerStat from storage", () => {
+describe("ADR-0004 phase 5: migrateLegacyProxyPref exported", () => {
+  test("storage.js exports migrateLegacyProxyPref", async () => {
+    // Dynamic import not possible (Chrome APIs not available), so scan source.
     assert.ok(
-      swSource.includes("incrementShortenerStat"),
-      "service-worker must import and call incrementShortenerStat"
+      storageSource.includes("export async function migrateLegacyProxyPref"),
+      "storage.js must export migrateLegacyProxyPref for one-time pref rename on startup"
     );
   });
 
-  test("increments pass counter on successful native resolution", () => {
-    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    assert.ok(handlerStart !== -1, "UNWRAP_VIA_PROXY handler must be present");
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+  test("migration reads privacyProxyEnabled from chrome.storage.sync", () => {
+    const fnStart = storageSource.indexOf("export async function migrateLegacyProxyPref");
+    const fnSlice = storageSource.slice(fnStart, fnStart + 2000);
     assert.ok(
-      handlerSlice.includes("incrementShortenerStat") && handlerSlice.includes('"pass"'),
-      "UNWRAP_VIA_PROXY handler must call incrementShortenerStat(..., 'pass') on success"
+      fnSlice.includes("privacyProxyEnabled"),
+      "migrateLegacyProxyPref must read privacyProxyEnabled"
     );
   });
 
-  test("increments fail counter on failed native resolution", () => {
-    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+  test("migration sets followShortenersEnabled when old pref was true", () => {
+    const fnStart = storageSource.indexOf("export async function migrateLegacyProxyPref");
+    const fnSlice = storageSource.slice(fnStart, fnStart + 2000);
     assert.ok(
-      handlerSlice.includes("incrementShortenerStat") && handlerSlice.includes('"fail"'),
-      "UNWRAP_VIA_PROXY handler must call incrementShortenerStat(..., 'fail') on failure"
+      fnSlice.includes("followShortenersEnabled"),
+      "migrateLegacyProxyPref must set followShortenersEnabled"
     );
   });
 
-  test("pass/fail increments are only called on native path (useNativeShortenerResolution branch)", () => {
-    // The dual-path selector is the condition; stat increments must be inside the native branch
-    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
-    const nativePathIdx = handlerSlice.indexOf("useNativeShortenerResolution");
-    const statCallIdx = handlerSlice.indexOf("incrementShortenerStat");
-    assert.ok(nativePathIdx !== -1, "UNWRAP_VIA_PROXY handler must reference useNativeShortenerResolution");
-    assert.ok(statCallIdx > nativePathIdx, "incrementShortenerStat must appear AFTER the useNativeShortenerResolution check");
+  test("migration removes the old privacyProxyEnabled key", () => {
+    const fnStart = storageSource.indexOf("export async function migrateLegacyProxyPref");
+    const fnSlice = storageSource.slice(fnStart, fnStart + 2000);
+    assert.ok(
+      fnSlice.includes('remove("privacyProxyEnabled"') || fnSlice.includes("remove('privacyProxyEnabled'"),
+      "migrateLegacyProxyPref must call chrome.storage.sync.remove for privacyProxyEnabled"
+    );
   });
 });
 
-// ── 3. Beta version ──────────────────────────────────────────────────────────
+// ── 3. Service-worker: native-only RESOLVE_SHORTENER handler ─────────────────
 
-describe("ADR-0004 phase 4: beta version 2.2.0-beta.1", () => {
-  test("package.json version is 2.2.0 (numeric; Chrome manifest cannot carry the beta suffix)", () => {
-    assert.equal(pkg.version, "2.2.0", "package.json must be 2.2.0 for phase 4 beta");
+describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)", () => {
+  test("service-worker handles RESOLVE_SHORTENER message type", () => {
+    assert.ok(
+      swSource.includes('message.type === "RESOLVE_SHORTENER"'),
+      'service-worker must handle "RESOLVE_SHORTENER" message type (phase 5 replacement)'
+    );
   });
 
-  test("manifest.json version is 2.2.0 (Chrome requires numeric-only version)", () => {
+  test("service-worker does NOT import fetchUnwrap from proxy-client", () => {
+    assert.ok(
+      !swSource.includes("proxy-client"),
+      "service-worker must NOT import from proxy-client.js (file deleted in phase 5)"
+    );
+    assert.ok(
+      !swSource.includes("fetchUnwrap"),
+      "service-worker must NOT call fetchUnwrap (proxy removed in phase 5)"
+    );
+  });
+
+  test("RESOLVE_SHORTENER handler gates on followShortenersEnabled (not privacyProxyEnabled)", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    assert.ok(handlerStart !== -1, "RESOLVE_SHORTENER handler must be present");
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("followShortenersEnabled"),
+      "RESOLVE_SHORTENER handler must check followShortenersEnabled"
+    );
+    assert.ok(
+      !handlerSlice.includes("privacyProxyEnabled"),
+      "RESOLVE_SHORTENER handler must NOT reference privacyProxyEnabled"
+    );
+  });
+
+  test("RESOLVE_SHORTENER handler calls resolveShortener (native path only)", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("resolveShortener"),
+      "RESOLVE_SHORTENER handler must call resolveShortener (native resolver)"
+    );
+  });
+
+  test("RESOLVE_SHORTENER handler calls incrementShortenerStat", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("incrementShortenerStat"),
+      "RESOLVE_SHORTENER handler must call incrementShortenerStat for pass/fail tracking"
+    );
+  });
+
+  test("RESOLVE_SHORTENER handler validates URL scheme is http or https", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("invalid_url") || handlerSlice.includes("http:"),
+      "RESOLVE_SHORTENER handler must validate URL scheme"
+    );
+  });
+
+  test("RESOLVE_SHORTENER handler validates hostname is a generic shortener", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("isGenericShortener"),
+      "RESOLVE_SHORTENER handler must check isGenericShortener"
+    );
+  });
+
+  test("RESOLVE_SHORTENER handler returns true for async response", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("return true"),
+      "RESOLVE_SHORTENER handler must return true to keep message channel open"
+    );
+  });
+});
+
+// ── 4. Migration wired into onStartup and onInstalled ────────────────────────
+
+describe("ADR-0004 phase 5: migrateLegacyProxyPref called on startup", () => {
+  test("onStartup listener calls migrateLegacyProxyPref", () => {
+    const startupStart = swSource.indexOf("chrome.runtime.onStartup.addListener");
+    assert.ok(startupStart !== -1, "onStartup listener must be present");
+    const startupSlice = swSource.slice(startupStart, startupStart + 600);
+    assert.ok(
+      startupSlice.includes("migrateLegacyProxyPref"),
+      "onStartup must call migrateLegacyProxyPref"
+    );
+  });
+
+  test("onInstalled listener calls migrateLegacyProxyPref", () => {
+    const installedStart = swSource.indexOf("chrome.runtime.onInstalled.addListener");
+    assert.ok(installedStart !== -1, "onInstalled listener must be present");
+    const installedSlice = swSource.slice(installedStart, installedStart + 800);
+    assert.ok(
+      installedSlice.includes("migrateLegacyProxyPref"),
+      "onInstalled must call migrateLegacyProxyPref"
+    );
+  });
+});
+
+// ── 5. Proxy artifacts removed ───────────────────────────────────────────────
+
+describe("ADR-0004 phase 5: proxy artifacts removed from service-worker", () => {
+  test("service-worker does NOT contain UNWRAP_VIA_PROXY message handler", () => {
+    assert.ok(
+      !swSource.includes('"UNWRAP_VIA_PROXY"'),
+      "service-worker must NOT handle UNWRAP_VIA_PROXY (replaced by RESOLVE_SHORTENER)"
+    );
+  });
+
+  test("service-worker does NOT contain REFRESH_BUILD_HASH_NOW handler", () => {
+    assert.ok(
+      !swSource.includes('"REFRESH_BUILD_HASH_NOW"'),
+      "service-worker must NOT handle REFRESH_BUILD_HASH_NOW (proxy build-hash endpoint gone)"
+    );
+  });
+
+  test("service-worker does NOT contain refreshBuildHashIfStale function", () => {
+    assert.ok(
+      !swSource.includes("refreshBuildHashIfStale"),
+      "service-worker must NOT define refreshBuildHashIfStale (proxy decommissioned)"
+    );
+  });
+
+  test("service-worker does NOT reference unwrap.muga.app", () => {
+    assert.ok(
+      !swSource.includes("unwrap.muga.app"),
+      "service-worker must NOT reference unwrap.muga.app"
+    );
+  });
+
+  test("service-worker does NOT use privacyProxyEnabled as a code expression", () => {
+    // Comments about the migration are permitted. Code references (pref reads,
+    // writes, checks) are not. Scan for code patterns, not bare string presence.
+    assert.ok(
+      !swSource.includes("prefs.privacyProxyEnabled") &&
+      !swSource.includes("privacyProxyEnabled:") &&
+      !swSource.includes("privacyProxyEnabled =") &&
+      !swSource.includes("set({ privacyProxyEnabled"),
+      "service-worker must NOT read, write, or set privacyProxyEnabled as a code expression"
+    );
+  });
+});
+
+// ── 6. Version integrity ─────────────────────────────────────────────────────
+
+describe("ADR-0004 phase 4: beta version 2.2.0-beta.1 (phase 5 preserves)", () => {
+  test("package.json version is 2.2.0", () => {
+    assert.equal(pkg.version, "2.2.0", "package.json must be 2.2.0");
+  });
+
+  test("manifest.json version is 2.2.0", () => {
     assert.equal(mv3.version, "2.2.0", "src/manifest.json version must be 2.2.0");
   });
 
@@ -103,7 +263,7 @@ describe("ADR-0004 phase 4: beta version 2.2.0-beta.1", () => {
     assert.equal(
       mv3.version_name,
       "2.2.0-beta.1",
-      "MV3 manifest must have version_name: '2.2.0-beta.1' for human-readable beta display"
+      "MV3 manifest must have version_name: '2.2.0-beta.1'"
     );
   });
 
@@ -116,22 +276,68 @@ describe("ADR-0004 phase 4: beta version 2.2.0-beta.1", () => {
   });
 });
 
-// ── 4. Proxy fallback preserved ──────────────────────────────────────────────
+// ── 7. Manifest: unwrap.muga.app removed ─────────────────────────────────────
 
-describe("ADR-0004 phase 4: proxy fallback intact (not removed)", () => {
-  test("service-worker still imports fetchUnwrap from proxy-client", () => {
+describe("ADR-0004 phase 5: unwrap.muga.app removed from manifests", () => {
+  test("manifest.json does NOT contain unwrap.muga.app in optional_host_permissions", () => {
+    const perms = mv3.optional_host_permissions ?? [];
     assert.ok(
-      swSource.includes("fetchUnwrap") && swSource.includes("proxy-client"),
-      "proxy-client.js import must remain (phase 5 removes it, not phase 4)"
+      !perms.includes("https://unwrap.muga.app/*"),
+      "manifest.json must NOT list https://unwrap.muga.app/* in optional_host_permissions"
     );
   });
 
-  test("UNWRAP_VIA_PROXY handler still has the proxy path (fetchUnwrap call)", () => {
-    const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
+  test("manifest.v2.json does NOT contain unwrap.muga.app in optional_permissions", () => {
+    const perms = mv2.optional_permissions ?? [];
     assert.ok(
-      handlerSlice.includes("fetchUnwrap"),
-      "proxy fallback (fetchUnwrap) must remain in the UNWRAP_VIA_PROXY handler"
+      !perms.includes("https://unwrap.muga.app/*"),
+      "manifest.v2.json must NOT list https://unwrap.muga.app/* in optional_permissions"
+    );
+  });
+
+  test("manifest.json CSP does NOT include unwrap.muga.app in connect-src", () => {
+    const csp = mv3.content_security_policy?.extension_pages ?? "";
+    assert.ok(
+      !csp.includes("unwrap.muga.app"),
+      "manifest.json CSP must NOT allow connection to unwrap.muga.app"
+    );
+  });
+
+  test("manifest.v2.json CSP does NOT include unwrap.muga.app in connect-src", () => {
+    const csp = mv2.content_security_policy ?? "";
+    assert.ok(
+      !csp.includes("unwrap.muga.app"),
+      "manifest.v2.json CSP must NOT allow connection to unwrap.muga.app"
+    );
+  });
+});
+
+// ── 8. Shortener stat increments still work (native path) ────────────────────
+
+describe("ADR-0004 phase 4+5: shortener stat increments in native-only handler", () => {
+  test("service-worker imports incrementShortenerStat from storage", () => {
+    assert.ok(
+      swSource.includes("incrementShortenerStat"),
+      "service-worker must import and call incrementShortenerStat"
+    );
+  });
+
+  test("increments pass counter on successful native resolution", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    assert.ok(handlerStart !== -1, "RESOLVE_SHORTENER handler must be present");
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("incrementShortenerStat") && handlerSlice.includes('"pass"'),
+      "RESOLVE_SHORTENER handler must call incrementShortenerStat(..., 'pass') on success"
+    );
+  });
+
+  test("increments fail counter on failed native resolution", () => {
+    const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    assert.ok(
+      handlerSlice.includes("incrementShortenerStat") && handlerSlice.includes('"fail"'),
+      "RESOLVE_SHORTENER handler must call incrementShortenerStat(..., 'fail') on failure"
     );
   });
 });

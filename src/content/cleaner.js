@@ -247,15 +247,6 @@
       return;
     }
 
-    // B20 (#453): show Privacy Proxy CTA toast.
-    // Sent by the SW when:
-    //   (a) variant="auto_disabled" — feature was just auto-disabled after permission revocation, OR
-    //   (b) variant="enable_cta"   — user is on an opaque-network URL and feature is off.
-    if (message.type === "SHOW_PROXY_CTA") {
-      showProxyCta(message.variant, message.lang, message.text);
-      return;
-    }
-
     if (message.type !== "COPY_TO_CLIPBOARD") return;
     copyToClipboard(message.text);
   });
@@ -498,78 +489,60 @@
         }
       });
     } else {
-      // B20 (#453): opaque affiliate network — cannot be unwrapped client-side.
-      // redirector-coverage-expansion (T12): isOpaqueNetworkHost is now provided
-      // by the content bundle (window.__mugaCleaner) — the inline _OPAQUE_NETWORK_HOSTS
-      // replica and _isOpaqueNetworkHost function have been removed. Single source of
-      // truth lives in src/lib/opaque-networks.js; adding a new host requires editing
-      // exactly one file. See cleaner-bundle-src.mjs for the bundle export.
-      // SYNC NOTE: the proxy-navigation logic below is inlined from
-      // src/lib/proxy-navigate.js (handleProxyNavigation). Content scripts
-      // are IIFE and cannot import ES modules, so the pure helper exists
-      // for unit testing while this block is the runtime copy. If you change
-      // the trigger conditions, timeout, or fallback shape here, mirror the
-      // change in proxy-navigate.js — drift is caught by the structural tests
-      // in tests/unit/service-worker-privacy-proxy.test.mjs.
-      if (window.__mugaCleaner?.isOpaqueNetworkHost(url.hostname)) {
-        if (_contentPrefs?.privacyProxyEnabled) {
-          // Proxy ON: attempt to resolve via UNWRAP_VIA_PROXY.
-          // Only enter this path when detectWrapper recognises the URL AND unwrap
-          // returns null (confirming the destination is truly opaque).
-          const _detectWrapper = window.__mugaCleaner?.detectWrapper;
-          const _unwrap = window.__mugaCleaner?.unwrap;
-          if (
-            typeof _detectWrapper === "function" &&
-            typeof _unwrap === "function" &&
-            _detectWrapper(href) &&
-            _unwrap(href) === null
-          ) {
-            // Async proxy path — do NOT call navigate() here.
-            // The outer e.preventDefault() already fired; we resolve
-            // the destination ourselves and navigate when the SW responds.
-            (async () => {
-              const _PROXY_TIMEOUT_MS = 6000;
-              let response;
-              try {
-                response = await Promise.race([
-                  chrome.runtime.sendMessage({ type: "UNWRAP_VIA_PROXY", url: href }),
-                  new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("proxy-navigate timeout")), _PROXY_TIMEOUT_MS)
-                  ),
-                ]);
-              } catch {
-                // SW message failed or timed out — fall back to original URL.
-                navigate(href, opensNewTab);
-                return;
-              }
-              if (response?.ok === true) {
-                const dest = response.destination;
-                // Defense in depth: validate scheme and length (SW already validated,
-                // but content script must not blindly trust the response).
-                if (
-                  typeof dest === "string" &&
-                  dest.length <= 2000 &&
-                  (dest.startsWith("https://") || dest.startsWith("http://"))
-                ) {
-                  try {
-                    const destParsed = new URL(dest);
-                    if (destParsed.protocol === "http:" || destParsed.protocol === "https:") {
-                      navigate(dest, opensNewTab);
-                      return;
-                    }
-                  } catch { /* fall through */ }
-                }
-              }
-              // SW returned ok:false, or destination failed validation — fall back.
+      // ADR-0004 phase 5 (#701): Privacy Proxy decommissioned. Opaque affiliate
+      // redirect networks (awin, CJ, etc.) and generic shorteners (bit.ly, t.co,
+      // etc.) both pass through the standard navigate() path. Generic shorteners
+      // are resolved natively via the "Follow shortener redirects" opt-in flow
+      // (RESOLVE_SHORTENER message + followShortenersEnabled pref), which is
+      // handled separately by the isGenericShortener check below.
+      //
+      // For opaque affiliate networks: just navigate. Their redirect is the
+      // attribution event and must pass through unchanged (2.1 pivot).
+      //
+      // redirector-coverage-expansion (T12): isOpaqueNetworkHost is provided
+      // by the content bundle (window.__mugaCleaner). Single source of truth
+      // lives in src/lib/opaque-networks.js.
+      if (window.__mugaCleaner?.isGenericShortener(url.hostname)) {
+        if (_contentPrefs?.followShortenersEnabled) {
+          // Follow-shorteners ON: attempt to resolve via RESOLVE_SHORTENER.
+          const _SHORTENER_TIMEOUT_MS = 6000;
+          (async () => {
+            let response;
+            try {
+              response = await Promise.race([
+                chrome.runtime.sendMessage({ type: "RESOLVE_SHORTENER", url: href }),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error("shortener-resolve timeout")), _SHORTENER_TIMEOUT_MS)
+                ),
+              ]);
+            } catch {
+              // SW message failed or timed out — let original navigation proceed.
               navigate(href, opensNewTab);
-            })();
-            return; // Async branch took over; skip the synchronous navigate below.
-          }
-        } else {
-          // Proxy OFF: surface the CTA toast so the user can enable the feature.
-          // Navigation proceeds normally — the toast is non-blocking.
-          showProxyCta("enable_cta", _contentPrefs?.language || "en");
+              return;
+            }
+            if (response?.ok === true) {
+              const dest = response.destination;
+              // Defense in depth: validate scheme and length even though SW validated.
+              if (
+                typeof dest === "string" &&
+                dest.length <= 2000 &&
+                (dest.startsWith("https://") || dest.startsWith("http://"))
+              ) {
+                try {
+                  const destParsed = new URL(dest);
+                  if (destParsed.protocol === "http:" || destParsed.protocol === "https:") {
+                    navigate(dest, opensNewTab);
+                    return;
+                  }
+                } catch { /* fall through */ }
+              }
+            }
+            // SW returned ok:false, or destination failed validation — let original navigation proceed.
+            navigate(href, opensNewTab);
+          })();
+          return; // Async branch took over; skip the synchronous navigate below.
         }
+        // followShortenersEnabled is OFF — navigate to the shortener URL directly.
       }
       navigate(cleanUrl, opensNewTab);
     }
@@ -589,118 +562,6 @@
     } else {
       window.location.href = url;
     }
-  }
-
-  // B20 (#453): URL Unwrapper CTA toast strings (formerly "Privacy Proxy",
-  // renamed in #658 as part of the 2.1 denoise pivot). Kept inline because
-  // content scripts cannot import ES modules. The i18n key names are
-  // intentionally NOT renamed to keep PR diff minimal and avoid touching
-  // the content-bundle interface.
-  const PROXY_CTA_STRINGS = {
-    en: {
-      enable_privacy_proxy_cta: "Enable URL Unwrapper",
-      proxy_auto_disabled: "URL Unwrapper auto-disabled: permission was revoked.",
-    },
-    es: {
-      enable_privacy_proxy_cta: "Activar Desempaquetador de URL",
-      proxy_auto_disabled: "Desempaquetador de URL desactivado automáticamente: el permiso fue revocado.",
-    },
-    pt: {
-      enable_privacy_proxy_cta: "Ativar Desempacotador de URL",
-      proxy_auto_disabled: "Desempacotador de URL desativado automaticamente: a permissão foi revogada.",
-    },
-    de: {
-      enable_privacy_proxy_cta: "URL Unwrapper aktivieren",
-      proxy_auto_disabled: "URL Unwrapper automatisch deaktiviert: Berechtigung wurde widerrufen.",
-    },
-  };
-  const PROXY_SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1 };
-
-  /**
-   * Shows a non-intrusive toast for URL Unwrapper CTA.
-   *
-   * Variants:
-   *   "auto_disabled" — feature was auto-disabled after permission revocation.
-   *                     Shows an informational message only.
-   *   "enable_cta"    — user is on an opaque-network URL with feature off.
-   *                     Shows an "Enable URL Unwrapper" button.
-   *
-   * @param {string} [variant="enable_cta"] - Toast variant
-   * @param {string} [lang="en"]            - UI language
-   * @param {string} [resolvedText]         - Pre-resolved text from SW (optional)
-   */
-  function showProxyCta(variant, lang, resolvedText) {
-    const effectiveLang = (lang && lang in PROXY_SUPPORTED_LANGS) ? lang : "en";
-    const ps = PROXY_CTA_STRINGS[effectiveLang];
-
-    if (_toastTimer) clearTimeout(_toastTimer);
-    document.getElementById("muga-proxy-cta")?.remove();
-
-    const notice = document.createElement("div");
-    notice.id = "muga-proxy-cta";
-    notice.setAttribute("role", "alert");
-    notice.setAttribute("aria-live", "assertive");
-    notice.style.cssText = [
-      "position:fixed", "bottom:20px", "right:20px",
-      "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
-      "padding:12px 16px",
-      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-      "font-size:13px", "line-height:1.5", "max-width:300px",
-      "z-index:2147483647", "box-shadow:0 4px 20px rgba(0,0,0,0.3)",
-      "border:0.5px solid rgba(255,255,255,0.1)",
-    ].join(";");
-
-    const msgDiv = document.createElement("div");
-    msgDiv.style.cssText = "margin-bottom:10px;font-size:12px;color:#ddd";
-
-    if (variant === "auto_disabled") {
-      // Prefer SW-resolved text (built with t()); fall back to inline strings.
-      msgDiv.textContent = (typeof resolvedText === "string" && resolvedText.length > 0)
-        ? resolvedText
-        : ps.proxy_auto_disabled;
-      notice.appendChild(msgDiv);
-    } else {
-      // "enable_cta" variant — show a button to open the Options page
-      msgDiv.textContent = ps.enable_privacy_proxy_cta;
-
-      const ctaBtn = document.createElement("button");
-      ctaBtn.style.cssText = "display:block;width:100%;margin-top:8px;padding:6px 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);color:#f0f0f0;font-size:11px;cursor:pointer";
-      ctaBtn.textContent = ps.enable_privacy_proxy_cta;
-      ctaBtn.setAttribute("aria-label", ps.enable_privacy_proxy_cta);
-
-      ctaBtn.addEventListener("click", () => {
-        notice.remove();
-        // MV3 path: write anchor then open options page
-        // MV2 / Firefox: chrome.storage.session unavailable — skip anchor, open options directly
-        if (typeof chrome.storage.session !== "undefined") {
-          chrome.storage.session.set({ optionsAnchor: "privacy-proxy" }).catch(() => { /* fire-and-forget */ });
-        }
-        chrome.runtime.openOptionsPage();
-      });
-
-      notice.appendChild(msgDiv);
-      notice.appendChild(ctaBtn);
-    }
-
-    // Dismiss button
-    const dismissBtn = document.createElement("button");
-    dismissBtn.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
-    dismissBtn.textContent = s.toast_dismiss;
-    dismissBtn.setAttribute("aria-label", s.toast_dismiss);
-    dismissBtn.addEventListener("click", () => {
-      if (_toastTimer) clearTimeout(_toastTimer);
-      _toastTimer = null;
-      notice.remove();
-    });
-    notice.appendChild(dismissBtn);
-
-    document.body.appendChild(notice);
-
-    const duration = 15000;
-    _toastTimer = setTimeout(() => {
-      _toastTimer = null;
-      notice.remove();
-    }, duration);
   }
 
   /**

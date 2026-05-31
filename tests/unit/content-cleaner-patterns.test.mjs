@@ -119,3 +119,71 @@ describe("Temporal Dead Zone guard — _contentPrefs declaration ordering", () =
     );
   });
 });
+
+// ── Native shortener resolution path (ADR-0004 phase 5, #701) ─────────────────
+// The proxy was decommissioned; generic shorteners now resolve natively via a
+// RESOLVE_SHORTENER message. These structural assertions cover the content-script
+// send/navigate path that lost its dedicated coverage when proxy-navigate.js was
+// deleted (review S-1/S-2). They guard the no-fallback failure handling: every
+// failure mode must still navigate to the original href so navigation never hangs.
+describe("RESOLVE_SHORTENER — content-script path", () => {
+  test("only resolves generic shorteners, gated on followShortenersEnabled", () => {
+    assert.ok(
+      cleanerSource.includes("isGenericShortener(url.hostname)"),
+      "must gate the native path on isGenericShortener"
+    );
+    assert.ok(
+      cleanerSource.includes("followShortenersEnabled"),
+      "must gate resolution on the followShortenersEnabled opt-in pref"
+    );
+  });
+
+  test("sends RESOLVE_SHORTENER (not the removed UNWRAP_VIA_PROXY)", () => {
+    assert.ok(
+      cleanerSource.includes('type: "RESOLVE_SHORTENER"'),
+      "must send the RESOLVE_SHORTENER message type"
+    );
+    assert.ok(
+      !cleanerSource.includes("UNWRAP_VIA_PROXY"),
+      "the decommissioned UNWRAP_VIA_PROXY message must not remain"
+    );
+  });
+
+  test("navigates to the resolved destination only on ok:true", () => {
+    assert.ok(
+      cleanerSource.includes("response?.ok === true"),
+      "must navigate only when the SW reports ok:true"
+    );
+    assert.ok(
+      cleanerSource.includes("navigate(dest, opensNewTab)"),
+      "success path must navigate to the resolved destination"
+    );
+  });
+
+  test("validates destination scheme + length before navigating (defense in depth)", () => {
+    assert.ok(
+      cleanerSource.includes("dest.length <= 2000"),
+      "must cap destination length"
+    );
+    assert.ok(
+      cleanerSource.includes('dest.startsWith("https://")') &&
+        cleanerSource.includes('dest.startsWith("http://")'),
+      "must restrict destination to http(s)"
+    );
+  });
+
+  test("no-fallback safety: every failure path navigates to the original href", () => {
+    // With the proxy gone there is no second resolver — a SW error, timeout,
+    // ok:false, or invalid destination must all fall back to the original URL
+    // so navigation never hangs.
+    const occurrences = cleanerSource.split("navigate(href, opensNewTab)").length - 1;
+    assert.ok(
+      occurrences >= 2,
+      `expected >=2 href fallbacks (timeout/error AND ok:false/invalid), found ${occurrences}`
+    );
+    assert.ok(
+      cleanerSource.includes("shortener-resolve timeout"),
+      "must bound the resolve on a timeout so it cannot hang"
+    );
+  });
+});

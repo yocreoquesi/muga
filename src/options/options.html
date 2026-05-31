@@ -153,46 +153,6 @@
     </div>
   </section>
 
-  <section id="privacy-proxy">
-    <h2 data-i18n="privacy_proxy_section_title"></h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <p data-i18n="privacy_proxy_disclosure"></p>
-        </div>
-      </div>
-      <div class="row">
-        <label class="toggle">
-          <input type="checkbox" id="privacyProxyEnabled" data-i18n-aria-label="enable_privacy_proxy_cta">
-          <span class="slider"></span>
-        </label>
-        <span data-i18n="privacy_proxy_enabled"></span>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span id="current-mode-label" aria-live="polite"></span>
-        </div>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span data-i18n="privacy_proxy_hash_label"></span>
-          <code id="worker-build-hash">—</code>
-        </div>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span data-i18n="privacy_proxy_last_verified"></span>
-          <span id="worker-build-hash-time">—</span>
-        </div>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <a id="worker-build-hash-verify" href="https://unwrap.muga.app/healthz" target="_blank" rel="noopener noreferrer" data-i18n="privacy_proxy_verify_link"></a>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <section id="follow-shorteners">
     <h2 data-i18n="follow_shorteners_section_title"></h2>
     <div class="card">
@@ -248,17 +208,6 @@
       </div>
     </div>
     <div id="dev-tools-card" style="display:none;">
-      <!-- Advanced: native shortener resolution (ADR-0004 phase 3, #699) -->
-      <div class="card" style="margin-top:10px;">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="native_shortener_label">Experimental: resolve shorteners natively</strong>
-            <small data-i18n="native_shortener_hint">Resolve bit.ly / t.co-style links directly in your browser instead of via the unwrap server. Requires the Follow shortener redirects permission. For first-wave testing.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="useNativeShortenerResolution" data-i18n-aria-label="aria_native_shortener"><span class="slider"></span></label>
-        </div>
-      </div>
-
       <!-- Advanced: per-shortener pass/fail counters (ADR-0004 phase 4, #700) -->
       <div class="card" style="margin-top:10px;" id="shortener-stats-card">
         <div class="row">

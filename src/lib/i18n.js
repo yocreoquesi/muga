@@ -576,34 +576,11 @@ export const TRANSLATIONS = {
     ja: "MUGAはデータをどこにも送信しません。ブラウザ同期が有効な場合、設定はブラウザ経由で同期されます（Chromeの場合はGoogle、Firefoxの場合はFirefoxアカウント）— これはブラウザの機能であってMUGAの機能ではありません。",
   },
   ob_cta_note:              { en: "Change any setting anytime.",                                            es: "Cambia cualquier ajuste cuando quieras.",                                  pt: "Altere qualquer configuração quando quiser.",                              de: "Jede Einstellung jederzeit änderbar.", fr: "Modifiez n'importe quel paramètre à tout moment.", it: "Cambia qualsiasi impostazione in qualsiasi momento.", ja: "いつでも設定を変更できます。" },
-  // ── URL Unwrapper (#658 — 2.1 denoise pivot; formerly Privacy Proxy) ──────
-  // UI copy for the URL Unwrapper toggle section in Options. Under 2.1 the
-  // feature scope is reduced: only generic shorteners (bit.ly, tinyurl, etc.)
-  // are resolved server-side. Affiliate-network redirects pass through to
-  // honor creator attribution. Pref key (`privacyProxyEnabled`) and storage
-  // shape are intentionally NOT renamed (storage compat). The i18n key names
-  // stay too — only the user-facing strings change.
-  // EN/ES: locked copy per product spec. PT/DE: AI-assisted; native-speaker review welcome.
-  privacy_proxy_enabled: {
-    en: 'Enable URL Unwrapper',
-    es: 'Activar Desempaquetador de URL',
-    pt: 'Ativar Desempacotador de URL',
-    de: 'URL Unwrapper aktivieren',
-    fr: "Activer URL Unwrapper",
-    it: "Attiva URL Unwrapper",
-    ja: "URL Unwrapperを有効にする",
-  },
-  // #707: section heading distinct from the toggle label so the section
-  // title and the row label don't both render "Enable URL Unwrapper".
-  privacy_proxy_section_title: {
-    en: 'URL Unwrapper',
-    es: 'Desempaquetador de URL',
-    pt: 'Desempacotador de URL',
-    de: 'URL Unwrapper',
-    fr: 'URL Unwrapper',
-    it: 'URL Unwrapper',
-    ja: 'URL Unwrapper',
-  },
+  // NOTE (ADR-0004 phase 5, 2026-06-01): privacy_proxy_enabled, privacy_proxy_section_title,
+  // privacy_proxy_disclosure, enable_privacy_proxy_cta, privacy_proxy_hash_label,
+  // privacy_proxy_last_verified, privacy_proxy_verify_link, proxy_auto_disabled,
+  // mode_privacy_proxy, mode_honor_plus_proxy, native_shortener_label, native_shortener_hint,
+  // aria_native_shortener — all removed: Privacy Proxy section decommissioned.
   // Follow shortener redirects — native in-browser resolution (ADR-0004 #699).
   follow_shorteners_section_title: {
     en: "Follow shortener redirects",
@@ -659,34 +636,6 @@ export const TRANSLATIONS = {
     fr: "<strong>Les liens courts cachent leur destination.</strong> Des liens comme bit.ly ou t.co ne montrent pas leur vraie destination. Si vous l'autorisez, MUGA les suit directement dans votre navigateur — sans serveur au milieu — et retire le bruit là où ils mènent. Vous gardez le contrôle : cela ne s'applique qu'à une courte liste connue de raccourcisseurs, et seulement si vous l'activez dans les paramètres.",
     it: "<strong>I link brevi nascondono dove portano.</strong> Link come bit.ly o t.co non mostrano la loro vera destinazione. Se lo consenti, MUGA li segue direttamente nel tuo browser — senza server nel mezzo — e rimuove il rumore da dove arrivano. Mantieni il controllo: si applica solo a un breve elenco noto di abbreviatori e solo se lo attivi nelle impostazioni.",
     ja: "<strong>短縮リンクは行き先を隠します。</strong> bit.ly や t.co のようなリンクは本当の宛先を表示しません。許可すれば、MUGAはそれらをブラウザ内で直接たどり — 間にサーバーを挟まずに — 到達先からノイズを取り除きます。コントロールはあなたの手に: 短く既知の短縮URLのリストにのみ適用され、設定でオンにした場合だけ動作します。",
-  },
-  // Dev-mode-gated native-resolution flag (ADR-0004 phase 3, #699).
-  native_shortener_label: {
-    en: "Experimental: resolve shorteners natively",
-    es: "Experimental: resolver acortadores de forma nativa",
-    pt: "Experimental: resolver encurtadores nativamente",
-    de: "Experimentell: Kurz-URLs nativ auflösen",
-    fr: "Expérimental : résoudre les raccourcisseurs nativement",
-    it: "Sperimentale: risolvi gli abbreviatori in modo nativo",
-    ja: "実験的: 短縮URLをネイティブに解決",
-  },
-  native_shortener_hint: {
-    en: "Resolve bit.ly / t.co-style links directly in your browser instead of via the unwrap server. Requires the Follow shortener redirects permission. For first-wave testing.",
-    es: "Resuelve enlaces tipo bit.ly / t.co directamente en tu navegador en vez de pasar por el servidor de unwrap. Requiere el permiso Seguir redirecciones de acortadores. Para pruebas iniciales.",
-    pt: "Resolve links no estilo bit.ly / t.co diretamente no seu navegador em vez de passar pelo servidor de unwrap. Requer a permissão Seguir redirecionamentos de encurtadores. Para testes iniciais.",
-    de: "Löst Links im Stil von bit.ly / t.co direkt in deinem Browser auf, statt über den Unwrap-Server. Erfordert die Berechtigung Kurz-URL-Weiterleitungen folgen. Für erste Tests.",
-    fr: "Résout les liens de type bit.ly / t.co directement dans votre navigateur au lieu de passer par le serveur unwrap. Nécessite l'autorisation Suivre les redirections des raccourcisseurs. Pour les premiers tests.",
-    it: "Risolve i link in stile bit.ly / t.co direttamente nel tuo browser invece che tramite il server unwrap. Richiede il permesso Segui i reindirizzamenti degli abbreviatori. Per i primi test.",
-    ja: "bit.ly / t.co のようなリンクを unwrap サーバー経由ではなくブラウザ内で直接解決します。「短縮URLのリダイレクトをたどる」権限が必要です。初期テスト用。",
-  },
-  aria_native_shortener: {
-    en: "Experimental: resolve shorteners natively",
-    es: "Experimental: resolver acortadores de forma nativa",
-    pt: "Experimental: resolver encurtadores nativamente",
-    de: "Experimentell: Kurz-URLs nativ auflösen",
-    fr: "Expérimental : résoudre les raccourcisseurs nativement",
-    it: "Sperimentale: risolvi gli abbreviatori in modo nativo",
-    ja: "実験的: 短縮URLをネイティブに解決",
   },
   // Per-shortener pass/fail counter UI (ADR-0004 phase 4, #700).
   shortener_stats_label: {
@@ -752,81 +701,6 @@ export const TRANSLATIONS = {
     it: "Onora il creator",
     ja: "クリエイター尊重",
   },
-  mode_privacy_proxy: {
-    en: 'URL Unwrapper',
-    es: 'Desempaquetador de URL',
-    pt: 'Desempacotador de URL',
-    de: 'URL Unwrapper',
-    fr: "URL Unwrapper",
-    it: "URL Unwrapper",
-    ja: "URL Unwrapper",
-  },
-  mode_honor_plus_proxy: {
-    en: 'Honor + Unwrap',
-    es: 'Respetar + Desempaquetar',
-    pt: 'Honrar + Desempacotar',
-    de: 'Respektieren + Unwrap',
-    fr: "Honorer + Unwrap",
-    it: "Onora + Unwrap",
-    ja: "尊重 + Unwrap",
-  },
-  privacy_proxy_disclosure: {
-    en: 'When URL Unwrapper is enabled, the full URL of generic shortener links (bit.ly, tinyurl.com, t.co, and similar) is sent to unwrap.muga.app — a Cloudflare Worker operated by MUGA — to retrieve the final destination. Affiliate-network redirect links (Awin, CJ, Impact, Partnerize, and others) are NEVER sent: they pass through unchanged so the creator who shared the link still earns their commission. Every response is verified with an Ed25519 digital signature before your browser navigates anywhere; a tampered response is rejected entirely. No browsing history is stored by the Worker. You can disable this feature at any time by toggling this switch off.',
-    es: 'Cuando el Desempaquetador de URL está activado, la URL completa de los acortadores genéricos (bit.ly, tinyurl.com, t.co y similares) se envía a unwrap.muga.app — un Worker de Cloudflare operado por MUGA — para obtener el destino final. Los enlaces de redes de afiliados (Awin, CJ, Impact, Partnerize y otros) NUNCA se envían: pasan sin cambios para que el creador que compartió el enlace siga ganando su comisión. Cada respuesta se verifica con una firma digital Ed25519 antes de que el navegador abra cualquier página; una respuesta alterada se rechaza por completo. El Worker no almacena historial de navegación. Puedes desactivar esta función en cualquier momento usando este interruptor.',
-    pt: 'Quando o Desempacotador de URL está ativado, a URL completa de encurtadores genéricos (bit.ly, tinyurl.com, t.co e similares) é enviada para unwrap.muga.app — um Worker da Cloudflare operado pelo MUGA — para obter o destino final. Links de redes de afiliados (Awin, CJ, Impact, Partnerize e outros) NUNCA são enviados: passam sem alteração para que o criador que compartilhou o link continue ganhando sua comissão. Toda resposta é verificada com uma assinatura digital Ed25519 antes de o navegador navegar para qualquer lugar; uma resposta adulterada é totalmente rejeitada. Nenhum histórico de navegação é armazenado pelo Worker. Você pode desativar este recurso a qualquer momento usando este interruptor.',
-    de: 'Wenn URL Unwrapper aktiviert ist, wird die vollständige URL generischer Kurz-URLs (bit.ly, tinyurl.com, t.co und ähnliche) an unwrap.muga.app gesendet — einen von MUGA betriebenen Cloudflare Worker — um das endgültige Ziel zu ermitteln. Affiliate-Netzwerk-Weiterleitungen (Awin, CJ, Impact, Partnerize und andere) werden NIEMALS gesendet: Sie werden unverändert weitergeleitet, damit der Creator, der den Link geteilt hat, seine Provision weiterhin verdient. Jede Antwort wird vor jeglicher Navigation mit einer digitalen Ed25519-Signatur überprüft; eine manipulierte Antwort wird vollständig abgelehnt. Der Worker speichert keinen Browserverlauf. Du kannst diese Funktion jederzeit über diesen Schalter deaktivieren.',
-    fr: "Lorsque URL Unwrapper est activé, l'URL complète des raccourcisseurs génériques (bit.ly, tinyurl.com, t.co et similaires) est envoyée à unwrap.muga.app — un Cloudflare Worker exploité par MUGA — pour récupérer la destination finale. Les liens de redirection des réseaux d'affiliation (Awin, CJ, Impact, Partnerize et autres) ne sont JAMAIS envoyés : ils passent inchangés afin que le créateur qui a partagé le lien continue de toucher sa commission. Chaque réponse est vérifiée par une signature numérique Ed25519 avant que votre navigateur ne navigue où que ce soit ; une réponse altérée est entièrement rejetée. Aucun historique de navigation n'est stocké par le Worker. Vous pouvez désactiver cette fonctionnalité à tout moment en désactivant cet interrupteur.",
-    it: "Quando URL Unwrapper è attivo, l'URL completo degli abbreviatori generici (bit.ly, tinyurl.com, t.co e simili) viene inviato a unwrap.muga.app — un Cloudflare Worker gestito da MUGA — per recuperare la destinazione finale. I link di reindirizzamento delle reti di affiliazione (Awin, CJ, Impact, Partnerize e altri) NON vengono MAI inviati: passano invariati in modo che il creator che ha condiviso il link continui a guadagnare la sua commissione. Ogni risposta viene verificata con una firma digitale Ed25519 prima che il browser navighi ovunque; una risposta manomessa viene respinta interamente. Nessuna cronologia di navigazione viene memorizzata dal Worker. Puoi disattivare questa funzione in qualsiasi momento disattivando questo interruttore.",
-    ja: "URL Unwrapperが有効になっている場合、汎用短縮URL (bit.ly、tinyurl.com、t.coなど) の完全なURLが unwrap.muga.app — MUGAが運営するCloudflare Worker — に送信され、最終的な宛先を取得します。アフィリエイトネットワークのリダイレクトリンク (Awin、CJ、Impact、Partnerizeなど) は決して送信されません: リンクを共有したクリエイターがコミッションを獲得し続けられるよう、変更されずに通過します。各レスポンスはブラウザがどこかに移動する前にEd25519デジタル署名で検証されます。改ざんされたレスポンスは完全に拒否されます。閲覧履歴はWorkerに保存されません。このスイッチをオフにすることでこの機能をいつでも無効にできます。",
-  },
-  enable_privacy_proxy_cta: {
-    en: 'Enable URL Unwrapper',
-    es: 'Activar Desempaquetador de URL',
-    pt: 'Ativar Desempacotador de URL',
-    de: 'URL Unwrapper aktivieren',
-    fr: "Activer URL Unwrapper",
-    it: "Attiva URL Unwrapper",
-    ja: "URL Unwrapperを有効にする",
-  },
-  privacy_proxy_hash_label: {
-    en: 'Worker build hash',
-    es: 'Hash de build del Worker',
-    pt: 'Hash do build do Worker',
-    de: 'Worker-Build-Hash',
-    fr: "Hash de build du Worker",
-    it: "Hash di build del Worker",
-    ja: "Workerビルドハッシュ",
-  },
-  privacy_proxy_last_verified: {
-    en: 'Last verified',
-    es: 'Última verificación',
-    pt: 'Última verificação',
-    de: 'Zuletzt verifiziert',
-    fr: "Dernière vérification",
-    it: "Ultima verifica",
-    ja: "最終検証",
-  },
-  privacy_proxy_verify_link: {
-    en: 'Verify',
-    es: 'Verificar',
-    pt: 'Verificar',
-    de: 'Verifizieren',
-    fr: "Vérifier",
-    it: "Verifica",
-    ja: "検証",
-  },
-  // B20 (#453): shown as a toast when the Worker returns a permission error
-  // and the feature is auto-disabled after revocation.
-  proxy_auto_disabled: {
-    en: 'URL Unwrapper auto-disabled: permission was revoked.',
-    es: 'Desempaquetador de URL desactivado automáticamente: el permiso fue revocado.',
-    pt: 'Desempacotador de URL desativado automaticamente: a permissão foi revogada.',
-    de: 'URL Unwrapper automatisch deaktiviert: Berechtigung wurde widerrufen.',
-    fr: "URL Unwrapper désactivé automatiquement : l'autorisation a été révoquée.",
-    it: "URL Unwrapper disattivato automaticamente: il permesso è stato revocato.",
-    ja: "URL Unwrapperを自動的に無効化しました: 権限が取り消されました。",
-  },
-
   // ── Relative time strings (#453, B20 Group A) ─────────────────────────────
   // Used by formatRelativeTime() in src/lib/relative-time.js (and the
   // build-hash cluster in options.js). Parameterized strings use the %s
