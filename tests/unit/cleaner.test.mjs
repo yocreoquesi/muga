@@ -570,7 +570,7 @@ describe("Amazon affiliate tags — real tag injection per marketplace", () => {
       assert.equal(new URL(cleanUrl).searchParams.get("tag"), tag);
     });
 
-    // (foreign-tag-survives canary moved to tests/fixtures/affiliate-canaries.mjs, #769)
+    // (foreign-tag-survives canary moved to tools/affiliate-safety/canaries.mjs, #769 / #777)
     test(`amazon.${name}: own tag is not flagged as foreign`, () => {
       const { action } = processUrl(
         `https://${domain}/dp/B08N5WRWNW?tag=${tag}`,
@@ -606,7 +606,7 @@ describe("eBay affiliate tags — real tag injection per marketplace", () => {
       assert.equal(new URL(cleanUrl).searchParams.get("campid"), "5339147108");
     });
 
-    // (foreign-campid-survives canary moved to tests/fixtures/affiliate-canaries.mjs, #769)
+    // (foreign-campid-survives canary moved to tools/affiliate-safety/canaries.mjs, #769 / #777)
     test(`ebay.${name}: own campid is not flagged as foreign`, () => {
       const { action } = processUrl(
         `https://${domain}/itm/123456789?campid=5339147108`,
@@ -1442,7 +1442,7 @@ describe("whitelist priority over stripAllAffiliates", () => {
 describe("affiliate param / tracking param collision", () => {
 
   // (pccomponentes ref + eBay campid collisions moved to the shared canary
-  //  fixtures — tests/fixtures/affiliate-canaries.mjs, #769)
+  //  fixtures — tools/affiliate-safety/canaries.mjs, #769 / #777)
   test("ref= is NOT stripped on a non-affiliate host (e.g., example.com) — ref removed from global TRACKING_PARAMS (#160)", () => {
     // 'ref' was removed from TRACKING_PARAMS because it is the affiliate param for
     // PcComponentes and MediaMarkt. Applying it globally stripped it before the

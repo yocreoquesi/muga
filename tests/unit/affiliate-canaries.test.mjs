@@ -14,8 +14,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { processUrl, getLandingPolicy } from "../../src/lib/cleaner.js";
 import { REDIRECT_NETWORK_PATTERNS } from "../../src/lib/affiliates.js";
-import { PRESERVE_CANARIES, LANDING_CANARIES } from "../fixtures/affiliate-canaries.mjs";
-import { runAffiliateCanaries } from "../fixtures/canary-runner.mjs";
+import { PRESERVE_CANARIES, LANDING_CANARIES } from "../../tools/affiliate-safety/canaries.mjs";
+import { runAffiliateCanaries } from "../../tools/affiliate-safety/runner.mjs";
 
 describe("affiliate canaries — preserve (processUrl)", () => {
   for (const canary of PRESERVE_CANARIES) {

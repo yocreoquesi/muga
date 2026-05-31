@@ -4,8 +4,8 @@
  * The canary safety net: a curated set of real affiliate URLs whose attribution
  * MUST survive MUGA's cleaning. This module is PURE DATA — no imports, no logic —
  * so it can be consumed by:
- *   - the test runner (tests/unit/affiliate-canaries.test.mjs), and
- *   - the future programmatic canary runner / pipeline GATE 3 (#771, #777).
+ *   - the test suite (tests/unit/affiliate-canaries.test.mjs), and
+ *   - the rule-ingestion pipeline GATE 3 (#771, #777).
  *
  * Two kinds:
  *   PRESERVE_CANARIES — run processUrl(url, prefs). Every key in `mustSurvive`
@@ -17,6 +17,9 @@
  *
  * Extracted verbatim from the assertions previously scattered across
  * cleaner.test.mjs and get-landing-policy.test.mjs (deduped by #769).
+ * Relocated from tests/fixtures/affiliate-canaries.mjs to
+ * tools/affiliate-safety/canaries.mjs (#777, EPIC C) — direction is now
+ * tests/→tools/ (correct); tools/ production code can safely import this.
  *
  * NOTE: amzn.to is intentionally absent — it sits in opaque-networks'
  * PENDING_VERDICT bucket awaiting #665. The Tradedoubler `tduid` canary is added

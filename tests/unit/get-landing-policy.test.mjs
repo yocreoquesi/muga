@@ -11,7 +11,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { getLandingPolicy, processUrl } from "../../src/lib/cleaner.js";
-import { LANDING_CANARIES } from "../fixtures/affiliate-canaries.mjs";
+import { LANDING_CANARIES } from "../../tools/affiliate-safety/canaries.mjs";
 
 const PREFS = Object.freeze({
   enabled: true,
