@@ -6,12 +6,19 @@
  * pipeline's GATE 3 (#777) calls: after a candidate strip rule is applied, it
  * runs this and rejects the candidate if any affiliate canary broke.
  *
- * Pure: imports only the cleaner + the fixtures. Safe to call from CLI, tests,
- * or the pipeline.
+ * Relocated from tests/fixtures/canary-runner.mjs to
+ * tools/affiliate-safety/runner.mjs (#777, EPIC C). The PRESERVE loop now
+ * delegates to evaluateCanary (shared with GATE 3) — behavior-preserving:
+ * evaluateCanary with extraRemoteParams=[] reconstructs the same semantics as
+ * the original inline loop (param-level, collect-all, throw→single failure).
+ *
+ * Pure: imports only the cleaner + the domain modules. Safe to call from CLI,
+ * tests, or the pipeline.
  */
 
 import { processUrl, getLandingPolicy } from "../../src/lib/cleaner.js";
-import { PRESERVE_CANARIES, LANDING_CANARIES } from "./affiliate-canaries.mjs";
+import { PRESERVE_CANARIES, LANDING_CANARIES } from "./canaries.mjs";
+import { evaluateCanary } from "./evaluate.mjs";
 
 /**
  * @typedef {{ name: string, kind: "preserve"|"landing", reason: string }} CanaryFailure
@@ -23,27 +30,12 @@ import { PRESERVE_CANARIES, LANDING_CANARIES } from "./affiliate-canaries.mjs";
 export function runAffiliateCanaries() {
   const failures = [];
 
-  for (const c of PRESERVE_CANARIES) {
-    let params;
-    try {
-      params = new URL(processUrl(c.url, c.prefs).cleanUrl).searchParams;
-    } catch (err) {
-      failures.push({ name: c.name, kind: "preserve", reason: `processUrl threw: ${err.message}` });
-      continue;
-    }
-    for (const [param, value] of Object.entries(c.mustSurvive)) {
-      const got = params.get(param);
-      if (got !== value) {
-        failures.push({ name: c.name, kind: "preserve", reason: `${param} expected "${value}", got "${got}"` });
-      }
-    }
-    for (const param of c.mustStrip) {
-      if (params.has(param)) {
-        failures.push({ name: c.name, kind: "preserve", reason: `${param} should have been stripped` });
-      }
-    }
-  }
+  // WHY: evaluateCanary with no extraRemoteParams is behavior-identical to the
+  // original inline loop (canary-runner.mjs:26-45) — param-level, collect-all.
+  for (const c of PRESERVE_CANARIES) failures.push(...evaluateCanary(c, processUrl));
 
+  // LANDING loop unchanged — getLandingPolicy has a different shape and is NOT
+  // part of GATE 3's scope.
   for (const c of LANDING_CANARIES) {
     const policy = getLandingPolicy(c.landingHost, c.referrer);
     for (const param of c.mustPreserve) {
