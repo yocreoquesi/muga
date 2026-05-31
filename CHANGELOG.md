@@ -4,6 +4,20 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-06-01
+
+Beta release (2.2.0-beta.1) completing ADR-0004 phase 4: native shortener resolution becomes the default path; the proxy remains as fallback.
+
+### Features
+
+- **ADR-0004 phase 4: native shortener default** (#700). `useNativeShortenerResolution` flips from `false` to `true` in `PREF_DEFAULTS` — native in-browser `fetch(redirect:"manual")` is now the primary path for the eight generic shorteners. The `unwrap.muga.app` proxy remains as a fallback when native resolution fails (host permission denied or fetch error). No proxy code removed (phase 5 / #701).
+- **Per-shortener pass/fail counters** (#700). `shortenerStats: { "bit.ly": { pass: N, fail: N }, … }` held in `chrome.storage.local`, never transmitted. Incremented at the native-resolution callsite in the service worker. Exposed via `getShortenerStats()` / `incrementShortenerStat()` in `src/lib/storage.js`.
+- **Advanced-settings counter display** (#700). Dev-mode-gated card in the Options page shows per-shortener pass/fail counts. DOM built with `createElement` + `textContent` (no `innerHTML` for dynamic data). Refreshes on each options page open.
+
+### Changed
+
+- **Beta version 2.2.0-beta.1**: `package.json` version = `"2.2.0"` (numeric); `src/manifest.json` and `src/manifest.v2.json` carry `version_name: "2.2.0-beta.1"` for human-readable display in Chrome / Firefox extension management pages. Chrome extension `version` field remains numeric-only as required by the store.
+
 ## [2.1.0] - 2026-05-27
 
 The denoise pivot release. MUGA repositions from creator-only to creator-agnostic denoise: redirect-attribution networks (Awin, Impact, Rakuten, TradeTracker, …) are now pass-through, the per-landing param-preservation policy honors each network's matrix-required attribution params, the "Privacy Proxy" surface is rebranded to "URL Unwrapper", and the audit-tier rules engine consolidates to a v2 manifest with declarative path rules. See [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full strategic rationale and [ADR-0003](docs/adr/0003-awin-redirect-model-resolution.md) for the redirect-network resolution model.
@@ -936,7 +950,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/yocreoquesi/muga/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/yocreoquesi/muga/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/yocreoquesi/muga/compare/v1.17.0...v2.0.0
 [1.17.0]: https://github.com/yocreoquesi/muga/compare/v1.16.0...v1.17.0

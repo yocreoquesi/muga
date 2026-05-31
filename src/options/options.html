@@ -259,6 +259,20 @@
         </div>
       </div>
 
+      <!-- Advanced: per-shortener pass/fail counters (ADR-0004 phase 4, #700) -->
+      <div class="card" style="margin-top:10px;" id="shortener-stats-card">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="shortener_stats_label">Shortener resolution stats (beta)</strong>
+            <small data-i18n="shortener_stats_hint">Pass/fail counts for native shortener resolution since last reset. Never transmitted.</small>
+          </div>
+        </div>
+        <div id="shortener-stats-table" style="padding:0 0 8px 0;"></div>
+        <div style="padding:0 0 8px 0;">
+          <button id="shortener-stats-reset-btn" class="link-btn" data-i18n="shortener_stats_reset">Reset counters</button>
+        </div>
+      </div>
+
       <!-- Advanced: Affiliate stores -->
       <div class="card" style="margin-top:10px;">
         <details class="stores-details">

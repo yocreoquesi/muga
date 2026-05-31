@@ -6,7 +6,7 @@ import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18
 import { deriveModeLabel } from "../lib/mode-label.js";
 import { formatRelativeTime } from "../lib/relative-time.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
+import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -1116,6 +1116,84 @@ function initDevTools() {
   document.getElementById("dev-url-input").addEventListener("keydown", (e) => {
     if (e.key === "Enter") testUrl();
   });
+
+  // Per-shortener pass/fail counters (ADR-0004 phase 4, #700)
+  initShortenerStats();
+}
+
+/**
+ * MUGA: Renders per-shortener pass/fail counters in the dev-tools card.
+ * (ADR-0004 phase 4, #700)
+ *
+ * Builds a table of pass/fail counts for the GENERIC_SHORTENERS allowlist,
+ * reading from chrome.storage.local ("shortenerStats"). DOM is built with
+ * createElement + textContent only — no innerHTML for dynamic data.
+ */
+async function initShortenerStats() {
+  const tableEl = document.getElementById("shortener-stats-table");
+  const resetBtn = document.getElementById("shortener-stats-reset-btn");
+  if (!tableEl) return;
+
+  async function renderStats() {
+    const stats = await getShortenerStats();
+    tableEl.replaceChildren(); // clear without innerHTML
+
+    const table = document.createElement("table");
+    table.style.cssText = "width:100%;border-collapse:collapse;font-size:12px;";
+
+    // Header row
+    const thead = document.createElement("thead");
+    const hrow = document.createElement("tr");
+    for (const label of ["Host", t("shortener_stats_pass", _currentLang), t("shortener_stats_fail", _currentLang)]) {
+      const th = document.createElement("th");
+      th.style.cssText = "text-align:left;padding:2px 8px 2px 0;color:#888;font-weight:500;";
+      th.textContent = label;
+      hrow.appendChild(th);
+    }
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    // Data rows
+    const tbody = document.createElement("tbody");
+    for (const host of GENERIC_SHORTENERS) {
+      const entry = stats[host] || { pass: 0, fail: 0 };
+      const tr = document.createElement("tr");
+
+      const tdHost = document.createElement("td");
+      tdHost.style.cssText = "padding:2px 8px 2px 0;font-family:monospace;";
+      tdHost.textContent = host;
+
+      const tdPass = document.createElement("td");
+      tdPass.style.cssText = "padding:2px 8px 2px 0;color:#22c55e;text-align:right;";
+      tdPass.textContent = String(entry.pass);
+
+      const tdFail = document.createElement("td");
+      tdFail.style.cssText = "padding:2px 8px 2px 0;color:#ef4444;text-align:right;";
+      tdFail.textContent = String(entry.fail);
+
+      tr.appendChild(tdHost);
+      tr.appendChild(tdPass);
+      tr.appendChild(tdFail);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    tableEl.appendChild(table);
+  }
+
+  await renderStats();
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", async () => {
+      await new Promise((resolve) => {
+        chrome.storage.local.set({ shortenerStats: {} }, () => {
+          void chrome.runtime.lastError;
+          resolve();
+        });
+      });
+      await renderStats();
+      showToast(t("shortener_stats_reset", _currentLang));
+    });
+  }
 }
 
 /** Tests a URL against the cleaner and displays results. */

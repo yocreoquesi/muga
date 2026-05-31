@@ -219,7 +219,9 @@ describe("refreshBuildHashIfStale — structural", () => {
 describe("UNWRAP_VIA_PROXY — permission revocation self-heal", () => {
   test("self-heal branch exists for reason=permission", () => {
     const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 3000);
+    // Use a 4000-char window to cover the full handler body, which grew in phase 4
+    // (#700) when per-shortener stat increments were added before the self-heal block.
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
     assert.ok(
       handlerSlice.includes('"permission"'),
       "handler must have a branch for reason: 'permission' (self-heal)"
@@ -228,7 +230,8 @@ describe("UNWRAP_VIA_PROXY — permission revocation self-heal", () => {
 
   test("sets privacyProxyEnabled=false in sync storage on permission revocation", () => {
     const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 3000);
+    // Use a 4000-char window (phase 4 added stat increments before this block).
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
     assert.ok(
       handlerSlice.includes("privacyProxyEnabled: false"),
       "self-heal must write privacyProxyEnabled:false to chrome.storage.sync"
@@ -237,7 +240,8 @@ describe("UNWRAP_VIA_PROXY — permission revocation self-heal", () => {
 
   test("only self-heals on 'permission' reason, not on other failures", () => {
     const handlerStart = swSource.indexOf('"UNWRAP_VIA_PROXY"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 3000);
+    // Use a 4000-char window (phase 4 added stat increments before this block).
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 4000);
     // The self-heal pref-set must be conditional on reason === "permission"
     // We verify this by checking it's inside a "permission" conditional, not at the top level
     const permIdx = handlerSlice.indexOf('"permission"');

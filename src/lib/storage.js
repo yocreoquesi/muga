@@ -14,6 +14,9 @@ import { getOverrides as getPerDeviceOverrides } from "./per-device-prefs.js";
 import { evaluate as evaluateConsentPolicy } from "./consent-policy.js";
 // E2E fixture overrides (#407). Returns null in production.
 import { getTestFixtures } from "./test-fixtures.js";
+// Allowlist guard for the per-shortener counters (ADR-0004 phase 4, #700):
+// only the eight GENERIC_SHORTENERS may be recorded — never arbitrary hosts.
+import { isGenericShortener } from "./opaque-networks.js";
 
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //
@@ -172,11 +175,13 @@ export const PREF_DEFAULTS = {
   // fetch(redirect:"manual") instead of the proxy. Default OFF: requires the
   // eight shortener host permissions, granted from the options toggle.
   followShortenersEnabled: false,
-  // Dual-path selector for shortener resolution (ADR-0004 phase 3, #699).
-  // When ON, the service worker routes through the native in-browser resolver;
-  // when OFF, through the unwrap.muga.app proxy. Default OFF; exposed in
-  // advanced settings (dev-mode gated) for first-wave testing.
-  useNativeShortenerResolution: false,
+  // Dual-path selector for shortener resolution (ADR-0004 phase 3, #699;
+  // default flipped to true in phase 4, #700). When ON, the service worker
+  // routes through the native in-browser resolver; when OFF, through the
+  // unwrap.muga.app proxy. Default TRUE as of 2.2.0-beta.1 — native is the
+  // primary path; the proxy remains as fallback for permission-denied / fetch
+  // failures. Exposed in advanced settings (dev-mode gated).
+  useNativeShortenerResolution: true,
 };
 
 /**
@@ -645,6 +650,73 @@ export async function setRemoteParams(params, meta) {
     });
   } catch (err) {
     console.error("[MUGA] setRemoteParams failed:", err);
+  }
+}
+
+// ── Per-shortener pass/fail counters (ADR-0004 phase 4, #700) ────────────────
+//
+// Counts native-resolution outcomes per shortener host. Device-local only;
+// NEVER transmitted (not in PREF_DEFAULTS / chrome.storage.sync). Visible in
+// the Options advanced section when dev-mode is ON.
+//
+// Shape: shortenerStats: { "bit.ly": { pass: N, fail: N }, … }
+// The key "shortenerStats" lives exclusively in chrome.storage.local.
+
+/**
+ * Reads the per-shortener pass/fail counters from chrome.storage.local.
+ * Returns the stored map (may be empty `{}`).
+ *
+ * @returns {Promise<Record<string, { pass: number, fail: number }>>}
+ */
+export async function getShortenerStats() {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.get({ shortenerStats: {} }, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result.shortenerStats || {});
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getShortenerStats failed:", err);
+    return {};
+  }
+}
+
+/**
+ * Increments the pass or fail counter for a specific shortener host.
+ * Silently ignores unknown hosts.
+ *
+ * @param {string} host   - Hostname of the shortener (e.g. "bit.ly").
+ * @param {"pass"|"fail"} outcome - Which counter to increment.
+ * @returns {Promise<void>}
+ */
+export async function incrementShortenerStat(host, outcome) {
+  if (outcome !== "pass" && outcome !== "fail") return;
+  // Defense-in-depth: never accumulate arbitrary hostnames in local storage.
+  // The privacy contract is "only the eight GENERIC_SHORTENERS are tracked";
+  // this guard enforces it at the source, independent of any callsite.
+  if (!isGenericShortener(host)) return;
+  try {
+    const current = await getShortenerStats();
+    const entry = current[host] || { pass: 0, fail: 0 };
+    current[host] = {
+      pass: entry.pass + (outcome === "pass" ? 1 : 0),
+      fail: entry.fail + (outcome === "fail" ? 1 : 0),
+    };
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ shortenerStats: current }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] incrementShortenerStat failed:", err);
   }
 }
 
