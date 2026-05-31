@@ -179,6 +179,54 @@ live in `tools/affiliate-safety/`:
 - `runner.mjs` — exports `runAffiliateCanaries()` (relocated from
   `tests/fixtures/`; PRESERVE loop now delegates to `evaluateCanary`).
 
+## GATE 4 — functional-bias (#778)
+
+`tools/rule-ingestion/gates/functional-bias-gate.mjs`
+
+**What it does:** Quarantines ingestion candidates whose bare `param` name is a
+member of the universally-functional roster (search/query, pagination,
+identity/product, locale/i18n, sort/filter/view). Such a param in
+`TRACKING_PARAMS` would silently break search, pagination, and i18n across every
+site MUGA touches — catastrophically and irreversibly. The gate NEVER auto-strips;
+it routes to human review. Policy: **FAIL-SAFE TOWARD PRESERVATION** — no name =
+no match possible → accepted.
+
+**Global-denylist vs. domain-scoped rationale:** Functional params are
+domain-scoped in MUGA's data model. For example, `s` is a tracker on some
+affiliate networks; `k` is an affiliate alias in `domain-rules.json`. GATE 4
+guards the GLOBAL `TRACKING_PARAMS` strip list, so the roster must be a
+hardcoded global curated set — NOT derived from `domain-rules.json`. Deriving it
+would incorrectly apply domain-local aliases universally. Domain-specific
+functional-param protection belongs in `domain-rules.json` (per-host
+`preserveParams`), NOT here.
+
+**TRACKING_PARAMS-disjointness invariant:** No GATE 4 roster member may appear
+in `TRACKING_PARAMS`. Enforced by a fail-closed test in
+`tests/unit/functional-bias-gate.test.mjs` that imports the LIVE
+`TRACKING_PARAMS` (not a frozen snapshot) — any drift that introduces an overlap
+immediately breaks the build. When editing the roster, manually cross-check
+against `domain-rules.json` preserveParams entries as well (the disjointness
+test guards only the TRACKING_PARAMS axis).
+
+**GATE 1/2/3/4 complementarity:**
+- GATE 1 (`affiliate-guard`) — does this NAME collide with a known affiliate/redirect-landing attribution param?
+- GATE 2 (`corroboration-gate`) — does this candidate have enough independent upstream signal?
+- GATE 3 (`canary-gate`) — does injecting this param as a runtime strip rule break any affiliate-survival canary?
+- GATE 4 (`functional-bias-gate`) — is this NAME universally load-bearing for search, pagination, or UX?
+
+A candidate rejected by GATE 1 never reaches GATE 3. GATE 4 is orthogonal to
+GATE 1/3 — it operates purely on the param NAME shape, not on attribution or
+behavioral signals.
+
+**Public exports:**
+- `FUNCTIONAL_PARAM_NAMES` — frozen `Set<string>`, 43 members, exact-name match only (no regex).
+- `checkFunctionalBiasGate(candidate, opts?)` — returns `{ rejected: false }` or
+  `{ rejected: true, reason: "functional-param", detail: { param } }` (param is lowercased).
+  `opts.functionalNames` replaces the production roster (testability seam).
+- `partitionCandidates(candidates, opts?)` — batch helper; returns
+  `{ accepted: Candidate[], rejected: Array<{ candidate, reason, detail }> }`,
+  input order preserved. `opts` forwarded to each `checkFunctionalBiasGate` call.
+
 ## CI gate
 
 `verify-quarantine.mjs` runs in CI ([`ci.yml`](../../.github/workflows/ci.yml))
