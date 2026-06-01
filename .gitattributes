@@ -6,3 +6,4 @@ src/rules/wrappers.json       text eol=lf
 src/rules/wrappers.json.sig   text eol=lf
 src/rules/worker-pubkey.txt   text eol=lf
 src/rules/wrappers.data.js    text eol=lf
+tools/rules-source/params.json text eol=lf
