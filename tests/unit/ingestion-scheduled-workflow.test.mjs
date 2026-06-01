@@ -1,0 +1,379 @@
+/**
+ * MUGA — Structural tests for .github/workflows/auto-ingest-rules.yml
+ *
+ * Covers spec requirements R5-A, R5-B, R5-C, R8-A:
+ *   R5-A  — cron "0 4 * * 0" + workflow_dispatch present
+ *   R5-B  — permissions contents:write + pull-requests:write + concurrency block
+ *   R5-C  — gates step appears BEFORE publish/sign step in file order
+ *   R8-A  — gates step appears BEFORE branch/commit step in file order
+ *
+ * Additional structural assertions (R4-B, R6, R7 partial):
+ *   - Key written to RUNNER_TEMP + ::add-mask:: present
+ *   - Cleanup step with `if: always()` removes key
+ *   - All `uses:` lines reference a 40-char commit SHA (belt-and-suspenders; authoritative in workflows-hardened)
+ *   - No-op skip step gated on steps.pipeline.outputs.noop == 'true'
+ *   - `gh pr merge --squash` present, `--auto` absent
+ *   - `[skip ci]` present in commit message
+ *   - Only tools/rules-source/params.json + docs/rules/v1/params.json added to git
+ *
+ * Uses string/regex assertions only (no external YAML parser — not in devDependencies).
+ * Mirrors the pattern from tests/unit/workflows-hardened.test.mjs.
+ *
+ * Run with: npm test
+ */
+
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const WORKFLOW_PATH = join(
+  __dirname,
+  "../../.github/workflows/auto-ingest-rules.yml"
+);
+
+// ---------------------------------------------------------------------------
+// Guard: file must exist (fails RED before the yml is created)
+// ---------------------------------------------------------------------------
+describe("auto-ingest-rules.yml existence", () => {
+  test("file exists at .github/workflows/auto-ingest-rules.yml", () => {
+    assert.ok(
+      existsSync(WORKFLOW_PATH),
+      `auto-ingest-rules.yml does not exist at expected path: ${WORKFLOW_PATH}`
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helper: read file once (only called when existence test passes)
+// ---------------------------------------------------------------------------
+function readWorkflow() {
+  return readFileSync(WORKFLOW_PATH, "utf8");
+}
+
+// ---------------------------------------------------------------------------
+// R5-A — Triggers: schedule cron + workflow_dispatch
+// ---------------------------------------------------------------------------
+describe("R5-A — triggers", () => {
+  test("has schedule trigger with cron '0 4 * * 0' (weekly Sun 04:00 UTC)", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /cron:\s*["']0 4 \* \* 0["']/.test(content),
+      "auto-ingest-rules.yml must have schedule cron '0 4 * * 0'"
+    );
+  });
+
+  test("has workflow_dispatch trigger", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /workflow_dispatch/.test(content),
+      "auto-ingest-rules.yml must have workflow_dispatch trigger"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R5-B — Top-level permissions block
+// ---------------------------------------------------------------------------
+describe("R5-B — permissions", () => {
+  test("has workflow-level permissions: contents: write", () => {
+    const content = readWorkflow();
+    // The permissions block appears before 'jobs:' at top level
+    const jobsIdx = content.indexOf("\njobs:");
+    const preJobs = jobsIdx === -1 ? content : content.slice(0, jobsIdx);
+    assert.ok(
+      /^permissions:/m.test(preJobs),
+      "auto-ingest-rules.yml must have a workflow-level 'permissions:' block before 'jobs:'"
+    );
+    assert.ok(
+      /contents:\s*write/.test(preJobs),
+      "permissions block must include 'contents: write'"
+    );
+    assert.ok(
+      /pull-requests:\s*write/.test(preJobs),
+      "permissions block must include 'pull-requests: write'"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R5-B — Concurrency block
+// ---------------------------------------------------------------------------
+describe("R5-B — concurrency", () => {
+  test("has concurrency group 'auto-ingest-rules'", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /group:\s*auto-ingest-rules/.test(content),
+      "auto-ingest-rules.yml must have concurrency group 'auto-ingest-rules'"
+    );
+  });
+
+  test("concurrency cancel-in-progress: false", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /cancel-in-progress:\s*false/.test(content),
+      "auto-ingest-rules.yml must have cancel-in-progress: false"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SHA pinning (belt-and-suspenders; authoritative check is in workflows-hardened)
+// ---------------------------------------------------------------------------
+describe("action SHA pinning", () => {
+  test("all 'uses:' lines reference a 40-char commit SHA", () => {
+    const content = readWorkflow();
+    const lines = content.split("\n");
+    const usesLines = lines.filter(l => /^\s+(-\s+)?uses:\s+\S/.test(l));
+
+    assert.ok(
+      usesLines.length > 0,
+      "auto-ingest-rules.yml has no 'uses:' lines — check the file is being read correctly"
+    );
+
+    for (const line of usesLines) {
+      const pinned = /uses:\s+[a-zA-Z0-9/_.-]+@[a-f0-9]{40}(\s.*)?$/.test(line.trim());
+      assert.ok(
+        pinned,
+        `auto-ingest-rules.yml has an unpinned action: "${line.trim()}"\n` +
+        "All 'uses:' references must use a 40-character commit SHA, not a tag or branch."
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Key masking and cleanup (R4)
+// ---------------------------------------------------------------------------
+describe("signing key security — write, mask, cleanup", () => {
+  test("writes signing key to RUNNER_TEMP", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /RUNNER_TEMP.*key\.pem|key\.pem.*RUNNER_TEMP/.test(content),
+      "workflow must write key to $RUNNER_TEMP/key.pem"
+    );
+  });
+
+  test("masks the key value with ::add-mask::", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /::add-mask::/.test(content),
+      "workflow must use ::add-mask:: to redact the key from logs"
+    );
+  });
+
+  test("cleanup step uses 'if: always()' to remove key.pem", () => {
+    const content = readWorkflow();
+    // The if: always() guard and the rm command must both be present
+    assert.ok(
+      /if:\s*always\(\)/.test(content),
+      "workflow must have a cleanup step with 'if: always()'"
+    );
+    assert.ok(
+      /rm\s+-f.*key\.pem/.test(content),
+      "cleanup step must remove $RUNNER_TEMP/key.pem with 'rm -f'"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No-op early exit (R2)
+// ---------------------------------------------------------------------------
+describe("no-op early exit", () => {
+  test("has a step gated on steps.pipeline.outputs.noop == 'true'", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /steps\.pipeline\.outputs\.noop\s*==\s*['"]true['"]/.test(content),
+      "workflow must have a step with if: steps.pipeline.outputs.noop == 'true' for early exit"
+    );
+  });
+
+  test("subsequent steps are gated on steps.pipeline.outputs.noop == 'false'", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /steps\.pipeline\.outputs\.noop\s*==\s*['"]false['"]/.test(content),
+      "workflow must gate publish/commit/PR steps on steps.pipeline.outputs.noop == 'false'"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R5-C / R8-A — Gate ordering: gates BEFORE publish/sign step
+// ---------------------------------------------------------------------------
+describe("R5-C / R8-A — step ordering: gates before publish and commit", () => {
+  test("npm test step appears before sign-rules.mjs publish step", () => {
+    const content = readWorkflow();
+    const npmTestIdx = content.indexOf("npm test");
+    const signRulesIdx = content.indexOf("sign-rules.mjs");
+
+    assert.ok(npmTestIdx !== -1, "workflow must include 'npm test' gate step");
+    assert.ok(signRulesIdx !== -1, "workflow must include 'node tools/sign-rules.mjs' publish step");
+    assert.ok(
+      npmTestIdx < signRulesIdx,
+      `'npm test' gate (pos ${npmTestIdx}) must appear BEFORE 'sign-rules.mjs' publish step (pos ${signRulesIdx})`
+    );
+  });
+
+  test("npm test step appears before branch/commit step", () => {
+    const content = readWorkflow();
+    const npmTestIdx = content.indexOf("npm test");
+    // Branch step creates auto-ingest/ branch
+    const branchIdx = content.indexOf("auto-ingest/");
+
+    assert.ok(npmTestIdx !== -1, "workflow must include 'npm test' gate step");
+    assert.ok(branchIdx !== -1, "workflow must include a branch creation step with 'auto-ingest/'");
+    assert.ok(
+      npmTestIdx < branchIdx,
+      `'npm test' gate (pos ${npmTestIdx}) must appear BEFORE branch creation (pos ${branchIdx})`
+    );
+  });
+
+  test("sign-rules.mjs publish step appears before gh pr create step", () => {
+    const content = readWorkflow();
+    const signRulesIdx = content.indexOf("sign-rules.mjs");
+    const prCreateIdx = content.indexOf("gh pr create");
+
+    assert.ok(signRulesIdx !== -1, "workflow must include 'node tools/sign-rules.mjs' publish step");
+    assert.ok(prCreateIdx !== -1, "workflow must include 'gh pr create' step");
+    assert.ok(
+      signRulesIdx < prCreateIdx,
+      `publish step (pos ${signRulesIdx}) must appear BEFORE 'gh pr create' (pos ${prCreateIdx})`
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PR merge: --squash, no --auto (R5, design decision)
+// ---------------------------------------------------------------------------
+describe("PR merge flags", () => {
+  test("uses 'gh pr merge --squash'", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /gh\s+pr\s+merge\s+.*--squash/.test(content),
+      "workflow must use 'gh pr merge --squash' (not --auto)"
+    );
+  });
+
+  test("does NOT use 'gh pr merge --auto'", () => {
+    const content = readWorkflow();
+    assert.ok(
+      !/gh\s+pr\s+merge\s+.*--auto/.test(content),
+      "workflow must NOT use '--auto' with gh pr merge — it deadlocks with GITHUB_TOKEN PRs"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Commit message contains [skip ci]
+// ---------------------------------------------------------------------------
+describe("commit message", () => {
+  test("commit message contains [skip ci]", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /\[skip ci\]/.test(content),
+      "workflow commit message must contain '[skip ci]' to prevent CI loop"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Only two params.json files are committed (explicit add — no broad staging)
+// ---------------------------------------------------------------------------
+describe("clean PR diff — only params.json files committed", () => {
+  test("git add line explicitly names tools/rules-source/params.json", () => {
+    const content = readWorkflow();
+    // Must be a real `git add <files>` command, not just a path appearing in
+    // a comment or body string — bare-path matches are tautological.
+    assert.ok(
+      /git add\s+.*tools\/rules-source\/params\.json/.test(content),
+      "workflow must have an explicit 'git add ... tools/rules-source/params.json' command"
+    );
+  });
+
+  test("git add line explicitly names docs/rules/v1/params.json", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /git add\s+.*docs\/rules\/v1\/params\.json/.test(content),
+      "workflow must have an explicit 'git add ... docs/rules/v1/params.json' command"
+    );
+  });
+
+  test("both params.json files appear on the same git add line", () => {
+    const content = readWorkflow();
+    // Verifies the commit scope is a single targeted add, not two separate adds
+    // that could still accidentally admit a `git add -A` somewhere else.
+    const line = content
+      .split("\n")
+      .find(l => /git add\s/.test(l) && /tools\/rules-source\/params\.json/.test(l));
+    assert.ok(
+      line !== undefined,
+      "could not find a git add line containing tools/rules-source/params.json"
+    );
+    assert.ok(
+      /docs\/rules\/v1\/params\.json/.test(line),
+      `the git add line must also include docs/rules/v1/params.json. Found: "${line?.trim()}"`
+    );
+  });
+
+  test("workflow does NOT use 'git add -A' (broad staging forbidden)", () => {
+    const content = readWorkflow();
+    assert.ok(
+      !/git add\s+-A/.test(content),
+      "workflow must NOT use 'git add -A' — commit scope must be explicit"
+    );
+  });
+
+  test("workflow does NOT use 'git add .' (broad staging forbidden)", () => {
+    const content = readWorkflow();
+    assert.ok(
+      !/git add\s+\.(\s|$)/.test(content),
+      "workflow must NOT use 'git add .' — commit scope must be explicit"
+    );
+  });
+
+  test("workflow does NOT use 'git commit -am' (broad staging forbidden)", () => {
+    const content = readWorkflow();
+    assert.ok(
+      !/git commit\s+-[a-zA-Z]*a[a-zA-Z]*m|git commit\s+-[a-zA-Z]*m[a-zA-Z]*a/.test(content),
+      "workflow must NOT use 'git commit -am' or 'git commit -ma' — commit scope must be explicit"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pipeline step uses npm run pipeline:rules script
+// ---------------------------------------------------------------------------
+describe("pipeline invocation", () => {
+  test("runs pipeline via 'npm run pipeline:rules'", () => {
+    const content = readWorkflow();
+    assert.ok(
+      /npm\s+run\s+pipeline:rules/.test(content),
+      "workflow must invoke the pipeline via 'npm run pipeline:rules'"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// publish step must NOT carry if:always() — only cleanup does
+// ---------------------------------------------------------------------------
+describe("if:always() usage — only cleanup step", () => {
+  test("only one non-comment line uses if: always() — the key cleanup step", () => {
+    const content = readWorkflow();
+    // Only count lines where `if: always()` appears as actual YAML (not in # comments).
+    // A real YAML `if:` key appears on a line whose non-whitespace content starts with `if:`.
+    const lines = content.split("\n");
+    const alwaysLines = lines.filter(l => {
+      const trimmed = l.trimStart();
+      return trimmed.startsWith("if:") && /if:\s*always\(\)/.test(trimmed);
+    });
+    assert.strictEqual(
+      alwaysLines.length,
+      1,
+      `Exactly 1 YAML step field may be 'if: always()' (the cleanup step). Found ${alwaysLines.length}: ` +
+      JSON.stringify(alwaysLines) +
+      ". Publish/PR steps must NOT have if:always() — gate failures must block them."
+    );
+  });
+});
