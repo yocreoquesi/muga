@@ -1,0 +1,230 @@
+name: Auto-ingest rule parameters
+
+# Weekly scheduled ingestion of tracking parameters.
+# Runs the full pipeline (ingest → orchestrate → promote → sign) inline,
+# gates via the same suite as ci.yml, then opens a PR and immediately
+# squash-merges it using GITHUB_TOKEN.
+#
+# Why --squash and NOT --auto:
+#   PRs opened by GITHUB_TOKEN do NOT trigger ci.yml (GitHub recursion guard).
+#   --auto blocks waiting for required status checks that will never arrive.
+#   All gates already ran inline in this job as earlier steps; the artifact in
+#   the PR is exactly what passed. Immediate --squash is correct; --auto deadlocks.
+on:
+  schedule:
+    # Sunday 04:00 UTC. Off-peak so the run completes before the maintainer's
+    # week starts, without competing with weekday CI traffic.
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# One auto-ingest run at a time; never cancel in-progress — a run that reaches
+# the commit/PR stage must complete cleanly to avoid partial merges.
+concurrency:
+  group: auto-ingest-rules
+  cancel-in-progress: false
+
+jobs:
+  auto-ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # ── 2. Node + deps ───────────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 3. Write + mask signing key ──────────────────────────────────────────
+      # Key is written to RUNNER_TEMP (outside the workspace) and immediately
+      # masked so any accidental echo is redacted from logs.
+      # SECURITY: never echo $MUGA_SIGNING_KEY directly — use the file path only.
+      - name: Write signing key to temp file and mask it
+        id: write-key
+        env:
+          MUGA_SIGNING_KEY: ${{ secrets.MUGA_SIGNING_KEY }}
+        run: |
+          echo "$MUGA_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
+          echo "::add-mask::$(cat "$RUNNER_TEMP/key.pem")"
+
+      # ── 4. Run pipeline ──────────────────────────────────────────────────────
+      # pipeline.mjs runs ingest → orchestrate → promote.
+      # On completion it appends noop=<bool> to $GITHUB_OUTPUT.
+      # Non-zero exit propagates as job failure; downstream steps never run.
+      - name: Run ingestion pipeline
+        id: pipeline
+        env:
+          MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
+        run: npm run pipeline:rules
+
+      # ── 5. No-op early exit ───────────────────────────────────────────────────
+      # If promote detected no change (params already up to date), exit cleanly.
+      # All subsequent steps are gated on noop == 'false' — they are never reached.
+      - name: Skip — no new parameters this run (noop)
+        if: steps.pipeline.outputs.noop == 'true'
+        run: |
+          echo "Pipeline reported noop=true: params are already up to date."
+          echo "Skipping gates, publish, and PR steps."
+
+      # ── 6. Gates (ALL gated on noop == 'false'; NO if:always()) ─────────────
+      # These steps mirror ci.yml exactly. A failure in any gate causes the job
+      # to fail, which prevents all downstream publish/commit/PR steps from
+      # running. This is the inline gate enforcement mechanism (R8).
+
+      - name: Compile rules artifacts
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run compile:rules
+
+      - name: Generate wrapper DNR rules
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run build:dnr
+
+      - name: Check src/rules/ is up to date
+        if: steps.pipeline.outputs.noop == 'false'
+        run: |
+          if ! git diff --exit-code -- src/rules/; then
+            echo "ERROR: src/rules/ artifacts are out of sync with their source."
+            exit 1
+          fi
+
+      - name: Bundle content script
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run build:content
+
+      - name: Check content bundle is up to date
+        if: steps.pipeline.outputs.noop == 'false'
+        run: |
+          if ! git diff --exit-code src/content/cleaner-bundle.js; then
+            echo "ERROR: cleaner-bundle.js is out of sync with its source."
+            exit 1
+          fi
+
+      - name: Verify browser-polyfill integrity
+        if: steps.pipeline.outputs.noop == 'false'
+        run: node tools/verify-polyfill-integrity.mjs
+
+      - name: Verify rule-ingestion quarantine
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run verify:quarantine
+
+      - name: Check i18n quality
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run check:i18n
+
+      - name: Run unit tests
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm test
+
+      - name: Run integration tests
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run test:integration
+
+      - name: CAPS-Contextual conformance gate
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run conformance:contextual
+
+      - name: Lint extension
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run lint
+
+      - name: Install Playwright browsers
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests (xvfb)
+        if: steps.pipeline.outputs.noop == 'false'
+        run: xvfb-run npx playwright test
+
+      # ── 7. Inline publish ─────────────────────────────────────────────────────
+      # sign-rules.mjs reads tools/rules-source/params.json (already mutated by
+      # promote) and writes docs/rules/v1/params.json. Identical to publish-rules.yml.
+      # Runs AFTER all gates — a gate failure never reaches this step.
+      - name: Sign and publish rules
+        if: steps.pipeline.outputs.noop == 'false'
+        env:
+          MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
+        run: node tools/sign-rules.mjs
+
+      # ── 8. Branch + commit ────────────────────────────────────────────────────
+      # Date comes from the shell (workflow concern), NOT from pipeline.mjs
+      # (keeps pipeline deterministic and testable).
+      # Only two files are committed — clean PR diff, no transient artifacts.
+      - name: Create branch and commit updated params
+        if: steps.pipeline.outputs.noop == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="auto-ingest/$DATE"
+          git checkout -B "$BRANCH"
+          git add tools/rules-source/params.json docs/rules/v1/params.json
+          git commit -m "chore(rules): auto-ingest params ($DATE) [skip ci]"
+          git push -u origin "$BRANCH" --force-with-lease
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "DATE=$DATE" >> "$GITHUB_ENV"
+
+      # ── 9. Open PR (idempotent) ──────────────────────────────────────────────
+      # If a previous run pushed the branch and created the PR but then failed
+      # before merging, a re-run (workflow_dispatch or same-day cron) would hit
+      # `gh pr create` with an already-open PR and error out.
+      # Mirror the guard from import-upstream.yml: check for an open PR on the
+      # branch first; if one exists, update it with `gh pr edit` and skip create.
+      - name: Create or update pull request
+        if: steps.pipeline.outputs.noop == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY="Automated weekly rule-parameter ingestion via auto-ingest-rules.yml.
+
+          All gates (unit, integration, e2e, lint, compile, bundle) passed inline in the
+          same job before this PR was created. Immediate squash-merge is safe.
+
+          Files changed:
+          - \`tools/rules-source/params.json\` — updated source (signed by promote step)
+          - \`docs/rules/v1/params.json\` — re-signed published artifact
+
+          Generated by workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" \
+              --title "chore(rules): auto-ingest params ($DATE)" \
+              --body "$BODY"
+            echo "Updated existing PR #$EXISTING"
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore(rules): auto-ingest params ($DATE)" \
+              --body "$BODY" \
+              --label "category:ops"
+          fi
+
+      # ── 10. Squash-merge PR ───────────────────────────────────────────────────
+      # Immediate --squash: gates already ran inline; no CI will run on the
+      # GITHUB_TOKEN PR; --auto would block forever waiting for checks.
+      - name: Squash-merge pull request
+        if: steps.pipeline.outputs.noop == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "$BRANCH" --squash --delete-branch
+
+      # ── 11. Key cleanup (if: always()) ───────────────────────────────────────
+      # Always runs — even if previous steps fail — so the key is never left on disk.
+      - name: Clean up signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key.pem"
