@@ -285,13 +285,58 @@ validates the artifact unchanged — no new verifier.
 The sidecar is **written always** (even when `quarantine:[]`) so consumers
 never special-case absence.
 
-### #780 seam
+### #780 seam — `promote-rules.mjs`
 
-Consumer (#780 promote step) reads `tools/rule-ingestion/promote/promote-candidates.json`,
-reconstructs the canonical message, calls `verifySignature()` fail-closed
-(false → abort, no merge), and only on `true` merges `params[]` into
-`tools/rules-source/params.json` — which triggers `publish-rules.yml`.
-This is a **file contract**, not a code dependency.
+`tools/rule-ingestion/promote-rules.mjs` is the #780 consumer. It reads
+`tools/rule-ingestion/promote/promote-candidates.json`, reconstructs the
+canonical message, calls `verifySignature()` **fail-closed**
+(false → `PromoteError` exit 2, no write), and only on `true` merges
+`params[]` into `tools/rules-source/params.json` — which triggers
+`publish-rules.yml`. This is a **file contract**, not a code dependency.
+
+#### `runPromote` contract
+
+```js
+import { runPromote } from "./promote-rules.mjs";
+
+const result = await runPromote({
+  promotePath,       // path to promote-candidates.json (default: promote/promote-candidates.json)
+  sourcePath,        // path to params.json (default: tools/rules-source/params.json)
+  domainRulesPath,   // path to domain-rules.json (default: src/rules/domain-rules.json)
+  trustedKeys?,      // string[] of base64 Ed25519 public keys (default: TRUSTED_PUBLIC_KEYS)
+  subtle?,           // SubtleCrypto (default: globalThis.crypto?.subtle)
+  now?,              // Date (default: new Date()) — injectable for testing
+});
+// result: { verified, merged, skipped, written, noop, version, published, reason? }
+//   verified  — true if Ed25519 sig checked out
+//   merged    — final sorted+deduped params array written to params.json
+//   skipped   — Array<{ param, reason }> — collisions with domain preserveParams
+//   written   — true only when params.json was actually changed
+//   noop      — true when merged === current (no write, no version bump)
+//   version   — resulting params.json version (current or current+1)
+//   published — resulting params.json published (new ISO timestamp on write, current on noop)
+```
+
+Throws `PromoteError { message, exitCode }` on fail-closed or validation errors.
+
+#### Exit codes
+
+| Code | Condition |
+|------|-----------|
+| 0 | Success — params merged OR clean no-op |
+| 1 | Validation — stale artifact, malformed params.json, bad schema |
+| 2 | VERIFY\_FAILED — bad or missing Ed25519 signature (fail-closed) |
+| 3 | I/O — missing/unreadable promote artifact or source file |
+
+#### Manual run
+
+```sh
+# Run promote step (reads promote/promote-candidates.json, writes tools/rules-source/params.json)
+npm run promote:rules
+```
+
+Review the diff before committing — `publish-rules.yml` triggers automatically
+on `tools/rules-source/**` changes. Automation of this step is tracked in #781.
 
 ### Usage
 
