@@ -52,3 +52,6 @@ tests/benchmark/reports/*.html
 # Clean-room posture: upstream bytes stay ephemeral; only re-derived candidates
 # may land. Enforced by tools/rule-ingestion/verify-quarantine.mjs in CI.
 tools/rule-ingestion/quarantine/
+# Rule-ingestion promote run artifact (#781): ephemeral intermediate, never committed.
+# The .gitkeep in promote/ is committed; only the runtime artifact is excluded.
+tools/rule-ingestion/promote/promote-candidates.json
