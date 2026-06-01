@@ -227,6 +227,91 @@ behavioral signals.
   `{ accepted: Candidate[], rejected: Array<{ candidate, reason, detail }> }`,
   input order preserved. `opts` forwarded to each `checkFunctionalBiasGate` call.
 
+## Orchestrator — binary-bucket pipeline + signed artifact (EPIC C, #779)
+
+`tools/rule-ingestion/orchestrate.mjs` (pure) + `tools/rule-ingestion/orchestrate-cli.mjs` (CLI)
+
+### Contract
+
+After ingestion produces `quarantine/candidates.json`, the orchestrator wires all
+four EPIC C gates into a **deterministic binary-bucket pipeline**:
+
+```
+candidates[] → GATE1 → GATE2 → GATE3 → GATE4 → autoMerge[] + quarantine[]
+```
+
+Every candidate lands in **exactly one** bucket — mutually exclusive and
+collectively exhaustive:
+
+- `autoMerge` — passes ALL four gates in fixed order. Input order preserved.
+- `quarantine` — any gate rejects. Collect-all: ALL rejections recorded (no
+  short-circuit), in gate evaluation order.
+
+### Gate ordering invariant
+
+Gates are evaluated in a fixed `[affiliate-guard, corroboration-gate,
+canary-gate, functional-bias-gate]` order for every candidate, every run.
+This order is guaranteed by the `DEFAULT_GATES` array literal in
+`orchestrate.mjs` — never by Set or object-key iteration.
+
+### GATE 2 malformed-candidate posture (fail-closed)
+
+Candidates missing `signals` (null, absent, or non-array) are rejected by
+`corroboration-gate` with `signalCount = 0`. They **never appear in
+`autoMerge` or `promote-candidates.json`**. The quarantine sidecar captures
+the full `evidence.detail = { signalCount, minSignals }` for audit.
+
+### Signing format + verification path
+
+`orchestrate-cli.mjs` signs the `autoMerge` params with an Ed25519 private
+key (path via `MUGA_SIGNING_KEY_PATH` — never a CLI arg):
+
+```
+canonical = `${version}|${published}|${params.join(",")}`
+sig       = cryptoSign(null, Buffer.from(canonical), privateKey) → base64url
+```
+
+The format is **identical** to `docs/rules/v1/params.json` produced by
+`sign-rules.mjs`. The existing `verifySignature()` in `src/lib/remote-rules.js`
+validates the artifact unchanged — no new verifier.
+
+### Promote artifact vs. quarantine sidecar
+
+| File | Path | Purpose | Committed? |
+|------|------|---------|------------|
+| Signed promote artifact | `tools/rule-ingestion/promote/promote-candidates.json` | `{version, published, params, sig}` — #780 seam input | YES |
+| Unsigned audit sidecar  | `quarantine/quarantine-report.json` | Full `QuarantineEntry[]` with all rejection reasons + signals | No (gitignored) |
+
+The sidecar is **written always** (even when `quarantine:[]`) so consumers
+never special-case absence.
+
+### #780 seam
+
+Consumer (#780 promote step) reads `tools/rule-ingestion/promote/promote-candidates.json`,
+reconstructs the canonical message, calls `verifySignature()` fail-closed
+(false → abort, no merge), and only on `true` merges `params[]` into
+`tools/rules-source/params.json` — which triggers `publish-rules.yml`.
+This is a **file contract**, not a code dependency.
+
+### Usage
+
+```sh
+# Inject the signing key path and run
+MUGA_SIGNING_KEY_PATH=/path/to/key.pem npm run orchestrate:rules
+
+# Override version
+MUGA_SIGNING_KEY_PATH=/path/to/key.pem MUGA_RULES_VERSION=4 npm run orchestrate:rules
+```
+
+Version resolution precedence (CLI):
+1. `MUGA_RULES_VERSION` env var
+2. `--version <n>` CLI flag
+3. Fallback: read `tools/rules-source/params.json`.version
+
+Exit codes: `0` success, `1` validation/bad-JSON, `2` key setup, `3` I/O.
+
+---
+
 ## CI gate
 
 `verify-quarantine.mjs` runs in CI ([`ci.yml`](../../.github/workflows/ci.yml))
