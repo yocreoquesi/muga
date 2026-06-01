@@ -619,6 +619,11 @@ describe("R5 — GITHUB_OUTPUT dual-emit", () => {
     // Temp file for $GITHUB_OUTPUT; does not exist yet — appendFileSync will create it.
     const githubOutputPath = join(tmpDir, "github-output.txt");
 
+    // Snapshot the REAL process.env.GITHUB_OUTPUT. GitHub Actions sets this on the
+    // runner, so it is NOT necessarily undefined — the contract we verify is that
+    // runCli({ env }) uses the INJECTED env and leaves process.env UNCHANGED.
+    const priorGithubOutput = process.env.GITHUB_OUTPUT;
+
     // Inject a fake env that includes MUGA_SIGNING_KEY_PATH and GITHUB_OUTPUT.
     // We do NOT mutate process.env — that's the whole point of runCli({ env }).
     const fakeEnv = {
@@ -660,11 +665,12 @@ describe("R5 — GITHUB_OUTPUT dual-emit", () => {
       `GITHUB_OUTPUT must contain "${expectedLine.trim()}" but got: ${JSON.stringify(ghOutputContent)}`
     );
 
-    // 3. process.env.GITHUB_OUTPUT must NOT have been set (env injection, not mutation)
+    // 3. runCli must NOT mutate process.env.GITHUB_OUTPUT (it uses the injected env
+    //    only). Compare against the snapshot — robust whether the runner set it or not.
     assert.strictEqual(
       process.env.GITHUB_OUTPUT,
-      undefined,
-      "process.env.GITHUB_OUTPUT must not be set by runCli (uses injected env only)"
+      priorGithubOutput,
+      "runCli must not mutate process.env.GITHUB_OUTPUT (uses injected env only)"
     );
   });
 });
