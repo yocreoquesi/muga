@@ -19,6 +19,7 @@
     "orchestrate:rules": "node tools/rule-ingestion/orchestrate-cli.mjs",
     "promote:rules": "node tools/rule-ingestion/promote-rules.mjs",
     "pipeline:rules": "node tools/rule-ingestion/pipeline.mjs",
+    "surface:rules": "node tools/rule-ingestion/format-surface.mjs",
     "conformance:contextual": "node --test --test-reporter=spec tests/unit/conformance-contextual.test.mjs",
     "test:serve": "npx serve tests/browser --listen 5555 --no-clipboard",
     "brand": "npx serve tools --listen 5556 --no-clipboard",

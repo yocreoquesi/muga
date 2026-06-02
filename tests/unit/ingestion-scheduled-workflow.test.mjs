@@ -356,6 +356,104 @@ describe("pipeline invocation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// T-20 [RED] — quarantine review summary step (ADR-7)
+// ---------------------------------------------------------------------------
+describe("T-20 — quarantine review summary step", () => {
+  test("workflow has an 'Emit quarantine review summary' step (or equivalent) that writes to $GITHUB_STEP_SUMMARY", () => {
+    const content = readWorkflow();
+    // Step must reference $GITHUB_STEP_SUMMARY (the GHA step summary sink)
+    assert.ok(
+      /GITHUB_STEP_SUMMARY/.test(content),
+      "workflow must reference $GITHUB_STEP_SUMMARY for the quarantine review summary step"
+    );
+    // Step must invoke the format-surface formatter (via node or npm script)
+    assert.ok(
+      /format-surface\.mjs/.test(content),
+      "workflow must invoke format-surface.mjs for the quarantine summary step"
+    );
+  });
+
+  test("summary step is gated on steps.pipeline.conclusion == 'success' (NOT noop == false)", () => {
+    const content = readWorkflow();
+    // The summary step's if: condition must be the conclusion check
+    assert.ok(
+      /steps\.pipeline\.conclusion\s*==\s*['"]success['"]/.test(content),
+      "summary step must use 'steps.pipeline.conclusion == \"success\"' (fires on both noop and non-noop success)"
+    );
+    // The summary step must NOT be gated on noop == 'false' (that would skip it on noop runs)
+    // We check by ensuring the format-surface line does NOT appear in a block that ONLY has noop==false
+    // Approach: confirm no 'if:' line immediately preceding format-surface.mjs references noop == 'false'
+    const lines = content.split("\n");
+    const surfaceLineIdx = lines.findIndex(l => /format-surface\.mjs/.test(l));
+    assert.ok(surfaceLineIdx !== -1, "format-surface.mjs must be present in workflow");
+
+    // Scan backwards from the format-surface line to find the nearest `if:` line
+    let nearestIfLine = null;
+    for (let i = surfaceLineIdx - 1; i >= 0; i--) {
+      const trimmed = lines[i].trimStart();
+      if (trimmed.startsWith("if:")) {
+        nearestIfLine = trimmed;
+        break;
+      }
+      // Stop if we hit a `name:` or `run:` that indicates a different step boundary
+      if (trimmed.startsWith("- name:")) break;
+    }
+    // The nearest if: must NOT gate on noop == 'false' (which would skip noop runs)
+    if (nearestIfLine !== null) {
+      assert.ok(
+        !/noop\s*==\s*['"]false['"]/.test(nearestIfLine),
+        `summary step 'if:' must NOT gate on noop == 'false'. Found: "${nearestIfLine}"`
+      );
+    }
+  });
+
+  test("summary step does NOT carry if: always() — only the key cleanup step does", () => {
+    const content = readWorkflow();
+    // This test is already enforced by the existing 'if:always() usage' describe block,
+    // but we verify explicitly that adding the summary step does not add a second always().
+    const lines = content.split("\n");
+    const alwaysLines = lines.filter(l => {
+      const trimmed = l.trimStart();
+      return trimmed.startsWith("if:") && /if:\s*always\(\)/.test(trimmed);
+    });
+    assert.strictEqual(
+      alwaysLines.length,
+      1,
+      `Exactly 1 YAML step field may be 'if: always()' (the cleanup step). Found ${alwaysLines.length}: ` +
+      JSON.stringify(alwaysLines)
+    );
+  });
+
+  test("PR-body step uses --body-file (not inline --body interpolation)", () => {
+    const content = readWorkflow();
+    // Must use --body-file for both gh pr create and gh pr edit
+    assert.ok(
+      /--body-file/.test(content),
+      "workflow must use --body-file for PR body (not inline --body interpolation)"
+    );
+    // Must cat summary.md into the body file
+    assert.ok(
+      /cat\s+tools\/rule-ingestion\/quarantine\/summary\.md/.test(content),
+      "workflow must concatenate summary.md into the PR body file"
+    );
+    // OLD inline pattern must be GONE: --body "$BODY" or --body "$...{BODY}"
+    assert.ok(
+      !/--body\s+"\$BODY"/.test(content),
+      "workflow must NOT use '--body \"$BODY\"' inline interpolation (shell injection vector)"
+    );
+  });
+
+  test("summary step has continue-on-error: true (off-critical-path backstop)", () => {
+    const content = readWorkflow();
+    // The summary step must have continue-on-error: true as belt-and-suspenders
+    assert.ok(
+      /continue-on-error:\s*true/.test(content),
+      "Emit quarantine review summary step must have 'continue-on-error: true'"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // publish step must NOT carry if:always() — only cleanup does
 // ---------------------------------------------------------------------------
 describe("if:always() usage — only cleanup step", () => {
