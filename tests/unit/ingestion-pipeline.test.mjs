@@ -594,6 +594,122 @@ describe("Critical trap — candidates.json wrapper shape", () => {
   });
 });
 
+// ── T-14 [RED]: surface-input.json written on both pipeline branches ──────────
+// Spec R4 / ADR-5: pipeline writes quarantine/surface-input.json = {report, promoteSkipped, noop}
+// on BOTH the noop and non-noop branches. The path is injectable via surfaceInputPath.
+
+describe("T-14 — surface-input.json written on both branches", () => {
+  // Helper: fully injectable makeInjectedPaths extended with surfaceInputPath
+  function makeInjectedPathsWithSurface(tmpDir, { sourceParams = [] } = {}) {
+    const base = makeInjectedPaths(tmpDir, { sourceParams });
+    const surfaceInputPath = join(tmpDir, "surface-input.json");
+    return { ...base, surfaceInputPath };
+  }
+
+  test("T-14-noop: surface-input.json written with {report, promoteSkipped, noop:true} when pipeline is noop", async () => {
+    const { runPipeline } = await import("../../tools/rule-ingestion/pipeline.mjs");
+
+    const tmpDir = makeTmpDir();
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, surfaceInputPath } =
+      makeInjectedPathsWithSurface(tmpDir, { sourceParams: ["utm_source"] });
+
+    const passAdapter = {
+      id: "adguard-tp",
+      name: "AdGuard",
+      license: "GPL-3.0",
+      url: "https://example.com",
+      fetchRaw: async () => "utm_source",
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
+    };
+
+    try {
+      await runPipeline({
+        adapters: [passAdapter],
+        fetchImpl: makeFakeFetch(),
+        candidatesPath,
+        promotePath,
+        reportPath,
+        sourcePath,
+        domainRulesPath,
+        surfaceInputPath,
+        signingKeyPath: keyPath,
+        trustedKeys,
+        subtle: globalThis.crypto?.subtle,
+        now: TEST_NOW,
+        version: 1,
+      });
+    } catch {
+      // noop or not, surface-input.json must still be written
+    }
+
+    assert.ok(existsSync(surfaceInputPath), "surface-input.json must be written even on noop run");
+    const si = JSON.parse(readFileSync(surfaceInputPath, "utf8"));
+    assert.ok("report" in si, "surface-input must have a 'report' field");
+    assert.ok("promoteSkipped" in si, "surface-input must have a 'promoteSkipped' field");
+    assert.ok("noop" in si, "surface-input must have a 'noop' field");
+    assert.ok(typeof si.report === "object" && si.report !== null, "report must be an object");
+    assert.ok(Array.isArray(si.promoteSkipped), "promoteSkipped must be an array");
+    assert.strictEqual(si.noop, true, "noop field must be true for noop run");
+  });
+
+  test("T-14-nonnoop: surface-input.json written with {report, promoteSkipped, noop:false} on non-noop run", async () => {
+    const { runPipeline } = await import("../../tools/rule-ingestion/pipeline.mjs");
+
+    const tmpDir = makeTmpDir();
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    // Empty source → any candidate produces a change → noop:false
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, surfaceInputPath } =
+      makeInjectedPathsWithSurface(tmpDir, { sourceParams: [] });
+
+    const passAdapter = {
+      id: "adguard-tp",
+      name: "AdGuard",
+      license: "GPL-3.0",
+      url: "https://example.com",
+      fetchRaw: async () => "utm_source",
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
+    };
+    const passAdapter2 = {
+      id: "clearurls",
+      name: "ClearURLs",
+      license: "LGPL-3.0",
+      url: "https://example.com",
+      fetchRaw: async () => "utm_source",
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
+    };
+
+    try {
+      await runPipeline({
+        adapters: [passAdapter, passAdapter2],
+        fetchImpl: makeFakeFetch(),
+        candidatesPath,
+        promotePath,
+        reportPath,
+        sourcePath,
+        domainRulesPath,
+        surfaceInputPath,
+        signingKeyPath: keyPath,
+        trustedKeys,
+        subtle: globalThis.crypto?.subtle,
+        now: TEST_NOW,
+        version: 1,
+      });
+    } catch {
+      // even if pipeline fails, we check what was written
+    }
+
+    assert.ok(existsSync(surfaceInputPath), "surface-input.json must be written on non-noop run");
+    const si = JSON.parse(readFileSync(surfaceInputPath, "utf8"));
+    assert.ok("report" in si, "surface-input must have a 'report' field");
+    assert.ok("promoteSkipped" in si, "surface-input must have a 'promoteSkipped' field");
+    assert.ok("noop" in si, "surface-input must have a 'noop' field");
+    assert.ok(typeof si.report === "object" && si.report !== null, "report must be an object");
+    assert.ok(Array.isArray(si.promoteSkipped), "promoteSkipped must be an array");
+    assert.strictEqual(si.noop, false, "noop field must be false for non-noop run");
+  });
+});
+
 // ── R5: GITHUB_OUTPUT dual-emit ───────────────────────────────────────────────
 
 describe("R5 — GITHUB_OUTPUT dual-emit", () => {

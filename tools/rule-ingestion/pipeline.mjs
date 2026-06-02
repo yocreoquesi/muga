@@ -28,7 +28,7 @@
  *   3 — I/O error
  */
 
-import { mkdirSync, writeFileSync, appendFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, appendFileSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,6 +47,7 @@ const DEFAULT_PROMOTE_PATH = resolve(__dirname, "promote/promote-candidates.json
 const DEFAULT_REPORT_PATH = resolve(__dirname, "quarantine/quarantine-report.json");
 const DEFAULT_SOURCE_PATH = resolve(__dirname, "../../tools/rules-source/params.json");
 const DEFAULT_DOMAIN_RULES_PATH = resolve(__dirname, "../../src/rules/domain-rules.json");
+const DEFAULT_SURFACE_INPUT_PATH = resolve(__dirname, "quarantine/surface-input.json");
 
 // ── Core (testable) ────────────────────────────────────────────────────────────
 
@@ -63,7 +64,8 @@ const DEFAULT_DOMAIN_RULES_PATH = resolve(__dirname, "../../src/rules/domain-rul
  * @param {string}         [opts.promotePath]     promote-candidates.json path.
  * @param {string}         [opts.reportPath]      quarantine-report.json path.
  * @param {string}         [opts.sourcePath]      tools/rules-source/params.json path.
- * @param {string}         [opts.domainRulesPath] src/rules/domain-rules.json path.
+ * @param {string}         [opts.domainRulesPath]    src/rules/domain-rules.json path.
+ * @param {string}         [opts.surfaceInputPath]   quarantine/surface-input.json path (injectable for tests).
  * @param {string}         opts.signingKeyPath    Ed25519 private key PEM path. Fail-closed: if falsy, rejects.
  * @param {string[]}       [opts.trustedKeys]     Trusted public keys. Defaults to TRUSTED_PUBLIC_KEYS.
  * @param {SubtleCrypto}   [opts.subtle]          Defaults to globalThis.crypto?.subtle.
@@ -89,6 +91,7 @@ export async function runPipeline({
   reportPath = DEFAULT_REPORT_PATH,
   sourcePath = DEFAULT_SOURCE_PATH,
   domainRulesPath = DEFAULT_DOMAIN_RULES_PATH,
+  surfaceInputPath = DEFAULT_SURFACE_INPUT_PATH,
   signingKeyPath,
   trustedKeys = TRUSTED_PUBLIC_KEYS,
   subtle = globalThis.crypto?.subtle,
@@ -165,6 +168,24 @@ export async function runPipeline({
     subtle,
     now: nowDate,
   });
+
+  // ── ADR-5: Write surface-input.json (BOTH branches — noop and non-noop) ──────
+  // Reads back quarantine-report.json (written by orchestrate-cli) and combines
+  // it with promote skips into a single surface artifact for the formatter step.
+  // Written before the noop/non-noop return so it is always emitted on success.
+  try {
+    const reportObj = JSON.parse(readFileSync(reportPath, "utf8"));
+    const surfaceInput = {
+      report: reportObj,
+      promoteSkipped: r.skipped ?? [],
+      noop: r.noop ?? false,
+    };
+    writeFileSync(surfaceInputPath, JSON.stringify(surfaceInput, null, 2) + "\n", "utf8");
+  } catch (surfaceErr) {
+    // Non-fatal: surface-input write failure must NOT abort the pipeline result.
+    // Log the error for observability but continue to return the pipeline result.
+    console.error("[pipeline] WARNING: could not write surface-input.json:", surfaceErr.message);
+  }
 
   // ── R2 + R3: Surface result ────────────────────────────────────────────────
   if (r.noop) {
