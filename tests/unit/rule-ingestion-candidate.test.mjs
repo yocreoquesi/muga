@@ -27,7 +27,8 @@ test("makeCandidate lowercases the param and carries one signal", () => {
 });
 
 test("mergeCandidates dedupes params and lowercases", () => {
-  const out = mergeCandidates(
+  // After T-09: mergeCandidates returns { candidates, emptyDropped }
+  const { candidates: out } = mergeCandidates(
     [{ id: "adguard-tp", params: ["fbclid", "FBCLID", "gclid"] }],
     { now: NOW },
   );
@@ -39,7 +40,7 @@ test("mergeCandidates dedupes params and lowercases", () => {
 });
 
 test("mergeCandidates accumulates provenance across adapters without dup signals", () => {
-  const out = mergeCandidates(
+  const { candidates: out } = mergeCandidates(
     [
       { id: "adguard-tp", params: ["fbclid"] },
       { id: "other", params: ["fbclid"] },
@@ -52,7 +53,7 @@ test("mergeCandidates accumulates provenance across adapters without dup signals
 });
 
 test("single-source candidates survive (corroboration is not a hard gate)", () => {
-  const out = mergeCandidates(
+  const { candidates: out } = mergeCandidates(
     [{ id: "adguard-tp", params: ["only_here"] }],
     { now: NOW },
   );
@@ -61,7 +62,7 @@ test("single-source candidates survive (corroboration is not a hard gate)", () =
 });
 
 test("entropy and crossSiteFrequency stay null at B2 (no corpus)", () => {
-  const out = mergeCandidates(
+  const { candidates: out } = mergeCandidates(
     [{ id: "adguard-tp", params: ["x"] }],
     { now: NOW },
   );
@@ -70,7 +71,7 @@ test("entropy and crossSiteFrequency stay null at B2 (no corpus)", () => {
 });
 
 test("merge sorts by signal count desc, then param asc", () => {
-  const out = mergeCandidates(
+  const { candidates: out } = mergeCandidates(
     [
       { id: "a", params: ["zeta", "shared"] },
       { id: "b", params: ["shared", "alpha"] },
@@ -85,7 +86,8 @@ test("merge sorts by signal count desc, then param asc", () => {
 });
 
 test("empty/whitespace params are dropped", () => {
-  const out = mergeCandidates(
+  // After T-09: mergeCandidates returns { candidates, emptyDropped }
+  const { candidates: out } = mergeCandidates(
     [{ id: "a", params: ["", "  ", "real"] }],
     { now: NOW },
   );
@@ -93,4 +95,19 @@ test("empty/whitespace params are dropped", () => {
     out.map((c) => c.param),
     ["real"],
   );
+});
+
+// ── T-08 (quarantine-surface #782): mergeCandidates emptyDropped ──────────────
+
+test("T-08: mergeCandidates returns { candidates, emptyDropped }", () => {
+  const result = mergeCandidates(
+    [{ id: "x", params: new Set(["", "  ", "a"]) }],
+    { now: NOW },
+  );
+  // Must return an object { candidates, emptyDropped }
+  assert.ok(!Array.isArray(result), "mergeCandidates must return an object, not a bare array");
+  assert.ok(Array.isArray(result.candidates), "result.candidates must be an array");
+  assert.equal(result.candidates.length, 1, "candidates must contain 1 entry (only 'a')");
+  assert.equal(result.candidates[0].param, "a");
+  assert.equal(result.emptyDropped, 2, `emptyDropped must be 2 ('' and '  '), got ${result.emptyDropped}`);
 });

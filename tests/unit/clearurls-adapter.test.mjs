@@ -222,10 +222,63 @@ describe("clearurls.parse — malformed JSON", () => {
 // ── T-16: Missing providers ───────────────────────────────────────────────────
 
 describe("clearurls.parse — missing providers", () => {
-  test("parse('{}') returns empty Set (no throw)", () => {
+  test("parse('{}') returns { params, skipped, affiliateExcluded } with empty params (no throw)", () => {
     const result = clearurls.parse("{}");
-    assert.ok(result instanceof Set);
-    assert.equal(result.size, 0);
+    // After T-02: parse() returns { params, skipped, affiliateExcluded }
+    assert.ok(result.params instanceof Set);
+    assert.equal(result.params.size, 0);
+    assert.equal(result.affiliateExcluded, 0);
+  });
+});
+
+// ── T-01 (quarantine-surface #782): affiliateExcluded count ──────────────────
+
+describe("extractClearurlsLiterals — affiliateExcluded (T-01)", () => {
+  // Fixture: 3 literal rules, 2 non-literal (skipped), 1 referralMarketing (affiliateExcluded)
+  const FIXTURE_AFFILIATE = JSON.stringify({
+    providers: {
+      main: {
+        rules: ["utm_source", "gclid", "(regex-only)", ".*complex.*", "fbclid", "tag"],
+        referralMarketing: ["tag"],
+      },
+    },
+  });
+
+  test("affiliateExcluded counts referralMarketing hits (T-01)", () => {
+    const { params, skipped, affiliateExcluded } = extractClearurlsLiterals(FIXTURE_AFFILIATE);
+    assert.equal(params.size, 3, `expected 3 admitted params, got ${params.size}`);
+    assert.ok(skipped >= 2, `expected skipped >= 2 (regex patterns), got ${skipped}`);
+    assert.equal(affiliateExcluded, 1, `expected affiliateExcluded === 1, got ${affiliateExcluded}`);
+  });
+
+  test("affiliateExcluded param is absent from params Set (T-01)", () => {
+    const { params } = extractClearurlsLiterals(FIXTURE_AFFILIATE);
+    assert.ok(!params.has("tag"), "'tag' is referralMarketing — must not be in params");
+    assert.ok(params.has("utm_source"), "utm_source must be admitted");
+    assert.ok(params.has("gclid"), "gclid must be admitted");
+    assert.ok(params.has("fbclid"), "fbclid must be admitted");
+  });
+});
+
+describe("clearurls.parse — returns { params, skipped, affiliateExcluded } (T-01)", () => {
+  const FIXTURE_MIXED = JSON.stringify({
+    providers: {
+      p: {
+        rules: ["utm_source", "(skip-me)", "aff_tag"],
+        referralMarketing: ["aff_tag"],
+      },
+    },
+  });
+
+  test("parse() returns object with params Set, skipped number, affiliateExcluded number", () => {
+    const result = clearurls.parse(FIXTURE_MIXED);
+    assert.ok(result.params instanceof Set, "params must be a Set");
+    assert.equal(typeof result.skipped, "number", "skipped must be a number");
+    assert.equal(typeof result.affiliateExcluded, "number", "affiliateExcluded must be a number");
+    assert.ok(result.params.has("utm_source"), "utm_source must be admitted");
+    assert.ok(!result.params.has("aff_tag"), "aff_tag is referralMarketing — excluded");
+    assert.equal(result.affiliateExcluded, 1, "affiliateExcluded must be 1");
+    assert.ok(result.skipped >= 1, "skipped must be >= 1 (regex pattern)");
   });
 });
 

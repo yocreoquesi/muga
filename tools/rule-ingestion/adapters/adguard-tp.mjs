@@ -29,10 +29,11 @@ export const adguardTp = {
   /**
    * Extract literal tracking param names from an AdGuard filter list.
    * @param {string} rawText Raw filter-list contents.
-   * @returns {Set<string>} Lowercased param names.
+   * @returns {{ params: Set<string>, skipped: number, affiliateExcluded: number }}
    */
   parse(rawText) {
-    return parseRemoveparamRules(rawText);
+    const { params, skipped } = parseRemoveparamRules(rawText);
+    return { params, skipped, affiliateExcluded: 0 };
   },
 
   /**

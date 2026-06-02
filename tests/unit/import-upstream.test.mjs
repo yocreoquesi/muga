@@ -11,6 +11,7 @@
  *   - Comments (!) and section headers ([) are ignored
  *   - Param names are lowercased and validated
  *   - Empty input returns an empty set
+ *   - (#782) returns { params, skipped } object (not a bare Set)
  */
 
 import { test, describe } from "node:test";
@@ -20,55 +21,57 @@ import { parseRemoveparamRules } from "../../tools/import-upstream.mjs";
 describe("parseRemoveparamRules", () => {
   test("extracts a simple removeparam rule", () => {
     const text = "*$removeparam=fbclid";
-    const result = parseRemoveparamRules(text);
-    assert.deepEqual([...result], ["fbclid"]);
+    const { params } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["fbclid"]);
   });
 
   test("splits pipe-separated multi-param rules", () => {
     const text = "*$removeparam=fbclid|gclid|msclkid";
-    const result = parseRemoveparamRules(text);
-    assert.deepEqual([...result].sort(), ["fbclid", "gclid", "msclkid"]);
+    const { params } = parseRemoveparamRules(text);
+    assert.deepEqual([...params].sort(), ["fbclid", "gclid", "msclkid"]);
   });
 
   test("handles host-scoped rules (||example.com^)", () => {
     const text = "||example.com^$removeparam=utm_source";
-    const result = parseRemoveparamRules(text);
-    assert.deepEqual([...result], ["utm_source"]);
+    const { params } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["utm_source"]);
   });
 
   test("skips regex specs that start with /", () => {
     const text = "*$removeparam=/^utm_/";
-    const result = parseRemoveparamRules(text);
-    assert.equal(result.size, 0);
+    const { params, skipped } = parseRemoveparamRules(text);
+    assert.equal(params.size, 0);
+    assert.ok(skipped >= 1, "regex spec must be counted as skipped");
   });
 
   test("skips negation specs that start with ~", () => {
     const text = "*$removeparam=~tag";
-    const result = parseRemoveparamRules(text);
-    assert.equal(result.size, 0);
+    const { params, skipped } = parseRemoveparamRules(text);
+    assert.equal(params.size, 0);
+    assert.ok(skipped >= 1, "negation spec must be counted as skipped");
   });
 
   test("ignores comment lines starting with !", () => {
     const text = "! this is a comment\n*$removeparam=fbclid";
-    const result = parseRemoveparamRules(text);
-    assert.deepEqual([...result], ["fbclid"]);
+    const { params } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["fbclid"]);
   });
 
   test("ignores section header lines starting with [", () => {
     const text = "[Adblock Plus 2.0]\n*$removeparam=fbclid";
-    const result = parseRemoveparamRules(text);
-    assert.deepEqual([...result], ["fbclid"]);
+    const { params } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["fbclid"]);
   });
 
   test("lowercases all param names", () => {
     const text = "*$removeparam=FBclid|GCLID";
-    const result = parseRemoveparamRules(text);
-    assert.deepEqual([...result].sort(), ["fbclid", "gclid"]);
+    const { params } = parseRemoveparamRules(text);
+    assert.deepEqual([...params].sort(), ["fbclid", "gclid"]);
   });
 
   test("returns an empty set for empty input", () => {
-    assert.equal(parseRemoveparamRules("").size, 0);
-    assert.equal(parseRemoveparamRules("\n\n").size, 0);
+    assert.equal(parseRemoveparamRules("").params.size, 0);
+    assert.equal(parseRemoveparamRules("\n\n").params.size, 0);
   });
 
   test("handles realistic AdGuard Filter 17 sample correctly", () => {
@@ -82,23 +85,23 @@ describe("parseRemoveparamRules", () => {
 ! comment
 *$removeparam=/^_branch_/
 *$removeparam=~important_tag`;
-    const result = parseRemoveparamRules(text);
+    const { params } = parseRemoveparamRules(text);
     assert.deepEqual(
-      [...result].sort(),
+      [...params].sort(),
       ["dclid", "fbclid", "gclid", "gclsrc", "utm_medium", "utm_source"]
     );
   });
 
   test("rejects malformed param names containing illegal characters", () => {
     const text = "*$removeparam=foo bar|baz<script>";
-    const result = parseRemoveparamRules(text);
+    const { params } = parseRemoveparamRules(text);
     // Neither matches the conservative validator regex; both are rejected.
-    assert.equal(result.size, 0);
+    assert.equal(params.size, 0);
   });
 
   test("ignores lines with no $removeparam modifier", () => {
     const text = "||tracker.example.com^\n*$third-party";
-    const result = parseRemoveparamRules(text);
-    assert.equal(result.size, 0);
+    const { params } = parseRemoveparamRules(text);
+    assert.equal(params.size, 0);
   });
 });

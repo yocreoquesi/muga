@@ -14,7 +14,7 @@
  * any provider's referralMarketing is excluded from every provider's output.
  *
  * Public API (named exports only — no default):
- *   extractClearurlsLiterals(rawText) → { params: Set<string>, skipped: number }
+ *   extractClearurlsLiterals(rawText) → { params: Set<string>, skipped: number, affiliateExcluded: number }
  *   clearurls                         → Adapter (id, name, license, url, parse, fetchRaw)
  */
 
@@ -70,7 +70,7 @@ function normalizeName(raw) {
  * Does NOT read: top-level globalRules / rawGlobalRules (locked out-of-scope).
  *
  * @param {string} rawText Raw ClearURLs rules JSON string.
- * @returns {{ params: Set<string>, skipped: number }}
+ * @returns {{ params: Set<string>, skipped: number, affiliateExcluded: number }}
  */
 export function extractClearurlsLiterals(rawText) {
   let data;
@@ -103,6 +103,7 @@ export function extractClearurlsLiterals(rawText) {
   // PASS 2: Extract safe literals from providers[*].rules[], subtract global referral union.
   const params = new Set();
   let skipped = 0;
+  let affiliateExcluded = 0;
 
   for (const provider of providerList) {
     const rules = Array.isArray(provider?.rules) ? provider.rules : [];
@@ -125,15 +126,14 @@ export function extractClearurlsLiterals(rawText) {
       }
 
       // SAFETY-CRITICAL: affiliate preserve check using global union.
-      // Excluded entries are intentional — NOT counted as skip (parse success,
-      // deliberate exclusion).
-      if (globalReferral.has(name)) continue;
+      // Counted as affiliateExcluded (deliberate exclusion, not a parse skip).
+      if (globalReferral.has(name)) { affiliateExcluded++; continue; }
 
       params.add(name);
     }
   }
 
-  return { params, skipped };
+  return { params, skipped, affiliateExcluded };
 }
 
 // ── Adapter object ────────────────────────────────────────────────────────────
@@ -150,13 +150,13 @@ export const clearurls = {
 
   /**
    * Extract literal tracking param names from a ClearURLs rules JSON string.
-   * Delegates to extractClearurlsLiterals and returns the params Set directly
-   * to honor the Adapter typedef contract (parse → Set<string>).
+   * Delegates to extractClearurlsLiterals and returns the full stats object.
    * @param {string} rawText Raw rules JSON.
-   * @returns {Set<string>} Lowercased param names (referralMarketing excluded).
+   * @returns {{ params: Set<string>, skipped: number, affiliateExcluded: number }}
    */
   parse(rawText) {
-    return extractClearurlsLiterals(rawText).params;
+    const { params, skipped, affiliateExcluded } = extractClearurlsLiterals(rawText);
+    return { params, skipped, affiliateExcluded };
   },
 
   /**
