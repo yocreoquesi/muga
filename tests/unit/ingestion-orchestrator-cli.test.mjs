@@ -43,14 +43,19 @@ function makeTmpDir() {
   return d;
 }
 
-/** Write a minimal candidates.json fixture to a temp dir and return its path */
-function writeCandidatesFixture(dir, candidates) {
+/** Write a minimal candidates.json fixture to a temp dir and return its path.
+ * Optional stats param adds a stats field to the report (for T-12 null-safe tests).
+ */
+function writeCandidatesFixture(dir, candidates, stats = undefined) {
   const path = join(dir, "candidates.json");
   const report = {
     generatedAt: "2024-01-01T00:00:00.000Z",
     candidateCount: candidates.length,
     candidates,
   };
+  if (stats !== undefined) {
+    report.stats = stats;
+  }
   writeFileSync(path, JSON.stringify(report, null, 2) + "\n", "utf8");
   return path;
 }
@@ -529,6 +534,69 @@ describe("R4 — MUGA_RULES_VERSION env override", () => {
 
     assert.ok(thrown !== null, "non-integer MUGA_RULES_VERSION must throw");
     assert.strictEqual(thrown.exitCode, 1, "MUGA_RULES_VERSION validation error must have exitCode:1");
+  });
+});
+
+// ── T-12 (quarantine-surface #782): ingestStats null-safe copy ────────────────
+
+describe("T-12 — ingestStats null-safe (quarantine-surface #782)", () => {
+  const SAMPLE_STATS = {
+    adapters: [
+      { adapterId: "adguard-tp", admitted: 3, skipped: 1, affiliateExcluded: 0 },
+      { adapterId: "clearurls", admitted: 2, skipped: 0, affiliateExcluded: 1 },
+    ],
+    merged: { emptyDropped: 0, total: 4 },
+  };
+
+  test("T-12a: candidates WITH stats → report.ingestStats deep-equals stats", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [passCandidate("utm_source")], SAMPLE_STATS);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+    });
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.ok("ingestStats" in report, "quarantine-report.json must have ingestStats field");
+    assert.deepStrictEqual(report.ingestStats, SAMPLE_STATS, "ingestStats must deep-equal the stats from candidates.json");
+  });
+
+  test("T-12b: candidates WITHOUT stats → report.ingestStats === null (null-safe)", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    // No stats passed → old-format candidates.json
+    const candidatesPath = writeCandidatesFixture(tmpDir, [passCandidate("utm_source")]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+    });
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.ok("ingestStats" in report, "quarantine-report.json must have ingestStats field even when candidates.json has no stats");
+    assert.strictEqual(report.ingestStats, null, "ingestStats must be null when candidates.json has no stats field");
   });
 });
 

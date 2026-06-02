@@ -254,6 +254,7 @@ export async function runOrchestrateCli({
     generatedAt: published,
     autoMergeCount: autoMerge.length,
     quarantineCount: quarantine.length,
+    ingestStats: candidateReport.stats ?? null,  // null-safe: tolerates stats-less old candidates.json (#782)
     quarantine, // full QuarantineEntry[] with candidate + rejections
   };
 

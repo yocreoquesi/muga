@@ -114,8 +114,8 @@ export async function runPipeline({
     now instanceof Date ? now : now !== undefined ? new Date(now) : undefined;
 
   // ── Step 1: Ingest ─────────────────────────────────────────────────────────
-  // runIngestion returns a BARE candidate array.
-  const candidates = await runIngestion({
+  // runIngestion returns { candidates, stats } (#782 quarantine-surface).
+  const { candidates, stats } = await runIngestion({
     adapters,
     fetchImpl,
     quarantineDir: dirname(candidatesPath),
@@ -125,7 +125,7 @@ export async function runPipeline({
   // ── CRITICAL: Write report wrapper (NOT bare array) ───────────────────────
   // orchestrate-cli reads `candidateReport.candidates` — bare array breaks it.
   // Mirror exact wrapper shape from ingest.mjs main():
-  //   { generatedAt, adapters, candidateCount, candidates }
+  //   { generatedAt, adapters, candidateCount, candidates, stats }
   const candidateReport = {
     generatedAt: (nowDate ?? new Date()).toISOString(),
     adapters: adapters.map((a) => ({
@@ -136,6 +136,7 @@ export async function runPipeline({
     })),
     candidateCount: candidates.length,
     candidates,
+    stats,
   };
   mkdirSync(dirname(candidatesPath), { recursive: true });
   writeFileSync(

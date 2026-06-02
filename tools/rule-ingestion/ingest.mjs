@@ -38,7 +38,7 @@ const QUARANTINE_DIR = resolve(__dirname, "quarantine");
  * @param {typeof fetch} [opts.fetchImpl] Injectable fetch for testing.
  * @param {string} [opts.quarantineDir] Working dir for raw downloads.
  * @param {string} [opts.now] ISO timestamp override for deterministic output.
- * @returns {Promise<object[]>} Candidates (see candidate.mjs).
+ * @returns {Promise<{ candidates: object[], stats: { adapters: object[], merged: { emptyDropped: number, total: number } } }>}
  */
 export async function runIngestion({
   adapters = ENABLED_ADAPTERS,
@@ -49,18 +49,39 @@ export async function runIngestion({
   mkdirSync(quarantineDir, { recursive: true });
 
   const results = [];
+  const adapterStats = [];
   for (const adapter of adapters) {
     const raw = await adapter.fetchRaw({ fetchImpl });
     // Raw bytes land in quarantine ONLY — gitignored, never committed/bundled.
     writeFileSync(resolve(quarantineDir, `${adapter.id}.raw`), raw, "utf8");
-    results.push({ id: adapter.id, params: adapter.parse(raw) });
+    const parseResult = adapter.parse(raw);
+    if (!parseResult || !(parseResult.params instanceof Set)) {
+      throw new TypeError(
+        `[runIngestion] Adapter "${adapter.id}" parse() must return { params: Set, skipped, affiliateExcluded } — got ${typeof parseResult}`
+      );
+    }
+    const { params, skipped = 0, affiliateExcluded = 0 } = parseResult;
+    results.push({ id: adapter.id, params });
+    adapterStats.push({
+      adapterId: adapter.id,
+      admitted: params.size,   // per-adapter count BEFORE cross-adapter dedup
+      skipped,
+      affiliateExcluded,
+    });
   }
 
-  return mergeCandidates(results, { now });
+  const { candidates, emptyDropped } = mergeCandidates(results, { now });
+  return {
+    candidates,
+    stats: {
+      adapters: adapterStats,
+      merged: { emptyDropped, total: candidates.length }, // total = unique candidates after cross-adapter dedup (NOT sum of per-adapter admitted)
+    },
+  };
 }
 
 async function main() {
-  const candidates = await runIngestion();
+  const { candidates, stats } = await runIngestion();
   const report = {
     generatedAt: new Date().toISOString(),
     adapters: ENABLED_ADAPTERS.map((a) => ({
@@ -71,6 +92,7 @@ async function main() {
     })),
     candidateCount: candidates.length,
     candidates,
+    stats,
   };
   const outPath =
     process.env.CANDIDATES_PATH || resolve(QUARANTINE_DIR, "candidates.json");

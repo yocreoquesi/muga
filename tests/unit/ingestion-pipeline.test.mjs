@@ -132,7 +132,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
       license: "MIT",
       url: "https://example.com",
       fetchRaw: async () => { throw ingestError; },
-      parse: () => new Set(),
+      parse: () => ({ params: new Set(), skipped: 0, affiliateExcluded: 0 }),
     };
 
     let thrown = null;
@@ -179,7 +179,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
       license: "MIT",
       url: "https://example.com",
       fetchRaw: async () => "",
-      parse: () => new Set(),
+      parse: () => ({ params: new Set(), skipped: 0, affiliateExcluded: 0 }),
     };
 
     let thrown = null;
@@ -227,7 +227,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
       license: "MIT",
       url: "https://example.com",
       fetchRaw: async () => "",
-      parse: () => new Set(),
+      parse: () => ({ params: new Set(), skipped: 0, affiliateExcluded: 0 }),
     };
 
     // Pass a WRONG trustedKeys so promote's verify fails → PromoteError(2)
@@ -287,7 +287,7 @@ describe("R2 — No-op detection + return shape", () => {
       license: "GPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
 
     let result;
@@ -331,7 +331,7 @@ describe("R2 — No-op detection + return shape", () => {
       license: "GPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
     // Second adapter also producing "utm_source" → two signals → passes corroboration
     const passAdapter2 = {
@@ -340,7 +340,7 @@ describe("R2 — No-op detection + return shape", () => {
       license: "LGPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
 
     let result;
@@ -386,7 +386,7 @@ describe("R3 — Happy-path return shape", () => {
       license: "GPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
     const passAdapter2 = {
       id: "clearurls",
@@ -394,7 +394,7 @@ describe("R3 — Happy-path return shape", () => {
       license: "LGPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
 
     const result = await runPipeline({
@@ -440,7 +440,7 @@ describe("R4 — Signing-key fail-closed", () => {
       license: "GPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
     const passAdapter2 = {
       id: "clearurls",
@@ -448,7 +448,7 @@ describe("R4 — Signing-key fail-closed", () => {
       license: "LGPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
 
     // Explicitly remove the env fallback so pipeline can't sneak a key from env
@@ -551,7 +551,7 @@ describe("Critical trap — candidates.json wrapper shape", () => {
       license: "GPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
     const passAdapter2 = {
       id: "clearurls",
@@ -559,7 +559,7 @@ describe("Critical trap — candidates.json wrapper shape", () => {
       license: "LGPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
 
     // Run pipeline (may succeed or fail — we only care the file was written with correct shape)
@@ -589,6 +589,8 @@ describe("Critical trap — candidates.json wrapper shape", () => {
     assert.ok(Array.isArray(written.adapters), "wrapper must have adapters array");
     assert.ok(typeof written.candidateCount === "number", "wrapper must have candidateCount number");
     assert.ok(Array.isArray(written.candidates), "wrapper must have candidates array (not a bare array)");
+    assert.ok(typeof written.stats === "object" && written.stats !== null, "wrapper must carry stats object");
+    assert.ok(Array.isArray(written.stats.adapters), "wrapper stats must have adapters array");
   });
 });
 
@@ -613,7 +615,7 @@ describe("R5 — GITHUB_OUTPUT dual-emit", () => {
       license: "GPL-3.0",
       url: "https://example.com",
       fetchRaw: async () => "utm_source",
-      parse: (raw) => new Set(raw.trim().split("\n").filter(Boolean)),
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
     };
 
     // Temp file for $GITHUB_OUTPUT; does not exist yet — appendFileSync will create it.

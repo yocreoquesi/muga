@@ -42,10 +42,11 @@ const ADGUARD_FILTER_17_URL =
  * handling than a flat name list.
  *
  * @param {string} text The raw filter list contents.
- * @returns {Set<string>} Lowercased parameter names found in $removeparam rules.
+ * @returns {{ params: Set<string>, skipped: number }} Lowercased parameter names + skip count.
  */
 export function parseRemoveparamRules(text) {
   const params = new Set();
+  let skipped = 0;
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) continue;
@@ -58,20 +59,22 @@ export function parseRemoveparamRules(text) {
     if (!match) continue;
 
     const spec = match[1].trim();
-    if (!spec) continue;
+    if (!spec) { skipped++; continue; }
 
     // Skip regex specs and negations: those need rule-by-rule handling.
-    if (spec.startsWith("/") || spec.startsWith("~")) continue;
+    // NIT: skip granularity is per-spec (one whole $removeparam= value), NOT per-piece
+    // for pipe-separated multi-regex specs — a spec like "/regex1/|/regex2/" counts as 1 skip.
+    if (spec.startsWith("/") || spec.startsWith("~")) { skipped++; continue; }
 
     for (const piece of spec.split("|")) {
       const name = piece.trim().toLowerCase();
-      if (!name) continue;
+      if (!name) { skipped++; continue; }
       // Conservative param-name validation: alphanumeric + _ - . only.
-      if (!/^[a-z0-9_\-.]{1,64}$/.test(name)) continue;
+      if (!/^[a-z0-9_\-.]{1,64}$/.test(name)) { skipped++; continue; }
       params.add(name);
     }
   }
-  return params;
+  return { params, skipped };
 }
 
 async function main() {
@@ -83,7 +86,7 @@ async function main() {
   }
   const text = await response.text();
 
-  const upstreamParams = parseRemoveparamRules(text);
+  const { params: upstreamParams, skipped } = parseRemoveparamRules(text);
   const existing = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
 
   const candidates = [...upstreamParams].filter((p) => !existing.has(p));
@@ -97,10 +100,12 @@ async function main() {
     total_in_muga: existing.size,
     new_candidates_count: candidates.length,
     new_candidates: candidates,
+    skipped,
   };
 
   const outPath = process.env.IMPORT_REPORT_PATH || "/tmp/import-report.json";
   writeFileSync(outPath, JSON.stringify(report, null, 2) + "\n", "utf8");
+  console.log(`[import-upstream] parseRemoveparamRules: skipped ${skipped} non-literal removeparam spec(s)`);
   console.log(`AdGuard Filter 17: ${upstreamParams.size} params parsed`);
   console.log(`MUGA TRACKING_PARAMS: ${existing.size} entries`);
   console.log(`New candidates: ${candidates.length}`);

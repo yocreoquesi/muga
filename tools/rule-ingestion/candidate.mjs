@@ -57,15 +57,16 @@ export function makeCandidate(param, signalId, { now } = {}) {
  * @param {Array<{id:string, params:Iterable<string>}>} adapterResults
  * @param {object} [opts]
  * @param {string} [opts.now] ISO timestamp override for deterministic tests.
- * @returns {object[]} Candidates sorted by signal count desc, then param asc.
+ * @returns {{ candidates: object[], emptyDropped: number }} Candidates + empty-drop count.
  */
 export function mergeCandidates(adapterResults, { now } = {}) {
   const byParam = new Map();
+  let emptyDropped = 0;
 
   for (const { id, params } of adapterResults) {
     for (const raw of params) {
       const param = String(raw).trim().toLowerCase();
-      if (!param) continue;
+      if (!param) { emptyDropped++; continue; }
       const existing = byParam.get(param);
       if (!existing) {
         byParam.set(param, makeCandidate(param, id, { now }));
@@ -79,7 +80,9 @@ export function mergeCandidates(adapterResults, { now } = {}) {
     candidate.signals.sort();
   }
 
-  return [...byParam.values()].sort(
+  const candidates = [...byParam.values()].sort(
     (a, b) => b.signals.length - a.signals.length || a.param.localeCompare(b.param),
   );
+
+  return { candidates, emptyDropped };
 }

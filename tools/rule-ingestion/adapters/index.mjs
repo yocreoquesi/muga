@@ -10,7 +10,7 @@
  * @property {string} name          Human-readable source name.
  * @property {string} license       SPDX-ish license id of the source data.
  * @property {string} url           Source URL.
- * @property {(rawText: string) => Set<string>} parse  Raw → literal param names.
+ * @property {(rawText: string) => { params: Set<string>, skipped?: number, affiliateExcluded?: number }} parse  Raw → literal param names with exclusion counts.
  * @property {(opts?: {fetchImpl?: typeof fetch}) => Promise<string>} fetchRaw
  */
 
