@@ -86,6 +86,40 @@ jobs:
       - name: Lint extension
         run: npm run lint
 
+  coverage:
+    # Non-blocking: runs only on push to main so coverage overhead does not
+    # slow the PR gate. Upload the text report as an artifact for baseline
+    # tracking. No threshold gate yet — establish baseline first (#822).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        # --experimental-test-coverage instruments all loaded source files.
+        # The coverage summary is printed to stdout alongside spec output;
+        # Node 20 does not support the lcov reporter (added in Node 22), so
+        # we capture the full stdout (spec + coverage table) to a text file.
+        run: npm run test:coverage > coverage.txt 2>&1; exit 0
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
+        with:
+          name: coverage-report
+          path: coverage.txt
+          retention-days: 30
+
   e2e:
     runs-on: ubuntu-latest
 
