@@ -279,6 +279,95 @@ describe("F8 — empty/noop input: valid minimal markdown, no crash", () => {
   });
 });
 
+// ── #821-I4: Escape backticks and pipe chars in upstream-derived strings ──────
+
+describe("#821-I4 — Backtick and pipe escaping in markdown output", () => {
+  test("I4-a: param containing backtick → backtick escaped in quarantine listing", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    // A param with a backtick — would break markdown code-span if unescaped
+    const paramWithBacktick = "bad`param";
+    const report = makeReport({
+      quarantine: [makeQuarantineEntry(paramWithBacktick)],
+      quarantineCount: 1,
+    });
+    const md = formatQuarantineReport(report);
+
+    // The raw backtick must not appear unescaped inside the code-span
+    // i.e., we must not see `` `bad`param` `` — the inner backtick must be escaped
+    assert.ok(!md.includes("`bad`param`"), "unescaped backtick in param must not appear in output");
+    // The param content should still appear in some form
+    assert.ok(md.includes("bad"), "param content must still appear in output");
+  });
+
+  test("I4-b: param containing pipe → pipe escaped in quarantine table listing", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const paramWithPipe = "bad|param";
+    const report = makeReport({
+      quarantine: [makeQuarantineEntry(paramWithPipe)],
+      quarantineCount: 1,
+    });
+    const md = formatQuarantineReport(report);
+
+    // A raw | in a param within a table cell breaks the table structure
+    // The pipe in the param name must be escaped as &#124; or \\|
+    const lines = md.split("\n");
+    // Find the line containing the param
+    const paramLine = lines.find((l) => l.includes("bad"));
+    // If found in a table line (starts with |), inner pipes must be escaped
+    if (paramLine && paramLine.trimStart().startsWith("|")) {
+      // The cell content should not have a raw unescaped |
+      // We check that the param's pipe doesn't break the cell count
+      const cellCount = (paramLine.match(/(?<!\\)\|/g) || []).length;
+      // Standard table row for adapter table has 7 pipes (6 cells + 2 borders)
+      // Standard non-table line with a param in backticks shouldn't have extra pipes
+      assert.ok(cellCount <= 7, `excess unescaped pipes in line: ${paramLine}`);
+    }
+  });
+
+  test("I4-c: adapterId containing backtick → backtick escaped in ingest stats table", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const stats = {
+      adapters: [{ adapterId: "bad`adapter", admitted: 1, skipped: 0, affiliateExcluded: 0 }],
+      merged: { total: 1, emptyDropped: 0 },
+    };
+    const report = makeReport({ ingestStats: stats, quarantine: [], quarantineCount: 0 });
+    const md = formatQuarantineReport(report);
+
+    // The raw adapter ID with backtick should not produce malformed markdown
+    // Check no consecutive backtick sequences that would break code-span parsing
+    assert.ok(!md.includes("`bad`adapter"), "unescaped backtick in adapterId must not appear in table cell");
+  });
+
+  test("I4-d: promote skip param containing backtick → backtick escaped", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const paramWithBacktick = "bad`skip";
+    const promoteSkipped = [{ param: paramWithBacktick, reason: "domain-specific" }];
+    const report = makeReport({ quarantine: [], quarantineCount: 0 });
+    const md = formatQuarantineReport(report, { promoteSkipped });
+
+    assert.ok(!md.includes("`bad`skip`"), "unescaped backtick in promote skip param must not appear in output");
+    assert.ok(md.includes("bad"), "skip param content must still appear in output");
+  });
+
+  test("I4-e: reason string containing backtick → backtick escaped in quarantine listing", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const report = makeReport({
+      quarantine: [makeQuarantineEntry("normal_param", "GATE", "reason with `backtick`")],
+      quarantineCount: 1,
+    });
+    const md = formatQuarantineReport(report);
+
+    // The reason appears outside the backtick-wrapped param, so any backtick in reason
+    // can still break markdown rendering — must be escaped
+    assert.ok(!md.includes("`backtick`"), "unescaped backtick in reason must not appear in output");
+  });
+});
+
 describe("F9 — output length well under 1 MB with large fixture", () => {
   test("1000 quarantine entries + topN:20 → output < 100 KB", async () => {
     const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");

@@ -18,6 +18,23 @@
  */
 
 /**
+ * Escapes backticks and pipe characters in an upstream-derived string so it
+ * renders safely inside markdown code-spans and table cells.
+ *
+ * - Backtick (`) → escaped as `` \` `` inside inline code is not possible with
+ *   standard markdown, so we replace it with its HTML entity &#96; to prevent
+ *   breaking code-span delimiters.
+ * - Pipe (|)     → &#124; prevents the character from splitting table cells.
+ *
+ * @param {string} str  Raw upstream-derived string.
+ * @returns {string}    Safe string for use in markdown.
+ */
+function escMd(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(/`/g, "&#96;").replace(/\|/g, "&#124;");
+}
+
+/**
  * Format a quarantine report into a markdown string suitable for
  * $GITHUB_STEP_SUMMARY or a PR body.
  *
@@ -63,9 +80,9 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
 
     for (const a of adapters) {
       const status = a.status === "failed" ? "FAILED" : "ok";
-      const errorCell = a.status === "failed" ? (a.error ?? "unknown error") : "";
+      const errorCell = a.status === "failed" ? escMd(a.error ?? "unknown error") : "";
       lines.push(
-        `| ${a.adapterId ?? "?"} | ${status} | ${a.admitted ?? 0} | ${a.skipped ?? 0} | ${a.affiliateExcluded ?? 0} | ${errorCell} |`
+        `| ${escMd(a.adapterId ?? "?")} | ${status} | ${a.admitted ?? 0} | ${a.skipped ?? 0} | ${a.affiliateExcluded ?? 0} | ${errorCell} |`
       );
     }
 
@@ -102,7 +119,7 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
     if (gateCounts.size > 0) {
       lines.push("**By gate:**");
       for (const [gate, count] of [...gateCounts.entries()].sort((a, b) => b[1] - a[1])) {
-        lines.push(`- ${gate}: ${count}`);
+        lines.push(`- ${escMd(gate)}: ${count}`);
       }
       lines.push("");
     }
@@ -116,8 +133,10 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
       const primaryRejection = Array.isArray(entry.rejections) && entry.rejections.length > 0
         ? entry.rejections[0]
         : null;
-      const reason = primaryRejection ? `${primaryRejection.gate}: ${primaryRejection.reason}` : "unknown";
-      lines.push(`- \`${entry.candidate?.param ?? entry.param}\` — ${reason}`);
+      const reason = primaryRejection
+        ? `${escMd(primaryRejection.gate)}: ${escMd(primaryRejection.reason)}`
+        : "unknown";
+      lines.push(`- \`${escMd(entry.candidate?.param ?? entry.param)}\` — ${reason}`);
     }
 
     if (remaining > 0) {
@@ -143,7 +162,7 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
     const remainingSkips = skips.length - toShowSkips.length;
 
     for (const s of toShowSkips) {
-      lines.push(`- \`${s.param}\` — ${s.reason}`);
+      lines.push(`- \`${escMd(s.param)}\` — ${escMd(s.reason)}`);
     }
 
     if (remainingSkips > 0) {

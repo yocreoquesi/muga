@@ -27,6 +27,16 @@
 /**
  * Minimum number of independent upstream signal sources required for a
  * candidate to pass GATE 2. Configurable at call-site via opts.minSignals.
+ *
+ * CORRECTNESS INVARIANT — INDEPENDENCE MAINTENANCE REQUIRED:
+ * The gate counts signals.length as independent corroboration only when each
+ * signal entry was produced by a DISTINCT, SEPARATELY MAINTAINED adapter
+ * (see tools/rule-ingestion/adapters/index.mjs). If two adapters share the
+ * same upstream dataset (e.g., one is a re-packaged mirror of the other),
+ * their combined signal count is NOT independent corroboration and defeats
+ * the false-positive guard this gate provides. Every adapter added to
+ * ENABLED_ADAPTERS must come from an independently maintained upstream source.
+ *
  * @type {number}
  */
 export const MIN_SIGNALS = 2;

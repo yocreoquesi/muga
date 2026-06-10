@@ -600,6 +600,39 @@ describe("T-12 — ingestStats null-safe (quarantine-surface #782)", () => {
   });
 });
 
+// ── #821-I1: Atomic write for promote-candidates.json ─────────────────────────
+
+describe("#821-I1 — Atomic write: no .tmp sibling left after successful write", () => {
+  test("promote artifact is written atomically (no .tmp file remains after success)", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [passCandidate("utm_source")]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+    });
+
+    // Final file must exist
+    assert.ok(existsSync(promotePath), "promote file must exist after write");
+    // No .tmp sibling must remain (atomic: write to .tmp then rename)
+    assert.ok(
+      !existsSync(promotePath + ".tmp"),
+      ".tmp sibling must NOT exist after atomic write completes"
+    );
+  });
+});
+
 // ── n3: Dedup at CLI boundary ─────────────────────────────────────────────────
 
 describe("R4 — Dedup at CLI boundary", () => {

@@ -31,7 +31,7 @@
  */
 
 import { sign as cryptoSign, createPrivateKey, createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -241,7 +241,9 @@ export async function runOrchestrateCli({
 
   try {
     mkdirSync(dirname(resolvedPromotePath), { recursive: true });
-    writeFileSync(resolvedPromotePath, promoteFileContent, "utf8");
+    const tmpPath = resolvedPromotePath + ".tmp";
+    writeFileSync(tmpPath, promoteFileContent, "utf8");
+    renameSync(tmpPath, resolvedPromotePath);
   } catch (err) {
     throw new CliError(
       `[orchestrate-cli] ERROR: Cannot write promote artifact to "${resolvedPromotePath}": ${err.message}`,
