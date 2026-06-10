@@ -42,15 +42,17 @@ function readRoot(rel) {
 }
 
 /**
- * Extract TRACKING_PARAMS count from affiliates.js.
+ * Extract TRACKING_PARAMS count from affiliates-data.js.
+ * (#826: data was moved from affiliates.js to affiliates-data.js;
+ * affiliates.js re-exports it so all runtime importers are unchanged.)
  * Strips single-line comments before counting so comment-embedded strings
  * are ignored. Returns an exact integer — drift causes an assertion failure,
  * not a silent mismatch.
  */
 function liveTrackingParamsCount() {
-  const src = readRoot("src/lib/affiliates.js");
+  const src = readRoot("src/lib/affiliates-data.js");
   const tpStart = src.indexOf("export const TRACKING_PARAMS = [");
-  assert.ok(tpStart !== -1, "TRACKING_PARAMS export not found in affiliates.js");
+  assert.ok(tpStart !== -1, "TRACKING_PARAMS export not found in affiliates-data.js");
   const tpEnd = src.indexOf("];", tpStart);
   assert.ok(tpEnd !== -1, "TRACKING_PARAMS closing ]; not found");
   const block = src.slice(tpStart, tpEnd + 2).replace(/\/\/[^\n]*/g, "");
@@ -59,13 +61,14 @@ function liveTrackingParamsCount() {
 }
 
 /**
- * Extract TRACKING_PREFIXES count from affiliates.js.
+ * Extract TRACKING_PREFIXES count from affiliates-data.js.
+ * (#826: data was moved from affiliates.js to affiliates-data.js.)
  * Same stripping logic as above.
  */
 function liveTrackingPrefixesCount() {
-  const src = readRoot("src/lib/affiliates.js");
+  const src = readRoot("src/lib/affiliates-data.js");
   const pfStart = src.indexOf("TRACKING_PREFIXES = [");
-  assert.ok(pfStart !== -1, "TRACKING_PREFIXES not found in affiliates.js");
+  assert.ok(pfStart !== -1, "TRACKING_PREFIXES not found in affiliates-data.js");
   const pfEnd = src.indexOf("];", pfStart);
   assert.ok(pfEnd !== -1, "TRACKING_PREFIXES closing ]; not found");
   const block = src.slice(pfStart, pfEnd + 2).replace(/\/\/[^\n]*/g, "");
@@ -105,8 +108,8 @@ describe("docs-claims — machine-enforced README/CONTRIBUTING accuracy", () => 
     assert.strictEqual(
       claimed,
       live,
-      `README claims ${claimed} tracking params but affiliates.js has ${live}. ` +
-        "Update README and affiliates.js in the same PR."
+      `README claims ${claimed} tracking params but affiliates-data.js has ${live}. ` +
+        "Update README and affiliates-data.js in the same PR."
     );
   });
 
@@ -122,8 +125,8 @@ describe("docs-claims — machine-enforced README/CONTRIBUTING accuracy", () => 
     assert.strictEqual(
       claimed,
       live,
-      `README claims ${claimed} prefix patterns but affiliates.js has ${live}. ` +
-        "Update README and affiliates.js in the same PR."
+      `README claims ${claimed} prefix patterns but affiliates-data.js has ${live}. ` +
+        "Update README and affiliates-data.js in the same PR."
     );
   });
 
