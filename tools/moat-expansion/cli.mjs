@@ -166,10 +166,14 @@ export async function runMoatExpansionCli({
 async function main() {
   try {
     await runMoatExpansionCli();
-    process.exit(0);
+    // process.exitCode + natural exit, NOT process.exit(): a hard exit while
+    // undici keep-alive sockets from fetchRaw are still open triggers a libuv
+    // teardown assertion on Windows (async.c) and corrupts the exit code the
+    // weekly workflow depends on. Natural exit drains handles and exits 0.
+    process.exitCode = 0;
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
-    process.exit(err instanceof CliError ? err.exitCode : 3);
+    process.exitCode = err instanceof CliError ? err.exitCode : 3;
   }
 }
 
@@ -181,6 +185,6 @@ if (
 ) {
   main().catch((err) => {
     console.error(err instanceof Error ? err.message : String(err));
-    process.exit(err instanceof CliError ? err.exitCode : 3);
+    process.exitCode = err instanceof CliError ? err.exitCode : 3;
   });
 }
