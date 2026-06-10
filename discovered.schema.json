@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/yocreoquesi/muga/blob/main/discovered.schema.json",
+  "title": "Crawler Discovery Artifact",
+  "description": "Human-facing contract for signed crawler discovery artifacts landing in discovered/. Enforcement is hand-rolled in tools/rule-ingestion/discovered-verify.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "discovered_at",
+    "crawler_version",
+    "corpus",
+    "candidates",
+    "signature"
+  ],
+  "properties": {
+    "discovered_at": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp of when the crawler run completed.",
+      "format": "date-time"
+    },
+    "crawler_version": {
+      "type": "string",
+      "description": "Git SHA hex of the crawler commit that produced this artifact. 7–40 hex characters.",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "corpus": {
+      "type": "array",
+      "description": "Lowercase hostnames the crawler analyzed during this run.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "description": "Discovered tracking parameter candidates. An empty array is a valid heartbeat run.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "param",
+          "first_seen_on",
+          "injected_by",
+          "occurrence_count"
+        ],
+        "properties": {
+          "param": {
+            "type": "string",
+            "description": "Case-sensitive tracking parameter name."
+          },
+          "first_seen_on": {
+            "type": "string",
+            "description": "Lowercase hostname where this parameter was first observed.",
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+          },
+          "injected_by": {
+            "type": "string",
+            "description": "Identifier of the injecting system or script."
+          },
+          "occurrence_count": {
+            "type": "integer",
+            "description": "Number of times this parameter was observed during the run.",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519 signature over the canonical JSON (keys sorted, signature field removed). Lowercase hex, exactly 128 characters (64 raw bytes).",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  }
+}
