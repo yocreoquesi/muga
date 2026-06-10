@@ -120,7 +120,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
-          node-version: "20"
+          # Node 22 required here: --test-coverage-exclude landed in 22.5
+          # (running it on Node 20 exits 9 "invalid argument"). The rest of
+          # CI stays on the project's Node 20 floor.
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
@@ -128,10 +131,10 @@ jobs:
 
       - name: Run unit tests with coverage
         # --experimental-test-coverage instruments all loaded source files.
-        # The coverage summary is printed to stdout alongside spec output;
-        # Node 20 does not support the lcov reporter (added in Node 22), so
-        # we capture the full stdout (spec + coverage table) to a text file.
-        run: npm run test:coverage > coverage.txt 2>&1; exit 0
+        # The coverage summary is captured (spec + coverage table) to a text
+        # file. `|| true` (NOT `; exit 0`) — under `bash -e` a failing npm
+        # would abort the list before ever reaching `exit 0`.
+        run: npm run test:coverage > coverage.txt 2>&1 || true
 
       - name: Upload coverage report
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
