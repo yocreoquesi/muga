@@ -1,5 +1,5 @@
 /**
- * MUGA — Workflow Hardening Guard Tests (#812)
+ * MUGA — Workflow Hardening Guard Tests (#812, #814)
  *
  * Guards for CI security patterns introduced in the #812 hardening wave:
  *
@@ -9,6 +9,10 @@
  *  G3 — auto-ingest-rules.yml and publish-rules.yml mask PEM line-by-line
  *       (no `::add-mask::$(cat ...key.pem)`)
  *  G4 — publish-rules.yml uses the github-actions[bot] identity (not personal email)
+ *
+ * G5 — release.yml gates store publishing on unit + integration + E2E jobs (#814)
+ *       The publish job must declare `needs: [test, e2e]` so that both gate jobs
+ *       must pass before AMO / CWS submissions are attempted.
  *
  * Uses string/regex assertions only — no external YAML parser.
  * Mirrors the pattern from tests/unit/ingestion-scheduled-workflow.test.mjs.
@@ -141,6 +145,129 @@ describe("G4 — publish-rules.yml bot identity", () => {
       /41898282\+github-actions\[bot\]@users\.noreply\.github\.com/.test(content),
       "publish-rules.yml must use '41898282+github-actions[bot]@users.noreply.github.com' " +
       "as the git commit email"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G5 — release.yml: store publishing gated on unit + integration + E2E (#814)
+//
+// The release workflow must have three jobs:
+//   test         — runs npm test (unit) AND npm run test:integration
+//   e2e          — runs the full Playwright suite via xvfb-run
+//   build-and-release — the publish job; must declare needs: [test, e2e]
+//
+// This structural assertion prevents silent regressions where a runtime-only
+// bug (DNR propagation, content-script injection, consent gating) could ship
+// to AMO / CWS because the release path only ran unit tests.
+// ---------------------------------------------------------------------------
+describe("G5 — release.yml: publish gated on unit + integration + E2E jobs", () => {
+  test("release.yml has a 'test' job", () => {
+    const content = readWorkflow("release.yml");
+    // A job key appears as "  <name>:" at 2-space indent under "jobs:"
+    assert.ok(
+      /^\s{2}test:\s*$/m.test(content),
+      "release.yml must have a 'test' job (unit + integration gate)"
+    );
+  });
+
+  test("release.yml has an 'e2e' job", () => {
+    const content = readWorkflow("release.yml");
+    assert.ok(
+      /^\s{2}e2e:\s*$/m.test(content),
+      "release.yml must have an 'e2e' job (Playwright gate)"
+    );
+  });
+
+  test("release.yml has a 'build-and-release' publish job", () => {
+    const content = readWorkflow("release.yml");
+    assert.ok(
+      /^\s{2}build-and-release:\s*$/m.test(content),
+      "release.yml must have a 'build-and-release' publish job"
+    );
+  });
+
+  test("build-and-release job declares needs: [test, e2e]", () => {
+    const content = readWorkflow("release.yml");
+    // needs must list both gate jobs — order-independent match
+    assert.ok(
+      /needs:\s*\[test,\s*e2e\]/.test(content) ||
+      /needs:\s*\[e2e,\s*test\]/.test(content),
+      "build-and-release job must declare 'needs: [test, e2e]' so publishing " +
+      "is impossible if either gate job fails"
+    );
+  });
+
+  test("release.yml 'test' job runs npm run test:integration", () => {
+    const content = readWorkflow("release.yml");
+    assert.ok(
+      /npm\s+run\s+test:integration/.test(content),
+      "release.yml 'test' job must run 'npm run test:integration' — " +
+      "unit stubs alone cannot catch live Worker contract regressions"
+    );
+  });
+
+  test("release.yml 'test' job runs npm test (unit suite)", () => {
+    const content = readWorkflow("release.yml");
+    // npm test appears standalone (not as part of test:integration)
+    assert.ok(
+      /run:\s*npm\s+test\s*$/.test(content) ||
+      /run:\s*npm\s+test\b(?!:)/.test(content),
+      "release.yml 'test' job must run 'npm test' for the unit suite"
+    );
+  });
+
+  test("release.yml 'e2e' job runs Playwright via xvfb-run", () => {
+    const content = readWorkflow("release.yml");
+    assert.ok(
+      /xvfb-run\s+npx\s+playwright\s+test/.test(content),
+      "release.yml 'e2e' job must run Playwright via xvfb-run (mirrors ci.yml e2e setup)"
+    );
+  });
+
+  test("release.yml 'e2e' job installs Playwright browsers with --with-deps", () => {
+    const content = readWorkflow("release.yml");
+    assert.ok(
+      /npx\s+playwright\s+install\s+--with-deps/.test(content),
+      "release.yml 'e2e' job must install Playwright browsers with --with-deps chromium"
+    );
+  });
+
+  test("release.yml 'e2e' job references #825 TODO for live Worker stub", () => {
+    const content = readWorkflow("release.yml");
+    assert.ok(
+      /#825/.test(content),
+      "release.yml must carry a #825 reference marking the future stub/decommission " +
+      "decision for the live unwrap.muga.app integration hit"
+    );
+  });
+
+  test("npm run test:integration appears BEFORE build/publish steps in file order", () => {
+    const content = readWorkflow("release.yml");
+    const integrationIdx = content.indexOf("npm run test:integration");
+    // build:chrome is the first publish-path step
+    const buildChromeIdx = content.indexOf("npm run build:chrome");
+
+    assert.ok(integrationIdx !== -1, "release.yml must include 'npm run test:integration'");
+    assert.ok(buildChromeIdx !== -1, "release.yml must include 'npm run build:chrome'");
+    assert.ok(
+      integrationIdx < buildChromeIdx,
+      `'npm run test:integration' (pos ${integrationIdx}) must appear BEFORE ` +
+      `'npm run build:chrome' (pos ${buildChromeIdx}) in release.yml`
+    );
+  });
+
+  test("xvfb-run Playwright invocation appears BEFORE build/publish steps in file order", () => {
+    const content = readWorkflow("release.yml");
+    const e2eIdx = content.indexOf("xvfb-run npx playwright test");
+    const buildChromeIdx = content.indexOf("npm run build:chrome");
+
+    assert.ok(e2eIdx !== -1, "release.yml must include 'xvfb-run npx playwright test'");
+    assert.ok(buildChromeIdx !== -1, "release.yml must include 'npm run build:chrome'");
+    assert.ok(
+      e2eIdx < buildChromeIdx,
+      `E2E invocation (pos ${e2eIdx}) must appear BEFORE ` +
+      `'npm run build:chrome' (pos ${buildChromeIdx}) in release.yml`
     );
   });
 });
