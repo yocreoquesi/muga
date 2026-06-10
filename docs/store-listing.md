@@ -1,6 +1,6 @@
 # MUGA: Store Listings
 
-> Version: 2.2.0
+> Version: 2.3.0
 > Last updated: 2026-05-25
 > Status: Listing for Chrome Web Store and Firefox AMO under the 2.1 denoise pivot (creator-agnostic positioning — see ADR-0002). Lead headline: "Shorter, cleaner URLs — fair to every creator". The 2.0-era anti-redirect framing has been removed; MUGA no longer takes a stance against affiliate-redirect networks (their click IS the attribution event and MUGA respects it). Third-party retailer brand names previously enumerated were removed after Chrome Web Store flagged the list as keyword spam (rejection routing ID FZSL, 2026-05). URL Unwrapper section rewritten with honest scope: generic shorteners only (bit.ly, t.co, tinyurl.com, etc.); affiliate redirects pass through unchanged. Privacy claims (no telemetry / no analytics) remain firm but are no longer in the headline.
 

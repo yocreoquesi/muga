@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.2.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: The URL denoise extension for the web
@@ -17,7 +17,7 @@
 
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
-> **2.2.0 shipped.** The creator-agnostic denoise pivot (ADR-0002) is complete. See [CHANGELOG](CHANGELOG.md) for what landed and [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full rationale.
+> **2.3.0 shipped.** Self-scaling ruleset pipeline (EPIC C), full consent-gate coverage for all DNR rulesets, Firefox wrapper_unwrap parity, 25-issue June 2026 audit wave. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
 [Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 

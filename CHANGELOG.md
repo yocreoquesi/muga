@@ -4,6 +4,53 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-06-10
+
+Self-scaling ruleset pipeline (EPIC C, ingestion from ClearURLs + AdGuard) and a 25-issue June 2026 audit wave covering security, parity, robustness, and quality infrastructure.
+
+### Features
+
+- **Self-scaling ruleset pipeline (EPIC C, #780–#782, #785 family)**. Clean-room ingestion from ClearURLs and AdGuard with corroboration, affiliate-safety, canary, and functional-bias gates. Auto-merge for pass-all candidates; quarantine surface with full exclusion accounting (#782). Scheduled self-contained CI ingestion workflow (#781). Ed25519-signed promotion into the remote-rules source (#780).
+
+### Security
+
+- **Consent gate now covers all DNR rulesets** (#810). `amp_redirect` and `wrapper_unwrap` were active before the user completed onboarding consent. Both rulesets are now gated on consent and the `ampRedirect`/`unwrapRedirects` pref toggles actually control the DNR layer.
+- **Nonce-validated `muga:history-gate` events** (#811). Cross-world event listeners now require a handshake nonce — pages can no longer spoof the defuser gate.
+- **Workflow hardening** (#812). PR-body injection escaping, SHA-pinned actions, line-by-line PEM masking, bot identity enforcement in ingestion CI.
+- **Settings-import param validation** (#818). Imported remote-rules params are now validated against the canonical 64-char limit and denylist rules.
+- **SSRF ranges extended + landing security headers** (#830). CGNAT and TEST-NET ranges added to SSRF blocklist; landing worker now ships security headers; SECURITY.md added.
+
+### Fixed
+
+- **Firefox MV2 wrapper_unwrap parity** (#820). `wrapper_unwrap` DNR ruleset declared in `manifest.v2.json` — pre-navigation unwrapping now works on Firefox.
+- **Shortener stat lost-update race** (#817). `incrementShortenerStat` now uses a pending-flush batch to avoid concurrent-write data loss.
+- **AliExpress `aff_request_id` contradiction** (#816). Removed from `aliexpress` `stripParams` — it is a required landing param, not a tracking param.
+- **fr/it/ja toast translations + popup count animation** (#819). Missing locales restored; count-one `<span>` celebration animation fixed.
+- **Bounce-state latch re-arm + listener once-guard** (#832). Latch re-arms correctly after a navigation; event listener registered with `once: true` to prevent duplicate firings.
+- **Single-flight rules loaders** (#833). Concurrent rule-fetch calls are now deduplicated; `firstUsed` and migrations moved out of the hot path.
+- **Latent data-shape guards** (#831). Specificity, duplicates, origin-normalization, and anchoring guards added to rule processing.
+
+### Robustness
+
+- **Ingestion adapter timeouts + per-adapter isolation** (#813). A silent upstream outage no longer produces a deceptively green scheduled run; each adapter is independently isolated with a fetch timeout.
+- **Pipeline boundary hardening** (#821). Atomic writes, promote-side validation, markdown escaping, no-shell exec in ingestion pipeline.
+
+### Quality
+
+- **Release publishing gated on integration + E2E** (#814). `release.yml` now requires integration and E2E suites to pass before store artifacts are built.
+- **Affiliate commission-preservation invariant** (#815). End-to-end STRIP coherence guards and redirect-URL pass-through invariant pinned in tests.
+- **Coverage tooling + baseline** (#822). `node --test --experimental-test-coverage` script added; CI uploads coverage artifact.
+- **TypeScript checkJs + ESLint flat config** (#823). `jsconfig.json` + `eslint.config.mjs` introduced; 5 real bugs caught at introduction.
+- **Source-grep ratchet** (#824). Tombstone cleanup and flaky-vector fixes; ratchet enforces no-regression on source-level invariants.
+- **PR gate decoupled from live Worker** (#825). Integration stub suite runs on every PR; live Worker contract runs on `main` pushes only.
+
+### Architecture
+
+- **`affiliates.js` and `storage.js` split into focused modules** (#826). Acyclicity and export-parity guards enforce module boundaries going forward.
+- **Test fixtures stripped from store artifacts** (#827). `strip-test-seams.mjs` ships an inert stub; test-only fixtures never reach the extension bundle.
+- **i18n split into per-locale modules** (#834). `TRANSLATIONS` object extracted into one file per locale for tree-shaking and maintainability.
+- **Docs drift fixed with machine-enforced claims tests** (#828). README/CONTRIBUTING claims validated against code at CI time.
+
 ## [2.2.0] - 2026-06-01
 
 Beta release (2.2.0-beta.1) completing ADR-0004 phase 4: native shortener resolution becomes the default path; the proxy remains as fallback.
@@ -950,7 +997,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/yocreoquesi/muga/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/yocreoquesi/muga/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/yocreoquesi/muga/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/yocreoquesi/muga/compare/v1.17.0...v2.0.0
