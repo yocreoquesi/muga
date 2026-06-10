@@ -22,6 +22,8 @@ Self-scaling ruleset pipeline (EPIC C, ingestion from ClearURLs + AdGuard) and a
 
 ### Fixed
 
+- **Amazon SubTag and Impact/Partnerize click IDs no longer stripped** (#794). `ascsubtag` (Amazon Associates sub-publisher attribution), `irclickid`/`irgwc` (BestBuy via Impact Radius) and `clickref` (Coolblue via Partnerize) left every strip list; the ingestion gate gained a static preserve source so upstream lists can never auto-merge them back. The #816 contamination-guard allowlist is now empty.
+- **Inline styles migrated to CSS; `style-src 'unsafe-inline'` dropped** (#858). All 22 inline style attributes in the options page moved to classes; the extension-pages CSP no longer allows inline styles, with a guard test preventing regression.
 - **Firefox MV2 wrapper_unwrap parity** (#820). `wrapper_unwrap` DNR ruleset declared in `manifest.v2.json` — pre-navigation unwrapping now works on Firefox.
 - **Shortener stat lost-update race** (#817). `incrementShortenerStat` now uses a pending-flush batch to avoid concurrent-write data loss.
 - **AliExpress `aff_request_id` contradiction** (#816). Removed from `aliexpress` `stripParams` — it is a required landing param, not a tracking param.
@@ -50,6 +52,7 @@ Self-scaling ruleset pipeline (EPIC C, ingestion from ClearURLs + AdGuard) and a
 - **Test fixtures stripped from store artifacts** (#827). `strip-test-seams.mjs` ships an inert stub; test-only fixtures never reach the extension bundle.
 - **i18n split into per-locale modules** (#834). `TRANSLATIONS` object extracted into one file per locale for tree-shaking and maintainability.
 - **Docs drift fixed with machine-enforced claims tests** (#828). README/CONTRIBUTING claims validated against code at CI time.
+- **ADR-0005 + living architecture map** (#783, #784). The rule-scaling pipeline's architecture and moat/legal rationale documented as ADR-0005 with an ADR index; `CONTEXT.md` added as the path-guarded living system map.
 
 ## [2.2.0] - 2026-06-01
 
