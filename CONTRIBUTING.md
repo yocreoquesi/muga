@@ -2,7 +2,7 @@
 
 Thanks for your interest in contributing! This document covers how to set up the project, run tests, and submit changes.
 
-> **Active strategic direction**: MUGA is mid-pivot to creator-agnostic denoise (2.1) — see [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full rationale and surface inventory. Work is tracked under [milestone v2.1.0](https://github.com/yocreoquesi/muga/milestone/5). If your contribution touches product copy, affiliate handling, or the URL Unwrapper feature (ex Privacy Proxy), read the ADR first.
+> **2.2.0 shipped.** The creator-agnostic denoise pivot is complete — see [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full rationale. If your contribution touches product copy, affiliate handling, or the URL Unwrapper feature, read the ADR first.
 
 ## How to contribute without code
 
@@ -49,19 +49,27 @@ Adding a new `__TEST__` message handler:
 
 ```
 src/
-├── manifest.json          Chrome MV3
-├── manifest.v2.json       Firefox MV2
+├── manifest.json              Chrome MV3
+├── manifest.v2.json           Firefox MV2
 ├── background/
-│   └── service-worker.js  URL processing, message handling
+│   └── service-worker.js      URL processing, message handling
 ├── content/
-│   ├── cleaner.js         Click interceptor (document_start)
-│   ├── amp-redirect.js    AMP → canonical redirect (document_end)
-│   └── redirect-unwrap.js Tracking redirect unwrapper (document_end)
+│   ├── cleaner.js             Click interceptor + redirect unwrap (document_start)
+│   ├── cleaner-bundle.js      Bundled version for MV2/portability (generated)
+│   ├── cleaner-bundle-src.mjs Bundle entry point (esbuild input)
+│   ├── amp-redirect.js        AMP → canonical redirect (document_end)
+│   ├── bounce-state-cleaner.js  History-state bounce cleaner
+│   ├── dom-link-rewriter.js   Rewrite links in the DOM
+│   ├── dom-link-rewriter-click.js  Click-time link rewriting
+│   ├── history-defuser.js     history.pushState/replaceState override (isolated)
+│   ├── history-defuser-mainworld.js  Same, MAIN world
+│   ├── window-name-defuser.js      window.name cleaner (isolated)
+│   └── window-name-defuser-mainworld.js  Same, MAIN world
 ├── lib/
 │   ├── cleaner.js         Core URL processing logic (pure, testable)
 │   ├── affiliates.js      Affiliate patterns + tracking params
 │   ├── storage.js         chrome.storage helpers + PREF_DEFAULTS
-│   └── i18n.js            EN/ES translations
+│   └── i18n.js            7-locale translations (en/es official; pt/de/fr/it/ja community)
 ├── popup/                 Browser action popup
 └── options/               Full options page
 tests/unit/                Node.js test runner tests
@@ -187,28 +195,31 @@ The consistency test catches the rule-level violation. It does not catch poor ju
 
 ## Translations
 
-MUGA ships UI in English, Spanish, Portuguese, and German. The maintainer is a native Spanish speaker (English fluent); PT and DE are best-effort. The project's policy is:
+MUGA ships UI in 7 locales: English, Spanish, Portuguese, German, French, Italian, and Japanese. The maintainer is a native Spanish speaker (English fluent); the other five are community-contributed. The project's policy is:
 
 - **Officially maintained**: `en` and `es`. Every translation key in `src/lib/i18n.js` must have a non-empty value in both. The completeness test in `tests/unit/i18n-completeness.test.mjs` enforces this floor — a PR that adds a key without an EN+ES pair fails CI.
 
-- **Community-maintained**: `pt` and `de`. New keys may ship without these initially; the runtime fallback chain at `i18n.js:281` lands missing entries on EN cleanly. PT and DE PRs do not require native-speaker review by the maintainer (the maintainer is not a native speaker of either) — the EN+ES floor is what gates a merge.
+- **Community-maintained**: `pt`, `de`, `fr`, `it`, `ja`. New keys may ship without these initially; the runtime fallback chain at `i18n.js:281` lands missing entries on EN cleanly. Community-locale PRs do not require native-speaker review by the maintainer — the EN+ES floor is what gates a merge.
 
-To find which keys are missing in PT or DE, run:
+To find which keys are missing in a community locale, run:
 
 ```bash
-node tools/missing-translations.mjs           # both languages
+node tools/missing-translations.mjs           # all community locales
 node tools/missing-translations.mjs pt        # PT only
 node tools/missing-translations.mjs de        # DE only
+node tools/missing-translations.mjs fr        # FR only
+node tools/missing-translations.mjs it        # IT only
+node tools/missing-translations.mjs ja        # JA only
 ```
 
 The script's output is markdown suitable for pasting into the per-language tracking issues. Submit a PR editing the matching entries in `TRANSLATIONS` and the CI suite will validate the EN+ES floor for you.
 
-### PT / DE: native-speaker review welcome
+### Community locales: native-speaker review welcome
 
-The current PT and DE strings in `src/lib/i18n.js` were produced with AI assistance. They are linguistically sound but have not been signed off by a native speaker. If you spot a string that reads awkward, regional, or just wrong, a PR fixing only that single key is a great first contribution:
+The community-locale strings in `src/lib/i18n.js` were produced with AI assistance. They are linguistically sound but have not been signed off by native speakers. If you spot a string that reads awkward, regional, or just wrong, a PR fixing only that single key is a great first contribution:
 
 1. Find the key in `src/lib/i18n.js`.
-2. Edit the `pt:` or `de:` value in place.
+2. Edit the locale value in place.
 3. Add a one-line note in the PR description explaining your variant (e.g., "PT-BR prefers `contatar` over `contactar`", "DE consistency with rest of file uses du-form").
 
 The CI guard `tools/check-i18n-fixme.mjs` fails the build on FIXME markers, empty locale slots, or `'FIXME: translate'` stubs — it does not require native-speaker review to pass. The native review pipeline is purely social.

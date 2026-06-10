@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-2.2.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-4300_pass-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: The URL denoise extension for the web
 
@@ -17,7 +17,7 @@
 
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
-> **Active strategic direction**: 2.1 pivot to creator-agnostic denoise — see [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md). Some sections of this README, the public docs, and the in-extension copy still reflect the 2.0 framing and will be updated through the issues in [milestone v2.1.0](https://github.com/yocreoquesi/muga/milestone/5).
+> **2.2.0 shipped.** The creator-agnostic denoise pivot (ADR-0002) is complete. See [CHANGELOG](CHANGELOG.md) for what landed and [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full rationale.
 
 [Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 
@@ -61,7 +61,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ## What it quiets
 
-**459 noise patterns** across 6 categories, on every site:
+**448 tracking params + 13 prefix patterns** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -72,7 +72,7 @@ After:  https://www.ebay.es/itm/123456789
 | Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **167 domains** preserve functional query params (search queries, pagination, filters) while removing the noise.
+Domain-specific rules for **169 domains** preserve functional query params (search queries, pagination, filters) while removing the noise.
 
 ---
 
@@ -82,7 +82,7 @@ The popup shows what MUGA cleaned on the current page: which parameters were rem
 
 ![Popup showing cleaned URL on a store page](docs/assets/screenshot-ss2-popup.png)
 
-Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. The UI ships in English and Spanish (officially maintained); Portuguese and German are community-contributed and may have gaps that fall back to English.
+Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. The UI ships in English and Spanish (officially maintained); Portuguese, German, French, Italian, and Japanese are community-contributed and may have gaps that fall back to English.
 
 ![Settings page](docs/assets/screenshot-ss3-options.png)
 
@@ -92,7 +92,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Always on, no configuration needed
 
-- Quiet 459 noise patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Quiet 448 tracking params and 13 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path noise (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
@@ -118,7 +118,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Toast notification when a third-party affiliate is detected (opt-in)
 - **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **Off by default while the signing infrastructure stabilizes**; the default may flip in a future release, and the [CHANGELOG](CHANGELOG.md) will record the change when it happens. The fetch is a plain GET to a public URL: no user data is sent.
 - Export / Import settings as JSON
-- Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English)
+- Languages: English and Spanish (officially maintained), Portuguese, German, French, Italian, and Japanese (community-contributed; missing entries fall back to English)
 
 ### Mode model
 
@@ -199,8 +199,8 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 3804 unit tests
-npm run test:e2e       # 90 E2E tests (Playwright, requires headed Chromium; 13 skipped)
+npm test               # 4,400+ unit tests
+npm run test:e2e       # 90+ E2E tests (Playwright, requires headed Chromium)
 npm run build:chrome
 npm run build:firefox
 ```

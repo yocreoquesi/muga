@@ -173,35 +173,21 @@ describe("Version consistency — README badges", () => {
     );
   });
 
-  test("README.md test count badge is not stale (within 50 of actual)", () => {
+  test("README.md tests badge must NOT contain a hardcoded count (drift guard #828)", () => {
+    // Hardcoded test-count numbers in the badge drift every time tests are added.
+    // The badge was migrated to a non-numeric label ("tests-passing") in #828.
+    // docs-claims.test.mjs enforces this invariant going forward; this test
+    // mirrors it here so the version-consistency suite also catches regressions.
     const readme = read("README.md");
-    const match = readme.match(/tests-(\d+)_pass/);
-    assert.ok(match, "README must have a tests badge");
-    const badgeCount = parseInt(match[1], 10);
-
-    // Compute the floor dynamically from the number of test() calls across
-    // all unit test files rather than hard-coding a magic number that goes
-    // stale every time a new test file is added.
-    //
-    // Staleness protocol: if this assertion fails, the README badge is more
-    // than 50 tests behind the actual count. Update the badge and re-run.
-    // The computed floor is intentionally conservative (counts `test(` call
-    // sites, not nested sub-tests) so a ±50 window is reasonable.
-    const unitDir = join(__dirname, ".");
-    const unitFiles = readdirSync(unitDir).filter(f => f.endsWith(".test.mjs"));
-    let computedCount = 0;
-    for (const f of unitFiles) {
-      const src = readFileSync(join(unitDir, f), "utf8");
-      // Count top-level test( calls; this under-counts nested describe tests
-      // but provides a stable lower bound for the badge floor.
-      const matches = src.match(/\btest\(/g);
-      computedCount += matches ? matches.length : 0;
-    }
-    const floor = Math.max(computedCount - 50, 0);
-
+    const badgeLine = readme
+      .split("\n")
+      .find((l) => l.includes("img.shields.io") && l.toLowerCase().includes("test"));
+    assert.ok(badgeLine, "README must have a shields.io tests badge line");
+    const hasHardcodedNumber = /tests-\d+|tests_\d+|\d+_pass|\d+-pass/i.test(badgeLine);
     assert.ok(
-      badgeCount >= floor,
-      `Badge shows ${badgeCount} tests — likely stale. Computed floor: ${floor} (actual test() sites: ${computedCount}). Update the README badge.`
+      !hasHardcodedNumber,
+      `Tests badge contains a hardcoded number that will drift: ${badgeLine.trim()}\n` +
+        "Replace with a non-numeric label such as 'tests-passing'."
     );
   });
 });
