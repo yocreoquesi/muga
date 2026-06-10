@@ -40,6 +40,11 @@ import {
   canonicalMessage,
 } from "./orchestrate.mjs";
 
+import {
+  readVerifiedArtifacts,
+  enrichCandidates,
+} from "./enrich-candidates.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── Paths (production defaults) ───────────────────────────────────────────────
@@ -61,6 +66,8 @@ const PARAMS_JSON_PATH = resolve(
   "../../tools/rules-source/params.json"
 );
 
+const DEFAULT_DISCOVERED_DIR = resolve(__dirname, "../../discovered");
+
 // ── CLI exit error helper ─────────────────────────────────────────────────────
 
 class CliError extends Error {
@@ -78,12 +85,18 @@ class CliError extends Error {
  * Injectable for unit tests — all I/O paths and key material can be overridden.
  *
  * @param {object} opts
- * @param {string} [opts.candidatesPath]  Path to candidates.json (default: quarantine/candidates.json)
- * @param {string} [opts.promotePath]     Path to write promote-candidates.json (default: promote/...)
- * @param {string} [opts.reportPath]      Path to write quarantine-report.json (default: quarantine/...)
- * @param {number} [opts.version]         Target rules version (overrides env/file fallback when set)
- * @param {Date}   [opts.now]             Injectable clock for deterministic published timestamp
- * @param {string} [opts.keyPath]         Path to Ed25519 PEM private key (overrides MUGA_SIGNING_KEY_PATH)
+ * @param {string} [opts.candidatesPath]    Path to candidates.json (default: quarantine/candidates.json)
+ * @param {string} [opts.promotePath]       Path to write promote-candidates.json (default: promote/...)
+ * @param {string} [opts.reportPath]        Path to write quarantine-report.json (default: quarantine/...)
+ * @param {number} [opts.version]           Target rules version (overrides env/file fallback when set)
+ * @param {Date}   [opts.now]               Injectable clock for deterministic published timestamp
+ * @param {string} [opts.keyPath]           Path to Ed25519 PEM private key (overrides MUGA_SIGNING_KEY_PATH)
+ * @param {string} [opts.discoveredDir]     Path to directory of discovered artifact JSON files.
+ *   Defaults to `<repo-root>/discovered`. An empty or missing directory produces no enrichment
+ *   (entropy and crossSiteFrequency remain null). A file that fails signature verification
+ *   throws CliError(3) (fail-closed — see enrich-candidates.mjs D2).
+ * @param {function} [opts._verifyOverride] Injectable verify function for tests. Passed through
+ *   to readVerifiedArtifacts as the `verify` option. Do NOT use in production.
  * @returns {Promise<void>}
  * @throws {CliError} with .exitCode 2 on key errors, 1 on validation, 3 on I/O
  */
@@ -94,6 +107,8 @@ export async function runOrchestrateCli({
   version: versionOpt,
   now,
   keyPath,
+  discoveredDir,
+  _verifyOverride,
 } = {}) {
   // ── 1. Resolve paths ────────────────────────────────────────────────────────
   const resolvedCandidatesPath =
@@ -148,13 +163,30 @@ export async function runOrchestrateCli({
     );
   }
 
-  const candidates = candidateReport.candidates;
-  if (!Array.isArray(candidates)) {
+  const parsedCandidates = candidateReport.candidates;
+  if (!Array.isArray(parsedCandidates)) {
     throw new CliError(
       "[orchestrate-cli] ERROR: candidates.json must have a .candidates array",
       1
     );
   }
+
+  // ── 3b. Enrich candidates with discovered artifact data ────────────────────
+  // readVerifiedArtifacts + enrichCandidates run BEFORE runOrchestration so that
+  // the corroboration gate's entropy and CSF arms have populated values.
+  //
+  // Contracts honoured here:
+  //   S1 — enrichCandidates RETURNS A NEW ARRAY; we consume the returned value.
+  //   S2 — readVerifiedArtifacts throws CliError(3) on sig failure; that error
+  //        propagates out of this function and is caught by main()'s try/catch
+  //        which calls process.exit(err.exitCode ?? 3) — exit-3 reaches the boundary.
+  //
+  // Empty/missing directory → readVerifiedArtifacts returns [] → enrichCandidates
+  // produces null fields → candidates flow through unchanged (no throw).
+  const resolvedDiscoveredDir = discoveredDir || DEFAULT_DISCOVERED_DIR;
+  const verifyOpts = _verifyOverride ? { verify: _verifyOverride } : {};
+  const artifacts = readVerifiedArtifacts(resolvedDiscoveredDir, verifyOpts);
+  const candidates = enrichCandidates(parsedCandidates, artifacts);
 
   // ── 4. Resolve version ──────────────────────────────────────────────────────
   // Precedence: MUGA_RULES_VERSION env → versionOpt (injectable / --version arg) → params.json fallback

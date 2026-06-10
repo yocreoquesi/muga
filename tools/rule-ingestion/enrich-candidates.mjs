@@ -186,7 +186,15 @@ export function readVerifiedArtifacts(discoveredDir, { verify = verifyDiscovered
   /** @type {string[]} */
   let files;
 
-  files = readdirSync(discoveredDir).filter((f) => f.endsWith(".json"));
+  try {
+    files = readdirSync(discoveredDir).filter((f) => f.endsWith(".json"));
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      // Non-existent directory → treat as empty (spec: empty/missing → empty aggregate, no throw).
+      return [];
+    }
+    throw err;
+  }
 
   if (files.length === 0) {
     return [];
