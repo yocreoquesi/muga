@@ -8,7 +8,7 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
-import { isValidListEntry } from "../lib/validation.js";
+import { isValidListEntry, isValidCustomParam } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import {
   addEntry as addCreatorAllowlistEntry,
@@ -774,13 +774,17 @@ function initExportImport() {
       if (data.blacklist.length > 500 || data.whitelist.length > 500 || data.customParams.length > 200) {
         throw new Error("invalid");
       }
-      const isValidParam = e => typeof e === "string" && e.length > 0 && e.length < 500 && /^[a-zA-Z0-9_.\-]+$/.test(e);
-      if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry) || !data.customParams.every(isValidParam)) {
+      if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry)) {
         throw new Error("invalid");
       }
+      // Filter customParams against the canonical remote-rules validator (#818).
+      // Invalid entries (over 64 chars, bad format, denylist/affiliate-guard hits)
+      // are dropped and the user is informed — silently discarding data is not acceptable.
+      const validCustomParams = data.customParams.filter(isValidCustomParam);
+      const skipped = data.customParams.length - validCustomParams.length;
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
       const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled"];
-      const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: data.customParams };
+      const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: validCustomParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
       }
@@ -828,7 +832,11 @@ function initExportImport() {
       renderList("whitelist-items", newPrefs.whitelist, "whitelist");
       renderList("custom-params-items", newPrefs.customParams, "customParams");
       renderCategories(newPrefs.disabledCategories || []);
-      showToast(t("import_success", _currentLang));
+      if (skipped > 0) {
+        showToast(t("import_params_skipped", _currentLang).replace("{n}", String(skipped)));
+      } else {
+        showToast(t("import_success", _currentLang));
+      }
     } catch {
       showToast(t("import_error", _currentLang));
     }

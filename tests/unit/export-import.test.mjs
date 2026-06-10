@@ -11,16 +11,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isValidListEntry } from "../../src/lib/validation.js";
+import { isValidListEntry, isValidCustomParam } from "../../src/lib/validation.js";
 import { SUPPORTED_LANGS } from "../../src/lib/i18n.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPTIONS_SOURCE = readFileSync(join(__dirname, "../../src/options/options.js"), "utf8");
-
-// Extract isValidParam inline pattern from source (customParams validator in options.js)
-function isValidParam(e) {
-  return typeof e === "string" && e.length > 0 && e.length < 500 && /^[a-zA-Z0-9_.\-]+$/.test(e);
-}
 
 // ---------------------------------------------------------------------------
 // Source verification tests — export
@@ -124,14 +119,16 @@ describe("import settings (source verification)", () => {
     );
   });
 
-  test("6. import validates list entries with isValidListEntry and params with regex", () => {
+  test("6. import validates list entries with isValidListEntry and params with isValidCustomParam (#818)", () => {
     assert.ok(
       OPTIONS_SOURCE.includes("isValidListEntry"),
       "Import must validate blacklist/whitelist entries with isValidListEntry"
     );
+    // #818: replaced old inline isValidParam (accepted up to 499 chars) with
+    // the canonical isValidCustomParam (MAX_PARAM_LEN=64, denylist + affiliate guard).
     assert.ok(
-      OPTIONS_SOURCE.includes("isValidParam"),
-      "Import must validate customParams entries with isValidParam"
+      OPTIONS_SOURCE.includes("isValidCustomParam"),
+      "Import must validate customParams entries with isValidCustomParam (canonical remote-rules constants)"
     );
   });
 
@@ -273,39 +270,46 @@ describe("isValidListEntry (extracted function)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Extracted logic tests — isValidParam (customParams validator)
+// Extracted logic tests — isValidCustomParam (canonical customParams validator, #818)
+//
+// #818: The old inline isValidParam (accepted up to 499 chars) was replaced
+// with isValidCustomParam from lib/validation.js, which uses the canonical
+// remote-rules constants (MAX_PARAM_LEN=64, PARAM_FORMAT_RE, denylist + affiliate guard).
 // ---------------------------------------------------------------------------
-describe("isValidParam (extracted inline pattern)", () => {
+describe("isValidCustomParam (canonical customParams validator, #818)", () => {
 
   test("26. valid param strings -> true", () => {
-    assert.strictEqual(isValidParam("some-param_123"), true);
-    assert.strictEqual(isValidParam("ref_code"), true);
-    assert.strictEqual(isValidParam("a"), true);
+    assert.strictEqual(isValidCustomParam("some-param_123"), true);
+    assert.strictEqual(isValidCustomParam("ref_code"), true);
+    assert.strictEqual(isValidCustomParam("a"), true);
   });
 
   test("27. empty string -> false", () => {
-    assert.strictEqual(isValidParam(""), false);
+    assert.strictEqual(isValidCustomParam(""), false);
   });
 
   test("28. non-string (number) -> false", () => {
-    assert.strictEqual(isValidParam(42), false);
-    assert.strictEqual(isValidParam(null), false);
-    assert.strictEqual(isValidParam(undefined), false);
+    assert.strictEqual(isValidCustomParam(42), false);
+    assert.strictEqual(isValidCustomParam(null), false);
+    assert.strictEqual(isValidCustomParam(undefined), false);
   });
 
   test("29. string with spaces or non-alphanumeric chars -> false", () => {
-    assert.strictEqual(isValidParam("hello world"), false);
-    assert.strictEqual(isValidParam("café"), false);
-    assert.strictEqual(isValidParam("param=value"), false);
+    assert.strictEqual(isValidCustomParam("hello world"), false);
+    assert.strictEqual(isValidCustomParam("café"), false);
+    assert.strictEqual(isValidCustomParam("param=value"), false);
   });
 
-  test("30. string at length limit (499 chars) -> true", () => {
-    assert.strictEqual(isValidParam("a".repeat(499)), true);
+  test("30. string at canonical length limit (64 chars) -> true", () => {
+    // #818: MAX_PARAM_LEN=64, not the old 499-char limit
+    assert.strictEqual(isValidCustomParam("a".repeat(64)), true);
   });
 
-  test("31. string over limit (500+ chars) -> false", () => {
-    assert.strictEqual(isValidParam("a".repeat(500)), false);
-    assert.strictEqual(isValidParam("a".repeat(501)), false);
+  test("31. string over canonical limit (65+ chars) -> false", () => {
+    // #818: 65 chars exceeds MAX_PARAM_LEN=64 and must be rejected
+    assert.strictEqual(isValidCustomParam("a".repeat(65)), false);
+    assert.strictEqual(isValidCustomParam("a".repeat(200)), false);
+    assert.strictEqual(isValidCustomParam("a".repeat(499)), false);
   });
 });
 
