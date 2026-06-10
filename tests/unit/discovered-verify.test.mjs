@@ -257,6 +257,66 @@ describe("validateDiscoveredShape — corpus and candidate constraints", () => {
   });
 });
 
+describe("validateDiscoveredShape — type parity with discovered.schema.json", () => {
+  test("non-string discovered_at fails", () => {
+    const art = { ...validArtifact(), signature: "ab".repeat(64), discovered_at: 42 };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "non-string discovered_at must fail validation");
+    assert.strictEqual(result.code, "ERR_DISCOVERED_AT_INVALID");
+  });
+
+  test("unparseable discovered_at string fails", () => {
+    const art = { ...validArtifact(), signature: "ab".repeat(64), discovered_at: "not-a-date" };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "unparseable discovered_at must fail validation");
+    assert.strictEqual(result.code, "ERR_DISCOVERED_AT_INVALID");
+  });
+
+  test("non-string param fails", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, param: 123 }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "non-string param must fail validation");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_PARAM_INVALID");
+  });
+
+  test("empty param fails", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, param: "" }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "empty param must fail validation");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_PARAM_INVALID");
+  });
+
+  test("non-string injected_by fails", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, injected_by: 7 }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "non-string injected_by must fail validation");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_INJECTED_BY_INVALID");
+  });
+
+  test("empty injected_by fails", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, injected_by: "" }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "empty injected_by must fail validation");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_INJECTED_BY_INVALID");
+  });
+});
+
 describe("validateDiscoveredShape — hostname lowercase constraint", () => {
   test("lowercase corpus hostname passes", () => {
     const art = { ...validArtifact(), corpus: ["example.com"], signature: "ab".repeat(64) };

@@ -128,10 +128,13 @@ export function canonicalDiscovered(obj) {
  * Checks:
  *   - All required top-level fields are present.
  *   - No unknown top-level fields (additionalProperties: false).
- *   - corpus is a non-empty array.
+ *   - corpus is a non-empty array of lowercase hostnames.
  *   - crawler_version matches [0-9a-f]{7,40}.
+ *   - discovered_at is a parseable ISO 8601 string.
  *   - signature matches [0-9a-f]{128}.
- *   - candidates is an array; each element passes candidate-level checks.
+ *   - candidates is an array; each element passes candidate-level checks
+ *     (param/injected_by non-empty strings, occurrence_count integer >= 1,
+ *     first_seen_on lowercase hostname).
  *
  * @param {object} obj - Parsed artifact object.
  * @returns {{ ok: boolean, code: string }} ok=true on success; ok=false with code on failure.
@@ -172,6 +175,11 @@ export function validateDiscoveredShape(obj) {
     return { ok: false, code: "ERR_CRAWLER_VERSION_INVALID" };
   }
 
+  // discovered_at: parseable ISO 8601 date-time string (parity with schema format: date-time).
+  if (typeof obj.discovered_at !== "string" || Number.isNaN(Date.parse(obj.discovered_at))) {
+    return { ok: false, code: "ERR_DISCOVERED_AT_INVALID" };
+  }
+
   // signature: exactly 128 lowercase hex chars.
   if (typeof obj.signature !== "string" || !SIGNATURE_RE.test(obj.signature)) {
     return { ok: false, code: "ERR_SIGNATURE_FORMAT" };
@@ -201,6 +209,16 @@ export function validateDiscoveredShape(obj) {
       if (!(field in candidate)) {
         return { ok: false, code: `ERR_CANDIDATE_${i}_MISSING_FIELD:${field}` };
       }
+    }
+
+    // param: non-empty case-sensitive string (parity with schema minLength 1).
+    if (typeof candidate.param !== "string" || candidate.param.length === 0) {
+      return { ok: false, code: `ERR_CANDIDATE_${i}_PARAM_INVALID` };
+    }
+
+    // injected_by: non-empty attribution string (parity with schema minLength 1).
+    if (typeof candidate.injected_by !== "string" || candidate.injected_by.length === 0) {
+      return { ok: false, code: `ERR_CANDIDATE_${i}_INJECTED_BY_INVALID` };
     }
 
     // occurrence_count: integer >= 1.
