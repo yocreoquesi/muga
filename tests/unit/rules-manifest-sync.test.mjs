@@ -111,16 +111,17 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
     }
   });
 
-  test("each prefix note matches the inline // comment in affiliates.js (#642)", () => {
+  test("each prefix note matches the inline // comment in affiliates-data.js (#642)", () => {
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    // #826: TRACKING_PREFIXES moved to affiliates-data.js (affiliates.js re-exports it).
     const affiliatesSource = readFileSync(
-      join(__dirname, "../../src/lib/affiliates.js"),
+      join(__dirname, "../../src/lib/affiliates-data.js"),
       "utf8",
     );
     const blockMatch = affiliatesSource.match(
       /export\s+const\s+TRACKING_PREFIXES\s*=\s*\[([\s\S]*?)\];/,
     );
-    assert.ok(blockMatch, "TRACKING_PREFIXES block not found in affiliates.js");
+    assert.ok(blockMatch, "TRACKING_PREFIXES block not found in affiliates-data.js");
     const lineRe = /^\s*"([^"]+)"\s*,\s*\/\/\s*(.+?)\s*$/gm;
     const sourceNotes = new Map();
     let m;
@@ -132,7 +133,7 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
       assert.equal(
         entry.note,
         sourceNote,
-        `prefix_rules note for "${entry.prefix}" diverges from the inline comment in affiliates.js — run npm run compile:rules`,
+        `prefix_rules note for "${entry.prefix}" diverges from the inline comment in affiliates-data.js — run npm run compile:rules`,
       );
     }
   });

@@ -2,7 +2,8 @@
  * MUGA: Unified rules generator
  *
  * Reads TRACKING_PARAMS, TRACKING_PARAM_CATEGORIES, and TRACKING_PREFIXES from
- * src/lib/affiliates.js plus domain-rules.json, path-strip-rules.json, and
+ * src/lib/affiliates-data.js (via affiliates.js re-exports) plus domain-rules.json,
+ * path-strip-rules.json, and
  * path-affiliate-rules.json and writes:
  *   - src/rules/rules-manifest.json  — documentation-grade manifest (v2 schema)
  *   - src/rules/tracking-params.json — DNR rule file (Chrome MV3 format)
@@ -30,11 +31,15 @@ const PATH_STRIP_PATH      = resolve(ROOT, "src/rules/path-strip-rules.json");
 const PATH_AFFILIATE_PATH  = resolve(ROOT, "src/rules/path-affiliate-rules.json");
 const MANIFEST_PATH        = resolve(ROOT, "src/rules/rules-manifest.json");
 const DNR_PATH             = resolve(ROOT, "src/rules/tracking-params.json");
-const AFFILIATES_PATH      = resolve(ROOT, "src/lib/affiliates.js");
+// #826: TRACKING_PARAMS/TRACKING_PREFIXES/TRACKING_PARAM_CATEGORIES moved to
+// affiliates-data.js. The path below now points at the data module for
+// source-text extraction (prefix inline comments). affiliates.js re-exports
+// everything so runtime imports are unchanged.
+const AFFILIATES_PATH      = resolve(ROOT, "src/lib/affiliates-data.js");
 
 /**
  * Extracts inline `// comment` text next to each entry in the TRACKING_PREFIXES
- * literal in src/lib/affiliates.js. Returns a Map<prefix, note>.
+ * literal in src/lib/affiliates-data.js. Returns a Map<prefix, note>.
  *
  * Build-time only — at runtime the comments are gone, but this is a generator.
  * Matches lines of the form `  "prefix",   // note text` inside the
@@ -50,7 +55,7 @@ function extractPrefixNotes() {
   );
   if (!blockMatch) {
     process.stderr.write(
-      "generate-rules.mjs: could not locate TRACKING_PREFIXES block in src/lib/affiliates.js — has the literal moved?\n"
+      "generate-rules.mjs: could not locate TRACKING_PREFIXES block in src/lib/affiliates-data.js — has the literal moved?\n"
     );
     process.exit(1);
   }
@@ -252,14 +257,14 @@ export function buildManifest() {
   }
 
   // Build prefix_rules[] in source order (semantic ordering intentional).
-  // Each entry carries the inline comment from src/lib/affiliates.js as its
+  // Each entry carries the inline comment from src/lib/affiliates-data.js as its
   // `note` field (#642). This is build-time parsing — runtime imports lose
   // comments, but the generator reads the file as text.
   const prefixNotes = extractPrefixNotes();
   const missingNotes = TRACKING_PREFIXES.filter((p) => !prefixNotes.has(p));
   if (missingNotes.length > 0) {
     process.stderr.write(
-      `generate-rules.mjs: TRACKING_PREFIXES entries missing inline // note in affiliates.js: ${missingNotes.join(", ")}\n` +
+      `generate-rules.mjs: TRACKING_PREFIXES entries missing inline // note in affiliates-data.js: ${missingNotes.join(", ")}\n` +
       `  Each prefix must have a trailing comment explaining what it tracks. See #642.\n`
     );
     process.exit(1);
