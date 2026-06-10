@@ -55,3 +55,13 @@ tools/rule-ingestion/quarantine/
 # Rule-ingestion promote run artifact (#781): ephemeral intermediate, never committed.
 # The .gitkeep in promote/ is committed; only the runtime artifact is excluded.
 tools/rule-ingestion/promote/promote-candidates.json
+
+# Moat-expansion quarantine (#793): raw ClearURLs fetch — never committed.
+# Clean-room posture: upstream bytes (LGPL-3.0) stay ephemeral; only extracted
+# referralMarketing signal tuples leave the quarantine zone. See PROVENANCE.md.
+tools/moat-expansion/quarantine/
+# Moat-expansion reports (#793): committed to bot-branch only, never to main directly.
+# The .gitkeep in reports/ is committed; runtime report-<date>.md files land here
+# only via the weekly workflow PR, never via direct push.
+tools/moat-expansion/reports/report-*.md
+tools/moat-expansion/reports/report-*.json
