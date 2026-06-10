@@ -43,6 +43,18 @@ const _affiliateDomains = getAffiliateDomains();
 
 let _firstUsedSet = false;
 
+// Idempotent firstUsed bootstrap. Called from onInstalled + onStartup so the
+// hot path (handleProcessUrl) only sees a free boolean check, not a storage
+// read, on the first processed URL. Sets firstUsed only when absent (#833).
+async function _initFirstUsed() {
+  if (_firstUsedSet) return;
+  try {
+    const stats = await getStats();
+    if (!stats.firstUsed) await setStats({ firstUsed: Date.now() });
+    _firstUsedSet = true;
+  } catch { /* best-effort; handleProcessUrl fallback still guards */ }
+}
+
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
 //       top-level await disallowed in Chrome MV3 service workers).
 // Cache-first: on each SW restart we attempt to read from chrome.storage.session
@@ -77,8 +89,8 @@ async function _loadDomainRules() {
     await cacheDomainRules(data);
   } catch (err) {
     console.error("[MUGA] domain-rules.json fetch failed (attempt", _domainRulesFetchAttempts, "):", err);
-    // Null out so the next handleProcessUrl call retries (up to the cap)
-    _domainRulesReady = null;
+    // Do NOT null _domainRulesReady here — concurrent callers share this promise.
+    // handleProcessUrl nulls it after all callers finish awaiting, enabling retry.
   }
 }
 
@@ -120,8 +132,8 @@ async function _loadPathRules() {
     console.warn("[MUGA] path rules fetch failed:", err);
     pathStripRules     = [];
     pathAffiliateRules = [];
-    // Null out so the next handleProcessUrl call retries (up to the cap)
-    _pathRulesReady = null;
+    // Do NOT null _pathRulesReady here — concurrent callers share this promise.
+    // handleProcessUrl nulls it after all callers finish awaiting, enabling retry.
   }
 }
 
@@ -1128,9 +1140,20 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
   // retry on the next call. Both loaders run in a single outer Promise.all so
   // all three JSON files (domain + 2× path) are in flight at once.
+  // Single-flight: each ref is assigned once per attempt so concurrent callers
+  // share the in-flight promise rather than racing to increment the attempt counter.
+  // After the shared await, null the ref only if the load failed and more retries
+  // remain — this keeps the single-flight guarantee while still allowing retry.
   if (!_domainRulesReady) _domainRulesReady = _loadDomainRules();
   if (!_pathRulesReady)   _pathRulesReady   = _loadPathRules();
   await Promise.all([_domainRulesReady, _pathRulesReady]);
+  if (domainRules.length === 0 && _domainRulesFetchAttempts < DOMAIN_RULES_MAX_ATTEMPTS) {
+    _domainRulesReady = null;
+  }
+  if (pathStripRules.length === 0 && pathAffiliateRules.length === 0 &&
+      _pathRulesFetchAttempts < PATH_RULES_MAX_ATTEMPTS) {
+    _pathRulesReady = null;
+  }
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled || !prefs.onboardingDone) {
@@ -1159,12 +1182,17 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   }
 
-  // Record first use timestamp for nudge threshold (stored locally)
+  // firstUsed is initialized in onInstalled/onStartup (idempotent); the flag
+  // is set there so this hot path is a free boolean check on every call after
+  // the first SW lifetime event.
   if (!_firstUsedSet) {
     const localStats = await getStats();
     if (localStats.firstUsed) {
       _firstUsedSet = true;
     } else {
+      // Fallback: lifecycle events haven't fired yet (e.g., Firefox temporary
+      // add-on loaded without install/startup). Set here so the timestamp is
+      // as accurate as possible rather than relying on a future startup event.
       await setStats({ firstUsed: Date.now() });
       _firstUsedSet = true;
     }
@@ -1295,6 +1323,10 @@ chrome.runtime.onStartup.addListener(async () => {
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   // on first startup after upgrade. Best-effort; failure must not break startup.
   migrateLegacyProxyPref().catch(() => {});
+  // #833: bootstrap firstUsed + run migrations here so the hot path is free.
+  _initFirstUsed();
+  migrateStatsToLocal();
+  migrateConsentToLocal();
 });
 
 // --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
@@ -1336,6 +1368,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   maybeFetchRemoteRules(_remoteRulesDeps());
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   migrateLegacyProxyPref().catch(() => {});
+  // #833: bootstrap firstUsed + run migrations so hot path is free.
+  _initFirstUsed();
+  migrateStatsToLocal();
+  migrateConsentToLocal();
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);
