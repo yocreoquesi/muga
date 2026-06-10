@@ -127,6 +127,32 @@ describe("affiliate-harness — G1: redirect-host pass-through (HARD)", () => {
             `redirect URL host must remain on an AFFILIATE_REDIRECT_NETWORKS entry`,
           );
         });
+
+        // G1 sub-test (#815): The redirect URL is the attribution event.
+        // processUrl MUST return the URL byte-identical (action="untouched",
+        // cleanUrl===input). Any param stripped here destroys a creator's
+        // commission on the click itself — before the merchant even reads it.
+        test(`sample redirect URL ${sampleUrl} passes through processUrl byte-identical (click IS the attribution event)`, pending ? { skip: pending } : {}, () => {
+          const { action, cleanUrl } = processUrl(
+            sampleUrl,
+            PREFS,
+            [],
+            undefined,
+            undefined,
+          );
+          assert.equal(
+            action,
+            "untouched",
+            `processUrl must not touch a redirect-network URL — returned action="${action}" for ${sampleUrl}. ` +
+            `The click-through URL IS the attribution event; any mutation destroys the creator's commission.`,
+          );
+          assert.equal(
+            cleanUrl,
+            sampleUrl,
+            `processUrl must return the redirect URL byte-identical — got cleanUrl=${cleanUrl} for input ${sampleUrl}. ` +
+            `Params on redirect-network hosts carry attribution state for the network, not tracking noise.`,
+          );
+        });
       }
     });
   }
