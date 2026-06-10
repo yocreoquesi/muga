@@ -1108,8 +1108,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Native resolution — sole path as of ADR-0004 phase 5.
         const result = await resolveShortener(rawUrl);
-        // ADR-0004 phase 4: per-shortener pass/fail counter (local-only, never transmitted).
-        incrementShortenerStat(hostname, result.ok ? "pass" : "fail").catch(() => {});
+        // ADR-0004 phase 4: per-shortener pass/fail counter (local-only, never
+        // transmitted). Synchronous accumulate-and-flush since #817 — no .catch.
+        incrementShortenerStat(hostname, result.ok ? "pass" : "fail");
 
         try { sendResponse(result); } catch { /* channel closed */ }
       } catch (err) {
