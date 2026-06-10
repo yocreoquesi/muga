@@ -40,6 +40,11 @@ const CRAWLER_VERSION_RE = /^[0-9a-f]{7,40}$/;
 // Regex for the artifact signature: exactly 128 lowercase hex characters (64 raw bytes).
 const SIGNATURE_RE = /^[0-9a-f]{128}$/;
 
+// Regex for a lowercase hostname. Mirrors the JSON Schema pattern on corpus[] items
+// and candidates[].first_seen_on. The crawler lowercases all hostnames at signing time;
+// enforcement here keeps schema and validator in parity.
+const HOSTNAME_LOWERCASE_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
+
 // Required top-level fields of a discovered artifact.
 const TOP_LEVEL_REQUIRED = [
   "candidates",
@@ -155,6 +160,13 @@ export function validateDiscoveredShape(obj) {
     return { ok: false, code: "ERR_CORPUS_EMPTY" };
   }
 
+  // corpus: each entry must be a lowercase hostname (mirrors JSON Schema pattern).
+  for (const hostname of obj.corpus) {
+    if (typeof hostname !== "string" || !HOSTNAME_LOWERCASE_RE.test(hostname)) {
+      return { ok: false, code: `ERR_CORPUS_HOSTNAME_CASE:${hostname}` };
+    }
+  }
+
   // crawler_version: 7–40 lowercase hex chars.
   if (typeof obj.crawler_version !== "string" || !CRAWLER_VERSION_RE.test(obj.crawler_version)) {
     return { ok: false, code: "ERR_CRAWLER_VERSION_INVALID" };
@@ -197,6 +209,14 @@ export function validateDiscoveredShape(obj) {
       candidate.occurrence_count < 1
     ) {
       return { ok: false, code: `ERR_CANDIDATE_${i}_OCCURRENCE_COUNT` };
+    }
+
+    // first_seen_on: must be a lowercase hostname (mirrors JSON Schema pattern).
+    if (
+      typeof candidate.first_seen_on !== "string" ||
+      !HOSTNAME_LOWERCASE_RE.test(candidate.first_seen_on)
+    ) {
+      return { ok: false, code: `ERR_CANDIDATE_${i}_FIRST_SEEN_ON_CASE` };
     }
   }
 

@@ -257,6 +257,83 @@ describe("validateDiscoveredShape — corpus and candidate constraints", () => {
   });
 });
 
+describe("validateDiscoveredShape — hostname lowercase constraint", () => {
+  test("lowercase corpus hostname passes", () => {
+    const art = { ...validArtifact(), corpus: ["example.com"], signature: "ab".repeat(64) };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, true, `expected ok=true for lowercase hostname, got code=${result.code}`);
+  });
+
+  test("uppercase corpus hostname fails with ERR_CORPUS_HOSTNAME_CASE", () => {
+    const art = { ...validArtifact(), corpus: ["Example.com"], signature: "ab".repeat(64) };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "uppercase corpus hostname must fail validation");
+    assert.strictEqual(result.code, "ERR_CORPUS_HOSTNAME_CASE:Example.com");
+  });
+
+  test("mixed-case corpus hostname fails", () => {
+    const art = { ...validArtifact(), corpus: ["eXaMpLe.com"], signature: "ab".repeat(64) };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "mixed-case corpus hostname must fail validation");
+  });
+
+  test("second corpus entry uppercase fails", () => {
+    const art = {
+      ...validArtifact(),
+      corpus: ["example.com", "ANOTHER.org"],
+      signature: "ab".repeat(64),
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "uppercase in any corpus entry must fail");
+    assert.strictEqual(result.code, "ERR_CORPUS_HOSTNAME_CASE:ANOTHER.org");
+  });
+
+  test("lowercase first_seen_on passes", () => {
+    const art = {
+      ...validArtifact(),
+      candidates: [{ ...VALID_CANDIDATE, first_seen_on: "example.com" }],
+      signature: "ab".repeat(64),
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, true, `expected ok=true for lowercase first_seen_on, got code=${result.code}`);
+  });
+
+  test("uppercase first_seen_on fails with ERR_CANDIDATE_FIRST_SEEN_ON_CASE", () => {
+    const art = {
+      ...validArtifact(),
+      candidates: [{ ...VALID_CANDIDATE, first_seen_on: "Example.com" }],
+      signature: "ab".repeat(64),
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "uppercase first_seen_on must fail validation");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_FIRST_SEEN_ON_CASE");
+  });
+
+  test("mixed-case first_seen_on fails", () => {
+    const art = {
+      ...validArtifact(),
+      candidates: [{ ...VALID_CANDIDATE, first_seen_on: "eXaMpLe.CoM" }],
+      signature: "ab".repeat(64),
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "mixed-case first_seen_on must fail validation");
+  });
+
+  test("uppercase first_seen_on on second candidate fails with correct index", () => {
+    const art = {
+      ...validArtifact(),
+      candidates: [
+        { ...VALID_CANDIDATE, first_seen_on: "example.com" },
+        { ...VALID_CANDIDATE, param: "utm_source", first_seen_on: "UPPER.org" },
+      ],
+      signature: "ab".repeat(64),
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "uppercase first_seen_on in any candidate must fail");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_1_FIRST_SEEN_ON_CASE");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Section D — verifyDiscovered (Ed25519 signature verification)
 // ---------------------------------------------------------------------------

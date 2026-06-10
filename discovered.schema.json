@@ -28,7 +28,8 @@
       "description": "Lowercase hostnames the crawler analyzed during this run.",
       "minItems": 1,
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
       }
     },
     "candidates": {
@@ -50,7 +51,8 @@
           },
           "first_seen_on": {
             "type": "string",
-            "description": "Hostname where this parameter was first observed."
+            "description": "Lowercase hostname where this parameter was first observed.",
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
           },
           "injected_by": {
             "type": "string",
