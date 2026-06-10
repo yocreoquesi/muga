@@ -129,6 +129,37 @@ describe("aggregateDiscovered — CSF deduplication and entropy accumulation", (
     assert.strictEqual(entry.entCount, 0, "entCount must be 0 when no value_entropy field present");
   });
 
+  test("anti-poison: param present in two artifacts, value_entropy in only one — mean uses only the present value", () => {
+    const withEntropy = {
+      discovered_at: "2026-05-01T00:00:00Z",
+      crawler_version: "abc1234",
+      corpus: ["one.example.com"],
+      candidates: [
+        { param: "track_id", first_seen_on: "one.example.com", injected_by: "wrapper-x", occurrence_count: 2, value_entropy: 3.8 },
+      ],
+      signature: "ab".repeat(64),
+    };
+    const withoutEntropy = {
+      discovered_at: "2026-05-08T00:00:00Z",
+      crawler_version: "def5678",
+      corpus: ["two.example.com"],
+      candidates: [
+        { param: "track_id", first_seen_on: "two.example.com", injected_by: "wrapper-y", occurrence_count: 1 },
+      ],
+      signature: "cd".repeat(64),
+    };
+    const map = aggregateDiscovered([withEntropy, withoutEntropy]);
+
+    const entry = map.get("track_id");
+    assert.ok(entry, "track_id entry must exist");
+    assert.strictEqual(entry.hosts.size, 2, "CSF must count both hostnames");
+    assert.strictEqual(entry.entCount, 1, "entropy count must ignore the artifact lacking value_entropy");
+    assert.ok(
+      Math.abs(entry.entSum - 3.8) < 1e-9,
+      `mean source must be 3.8 alone — the field-less mention must not halve it (entSum ${entry.entSum})`
+    );
+  });
+
   test("empty artifacts array returns empty Map without throwing", () => {
     assert.doesNotThrow(() => {
       const map = aggregateDiscovered([]);
