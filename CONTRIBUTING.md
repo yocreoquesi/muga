@@ -16,13 +16,30 @@ Most contributions don't need a pull request. The fastest paths in:
 
 ## Development setup
 
-**Requirements:** Node.js 20+, npm, git
+**Requirements:** Node.js >=20.11, npm, git
+
+Node 20.11 is the minimum because `import.meta.dirname` (used in several tools and
+tests) was only unflagged in that patch release. CI pins to the `20.x` LTS line;
+running on a newer release (22.x, 23.x) is fine for local development.
+
+The `engines` field in `package.json` records this constraint so `npm install` will
+warn on non-compliant versions.
 
 ```bash
 git clone https://github.com/yocreoquesi/muga.git
 cd muga
 npm install
 ```
+
+### Optional toolchain dependencies
+
+| Tool | Required for | Notes |
+|------|-------------|-------|
+| `python3` + `Pillow` | `npm run promo-tiles` | Generates Chrome Web Store promo tiles. Not needed for extension builds or tests. Install with `pip install Pillow`. |
+
+The `promo-tiles` script (`tools/generate-promo-tiles.py`) requires Python 3 with the
+`Pillow` library. It is not required for normal development, running tests, or building
+the extension. If `python3` is not available on your machine, skip this command.
 
 ## Running tests
 

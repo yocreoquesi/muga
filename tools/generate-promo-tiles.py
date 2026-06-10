@@ -1,3 +1,6 @@
+# Requires: python3 with the Pillow library (pip install Pillow).
+# Not needed for extension builds or tests — only for regenerating Chrome Web Store promo images.
+# See the "Optional toolchain dependencies" section in CONTRIBUTING.md.
 """
 MUGA — Promo tile generator (violet/denoise palette)
 Generates:
