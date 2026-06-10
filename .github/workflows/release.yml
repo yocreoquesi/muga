@@ -20,11 +20,10 @@ on:
 permissions:
   contents: read
 
+# ── Gate 1: unit + integration tests ──────────────────────────────────────────
 jobs:
-  build-and-release:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
@@ -43,6 +42,66 @@ jobs:
 
       - name: Run unit tests
         run: npm test
+
+      - name: Run integration tests against live Worker (#608)
+        # Hits unwrap.muga.app to verify the extension-Worker contract
+        # (path, param shape, Origin gate, signed-envelope verifiability).
+        # A release must not proceed if the live contract is broken —
+        # runtime-only regressions cannot be caught by unit stubs alone.
+        # TODO (#825): evaluate stubbing the Worker call in CI to remove
+        # the hard dependency on unwrap.muga.app availability; decommission
+        # the live hit once a reliable stub/fixture strategy is in place.
+        run: npm run test:integration
+
+  # ── Gate 2: Playwright E2E suite ────────────────────────────────────────────
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle content script (#356)
+        run: npm run build:content
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests (xvfb)
+        run: xvfb-run npx playwright test
+
+  # ── Publish: only runs when both gate jobs pass ────────────────────────────
+  build-and-release:
+    runs-on: ubuntu-latest
+    needs: [test, e2e]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build Chrome extension
         run: npm run build:chrome
