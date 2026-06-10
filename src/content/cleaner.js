@@ -102,7 +102,11 @@
     return entry.count > 3;
   }
 
-  // Toast strings: default English, overridden by stored language preference
+  // Toast strings: default English, overridden by stored language preference.
+  // IMPORTANT: keep this table in sync with the five toast_* keys in
+  // src/lib/i18n.js — the drift guard test content-cleaner-toast-sync.test.mjs
+  // will fail red if they diverge. Do NOT edit translations here directly;
+  // update i18n.js first, then copy the values here (#819, #834).
   const STRINGS = {
     en: {
       toast_title:   "MUGA found someone else's affiliate tag",
@@ -123,18 +127,39 @@
       toast_tag_msg: "tem uma tag de afiliado que não é nossa:",
       toast_allow:   "Manter",
       toast_block:   "Remover",
-      toast_dismiss: "Dispensar",
+      toast_dismiss: "Ignorar",
     },
     de: {
       toast_title:   "MUGA hat ein fremdes Affiliate-Tag gefunden",
-      toast_tag_msg: "hat ein Affiliate-Tag, das nicht uns gehört:",
+      toast_tag_msg: "hat ein Affiliate-Tag, das nicht unseres ist:",
       toast_allow:   "Behalten",
       toast_block:   "Entfernen",
       toast_dismiss: "Schließen",
     },
+    fr: {
+      toast_title:   "MUGA a trouvé un tag d'affiliation de quelqu'un d'autre",
+      toast_tag_msg: "a un tag d'affiliation qui n'est pas le nôtre :",
+      toast_allow:   "Conserver",
+      toast_block:   "Supprimer",
+      toast_dismiss: "Ignorer",
+    },
+    it: {
+      toast_title:   "MUGA ha trovato il tag di affiliazione di qualcun altro",
+      toast_tag_msg: "ha un tag di affiliazione che non è il nostro:",
+      toast_allow:   "Mantieni",
+      toast_block:   "Rimuovi",
+      toast_dismiss: "Ignora",
+    },
+    ja: {
+      toast_title:   "MUGAは他者のアフィリエイトタグを検出しました",
+      toast_tag_msg: "には当方のものではないアフィリエイトタグがあります:",
+      toast_allow:   "保持",
+      toast_block:   "削除",
+      toast_dismiss: "閉じる",
+    },
   };
 
-  const SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1 };
+  const SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1, fr: 1, it: 1, ja: 1 };
   const navLang = (navigator.language || "en").slice(0, 2);
   const browserLang = navLang in SUPPORTED_LANGS ? navLang : "en";
   let s = STRINGS[browserLang];

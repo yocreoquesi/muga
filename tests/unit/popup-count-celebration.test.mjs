@@ -35,7 +35,7 @@ test("preview_count_one: i18n key exists with en + es non-empty, no {n} placehol
 test("preview_count_other: i18n key exists with {n} placeholder in every locale", () => {
   const k = TRANSLATIONS.preview_count_other;
   assert.ok(k, "preview_count_other must exist");
-  for (const locale of ["en", "es", "pt", "de"]) {
+  for (const locale of ["en", "es", "pt", "de", "fr", "it", "ja"]) {
     assert.ok(typeof k[locale] === "string" && k[locale].length > 0, `${locale} non-empty`);
     assert.ok(k[locale].includes("{n}"), `${locale} must contain the {n} placeholder`);
   }
@@ -108,6 +108,68 @@ test("popup.js builds the count line via DOM nodes, not innerHTML", () => {
     /createTextNode|createElement|appendChild|replaceChildren/.test(slice),
     "renderCountCelebration must build content via DOM APIs"
   );
+});
+
+test("renderCountCelebration: count=1 span-vs-textContent paths are mutually exclusive (#819)", () => {
+  // Bug: the original code unconditionally built the .preview-count-number
+  // span AND appended it to el, then — for the "one" key (after===undefined)
+  // — called `el.textContent = template` which obliterates the span and kills
+  // the CSS pulse animation for the most common case (exactly 1 tracker).
+  //
+  // Fix: the span-build path and the plain-text path must be mutually
+  // exclusive. The correct structure is:
+  //   if (after === undefined) {
+  //     el.textContent = template;           // plain text only, no span
+  //   } else {
+  //     // build text-before + span + text-after
+  //   }
+  //
+  // This test reads the function source and verifies the span is ONLY built
+  // inside the else branch (i.e. guarded by `after !== undefined`).
+
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  const fnIdx = popupSrc.indexOf("function renderCountCelebration");
+  assert.ok(fnIdx >= 0, "renderCountCelebration must exist");
+  const next = popupSrc.indexOf("\nfunction ", fnIdx + 10);
+  const fnBody = popupSrc.slice(fnIdx, next === -1 ? fnIdx + 4000 : next);
+
+  // The buggy pattern: span is created BEFORE the `after === undefined` check
+  // and `el.textContent = template` clobbers it afterward. In the fixed code,
+  // `el.textContent = template` must NOT appear AFTER `el.appendChild(number)`
+  // in an unconditional position. We detect the bug by looking for the
+  // anti-pattern: span append followed immediately (with no else-guard) by
+  // el.textContent assignment.
+  //
+  // Approach: the fixed function must NOT contain `el.textContent = template`
+  // after an unconditional `el.appendChild(number)`.  We verify this by
+  // checking that `el.textContent = template` does NOT appear after the
+  // last `el.appendChild(number)` in an unguarded path.
+  //
+  // Simpler structural invariant:  in the fixed version the `number` span and
+  // its `el.appendChild(number)` call appear ONLY inside an `else` block or
+  // ONLY when `after !== undefined`.  We assert that the span creation is
+  // never followed by `el.textContent` on the same un-branched code path.
+
+  // Collect positions of the key statements inside the fn body
+  const spanCreatePos  = fnBody.indexOf('number.className = "preview-count-number"');
+  const textContentPos = fnBody.lastIndexOf("el.textContent = template");
+
+  // If textContent still follows span creation with no intervening else/return
+  // the bug is still present.  In the fixed version either:
+  //   (a) textContent assignment is gone entirely from the count>0 branch, OR
+  //   (b) span creation appears AFTER the textContent check (inside else)
+  //
+  // Both are captured by: spanCreatePos must NOT be less than textContentPos
+  // when textContent exists inside the fn body.
+  if (textContentPos !== -1 && spanCreatePos !== -1) {
+    assert.ok(
+      spanCreatePos > textContentPos,
+      "renderCountCelebration: .preview-count-number span must be created AFTER (inside else branch of) the el.textContent plain-text path — " +
+        "otherwise el.textContent obliterates the span for count===1. " +
+        "Move the span-build path into the `else` branch guarded by `after !== undefined`."
+    );
+  }
+  // If textContent is gone from the count>0 branch entirely that's also fine.
 });
 
 test("_resetPreviewDom clears #preview-count and the animation flag", () => {
