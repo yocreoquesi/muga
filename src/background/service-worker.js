@@ -387,7 +387,9 @@ async function maybeFetchRemoteRules(deps) {
 }
 
 // --- DNR sync helpers ---
-// Firefox MV2 does not support declarativeNetRequest; guard all DNR calls.
+// Guard all DNR calls with a feature-detect. Firefox MV2 (≥113) DOES support
+// declarativeNetRequest for static rulesets and regexSubstitution redirects;
+// the guard covers Firefox Android and any environment where the API is absent.
 const hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
 
 async function syncCustomParamsDNR(customParams) {

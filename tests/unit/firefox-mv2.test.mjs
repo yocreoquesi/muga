@@ -36,6 +36,7 @@ const BACKGROUND_HTML = readFileSync(
   join(__dirname, "../../src/background/background.html"), "utf8"
 );
 const MANIFEST_V2 = require("../../src/manifest.v2.json");
+const MANIFEST_V3 = require("../../src/manifest.json");
 
 // ---------------------------------------------------------------------------
 // Firefox MV2 compatibility -- guards that must never be removed
@@ -276,5 +277,88 @@ describe("Firefox MV2 manifest structure", () => {
     const pkg = require("../../package.json");
     assert.equal(MANIFEST_V2.version, pkg.version,
       "manifest.v2.json version must match package.json");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DNR ruleset parity — MV2 must declare all MV3 rulesets except documented ones
+// ---------------------------------------------------------------------------
+//
+// Documented exceptions (rulesets intentionally absent from MV2):
+//
+//   amp_redirect — the content script content/amp-redirect.js (run_at:
+//   document_end) is the documented Firefox fallback for AMP unwrapping.
+//   Whether amp-redirect.json's regexSubstitution rules also work on Firefox
+//   MV2 is unverified; tracked separately. Do not remove it from this list
+//   without a confirmed live Firefox run.
+//
+// All other rulesets must be declared in both manifests. If a new ruleset is
+// added to manifest.json (MV3) without a decision for Firefox, this test will
+// fail loudly so the gap is never silent. (#820)
+//
+describe("DNR ruleset MV2 parity (#820)", () => {
+  const DOCUMENTED_MV2_EXCEPTIONS = new Set([
+    "amp_redirect",
+  ]);
+
+  const mv3Ids = new Set(
+    (MANIFEST_V3.declarative_net_request?.rule_resources ?? []).map(r => r.id)
+  );
+  const mv2Ids = new Set(
+    (MANIFEST_V2.declarative_net_request?.rule_resources ?? []).map(r => r.id)
+  );
+
+  test("every MV3 ruleset is either declared in MV2 or listed in DOCUMENTED_MV2_EXCEPTIONS", () => {
+    const missing = [];
+    for (const id of mv3Ids) {
+      if (!mv2Ids.has(id) && !DOCUMENTED_MV2_EXCEPTIONS.has(id)) {
+        missing.push(id);
+      }
+    }
+    assert.deepEqual(
+      missing,
+      [],
+      "The following MV3 DNR ruleset IDs are absent from manifest.v2.json and not in the " +
+      "documented-exceptions list — add them to manifest.v2.json (if compatible) or add " +
+      "them to DOCUMENTED_MV2_EXCEPTIONS with a comment explaining why:\n  " +
+      missing.join("\n  ")
+    );
+  });
+
+  test("no ruleset in DOCUMENTED_MV2_EXCEPTIONS is silently added to MV2", () => {
+    const conflicts = [];
+    for (const id of DOCUMENTED_MV2_EXCEPTIONS) {
+      if (mv2Ids.has(id)) {
+        conflicts.push(id);
+      }
+    }
+    assert.deepEqual(
+      conflicts,
+      [],
+      "The following ruleset IDs are in both DOCUMENTED_MV2_EXCEPTIONS and manifest.v2.json — " +
+      "remove them from DOCUMENTED_MV2_EXCEPTIONS (the exception is resolved):\n  " +
+      conflicts.join("\n  ")
+    );
+  });
+
+  test("wrapper_unwrap is declared in MV2 manifest (#820)", () => {
+    assert.ok(
+      mv2Ids.has("wrapper_unwrap"),
+      "manifest.v2.json must declare the wrapper_unwrap ruleset — Firefox users would get no " +
+      "pre-navigation wrapper unwrapping (l.facebook.com, Skimlinks, ShareASale) without it"
+    );
+  });
+
+  test("amp_redirect is documented as a MV2 exception (content-script fallback in place)", () => {
+    assert.ok(
+      DOCUMENTED_MV2_EXCEPTIONS.has("amp_redirect"),
+      "amp_redirect must remain in DOCUMENTED_MV2_EXCEPTIONS until a confirmed Firefox MV2 " +
+      "live test validates its regexSubstitution rules — the content-script fallback covers it"
+    );
+    assert.ok(
+      !mv2Ids.has("amp_redirect"),
+      "amp_redirect must NOT be declared in manifest.v2.json until Firefox MV2 compatibility " +
+      "is confirmed with a live test"
+    );
   });
 });

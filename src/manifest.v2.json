@@ -87,6 +87,11 @@
         "id": "tracking_params",
         "enabled": true,
         "path": "rules/tracking-params.json"
+      },
+      {
+        "id": "wrapper_unwrap",
+        "enabled": true,
+        "path": "rules/wrapper-dnr-rules.json"
       }
     ]
   },
