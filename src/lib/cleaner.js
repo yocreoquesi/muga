@@ -69,7 +69,12 @@ export function getLandingPolicy(hostname, referrer) {
   }
   if (!refHost) return EMPTY_LANDING_POLICY;
 
-  if (hostname && refHost.toLowerCase() === String(hostname).toLowerCase()) {
+  // Strip www. from both sides before comparing so that www.merchant.com ↔
+  // merchant.com navigations are treated as same-origin (mirrors the
+  // normalization in affiliates.js:getRedirectNetworkForRedirectHost #831).
+  if (hostname &&
+      refHost.toLowerCase().replace(/^www./, "") ===
+      String(hostname).toLowerCase().replace(/^www./, "")) {
     return EMPTY_LANDING_POLICY;
   }
 
