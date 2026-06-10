@@ -237,8 +237,9 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
   });
 
   test("DNR tracking_params ruleset is disabled until onboardingDone, enabled after", async ({ context, extensionId }) => {
-    // Pre-onboarding: ruleset must be disabled. Poll so the result
-    // does not race with applyDnrState() after the beforeEach clear.
+    // Pre-onboarding: ALL three rulesets must be disabled (#810 — consent-gate
+    // must cover amp_redirect and wrapper_unwrap, not only tracking_params).
+    // Poll so the result does not race with applyDnrState() after beforeEach clear.
     await expect.poll(
       async () => {
         const r = await readEnabledRulesets(context, extensionId);
@@ -246,6 +247,22 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
       },
       { timeout: 5000 }
     ).not.toContain("tracking_params");
+
+    await expect.poll(
+      async () => {
+        const r = await readEnabledRulesets(context, extensionId);
+        return r.ruleIds || [];
+      },
+      { timeout: 5000 }
+    ).not.toContain("amp_redirect");
+
+    await expect.poll(
+      async () => {
+        const r = await readEnabledRulesets(context, extensionId);
+        return r.ruleIds || [];
+      },
+      { timeout: 5000 }
+    ).not.toContain("wrapper_unwrap");
 
     // Complete onboarding without letting the page self-close — the
     // assertion is on the SW side, but we still want a deterministic
@@ -255,8 +272,9 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
     await completeOnboardingAndKeepPageOpen(page);
 
-    // After acceptance, the storage listener re-applies DNR state. The
-    // ruleset becomes enabled. Poll to absorb the listener latency.
+    // After acceptance, the storage listener re-applies DNR state.
+    // All three rulesets (with default prefs ampRedirect:true, unwrapRedirects:true)
+    // must be enabled. Poll to absorb the listener latency.
     await expect.poll(
       async () => {
         const r = await readEnabledRulesets(context, extensionId);
@@ -264,6 +282,22 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
       },
       { timeout: 5000 }
     ).toContain("tracking_params");
+
+    await expect.poll(
+      async () => {
+        const r = await readEnabledRulesets(context, extensionId);
+        return r.ruleIds || [];
+      },
+      { timeout: 5000 }
+    ).toContain("amp_redirect");
+
+    await expect.poll(
+      async () => {
+        const r = await readEnabledRulesets(context, extensionId);
+        return r.ruleIds || [];
+      },
+      { timeout: 5000 }
+    ).toContain("wrapper_unwrap");
 
     if (!page.isClosed()) await page.close();
   });

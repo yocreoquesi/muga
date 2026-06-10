@@ -424,19 +424,67 @@ async function applyDnrState(prefs) {
   if (!hasDNR) return;
   // Gate DNR on onboardingDone too (#consent-gate). Content scripts
   // already short-circuit on `!prefs.onboardingDone`, but the DNR
-  // ruleset is declarative — it would still fire before the user
-  // accepts unless we explicitly disable it here. This makes "the
+  // rulesets are declarative — they would still fire before the user
+  // accepts unless we explicitly disable them here. This makes "the
   // extension is disabled until the user accepts the ToS" hold across
   // both the dynamic and declarative cleaning paths.
+  //
+  // Derive which rulesets are actually declared in the active manifest
+  // at runtime so we never pass IDs that don't exist in the current
+  // manifest (Firefox MV2 declares only "tracking_params"; passing
+  // "amp_redirect" or "wrapper_unwrap" there would cause the API to
+  // reject the entire call). (#810)
+  const declaredIds = (
+    chrome.runtime.getManifest()?.declarative_net_request?.rule_resources ?? []
+  ).map(r => r.id);
+
   if (prefs.enabled && prefs.dnrEnabled && prefs.onboardingDone) {
+    // Gate open: selectively enable/disable based on per-feature prefs.
+    // The manifest defaults all three to enabled:true, so rulesets whose
+    // feature pref is OFF must be explicitly disabled — otherwise they
+    // stay active from the manifest default.
+    const enableRulesetIds = [];
+    const disableRulesetIds = [];
+
+    for (const id of declaredIds) {
+      if (id === "tracking_params") {
+        enableRulesetIds.push(id);
+      } else if (id === "amp_redirect") {
+        if (prefs.ampRedirect) {
+          enableRulesetIds.push(id);
+        } else {
+          disableRulesetIds.push(id);
+        }
+      } else if (id === "wrapper_unwrap") {
+        if (prefs.unwrapRedirects) {
+          enableRulesetIds.push(id);
+        } else {
+          disableRulesetIds.push(id);
+        }
+      } else {
+        // A manifest-declared ruleset this gate doesn't know about would
+        // keep its manifest default and silently bypass any feature pref.
+        // Enable it explicitly (matching the manifest default) and warn so
+        // the gap is visible the moment a fourth ruleset is added. (#810)
+        console.warn("[MUGA] applyDnrState: unmanaged ruleset id:", id);
+        enableRulesetIds.push(id);
+      }
+    }
+
     await chrome.declarativeNetRequest.updateEnabledRulesets({
-      enableRulesetIds: ["tracking_params"],
+      enableRulesetIds,
+      disableRulesetIds,
     }).catch(err => console.warn("[MUGA] applyDnrState enable:", err));
     await syncCustomParamsDNR(prefs.customParams);
   } else {
-    await chrome.declarativeNetRequest.updateEnabledRulesets({
-      disableRulesetIds: ["tracking_params"],
-    }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
+    // Gate closed: disable ALL declared rulesets so that AMP redirects
+    // and wrapper-unwrapping cannot fire before the user has accepted
+    // the ToS or while the extension is toggled off. (#810)
+    if (declaredIds.length > 0) {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        disableRulesetIds: declaredIds,
+      }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
+    }
     await syncCustomParamsDNR([]);
   }
 }
@@ -590,7 +638,8 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // Any sync storage change (including disabledCategories, contextMenuEnabled, etc.)
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
   _invalidatePrefsCache();
-  if (changes.customParams || changes.dnrEnabled || changes.enabled) {
+  if (changes.customParams || changes.dnrEnabled || changes.enabled ||
+      changes.ampRedirect || changes.unwrapRedirects) {
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
   }
