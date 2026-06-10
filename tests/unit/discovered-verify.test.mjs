@@ -445,3 +445,117 @@ describe("verifyDiscovered — shape validation is always run first", () => {
     assert.strictEqual(result.ok, false, "shape-invalid artifact must fail before signature check");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Section E — validateDiscoveredShape: optional value_entropy field (#798)
+// ---------------------------------------------------------------------------
+
+describe("validateDiscoveredShape — value_entropy optional field (spec: discovered-artifact #798)", () => {
+  test("candidate without value_entropy field is valid (backward compat)", () => {
+    const art = { ...validArtifact(), signature: "ab".repeat(64) };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, true, `expected ok=true when value_entropy absent, got code=${result.code}`);
+  });
+
+  test("candidate with value_entropy: 0 is valid (minimum boundary)", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: 0 }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, true, `expected ok=true for value_entropy=0, got code=${result.code}`);
+  });
+
+  test("candidate with value_entropy: 4.2 is valid", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: 4.2 }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, true, `expected ok=true for value_entropy=4.2, got code=${result.code}`);
+  });
+
+  test("candidate with value_entropy: -1 fails (below minimum 0)", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: -1 }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "expected ok=false for negative value_entropy");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_VALUE_ENTROPY_INVALID");
+  });
+
+  test("candidate with value_entropy: -0.0001 fails (just below 0)", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: -0.0001 }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "expected ok=false for value_entropy just below 0");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_VALUE_ENTROPY_INVALID");
+  });
+
+  test("candidate with value_entropy: 'high' (string) fails with ERR_CANDIDATE_0_VALUE_ENTROPY_INVALID", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: "high" }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "expected ok=false for string value_entropy");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_VALUE_ENTROPY_INVALID");
+  });
+
+  test("candidate with value_entropy: NaN fails (not a finite number)", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: NaN }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "expected ok=false for NaN value_entropy");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_VALUE_ENTROPY_INVALID");
+  });
+
+  test("candidate with value_entropy: Infinity fails (not a finite number)", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [{ ...VALID_CANDIDATE, value_entropy: Infinity }],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "expected ok=false for Infinity value_entropy");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_0_VALUE_ENTROPY_INVALID");
+  });
+
+  test("second candidate invalid value_entropy reports correct index", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [
+        { ...VALID_CANDIDATE, value_entropy: 3.5 },
+        { ...VALID_CANDIDATE, param: "utm_source", value_entropy: NaN },
+      ],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, false, "expected ok=false when second candidate has NaN value_entropy");
+    assert.strictEqual(result.code, "ERR_CANDIDATE_1_VALUE_ENTROPY_INVALID");
+  });
+
+  test("artifact with all candidates having valid value_entropy passes", () => {
+    const art = {
+      ...validArtifact(),
+      signature: "ab".repeat(64),
+      candidates: [
+        { ...VALID_CANDIDATE, value_entropy: 3.5 },
+        { ...VALID_CANDIDATE, param: "utm_source", value_entropy: 4.8 },
+      ],
+    };
+    const result = validateDiscoveredShape(art);
+    assert.strictEqual(result.ok, true, `expected ok=true for all valid value_entropy, got code=${result.code}`);
+  });
+});

@@ -1,0 +1,25 @@
+{
+  "discovered_at": "2026-05-01T00:00:00Z",
+  "crawler_version": "abc1234",
+  "corpus": [
+    "ads.example.com",
+    "shop.example.com"
+  ],
+  "candidates": [
+    {
+      "param": "fbclid",
+      "first_seen_on": "ads.example.com",
+      "injected_by": "meta-pixel",
+      "occurrence_count": 18,
+      "value_entropy": 3.2
+    },
+    {
+      "param": "utm_source",
+      "first_seen_on": "shop.example.com",
+      "injected_by": "google-analytics",
+      "occurrence_count": 44,
+      "value_entropy": 2.8
+    }
+  ],
+  "signature": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+}
