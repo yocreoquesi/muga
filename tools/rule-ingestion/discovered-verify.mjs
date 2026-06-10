@@ -60,8 +60,9 @@ const TOP_LEVEL_ALLOWED = new Set(TOP_LEVEL_REQUIRED);
 // Required fields within each candidate object.
 const CANDIDATE_REQUIRED = ["first_seen_on", "injected_by", "occurrence_count", "param"];
 
-// Allowed candidate fields (same set — additionalProperties: false).
-const CANDIDATE_ALLOWED = new Set(CANDIDATE_REQUIRED);
+// Allowed candidate fields. Includes optional fields not in CANDIDATE_REQUIRED.
+// additionalProperties: false is enforced by checking every key against this set.
+const CANDIDATE_ALLOWED = new Set([...CANDIDATE_REQUIRED, "value_entropy"]);
 
 // ---------------------------------------------------------------------------
 // sortKeys — recursive alphabetical key-sort
@@ -235,6 +236,19 @@ export function validateDiscoveredShape(obj) {
       !HOSTNAME_LOWERCASE_RE.test(candidate.first_seen_on)
     ) {
       return { ok: false, code: `ERR_CANDIDATE_${i}_FIRST_SEEN_ON_CASE` };
+    }
+
+    // value_entropy: optional field — presence-then-type guard.
+    // When present: must be a finite number >= 0.
+    // Absence is valid (backward compat with artifacts from older crawler versions).
+    if ("value_entropy" in candidate) {
+      if (
+        typeof candidate.value_entropy !== "number" ||
+        !Number.isFinite(candidate.value_entropy) ||
+        candidate.value_entropy < 0
+      ) {
+        return { ok: false, code: `ERR_CANDIDATE_${i}_VALUE_ENTROPY_INVALID` };
+      }
     }
   }
 
