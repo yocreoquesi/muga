@@ -168,12 +168,14 @@ describe("Amazon", () => {
     assert.ok(removedTracking.includes("ref"));
   });
 
-  test("strips ascsubtag on amazon.com", () => {
+  test("preserves ascsubtag on amazon.com — affiliate SubTag attribution (#794)", () => {
+    // ascsubtag is the Amazon Associates SubTag: invite-only sub-publisher
+    // attribution parameter. Stripping it kills creator attribution. Fixed #794.
     const { cleanUrl } = clean(
       "https://www.amazon.com/dp/B0ABC12345/?ascsubtag=abc&k=test"
     );
     const u = new URL(cleanUrl);
-    assert.ok(!u.searchParams.has("ascsubtag"));
+    assert.equal(u.searchParams.get("ascsubtag"), "abc", "ascsubtag must be PRESERVED — affiliate SubTag (#794)");
     assert.equal(u.searchParams.get("k"), "test");
   });
 });

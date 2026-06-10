@@ -266,14 +266,28 @@ describe("Amazon: path cleaning regression tests", () => {
     assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
   });
 
-  test("Amazon affiliate sub-tracking stripped (ascsubtag, linkCode, linkId)", () => {
+  test("Amazon affiliate sub-tag preserved (ascsubtag), linkCode/linkId stripped (#794)", () => {
+    // ascsubtag is the Amazon Associates SubTag — invite-only sub-publisher
+    // attribution ID. Stripping it kills creator attribution. Fixed in #794.
     const { cleanUrl } = clean(
       "https://www.amazon.es/dp/B00EXAMPLE?ascsubtag=abc123&linkCode=ll1&linkId=def456&tag=muga0b-21"
     );
     const u = new URL(cleanUrl);
-    assert.ok(!u.searchParams.has("ascsubtag"), "ascsubtag must be stripped");
+    assert.equal(u.searchParams.get("ascsubtag"), "abc123", "ascsubtag must be PRESERVED — affiliate attribution SubTag (#794)");
     assert.ok(!u.searchParams.has("linkCode"), "linkCode must be stripped");
     assert.ok(!u.searchParams.has("linkId"), "linkId must be stripped");
+  });
+
+  test("Amazon asc_ campaign/content tracking still stripped (not affiliate attribution)", () => {
+    // asc_campaign, asc_contentid, asc_contenttype are Amazon Attribution
+    // ad-measurement params — noise, not affiliate attribution. Keep stripping.
+    const { cleanUrl } = clean(
+      "https://www.amazon.com/dp/B00EXAMPLE?asc_campaign=test&asc_contentid=cid&asc_contenttype=type&tag=muga0b-20"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("asc_campaign"), "asc_campaign must be stripped");
+    assert.ok(!u.searchParams.has("asc_contentid"), "asc_contentid must be stripped");
+    assert.ok(!u.searchParams.has("asc_contenttype"), "asc_contenttype must be stripped");
   });
 
   test("Amazon encoding and UI params stripped (_encoding, ie, psc)", () => {
@@ -345,6 +359,45 @@ describe("Booking.com — destination and checkin/checkout preserved", () => {
     assert.equal(u.searchParams.get("checkin"), "2026-04-01");
     assert.equal(u.searchParams.get("checkout"), "2026-04-10");
     assert.ok(!u.searchParams.has("utm_campaign"), "utm_campaign must be stripped");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BestBuy — Impact Radius affiliate params preserved (#794)
+// ---------------------------------------------------------------------------
+describe("BestBuy — Impact Radius landing params preserved, loc/ref stripped (#794)", () => {
+  test("irclickid and irgwc preserved — BestBuy affiliate program runs on Impact Radius", () => {
+    // BestBuy's affiliate program is administered through Impact (impact.com).
+    // irclickid is the Impact click ID; irgwc is the Impact flag param.
+    // Both are required-at-landing for attribution. Stripping them kills commission.
+    const { cleanUrl } = clean(
+      "https://www.bestbuy.com/site/searchresults.html?st=laptop&irclickid=xyzABC123&irgwc=1&loc=campaign1&ref=external"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("irclickid"), "xyzABC123", "irclickid must be PRESERVED — Impact Radius attribution (#794)");
+    assert.equal(u.searchParams.get("irgwc"), "1", "irgwc must be PRESERVED — Impact Radius flag (#794)");
+    assert.ok(!u.searchParams.has("loc"), "loc must be stripped — campaign location noise");
+    assert.ok(!u.searchParams.has("ref"), "ref must be stripped — referral noise");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coolblue — Partnerize clickref preserved (#794)
+// ---------------------------------------------------------------------------
+describe("Coolblue — Partnerize clickref preserved, other noise stripped (#794)", () => {
+  test("clickref preserved — Coolblue participates in Partnerize network", () => {
+    // Coolblue participates in the Partnerize affiliate network.
+    // clickref is Partnerize's primary click ID; without it the conversion
+    // cannot be attributed and the creator loses their commission.
+    const { cleanUrl } = clean(
+      "https://www.coolblue.nl/product/12345?q=laptop&clickref=CLICK123&ref=somesite&phgref=pub456&cmt=extra"
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("clickref"), "CLICK123", "clickref must be PRESERVED — Partnerize required-at-landing attribution (#794)");
+    assert.ok(!u.searchParams.has("ref"), "ref must be stripped — referral noise");
+    assert.ok(!u.searchParams.has("phgref"), "phgref must be stripped — non-attribution noise");
+    assert.ok(!u.searchParams.has("cmt"), "cmt must be stripped — non-attribution noise");
+    assert.equal(u.searchParams.get("q"), "laptop", "q must be preserved");
   });
 });
 

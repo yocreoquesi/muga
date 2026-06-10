@@ -357,3 +357,32 @@ describe("affiliate-guard", () => {
     });
   });
 });
+
+// ── #794 regression: static-guard third source ───────────────────────────────
+//
+// ascsubtag (Amazon SubTag) is affiliate attribution but appears in NEITHER
+// AFFILIATE_PATTERNS (Amazon's param is "tag") NOR landingParams (Amazon is
+// not a redirect network). AdGuard upstream emits $removeparam=ascsubtag, so
+// without the static AFFILIATE_PARAM_GUARD source the gate would auto-merge
+// it back into the strip list — the exact ADR-0005 catastrophic path.
+describe("static-guard source (#794)", () => {
+  it("ascsubtag is rejected by the live gate with source static-guard", () => {
+    const result = checkAffiliateGuard({ param: "ascsubtag" });
+    assert.equal(result.rejected, true, "ascsubtag must never auto-merge as a tracker");
+    assert.equal(result.collidingPrograms[0].source, "static-guard");
+  });
+
+  it("AFFILIATE_PARAM_GUARD still contains ascsubtag (re-introduction defense)", async () => {
+    const { AFFILIATE_PARAM_GUARD } = await import("../../src/lib/remote-rules.js");
+    assert.ok(
+      AFFILIATE_PARAM_GUARD.has("ascsubtag"),
+      "ascsubtag left every strip list in #794 — the guard entry is what keeps upstream ingestion from re-adding it"
+    );
+  });
+
+  it("buildPreserveIndex without staticGuard does not include ascsubtag (seam isolation)", async () => {
+    const { buildPreserveIndex } = await import("../../tools/rule-ingestion/gates/affiliate-guard.mjs");
+    const { set } = buildPreserveIndex([], []);
+    assert.equal(set.has("ascsubtag"), false);
+  });
+});

@@ -114,16 +114,11 @@ describe("domain-rules.json integrity", () => {
 const STRIP_LAND_OVERLAP_ALLOWLIST = [
   // { domain: "example.com", param: "some_param", issue: "#NNN — reason" },
 
-  // bestbuy.com / Impact Radius: irclickid and irgwc appear in both tables.
-  // TODO: open follow-up issue to verify BestBuy's Impact Radius participation
-  // and remove from stripParams if confirmed (#816 audit finding).
-  { domain: "bestbuy.com", param: "irclickid", issue: "TODO — #816 audit: bestbuy.com/Impact Radius overlap needs verification" },
-  { domain: "bestbuy.com", param: "irgwc",     issue: "TODO — #816 audit: bestbuy.com/Impact Radius overlap needs verification" },
-
-  // coolblue.nl / Partnerize: clickref appears in both tables.
-  // TODO: open follow-up issue to verify Coolblue's Partnerize participation
-  // and remove from stripParams if confirmed (#816 audit finding).
-  { domain: "coolblue.nl", param: "clickref",  issue: "TODO — #816 audit: coolblue.nl/Partnerize overlap needs verification" },
+  // All previously TODO'd overlaps resolved in #794:
+  //   bestbuy.com: irclickid + irgwc removed from domain-rules.json stripParams
+  //     (BestBuy affiliate program confirmed on Impact network — required-at-landing)
+  //   coolblue.nl: clickref removed from domain-rules.json stripParams
+  //     (Coolblue confirmed on Partnerize — clickref required for commission attribution)
 ];
 
 describe("domain-rules.json × REDIRECT_NETWORK_PATTERNS — landing-param contamination guard (#816)", () => {
