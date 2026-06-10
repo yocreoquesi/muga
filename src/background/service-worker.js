@@ -15,8 +15,6 @@ import { t } from "../lib/i18n.js";
 import {
   runRemoteRulesFetch,
   clearRemoteCache,
-  buildRemoteDnrRule,
-  REMOTE_RULE_ID,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
@@ -663,7 +661,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
 // Each handler reads state that is otherwise inaccessible from a
 // content-script's world (e.g. chrome.action surface). Future slices
 // add handlers for fixture-manifest / fixture-migrations overrides.
-async function handleTestMessage(message, sender) {
+async function handleTestMessage(message, _sender) {
   switch (message.type) {
     case "__TEST__readActionSurface": {
       const tabId = Number(message.tabId);

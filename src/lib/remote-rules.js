@@ -158,7 +158,7 @@ let _importedKeysSig = null;
  * Results are cached for the service-worker lifetime using the key strings as
  * a cache key — so different key arrays never share the cache.
  *
- * @param {string[]} base64Keys - Array of base64-encoded raw 32-byte Ed25519 public keys.
+ * @param {readonly string[]} base64Keys - Array of base64-encoded raw 32-byte Ed25519 public keys.
  * @param {SubtleCrypto} subtle - Web Crypto SubtleCrypto interface.
  * @returns {Promise<CryptoKey[]>}
  */
@@ -214,7 +214,7 @@ export function canonicalMessage(version, published, params) {
  *
  * @param {string}       canonical   - The canonical message string to verify.
  * @param {string}       sigBase64   - The signature in base64url encoding.
- * @param {string[]}     trustedKeys - Array of base64-encoded raw Ed25519 public keys.
+ * @param {readonly string[]} trustedKeys - Array of base64-encoded raw Ed25519 public keys.
  * @param {SubtleCrypto} subtle      - Web Crypto SubtleCrypto interface.
  * @returns {Promise<boolean>}
  */
@@ -267,11 +267,14 @@ export function validatePayloadShape(obj) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
 
+  /** @type {Record<string, unknown>} */
+  const o = /** @type {Record<string, unknown>} */ (obj);
+
   // version: must be an integer
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "version") ||
-    typeof obj.version !== "number" ||
-    !Number.isInteger(obj.version)
+    !Object.prototype.hasOwnProperty.call(o, "version") ||
+    typeof o.version !== "number" ||
+    !Number.isInteger(o.version)
   ) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
@@ -280,26 +283,26 @@ export function validatePayloadShape(obj) {
   // falsy, which would make the validateParams freshness check skip entirely,
   // letting a signed-but-undated payload bypass the staleness guard (#738).
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "published") ||
-    typeof obj.published !== "string" ||
-    obj.published.trim() === ""
+    !Object.prototype.hasOwnProperty.call(o, "published") ||
+    typeof o.published !== "string" ||
+    /** @type {string} */ (o.published).trim() === ""
   ) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
 
   // params: must be an array of strings
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "params") ||
-    !Array.isArray(obj.params) ||
-    !obj.params.every(p => typeof p === "string")
+    !Object.prototype.hasOwnProperty.call(o, "params") ||
+    !Array.isArray(o.params) ||
+    !o.params.every(p => typeof p === "string")
   ) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
 
   // sig: must be a string
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "sig") ||
-    typeof obj.sig !== "string"
+    !Object.prototype.hasOwnProperty.call(o, "sig") ||
+    typeof o.sig !== "string"
   ) {
     return { ok: false, code: ERR.SCHEMA_ERROR };
   }
@@ -331,7 +334,10 @@ export function validatePayloadShape(obj) {
  * @returns {{ ok: boolean, code?: string, accepted?: string[] }}
  */
 export function validateParams(params, stored, nowMs, opts = {}) {
-  const newVersion = opts.newVersion ?? (params._version ?? 0);
+  // opts.newVersion is the canonical version source. params._version was a
+  // legacy array-property pattern that no longer exists — always falls through
+  // to 0 and is dead code. Opts path is the only live one. (#823 discovery)
+  const newVersion = opts.newVersion ?? 0;
   const newPublished = opts.newPublished ?? null;
 
   // 1+2. Per-param format and length checks (INVALID_FORMAT)
@@ -426,17 +432,19 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
         redirect: "error",
         signal: ac.signal,
       });
-    } catch (err) {
-      // fetch() rejects on transport failure AND on timeout abort (err.name
+    } catch (_err) {
+      // fetch() rejects on transport failure AND on timeout abort (_err.name
       // === "AbortError"); both collapse to NETWORK_ERROR — there is no
       // distinct timeout code in ERR, so they are deliberately the same.
       const e = new Error(ERR.NETWORK_ERROR);
+      // @ts-expect-error — intentional Error extension: .code carries the ERR constant for callers that catch and inspect it
       e.code = ERR.NETWORK_ERROR;
       throw e;
     }
 
     if (!res.ok) {
       const e = new Error(`${ERR.NETWORK_ERROR}: HTTP ${res.status}`);
+      // @ts-expect-error — intentional Error extension: .code carries the ERR constant for callers that catch and inspect it
       e.code = ERR.NETWORK_ERROR;
       throw e;
     }
@@ -446,6 +454,7 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
     if (cl && Number(cl) > maxBytes) {
       ac.abort();
       const e = new Error(ERR.OVER_CAP);
+      // @ts-expect-error — intentional Error extension: .code carries the ERR constant for callers that catch and inspect it
       e.code = ERR.OVER_CAP;
       throw e;
     }
@@ -458,8 +467,9 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
       let chunk;
       try {
         chunk = await reader.read();
-      } catch (err) {
+      } catch (_err) {
         const e = new Error(ERR.NETWORK_ERROR);
+        // @ts-expect-error — intentional Error extension: .code carries the ERR constant for callers that catch and inspect it
         e.code = ERR.NETWORK_ERROR;
         throw e;
       }
@@ -471,6 +481,7 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
         try { ac.abort(); } catch { /* ignore */ }
         try { reader.cancel(); } catch { /* ignore */ }
         const e = new Error(ERR.OVER_CAP);
+        // @ts-expect-error — intentional Error extension: .code carries the ERR constant for callers that catch and inspect it
         e.code = ERR.OVER_CAP;
         throw e;
       }
@@ -643,7 +654,7 @@ export async function runRemoteRulesFetch(deps = {}) {
         ? new TextDecoder().decode(bodyBytes)
         : Buffer.from(bodyBytes).toString("utf8");
       obj = JSON.parse(text);
-    } catch (err) {
+    } catch {
       await _writeError(ERR.SCHEMA_ERROR, storage);
       console.error("[MUGA] remote-rules:", ERR.SCHEMA_ERROR, "JSON.parse failed");
       return;

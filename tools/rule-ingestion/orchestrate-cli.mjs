@@ -31,7 +31,7 @@
  */
 
 import { sign as cryptoSign, createPrivateKey, createHash } from "node:crypto";
-import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 

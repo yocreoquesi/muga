@@ -77,7 +77,6 @@ async function completeOnboarding(context, extensionId) {
 }
 
 export const test = base.extend({
-  // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const ctx = await chromium.launchPersistentContext("", {
       headless: false,

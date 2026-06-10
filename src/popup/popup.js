@@ -629,13 +629,6 @@ async function showUrlPreview(prefs, lang) {
           const hostname = new URL(url).hostname;
           const version = chrome.runtime.getManifest().version;
           const removed = result.removedTracking?.join(", ") || "none";
-          const action = result.action || "none";
-          const features = [
-            prefs.dnrEnabled && "DNR",
-            prefs.blockPings && "ping-blocking",
-            prefs.ampRedirect && "AMP-redirect",
-            prefs.unwrapRedirects && "redirect-unwrap",
-          ].filter(Boolean).join(", ") || "default";
           // Form-based template (#333). Field IDs in
           // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params.
           // GitHub forms ignore ?body= when ?template= is set, so we prefill
@@ -652,10 +645,6 @@ async function showUrlPreview(prefs, lang) {
             labels: "broken-site",
           });
           if (removed && removed !== "none") params.set("params", removed);
-          // `action` and `features active` don't have dedicated form fields;
-          // we fold them into params.notes-style context isn't supported here,
-          // but the user can paste them into the symptom textarea if needed.
-          // Action: ${action} | Features: ${features}
           chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
         } catch { /* invalid URL */ }
       });
@@ -1232,7 +1221,6 @@ async function showHistory(prefs, lang) {
   const data = await sessionStorage.get({ history: [] });
   const history = data.history;
 
-  const section = document.getElementById("history");
   const list = document.getElementById("history-list");
 
   if (!history.length) {

@@ -35,17 +35,17 @@ export function evaluateCanary(canary, processUrlFn, extraRemoteParams = []) {
   } catch (err) {
     // WHY: a throwing cleaner must not crash the gate/runner — record it and
     // return early so the caller sees a concrete failure rather than an exception.
-    return [{ name: canary.name, kind: "preserve", reason: `processUrl threw: ${err.message}` }];
+    return [/** @type {CanaryFailure} */ ({ name: canary.name, kind: /** @type {"preserve"} */ ("preserve"), reason: `processUrl threw: ${err.message}` })];
   }
   for (const [param, value] of Object.entries(canary.mustSurvive)) {
     const got = params.get(param);
     if (got !== value) {
-      failures.push({ name: canary.name, kind: "preserve", reason: `${param} expected "${value}", got "${got}"` });
+      failures.push(/** @type {CanaryFailure} */ ({ name: canary.name, kind: /** @type {"preserve"} */ ("preserve"), reason: `${param} expected "${value}", got "${got}"` }));
     }
   }
   for (const param of canary.mustStrip) {
     if (params.has(param)) {
-      failures.push({ name: canary.name, kind: "preserve", reason: `${param} should have been stripped` });
+      failures.push(/** @type {CanaryFailure} */ ({ name: canary.name, kind: /** @type {"preserve"} */ ("preserve"), reason: `${param} should have been stripped` }));
     }
   }
   return failures;

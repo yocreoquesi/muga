@@ -265,7 +265,6 @@ function isAliExpressItemPage(hostname, pathname) {
  */
 function stripTrackingParams(url, prefs, domainRules, disabledCategories, classifierStripSet, landingPolicy = EMPTY_LANDING_POLICY) {
   const hostname = url.hostname;
-  const patterns = getPatternsForHost(hostname);
   // #629 win 2: cached Set, allocated once per host.
   const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
@@ -441,6 +440,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname);
 
   // Step 7 — Action resolution + Bookshop injection + recordFrequency + final payload
+  /** @type {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = pipeAction;
   if (action === "untouched" && (pathCleaned || removedTracking.length > 0)) action = "cleaned";
 
@@ -531,10 +531,7 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
  *   Affiliate-injection rules from `src/lib/path-rules.js`. Used for
  *   Bookshop.org creator-referral detection (step 6). Defaults to `[]`
  *   (no-op) for call sites that do not exercise path-affiliate behavior.
- * @returns {
- *     { kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean }
- *   | { kind: "done", payload: object }
- * }
+ * @returns {{ kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean } | { kind: "done", payload: object }}
  */
 function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules = []) {
   // Step 1: parse initial URL
@@ -614,7 +611,7 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
  * @param {Array} parsedBlacklist
  * @param {Array} parsedWhitelist
  * @param {string} hostname
- * @returns {{ action: string, detectedAffiliate: object|null, blacklistStripped: number }}
+ * @returns {{ action: "untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number }}
  */
 function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname) {
   // Build isWhitelisted closure for this host
@@ -629,6 +626,7 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     whitelistedParams.has(param) || whitelistedValues.has(`${param}::${value}`);
 
   let detectedAffiliate = null;
+  /** @type {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = "untouched";
 
   // Step 3: Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)

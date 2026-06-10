@@ -454,7 +454,6 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
   test("service worker defines REMOTE_REFRESH_INTERVAL_MS as 7 days", () => {
     const match = swSource.match(/REMOTE_REFRESH_INTERVAL_MS\s*=\s*([^;]+);/);
     assert.ok(match, "SW must define REMOTE_REFRESH_INTERVAL_MS");
-    // eslint-disable-next-line no-eval
     const value = Function(`"use strict"; return (${match[1]});`)();
     assert.strictEqual(value, 7 * 24 * 60 * 60 * 1000, "must equal 7 days in ms");
   });

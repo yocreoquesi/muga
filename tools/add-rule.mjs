@@ -257,6 +257,7 @@ async function main() {
   process.stdout.write(`✓ test: ${testAdded ? "appended regression entry" : "already present"}\n`);
 
   // Regenerate downstream artifacts.
+  /** @type {import("node:child_process").ExecSyncOptions} */
   const opts = { stdio: "inherit", cwd: REPO_ROOT };
   process.stdout.write(`\n→ npm run compile:rules\n`);
   execSync("npm run compile:rules", opts);

@@ -3,7 +3,6 @@
  */
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
-import { formatRelativeTime } from "../lib/relative-time.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
@@ -1047,7 +1046,6 @@ function initDevTools() {
   // Export debug log
   document.getElementById("dev-export-log-btn").addEventListener("click", async () => {
     // Warn before exporting: the file contains browser info and extension settings.
-    // eslint-disable-next-line no-alert
     const confirmed = window.confirm(
       "This log includes your browser version and extension settings.\n\n" +
       "Do NOT share it publicly (e.g. in a GitHub issue) without reviewing it first.\n\n" +

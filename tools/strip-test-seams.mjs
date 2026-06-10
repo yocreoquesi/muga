@@ -36,10 +36,10 @@
  *   rewriteTestFixtures(content: string) -> string
  */
 
-import { mkdtempSync, mkdirSync, cpSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, cpSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
 // ── Exported for unit testing ───────────────────────────────────────────────

@@ -221,7 +221,7 @@ describe("installWindowNameDefuser — disabled-state guard", () => {
   test("when isEnabled returns false, cleaner is not consulted", () => {
     let called = 0;
     const host = makeWindowStub("");
-    installWindowNameDefuser(host, (u) => { called++; return "MUTATED"; }, {
+    installWindowNameDefuser(host, (_u) => { called++; return "MUTATED"; }, {
       isEnabled: () => false,
     });
     host.name = "https://example.com/?utm_source=x";

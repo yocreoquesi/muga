@@ -18,8 +18,6 @@
  *   clearurls                         → Adapter (id, name, license, url, parse, fetchRaw)
  */
 
-/** @type {import("./index.mjs").Adapter} */
-
 // Canonical raw URL for the ClearURLs rules database (data.min.json is the
 // minified production file published on the master branch of ClearURLs/Rules).
 // Verified at apply time: https://raw.githubusercontent.com/ClearURLs/Rules/master/data.min.json
@@ -181,6 +179,7 @@ export const clearurls = {
     // connections — including test fakes that ignore the abort signal —
     // are forcibly cut off after timeoutMs (#813).
     let timer;
+    /** @type {Promise<Response>} */
     const timeoutPromise = new Promise((_resolve, reject) => {
       timer = setTimeout(() => {
         controller.abort();

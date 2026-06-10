@@ -288,7 +288,7 @@ export const WRAPPERS = buildWrappers(WRAPPERS_RAW);
  * generic wrapper code path (issue #531). Order matters — the first key whose
  * value passes ALL safety guards wins. Kept short on purpose: every additional
  * key widens the surface for false positives on legitimate non-redirect URLs.
- * @type {string[]}
+ * @type {readonly string[]}
  */
 // #709 item 10: frozen for defense-in-depth. Security-relevant — drives
 // the generic-redirect heuristic. Mutation would silently widen MUGA's
@@ -314,7 +314,7 @@ const GENERIC_DEST_LENGTH_CAP = 2000;
  * authentication, single-sign-on and checkout flows where the wrapper URL is
  * legitimately the entry point — not a tracking redirect — and unwrapping
  * would silently break login or payment.
- * @type {string[]}
+ * @type {readonly string[]}
  */
 // #709 item 10: frozen for defense-in-depth. Mutation would silently
 // REMOVE auth/SSO/checkout protections from the generic unwrap path

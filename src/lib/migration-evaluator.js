@@ -53,7 +53,7 @@ export function compareVersions(a, b) {
  * @param {string}   args.currentVersion  - The currently running extension version.
  * @param {Record<string, "accept"|"decline"|"dismiss">} args.responses - Per-id responses.
  * @param {object}   args.prefs           - The user's current preferences.
- * @param {Array}    [args.migrations]    - Override the spec (testing). Defaults to MIGRATIONS.
+ * @param {ReadonlyArray<object>} [args.migrations] - Override the spec (testing). Defaults to MIGRATIONS.
  * @returns {Array<object>} Pending migrations to present, in declared order.
  */
 export function evaluateMigrations({

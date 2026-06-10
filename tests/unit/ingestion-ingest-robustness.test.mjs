@@ -398,9 +398,9 @@ describe("T-813-5 — null-payload fetch → records as failed, no crash", () =>
 
     // Must NOT throw — the adapter failure is recorded, not re-thrown.
     let thrown = null;
-    let result = null;
+    let _result = null;
     try {
-      result = await runIngestion({
+      _result = await runIngestion({
         adapters: [nullAdapter],
         fetchImpl: makeNullTextFetch(),
         quarantineDir,

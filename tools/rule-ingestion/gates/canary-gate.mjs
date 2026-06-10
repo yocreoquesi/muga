@@ -49,7 +49,7 @@ import { evaluateCanary } from "../../affiliate-safety/evaluate.mjs";
  * remoteParams stripping.
  *
  * @param {{ param?: string } | null | undefined} candidate
- * @param {{ canaries?: object[], processUrlFn?: Function }} [opts]
+ * @param {{ canaries?: ReadonlyArray<object>, processUrlFn?: (url: string, prefs: object) => { cleanUrl: string } }} [opts]
  * @returns {{ rejected: boolean, reason?: string, brokenCanaries?: object[] }}
  */
 export function checkCanaryGate(
@@ -93,7 +93,7 @@ export function checkCanaryGate(
  * doesn't need to re-run the check.
  *
  * @param {Array<{ param?: string }>} candidates
- * @param {{ canaries?: object[], processUrlFn?: Function }} [opts]
+ * @param {{ canaries?: ReadonlyArray<object>, processUrlFn?: (url: string, prefs: object) => { cleanUrl: string } }} [opts]
  * @returns {{ accepted: Array, rejected: Array<{ candidate: object, reason: string, brokenCanaries: object[] }> }}
  */
 export function partitionCandidates(candidates, opts = {}) {

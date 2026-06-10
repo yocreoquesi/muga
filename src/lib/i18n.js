@@ -902,11 +902,11 @@ export function applyTranslations(lang) {
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
     const key = el.getAttribute("data-i18n-placeholder");
-    el.placeholder = t(key, lang);
+    /** @type {HTMLInputElement|HTMLTextAreaElement} */ (el).placeholder = t(key, lang);
   });
   document.querySelectorAll("[data-i18n-title]").forEach(el => {
     const key = el.getAttribute("data-i18n-title");
-    el.title = t(key, lang);
+    /** @type {HTMLElement} */ (el).title = t(key, lang);
   });
   // #707: data-i18n-aria-label handles screen-reader labels. Without this,
   // every aria-label in markup is locked in source-language English and

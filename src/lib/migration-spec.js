@@ -32,7 +32,7 @@
  *   bannerCopyKey   — i18n key for the banner copy. Required when
  *                     networkRelated is true; may be empty otherwise.
  *
- * @type {Array<{
+ * @type {ReadonlyArray<{
  *   id: string,
  *   fromVersion: string,
  *   toVersion: string,

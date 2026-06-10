@@ -208,7 +208,7 @@ describe("installHistoryDefuser — disabled-state guard", () => {
   test("when isEnabled returns false, cleaner is not called and original url forwards", () => {
     let called = 0;
     const { history, calls } = makeHistoryStub();
-    installHistoryDefuser(history, (u) => {
+    installHistoryDefuser(history, (_u) => {
       called++;
       return "MUTATED";
     }, { isEnabled: () => false });

@@ -34,13 +34,13 @@ const BASE_PREFS = {
 // ── Amazon affiliate patterns are available for amazon.com
 // For handleWhitelistedDomain, we use a fictional domain where we can control the whitelist entry
 const WHITELISTED_DOMAIN = "shop.whitelisted-test.example";
-const WHITELISTED_PREFS = {
+const _WHITELISTED_PREFS = {
   ...BASE_PREFS,
   whitelist: [`${WHITELISTED_DOMAIN}`],
 };
 
 // Helper: build parsed whitelist from prefs.whitelist
-function buildParsedWhitelist(prefs) {
+function _buildParsedWhitelist(prefs) {
   return (prefs.whitelist || []).map(parseListEntry);
 }
 
@@ -315,7 +315,7 @@ describe("TS-9 — handleAffiliatePipeline — whitelist param value sacred", ()
     const parsedBlacklist = [parseListEntry(`${AMAZON_HOSTNAME}::${AMAZON_AFFILIATE_PARAM}::${WHITELISTED_TAG}`)];
     const parsedWhitelist = [parseListEntry(`${AMAZON_HOSTNAME}::${AMAZON_AFFILIATE_PARAM}::${WHITELISTED_TAG}`)];
 
-    const result = handleAffiliatePipeline(
+    const _result = handleAffiliatePipeline(
       url, BASE_PREFS, AMAZON_PATTERNS, parsedBlacklist, parsedWhitelist, AMAZON_HOST,
     );
 
@@ -331,7 +331,7 @@ describe("TS-9 — handleAffiliatePipeline — whitelist param value sacred", ()
 
     const parsedWhitelist = [parseListEntry(`${AMAZON_HOSTNAME}::${AMAZON_AFFILIATE_PARAM}::${WHITELISTED_TAG}`)];
 
-    const result = handleAffiliatePipeline(
+    const _result = handleAffiliatePipeline(
       url, PREFS_STRIP_ALL, AMAZON_PATTERNS, AMAZON_PARSEDBLACKLIST, parsedWhitelist, AMAZON_HOST,
     );
 

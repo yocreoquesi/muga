@@ -33,7 +33,7 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
     let raw;
     try {
       raw = readFileSync(MANIFEST_PATH, "utf8");
-    } catch (err) {
+    } catch {
       assert.fail(`rules-manifest.json not found at ${MANIFEST_PATH} — run npm run compile:rules`);
     }
     assert.doesNotThrow(() => JSON.parse(raw), "rules-manifest.json must be valid JSON");
