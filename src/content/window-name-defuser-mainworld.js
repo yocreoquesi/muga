@@ -122,9 +122,32 @@
   // dispatcher → both main-world wraps. Until the first event arrives
   // the gate stays CLOSED (fail-closed): the wrap is installed but
   // pass-through, matching the disabled-state guard contract.
+  //
+  // Nonce handshake (#811): same pattern as history-defuser-mainworld.js.
+  // The one-shot `muga:history-gate:nonce` event broadcasts the shared
+  // secret before page scripts run; we capture it here and validate it
+  // on every subsequent gate event to reject hostile page-script spoofing.
+  let _capturedNonce = null;
+  function _onNonce(e) {
+    if (e && e.detail && typeof e.detail.nonce === "string") {
+      _capturedNonce = e.detail.nonce;
+    }
+    document.removeEventListener("muga:history-gate:nonce", _onNonce);
+  }
+  document.addEventListener("muga:history-gate:nonce", _onNonce);
+
   let _gateOpen = false;
+  let _warnedOrder = false;
   document.addEventListener("muga:history-gate", (e) => {
-    _gateOpen = !!(e && e.detail && e.detail.enabled);
+    // Reject events that do not carry the handshake nonce.
+    if (!e || !e.detail || e.detail.nonce !== _capturedNonce) {
+      if (!_warnedOrder && e && e.detail && typeof e.detail.nonce === "string" && _capturedNonce === null) {
+        _warnedOrder = true;
+        console.warn("[MUGA] gate event before nonce capture — check manifest script order");
+      }
+      return;
+    }
+    _gateOpen = !!(e.detail.enabled);
   });
 
   // Capture whatever value `window.name` held before we replaced the

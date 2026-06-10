@@ -98,13 +98,39 @@
   // dispatched on `document`: events DO cross the isolated/main world
   // boundary even though `window` properties don't. The companion
   // isolated-world script (content/history-defuser.js) reads prefs and
-  // dispatches `muga:history-gate` with `detail: { enabled: bool }`.
+  // dispatches `muga:history-gate` with `detail: { enabled: bool, nonce }`.
   // Until the first event arrives the gate stays CLOSED (fail-closed):
   // the wrap is installed but pass-through, matching the
   // disabled-state guard contract in AGENTS.md.
+  //
+  // Nonce handshake (#811): the dispatcher fires a one-shot
+  // `muga:history-gate:nonce` event at document_start before any page
+  // script executes. We capture the nonce here, then remove the listener
+  // so no persistent listener can be observed. All subsequent gate events
+  // must carry the matching nonce or they are silently ignored — this
+  // prevents hostile page scripts from spoofing the gate event.
+  let _capturedNonce = null;
+  function _onNonce(e) {
+    if (e && e.detail && typeof e.detail.nonce === "string") {
+      _capturedNonce = e.detail.nonce;
+    }
+    document.removeEventListener("muga:history-gate:nonce", _onNonce);
+  }
+  document.addEventListener("muga:history-gate:nonce", _onNonce);
+
   let _gateOpen = false;
+  let _warnedOrder = false;
   document.addEventListener("muga:history-gate", (e) => {
-    _gateOpen = !!(e && e.detail && e.detail.enabled);
+    // Reject events that do not carry the handshake nonce. A missing or
+    // mismatched nonce indicates a spoofed dispatch from page-script code.
+    if (!e || !e.detail || e.detail.nonce !== _capturedNonce) {
+      if (!_warnedOrder && e && e.detail && typeof e.detail.nonce === "string" && _capturedNonce === null) {
+        _warnedOrder = true;
+        console.warn("[MUGA] gate event before nonce capture — check manifest script order");
+      }
+      return;
+    }
+    _gateOpen = !!(e.detail.enabled);
   });
 
   function gateOpen() {

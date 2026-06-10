@@ -226,6 +226,21 @@
   // each gate-open event until the first time the cleaner acts on an
   // intermediary URL (result.cleaned === true), which performs the clear
   // regardless of how many keys were present. After that we latch off.
+  //
+  // Nonce handshake (#811): capture the shared secret from the one-shot
+  // `muga:history-gate:nonce` event fired at document_start by the
+  // dispatcher. Gate events without the matching nonce are rejected.
+  let _capturedNonce = null;
+  (function () {
+    function _onNonce(e) {
+      if (e && e.detail && typeof e.detail.nonce === "string") {
+        _capturedNonce = e.detail.nonce;
+      }
+      document.removeEventListener("muga:history-gate:nonce", _onNonce);
+    }
+    document.addEventListener("muga:history-gate:nonce", _onNonce);
+  })();
+
   let _haveCleaned = false;
 
   function attemptCleanup() {
@@ -238,8 +253,16 @@
     }
   }
 
+  let _warnedOrder = false;
   document.addEventListener("muga:history-gate", (e) => {
-    const enabled = !!(e && e.detail && e.detail.enabled);
+    if (!e || !e.detail || e.detail.nonce !== _capturedNonce) {
+      if (!_warnedOrder && e && e.detail && typeof e.detail.nonce === "string" && _capturedNonce === null) {
+        _warnedOrder = true;
+        console.warn("[MUGA] gate event before nonce capture — check manifest script order");
+      }
+      return;
+    }
+    const enabled = !!(e.detail.enabled);
     if (enabled) attemptCleanup();
   });
 })();
