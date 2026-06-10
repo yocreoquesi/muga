@@ -207,37 +207,35 @@
         <label class="toggle"><input type="checkbox" id="dev-mode" data-i18n-aria-label="aria_dev_mode"><span class="slider"></span></label>
       </div>
     </div>
-    <div id="dev-tools-card" style="display:none;">
+    <div id="dev-tools-card" class="dev-tools-hidden">
       <!-- Advanced: per-shortener pass/fail counters (ADR-0004 phase 4, #700) -->
-      <div class="card" style="margin-top:10px;" id="shortener-stats-card">
+      <div class="card card-dev" id="shortener-stats-card">
         <div class="row">
           <div class="row-label">
             <strong data-i18n="shortener_stats_label">Shortener resolution stats (beta)</strong>
             <small data-i18n="shortener_stats_hint">Pass/fail counts for native shortener resolution since last reset. Never transmitted.</small>
           </div>
         </div>
-        <div id="shortener-stats-table" style="padding:0 0 8px 0;"></div>
-        <div style="padding:0 0 8px 0;">
+        <div id="shortener-stats-table" class="pb-8"></div>
+        <div class="pb-8">
           <button id="shortener-stats-reset-btn" class="link-btn" data-i18n="shortener_stats_reset">Reset counters</button>
         </div>
       </div>
 
       <!-- Advanced: Affiliate stores -->
-      <div class="card" style="margin-top:10px;">
-        <details class="stores-details">
+      <div class="card card-dev"><details class="stores-details">
           <summary class="stores-summary">
             <span data-i18n="section_stores">Affiliate stores</span>
             <span class="stores-count" id="stores-count"></span>
           </summary>
           <div class="stores-grid" id="stores-grid"></div>
-          <div style="padding: 4px 16px 12px">
+          <div class="stores-footer-hint">
             <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active and configured. Grey = account pending registration.</p>
           </div>
         </details>
       </div>
 
-      <!-- Advanced: URL cleaning -->
-      <div class="card" style="margin-top:10px;">
+      <!-- Advanced: URL cleaning --><div class="card card-dev">
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_dnr_label">Denoise links before navigation</strong>
@@ -281,12 +279,12 @@
       </div>
 
       <!-- Advanced: Tracking categories -->
-      <h2 style="margin-top:16px" data-i18n="section_tracking_categories">Tracking categories</h2>
+      <h2 class="mt-16" data-i18n="section_tracking_categories">Tracking categories</h2>
       <div class="card" id="categories-card"></div>
-      <p class="hint" style="margin-top:8px" data-i18n="categories_hint"></p>
+      <p class="hint mt-8" data-i18n="categories_hint"></p>
 
       <!-- Advanced: Custom tracking params -->
-      <h2 style="margin-top:16px" data-i18n="section_custom_params">Custom tracking params: always strip</h2>
+      <h2 class="mt-16" data-i18n="section_custom_params">Custom tracking params: always strip</h2>
       <div class="card">
         <div class="list-section">
           <div class="list-items" id="custom-params-items"></div>
@@ -299,7 +297,7 @@
       </div>
 
       <!-- Import / Export -->
-      <h2 style="margin-top:16px" data-i18n="section_data">Import / Export</h2>
+      <h2 class="mt-16" data-i18n="section_data">Import / Export</h2>
       <div class="card">
         <div class="row">
           <div class="row-label">
@@ -312,12 +310,12 @@
             <strong data-i18n="import_label">Import settings</strong>
           </div>
           <button class="add-btn" id="import-btn" data-i18n="import_btn">Import settings</button>
-          <input type="file" id="import-file" accept=".json" style="display:none">
+          <input type="file" id="import-file" accept=".json" class="input-file-hidden">
         </div>
       </div>
 
       <!-- Developer tools -->
-      <h2 style="margin-top:16px" data-i18n="section_dev_tools">Developer tools</h2>
+      <h2 class="mt-16" data-i18n="section_dev_tools">Developer tools</h2>
       <div class="card">
         <div class="row">
           <div class="row-label">
@@ -354,18 +352,18 @@
           </div>
           <button class="add-btn" id="dev-preview-nudge-btn" data-i18n="dev_nudge_btn">Preview</button>
         </div>
-        <div class="list-section" style="border-top:0.5px solid var(--border);">
-          <strong style="font-size:13.5px;font-weight:500;display:block;margin-bottom:6px;" data-i18n="dev_url_tester_label">URL tester</strong>
-          <small style="color:var(--text2);font-size:12px;display:block;margin-bottom:10px;" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
+        <div class="list-section url-tester-section">
+          <strong class="url-tester-label" data-i18n="dev_url_tester_label">URL tester</strong>
+          <small class="url-tester-hint" data-i18n="dev_url_tester_hint">Paste any URL to see what MUGA will clean</small>
           <div class="add-row">
-            <input id="dev-url-input" type="text" style="font-family:monospace;" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder" data-i18n-aria-label="aria_dev_url_input">
+            <input id="dev-url-input" type="text" class="input-mono" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder" data-i18n-aria-label="aria_dev_url_input">
             <button class="add-btn" id="dev-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
           </div>
-          <div id="dev-url-result" style="margin-top:10px;display:none;">
-            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;" data-i18n="dev_url_result_label">Result</div>
-            <div id="dev-url-clean" style="font-family:monospace;font-size:12px;color:#2563eb;word-break:break-all;margin-bottom:6px;"></div>
-            <div id="dev-url-removed" style="font-size:11px;color:var(--text2);"></div>
-            <button class="report-btn" id="dev-url-report-btn" style="display:none;margin-top:8px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;" data-i18n="dev_url_report_btn">Report a problem with this URL</button>
+          <div id="dev-url-result" hidden>
+            <div class="result-label" data-i18n="dev_url_result_label">Result</div>
+            <div id="dev-url-clean"></div>
+            <div id="dev-url-removed" class="result-removed"></div>
+            <button class="report-btn report-btn-inline" id="dev-url-report-btn" hidden data-i18n="dev_url_report_btn">Report a problem with this URL</button>
           </div>
         </div>
       </div>

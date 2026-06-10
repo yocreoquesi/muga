@@ -567,3 +567,68 @@ input[type="text"]:not(.add-row input) {
   text-decoration: none;
   text-align: center;
 }
+
+/* ---------- Migrated from inline style= attributes (#858) -------------- */
+
+/* Utility: spacing */
+.mt-8  { margin-top:  8px; }
+.mt-10 { margin-top: 10px; }
+.mt-16 { margin-top: 16px; }
+
+/* Utility: padding shorthand used in dev-tools card rows */
+.pb-8 { padding: 0 0 8px 0; }
+
+/* Stores grid hint padding */
+.stores-footer-hint { padding: 4px 16px 12px; }
+
+/* Dev-tools card: visually subordinate card spacing */
+.card-dev { margin-top: 10px; }
+
+/* Outer dev-tools container — hidden until dev mode is active.
+   JS toggles visibility by adding/removing this class so that
+   display:none is controlled at the class level, not inline. */
+.dev-tools-hidden { display: none; }
+
+/* File input that is never rendered but must be click()-able */
+.input-file-hidden { display: none; }
+
+/* Border separator above the URL tester */
+.url-tester-section { border-top: 0.5px solid var(--border); }
+
+/* URL tester label */
+.url-tester-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* URL tester hint text */
+.url-tester-hint {
+  color: var(--text2);
+  font-size: 12px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* Monospace text input (URL tester input) */
+.input-mono { font-family: var(--font-mono); }
+
+/* URL tester result container spacing (visibility via hidden attribute) */
+#dev-url-result { margin-top: 10px; }
+
+/* URL tester result sub-labels */
+.result-label {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+
+/* Removed-params line in URL tester result */
+.result-removed {
+  font-size: 11px;
+  color: var(--text2);
+}
+
+/* Report-btn spacing (the button itself is styled by .report-btn above) */
+.report-btn-inline { margin-top: 8px; font-size: 11px; }
