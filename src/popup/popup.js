@@ -392,16 +392,21 @@ function renderCountCelebration(result, url, lang) {
     // Split around {n} and rebuild via text nodes + a number span. Avoids
     // innerHTML so the i18n string can never become an injection vector,
     // and lets CSS animate just the digits.
+    // The "one" key has no {n} placeholder — render plain text only in that
+    // case so the span-build path never runs and gets clobbered (bug #819).
     el.replaceChildren();
     const [before, after] = template.split("{n}", 2);
-    if (before) el.appendChild(document.createTextNode(before));
-    const number = document.createElement("span");
-    number.className = "preview-count-number";
-    number.textContent = String(count);
-    el.appendChild(number);
-    if (after !== undefined) el.appendChild(document.createTextNode(after));
-    // The "one" key has no {n} placeholder — render plain text in that case.
-    if (after === undefined) el.textContent = template;
+    if (after === undefined) {
+      // No {n} placeholder (e.g. preview_count_one): plain text only.
+      el.textContent = template;
+    } else {
+      if (before) el.appendChild(document.createTextNode(before));
+      const number = document.createElement("span");
+      number.className = "preview-count-number";
+      number.textContent = String(count);
+      el.appendChild(number);
+      el.appendChild(document.createTextNode(after));
+    }
     el.classList.remove("is-clean");
     el.dataset.animating = "true";
     el.hidden = false;
