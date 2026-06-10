@@ -35,7 +35,8 @@
     "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test",
     "typecheck": "tsc -p jsconfig.json",
-    "lint:js": "eslint ."
+    "lint:js": "eslint .",
+    "moat:report": "node tools/moat-expansion/cli.mjs"
   },
   "engines": {
     "node": ">=20.11"
