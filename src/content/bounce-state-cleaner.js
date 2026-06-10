@@ -253,6 +253,12 @@
     }
   }
 
+  // Latch re-arm (#832): track the previous gate state so a disable→re-enable
+  // cycle on the same intermediary page re-cleans storage that was written
+  // in between. When the gate transitions from true→false we reset _haveCleaned
+  // so the next gate-open event triggers a fresh cleanup pass.
+  let _prevGateEnabled = false;
+
   let _warnedOrder = false;
   document.addEventListener("muga:history-gate", (e) => {
     if (!e || !e.detail || e.detail.nonce !== _capturedNonce) {
@@ -263,6 +269,12 @@
       return;
     }
     const enabled = !!(e.detail.enabled);
+    // Re-arm the latch when the gate closes so a subsequent re-enable cleans
+    // any storage written while MUGA was disabled.
+    if (_prevGateEnabled && !enabled) {
+      _haveCleaned = false;
+    }
+    _prevGateEnabled = enabled;
     if (enabled) attemptCleanup();
   });
 })();
