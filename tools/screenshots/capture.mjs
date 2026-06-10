@@ -129,7 +129,7 @@ async function captureFile(context, htmlFile, destFilename, label) {
 // the content script runs on the navigated URL regardless of whether the
 // remote server responds, but for reliability we navigate to a constructed
 // local URL via the extension popup instead of hitting amazon.es.
-const DIRTY_AMAZON_URL =
+const _DIRTY_AMAZON_URL =
   'https://www.amazon.es/dp/B09B8YWXDF' +
   '?tag=youtuber-21' +
   '&linkCode=ll1' +

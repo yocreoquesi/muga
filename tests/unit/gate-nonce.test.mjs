@@ -23,7 +23,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import { readdirSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -160,7 +159,7 @@ describe("gate-nonce — handshake leaves no readable global behind", () => {
 // manifests will automatically break this test.
 
 describe("gate-nonce — manifest ordering: dispatcher runs last", () => {
-  const contentDir = join(__dirname, "../../src/content");
+  const _contentDir = join(__dirname, "../../src/content");
   const DISPATCHER = "content/history-defuser.js";
   const NONCE_PATTERN = /muga:history-gate:nonce/;
 

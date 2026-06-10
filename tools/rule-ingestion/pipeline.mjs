@@ -66,8 +66,8 @@ const DEFAULT_SURFACE_INPUT_PATH = resolve(__dirname, "quarantine/surface-input.
  * @param {string}         [opts.sourcePath]      tools/rules-source/params.json path.
  * @param {string}         [opts.domainRulesPath]    src/rules/domain-rules.json path.
  * @param {string}         [opts.surfaceInputPath]   quarantine/surface-input.json path (injectable for tests).
- * @param {string}         opts.signingKeyPath    Ed25519 private key PEM path. Fail-closed: if falsy, rejects.
- * @param {string[]}       [opts.trustedKeys]     Trusted public keys. Defaults to TRUSTED_PUBLIC_KEYS.
+ * @param {string}         [opts.signingKeyPath]  Ed25519 private key PEM path. Fail-closed: if falsy, rejects.
+ * @param {readonly string[]} [opts.trustedKeys]  Trusted public keys. Defaults to TRUSTED_PUBLIC_KEYS.
  * @param {SubtleCrypto}   [opts.subtle]          Defaults to globalThis.crypto?.subtle.
  * @param {number}         [opts.version]         Target rules version. If omitted, orchestrate-cli resolves it.
  * @param {Date}           [opts.now]             Injectable clock.
@@ -106,6 +106,7 @@ export async function runPipeline({
       "[pipeline] ERROR: signingKeyPath is required. " +
         "Set MUGA_SIGNING_KEY_PATH or pass signingKeyPath directly."
     );
+    // @ts-expect-error — intentional Error extension: exitCode signals process exit code to CLI callers
     err.exitCode = 2;
     throw err;
   }
@@ -118,11 +119,13 @@ export async function runPipeline({
 
   // ── Step 1: Ingest ─────────────────────────────────────────────────────────
   // runIngestion returns { candidates, stats } (#782 quarantine-surface).
+  // nowDate.toISOString() converts the normalized Date to the ISO string that
+  // runIngestion's `now` parameter expects (#823).
   const { candidates, stats } = await runIngestion({
     adapters,
     fetchImpl,
     quarantineDir: dirname(candidatesPath),
-    now,
+    now: nowDate?.toISOString(),
   });
 
   // ── CRITICAL: Write report wrapper (NOT bare array) ───────────────────────

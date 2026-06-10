@@ -144,7 +144,7 @@ test.describe("Remote rules — E2E", () => {
    * Note: workers: 1 in playwright.config.mjs ensures serial execution — no
    * shared state races between tests.
    */
-  test.beforeEach(async ({ context, extensionId }) => {
+  test.beforeEach(async ({ context, extensionId: _extensionId }) => {
     // Intercept at context level so service-worker fetches are also stubbed
     await context.route("**/rules.muga.app/**", (route) => {
       route.fulfill({
@@ -159,7 +159,7 @@ test.describe("Remote rules — E2E", () => {
   });
 
   test("SC-02: enable → fetch → verify → UI shows timestamp and correct param count",
-    async ({ context, optionsPage: page, extensionId }) => {
+    async ({ context: _context, optionsPage: page, extensionId: _extensionId }) => {
       // Remote-rules section must be visible on Chrome (supports alarms + DNR)
       await expect(page.locator("#remote-rules-section")).not.toBeHidden();
 
@@ -196,7 +196,7 @@ test.describe("Remote rules — E2E", () => {
   );
 
   test("SC-12: param already in TRACKING_PARAMS is silently deduped from count",
-    async ({ context, optionsPage: page }) => {
+    async ({ context: _context, optionsPage: page }) => {
       // The signed payload includes "utm_source" (built-in) alongside unique params
       expect(SIGNED_PAYLOAD.params).toContain("utm_source");
 
@@ -219,7 +219,7 @@ test.describe("Remote rules — E2E", () => {
   );
 
   test("SC-03: disable → status lines hidden, storage cleared",
-    async ({ context, optionsPage: page }) => {
+    async ({ context: _context, optionsPage: page }) => {
       // Enable first
       await grantHostPermission(page);
       const enableResult = await enableRemoteRules(page);

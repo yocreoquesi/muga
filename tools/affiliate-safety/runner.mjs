@@ -40,7 +40,7 @@ export function runAffiliateCanaries() {
     const policy = getLandingPolicy(c.landingHost, c.referrer);
     for (const param of c.mustPreserve) {
       if (!policy.preserve.has(param)) {
-        failures.push({ name: c.name, kind: "landing", reason: `${param} not preserved (network ${c.network})` });
+        failures.push(/** @type {CanaryFailure} */ ({ name: c.name, kind: /** @type {"landing"} */ ("landing"), reason: `${param} not preserved (network ${c.network})` }));
       }
     }
   }

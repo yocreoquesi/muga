@@ -19,8 +19,6 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   generateKeyPairSync,
-  createPrivateKey,
-  createPublicKey,
 } from "node:crypto";
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";

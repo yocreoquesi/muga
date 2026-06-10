@@ -22,7 +22,7 @@
  * SC covered: SC-04, SC-05, SC-06, SC-07, SC-08, SC-09, SC-10, SC-11, SC-12, SC-14, SC-15.
  */
 
-import { test, describe, before, beforeEach } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign as cryptoSign } from "node:crypto";
 
@@ -120,7 +120,7 @@ function makeDnrFake() {
 
 // ── Helper: build a valid signed payload ─────────────────────────────────────
 
-function makePayload({
+function _makePayload({
   version = 1,
   published = new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
   params = ["utm_test", "fbclid_test"],
@@ -1054,7 +1054,6 @@ describe("runRemoteRulesFetch — orchestrator (integration-ish)", () => {
     const prevParams = ["utm_current"];
     const prevMeta = { version: 5, fetchedAt: null, paramCount: 1, lastError: null, published: null };
 
-    const published = new Date(Date.now() - 1000 * 60 * 60).toISOString();
     const regressionBody = makeValidPayloadBody(3, ["utm_old"]); // version 3 < stored 5
 
     const deps = makeDeps({

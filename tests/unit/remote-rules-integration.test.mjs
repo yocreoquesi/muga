@@ -41,7 +41,6 @@ import {
   clearRemoteCache,
   canonicalMessage,
   REMOTE_RULE_ID,
-  ERR,
 } from "../../src/lib/remote-rules.js";
 
 import { processUrl } from "../../src/lib/cleaner.js";

@@ -168,7 +168,7 @@ describe("Smoke: LinkedIn search", () => {
 // ---------------------------------------------------------------------------
 describe("Smoke: OAuth flow exemption", () => {
   test("Google OAuth untouched", () => {
-    const { cleanUrl, action } = clean(
+    const { action } = clean(
       "https://accounts.google.com/o/oauth2/auth?client_id=abc&redirect_uri=https://app.com/cb&state=xyz&utm_source=email"
     );
     assert.equal(action, "untouched");

@@ -62,7 +62,7 @@ test.describe("Popup", () => {
     });
   });
 
-  test("settings link opens options page", async ({ context, extensionId, popupPage: page }) => {
+  test("settings link opens options page", async ({ context, extensionId: _extensionId, popupPage: page }) => {
     const pagePromise = context.waitForEvent("page");
     await page.locator("#open-options").click();
     const optionsPage = await pagePromise;

@@ -69,7 +69,6 @@ describe("URL_RE sync — service-worker.js vs content/cleaner.js", () => {
     // eval is intentionally used here: we need to reconstruct the RegExp from
     // the source literal to verify its semantics, not just its text.
     const literal = extractUrlReLiteral(swSource);
-    // eslint-disable-next-line no-eval
     const makeRe = () => eval(literal);
     assert.ok(makeRe().test("https://example.com?utm_source=google"), "must match https URL");
     assert.ok(makeRe().test("http://foo.bar/path?q=1"), "must match http URL");

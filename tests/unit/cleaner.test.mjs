@@ -33,7 +33,7 @@ import { pathStripRulesFixture, pathAffiliateRulesFixture } from "./helpers/path
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const domainRules = require("../../src/rules/domain-rules.json");
-const CONTENT_CLEANER_SOURCE = readFileSync(
+const _CONTENT_CLEANER_SOURCE = readFileSync(
   join(__dirname, "../../src/content/cleaner.js"), "utf8"
 );
 const POPUP_SOURCE = readFileSync(
@@ -629,7 +629,7 @@ describe("Preference interaction matrix — amazon.es with real tags", () => {
 
   // --- inject:OFF, stripAll:OFF, notify:OFF (default) ---
   test("all OFF + foreign tag → tag preserved, tracking stripped", () => {
-    const { cleanUrl, action } = processUrl(WITH_TRACKING, { ...PREFS }, domainRules);
+    const { cleanUrl } = processUrl(WITH_TRACKING, { ...PREFS }, domainRules);
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("tag"), "creator-21", "foreign tag preserved");
     assert.equal(u.searchParams.get("utm_source"), null, "tracking stripped");
@@ -1462,7 +1462,7 @@ describe("affiliate param / tracking param collision", () => {
   });
 
   test("whitelist protects ref= on pccomponentes", () => {
-    const { cleanUrl, action } = processUrl(
+    const { cleanUrl } = processUrl(
       "https://www.pccomponentes.com/producto?ref=creator-21",
       { ...PREFS, injectOwnAffiliate: false, whitelist: ["pccomponentes.com::ref::creator-21"] }
     );
@@ -2149,7 +2149,7 @@ describe("N9 — processUrl edge cases", () => {
 
   test("ftp:// URL → untouched (non-http(s) parsed but no matching params)", () => {
     const raw = "ftp://files.example.com/data?utm_source=email";
-    const { action, cleanUrl } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS);
     // new URL("ftp://...") succeeds but utm_source would still be found in searchParams
     // processUrl does not filter by protocol — it processes any parseable URL
     assert.equal(typeof cleanUrl, "string");

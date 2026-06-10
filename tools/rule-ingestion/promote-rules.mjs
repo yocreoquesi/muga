@@ -126,13 +126,13 @@ export function computeMerge(currentParams, cleanParams) {
  *
  * All I/O paths and crypto dependencies are injectable for unit tests.
  *
- * @param {object} opts
- * @param {string}       opts.promotePath      Path to promote-candidates.json.
- * @param {string}       opts.sourcePath       Path to tools/rules-source/params.json.
- * @param {string}       opts.domainRulesPath  Path to src/rules/domain-rules.json.
- * @param {string[]}     [opts.trustedKeys]    Defaults to TRUSTED_PUBLIC_KEYS.
- * @param {SubtleCrypto} [opts.subtle]         Defaults to globalThis.crypto?.subtle.
- * @param {Date}         [opts.now]            Defaults to new Date().
+ * @param {object} [opts]
+ * @param {string}          [opts.promotePath]    Path to promote-candidates.json.
+ * @param {string}          [opts.sourcePath]     Path to tools/rules-source/params.json.
+ * @param {string}          [opts.domainRulesPath] Path to src/rules/domain-rules.json.
+ * @param {readonly string[]} [opts.trustedKeys]  Defaults to TRUSTED_PUBLIC_KEYS.
+ * @param {SubtleCrypto}    [opts.subtle]         Defaults to globalThis.crypto?.subtle.
+ * @param {Date}            [opts.now]            Defaults to new Date().
  *
  * @returns {Promise<{
  *   verified: boolean,

@@ -45,7 +45,7 @@ const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
  * recordFrequency (which calls tracker.observe per name), we capture the
  * call order relative to the injection step.
  */
-function makeOrderSpy(url) {
+function _makeOrderSpy(url) {
   const calls = [];
   return {
     observe(domain, name, value) {
@@ -62,7 +62,7 @@ describe("TS-11 — recordFrequency fires after Bookshop injection (Site B order
     const tracker = {
       callCount: 0,
       observedNames: [],
-      observe(domain, name, value) {
+      observe(domain, name, _value) {
         this.callCount++;
         this.observedNames.push(name);
         return Promise.resolve();

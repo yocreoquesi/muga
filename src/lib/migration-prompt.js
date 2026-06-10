@@ -44,6 +44,7 @@ import { recordResponse, getAllResponses } from "./migration-storage.js";
  * @param {(prefs:object) => Promise<void>} args.applyPrefs
  *   - Applies the proposed pref change on accept.
  * @param {(key:string) => string} args.t - i18n lookup.
+ * @param {ReadonlyArray<object>} [args.migrations] - Optional migration list override; defaults to MIGRATIONS.
  * @returns {{ refresh: () => Promise<void> }}
  */
 export function createMigrationPrompt({

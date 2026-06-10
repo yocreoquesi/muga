@@ -28,7 +28,6 @@ import { join, dirname } from "node:path";
 // Import pure validation functions from src/lib/remote-rules.js.
 // These functions have zero I/O and no browser API dependencies.
 import {
-  validatePayloadShape,
   validateParams,
   ERR,
 } from "../src/lib/remote-rules.js";
@@ -109,25 +108,28 @@ function validateSourceShape(obj) {
     return { ok: false, error: "Source must be a JSON object" };
   }
 
+  /** @type {Record<string, unknown>} */
+  const o = /** @type {Record<string, unknown>} */ (obj);
+
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "version") ||
-    typeof obj.version !== "number" ||
-    !Number.isInteger(obj.version)
+    !Object.prototype.hasOwnProperty.call(o, "version") ||
+    typeof o.version !== "number" ||
+    !Number.isInteger(o.version)
   ) {
     return { ok: false, error: "Missing or invalid 'version' field (must be an integer)" };
   }
 
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "published") ||
-    typeof obj.published !== "string"
+    !Object.prototype.hasOwnProperty.call(o, "published") ||
+    typeof o.published !== "string"
   ) {
     return { ok: false, error: "Missing or invalid 'published' field (must be an ISO-8601 string)" };
   }
 
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "params") ||
-    !Array.isArray(obj.params) ||
-    !obj.params.every(p => typeof p === "string")
+    !Object.prototype.hasOwnProperty.call(o, "params") ||
+    !Array.isArray(o.params) ||
+    !/** @type {unknown[]} */ (o.params).every(p => typeof p === "string")
   ) {
     return { ok: false, error: "Missing or invalid 'params' field (must be an array of strings)" };
   }
@@ -159,7 +161,9 @@ function validateParamsForSource(params) {
   //   This makes version/freshness checks trivially pass so we focus on format/denylist.
   const result = validateParams(
     params,
-    { version: 0 },
+    // stored.published is never read by validateParams — only stored.version is
+    // used for monotonicity. Supply null to satisfy the JSDoc type (#823).
+    { version: 0, published: null },
     Date.now(),
     {
       newVersion: 999_999_999,

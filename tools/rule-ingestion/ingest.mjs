@@ -147,6 +147,7 @@ export async function runIngestion({
     const err = new Error(
       `[runIngestion] All adapters failed — ingestion aborted. Failures: ${failureList}`
     );
+    // @ts-expect-error — intentional Error extension: exitCode signals process exit code to CLI callers
     err.exitCode = 1;
     throw err;
   }

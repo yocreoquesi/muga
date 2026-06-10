@@ -383,7 +383,6 @@ describe("Regression: Amazon ASIN case sensitivity", () => {
   test("notamazon.com is not treated as Amazon domain", () => {
     const { cleanUrl } = clean("https://notamazon.com/dp/B0B9N3QSL3?ref=tracking");
     // Should NOT apply Amazon path cleaning
-    const u = new URL(cleanUrl);
     assert.ok(!cleanUrl.includes("/dp/B0B9N3QSL3/"), "notamazon.com must not get Amazon path normalization");
   });
 });
@@ -436,7 +435,7 @@ describe("Danawa search URL cleaning", () => {
 
 describe("Naver Shopping URL cleaning", () => {
   test("strips click attribution, preserves search params", () => {
-    const { cleanUrl, removedTracking } = clean(
+    const { cleanUrl } = clean(
       "https://search.shopping.naver.com/search?query=laptop&sort=rel&frm=NVSCPRO&NaPm=ct%3Dabc&nv_ad=1"
     );
     const u = new URL(cleanUrl);

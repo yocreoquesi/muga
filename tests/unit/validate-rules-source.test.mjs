@@ -21,14 +21,14 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { writeFileSync, readFileSync, mkdirSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(__dirname, "../../tools/validate-rules-source.mjs");
-const SOURCE_DIR = join(__dirname, "../../tools/rules-source");
+const _SOURCE_DIR = join(__dirname, "../../tools/rules-source");
 
 // ---------------------------------------------------------------------------
 // Helper: run the validator with a given source payload string

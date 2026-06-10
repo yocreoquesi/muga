@@ -15,8 +15,6 @@ import assert from "node:assert/strict";
 import {
   applyPathStrip,
   getPathAffiliatePolicy,
-  loadPathStripRules,
-  loadPathAffiliateRules,
 } from "../../src/lib/path-rules.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────

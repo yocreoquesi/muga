@@ -74,7 +74,10 @@ function validateSource(obj) {
     return { ok: false, error: "Source must be a JSON object" };
   }
 
-  if (Object.prototype.hasOwnProperty.call(obj, "sig")) {
+  /** @type {Record<string, unknown>} */
+  const o = /** @type {Record<string, unknown>} */ (obj);
+
+  if (Object.prototype.hasOwnProperty.call(o, "sig")) {
     return {
       ok: false,
       error: "Source file must NOT contain a 'sig' field — use the unsigned source",
@@ -82,30 +85,30 @@ function validateSource(obj) {
   }
 
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "version") ||
-    typeof obj.version !== "number" ||
-    !Number.isInteger(obj.version)
+    !Object.prototype.hasOwnProperty.call(o, "version") ||
+    typeof o.version !== "number" ||
+    !Number.isInteger(o.version)
   ) {
     return { ok: false, error: "Missing or invalid 'version' field (must be an integer)" };
   }
 
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "published") ||
-    typeof obj.published !== "string"
+    !Object.prototype.hasOwnProperty.call(o, "published") ||
+    typeof o.published !== "string"
   ) {
     return { ok: false, error: "Missing or invalid 'published' field (must be an ISO-8601 string)" };
   }
 
   if (
-    !Object.prototype.hasOwnProperty.call(obj, "params") ||
-    !Array.isArray(obj.params) ||
-    !obj.params.every(p => typeof p === "string")
+    !Object.prototype.hasOwnProperty.call(o, "params") ||
+    !Array.isArray(o.params) ||
+    !/** @type {unknown[]} */ (o.params).every(p => typeof p === "string")
   ) {
     return { ok: false, error: "Missing or invalid 'params' field (must be an array of strings)" };
   }
 
   // Validate each param
-  for (const param of obj.params) {
+  for (const param of /** @type {string[]} */ (o.params)) {
     if (param.length < 1 || param.length > MAX_PARAM_LEN) {
       return {
         ok: false,

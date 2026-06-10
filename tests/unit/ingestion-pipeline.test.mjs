@@ -231,7 +231,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
     };
 
     // Pass a WRONG trustedKeys so promote's verify fails → PromoteError(2)
-    const { privateKey: wrongKey, publicKey: wrongPub } = generateKeyPairSync("ed25519");
+    const { publicKey: wrongPub } = generateKeyPairSync("ed25519");
     const wrongTrustedKeys = [exportPubKeyBase64(wrongPub)];
 
     let thrown = null;
