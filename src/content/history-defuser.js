@@ -137,9 +137,21 @@
 
   // Re-read on storage changes so toggling MUGA off in the popup closes
   // the gate without a page reload.
+  //
+  // Once-guard (#832): the IIFE's window.__mugaHistoryDefuserGate check
+  // (above) already prevents this block from running more than once per
+  // window lifetime, making duplicate listener registration impossible in
+  // practice. The _storageListenerInstalled boolean is defense-in-depth:
+  // it makes the once-only intent explicit and guards against any future
+  // refactor that might extract this block into a callable function or
+  // remove the top-level gate.
+  let _storageListenerInstalled = false;
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((_changes, area) => {
-      if (area === "sync" || area === "local") readPrefsAndGate();
-    });
+    if (!_storageListenerInstalled) {
+      _storageListenerInstalled = true;
+      chrome.storage.onChanged.addListener((_changes, area) => {
+        if (area === "sync" || area === "local") readPrefsAndGate();
+      });
+    }
   }
 })();

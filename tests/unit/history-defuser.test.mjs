@@ -298,6 +298,32 @@ describe("history-defuser — content-script wiring", () => {
       "gate script must dispatch muga:history-gate events");
   });
 
+  test("content/history-defuser.js guards storage listener with a once-flag (#832)", () => {
+    // Defense-in-depth guard: a _storageListenerInstalled boolean (or equivalent
+    // named flag) must gate the addListener call so that any hypothetical
+    // re-execution path (or future refactor) cannot accumulate duplicate listeners.
+    // The IIFE guard (window.__mugaHistoryDefuserGate) already prevents double
+    // execution in practice; this flag is explicit defense-in-depth + documentation.
+    const src = readFileSync(
+      join(__dirname, "../../src/content/history-defuser.js"), "utf8"
+    );
+    assert.ok(
+      /_storageListenerInstalled/.test(src),
+      "content/history-defuser.js must use a _storageListenerInstalled boolean to guard addListener",
+    );
+    // The flag must be set to true before or immediately after addListener so
+    // subsequent code paths cannot re-register.
+    assert.ok(
+      /_storageListenerInstalled\s*=\s*true/.test(src),
+      "content/history-defuser.js must set _storageListenerInstalled = true after registering",
+    );
+    // The addListener must be conditional on the flag being falsy.
+    assert.ok(
+      /!\s*_storageListenerInstalled/.test(src) || /if\s*\(\s*!_storageListenerInstalled/.test(src),
+      "content/history-defuser.js must check !_storageListenerInstalled before calling addListener",
+    );
+  });
+
   test("content/history-defuser-mainworld.js is an IIFE that wraps both history methods", () => {
     const src = readFileSync(
       join(__dirname, "../../src/content/history-defuser-mainworld.js"), "utf8"

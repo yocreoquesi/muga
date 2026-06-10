@@ -20,7 +20,12 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
 import { createBounceStateCleaner } from "../../src/lib/bounce-state-cleaner.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -287,5 +292,73 @@ describe("createBounceStateCleaner — factory contract", () => {
     assert.equal(result.cleaned, false);
     assert.equal(local.__size, 1);
     assert.equal(session.__size, 1);
+  });
+});
+
+// ── Content-script IIFE wiring — structural (#832) ───────────────────────
+//
+// The IIFE in src/content/bounce-state-cleaner.js keeps a _haveCleaned
+// latch that prevents double-cleaning on the same page load. Bug #832:
+// on a disable->re-enable cycle while staying on an intermediary page,
+// _haveCleaned stays true and storage written between the disable and
+// re-enable is never wiped.
+//
+// Fix: track the previous gate state and reset _haveCleaned on a
+// true->false gate transition so the next enabled event re-cleans.
+//
+// These are source-analysis tests (no DOM). They verify the structural
+// contracts that make the latch re-arm sound without requiring jsdom.
+
+describe("bounce-state-cleaner — content-script IIFE latch re-arm (#832)", () => {
+  const iifeSrc = readFileSync(
+    join(__dirname, "../../src/content/bounce-state-cleaner.js"), "utf8",
+  );
+
+  test("IIFE tracks previous gate state with a _prevGateEnabled variable", () => {
+    assert.ok(
+      /_prevGateEnabled/.test(iifeSrc),
+      "bounce-state-cleaner.js must declare _prevGateEnabled to track the previous gate state",
+    );
+  });
+
+  test("IIFE resets _haveCleaned when gate transitions from true to false", () => {
+    // The reset must be conditional on the previous value being true and
+    // the new value being false (true->false transition).
+    assert.ok(
+      /_prevGateEnabled\s*&&\s*!enabled/.test(iifeSrc),
+      "bounce-state-cleaner.js must check _prevGateEnabled && !enabled to detect gate close",
+    );
+    assert.ok(
+      /_haveCleaned\s*=\s*false/.test(iifeSrc),
+      "bounce-state-cleaner.js must assign _haveCleaned = false as part of the latch re-arm",
+    );
+  });
+
+  test("IIFE updates _prevGateEnabled after each gate event", () => {
+    // Must update the previous-state variable so subsequent transitions
+    // are detected correctly.
+    assert.ok(
+      /_prevGateEnabled\s*=\s*enabled/.test(iifeSrc),
+      "bounce-state-cleaner.js must update _prevGateEnabled = enabled after each gate event",
+    );
+  });
+
+  test("IIFE still preserves nonce validation from #811 (#832 must not break it)", () => {
+    // The nonce check must remain — any gate event that fails nonce
+    // validation must be rejected before the latch re-arm logic runs.
+    assert.ok(
+      /detail\.nonce\s*!==\s*_capturedNonce/.test(iifeSrc) ||
+      /e\.detail\.nonce\s*!==\s*_capturedNonce/.test(iifeSrc),
+      "bounce-state-cleaner.js must retain the nonce validation guard from #811",
+    );
+  });
+
+  test("IIFE still latches _haveCleaned after successful clean", () => {
+    // The latch must still be set on cleaned === true so a single page
+    // load does not wipe storage on every repeated gate-open event.
+    assert.ok(
+      /_haveCleaned\s*=\s*true/.test(iifeSrc),
+      "bounce-state-cleaner.js must still set _haveCleaned = true after a successful clean",
+    );
   });
 });
