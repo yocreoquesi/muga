@@ -1,0 +1,44 @@
+name: discovered-validate
+
+# Validates incoming crawler discovery artifacts in discovered/ on PR and push.
+# Runs shape validation and Ed25519 signature verification via discovered-verify.mjs.
+# NEVER auto-merges; all discovered/ PRs require manual human review.
+# CODEOWNERS auto-requests the maintainer as reviewer.
+on:
+  pull_request:
+    paths:
+      - "discovered/**"
+      - "discovered.schema.json"
+      - "tools/rule-ingestion/discovered-verify.mjs"
+      - "tools/rule-ingestion/crawler-pubkey.txt"
+      - ".github/workflows/discovered-validate.yml"
+  push:
+    paths:
+      - "discovered/**"
+      - "discovered.schema.json"
+      - "tools/rule-ingestion/discovered-verify.mjs"
+      - "tools/rule-ingestion/crawler-pubkey.txt"
+      - ".github/workflows/discovered-validate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate and verify discovered artifacts
+        run: node tools/rule-ingestion/discovered-verify.mjs
