@@ -56,7 +56,13 @@ You are the **browser extension** — the primary implementation of MUGA's inter
 
 ## What sits upstream of you
 
-- `caps-crawler` — runs weekly and surfaces new redirect-wrapper and affiliate-program candidates. Those candidates are reviewed by the maintainer; accepted ones land in `src/rules/manifest.json` or `src/rules/wrappers.json` via a normal PR. The rule decision algorithm is documented in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
+- `caps-crawler` — runs weekly, discovers new tracking-parameter candidates, signs the discovery artifact with Ed25519 keypair `crawler-2026-a`, and opens a PR against `yocreoquesi/muga` targeting the `discovered/` landing zone.
+
+  **Receiver integration (this repo).** Every artifact that lands in `discovered/` is validated by `.github/workflows/discovered-validate.yml` (shape check + Ed25519 signature verification). The CODEOWNERS rule at `.github/CODEOWNERS` auto-requests the maintainer for human review. No artifact is ever auto-applied to `src/rules/`; all merges are manual. The rule decision algorithm is documented in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
+
+  **External steps required to complete the integration (out of scope for this repo — not yet done):**
+  1. Retarget `crawl.yml` in caps-crawler to push to `yocreoquesi/muga` instead of the current target.
+  2. Provision a fine-grained PAT with `contents:write` and `pull-requests:write` scopes on this repo, replacing `CAPS_SPEC_PR_TOKEN` in caps-crawler's secrets.
 
 ## What sits downstream of you
 

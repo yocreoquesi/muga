@@ -256,6 +256,10 @@ Triggered on `v*` tag push: unit tests → live integration → e2e Playwright �
 | URL_RE regex literal identical in SW + content script | `url-regex-sync.test.mjs` |
 | Wrapper DNR rules match wrappers.json | `wrapper-dnr-rules-sync.test.mjs` |
 
+### Discovered artifact validation (`.github/workflows/discovered-validate.yml`)
+
+Triggered on `pull_request` and `push` scoped to `discovered/**`, `discovered.schema.json`, `tools/rule-ingestion/discovered-verify.mjs`, `tools/rule-ingestion/crawler-pubkey.txt`, and the workflow file itself. Runs `node tools/rule-ingestion/discovered-verify.mjs` (CLI mode: iterates `discovered/*.json`, validates shape + Ed25519 signature, fails closed on any error). Permissions: `contents: read` only. No auto-merge — CODEOWNERS at `.github/CODEOWNERS` auto-requests the maintainer for every `discovered/` PR.
+
 ### Conventions
 
 - After editing `src/lib/affiliates-data.js` or any file imported by the bundle: run `npm run build:content`.
@@ -317,6 +321,8 @@ tests/
 │   ├── module-boundary-826.test.mjs  Acyclicity + re-export guards
 │   ├── docs-claims.test.mjs          Machine-enforced README/CONTRIBUTING accuracy
 │   ├── context-map.test.mjs          Path + load-bearing-claim guards for CONTEXT.md
+│   ├── discovered-verify.test.mjs    Behavioral: schema accept/reject + Ed25519 sig round-trip
+│   ├── discovered-workflow.test.mjs  Structural: trigger paths, permissions, Node 20, no auto-merge
 │   └── …
 ├── integration/               Stub + live Worker contract tests
 └── e2e/                       Playwright browser tests
@@ -326,7 +332,9 @@ tools/
 │   ├── adapters/              Signal-source adapters (adguard-tp, clearurls)
 │   ├── gates/                 Orchestration gates (affiliate, corroboration, canary, functional)
 │   ├── quarantine/            Ephemeral raw signals (gitignored)
-│   └── promote/               Signed promote artifact (gitignored except .gitkeep)
+│   ├── promote/               Signed promote artifact (gitignored except .gitkeep)
+│   ├── discovered-verify.mjs  Hand-rolled Ed25519 verify + shape validator for discovered/ artifacts
+│   └── crawler-pubkey.txt     Ed25519 public key for keypair-id crawler-2026-a
 ├── generate-rules.mjs         compile:rules entry point
 ├── bundle-content.mjs         build:content entry point
 └── sign-rules.mjs             Ed25519 signing tool
@@ -338,6 +346,17 @@ docs/
     ├── 0003-awin-redirect-model-resolution.md
     ├── 0004-decommission-unwrap-server-native-shortener-resolution.md
     └── 0005-rule-scaling-pipeline.md
+
+discovered/                    Crawler discovery artifact landing zone (audit trail)
+├── .gitkeep                   Keeps the directory tracked on a fresh clone
+└── README.md                  Arrival flow, schema/sig validation steps, reviewer checklist
+
+discovered.schema.json         Human-facing JSON Schema contract for crawler artifacts
+
+.github/
+├── CODEOWNERS                 /discovered/ @yocreoquesi — auto-requests reviewer on every artifact PR
+└── workflows/
+    └── discovered-validate.yml  PR+push validate: shape check + Ed25519 verify; contents:read; no auto-merge
 ```
 
 ---
