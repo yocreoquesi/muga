@@ -15,6 +15,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { waitForDnrPropagation } from "./helpers/index.mjs";
 
 const HOST = "muga-test-link-rewriter.invalid";
 
@@ -33,7 +34,9 @@ async function completeOnboarding(context, extensionId) {
     })
   );
   await page.close();
-  await new Promise(r => setTimeout(r, 500));
+  // Prefs broadcast has no observable signal after storage.set resolves.
+  // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+  await waitForDnrPropagation(page);
 }
 
 async function stubPage(page) {

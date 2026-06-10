@@ -34,7 +34,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
-import { killServiceWorker } from "./helpers/index.mjs";
+import { killServiceWorker, waitForDnrPropagation } from "./helpers/index.mjs";
 
 const FROM_HOST = "muga-test-from.invalid";
 const TO_HOST = "amazon.com";
@@ -79,7 +79,8 @@ async function completeOnboarding(context, extensionId) {
   );
   await page.close();
   // DNR rule propagation has no observable signal after storage.set resolves.
-  await new Promise(r => setTimeout(r, 500));
+  // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+  await waitForDnrPropagation(page);
 }
 
 test.describe("Local cleaning: click path (#409)", () => {
