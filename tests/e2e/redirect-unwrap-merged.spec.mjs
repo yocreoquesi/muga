@@ -12,6 +12,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { waitForDnrPropagation } from "./helpers/index.mjs";
 
 async function stubHost(page, hostname, body = `<!doctype html><html><body>${hostname} stub</body></html>`) {
   await page.route(`**://${hostname}/**`, (route) =>
@@ -36,10 +37,9 @@ async function ensureUnwrapEnabled(context, extensionId) {
     })
   );
   await page.close();
-  // REASON: chrome.storage.set has no observable signal that the SW's
-  // prefs cache has refreshed; the next page must read the new prefs
-  // from the SW message round-trip. 500ms is the empirical floor.
-  await new Promise(r => setTimeout(r, 500));
+  // SW prefs-cache has no observable refresh signal after storage.set resolves.
+  // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+  await waitForDnrPropagation(page);
 }
 
 test.describe("Redirect unwrap merged module (#410)", () => {
@@ -58,11 +58,13 @@ test.describe("Redirect unwrap merged module (#410)", () => {
 
     const target = "https://www.awin1.com/cread.php?ued=https%3A%2F%2Fdestination.test%2Fproduct%2F1";
     await page.goto(target);
-    // The pre-#695 behaviour would have replaced the URL within a few
-    // hundred ms of DOMContentLoaded. Wait that long, then assert we
-    // stayed put.
+    // Negative case: the pre-#695 behaviour would have replaced the URL within
+    // a few hundred ms of DOMContentLoaded. There is no observable signal that
+    // the (absent) unwrap has definitely NOT fired — we must wait past the
+    // window where the content script would have acted. Centralised via
+    // waitForDnrPropagation with an extended timeout (#824).
     await page.waitForLoadState("domcontentloaded");
-    await new Promise((r) => setTimeout(r, 1000));
+    await waitForDnrPropagation(page, 1000);
 
     expect(page.url()).toBe(target);
     await page.close();
@@ -142,10 +144,11 @@ test.describe("Redirect unwrap merged module (#410)", () => {
     // SSO/corporate post-login redirect flows.
     await page.goto("https://internal.test/redirect?destination=https%3A%2F%2Flogin.test%2Fauth");
     await page.waitForLoadState("domcontentloaded");
-    // REASON: the unwrap-or-not decision is sync-ish from the content
-    // script after DOMContentLoaded. A short settle window guards
-    // against the unwrap firing slightly later and surprising us.
-    await page.waitForTimeout(800);
+    // Negative case: there is no observable signal that the (absent) unwrap has
+    // definitively NOT fired. A short settle window guards against the content
+    // script acting slightly after DOMContentLoaded. No better signal exists
+    // for a non-event. Centralised via waitForDnrPropagation (#824).
+    await waitForDnrPropagation(page, 800);
 
     // We should still be on the original URL — `destination` is one
     // of the documented exclusions.

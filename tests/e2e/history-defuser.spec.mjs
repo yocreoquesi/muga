@@ -15,6 +15,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { waitForDnrPropagation } from "./helpers/index.mjs";
 
 const HOST = "muga-test-history.invalid";
 
@@ -35,8 +36,9 @@ async function completeOnboarding(context, extensionId) {
     })
   );
   await page.close();
-  // Allow the prefs broadcast to propagate before the next page loads.
-  await new Promise(r => setTimeout(r, 500));
+  // Prefs broadcast has no observable signal after storage.set resolves.
+  // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+  await waitForDnrPropagation(page);
 }
 
 async function stubPage(page) {

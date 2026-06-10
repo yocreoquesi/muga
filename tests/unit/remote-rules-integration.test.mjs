@@ -291,13 +291,16 @@ describe("SC-12 — Remote param collision with built-in: silent dedup, not reje
 describe("SC-11 — Dedup guard: concurrent alarm fires drop the second trigger", () => {
   test("second runRemoteRulesFetch call during in-flight fetch is dropped silently", async () => {
     let resolveFirst;
-    let firstStarted = false;
+    // Promise that resolves the moment the fake fetch is entered — replaces
+    // the 1ms setInterval poll that was a flaky shared-flag busy-wait (#824).
+    let firstStartedResolve;
+    const firstStartedPromise = new Promise((r) => { firstStartedResolve = r; });
     let fetchCallCount = 0;
 
     const slowFetch = () => {
       fetchCallCount++;
       return new Promise((resolve) => {
-        firstStarted = true;
+        firstStartedResolve(); // signal: the first fetch has started
         resolveFirst = () => {
           // Return a valid signed payload
           const params = ["dedup_test_param"];
@@ -340,8 +343,9 @@ describe("SC-11 — Dedup guard: concurrent alarm fires drop the second trigger"
 
     // Start first fetch (will hang until resolveFirst is called)
     const first = runRemoteRulesFetch(deps);
-    // Wait until the first fetch has started
-    await new Promise(r => { const poll = setInterval(() => { if (firstStarted) { clearInterval(poll); r(); } }, 1); });
+    // Wait until the first fetch has started — resolved by the Promise the
+    // fake fetch creates, not a busy-wait poll (#824 flaky-vector fix).
+    await firstStartedPromise;
 
     // Second fire while first is in-flight — must be dropped
     await runRemoteRulesFetch(deps);

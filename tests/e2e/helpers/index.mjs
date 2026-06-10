@@ -8,3 +8,4 @@ export { seedStorage, installTestModeSentinel, clearTestModeSentinel } from "./s
 export { killServiceWorker, simulateUnresponsiveSW } from "./sw-control.mjs";
 export { readActionSurface } from "./action-surface.mjs";
 export { withFixtureManifest, clearFixtures } from "./fixtures.mjs";
+export { waitForDnrPropagation } from "./dnr-propagation.mjs";

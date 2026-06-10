@@ -9,6 +9,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { waitForDnrPropagation } from "./helpers/index.mjs";
 
 /** Stub all requests to a given hostname with a minimal HTML response. */
 async function stubHost(page, hostname) {
@@ -31,8 +32,9 @@ test.describe("URL cleaning — real navigation", () => {
       });
     });
     await page.close();
-    // REASON: DNR rule propagation has no observable signal after storage.set resolves.
-    await new Promise((r) => setTimeout(r, 500));
+    // DNR rule propagation has no observable signal after storage.set resolves.
+    // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+    await waitForDnrPropagation(page);
   });
 
   test("strips utm_source from URL via DNR", async ({ context }) => {
@@ -121,9 +123,10 @@ test.describe("URL cleaning — stats tracking", () => {
     await page.goto("https://httpbin.org/get?utm_source=test&utm_medium=email");
     await page.waitForLoadState("domcontentloaded");
 
-    // REASON: stat increment is sent from the content script via messaging; there is
-    // no DOM or storage signal we can poll without coupling to implementation details.
-    await page.waitForTimeout(500);
+    // Stat increment is sent from the content script via messaging; no DOM or
+    // storage signal exists to poll without coupling to implementation details.
+    // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+    await waitForDnrPropagation(page);
 
     // Read stats after
     const verifyPage = await context.newPage();

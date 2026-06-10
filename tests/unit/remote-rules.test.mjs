@@ -1210,14 +1210,19 @@ describe("runRemoteRulesFetch — orchestrator (integration-ish)", () => {
     assert.strictEqual(result.remoteRulesMeta.lastError, ERR.VERIFY_FAILED);
   });
 
-  test("SC-10 note: module-level flag resets on worker restart (simulated by new module context)", () => {
+  test.skip("SC-10 note: module-level flag resets on worker restart", () => {
     // SC-10 (service worker killed mid-fetch) cannot be fully unit-tested because
     // module state (_remoteFetchInFlight) is reset when the module is re-imported.
     // This is the INTENDED behavior: after restart, _remoteFetchInFlight is false
     // and fetch proceeds normally. No partial-write corruption because storage writes
     // are atomic (chrome.storage.local.set is transactional).
-    // Deferred to T2.x integration tests. Marked as expected limitation.
-    assert.ok(true, "SC-10 deferred to T2.x integration tests (service worker restart is not unit-testable)");
+    //
+    // The T2.x integration tests referenced here do not yet exist. This test is
+    // explicitly skipped (not assert.ok(true)) so it shows up in --reporter output
+    // as a pending item rather than a silent pass. See #824.
+    //
+    // When real integration coverage lands, replace this skip with a test that
+    // launches two SW instances and verifies the flag resets between lifecycles.
   });
 });
 

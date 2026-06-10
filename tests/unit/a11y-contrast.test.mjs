@@ -104,8 +104,14 @@ describe("WCAG AA contrast — dismiss button not using #666 on dark background"
     // Extract the actual color used for the dismiss button
     const match = optionsJs.match(/dismissBtn\.style\.cssText\s*=\s*btnStyle\s*\+\s*";color:(#[0-9A-Fa-f]{6})"/i);
     if (!match) {
-      // If the pattern changed (e.g., now uses a CSS var), this check is not applicable
-      assert.ok(true, "dismissBtn color pattern not found — assumed refactored to CSS variables");
+      // The pattern is expected to match against the current source. If it no longer
+      // matches, the source was refactored and this test must be updated to verify
+      // accessibility via the new code path rather than silently passing.
+      assert.fail(
+        "dismissBtn color pattern not found in options.js — update this test to follow the refactored source.\n" +
+          "The test previously used assert.ok(true) as a silent escape hatch; that is now blocked (#824).\n" +
+          "Find the new way dismissBtn color is set and add an equivalent contrast assertion.",
+      );
       return;
     }
     const color = match[1];
