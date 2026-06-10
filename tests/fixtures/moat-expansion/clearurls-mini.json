@@ -1,0 +1,42 @@
+{
+  "providers": {
+    "amazon": {
+      "urlPattern": "^https?://([a-z0-9-]+\\.)?amazon\\.(com|es|de|fr|it|co\\.uk)/",
+      "rules": [
+        "^ref$",
+        "^pf_rd_r$",
+        "^pf_rd_p$"
+      ],
+      "referralMarketing": [
+        "tag",
+        "newparam"
+      ]
+    },
+    "ebay": {
+      "urlPattern": "^https?://([a-z0-9-]+\\.)?ebay\\.(com|es|de|co\\.uk|fr|it)/",
+      "rules": [
+        "^mkrid$",
+        "^toolid$"
+      ],
+      "referralMarketing": [
+        "campid"
+      ]
+    },
+    "unknown-foo": {
+      "urlPattern": "^https?://([a-z0-9-]+\\.)?unknown-foo\\.example\\.com/",
+      "rules": [
+        "^sessionid$"
+      ],
+      "referralMarketing": [
+        "xparam"
+      ]
+    },
+    "empty-provider": {
+      "urlPattern": "^https?://([a-z0-9-]+\\.)?empty-provider\\.example\\.com/",
+      "rules": [
+        "^trackerid$"
+      ],
+      "referralMarketing": []
+    }
+  }
+}
