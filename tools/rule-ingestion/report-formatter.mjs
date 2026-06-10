@@ -43,13 +43,29 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
   if (!ingestStats) {
     lines.push("_(no ingest stats — legacy run)_");
   } else {
-    lines.push("| Adapter | Admitted | Skipped | Affiliate-Excluded |");
-    lines.push("|---------|----------|---------|-------------------|");
-
     const adapters = Array.isArray(ingestStats.adapters) ? ingestStats.adapters : [];
-    for (const a of adapters) {
+    const failedAdapters = ingestStats.failedAdapters ?? adapters.filter((a) => a.status === "failed").length;
+
+    // Surface adapter failures prominently so the GitHub step summary makes
+    // silent all-zero runs visible (#813).
+    if (failedAdapters > 0) {
       lines.push(
-        `| ${a.adapterId ?? "?"} | ${a.admitted ?? 0} | ${a.skipped ?? 0} | ${a.affiliateExcluded ?? 0} |`
+        `> **WARNING**: ${failedAdapters} adapter(s) failed — ` +
+        (failedAdapters === adapters.length
+          ? "ALL adapters failed; this run produced NO candidates."
+          : "partial failure; only surviving adapters contributed candidates.")
+      );
+      lines.push("");
+    }
+
+    lines.push("| Adapter | Status | Admitted | Skipped | Affiliate-Excluded | Error |");
+    lines.push("|---------|--------|----------|---------|-------------------|-------|");
+
+    for (const a of adapters) {
+      const status = a.status === "failed" ? "FAILED" : "ok";
+      const errorCell = a.status === "failed" ? (a.error ?? "unknown error") : "";
+      lines.push(
+        `| ${a.adapterId ?? "?"} | ${status} | ${a.admitted ?? 0} | ${a.skipped ?? 0} | ${a.affiliateExcluded ?? 0} | ${errorCell} |`
       );
     }
 

@@ -225,8 +225,11 @@ test("T-10: runIngestion aggregates stats from adapters", async () => {
 });
 
 // ── FIX-2 (quarantine-surface PR1 review): bare-Set adapter throws clearly ────
+// Updated (#813): re-throw is now via AdapterContractError sentinel (err.code === "ADAPTER_CONTRACT")
+// rather than `instanceof TypeError` so that transient I/O TypeErrors (e.g. writeFileSync receiving
+// null from garbage upstream) are recorded as failed adapters instead of crashing the run.
 
-test("FIX-2: runIngestion throws a clear TypeError naming the adapter when parse() returns a bare Set", async () => {
+test("FIX-2: runIngestion throws a contract error naming the adapter when parse() returns a bare Set", async () => {
   const dir = mkdtempSync(resolve(tmpdir(), "muga-ingest-bare-set-"));
   try {
     const bareSetAdapter = {
@@ -244,7 +247,13 @@ test("FIX-2: runIngestion throws a clear TypeError naming the adapter when parse
     await assert.rejects(
       () => runIngestion({ adapters: [bareSetAdapter], quarantineDir: dir }),
       (err) => {
-        assert.ok(err instanceof TypeError, "must throw a TypeError");
+        // Sentinel: must carry code "ADAPTER_CONTRACT" (not merely instanceof TypeError,
+        // because transient I/O TypeErrors must NOT be re-thrown — they are recorded as failures).
+        assert.strictEqual(
+          err.code,
+          "ADAPTER_CONTRACT",
+          `must throw with code "ADAPTER_CONTRACT"; got code=${err.code}, message=${err.message}`
+        );
         assert.ok(
           err.message.includes("bad-adapter"),
           `error message must name the adapter id; got: ${err.message}`
