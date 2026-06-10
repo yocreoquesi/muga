@@ -9,6 +9,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { REDIRECT_NETWORK_PATTERNS } from "../../src/lib/affiliates.js";
 
 const require = createRequire(import.meta.url);
 const domainRules = require("../../src/rules/domain-rules.json");
@@ -82,6 +83,90 @@ describe("domain-rules.json integrity", () => {
         );
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Landing-param / stripParams cross-contamination guard (#816-class fix)
+//
+// A param that appears in ANY network's `landingParams` (REDIRECT_NETWORK_PATTERNS)
+// MUST NOT also appear in any domain-rule's `stripParams`. If it does, then on a
+// first-touch landing arriving via that network, the cleaner's domainStrip would
+// conflict with the landing-policy preservation window — and the attribution param
+// would be silently wiped unless the ordering inside stripTrackingParams happens
+// to check landingPolicy.preserve first.  The ordering IS currently correct, but
+// this guard ensures the contradiction never re-enters the config undetected.
+//
+// Known open contradictions (do NOT fix here — each has its own issue):
+//   - None currently: #816 removed the only confirmed conflict (aff_request_id).
+//
+// Newly discovered overlaps surfaced by this check (follow-up issues needed):
+//   - bestbuy.com strips irclickid and irgwc (Impact Radius landingParams)
+//     → TODO: verify whether BestBuy participates in Impact Radius affiliate
+//       program; if so, remove from domain-rules.json stripParams.
+//   - coolblue.nl strips clickref (Partnerize landingParam)
+//     → TODO: verify whether Coolblue participates in the Partnerize network;
+//       if so, remove from domain-rules.json stripParams.
+//
+// To add an explicit exception, push to STRIP_LAND_OVERLAP_ALLOWLIST with a
+// {domain, param, issue} entry explaining the documented contradiction.
+// ---------------------------------------------------------------------------
+const STRIP_LAND_OVERLAP_ALLOWLIST = [
+  // { domain: "example.com", param: "some_param", issue: "#NNN — reason" },
+
+  // bestbuy.com / Impact Radius: irclickid and irgwc appear in both tables.
+  // TODO: open follow-up issue to verify BestBuy's Impact Radius participation
+  // and remove from stripParams if confirmed (#816 audit finding).
+  { domain: "bestbuy.com", param: "irclickid", issue: "TODO — #816 audit: bestbuy.com/Impact Radius overlap needs verification" },
+  { domain: "bestbuy.com", param: "irgwc",     issue: "TODO — #816 audit: bestbuy.com/Impact Radius overlap needs verification" },
+
+  // coolblue.nl / Partnerize: clickref appears in both tables.
+  // TODO: open follow-up issue to verify Coolblue's Partnerize participation
+  // and remove from stripParams if confirmed (#816 audit finding).
+  { domain: "coolblue.nl", param: "clickref",  issue: "TODO — #816 audit: coolblue.nl/Partnerize overlap needs verification" },
+];
+
+describe("domain-rules.json × REDIRECT_NETWORK_PATTERNS — landing-param contamination guard (#816)", () => {
+  test("no stripParams param may also appear in any network landingParams (except documented allowlist)", () => {
+    // Build a set of all landing params across all networks for O(1) lookup.
+    const allLandingParams = new Map(); // lowercase param → [networkIds]
+    for (const net of REDIRECT_NETWORK_PATTERNS) {
+      for (const p of net.landingParams) {
+        const lp = p.toLowerCase();
+        if (!allLandingParams.has(lp)) allLandingParams.set(lp, []);
+        allLandingParams.get(lp).push(net.id);
+      }
+    }
+
+    // Build allowlist set for O(1) lookup.
+    const allowlistSet = new Set(
+      STRIP_LAND_OVERLAP_ALLOWLIST.map(e => `${e.domain}::${e.param.toLowerCase()}`),
+    );
+
+    const violations = [];
+    for (const rule of domainRules) {
+      for (const rawParam of (rule.stripParams || [])) {
+        const lp = rawParam.toLowerCase();
+        if (!allLandingParams.has(lp)) continue;
+        const key = `${rule.domain}::${lp}`;
+        if (allowlistSet.has(key)) continue; // documented exception
+        violations.push({
+          domain: rule.domain,
+          param: lp,
+          networks: allLandingParams.get(lp),
+        });
+      }
+    }
+
+    assert.deepStrictEqual(
+      violations,
+      [],
+      `Found undocumented overlap(s) between domain-rules stripParams and network landingParams:\n` +
+      violations.map(v =>
+        `  ${v.domain} strips "${v.param}" which is a landingParam for: ${v.networks.join(", ")}`,
+      ).join("\n") +
+      `\nEither remove the param from stripParams or add it to STRIP_LAND_OVERLAP_ALLOWLIST with a tracking issue.`,
+    );
   });
 });
 

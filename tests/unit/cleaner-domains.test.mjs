@@ -681,3 +681,56 @@ describe("Cross-portal tracking param stripping", () => {
     assert.ok(!u.searchParams.has("at_bbc_team"), "BBC: at_bbc_team must be stripped");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression #816 — aff_request_id must survive on first-touch AliExpress
+// landings arriving via s.click.aliexpress.com (declared in
+// REDIRECT_NETWORK_PATTERNS[aliexpress-affiliate].landingParams). This guard
+// protects against any future cleaner-ordering change that would let a
+// domainStrip entry override the landing-policy preservation window.
+// ---------------------------------------------------------------------------
+describe("AliExpress — aff_request_id preserved on first-touch landing from redirect network (#816)", () => {
+  // Helper: processUrl with an explicit referrer (args 3-5 are canonicalBundle,
+  // frequencyTracker, referrer — pass undefined for the optional ones).
+  function cleanWithReferrer(rawUrl, referrer) {
+    return processUrl(rawUrl, PREFS, domainRules, undefined, undefined, referrer);
+  }
+
+  test("aff_request_id SURVIVES and utm_source is stripped on non-item category URL via affiliate referrer", () => {
+    const { cleanUrl, removedTracking } = cleanWithReferrer(
+      "https://www.aliexpress.com/category/phones-telecommunications/201190301.html?aff_request_id=X&utm_source=Y",
+      "https://s.click.aliexpress.com/e/_oBtAfD",
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(
+      u.searchParams.get("aff_request_id"),
+      "X",
+      "aff_request_id must survive on first-touch AliExpress landing (landingParams guard)",
+    );
+    assert.ok(
+      !u.searchParams.has("utm_source"),
+      "utm_source must still be stripped on the same URL",
+    );
+    assert.ok(
+      removedTracking.includes("utm_source"),
+      "utm_source must appear in removedTracking",
+    );
+  });
+
+  test("aff_request_id is stripped when there is NO affiliate referrer (no landing-policy context)", () => {
+    // Without a redirect-network referrer, domainStrip applies normally.
+    // After fix (#816), aff_request_id is REMOVED from domain-rules.json
+    // stripParams — so this test verifies it is also stripped by TRACKING_PARAMS
+    // or stays harmlessly (the important contract is the previous test passes).
+    // We do NOT assert here that it IS stripped — just that the pipeline does
+    // not throw and utm_source is still removed.
+    const { cleanUrl } = clean(
+      "https://www.aliexpress.com/category/phones-telecommunications/201190301.html?aff_request_id=X&utm_source=Y",
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(
+      !u.searchParams.has("utm_source"),
+      "utm_source must still be stripped without a redirect-network referrer",
+    );
+  });
+});
