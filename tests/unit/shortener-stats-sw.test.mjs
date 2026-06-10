@@ -253,32 +253,32 @@ describe("ADR-0004 phase 5: proxy artifacts removed from service-worker", () => 
 
 // ── 6. Version integrity ─────────────────────────────────────────────────────
 
-describe("ADR-0004 phase 4: beta version 2.2.0-beta.1 (phase 5 preserves)", () => {
-  test("package.json version is 2.2.0", () => {
-    assert.equal(pkg.version, "2.2.0", "package.json must be 2.2.0");
+describe("Version integrity — manifest versions match package.json", () => {
+  test("package.json version is 2.3.0", () => {
+    assert.equal(pkg.version, "2.3.0", "package.json must be 2.3.0");
   });
 
-  test("manifest.json version is 2.2.0", () => {
-    assert.equal(mv3.version, "2.2.0", "src/manifest.json version must be 2.2.0");
+  test("manifest.json version is 2.3.0", () => {
+    assert.equal(mv3.version, "2.3.0", "src/manifest.json version must be 2.3.0");
   });
 
-  test("manifest.v2.json version is 2.2.0", () => {
-    assert.equal(mv2.version, "2.2.0", "src/manifest.v2.json version must be 2.2.0");
+  test("manifest.v2.json version is 2.3.0", () => {
+    assert.equal(mv2.version, "2.3.0", "src/manifest.v2.json version must be 2.3.0");
   });
 
-  test("manifest.json has version_name 2.2.0-beta.1", () => {
+  test("manifest.json version_name matches version (stable release, no beta suffix)", () => {
     assert.equal(
       mv3.version_name,
-      "2.2.0-beta.1",
-      "MV3 manifest must have version_name: '2.2.0-beta.1'"
+      "2.3.0",
+      "MV3 manifest version_name must be '2.3.0'"
     );
   });
 
-  test("manifest.v2.json has version_name 2.2.0-beta.1", () => {
+  test("manifest.v2.json version_name matches version (stable release, no beta suffix)", () => {
     assert.equal(
       mv2.version_name,
-      "2.2.0-beta.1",
-      "MV2 manifest must have version_name: '2.2.0-beta.1'"
+      "2.3.0",
+      "MV2 manifest version_name must be '2.3.0'"
     );
   });
 });
