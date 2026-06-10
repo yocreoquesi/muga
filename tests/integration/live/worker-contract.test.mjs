@@ -98,7 +98,7 @@ describe("live Worker contract — response envelope shape (#608)", () => {
 
 describe("live Worker contract — Origin gate (#608)", () => {
   test(
-    "request without a recognised Origin receives 403 or 401",
+    "request without a recognised Origin receives a deliberate 4xx rejection",
     { skip: LIVE ? false : SKIP_REASON },
     async () => {
       const target = `${WORKER_BASE}/v1/unwrap?url=${encodeURIComponent(SAMPLE_SHORT_URL)}`;
@@ -106,10 +106,15 @@ describe("live Worker contract — Origin gate (#608)", () => {
         // No Origin header — simulates a rogue non-extension caller.
         signal: AbortSignal.timeout(10_000),
       });
+      // The live Worker answers 404 (not 403/401) to callers without a
+      // recognised Origin — endpoint cloaking: an unauthorized probe cannot
+      // even confirm the route exists. Verified live 2026-06-10: no-Origin,
+      // bogus-Origin and / all return 404 uniformly, while the
+      // recognised-Origin reachability/envelope tests above get 200.
       assert.ok(
-        res.status === 403 || res.status === 401 || res.status === 400,
-        `Worker must reject requests without a recognised Origin. Got HTTP ${res.status}. ` +
-          "The Origin gate prevents cross-site abuse of the Worker endpoint."
+        [400, 401, 403, 404].includes(res.status),
+        `Worker must reject requests without a recognised Origin (any deliberate ` +
+          `4xx counts; the live gate cloaks with 404). Got HTTP ${res.status}.`
       );
     }
   );
