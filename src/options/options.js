@@ -848,7 +848,8 @@ function syncDevTools() {
   const devModeEl = document.getElementById("dev-mode");
   const devToolsCard = document.getElementById("dev-tools-card");
   if (!devModeEl || !devToolsCard) return;
-  devToolsCard.style.display = devModeEl.checked ? "" : "none";
+  // #858: visibility driven by CSS class (no inline style — required for CSP style-src without 'unsafe-inline')
+  devToolsCard.classList.toggle("dev-tools-hidden", !devModeEl.checked);
 }
 
 /** Initializes dev tools: URL tester and preview features. */
@@ -1198,7 +1199,8 @@ async function testUrl() {
   const cleanEl = document.getElementById("dev-url-clean");
   const removedEl = document.getElementById("dev-url-removed");
   const reportBtn = document.getElementById("dev-url-report-btn");
-  if (reportBtn) reportBtn.style.display = "none";
+  // #858: use hidden attribute instead of inline style (CSP style-src without 'unsafe-inline')
+  if (reportBtn) reportBtn.hidden = true;
   if (!input) return;
   try {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
@@ -1215,13 +1217,14 @@ async function testUrl() {
     } else {
       removedEl.textContent = t("dev_url_action", _currentLang).replace("%s", result.action);
     }
-    resultDiv.style.display = "";
+    // #858: use hidden attribute to reveal result (no inline style)
+    resultDiv.hidden = false;
 
     // Show report button after results (clone to avoid listener accumulation)
     if (reportBtn) {
       const newBtn = reportBtn.cloneNode(true);
       reportBtn.parentNode.replaceChild(newBtn, reportBtn);
-      newBtn.style.display = "";
+      newBtn.hidden = false;
       newBtn.addEventListener("click", () => {
         try {
           const hostname = new URL(input).hostname;
@@ -1250,7 +1253,8 @@ async function testUrl() {
   } catch (e) {
     cleanEl.textContent = t("dev_url_error", _currentLang) + " " + e.message;
     removedEl.textContent = "";
-    resultDiv.style.display = "";
+    // #858: use hidden attribute to reveal result on error
+    resultDiv.hidden = false;
   }
 }
 
