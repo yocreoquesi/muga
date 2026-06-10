@@ -1,5 +1,5 @@
 /**
- * MUGA — Machine-enforced documentation claims guard (#828)
+ * MUGA — Machine-enforced documentation claims guard (#828, #829)
  *
  * PURPOSE: Numbers and file paths in README.md and CONTRIBUTING.md drift over
  * time. This test makes drift immediately visible: a failing test means the
@@ -15,6 +15,11 @@
  *      must use a non-numeric label so it cannot drift.
  *  (d) CONTRIBUTING.md project-structure table file paths all exist on disk
  *      (files that are listed in the structure block must be real files).
+ *  (e) package.json has engines.node (#829 — import.meta.dirname needs >=20.11)
+ *  (f) dev:* / lint commands carry NO inline _metadata ignore globs — the
+ *      shared web-ext-config.mjs covers them; only build:* commands need CLI
+ *      overrides (web-ext CLI --ignore-files replaces, doesn't merge).
+ *  (g) web-ext-config.mjs contains the _metadata ignore list (#829)
  *
  * Run with: npm test
  */
@@ -187,6 +192,70 @@ describe("docs-claims — machine-enforced README/CONTRIBUTING accuracy", () => 
     // assert the floor is positive and not absurdly high vs file count.
     assert.ok(floorN >= 1000 && floorN <= testFiles.length * 100,
       `Floor ${floorN} looks implausible for ${testFiles.length} test files — update the README floor honestly.`);
+  });
+
+  // ── (e) package.json engines.node (#829) ─────────────────────────────────
+  //
+  // import.meta.dirname was unflagged in Node 20.11. The engines field makes
+  // npm warn contributors who are running an older patch release.
+
+  test("(e) package.json has engines.node set to >=20.11", () => {
+    const pkg = JSON.parse(readRoot("package.json"));
+    assert.ok(
+      pkg.engines && typeof pkg.engines.node === "string",
+      "package.json must have an engines.node field (import.meta.dirname requires >=20.11)"
+    );
+    assert.match(
+      pkg.engines.node,
+      /20\.11/,
+      `engines.node "${pkg.engines.node}" must reference 20.11 as the minimum ` +
+      "(import.meta.dirname was unflagged in 20.11)"
+    );
+  });
+
+  // ── (f) dev / lint commands carry no inline _metadata globs (#829) ────────
+  //
+  // web-ext auto-loads web-ext-config.mjs from the cwd for `web-ext run` and
+  // `web-ext lint`. The _metadata triple-glob lives in that config, so adding
+  // --ignore-files to these commands would be redundant (and the CLI flag
+  // REPLACES the config's ignoreFiles, not merges — adding it would also drop
+  // everything else in the config).
+  //
+  // build:* commands are exempt: strip-test-seams.mjs copies src/ to a temp
+  // dir and then passes all remaining args (including --ignore-files) verbatim
+  // to web-ext build; those commands need explicit flags because the config
+  // file lives in the project root, not the temp dir.
+
+  test("(f) dev:chrome, dev:firefox, and lint commands do not carry inline _metadata ignore globs", () => {
+    const pkg = JSON.parse(readRoot("package.json"));
+    const scrutinised = ["dev:chrome", "dev:firefox", "lint"];
+    for (const cmd of scrutinised) {
+      const script = pkg.scripts?.[cmd] ?? "";
+      assert.ok(
+        !script.includes("_metadata"),
+        `scripts.${cmd} carries an inline _metadata ignore glob ("${script}"). ` +
+        "The shared web-ext-config.mjs already covers it for web-ext run/lint — " +
+        "adding --ignore-files here would REPLACE the config's ignoreFiles, not merge."
+      );
+    }
+  });
+
+  // ── (g) web-ext-config.mjs contains the _metadata ignore list (#829) ──────
+  //
+  // Asserts the shared config is the canonical home of the _metadata triple.
+  // If someone removes it from the config, this test fails before anything
+  // ships, keeping dev-mode reload loops visible.
+
+  test("(g) web-ext-config.mjs contains all three _metadata ignore globs", () => {
+    const config = readRoot("web-ext-config.mjs");
+    const required = ["_metadata", "_metadata/**", "_metadata/**/*"];
+    for (const glob of required) {
+      assert.ok(
+        config.includes(JSON.stringify(glob)),
+        `web-ext-config.mjs must include the ignore glob ${JSON.stringify(glob)} ` +
+        "so dev:chrome/dev:firefox/lint inherit _metadata exclusion without inline flags."
+      );
+    }
   });
 
   // ── (d) CONTRIBUTING structure block — all listed paths must exist ────────
