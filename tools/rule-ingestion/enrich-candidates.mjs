@@ -176,7 +176,7 @@ export function enrichCandidates(candidates, artifacts) {
  * Default: verifyDiscovered from discovered-verify.mjs.
  *
  * @param {string} discoveredDir - Directory path to scan for `*.json` files.
- * @param {{ verify?: function }} [opts] - Optional overrides.
+ * @param {object} [opts] - Optional overrides.
  * @param {function} [opts.verify=verifyDiscovered] - Verification function.
  *   Signature: (artifact: object) => { ok: boolean, code: string }
  * @returns {object[]} Array of verified artifact objects. Empty array when no files found.
