@@ -15,7 +15,7 @@ import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const popupSource = readFileSync(resolve(ROOT, "src/popup/popup.js"), "utf8");
-const i18nSource  = readFileSync(resolve(ROOT, "src/lib/i18n.js"), "utf8");
+// i18nSource removed — translation data moved to src/lib/locales/*.mjs (#834).
 
 describe("popup reactive status (v1.10.2)", () => {
   test("popup.js imports parseListEntry from cleaner.js", () => {
@@ -83,13 +83,13 @@ describe("popup reactive status (v1.10.2)", () => {
   });
 
   test("muga_disabled_for_domain i18n key is defined in all 4 locales", () => {
-    const keyMatch = i18nSource.match(/muga_disabled_for_domain\s*:\s*\{([^}]+)\}/);
-    assert.ok(keyMatch, "muga_disabled_for_domain key must exist in TRANSLATIONS");
-    const body = keyMatch[1];
+    // Translation data moved to per-locale files under src/lib/locales/ (#834).
+    // Check each locale file directly for the key with a non-empty value.
     for (const loc of ["en", "es", "pt", "de"]) {
+      const localeSource = readFileSync(resolve(ROOT, `src/lib/locales/${loc}.mjs`), "utf8");
       assert.ok(
-        new RegExp(`\\b${loc}\\s*:\\s*["'][^"']+["']`).test(body),
-        `muga_disabled_for_domain must have a non-empty ${loc} translation`
+        /muga_disabled_for_domain\s*:\s*"[^"]+"/.test(localeSource),
+        `muga_disabled_for_domain must have a non-empty ${loc} translation in src/lib/locales/${loc}.mjs`
       );
     }
   });

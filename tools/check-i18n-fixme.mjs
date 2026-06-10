@@ -19,14 +19,14 @@
  *   0 — no findings
  *   1 — at least one finding (build fails)
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { TRANSLATIONS, SUPPORTED_LANGS } from "../src/lib/i18n.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const I18N_FILE = path.resolve(__dirname, "..", "src", "lib", "i18n.js");
+const LOCALES_DIR = path.resolve(__dirname, "..", "src", "lib", "locales");
 const FIXME_COMMENT = "FIXME: needs native speaker review";
 const FIXME_STUB = "FIXME: translate";
 
@@ -53,14 +53,26 @@ function findStubs() {
 }
 
 function findFixmeComments() {
-  const src = readFileSync(I18N_FILE, "utf8");
-  const lines = src.split(/\r?\n/);
+  // Scan all per-locale data files for FIXME markers on value lines.
+  // Translation data now lives in src/lib/locales/*.mjs — one file per locale.
   const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.includes(FIXME_COMMENT)) continue;
-    if (line.trim().startsWith("//")) continue; // meta-comment, not a value marker
-    offenders.push({ line: i + 1, text: line.trim().slice(0, 160) });
+  let localeFiles;
+  try {
+    localeFiles = readdirSync(LOCALES_DIR).filter((f) => f.endsWith(".mjs"));
+  } catch {
+    // Fallback: if locales dir is missing, report nothing (handled by findStubs).
+    return offenders;
+  }
+  for (const filename of localeFiles) {
+    const filepath = path.join(LOCALES_DIR, filename);
+    const src = readFileSync(filepath, "utf8");
+    const lines = src.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.includes(FIXME_COMMENT)) continue;
+      if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue; // meta-comment
+      offenders.push({ file: `src/lib/locales/${filename}`, line: i + 1, text: line.trim().slice(0, 160) });
+    }
   }
   return offenders;
 }
@@ -69,7 +81,7 @@ const stubs = findStubs();
 const comments = findFixmeComments();
 
 if (stubs.length === 0 && comments.length === 0) {
-  console.log("ok: no FIXME markers, stubs, or empty translations in src/lib/i18n.js");
+  console.log("ok: no FIXME markers, stubs, or empty translations in src/lib/locales/*.mjs");
   process.exit(0);
 }
 
@@ -83,10 +95,10 @@ if (stubs.length > 0) {
 if (comments.length > 0) {
   console.error(`\n  ${comments.length} FIXME comment(s) on value rows:`);
   for (const o of comments) {
-    console.error(`    - i18n.js:${o.line}  ${o.text}`);
+    console.error(`    - ${o.file}:${o.line}  ${o.text}`);
   }
 }
 console.error(
-  "\nPolicy: src/lib/i18n.js must not ship FIXME stubs, FIXME comments on value rows, or empty locale slots.",
+  "\nPolicy: src/lib/locales/*.mjs must not ship FIXME stubs, FIXME comments on value rows, or empty locale slots.",
 );
 process.exit(1);

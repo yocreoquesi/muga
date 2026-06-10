@@ -84,15 +84,22 @@ describe("sanitizeHTML security (i18n.js source verification)", () => {
     );
   });
 
-  test("no inline style attributes in translation strings", () => {
-    // Verify no translation value contains style= (now uses CSS classes)
+  test("no inline style attributes in translation strings", async () => {
+    // Translation data now lives in src/lib/locales/*.mjs (one file per locale).
+    // Scan all assembled TRANSLATIONS values — style= in a translation value is always wrong.
+    const { TRANSLATIONS: T, SUPPORTED_LANGS: SL } = await import("../../src/lib/i18n.js");
     const styleInTranslation = /style\s*=\s*"/;
-    const translationBlock = I18N_SOURCE.match(/export const TRANSLATIONS = \{([\s\S]*?)\n\};/);
-    assert.ok(translationBlock, "TRANSLATIONS block must exist");
-    assert.ok(
-      !styleInTranslation.test(translationBlock[1]),
-      "No translation string should contain inline style attributes (use CSS classes instead)"
-    );
+    const codes = SL.map((l) => l.code);
+    const bad = [];
+    for (const [key, entry] of Object.entries(T)) {
+      for (const code of codes) {
+        const val = entry[code];
+        if (typeof val === "string" && styleInTranslation.test(val)) {
+          bad.push(`${key}[${code}]`);
+        }
+      }
+    }
+    assert.deepStrictEqual(bad, [], `Translation values must not contain inline style attributes: ${bad.join(", ")}`);
   });
 });
 

@@ -43,10 +43,8 @@ const VALIDATION_SOURCE = readFileSync(
   join(__dirname, "../../src/lib/validation.js"),
   "utf8"
 );
-const I18N_SOURCE = readFileSync(
-  join(__dirname, "../../src/lib/i18n.js"),
-  "utf8"
-);
+// I18N_SOURCE removed — translation data moved to src/lib/locales/*.mjs (#834).
+// T5 tests now read src/lib/locales/en.mjs directly.
 
 // ── T1: canonical constants ───────────────────────────────────────────────────
 
@@ -248,20 +246,26 @@ describe("T4 options.js — uses isValidCustomParam, no inline validator", () =>
 
 // ── T5: i18n — partial import toast key ──────────────────────────────────────
 
-describe("T5 i18n.js — import_params_skipped key exists", () => {
+describe("T5 i18n — import_params_skipped key exists", () => {
+  // Translation data moved to per-locale files under src/lib/locales/ (#834).
+  const EN_LOCALE_SOURCE = readFileSync(
+    join(__dirname, "../../src/lib/locales/en.mjs"),
+    "utf8"
+  );
+
   test("TRANSLATIONS contains import_params_skipped key", () => {
     assert.ok(
-      I18N_SOURCE.includes("import_params_skipped"),
-      "i18n.js must contain an import_params_skipped key for the partial-import toast"
+      EN_LOCALE_SOURCE.includes("import_params_skipped"),
+      "src/lib/locales/en.mjs must contain an import_params_skipped key for the partial-import toast"
     );
   });
 
   test("import_params_skipped has at minimum an English translation", () => {
-    // Check that the key has an 'en' entry with {n} placeholder
-    const match = I18N_SOURCE.match(/import_params_skipped[^}]+en:\s*"([^"]+)"/);
+    // Check that the key has a value with the {n} placeholder in en.mjs
+    const match = EN_LOCALE_SOURCE.match(/import_params_skipped\s*:\s*"([^"]+)"/);
     assert.ok(
       match,
-      "import_params_skipped must have an English translation"
+      "import_params_skipped must have an English translation in src/lib/locales/en.mjs"
     );
     assert.ok(
       match[1].includes("{n}"),

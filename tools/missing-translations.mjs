@@ -57,9 +57,9 @@ export function formatReport(lang) {
     return lines.join("\n");
   }
 
-  lines.push(`${missing.length} of ${total} keys missing in ${langLabel}. Each key below needs a translation in \`src/lib/i18n.js\`.`);
+  lines.push(`${missing.length} of ${total} keys missing in ${langLabel}. Each key below needs a translation in \`src/lib/locales/${lang}.mjs\`.`);
   lines.push("");
-  lines.push("**Contribution flow:** edit the matching entry in `TRANSLATIONS`, run `npm test`, open a PR. PT and DE PRs do not need native-speaker review by the maintainer (the maintainer is not a native speaker of either) — the EN+ES floor enforced by the test suite is what gates a merge.");
+  lines.push(`**Contribution flow:** edit the matching key in \`src/lib/locales/${lang}.mjs\`, run \`npm test\`, open a PR. PT and DE PRs do not need native-speaker review by the maintainer (the maintainer is not a native speaker of either) — the EN+ES floor enforced by the test suite is what gates a merge.`);
   lines.push("");
   lines.push("## Missing keys");
   lines.push("");
