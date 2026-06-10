@@ -19,15 +19,23 @@
  *   {
  *     param:             "fbclid",        // normalized lowercase name
  *     signals:           ["adguard-tp"],  // provenance: which adapters reported it
- *     entropy:           null,            // derived in EPIC C (no corpus in B2)
- *     crossSiteFrequency:null,            // derived in EPIC C (#776)
+ *     entropy:           null,            // populated by enrich-candidates.mjs between ingest and orchestrate (#798)
+ *     crossSiteFrequency:null,            // populated by enrich-candidates.mjs between ingest and orchestrate (#798)
  *     firstSeenAt:       "<iso8601>"      // when ingestion first saw it
  *   }
  *
- * entropy / crossSiteFrequency are part of the contract (the issue requires the
- * provenance fields) but stay `null`: B2 has no URL corpus to derive them
- * honestly. They are filled by the cross-corroboration gate (#776), never
- * fabricated at ingestion.
+ * entropy / crossSiteFrequency lifecycle:
+ *   - Set to `null` at ingest time (no URL corpus available at that stage).
+ *   - Populated by `enrich-candidates.mjs` (tools/rule-ingestion/enrich-candidates.mjs)
+ *     AFTER ingest and BEFORE `runOrchestration`. Enrichment reads verified discovered/
+ *     artifact files and computes:
+ *       entropy             — arithmetic mean of `value_entropy` across artifacts that
+ *                             mention this param; null when no artifact carries the field.
+ *       crossSiteFrequency  — count of DISTINCT `first_seen_on` hostnames for this param
+ *                             across all verified artifacts; null when the param is absent.
+ *   - Never fabricated: both fields remain null when no artifact data is available for a param.
+ *   - These are analytical scores derived from caps-crawler artifact metadata, NOT entries
+ *     in `signals[]` (see PROVENANCE.md — caps-crawler is not a corroboration source, #821).
  */
 
 /**
