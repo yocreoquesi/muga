@@ -35,10 +35,8 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
-
+      # No npm ci: discovered-verify.mjs is zero-dependency (node:crypto/fs only),
+      # and a contents:read validation job should not install the dependency tree.
       - name: Validate and verify discovered artifacts
         run: node tools/rule-ingestion/discovered-verify.mjs
