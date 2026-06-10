@@ -1182,6 +1182,245 @@ describe("runPromote — idempotency with unsorted source params (FIX-5)", () =>
   });
 });
 
+// ── #821-I2: Param format validation at promote boundary ──────────────────────
+
+describe("#821-I2 — Param format validation at promote boundary", () => {
+  test("I2-a: param failing PARAM_FORMAT_RE (contains space) → PromoteError exitCode 1, bytes unchanged", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    // "bad param" has a space — fails PARAM_FORMAT_RE /^[a-zA-Z0-9_.\-]+$/
+    const badParams = ["bad param", "good_param"];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", badParams);
+    const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params: badParams, sig };
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
+
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      params: ["existing_param"],
+    });
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+    const bytesBefore = readFileSync(sourcePath, "utf8");
+
+    await assert.rejects(
+      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      (err) => {
+        assert.ok(err instanceof PromoteError, "must be PromoteError");
+        assert.strictEqual(err.exitCode, 1, "bad format param → exitCode 1");
+        return true;
+      }
+    );
+    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+  });
+
+  test("I2-b: param exceeding MAX_PARAM_LEN (>64 chars) → PromoteError exitCode 1, bytes unchanged", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    const overLongParam = "a".repeat(65); // 65 chars > MAX_PARAM_LEN (64)
+    const badParams = [overLongParam];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", badParams);
+    const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params: badParams, sig };
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
+
+    const sourcePath = writeParamsJson(tmpDir, { version: 3, published: "2026-04-01T00:00:00.000Z", params: [] });
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+    const bytesBefore = readFileSync(sourcePath, "utf8");
+
+    await assert.rejects(
+      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      (err) => {
+        assert.ok(err instanceof PromoteError, "must be PromoteError");
+        assert.strictEqual(err.exitCode, 1, "over-long param → exitCode 1");
+        return true;
+      }
+    );
+    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+  });
+
+  test("I2-c: param in REMOTE_PARAM_DENYLIST → PromoteError exitCode 1, bytes unchanged", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    // "q" is in REMOTE_PARAM_DENYLIST
+    const badParams = ["q"];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", badParams);
+    const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params: badParams, sig };
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
+
+    const sourcePath = writeParamsJson(tmpDir, { version: 3, published: "2026-04-01T00:00:00.000Z", params: [] });
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+    const bytesBefore = readFileSync(sourcePath, "utf8");
+
+    await assert.rejects(
+      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      (err) => {
+        assert.ok(err instanceof PromoteError, "must be PromoteError");
+        assert.strictEqual(err.exitCode, 1, "denylist param → exitCode 1");
+        return true;
+      }
+    );
+    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+  });
+
+  test("I2-d: param in AFFILIATE_PARAM_GUARD → PromoteError exitCode 1, bytes unchanged", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    // "tag" is in AFFILIATE_PARAM_GUARD (Amazon)
+    const badParams = ["tag"];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", badParams);
+    const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params: badParams, sig };
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
+
+    const sourcePath = writeParamsJson(tmpDir, { version: 3, published: "2026-04-01T00:00:00.000Z", params: [] });
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+    const bytesBefore = readFileSync(sourcePath, "utf8");
+
+    await assert.rejects(
+      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      (err) => {
+        assert.ok(err instanceof PromoteError, "must be PromoteError");
+        assert.strictEqual(err.exitCode, 1, "affiliate guard param → exitCode 1");
+        return true;
+      }
+    );
+    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+  });
+});
+
+// ── #821-I3: Validate `published` in promote source schema ────────────────────
+
+describe("#821-I3 — Validate `published` in source params.json schema", () => {
+  test("I3-a: source params.json missing `published` field → PromoteError exitCode 1, bytes unchanged", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: ["new_param"],
+      privateKey: TEST_PRIV_KEY,
+    });
+    const promotePath = writeArtifact(tmpDir, artifact);
+
+    // Source without `published` field
+    const sourcePath = join(tmpDir, "params.json");
+    writeFileSync(
+      sourcePath,
+      JSON.stringify({ version: 3, params: ["existing_param"] }, null, 2) + "\n",
+      "utf8"
+    );
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+    const bytesBefore = readFileSync(sourcePath, "utf8");
+
+    await assert.rejects(
+      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      (err) => {
+        assert.ok(err instanceof PromoteError, "must be PromoteError");
+        assert.strictEqual(err.exitCode, 1, "missing published in source → exitCode 1 (SCHEMA_ERROR)");
+        return true;
+      }
+    );
+    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+  });
+
+  test("I3-b: source params.json with non-string `published` → PromoteError exitCode 1", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: ["new_param"],
+      privateKey: TEST_PRIV_KEY,
+    });
+    const promotePath = writeArtifact(tmpDir, artifact);
+
+    // Source with published as a number (not string)
+    const sourcePath = join(tmpDir, "params.json");
+    writeFileSync(
+      sourcePath,
+      JSON.stringify({ version: 3, published: 12345, params: ["existing_param"] }, null, 2) + "\n",
+      "utf8"
+    );
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+
+    await assert.rejects(
+      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      (err) => {
+        assert.ok(err instanceof PromoteError, "must be PromoteError");
+        assert.strictEqual(err.exitCode, 1, "non-string published in source → exitCode 1");
+        return true;
+      }
+    );
+  });
+
+  test("I3-c: valid source with string `published` proceeds normally", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: ["new_param"],
+      privateKey: TEST_PRIV_KEY,
+    });
+    const promotePath = writeArtifact(tmpDir, artifact);
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      params: [],
+    });
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+
+    // Must not throw — valid published field
+    const result = await runPromote({
+      promotePath, sourcePath, domainRulesPath,
+      trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
+    });
+    assert.strictEqual(result.verified, true, "valid source must proceed to verify");
+    assert.strictEqual(result.written, true, "valid source must write result");
+  });
+});
+
 // ── Phase 8: T-27 — import-smoke regression test ─────────────────────────────
 
 describe("Import smoke — promote-rules.mjs under Node (D1 mitigation)", () => {

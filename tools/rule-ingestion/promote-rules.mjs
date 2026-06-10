@@ -28,7 +28,13 @@ import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { verifySignature } from "../../src/lib/remote-rules.js";
+import {
+  verifySignature,
+  PARAM_FORMAT_RE,
+  MAX_PARAM_LEN,
+  REMOTE_PARAM_DENYLIST,
+  AFFILIATE_PARAM_GUARD,
+} from "../../src/lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../../src/lib/remote-rules-keys.js";
 import { canonicalMessage } from "./orchestrate.mjs";
 
@@ -174,6 +180,12 @@ export async function runPromote({
       1
     );
   }
+  if (typeof current.published !== "string") {
+    throw new PromoteError(
+      `SCHEMA_ERROR: params.json.published must be a string, got ${typeof current.published}`,
+      1
+    );
+  }
   if (!Array.isArray(current.params)) {
     throw new PromoteError(
       `SCHEMA_ERROR: params.json.params must be an array`,
@@ -255,6 +267,31 @@ export async function runPromote({
     console.log(
       `[promote-rules] INFO: artifact.version (${art.version}) <= source.version (${current.version}) — artifact may be stale; proceeding on params delta`
     );
+  }
+
+  // ── Step 4b: Param format + denylist + affiliate-guard validation ───────────
+  // Applied after sig/freshness so we don't expose format info on unsigned data.
+  // Mirrors the REQ-VALIDATE-2/3/4/5 checks in remote-rules.js validateParams.
+  for (const param of art.params) {
+    if (param.length < 1 || param.length > MAX_PARAM_LEN || !PARAM_FORMAT_RE.test(param)) {
+      throw new PromoteError(
+        `PARAM_FORMAT_ERROR: promote artifact param "${param}" fails format validation (regex or length)`,
+        1
+      );
+    }
+    const lower = param.toLowerCase();
+    if (REMOTE_PARAM_DENYLIST.has(lower)) {
+      throw new PromoteError(
+        `DENYLIST_HIT: promote artifact param "${param}" is in REMOTE_PARAM_DENYLIST`,
+        1
+      );
+    }
+    if (AFFILIATE_PARAM_GUARD.has(lower)) {
+      throw new PromoteError(
+        `AFFILIATE_GUARD_HIT: promote artifact param "${param}" is in AFFILIATE_PARAM_GUARD`,
+        1
+      );
+    }
   }
 
   // ── Step 5: Build preservedSet + partition art.params ─────────────────────

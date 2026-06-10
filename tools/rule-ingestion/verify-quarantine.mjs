@@ -19,7 +19,7 @@
  * exit live in main() so the module is import-safe.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 /** Repo-relative quarantine working dir. Trailing slash = directory match. */
@@ -65,7 +65,7 @@ export function isOutsideSrc(quarantinePath = QUARANTINE_PATH) {
  * @returns {string[]} Tracked file paths (empty when the invariant holds).
  */
 export function listTrackedQuarantineFiles(quarantinePath = QUARANTINE_PATH) {
-  const out = execSync(`git ls-files -- "${quarantinePath}"`, {
+  const out = execFileSync("git", ["ls-files", "--", quarantinePath], {
     encoding: "utf8",
   });
   return out

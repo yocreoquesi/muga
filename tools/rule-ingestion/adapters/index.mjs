@@ -27,6 +27,20 @@ import { clearurls } from "./clearurls.mjs";
  *   ClearURLs accumulates signals.length === 2, passing GATE 2 (corroboration-
  *   gate, #776). Single-source params remain at signals.length === 1 and are
  *   quarantined (recoverable false-positive guard).
+ *
+ * REGISTRY POLICY — ADAPTER INDEPENDENCE (#821):
+ * Each entry in ENABLED_ADAPTERS MUST be independently maintained by a separate
+ * team or organisation with its own review and update cadence. Two adapters that
+ * consume the same upstream dataset (even via different download URLs or formats)
+ * count as ONE effective signal, not two. Adding such a "mirror" adapter would
+ * silently corrupt the corroboration guarantee in corroboration-gate.mjs.
+ *
+ * Before adding a new adapter, verify:
+ *   1. The upstream source is maintained independently (separate team, separate
+ *      issue tracker, separate review process).
+ *   2. The license is compatible with MUGA's GPL v3 (see PROVENANCE.md, #774).
+ *   3. The adapter is listed in PROVENANCE.md with license, URL, and rationale.
+ *
  * @type {Adapter[]}
  */
 export const ENABLED_ADAPTERS = [adguardTp, clearurls];

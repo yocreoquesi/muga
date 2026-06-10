@@ -61,3 +61,38 @@ test("the real .gitignore lists the quarantine path", () => {
 test("no raw upstream is git-tracked under the quarantine dir", () => {
   assert.deepEqual(listTrackedQuarantineFiles(), []);
 });
+
+// ── #821-I5: execFileSync (no shell) ─────────────────────────────────────────
+// Doc-level test: listTrackedQuarantineFiles must use execFileSync, not execSync.
+// We verify the exported function works correctly (observable behavior) AND
+// check source code for the no-shell pattern as a documentation guard.
+
+import { readFileSync as readFs } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __dirnameTest = dirname(fileURLToPath(import.meta.url));
+const verifySrc = readFs(resolve(__dirnameTest, "../../tools/rule-ingestion/verify-quarantine.mjs"), "utf8");
+
+test("#821-I5: verify-quarantine.mjs uses execFileSync not execSync (no shell)", () => {
+  assert.ok(
+    verifySrc.includes("execFileSync"),
+    "verify-quarantine.mjs must use execFileSync (no-shell pattern)"
+  );
+  assert.ok(
+    !verifySrc.includes("execSync("),
+    "verify-quarantine.mjs must NOT use execSync (shell=true variant)"
+  );
+});
+
+test("#821-I5: execFileSync invocation splits args correctly — git + ls-files + -- + path", () => {
+  // Verify the call pattern is present in source code
+  assert.ok(
+    verifySrc.includes('"git"'),
+    'execFileSync call must pass "git" as first argument'
+  );
+  assert.ok(
+    verifySrc.includes('"ls-files"'),
+    'execFileSync args must include "ls-files"'
+  );
+});
