@@ -112,7 +112,13 @@ export const REMOTE_PARAM_DENYLIST = Object.freeze(new Set([
  */
 export const AFFILIATE_PARAM_GUARD = Object.freeze(new Set([
   // Amazon
-  "tag", "ascsubtag", "associatetag", "linkcode", "creativeasin",
+  // ascsubtag: Amazon Associates SubTag — sub-publisher attribution (#794).
+  // In NO strip list; this entry is the RE-INTRODUCTION defense. AdGuard
+  // upstream emits `$removeparam=ascsubtag`, and Amazon is not a redirect
+  // network, so neither AFFILIATE_PATTERNS nor landingParams cover it.
+  // Removing this line reopens the ADR-0005 catastrophic path.
+  "ascsubtag",
+  "tag", "associatetag", "linkcode", "creativeasin",
   // eBay
   "campid", "mkevt", "mkcid", "mkrid", "toolid", "customid",
   // Booking / travel

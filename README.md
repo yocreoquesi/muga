@@ -61,7 +61,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ## What it quiets
 
-**448 tracking params + 13 prefix patterns** across 6 categories, on every site:
+**447 tracking params + 12 prefix patterns** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -92,7 +92,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Always on, no configuration needed
 
-- Quiet 448 tracking params and 13 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Quiet 447 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path noise (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard

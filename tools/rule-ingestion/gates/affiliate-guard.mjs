@@ -17,6 +17,26 @@ import {
   REDIRECT_NETWORK_PATTERNS,
 } from "../../../src/lib/affiliates.js";
 
+/**
+ * Affiliate-attribution names the two live arrays CANNOT express (#794).
+ *
+ * NOT the same thing as remote-rules' AFFILIATE_PARAM_GUARD: that set is
+ * deliberately broader (it also denies params MUGA itself strips locally,
+ * like eBay's mkevt/mkcid — a compromised remote endpoint must not ADD them,
+ * but ingestion may corroborate them). GATE 1 must consume ONLY names that
+ * are genuinely affiliate attribution, or it would quarantine legitimate
+ * tracker candidates. See the "GATE 1 does NOT consume AFFILIATE_PARAM_GUARD"
+ * contract tests.
+ */
+export const STATIC_PRESERVE = Object.freeze(new Set([
+  // Amazon Associates SubTag — sub-publisher attribution. Amazon is a
+  // direct-injection program (its `param` is "tag", no landingParams), yet
+  // AdGuard upstream emits `$removeparam=ascsubtag`. Without this entry the
+  // gate would auto-merge it back into the strip list (ADR-0005's
+  // catastrophic path).
+  "ascsubtag",
+]));
+
 // ── Preserve-index construction ─────────────────────────────────────────────
 
 /**
@@ -26,9 +46,13 @@ import {
  *
  * @param {Array<{id: string, param: string}>} affiliatePatterns
  * @param {Array<{id: string, landingParams: string[]}>} redirectNetworks
+ * @param {Set<string>} [staticGuard]
+ *   Known affiliate-attribution names the two live arrays cannot express —
+ *   see STATIC_PRESERVE (#794). Empty by default so synthetic-fixture tests
+ *   are unaffected.
  * @returns {{ set: Set<string>, owners: Map<string, {id: string, source: string}> }}
  */
-export function buildPreserveIndex(affiliatePatterns, redirectNetworks) {
+export function buildPreserveIndex(affiliatePatterns, redirectNetworks, staticGuard = new Set()) {
   const set = new Set();
   // Maps lowercased param name to its owner record; first-writer-wins so
   // affiliate entries take precedence over redirect-network entries when
@@ -53,6 +77,14 @@ export function buildPreserveIndex(affiliatePatterns, redirectNetworks) {
     }
   }
 
+  for (const raw of staticGuard) {
+    const name = String(raw).toLowerCase();
+    set.add(name);
+    if (!owners.has(name)) {
+      owners.set(name, { id: "affiliate-param-guard", source: "static-guard" });
+    }
+  }
+
   return { set, owners };
 }
 
@@ -63,7 +95,8 @@ export function buildPreserveIndex(affiliatePatterns, redirectNetworks) {
 // included — no gate edit required.
 const { set: _PRESERVE_SET, owners: _OWNER_INDEX } = buildPreserveIndex(
   AFFILIATE_PATTERNS,
-  REDIRECT_NETWORK_PATTERNS
+  REDIRECT_NETWORK_PATTERNS,
+  STATIC_PRESERVE
 );
 
 // ── Public API ───────────────────────────────────────────────────────────────

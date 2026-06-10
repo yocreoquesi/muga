@@ -57,7 +57,9 @@ export const TRACKING_PARAMS = [
   "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
   "pf_rd_p", "pf_rd_r", "pf_rd_s",
   "linkcode", "linkid", "creativeasin", "smid", "spia",
-  "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
+  // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
+  // attribution ID; stripping it kills creator attribution (#794).
+  "asc_contentid", "asc_contenttype", "asc_campaign",
   "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
   // Amazon: store page / brand referral noise
   "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
@@ -469,7 +471,9 @@ export const TRACKING_PREFIXES = [
   "mt_",        // Matomo: campaign tracking (mt_campaign, mt_adset, mt_click_id, etc.)
   "int_",       // Internal campaign params (int_source, int_medium, int_campaign, etc.)
   "ir_",        // Impact Radius: affiliate tracking (ir_adid, ir_campaignid, etc.)
-  "asc_",       // Amazon: affiliate sub-tag variants (asc_contentid, asc_campaign, etc.)
+  // "asc_" prefix removed (#794): caught ascsubtag (Amazon Associates SubTag —
+  // affiliate attribution). Individual asc_campaign/asc_contentid/asc_contenttype
+  // remain in TRACKING_PARAMS above (Amazon Attribution ad-measurement noise).
   "cv_ct_",     // Amazon: conversion tracking
   "scm_",       // AliExpress / Alibaba: SCM tracking variants
   "sb-ci-",     // Amazon: search bar click ID
@@ -701,7 +705,8 @@ export const TRACKING_PARAM_CATEGORIES = {
       "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
       "pf_rd_p", "pf_rd_r", "pf_rd_s",
       "linkcode", "linkid", "creativeasin", "smid", "spia",
-      "ascsubtag", "asc_contentid", "asc_contenttype", "asc_campaign",
+      // ascsubtag removed: affiliate attribution (#794)
+      "asc_contentid", "asc_contenttype", "asc_campaign",
       "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
       "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
       "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",

@@ -370,10 +370,6 @@
       "category": "platform_noise"
     },
     {
-      "param": "ascsubtag",
-      "category": "platform_noise"
-    },
-    {
       "param": "asgtbndr",
       "category": "generic"
     },
@@ -1853,10 +1849,6 @@
       "note": "Impact Radius: affiliate tracking (ir_adid, ir_campaignid, etc.)"
     },
     {
-      "prefix": "asc_",
-      "note": "Amazon: affiliate sub-tag variants (asc_contentid, asc_campaign, etc.)"
-    },
-    {
       "prefix": "cv_ct_",
       "note": "Amazon: conversion tracking"
     },
@@ -2018,7 +2010,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2099,7 +2090,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2180,7 +2170,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2261,7 +2250,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2342,7 +2330,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2423,7 +2410,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2504,7 +2490,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2585,7 +2570,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2666,7 +2650,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2747,7 +2730,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2828,7 +2810,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2909,7 +2890,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -2990,7 +2970,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -3071,7 +3050,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -3152,7 +3130,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -3233,7 +3210,6 @@
         "pd_rd_wg",
         "pd_rd_i",
         "pd_gw_unk",
-        "ascsubtag",
         "linkcode",
         "linkid",
         "camp",
@@ -3374,12 +3350,10 @@
         "q"
       ],
       "stripParams": [
-        "irclickid",
-        "irgwc",
         "loc",
         "ref"
       ],
-      "note": "US electronics retailer. Search/product/pagination: functional. ref + loc are referral source + campaign location codes (#508). irclickid/irgwc are Impact Radius affiliate ad-attribution params."
+      "note": "US electronics retailer. Search/product/pagination: functional. ref + loc are referral source + campaign location codes (#508). irclickid/irgwc removed: BestBuy affiliate program runs on Impact network — required-at-landing attribution params (#794)."
     },
     {
       "domain": "bhphotovideo.com",
@@ -3523,12 +3497,11 @@
         "page"
       ],
       "stripParams": [
-        "clickref",
         "ref",
         "phgref",
         "cmt"
       ],
-      "note": "Dutch retailer. Affiliate click refs stripped."
+      "note": "Dutch retailer. clickref removed: Coolblue participates in Partnerize network — clickref required-at-landing for commission attribution (#794). ref + phgref + cmt are non-attribution noise."
     },
     {
       "domain": "coppel.com",
