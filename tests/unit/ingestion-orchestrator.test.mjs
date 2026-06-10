@@ -542,10 +542,13 @@ describe("R10 — GATE2 malformed-candidate fail-closed", () => {
     );
     assert.ok(corrobRejection, "rejection by corroboration-gate must exist");
     assert.strictEqual(corrobRejection.reason, "corroboration-below-threshold");
-    assert.deepStrictEqual(corrobRejection.evidence.detail, {
-      signalCount: 0,
-      minSignals: 2,
-    });
+    // Detail now includes all evaluated arm values for quarantine transparency (#798)
+    assert.strictEqual(corrobRejection.evidence.detail.signalCount, 0);
+    assert.strictEqual(corrobRejection.evidence.detail.minSignals, 2);
+    assert.strictEqual(corrobRejection.evidence.detail.entropy, null);
+    assert.strictEqual(corrobRejection.evidence.detail.crossSiteFrequency, null);
+    assert.strictEqual(corrobRejection.evidence.detail.entropyFloor, 4.0);
+    assert.strictEqual(corrobRejection.evidence.detail.csfFloor, 3);
 
     // Must not appear in params
     assert.ok(

@@ -83,6 +83,50 @@ the issue is the NC *license term* a commercial user would be accepting by
 extracting from the database, plus the reputational and good-faith cost of
 ignoring a maintainer's clearly stated NonCommercial intent. We respect it.
 
+## Heuristic arms — analytical scores, not signal sources (#798)
+
+The `entropy` and `crossSiteFrequency` fields on ingestion candidates are
+**analytical aggregates**, not corroboration signals. Understanding the
+distinction is essential before adding any new source or extending the gate.
+
+**What they are:**
+
+- `entropy` — the arithmetic mean of `value_entropy` values found in verified
+  `discovered/` artifact files (populated by `enrich-candidates.mjs`).
+  `value_entropy` is the mean Shannon entropy (bits) of observed URL parameter
+  VALUES in a caps-crawler run. It measures how randomised/opaque the values are.
+- `crossSiteFrequency` — the count of DISTINCT `first_seen_on` hostnames for
+  a param across all verified `discovered/` artifact files. It measures how
+  broadly a param was observed across different sites.
+
+Both fields are derived from caps-crawler crawl metadata stored in `discovered/`.
+They are set by `enrich-candidates.mjs` between ingest and orchestration and are
+`null` when no artifact data is available for a param.
+
+**What they are NOT:**
+
+- They are **NOT** entries in `signals[]`. The `signals[]` array records which
+  independent upstream **adapter** (AdGuard, ClearURLs, …) reported a param.
+  Each signal entry must come from a DISTINCT, SEPARATELY MAINTAINED upstream
+  source per the independence invariant (#821).
+- caps-crawler is **NOT** a corroboration source. It does not produce a signal
+  entry. Adding caps-crawler to `ENABLED_ADAPTERS` or `signals[]` would violate
+  the independence invariant and must never be done.
+- The heuristic arms do not change `signals[]` semantics. Two params can share
+  identical `signals[]` contents yet differ in `entropy`/`crossSiteFrequency`
+  depending on observed value patterns and site breadth.
+
+**Why this matters for PROVENANCE:**
+
+GATE 2 now accepts a candidate via three arms: signal count, entropy, or CSF
+(see `corroboration-gate.mjs` and ADR-0005 amendment). A reader might assume
+that passing via the entropy or CSF arm implies a new corroboration source was
+added. It was not. The heuristic arms use MUGA's own analytical pipeline over
+existing caps-crawler artifact metadata — they are a _scoring_ deepening of the
+same corroboration concept, not a new upstream fact source.
+
+---
+
 ## Adding a new source — checklist
 
 1. Verify the **data** license (not the addon's) against its `LICENSE` file.

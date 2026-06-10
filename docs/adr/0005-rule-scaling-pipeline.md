@@ -113,7 +113,6 @@ The pipeline lives in `tools/rule-ingestion/` as build tooling that runs in CI a
 
 **Neutral:**
 
-- The `entropy` and `crossSiteFrequency` candidate fields are currently `null` — placeholders for the GATE 2 heuristic arms tracked in [#798](https://github.com/yocreoquesi/muga/issues/798). Today only `signals.length` drives corroboration. This ADR documents the shipped two-source floor; the heuristic arms are a future deepening, not a change to the architecture here.
 - Two upstream sources are enabled today (AdGuard, ClearURLs). Brave, uBlock/uAssets, and Neat URL are recorded in the ledger as GPL/MPL-compatible candidates but are not wired. Adding one follows the documented `PROVENANCE.md` checklist; the architecture does not change.
 
 ## Verification
@@ -127,4 +126,47 @@ The architecture this ADR documents shipped and is verified by the implementatio
 5. **No silent caps** — the review-surface formatter tests assert per-adapter and merged stats, gate-rejection breakdowns, and promote skips all render, with null-safe fallback and no path leakage.
 6. **End-to-end governance** — `auto-ingest-rules.yml` ran the full inline gate suite and squash-merged the v2.3.0 ingestion PRs (#806–#809); the merged `params.json` is exactly the artifact the gates passed.
 
-This ADR is **Accepted** as the standing record of the architecture. A follow-up ADR will be filed only if a future change alters the gate stack's structure, the clean-room posture, or the in-repo build-tooling decision — for example, if the GATE 2 heuristic arms ([#798](https://github.com/yocreoquesi/muga/issues/798)) change corroboration from a discrete signal count to a scored model, or if a source is added that requires a new legal posture.
+This ADR is **Accepted** as the standing record of the architecture. A follow-up ADR will be filed only if a future change alters the gate stack's structure, the clean-room posture, or the in-repo build-tooling decision.
+
+## Amendment — GATE 2 heuristic arms (#798)
+
+**Date**: 2026-06-10
+**Trigger**: This ADR's own amendment clause — the GATE 2 corroboration predicate changed from a single-arm signal count to a three-arm OR structure, which is the structural gate-stack change the final paragraph above identified as amendment-worthy.
+
+### What changed
+
+GATE 2 (`corroboration-gate`) moved from a signal-count-only predicate to a **three-arm OR predicate**:
+
+```
+pass iff:
+  signals.length >= MIN_SIGNALS (arm 1 — unchanged)
+  OR (entropy !== null && entropy >= ENTROPY_FLOOR)    (arm 2 — new)
+  OR (crossSiteFrequency !== null && csf >= CSF_FLOOR) (arm 3 — new)
+```
+
+Exported constants:
+- `ENTROPY_FLOOR = 4.0` — minimum mean Shannon entropy (bits) of observed URL parameter values.
+- `CSF_FLOOR = 3` — minimum count of distinct `first_seen_on` hostnames across all verified `discovered/` artifacts.
+- Both are overridable at call-site via `gateOpts.corroborationGate.{ entropyFloor, csfFloor }`, mirroring the existing `minSignals` override pattern.
+
+Accepted results now carry a `passedArm` field (`"signals"` | `"entropy"` | `"csf"`) identifying which arm caused acceptance. When multiple arms qualify, the first in the precedence order above is recorded.
+
+Rejected results carry an extended `detail` object with all evaluated arm values (`signalCount`, `minSignals`, `entropy`, `entropyFloor`, `crossSiteFrequency`, `csfFloor`) for quarantine-report transparency.
+
+### Null-skip guard preserves prior behavior
+
+A `null` value on arm 2 or arm 3 causes that arm to be **skipped entirely** — it does not count as failing. Candidates where enrichment produced no data (entropy/CSF both null) fall through to the signal-count arm exactly as they did before this change. No behavioral regression for the un-enriched case.
+
+### Heuristic arms are analytical scores, not signal sources
+
+`entropy` and `crossSiteFrequency` are **analytical aggregates** derived from caps-crawler `discovered/` artifact metadata, populated by `enrich-candidates.mjs` between ingest and orchestration. They are **NOT** entries in `signals[]`. caps-crawler is **NOT** a corroboration source under the independence invariant (#821). `signals[]` semantics are unchanged — each entry must still come from a DISTINCT, SEPARATELY MAINTAINED upstream adapter. See `tools/rule-ingestion/PROVENANCE.md`.
+
+### Gate-stack structure
+
+The gate order, count, and fail-safe postures documented in this ADR are **unchanged**. GATE 2 still rejects malformed/uncorroborated candidates (reject posture). The change is additive: two new acceptance paths within the same gate, not a new gate.
+
+### Verification
+
+- T-06 in `tests/unit/corroboration-gate.test.mjs` was rewritten to assert that entropy arm acceptance is active (single signal + `entropy >= 4.0` → `rejected: false, passedArm: "entropy"`).
+- New arm tests cover: each arm passes alone, null-skip guards, below-floor rejection, floor overrides via opts, and multi-arm precedence ordering.
+- Full suite (`npm test`) passes with no regressions.
