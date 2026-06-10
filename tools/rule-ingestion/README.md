@@ -259,7 +259,9 @@ This order is guaranteed by the `DEFAULT_GATES` array literal in
 Candidates missing `signals` (null, absent, or non-array) are rejected by
 `corroboration-gate` with `signalCount = 0`. They **never appear in
 `autoMerge` or `promote-candidates.json`**. The quarantine sidecar captures
-the full `evidence.detail = { signalCount, minSignals }` for audit.
+the full `evidence.detail` for audit — since #798 it carries the evaluated
+three-arm state: `{ signalCount, minSignals, entropy, entropyFloor,
+crossSiteFrequency, csfFloor }`.
 
 ### Signing format + verification path
 

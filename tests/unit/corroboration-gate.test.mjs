@@ -223,6 +223,14 @@ describe("checkCorroborationGate — CSF arm (#798)", () => {
     assert.equal(result.passedArm, "csf");
   });
 
+  test("entropy present but below floor + CSF at floor → accepted with passedArm 'csf'", () => {
+    // The entropy arm FAILING (not just null-skipping) must not block the CSF arm.
+    const candidate = { signals: ["x"], entropy: 2.0, crossSiteFrequency: 3 };
+    const result = checkCorroborationGate(candidate);
+    assert.equal(result.rejected, false);
+    assert.equal(result.passedArm, "csf");
+  });
+
   test("crossSiteFrequency below floor (2 < 3) → rejected", () => {
     // Spec: Scenario "CSF below floor — arm skipped as failing"
     const candidate = { signals: ["x"], entropy: null, crossSiteFrequency: 2 };
