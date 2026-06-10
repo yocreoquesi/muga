@@ -792,3 +792,110 @@ describe("R5 — GITHUB_OUTPUT dual-emit", () => {
     );
   });
 });
+
+// ── T-15: discoveredDir forwarded through pipeline → orchestrate-cli (#798) ──
+// Spec Domain candidate-enrichment §Pipeline wiring:
+//   GIVEN a pipeline run with a populated discoveredDir
+//   WHEN runPipeline is called with discoveredDir
+//   THEN the parameter is forwarded to runOrchestrateCli without crashing
+
+describe("T-15 — discoveredDir forwarded from pipeline to orchestrate-cli", () => {
+  /**
+   * Helpers: write a minimal shape-only discovered artifact (no real sig) into a dir.
+   */
+  function writeDiscoveredFixture(dir, name, candidates) {
+    mkdirSync(dir, { recursive: true });
+    const artifact = {
+      discovered_at: "2026-05-01T00:00:00Z",
+      crawler_version: "abc1234",
+      corpus: ["ads.example.com"],
+      candidates,
+      signature: "ab".repeat(64),
+    };
+    writeFileSync(join(dir, name), JSON.stringify(artifact, null, 2) + "\n", "utf8");
+  }
+
+  test("T-15-forward: discoveredDir forwarded to runOrchestrateCli — quarantine report carries enriched fields", async () => {
+    const { runPipeline } = await import("../../tools/rule-ingestion/pipeline.mjs");
+
+    const tmpDir = makeTmpDir();
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+      makeInjectedPaths(tmpDir, { sourceParams: [] });
+
+    // Write a discovered artifact that carries value_entropy for utm_source
+    const discoveredDir = join(tmpDir, "discovered");
+    writeDiscoveredFixture(discoveredDir, "artifact-a.json", [
+      {
+        param: "utm_source",
+        first_seen_on: "shop.example.com",
+        injected_by: "google-analytics",
+        occurrence_count: 10,
+        value_entropy: 3.5,
+      },
+    ]);
+
+    // Single-signal adapter → utm_source fails corroboration → goes to quarantine
+    // The quarantined candidate must have entropy:3.5 if discoveredDir was forwarded.
+    const singleAdapter = {
+      id: "adguard-tp",
+      name: "AdGuard",
+      license: "GPL-3.0",
+      url: "https://example.com",
+      fetchRaw: async () => "utm_source",
+      parse: (raw) => ({ params: new Set(raw.trim().split("\n").filter(Boolean)), skipped: 0, affiliateExcluded: 0 }),
+    };
+
+    // Inject a verify stub so readVerifiedArtifacts skips real Ed25519 check
+    const verifyStub = () => ({ ok: true, code: "OK" });
+
+    let thrownErr = null;
+    try {
+      await runPipeline({
+        adapters: [singleAdapter],
+        fetchImpl: makeFakeFetch(),
+        candidatesPath,
+        promotePath,
+        reportPath,
+        sourcePath,
+        domainRulesPath,
+        signingKeyPath: keyPath,
+        trustedKeys,
+        subtle: globalThis.crypto?.subtle,
+        now: TEST_NOW,
+        version: 1,
+        discoveredDir,
+        _verifyOverride: verifyStub,
+      });
+    } catch (err) {
+      thrownErr = err;
+    }
+
+    // Pipeline may noop or succeed; what matters is the quarantine report shows enrichment
+    if (thrownErr) {
+      assert.fail(`runPipeline threw unexpectedly: ${thrownErr.message}`);
+    }
+
+    // Read the quarantine report — utm_source was quarantined (1 signal < MIN_SIGNALS 2)
+    assert.ok(existsSync(reportPath), "quarantine-report.json must be written");
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.strictEqual(report.quarantineCount, 1, "utm_source must be quarantined (1 signal)");
+
+    const entry = report.quarantine[0];
+    assert.ok(entry, "quarantine must have one entry");
+
+    // KEY ASSERTION: entropy must be 3.5 if discoveredDir was forwarded and _verifyOverride was used.
+    // If discoveredDir was NOT forwarded, orchestrate-cli falls back to the default dir
+    // (likely non-existent or empty), producing entropy:null.
+    assert.strictEqual(
+      entry.candidate.entropy,
+      3.5,
+      "quarantined candidate.entropy must be 3.5 (proves discoveredDir was forwarded from pipeline)"
+    );
+    assert.strictEqual(
+      entry.candidate.crossSiteFrequency,
+      1,
+      "quarantined candidate.crossSiteFrequency must be 1 (proves discoveredDir enrichment reached the gate)"
+    );
+  });
+});
