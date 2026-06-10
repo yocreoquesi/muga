@@ -27,6 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Type-check JS (tsc --checkJs) (#823)
+        run: npm run typecheck
+
+      - name: Lint JS (ESLint flat config) (#823)
+        run: npm run lint:js
+
       - name: Compile rules artifacts (#626)
         run: npm run compile:rules
 

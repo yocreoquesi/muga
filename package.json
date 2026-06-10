@@ -33,12 +33,17 @@
     "compile:rules": "node tools/generate-rules.mjs",
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "add-rule": "node tools/add-rule.mjs",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "npx playwright test",
+    "typecheck": "tsc -p jsconfig.json",
+    "lint:js": "eslint ."
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
+    "@types/node": "^25.9.2",
     "esbuild": "^0.28.0",
+    "eslint": "^9.39.4",
     "playwright": "^1.58.2",
+    "typescript": "^6.0.3",
     "web-ext": "^8.0.0"
   }
 }
