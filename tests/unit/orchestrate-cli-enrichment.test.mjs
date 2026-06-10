@@ -188,7 +188,10 @@ describe("W1+W2 — discoveredDir wires enrichment before orchestration", () => 
     const reportPath = join(tmpDir, "quarantine-report.json");
     const discoveredDir = join(tmpDir, "discovered");
 
-    // Single-signal candidate → fails corroboration → goes to quarantine with full candidate object
+    // Single-signal candidate → corroboration check depends on heuristic arms.
+    // Artifact gives value_entropy: 2.0 which is BELOW ENTROPY_FLOOR (4.0) and
+    // crossSiteFrequency: 1 which is BELOW CSF_FLOOR (3).
+    // All three arms fail → quarantined, with enriched field values in the entry.
     const singleSignalCandidates = [
       {
         param: "fbclid",
@@ -199,8 +202,19 @@ describe("W1+W2 — discoveredDir wires enrichment before orchestration", () => 
       },
     ];
 
+    // Artifact with low entropy (below floor) so the entropy arm does NOT rescue
+    const lowEntropyArtifactCandidates = [
+      {
+        param: "fbclid",
+        first_seen_on: "ads.example.com",
+        injected_by: "meta-pixel",
+        occurrence_count: 10,
+        value_entropy: 2.0, // below ENTROPY_FLOOR 4.0
+      },
+    ];
+
     writeCandidatesJson(candidatesPath, singleSignalCandidates);
-    writeDiscoveredArtifact(discoveredDir, "artifact-a.json", FIXTURE_ARTIFACT_CANDIDATES);
+    writeDiscoveredArtifact(discoveredDir, "artifact-a.json", lowEntropyArtifactCandidates);
 
     const verifyStub = () => ({ ok: true, code: "OK" });
 
@@ -218,16 +232,17 @@ describe("W1+W2 — discoveredDir wires enrichment before orchestration", () => 
     assert.ok(existsSync(reportPath), "quarantine-report.json must be written");
     const report = JSON.parse(readFileSync(reportPath, "utf8"));
 
-    // fbclid fails corroboration (1 signal < MIN_SIGNALS 2) → quarantined
-    assert.strictEqual(report.quarantineCount, 1, "fbclid must be quarantined (1 signal)");
+    // fbclid: 1 signal < MIN_SIGNALS, entropy 2.0 < ENTROPY_FLOOR 4.0, CSF 1 < CSF_FLOOR 3
+    // → all arms fail → quarantined
+    assert.strictEqual(report.quarantineCount, 1, "fbclid must be quarantined (all arms below floor)");
     const entry = report.quarantine[0];
     assert.ok(entry, "quarantine must have one entry");
 
-    // The candidate in the report must carry enriched fields
+    // The candidate in the report must carry enriched fields (populated by enrich-candidates)
     assert.strictEqual(
       entry.candidate.entropy,
-      4.5,
-      "quarantined candidate.entropy must be 4.5 (from artifact value_entropy)"
+      2.0,
+      "quarantined candidate.entropy must be 2.0 (from artifact value_entropy 2.0)"
     );
     assert.strictEqual(
       entry.candidate.crossSiteFrequency,
