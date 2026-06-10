@@ -163,6 +163,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 - Zero browsing data collected, zero analytics, zero telemetry
 - No account, no sign-in, no cloud
 - Minimal permissions: `storage`, `activeTab`, `contextMenus`, `declarativeNetRequestWithHostAccess`, `clipboardWrite`. Nothing else.
+- The extension also holds `host_permissions: <all_urls>`, required by `declarativeNetRequestWithHostAccess` to clean URLs on all sites.
 
 ---
 
