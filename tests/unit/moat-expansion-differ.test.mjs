@@ -472,6 +472,251 @@ describe("diffMoat — return value shape", () => {
   });
 });
 
+// ── FIX-1: else fallback branch must require param-equality (WARNING-1) ────────
+// When a lookup programId is NOT in knownByProgramId, source (a) coverage CANNOT
+// apply (there is no program `param` field to establish equality against). A param
+// that happens to live in coveredByDomain for a SHARED domain (carried by a
+// DIFFERENT program) must NOT be treated as covered by source (a) — that is a
+// cross-program false-cover in the costly (silent-gap) direction.
+
+describe("diffMoat — FIX-1: unknown-programId fallback must not false-cover via source (a)", () => {
+  test("param shared on a domain by a DIFFERENT program is a GAP (cross-program false-cover guard)", () => {
+    // Probe from WARNING-1: programId not in knownByProgramId, domain shared with amazon.
+    // 'tag' lives in coveredByDomain['amazon.com'] because amazon-associates put it there.
+    // But this lookup program ('x-not-in-caps') is NOT that program → source (a) must not cover.
+    const coveredByDomain = new Map([["amazon.com", new Set(["tag"])]]);
+    const knownByProgramId = new Map([
+      ["amazon-associates", { param: "tag", domains: ["amazon.com"] }],
+    ]);
+    const snapshot = makeSnapshot({ coveredByDomain, knownByProgramId });
+    const lookup = makeLookup({
+      "x-provider": {
+        programId: "x-not-in-caps", // NOT present in knownByProgramId
+        domains: ["amazon.com"],
+        note: "test",
+      },
+    });
+
+    const signal = {
+      provider: "x-provider",
+      urlPattern: "^https?://x-provider/",
+      referralMarketing: ["tag"],
+    };
+
+    const result = diffMoat([signal], snapshot, lookup);
+
+    const gap = result.newOnKnown.find(
+      (g) => g.param === "tag" && g.programId === "x-not-in-caps"
+    );
+    assert.ok(
+      gap !== undefined,
+      "'tag' on an unknown-programId provider must be a GAP — no source (a) cross-program cover"
+    );
+    assert.strictEqual(
+      result.alreadyCoveredCount,
+      0,
+      "no param must be counted as covered in the cross-program probe"
+    );
+  });
+
+  test("positive: known programId with matching param+domain IS covered via source (a)", () => {
+    // Primary path: programId IS in knownByProgramId, param equals program's param,
+    // and the domain is carried in coveredByDomain → COVERED.
+    const coveredByDomain = new Map([["amazon.com", new Set(["tag"])]]);
+    const knownByProgramId = new Map([
+      ["amazon-associates", { param: "tag", domains: ["amazon.com"] }],
+    ]);
+    const snapshot = makeSnapshot({ coveredByDomain, knownByProgramId });
+    const lookup = makeLookup();
+
+    const signal = {
+      provider: "amazon",
+      urlPattern: "^https?://amazon\\.com/",
+      referralMarketing: ["tag"],
+    };
+
+    const result = diffMoat([signal], snapshot, lookup);
+
+    const gap = result.newOnKnown.find((g) => g.param === "tag");
+    assert.strictEqual(gap, undefined, "'tag' must be covered when param+domain match a known program");
+    assert.strictEqual(result.alreadyCoveredCount, 1, "the matching param must be counted as covered");
+  });
+});
+
+// ── FIX-2: unknown providers filter against domain-free coverage (WARNING-2) ───
+// Unknown providers (absent from the lookup table) must still have each param
+// filtered against the DOMAIN-FREE coverage sources: (b) landingParamSet and
+// (c) guardParams (case-insensitive). Source (a) is domain-scoped and cannot
+// apply to unknown domains. Covered params increment alreadyCoveredCount; the
+// provider appears in unknownProvider ONLY with its remaining uncovered params;
+// if none remain, the provider does not appear at all.
+
+describe("diffMoat — FIX-2: unknown providers filter against domain-free coverage", () => {
+  test("guard-covered param (ascsubtag) on an UNKNOWN provider is counted, not surfaced", () => {
+    const guardParams = new Set(["ascsubtag"]);
+    const snapshot = makeSnapshot({ guardParams });
+    const lookup = makeLookup(); // 'mystery' is NOT in the lookup
+
+    const signal = {
+      provider: "mystery",
+      urlPattern: "^https?://mystery/",
+      referralMarketing: ["ascsubtag"],
+    };
+
+    const result = diffMoat([signal], snapshot, lookup);
+
+    assert.strictEqual(result.alreadyCoveredCount, 1, "guard-covered param on unknown provider must count");
+    const surfaced = result.unknownProvider.find((u) => u.provider === "mystery");
+    assert.strictEqual(
+      surfaced,
+      undefined,
+      "unknown provider whose only param is guard-covered must NOT surface at all"
+    );
+  });
+
+  test("guard coverage on unknown provider is case-insensitive", () => {
+    const guardParams = new Set(["ascsubtag"]); // stored lowercase
+    const snapshot = makeSnapshot({ guardParams });
+    const lookup = makeLookup();
+
+    const signal = {
+      provider: "mystery",
+      urlPattern: "^https?://mystery/",
+      referralMarketing: ["ASCSUBTAG"],
+    };
+
+    const result = diffMoat([signal], snapshot, lookup);
+
+    assert.strictEqual(result.alreadyCoveredCount, 1, "uppercase guard param on unknown provider must count");
+    assert.strictEqual(
+      result.unknownProvider.find((u) => u.provider === "mystery"),
+      undefined,
+      "case-insensitive guard cover must suppress the unknown provider"
+    );
+  });
+
+  test("landingParam-covered param on unknown provider is counted, not surfaced", () => {
+    const landingParamSet = new Set(["awc"]);
+    const snapshot = makeSnapshot({ landingParamSet });
+    const lookup = makeLookup();
+
+    const signal = {
+      provider: "mystery",
+      urlPattern: "^https?://mystery/",
+      referralMarketing: ["awc"],
+    };
+
+    const result = diffMoat([signal], snapshot, lookup);
+
+    assert.strictEqual(result.alreadyCoveredCount, 1, "landingParam-covered param on unknown provider must count");
+    assert.strictEqual(
+      result.unknownProvider.find((u) => u.provider === "mystery"),
+      undefined,
+      "landingParam cover must suppress the unknown provider"
+    );
+  });
+
+  test("mixed params on unknown provider: only the uncovered one surfaces", () => {
+    const guardParams = new Set(["ascsubtag"]);
+    const snapshot = makeSnapshot({ guardParams });
+    const lookup = makeLookup();
+
+    const signal = {
+      provider: "mystery",
+      urlPattern: "^https?://mystery/",
+      referralMarketing: ["ascsubtag", "uncovered"],
+    };
+
+    const result = diffMoat([signal], snapshot, lookup);
+
+    assert.strictEqual(result.alreadyCoveredCount, 1, "the covered param must count once");
+
+    const entry = result.unknownProvider.find((u) => u.provider === "mystery");
+    assert.ok(entry !== undefined, "unknown provider with a remaining uncovered param must surface");
+    assert.deepStrictEqual(
+      entry.referralMarketing,
+      ["uncovered"],
+      "only the uncovered param must remain in referralMarketing"
+    );
+    assert.strictEqual(
+      entry.urlPattern,
+      signal.urlPattern,
+      "raw urlPattern must be preserved verbatim"
+    );
+  });
+
+  test("unknown provider with no covered params surfaces unchanged", () => {
+    const snapshot = makeSnapshot();
+    const lookup = makeLookup();
+
+    const result = diffMoat([UNKNOWN_FOO_SIGNAL], snapshot, lookup);
+
+    const entry = result.unknownProvider.find((u) => u.provider === "unknown-foo");
+    assert.ok(entry, "unknown-foo must surface");
+    assert.deepStrictEqual(entry.referralMarketing, ["xparam"], "uncovered params pass through");
+    assert.strictEqual(result.alreadyCoveredCount, 0, "no param covered → count stays 0");
+  });
+});
+
+// ── FIX-3: de-duplication of duplicate tuples (SUGGESTION-2) ───────────────────
+// Duplicate tuples / duplicate (program,param) or (provider,param) pairs must
+// collapse to one entry and count once in alreadyCoveredCount.
+
+describe("diffMoat — FIX-3: duplicate tuples collapse to one entry", () => {
+  test("duplicate (program,param) gap collapses to a single newOnKnown entry", () => {
+    const snapshot = makeSnapshot();
+    const lookup = makeLookup();
+
+    // Two identical amazon signals → 'newparam' would otherwise duplicate.
+    const result = diffMoat([AMAZON_SIGNAL, AMAZON_SIGNAL], snapshot, lookup);
+
+    const newparamGaps = result.newOnKnown.filter(
+      (g) => g.param === "newparam" && g.programId === "amazon-associates"
+    );
+    assert.strictEqual(newparamGaps.length, 1, "duplicate (program,param) gap must collapse to one entry");
+  });
+
+  test("duplicate covered (program,param) counts once in alreadyCoveredCount", () => {
+    const coveredByDomain = new Map([["amazon.com", new Set(["tag"])]]);
+    const knownByProgramId = new Map([
+      ["amazon-associates", { param: "tag", domains: ["amazon.com"] }],
+    ]);
+    const snapshot = makeSnapshot({ coveredByDomain, knownByProgramId });
+    const lookup = makeLookup();
+
+    const signal = {
+      provider: "amazon",
+      urlPattern: "^https?://amazon\\.com/",
+      referralMarketing: ["tag", "tag"],
+    };
+
+    const result = diffMoat([signal, signal], snapshot, lookup);
+
+    assert.strictEqual(result.alreadyCoveredCount, 1, "a duplicated covered (program,param) must count once");
+  });
+
+  test("duplicate unknown (provider,param) collapses to a single surfaced param", () => {
+    const snapshot = makeSnapshot();
+    const lookup = makeLookup();
+
+    const dupSignal = {
+      provider: "mystery",
+      urlPattern: "^https?://mystery/",
+      referralMarketing: ["dup", "dup"],
+    };
+
+    const result = diffMoat([dupSignal, dupSignal], snapshot, lookup);
+
+    const entries = result.unknownProvider.filter((u) => u.provider === "mystery");
+    assert.strictEqual(entries.length, 1, "duplicate unknown provider must collapse to one entry");
+    assert.deepStrictEqual(
+      entries[0].referralMarketing,
+      ["dup"],
+      "duplicate (provider,param) must collapse to a single surfaced param"
+    );
+  });
+});
+
 // ── Real moat: ascsubtag via loadMoatSnapshot ─────────────────────────────────
 // These tests hit the REAL affiliate moat sources to verify the critical
 // ascsubtag-is-covered invariant as specified.
