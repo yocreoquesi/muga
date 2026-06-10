@@ -1,0 +1,25 @@
+{
+  "discovered_at": "2026-05-15T00:00:00Z",
+  "crawler_version": "def5678",
+  "corpus": [
+    "news.example.com",
+    "shop.example.com"
+  ],
+  "candidates": [
+    {
+      "param": "fbclid",
+      "first_seen_on": "news.example.com",
+      "injected_by": "meta-pixel",
+      "occurrence_count": 7,
+      "value_entropy": 4.1
+    },
+    {
+      "param": "utm_source",
+      "first_seen_on": "shop.example.com",
+      "injected_by": "google-analytics",
+      "occurrence_count": 31,
+      "value_entropy": 3.6
+    }
+  ],
+  "signature": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+}

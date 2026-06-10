@@ -1,0 +1,16 @@
+{
+  "discovered_at": "2026-04-01T00:00:00Z",
+  "crawler_version": "ccd9abc",
+  "corpus": [
+    "legacy.example.com"
+  ],
+  "candidates": [
+    {
+      "param": "ref",
+      "first_seen_on": "legacy.example.com",
+      "injected_by": "legacy-tracker",
+      "occurrence_count": 3
+    }
+  ],
+  "signature": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+}
