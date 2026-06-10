@@ -150,6 +150,21 @@
   // ── Disabled-state gate ───────────────────────────────────────────────
   // Reuse the same `muga:history-gate` event the History Defuser
   // publishes — no extra prefs round-trip, no second gate.
+  //
+  // Nonce handshake (#811): capture the shared secret from the one-shot
+  // `muga:history-gate:nonce` event fired at document_start by the
+  // dispatcher. Gate events without the matching nonce are rejected.
+  let _capturedNonce = null;
+  (function () {
+    function _onNonce(e) {
+      if (e && e.detail && typeof e.detail.nonce === "string") {
+        _capturedNonce = e.detail.nonce;
+      }
+      document.removeEventListener("muga:history-gate:nonce", _onNonce);
+    }
+    document.addEventListener("muga:history-gate:nonce", _onNonce);
+  })();
+
   let _installed = false;
   const CAPTURE_OPTS = { capture: true };
 
@@ -174,8 +189,16 @@
     _installed = false;
   }
 
+  let _warnedOrder = false;
   document.addEventListener("muga:history-gate", (e) => {
-    const enabled = !!(e && e.detail && e.detail.enabled);
+    if (!e || !e.detail || e.detail.nonce !== _capturedNonce) {
+      if (!_warnedOrder && e && e.detail && typeof e.detail.nonce === "string" && _capturedNonce === null) {
+        _warnedOrder = true;
+        console.warn("[MUGA] gate event before nonce capture — check manifest script order");
+      }
+      return;
+    }
+    const enabled = !!(e.detail.enabled);
     if (enabled) install();
     else uninstall();
   });

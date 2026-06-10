@@ -27,6 +27,48 @@
   if (window.__mugaHistoryDefuserGate) return;
   window.__mugaHistoryDefuserGate = true;
 
+  // ── Nonce handshake (#811) ────────────────────────────────────────────
+  //
+  // The `muga:history-gate` CustomEvent crosses the isolated/main-world
+  // boundary and is therefore also dispatchable by hostile page scripts.
+  // A page can call `document.dispatchEvent(new CustomEvent("muga:history-gate",
+  // { detail: { enabled: false } }))` to silently disable the active-defense
+  // layer or force-open it pre-consent.
+  //
+  // Fix: generate a random nonce here (isolated world, first script in the
+  // injection order), share it via a one-shot `muga:history-gate:nonce` event
+  // that fires at document_start BEFORE any page script can run, and require
+  // every subsequent gate event to carry the correct nonce in its detail.
+  //
+  // Injection-order contract (PINNED — do not reorder without updating both
+  // manifests AND tests/unit/gate-nonce.test.mjs):
+  //
+  //   The handshake fires ONCE, synchronously, at document_start. Every
+  //   listener script MUST be ordered BEFORE this file in BOTH manifests
+  //   (src/manifest.json and src/manifest.v2.json). A listener that
+  //   registers AFTER this dispatch never captures the nonce and stays
+  //   fail-closed — it will reject every subsequent gate event silently.
+  //   Ordering is pinned by tests/unit/gate-nonce.test.mjs.
+  //
+  //   MV3 Chrome — MAIN-world scripts (history-defuser-mainworld.js,
+  //     window-name-defuser-mainworld.js) run in a separate group that
+  //     executes before the ISOLATED group; they register their nonce
+  //     listeners before this file fires. Within the ISOLATED group, all
+  //     gate-aware siblings (window-name-defuser.js, dom-link-rewriter.js,
+  //     dom-link-rewriter-click.js, bounce-state-cleaner.js) are listed
+  //     before this file in the manifest so they register first.
+  //   Firefox MV2 — no world:MAIN group; the window-name-defuser-mainworld
+  //     page copy is injected as a synchronous <script> by
+  //     window-name-defuser.js (which runs before this file). All isolated-
+  //     world siblings are likewise listed before this file in the manifest.
+  //
+  // No global property stores the nonce after handshake — it lives only
+  // inside each listener's closure to prevent page scripts from reading it
+  // back via window inspection.
+  const _nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(_nonceBytes);
+  const _nonce = Array.from(_nonceBytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
   // ── Firefox MV2 page-world bootstrap (#509 / B12) ────────────────────
   //
   // Chrome MV3 registers `history-defuser-mainworld.js` as a `world: "MAIN"`
@@ -59,10 +101,19 @@
     }
   } catch { /* manifest unavailable / DOM not ready — leave the page-world wrap absent */ }
 
+  // Broadcast the nonce once at document_start so all listeners (both worlds)
+  // can capture it before any page script executes. This event is fired once
+  // and never again; listeners remove themselves after capturing the nonce.
+  try {
+    document.dispatchEvent(new CustomEvent("muga:history-gate:nonce", {
+      detail: { nonce: _nonce },
+    }));
+  } catch { /* document detached — silent */ }
+
   function dispatchGate(enabled) {
     try {
       document.dispatchEvent(new CustomEvent("muga:history-gate", {
-        detail: { enabled: !!enabled },
+        detail: { enabled: !!enabled, nonce: _nonce },
       }));
     } catch { /* document detached or CustomEvent unavailable — silent */ }
   }
