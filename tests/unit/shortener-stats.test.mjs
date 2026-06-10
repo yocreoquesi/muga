@@ -48,13 +48,17 @@ const chromeMock = {
 // storage.js reads `chrome` at import time for the shim probe; we must install
 // the mock BEFORE the first import. Use a dynamic import inside the tests.
 
-let getShortenerStats, incrementShortenerStat;
+let getShortenerStats, incrementShortenerStat, flushShortenerStats;
 
 // Install mock globally before dynamic import
 global.chrome = chromeMock;
 const storageModule = await import("../../src/lib/storage.js");
 getShortenerStats = storageModule.getShortenerStats;
 incrementShortenerStat = storageModule.incrementShortenerStat;
+// Test hook: forces the pending+flush write without waiting for the 50ms timer.
+// Required because incrementShortenerStat is now synchronous (accumulates into
+// a pending map) — persistence is deferred to the coalesced flush (#817).
+flushShortenerStats = storageModule.flushShortenerStats;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,7 +95,8 @@ describe("incrementShortenerStat — pass increments", () => {
   beforeEach(resetStore);
 
   test("increments pass for a known shortener", async () => {
-    await incrementShortenerStat("bit.ly", "pass");
+    incrementShortenerStat("bit.ly", "pass");
+    await flushShortenerStats();
     const stats = await getShortenerStats();
     assert.ok(stats["bit.ly"], "bit.ly entry must exist");
     assert.equal(stats["bit.ly"].pass, 1);
@@ -99,7 +104,8 @@ describe("incrementShortenerStat — pass increments", () => {
   });
 
   test("increments fail for a known shortener", async () => {
-    await incrementShortenerStat("t.co", "fail");
+    incrementShortenerStat("t.co", "fail");
+    await flushShortenerStats();
     const stats = await getShortenerStats();
     assert.ok(stats["t.co"], "t.co entry must exist");
     assert.equal(stats["t.co"].fail, 1);
@@ -107,18 +113,20 @@ describe("incrementShortenerStat — pass increments", () => {
   });
 
   test("accumulates multiple increments", async () => {
-    await incrementShortenerStat("bit.ly", "pass");
-    await incrementShortenerStat("bit.ly", "pass");
-    await incrementShortenerStat("bit.ly", "fail");
+    incrementShortenerStat("bit.ly", "pass");
+    incrementShortenerStat("bit.ly", "pass");
+    incrementShortenerStat("bit.ly", "fail");
+    await flushShortenerStats();
     const stats = await getShortenerStats();
     assert.equal(stats["bit.ly"].pass, 2);
     assert.equal(stats["bit.ly"].fail, 1);
   });
 
   test("tracks multiple shorteners independently", async () => {
-    await incrementShortenerStat("bit.ly", "pass");
-    await incrementShortenerStat("tinyurl.com", "fail");
-    await incrementShortenerStat("tinyurl.com", "fail");
+    incrementShortenerStat("bit.ly", "pass");
+    incrementShortenerStat("tinyurl.com", "fail");
+    incrementShortenerStat("tinyurl.com", "fail");
+    await flushShortenerStats();
     const stats = await getShortenerStats();
     assert.equal(stats["bit.ly"].pass, 1);
     assert.equal(stats["bit.ly"].fail, 0);
@@ -129,7 +137,8 @@ describe("incrementShortenerStat — pass increments", () => {
   test("each shortener entry has both pass and fail keys", async () => {
     for (const host of GENERIC_SHORTENERS) {
       resetStore();
-      await incrementShortenerStat(host, "pass");
+      incrementShortenerStat(host, "pass");
+      await flushShortenerStats();
       const stats = await getShortenerStats();
       assert.ok(typeof stats[host].pass === "number", `${host} must have pass`);
       assert.ok(typeof stats[host].fail === "number", `${host} must have fail`);
@@ -138,7 +147,9 @@ describe("incrementShortenerStat — pass increments", () => {
 
   test("ignores unknown hosts silently — does not throw AND does not record them", async () => {
     resetStore();
-    await assert.doesNotReject(() => incrementShortenerStat("unknown.example.com", "pass"));
+    // incrementShortenerStat is now synchronous — wrap in a resolved promise for doesNotReject
+    await assert.doesNotReject(async () => { incrementShortenerStat("unknown.example.com", "pass"); });
+    await flushShortenerStats();
     const stats = await getShortenerStats();
     assert.equal(
       stats["unknown.example.com"],
@@ -151,7 +162,8 @@ describe("incrementShortenerStat — pass increments", () => {
 describe("shortener stats storage key", () => {
   test("getShortenerStats and incrementShortenerStat use 'shortenerStats' key", async () => {
     resetStore();
-    await incrementShortenerStat("bit.ly", "pass");
+    incrementShortenerStat("bit.ly", "pass");
+    await flushShortenerStats();
     assert.ok(
       "shortenerStats" in _localStore,
       "incrementShortenerStat must write to chrome.storage.local under 'shortenerStats' key"
