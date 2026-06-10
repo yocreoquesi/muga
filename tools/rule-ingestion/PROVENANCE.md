@@ -127,6 +127,65 @@ same corroboration concept, not a new upstream fact source.
 
 ---
 
+---
+
+## Moat-expansion pipeline — ClearURLs `referralMarketing` (#793)
+
+The `tools/moat-expansion/` pipeline is a SEPARATE consumer of ClearURLs data
+that accesses the **exact field that rule-ingestion permanently excludes**.
+This section documents the legal and intentional basis for that inversion.
+
+### Why this is intentional, not a mistake
+
+The rule-ingestion ClearURLs adapter (`tools/rule-ingestion/adapters/clearurls.mjs`)
+contains a **SAFETY-CRITICAL two-pass exclusion** that ensures `referralMarketing`
+entries are **NEVER** treated as tracking candidates (#773). The comment in that
+file reads: *"these are affiliate attribution parameters that belong to MUGA's
+preserve set"*. Ingesting them as strip candidates would cause catastrophic
+revenue loss for creators.
+
+The moat-expansion pipeline is the **intended consumer** of exactly those same
+signals — not to strip them, but to **discover new affiliate params** that
+belong in MUGA's moat (`AFFILIATE_PATTERNS`, `AFFILIATE_PARAM_GUARD`). The
+exclusion in #773 was the right decision for rule-ingestion; moat-expansion is
+the pipeline the referralMarketing data was always meant for.
+
+### License & clean-room posture
+
+| Field | Value |
+|---|---|
+| Source | ClearURLs `data.min.json` — `providers[*].referralMarketing[]` only |
+| Data license | **LGPL-3.0** |
+| Usage model | **Signals-not-copies** — referralMarketing tuples are extracted facts; raw file is quarantined and never committed |
+| Quarantine path | `tools/moat-expansion/quarantine/` (gitignored; see `.gitignore`) |
+| What leaves quarantine | `{ provider, urlPattern, referralMarketing[] }` tuples only — no raw bytes, no curated patterns |
+| Output | Human-review Markdown report + JSON sidecar; committed to bot-branch only via weekly PR |
+| Writes to `src/`? | **Never.** Pipeline is report-only; no `manifest.data.js` or `affiliates.js` edits |
+
+### #773 inversion — explicit note for future maintainers
+
+The rule-ingestion adapter's permanent `referralMarketing` exclusion and the
+moat-expansion pipeline are **two sides of the same invariant**:
+
+- **Rule-ingestion**: `referralMarketing` is an affiliate signal → MUST NOT reach
+  `TRACKING_PARAMS`. The exclusion is safety-critical and must never be removed.
+- **Moat-expansion**: `referralMarketing` is an affiliate signal → IS the input
+  for affiliate-moat gap discovery. This is why the exclusion was recorded as
+  "affiliate — MUGA's preserve set" rather than simply dropped.
+
+Removing the #773 exclusion in rule-ingestion would be catastrophic. Adding
+`referralMarketing` to the moat-expansion pipeline is correct and intended.
+These two statements are NOT contradictory — they are complementary.
+
+### Structural test
+
+`tests/unit/moat-expansion-workflow.test.mjs` (T3.3) reads this file at test
+time and asserts that the section referencing `ClearURLs`, `referralMarketing`,
+`LGPL-3.0`, and `quarantine` is present. Do not move or rename this section
+without updating that test.
+
+---
+
 ## Adding a new source — checklist
 
 1. Verify the **data** license (not the addon's) against its `LICENSE` file.
