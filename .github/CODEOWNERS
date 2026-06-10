@@ -1,0 +1,7 @@
+# CODEOWNERS — auto-request reviewers for critical paths
+#
+# /discovered/ — every crawler discovery artifact PR automatically
+# requests the maintainer for mandatory human review.
+# Branch protection "Require a pull request before merging" must be
+# enabled in repo settings (outside the repo) to enforce the gate.
+/discovered/ @yocreoquesi
