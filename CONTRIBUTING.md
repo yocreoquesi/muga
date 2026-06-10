@@ -86,7 +86,8 @@ src/
 │   ├── cleaner.js         Core URL processing logic (pure, testable)
 │   ├── affiliates.js      Affiliate patterns + tracking params
 │   ├── storage.js         chrome.storage helpers + PREF_DEFAULTS
-│   └── i18n.js            7-locale translations (en/es official; pt/de/fr/it/ja community)
+│   ├── i18n.js            i18n logic (t, applyTranslations, getStoredLang) + locale registry
+│   └── locales/           Per-locale translation data (en/es official; pt/de/fr/it/ja community)
 ├── popup/                 Browser action popup
 └── options/               Full options page
 tests/unit/                Node.js test runner tests
@@ -212,11 +213,29 @@ The consistency test catches the rule-level violation. It does not catch poor ju
 
 ## Translations
 
-MUGA ships UI in 7 locales: English, Spanish, Portuguese, German, French, Italian, and Japanese. The maintainer is a native Spanish speaker (English fluent); the other five are community-contributed. The project's policy is:
+MUGA ships UI in 7 locales: English, Spanish, Portuguese, German, French, Italian, and Japanese. The maintainer is a native Spanish speaker (English fluent); the other five are community-contributed.
 
-- **Officially maintained**: `en` and `es`. Every translation key in `src/lib/i18n.js` must have a non-empty value in both. The completeness test in `tests/unit/i18n-completeness.test.mjs` enforces this floor — a PR that adds a key without an EN+ES pair fails CI.
+### Where translation strings live
 
-- **Community-maintained**: `pt`, `de`, `fr`, `it`, `ja`. New keys may ship without these initially; the runtime fallback chain at `i18n.js:281` lands missing entries on EN cleanly. Community-locale PRs do not require native-speaker review by the maintainer — the EN+ES floor is what gates a merge.
+Each locale has its own file under `src/lib/locales/`:
+
+| File | Locale |
+|------|--------|
+| `src/lib/locales/en.mjs` | English (official) |
+| `src/lib/locales/es.mjs` | Spanish (official) |
+| `src/lib/locales/pt.mjs` | Portuguese (community) |
+| `src/lib/locales/de.mjs` | German (community) |
+| `src/lib/locales/fr.mjs` | French (community) |
+| `src/lib/locales/it.mjs` | Italian (community) |
+| `src/lib/locales/ja.mjs` | Japanese (community) |
+
+Each file exports a frozen object: `export default Object.freeze({ key: "value", ... })`. To edit a translation, find the key in the relevant locale file and change its value. The key set in every locale file must stay in sync with `en.mjs` — the structural test `tests/unit/i18n-locale-modules.test.mjs` enforces this.
+
+### Maintenance policy
+
+- **Officially maintained**: `en` and `es`. Every key in `src/lib/locales/en.mjs` must have a non-empty value in both locale files. The completeness test in `tests/unit/i18n-completeness.test.mjs` enforces this floor — a PR that adds a key without an EN+ES value fails CI.
+
+- **Community-maintained**: `pt`, `de`, `fr`, `it`, `ja`. New keys may ship with `null` initially; the runtime fallback lands missing entries on EN cleanly. Community-locale PRs do not require native-speaker review by the maintainer — the EN+ES floor is what gates a merge.
 
 To find which keys are missing in a community locale, run:
 
@@ -229,14 +248,14 @@ node tools/missing-translations.mjs it        # IT only
 node tools/missing-translations.mjs ja        # JA only
 ```
 
-The script's output is markdown suitable for pasting into the per-language tracking issues. Submit a PR editing the matching entries in `TRANSLATIONS` and the CI suite will validate the EN+ES floor for you.
+The script's output is markdown suitable for pasting into the per-language tracking issues. Submit a PR editing the matching key in the relevant `src/lib/locales/<code>.mjs` file and the CI suite will validate the EN+ES floor for you.
 
 ### Community locales: native-speaker review welcome
 
-The community-locale strings in `src/lib/i18n.js` were produced with AI assistance. They are linguistically sound but have not been signed off by native speakers. If you spot a string that reads awkward, regional, or just wrong, a PR fixing only that single key is a great first contribution:
+The community-locale strings were produced with AI assistance. They are linguistically sound but have not been signed off by native speakers. If you spot a string that reads awkward, regional, or just wrong, a PR fixing only that single key is a great first contribution:
 
-1. Find the key in `src/lib/i18n.js`.
-2. Edit the locale value in place.
+1. Find the key in `src/lib/locales/<code>.mjs` (e.g. `src/lib/locales/de.mjs` for German).
+2. Edit the string value in place.
 3. Add a one-line note in the PR description explaining your variant (e.g., "PT-BR prefers `contatar` over `contactar`", "DE consistency with rest of file uses du-form").
 
 The CI guard `tools/check-i18n-fixme.mjs` fails the build on FIXME markers, empty locale slots, or `'FIXME: translate'` stubs — it does not require native-speaker review to pass. The native review pipeline is purely social.

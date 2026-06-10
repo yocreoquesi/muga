@@ -84,11 +84,12 @@ describe("Regression: SW syncContextMenus uses lib/i18n.js translations", () => 
     );
   });
 
-  test("canonical German translation 'Bereinigten Link kopieren' lives only in i18n.js", () => {
-    const i18nSource = readFileSync(join(_dir, "../../src/lib/i18n.js"), "utf8");
+  test("canonical German translation 'Bereinigten Link kopieren' lives in src/lib/locales/de.mjs", () => {
+    // Translation data moved to per-locale files under src/lib/locales/ (#834).
+    const deSource = readFileSync(join(_dir, "../../src/lib/locales/de.mjs"), "utf8");
     assert.ok(
-      i18nSource.includes("Bereinigten Link kopieren"),
-      "lib/i18n.js must contain the canonical German translation"
+      deSource.includes("Bereinigten Link kopieren"),
+      "src/lib/locales/de.mjs must contain the canonical German translation"
     );
   });
 });
