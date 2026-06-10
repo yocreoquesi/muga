@@ -59,7 +59,7 @@ jobs:
           MUGA_SIGNING_KEY: ${{ secrets.MUGA_SIGNING_KEY }}
         run: |
           echo "$MUGA_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
-          echo "::add-mask::$(cat "$RUNNER_TEMP/key.pem")"
+          while IFS= read -r line; do echo "::add-mask::$line"; done < "$RUNNER_TEMP/key.pem"
 
       # ── 4. Run pipeline ──────────────────────────────────────────────────────
       # pipeline.mjs runs ingest → orchestrate → promote.
