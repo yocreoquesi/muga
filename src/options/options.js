@@ -212,7 +212,7 @@ const RENDER_LIST_MAX_ITEMS = 1000;
 /** Renders a blacklist/whitelist/customParams list into its container. */
 function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
-  container.innerHTML = "";
+  container.replaceChildren();
   if (!items.length) {
     const p = document.createElement("p");
     p.className = "empty";
@@ -380,7 +380,7 @@ function initCreatorAllowlist(initial) {
 /** Renders tracking category toggle cards. */
 function renderCategories(disabledCategories) {
   const card = document.getElementById("categories-card");
-  card.innerHTML = "";
+  card.replaceChildren();
   const disabled = new Set(disabledCategories);
 
   for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
@@ -449,7 +449,7 @@ function renderStores() {
 
   const grid = document.getElementById("stores-grid");
   const hintEl = document.getElementById("stores-hint");
-  grid.innerHTML = "";
+  grid.replaceChildren();
 
   if (activePrograms.length === 0) {
     grid.hidden = true;

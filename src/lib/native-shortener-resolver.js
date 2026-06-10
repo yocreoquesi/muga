@@ -46,13 +46,21 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 // ── Private-host detection ────────────────────────────────────────────────────
 // Self-contained: does not depend on any deleted proxy module.
 
-function isPrivateIPv4(a, b) {
+function isPrivateIPv4(a, b, c) {
   if (a === 0) return true;                          // 0.0.0.0/8 ("this host")
   if (a === 127) return true;                        // 127.0.0.0/8 loopback
   if (a === 10) return true;                         // 10.0.0.0/8
   if (a === 192 && b === 168) return true;           // 192.168.0.0/16
   if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16-31.0.0/12
   if (a === 169 && b === 254) return true;           // 169.254.0.0/16 (link-local)
+  // CGNAT shared address space (RFC 6598): 100.64.0.0/10
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  // TEST-NET-1/2/3 (RFC 5737): documentation ranges, never routable
+  if (a === 192 && b === 0 && c === 2) return true;   // 192.0.2.0/24
+  if (a === 198 && b === 51 && c === 100) return true; // 198.51.100.0/24
+  if (a === 203 && b === 0 && c === 113) return true;  // 203.0.113.0/24
+  // 6to4 relay anycast (RFC 3068): 192.88.99.0/24 (deprecated but must block)
+  if (a === 192 && b === 88 && c === 99) return true;
   return false;
 }
 
@@ -81,24 +89,26 @@ export function isPrivateHost(hostname) {
   const mapped = h.match(/^::ffff:(.+)$/i);
   if (mapped) {
     const rest = mapped[1];
-    let a, b;
+    let a, b, c;
     if (rest.includes(".")) {
       const p = rest.split(".");
-      if (p.length === 4) [a, b] = p.map(Number);
+      if (p.length === 4) [a, b, c] = p.map(Number);
     } else {
+      // Compact hex form only has two groups — c is not extractable; treat
+      // as undefined so range checks that need c fall through safely.
       const g = rest.split(":");
       if (g.length === 2) {
         const hi = parseInt(g[0], 16);
         if (Number.isFinite(hi)) { a = hi >> 8; b = hi & 0xff; }
       }
     }
-    if (a !== undefined && isPrivateIPv4(a, b)) return true;
+    if (a !== undefined && isPrivateIPv4(a, b, c)) return true;
   }
 
   const parts = h.split(".");
   if (parts.length === 4) {
-    const [a, b] = parts.map(Number);
-    if (isPrivateIPv4(a, b)) return true;
+    const [a, b, c] = parts.map(Number);
+    if (isPrivateIPv4(a, b, c)) return true;
   }
 
   return false;

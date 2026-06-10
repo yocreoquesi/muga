@@ -53,6 +53,57 @@ describe("allowlist + private-host helpers", () => {
     }
     assert.equal(isPrivateHost("example.com"), false);
   });
+
+  // ── CGNAT 100.64.0.0/10 (RFC 6598) — boundary tests (#830) ──────────────────
+  test("isPrivateHost blocks CGNAT range 100.64.0.0/10", () => {
+    // Inside range: 100.64.x through 100.127.x
+    assert.equal(isPrivateHost("100.64.0.0"), true,   "100.64.0.0 is CGNAT start");
+    assert.equal(isPrivateHost("100.64.1.1"), true,   "100.64.1.1 is inside CGNAT");
+    assert.equal(isPrivateHost("100.100.50.1"), true,  "100.100.50.1 is inside CGNAT");
+    assert.equal(isPrivateHost("100.127.255.255"), true, "100.127.255.255 is CGNAT end");
+  });
+
+  test("isPrivateHost allows addresses just outside CGNAT boundaries", () => {
+    // Below range: 100.63.x.x
+    assert.equal(isPrivateHost("100.63.255.255"), false, "100.63.255.255 is below CGNAT");
+    // Above range: 100.128.x.x
+    assert.equal(isPrivateHost("100.128.0.0"), false,  "100.128.0.0 is above CGNAT");
+  });
+
+  // ── TEST-NET-1/2/3 (RFC 5737) — documentation ranges (#830) ─────────────────
+  test("isPrivateHost blocks TEST-NET-1 192.0.2.0/24", () => {
+    assert.equal(isPrivateHost("192.0.2.0"), true,   "192.0.2.0 is TEST-NET-1 start");
+    assert.equal(isPrivateHost("192.0.2.128"), true,  "192.0.2.128 is inside TEST-NET-1");
+    assert.equal(isPrivateHost("192.0.2.255"), true,  "192.0.2.255 is TEST-NET-1 end");
+    // Adjacent address must be allowed (falls through to other checks)
+    assert.equal(isPrivateHost("192.0.1.1"), false,  "192.0.1.1 is not TEST-NET-1");
+    assert.equal(isPrivateHost("192.0.3.1"), false,  "192.0.3.1 is not TEST-NET-1");
+  });
+
+  test("isPrivateHost blocks TEST-NET-2 198.51.100.0/24", () => {
+    assert.equal(isPrivateHost("198.51.100.0"), true,   "198.51.100.0 is TEST-NET-2 start");
+    assert.equal(isPrivateHost("198.51.100.128"), true,  "198.51.100.128 is inside TEST-NET-2");
+    assert.equal(isPrivateHost("198.51.100.255"), true,  "198.51.100.255 is TEST-NET-2 end");
+    assert.equal(isPrivateHost("198.51.99.1"), false,   "198.51.99.1 is not TEST-NET-2");
+    assert.equal(isPrivateHost("198.51.101.1"), false,  "198.51.101.1 is not TEST-NET-2");
+  });
+
+  test("isPrivateHost blocks TEST-NET-3 203.0.113.0/24", () => {
+    assert.equal(isPrivateHost("203.0.113.0"), true,   "203.0.113.0 is TEST-NET-3 start");
+    assert.equal(isPrivateHost("203.0.113.200"), true,  "203.0.113.200 is inside TEST-NET-3");
+    assert.equal(isPrivateHost("203.0.113.255"), true,  "203.0.113.255 is TEST-NET-3 end");
+    assert.equal(isPrivateHost("203.0.112.1"), false,  "203.0.112.1 is not TEST-NET-3");
+    assert.equal(isPrivateHost("203.0.114.1"), false,  "203.0.114.1 is not TEST-NET-3");
+  });
+
+  // ── 6to4 relay anycast (RFC 3068) 192.88.99.0/24 (#830) ─────────────────────
+  test("isPrivateHost blocks 6to4 relay anycast 192.88.99.0/24", () => {
+    assert.equal(isPrivateHost("192.88.99.0"), true,   "192.88.99.0 is 6to4 relay start");
+    assert.equal(isPrivateHost("192.88.99.128"), true,  "192.88.99.128 is inside 6to4 relay");
+    assert.equal(isPrivateHost("192.88.99.255"), true,  "192.88.99.255 is 6to4 relay end");
+    assert.equal(isPrivateHost("192.88.98.1"), false,  "192.88.98.1 is not 6to4 relay");
+    assert.equal(isPrivateHost("192.88.100.1"), false, "192.88.100.1 is not 6to4 relay");
+  });
 });
 
 // ── happy paths ──────────────────────────────────────────────────────────────
