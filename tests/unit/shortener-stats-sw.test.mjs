@@ -21,7 +21,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
 
 const swSource = readFileSync(join(root, "src/background/service-worker.js"), "utf8");
-const storageSource = readFileSync(join(root, "src/lib/storage.js"), "utf8");
+// #826 PR2: PREF_DEFAULTS moved to prefs.js; migrations moved to storage-migrations.js.
+// Source-scan tests that inspect those domains read the new canonical files.
+const prefsSource = readFileSync(join(root, "src/lib/prefs.js"), "utf8");
+const migrationsSource = readFileSync(join(root, "src/lib/storage-migrations.js"), "utf8");
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json");
 const mv3 = require("../../src/manifest.json");
@@ -30,17 +33,18 @@ const mv2 = require("../../src/manifest.v2.json");
 // ── 1. Pref cleanup (phase 5) ────────────────────────────────────────────────
 
 describe("ADR-0004 phase 5: useNativeShortenerResolution removed from PREF_DEFAULTS", () => {
+  // #826 PR2: PREF_DEFAULTS lives in prefs.js — scan that file for the content guards.
   test("PREF_DEFAULTS does NOT contain useNativeShortenerResolution (vestigial flag removed)", () => {
     // The flag was the dual-path selector; with proxy gone it is meaningless.
     // It must NOT be in PREF_DEFAULTS — this would re-sync it to all devices.
     assert.ok(
-      !/useNativeShortenerResolution\s*:/.test(storageSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? ""),
+      !/useNativeShortenerResolution\s*:/.test(prefsSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? ""),
       "PREF_DEFAULTS must NOT contain useNativeShortenerResolution after phase 5"
     );
   });
 
   test("PREF_DEFAULTS does NOT contain privacyProxyEnabled (deprecated key removed)", () => {
-    const prefsBlock = storageSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? "";
+    const prefsBlock = prefsSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? "";
     assert.ok(
       !/privacyProxyEnabled\s*:/.test(prefsBlock),
       "PREF_DEFAULTS must NOT contain privacyProxyEnabled after phase 5"
@@ -48,7 +52,7 @@ describe("ADR-0004 phase 5: useNativeShortenerResolution removed from PREF_DEFAU
   });
 
   test("PREF_DEFAULTS still contains followShortenersEnabled", () => {
-    const prefsBlock = storageSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? "";
+    const prefsBlock = prefsSource.split("PREF_DEFAULTS")[1]?.split("};")[0] ?? "";
     assert.ok(
       /followShortenersEnabled\s*:/.test(prefsBlock),
       "PREF_DEFAULTS must contain followShortenersEnabled"
@@ -56,20 +60,23 @@ describe("ADR-0004 phase 5: useNativeShortenerResolution removed from PREF_DEFAU
   });
 });
 
-// ── 2. Migration function exported from storage.js ───────────────────────────
+// ── 2. Migration function exported from storage-migrations.js ────────────────
+// #826 PR2: migrateLegacyProxyPref was extracted to storage-migrations.js and
+// is re-exported from storage.js for backward compat. Source-scan checks read
+// the canonical implementation file; the re-export keeps all callers unchanged.
 
 describe("ADR-0004 phase 5: migrateLegacyProxyPref exported", () => {
-  test("storage.js exports migrateLegacyProxyPref", async () => {
+  test("storage-migrations.js exports migrateLegacyProxyPref", async () => {
     // Dynamic import not possible (Chrome APIs not available), so scan source.
     assert.ok(
-      storageSource.includes("export async function migrateLegacyProxyPref"),
-      "storage.js must export migrateLegacyProxyPref for one-time pref rename on startup"
+      migrationsSource.includes("export async function migrateLegacyProxyPref"),
+      "storage-migrations.js must export migrateLegacyProxyPref for one-time pref rename on startup"
     );
   });
 
   test("migration reads privacyProxyEnabled from chrome.storage.sync", () => {
-    const fnStart = storageSource.indexOf("export async function migrateLegacyProxyPref");
-    const fnSlice = storageSource.slice(fnStart, fnStart + 2000);
+    const fnStart = migrationsSource.indexOf("export async function migrateLegacyProxyPref");
+    const fnSlice = migrationsSource.slice(fnStart, fnStart + 2000);
     assert.ok(
       fnSlice.includes("privacyProxyEnabled"),
       "migrateLegacyProxyPref must read privacyProxyEnabled"
@@ -77,8 +84,8 @@ describe("ADR-0004 phase 5: migrateLegacyProxyPref exported", () => {
   });
 
   test("migration sets followShortenersEnabled when old pref was true", () => {
-    const fnStart = storageSource.indexOf("export async function migrateLegacyProxyPref");
-    const fnSlice = storageSource.slice(fnStart, fnStart + 2000);
+    const fnStart = migrationsSource.indexOf("export async function migrateLegacyProxyPref");
+    const fnSlice = migrationsSource.slice(fnStart, fnStart + 2000);
     assert.ok(
       fnSlice.includes("followShortenersEnabled"),
       "migrateLegacyProxyPref must set followShortenersEnabled"
@@ -86,8 +93,8 @@ describe("ADR-0004 phase 5: migrateLegacyProxyPref exported", () => {
   });
 
   test("migration removes the old privacyProxyEnabled key", () => {
-    const fnStart = storageSource.indexOf("export async function migrateLegacyProxyPref");
-    const fnSlice = storageSource.slice(fnStart, fnStart + 2000);
+    const fnStart = migrationsSource.indexOf("export async function migrateLegacyProxyPref");
+    const fnSlice = migrationsSource.slice(fnStart, fnStart + 2000);
     assert.ok(
       fnSlice.includes('remove("privacyProxyEnabled"') || fnSlice.includes("remove('privacyProxyEnabled'"),
       "migrateLegacyProxyPref must call chrome.storage.sync.remove for privacyProxyEnabled"

@@ -2,7 +2,11 @@
  * Regression test: docs/data_architect.md sync-prefs table vs PREF_DEFAULTS
  *
  * Asserts that the set of keys documented in the "chrome.storage.sync" table
- * in data_architect.md exactly matches the keys in PREF_DEFAULTS (src/lib/storage.js).
+ * in data_architect.md exactly matches the keys in PREF_DEFAULTS (src/lib/prefs.js).
+ *
+ * #826 PR2: PREF_DEFAULTS was extracted from storage.js into prefs.js.
+ * storage.js re-exports it for backward compat; the canonical definition
+ * lives in prefs.js and that is the file this test scans.
  *
  * Fails with a clear diff on mismatch so documentation drift is caught immediately.
  */
@@ -16,15 +20,15 @@ import { join, dirname } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
 
-// ── Parse PREF_DEFAULTS keys from storage.js ─────────────────────────────────
+// ── Parse PREF_DEFAULTS keys from prefs.js (#826 PR2 — canonical location) ──
 
-const storageSource = readFileSync(join(ROOT, "src", "lib", "storage.js"), "utf8");
+const storageSource = readFileSync(join(ROOT, "src", "lib", "prefs.js"), "utf8");
 
 // Extract the PREF_DEFAULTS object body between the outermost braces
 const prefDefaultsMatch = storageSource.match(
   /export\s+const\s+PREF_DEFAULTS\s*=\s*\{([\s\S]*?)\n\};/
 );
-assert.ok(prefDefaultsMatch, "Could not locate PREF_DEFAULTS export in src/lib/storage.js");
+assert.ok(prefDefaultsMatch, "Could not locate PREF_DEFAULTS export in src/lib/prefs.js");
 
 const prefBody = prefDefaultsMatch[1];
 
