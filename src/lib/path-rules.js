@@ -91,9 +91,21 @@ function _ensureStripIndex(rules) {
   if (!Array.isArray(rules) || rules.length === 0) return null;
   let idx = _pathStripIndex.get(rules);
   if (idx) return idx;
+  // Guard: exact duplicate domainPattern strings make the second rule
+  // unreachable (first-match-wins in applyPathStrip) and hide data-shape
+  // errors (#831).  Regex-overlap in general is undecidable, so we only
+  // catch the trivially detectable case: identical pattern strings.
+  const seenPatterns = new Set();
   idx = [];
   for (const [i, rule] of rules.entries()) {
     _validateStripEntry(rule, i);
+    if (seenPatterns.has(rule.domainPattern)) {
+      throw new Error(
+        `path-strip-rules[${i}]: duplicate domainPattern "${rule.domainPattern}" — ` +
+        `each domainPattern string must be unique (first-match-wins; duplicates are unreachable)`
+      );
+    }
+    seenPatterns.add(rule.domainPattern);
     const flags = Array.isArray(rule.flags) ? rule.flags : [];
     const passes = rule.pathPatterns.map((pattern, j) => ({
       re: new RegExp(pattern, flags[j] ?? ""),
@@ -123,6 +135,14 @@ function _ensureAffiliateIndex(rules) {
   idx = new Map();
   for (const [i, rule] of rules.entries()) {
     _validateAffiliateEntry(rule, i);
+    // Guard: duplicate rule.domain would silently last-writer-wins and the
+    // first rule's referralPaths would be unreachable (#831).
+    if (idx.has(rule.domain)) {
+      throw new Error(
+        `path-affiliate-rules: duplicate domain "${rule.domain}" at index ${i} ` +
+        `— each domain must appear at most once`
+      );
+    }
     const referralRe = new RegExp(rule.referralPaths.join("|"));
     idx.set(rule.domain, {
       referralRe,
