@@ -173,11 +173,12 @@ describe("shortener stats storage key", () => {
   test("shortenerStats is NEVER transmitted — it is a local-only key (doc check)", () => {
     // This is a structural/convention test: the key must NOT appear in
     // PREF_DEFAULTS (sync storage). We verify by reading the source text.
-    const storageSource = readFileSync(join(root, "src", "lib", "storage.js"), "utf8");
+    // #826 PR2: PREF_DEFAULTS was extracted to prefs.js — read the canonical file.
+    const storageSource = readFileSync(join(root, "src", "lib", "prefs.js"), "utf8");
 
     // Extract PREF_DEFAULTS body — this lives in chrome.storage.sync (transmitted)
     const match = storageSource.match(/export\s+const\s+PREF_DEFAULTS\s*=\s*\{([\s\S]*?)\n\};/);
-    assert.ok(match, "PREF_DEFAULTS must be found in storage.js");
+    assert.ok(match, "PREF_DEFAULTS must be found in prefs.js");
     const prefBody = match[1];
     assert.ok(
       !prefBody.includes("shortenerStats"),

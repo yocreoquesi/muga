@@ -1,19 +1,26 @@
 /**
- * MUGA — Module-boundary guard for #826 affiliates split
+ * MUGA — Module-boundary guards for the #826 architecture split
  *
- * Asserts the acyclicity and re-export completeness of the three-module
- * split introduced in #826 PR1:
+ * Asserts the acyclicity and re-export completeness of BOTH three-module
+ * splits introduced in #826:
  *
+ * PR1 — affiliates split:
  *   affiliates-data.js   — static tracking-param dataset (domain a)
  *   redirect-networks.js — redirect-network table + lookup helpers (domain c)
  *   affiliates.js        — affiliate-program registry + re-export hub (domain b)
  *
- * Guards:
- *   (1) affiliates-data.js must NOT import from affiliates.js (acyclicity)
- *   (2) redirect-networks.js must NOT import from affiliates.js (acyclicity)
- *   (3) affiliates.js re-export surface covers the full pre-split public API
- *       (snapshot comparison — all names that the old monolith exported must
- *       still be resolvable from affiliates.js)
+ * PR2 — storage split:
+ *   prefs.js              — PREF_DEFAULTS + getPrefs/setPrefs (sync domain)
+ *   storage-migrations.js — one-time migration helpers (migrateStatsToLocal,
+ *                           migrateLegacyProxyPref)
+ *   storage.js            — stats, session, domain-rules, remote-params,
+ *                           shortener counters + re-export hub (pre-split API)
+ *
+ * Guards (per split):
+ *   (1) extracted data/leaf modules must NOT import from their hub (acyclicity)
+ *   (2) the hub's re-export surface covers the full pre-split public API
+ *       (snapshot comparison — all names the old monolith exported must
+ *       still be resolvable from the hub)
  *
  * Run with: npm test
  */
@@ -31,11 +38,15 @@ function readLib(name) {
   return readFileSync(join(ROOT, "src", "lib", name), "utf8");
 }
 
-// ── Pinned pre-split public API surface ───────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// PR1 — affiliates split
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Pinned pre-split public API surface (affiliates.js) ───────────────────
 // These are all named exports the monolithic affiliates.js exposed before the
 // #826 split. affiliates.js must continue to export each of them (either
 // directly or via re-export) so all existing importers work unchanged.
-const EXPECTED_EXPORTS = new Set([
+const AFFILIATES_EXPECTED_EXPORTS = new Set([
   "TRACKING_PARAMS",
   "TRACKING_PREFIXES",
   "TRACKING_PARAM_CATEGORIES",
@@ -137,7 +148,7 @@ describe("module-boundary — affiliates.js re-export surface (#826)", () => {
       new URL("../../src/lib/affiliates.js", import.meta.url).href
     );
     const actual = new Set(Object.keys(mod));
-    const missing = [...EXPECTED_EXPORTS].filter((name) => !actual.has(name));
+    const missing = [...AFFILIATES_EXPECTED_EXPORTS].filter((name) => !actual.has(name));
     assert.deepEqual(
       missing,
       [],
@@ -159,6 +170,136 @@ describe("module-boundary — affiliates.js re-export surface (#826)", () => {
     assert.ok(
       src.includes('from "./redirect-networks.js"'),
       "affiliates.js must re-export from redirect-networks.js"
+    );
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PR2 — storage split
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Pinned pre-split public API surface (storage.js) ──────────────────────
+// These are all named exports the monolithic storage.js exposed before the
+// #826 split. storage.js must continue to export each of them (either
+// directly or via re-export) so all 11 importers work unchanged.
+const STORAGE_EXPECTED_EXPORTS = new Set([
+  "PREF_DEFAULTS",
+  "getPrefs",
+  "setPrefs",
+  "getStats",
+  "setStats",
+  "getDevMode",
+  "setDevMode",
+  "incrementStat",
+  "DOMAIN_STATS_MAX",
+  "incrementDomainStat",
+  "getDomainStats",
+  "sessionStorage",
+  "cacheDomainRules",
+  "getCachedDomainRules",
+  "getRemoteParams",
+  "setRemoteParams",
+  "getShortenerStats",
+  "flushShortenerStats",
+  "incrementShortenerStat",
+  "migrateStatsToLocal",
+  "migrateLegacyProxyPref",
+]);
+
+// ── Guard (1): prefs.js must not import from storage.js ───────────────────
+
+describe("module-boundary — prefs.js (#826 PR2)", () => {
+  const src = readLib("prefs.js");
+
+  test("prefs.js does not import from storage.js (acyclicity guard)", () => {
+    const re = /from\s+["']\.\/storage\.js["']/g;
+    assert.ok(
+      !re.test(src),
+      "prefs.js must not import from storage.js — this would create a circular dependency"
+    );
+  });
+
+  test("prefs.js exports PREF_DEFAULTS", () => {
+    assert.ok(
+      src.includes("export const PREF_DEFAULTS"),
+      "prefs.js must export PREF_DEFAULTS"
+    );
+  });
+
+  test("prefs.js exports getPrefs", () => {
+    assert.ok(
+      src.includes("export async function getPrefs"),
+      "prefs.js must export getPrefs"
+    );
+  });
+
+  test("prefs.js exports setPrefs", () => {
+    assert.ok(
+      src.includes("export async function setPrefs"),
+      "prefs.js must export setPrefs"
+    );
+  });
+});
+
+// ── Guard (2): storage-migrations.js must not import from storage.js ──────
+
+describe("module-boundary — storage-migrations.js (#826 PR2)", () => {
+  const src = readLib("storage-migrations.js");
+
+  test("storage-migrations.js does not import from storage.js (acyclicity guard)", () => {
+    const re = /from\s+["']\.\/storage\.js["']/g;
+    assert.ok(
+      !re.test(src),
+      "storage-migrations.js must not import from storage.js — this would create a circular dependency"
+    );
+  });
+
+  test("storage-migrations.js exports migrateStatsToLocal", () => {
+    assert.ok(
+      src.includes("export async function migrateStatsToLocal"),
+      "storage-migrations.js must export migrateStatsToLocal"
+    );
+  });
+
+  test("storage-migrations.js exports migrateLegacyProxyPref", () => {
+    assert.ok(
+      src.includes("export async function migrateLegacyProxyPref"),
+      "storage-migrations.js must export migrateLegacyProxyPref"
+    );
+  });
+});
+
+// ── Guard (3): storage.js re-export surface covers the full pre-split API ─
+
+describe("module-boundary — storage.js re-export surface (#826 PR2)", () => {
+  test("storage.js re-exports the complete pre-split public API", async () => {
+    // Dynamic import resolves re-exports transparently.
+    const mod = await import(
+      new URL("../../src/lib/storage.js", import.meta.url).href
+    );
+    const actual = new Set(Object.keys(mod));
+    const missing = [...STORAGE_EXPECTED_EXPORTS].filter((name) => !actual.has(name));
+    assert.deepEqual(
+      missing,
+      [],
+      `storage.js is missing expected exports after #826 PR2 split: ${missing.join(", ")}. ` +
+      "Add explicit re-exports to restore backward compatibility."
+    );
+  });
+
+  test("storage.js re-exports from prefs.js (source-level check)", () => {
+    const src = readLib("storage.js");
+    assert.ok(
+      src.includes('from "./prefs.js"'),
+      "storage.js must re-export from prefs.js"
+    );
+  });
+
+  test("storage.js re-exports from storage-migrations.js (source-level check)", () => {
+    const src = readLib("storage.js");
+    assert.ok(
+      src.includes('from "./storage-migrations.js"'),
+      "storage.js must re-export from storage-migrations.js"
     );
   });
 });
