@@ -71,6 +71,11 @@ const DEFAULT_SURFACE_INPUT_PATH = resolve(__dirname, "quarantine/surface-input.
  * @param {SubtleCrypto}   [opts.subtle]          Defaults to globalThis.crypto?.subtle.
  * @param {number}         [opts.version]         Target rules version. If omitted, orchestrate-cli resolves it.
  * @param {Date}           [opts.now]             Injectable clock.
+ * @param {string}         [opts.discoveredDir]   Path to discovered artifact JSON files directory.
+ *   Forwarded to runOrchestrateCli. Defaults to undefined so orchestrate-cli uses its own default
+ *   (repo-root/discovered). An empty or missing directory produces no enrichment (null fields).
+ * @param {function}       [opts._verifyOverride] Injectable verify function forwarded to
+ *   runOrchestrateCli for tests. Do NOT use in production.
  *
  * @returns {Promise<{
  *   noop: boolean,
@@ -97,6 +102,8 @@ export async function runPipeline({
   subtle = globalThis.crypto?.subtle,
   version,
   now,
+  discoveredDir,
+  _verifyOverride,
 } = {}) {
   // ── R4: Fail-closed — validate signing key BEFORE any I/O ─────────────────
   // Mirrors orchestrate-cli key guard to surface the error at the pipeline boundary
@@ -153,6 +160,8 @@ export async function runPipeline({
 
   // ── Step 2: Orchestrate ────────────────────────────────────────────────────
   // signingKeyPath is passed via keyPath (no env mutation → testable without env).
+  // discoveredDir and _verifyOverride are forwarded when provided (undefined when not set,
+  // so orchestrate-cli falls back to its own default).
   await runOrchestrateCli({
     candidatesPath,
     promotePath,
@@ -160,6 +169,8 @@ export async function runPipeline({
     version,
     now: nowDate,
     keyPath: signingKeyPath,
+    discoveredDir,
+    _verifyOverride,
   });
 
   // ── Step 3: Promote ────────────────────────────────────────────────────────
