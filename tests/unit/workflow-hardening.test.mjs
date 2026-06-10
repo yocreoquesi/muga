@@ -271,3 +271,50 @@ describe("G5 — release.yml: publish gated on unit + integration + E2E jobs", (
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// G6 — ci.yml PR gate must use stub-only integration (#825)
+//
+// The PR-triggered integration step must invoke `test:integration:stub` (not
+// `test:integration` or `test:integration:live`) so that transient
+// unwrap.muga.app / CDN hiccups cannot hard-fail unrelated contributor PRs.
+// The full live-Worker contract run is reserved for push-to-main only.
+// ---------------------------------------------------------------------------
+describe("G6 — ci.yml PR gate uses stub-only integration (#825)", () => {
+  test("ci.yml PR integration step invokes test:integration:stub", () => {
+    const content = readWorkflow("ci.yml");
+    assert.ok(
+      /npm\s+run\s+test:integration:stub/.test(content),
+      "ci.yml must invoke 'npm run test:integration:stub' for the PR gate — " +
+      "the full live-Worker suite must not run on pull_request triggers (#825)"
+    );
+  });
+
+  test("ci.yml PR integration step is conditional on pull_request event", () => {
+    const content = readWorkflow("ci.yml");
+    // The stub step must carry an `if: github.event_name == 'pull_request'` guard
+    assert.ok(
+      /if:\s*github\.event_name\s*==\s*['"]pull_request['"]/.test(content),
+      "ci.yml must guard the stub integration step with " +
+      "\"if: github.event_name == 'pull_request'\" (#825)"
+    );
+  });
+
+  test("ci.yml main-push integration step sets MUGA_LIVE_TESTS=1", () => {
+    const content = readWorkflow("ci.yml");
+    assert.ok(
+      /MUGA_LIVE_TESTS:\s*["']?1["']?/.test(content),
+      "ci.yml must set MUGA_LIVE_TESTS: \"1\" on the push-to-main integration step " +
+      "so the live Worker contract tests actually execute (#825)"
+    );
+  });
+
+  test("ci.yml main-push integration step is conditional on push event", () => {
+    const content = readWorkflow("ci.yml");
+    assert.ok(
+      /if:\s*github\.event_name\s*==\s*['"]push['"]/.test(content),
+      "ci.yml must guard the live integration step with " +
+      "\"if: github.event_name == 'push'\" (#825)"
+    );
+  });
+});
