@@ -228,11 +228,32 @@ export async function runOrchestrateCli({
   const published = (now instanceof Date ? now : new Date()).toISOString();
 
   // ── 6. Run orchestration ────────────────────────────────────────────────────
-  const { autoMerge, quarantine, artifactBody } = runOrchestration({
+  const { autoMerge, quarantine, acceptances, artifactBody } = runOrchestration({
     candidates,
     version,
     published,
   });
+
+  // ── 6b. Accepted-arm audit trail (#878) ─────────────────────────────────────
+  // Surface WHICH corroboration arm rescued each auto-merged param so a reviewer
+  // sees why something passed without re-running the gate (no-silent-decisions).
+  // Lives in the UNSIGNED sidecar only — the signed promote artifact stays
+  // {version, published, params, sig} by contract (orchestrate-cli R5-S1).
+  // passedArm is null if the corroboration gate did not run / emit it.
+  const autoMergeAudit = acceptances.map(({ candidate, accepted }) => {
+    const corrob = accepted.find((a) => a.gate === "corroboration-gate");
+    return { param: candidate.param, passedArm: corrob?.passedArm ?? null };
+  });
+
+  // Rescue-arm distribution: the data that justifies recalibrating the heuristic
+  // floors (ENTROPY_FLOOR, CSF_FLOOR) once real crawler artifacts accumulate.
+  const passedArmDistribution = autoMergeAudit.reduce(
+    (dist, { passedArm }) => {
+      if (passedArm) dist[passedArm] += 1;
+      return dist;
+    },
+    { signals: 0, entropy: 0, csf: 0 }
+  );
 
   // ── 7. Sign the canonical message ───────────────────────────────────────────
   // Inline sign block — mirrors sign-rules.mjs:211-215 verbatim (ADR: no shared helper)
@@ -288,7 +309,9 @@ export async function runOrchestrateCli({
     generatedAt: published,
     autoMergeCount: autoMerge.length,
     quarantineCount: quarantine.length,
+    passedArmDistribution, // #878 — rescue-arm counts over auto-merged candidates
     ingestStats: candidateReport.stats ?? null,  // null-safe: tolerates stats-less old candidates.json (#782)
+    autoMerge: autoMergeAudit, // #878 — per-param { param, passedArm } accept trail
     quarantine, // full QuarantineEntry[] with candidate + rejections
   };
 
@@ -319,6 +342,7 @@ export async function runOrchestrateCli({
       version: artifactBody.version,
       autoMergeCount: autoMerge.length,
       quarantineCount: quarantine.length,
+      passedArmDistribution, // #878
       sha256,
     })
   );

@@ -21,10 +21,14 @@ import { checkFunctionalBiasGate } from "./gates/functional-bias-gate.mjs";
 
 /**
  * Ordered array of gate descriptors. Each descriptor has:
- *   gate      — string label (must match spec R2-S2 table)
- *   check     — (candidate, opts) → { rejected, ...nativePayload }
- *   optsKey   — key into gateOpts to extract per-gate options
- *   normalize — (verdict) → { gate, reason, evidence }
+ *   gate             — string label (must match spec R2-S2 table)
+ *   check            — (candidate, opts) → { rejected, ...nativePayload }
+ *   optsKey          — key into gateOpts to extract per-gate options
+ *   normalize        — (rejected verdict) → { gate, reason, evidence }
+ *   normalizeAccepted — (accepted verdict) → { gate, ...auditMeta }  [OPTIONAL]
+ *                       Surfaces accept-path audit data (e.g. corroboration
+ *                       passedArm, #878). Descriptors without it contribute no
+ *                       accept metadata.
  *
  * ORDER IS FIXED AND MUST NOT CHANGE. Array iteration IS the gate evaluation
  * order. No Set or object-key iteration anywhere in the decision path.
@@ -48,6 +52,13 @@ export const DEFAULT_GATES = [
       gate: "corroboration-gate",
       reason: v.reason,
       evidence: { detail: v.detail },
+    }),
+    // Accepted-side audit (#878): capture WHICH arm corroborated an accepted
+    // candidate ("signals" | "entropy" | "csf"). Symmetric to normalize, but for
+    // the no-short-circuit accept path. Only this gate emits accept metadata.
+    normalizeAccepted: (v) => ({
+      gate: "corroboration-gate",
+      passedArm: v.passedArm,
     }),
   },
   {
@@ -130,8 +141,13 @@ export function buildParams(autoMerge) {
  * @returns {{
  *   autoMerge: object[],
  *   quarantine: Array<{ candidate: object, rejections: Array<{ gate: string, reason: string, evidence: object }> }>,
+ *   acceptances: Array<{ candidate: object, accepted: Array<{ gate: string, passedArm?: string }> }>,
  *   artifactBody: { version: number, published: string, params: string[] }
  * }}
+ *   `acceptances` is PARALLEL to `autoMerge` (same order, same length): entry i
+ *   holds the accept-path audit metadata (from each gate's normalizeAccepted, if
+ *   any) for autoMerge[i]. Gates without normalizeAccepted contribute nothing, so
+ *   `accepted` may be empty. Quarantined candidates never appear here (#878).
  */
 export function runOrchestration({
   candidates,
@@ -142,9 +158,11 @@ export function runOrchestration({
 }) {
   const autoMerge = [];
   const quarantine = [];
+  const acceptances = [];
 
   for (const candidate of candidates) {
     const rejections = [];
+    const accepted = [];
 
     // Evaluate EVERY gate in order — no short-circuit (R3)
     for (const descriptor of gates) {
@@ -153,11 +171,16 @@ export function runOrchestration({
 
       if (verdict.rejected) {
         rejections.push(descriptor.normalize(verdict));
+      } else if (descriptor.normalizeAccepted) {
+        // Accept-path audit, collected only for candidates that ultimately
+        // auto-merge (a later gate may still quarantine this one).
+        accepted.push(descriptor.normalizeAccepted(verdict));
       }
     }
 
     if (rejections.length === 0) {
       autoMerge.push(candidate);
+      acceptances.push({ candidate, accepted });
     } else {
       quarantine.push({ candidate, rejections });
     }
@@ -166,5 +189,5 @@ export function runOrchestration({
   const params = buildParams(autoMerge);
   const artifactBody = { version, published, params };
 
-  return { autoMerge, quarantine, artifactBody };
+  return { autoMerge, quarantine, acceptances, artifactBody };
 }

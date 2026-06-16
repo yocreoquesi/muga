@@ -558,6 +558,88 @@ describe("R10 — GATE2 malformed-candidate fail-closed", () => {
   });
 });
 
+// ── #878: Accepted-arm audit trail (acceptances parallel to autoMerge) ────────
+
+describe("#878 — acceptances surface corroboration passedArm", () => {
+  const realGate2 = DEFAULT_GATES.find((d) => d.gate === "corroboration-gate");
+
+  /** Build the 4-gate set with the REAL corroboration gate in position 2. */
+  function gatesWithRealGate2() {
+    return [
+      stubPass("affiliate-guard"),
+      realGate2,
+      stubPass("canary-gate"),
+      stubPass("functional-bias-gate"),
+    ];
+  }
+
+  test("acceptances is parallel to autoMerge (same order + length)", () => {
+    const a = makeCandidate("alpha"); // signals arm
+    const b = makeCandidate("beta", { signals: [], entropy: 5.0 }); // entropy arm
+    const result = runOrchestration({
+      candidates: [a, b],
+      gates: gatesWithRealGate2(),
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(result.acceptances.length, result.autoMerge.length);
+    assert.strictEqual(result.acceptances[0].candidate, a);
+    assert.strictEqual(result.acceptances[1].candidate, b);
+  });
+
+  test("records passedArm per accepted arm (signals / entropy / csf)", () => {
+    const bySignals = makeCandidate("s", { signals: ["a", "b"] });
+    const byEntropy = makeCandidate("e", { signals: [], entropy: 4.2, crossSiteFrequency: null });
+    const byCsf = makeCandidate("c", { signals: [], entropy: null, crossSiteFrequency: 3 });
+
+    const result = runOrchestration({
+      candidates: [bySignals, byEntropy, byCsf],
+      gates: gatesWithRealGate2(),
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    const arm = (i) =>
+      result.acceptances[i].accepted.find((x) => x.gate === "corroboration-gate")
+        ?.passedArm;
+    assert.strictEqual(arm(0), "signals");
+    assert.strictEqual(arm(1), "entropy");
+    assert.strictEqual(arm(2), "csf");
+  });
+
+  test("quarantined candidates never appear in acceptances", () => {
+    const passing = makeCandidate("ok");
+    const failing = makeCandidate("bad", { signals: null, entropy: null, crossSiteFrequency: null });
+
+    const result = runOrchestration({
+      candidates: [passing, failing],
+      gates: gatesWithRealGate2(),
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(result.acceptances.length, 1);
+    assert.strictEqual(result.acceptances[0].candidate, passing);
+    assert.ok(
+      !result.acceptances.some((e) => e.candidate === failing),
+      "rejected candidate must be absent from acceptances"
+    );
+  });
+
+  test("gates without normalizeAccepted contribute no accept metadata", () => {
+    const result = runOrchestration({
+      candidates: [makeCandidate("x")],
+      gates: ALL_PASS_GATES, // all stubs, none expose normalizeAccepted
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(result.acceptances.length, 1);
+    assert.deepStrictEqual(result.acceptances[0].accepted, []);
+  });
+});
+
 // ── T-12/T-13/T-14: Signing round-trip ───────────────────────────────────────
 
 describe("R6 — Signing round-trip verify", () => {

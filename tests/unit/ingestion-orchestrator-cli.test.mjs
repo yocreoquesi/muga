@@ -631,6 +631,113 @@ describe("#821-I1 — Atomic write: no .tmp sibling left after successful write"
   });
 });
 
+// ── #878: Accepted-arm audit trail persisted in the sidecar ───────────────────
+
+describe("#878 — passedArm audit in quarantine report (not in signed artifact)", () => {
+  /** Empty discovered dir → enrichment is a no-op (entropy/csf stay null). */
+  function emptyDiscoveredDir(dir) {
+    const d = join(dir, "discovered-empty");
+    mkdirSync(d, { recursive: true });
+    return d;
+  }
+
+  test("sidecar carries passedArmDistribution + per-param autoMerge trail (signals arm)", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [
+      passCandidate("utm_source"), // 2 signals → signals arm
+      failCandidate("bad-param"),  // quarantined
+    ]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+      discoveredDir: emptyDiscoveredDir(tmpDir),
+    });
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+
+    // Distribution: only the passing candidate counts, via the signals arm.
+    assert.deepStrictEqual(report.passedArmDistribution, {
+      signals: 1,
+      entropy: 0,
+      csf: 0,
+    });
+
+    // Per-param trail: quarantined candidate must NOT appear.
+    assert.deepStrictEqual(report.autoMerge, [
+      { param: "utm_source", passedArm: "signals" },
+    ]);
+  });
+
+  test("signed promote artifact stays exactly {version, published, params, sig} (no leak)", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [passCandidate("utm_source")]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+      discoveredDir: emptyDiscoveredDir(tmpDir),
+    });
+
+    const artifact = JSON.parse(readFileSync(promotePath, "utf8"));
+    assert.deepStrictEqual(
+      Object.keys(artifact).sort(),
+      ["params", "published", "sig", "version"],
+      "audit fields must NOT leak into the signed promote artifact"
+    );
+    assert.ok(!("passedArmDistribution" in artifact));
+    assert.ok(!("autoMerge" in artifact));
+  });
+
+  test("all-quarantined run → empty distribution + empty autoMerge trail", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [failCandidate("bad-param")]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+      discoveredDir: emptyDiscoveredDir(tmpDir),
+    });
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.deepStrictEqual(report.passedArmDistribution, { signals: 0, entropy: 0, csf: 0 });
+    assert.deepStrictEqual(report.autoMerge, []);
+  });
+});
+
 // ── n3: Dedup at CLI boundary ─────────────────────────────────────────────────
 
 describe("R4 — Dedup at CLI boundary", () => {
