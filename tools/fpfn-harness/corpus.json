@@ -1,0 +1,137 @@
+[
+  {
+    "url": "https://twitter.com/user/status/123456789?utm_source=tw&utm_medium=social&utm_campaign=promo",
+    "note": "tracker-only: Twitter/X status with UTM params",
+    "expected": { "preserve": [], "strip": ["utm_source", "utm_medium", "utm_campaign"] }
+  },
+  {
+    "url": "https://www.reddit.com/r/programming/comments/abc/?utm_source=share&utm_medium=web2x&context=3",
+    "note": "tracker-only: Reddit comment link with UTM + context param",
+    "expected": { "preserve": ["context"], "strip": ["utm_source", "utm_medium"] }
+  },
+  {
+    "url": "https://www.nytimes.com/2026/01/15/technology/article.html?utm_source=Newsletter&utm_medium=email&utm_campaign=weekly&smid=nytcore-ios-share",
+    "note": "tracker-only: NYTimes article with UTM + smid",
+    "expected": { "preserve": [], "strip": ["utm_source", "utm_medium", "utm_campaign", "smid"] }
+  },
+  {
+    "url": "https://www.facebook.com/photo?fbid=123456789&set=pcb&type=3&fbclid=IwAR0abc",
+    "note": "tracker-only: Facebook photo with fbclid (type and set are non-tracking structural)",
+    "expected": { "preserve": ["fbid", "set", "type"], "strip": ["fbclid"] }
+  },
+  {
+    "url": "https://example.com/article?id=42&utm_source=google&utm_medium=cpc&gclid=CjwKCAjw0abc&gbraid=0ABCdef",
+    "note": "tracker-only: Generic article with id preserved, UTM + gclid + gbraid stripped",
+    "expected": { "preserve": ["id"], "strip": ["utm_source", "utm_medium", "gclid", "gbraid"] }
+  },
+  {
+    "url": "https://www.instagram.com/p/ABcDeFgHiJk/?igshid=YmMyMTA2M2Y%3D&utm_source=ig_web_copy_link",
+    "note": "tracker-only: Instagram post with igshid",
+    "expected": { "preserve": [], "strip": ["igshid", "utm_source"] }
+  },
+  {
+    "url": "https://mailchimp-campaign.example.com/page?mc_eid=abc123&mc_cid=def456&id=789",
+    "note": "tracker-only: Mailchimp email tracking params",
+    "expected": { "preserve": ["id"], "strip": ["mc_eid", "mc_cid"] }
+  },
+  {
+    "url": "https://www.example.com/landing?wbraid=WBRAID_VALUE&msclkid=abc123def456&utm_campaign=bing_search",
+    "note": "tracker-only: Google wbraid + Microsoft click ID",
+    "expected": { "preserve": [], "strip": ["wbraid", "msclkid", "utm_campaign"] }
+  },
+  {
+    "url": "https://www.google.com/search?q=laptop+deals&utm_source=search",
+    "note": "functional: Google search — preserve q (search term), strip UTM",
+    "expected": { "preserve": ["q"], "strip": ["utm_source"] }
+  },
+  {
+    "url": "https://www.amazon.com/s?k=mechanical+keyboard&ref=nb_sb_noss&field-keywords=mechanical",
+    "note": "functional: Amazon search — preserve k (search query), ref is NOT in TRACKING_PARAMS (affiliate param), field-keywords is functional",
+    "expected": { "preserve": ["k", "ref", "field-keywords"], "strip": [] }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be",
+    "note": "functional: YouTube watch — preserve v (video ID), feature is NOT in TRACKING_PARAMS",
+    "expected": { "preserve": ["v", "feature"], "strip": [] }
+  },
+  {
+    "url": "https://www.bing.com/search?q=best+laptops+2026&form=QBLH&setlang=en",
+    "note": "functional: Bing search — preserve q and setlang (locale), form is NOT in TRACKING_PARAMS",
+    "expected": { "preserve": ["q", "form", "setlang"], "strip": [] }
+  },
+  {
+    "url": "https://en.wikipedia.org/wiki/URL?oldid=123456789",
+    "note": "functional: Wikipedia — no tracking params, oldid is structural",
+    "expected": { "preserve": ["oldid"], "strip": [] }
+  },
+  {
+    "url": "https://www.ebay.com/sch/i.html?_nkw=laptop&_sop=12&mkevt=1&mkcid=2&mkrid=711-abc",
+    "note": "functional: eBay search — preserve _nkw (search), _sop (sort), strip mkevt/mkcid/mkrid (eBay tracking)",
+    "expected": { "preserve": ["_nkw", "_sop"], "strip": ["mkevt", "mkcid", "mkrid"] }
+  },
+  {
+    "url": "https://github.com/owner/repo/issues/123?assignee=foo&utm_source=github_notifications",
+    "note": "functional: GitHub issue with UTM — preserve assignee, strip UTM",
+    "expected": { "preserve": ["assignee"], "strip": ["utm_source"] }
+  },
+  {
+    "url": "https://l.facebook.com/l.php?u=https%3A%2F%2Fwww.example.com%2F&h=AT0abcdefgh",
+    "note": "wrapper: Facebook link redirect — unwraps to destination; wrapper tracking param h must not survive",
+    "expected": { "preserve": [], "strip": ["h"] }
+  },
+  {
+    "url": "https://l.facebook.com/l.php?u=https%3A%2F%2Fwww.example.com%2F%3Futm_source%3Dfb%26utm_medium%3Dsocial&h=AT0xyz",
+    "note": "wrapper: Facebook link redirect with UTM on destination — utm_source stripped from destination",
+    "expected": { "preserve": [], "strip": ["utm_source", "utm_medium"] }
+  },
+  {
+    "url": "https://www.aliexpress.com/item/1005006789012345.html?aff_trace_key=abc123&aff_request_id=req456&utm_source=blog",
+    "note": "#885 regression: AliExpress item page with NO referrer — affiliate params preserved via networkLandingParams (unconditional), utm_source stripped",
+    "expected": { "preserve": ["aff_trace_key", "aff_request_id"], "strip": ["utm_source"] }
+  },
+  {
+    "url": "https://www.aliexpress.com/item/1005001234567890.html?aff_trace_key=xyz&algo_pvid=pv1&algo_expid=e2&btsid=bt3&ws_ab_test=ab4&utm_medium=social",
+    "note": "#885 regression: AliExpress item page full affiliate family with NO referrer — all family members preserved, utm_medium stripped",
+    "expected": { "preserve": ["aff_trace_key", "algo_pvid", "algo_expid", "btsid", "ws_ab_test"], "strip": ["utm_medium"] }
+  },
+  {
+    "url": "https://www.example.com/page?utm_source=twitter&utm_medium=social&utm_content=variant_a&utm_term=keyword",
+    "note": "tracker-only: full UTM set on arbitrary page",
+    "expected": { "preserve": [], "strip": ["utm_source", "utm_medium", "utm_content", "utm_term"] }
+  },
+  {
+    "url": "https://www.linkedin.com/feed/update/urn:li:activity:123?trk=public_post&utm_source=linkedin_share",
+    "note": "tracker-only: LinkedIn activity with trk + UTM",
+    "expected": { "preserve": [], "strip": ["trk", "utm_source"] }
+  },
+  {
+    "url": "https://medium.com/publication/article-slug-abc123?source=email-newsletter&gi=abc123",
+    "note": "tracker-only: Medium article with source tracking; gi is NOT in TRACKING_PARAMS so preserved",
+    "expected": { "preserve": ["gi"], "strip": ["source"] }
+  },
+  {
+    "url": "https://news.ycombinator.com/item?id=12345678",
+    "note": "functional: HN item page — id is structural, no tracking params",
+    "expected": { "preserve": ["id"], "strip": [] }
+  },
+  {
+    "url": "https://www.example.com/confirmation?order_id=12345&utm_campaign=cart_recovery&fbclid=IwARxyz",
+    "note": "tracker-only + functional: order confirmation page with order_id preserved, campaign tracking stripped",
+    "expected": { "preserve": ["order_id"], "strip": ["utm_campaign", "fbclid"] }
+  },
+  {
+    "url": "https://store.example.com/product/widget?color=blue&size=M&utm_source=google&gclid=Cj0KCQabc",
+    "note": "functional + tracker-only: product page with functional params preserved, ad tracking stripped",
+    "expected": { "preserve": ["color", "size"], "strip": ["utm_source", "gclid"] }
+  },
+  {
+    "url": "https://www.twitch.tv/directory/game/Minecraft?utm_campaign=twitch_homepage&tt_medium=social&tt_content=directory",
+    "note": "tracker-only: Twitch directory with UTM and tt_ tracking params",
+    "expected": { "preserve": [], "strip": ["utm_campaign", "tt_medium", "tt_content"] }
+  },
+  {
+    "url": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC?si=abc123def456&utm_source=copy-link&nd=1",
+    "note": "tracker-only: Spotify track with si tracking param and UTM; nd is NOT in TRACKING_PARAMS so preserved",
+    "expected": { "preserve": ["nd"], "strip": ["si", "utm_source"] }
+  }
+]

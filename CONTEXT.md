@@ -255,6 +255,7 @@ Triggered on `v*` tag push: unit tests → live integration → e2e Playwright �
 | Source-grep ratchet (no banned patterns in source) | `source-grep-ratchet.test.mjs` |
 | URL_RE regex literal identical in SW + content script | `url-regex-sync.test.mjs` |
 | Wrapper DNR rules match wrappers.json | `wrapper-dnr-rules-sync.test.mjs` |
+| FP/FN harness gate + transparency sync | `fpfn-harness.test.mjs` (h1/h2/h3 in `docs-claims.test.mjs`) |
 
 ### Discovered artifact validation (`.github/workflows/discovered-validate.yml`)
 
@@ -328,6 +329,9 @@ tests/
 └── e2e/                       Playwright browser tests
 
 tools/
+├── fpfn-harness/              Corpus-driven FP/FN harness for processUrl
+│   ├── corpus.json            Labelled URL corpus (tracker-only, functional, wrapper, regression)
+│   └── run.mjs                Harness runner: loads corpus + fixtures, computes FP/FN, emits report
 ├── rule-ingestion/            Auto-ingest pipeline (ingest → orchestrate → promote)
 │   ├── adapters/              Signal-source adapters (adguard-tp, clearurls)
 │   ├── gates/                 Orchestration gates (affiliate, corroboration, canary, functional)
