@@ -245,22 +245,27 @@ describe("R5-C / R8-A — step ordering: gates before publish and commit", () =>
 });
 
 // ---------------------------------------------------------------------------
-// PR merge: --squash, no --auto (R5, design decision)
+// PR merge: --squash --auto (R5, PAT + auto-merge design decision)
+// The PR is created via MUGA_PR_TOKEN (fine-grained PAT), which triggers
+// ci.yml. --auto merges once required checks (test, e2e) pass, satisfying
+// main's branch protection. --squash keeps the history clean.
 // ---------------------------------------------------------------------------
 describe("PR merge flags", () => {
   test("uses 'gh pr merge --squash'", () => {
     const content = readWorkflow();
     assert.ok(
       /gh\s+pr\s+merge\s+.*--squash/.test(content),
-      "workflow must use 'gh pr merge --squash' (not --auto)"
+      "workflow must use 'gh pr merge --squash'"
     );
   });
 
-  test("does NOT use 'gh pr merge --auto'", () => {
+  test("uses 'gh pr merge --auto' (PAT-created PR triggers ci.yml; --auto waits for required checks)", () => {
     const content = readWorkflow();
     assert.ok(
-      !/gh\s+pr\s+merge\s+.*--auto/.test(content),
-      "workflow must NOT use '--auto' with gh pr merge — it deadlocks with GITHUB_TOKEN PRs"
+      /gh\s+pr\s+merge\s+.*--auto/.test(content),
+      "workflow must use '--auto' with gh pr merge — the PR is created via MUGA_PR_TOKEN " +
+      "(fine-grained PAT) which triggers ci.yml; --auto merges once test + e2e pass, " +
+      "satisfying main's branch protection"
     );
   });
 });
