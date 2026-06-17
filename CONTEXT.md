@@ -184,7 +184,7 @@ Leaf/data modules (`affiliates-data.js`, `redirect-networks.js`, `prefs.js`, `st
 | `src/rules/rules-manifest.json` | `affiliates-data.js` + `domain-rules.json` | `npm run compile:rules` |
 | `src/rules/wrapper-dnr-rules.json` | `src/rules/wrappers.json` (Ed25519-signed) | `npm run build:dnr` |
 | `src/content/cleaner-bundle.js` | `src/content/cleaner-bundle-src.mjs` (esbuild) | `npm run build:content` |
-| `src/rules/manifest.data.js` | caps-spec vendored manifest | `npm run sync:manifest` |
+| `src/rules/manifest.data.js` | caps-spec vendored manifest | hand-maintained; edit directly and update `EXPECTED_PROGRAM_IDS` in `tests/unit/caps-manifest-sync.test.mjs` |
 
 **Rule:** if you edit `affiliates-data.js` run `npm run compile:rules && npm run build:content`. If you edit `wrappers.json` run `npm run build:dnr`. CI fails if any artifact under `src/rules/` or `src/content/cleaner-bundle.js` is out of sync.
 

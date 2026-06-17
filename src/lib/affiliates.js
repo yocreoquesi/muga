@@ -4,8 +4,8 @@
  * AFFILIATE_PATTERNS is the consolidated view of caps-spec's
  * direct-injection programs joined with MUGA's hand-maintained OUR_TAGS
  * map. The program identity (id, name, domains, param) is sourced from
- * the vendored `caps-spec/manifest.json` (#523 phase 1, run
- * `npm run sync:manifest` to refresh). The per-host affiliate tag values
+ * the vendored `caps-spec/manifest.json` (#523 phase 1, now hand-maintained
+ * in `src/rules/manifest.data.js`). The per-host affiliate tag values
  * MUGA injects on its own behalf live in OUR_TAGS in this file — they
  * are intentionally NOT in the open standard.
  *
@@ -24,8 +24,8 @@
  *   }
  *
  * To add a NEW per-marketplace tag for an existing program: edit
- * OUR_TAGS only. To add a NEW program: it must first land in caps-spec,
- * then `npm run sync:manifest` updates the vendored module.
+ * OUR_TAGS only. To add a NEW program: edit `src/rules/manifest.data.js`
+ * directly and update `EXPECTED_PROGRAM_IDS` in `tests/unit/caps-manifest-sync.test.mjs`.
  *
  * ── #826 module split ────────────────────────────────────────────────────
  * The static tracking-param dataset (TRACKING_PARAMS, TRACKING_PREFIXES,
