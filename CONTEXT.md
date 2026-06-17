@@ -214,7 +214,7 @@ runIngestion()   →   runOrchestrateCli()   →   runPromote()
 
 Gates 1 and 3 are the P0 affiliate moat guards. Gate 2 is the corroboration floor (false-positive control). Gate 4 protects UX. The postures encode the asymmetric-risk principle structurally.
 
-**Schedule:** `auto-ingest-rules.yml` runs Sunday 04:00 UTC + `workflow_dispatch`. It replicates the full CI gate suite inline, signs the artifact, opens/updates an idempotent PR, and squash-merges. Squash-merge is required because PRs opened by `GITHUB_TOKEN` do not re-trigger `ci.yml` (GitHub recursion guard).
+**Schedule:** `auto-ingest-rules.yml` runs Sunday 04:00 UTC + `workflow_dispatch`. It replicates the full CI gate suite inline, signs the artifact, opens/updates an idempotent PR via `MUGA_PR_TOKEN` (a fine-grained PAT with `contents:write` + `pull-requests:write`), and squash-merges with `--auto` once required checks pass. The PAT is required because PRs opened with `GITHUB_TOKEN` do not trigger `ci.yml` (GitHub recursion guard), so required status checks (`test`, `e2e`) would never run and branch protection would block the merge. Requires a `MUGA_PR_TOKEN` repo secret to be created by the maintainer.
 
 ---
 

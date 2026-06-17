@@ -2,14 +2,17 @@ name: Auto-ingest rule parameters
 
 # Weekly scheduled ingestion of tracking parameters.
 # Runs the full pipeline (ingest → orchestrate → promote → sign) inline,
-# gates via the same suite as ci.yml, then opens a PR and immediately
-# squash-merges it using GITHUB_TOKEN.
+# gates via the same suite as ci.yml, then opens a PR via MUGA_PR_TOKEN and
+# lets GitHub auto-merge it once required checks pass.
 #
-# Why --squash and NOT --auto:
-#   PRs opened by GITHUB_TOKEN do NOT trigger ci.yml (GitHub recursion guard).
-#   --auto blocks waiting for required status checks that will never arrive.
-#   All gates already ran inline in this job as earlier steps; the artifact in
-#   the PR is exactly what passed. Immediate --squash is correct; --auto deadlocks.
+# Why MUGA_PR_TOKEN (fine-grained PAT) and --squash --auto:
+#   PRs created with GITHUB_TOKEN do NOT trigger ci.yml (GitHub recursion guard),
+#   so required status checks (test, e2e) never run and branch protection blocks
+#   the merge. A fine-grained PAT (MUGA_PR_TOKEN, contents:write +
+#   pull-requests:write) bypasses the recursion guard, so ci.yml runs on the PR.
+#   --squash --auto then lets GitHub merge once test + e2e pass, satisfying main's
+#   branch protection. REQUIRES: repo secret MUGA_PR_TOKEN must be created by the
+#   maintainer (fine-grained PAT with contents:write + pull-requests:write).
 on:
   schedule:
     # Sunday 04:00 UTC. Off-peak so the run completes before the maintainer's
@@ -36,7 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.MUGA_PR_TOKEN }}
           fetch-depth: 0
 
       # ── 2. Node + deps ───────────────────────────────────────────────────────
@@ -209,7 +212,7 @@ jobs:
       - name: Create or update pull request
         if: steps.pipeline.outputs.noop == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MUGA_PR_TOKEN }}
         run: |
           {
             cat <<'STATIC'
@@ -245,13 +248,15 @@ jobs:
           fi
 
       # ── 10. Squash-merge PR ───────────────────────────────────────────────────
-      # Immediate --squash: gates already ran inline; no CI will run on the
-      # GITHUB_TOKEN PR; --auto would block forever waiting for checks.
+      # --squash --auto: the PR was created via MUGA_PR_TOKEN (fine-grained PAT),
+      # which triggers ci.yml (unlike GITHUB_TOKEN, which is blocked by GitHub's
+      # recursion guard). --auto waits for required checks (test, e2e) to pass
+      # before merging, satisfying main's branch protection policy.
       - name: Squash-merge pull request
         if: steps.pipeline.outputs.noop == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "$BRANCH" --squash --delete-branch
+          GH_TOKEN: ${{ secrets.MUGA_PR_TOKEN }}
+        run: gh pr merge "$BRANCH" --squash --auto --delete-branch
 
       # ── 11. Key cleanup (if: always()) ───────────────────────────────────────
       # Always runs — even if previous steps fail — so the key is never left on disk.
