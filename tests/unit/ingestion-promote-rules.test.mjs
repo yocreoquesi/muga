@@ -1251,8 +1251,8 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
     assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
   });
 
-  test("I2-c: param in REMOTE_PARAM_DENYLIST → PromoteError exitCode 1, bytes unchanged", async () => {
-    const { runPromote, PromoteError } = await import(
+  test("I2-c: param in REMOTE_PARAM_DENYLIST → skipped (not thrown), absent from merged (issue #898)", async () => {
+    const { runPromote } = await import(
       "../../tools/rule-ingestion/promote-rules.mjs"
     );
 
@@ -1260,57 +1260,116 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
     const now = new Date("2026-06-01T12:00:00.000Z");
 
     // "q" is in REMOTE_PARAM_DENYLIST
-    const badParams = ["q"];
-    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", badParams);
+    const params = ["q"];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", params);
     const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
-    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params: badParams, sig };
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params, sig };
     const promotePath = join(tmpDir, "promote-candidates.json");
     writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
 
     const sourcePath = writeParamsJson(tmpDir, { version: 3, published: "2026-04-01T00:00:00.000Z", params: [] });
     const domainRulesPath = writeDomainRules(tmpDir, []);
-    const bytesBefore = readFileSync(sourcePath, "utf8");
 
-    await assert.rejects(
-      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
-      (err) => {
-        assert.ok(err instanceof PromoteError, "must be PromoteError");
-        assert.strictEqual(err.exitCode, 1, "denylist param → exitCode 1");
-        return true;
-      }
+    // Must NOT throw — denylist hit is now a skip, not a fatal error (#898)
+    const result = await runPromote({
+      promotePath, sourcePath, domainRulesPath,
+      trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
+    });
+
+    // "q" must be in skipped with reason REMOTE_PARAM_DENYLIST
+    assert.ok(
+      result.skipped.some((s) => s.param === "q" && s.reason === "REMOTE_PARAM_DENYLIST"),
+      'skipped must contain { param: "q", reason: "REMOTE_PARAM_DENYLIST" }'
     );
-    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+    // "q" must NOT be in merged (never promoted)
+    assert.ok(!result.merged.includes("q"), '"q" must not be in merged');
   });
 
-  test("I2-d: param in AFFILIATE_PARAM_GUARD → PromoteError exitCode 1, bytes unchanged", async () => {
-    const { runPromote, PromoteError } = await import(
+  test("I2-d: param in AFFILIATE_PARAM_GUARD → skipped (not thrown), absent from merged (issue #898)", async () => {
+    const { runPromote } = await import(
       "../../tools/rule-ingestion/promote-rules.mjs"
     );
 
     const tmpDir = makeTmpDir();
     const now = new Date("2026-06-01T12:00:00.000Z");
 
-    // "tag" is in AFFILIATE_PARAM_GUARD (Amazon)
-    const badParams = ["tag"];
-    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", badParams);
+    // "campid" is in AFFILIATE_PARAM_GUARD (eBay) and NOT in REMOTE_PARAM_DENYLIST,
+    // so the AFFILIATE_PARAM_GUARD branch is exercised exclusively.
+    const params = ["campid"];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", params);
     const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
-    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params: badParams, sig };
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params, sig };
     const promotePath = join(tmpDir, "promote-candidates.json");
     writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
 
     const sourcePath = writeParamsJson(tmpDir, { version: 3, published: "2026-04-01T00:00:00.000Z", params: [] });
     const domainRulesPath = writeDomainRules(tmpDir, []);
-    const bytesBefore = readFileSync(sourcePath, "utf8");
 
-    await assert.rejects(
-      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
-      (err) => {
-        assert.ok(err instanceof PromoteError, "must be PromoteError");
-        assert.strictEqual(err.exitCode, 1, "affiliate guard param → exitCode 1");
-        return true;
-      }
+    // Must NOT throw — affiliate guard hit is now a skip, not a fatal error (#898)
+    const result = await runPromote({
+      promotePath, sourcePath, domainRulesPath,
+      trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
+    });
+
+    // "campid" must be in skipped with reason AFFILIATE_PARAM_GUARD
+    assert.ok(
+      result.skipped.some((s) => s.param === "campid" && s.reason === "AFFILIATE_PARAM_GUARD"),
+      'skipped must contain { param: "campid", reason: "AFFILIATE_PARAM_GUARD" }'
     );
-    assert.strictEqual(readFileSync(sourcePath, "utf8"), bytesBefore, "params.json must be unchanged");
+    // "campid" must NOT be in merged (never promoted)
+    assert.ok(!result.merged.includes("campid"), '"campid" must not be in merged');
+  });
+
+  test("T-898: guard param (clickid) + denylist param (q) + valid tracker → promote succeeds, guard/denylist absent from artifact, valid param promoted", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const now = new Date("2026-06-01T12:00:00.000Z");
+
+    // clickid is in AFFILIATE_PARAM_GUARD; q is in REMOTE_PARAM_DENYLIST; utm_content is a valid tracker
+    const params = ["clickid", "q", "utm_content"];
+    const canonical = canonicalMessage(3, "2026-05-01T00:00:00.000Z", params);
+    const sig = cryptoSign(null, Buffer.from(canonical, "utf8"), TEST_PRIV_KEY).toString("base64url");
+    const artifact = { version: 3, published: "2026-05-01T00:00:00.000Z", params, sig };
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    writeFileSync(promotePath, JSON.stringify(artifact, null, 2) + "\n", "utf8");
+
+    const sourcePath = writeParamsJson(tmpDir, { version: 3, published: "2026-04-01T00:00:00.000Z", params: [] });
+    const domainRulesPath = writeDomainRules(tmpDir, []);
+
+    // Must NOT throw — guard/denylist hits are skipped; valid params are promoted
+    const result = await runPromote({
+      promotePath, sourcePath, domainRulesPath,
+      trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
+    });
+
+    // Run must succeed (written:true because utm_content is new)
+    assert.strictEqual(result.verified, true, "must be verified");
+    assert.strictEqual(result.written, true, "must write (utm_content is new)");
+
+    // Guard/denylist params must be in skipped, not in merged
+    assert.ok(
+      result.skipped.some((s) => s.param === "clickid" && s.reason === "AFFILIATE_PARAM_GUARD"),
+      'skipped must contain { param: "clickid", reason: "AFFILIATE_PARAM_GUARD" }'
+    );
+    assert.ok(
+      result.skipped.some((s) => s.param === "q" && s.reason === "REMOTE_PARAM_DENYLIST"),
+      'skipped must contain { param: "q", reason: "REMOTE_PARAM_DENYLIST" }'
+    );
+    assert.ok(!result.merged.includes("clickid"), '"clickid" must not be in merged');
+    assert.ok(!result.merged.includes("q"), '"q" must not be in merged');
+
+    // Valid tracker param must be promoted
+    assert.ok(result.merged.includes("utm_content"), '"utm_content" must be in merged');
+
+    // Written artifact must not contain guard/denylist params
+    const { readFileSync } = await import("node:fs");
+    const written = JSON.parse(readFileSync(sourcePath, "utf8"));
+    assert.ok(!written.params.includes("clickid"), "written artifact must not contain clickid");
+    assert.ok(!written.params.includes("q"), "written artifact must not contain q");
+    assert.ok(written.params.includes("utm_content"), "written artifact must contain utm_content");
   });
 });
 

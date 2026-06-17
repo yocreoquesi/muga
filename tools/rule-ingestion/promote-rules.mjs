@@ -272,6 +272,18 @@ export async function runPromote({
   // ── Step 4b: Param format + denylist + affiliate-guard validation ───────────
   // Applied after sig/freshness so we don't expose format info on unsigned data.
   // Mirrors the REQ-VALIDATE-2/3/4/5 checks in remote-rules.js validateParams.
+  //
+  // PARAM_FORMAT_ERROR (length/regex) → fatal throw: a malformed param name is an
+  // anomaly class distinct from guard/denylist collisions and is kept as exit-1.
+  //
+  // DENYLIST_HIT / AFFILIATE_GUARD_HIT → SKIP (issue #898): these params are
+  // dropped from the promoted artifact and recorded in skipped[]. Aborting the
+  // whole run over a single guard-colliding candidate (e.g. `clickid` from
+  // AdGuard upstream) discards all ~179 other valid candidates — pure brittleness.
+  // Any AFFILIATE_PARAM_GUARD param is rejected by validateParams on fetch and can
+  // never be delivered via remote rules; promoting it is a no-op. Skipping is the
+  // safe (cheap) direction under the asymmetric-risk principle.
+  const guardSkipped = [];
   for (const param of art.params) {
     if (param.length < 1 || param.length > MAX_PARAM_LEN || !PARAM_FORMAT_RE.test(param)) {
       throw new PromoteError(
@@ -281,18 +293,25 @@ export async function runPromote({
     }
     const lower = param.toLowerCase();
     if (REMOTE_PARAM_DENYLIST.has(lower)) {
-      throw new PromoteError(
-        `DENYLIST_HIT: promote artifact param "${param}" is in REMOTE_PARAM_DENYLIST`,
-        1
+      console.log(
+        `[promote-rules] skip: ${param} is in REMOTE_PARAM_DENYLIST — excluded from promote (issue #898)`
       );
+      guardSkipped.push({ param, reason: "REMOTE_PARAM_DENYLIST" });
+      continue;
     }
     if (AFFILIATE_PARAM_GUARD.has(lower)) {
-      throw new PromoteError(
-        `AFFILIATE_GUARD_HIT: promote artifact param "${param}" is in AFFILIATE_PARAM_GUARD`,
-        1
+      console.log(
+        `[promote-rules] skip: ${param} is in AFFILIATE_PARAM_GUARD — excluded from promote (issue #898)`
       );
+      guardSkipped.push({ param, reason: "AFFILIATE_PARAM_GUARD" });
+      continue;
     }
   }
+
+  // Build the filtered param list: exclude guard/denylist hits found above.
+  const filteredArtParams = art.params.filter(
+    (p) => !guardSkipped.some((s) => s.param === p)
+  );
 
   // ── Step 5: Build preservedSet + partition art.params ─────────────────────
   // FAIL-CLOSED: missing/unreadable domain-rules.json → exit 3 (I/O); non-array
@@ -316,10 +335,11 @@ export async function runPromote({
   }
 
   const preservedSet = loadPreservedSet(domainRules);
-  const skipped = [];
+  // Pre-populate skipped with guard/denylist hits from step 4b (#898).
+  const skipped = [...guardSkipped];
   const cleanParams = [];
 
-  for (const param of art.params) {
+  for (const param of filteredArtParams) {
     if (preservedSet.has(param)) {
       console.log(
         `[promote-rules] skip: ${param} collides with preserveParams — excluded from merge`
