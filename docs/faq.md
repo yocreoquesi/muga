@@ -152,35 +152,24 @@ that Amazon Associates / eBay Partner Network / Bookshop / etc. all run.
 
 ## Network behavior
 
-MUGA ships with two features that involve network requests. **Both are
-opt-in, default-off, and both verify cryptographic signatures on every
-response.** Without explicit opt-in, MUGA makes zero outbound network
-requests.
+MUGA ships with two features that involve network requests. Both are
+opt-in, default-off. Without explicit opt-in, MUGA makes zero outbound
+network requests.
 
-### Q: What is the Privacy Proxy and when does it fire?
+### Q: What is "Follow shortener redirects" and when does it fire?
 
-The Privacy Proxy is an opt-in feature for **opaque** affiliate-network
-redirect URLs (Awin, ShareASale, Impact Radius, and similar) whose
-destination cannot be extracted client-side. When enabled, MUGA sends the
-opaque redirect URL to `unwrap.muga.app` (a Cloudflare Worker) and receives
-back the resolved destination.
+"Follow shortener redirects" is an opt-in feature that resolves generic
+URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in,
+fb.me, ebay.to) so you can see the destination before navigating. The
+extension performs a direct `fetch(url, { redirect: "manual", credentials: "omit", cache: "no-store" })` to the shortener host and reads the
+`Location` header. No MUGA server is contacted; there is no signed
+envelope because the redirect comes straight from the shortener host.
+Affiliate-redirect networks are NEVER followed.
 
-- Default: **off**. See
-  [`src/lib/storage.js:169`](../src/lib/storage.js#L169):
-  `privacyProxyEnabled: false`.
-- Every response is verified with an **Ed25519 signature** before MUGA
-  navigates anywhere. The verification entry point is in the service
-  worker at
-  [`src/background/service-worker.js:1042-1091`](../src/background/service-worker.js#L1042-L1091)
-  and the actual signature check lives in
-  [`src/lib/proxy-client.js:110-134`](../src/lib/proxy-client.js#L110-L134).
-- If signature verification fails, the result is rejected with
-  `reason: "signature"` and navigation does not proceed
-  ([`src/lib/proxy-client.js:298-313`](../src/lib/proxy-client.js#L298-L313)).
-- The Worker is only contacted for hostnames in a hardcoded
-  `OPAQUE_NETWORKS` allowlist
-  ([`src/background/service-worker.js:1083`](../src/background/service-worker.js#L1083));
-  arbitrary URLs cannot be sent through it.
+- Default: **off** (`followShortenersEnabled: false`).
+- Permissions are granted per-host only when you enable the feature, and
+  are revocable at any time via your browser's extension settings.
+- Implementation: `src/lib/native-shortener-resolver.js`.
 
 ### Q: What are Remote Rules and how are they signed?
 
@@ -204,10 +193,14 @@ protection against new noise sources without waiting for an extension release.
 
 ### Q: Does any of this leak my browsing history?
 
-The Privacy Proxy receives the **opaque redirect URL you would have visited
-anyway** (e.g. an Awin redirect link). It does not receive your full
-browsing history. It only receives a URL when you click an affiliate
-network redirect and the feature is enabled.
+When "Follow shortener redirects" is enabled, the **extension itself**
+sends a `GET` directly to the shortener host (e.g. `bit.ly`)
+with credentials omitted and no referrer. No MUGA server is involved;
+the request goes to the same shortener host your browser would have
+contacted on click. The only difference is that you never actually
+navigate to that URL, so no page-load context is handed to the shortener.
+It only fires on the seven opted-in shortener hosts when the feature is
+enabled.
 
 Remote Rules sends no user data at all — it is a one-way `GET` of a
 signed JSON file.
@@ -234,9 +227,9 @@ small set of programs in
 The cost base is intentionally low:
 
 - The cleaner is a local computation; there is no per-user server cost.
-- The Privacy Proxy runs on Cloudflare Workers, only fires when the user
-  has opted in, and only fires on opaque redirect networks (a small subset
-  of clicks).
+- The "Follow shortener redirects" feature (opt-in, off by default) is
+  resolved entirely inside the extension — no MUGA server is involved,
+  so there is no per-resolution infrastructure cost.
 - Remote Rules is a static signed JSON served from GitHub Pages.
 
 If you want to support the project without enabling injection, the

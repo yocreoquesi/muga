@@ -116,7 +116,7 @@ By default, MUGA processes URLs locally inside your browser. We don't run analyt
 . No analytics, no telemetry, no account, no sign-in
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
 . Optional host permission rules.muga.app/*: granted only when you enable "Remote rule updates" in Settings. Used to fetch a signed noise-param payload over HTTPS: a single GET check at most once per 7 days, piggybacked on natural service-worker wake events (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time via browser settings.
-. Optional host permission unwrap.muga.app/*: granted only when you enable "URL Unwrapper" in Settings. Used ONLY to resolve generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) so you can see where a short link actually leads before clicking. Affiliate redirect networks are NEVER sent to this endpoint — they pass through unchanged to honour the creator's commission. Off by default.
+. Optional host permissions bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*: granted per-host only when you enable "Follow shortener redirects" in Settings. The extension fetches the shortener host directly (native, no MUGA server) with credentials omitted to read its redirect. Affiliate redirect networks are NEVER followed — they pass through unchanged to honour the creator's commission. Off by default.
 
 
 ======================================
@@ -223,7 +223,7 @@ By default, MUGA processes URLs locally inside your browser. We don't run analyt
 . No analytics, no telemetry, no account, no sign-in
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequest, clipboardWrite
 . Optional permission rules.muga.app/*: granted only when you enable "Remote rule updates". Used to fetch a signed noise-param payload: a single HTTPS GET check at most once per 7 days, piggybacked on natural browser activity (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time.
-. Optional permission unwrap.muga.app/*: granted only when you enable "URL Unwrapper". Used ONLY to resolve generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) so you can see where a short link actually leads before clicking. Affiliate redirect networks are NEVER sent to this endpoint — they pass through unchanged to honour the creator's commission. Off by default.
+. Optional permissions bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*: granted per-host only when you enable "Follow shortener redirects". The extension fetches the shortener host directly (native, no MUGA server) with credentials omitted to read its redirect. Affiliate redirect networks are NEVER followed — they pass through unchanged to honour the creator's commission. Off by default.
 
 
 Your rules

@@ -86,7 +86,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">External server connections</span>
-      <span class="at-a-glance-value">0 by default <span class="tag-zero">zero</span>. Optional <em>Remote rule updates</em> make 1 HTTPS GET per week to <code>rules.muga.app</code> when enabled in Settings. Optional <em>Privacy Proxy</em> resolves opaque redirect URLs through <code>unwrap.muga.app</code> when enabled in Settings. Both off by default. No cookies, no identifiers, no POST body. Auditable open-source endpoints.</span>
+      <span class="at-a-glance-value">0 by default <span class="tag-zero">zero</span>. Optional <em>Remote rule updates</em> make 1 HTTPS GET per week to <code>rules.muga.app</code> when enabled in Settings. Optional <em>Follow shortener redirects</em>: when enabled, the extension itself fetches the shortener host directly (bit.ly, t.co, tinyurl.com, &hellip;) with credentials omitted to read its redirect &mdash; no MUGA server is involved. Both off by default. No cookies, no identifiers, no POST body. Auditable open-source code.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Analytics / telemetry</span>
@@ -94,7 +94,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Data sent anywhere</span>
-      <span class="at-a-glance-value">Only what you opt into. By default nothing leaves your browser. Optional Remote rule updates and Privacy Proxy make HTTPS GETs only when you explicitly enable them in Settings.</span>
+      <span class="at-a-glance-value">Only what you opt into. By default nothing leaves your browser. Optional Remote rule updates make HTTPS GETs to <code>rules.muga.app</code> when enabled. Optional Follow shortener redirects make direct HTTPS GETs to the shortener host (bit.ly, t.co, &hellip;) when enabled &mdash; no MUGA server is contacted.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Third-party dependencies</span>
@@ -206,7 +206,7 @@
   <hr>
 
   <div class="footer">
-    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v2.2.0 (2026-06-01) &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
+    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v2.3.0 (2026-06-10) &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
   </div>
 
 </body>
