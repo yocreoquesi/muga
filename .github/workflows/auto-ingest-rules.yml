@@ -100,6 +100,14 @@ jobs:
       # to fail, which prevents all downstream publish/commit/PR steps from
       # running. This is the inline gate enforcement mechanism (R8).
 
+      - name: Type-check JS (tsc --checkJs) (#823)
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run typecheck
+
+      - name: Lint JS (ESLint flat config) (#823)
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run lint:js
+
       - name: Compile rules artifacts
         if: steps.pipeline.outputs.noop == 'false'
         run: npm run compile:rules
