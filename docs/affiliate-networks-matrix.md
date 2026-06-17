@@ -51,7 +51,7 @@ The param verdicts encode the load-bearing detail of the matrix. Their meanings:
 
 These apply across all tier-1 networks unless a section overrides:
 
-1. **Redirect domains in `AFFILIATE_REDIRECT_NETWORKS` are passed through unmodified.** The redirect must execute in the browser so the network can set its own cookie. MUGA does **not** unwrap these client-side, and the URL Unwrapper feature (`unwrap.muga.app`) does **not** accept them either ([#659](https://github.com/yocreoquesi/muga/issues/659)).
+1. **Redirect domains in `AFFILIATE_REDIRECT_NETWORKS` are passed through unmodified.** The redirect must execute in the browser so the network can set its own cookie. MUGA does **not** unwrap these client-side — neither the decommissioned server-side Worker (see ADR-0004) nor the current native resolver (`src/lib/native-shortener-resolver.js`) accepts them ([#659](https://github.com/yocreoquesi/muga/issues/659)).
 2. **First landing is detected by document.referrer.** If `document.referrer.hostname` matches a known redirect host for the network, the landing is "first-touch" and `required-at-landing` params are preserved on that initial document only. On subsequent same-site navigations (referrer is same-origin), preserved params are eligible for cleanup — the merchant's first-party cookie has already captured them.
 3. **`required-at-checkout` params are preserved across the entire session on the merchant's domain.** Stripping is gated until the user leaves the domain or the session times out.
 4. **When in doubt, preserve.** A false-positive strip silently breaks creator payouts that surface weeks later. A false-positive preserve leaves a few extra characters in the URL bar. The asymmetry is enormous — the matrix biases toward preservation.
@@ -364,7 +364,7 @@ hostname is any merchant domain
   → safe-to-strip on subsequent same-site navigations
 ```
 
-**Server-side implication for `unwrap.muga.app`**: today the Worker resolves `prf.hn` via HEAD chain (server-side unwrap). Under 2.1 this MUST stop — `prf.hn` joins `AFFILIATE_REDIRECT_NETWORKS` and is removed from the Worker's accepted host list (covered by [#659](https://github.com/yocreoquesi/muga/issues/659)).
+**Historical note (decommissioned — see ADR-0004)**: the server-side Worker previously resolved `prf.hn` via HEAD chain. That Worker is decommissioned as of v2.2.0. `prf.hn` was added to `AFFILIATE_REDIRECT_NETWORKS` and is excluded from the native resolver (`src/lib/native-shortener-resolver.js`) per [#659](https://github.com/yocreoquesi/muga/issues/659).
 
 **Verification status**
 
@@ -447,7 +447,7 @@ htag, iom_publisher_id → strippable always (analytics, not load-bearing)
 
 **Surface**
 
-- Redirect host: `px.a8.net`. Currently in `OPAQUE_NETWORKS` ([`opaque-networks.js:54`](../src/lib/opaque-networks.js)) confirmed via T00 STANDARD redirect probe. The Worker (`unwrap.muga.app`) has `px.a8.net` in its allowlist for server-side resolution (PR-05, see CHANGELOG.md:88).
+- Redirect host: `px.a8.net`. Currently in `OPAQUE_NETWORKS` ([`opaque-networks.js:54`](../src/lib/opaque-networks.js)) confirmed via T00 STANDARD redirect probe. The decommissioned server-side Worker (see ADR-0004) previously held `px.a8.net` in its allowlist for server-side resolution (PR-05, CHANGELOG.md:88); resolution is now native via `src/lib/native-shortener-resolver.js`.
 - Merchant landing: Japanese e-commerce sites — Rakuten Ichiba, Yahoo Shopping Japan, large Japanese retailers and SaaS. A8.net is the largest ASP (affiliate service provider) in Japan with ~3.6M publishers.
 - Endpoint shape: standard server-side 30x with `Location` header. Payload encoded into the redirect URL itself, not query-string visible.
 

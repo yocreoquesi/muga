@@ -52,7 +52,7 @@
     <li>Redirects Google AMP pages to their canonical article URLs</li>
     <li>Blocks <code>&lt;a ping&gt;</code> tracking beacons on link clicks</li>
     <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click — see the Privacy Policy for the full list and rationale</li>
-    <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) through <code>unwrap.muga.app</code> so you can see where a short link actually leads. Off by default. Affiliate-redirect networks are NEVER sent to this endpoint</li>
+    <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) by fetching the shortener host directly (native, no MUGA server) so you can see where a short link actually leads. Off by default. Affiliate-redirect networks are NEVER followed</li>
     <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you have opted in</li>
   </ul>
   <p>You have full control over every feature. MUGA never collects, sells, or shares your browsing data. Any feature that contacts an external service requires your explicit action.</p>
