@@ -55,6 +55,7 @@ export {
   getRedirectNetworkPatterns,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForReferrer,
+  getLandingParamsForHost,
 } from "./redirect-networks.js";
 
 // ────────────────────────────────────────────────────────────────────────

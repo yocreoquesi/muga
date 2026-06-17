@@ -285,3 +285,43 @@ export function getLandingParamsForReferrer(referrerHostname) {
   const network = getRedirectNetworkForRedirectHost(referrerHostname);
   return network ? new Set(network.landingParams) : new Set();
 }
+
+/**
+ * Returns the union of landingParams for all redirect-network entries that
+ * target the given landing hostname, identified by matching the second-level
+ * domain of the hostname against each entry's `id`.
+ *
+ * This is used by the AliExpress item-page wholesale-strip branch (#885) to
+ * exempt the affiliate landing family UNCONDITIONALLY — regardless of whether
+ * document.referrer is present. getLandingPolicy() already handles the
+ * referrer-gated case; this function covers the no-referrer hole (strict
+ * referrer-policy, meta-refresh chains, cross-origin downgrade, DOM-less
+ * workers) where getLandingPolicy returns EMPTY_LANDING_POLICY and the family
+ * would otherwise be silently stripped.
+ *
+ * Matching logic: extract the second-level domain from `hostname` (e.g.
+ * "aliexpress" from "aliexpress.com" or "www.aliexpress.com"), then include
+ * any REDIRECT_NETWORK_PATTERNS entry whose `id` contains that SLD. This is
+ * intentionally conservative: most networks land on arbitrary merchant domains
+ * and have no fixed landing hostname, so only entries whose program name is
+ * embedded in the host (like aliexpress-affiliate → aliexpress.com) match.
+ *
+ * @param {string|null|undefined} hostname  Landing URL hostname
+ * @returns {Set<string>}  Lowercased param names; empty Set when none match
+ */
+export function getLandingParamsForHost(hostname) {
+  if (!hostname) return new Set();
+  // Extract SLD: strip www., split on ".", take the second-to-last segment.
+  const h = hostname.replace(/^www\./, "").toLowerCase();
+  const parts = h.split(".");
+  const sld = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  if (!sld) return new Set();
+
+  const result = new Set();
+  for (const network of REDIRECT_NETWORK_PATTERNS) {
+    if (network.id.includes(sld)) {
+      for (const p of network.landingParams) result.add(p.toLowerCase());
+    }
+  }
+  return result;
+}
