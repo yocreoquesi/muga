@@ -36,7 +36,8 @@
     "test:e2e": "npx playwright test",
     "typecheck": "tsc -p jsconfig.json",
     "lint:js": "eslint .",
-    "moat:report": "node tools/moat-expansion/cli.mjs"
+    "moat:report": "node tools/moat-expansion/cli.mjs",
+    "fpfn": "node tools/fpfn-harness/run.mjs"
   },
   "engines": {
     "node": ">=20.11"

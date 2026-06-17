@@ -261,6 +261,45 @@ describe("docs-claims — machine-enforced README/CONTRIBUTING accuracy", () => 
     }
   });
 
+  // ── (h) FP/FN transparency sync ──────────────────────────────────────────────
+  // Enforces that docs/transparency.html "Detection accuracy (measured)" row
+  // reflects the current harness results. Numbers must stay in sync.
+
+  test("(h1) transparency.html shows the current corpus N (total entries)", async () => {
+    const { runHarness } = await import("../../tools/fpfn-harness/run.mjs");
+    const result = runHarness();
+    const html = readRoot("docs/transparency.html");
+    const nMatch = html.match(/id="fpfn-corpus-n"[^>]*>(\d+)</);
+    assert.ok(nMatch, 'transparency.html must contain an element with id="fpfn-corpus-n"');
+    const claimed = parseInt(nMatch[1], 10);
+    assert.strictEqual(claimed, result.totalEntries,
+      `transparency.html claims corpus N=${claimed} but harness reports ${result.totalEntries}. Update docs/transparency.html.`);
+  });
+
+  test("(h2) transparency.html FP count matches harness result (must be 0)", async () => {
+    const { runHarness } = await import("../../tools/fpfn-harness/run.mjs");
+    const result = runHarness();
+    const html = readRoot("docs/transparency.html");
+    const fpMatch = html.match(/id="fpfn-fp-count"[^>]*>(\d+)</);
+    assert.ok(fpMatch, 'transparency.html must contain an element with id="fpfn-fp-count"');
+    const claimed = parseInt(fpMatch[1], 10);
+    assert.strictEqual(claimed, result.totalFP,
+      `transparency.html claims FP=${claimed} but harness reports ${result.totalFP}. Update docs/transparency.html.`);
+    assert.strictEqual(result.totalFP, 0,
+      `FP must be 0 (asymmetric-risk hard line). Found ${result.totalFP} false positives.`);
+  });
+
+  test("(h3) transparency.html FN count matches harness result (informational)", async () => {
+    const { runHarness } = await import("../../tools/fpfn-harness/run.mjs");
+    const result = runHarness();
+    const html = readRoot("docs/transparency.html");
+    const fnMatch = html.match(/id="fpfn-fn-count"[^>]*>(\d+)</);
+    assert.ok(fnMatch, 'transparency.html must contain an element with id="fpfn-fn-count"');
+    const claimed = parseInt(fnMatch[1], 10);
+    assert.strictEqual(claimed, result.totalFN,
+      `transparency.html claims FN=${claimed} but harness reports ${result.totalFN}. Update docs/transparency.html.`);
+  });
+
   // ── (d) CONTRIBUTING structure block — all listed paths must exist ────────
 
   test("(d) CONTRIBUTING project-structure file paths all exist on disk", () => {
