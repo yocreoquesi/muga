@@ -10,6 +10,7 @@ import {
   getPatternsForHost,
   getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
+  getLandingParamsForHost,
 } from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
 import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
@@ -790,6 +791,16 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
     // Without the policy gate, this wholesale strip kills aff_trace_key + family
     // before the AliExpress front-end tag can consume them on landing.
     const { preserved } = getDomainParamSets(hostname, domainRules);
+    // #885: Also exempt the redirect-network landing family UNCONDITIONALLY,
+    // independent of document.referrer. getLandingPolicy() already preserves
+    // this family when referrer = s.click.aliexpress.com, but several real paths
+    // (strict Referrer-Policy, meta-refresh / redirect chains, cross-origin
+    // downgrade, DOM-less workers) deliver the user with no referrer, collapsing
+    // getLandingPolicy to EMPTY_LANDING_POLICY and silently stripping
+    // aff_trace_key + family → creator commission destroyed. Over-preserving a
+    // transient tracker on an AliExpress item page is the cheap asymmetric-risk
+    // direction; stripping attribution is catastrophic.
+    const networkLandingParams = getLandingParamsForHost(hostname);
     // De-dup keys (see stripTrackingParams): delete() removes all occurrences,
     // so iterating raw keys() would double-count repeated keys and push a
     // phantom empty value on the second pass.
@@ -797,6 +808,7 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
       const lower = param.toLowerCase();
       if (preserved.has(lower)) continue;
       if (landingPolicy.preserve.has(lower)) continue;
+      if (networkLandingParams.has(lower)) continue;
       removedValues.push(url.searchParams.get(param) ?? "");
       url.searchParams.delete(param);
       removed.push(param);
