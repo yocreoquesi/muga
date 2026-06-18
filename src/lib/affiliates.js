@@ -236,3 +236,23 @@ export function getAffiliateDomains() {
   }
   return [...set];
 }
+
+/**
+ * Resolves MUGA's own affiliate tag for a given pattern + hostname.
+ *
+ * `pattern.ourTag` is a `{ host -> tag }` map (#523 phase 3), NOT a flat
+ * string. Callers MUST look it up by hostname; passing the map object
+ * straight to `URLSearchParams.set()` serializes it to "[object Object]"
+ * (the bug fixed in #904). This is the single source of truth for that
+ * lookup: the service worker imports it, and the content script mirrors it
+ * inline because MV3 content scripts cannot import ES modules.
+ *
+ * @param {{ourTag?: Object}|null|undefined} pattern  affiliate pattern (from AFFILIATE_PATTERNS)
+ * @param {string} hostname  the marketplace hostname (e.g. "amazon.de" or "www.amazon.de")
+ * @returns {string} the tag configured for this host, or "" when none exists
+ */
+export function resolveOurTag(pattern, hostname) {
+  if (!pattern || !pattern.ourTag || !hostname) return "";
+  const host = hostname.replace(/^www\./, "");
+  return pattern.ourTag[host] || pattern.ourTag[hostname] || "";
+}
