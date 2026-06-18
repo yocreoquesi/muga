@@ -490,8 +490,17 @@
         && _contentPrefs?.injectOwnAffiliate) {
       try {
         const u = new URL(cleanUrl);
-        u.searchParams.set(detectedAffiliate.pattern.param, detectedAffiliate.pattern.ourTag);
-        withOurAffiliate = u.toString();
+        const p = detectedAffiliate.pattern;
+        // #904: pattern.ourTag is a { host -> tag } map, not a flat string.
+        // Resolve by hostname (mirrors resolveOurTag() in lib/affiliates.js —
+        // MV3 content scripts cannot import ES modules). Passing the map object
+        // straight to searchParams.set() serialized it to "[object Object]".
+        const host = u.hostname.replace(/^www\./, "");
+        const ourTagForHost = p.ourTag[host] || p.ourTag[u.hostname] || "";
+        if (ourTagForHost) {
+          u.searchParams.set(p.param, ourTagForHost);
+          withOurAffiliate = u.toString();
+        }
       } catch { /* malformed cleanUrl — toast falls back to cleanUrl */ }
     }
 

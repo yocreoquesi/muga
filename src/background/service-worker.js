@@ -5,7 +5,7 @@
  */
 
 import { processUrl, parseListEntry } from "../lib/cleaner.js";
-import { getAffiliateDomains } from "../lib/affiliates.js";
+import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
@@ -1263,8 +1263,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
       try {
         const url = new URL(result.cleanUrl);
         const p = result.detectedAffiliate.pattern;
-        const host = url.hostname.replace(/^www\./, "");
-        const ourTagForHost = p.ourTag?.[host] || p.ourTag?.[url.hostname] || "";
+        const ourTagForHost = resolveOurTag(p, url.hostname);
         if (ourTagForHost) {
           url.searchParams.set(p.param, ourTagForHost);
           result.withOurAffiliate = url.toString();
