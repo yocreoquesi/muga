@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { WRAPPERS } from "../../src/lib/wrapper-engine.js";
-import { buildDnrRules, REGEX_PURE_WRAPPER_IDS, validateDnrRules } from "../../src/lib/wrapper-dnr-builder.js";
+import { buildDnrRules, validateDnrRules } from "../../src/lib/wrapper-dnr-builder.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RULES_PATH = join(__dirname, "..", "..", "src", "rules", "wrapper-dnr-rules.json");
