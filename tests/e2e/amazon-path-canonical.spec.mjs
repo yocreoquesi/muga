@@ -45,10 +45,19 @@ test.describe("Amazon path-canonical DNR redirect (#903)", () => {
     const page = await context.newPage();
     await stubHost(page, "www.amazon.com");
 
-    await page.goto("https://www.amazon.com/Some-Slug-Here/dp/B0044R881I?psc=1");
+    // NOTE: this asserts the COMPOSED behaviour of the whole extension, not the
+    // amazon_path_canonical rule alone. The slug rule (id 200) preserves any
+    // query verbatim (see the unit suite), but the always-on global
+    // tracking_params rule (id 1, urlFilter "*") independently strips curated
+    // tracking params. `psc` is one of those (tracking-params.json) — so a URL
+    // carrying `?psc=1` ends up with NO query end to end, regardless of the
+    // slug rule. To prove the slug rule preserves the query on a no-locale,
+    // no-trailing-slash URL we use `th`, a functional param MUGA keeps (this is
+    // the same param the locale test above relies on surviving).
+    await page.goto("https://www.amazon.com/Some-Slug-Here/dp/B0044R881I?th=1");
     await page.waitForLoadState("domcontentloaded");
 
-    expect(page.url()).toBe("https://www.amazon.com/dp/B0044R881I?psc=1");
+    expect(page.url()).toBe("https://www.amazon.com/dp/B0044R881I?th=1");
     await page.close();
   });
 

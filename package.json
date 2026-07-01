@@ -50,5 +50,8 @@
     "playwright": "^1.58.2",
     "typescript": "^6.0.3",
     "web-ext": "^8.0.0"
+  },
+  "optionalDependencies": {
+    "re2": "^1.25.0"
   }
 }

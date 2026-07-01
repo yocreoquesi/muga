@@ -76,21 +76,55 @@ describe("amazon-path-canonical.json — ID non-collision (#903)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Behavioural fixtures: apply the regexFilter + regexSubstitution as a pure
-// JS function using RegExp + .replace-style backreference substitution —
-// RE2 capture-group substitution syntax \1/\2/\3 maps directly to JS
-// backreferences. This mirrors the pattern used in amp-redirect-dnr.test.mjs.
+// Engine seam: Chrome DNR compiles regexFilter with RE2, NOT the JS RegExp
+// engine. The two can diverge on the same pattern, so — when the optional
+// `re2` devDependency is installed (see package.json) — we evaluate the rule
+// with RE2, the SAME engine Chrome ships, and additionally assert JS ⇄ RE2
+// agreement (see the "engine parity" describe below). If re2 is unavailable
+// in this environment (e.g. the native module could not be built), we fall
+// back to the JS RegExp approximation.
+//
+// IMPORTANT (test scope): these fixtures exercise the amazon_path_canonical
+// rule (id 200) IN ISOLATION — slug removal + verbatim query pass-through.
+// End to end, MUGA loads more rulesets, and the always-on global
+// tracking_params rule (id 1, urlFilter "*") additionally strips curated
+// tracking params. So a param such as `psc` IS preserved by rule 200 alone
+// (asserted here) but is stripped from the FINAL composed URL by rule 1 — a
+// benign one that stays (e.g. `th`) survives end to end. The e2e spec
+// (tests/e2e/amazon-path-canonical.spec.mjs) is authoritative for the
+// composed, real-Chromium substitution result.
 // ---------------------------------------------------------------------------
 
-function applyRule(rule, url) {
-  const re = new RegExp(rule.condition.regexFilter);
-  const m = url.match(re);
-  if (!m) return null;
-  let sub = rule.action.redirect.regexSubstitution;
+let RE2 = null;
+try {
+  ({ default: RE2 } = await import("re2"));
+} catch {
+  // re2 is an optional native devDependency; fall back to JS RegExp below.
+  RE2 = null;
+}
+const RE2_ACTIVE = RE2 !== null;
+
+// RE2 capture-group substitution syntax \1\2\3 maps directly to JS
+// backreferences, so we implement the substitution the same way for both
+// engines and only swap the matcher.
+function substitute(sub, m) {
+  let out = sub;
   for (let i = 1; i < m.length; i++) {
-    sub = sub.replace(new RegExp("\\\\" + i, "g"), m[i] ?? "");
+    out = out.replace(new RegExp("\\\\" + i, "g"), m[i] ?? "");
   }
-  return sub;
+  return out;
+}
+
+function matchWith(engine, filter, url) {
+  if (engine === "re2") return new RE2(filter).exec(url);
+  return url.match(new RegExp(filter));
+}
+
+// Applies the rule using RE2 when available, else JS RegExp.
+function applyRule(rule, url) {
+  const m = matchWith(RE2_ACTIVE ? "re2" : "js", rule.condition.regexFilter, url);
+  if (!m) return null;
+  return substitute(rule.action.redirect.regexSubstitution, m);
 }
 
 const [RULE] = amazonPathRules;
@@ -104,12 +138,36 @@ describe("amazon-path-canonical.json — slug stripping, locale + query preserve
     assert.equal(result, "https://www.amazon.de/-/en/dp/B0044R881I/?th=1");
   });
 
-  test("no-locale URL: slug stripped, query preserved (no trailing slash before ?)", () => {
+  test("no-locale URL, query begins with '?' right after ASIN: slug stripped, query preserved (regression for #903 e2e drop)", () => {
+    // This is the exact URL the #903 CI e2e used. Under BOTH JS RegExp and RE2
+    // (Chrome's engine), capture group 3 = "?psc=1" and rule 200 IN ISOLATION
+    // preserves it verbatim — there is no trailing slash synthesized before
+    // the query. The end-to-end e2e result differs ONLY because the global
+    // tracking_params rule (id 1) independently strips the curated `psc`
+    // param; that is not a defect of this rule. See the engine-seam note above.
     const result = applyRule(RULE, "https://www.amazon.com/Some-Slug-Here/dp/B0044R881I?psc=1");
-    // The rule does not synthesize a trailing slash before the query string —
-    // it only removes the slug segment and passes the remainder through
-    // verbatim via the third capture group, so "?psc=1" stays exactly as-is.
     assert.equal(result, "https://www.amazon.com/dp/B0044R881I?psc=1");
+  });
+
+  test("no-locale URL, multi-param query (?a=1&b=2) preserved verbatim", () => {
+    const result = applyRule(RULE, "https://www.amazon.com/Some-Slug/dp/B0044R881I?a=1&b=2");
+    assert.equal(result, "https://www.amazon.com/dp/B0044R881I?a=1&b=2");
+  });
+
+  test("no-locale URL, path-suffix tail (/ref=...) preserved verbatim", () => {
+    const result = applyRule(RULE, "https://www.amazon.com/Some-Slug/dp/B0044R881I/ref=sr_1_1");
+    assert.equal(result, "https://www.amazon.com/dp/B0044R881I/ref=sr_1_1");
+  });
+
+  test("no-locale URL, trailing slash and empty tail preserved verbatim", () => {
+    assert.equal(
+      applyRule(RULE, "https://www.amazon.com/Some-Slug/dp/B0044R881I/"),
+      "https://www.amazon.com/dp/B0044R881I/"
+    );
+    assert.equal(
+      applyRule(RULE, "https://www.amazon.com/Some-Slug/dp/B0044R881I"),
+      "https://www.amazon.com/dp/B0044R881I"
+    );
   });
 
   // Addendum: the /-/xx locale prefix is functional (Amazon uses it to pick
@@ -195,17 +253,18 @@ describe("amazon-path-canonical.json — non-product pages are not matched", () 
 describe("amazon-path-canonical.json — moat safety: query string is never touched", () => {
   test("regexFilter never matches on a literal query-string separator ('\\?')", () => {
     // The pattern uses "?" only as regex syntax (non-capturing groups "(?:",
-    // optional quantifiers) — never an escaped literal "\?" that would target
-    // the URL's query-string separator. Everything from "dp/ASIN" onward
-    // (path suffix + "?query") is passed through untouched via the trailing
-    // `(.*)$` capture group instead of being parsed/matched.
+    // optional quantifiers, and the "[/?]" tail-delimiter char class) — never
+    // an escaped literal "\?" that would target the URL's query-string
+    // separator. Everything from "dp/ASIN" onward (path suffix + "?query") is
+    // passed through untouched via the trailing `((?:[/?].*)?)$` capture group
+    // instead of being parsed/matched.
     assert.ok(
       !RULE.condition.regexFilter.includes("\\?"),
       "regexFilter must not contain an escaped literal '\\?' — the query string must never be parsed, only passed through"
     );
     assert.ok(
-      RULE.condition.regexFilter.endsWith("(.*)$"),
-      "regexFilter must end with a catch-all capture group that passes the path suffix + query string through verbatim"
+      RULE.condition.regexFilter.endsWith("((?:[/?].*)?)$"),
+      "regexFilter must end with a tail capture group that is empty OR begins with a '/' or '?' delimiter and then passes the remainder through verbatim"
     );
   });
 
@@ -218,5 +277,63 @@ describe("amazon-path-canonical.json — moat safety: query string is never touc
       applyRule(RULE, "https://www.amazon.com/Slug/dp/B0044R881I?psc=1"),
       "https://www.amazon.com/dp/B0044R881I?psc=1"
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Engine parity (JS RegExp vs RE2): Chrome DNR uses RE2. This guards against
+// the exact class of false confidence that let #903 ship — a pattern that
+// behaves one way under JS RegExp and another under RE2. When the optional
+// `re2` devDependency is installed, we assert both engines agree (match/no-match
+// AND the substituted output) across the full behavioural corpus. If re2 is not
+// installed, the block reports that parity was NOT machine-verified and defers
+// to the e2e spec, which runs in real Chromium.
+// ---------------------------------------------------------------------------
+describe("amazon-path-canonical.json — JS RegExp vs RE2 engine parity (#903)", () => {
+  const CORPUS = [
+    "https://www.amazon.de/-/en/Arcos-Serie/dp/B0044R881I/?th=1",
+    "https://www.amazon.com/Some-Slug-Here/dp/B0044R881I?psc=1",
+    "https://www.amazon.com/Some-Slug/dp/B0044R881I?a=1&b=2",
+    "https://www.amazon.com/Some-Slug/dp/B0044R881I/ref=sr_1_1",
+    "https://www.amazon.com/Some-Slug/dp/B0044R881I/",
+    "https://www.amazon.com/Some-Slug/dp/B0044R881I",
+    "https://www.amazon.es/-/es/Otro/dp/B0044R881I",
+    "https://www.amazon.co.jp/-/ja/Slug/dp/B0044R881I",
+    // idempotency / non-matching
+    "https://www.amazon.com/dp/B0044R881I?psc=1",
+    "https://www.amazon.de/-/en/dp/B0044R881I?th=1",
+    "https://www.amazon.de/-/EN/Slug/dp/B0044R881I",
+    "https://www.amazon.de/-/en-US/Slug/dp/B0044R881I",
+    "https://www.amazon.com/s?k=knife",
+    "https://www.amazon.com/gp/cart/view.html",
+    "https://www.amazon.com/",
+  ];
+
+  test(RE2_ACTIVE ? "RE2 is the active engine and agrees with JS RegExp on every corpus URL" : "re2 not installed — parity NOT machine-verified (e2e in real Chromium is authoritative)", () => {
+    if (!RE2_ACTIVE) {
+      // Not a hard failure: re2 is an optional native module. We still encode
+      // the intended outcomes elsewhere in this file, and the Chrome e2e spec
+      // validates the real RE2 substitution behaviour end to end.
+      assert.ok(true);
+      return;
+    }
+    const sub = RULE.action.redirect.regexSubstitution;
+    const filter = RULE.condition.regexFilter;
+    for (const url of CORPUS) {
+      const jm = matchWith("js", filter, url);
+      const rm = matchWith("re2", filter, url);
+      assert.equal(
+        Boolean(jm),
+        Boolean(rm),
+        `match/no-match diverges between JS and RE2 for ${url}`
+      );
+      if (jm && rm) {
+        assert.equal(
+          substitute(sub, jm),
+          substitute(sub, rm),
+          `substituted output diverges between JS and RE2 for ${url}`
+        );
+      }
+    }
   });
 });
