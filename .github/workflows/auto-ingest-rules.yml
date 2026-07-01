@@ -198,7 +198,13 @@ jobs:
           BRANCH="auto-ingest/$DATE"
           git checkout -B "$BRANCH"
           git add tools/rules-source/params.json docs/rules/v1/params.json
-          git commit -m "chore(rules): auto-ingest params ($DATE) [skip ci]"
+          # NO [skip ci]: the PR needs ci.yml (test/e2e) to run so branch
+          # protection's required checks pass and `--auto` merge can complete.
+          # [skip ci] here skips those checks → the PR stays BLOCKED forever.
+          # The redundant post-merge push run is harmless: publish-rules.yml is
+          # idempotent (no-op commit guard) and deploy-landing.yml is path-scoped
+          # to landing/**, so neither re-fires on a params-only change.
+          git commit -m "chore(rules): auto-ingest params ($DATE)"
           git push -u origin "$BRANCH" --force-with-lease
           echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
           echo "DATE=$DATE" >> "$GITHUB_ENV"
