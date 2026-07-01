@@ -6,7 +6,10 @@
  * A collision would cause one rule to silently overwrite another with no error.
  *
  * ID allocation:
- *   1        — static ruleset (tracking-params.json, managed by the browser)
+ *   1        — static ruleset: global tracking-param strip (tracking-params.json)
+ *   2        — static ruleset: Amazon-scoped internal-nav param strip — params the
+ *              cleaner strips on Amazon that the global rule can't (unsafe to strip
+ *              site-wide), scoped via requestDomains to Amazon marketplaces
  *   1000     — dynamic custom params rule (user-defined params, DNR redirect)
  *   1001     — dynamic remote params rule (signed remote payload, DNR redirect)
  *
@@ -16,6 +19,15 @@
 
 /** ID of the static tracking-params ruleset (tracking-params.json). */
 export const DNR_STATIC_RULE_ID = 1;
+
+/**
+ * ID of the static Amazon-scoped internal-nav param strip rule, emitted into
+ * tracking-params.json alongside the global rule. Scoped via `requestDomains`
+ * to Amazon marketplaces so params that are unsafe to strip site-wide (e.g.
+ * `ref`, `sr`) are still removed on Chrome's DNR-only current-page path —
+ * closing the gap where the in-page cleaner strips them but DNR did not.
+ */
+export const DNR_AMAZON_PARAMS_RULE_ID = 2;
 
 /**
  * ID of the dynamic rule that removes user-defined custom params.
