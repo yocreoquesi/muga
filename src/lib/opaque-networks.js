@@ -72,6 +72,14 @@ export const GENERIC_SHORTENERS = Object.freeze([
  * attribution event — the destination must be reached through the network's
  * redirect, not via client-side unwrap. Under 2.1 these MUST pass through
  * unchanged (#659 retires the Worker's resolution of these hosts).
+ *
+ * Skimlinks (go.redirectingat.com, go.skimresources.com) and ShareASale
+ * (shareasale.com, www.shareasale.com) joined this bucket in #907, extending
+ * the ADR-0003 policy: both were previously unwrapped client-side via
+ * explicit wrapper-engine.js recipes, but — like Awin/Impact/Rakuten/
+ * TradeTracker before them — their 30x is the attribution event, so a local
+ * unwrap risks dropping click context the merchant's tag needs at landing.
+ * Pass-through lets the network's own redirect execute in the browser.
  */
 export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
   // AliExpress affiliate click tracker
@@ -130,6 +138,21 @@ export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
   // Same known-unknown status as alitems.com; full matrix entry pending
   // (#646 follow-up). Pass-through is the conservative default.
   "redirect.viglink.com",
+
+  // Skimlinks — retired from wrapper-engine in #907. Skimlinks' publisher
+  // redirect (go.redirectingat.com / go.skimresources.com) is a genuine
+  // attribution-bearing 30x, not a safe-to-unwrap generic redirector;
+  // client-side unwrap would drop the click context the merchant tag
+  // depends on at landing.
+  "go.redirectingat.com",
+  "go.skimresources.com",
+
+  // ShareASale — retired from wrapper-engine in #907. Previously unwrapped
+  // via an explicit `/r.cfm?urllink=` recipe; reclassified pass-through so
+  // the network's 30x can populate the merchant's first-party cookie,
+  // consistent with Awin/Impact/Rakuten/TradeTracker above.
+  "shareasale.com",
+  "www.shareasale.com",
 ]);
 
 /**

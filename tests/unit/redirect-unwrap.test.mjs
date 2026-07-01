@@ -44,14 +44,12 @@ const REDIRECT_PARAMS = [
 
 // Keep in sync with AFFILIATE_REDIRECT_PARAMS in src/content/cleaner.js.
 // #695: most affiliate-redirect entries retired so the network's 30x can
-// populate the merchant cookie at landing. Only shareasale.com remains —
-// it is a true wrapper (caps-spec recipe + DNR rule), not an
-// AFFILIATE_REDIRECT_NETWORKS pass-through host. See
-// tests/unit/content-unwrap-no-affiliate-redirect.test.mjs for the
+// populate the merchant cookie at landing. #907 retired the last remaining
+// entry (shareasale.com) too — it is now a pass-through
+// AFFILIATE_REDIRECT_NETWORKS host, not a true wrapper. The map is now empty.
+// See tests/unit/content-unwrap-no-affiliate-redirect.test.mjs for the
 // regression test that enforces the invariant.
-const AFFILIATE_REDIRECT_PARAMS = {
-  "shareasale.com":         "urllink",
-};
+const AFFILIATE_REDIRECT_PARAMS = {};
 
 /**
  * Extracts the unwrapped destination from a redirect-wrapper URL.
@@ -571,21 +569,21 @@ describe("C11 — replica sync verification (redirect-unwrap.js)", () => {
 // ---------------------------------------------------------------------------
 describe("redirect-unwrap — affiliate network redirects", () => {
 
-  test("ShareASale — unwraps ?urllink= to store destination", () => {
+  test("ShareASale (shareasale.com) is NOT unwrapped — pass-through per #907", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://www.shareasale.com/r.cfm?b=999&u=111&urllink=https%3A%2F%2Fwww.shein.com%2Fdress-p-12345.html"
     );
-    assert.equal(dest, "https://www.shein.com/dress-p-12345.html");
+    assert.equal(dest, null, "shareasale.com must reach the ShareASale server so the 30x lands on merchant");
   });
 
-  test("ShareASale — non-encoded destination URL is also extracted", () => {
+  test("ShareASale — non-encoded destination URL is also NOT unwrapped (pass-through holds regardless of encoding)", () => {
     const dest = extractAffiliateRedirectDestination(
       "https://www.shareasale.com/r.cfm?b=999&u=111&urllink=https://www.shein.com/dress.html"
     );
-    assert.equal(dest, "https://www.shein.com/dress.html");
+    assert.equal(dest, null);
   });
 
-  // ── Pass-through hosts (#695): these MUST NOT be unwrapped client-side ───
+  // ── Pass-through hosts (#695, extended by #907): these MUST NOT be unwrapped client-side ───
   // The 2.1 attribution model requires the network's 30x to execute in the
   // browser. AFFILIATE_REDIRECT_NETWORKS hosts are intentionally excluded
   // from the legacy AFFILIATE_REDIRECT_PARAMS map; extractAffiliateRedirectDestination

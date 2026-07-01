@@ -67,15 +67,28 @@ test("wrappers.data.js mirrors wrappers.json verbatim", () => {
   );
 });
 
-test("engine WRAPPERS covers every spec id (skimlinks consolidated; MUGA-excluded ids skipped)", () => {
+test("engine WRAPPERS covers every spec id (MUGA-excluded ids skipped)", () => {
   const engineIds = new Set(WRAPPERS.map((w) => w.id));
-  const SKIMLINKS_SPEC_IDS = new Set([
+  // MUGA-policy exclusions kept in sync with MUGA_EXCLUDED_IDS in wrapper-engine.js.
+  // See docs/adr/0003-awin-redirect-model-resolution.md (#684 for awin; #692 for
+  // impact/rakuten/tradetracker; #907 for skimlinks-redirectingat /
+  // skimlinks-skimresources / shareasale).
+  //
+  // #907: skimlinks-redirectingat and skimlinks-skimresources are listed here
+  // as raw spec ids (not the merged `skimlinks` id) because MUGA_EXCLUDED_IDS
+  // in wrapper-engine.js filters BEFORE the skimlinks consolidation runs —
+  // both raw ids are excluded outright, so the engine's `skimlinks` merged id
+  // never gets created. There is no "engine must expose skimlinks" case to
+  // assert anymore; skimlinks is fully absent from WRAPPERS.
+  const MUGA_EXCLUDED_IDS = new Set([
+    "awin",
+    "impact",
+    "rakuten",
+    "tradetracker",
     "skimlinks-redirectingat",
     "skimlinks-skimresources",
+    "shareasale",
   ]);
-  // MUGA-policy exclusions kept in sync with MUGA_EXCLUDED_IDS in wrapper-engine.js.
-  // See docs/adr/0003-awin-redirect-model-resolution.md (#684 for awin; #692 for the rest).
-  const MUGA_EXCLUDED_IDS = new Set(["awin", "impact", "rakuten", "tradetracker"]);
   for (const entry of WRAPPERS_RAW) {
     if (MUGA_EXCLUDED_IDS.has(entry.id)) {
       assert.equal(
@@ -85,18 +98,16 @@ test("engine WRAPPERS covers every spec id (skimlinks consolidated; MUGA-exclude
       );
       continue;
     }
-    if (SKIMLINKS_SPEC_IDS.has(entry.id)) {
-      assert.ok(
-        engineIds.has("skimlinks"),
-        "skimlinks consolidation: engine must expose `skimlinks` when spec ships skimlinks-redirectingat / skimlinks-skimresources",
-      );
-      continue;
-    }
     assert.ok(
       engineIds.has(entry.id),
       `engine WRAPPERS missing id "${entry.id}" — mapper or vendor sync is stale`,
     );
   }
+  assert.equal(
+    engineIds.has("skimlinks"),
+    false,
+    "skimlinks merged id must not exist — both raw spec ids are excluded before consolidation runs (#907)",
+  );
 });
 
 test("every spec extractor kind is recognized by the mapper (no silent skips)", () => {

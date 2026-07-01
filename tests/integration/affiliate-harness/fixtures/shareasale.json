@@ -1,0 +1,22 @@
+{
+  "network": "ShareASale",
+  "matrix_section": "docs/affiliate-networks-matrix.md#known-unknowns-flagged-for-follow-up",
+  "redirect_hosts": [
+    "shareasale.com",
+    "www.shareasale.com"
+  ],
+  "redirect_url_samples": [
+    "https://shareasale.com/r.cfm?b=12345&u=67890&m=11111&urllink=https%3A%2F%2Fwww.merchant.com%2Flanding",
+    "https://www.shareasale.com/r.cfm?b=999&u=111&m=222&urllink=https%3A%2F%2Fwww.merchant.com%2Fproduct"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.com/landing?utm_source=newsletter&utm_medium=email&gclid=abc123",
+      "referrer": "https://shareasale.com/r.cfm?b=12345&u=67890&m=11111",
+      "expected": {
+        "preserve": [],
+        "strip": ["utm_source", "utm_medium", "gclid"]
+      }
+    }
+  ]
+}

@@ -345,7 +345,8 @@ describe("DNR ruleset MV2 parity (#820)", () => {
     assert.ok(
       mv2Ids.has("wrapper_unwrap"),
       "manifest.v2.json must declare the wrapper_unwrap ruleset — Firefox users would get no " +
-      "pre-navigation wrapper unwrapping (l.facebook.com, Skimlinks, ShareASale) without it"
+      "pre-navigation wrapper unwrapping (l.facebook.com, lm.facebook.com — Skimlinks and " +
+      "ShareASale retired to pass-through in #907, no longer DNR-unwrapped) without it"
     );
   });
 

@@ -44,15 +44,27 @@ test("wrapper-dnr-rules.json — committed file matches buildDnrRules(WRAPPERS) 
   );
 });
 
-test("wrapper-dnr-rules.json — rule count matches REGEX_PURE_WRAPPER_IDS length", () => {
-  // Each regex-pure wrapper id maps to exactly one rule. Off-by-many
-  // here usually means buildDnrRules silently dropped an entry (e.g. a
-  // wrapper acquired a RegExp hostPattern and triggered the defensive
-  // exclusion).
+test("wrapper-dnr-rules.json — rule count matches live buildDnrRules(WRAPPERS) output", () => {
+  // Historically each regex-pure wrapper id in REGEX_PURE_WRAPPER_IDS mapped
+  // to exactly one rule, so this test compared COMMITTED.length directly to
+  // REGEX_PURE_WRAPPER_IDS.length. That invariant broke in #907: three of
+  // the five allowlisted ids (skimlinks-redirectingat, skimlinks-skimresources,
+  // shareasale) now point at a sourceId ("skimlinks" / "shareasale") that no
+  // longer exists in WRAPPERS — those recipes are dead code (see
+  // src/lib/wrapper-dnr-builder.js and tests/unit/wrapper-dnr-builder.test.mjs
+  // for the full explanation). buildDnrRules() is the only thing that knows
+  // which allowlisted ids actually still resolve, so compare against its
+  // live output instead of the static allowlist length.
+  const fresh = buildDnrRules(WRAPPERS);
   assert.equal(
     COMMITTED.length,
-    REGEX_PURE_WRAPPER_IDS.length,
-    `expected ${REGEX_PURE_WRAPPER_IDS.length} rules (one per regex-pure id); committed file has ${COMMITTED.length}`,
+    fresh.length,
+    `expected ${fresh.length} rules from live buildDnrRules(WRAPPERS); committed file has ${COMMITTED.length}`,
+  );
+  assert.equal(
+    COMMITTED.length,
+    2,
+    "expected exactly 2 rules (facebook-l, facebook-lm) — skimlinks/shareasale recipes are dead since #907",
   );
 });
 

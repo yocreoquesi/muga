@@ -1,0 +1,22 @@
+{
+  "network": "Skimlinks",
+  "matrix_section": "docs/affiliate-networks-matrix.md#known-unknowns-flagged-for-follow-up",
+  "redirect_hosts": [
+    "go.redirectingat.com",
+    "go.skimresources.com"
+  ],
+  "redirect_url_samples": [
+    "https://go.redirectingat.com/?id=12345X&xs=1&url=https%3A%2F%2Fwww.merchant.com%2Fproduct",
+    "https://go.skimresources.com/?id=99999X&url=https%3A%2F%2Fshop.example.com%2Fitem%2F42"
+  ],
+  "landing_samples": [
+    {
+      "url": "https://www.merchant.com/product?utm_source=blog&utm_medium=referral&fbclid=xyz",
+      "referrer": "https://go.redirectingat.com/?id=12345X&xs=1",
+      "expected": {
+        "preserve": [],
+        "strip": ["utm_source", "utm_medium", "fbclid"]
+      }
+    }
+  ]
+}

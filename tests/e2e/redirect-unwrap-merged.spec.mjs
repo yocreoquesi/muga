@@ -7,8 +7,9 @@
  * server entirely. The unit suite covers the matcher logic; this
  * spec proves the navigation in a real browser.
  *
- * Cases: awin1, shareasale, Amazon /sspa/click, Pepper meta-refresh,
- * and a negative (corporate-flow `destination=` is not unwrapped).
+ * Cases: awin1 (pass-through), shareasale (pass-through, #907), Amazon
+ * /sspa/click, Pepper meta-refresh, and a negative (corporate-flow
+ * `destination=` is not unwrapped).
  */
 
 import { test, expect } from "./fixtures.mjs";
@@ -70,15 +71,28 @@ test.describe("Redirect unwrap merged module (#410)", () => {
     await page.close();
   });
 
-  test("shareasale.com unwrap follows ?urllink= to the real destination", async ({ context }) => {
+  test("shareasale.com is NOT unwrapped client-side (pass-through per #907)", async ({ context }) => {
+    // ShareASale moved to AFFILIATE_REDIRECT_NETWORKS in #907 (joining Awin/
+    // Impact/Rakuten/TradeTracker/Skimlinks). The legacy content-script
+    // AFFILIATE_REDIRECT_PARAMS map that previously local-extracted
+    // `?urllink=` for shareasale.com is now empty (src/content/cleaner.js).
+    // The browser MUST stay on shareasale.com so the network's 30x can
+    // populate the merchant's first-party cookie on landing. Mirrors the
+    // awin1.com pass-through case above.
     const page = await context.newPage();
     await stubHost(page, "shareasale.com");
     await stubHost(page, "destination.test");
 
-    await page.goto("https://shareasale.com/r.cfm?b=1&u=2&urllink=https%3A%2F%2Fdestination.test%2Fitem%2F2");
-    await page.waitForURL("https://destination.test/item/2", { timeout: 5000 });
+    const target = "https://shareasale.com/r.cfm?b=1&u=2&urllink=https%3A%2F%2Fdestination.test%2Fitem%2F2";
+    await page.goto(target);
+    // Negative case: the pre-#907 behaviour would have replaced the URL within
+    // a few hundred ms of DOMContentLoaded. There is no observable signal that
+    // the (absent) unwrap has definitely NOT fired — we must wait past the
+    // window where the content script would have acted (#824 pattern).
+    await page.waitForLoadState("domcontentloaded");
+    await waitForDnrPropagation(page, 1000);
 
-    expect(page.url()).toBe("https://destination.test/item/2");
+    expect(page.url()).toBe(target);
     await page.close();
   });
 

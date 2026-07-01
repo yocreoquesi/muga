@@ -19,10 +19,17 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { shouldHonor, matchesAllowlist } from "../../src/lib/honor-creator.js";
 
-// A real wrapper URL the engine recognizes (Skimlinks). Path is irrelevant —
-// detectWrapper matches on host alone for skimresources.
+// A real wrapper URL the engine recognizes. Prior to #907 this fixture used
+// Skimlinks (go.redirectingat.com) — Skimlinks was reclassified pass-through
+// in #907 (joining Awin/Impact/Rakuten/TradeTracker), so detectWrapper()
+// now returns null for it unconditionally and it can no longer exercise
+// honor-creator mode (shouldHonor requires detectWrapper(url) to be
+// non-null; see condition 2 in the module docstring above). Facebook's
+// l.facebook.com wrapper is still a live WRAPPERS entry — honor-creator
+// mode still gates whether that wrapper URL is preserved unmodified, so it
+// replaces Skimlinks here.
 const WRAPPER_URL =
-  "https://go.redirectingat.com/?id=1&url=https%3A%2F%2Famazon.com%2Fdp%2FB000";
+  "https://l.facebook.com/l.php?u=https%3A%2F%2Famazon.com%2Fdp%2FB000&h=AT0abc";
 const NON_WRAPPER_URL = "https://example.com/article?utm_source=foo";
 
 describe("matchesAllowlist", () => {
@@ -165,7 +172,7 @@ describe("shouldHonor", () => {
       prefs: { honorCreatorMode: true, creatorAllowlist: allowlist },
     });
     assert.equal(r.honor, true);
-    assert.equal(r.network, "skimlinks");
+    assert.equal(r.network, "facebook-l");
     assert.equal(r.creator, "youtube.com/@linustechtips");
   });
 

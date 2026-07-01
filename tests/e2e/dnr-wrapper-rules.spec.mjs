@@ -71,23 +71,15 @@ const WRAPPERS = [
     wrapperHost: "lm.facebook.com",
     url: `https://lm.facebook.com/l.php?u=${DEST_ENC}&h=AT0`,
   },
-  {
-    name: "Skimlinks redirectingat.com",
-    wrapperHost: "go.redirectingat.com",
-    url: `https://go.redirectingat.com/?id=12345X678&xs=1&url=${DEST_ENC}`,
-  },
-  {
-    name: "Skimlinks skimresources.com",
-    wrapperHost: "go.skimresources.com",
-    url: `https://go.skimresources.com/?id=12345X678&xs=1&url=${DEST_ENC}`,
-  },
-  {
-    name: "ShareASale",
-    wrapperHost: "www.shareasale.com",
-    url: `https://www.shareasale.com/r.cfm?b=1&u=2&m=3&urllink=${DEST_ENC}`,
-  },
   // Rakuten LinkSynergy DNR rule retired in #692 (ADR-0003 follow-up).
   // click.linksynergy.com is now in AFFILIATE_REDIRECT_NETWORKS (pass-through).
+  //
+  // Skimlinks (go.redirectingat.com, go.skimresources.com) and ShareASale
+  // (www.shareasale.com) DNR rules retired in #907 — both hosts are now in
+  // AFFILIATE_REDIRECT_NETWORKS (pass-through) and src/rules/wrapper-dnr-rules.json
+  // no longer contains a redirect rule for any of them (only l.facebook.com /
+  // lm.facebook.com remain — see tests/unit/wrapper-dnr-rules-sync.test.mjs).
+  // Do not re-add these entries without first re-adding the rules themselves.
 ];
 
 test.describe("DNR wrapper-redirect rules (#510)", () => {

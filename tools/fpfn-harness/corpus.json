@@ -133,5 +133,15 @@
     "url": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC?si=abc123def456&utm_source=copy-link&nd=1",
     "note": "tracker-only: Spotify track with si tracking param and UTM; nd is NOT in TRACKING_PARAMS so preserved",
     "expected": { "preserve": ["nd"], "strip": ["si", "utm_source"] }
+  },
+  {
+    "url": "https://track.effiliation.com/servlet/effi.redir?id_compteur=987654&url=https%3A%2F%2Fwww.merchant.example%2Fproduct",
+    "note": "#907 regression: Effiliation redirect (track.effiliation.com) is neither a WRAPPERS recipe nor an AFFILIATE_REDIRECT_NETWORKS host — the generic ?url= fallback removed in #907 used to wrongly unwrap shapes like this, dropping id_compteur click context; processUrl must leave it untouched",
+    "expected": { "preserve": ["id_compteur", "url"], "strip": [] }
+  },
+  {
+    "url": "https://go.redirectingat.com/?id=12345X&xs=1&url=https%3A%2F%2Fmerchant.example.com%2Fproduct%3Futm_source%3Dblog",
+    "note": "#907 regression: Skimlinks (go.redirectingat.com) reclassified into AFFILIATE_REDIRECT_NETWORKS — processUrl must NOT unwrap or strip; the wrapper's own query params (id, xs, url) must survive untouched so the network's 30x carries attribution",
+    "expected": { "preserve": ["id", "xs", "url"], "strip": [] }
   }
 ]

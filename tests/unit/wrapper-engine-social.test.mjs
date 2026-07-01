@@ -17,8 +17,10 @@
  *   - Each wrapper detects without false positives on the parent domain
  *     (facebook.com / instagram.com / twitter.com must NOT match).
  *   - Facebook `l` and `lm` subdomains are tested separately (different hosts).
- *   - Recursion smoke test: l.facebook.com wrapping go.redirectingat.com
- *     wrapping a merchant URL resolves end-to-end through processUrl.
+ *   - Recursion smoke test: l.facebook.com wrapping t.co wrapping a merchant
+ *     URL resolves end-to-end through processUrl (see #907 note above the
+ *     "B4 recursion through processUrl" describe block for why this no
+ *     longer uses Skimlinks).
  */
 
 import { test, describe } from "node:test";
@@ -129,10 +131,11 @@ describe("Wrapper Engine — l.facebook.com", () => {
   });
 
   test("does not match l.facebook.com paths other than /l.php as Facebook", () => {
-    // After #531 the generic wrapper path may legitimately match this URL as
-    // `generic-u` (different host, valid http(s) destination). What this test
-    // guards is the EXPLICIT Facebook entry's path-prefix boundary, so we
-    // assert the matched id is not the Facebook explicit one.
+    // #531's generic wrapper path (which used to legitimately match this URL
+    // as `generic-u`) was removed in #907 — detectWrapper now returns null
+    // entirely for unrecognized path shapes. What this test guards is the
+    // EXPLICIT Facebook entry's path-prefix boundary, so we assert the
+    // matched id is not the Facebook explicit one.
     const input =
       "https://l.facebook.com/other?u=" + encodeURIComponent("https://merchant.com");
     const w = detectWrapper(input);
@@ -169,8 +172,9 @@ describe("Wrapper Engine — lm.facebook.com (mobile)", () => {
   });
 
   test("does not match lm.facebook.com paths other than /l.php as Facebook", () => {
-    // See sibling test on l.facebook.com: after #531 generic path may match.
-    // This guards the EXPLICIT facebook-lm entry's path boundary.
+    // See sibling test on l.facebook.com: the #531 generic path (which used
+    // to match here) was removed in #907. This guards the EXPLICIT
+    // facebook-lm entry's path boundary.
     const input =
       "https://lm.facebook.com/other?u=" + encodeURIComponent("https://merchant.com");
     const w = detectWrapper(input);
@@ -182,8 +186,9 @@ describe("Wrapper Engine — Facebook parent-domain false-positive guard", () =>
   test("facebook.com (apex) does NOT match either Facebook wrapper", () => {
     // Only the l. and lm. subdomains carry outbound link wrappers; the apex
     // is the social network itself and must never be flagged AS FACEBOOK.
-    // After #531 the generic path may match the ?u= variant — assert the
-    // matched id is never one of the Facebook explicit entries.
+    // The #531 generic path (which used to match the ?u= variant) was
+    // removed in #907 — detectWrapper returns null here now. Still assert
+    // the matched id is never one of the Facebook explicit entries.
     assert.equal(detectWrapper("https://facebook.com/user/posts/1"), null);
     const w = detectWrapper("https://facebook.com/l.php?u=https%3A%2F%2Fx.com");
     assert.notEqual(w?.id, "facebook-l");
@@ -265,11 +270,20 @@ describe("Wrapper Engine — l.instagram.com", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Recursion smoke: Facebook wrapping Skimlinks wrapping a merchant.
+// Recursion smoke: Facebook wrapping t.co wrapping a merchant.
 // End-to-end through processUrl (the production entry point).
+//
+// Prior to #907 this smoke test chained Facebook → Skimlinks (go.redirectingat.com)
+// → merchant. Skimlinks was reclassified pass-through in #907 (see
+// tests/unit/wrapper-engine-affiliate-networks.test.mjs), so a URL wrapped
+// in go.redirectingat.com is no longer a second WRAPPERS hop — it's the
+// terminal (still-opaque) result. t.co is still a live WRAPPERS entry with
+// a query-fallback extractor (?url=/?u=), so it replaces Skimlinks as the
+// second hop here. The FB-wrapping-a-pass-through-network case is covered
+// separately below.
 // ---------------------------------------------------------------------------
 describe("Wrapper Engine — B4 recursion through processUrl", () => {
-  test("l.facebook.com wrapping go.redirectingat.com wrapping merchant resolves end-to-end", async () => {
+  test("l.facebook.com wrapping t.co wrapping merchant resolves end-to-end", async () => {
     const { processUrl } = await import("../../src/lib/cleaner.js");
     const PREFS = {
       enabled: true,
@@ -279,30 +293,45 @@ describe("Wrapper Engine — B4 recursion through processUrl", () => {
       whitelist: [],
     };
     // Merchant carries a tracker that must be stripped AFTER both unwraps,
-    // proving the full pipeline (FB → Skim → merchant → cleaner) executed.
+    // proving the full pipeline (FB → t.co → merchant → cleaner) executed.
     const merchantWithTracker =
       "https://merchant.example.com/p/123?utm_source=fb";
     const merchantClean = "https://merchant.example.com/p/123";
-    const skim =
-      "https://go.redirectingat.com/?id=12345X&url=" +
-      encodeURIComponent(merchantWithTracker);
-    const fb = "https://l.facebook.com/l.php?u=" + encodeURIComponent(skim);
+    const tco =
+      "https://t.co/?url=" + encodeURIComponent(merchantWithTracker);
+    const fb = "https://l.facebook.com/l.php?u=" + encodeURIComponent(tco);
     const result = processUrl(fb, PREFS);
     assert.equal(result.cleanUrl, merchantClean);
     assert.equal(result.action, "cleaned");
     assert.ok(result.removedTracking.includes("utm_source"));
   });
 
-  test("unwrap() reports both networks for FB → Skimlinks → merchant chain", () => {
+  test("unwrap() reports both networks for FB → t.co → merchant chain", () => {
+    const merchant = "https://merchant.example.com/final";
+    const tco = "https://t.co/?url=" + encodeURIComponent(merchant);
+    const outer = "https://l.facebook.com/l.php?u=" + encodeURIComponent(tco);
+    const result = unwrap(outer);
+    assert.ok(result);
+    assert.equal(result.unwrapped, merchant);
+    assert.equal(result.hops, 2);
+    assert.deepEqual(result.networks, ["facebook-l", "tco"]);
+  });
+
+  test("l.facebook.com wrapping a pass-through network (Skimlinks) stops at 1 hop — the pass-through URL is terminal (#907)", () => {
+    // Facebook still unwraps (its own hop), but the resulting Skimlinks URL
+    // is not itself a WRAPPERS match anymore (detectWrapper returns null —
+    // it's an AFFILIATE_REDIRECT_NETWORKS pass-through host). The chain
+    // stops there, still wrapped, so the network's own 30x can execute.
     const merchant = "https://merchant.example.com/final";
     const skim =
       "https://go.redirectingat.com/?id=1&url=" + encodeURIComponent(merchant);
     const outer = "https://l.facebook.com/l.php?u=" + encodeURIComponent(skim);
     const result = unwrap(outer);
     assert.ok(result);
-    assert.equal(result.unwrapped, merchant);
-    assert.equal(result.hops, 2);
-    assert.deepEqual(result.networks, ["facebook-l", "skimlinks"]);
+    assert.equal(result.unwrapped, skim, "chain stops at the Skimlinks URL — it is not further unwrapped");
+    assert.equal(result.hops, 1);
+    assert.deepEqual(result.networks, ["facebook-l"]);
+    assert.equal(detectWrapper(result.unwrapped), null, "the terminal URL is pass-through, not a wrapper");
   });
 });
 
