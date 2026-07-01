@@ -42,9 +42,14 @@ export const PREF_DEFAULTS = {
   paramBreakdown: true,
   showReportButton: true,
   domainStats: true,
-  // Remote rules toggle — lives in sync so the opt-in preference follows the user
-  // across devices. Default false per REQ-OPT-1: zero network activity on fresh install.
-  remoteRulesEnabled: false,
+  // Remote rules toggle — lives in sync so the preference follows the user
+  // across devices. Default true (#888): the weekly Ed25519-signed GET to
+  // rules.muga.app carries no user data (credentials: "omit", no cookies, no
+  // identifiers) and readiness (signing infra, defense-in-depth verification,
+  // disclosure copy) has been ratified. Users can disable it any time in
+  // Settings. REQ-OPT-1 (zero network activity on fresh install) is
+  // superseded by this default — see CHANGELOG.
+  remoteRulesEnabled: true,
   // Honor Creator Mode toggle (#435, B12). Pure plumbing for B13/B14: no
   // behaviour change. Default false so existing users see no functional
   // difference. The feature is opt-in because honoring creator referral

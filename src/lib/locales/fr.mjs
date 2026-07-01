@@ -248,6 +248,7 @@ export default Object.freeze({
   ob_reonboard_delta_desc: "Votre acceptation existante reste valable. Examinez les nouvelles clauses ci-dessous ; accepter active les nouveaux comportements, refuser laisse MUGA fonctionner selon les conditions précédemment acceptées.",
   ob_reonboard_material_title: "Important : les conditions ont changé de manière substantielle",
   ob_reonboard_material_desc: "Les conditions de MUGA ont été mises à jour d'une manière qui affecte ce que vous avez accepté précédemment. L'utilisation continue de l'extension nécessite l'acceptation des nouvelles conditions. Veuillez consulter les Conditions d'utilisation et la Politique de confidentialité ci-dessous.",
+  ob_clause_remote_rules_default: "Les mises à jour hebdomadaires des règles sont désormais activées par défaut : MUGA récupère une liste à jour de paramètres de suivi depuis rules.muga.app environ une fois par semaine. Il s'agit d'une requête signée (Ed25519) qui n'envoie aucune donnée personnelle — ni historique de navigation, ni cookies — et vous pouvez la désactiver à tout moment dans les Paramètres.",
   migration_accept: "Activer",
   migration_decline: "Non merci",
   migration_counter: "{n} sur {total}",

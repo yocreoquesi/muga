@@ -72,7 +72,7 @@ async function completeOnboarding(context, extensionId) {
     new Promise(resolve => {
       chrome.storage.sync.set({ enabled: true, dnrEnabled: true }, () => {
         chrome.storage.local.set({
-          mugaConsent: { onboardingDone: true, consentVersion: "1.0", consentDate: Date.now() },
+          mugaConsent: { onboardingDone: true, consentVersion: "1.1", consentDate: Date.now() },
         }, resolve);
       });
     })

@@ -9,7 +9,7 @@
 <body>
 
   <h1>Terms of Use</h1>
-  <p class="meta">MUGA: Shorter, cleaner URLs — fair to every creator &nbsp;&middot;&nbsp; Version 1.2 &nbsp;&middot;&nbsp; Last updated: 2026-05-25</p>
+  <p class="meta">MUGA: Shorter, cleaner URLs — fair to every creator &nbsp;&middot;&nbsp; Version 1.3 &nbsp;&middot;&nbsp; Last updated: 2026-07-01</p>
 
   <div class="highlight">
     MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3</a>. You control what MUGA does. MUGA never acts behind your back. Nothing happens without your action.
@@ -27,6 +27,7 @@
     <li>Blocks <code>&lt;a ping&gt;</code> tracking beacons on link clicks</li>
     <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click — see the Privacy Policy for the full list and rationale</li>
     <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) directly in your browser via a standard HTTP fetch — no URL is sent to any MUGA server. Off by default; requires optional host permissions for the eight shortener domains. Affiliate-redirect networks are NEVER resolved this way</li>
+    <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted — no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
     <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you have opted in</li>
   </ul>
   <p>You have full control over every feature. MUGA never collects, sells, or shares your browsing data. Any feature that contacts an external service requires your explicit action.</p>

@@ -30,6 +30,10 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // Baseline. The user accepts the full ToS via fresh-mode rendering;
   // no delta clauses to surface for this version itself.
   "1.0": Object.freeze([]),
+  // 1.1 (#888): remote rule updates flipped ON by default. Single additive
+  // clause disclosing the new weekly signed network egress. The i18n key
+  // resolves to the localized clause text rendered in the delta list.
+  "1.1": Object.freeze(["ob_clause_remote_rules_default"]),
 });
 
 /**

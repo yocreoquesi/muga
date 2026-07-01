@@ -57,7 +57,7 @@
 
   <h2>What MUGA never does</h2>
   <ul>
-    <li>Does not silently send your URLs or browsing data to any server. Every external request is gated on an explicit Settings toggle that is off by default.</li>
+    <li>Does not silently send your URLs or browsing data to any server. Every external request is gated on an explicit Settings toggle (Remote rule updates is on by default and sends no user data — see Permissions below; Follow shortener redirects remains off by default).</li>
     <li>Does not collect your browsing history.</li>
     <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
     <li>Does not strip affiliate-redirect networks (Awin, CJ Affiliate, AliExpress Portals, Impact, Partnerize, Admitad, A8.net, Rakuten, TradeTracker) from URLs. Their redirect IS the attribution event and MUGA respects it — the creator's commission survives.</li>
@@ -84,10 +84,10 @@
     <li><strong>declarativeNetRequestWithHostAccess</strong> (Chrome) / <strong>declarativeNetRequest</strong> (Firefox): to strip tracking parameters from URLs before the page loads, using the browser's built-in rule engine.</li>
     <li><strong>host_permissions: all_urls</strong>: required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, link-share unwrapping) and for declarativeNetRequest redirect rules to apply on all sites.</li>
   </ul>
-  <p>Optional host permissions (off by default; granted only when you turn on the corresponding feature in Settings, revocable from browser settings at any time):</p>
+  <p>Optional host permissions (revocable from browser settings at any time):</p>
   <ul>
-    <li><strong>rules.muga.app/*</strong> — "Remote rule updates". A single HTTPS GET at most once per 7 days, piggybacked on natural service-worker wake events. The response is an Ed25519-signed payload verified against a public key shipped with the extension. Credentials-omit; no user data transmitted.</li>
-    <li><strong>bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*, amzn.to/*</strong> — "Follow shortener redirects". Used ONLY to resolve the destination of these eight generic URL shortener domains in-browser via a standard HTTP HEAD/GET with <code>redirect: "manual"</code>. No shortened URL is sent to any MUGA server or any other third party. The HTTP request goes directly from your browser to the shortener's own server — the same request your browser would make when you click the link — and MUGA reads the <code>Location</code> header from the response. Affiliate-redirect networks are NEVER included.</li>
+    <li><strong>rules.muga.app/*</strong> — "Remote rule updates". On by default (#888): a single HTTPS GET at most once per 7 days, piggybacked on natural service-worker wake events. The response is an Ed25519-signed payload verified against a public key shipped with the extension. Credentials-omit; no user data transmitted. Disable it any time in Settings.</li>
+    <li><strong>bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*, amzn.to/*</strong> — "Follow shortener redirects". Off by default. Used ONLY to resolve the destination of these eight generic URL shortener domains in-browser via a standard HTTP HEAD/GET with <code>redirect: "manual"</code>. No shortened URL is sent to any MUGA server or any other third party. The HTTP request goes directly from your browser to the shortener's own server — the same request your browser would make when you click the link — and MUGA reads the <code>Location</code> header from the response. Affiliate-redirect networks are NEVER included.</li>
   </ul>
 
   <h2>Open source</h2>

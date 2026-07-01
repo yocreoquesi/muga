@@ -58,7 +58,7 @@ describe("B12 honorCreatorMode — regression: existing prefs intact", () => {
     assert.strictEqual(PREF_DEFAULTS.blockPings, true);
     assert.strictEqual(PREF_DEFAULTS.ampRedirect, true);
     assert.strictEqual(PREF_DEFAULTS.unwrapRedirects, true);
-    assert.strictEqual(PREF_DEFAULTS.remoteRulesEnabled, false);
+    assert.strictEqual(PREF_DEFAULTS.remoteRulesEnabled, true);
   });
 
   test("honorCreatorMode does not collide with devMode (which lives in local storage)", () => {

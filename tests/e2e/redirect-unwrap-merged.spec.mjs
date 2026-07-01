@@ -31,7 +31,7 @@ async function ensureUnwrapEnabled(context, extensionId) {
         onboardingDone: true,
       }, () => {
         chrome.storage.local.set({
-          mugaConsent: { onboardingDone: true, consentVersion: "1.0", consentDate: Date.now() },
+          mugaConsent: { onboardingDone: true, consentVersion: "1.1", consentDate: Date.now() },
         }, resolve);
       });
     })

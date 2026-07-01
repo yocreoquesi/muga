@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+
+- **Remote rule updates enabled by default** (#888). The weekly client-side fetch of the Ed25519-signed tracking-param list from `rules.muga.app` (`src/lib/remote-rules.js`) now defaults to on, activating the self-scaling ingestion pipeline (EPIC C, #780–#785) for all installs. Readiness was ratified against evidence: signing infrastructure running in production, freshness/regression guards (#738), and full defense-in-depth coverage (verify → denylist → affiliate-guard → preserve-collision → freshness → version-regression) under test. The fetch remains a single HTTPS GET at most once per 7 days, `credentials: "omit"`, `cache: "no-store"`, carrying no user data. Disable it any time in Settings.
+
 ## [2.3.0] - 2026-06-10
 
 Self-scaling ruleset pipeline (EPIC C, ingestion from ClearURLs + AdGuard) and a 25-issue June 2026 audit wave covering security, parity, robustness, and quality infrastructure.

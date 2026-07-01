@@ -248,6 +248,7 @@ export default Object.freeze({
   ob_reonboard_delta_desc: "Sua aceitação anterior continua válida. Revise as novas cláusulas abaixo; aceitar habilita os novos comportamentos, recusar mantém o MUGA funcionando sob os termos previamente aceitos.",
   ob_reonboard_material_title: "Importante: os termos mudaram de forma substancial",
   ob_reonboard_material_desc: "Os termos do MUGA foram atualizados de forma que afeta o que você aceitou anteriormente. O uso contínuo da extensão exige aceitar os novos termos. Revise os Termos de uso e a Política de privacidade vinculados abaixo.",
+  ob_clause_remote_rules_default: "As atualizações semanais de regras agora estão ativadas por padrão: o MUGA baixa uma lista atualizada de parâmetros de rastreamento de rules.muga.app cerca de uma vez por semana. É uma solicitação assinada com Ed25519 que não envia nenhum dado pessoal — sem histórico de navegação, sem cookies — e você pode desativá-la quando quiser nas Configurações.",
   migration_accept: "Ativar",
   migration_decline: "Não, obrigado",
   migration_counter: "{n} de {total}",

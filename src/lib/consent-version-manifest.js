@@ -42,6 +42,14 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
     version: "1.0",
     additive: false, // baseline; flag is meaningless for the first entry
   }),
+  Object.freeze({
+    // #888: remote rule updates (weekly Ed25519-signed GET to rules.muga.app,
+    // no personal data) flipped ON by default. Purely ADDITIVE — no existing
+    // term is modified or removed — so users who accepted 1.0 get a SOFT
+    // re-onboard (delta review) surfacing the new clause, not a hard gate.
+    version: "1.1",
+    additive: true,
+  }),
 ]);
 
 /**
@@ -49,4 +57,4 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
  * to the latest entry in CONSENT_VERSION_MANIFEST. ConsentPolicy uses
  * this to decide whether a stored consent record is still current.
  */
-export const REQUIRED_CONSENT_VERSION = "1.0";
+export const REQUIRED_CONSENT_VERSION = "1.1";

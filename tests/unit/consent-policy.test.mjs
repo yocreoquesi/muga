@@ -9,7 +9,10 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { evaluate } from "../../src/lib/consent-policy.js";
-import { CONSENT_VERSION_MANIFEST } from "../../src/lib/consent-version-manifest.js";
+import {
+  CONSENT_VERSION_MANIFEST,
+  REQUIRED_CONSENT_VERSION,
+} from "../../src/lib/consent-version-manifest.js";
 
 // Fixture manifests for testing scenarios beyond the current single-entry baseline.
 const MANIFEST_TWO_ADDITIVE = Object.freeze([
@@ -145,18 +148,56 @@ describe("consent-policy — fail-open edge cases", () => {
 });
 
 describe("consent-policy — defaults from CONSENT_VERSION_MANIFEST", () => {
-  test("called with only stored (uses default required + manifest)", () => {
-    // The default manifest currently has only "1.0". A user accepted at
-    // "1.0" should be valid against the default.
+  test("user who accepted the current required version is valid (defaults)", () => {
     const r = evaluate({
-      stored: { onboardingDone: true, consentVersion: "1.0" },
+      stored: { onboardingDone: true, consentVersion: REQUIRED_CONSENT_VERSION },
     });
     assert.equal(r.status, "valid");
-    assert.equal(r.requiredVersion, "1.0");
+    assert.equal(r.requiredVersion, REQUIRED_CONSENT_VERSION);
   });
 
   test("never-accepted with defaults", () => {
     const r = evaluate({ stored: null });
     assert.equal(r.status, "never-accepted");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #888 — flipping remoteRulesEnabled ON by default is disclosed to existing
+// users via an ADDITIVE consent bump (1.0 → 1.1). A user who accepted "1.0"
+// must see the SOFT re-onboard (delta review), not a hard gate, when the code
+// requires the live REQUIRED_CONSENT_VERSION. This runs against the REAL
+// manifest + required version (no fixtures) so a future material bump that
+// forgets `additive: true` is caught.
+// ---------------------------------------------------------------------------
+describe("consent-policy — #888 remote-rules additive bump (live manifest)", () => {
+  test("REQUIRED_CONSENT_VERSION is 1.1 (the #888 additive bump)", () => {
+    assert.equal(REQUIRED_CONSENT_VERSION, "1.1");
+  });
+
+  test("user who accepted 1.0 gets soft-reonboard against live defaults", () => {
+    const r = evaluate({
+      stored: { onboardingDone: true, consentVersion: "1.0" },
+    });
+    assert.equal(r.status, "soft-reonboard");
+    assert.equal(r.acceptedVersion, "1.0");
+    assert.equal(r.requiredVersion, "1.1");
+  });
+
+  test("the 1.0 → required path contains no material version (stays soft)", () => {
+    // Walk the live manifest from 1.0 to required; every intermediate entry
+    // must be additive, otherwise a 1.0 user would be hard-gated.
+    const requiredIdx = CONSENT_VERSION_MANIFEST.findIndex(
+      (m) => m.version === REQUIRED_CONSENT_VERSION
+    );
+    const acceptedIdx = CONSENT_VERSION_MANIFEST.findIndex((m) => m.version === "1.0");
+    assert.ok(requiredIdx > acceptedIdx, "required must be after 1.0 in the manifest");
+    for (let i = acceptedIdx + 1; i <= requiredIdx; i++) {
+      assert.equal(
+        CONSENT_VERSION_MANIFEST[i].additive,
+        true,
+        `manifest entry ${CONSENT_VERSION_MANIFEST[i].version} must be additive so 1.0 users get a soft re-onboard`
+      );
+    }
   });
 });

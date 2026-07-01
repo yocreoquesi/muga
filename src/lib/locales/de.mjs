@@ -248,6 +248,7 @@ export default Object.freeze({
   ob_reonboard_delta_desc: "Deine bisherige Zustimmung gilt weiterhin. Überprüfe die neuen Klauseln unten; akzeptieren schaltet die neuen Verhaltensweisen frei, ablehnen lässt MUGA unter den zuvor akzeptierten Bedingungen weiterlaufen.",
   ob_reonboard_material_title: "Wichtig: die Nutzungsbedingungen haben sich wesentlich geändert",
   ob_reonboard_material_desc: "MUGAs Nutzungsbedingungen wurden in einer Weise aktualisiert, die deine bisherige Zustimmung berührt. Die weitere Nutzung der Erweiterung erfordert die Annahme der neuen Bedingungen. Bitte überprüfe die unten verlinkten Nutzungsbedingungen und Datenschutzrichtlinien.",
+  ob_clause_remote_rules_default: "Wöchentliche Regelaktualisierungen sind jetzt standardmäßig aktiviert: MUGA lädt etwa einmal pro Woche eine aktualisierte Liste von Tracking-Parametern von rules.muga.app. Es handelt sich um eine Ed25519-signierte Anfrage, die keine personenbezogenen Daten sendet – keinen Browserverlauf, keine Cookies – und du kannst sie jederzeit in den Einstellungen deaktivieren.",
   migration_accept: "Aktivieren",
   migration_decline: "Nein, danke",
   migration_counter: "{n} von {total}",

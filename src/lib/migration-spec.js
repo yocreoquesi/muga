@@ -12,8 +12,10 @@
  * supersede a past migration, append a new entry — do not mutate the old.
  *
  * The list ships empty. Future additions land here as the project flips
- * pref defaults (e.g. `remoteRulesEnabled` from off to on once the signing
- * infrastructure stabilizes — see #352, #362).
+ * pref defaults — e.g. a migration entry for `remoteRulesEnabled` (flipped
+ * from off to on by default in #888, now that the signing infrastructure is
+ * stable) would belong here if existing installs need an explicit upgrade
+ * banner rather than silently inheriting the new default.
  *
  * Entry shape (all fields required unless noted):
  *

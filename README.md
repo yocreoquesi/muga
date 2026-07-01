@@ -116,7 +116,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
-- **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **Off by default while the signing infrastructure stabilizes**; the default may flip in a future release, and the [CHANGELOG](CHANGELOG.md) will record the change when it happens. The fetch is a plain GET to a public URL: no user data is sent.
+- **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **On by default** — the signing infrastructure is stable and the fetch is a single Ed25519-signed GET to a public URL at most once every 7 days, with no user data sent (see the [CHANGELOG](CHANGELOG.md) for when this shipped). Disable it any time in Settings.
 - Export / Import settings as JSON
 - Languages: English and Spanish (officially maintained), Portuguese, German, French, Italian, and Japanese (community-contributed; missing entries fall back to English)
 
