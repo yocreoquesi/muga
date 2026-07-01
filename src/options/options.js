@@ -7,7 +7,7 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
-import { isValidListEntry, isValidCustomParam } from "../lib/validation.js";
+import { isValidListEntry, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import {
   addEntry as addCreatorAllowlistEntry,
@@ -643,10 +643,10 @@ function addEntry(listKey, inputId, containerId) {
     try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
     const list = prefs[listKey];
     if (!list.includes(value)) {
-      // Enforce the same per-list caps the import path applies (#728 item 28):
-      // customParams 200, blacklist/whitelist 500. Without this, the UI add path
-      // could grow a list past the size the importer would ever accept.
-      const cap = listKey === "customParams" ? 200 : 500;
+      // Enforce the same per-list caps the import path applies (#728 item 28).
+      // IMPORT_LIST_CAPS is the single source of truth shared with capImportedLists,
+      // so the UI add path can never grow a list past what the importer accepts.
+      const cap = IMPORT_LIST_CAPS[listKey];
       if (list.length >= cap) {
         showToast(t("import_error", _currentLang));
         input.value = "";
@@ -770,20 +770,22 @@ function initExportImport() {
       if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist) || !Array.isArray(data.customParams)) {
         throw new Error("invalid");
       }
-      if (data.blacklist.length > 500 || data.whitelist.length > 500 || data.customParams.length > 200) {
-        throw new Error("invalid");
-      }
+      // Structural integrity only: a malformed blacklist/whitelist ENTRY signals a
+      // corrupt or foreign file, so abort. Exceeding a size cap does NOT — a valid
+      // MUGA export can legitimately be larger than fits in chrome.storage.sync.
       if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry)) {
         throw new Error("invalid");
       }
-      // Filter customParams against the canonical remote-rules validator (#818).
-      // Invalid entries (over 64 chars, bad format, denylist/affiliate-guard hits)
-      // are dropped and the user is informed — silently discarding data is not acceptable.
-      const validCustomParams = data.customParams.filter(isValidCustomParam);
-      const skipped = data.customParams.length - validCustomParams.length;
+      // Filter (#818) + cap (#911) the three lists via the canonical helper.
+      // Oversized lists are TRUNCATED rather than rejected wholesale, and the
+      // user is told how many entries were dropped — silently discarding data,
+      // or failing a valid-but-large file with a misleading "not a MUGA file"
+      // error, is not acceptable.
+      const { blacklist, whitelist, customParams, droppedBlacklist, droppedWhitelist, skippedParams } = capImportedLists(data);
+      const skipped = skippedParams + droppedBlacklist + droppedWhitelist;
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
       const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled"];
-      const toSave = { blacklist: data.blacklist, whitelist: data.whitelist, customParams: validCustomParams };
+      const toSave = { blacklist, whitelist, customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
       }
@@ -848,7 +850,7 @@ function syncDevTools() {
   const devModeEl = document.getElementById("dev-mode");
   const devToolsCard = document.getElementById("dev-tools-card");
   if (!devModeEl || !devToolsCard) return;
-  // #858: visibility driven by CSS class (no inline style � required for CSP style-src without 'unsafe-inline')
+  // #858: visibility driven by CSS class (no inline style � required for CSP style-src without 'unsafe-inline')
   devToolsCard.classList.toggle("dev-tools-hidden", !devModeEl.checked);
 }
 

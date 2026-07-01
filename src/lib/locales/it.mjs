@@ -133,7 +133,7 @@ export default Object.freeze({
   import_label: "Importa impostazioni",
   import_success: "Impostazioni importate con successo.",
   import_error: "Non sembra un file di impostazioni MUGA. Assicurati di importare un file .json esportato da MUGA.",
-  import_params_skipped: "Impostazioni importate. {n} parametro/i personalizzato/i ignorato/i — troppo lungo, formato non valido o chiave protetta.",
+  import_params_skipped: "Impostazioni importate. {n} voce/i ignorata/e — troppo lungo, formato non valido, chiave protetta o oltre il limite della lista.",
   optionsRemoteRulesTitle: "Aggiornamenti remoti delle regole",
   optionsRemoteRulesDesc: "Opzionale. Scarica aggiornamenti settimanali dell'elenco dei parametri di tracciamento. Disattivato per impostazione predefinita.",
   optionsRemoteRulesToggle: "Attiva aggiornamenti settimanali",

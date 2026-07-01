@@ -133,7 +133,7 @@ export default Object.freeze({
   import_label: "Importar ajustes",
   import_success: "Ajustes importados correctamente.",
   import_error: "Eso no parece un archivo de ajustes de MUGA. Asegúrate de que sea un .json exportado desde MUGA.",
-  import_params_skipped: "Ajustes importados. {n} parámetro(s) personalizado(s) omitido(s) — demasiado largo, formato inválido o clave protegida.",
+  import_params_skipped: "Ajustes importados. {n} entrada(s) omitida(s) — demasiado largo, formato inválido, clave protegida o por encima del límite de la lista.",
   optionsRemoteRulesTitle: "Actualización remota de reglas",
   optionsRemoteRulesDesc: "Opcional. Descarga actualizaciones semanales de la lista de parámetros de rastreo. Desactivado por defecto.",
   optionsRemoteRulesToggle: "Activar actualizaciones semanales",

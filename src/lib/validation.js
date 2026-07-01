@@ -58,3 +58,52 @@ export function isValidCustomParam(param) {
   if (REMOTE_PARAM_DENYLIST.has(lower) || AFFILIATE_PARAM_GUARD.has(lower)) return false;
   return true;
 }
+
+/**
+ * Per-list import caps.
+ *
+ * These are STORAGE-QUOTA ceilings, not correctness limits: chrome.storage.sync
+ * caps each item at ~8 KB, so an unbounded list would fail to persist. Crucially,
+ * exceeding a cap is NOT a sign of a corrupt file — a valid MUGA export can
+ * legitimately carry more entries than fit (e.g. a user who pasted a large
+ * generic tracking-param list). See #911.
+ */
+export const IMPORT_LIST_CAPS = { blacklist: 500, whitelist: 500, customParams: 200 };
+
+/**
+ * Cleans and caps the three user lists from a parsed import payload.
+ *
+ * Design (graceful degradation — #911, extends #818):
+ *   - customParams: invalid entries are filtered out (isValidCustomParam),
+ *     THEN the survivors are truncated to the cap. `skippedParams` counts BOTH
+ *     invalid and over-cap entries — the honest total the user lost.
+ *   - blacklist / whitelist: truncated to their caps. Entry-FORMAT validity is
+ *     checked separately by the caller (isValidListEntry), because a malformed
+ *     entry signals a corrupt/foreign file (abort), whereas an oversized-but-
+ *     well-formed list should import what fits rather than fail wholesale.
+ *
+ * Pure: no storage/DOM side effects, so it is unit-testable against real
+ * exported files. The caller is responsible for the structural muga/array
+ * checks before invoking this.
+ *
+ * @param {{blacklist: string[], whitelist: string[], customParams: string[]}} data
+ * @returns {{
+ *   blacklist: string[], whitelist: string[], customParams: string[],
+ *   droppedBlacklist: number, droppedWhitelist: number, skippedParams: number
+ * }}
+ */
+export function capImportedLists(data) {
+  const blacklist = data.blacklist.slice(0, IMPORT_LIST_CAPS.blacklist);
+  const whitelist = data.whitelist.slice(0, IMPORT_LIST_CAPS.whitelist);
+  const customParams = data.customParams
+    .filter(isValidCustomParam)
+    .slice(0, IMPORT_LIST_CAPS.customParams);
+  return {
+    blacklist,
+    whitelist,
+    customParams,
+    droppedBlacklist: data.blacklist.length - blacklist.length,
+    droppedWhitelist: data.whitelist.length - whitelist.length,
+    skippedParams: data.customParams.length - customParams.length,
+  };
+}
