@@ -21,6 +21,18 @@ const root = join(__dirname, "../..");
 const rulesPath = join(root, "src", "rules", "tracking-params.json");
 const rules = JSON.parse(readFileSync(rulesPath, "utf8"));
 
+// The GLOBAL strip rule (urlFilter:"*") is sourced from TRACKING_PARAMS and must
+// satisfy the strictest invariants: it strips on EVERY site, so it can never
+// touch an affiliate-attribution or domain-functional param. Domain-SCOPED rules
+// (e.g. the Amazon internal-nav rule, id 2) are sourced from per-domain
+// stripParams and are safe to strip params that would be unsafe site-wide
+// (`ref` is Vercel's affiliate param but Amazon's internal breadcrumb). Those
+// rules get their own scope-aware safety coverage in dnr-amazon-params.test.mjs,
+// so the TRACKING_PARAMS-sourced invariants below target the global rule only.
+const globalRule = rules.find(r => r.condition?.urlFilter === "*") ?? rules[0];
+const globalRemoveParams =
+  globalRule.action?.redirect?.transform?.queryTransform?.removeParams ?? [];
+
 // ---------------------------------------------------------------------------
 // Test 1 — The JSON is an array
 // ---------------------------------------------------------------------------
@@ -101,11 +113,9 @@ test("No removeParams entry collides with AFFILIATE_PATTERNS params", async () =
   const { AFFILIATE_PATTERNS } = await import("../../src/lib/affiliates.js");
 
   const affiliateParams = new Set(AFFILIATE_PATTERNS.map(e => e.param));
-  const allRemoveParams = rules.flatMap(
-    r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? []
-  );
-
-  const collisions = allRemoveParams.filter(p => affiliateParams.has(p));
+  // Global rule only — it strips site-wide, so ANY affiliate-param collision is
+  // unsafe. Scoped rules are checked against their own domains elsewhere.
+  const collisions = globalRemoveParams.filter(p => affiliateParams.has(p));
   assert.equal(
     collisions.length,
     0,
@@ -136,11 +146,9 @@ test("every removeParam (lowercased) exists in TRACKING_PARAMS", async () => {
   const { TRACKING_PARAMS } = await import("../../src/lib/affiliates.js");
 
   const trackingSet = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
-  const allRemoveParams = [
-    ...new Set(
-      rules.flatMap(r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? [])
-    ),
-  ];
+  // Global rule only — it is the one sourced from TRACKING_PARAMS. Scoped rules
+  // draw from per-domain stripParams (a different source), verified separately.
+  const allRemoveParams = [...new Set(globalRemoveParams)];
 
   for (const param of allRemoveParams) {
     assert.ok(
@@ -181,16 +189,17 @@ test("every lowercase TRACKING_PARAM has a corresponding removeParam entry (exce
   }
 });
 
-test("DNR-excluded params are NOT in DNR removeParams", () => {
-  const removeParamSet = new Set(
-    rules.flatMap(r => r.action?.redirect?.transform?.queryTransform?.removeParams ?? [])
-      .map(p => p.toLowerCase())
-  );
+test("DNR-excluded params are NOT in the GLOBAL DNR rule", () => {
+  // Scoped to the global rule: a param preserved on domain X must not be stripped
+  // site-wide. A domain-scoped rule MAY strip a param that is preserved on a
+  // DIFFERENT domain (e.g. `ref` is preserved on imdb.com but is Amazon's internal
+  // breadcrumb) — the Amazon rule excludes Amazon's OWN preserveParams instead.
+  const removeParamSet = new Set(globalRemoveParams.map(p => p.toLowerCase()));
 
   for (const param of DNR_EXCLUDED_PARAMS) {
     assert.ok(
       !removeParamSet.has(param),
-      `"${param}" should NOT be in DNR — it conflicts with domain-rules.json preserveParams`
+      `"${param}" should NOT be in the global DNR rule — it conflicts with domain-rules.json preserveParams`
     );
   }
 });

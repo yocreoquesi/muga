@@ -22,7 +22,11 @@ import {
   TRACKING_PARAM_CATEGORIES,
   TRACKING_PREFIXES,
 } from "../src/lib/affiliates.js";
-import { DNR_STATIC_RULE_ID } from "../src/lib/dnr-ids.js";
+import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../src/lib/remote-rules.js";
+import { DNR_STATIC_RULE_ID, DNR_AMAZON_PARAMS_RULE_ID } from "../src/lib/dnr-ids.js";
+
+/** Amazon marketplace hosts we scope the internal-nav strip rule to. */
+const AMAZON_HOST_RE = /(^|\.)amazon\./;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -318,7 +322,7 @@ export function buildDnrRules() {
 
   const filtered = TRACKING_PARAMS.filter((p) => !preservedByDomain.has(p));
 
-  const dnrRule = [
+  const rules = [
     {
       id: DNR_STATIC_RULE_ID,
       priority: 1,
@@ -339,7 +343,76 @@ export function buildDnrRules() {
     },
   ];
 
-  return dnrRule;
+  const amazonRule = buildAmazonParamsRule(domainRules, new Set(filtered));
+  if (amazonRule) rules.push(amazonRule);
+
+  return rules;
+}
+
+/**
+ * Builds the Amazon-scoped internal-nav param strip rule (#910/#911 follow-up).
+ *
+ * Chrome cleans the CURRENT page via DNR only (the in-page cleaner is skipped
+ * when DNR is present), so any Amazon internal-nav tracking param that the
+ * cleaner strips via domain-rules — but that is UNSAFE to strip site-wide, so
+ * it's absent from the global rule — survives a direct navigation. This rule
+ * closes that gap by removing exactly those params, scoped to Amazon hosts.
+ *
+ * The param list is DERIVED, never hand-maintained, so it can't drift from the
+ * cleaner:  removeParams = (Amazon stripParams)
+ *                          − (global DNR removeParams)      // already covered
+ *                          − (Amazon preserveParams)        // functional on Amazon
+ *                          − (AFFILIATE_PARAM_GUARD)         // creator attribution — NEVER strip
+ *                          − (REMOTE_PARAM_DENYLIST)         // protected nav/search keys
+ * The last two are safety nets: they currently exclude nothing, but guarantee a
+ * future domain-rules edit can never leak an affiliate/nav key into a DNR strip.
+ *
+ * @param {Array<object>} domainRules - parsed domain-rules.json
+ * @param {Set<string>} globalRemoveParams - the global rule's removeParams
+ * @returns {object|null} the DNR rule, or null when there is nothing to strip
+ */
+export function buildAmazonParamsRule(domainRules, globalRemoveParams) {
+  const amazonEntries = domainRules.filter(
+    (r) => typeof r.domain === "string" && AMAZON_HOST_RE.test(r.domain),
+  );
+  if (amazonEntries.length === 0) return null;
+
+  const requestDomains = [...new Set(amazonEntries.map((r) => r.domain))].sort();
+
+  const strip = new Set();
+  const preserve = new Set();
+  for (const r of amazonEntries) {
+    for (const p of r.stripParams ?? []) strip.add(p);
+    for (const p of r.preserveParams ?? []) preserve.add(p);
+  }
+
+  const guard = new Set([...AFFILIATE_PARAM_GUARD].map((s) => s.toLowerCase()));
+  const deny = new Set([...REMOTE_PARAM_DENYLIST].map((s) => s.toLowerCase()));
+
+  const removeParams = [...strip]
+    .filter(
+      (p) =>
+        !globalRemoveParams.has(p) &&
+        !preserve.has(p) &&
+        !guard.has(p.toLowerCase()) &&
+        !deny.has(p.toLowerCase()),
+    )
+    .sort();
+
+  if (removeParams.length === 0) return null;
+
+  return {
+    id: DNR_AMAZON_PARAMS_RULE_ID,
+    priority: 1,
+    action: {
+      type: "redirect",
+      redirect: { transform: { queryTransform: { removeParams } } },
+    },
+    condition: {
+      requestDomains,
+      resourceTypes: ["main_frame"],
+    },
+  };
 }
 
 /**
@@ -350,12 +423,16 @@ function main() {
   const dnrRules = buildDnrRules();
 
   const excluded = TRACKING_PARAMS.length - dnrRules[0].action.redirect.transform.queryTransform.removeParams.length;
+  const amazonRule = dnrRules.find((r) => r.id === DNR_AMAZON_PARAMS_RULE_ID);
+  const amazonCount = amazonRule
+    ? amazonRule.action.redirect.transform.queryTransform.removeParams.length
+    : 0;
 
   writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n", "utf8");
   writeFileSync(DNR_PATH, JSON.stringify(dnrRules, null, 2) + "\n", "utf8");
 
   console.log(
-    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${dnrRules[0].action.redirect.transform.queryTransform.removeParams.length} DNR params, ${excluded} excluded)`
+    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${dnrRules[0].action.redirect.transform.queryTransform.removeParams.length} global DNR params, ${excluded} excluded; ${amazonCount} Amazon-scoped params)`
   );
 }
 
