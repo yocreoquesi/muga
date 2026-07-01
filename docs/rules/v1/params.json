@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "published": "2026-06-17T19:55:47.654Z",
+  "version": 5,
+  "published": "2026-07-01T18:10:58.306Z",
   "params": [
     "__source",
     "__tn__",
@@ -44,6 +44,8 @@
     "dt_dapp",
     "ecid",
     "email",
+    "email_source",
+    "email_token",
     "entrypoint",
     "epic_affiliate",
     "epic_gameid",
@@ -166,5 +168,5 @@
     "xptdk",
     "xtor"
   ],
-  "sig": "HVIticzs5CA6qfh-zi57SIZLUkAR4xd-NvnXfxeGWLDxFbM2sB_AKGkUIVs4P6nrfuqUJ4e0K33_s5r_MZMIDQ"
+  "sig": "hYBJ50OVaAbxT7VCn_hewJF_8vXHjDU_McHmjNYxt8CboFgF2FdE4u7pU2_RYdEZC9tVTcRjPKG7ZPuG-S7MBw"
 }
