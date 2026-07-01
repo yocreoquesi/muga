@@ -805,12 +805,11 @@
       // test in tests/unit/content-unwrap-no-affiliate-redirect.test.mjs enforces
       // the invariant.
       //
-      // shareasale.com remains: it is a true wrapper (caps-spec `shareasale`
-      // recipe + DNR rule), not an affiliate-redirect host, so local-unwrap is
-      // the intended behaviour.
-      const AFFILIATE_REDIRECT_PARAMS = {
-        "shareasale.com":         "urllink",
-      };
+      // shareasale.com retired from this map in #907: reclassified as
+      // pass-through (AFFILIATE_REDIRECT_NETWORKS in opaque-networks.js), same
+      // policy as Awin/Impact/Rakuten/TradeTracker — local-unwrap risked
+      // dropping the network's 30x attribution context.
+      const AFFILIATE_REDIRECT_PARAMS = {};
 
       let parsed;
       try {

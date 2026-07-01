@@ -62,8 +62,6 @@
   // shape of each entry, and any new wrapper added there should be
   // mirrored here for storage cleanup to apply.
   const WRAPPERS = [
-    { hostPatterns: ["go.redirectingat.com", "go.skimresources.com"], pathPatterns: null },
-    { hostPatterns: ["shareasale.com", "www.shareasale.com"], pathPatterns: ["/r.cfm"] },
     { hostPatterns: ["t.co"], pathPatterns: null },
     { hostPatterns: ["l.facebook.com"], pathPatterns: ["/l.php"] },
     { hostPatterns: ["lm.facebook.com"], pathPatterns: ["/l.php"] },
@@ -75,13 +73,14 @@
     { hostPatterns: ["href.li"], pathPatterns: null },
     { hostPatterns: ["anonym.to"], pathPatterns: null },
     // Awin (awin1.com), Impact Radius (*.pxf.io), Rakuten
-    // (click.linksynergy.com), and TradeTracker (tc.tradetracker.net)
-    // previously lived in this list. Retired per ADR-0003 / #684 / #692:
-    // those hosts now live in AFFILIATE_REDIRECT_NETWORKS (pass-through),
-    // and bounce-state cleanup must NOT wipe their localStorage during
-    // the redirect step — the network needs that state to attribute the
-    // click on landing. The inlineDetectWrapper() guard below
-    // (INLINE_AFFILIATE_REDIRECT_NETWORKS) enforces the same invariant
+    // (click.linksynergy.com), TradeTracker (tc.tradetracker.net), Skimlinks
+    // (go.redirectingat.com, go.skimresources.com), and ShareASale
+    // (shareasale.com) previously lived in this list. Retired per ADR-0003 /
+    // #684 / #692 / #907: those hosts now live in AFFILIATE_REDIRECT_NETWORKS
+    // (pass-through), and bounce-state cleanup must NOT wipe their
+    // localStorage during the redirect step — the network needs that state
+    // to attribute the click on landing. The inlineDetectWrapper() guard
+    // below (INLINE_AFFILIATE_REDIRECT_NETWORKS) enforces the same invariant
     // at runtime as defense-in-depth.
   ];
 
@@ -112,6 +111,10 @@
     "clk.tradedoubler.com",
     "alitems.com",
     "redirect.viglink.com",
+    "go.redirectingat.com",
+    "go.skimresources.com",
+    "shareasale.com",
+    "www.shareasale.com",
   ];
 
   function isInlineAffiliateRedirectNetwork(host) {

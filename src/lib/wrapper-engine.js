@@ -211,10 +211,27 @@ const SKIMLINKS_SPEC_IDS = new Set([
  *   - `tradetracker`: per ADR-0003 follow-up (#692). The `ttaid`/`ttrk`/
  *     `ttcid` family lands on the merchant via the network's 30x;
  *     `tc.tradetracker.net` is now pass-through.
+ *   - `skimlinks-redirectingat` / `skimlinks-skimresources`: per #907. Both
+ *     raw spec ids are listed here (not the merged `skimlinks` id) because
+ *     this exclusion check runs BEFORE the SKIMLINKS_SPEC_IDS consolidation
+ *     below — excluding only one raw id would leave the other to merge into
+ *     a still-active `skimlinks` wrapper entry. Skimlinks' publisher
+ *     redirect (go.redirectingat.com / go.skimresources.com) is now
+ *     pass-through via AFFILIATE_REDIRECT_NETWORKS in opaque-networks.js.
+ *   - `shareasale`: per #907. `shareasale.com` is now pass-through via
+ *     AFFILIATE_REDIRECT_NETWORKS in opaque-networks.js.
  *
  * Upstream caps-spec is unchanged — the exclusion is MUGA-policy, not data.
  */
-const MUGA_EXCLUDED_IDS = new Set(["awin", "impact", "rakuten", "tradetracker"]);
+const MUGA_EXCLUDED_IDS = new Set([
+  "awin",
+  "impact",
+  "rakuten",
+  "tradetracker",
+  "skimlinks-redirectingat",
+  "skimlinks-skimresources",
+  "shareasale",
+]);
 
 function buildExtractor(extractor) {
   switch (extractor.kind) {
@@ -284,144 +301,25 @@ function buildWrappers(rawList) {
 export const WRAPPERS = buildWrappers(WRAPPERS_RAW);
 
 /**
- * Allowlist of conventional redirect-style query parameter keys probed by the
- * generic wrapper code path (issue #531). Order matters — the first key whose
- * value passes ALL safety guards wins. Kept short on purpose: every additional
- * key widens the surface for false positives on legitimate non-redirect URLs.
- * @type {readonly string[]}
- */
-// #709 item 10: frozen for defense-in-depth. Security-relevant — drives
-// the generic-redirect heuristic. Mutation would silently widen MUGA's
-// surface for unwrap.
-export const GENERIC_WRAPPER_PARAMS = Object.freeze([
-  "url",
-  "u",
-  "redirect",
-  "dest",
-  "target",
-]);
-
-/**
- * Maximum length of a destination URL accepted by the generic extractor.
- * Mirrors the cap used in canonical-extractor.js and content/cleaner.js so the
- * whole pipeline shares one consistent ceiling.
+ * Maximum length of a destination URL accepted by the explicit-wrapper
+ * extractors. Mirrors the cap used in canonical-extractor.js and
+ * content/cleaner.js so the whole pipeline shares one consistent ceiling.
  */
 const GENERIC_DEST_LENGTH_CAP = 2000;
-
-/**
- * Substring fragments that, when present anywhere in the destination pathname,
- * make the generic path REFUSE to unwrap. These are the conventional shapes of
- * authentication, single-sign-on and checkout flows where the wrapper URL is
- * legitimately the entry point — not a tracking redirect — and unwrapping
- * would silently break login or payment.
- * @type {readonly string[]}
- */
-// #709 item 10: frozen for defense-in-depth. Mutation would silently
-// REMOVE auth/SSO/checkout protections from the generic unwrap path
-// (an "unwrap" of /login or /checkout breaks the user's session/payment).
-const GENERIC_AUTH_PATH_FRAGMENTS = Object.freeze([
-  "/oauth",
-  "/oauth2",
-  "/auth",
-  "/sso",
-  "/callback",
-  "/login",
-  "/signin",
-  "/checkout",
-  "/payment",
-  "/pay",
-  "/saml",
-  "/authorize",
-]);
-
-/**
- * Returns the input host with a leading `www.` stripped, lowercased.
- * Used by the generic same-host guard so `www.example.com` and `example.com`
- * compare as equal — they are the same site for redirect-flow purposes.
- * @param {string} host
- * @returns {string}
- */
-function effectiveHost(host) {
-  const lower = host.toLowerCase();
-  return lower.startsWith("www.") ? lower.slice(4) : lower;
-}
-
-/**
- * Tries each `GENERIC_WRAPPER_PARAMS` key on `url` and returns the first value
- * that decodes to a well-formed http(s) URL passing every safety guard, plus
- * the matching key. Returns `null` when nothing qualifies.
- *
- * Guards (all MUST pass):
- *   - `new URL(value)` succeeds
- *   - protocol is `http:` or `https:` (no `javascript:`, `data:`, `mailto:`, …)
- *   - destination effective host (lowercased, `www.` stripped) DIFFERS from
- *     the wrapper effective host — protects OAuth return-to flows
- *   - destination pathname contains NONE of `GENERIC_AUTH_PATH_FRAGMENTS`
- *   - destination string length ≤ `GENERIC_DEST_LENGTH_CAP`
- *
- * @param {URL} url
- * @returns {{ value: string, paramName: string }|null}
- */
-function tryGenericExtract(url) {
-  const wrapperHost = effectiveHost(url.hostname);
-  for (const name of GENERIC_WRAPPER_PARAMS) {
-    const value = url.searchParams.get(name);
-    if (!value) continue;
-    if (value.length > GENERIC_DEST_LENGTH_CAP) continue;
-    let dest;
-    try {
-      dest = new URL(value);
-    } catch {
-      continue;
-    }
-    if (dest.protocol !== "https:" && dest.protocol !== "http:") continue;
-    if (effectiveHost(dest.hostname) === wrapperHost) continue;
-    const path = dest.pathname.toLowerCase();
-    if (GENERIC_AUTH_PATH_FRAGMENTS.some((frag) => path.includes(frag))) continue;
-    return { value, paramName: name };
-  }
-  return null;
-}
-
-/**
- * Builds a generic wrapper entry compatible with the WRAPPERS schema so the
- * downstream `unwrap()` loop, processUrl integration and metrics treat it
- * exactly like an explicit per-host wrapper.
- *
- * The entry's `extract()` re-runs the same guards over a freshly parsed URL —
- * not a closure over the captured value — so it stays correct if the loop
- * later calls `extract()` on a different (but structurally identical) URL.
- *
- * @param {string} host    matched host (lowercased)
- * @param {string} paramName  the generic key that won
- * @returns {{
- *   id: string,
- *   isGeneric: true,
- *   hostPatterns: string[],
- *   pathPatterns: null,
- *   extract: (url: URL) => string|null,
- * }}
- */
-function buildGenericWrapper(host, paramName) {
-  return {
-    id: `generic-${paramName}`,
-    isGeneric: true,
-    hostPatterns: [host],
-    pathPatterns: null,
-    extract: (url) => {
-      const hit = tryGenericExtract(url);
-      return hit ? hit.value : null;
-    },
-  };
-}
 
 /**
  * Returns the matching wrapper config for a URL, or null if none match.
  * Pure inspection — does not extract or unwrap.
  *
- * Precedence: explicit entries in WRAPPERS always win. Only when no explicit
- * host matches do we probe the generic redirect-param path (#531). This keeps
- * the 16 tested explicit wrappers authoritative — generic NEVER overrides.
+ * Only explicit entries in WRAPPERS are matched. The generic `?url=`-style
+ * fallback (issue #531) was removed in #907 — it unwrapped ANY host with a
+ * query param matching a conventional redirect key (`url`, `u`, `redirect`,
+ * `dest`, `target`), even unknown/unvetted redirectors. That produced false
+ * positives on networks whose destination param happens to collide with the
+ * allowlist but whose 30x carries attribution context the generic path
+ * silently discarded (e.g. Effiliation's `track.effiliation.com/servlet/
+ * effi.redir?...&url=<merchant>`). Only per-host recipes vetted against
+ * caps-spec (WRAPPERS, sourced from src/rules/wrappers.json) are unwrapped.
  *
  * @param {string} rawUrl
  * @returns {object|null}
@@ -436,10 +334,9 @@ export function detectWrapper(rawUrl) {
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
   const host = url.hostname.toLowerCase();
   // Pass-through guard (#692): hosts declared in AFFILIATE_REDIRECT_NETWORKS
-  // are never wrappers, even if their query string happens to carry a key in
-  // GENERIC_WRAPPER_PARAMS (e.g. `?u=` on *.pxf.io and tc.tradetracker.net).
-  // The 30x must execute in the browser so the network can populate the
-  // merchant's first-party cookie at landing.
+  // are never wrappers (e.g. *.pxf.io, tc.tradetracker.net, go.redirectingat.com,
+  // shareasale.com). The 30x must execute in the browser so the network can
+  // populate the merchant's first-party cookie at landing.
   if (isAffiliateRedirectNetwork(host)) return null;
   for (const wrapper of WRAPPERS) {
     const hostMatch = wrapper.hostPatterns.some((p) =>
@@ -454,9 +351,6 @@ export function detectWrapper(rawUrl) {
     }
     return wrapper;
   }
-  // Generic fallback — only fires when no explicit wrapper matched.
-  const generic = tryGenericExtract(url);
-  if (generic) return buildGenericWrapper(host, generic.paramName);
   return null;
 }
 

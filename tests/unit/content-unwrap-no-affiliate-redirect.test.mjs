@@ -14,6 +14,14 @@
  * `alitems.com`, `clk.tradedoubler.com`, and `redirect.viglink.com` from the
  * legacy map after #684's pass-through retirement quietly missed this
  * surface.
+ *
+ * #907 update: `shareasale.com` — the map's last remaining entry — was also
+ * retired to pass-through (joining Skimlinks' `go.redirectingat.com` /
+ * `go.skimresources.com`). `AFFILIATE_REDIRECT_PARAMS` in
+ * src/content/cleaner.js is now an empty object literal (`{}`). The
+ * invariant this file locks still holds trivially (the empty set can't
+ * overlap with AFFILIATE_REDIRECT_NETWORKS), but the tests below now assert
+ * the map is empty rather than assert its single surviving entry.
  */
 
 import { test, describe } from "node:test";
@@ -52,8 +60,8 @@ describe("#695 invariant: AFFILIATE_REDIRECT_NETWORKS ∩ legacy unwrap map = �
   const legacyMap = parseLegacyAffiliateMap();
   const legacyHosts = Object.keys(legacyMap);
 
-  test("the legacy map is non-empty (sanity check — shareasale should still be there)", () => {
-    assert.ok(legacyHosts.length > 0, "AFFILIATE_REDIRECT_PARAMS is empty — did the helper find the right literal?");
+  test("the legacy map is empty (#907 — shareasale retired to pass-through, no entries remain)", () => {
+    assert.deepEqual(legacyHosts, [], "AFFILIATE_REDIRECT_PARAMS should be {} post-#907 — did a new entry get added without an AFFILIATE_REDIRECT_NETWORKS check?");
   });
 
   test("no key in AFFILIATE_REDIRECT_PARAMS is in AFFILIATE_REDIRECT_NETWORKS (literal check)", () => {
@@ -78,13 +86,13 @@ describe("#695 invariant: AFFILIATE_REDIRECT_NETWORKS ∩ legacy unwrap map = �
     }
   });
 
-  test("post-#695 the only legacy entry is shareasale.com (true wrapper, not pass-through)", () => {
-    // ShareASale is a genuine wrapper (caps-spec `shareasale` recipe + DNR
-    // rule). Keeping it in the legacy content-script map is the intended
-    // behaviour — it lets the strip happen client-side when the SW or DNR
-    // path didn't fire. If this assertion fails because a new wrapper was
-    // added to the map, double-check the host is NOT in
-    // AFFILIATE_REDIRECT_NETWORKS before adding the new key here.
-    assert.deepEqual(Object.keys(legacyMap).sort(), ["shareasale.com"]);
+  test("post-#907 the legacy map has zero entries (shareasale retired to pass-through)", () => {
+    // ShareASale was the map's last surviving entry (a genuine wrapper —
+    // caps-spec `shareasale` recipe + DNR rule) until #907 reclassified it
+    // as pass-through, joining Awin/Impact/Rakuten/TradeTracker/Skimlinks.
+    // If this assertion fails because a new wrapper was added to the map,
+    // double-check the host is NOT in AFFILIATE_REDIRECT_NETWORKS before
+    // adding the new key here.
+    assert.deepEqual(Object.keys(legacyMap).sort(), []);
   });
 });

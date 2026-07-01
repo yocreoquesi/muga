@@ -2,19 +2,31 @@
  * MUGA — Unit tests for src/lib/wrapper-dnr-builder.js
  *
  * Verifies the pure DNR-rule builder used by scripts/generate-dnr-rules.mjs:
- *   - REGEX_PURE_WRAPPER_IDS lists exactly the seven in-scope wrapper ids
- *     (issue #449, slice B6)
- *   - buildDnrRules() converts the full WRAPPERS table into 7 valid DNR
- *     rule objects of the expected shape (regexFilter + regexSubstitution)
+ *   - REGEX_PURE_WRAPPER_IDS lists the allowlisted wrapper ids (issue #449,
+ *     slice B6)
+ *   - buildDnrRules() converts the WRAPPERS table into valid DNR rule objects
+ *     of the expected shape (regexFilter + regexSubstitution) — only for ids
+ *     whose source wrapper still exists in WRAPPERS (defensive skip)
  *   - Each rule's regexFilter compiles as a JS RegExp
  *   - Each rule's regexFilter targets the correct host and param key for the
  *     wrapper it represents
  *   - Wrapper entries whose hostPatterns contain a RegExp (e.g. Impact) are
  *     never emitted as DNR rules — even if their id is added to the allowlist
  *   - validateDnrRules flags rule-count overshoot, duplicate IDs, and passes
- *     the canonical 7-rule output
+ *     the canonical output
  *   - buildDnrRules is idempotent: same input → identical output (key order,
  *     numeric IDs, regex strings)
+ *
+ * Post-#907 note: REGEX_PURE_WRAPPER_IDS and the RECIPES table in
+ * src/lib/wrapper-dnr-builder.js still list `skimlinks-redirectingat`,
+ * `skimlinks-skimresources`, and `shareasale` — those three recipes are now
+ * dead code. buildDnrRules looks up each recipe's sourceId ("skimlinks" /
+ * "shareasale") in the WRAPPERS table by id; since #907 excludes both from
+ * WRAPPERS (pass-through reclassification), the lookup always misses and the
+ * recipe is skipped. Only facebook-l and facebook-lm still resolve to a
+ * source, so buildDnrRules(WRAPPERS) now emits exactly 2 rules. This mirrors
+ * the SKIMLINKS_SPEC_IDS/skimlinksMerged dead-code note in
+ * src/lib/wrapper-engine.js — harmless, left in place.
  *
  * Resolves a chunk of issue #449.
  */
@@ -41,7 +53,7 @@ describe("REGEX_PURE_WRAPPER_IDS", () => {
     "shareasale",
   ];
 
-  test("lists exactly the five in-scope wrapper ids (awin retired #684, rakuten retired #692)", () => {
+  test("lists exactly the five allowlisted wrapper ids (awin retired #684, rakuten retired #692) — skimlinks/shareasale entries are dead since #907, see file header", () => {
     assert.deepEqual([...REGEX_PURE_WRAPPER_IDS].sort(), [...expected].sort());
   });
 
@@ -56,8 +68,8 @@ describe("REGEX_PURE_WRAPPER_IDS", () => {
 describe("buildDnrRules — full WRAPPERS table", () => {
   const rules = buildDnrRules(WRAPPERS);
 
-  test("returns exactly 5 rules", () => {
-    assert.equal(rules.length, 5);
+  test("returns exactly 2 rules (facebook-l, facebook-lm — skimlinks/shareasale recipes are dead since #907)", () => {
+    assert.equal(rules.length, 2);
   });
 
   test("each rule has id, priority, action, condition", () => {
@@ -140,26 +152,16 @@ describe("buildDnrRules — host + param targeting", () => {
     assert.ok(f.includes("lm\\.facebook\\.com"));
   });
 
-  test("Skimlinks redirectingat rule matches go.redirectingat.com and ?url= param", () => {
-    const f = filterFor("skimlinks-redirectingat").regexFilter;
-    assert.match("https://go.redirectingat.com/?url=https%3A%2F%2Fm.com&id=1", new RegExp(f));
-    assert.doesNotMatch("https://go.skimresources.com/?url=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.ok(f.includes("redirectingat\\.com"));
-  });
-
-  test("Skimlinks skimresources rule matches go.skimresources.com and ?url= param", () => {
-    const f = filterFor("skimlinks-skimresources").regexFilter;
-    assert.match("https://go.skimresources.com/?url=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.doesNotMatch("https://go.redirectingat.com/?url=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.ok(f.includes("skimresources\\.com"));
-  });
-
-  test("ShareASale rule matches shareasale.com/r.cfm and ?urllink= param", () => {
-    const f = filterFor("shareasale").regexFilter;
-    assert.match("https://shareasale.com/r.cfm?u=1&urllink=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.match("https://www.shareasale.com/r.cfm?urllink=https%3A%2F%2Fm.com", new RegExp(f));
-    assert.ok(f.includes("shareasale\\.com"));
-    assert.ok(f.includes("urllink"));
+  test("skimlinks-redirectingat/skimlinks-skimresources/shareasale recipes produce NO rule (#907 — sourceId missing from WRAPPERS)", () => {
+    // These three ids are still allowlisted in REGEX_PURE_WRAPPER_IDS, but
+    // their recipes' sourceId ("skimlinks" / "shareasale") no longer exists
+    // in WRAPPERS since #907's pass-through reclassification. buildDnrRules
+    // skips a recipe when bySourceId.get(recipe.sourceId) misses — see the
+    // file header note. Only facebook-l and facebook-lm remain.
+    assert.equal(rules.length, 2);
+    for (const rule of rules) {
+      assert.doesNotMatch(rule.condition.regexFilter, /redirectingat|skimresources|shareasale/i);
+    }
   });
 
   test("no rule mentions linksynergy.com (Rakuten retired in #692)", () => {
@@ -215,7 +217,7 @@ describe("buildDnrRules — idempotency", () => {
 // validateDnrRules
 // ---------------------------------------------------------------------------
 describe("validateDnrRules", () => {
-  test("ok=true for the canonical 5-rule output", () => {
+  test("ok=true for the canonical 2-rule output (post-#907)", () => {
     const result = validateDnrRules(buildDnrRules(WRAPPERS));
     assert.equal(result.ok, true);
     assert.deepEqual(result.warnings, []);

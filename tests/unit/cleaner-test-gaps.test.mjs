@@ -31,7 +31,13 @@ import { classify as classifyParams, PARAM_PAIRS } from "../../src/lib/param-cla
 // design contract: honor-creator is an explicit "this is the creator's link;
 // don't touch it" override.
 
-const SKIMLINKS = "https://go.redirectingat.com/?id=1&url=https%3A%2F%2Famazon.com%2Fdp%2FB000";
+// #907: Skimlinks (go.redirectingat.com) was reclassified pass-through, so
+// detectWrapper() now unconditionally returns null for it and it can no
+// longer exercise honor-creator mode (condition 2 of shouldHonor requires a
+// live WRAPPERS match). l.facebook.com is still a live WRAPPERS entry, so it
+// replaces Skimlinks as the wrapper fixture in this gap-1 block.
+const FACEBOOK_L =
+  "https://l.facebook.com/l.php?u=https%3A%2F%2Famazon.com%2Fdp%2FB000&h=AT0abc";
 const REF_MATCH = "https://www.youtube.com/@LinusTechTips/community";
 const REF_MISS = "https://news.ycombinator.com/";
 const ALLOWLIST = ["youtube.com/@linustechtips"];
@@ -39,7 +45,7 @@ const ALLOWLIST = ["youtube.com/@linustechtips"];
 describe("#630 gap 1: honor-creator × stripAllAffiliates precedence", () => {
   test("BOTH true + matching referrer → honor wins, URL untouched", () => {
     const result = processUrl(
-      SKIMLINKS,
+      FACEBOOK_L,
       {
         enabled: true,
         honorCreatorMode: true,
@@ -52,14 +58,14 @@ describe("#630 gap 1: honor-creator × stripAllAffiliates precedence", () => {
       REF_MATCH,
     );
     assert.equal(result.action, "honored-creator");
-    assert.equal(result.cleanUrl, SKIMLINKS, "honor must keep the URL byte-identical");
-    assert.equal(result.network, "skimlinks");
+    assert.equal(result.cleanUrl, FACEBOOK_L, "honor must keep the URL byte-identical");
+    assert.equal(result.network, "facebook-l");
     assert.equal(result.creator, "youtube.com/@linustechtips");
   });
 
   test("honorCreatorMode=false + stripAllAffiliates=true + match → strip path runs (no honor)", () => {
     const result = processUrl(
-      SKIMLINKS,
+      FACEBOOK_L,
       {
         enabled: true,
         honorCreatorMode: false,
@@ -72,13 +78,13 @@ describe("#630 gap 1: honor-creator × stripAllAffiliates precedence", () => {
       REF_MATCH,
     );
     assert.notEqual(result.action, "honored-creator");
-    // Skimlinks gets unwrapped to the merchant; the strip path then runs.
+    // Facebook wrapper gets unwrapped to the merchant; the strip path then runs.
     assert.ok(result.cleanUrl.startsWith("https://amazon.com/dp/B000"));
   });
 
   test("honorCreatorMode=true + stripAllAffiliates=true + non-matching referrer → strip path runs", () => {
     const result = processUrl(
-      SKIMLINKS,
+      FACEBOOK_L,
       {
         enabled: true,
         honorCreatorMode: true,
@@ -99,7 +105,7 @@ describe("#630 gap 1: honor-creator × stripAllAffiliates precedence", () => {
     // (m., mobile., music.) do NOT match the bare-domain allowlist entry.
     // This pins that the allowlist is host-precise (not eTLD+1).
     const result = processUrl(
-      SKIMLINKS,
+      FACEBOOK_L,
       {
         enabled: true,
         honorCreatorMode: true,
@@ -117,7 +123,7 @@ describe("#630 gap 1: honor-creator × stripAllAffiliates precedence", () => {
     // The match boundary check blocks `@foo` from matching `@foobar` —
     // the next char in the referrer key must be EOS or a / ? # separator.
     const result = processUrl(
-      SKIMLINKS,
+      FACEBOOK_L,
       {
         enabled: true,
         honorCreatorMode: true,
@@ -152,14 +158,19 @@ describe("#630 gap 1: honor-creator × stripAllAffiliates precedence", () => {
 //   - Custom maxHops respects the depth bound (maxHops=5 on 10 levels)
 //   - A malformed inner extract (no `url=`) breaks early without throwing
 
-function wrapSkim(dest) {
-  return "https://go.redirectingat.com/?url=" + encodeURIComponent(dest);
+// #907: Skimlinks (go.redirectingat.com) was reclassified pass-through, so
+// it can no longer build a nested chain — detectWrapper() returns null for
+// it at every level, and unwrap() would bail immediately. l.facebook.com is
+// still a live WRAPPERS entry with the same single-param extractor shape
+// (?u=), so it replaces Skimlinks as the nesting fixture here.
+function wrapFacebook(dest) {
+  return "https://l.facebook.com/l.php?u=" + encodeURIComponent(dest);
 }
 
 describe("#630 gap 2: wrapper engine recursion bounds", () => {
   test("10 levels of nesting + default maxHops=3 → hops=3, output still wrapped at level 7", () => {
     let current = "https://merchant.example.com/product";
-    for (let i = 0; i < 10; i++) current = wrapSkim(current);
+    for (let i = 0; i < 10; i++) current = wrapFacebook(current);
     const result = unwrap(current);
     assert.ok(result, "deep chain should produce a result");
     assert.equal(result.hops, 3, "default maxHops caps recursion at 3 even on a 10-level chain");
@@ -172,19 +183,19 @@ describe("#630 gap 2: wrapper engine recursion bounds", () => {
 
   test("10-level chain + maxHops=5 → hops=5", () => {
     let current = "https://merchant.example.com/product";
-    for (let i = 0; i < 10; i++) current = wrapSkim(current);
+    for (let i = 0; i < 10; i++) current = wrapFacebook(current);
     const result = unwrap(current, { maxHops: 5 });
     assert.ok(result);
     assert.equal(result.hops, 5);
     assert.ok(detectWrapper(result.unwrapped) !== null, "still a wrapper at level 5");
   });
 
-  test("malformed inner extract (no url=) → terminates mid-chain, returns last successful unwrap", () => {
-    // outer wraps inner; inner is a Skimlinks URL with no `url=` param.
-    // The first extract succeeds (yields inner), the second fails (no url=
+  test("malformed inner extract (no u=) → terminates mid-chain, returns last successful unwrap", () => {
+    // outer wraps inner; inner is an l.facebook.com URL with no `u=` param.
+    // The first extract succeeds (yields inner), the second fails (no u=
     // on inner), and the loop breaks with hops=1.
-    const inner = "https://go.redirectingat.com/?id=42&xs=1";
-    const outer = wrapSkim(inner);
+    const inner = "https://l.facebook.com/l.php?h=AT0abc";
+    const outer = wrapFacebook(inner);
     const result = unwrap(outer);
     assert.ok(result, "first hop succeeded — result is non-null");
     assert.equal(result.hops, 1, "second extract returned null → loop breaks at hop 1");
