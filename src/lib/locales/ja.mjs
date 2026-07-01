@@ -135,7 +135,7 @@ export default Object.freeze({
   import_error: "MUGAの設定ファイルではないようです。MUGAからエクスポートされた.jsonファイルをインポートしているか確認してください。",
   import_params_skipped: "設定をインポートしました。{n}件のエントリをスキップしました — 長すぎる、無効な形式、保護されたキー、またはリストの上限超過。",
   optionsRemoteRulesTitle: "ルールのリモート更新",
-  optionsRemoteRulesDesc: "オプション。トラッキングパラメータリストの週次更新をダウンロードします。デフォルトでオフ。",
+  optionsRemoteRulesDesc: "トラッキングパラメータリストの週次の署名付き更新をダウンロードします。デフォルトでオン。ここでいつでもオフにできます。",
   optionsRemoteRulesToggle: "週次更新を有効にする",
   optionsRemoteRulesLastFetch: "最終確認:",
   optionsRemoteRulesParamCount: "アクティブなリモートパラメータ:",

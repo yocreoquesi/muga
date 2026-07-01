@@ -135,7 +135,7 @@ export default Object.freeze({
   import_error: "Isso não parece um arquivo de configurações do MUGA. Certifique-se de importar um .json exportado pelo MUGA.",
   import_params_skipped: "Configurações importadas. {n} entrada(s) ignorada(s) — muito longo, formato inválido, chave protegida ou acima do limite da lista.",
   optionsRemoteRulesTitle: "Atualizações remotas de regras",
-  optionsRemoteRulesDesc: "Opcional. Baixa atualizações semanais da lista de parâmetros de rastreamento. Desativado por padrão.",
+  optionsRemoteRulesDesc: "Baixa atualizações semanais assinadas da lista de parâmetros de rastreamento. Ativado por padrão; você pode desativá-lo aqui quando quiser.",
   optionsRemoteRulesToggle: "Ativar atualizações semanais",
   optionsRemoteRulesLastFetch: "Última verificação:",
   optionsRemoteRulesParamCount: "Parâmetros remotos ativos:",

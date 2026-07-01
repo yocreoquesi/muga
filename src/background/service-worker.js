@@ -384,8 +384,24 @@ async function maybeFetchRemoteRules(deps) {
   if (_remoteRulesCheckedThisLifetime) return;
   _remoteRulesCheckedThisLifetime = true;
   try {
-    const { remoteRulesEnabled } = await getPrefs();
-    if (!remoteRulesEnabled) return;
+    // Read the FULL merged prefs (not just remoteRulesEnabled): getPrefs()
+    // overlays the per-device consent record (onboardingDone / consentVersion /
+    // consentDate), which the consent gate below needs.
+    const prefs = await getPrefs();
+    if (!prefs.remoteRulesEnabled) return;
+    // #888 review C1: the weekly signed GET to rules.muga.app is a
+    // consent-gated network egress. It MUST NOT fire until the user has
+    // accepted the consent version that introduced it (v1.1). Since #888
+    // flipped remoteRulesEnabled ON by default, an existing user with stored
+    // consent 1.0 who never touched the toggle would otherwise leak the GET on
+    // the very next SW wake — BEFORE acting on the non-blocking soft re-onboard
+    // tab. shouldOpenOnboarding(prefs) is true for every non-`valid` status
+    // (never-accepted / soft- / hard-reonboard), i.e. exactly the states where
+    // the disclosure has not been accepted. Block the egress in those states so
+    // disclosure and egress stay coupled. Fresh installs write consentVersion
+    // 1.1 on onboarding completion → valid → allowed; existing 1.0 users stay
+    // blocked until they accept the delta re-onboard (which writes 1.1).
+    if (shouldOpenOnboarding(prefs)) return;
     const { remoteRulesMeta } = await getRemoteParams();
     const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
     if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) return;
