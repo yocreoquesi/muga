@@ -237,8 +237,9 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
   });
 
   test("DNR tracking_params ruleset is disabled until onboardingDone, enabled after", async ({ context, extensionId }) => {
-    // Pre-onboarding: ALL three rulesets must be disabled (#810 — consent-gate
-    // must cover amp_redirect and wrapper_unwrap, not only tracking_params).
+    // Pre-onboarding: ALL four rulesets must be disabled (#810 — consent-gate
+    // must cover amp_redirect, wrapper_unwrap and amazon_path_canonical, not
+    // only tracking_params).
     // Poll so the result does not race with applyDnrState() after beforeEach clear.
     await expect.poll(
       async () => {
@@ -264,6 +265,14 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
       { timeout: 5000 }
     ).not.toContain("wrapper_unwrap");
 
+    await expect.poll(
+      async () => {
+        const r = await readEnabledRulesets(context, extensionId);
+        return r.ruleIds || [];
+      },
+      { timeout: 5000 }
+    ).not.toContain("amazon_path_canonical");
+
     // Complete onboarding without letting the page self-close — the
     // assertion is on the SW side, but we still want a deterministic
     // visible signal that the click landed.
@@ -273,8 +282,9 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     await completeOnboardingAndKeepPageOpen(page);
 
     // After acceptance, the storage listener re-applies DNR state.
-    // All three rulesets (with default prefs ampRedirect:true, unwrapRedirects:true)
-    // must be enabled. Poll to absorb the listener latency.
+    // All four rulesets (with default prefs ampRedirect:true, unwrapRedirects:true;
+    // amazon_path_canonical has no feature pref and is always-on) must be
+    // enabled. Poll to absorb the listener latency.
     await expect.poll(
       async () => {
         const r = await readEnabledRulesets(context, extensionId);
@@ -298,6 +308,14 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
       },
       { timeout: 5000 }
     ).toContain("wrapper_unwrap");
+
+    await expect.poll(
+      async () => {
+        const r = await readEnabledRulesets(context, extensionId);
+        return r.ruleIds || [];
+      },
+      { timeout: 5000 }
+    ).toContain("amazon_path_canonical");
 
     if (!page.isClosed()) await page.close();
   });
