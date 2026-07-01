@@ -10,6 +10,11 @@
  *   2        — static ruleset: Amazon-scoped internal-nav param strip — params the
  *              cleaner strips on Amazon that the global rule can't (unsafe to strip
  *              site-wide), scoped via requestDomains to Amazon marketplaces
+ *   100-102  — static ruleset: AMP unwrap redirects (amp-redirect.json)
+ *   1-5      — static ruleset: wrapper-link unwrap redirects (wrapper-dnr-rules.json,
+ *              its own file-scoped namespace, distinct from tracking-params.json's 1/2)
+ *   200      — static ruleset: Amazon /dp/ SEO-slug strip, Chrome-only DNR
+ *              regexSubstitution redirect (amazon-path-canonical.json) — #903
  *   1000     — dynamic custom params rule (user-defined params, DNR redirect)
  *   1001     — dynamic remote params rule (signed remote payload, DNR redirect)
  *

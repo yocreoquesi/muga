@@ -1,0 +1,16 @@
+[
+  {
+    "id": 200,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "regexSubstitution": "\\1/\\2\\3"
+      }
+    },
+    "condition": {
+      "regexFilter": "^(https?://(?:[a-z0-9-]+\\.)*amazon\\.[a-z.]+(?:/-/[a-z]{2,3})?)/[^/]+/(dp/[A-Za-z0-9]{10})((?:[/?].*)?)$",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]

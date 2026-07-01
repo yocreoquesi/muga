@@ -59,6 +59,9 @@ async function applyDnrStateLogic(prefs, declaredIds, dnrApi) {
   for (const id of declaredIds) {
     if (id === "tracking_params") {
       enableRulesetIds.push(id);
+    } else if (id === "amazon_path_canonical") {
+      // Mirrors production: always-on when the gate is open (#903).
+      enableRulesetIds.push(id);
     } else if (id === "amp_redirect") {
       if (prefs.ampRedirect) {
         enableRulesetIds.push(id);
@@ -97,7 +100,7 @@ function makeFakeDnr() {
   };
 }
 
-const MV3_IDS = ["tracking_params", "amp_redirect", "wrapper_unwrap"];
+const MV3_IDS = ["tracking_params", "amp_redirect", "wrapper_unwrap", "amazon_path_canonical"];
 const MV2_IDS = ["tracking_params"];
 
 const BASE_PREFS_OPEN = {
@@ -284,6 +287,47 @@ describe("applyDnrState — gate open with per-feature pref toggles", () => {
   });
 });
 
+describe("applyDnrState — amazon_path_canonical (#903)", () => {
+  test("gate open → amazon_path_canonical is always enabled, like tracking_params", async () => {
+    const dnr = makeFakeDnr();
+    await applyDnrStateLogic(BASE_PREFS_OPEN, MV3_IDS, dnr);
+
+    const call = dnr.calls[0];
+    assert.ok(
+      call.enableRulesetIds.includes("amazon_path_canonical"),
+      "amazon_path_canonical must be enabled when the consent gate is open"
+    );
+  });
+
+  test("gate open + ampRedirect:false + unwrapRedirects:false → amazon_path_canonical stays enabled", async () => {
+    const dnr = makeFakeDnr();
+    const prefs = { ...BASE_PREFS_OPEN, ampRedirect: false, unwrapRedirects: false };
+    await applyDnrStateLogic(prefs, MV3_IDS, dnr);
+
+    const call = dnr.calls[0];
+    assert.ok(
+      call.enableRulesetIds.includes("amazon_path_canonical"),
+      "amazon_path_canonical has no per-feature pref (yet) — it must stay enabled regardless of other toggles"
+    );
+    assert.ok(
+      !(call.disableRulesetIds || []).includes("amazon_path_canonical"),
+      "amazon_path_canonical must never be disabled while the gate is open"
+    );
+  });
+
+  test("gate closed (onboardingDone:false) → amazon_path_canonical is disabled with all other rulesets", async () => {
+    const dnr = makeFakeDnr();
+    const prefs = { ...BASE_PREFS_OPEN, onboardingDone: false };
+    await applyDnrStateLogic(prefs, MV3_IDS, dnr);
+
+    const call = dnr.calls[0];
+    assert.ok(
+      call.disableRulesetIds.includes("amazon_path_canonical"),
+      "amazon_path_canonical must be disabled when the consent gate is closed (#810 regression class)"
+    );
+  });
+});
+
 describe("applyDnrState — MV2 parity: only declared IDs are touched", () => {
   test("MV2 manifest (tracking_params only): gate closed disables only tracking_params", async () => {
     const dnr = makeFakeDnr();
@@ -366,8 +410,9 @@ describe("service-worker.js source guards — #810 fix present", () => {
   test("applyDnrState references ampRedirect pref", () => {
     const applyFnStart = swSource.indexOf("async function applyDnrState(");
     assert.ok(applyFnStart !== -1, "applyDnrState must exist in SW");
-    // Use 2000 chars — the function grew with comments after the #810 fix
-    const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2000);
+    // Use 2600 chars — the function grew with comments after the #810 fix
+    // and the #903 amazon_path_canonical branch
+    const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2600);
     assert.ok(
       applyFnBlock.includes("ampRedirect"),
       "applyDnrState must check prefs.ampRedirect to gate amp_redirect ruleset"
@@ -377,8 +422,9 @@ describe("service-worker.js source guards — #810 fix present", () => {
   test("applyDnrState references unwrapRedirects pref", () => {
     const applyFnStart = swSource.indexOf("async function applyDnrState(");
     assert.ok(applyFnStart !== -1, "applyDnrState must exist in SW");
-    // Use 2000 chars — the function grew with comments after the #810 fix
-    const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2000);
+    // Use 2600 chars — the function grew with comments after the #810 fix
+    // and the #903 amazon_path_canonical branch
+    const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2600);
     assert.ok(
       applyFnBlock.includes("unwrapRedirects"),
       "applyDnrState must check prefs.unwrapRedirects to gate wrapper_unwrap ruleset"
