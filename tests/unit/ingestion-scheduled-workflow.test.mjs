@@ -274,11 +274,19 @@ describe("PR merge flags", () => {
 // Commit message contains [skip ci]
 // ---------------------------------------------------------------------------
 describe("commit message", () => {
-  test("commit message contains [skip ci]", () => {
+  test("params commit does NOT use [skip ci] (would block the required PR checks)", () => {
     const content = readWorkflow();
+    // Resolves the contradiction with the `--auto` contract above: branch
+    // protection on main requires the test + e2e checks, and `gh pr merge
+    // --auto` only completes once they pass. [skip ci] on the PR-branch commit
+    // skips ci.yml → the checks never report → the PR stays BLOCKED forever.
+    // A CI loop is NOT a risk: the post-merge push re-runs ci.yml (read-only)
+    // and publish-rules.yml (idempotent no-op guard; its own commit carries
+    // [skip ci]), so nothing re-triggers the ingestion workflow.
     assert.ok(
-      /\[skip ci\]/.test(content),
-      "workflow commit message must contain '[skip ci]' to prevent CI loop"
+      !/git commit -m "chore\(rules\): auto-ingest params[^"]*\[skip ci\]/.test(content),
+      "the auto-ingest params commit must NOT carry [skip ci] — it skips the " +
+      "required PR checks and blocks the --auto merge forever"
     );
   });
 });
