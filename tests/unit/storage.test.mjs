@@ -81,9 +81,10 @@ describe("PREF_DEFAULTS — shape and default values", () => {
     assert.strictEqual(PREF_DEFAULTS.devMode, undefined);
   });
 
-  // T1.2 — remote rules toggle must default to false (REQ-OPT-1)
-  test("remoteRulesEnabled defaults to false", () => {
-    assert.strictEqual(PREF_DEFAULTS.remoteRulesEnabled, false);
+  // T1.2 — remote rules toggle default flipped to true (#888): readiness
+  // (signing infra, defense-in-depth tests, disclosure copy) was ratified.
+  test("remoteRulesEnabled defaults to true", () => {
+    assert.strictEqual(PREF_DEFAULTS.remoteRulesEnabled, true);
   });
 
   test("remoteRulesEnabled is a boolean (not undefined or null)", () => {

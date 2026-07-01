@@ -173,6 +173,39 @@ describe("#741 — onboarding consent write ordering", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// #888 — onboarding must source sync-get fallbacks from PREF_DEFAULTS, not a
+// hardcoded `false`. After remoteRulesEnabled flipped to true by default, a
+// hardcoded false fallback would hide the per-device confirmation section on
+// fresh installs even though the effective default is on.
+// ---------------------------------------------------------------------------
+describe("#888 — onboarding sync-get fallback comes from PREF_DEFAULTS", () => {
+  test("onboarding.js imports PREF_DEFAULTS", () => {
+    assert.ok(
+      /import\s*\{[^}]*\bPREF_DEFAULTS\b[^}]*\}\s*from\s*["']\.\.\/lib\/prefs\.js["']/.test(ONBOARDING_JS),
+      "onboarding.js must import PREF_DEFAULTS from ../lib/prefs.js"
+    );
+  });
+
+  test("the storage.sync.get fallback uses PREF_DEFAULTS for both guarded prefs", () => {
+    assert.ok(
+      ONBOARDING_JS.includes("remoteRulesEnabled: PREF_DEFAULTS.remoteRulesEnabled"),
+      "remoteRulesEnabled fallback must read PREF_DEFAULTS.remoteRulesEnabled"
+    );
+    assert.ok(
+      ONBOARDING_JS.includes("injectOwnAffiliate: PREF_DEFAULTS.injectOwnAffiliate"),
+      "injectOwnAffiliate fallback must read PREF_DEFAULTS.injectOwnAffiliate"
+    );
+  });
+
+  test("no hardcoded remoteRulesEnabled: false fallback remains", () => {
+    assert.ok(
+      !/remoteRulesEnabled:\s*false/.test(ONBOARDING_JS),
+      "onboarding.js must not hardcode remoteRulesEnabled: false as a sync-get fallback"
+    );
+  });
+});
+
 describe("#728 item 25 — gated-CTA flash + aria-live announcement", () => {
   const ONBOARDING_HTML = readFileSync(
     join(__dirname, "../../src/onboarding/onboarding.html"),

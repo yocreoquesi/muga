@@ -152,8 +152,9 @@ that Amazon Associates / eBay Partner Network / Bookshop / etc. all run.
 
 ## Network behavior
 
-MUGA ships with two features that involve network requests. Both are
-opt-in, default-off. Without explicit opt-in, MUGA makes zero outbound
+MUGA ships with two features that involve network requests: Remote Rules
+(on by default, #888) and "Follow shortener redirects" (opt-in,
+default-off). If you disable both in Settings, MUGA makes zero outbound
 network requests.
 
 ### Q: What is "Follow shortener redirects" and when does it fire?
@@ -173,13 +174,15 @@ Affiliate-redirect networks are NEVER followed.
 
 ### Q: What are Remote Rules and how are they signed?
 
-Remote Rules is an opt-in feature that lets MUGA periodically refresh its
+Remote Rules is a feature that lets MUGA periodically refresh its
 noise-parameter list from a signed public endpoint, so users get
 protection against new noise sources without waiting for an extension release.
 
-- Default: **off**. See
-  [`src/lib/storage.js:108`](../src/lib/storage.js#L108):
-  `remoteRulesEnabled: false`.
+- Default: **on** (#888, once the signing infrastructure and defense-in-depth
+  verification were ratified as production-ready — see the
+  [CHANGELOG](../CHANGELOG.md)). See
+  [`src/lib/prefs.js:52`](../src/lib/prefs.js#L52):
+  `remoteRulesEnabled: true`. Disable it any time in Settings.
 - Every fetched payload is verified with an **Ed25519 signature** against
   a hardcoded list of trusted public keys before any rule is applied.
   The verification is at
@@ -205,8 +208,9 @@ enabled.
 Remote Rules sends no user data at all — it is a one-way `GET` of a
 signed JSON file.
 
-If you want zero network activity, leave both toggles off. Their defaults
-already give you that.
+If you want zero network activity, turn off both toggles in Settings.
+"Follow shortener redirects" already defaults to off; Remote Rules
+defaults to on (#888) and needs to be disabled explicitly.
 
 ---
 
@@ -230,7 +234,8 @@ The cost base is intentionally low:
 - The "Follow shortener redirects" feature (opt-in, off by default) is
   resolved entirely inside the extension — no MUGA server is involved,
   so there is no per-resolution infrastructure cost.
-- Remote Rules is a static signed JSON served from GitHub Pages.
+- Remote Rules is a static signed JSON served from GitHub Pages, fetched
+  at most once per 7 days.
 
 If you want to support the project without enabling injection, the
 [Ko-fi link in the README](../README.md#support) is the alternative.

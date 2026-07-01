@@ -11,6 +11,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { isValidListEntry } from "../../src/lib/validation.js";
+import { evaluate as evaluateConsent } from "../../src/lib/consent-policy.js";
+import { REQUIRED_CONSENT_VERSION } from "../../src/lib/consent-version-manifest.js";
+
+// A stored consent record that is CURRENT (accepted the required version).
+// maybeFetchRemoteRules only fetches when consent is `valid` (#888 review C1).
+const VALID_CONSENT = { onboardingDone: true, consentVersion: REQUIRED_CONSENT_VERSION };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const swSource = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
@@ -346,8 +352,12 @@ function makeMaybeFetchHelper() {
   return async function maybeFetchRemoteRules(deps) {
     if (_checked) return "skipped-dedup";
     _checked = true;
-    const { remoteRulesEnabled } = await deps.getPrefs();
-    if (!remoteRulesEnabled) return "disabled";
+    // Read FULL merged prefs (includes the consent overlay), mirroring prod.
+    const prefs = await deps.getPrefs();
+    if (!prefs.remoteRulesEnabled) return "disabled";
+    // C1 consent gate — mirrors shouldOpenOnboarding(prefs) in service-worker.js.
+    // The egress must wait until stored consent is current (status === "valid").
+    if (evaluateConsent({ stored: prefs }).status !== "valid") return "consent-blocked";
     const { remoteRulesMeta } = await deps.getRemoteParams();
     const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
     if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) {
@@ -377,7 +387,7 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     const maybe = makeMaybeFetchHelper();
     const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1h ago
     const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: recent } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
@@ -391,7 +401,7 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     const maybe = makeMaybeFetchHelper();
     const stale = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
     const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: stale } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
@@ -404,7 +414,7 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     let fetchCalled = false;
     const maybe = makeMaybeFetchHelper();
     const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
@@ -413,11 +423,56 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     assert.strictEqual(fetchCalled, true);
   });
 
+  // ── #888 review C1: consent gate on the network egress ────────────────────
+  // The weekly signed GET must NOT fire until the user has accepted the consent
+  // version (v1.1) that disclosed it. These assert REAL behavior (was runFetch
+  // called?), not source text.
+  test("C1: does NOT fetch when consent is soft-reonboard (stored 1.0, required 1.1)", async () => {
+    let fetchCalled = false;
+    const maybe = makeMaybeFetchHelper();
+    const result = await maybe({
+      // remoteRulesEnabled true (new default) but consent still at 1.0 → the
+      // user has not yet accepted the delta re-onboard that discloses the egress.
+      getPrefs: async () => ({ remoteRulesEnabled: true, onboardingDone: true, consentVersion: "1.0" }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "consent-blocked");
+    assert.strictEqual(fetchCalled, false, "egress must not fire before the disclosure is accepted");
+  });
+
+  test("C1: does NOT fetch when consent is never-accepted", async () => {
+    let fetchCalled = false;
+    const maybe = makeMaybeFetchHelper();
+    const result = await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: true }), // no onboardingDone → never-accepted
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "consent-blocked");
+    assert.strictEqual(fetchCalled, false);
+  });
+
+  test("C1: DOES fetch when consent is valid (stored 1.1 === required)", async () => {
+    let fetchCalled = false;
+    const maybe = makeMaybeFetchHelper();
+    const result = await maybe({
+      getPrefs: async () => ({ remoteRulesEnabled: true, onboardingDone: true, consentVersion: "1.1" }),
+      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result, "ran");
+    assert.strictEqual(fetchCalled, true, "egress allowed once the user has accepted the disclosing consent version");
+  });
+
   test("dedupes subsequent calls in the same SW lifetime", async () => {
     let fetchCount = 0;
     const maybe = makeMaybeFetchHelper();
     const deps = {
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async () => { fetchCount++; },
       fetchDeps: {},
@@ -436,7 +491,7 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     const maybe = makeMaybeFetchHelper();
     const fakeDeps = { marker: "xyz" };
     await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async (deps) => { received = deps; },
       fetchDeps: fakeDeps,

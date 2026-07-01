@@ -8,6 +8,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { clausesForDelta, CONSENT_CLAUSES_BY_VERSION } from "../../src/lib/consent-clauses.js";
+import { CONSENT_VERSION_MANIFEST } from "../../src/lib/consent-version-manifest.js";
+import { TRANSLATIONS } from "../../src/lib/i18n.js";
 
 const FIXTURE_MANIFEST = Object.freeze([
   Object.freeze({ version: "1.0", additive: false }),
@@ -123,5 +125,47 @@ describe("clausesForDelta — default CONSENT_CLAUSES_BY_VERSION", () => {
 
   test("CONSENT_CLAUSES_BY_VERSION is frozen", () => {
     assert.ok(Object.isFrozen(CONSENT_CLAUSES_BY_VERSION));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #888 — the 1.1 additive bump surfaces the remote-rules-default clause in the
+// delta list. This runs against the LIVE manifest + clause map so a 1.0 user
+// upgrading to 1.1 sees exactly the remote-rules disclosure.
+// ---------------------------------------------------------------------------
+describe("consent-clauses — #888 remote-rules default clause (live map)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.1'] discloses the remote-rules clause", () => {
+    assert.deepEqual(
+      [...(CONSENT_CLAUSES_BY_VERSION["1.1"] || [])],
+      ["ob_clause_remote_rules_default"]
+    );
+  });
+
+  test("user at 1.0, required 1.1 → delta surfaces the remote-rules clause", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.0",
+      requiredVersion: "1.1",
+      manifest: CONSENT_VERSION_MANIFEST,
+      // default clausesByVersion (live map)
+    });
+    assert.deepEqual(r, ["ob_clause_remote_rules_default"]);
+  });
+
+  test("the clause i18n key resolves to non-empty text in EN and ES (official locales)", () => {
+    assert.ok(
+      typeof TRANSLATIONS.ob_clause_remote_rules_default?.en === "string" &&
+        TRANSLATIONS.ob_clause_remote_rules_default.en.trim().length > 0,
+      "EN clause text must exist"
+    );
+    assert.ok(
+      typeof TRANSLATIONS.ob_clause_remote_rules_default?.es === "string" &&
+        TRANSLATIONS.ob_clause_remote_rules_default.es.trim().length > 0,
+      "ES clause text must exist"
+    );
+    // The disclosure must name the endpoint so the user sees where the egress goes.
+    assert.ok(
+      TRANSLATIONS.ob_clause_remote_rules_default.en.includes("rules.muga.app"),
+      "EN clause text must name rules.muga.app"
+    );
   });
 });

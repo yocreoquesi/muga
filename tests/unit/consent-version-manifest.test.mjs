@@ -54,6 +54,27 @@ describe("consent-version-manifest — entry validation", () => {
   }
 });
 
+describe("consent-version-manifest — #888 remote-rules additive bump", () => {
+  test("manifest contains a 1.1 entry marked additive: true", () => {
+    const entry = CONSENT_VERSION_MANIFEST.find(m => m.version === "1.1");
+    assert.ok(entry, "manifest must contain the 1.1 entry (#888)");
+    assert.equal(entry.additive, true, "1.1 must be additive (soft re-onboard), not material");
+  });
+
+  test("REQUIRED_CONSENT_VERSION points at the latest manifest entry", () => {
+    const latest = CONSENT_VERSION_MANIFEST[CONSENT_VERSION_MANIFEST.length - 1];
+    assert.equal(
+      REQUIRED_CONSENT_VERSION,
+      latest.version,
+      "REQUIRED_CONSENT_VERSION must equal the last (latest) manifest entry"
+    );
+  });
+
+  test("REQUIRED_CONSENT_VERSION is 1.1", () => {
+    assert.equal(REQUIRED_CONSENT_VERSION, "1.1");
+  });
+});
+
 describe("consent-version-manifest — global invariants", () => {
   test("versions are unique", () => {
     const versions = CONSENT_VERSION_MANIFEST.map(m => m.version);

@@ -20,6 +20,7 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
+import { PREF_DEFAULTS } from "../lib/prefs.js";
 import { setConsent, getConsent } from "../lib/consent-storage.js";
 import { setOverrides, getOverrides } from "../lib/per-device-prefs.js";
 import { pendingConfirmations } from "../lib/synced-affiliate-pref-guard.js";
@@ -51,8 +52,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --- Read state ----------------------------------------------------------
   const [syncPrefs, localConsent, existingOverrides, fixtures] = await Promise.all([
     new Promise((resolve) => {
+      // Source the fallbacks from PREF_DEFAULTS so onboarding sees the SAME
+      // default as getPrefs() when a key is absent from sync. After #888
+      // flipped remoteRulesEnabled to `true`, a hardcoded `false` here made
+      // the per-device confirmation section stay hidden on fresh installs
+      // even though the effective default is on — the disclosure would never
+      // surface. Reading the canonical defaults keeps the two paths aligned.
       chrome.storage.sync.get(
-        { injectOwnAffiliate: false, remoteRulesEnabled: false },
+        {
+          injectOwnAffiliate: PREF_DEFAULTS.injectOwnAffiliate,
+          remoteRulesEnabled: PREF_DEFAULTS.remoteRulesEnabled,
+        },
         (r) => resolve(r || {})
       );
     }),
