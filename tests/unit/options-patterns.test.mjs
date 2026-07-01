@@ -25,6 +25,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { IMPORT_LIST_CAPS } from "../../src/lib/validation.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = join(__dir, "../..");
@@ -378,13 +379,13 @@ describe("T3.3 chrome.permissions.request is the first await in the enable branc
 });
 
 describe("addEntry — list-size caps mirror the import path (#728 item 28)", () => {
-  test("addEntry enforces the per-list cap before pushing", () => {
-    // The import path caps blacklist/whitelist at 500 and customParams at 200
-    // (options.js: `data.blacklist.length > 500 || ... customParams.length > 200`).
-    // The manual UI add path (addEntry) must apply the same ceiling.
+  test("addEntry derives the per-list cap from IMPORT_LIST_CAPS", () => {
+    // Both the import path (capImportedLists) and the manual UI add path
+    // (addEntry) now derive their ceiling from the SAME constant, IMPORT_LIST_CAPS,
+    // so they can never drift. (#911 replaced the scattered 200/500 literals.)
     assert.ok(
-      optionsJs.includes('listKey === "customParams" ? 200 : 500'),
-      "addEntry must derive the per-list cap (200 for customParams, 500 otherwise)"
+      optionsJs.includes("IMPORT_LIST_CAPS[listKey]"),
+      "addEntry must derive the per-list cap from IMPORT_LIST_CAPS[listKey]"
     );
     assert.ok(
       optionsJs.includes("list.length >= cap"),
@@ -392,11 +393,15 @@ describe("addEntry — list-size caps mirror the import path (#728 item 28)", ()
     );
   });
 
-  test("import path still enforces its 500/500/200 caps (parity anchor)", () => {
+  test("IMPORT_LIST_CAPS is the single source of truth (parity anchor)", () => {
+    assert.equal(IMPORT_LIST_CAPS.blacklist, 500);
+    assert.equal(IMPORT_LIST_CAPS.whitelist, 500);
+    assert.equal(IMPORT_LIST_CAPS.customParams, 200);
+    // The import handler must delegate to capImportedLists (which applies these
+    // caps), not carry its own divergent length literals.
     assert.ok(
-      optionsJs.includes("data.blacklist.length > 500") &&
-        optionsJs.includes("data.customParams.length > 200"),
-      "import-path caps must remain the source of truth the UI path mirrors"
+      optionsJs.includes("capImportedLists(data)"),
+      "import path must apply the caps via capImportedLists, the shared source of truth"
     );
   });
 });

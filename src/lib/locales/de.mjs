@@ -133,7 +133,7 @@ export default Object.freeze({
   import_label: "Einstellungen importieren",
   import_success: "Einstellungen erfolgreich importiert.",
   import_error: "Das sieht nicht wie eine MUGA-Einstellungsdatei aus. Stelle sicher, dass du eine .json-Datei importierst, die von MUGA exportiert wurde.",
-  import_params_skipped: "Einstellungen importiert. {n} benutzerdefinierter Parameter übersprungen — zu lang, ungültiges Format oder geschützter Schlüssel.",
+  import_params_skipped: "Einstellungen importiert. {n} Einträge übersprungen — zu lang, ungültiges Format, geschützter Schlüssel oder über dem Listenlimit.",
   optionsRemoteRulesTitle: "Remote-Regelaktualisierungen",
   optionsRemoteRulesDesc: "Optional. Lädt wöchentliche Aktualisierungen der Tracking-Parameter-Liste herunter. Standardmäßig deaktiviert.",
   optionsRemoteRulesToggle: "Wöchentliche Aktualisierungen aktivieren",

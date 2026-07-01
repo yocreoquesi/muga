@@ -200,11 +200,18 @@ describe("T3 validation.js source — exports and canonical imports", () => {
 
 // ── T4: options.js source guards ─────────────────────────────────────────────
 
-describe("T4 options.js — uses isValidCustomParam, no inline validator", () => {
-  test("imports isValidCustomParam from validation.js", () => {
+describe("T4 options.js — delegates param cleaning to capImportedLists, no inline validator", () => {
+  test("imports capImportedLists from validation.js", () => {
+    // #911: the import handler no longer applies isValidCustomParam inline; it
+    // delegates filtering + capping to capImportedLists (which applies the
+    // canonical isValidCustomParam under the hood — asserted in T3/below).
     assert.ok(
-      OPTIONS_SOURCE.includes("isValidCustomParam"),
-      "options.js must reference isValidCustomParam"
+      OPTIONS_SOURCE.includes("capImportedLists"),
+      "options.js must import/use capImportedLists"
+    );
+    assert.ok(
+      VALIDATION_SOURCE.includes("export function capImportedLists("),
+      "validation.js must export capImportedLists"
     );
   });
 
@@ -215,23 +222,26 @@ describe("T4 options.js — uses isValidCustomParam, no inline validator", () =>
     );
   });
 
-  test("import path uses isValidCustomParam (not old inline validator)", () => {
-    // The import block should call isValidCustomParam, not the old inline one
+  test("import path applies canonical param validation via capImportedLists", () => {
+    // The import handler calls capImportedLists(data); capImportedLists in
+    // validation.js is what runs isValidCustomParam over the imported params.
     assert.ok(
-      OPTIONS_SOURCE.includes("isValidCustomParam"),
-      "import path must call isValidCustomParam"
+      OPTIONS_SOURCE.includes("capImportedLists(data)"),
+      "import handler must call capImportedLists(data)"
+    );
+    assert.ok(
+      VALIDATION_SOURCE.includes("filter(isValidCustomParam)"),
+      "capImportedLists must filter customParams with the canonical isValidCustomParam"
     );
   });
 
-  test("import path filters invalid customParams (not whole-abort)", () => {
-    // The new behavior: filter invalid entries, count rejections, import the rest.
-    // Guard: the import path must NOT throw when only some customParams are invalid.
-    // We verify the source uses .filter() on customParams (not .every() for abort).
-    // Note: blacklist/whitelist still use the structural .every(isValidListEntry) check.
+  test("param cleaning filters invalid customParams (not whole-abort)", () => {
+    // The behavior: filter invalid entries, count rejections, import the rest —
+    // never throw when only some customParams are invalid. This now lives in
+    // capImportedLists (validation.js), which uses .filter() (not .every() abort).
     assert.ok(
-      OPTIONS_SOURCE.includes("filter(isValidCustomParam)") ||
-      OPTIONS_SOURCE.includes("filter(p => isValidCustomParam(p)"),
-      "import path must filter customParams (not abort-on-any-invalid)"
+      VALIDATION_SOURCE.includes("filter(isValidCustomParam)"),
+      "capImportedLists must filter customParams (not abort-on-any-invalid)"
     );
   });
 

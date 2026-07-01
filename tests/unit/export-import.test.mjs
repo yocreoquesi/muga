@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isValidListEntry, isValidCustomParam } from "../../src/lib/validation.js";
+import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../../src/lib/validation.js";
 import { SUPPORTED_LANGS } from "../../src/lib/i18n.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -104,31 +104,39 @@ describe("import settings (source verification)", () => {
     assert.ok(matches.length >= 3, `Expected at least 3 Array.isArray checks, found ${matches.length}`);
   });
 
-  test("5. import enforces size limits on lists (500, 500, 200)", () => {
+  test("5. import caps lists (500, 500, 200) by TRUNCATION, not whole-import rejection (#911)", () => {
+    // #911: the old behavior hard-threw when a list exceeded its cap, rejecting
+    // a valid-but-large export with a misleading "not a MUGA file" error. Caps
+    // now live in IMPORT_LIST_CAPS and are enforced by truncation in capImportedLists.
+    assert.equal(IMPORT_LIST_CAPS.blacklist, 500);
+    assert.equal(IMPORT_LIST_CAPS.whitelist, 500);
+    assert.equal(IMPORT_LIST_CAPS.customParams, 200);
+    const over = {
+      blacklist: Array.from({ length: 600 }, (_, i) => `b${i}.com`),
+      whitelist: Array.from({ length: 600 }, (_, i) => `w${i}.com`),
+      customParams: Array.from({ length: 300 }, (_, i) => `p_${i}`),
+    };
+    const out = capImportedLists(over);
+    assert.equal(out.blacklist.length, 500);
+    assert.equal(out.whitelist.length, 500);
+    assert.equal(out.customParams.length, 200);
+    // The count-based whole-import throw must be gone.
     assert.ok(
-      OPTIONS_SOURCE.includes("data.blacklist.length > 500"),
-      "Import must limit blacklist to 500 entries"
-    );
-    assert.ok(
-      OPTIONS_SOURCE.includes("data.whitelist.length > 500"),
-      "Import must limit whitelist to 500 entries"
-    );
-    assert.ok(
-      OPTIONS_SOURCE.includes("data.customParams.length > 200"),
-      "Import must limit customParams to 200 entries"
+      !/data\.customParams\.length\s*>\s*200/.test(OPTIONS_SOURCE),
+      "Import must NOT abort the whole import when customParams exceeds the cap"
     );
   });
 
-  test("6. import validates list entries with isValidListEntry and params with isValidCustomParam (#818)", () => {
+  test("6. import validates list entries with isValidListEntry and delegates param cleaning to capImportedLists (#818/#911)", () => {
     assert.ok(
       OPTIONS_SOURCE.includes("isValidListEntry"),
       "Import must validate blacklist/whitelist entries with isValidListEntry"
     );
-    // #818: replaced old inline isValidParam (accepted up to 499 chars) with
-    // the canonical isValidCustomParam (MAX_PARAM_LEN=64, denylist + affiliate guard).
+    // #818 param validation (isValidCustomParam, MAX_PARAM_LEN=64, denylist +
+    // affiliate guard) now runs inside capImportedLists; the handler delegates to it.
     assert.ok(
-      OPTIONS_SOURCE.includes("isValidCustomParam"),
-      "Import must validate customParams entries with isValidCustomParam (canonical remote-rules constants)"
+      OPTIONS_SOURCE.includes("capImportedLists(data)"),
+      "Import must delegate customParams filtering/capping to capImportedLists"
     );
   });
 

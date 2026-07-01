@@ -133,7 +133,7 @@ export default Object.freeze({
   import_label: "Importer les paramètres",
   import_success: "Paramètres importés avec succès.",
   import_error: "Cela ne ressemble pas à un fichier de paramètres MUGA. Assurez-vous d'importer un fichier .json exporté depuis MUGA.",
-  import_params_skipped: "Paramètres importés. {n} paramètre(s) personnalisé(s) ignoré(s) — trop long, format invalide ou clé protégée.",
+  import_params_skipped: "Paramètres importés. {n} entrée(s) ignorée(s) — trop long, format invalide, clé protégée ou au-delà de la limite de la liste.",
   optionsRemoteRulesTitle: "Mises à jour de règles à distance",
   optionsRemoteRulesDesc: "Facultatif. Télécharge des mises à jour hebdomadaires de la liste des paramètres de pistage. Désactivé par défaut.",
   optionsRemoteRulesToggle: "Activer les mises à jour hebdomadaires",
