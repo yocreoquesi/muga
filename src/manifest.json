@@ -90,6 +90,11 @@
         "id": "wrapper_unwrap",
         "enabled": true,
         "path": "rules/wrapper-dnr-rules.json"
+      },
+      {
+        "id": "amazon_path_canonical",
+        "enabled": true,
+        "path": "rules/amazon-path-canonical.json"
       }
     ]
   },

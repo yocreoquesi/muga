@@ -292,6 +292,12 @@ describe("Firefox MV2 manifest structure", () => {
 //   MV2 is unverified; tracked separately. Do not remove it from this list
 //   without a confirmed live Firefox run.
 //
+//   amazon_path_canonical — Chrome-only DNR regexSubstitution redirect that
+//   strips the Amazon SEO slug from /dp/ URLs on direct navigation (#903).
+//   Firefox already gets equivalent path-strip behavior via the in-page
+//   cleaner (JS-side self-clean), so this static ruleset is intentionally
+//   not declared in manifest.v2.json.
+//
 // All other rulesets must be declared in both manifests. If a new ruleset is
 // added to manifest.json (MV3) without a decision for Firefox, this test will
 // fail loudly so the gap is never silent. (#820)
@@ -299,6 +305,7 @@ describe("Firefox MV2 manifest structure", () => {
 describe("DNR ruleset MV2 parity (#820)", () => {
   const DOCUMENTED_MV2_EXCEPTIONS = new Set([
     "amp_redirect",
+    "amazon_path_canonical",
   ]);
 
   const mv3Ids = new Set(

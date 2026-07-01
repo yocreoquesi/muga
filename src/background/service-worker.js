@@ -477,6 +477,12 @@ async function applyDnrState(prefs) {
     for (const id of declaredIds) {
       if (id === "tracking_params") {
         enableRulesetIds.push(id);
+      } else if (id === "amazon_path_canonical") {
+        // Amazon /dp/ SEO-slug strip (#903) — always-on when the consent
+        // gate is open, same as tracking_params. There is no dedicated
+        // feature pref for this yet; it is a Chrome-only DNR redirect
+        // (Firefox strips the slug via the in-page cleaner instead).
+        enableRulesetIds.push(id);
       } else if (id === "amp_redirect") {
         if (prefs.ampRedirect) {
           enableRulesetIds.push(id);
