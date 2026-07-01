@@ -1,0 +1,73 @@
+name: Alert on scheduled workflow failure
+
+# Makes silent scheduled-job failures LOUD.
+#
+# Motivation: the weekly auto-ingest and moat-expansion jobs failed for ~3 weeks
+# (a missing MUGA_PR_TOKEN secret) before anyone noticed — the ruleset simply
+# stopped updating with no signal. This listener watches the maintenance
+# workflows and, on a non-success conclusion, opens (or comments on) a single
+# tracking issue per workflow. When that workflow next succeeds, it closes the
+# issue automatically, so the tracker stays self-cleaning.
+#
+# Uses only the gh CLI + GITHUB_TOKEN (issues:write) — no external actions to
+# SHA-pin, no PATs, no third-party secrets.
+
+on:
+  workflow_run:
+    workflows:
+      - "Auto-ingest rule parameters"
+      - "Moat expansion — weekly affiliate-param discovery"
+      - "Import upstream tracking params"
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open, update, or resolve the failure tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+
+          TITLE="🔴 Scheduled workflow failing: ${WF_NAME}"
+          BODY_FILE="${RUNNER_TEMP}/alert-body.md"
+
+          # One open tracking issue per workflow, matched by exact title.
+          # jq --arg handles the emoji/em-dash in the title safely.
+          NUM="$(gh issue list --repo "$REPO" --state open --limit 100 --json number,title \
+                 | jq -r --arg t "$TITLE" 'map(select(.title == $t)) | .[0].number // empty')"
+
+          if [ "$CONCLUSION" = "success" ]; then
+            # Nothing to do unless we're clearing a previously-open failure.
+            if [ -n "$NUM" ]; then
+              printf '%s\n' "✅ Back to green — ${RUN_URL}. Auto-closing." > "$BODY_FILE"
+              gh issue comment "$NUM" --repo "$REPO" --body-file "$BODY_FILE"
+              gh issue close "$NUM" --repo "$REPO" --reason completed
+            fi
+            exit 0
+          fi
+
+          # Any non-success conclusion (failure, cancelled, timed_out, ...) → alert.
+          printf '%s\n' \
+            "⚠️ **${WF_NAME}** finished with \`${CONCLUSION}\` on \`${BRANCH}\` (\`${EVENT}\`) — ${RUN_URL}" \
+            > "$BODY_FILE"
+
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --repo "$REPO" --body-file "$BODY_FILE"
+          else
+            printf '\n%s\n' \
+              "_Opened automatically on failure; auto-closed when this workflow next succeeds. Do not rename the title — the alert de-dupes on it._" \
+              >> "$BODY_FILE"
+            gh issue create --repo "$REPO" --title "$TITLE" --body-file "$BODY_FILE"
+          fi
