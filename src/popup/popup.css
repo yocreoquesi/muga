@@ -32,7 +32,7 @@
   --info:    #2A5880;
   --info-soft: #DCE7F1;
 
-  --diff-strip: #C94A2A;
+  --diff-strip: #A83D22;
   --diff-strip-bg: rgba(201, 74, 42, .10);
   --diff-keep: #2F6B3A;
 
@@ -365,6 +365,21 @@ header {
   color: var(--text-2);
   font-size: 10.5px;
   line-height: 1.45;
+}
+
+/* #932: honored-creator badge (B14). Mirrors .preview-preserved's shape —
+   same padding/border-left/font-size — with the info accent instead of
+   success, since "honored" (wrapper passed through untouched) is a distinct
+   outcome from "preserved" (an affiliate tag was kept on a cleaned URL). */
+.preview-honored {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--info-soft);
+  border-left: 2px solid var(--info);
+  color: var(--info);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .report-link {

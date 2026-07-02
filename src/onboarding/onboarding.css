@@ -104,6 +104,13 @@
     }
     .affiliate-body strong { color: var(--text-1); font-weight: 500; }
 
+    /* #932: browser-sync clarification note. Mirrors .affiliate-body p's
+       muted-text treatment at a slightly smaller size, since it reads as a
+       footnote rather than section body copy. */
+    .sync-note {
+      font-size: 12.5px; color: var(--text-2); line-height: 1.55;
+    }
+
     /* Consent checkboxes */
     .consent-check {
       display: flex; align-items: flex-start; gap: 12px;
