@@ -352,12 +352,18 @@
   // on every page load, which previously meant a 3s timeout fall-through if
   // the SW was cold-killed.
   //
-  // (#371) Skipped on Chrome MV3 — DNR strips tracking params at the network
-  // layer BEFORE document_start fires, so by the time this code runs,
-  // window.location.href is already clean and processUrl() returns it
-  // unchanged. The self-clean is only meaningful on Firefox MV2 (no DNR).
-  // We feature-detect rather than hardcode-target so a future browser that
-  // ships DNR also skips automatically.
+  // (#371 / #905) `chrome.declarativeNetRequest` is a background-only API and
+  // is NOT exposed to content scripts, so `_hasDNR` below is ALWAYS false here
+  // — even on Chrome (verified empirically). This branch therefore runs on
+  // BOTH Chrome and Firefox. On Chrome it is a practical no-op for STRIPPING
+  // (DNR already cleaned tracking params at the network layer before
+  // document_start, so processUrl returns the URL unchanged), but it STILL
+  // performs Step 6 affiliate-tag injection when injectOwnAffiliate is on —
+  // DNR cannot inject — which is how our tag lands on direct Amazon
+  // navigations (address bar / bookmark) on Chrome. The `!_hasDNR` guard was
+  // originally meant to skip this on a DNR-capable browser; since the API is
+  // unavailable to content scripts it never actually skips. Left as-is
+  // (harmless: the stripping path is idempotent) — do not rely on it to gate.
   //
   // Domain rules are fetched once at IIFE start (see getDomainRulesCached
   // hoisted above). Stats and badge updates fire-and-forget; SW death is
