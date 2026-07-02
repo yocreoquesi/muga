@@ -161,7 +161,7 @@ export default Object.freeze({
   advanced_mode_label: "Mostrar ajustes avanzados",
   advanced_mode_hint: "Control detallado de limpieza de URLs, privacidad y herramientas de desarrollo",
   honor_creator_mode_label: "Modo Honrar al Creador",
-  honor_creator_mode_hint: "Conserva las cadenas de referidos de creadores en redes de redirección de confianza. Desactivado por defecto; actívalo para apoyar a los creadores a los que sigues.",
+  honor_creator_mode_hint: "Conserva las cadenas de referidos de creadores en redirecciones de confianza de redes sociales y acortadores de enlaces. Desactivado por defecto; actívalo para apoyar a los creadores a los que sigues.",
   creator_allowlist_label: "Creadores que apoyas",
   creator_allowlist_hint: "Añade dominios de referencia donde el Modo Honrar al Creador debe conservar las cadenas de afiliados (ej: <code>youtube.com/@LinusTechTips</code>, <code>dot-css-news.com</code>). Hasta 100 entradas.",
   creator_allowlist_placeholder: "youtube.com/@creador  o  dot-css-news.com",

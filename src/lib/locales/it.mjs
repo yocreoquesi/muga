@@ -161,7 +161,7 @@ export default Object.freeze({
   advanced_mode_label: "Mostra impostazioni avanzate",
   advanced_mode_hint: "Controllo dettagliato sulla pulizia degli URL, la privacy e gli strumenti di sviluppo",
   honor_creator_mode_label: "Modalità Onora il creatore",
-  honor_creator_mode_hint: "Preserva le catene di affiliazione dei creatori sulle reti di reindirizzamento fidate. Disattivato per impostazione predefinita; attivalo per sostenere i creatori che segui.",
+  honor_creator_mode_hint: "Preserva le catene di referral dei creator sui reindirizzamenti fidati di social media e accorciatori di link. Disattivato per impostazione predefinita; attivalo per sostenere i creator che segui.",
   creator_allowlist_label: "Creator che sostieni",
   creator_allowlist_hint: "Aggiungi domini referrer dove la Modalità Onora il creatore deve preservare le catene di affiliazione (es. <code>youtube.com/@LinusTechTips</code>, <code>dot-css-news.com</code>). Fino a 100 voci.",
   creator_allowlist_placeholder: "youtube.com/@creator  o  dot-css-news.com",

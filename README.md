@@ -127,7 +127,7 @@ MUGA combines two independent toggles — **Honor Creator Mode** and **Privacy P
 | Mode | Honor Creator | Privacy Proxy | What it does |
 |------|:---:|:---:|---|
 | **Strict Local** | Off | Off | Removes all noise locally. No creator-referral preservation. No network requests. Default. |
-| **Honor Creator** | On | Off | Quiets the noise, but preserves creator referral chains on trusted redirect networks so independent creators get credit for the recommendation. |
+| **Honor Creator** | On | Off | Quiets the noise, but preserves creator referral chains on trusted social-media and link-shortener redirects (e.g. Facebook, t.co) so independent creators get credit for the recommendation. Affiliate-network referrals (Awin, Skimlinks, etc.) are always preserved automatically regardless of this toggle. |
 | **Privacy Proxy** | Off | On | Strips tracking locally; sends opaque affiliate redirect URLs to `unwrap.muga.app` (a Cloudflare Worker operated by MUGA) to retrieve the final destination. Every response is verified with an Ed25519 signature before navigation. Requires an optional host permission. |
 | **Honor + Proxy** | On | On | Full coverage: creator-referral preservation plus proxy-assisted resolution of opaque redirects. Both features active simultaneously. |
 

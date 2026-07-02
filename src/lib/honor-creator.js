@@ -3,14 +3,15 @@
  *
  * Pure module — no DOM, no network, no clock. Given a URL, an optional
  * navigation referrer, and the user's prefs, decides whether MUGA should
- * "honor" the creator's referral chain (i.e. let the redirect-network
- * wrapper URL pass through unmodified) or fall back to the default
+ * "honor" the creator's referral chain (i.e. let a social/shortener
+ * redirect wrapper URL pass through unmodified) or fall back to the default
  * tracking-strip + unwrap pipeline.
  *
  * Three conditions must ALL hold for an honor decision:
  *   1. `prefs.honorCreatorMode === true` (user opted in)
- *   2. The URL is a recognized redirect-network wrapper, per
- *      Wrapper Engine's `detectWrapper()`
+ *   2. The URL is a recognized wrapper per Wrapper Engine's
+ *      `detectWrapper()` — social redirects (e.g. `l.facebook.com`) and
+ *      link shorteners (e.g. `t.co`, `bit.ly`)
  *   3. The navigation referrer matches an entry in `prefs.creatorAllowlist`
  *
  * If any condition fails, the result is `{ honor: false }` and the caller
@@ -18,12 +19,28 @@
  * its inputs and never throws — defensive against malformed prefs and
  * non-string URLs.
  *
+ * ── Scope: affiliate-redirect networks are NOT decided here ────────────────
+ *
+ * Affiliate-redirect networks (Awin, Skimlinks, ShareASale, Impact, Rakuten,
+ * TradeTracker) are excluded from `detectWrapper()` (see
+ * `wrapper-engine.js`'s `MUGA_EXCLUDED_IDS` and
+ * `AFFILIATE_REDIRECT_NETWORKS` in `opaque-networks.js`, #907). Their
+ * creator referral is honored by DEFAULT via pass-through — the request
+ * always reaches the network's own redirect so the 30x can populate the
+ * merchant's first-party cookie — regardless of `honorCreatorMode` or the
+ * allowlist. The destination is still denoised afterward by the normal
+ * DNR + content-script cleaning pipeline once it lands on the merchant.
+ * This module and its `honorCreatorMode` preference never apply to those
+ * networks; `shouldHonor()` will always return `{ honor: false }` for a
+ * URL that `detectWrapper()` doesn't recognize.
+ *
  * ── Design notes ──────────────────────────────────────────────────────────
  *
  * Network classification reuses Wrapper Engine — single source of truth for
- * "is this a redirect wrapper?". When `detectWrapper(url)` returns null,
- * there's nothing to honor (we can't credit a creator on a URL the network
- * hierarchy doesn't recognize).
+ * "is this a (social/shortener) redirect wrapper?". When `detectWrapper(url)`
+ * returns null, there's nothing to honor here (either the URL isn't a
+ * wrapper at all, or it's an affiliate-redirect network already handled by
+ * unconditional pass-through, above).
  *
  * Referrer matching is intentionally `host + pathname` prefix-based:
  *   - Strip `www.` from the referrer host (the most common alias) so users
@@ -111,9 +128,14 @@ export function matchesAllowlist(referrer, allowlist) {
  * Decides whether the cleaner pipeline should honor the creator's referral
  * chain on this navigation. Pure inspection — never mutates inputs.
  *
+ * Only applies to wrappers `detectWrapper()` recognizes, i.e. social
+ * redirects and link shorteners (e.g. `"facebook-l"`, `"tco"`). Affiliate-
+ * redirect networks (e.g. Skimlinks, Awin) never reach this function with
+ * `honor: true` — see the module header's "Scope" note above.
+ *
  * @param {{ url: any, referrer: string|null|undefined, prefs: object }} args
  * @returns {{ honor: boolean, network?: string, creator?: string }}
- *   When `honor === true`, `network` is the wrapper id (e.g. `"skimlinks"`)
+ *   When `honor === true`, `network` is the wrapper id (e.g. `"facebook-l"`)
  *   and `creator` is the matching normalized allowlist entry. Otherwise
  *   only `honor: false` is returned.
  */

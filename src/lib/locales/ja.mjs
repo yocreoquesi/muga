@@ -161,7 +161,7 @@ export default Object.freeze({
   advanced_mode_label: "詳細設定を表示",
   advanced_mode_hint: "URLクリーンアップ、プライバシー、開発ツールの詳細制御",
   honor_creator_mode_label: "クリエイター尊重モード",
-  honor_creator_mode_hint: "信頼できるリダイレクトネットワーク上でクリエイターのリファラルチェーンを保持します。デフォルトでオフ。フォローしているクリエイターを支援するために有効にしてください。",
+  honor_creator_mode_hint: "信頼できるソーシャルメディアやリンク短縮サービスのリダイレクトでクリエイターのリファラルチェーンを保持します。デフォルトでオフ。フォローしているクリエイターを支援するために有効にしてください。",
   creator_allowlist_label: "支援するクリエイター",
   creator_allowlist_hint: "クリエイター尊重モードがクリエイターのリファラルチェーンを保持するリファラドメインを追加します (例: <code>youtube.com/@LinusTechTips</code>, <code>dot-css-news.com</code>)。最大100件。",
   creator_allowlist_placeholder: "youtube.com/@creator  または  dot-css-news.com",

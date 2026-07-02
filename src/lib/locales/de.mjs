@@ -161,7 +161,7 @@ export default Object.freeze({
   advanced_mode_label: "Erweiterte Einstellungen anzeigen",
   advanced_mode_hint: "Detaillierte Kontrolle über URL-Bereinigung, Datenschutz und Entwicklertools",
   honor_creator_mode_label: "Creator-Modus respektieren",
-  honor_creator_mode_hint: "Bewahrt Creator-Referral-Ketten auf vertrauenswürdigen Weiterleitungsnetzwerken. Standardmäßig deaktiviert; aktivieren, um Creator zu unterstützen, denen du folgst.",
+  honor_creator_mode_hint: "Bewahrt Creator-Referral-Ketten bei vertrauenswürdigen Social-Media- und Link-Shortener-Weiterleitungen. Standardmäßig deaktiviert; aktivieren, um Creator zu unterstützen, denen du folgst.",
   creator_allowlist_label: "Creator, die du unterstützt",
   creator_allowlist_hint: "Füge Referrer-Domains hinzu, auf denen der Creator-Modus Referral-Ketten bewahren soll (z.B. <code>youtube.com/@LinusTechTips</code>, <code>dot-css-news.com</code>). Bis zu 100 Einträge.",
   creator_allowlist_placeholder: "youtube.com/@creator  oder  dot-css-news.com",

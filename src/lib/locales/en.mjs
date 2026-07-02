@@ -161,7 +161,7 @@ export default Object.freeze({
   advanced_mode_label: "Show advanced settings",
   advanced_mode_hint: "Fine-grained control over URL cleaning, privacy, and developer tools",
   honor_creator_mode_label: "Honor Creator Mode",
-  honor_creator_mode_hint: "Preserve creator referral chains on trusted redirect networks. Off by default; enable to support creators you follow.",
+  honor_creator_mode_hint: "Preserve creator referral chains on trusted social-media and link-shortener redirects. Off by default; enable to support creators you follow.",
   creator_allowlist_label: "Creators you support",
   creator_allowlist_hint: "Add referrer domains where Honor Creator Mode should preserve creator referral chains (e.g. <code>youtube.com/@LinusTechTips</code>, <code>dot-css-news.com</code>). Up to 100 entries.",
   creator_allowlist_placeholder: "youtube.com/@creator  or  dot-css-news.com",

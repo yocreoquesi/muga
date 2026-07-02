@@ -126,7 +126,7 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
 
 **Functional param** — a parameter that changes what the user sees (search query, pagination, locale, sort order). Never strip. Protected by `preserveParams` entries in `src/rules/domain-rules.json` and by Gate 4 of the ingestion pipeline.
 
-**Honor Creator** — a user-opt-in mode that passes a redirect-network wrapper URL through unmodified when the navigation referrer matches the user's `creatorAllowlist`. Prevents MUGA from unwrapping a creator's affiliate link before the commission is recorded. Implemented in `src/lib/honor-creator.js`.
+**Honor Creator** — a user-opt-in mode that passes a social-media or link-shortener wrapper URL (a `detectWrapper()` match — see **Wrapper** below) through unmodified when the navigation referrer matches the user's `creatorAllowlist`. Does not govern affiliate-redirect networks (Awin, Skimlinks, ShareASale, Impact, Rakuten, TradeTracker): those are excluded from `detectWrapper()` and honored automatically via unconditional pass-through (`AFFILIATE_REDIRECT_NETWORKS`, #907), independent of this toggle. Implemented in `src/lib/honor-creator.js`.
 
 **Redirect network** — an affiliate network whose attribution model is "the click IS the conversion event" (Awin, CJ Affiliate, Impact Radius, Admitad, etc.). MUGA never injects on these; it only preserves their `landingParams`. See `src/lib/redirect-networks.js` and [ADR-0003](docs/adr/0003-awin-redirect-model-resolution.md).
 
