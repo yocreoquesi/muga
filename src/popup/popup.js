@@ -44,6 +44,31 @@ function _setClipboardIcon(el) {
   el.appendChild(_createClipboardSvg());
 }
 
+/**
+ * Writes `text` to the clipboard, then shows one-shot visual feedback that
+ * reverts after 1200ms. Centralizes the try/writeText/timeout pattern shared
+ * by the history-entry click-to-copy, the copy-clean icon button, and the
+ * copy-original button (#935) — each call site plugs in its own success/error
+ * rendering via the callbacks since they differ (label swap, icon swap,
+ * classList toggle) while the clipboard write + revert-after-1200ms plumbing
+ * stays identical.
+ *
+ * @param {string}   text       Text to write to the clipboard.
+ * @param {object}   handlers
+ * @param {Function} handlers.onSuccess Called after a successful write; render the "copied" feedback state.
+ * @param {Function} handlers.onError   Called after a failed write; render the "✗" failure state.
+ * @param {Function} handlers.onRevert  Called 1200ms after either outcome; restore the pre-copy state.
+ */
+function copyWithFeedback(text, { onSuccess, onError, onRevert }) {
+  navigator.clipboard.writeText(text).then(() => {
+    onSuccess();
+    setTimeout(onRevert, 1200);
+  }).catch(() => {
+    onError();
+    setTimeout(onRevert, 1200);
+  });
+}
+
 // ── Param breakdown ───────────────────────────────────────────────────────────
 
 /** Builds a reverse index: param name → { category key, label, labelEs, labelPt, labelDe }. Cached as singleton. */
@@ -1296,36 +1321,35 @@ async function showHistory(prefs, lang) {
     entryDiv.addEventListener("click", (e) => {
       if (e.target === copyOrigBtn || copyCleanBtn.contains(e.target)) return; // handled separately
       const orig = afterDiv.textContent;
-      navigator.clipboard.writeText(entry.clean).then(() => {
-        entryDiv.classList.add("copied");
-        afterDiv.textContent = t("history_copied", lang);
-        setTimeout(() => {
+      copyWithFeedback(entry.clean, {
+        onSuccess: () => {
+          entryDiv.classList.add("copied");
+          afterDiv.textContent = t("history_copied", lang);
+        },
+        onError: () => { afterDiv.textContent = "✗"; },
+        onRevert: () => {
           entryDiv.classList.remove("copied");
           afterDiv.textContent = orig;
-        }, 1200);
-      }).catch(() => {
-        afterDiv.textContent = "✗";
-        setTimeout(() => { afterDiv.textContent = orig; }, 1200);
+        },
       });
     });
 
     // Copy clean URL icon button
     copyCleanBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      navigator.clipboard.writeText(entry.clean).then(() => {
-        copyCleanBtn.textContent = "✓";
-        copyCleanBtn.style.fontSize = "11px";
-        setTimeout(() => {
+      copyWithFeedback(entry.clean, {
+        onSuccess: () => {
+          copyCleanBtn.textContent = "✓";
+          copyCleanBtn.style.fontSize = "11px";
+        },
+        onError: () => {
+          copyCleanBtn.textContent = "✗";
+          copyCleanBtn.style.fontSize = "11px";
+        },
+        onRevert: () => {
           _setClipboardIcon(copyCleanBtn);
           copyCleanBtn.style.fontSize = "";
-        }, 1200);
-      }).catch(() => {
-        copyCleanBtn.textContent = "✗";
-        copyCleanBtn.style.fontSize = "11px";
-        setTimeout(() => {
-          _setClipboardIcon(copyCleanBtn);
-          copyCleanBtn.style.fontSize = "";
-        }, 1200);
+        },
       });
     });
 
@@ -1333,12 +1357,10 @@ async function showHistory(prefs, lang) {
     copyOrigBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const origText = copyOrigBtn.textContent;
-      navigator.clipboard.writeText(entry.original).then(() => {
-        copyOrigBtn.textContent = t("history_copied", lang);
-        setTimeout(() => { copyOrigBtn.textContent = origText; }, 1200);
-      }).catch(() => {
-        copyOrigBtn.textContent = "✗";
-        setTimeout(() => { copyOrigBtn.textContent = origText; }, 1200);
+      copyWithFeedback(entry.original, {
+        onSuccess: () => { copyOrigBtn.textContent = t("history_copied", lang); },
+        onError: () => { copyOrigBtn.textContent = "✗"; },
+        onRevert: () => { copyOrigBtn.textContent = origText; },
       });
     });
   });
