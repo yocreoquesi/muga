@@ -71,7 +71,7 @@ export default Object.freeze({
   row_inject_label: "リンクにアフィリエイトタグがない場合は当方のタグを挿入",
   row_inject_hint: "デフォルトでオフ。価格は常に同じです。これにより、追加費用なしで独立開発者を支援できます。",
   row_notify_label: "リンクに他者のアフィリエイトタグがある場合に通知",
-  row_notify_hint: "オプション付きの通知を表示。15秒後に自動的に閉じます",
+  row_notify_hint: "オプション付きの通知を表示し、その後自動的に閉じます",
   row_strip_affiliates_label: "他のソースからのアフィリエイトタグをすべて削除",
   row_strip_affiliates_hint: "他者が設定したアフィリエイトタグをすべてのリンクから削除します。MUGAのアフィリエイト挿入が有効な場合、当方のタグは保持されます。それ以外の場合は当方のタグも削除されます。",
   section_stores: "アフィリエイトストア",

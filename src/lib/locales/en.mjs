@@ -71,7 +71,7 @@ export default Object.freeze({
   row_inject_label: "Inject our affiliate tag when a link has none",
   row_inject_hint: "Off by default. You always pay the same price. This is how you support an independent developer at zero cost to you.",
   row_notify_label: "Alert me when a link has someone else's affiliate tag",
-  row_notify_hint: "Shows a quick notification with options. Auto-dismisses in 15 seconds",
+  row_notify_hint: "Shows a quick notification with options, then auto-dismisses",
   row_strip_affiliates_label: "Remove all affiliate tags from other sources",
   row_strip_affiliates_hint: "Removes affiliate tags placed by others from all links. If MUGA's affiliate injection is enabled, our tag is preserved; otherwise it is removed too.",
   section_stores: "Affiliate stores",

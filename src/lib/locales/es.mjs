@@ -71,7 +71,7 @@ export default Object.freeze({
   row_inject_label: "Inyectar nuestro afiliado cuando no hay ninguno",
   row_inject_hint: "Desactivado por defecto. Siempre pagas el mismo precio. Así apoyas a un desarrollador independiente sin coste para ti.",
   row_notify_label: "Avisarme cuando un enlace tenga el tag de afiliado de otro",
-  row_notify_hint: "Muestra una notificación rápida con opciones. Desaparece en 15 segundos",
+  row_notify_hint: "Muestra una notificación rápida con opciones y luego desaparece automáticamente",
   row_strip_affiliates_label: "Eliminar todos los tags de afiliado ajenos",
   row_strip_affiliates_hint: "Elimina los tags de afiliado de otros de todos los enlaces. Si la inyección de afiliado de MUGA está activada, nuestro tag se conserva; si no, también se elimina.",
   section_stores: "Tiendas afiliadas",

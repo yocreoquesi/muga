@@ -71,7 +71,7 @@ export default Object.freeze({
   row_inject_label: "Injecter notre tag d'affiliation lorsqu'un lien n'en a aucun",
   row_inject_hint: "Désactivé par défaut. Vous payez toujours le même prix. C'est ainsi que vous soutenez un développeur indépendant sans aucun coût pour vous.",
   row_notify_label: "M'avertir lorsqu'un lien contient le tag d'affiliation de quelqu'un d'autre",
-  row_notify_hint: "Affiche une notification rapide avec des options. Disparaît automatiquement après 15 secondes",
+  row_notify_hint: "Affiche une notification rapide avec des options, puis disparaît automatiquement",
   row_strip_affiliates_label: "Supprimer tous les tags d'affiliation d'autres sources",
   row_strip_affiliates_hint: "Supprime de tous les liens les tags d'affiliation placés par d'autres. Si l'injection d'affiliation de MUGA est activée, notre tag est préservé ; sinon, il est aussi supprimé.",
   section_stores: "Boutiques affiliées",
