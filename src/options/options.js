@@ -195,6 +195,7 @@ async function init() {
 /** Binds a checkbox to a sync storage preference key. */
 function bindToggle(id, key, prefs) {
   const el = document.getElementById(id);
+  if (!el) return;
   el.checked = prefs[key];
   el.addEventListener("change", () => {
     try { setPrefs({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
