@@ -175,9 +175,8 @@ describe("B12 honorCreatorMode — read/write round-trip", () => {
 // ── Options page exposes the toggle ─────────────────────────────────────────
 describe("B12 honorCreatorMode — options page UI", () => {
   test("options.html declares an Advanced section that hosts the toggle", () => {
-    // The toggle lives inside the existing Advanced (#section-dev) area so
-    // the user can find creator-mode options under "Advanced" without
-    // requiring dev-mode to be on.
+    // The toggle lives inside the Advanced (#section-dev) area — specifically
+    // inside the dev-mode-gated #dev-tools-card after the #936 IA reorg.
     assert.ok(
       OPTIONS_HTML.includes('id="section-dev"'),
       "options.html must keep the Advanced section (#section-dev)"
@@ -213,18 +212,17 @@ describe("B12 honorCreatorMode — options page UI", () => {
     );
   });
 
-  test("toggle is NOT gated by dev-mode (lives outside #dev-tools-card)", () => {
-    // Locate the honor-creator-mode input and ensure it appears before the
-    // dev-tools-card opens — i.e. it's in the always-visible part of the
-    // Advanced section. If a future refactor moves it inside dev-tools-card,
-    // this regression test fails so we revisit visibility.
+  test("toggle is gated by dev-mode (lives inside #dev-tools-card, #936)", () => {
+    // #936 IA reorg: Honor Creator Mode moved INTO the dev-mode-gated
+    // #dev-tools-card (it was wrongly always-visible before). It must now
+    // appear AFTER the card opens so "Show advanced settings" controls it.
     const hcmIdx = OPTIONS_HTML.indexOf('id="honor-creator-mode"');
     const devToolsIdx = OPTIONS_HTML.indexOf('id="dev-tools-card"');
     assert.ok(hcmIdx !== -1, "honor-creator-mode must exist in options.html");
     assert.ok(devToolsIdx !== -1, "dev-tools-card must still exist");
     assert.ok(
-      hcmIdx < devToolsIdx,
-      "honor-creator-mode must be placed BEFORE #dev-tools-card so it stays visible without enabling dev-mode"
+      hcmIdx > devToolsIdx,
+      "honor-creator-mode must live inside #dev-tools-card so it is gated behind dev-mode (#936)"
     );
   });
 

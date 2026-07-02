@@ -152,26 +152,30 @@ describe("T3.1 remote-rules section in options.html", () => {
     );
   });
 
-  test("section is placed between custom-params area and About/footer", () => {
-    // v1.10.2 layout: remote-rules comes BEFORE the Advanced (#section-dev)
-    // section so that Advanced stays the last thing on the page. Custom params
-    // live inside Advanced (dev-mode-gated), so remote-rules also ends up
-    // before the custom-params markup.
-    const devIdx = optionsHtml.indexOf('id="section-dev"');
-    const rrIdx  = optionsHtml.indexOf('id="remote-rules-section"');
-    const verIdx = optionsHtml.indexOf('version-info');
+  test("section lives inside the Advanced (dev-mode-gated) block", () => {
+    // #936 IA reorg: remote-rules moved INTO the dev-mode-gated Advanced card
+    // (#dev-tools-card, inside #section-dev) so it is only visible with
+    // "Show advanced settings" on. It therefore now appears AFTER the
+    // #section-dev opening tag and inside the #dev-tools-card container, but
+    // still above the version-info / footer. The Advanced section as a whole
+    // still sits above Support + version-info.
+    const devIdx   = optionsHtml.indexOf('id="section-dev"');
+    const cardIdx  = optionsHtml.indexOf('id="dev-tools-card"');
+    const rrIdx    = optionsHtml.indexOf('id="remote-rules-section"');
+    const verIdx   = optionsHtml.indexOf('version-info');
 
-    assert.ok(devIdx !== -1, "options.html must still contain the #section-dev (Advanced) block");
-    assert.ok(rrIdx !== -1,  "remote-rules section must exist");
-    assert.ok(verIdx !== -1, "version-info must still be in the page");
+    assert.ok(devIdx !== -1,  "options.html must still contain the #section-dev (Advanced) block");
+    assert.ok(cardIdx !== -1, "options.html must still contain the #dev-tools-card gated container");
+    assert.ok(rrIdx !== -1,   "remote-rules section must exist");
+    assert.ok(verIdx !== -1,  "version-info must still be in the page");
 
     assert.ok(
-      rrIdx < devIdx,
-      "remote-rules section must appear before the Advanced section (which stays last, v1.10.2)"
+      rrIdx > cardIdx,
+      "remote-rules section must now live INSIDE the dev-mode-gated #dev-tools-card (#936)"
     );
     assert.ok(
-      devIdx < verIdx,
-      "Advanced section must stay above the version-info / footer"
+      devIdx < rrIdx && rrIdx < verIdx,
+      "remote-rules must sit inside the Advanced block, which stays above the version-info / footer"
     );
   });
 });

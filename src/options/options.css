@@ -242,6 +242,16 @@ h2 {
 }
 .del-btn:hover { color: var(--danger); background: var(--danger-soft); }
 
+/* ---------- Merged list group (#936: Rules & lists section) ------------ */
+.list-group-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-1);
+  margin-bottom: 8px;
+}
+.list-group-divider { border-top: 1px solid var(--border-1); }
+
 /* ---------- Creator allowlist editor (#445, B13) ----------------------- */
 .creator-allowlist-section {
   border-top: 1px solid var(--border-1);
