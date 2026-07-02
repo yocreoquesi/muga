@@ -50,7 +50,6 @@
   --border: var(--border-1);
   --text: var(--text-1);
   --text2: var(--text-2);
-  --toggle-off: var(--border-2);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -572,7 +571,6 @@ input[type="text"]:not(.add-row input) {
 
 /* Utility: spacing */
 .mt-8  { margin-top:  8px; }
-.mt-10 { margin-top: 10px; }
 .mt-16 { margin-top: 16px; }
 
 /* Utility: padding shorthand used in dev-tools card rows */
@@ -584,7 +582,7 @@ input[type="text"]:not(.add-row input) {
 /* Dev-tools card: visually subordinate card spacing */
 .card-dev { margin-top: 10px; }
 
-/* Outer dev-tools container — hidden until dev mode is active.
+/* Outer dev-tools container â€” hidden until dev mode is active.
    JS toggles visibility by adding/removing this class so that
    display:none is controlled at the class level, not inline. */
 .dev-tools-hidden { display: none; }

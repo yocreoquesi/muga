@@ -851,41 +851,12 @@ function syncDevTools() {
   const devModeEl = document.getElementById("dev-mode");
   const devToolsCard = document.getElementById("dev-tools-card");
   if (!devModeEl || !devToolsCard) return;
-  // #858: visibility driven by CSS class (no inline style � required for CSP style-src without 'unsafe-inline')
+  // #858: visibility driven by CSS class (no inline style — required for CSP style-src without 'unsafe-inline')
   devToolsCard.classList.toggle("dev-tools-hidden", !devModeEl.checked);
 }
 
 /** Initializes dev tools: URL tester and preview features. */
 function initDevTools() {
-  // Report broken site: opens a pre-filled GitHub issue
-  const reportBrokenBtn = document.getElementById("dev-report-broken-btn");
-  if (reportBrokenBtn) {
-    reportBrokenBtn.addEventListener("click", async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      let hostname = "unknown";
-      try { if (tab?.url) hostname = new URL(tab.url).hostname; } catch { /* non-http tab */ }
-      const version = chrome.runtime.getManifest().version;
-      const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-      const features = [
-        prefs.dnrEnabled && "DNR",
-        prefs.blockPings && "ping-blocking",
-        prefs.ampRedirect && "AMP-redirect",
-        prefs.unwrapRedirects && "redirect-unwrap",
-      ].filter(Boolean).join(", ") || "default";
-      const title = encodeURIComponent(`[Report] ${hostname}`);
-      const body = encodeURIComponent(
-        `## Broken site report\n\n` +
-        `**Domain:** ${hostname}\n` +
-        `**MUGA version:** ${version}\n` +
-        `**Browser:** ${navigator.userAgent}\n` +
-        `**Features active:** ${features}\n\n` +
-        `## What broke?\n\n` +
-        `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
-      );
-      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site`, "_blank", "noopener,noreferrer");
-    });
-  }
-
   // Preview notification: replicas the real affiliate toast from content/cleaner.js
   const previewBtn = document.getElementById("dev-preview-notify-btn");
   if (!previewBtn) return;
