@@ -59,6 +59,17 @@ describe("getLandingPolicy — empty policy contract", () => {
     assert.equal(policy.preserve.size, 0);
     assert.equal(policy.network, null);
   });
+
+  test("same-origin check requires a literal 'www.' prefix, not 'www' + any character", () => {
+    // Regression test: the www-strip regex must be /^www\./ (escaped dot), not
+    // /^www./ (unescaped dot matches ANY single character). With the bug,
+    // "www1awin1.com" incorrectly strips to "awin1.com", which then falsely
+    // matches the referrer host and short-circuits to the empty policy,
+    // hiding a real first-touch network match.
+    const policy = getLandingPolicy("www1awin1.com", "awin1.com");
+    assert.equal(policy.network, "awin");
+    assert.ok(policy.preserve.size > 0);
+  });
 });
 
 describe("getLandingPolicy — first-touch from each matrix v1.0 network", () => {
