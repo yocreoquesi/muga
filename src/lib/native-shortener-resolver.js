@@ -4,10 +4,6 @@
 // Performs the same HTTP redirect the browser would perform,
 // reads the `Location` header, and returns the destination — no server hop.
 //
-// This module is PURE resolution logic: it is NOT wired into the service
-// worker (ADR-0004 phase 1). Gating on optional_host_permissions and the
-// dual-path feature flag land in phases 2-3.
-//
 // Behaviour & safety floor — MUGA is a denoise tool, not a security/privacy
 // product, so these are CORRECTNESS guards (don't hand back garbage), not a
 // security posture. Notably http:// destinations are allowed: the user clicked

@@ -7,13 +7,14 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
-import { isValidListEntry, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
+import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import {
   addEntry as addCreatorAllowlistEntry,
   removeEntry as removeCreatorAllowlistEntry,
 } from "../lib/creator-allowlist.js";
 import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
+import { createMutex, withSyncMutation } from "./sync-mutation.js";
 
 let _currentLang = "en";
 
@@ -131,8 +132,21 @@ async function init() {
   bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
   // ADR-0004 phase 5 (#701): useNativeShortenerResolution flag removed — native
   // resolution is now the only path, the toggle is vestigial and has been deleted.
-  // Per-creator allowlist editor (#445, B13). Lives in the Advanced card,
-  // visible without dev-mode (parallel to the honor-creator-mode toggle).
+
+  // #925: surface the seven previously UI-less prefs as Advanced controls
+  // (all default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
+  // userCustomRules list uses the shared renderList/removeEntry path below.
+  // Privacy group:
+  bindToggle("canonical-extractor", "canonicalExtractorEnabled", prefs);
+  bindToggle("cross-site-frequency", "crossSiteFrequencyEnabled", prefs);
+  bindToggle("attribution-ledger", "attributionLedgerEnabled", prefs);
+  // Display group:
+  bindToggle("param-breakdown", "paramBreakdown", prefs);
+  bindToggle("show-report-button", "showReportButton", prefs);
+  bindToggle("domain-stats", "domainStats", prefs);
+
+  // Per-creator allowlist editor (#445, B13). Lives in the Advanced card
+  // (dev-mode gated after the #936 reorg), alongside the honor-creator-mode toggle.
   initCreatorAllowlist(prefs.creatorAllowlist || []);
 
   // Toast duration select
@@ -146,6 +160,10 @@ async function init() {
   renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
+  // #925: view/remove editor for the popup-populated userCustomRules list.
+  // Reuses the generic renderList + removeEntry path (no add box — entries
+  // come from the popup's "Strip locally" button).
+  renderList("user-custom-rules-items", prefs.userCustomRules || [], "userCustomRules");
   renderCategories(prefs.disabledCategories || []);
   renderStores();
   initLanguageSelect();
@@ -195,6 +213,7 @@ async function init() {
 /** Binds a checkbox to a sync storage preference key. */
 function bindToggle(id, key, prefs) {
   const el = document.getElementById(id);
+  if (!el) return;
   el.checked = prefs[key];
   el.addEventListener("change", () => {
     try { setPrefs({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
@@ -320,33 +339,43 @@ function initCreatorAllowlist(initial) {
     });
   }
 
-  /** Serializes allowlist mutations to prevent read-modify-write races. */
-  let _calMutex = Promise.resolve();
-  function withLock(fn) {
-    _calMutex = _calMutex.then(fn, fn);
-    return _calMutex;
-  }
+  // Serializes allowlist mutations to prevent read-modify-write races
+  // (#928: composes with the shared withSyncMutation helper instead of
+  // duplicating its own read-mutate-write block).
+  const withLock = createMutex();
+  // This editor keeps its own in-memory `list` as the source of truth
+  // (predates #928) rather than re-reading chrome.storage.sync on every
+  // mutation, so the get/set deps below wrap that closure array instead of
+  // hitting storage directly — same behaviour as before, now routed through
+  // withSyncMutation for consistency + locking with the rest of options.js.
+  const syncDeps = {
+    get: async () => ({ creatorAllowlist: list }),
+    set: async (partial) => {
+      list.length = 0;
+      list.push(...partial.creatorAllowlist);
+      await setPrefs(partial);
+    },
+  };
 
   function onAdd() {
-    return withLock(async () => {
-      const raw = input.value;
-      const result = addCreatorAllowlistEntry(list, raw);
+    const raw = input.value;
+    return withSyncMutation(withLock, "creatorAllowlist", [], (current) => {
+      const result = addCreatorAllowlistEntry(current, raw);
       if (result.error === "empty") {
         showError("creator_allowlist_err_empty");
-        return;
+        return undefined;
       }
       if (result.error === "duplicate") {
         showError("creator_allowlist_err_duplicate");
-        return;
+        return undefined;
       }
       if (result.error === "max") {
         showError("creator_allowlist_err_max");
-        return;
+        return undefined;
       }
-      list.length = 0;
-      list.push(...result.list);
-      try { await setPrefs({ creatorAllowlist: result.list }); }
-      catch (err) { console.error("[MUGA] save creator allowlist:", err); }
+      return result.list;
+    }, syncDeps).then((next) => {
+      if (next === undefined) return;
       input.value = "";
       clearError();
       render(list);
@@ -354,12 +383,13 @@ function initCreatorAllowlist(initial) {
   }
 
   function onRemove(entry) {
-    return withLock(async () => {
-      const next = removeCreatorAllowlistEntry(list, entry);
-      list.length = 0;
-      list.push(...next);
-      try { await setPrefs({ creatorAllowlist: next }); }
-      catch (err) { console.error("[MUGA] save creator allowlist:", err); }
+    return withSyncMutation(
+      withLock,
+      "creatorAllowlist",
+      [],
+      (current) => removeCreatorAllowlistEntry(current, entry),
+      syncDeps,
+    ).then(() => {
       clearError();
       render(list);
     });
@@ -376,6 +406,12 @@ function initCreatorAllowlist(initial) {
 
   render(list);
 }
+
+// Serializes tracking-category toggle mutations (#928). Independent of the
+// list-editor lock (withListLock) and the creator-allowlist lock — none of
+// these three groups can race with each other since they touch different
+// storage keys, so each gets its own queue.
+const withCategoriesLock = createMutex();
 
 /** Renders tracking category toggle cards. */
 function renderCategories(disabledCategories) {
@@ -411,16 +447,20 @@ function renderCategories(disabledCategories) {
     input.id = `cat-${key}`;
     input.checked = !disabled.has(key);
     input.setAttribute("aria-label", label);
-    input.addEventListener("change", async () => {
-      let prefs;
-      try { prefs = await chrome.storage.sync.get({ disabledCategories: [] }); } catch (err) { console.error("[MUGA] load categories:", err); return; }
-      const set = new Set(prefs.disabledCategories);
-      if (input.checked) {
-        set.delete(key);
-      } else {
-        set.add(key);
-      }
-      try { await setPrefs({ disabledCategories: [...set] }); } catch (err) { console.error("[MUGA] save category:", err); }
+    input.addEventListener("change", () => {
+      // #928: previously read-mutated-wrote disabledCategories with no lock,
+      // so rapid toggles across categories could race and drop a write.
+      // Now routed through withSyncMutation + withCategoriesLock like the
+      // other list/allowlist editors.
+      withSyncMutation(withCategoriesLock, "disabledCategories", [], (current) => {
+        const set = new Set(current);
+        if (input.checked) {
+          set.delete(key);
+        } else {
+          set.add(key);
+        }
+        return [...set];
+      });
     });
 
     const slider = document.createElement("span");
@@ -614,15 +654,15 @@ function initLanguageSelect() {
     renderList("custom-params-items", prefs.customParams || [], "customParams");
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
+    renderList("user-custom-rules-items", prefs.userCustomRules || [], "userCustomRules");
   });
 }
 
-/** Serializes list mutations to prevent read-modify-write races. */
-let _listMutex = Promise.resolve();
-function withListLock(fn) {
-  _listMutex = _listMutex.then(fn, fn);
-  return _listMutex;
-}
+// Serializes list mutations to prevent read-modify-write races. Shared by
+// blacklist/whitelist/customParams add + remove (#928) — these three keys
+// intentionally queue through ONE lock (not one each) so an add and a
+// remove firing back-to-back on the same or different lists never race.
+const withListLock = createMutex();
 
 /** Adds a new entry to a list (blacklist/whitelist/customParams). */
 function addEntry(listKey, inputId, containerId) {
@@ -631,46 +671,40 @@ function addEntry(listKey, inputId, containerId) {
   if (!value) return;
   if (listKey === "customParams") {
     if (!/^[a-zA-Z0-9_.\-]+$/.test(value)) {
-      showToast(t("import_error", _currentLang));
+      showToast(t("add_entry_invalid", _currentLang));
       return;
     }
   } else if (!isValidListEntry(value)) {
-    showToast(t("import_error", _currentLang));
+    showToast(t("add_entry_invalid", _currentLang));
     return;
   }
-  return withListLock(async () => {
-    let prefs;
-    try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
-    const list = prefs[listKey];
-    if (!list.includes(value)) {
-      // Enforce the same per-list caps the import path applies (#728 item 28).
-      // IMPORT_LIST_CAPS is the single source of truth shared with capImportedLists,
-      // so the UI add path can never grow a list past what the importer accepts.
-      const cap = IMPORT_LIST_CAPS[listKey];
-      if (list.length >= cap) {
-        showToast(t("import_error", _currentLang));
-        input.value = "";
-        return;
-      }
-      list.push(value);
-      try { await setPrefs({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
-      renderList(containerId, list, listKey);
+  return withSyncMutation(withListLock, listKey, [], (list) => {
+    if (list.includes(value)) return undefined; // already present — no-op
+    // Enforce the same per-list caps the import path applies (#728 item 28).
+    // IMPORT_LIST_CAPS is the single source of truth shared with capImportedLists,
+    // so the UI add path can never grow a list past what the importer accepts.
+    const cap = IMPORT_LIST_CAPS[listKey];
+    if (list.length >= cap) {
+      showToast(t("list_full", _currentLang));
+      return undefined;
     }
+    return [...list, value];
+  }).then((next) => {
     input.value = "";
+    if (next !== undefined) renderList(containerId, next, listKey);
   });
 }
 
 /** Removes an entry from a list by index. */
 function removeEntry(listKey, index) {
-  return withListLock(async () => {
-    const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items" };
-    const containerId = containerMap[listKey] ?? `${listKey}-items`;
-    let prefs;
-    try { prefs = await chrome.storage.sync.get({ [listKey]: [] }); } catch (err) { console.error("[MUGA] load list:", err); return; }
-    const list = prefs[listKey];
-    list.splice(index, 1);
-    try { await setPrefs({ [listKey]: list }); } catch (err) { console.error("[MUGA] save entry:", err); }
-    renderList(containerId, list, listKey);
+  const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items", userCustomRules: "user-custom-rules-items" };
+  const containerId = containerMap[listKey] ?? `${listKey}-items`;
+  return withSyncMutation(withListLock, listKey, [], (list) => {
+    const next = [...list];
+    next.splice(index, 1);
+    return next;
+  }).then((next) => {
+    if (next !== undefined) renderList(containerId, next, listKey);
   });
 }
 
@@ -740,6 +774,12 @@ function initExportImport() {
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
       followShortenersEnabled: prefs.followShortenersEnabled,
+      // #925: privacy booleans are now user-controllable, so round-trip them.
+      canonicalExtractorEnabled: prefs.canonicalExtractorEnabled,
+      crossSiteFrequencyEnabled: prefs.crossSiteFrequencyEnabled,
+      attributionLedgerEnabled: prefs.attributionLedgerEnabled,
+      // #925: the popup-populated custom strip rules, handled like the other sync arrays.
+      userCustomRules: prefs.userCustomRules,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -784,7 +824,7 @@ function initExportImport() {
       const { blacklist, whitelist, customParams, droppedBlacklist, droppedWhitelist, skippedParams } = capImportedLists(data);
       const skipped = skippedParams + droppedBlacklist + droppedWhitelist;
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
       const toSave = { blacklist, whitelist, customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -801,6 +841,13 @@ function initExportImport() {
       // Handle toastDuration (number 5-60)
       if (typeof data.toastDuration === "number") {
         toSave.toastDuration = Math.max(5, Math.min(60, data.toastDuration));
+      }
+      // #925: userCustomRules — validate each entry as a bare param name and
+      // cap at the customParams ceiling (same shape/limit the popup enforces).
+      if (Array.isArray(data.userCustomRules)) {
+        toSave.userCustomRules = data.userCustomRules
+          .filter(isValidCustomParam)
+          .slice(0, IMPORT_LIST_CAPS.customParams);
       }
       // Handle language (any supported locale) — validate against SUPPORTED_LANGS
       // so codes added after the legacy en/es/pt/de set (fr/it/ja, #707) survive
@@ -820,6 +867,13 @@ function initExportImport() {
       document.getElementById("block-pings").checked = newPrefs.blockPings;
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
+      // #925: refresh the newly-surfaced privacy + display toggles after import
+      document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
+      document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;
+      document.getElementById("attribution-ledger").checked = newPrefs.attributionLedgerEnabled;
+      document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
+      document.getElementById("show-report-button").checked = newPrefs.showReportButton;
+      document.getElementById("domain-stats").checked = newPrefs.domainStats;
       // devMode is device-local — re-read from local storage after import
       document.getElementById("dev-mode").checked = await getDevMode();
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
@@ -832,6 +886,7 @@ function initExportImport() {
       renderList("blacklist-items", newPrefs.blacklist, "blacklist");
       renderList("whitelist-items", newPrefs.whitelist, "whitelist");
       renderList("custom-params-items", newPrefs.customParams, "customParams");
+      renderList("user-custom-rules-items", newPrefs.userCustomRules || [], "userCustomRules");
       renderCategories(newPrefs.disabledCategories || []);
       if (skipped > 0) {
         showToast(t("import_params_skipped", _currentLang).replace("{n}", String(skipped)));
@@ -850,41 +905,12 @@ function syncDevTools() {
   const devModeEl = document.getElementById("dev-mode");
   const devToolsCard = document.getElementById("dev-tools-card");
   if (!devModeEl || !devToolsCard) return;
-  // #858: visibility driven by CSS class (no inline style � required for CSP style-src without 'unsafe-inline')
+  // #858: visibility driven by CSS class (no inline style — required for CSP style-src without 'unsafe-inline')
   devToolsCard.classList.toggle("dev-tools-hidden", !devModeEl.checked);
 }
 
 /** Initializes dev tools: URL tester and preview features. */
 function initDevTools() {
-  // Report broken site: opens a pre-filled GitHub issue
-  const reportBrokenBtn = document.getElementById("dev-report-broken-btn");
-  if (reportBrokenBtn) {
-    reportBrokenBtn.addEventListener("click", async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      let hostname = "unknown";
-      try { if (tab?.url) hostname = new URL(tab.url).hostname; } catch { /* non-http tab */ }
-      const version = chrome.runtime.getManifest().version;
-      const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-      const features = [
-        prefs.dnrEnabled && "DNR",
-        prefs.blockPings && "ping-blocking",
-        prefs.ampRedirect && "AMP-redirect",
-        prefs.unwrapRedirects && "redirect-unwrap",
-      ].filter(Boolean).join(", ") || "default";
-      const title = encodeURIComponent(`[Report] ${hostname}`);
-      const body = encodeURIComponent(
-        `## Broken site report\n\n` +
-        `**Domain:** ${hostname}\n` +
-        `**MUGA version:** ${version}\n` +
-        `**Browser:** ${navigator.userAgent}\n` +
-        `**Features active:** ${features}\n\n` +
-        `## What broke?\n\n` +
-        `<!-- Describe what stopped working after MUGA cleaned the URL -->\n`
-      );
-      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}&labels=broken-site`, "_blank", "noopener,noreferrer");
-    });
-  }
-
   // Preview notification: replicas the real affiliate toast from content/cleaner.js
   const previewBtn = document.getElementById("dev-preview-notify-btn");
   if (!previewBtn) return;

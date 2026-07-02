@@ -11,8 +11,12 @@
   <h1 data-i18n="opts_title">Settings</h1>
   <p class="subtitle" data-i18n="opts_subtitle">The denoise extension for the web.</p>
 
+  <!-- ═══ TIER 1 — always visible ═══ -->
+
+  <!-- Affiliate & creators (#936): inject, notify, toast-duration (promoted
+       next to notify, #925 Part A), strip-affiliates. -->
   <section>
-    <h2 data-i18n="section_affiliate_settings">Affiliate settings</h2>
+    <h2 data-i18n="section_affiliate_settings">Affiliate &amp; creators</h2>
     <div class="card">
       <div class="row">
         <div class="row-label">
@@ -24,9 +28,21 @@
       <div class="row">
         <div class="row-label">
           <strong data-i18n="row_notify_label">Alert me when a link has someone else's affiliate tag</strong>
-          <small data-i18n="row_notify_hint">Shows a quick notification with options. Auto-dismisses in 15 seconds</small>
+          <small data-i18n="row_notify_hint">Shows a quick notification with options, then auto-dismisses</small>
         </div>
         <label class="toggle"><input type="checkbox" id="notify" data-i18n-aria-label="aria_notify"><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="row_toast_duration_label">Toast duration when a creator tag is detected</strong>
+          <small data-i18n="row_toast_duration_hint">How long the notification stays visible before auto-dismissing</small>
+        </div>
+        <select class="lang-select" id="toast-duration-select" data-i18n-aria-label="aria_toast_duration">
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+          <option value="15" selected>15s</option>
+          <option value="30">30s</option>
+        </select>
       </div>
       <div class="row">
         <div class="row-label">
@@ -38,23 +54,12 @@
     </div>
   </section>
 
+  <!-- Rules & lists (#936): the two visible list editors, co-located. -->
   <section>
-    <h2 data-i18n="section_features">Features</h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_context_menu_label">Right-click → Copy clean link or selection</strong>
-          <small data-i18n="row_context_menu_hint">Works on a single link, a text selection with multiple URLs, or plain-text URLs. Alt+Shift+C copies the current tab's clean URL. Ctrl+C also auto-cleans URLs in your selection.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="context-menu-toggle" data-i18n-aria-label="aria_context_menu"><span class="slider"></span></label>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 data-i18n="section_blacklist">Blocked domains: always strip</h2>
+    <h2 data-i18n="section_rules_lists">Rules &amp; lists</h2>
     <div class="card">
       <div class="list-section">
+        <strong class="list-group-title" data-i18n="section_blacklist">Blocked domains: always strip</strong>
         <div class="list-items" id="blacklist-items"></div>
         <div class="add-row">
           <input id="bl-input" type="text" data-i18n-placeholder="bl_placeholder" data-i18n-aria-label="aria_bl_entry">
@@ -62,13 +67,8 @@
         </div>
         <p class="hint" id="bl-hint" data-i18n="bl_hint"></p>
       </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 data-i18n="section_whitelist">Protected tags &amp; domains: never strip</h2>
-    <div class="card">
-      <div class="list-section">
+      <div class="list-section list-group-divider">
+        <strong class="list-group-title" data-i18n="section_whitelist">Protected tags &amp; domains: never strip</strong>
         <div class="list-items" id="whitelist-items"></div>
         <div class="add-row">
           <input id="wl-input" type="text" data-i18n-placeholder="wl_placeholder" data-i18n-aria-label="aria_wl_entry">
@@ -79,9 +79,17 @@
     </div>
   </section>
 
+  <!-- General (#936): merges the former single-item Features + Language sections. -->
   <section>
-    <h2 data-i18n="section_language">Language</h2>
+    <h2 data-i18n="section_general">General</h2>
     <div class="card">
+      <div class="row">
+        <div class="row-label">
+          <strong data-i18n="row_context_menu_label">Right-click → Copy clean link or selection</strong>
+          <small data-i18n="row_context_menu_hint">Works on a single link, a text selection with multiple URLs, or plain-text URLs. Alt+Shift+C copies the current tab's clean URL. Ctrl+C also auto-cleans URLs in your selection.</small>
+        </div>
+        <label class="toggle"><input type="checkbox" id="context-menu-toggle" data-i18n-aria-label="aria_context_menu"><span class="slider"></span></label>
+      </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="lang_label">Display language</strong>
@@ -95,110 +103,10 @@
     </div>
   </section>
 
-  <section>
-    <h2 data-i18n="section_stats">Statistics</h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="stats_reset_label">Lifetime stats</strong>
-          <small data-i18n="stats_reset_hint">Counters persist across sessions. Debug log resets when the browser restarts.</small>
-        </div>
-        <button class="add-btn" id="reset-stats-btn" data-i18n="stats_reset_btn">Reset stats</button>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="forget_reported_params_label">Reported params</strong>
-          <small data-i18n="forget_reported_params_hint">Clears the local list of params you've already reported. The same param can then be reported again.</small>
-        </div>
-        <button class="add-btn" id="forget-reported-params-btn" data-i18n="forget_reported_params_btn">Forget reported params</button>
-      </div>
-    </div>
-  </section>
-
-  <section id="remote-rules-section" hidden>
-    <h2 data-i18n="optionsRemoteRulesTitle"></h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <p data-i18n="optionsRemoteRulesDesc"></p>
-        </div>
-      </div>
-      <div class="row">
-        <label class="toggle">
-          <input type="checkbox" id="remote-rules-toggle" data-i18n-aria-label="aria_remote_rules_toggle">
-          <span class="slider"></span>
-        </label>
-        <span data-i18n="optionsRemoteRulesToggle"></span>
-      </div>
-      <div id="remote-rules-status" hidden>
-        <div class="row">
-          <div class="row-label">
-            <span data-i18n="optionsRemoteRulesLastFetch"></span>
-            <span id="remote-rules-last-fetch"></span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="row-label">
-            <span data-i18n="optionsRemoteRulesParamCount"></span>
-            <span id="remote-rules-param-count"></span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="row-label">
-            <a id="remote-rules-source" target="_blank" rel="noopener noreferrer" data-i18n="optionsRemoteRulesSource"></a>
-          </div>
-        </div>
-      </div>
-      <p id="remote-rules-error" class="error" hidden data-i18n="optionsRemoteRulesError"></p>
-    </div>
-  </section>
-
-  <section id="follow-shorteners">
-    <h2 data-i18n="follow_shorteners_section_title"></h2>
-    <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <p data-i18n="follow_shorteners_disclosure"></p>
-        </div>
-      </div>
-      <div class="row">
-        <label class="toggle">
-          <input type="checkbox" id="followShortenersEnabled" data-i18n-aria-label="enable_follow_shorteners_cta">
-          <span class="slider"></span>
-        </label>
-        <span data-i18n="follow_shorteners_enabled"></span>
-      </div>
-    </div>
-  </section>
-
+  <!-- ═══ TIER 2 & 3 — Advanced (dev-mode gated) ═══ -->
   <section id="section-dev">
     <h2 data-i18n="section_advanced">Advanced</h2>
     <div class="card">
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="honor_creator_mode_label">Honor Creator Mode</strong>
-          <small data-i18n="honor_creator_mode_hint">Preserve creator referral chains on trusted redirect networks. Off by default; enable to support creators you follow.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="honor-creator-mode" data-i18n-aria-label="aria_honor_creator"><span class="slider"></span></label>
-      </div>
-      <div class="list-section creator-allowlist-section">
-        <strong class="creator-allowlist-title" data-i18n="creator_allowlist_label">Creators you support</strong>
-        <div class="list-items creator-allowlist-list" id="creator-allowlist-items"></div>
-        <div class="add-row">
-          <input id="cal-input" type="text" data-i18n-placeholder="creator_allowlist_placeholder" data-i18n-aria-label="aria_cal_entry">
-          <button class="add-btn" id="cal-add-btn" data-i18n="creator_allowlist_add_btn">+ Add creator</button>
-        </div>
-        <p class="hint" id="cal-error" role="alert" hidden></p>
-        <p class="hint" data-i18n-html="creator_allowlist_hint"></p>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <strong data-i18n="exp_param_classes_label">Experimental: shape-based param stripping</strong>
-          <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
-          <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="experimental-param-classes" data-i18n-aria-label="aria_experimental_params"><span class="slider"></span></label>
-      </div>
       <div class="row">
         <div class="row-label">
           <strong data-i18n="advanced_mode_label">Show advanced settings</strong>
@@ -208,34 +116,7 @@
       </div>
     </div>
     <div id="dev-tools-card" class="dev-tools-hidden">
-      <!-- Advanced: per-shortener pass/fail counters (ADR-0004 phase 4, #700) -->
-      <div class="card card-dev" id="shortener-stats-card">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="shortener_stats_label">Shortener resolution stats (beta)</strong>
-            <small data-i18n="shortener_stats_hint">Pass/fail counts for native shortener resolution since last reset. Never transmitted.</small>
-          </div>
-        </div>
-        <div id="shortener-stats-table" class="pb-8"></div>
-        <div class="pb-8">
-          <button id="shortener-stats-reset-btn" class="link-btn" data-i18n="shortener_stats_reset">Reset counters</button>
-        </div>
-      </div>
-
-      <!-- Advanced: Affiliate stores -->
-      <div class="card card-dev"><details class="stores-details">
-          <summary class="stores-summary">
-            <span data-i18n="section_stores">Affiliate stores</span>
-            <span class="stores-count" id="stores-count"></span>
-          </summary>
-          <div class="stores-grid" id="stores-grid"></div>
-          <div class="stores-footer-hint">
-            <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active and configured. Grey = account pending registration.</p>
-          </div>
-        </details>
-      </div>
-
-      <!-- Advanced: URL cleaning --><div class="card card-dev">
+      <!-- Advanced: URL cleaning (kept under Advanced per locked decision) --><div class="card card-dev">
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_dnr_label">Denoise links before navigation</strong>
@@ -264,17 +145,38 @@
           </div>
           <label class="toggle"><input type="checkbox" id="amp-redirect" data-i18n-aria-label="aria_amp_redirect"><span class="slider"></span></label>
         </div>
+      </div>
+
+      <!-- Advanced: Creator honoring (#936 — moved into the gated card) -->
+      <div class="card card-dev">
         <div class="row">
           <div class="row-label">
-            <strong data-i18n="row_toast_duration_label">Toast duration when a creator tag is detected</strong>
-            <small data-i18n="row_toast_duration_hint">How long the notification stays visible before auto-dismissing</small>
+            <strong data-i18n="honor_creator_mode_label">Honor Creator Mode</strong>
+            <small data-i18n="honor_creator_mode_hint">Preserve creator referral chains on trusted social-media and link-shortener redirects. Off by default; enable to support creators you follow.</small>
           </div>
-          <select class="lang-select" id="toast-duration-select" data-i18n-aria-label="aria_toast_duration">
-            <option value="5">5s</option>
-            <option value="10">10s</option>
-            <option value="15" selected>15s</option>
-            <option value="30">30s</option>
-          </select>
+          <label class="toggle"><input type="checkbox" id="honor-creator-mode" data-i18n-aria-label="aria_honor_creator"><span class="slider"></span></label>
+        </div>
+        <div class="list-section creator-allowlist-section">
+          <strong class="creator-allowlist-title" data-i18n="creator_allowlist_label">Creators you support</strong>
+          <div class="list-items creator-allowlist-list" id="creator-allowlist-items"></div>
+          <div class="add-row">
+            <input id="cal-input" type="text" data-i18n-placeholder="creator_allowlist_placeholder" data-i18n-aria-label="aria_cal_entry">
+            <button class="add-btn" id="cal-add-btn" data-i18n="creator_allowlist_add_btn">+ Add creator</button>
+          </div>
+          <p class="hint" id="cal-error" role="alert" hidden></p>
+          <p class="hint" data-i18n-html="creator_allowlist_hint"></p>
+        </div>
+      </div>
+
+      <!-- Advanced: Experimental (#936 — moved into the gated card; fixes the inverted gate) -->
+      <div class="card card-dev">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="exp_param_classes_label">Experimental: shape-based param stripping</strong>
+            <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
+            <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="experimental-param-classes" data-i18n-aria-label="aria_experimental_params"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -296,6 +198,148 @@
         </div>
       </div>
 
+      <!-- Advanced: Your locally-stripped params (#925 — userCustomRules editor).
+           Entries are added from the popup's "Strip locally" button; here users
+           can review and remove them. View + remove only (no add box). -->
+      <h2 class="mt-16" data-i18n="section_user_custom_rules">Your locally-stripped params</h2>
+      <div class="card">
+        <div class="list-section">
+          <div class="list-items" id="user-custom-rules-items"></div>
+          <p class="hint" data-i18n="user_custom_rules_hint"></p>
+        </div>
+      </div>
+
+      <!-- Advanced: Privacy (#925 — newly surfaced prefs, all ON by default) -->
+      <h2 class="mt-16" data-i18n="section_privacy_controls">Privacy</h2>
+      <div class="card">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_canonical_extractor_label">Canonical destination extraction</strong>
+            <small data-i18n="row_canonical_extractor_hint">When a wrapper hides its destination, MUGA reads the page's canonical link to find the real target before giving up.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="canonical-extractor" data-i18n-aria-label="aria_canonical_extractor"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
+            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers in the popup. Never leaves your device.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="cross-site-frequency" data-i18n-aria-label="aria_cross_site_frequency"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_attribution_ledger_label">Recent activity</strong>
+            <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations so the popup can show recent activity. Stored on this device only.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="attribution-ledger" data-i18n-aria-label="aria_attribution_ledger"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Advanced: Display (#925 — newly surfaced prefs, all ON by default) -->
+      <h2 class="mt-16" data-i18n="section_display">Display</h2>
+      <div class="card">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_param_breakdown_label">Show removed-parameter breakdown in the popup</strong>
+            <small data-i18n="row_param_breakdown_hint">Lists which tracking parameters were removed, grouped by category, in the popup.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="param-breakdown" data-i18n-aria-label="aria_param_breakdown"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_show_report_button_label">Show the report button in the popup</strong>
+            <small data-i18n="row_show_report_button_hint">Adds a button to report a URL that MUGA cleaned incorrectly.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="show-report-button" data-i18n-aria-label="aria_show_report_button"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
+            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site so the popup can show where the most noise comes from. Stored on this device only.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="domain-stats" data-i18n-aria-label="aria_domain_stats"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Advanced: Remote rule updates (#936 — moved into the gated card).
+           Feature-detected + un-hidden by initRemoteRules at runtime. -->
+      <section id="remote-rules-section" hidden>
+        <h2 class="mt-16" data-i18n="optionsRemoteRulesTitle"></h2>
+        <div class="card">
+          <div class="row">
+            <div class="row-label">
+              <p data-i18n="optionsRemoteRulesDesc"></p>
+            </div>
+          </div>
+          <div class="row">
+            <label class="toggle">
+              <input type="checkbox" id="remote-rules-toggle" data-i18n-aria-label="aria_remote_rules_toggle">
+              <span class="slider"></span>
+            </label>
+            <span data-i18n="optionsRemoteRulesToggle"></span>
+          </div>
+          <div id="remote-rules-status" hidden>
+            <div class="row">
+              <div class="row-label">
+                <span data-i18n="optionsRemoteRulesLastFetch"></span>
+                <span id="remote-rules-last-fetch"></span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <span data-i18n="optionsRemoteRulesParamCount"></span>
+                <span id="remote-rules-param-count"></span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-label">
+                <a id="remote-rules-source" target="_blank" rel="noopener noreferrer" data-i18n="optionsRemoteRulesSource"></a>
+              </div>
+            </div>
+          </div>
+          <p id="remote-rules-error" class="error" hidden data-i18n="optionsRemoteRulesError"></p>
+        </div>
+      </section>
+
+      <!-- Advanced: Follow shortener redirects (#936 — moved into the gated card) -->
+      <section id="follow-shorteners">
+        <h2 class="mt-16" data-i18n="follow_shorteners_section_title"></h2>
+        <div class="card">
+          <div class="row">
+            <div class="row-label">
+              <p data-i18n="follow_shorteners_disclosure"></p>
+            </div>
+          </div>
+          <div class="row">
+            <label class="toggle">
+              <input type="checkbox" id="followShortenersEnabled" data-i18n-aria-label="enable_follow_shorteners_cta">
+              <span class="slider"></span>
+            </label>
+            <span data-i18n="follow_shorteners_enabled"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Advanced: Statistics (#936 — moved down from the top of the page;
+           destructive actions off the first screen) -->
+      <h2 class="mt-16" data-i18n="section_stats">Statistics</h2>
+      <div class="card">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="stats_reset_label">Lifetime stats</strong>
+            <small data-i18n="stats_reset_hint">Counters persist across sessions. Debug log resets when the browser restarts.</small>
+          </div>
+          <button class="add-btn" id="reset-stats-btn" data-i18n="stats_reset_btn">Reset stats</button>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="forget_reported_params_label">Reported params</strong>
+            <small data-i18n="forget_reported_params_hint">Clears the local list of params you've already reported. The same param can then be reported again.</small>
+          </div>
+          <button class="add-btn" id="forget-reported-params-btn" data-i18n="forget_reported_params_btn">Forget reported params</button>
+        </div>
+      </div>
+
       <!-- Import / Export -->
       <h2 class="mt-16" data-i18n="section_data">Import / Export</h2>
       <div class="card">
@@ -314,16 +358,36 @@
         </div>
       </div>
 
-      <!-- Developer tools -->
-      <h2 class="mt-16" data-i18n="section_dev_tools">Developer tools</h2>
-      <div class="card">
+      <!-- Advanced: per-shortener pass/fail counters (ADR-0004 phase 4, #700) -->
+      <div class="card card-dev" id="shortener-stats-card">
         <div class="row">
           <div class="row-label">
-            <strong data-i18n="report_broken_label">Report a bug or suggest an improvement</strong>
-            <small data-i18n="dev_report_broken_hint">Opens a pre-filled GitHub issue with your browser and extension info</small>
+            <strong data-i18n="shortener_stats_label">Shortener resolution stats (beta)</strong>
+            <small data-i18n="shortener_stats_hint">Pass/fail counts for native shortener resolution since last reset. Never transmitted.</small>
           </div>
-          <button class="add-btn" id="dev-report-broken-btn" data-i18n="dev_report_broken_btn">Report</button>
         </div>
+        <div id="shortener-stats-table" class="pb-8"></div>
+        <div class="pb-8">
+          <button id="shortener-stats-reset-btn" class="link-btn" data-i18n="shortener_stats_reset">Reset counters</button>
+        </div>
+      </div>
+
+      <!-- Advanced: Affiliate stores -->
+      <div class="card card-dev"><details class="stores-details">
+          <summary class="stores-summary">
+            <span data-i18n="section_stores">Affiliate stores</span>
+            <span class="stores-count" id="stores-count"></span>
+          </summary>
+          <div class="stores-grid" id="stores-grid"></div>
+          <div class="stores-footer-hint">
+            <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active and configured. Grey = account pending registration.</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- Developer tools (Tier 3 sub-group) -->
+      <h2 class="mt-16" data-i18n="section_dev_tools">Developer tools</h2>
+      <div class="card">
         <div class="row">
           <div class="row-label">
             <strong data-i18n="dev_preview_notify_label">Preview affiliate notification</strong>

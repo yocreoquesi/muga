@@ -46,6 +46,19 @@ describe("Item 1 — getPatternsForHost most-specific suffix match", () => {
     assert.deepEqual(www, bare, "www-stripped lookup must match bare domain");
   });
 
+  // Regression (#934): the www prefix strip must require a LITERAL "www." —
+  // not "www" + any character. Before the fix the regex was /^www./ (unescaped
+  // dot), so "wwwzamazon.com" was mis-stripped to "amazon.com" and falsely
+  // returned Amazon's affiliate patterns. The escaped /^www\./ leaves such a
+  // host intact, so it correctly resolves to no patterns.
+  test("host of the form www + non-dot char must NOT be mis-stripped to a bare domain (#934)", () => {
+    const bare = getPatternsForHost("amazon.com");
+    assert.ok(bare.length > 0, "sanity: amazon.com must have patterns");
+    const misStripped = getPatternsForHost("wwwzamazon.com");
+    assert.deepEqual(misStripped, [],
+      "wwwzamazon.com must NOT be treated as amazon.com after www strip");
+  });
+
   // --- synthetic two-suffix collision ---
   // We add TWO synthetic programs: one for the short suffix "synth-base.io"
   // and one for the more-specific suffix "shop.synth-base.io".

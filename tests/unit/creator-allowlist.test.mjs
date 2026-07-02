@@ -263,7 +263,7 @@ describe("B13 creator-allowlist — options page editor", () => {
     );
   });
 
-  test("editor lives inside the Advanced section, BELOW the honor-creator-mode toggle", () => {
+  test("editor lives inside the dev-mode-gated Advanced card, BELOW the honor-creator-mode toggle (#936)", () => {
     const hcmIdx       = OPTIONS_HTML.indexOf('id="honor-creator-mode"');
     const editorIdx    = OPTIONS_HTML.indexOf('id="creator-allowlist-items"');
     const devToolsIdx  = OPTIONS_HTML.indexOf('id="dev-tools-card"');
@@ -272,9 +272,11 @@ describe("B13 creator-allowlist — options page editor", () => {
       editorIdx > hcmIdx,
       "creator allowlist editor must appear AFTER the honor-creator-mode toggle"
     );
+    // #936 IA reorg: both honor-creator-mode and its allowlist moved INTO the
+    // dev-mode-gated #dev-tools-card, so the editor now appears AFTER the card opens.
     assert.ok(
-      editorIdx < devToolsIdx,
-      "creator allowlist editor must appear BEFORE #dev-tools-card so it's visible without enabling dev-mode"
+      editorIdx > devToolsIdx,
+      "creator allowlist editor must live inside #dev-tools-card so it is gated behind dev-mode (#936)"
     );
   });
 

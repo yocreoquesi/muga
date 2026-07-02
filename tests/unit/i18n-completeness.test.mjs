@@ -25,6 +25,7 @@ const EN_ES_IDENTICAL_EXCEPTIONS = new Set([
   "dev_url_tester_placeholder",  // example URL, not user-facing copy
   "dev_url_error",               // "Error:" reads identically in EN/ES
   "tooltip_default",             // "MUGA" — brand name, universal across locales
+  "section_general",             // "General" is the correct heading in both EN and ES (#936)
 ]);
 
 describe("i18n completeness — every key has en + es", () => {

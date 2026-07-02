@@ -10,7 +10,7 @@
   <header>
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 104 68" fill="none" aria-label="MUGA">
+        <svg viewBox="0 0 104 68" fill="none">
           <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
           <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         </svg>
@@ -19,8 +19,8 @@
     </div>
     <div class="toggle-wrap">
       <span class="toggle-label sr-only" data-i18n="toggle_enabled">Enable MUGA</span>
-      <label class="toggle" title="Enable / disable MUGA">
-        <input type="checkbox" id="enabled-toggle" aria-label="Enable MUGA">
+      <label class="toggle" data-i18n-title="toggle_title">
+        <input type="checkbox" id="enabled-toggle" data-i18n-aria-label="toggle_enabled">
         <span class="slider"></span>
       </label>
     </div>
@@ -32,7 +32,7 @@
   <section class="migration-banner" id="migration-banner" hidden role="region" aria-live="polite">
     <div class="migration-banner-header">
       <strong id="migration-banner-title"></strong>
-      <button type="button" id="migration-banner-dismiss" class="migration-banner-dismiss" aria-label="Dismiss"><span aria-hidden="true">×</span></button>
+      <button type="button" id="migration-banner-dismiss" class="migration-banner-dismiss" data-i18n-aria-label="toast_dismiss"><span aria-hidden="true">×</span></button>
     </div>
     <p id="migration-banner-body"></p>
     <div class="migration-banner-actions">
@@ -123,7 +123,7 @@
   <footer>
     <button id="open-options" data-i18n="link_advanced" class="footer-link-btn">Settings →</button>
     <a href="#" id="popup-rate-link" data-i18n="rate_muga_link">Rate MUGA</a>
-    <a href="https://github.com/sponsors/yocreoquesi" target="_blank" rel="noopener noreferrer" id="popup-support-link" class="popup-support-link" data-i18n="support_link">Support ♥</a>
+    <a href="https://github.com/sponsors/yocreoquesi" target="_blank" rel="noopener noreferrer" id="popup-support-link" data-i18n="support_link">Support ♥</a>
   </footer>
 
   <script src="../lib/browser-polyfill.min.js"></script>

@@ -168,7 +168,7 @@ _rebuildHostIndex();
 export function getPatternsForHost(hostname) {
   // Rebuild index if AFFILIATE_PATTERNS was modified (e.g. by tests)
   if (AFFILIATE_PATTERNS.length !== _indexedLength) _rebuildHostIndex();
-  const host = hostname.replace(/^www./, "");
+  const host = hostname.replace(/^www\./, "");
   const exact = _hostIndex.get(host);
   if (exact) return exact;
   // Suffix scan: when multiple suffixes match (e.g. "amazon" and "amazon.co.uk"

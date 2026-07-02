@@ -152,26 +152,30 @@ describe("T3.1 remote-rules section in options.html", () => {
     );
   });
 
-  test("section is placed between custom-params area and About/footer", () => {
-    // v1.10.2 layout: remote-rules comes BEFORE the Advanced (#section-dev)
-    // section so that Advanced stays the last thing on the page. Custom params
-    // live inside Advanced (dev-mode-gated), so remote-rules also ends up
-    // before the custom-params markup.
-    const devIdx = optionsHtml.indexOf('id="section-dev"');
-    const rrIdx  = optionsHtml.indexOf('id="remote-rules-section"');
-    const verIdx = optionsHtml.indexOf('version-info');
+  test("section lives inside the Advanced (dev-mode-gated) block", () => {
+    // #936 IA reorg: remote-rules moved INTO the dev-mode-gated Advanced card
+    // (#dev-tools-card, inside #section-dev) so it is only visible with
+    // "Show advanced settings" on. It therefore now appears AFTER the
+    // #section-dev opening tag and inside the #dev-tools-card container, but
+    // still above the version-info / footer. The Advanced section as a whole
+    // still sits above Support + version-info.
+    const devIdx   = optionsHtml.indexOf('id="section-dev"');
+    const cardIdx  = optionsHtml.indexOf('id="dev-tools-card"');
+    const rrIdx    = optionsHtml.indexOf('id="remote-rules-section"');
+    const verIdx   = optionsHtml.indexOf('version-info');
 
-    assert.ok(devIdx !== -1, "options.html must still contain the #section-dev (Advanced) block");
-    assert.ok(rrIdx !== -1,  "remote-rules section must exist");
-    assert.ok(verIdx !== -1, "version-info must still be in the page");
+    assert.ok(devIdx !== -1,  "options.html must still contain the #section-dev (Advanced) block");
+    assert.ok(cardIdx !== -1, "options.html must still contain the #dev-tools-card gated container");
+    assert.ok(rrIdx !== -1,   "remote-rules section must exist");
+    assert.ok(verIdx !== -1,  "version-info must still be in the page");
 
     assert.ok(
-      rrIdx < devIdx,
-      "remote-rules section must appear before the Advanced section (which stays last, v1.10.2)"
+      rrIdx > cardIdx,
+      "remote-rules section must now live INSIDE the dev-mode-gated #dev-tools-card (#936)"
     );
     assert.ok(
-      devIdx < verIdx,
-      "Advanced section must stay above the version-info / footer"
+      devIdx < rrIdx && rrIdx < verIdx,
+      "remote-rules must sit inside the Advanced block, which stays above the version-info / footer"
     );
   });
 });
@@ -402,6 +406,145 @@ describe("addEntry — list-size caps mirror the import path (#728 item 28)", ()
     assert.ok(
       optionsJs.includes("capImportedLists(data)"),
       "import path must apply the caps via capImportedLists, the shared source of truth"
+    );
+  });
+});
+
+// ── #926: manual add-entry uses dedicated copy, not the file-import error ─────
+
+describe("manual add-entry call sites use dedicated i18n copy, not import_error (#926)", () => {
+  test("customParams format-validation failure uses add_entry_invalid", () => {
+    const fnStart = optionsJs.indexOf("function addEntry(");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}", fnStart));
+    assert.ok(
+      /customParams[\s\S]*?add_entry_invalid/.test(fnBody),
+      "the customParams format check must show add_entry_invalid, not import_error"
+    );
+  });
+
+  test("isValidListEntry rejection uses add_entry_invalid", () => {
+    const fnStart = optionsJs.indexOf("function addEntry(");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}", fnStart));
+    assert.ok(
+      /!isValidListEntry\(value\)[\s\S]*?add_entry_invalid/.test(fnBody),
+      "the isValidListEntry rejection must show add_entry_invalid, not import_error"
+    );
+  });
+
+  test("cap-reached branch uses list_full", () => {
+    const fnStart = optionsJs.indexOf("function addEntry(");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}", fnStart));
+    assert.ok(
+      /list\.length >= cap[\s\S]*?list_full/.test(fnBody),
+      "the cap-reached branch must show list_full, not import_error"
+    );
+  });
+
+  test("addEntry no longer references import_error at all", () => {
+    const fnStart = optionsJs.indexOf("function addEntry(");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}", fnStart));
+    assert.ok(
+      !fnBody.includes("import_error"),
+      "addEntry must not use the file-import error copy for manual-entry failures"
+    );
+  });
+
+  test("the real file-import flow still uses import_error", () => {
+    assert.ok(
+      optionsJs.includes('t("import_error", _currentLang)'),
+      "initExportImport must still show import_error for malformed/oversized import files"
+    );
+  });
+});
+
+// ── #927: bindToggle guards against a missing element ─────────────────────────
+
+describe("bindToggle guards against a missing element (#927)", () => {
+  test("bindToggle returns early when getElementById finds nothing", () => {
+    const fnStart = optionsJs.indexOf("function bindToggle(");
+    assert.ok(fnStart !== -1, "bindToggle must exist");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}", fnStart));
+    assert.ok(
+      /const el = document\.getElementById\(id\);\s*\n\s*if \(!el\) return;/.test(fnBody),
+      "bindToggle must guard with `if (!el) return;` immediately after the lookup, " +
+      "matching the defensive style used by other init helpers in this file"
+    );
+  });
+});
+
+// ── #928: shared withSyncMutation helper replaces five duplicated blocks ──────
+
+describe("options.js routes sync read-mutate-write call sites through the shared helper (#928)", () => {
+  test("imports createMutex and withSyncMutation from ./sync-mutation.js", () => {
+    assert.ok(
+      optionsJs.includes('from "./sync-mutation.js"'),
+      "options.js must import the shared mutation helper module"
+    );
+    assert.ok(optionsJs.includes("createMutex"), "options.js must import createMutex");
+    assert.ok(optionsJs.includes("withSyncMutation"), "options.js must import withSyncMutation");
+  });
+
+  test("createMutex() is called exactly three times (list editor, categories, creator allowlist)", () => {
+    const calls = optionsJs.match(/=\s*createMutex\(\)/g) || [];
+    assert.equal(
+      calls.length,
+      3,
+      "expected three independent lock queues: withListLock, withCategoriesLock, and the " +
+      "creator-allowlist withLock — found " + calls.length
+    );
+  });
+
+  test("no leftover hand-rolled mutex implementation remains in options.js", () => {
+    assert.ok(
+      !optionsJs.includes("_listMutex"),
+      "the old manual _listMutex implementation must be removed in favor of createMutex()"
+    );
+    assert.ok(
+      !optionsJs.includes("_calMutex"),
+      "the old manual _calMutex implementation must be removed in favor of createMutex()"
+    );
+  });
+
+  test("the tracking-categories toggle is routed through withSyncMutation (previously unlocked)", () => {
+    const idx = optionsJs.indexOf('input.setAttribute("aria-label", label);');
+    assert.ok(idx !== -1, "category checkbox setup must exist");
+    const window_ = optionsJs.slice(idx, idx + 600);
+    assert.ok(
+      window_.includes("withSyncMutation(withCategoriesLock"),
+      "the categories toggle change handler must call withSyncMutation(withCategoriesLock, ...), " +
+      "not a bare chrome.storage.sync.get/setPrefs pair"
+    );
+    assert.ok(
+      !window_.includes("chrome.storage.sync.get({ disabledCategories"),
+      "the categories toggle must no longer re-read chrome.storage.sync directly"
+    );
+  });
+
+  test("addEntry and removeEntry are routed through withSyncMutation(withListLock, ...)", () => {
+    const addStart = optionsJs.indexOf("function addEntry(");
+    const addBody = optionsJs.slice(addStart, optionsJs.indexOf("\n}", addStart));
+    assert.ok(
+      addBody.includes("withSyncMutation(withListLock,"),
+      "addEntry must call withSyncMutation(withListLock, ...)"
+    );
+
+    const removeStart = optionsJs.indexOf("function removeEntry(");
+    const removeBody = optionsJs.slice(removeStart, optionsJs.indexOf("\n}", removeStart));
+    assert.ok(
+      removeBody.includes("withSyncMutation(withListLock,"),
+      "removeEntry must call withSyncMutation(withListLock, ...)"
+    );
+  });
+
+  test("creator-allowlist onAdd/onRemove are routed through withSyncMutation", () => {
+    const initStart = optionsJs.indexOf("function initCreatorAllowlist(");
+    const initEnd = optionsJs.indexOf("\n/** Renders tracking category toggle cards. */");
+    const body = optionsJs.slice(initStart, initEnd);
+    const withSyncMutationCalls = (body.match(/withSyncMutation\(/g) || []).length;
+    assert.equal(
+      withSyncMutationCalls,
+      2,
+      "initCreatorAllowlist must route both onAdd and onRemove through withSyncMutation"
     );
   });
 });
