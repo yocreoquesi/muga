@@ -134,6 +134,8 @@ export default Object.freeze({
   import_success: "Settings imported successfully.",
   import_error: "That doesn't look like a MUGA settings file. Make sure you're importing a .json file exported from MUGA.",
   import_params_skipped: "Settings imported. {n} entr(y/ies) skipped — too long, invalid format, protected key, or over the list limit.",
+  add_entry_invalid: "That entry isn't valid. Check the format and try again.",
+  list_full: "This list has reached its maximum size. Remove an entry before adding a new one.",
   optionsRemoteRulesTitle: "Remote rule updates",
   optionsRemoteRulesDesc: "Download weekly signed updates to the list of tracking parameters. On by default; disable it here at any time.",
   optionsRemoteRulesToggle: "Enable weekly updates",
