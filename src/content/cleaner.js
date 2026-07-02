@@ -781,6 +781,58 @@
     try { sessionStorage.setItem(key, value); } catch { /* incognito/quota */ }
   }
 
+  // ── Inline AFFILIATE_REDIRECT_NETWORKS guard (#920) ──────────────────────
+  // Mirrors src/lib/opaque-networks.js AFFILIATE_REDIRECT_NETWORKS so the
+  // generic redirect-unwrap below can hard-bail on any host in the 2.1
+  // pass-through bucket. detectWrapper (wrapper-engine.js) and
+  // inlineDetectWrapper (bounce-state-cleaner.js) already null these hosts
+  // first; runRedirectUnwrap's generic loop had no equivalent guard, so a
+  // pass-through network serving a redirect-shaped path (/redirect, /out, …)
+  // with a ?url= param would be client-side unwrapped — defeating the
+  // network's 30x and killing the merchant's first-party attribution cookie
+  // at landing (the exact #907 bug class). Content scripts can't import from
+  // lib at runtime, hence this inline mirror. Kept byte-for-byte identical to
+  // the copy in bounce-state-cleaner.js and pinned to the canonical list by
+  // tests/unit/content-unwrap-no-affiliate-redirect.test.mjs. Wildcard entries
+  // use the `*.suffix` shape (matches `endsWith(".suffix")`).
+  const INLINE_AFFILIATE_REDIRECT_NETWORKS = [
+    "s.click.aliexpress.com",
+    "awin1.com",
+    "www.awin1.com",
+    "anrdoezrs.net",
+    "dpbolvw.net",
+    "jdoqocy.com",
+    "kqzyfj.com",
+    "tkqlhce.com",
+    "emjcd.com",
+    "qksrv.net",
+    "cj.dotomi.com",
+    "ad.admitad.com",
+    "prf.hn",
+    "px.a8.net",
+    "*.pxf.io",
+    "click.linksynergy.com",
+    "tc.tradetracker.net",
+    "clk.tradedoubler.com",
+    "alitems.com",
+    "redirect.viglink.com",
+    "go.redirectingat.com",
+    "go.skimresources.com",
+    "shareasale.com",
+    "www.shareasale.com",
+  ];
+
+  function isInlineAffiliateRedirectNetwork(host) {
+    for (const entry of INLINE_AFFILIATE_REDIRECT_NETWORKS) {
+      if (entry.startsWith("*.")) {
+        if (host.endsWith(entry.slice(1))) return true;
+      } else if (host === entry) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function runRedirectUnwrap() {
     const apply = (prefs) => {
       if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.unwrapRedirects) return;
@@ -915,6 +967,13 @@
       }
 
       // --- Generic redirect wrapper unwrap ---
+      // 2.1 pass-through invariant (#920): bail BEFORE the generic loop when
+      // the current host is an affiliate-redirect network. The path/param
+      // heuristics below cannot tell an attribution-bearing 30x apart from a
+      // plain redirector, so unwrapping a pass-through host here would strip
+      // the creator's commission. Mirrors the hard-null guards in
+      // detectWrapper / inlineDetectWrapper.
+      if (isInlineAffiliateRedirectNetwork(location.hostname.toLowerCase())) return;
       const REDIRECT_PATH_RE = /\/(redirect|bounce|out|away|leave|goto|jump|click|track|link|redir|forward|proxy|url|exit)\b/i;
       if (!REDIRECT_PATH_RE.test(location.pathname)) return;
 
