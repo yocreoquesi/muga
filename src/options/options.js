@@ -7,7 +7,7 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
-import { isValidListEntry, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
+import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import {
   addEntry as addCreatorAllowlistEntry,
@@ -132,8 +132,21 @@ async function init() {
   bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
   // ADR-0004 phase 5 (#701): useNativeShortenerResolution flag removed — native
   // resolution is now the only path, the toggle is vestigial and has been deleted.
-  // Per-creator allowlist editor (#445, B13). Lives in the Advanced card,
-  // visible without dev-mode (parallel to the honor-creator-mode toggle).
+
+  // #925: surface the seven previously UI-less prefs as Advanced controls
+  // (all default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
+  // userCustomRules list uses the shared renderList/removeEntry path below.
+  // Privacy group:
+  bindToggle("canonical-extractor", "canonicalExtractorEnabled", prefs);
+  bindToggle("cross-site-frequency", "crossSiteFrequencyEnabled", prefs);
+  bindToggle("attribution-ledger", "attributionLedgerEnabled", prefs);
+  // Display group:
+  bindToggle("param-breakdown", "paramBreakdown", prefs);
+  bindToggle("show-report-button", "showReportButton", prefs);
+  bindToggle("domain-stats", "domainStats", prefs);
+
+  // Per-creator allowlist editor (#445, B13). Lives in the Advanced card
+  // (dev-mode gated after the #936 reorg), alongside the honor-creator-mode toggle.
   initCreatorAllowlist(prefs.creatorAllowlist || []);
 
   // Toast duration select
@@ -147,6 +160,10 @@ async function init() {
   renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
+  // #925: view/remove editor for the popup-populated userCustomRules list.
+  // Reuses the generic renderList + removeEntry path (no add box — entries
+  // come from the popup's "Strip locally" button).
+  renderList("user-custom-rules-items", prefs.userCustomRules || [], "userCustomRules");
   renderCategories(prefs.disabledCategories || []);
   renderStores();
   initLanguageSelect();
@@ -637,6 +654,7 @@ function initLanguageSelect() {
     renderList("custom-params-items", prefs.customParams || [], "customParams");
     renderList("blacklist-items", prefs.blacklist, "blacklist");
     renderList("whitelist-items", prefs.whitelist, "whitelist");
+    renderList("user-custom-rules-items", prefs.userCustomRules || [], "userCustomRules");
   });
 }
 
@@ -679,7 +697,7 @@ function addEntry(listKey, inputId, containerId) {
 
 /** Removes an entry from a list by index. */
 function removeEntry(listKey, index) {
-  const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items" };
+  const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items", userCustomRules: "user-custom-rules-items" };
   const containerId = containerMap[listKey] ?? `${listKey}-items`;
   return withSyncMutation(withListLock, listKey, [], (list) => {
     const next = [...list];
@@ -756,6 +774,12 @@ function initExportImport() {
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
       followShortenersEnabled: prefs.followShortenersEnabled,
+      // #925: privacy booleans are now user-controllable, so round-trip them.
+      canonicalExtractorEnabled: prefs.canonicalExtractorEnabled,
+      crossSiteFrequencyEnabled: prefs.crossSiteFrequencyEnabled,
+      attributionLedgerEnabled: prefs.attributionLedgerEnabled,
+      // #925: the popup-populated custom strip rules, handled like the other sync arrays.
+      userCustomRules: prefs.userCustomRules,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -800,7 +824,7 @@ function initExportImport() {
       const { blacklist, whitelist, customParams, droppedBlacklist, droppedWhitelist, skippedParams } = capImportedLists(data);
       const skipped = skippedParams + droppedBlacklist + droppedWhitelist;
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
       const toSave = { blacklist, whitelist, customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -817,6 +841,13 @@ function initExportImport() {
       // Handle toastDuration (number 5-60)
       if (typeof data.toastDuration === "number") {
         toSave.toastDuration = Math.max(5, Math.min(60, data.toastDuration));
+      }
+      // #925: userCustomRules — validate each entry as a bare param name and
+      // cap at the customParams ceiling (same shape/limit the popup enforces).
+      if (Array.isArray(data.userCustomRules)) {
+        toSave.userCustomRules = data.userCustomRules
+          .filter(isValidCustomParam)
+          .slice(0, IMPORT_LIST_CAPS.customParams);
       }
       // Handle language (any supported locale) — validate against SUPPORTED_LANGS
       // so codes added after the legacy en/es/pt/de set (fr/it/ja, #707) survive
@@ -836,6 +867,13 @@ function initExportImport() {
       document.getElementById("block-pings").checked = newPrefs.blockPings;
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
+      // #925: refresh the newly-surfaced privacy + display toggles after import
+      document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
+      document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;
+      document.getElementById("attribution-ledger").checked = newPrefs.attributionLedgerEnabled;
+      document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
+      document.getElementById("show-report-button").checked = newPrefs.showReportButton;
+      document.getElementById("domain-stats").checked = newPrefs.domainStats;
       // devMode is device-local — re-read from local storage after import
       document.getElementById("dev-mode").checked = await getDevMode();
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
@@ -848,6 +886,7 @@ function initExportImport() {
       renderList("blacklist-items", newPrefs.blacklist, "blacklist");
       renderList("whitelist-items", newPrefs.whitelist, "whitelist");
       renderList("custom-params-items", newPrefs.customParams, "customParams");
+      renderList("user-custom-rules-items", newPrefs.userCustomRules || [], "userCustomRules");
       renderCategories(newPrefs.disabledCategories || []);
       if (skipped > 0) {
         showToast(t("import_params_skipped", _currentLang).replace("{n}", String(skipped)));

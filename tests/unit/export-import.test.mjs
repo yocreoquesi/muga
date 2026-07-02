@@ -51,6 +51,10 @@ describe("export settings (source verification)", () => {
       "paramBreakdown",
       "showReportButton",
       "domainStats",
+      // #925: privacy booleans, now user-controllable and round-tripped
+      "canonicalExtractorEnabled",
+      "crossSiteFrequencyEnabled",
+      "attributionLedgerEnabled",
     ];
     // Verify each sync boolean key appears in the export payload block
     for (const key of SYNC_BOOL_KEYS) {
