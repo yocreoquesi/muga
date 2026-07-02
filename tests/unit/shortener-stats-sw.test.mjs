@@ -126,7 +126,7 @@ describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)"
   test("RESOLVE_SHORTENER handler gates on followShortenersEnabled (not privacyProxyEnabled)", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
     assert.ok(handlerStart !== -1, "RESOLVE_SHORTENER handler must be present");
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("followShortenersEnabled"),
       "RESOLVE_SHORTENER handler must check followShortenersEnabled"
@@ -139,7 +139,7 @@ describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)"
 
   test("RESOLVE_SHORTENER handler calls resolveShortener (native path only)", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("resolveShortener"),
       "RESOLVE_SHORTENER handler must call resolveShortener (native resolver)"
@@ -148,7 +148,7 @@ describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)"
 
   test("RESOLVE_SHORTENER handler calls incrementShortenerStat", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("incrementShortenerStat"),
       "RESOLVE_SHORTENER handler must call incrementShortenerStat for pass/fail tracking"
@@ -157,7 +157,7 @@ describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)"
 
   test("RESOLVE_SHORTENER handler validates URL scheme is http or https", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("invalid_url") || handlerSlice.includes("http:"),
       "RESOLVE_SHORTENER handler must validate URL scheme"
@@ -166,7 +166,7 @@ describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)"
 
   test("RESOLVE_SHORTENER handler validates hostname is a generic shortener", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("isGenericShortener"),
       "RESOLVE_SHORTENER handler must check isGenericShortener"
@@ -175,7 +175,7 @@ describe("ADR-0004 phase 5: service-worker uses RESOLVE_SHORTENER (native-only)"
 
   test("RESOLVE_SHORTENER handler returns true for async response", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("return true"),
       "RESOLVE_SHORTENER handler must return true to keep message channel open"
@@ -332,7 +332,7 @@ describe("ADR-0004 phase 4+5: shortener stat increments in native-only handler",
   test("increments pass counter on successful native resolution", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
     assert.ok(handlerStart !== -1, "RESOLVE_SHORTENER handler must be present");
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("incrementShortenerStat") && handlerSlice.includes('"pass"'),
       "RESOLVE_SHORTENER handler must call incrementShortenerStat(..., 'pass') on success"
@@ -341,10 +341,46 @@ describe("ADR-0004 phase 4+5: shortener stat increments in native-only handler",
 
   test("increments fail counter on failed native resolution", () => {
     const handlerStart = swSource.indexOf('"RESOLVE_SHORTENER"');
-    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2000);
+    const handlerSlice = swSource.slice(handlerStart, handlerStart + 2600);
     assert.ok(
       handlerSlice.includes("incrementShortenerStat") && handlerSlice.includes('"fail"'),
       "RESOLVE_SHORTENER handler must call incrementShortenerStat(..., 'fail') on failure"
+    );
+  });
+});
+
+// ── #922: shortener egress gated on enabled + onboardingDone ─────────────────
+//
+// Source guards (the service worker has no behavioral unit harness). Before the
+// fix the handler only checked followShortenersEnabled, so a disabled or
+// non-onboarded extension still performed the live shortener-resolution egress.
+
+// Single source read (regex match) to stay within the #824 source-grep ratchet;
+// all further assertions run against the extracted handler region.
+describe("#922: RESOLVE_SHORTENER egress gated on enabled + onboarding", () => {
+  const handler = swSource.match(/"RESOLVE_SHORTENER"[\s\S]{0,2200}/)?.[0] ?? "";
+  const enabledIdx = handler.indexOf("prefs.enabled");
+  const onboardingIdx = handler.indexOf("prefs.onboardingDone");
+  const resolveIdx = handler.indexOf("resolveShortener");
+
+  test("handler checks prefs.enabled and prefs.onboardingDone", () => {
+    assert.ok(enabledIdx !== -1, "handler must check prefs.enabled (extension toggle) before egress");
+    assert.ok(onboardingIdx !== -1, "handler must check prefs.onboardingDone (consent gate) before egress");
+  });
+
+  test("enabled + onboarding gate is evaluated before resolveShortener (no fetch when gate closed)", () => {
+    assert.ok(resolveIdx !== -1, "handler must call resolveShortener");
+    assert.ok(
+      enabledIdx < resolveIdx && onboardingIdx < resolveIdx,
+      "the enabled/onboarding gate must be checked BEFORE resolveShortener so no network egress happens when the gate is closed"
+    );
+  });
+
+  test("gate-closed early return uses the disabled reason shape", () => {
+    const afterGate = handler.slice(enabledIdx, enabledIdx + 220);
+    assert.ok(
+      afterGate.includes('reason: "disabled"'),
+      'the enabled/onboarding gate must early-return { ok: false, reason: "disabled" }'
     );
   });
 });
