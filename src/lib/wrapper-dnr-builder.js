@@ -12,12 +12,16 @@
  * never sends a request to awin1.com / l.facebook.com / etc.
  *
  * SCOPE (slice B6, issue #449):
- *   The seven entries listed in REGEX_PURE_WRAPPER_IDS — the wrappers whose
+ *   The five entries listed in REGEX_PURE_WRAPPER_IDS — the wrappers whose
  *   destination lives in a single, well-known query parameter on a literal
- *   hostname.  All other wrappers (Impact's regex hostPatterns, t.co's
- *   path-only shape, link.medium.com's redirect, the naked-query proxies
- *   href.li / anonym.to, the social outbounds with no extractor) fall back
- *   to the runtime engine — that path is unchanged.
+ *   hostname.  Only two of the five (facebook-l, facebook-lm) currently
+ *   resolve to a rule: the skimlinks-redirectingat, skimlinks-skimresources,
+ *   and shareasale ids reference wrappers retired from WRAPPERS in #907, so
+ *   their RECIPES entries were pruned (buildDnrRules would have silently
+ *   skipped them anyway).  All other wrappers (Impact's regex hostPatterns,
+ *   t.co's path-only shape, link.medium.com's redirect, the naked-query
+ *   proxies href.li / anonym.to, the social outbounds with no extractor)
+ *   fall back to the runtime engine — that path is unchanged.
  *
  * URL-decode caveat:
  *   Chromium's regexSubstitution copies the captured group verbatim into the
@@ -33,10 +37,16 @@
  */
 
 /**
- * The seven wrapper identifiers in scope for DNR rule generation.
+ * The five wrapper identifiers in scope for DNR rule generation.
  * Order is load-bearing for the test suite (it uses index lookup) and for
  * deterministic numeric ID assignment.  Do not reorder without updating the
  * generated wrapper-dnr-rules.json.
+ *
+ * Three of these ids (skimlinks-redirectingat, skimlinks-skimresources,
+ * shareasale) reference wrappers retired from WRAPPERS in #907 and no
+ * longer have a matching RECIPES entry below — they are kept here because
+ * tests/unit/wrapper-dnr-builder.test.mjs still asserts this exact five-id
+ * allowlist. Only facebook-l and facebook-lm currently produce a DNR rule.
  *
  * @type {ReadonlyArray<string>}
  */
@@ -70,6 +80,13 @@ export const REGEX_PURE_WRAPPER_IDS = Object.freeze([
  *   paramName: string,
  * }>}
  */
+// Pruned entries (issue #934): skimlinks-redirectingat, skimlinks-skimresources,
+// and shareasale used to live here, but their sourceId ("skimlinks" /
+// "shareasale") was retired from WRAPPERS in #907 — buildDnrRules() has been
+// silently skipping them ever since (see the isStringOnlyHostPatterns /
+// bySourceId lookup below), so removing the dead entries does not change
+// buildDnrRules(WRAPPERS)'s output. Their ids remain in REGEX_PURE_WRAPPER_IDS
+// above for test compatibility; see that constant's comment.
 const RECIPES = Object.freeze([
   {
     id: "facebook-l",
@@ -84,27 +101,6 @@ const RECIPES = Object.freeze([
     hostRegex: "lm\\.facebook\\.com",
     pathPrefix: "/l\\.php",
     paramName: "u",
-  },
-  {
-    id: "skimlinks-redirectingat",
-    sourceId: "skimlinks",
-    hostRegex: "go\\.redirectingat\\.com",
-    pathPrefix: null,
-    paramName: "url",
-  },
-  {
-    id: "skimlinks-skimresources",
-    sourceId: "skimlinks",
-    hostRegex: "go\\.skimresources\\.com",
-    pathPrefix: null,
-    paramName: "url",
-  },
-  {
-    id: "shareasale",
-    sourceId: "shareasale",
-    hostRegex: "(?:www\\.)?shareasale\\.com",
-    pathPrefix: "/r\\.cfm",
-    paramName: "urllink",
   },
 ]);
 
