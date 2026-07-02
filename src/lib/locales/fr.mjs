@@ -151,6 +151,7 @@ export default Object.freeze({
   optionsRemoteRulesErrOverCap: "La mise à jour était trop volumineuse. Ignorée.",
   optionsRemoteRulesErrVersion: "La mise à jour était plus ancienne que la version actuelle. Ignorée.",
   optionsRemoteRulesErrStale: "Le fichier de mise à jour était trop ancien. Ignoré.",
+  optionsRemoteRulesErrDnr: "La mise à jour n'a pas pu être appliquée au navigateur. Liste précédente conservée.",
   optionsRemoteRulesErrUnknown: "Échec de la mise à jour. Consultez la console pour plus de détails.",
   muga_disabled_for_domain: "MUGA est désactivé sur ce site",
   section_advanced: "Avancé",

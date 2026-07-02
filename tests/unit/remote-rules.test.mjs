@@ -894,15 +894,57 @@ describe("mergeIntoCache — writes params + meta to storage", () => {
     assert.deepEqual(call.removeRuleIds, [REMOTE_RULE_ID]);
   });
 
-  test("empty params list → DNR rule still updated with empty removeParams", async () => {
+  test("empty params list → remove-only DNR update, no empty removeParams rule (#923)", async () => {
+    // A valid signed payload whose params all dedupe against the built-ins must
+    // NOT build a rule with an empty removeParams transform — the DNR API
+    // rejects that. mergeIntoCache emits a remove-only update instead.
     const storage = makeStorageFake();
     const dnr = makeDnrFake();
     await mergeIntoCache([], { version: 1, fetchedAt: null, paramCount: 0, lastError: null, published: null }, { storage, dnr });
     assert.strictEqual(dnr._calls.length, 1);
-    assert.deepEqual(
-      dnr._calls[0].addRules[0].action.redirect.transform.queryTransform.removeParams,
-      []
+    const call = dnr._calls[0];
+    assert.deepEqual(call.removeRuleIds, [REMOTE_RULE_ID], "stale rule 1001 must still be removed");
+    assert.ok(
+      !call.addRules || call.addRules.length === 0,
+      "no rule may be added for an all-dedupe payload (empty removeParams is rejected by the DNR API)"
     );
+  });
+
+  test("all-dedupe payload persists its version cleanly (no throw poisoning) — #923", async () => {
+    // Regression: the old path wrote meta{version:N} then threw on the empty
+    // removeParams rule, leaving version N persisted so the next payload at N
+    // failed VERSION_REGRESSION. With the fix the empty case never throws.
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    await mergeIntoCache([], { version: 5, fetchedAt: null, paramCount: 0, lastError: null, published: null }, { storage, dnr });
+    const stored = await storage.get({ remoteRulesMeta: {} });
+    assert.strictEqual(stored.remoteRulesMeta.version, 5, "version must persist for a clean all-dedupe merge");
+  });
+
+  test("DNR update failure does NOT advance the persisted version and records lastError — #923", async () => {
+    // If updateDynamicRules throws, the version must stay put so a later payload
+    // at the same version is not rejected as VERSION_REGRESSION — the pipeline
+    // self-heals on the next fetch instead of being permanently poisoned.
+    const storage = makeStorageFake({
+      remoteParams: ["old_param"],
+      remoteRulesMeta: { version: 4, fetchedAt: "2026-01-01T00:00:00Z", paramCount: 1, lastError: null, published: null },
+    });
+    const throwingDnr = {
+      updateDynamicRules() { return Promise.reject(new Error("DNR rejected update")); },
+    };
+
+    await mergeIntoCache(["utm_new"], { version: 5, fetchedAt: null, paramCount: 1, lastError: null, published: null }, { storage, dnr: throwingDnr });
+
+    const stored = await storage.get({ remoteParams: [], remoteRulesMeta: {} });
+    assert.strictEqual(stored.remoteRulesMeta.version, 4, "version must NOT advance when the DNR update fails");
+    assert.strictEqual(stored.remoteRulesMeta.lastError, ERR.DNR_ERROR, "lastError must record the DNR failure");
+    assert.deepEqual(stored.remoteParams, ["old_param"], "previous remoteParams must be left untouched on failure");
+
+    // Self-heal: a subsequent merge at version 5 with a working DNR now succeeds.
+    const workingDnr = makeDnrFake();
+    await mergeIntoCache(["utm_new"], { version: 5, fetchedAt: null, paramCount: 1, lastError: null, published: null }, { storage, dnr: workingDnr });
+    const healed = await storage.get({ remoteRulesMeta: {} });
+    assert.strictEqual(healed.remoteRulesMeta.version, 5, "a later valid payload at the same version must succeed after self-heal");
   });
 });
 

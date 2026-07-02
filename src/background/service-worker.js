@@ -10,11 +10,12 @@ import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLo
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
-import { DNR_CUSTOM_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
+import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
 import {
   runRemoteRulesFetch,
   clearRemoteCache,
+  buildRemoteDnrRule,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
@@ -510,6 +511,11 @@ async function applyDnrState(prefs) {
       disableRulesetIds,
     }).catch(err => console.warn("[MUGA] applyDnrState enable:", err));
     await syncCustomParamsDNR(prefs.customParams);
+    // Re-arm the dynamic remote-params rule (id 1001). The gate-closed branch
+    // removes it (#921), so a close→open cycle — or a wake where the weekly
+    // signed fetch is time-gated and skips re-adding it — would otherwise leave
+    // remote cleaning silently off. Rebuild it here from the cached payload.
+    await reconcileRemoteDnrRule(prefs);
   } else {
     // Gate closed: disable ALL declared rulesets so that AMP redirects
     // and wrapper-unwrapping cannot fire before the user has accepted
@@ -520,6 +526,45 @@ async function applyDnrState(prefs) {
       }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
     }
     await syncCustomParamsDNR([]);
+    // Disabling the static rulesets and clearing rule 1000 is NOT enough: the
+    // remote-params rule (dynamic id 1001) is a DNR redirect that keeps
+    // stripping params for a disabled or non-consented extension. Remove it so
+    // the consent gate holds across the dynamic cleaning path too. (#921)
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID],
+    }).catch(err => console.warn("[MUGA] applyDnrState remote-params clear:", err));
+  }
+}
+
+// Reconciles the dynamic remote-params rule (id 1001) with current prefs +
+// cached payload. Used on gate-open so rule 1001 is restored after the
+// gate-closed branch removed it, without waiting for the next weekly fetch.
+// buildRemoteDnrRule rejects an empty removeParams transform, so an empty or
+// missing cache resolves to "no rule" (removal only). (#921)
+//
+// Named distinctly from the SW-local syncRemoteParamsDNR retired in #706: that
+// helper duplicated the write that runRemoteRulesFetch already performs, whereas
+// this one restores rule 1001 from the CACHE on gate-open, which the time-gated
+// weekly fetch does not do.
+async function reconcileRemoteDnrRule(prefs) {
+  if (!hasDNR) return;
+  try {
+    const params = prefs.remoteRulesEnabled
+      ? (await getRemoteParams()).remoteParams
+      : [];
+    const list = Array.isArray(params) ? params : [];
+    if (list.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID],
+      addRules: [buildRemoteDnrRule(list)],
+    });
+  } catch (err) {
+    console.warn("[MUGA] reconcileRemoteDnrRule failed:", err);
   }
 }
 
@@ -1113,6 +1158,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const prefs = await getPrefsWithCache();
+        // Consent gate (#922): a disabled or non-onboarded extension MUST NOT
+        // perform the live shortener-resolution egress. This mirrors the DNR
+        // consent gate — no network activity until the user has enabled the
+        // extension AND accepted the ToS. Checked before followShortenersEnabled
+        // and before any fetch so the gate cannot be bypassed by the feature toggle.
+        if (!prefs.enabled || !prefs.onboardingDone) {
+          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          return;
+        }
         if (!prefs.followShortenersEnabled) {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
           return;
