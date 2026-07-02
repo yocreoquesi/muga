@@ -71,6 +71,7 @@ export const ERR = Object.freeze({
   OVER_CAP:           "OVER_CAP",
   VERSION_REGRESSION: "VERSION_REGRESSION",
   STALE_PAYLOAD:      "STALE_PAYLOAD",
+  DNR_ERROR:          "DNR_ERROR",
 });
 
 // ── Denylist + affiliate guard sets ──────────────────────────────────────────
@@ -532,13 +533,32 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
       `mergeIntoCache: accepted param count ${Array.isArray(accepted) ? accepted.length : "(not-array)"} exceeds MAX_PARAM_COUNT (${MAX_PARAM_COUNT})`,
     );
   }
+
+  // An empty accepted set (a valid signed payload whose params all dedupe
+  // against the built-ins) must NOT produce a rule with an empty removeParams
+  // transform — the DNR API rejects that, which used to throw AFTER the version
+  // had already been persisted, poisoning the cache so the next payload at the
+  // same version failed VERSION_REGRESSION forever. Emit a remove-only update
+  // instead so any stale rule 1001 is cleared and nothing invalid is added. (#923)
+  const dnrUpdate = accepted.length === 0
+    ? { removeRuleIds: [REMOTE_RULE_ID] }
+    : { removeRuleIds: [REMOTE_RULE_ID], addRules: [buildRemoteDnrRule(accepted)] };
+
+  // Apply the DNR change BEFORE persisting the new version. If the update
+  // throws, the version is never advanced and lastError is recorded on the
+  // existing meta, so a later payload at the same version is not rejected as
+  // VERSION_REGRESSION — the pipeline self-heals on the next fetch. (#923)
+  try {
+    await dnr.updateDynamicRules(dnrUpdate);
+  } catch (err) {
+    await _writeError(ERR.DNR_ERROR, storage);
+    console.error("[MUGA] remote-rules:", ERR.DNR_ERROR, err?.message ?? err);
+    return;
+  }
+
   await storage.set({
     remoteParams: accepted,
     remoteRulesMeta: meta,
-  });
-  await dnr.updateDynamicRules({
-    removeRuleIds: [REMOTE_RULE_ID],
-    addRules: [buildRemoteDnrRule(accepted)],
   });
 }
 

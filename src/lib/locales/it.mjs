@@ -151,6 +151,7 @@ export default Object.freeze({
   optionsRemoteRulesErrOverCap: "L'aggiornamento era troppo grande. Ignorato.",
   optionsRemoteRulesErrVersion: "L'aggiornamento era più vecchio di quello attuale. Ignorato.",
   optionsRemoteRulesErrStale: "Il file di aggiornamento era troppo vecchio. Ignorato.",
+  optionsRemoteRulesErrDnr: "Impossibile applicare l'aggiornamento al browser. Elenco precedente ancora in uso.",
   optionsRemoteRulesErrUnknown: "Aggiornamento fallito. Controlla la console per i dettagli.",
   muga_disabled_for_domain: "MUGA è disattivato su questo sito",
   section_advanced: "Avanzate",

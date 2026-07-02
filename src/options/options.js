@@ -1272,6 +1272,7 @@ const REMOTE_ERR_KEYS = Object.freeze({
   OVER_CAP:           "optionsRemoteRulesErrOverCap",
   VERSION_REGRESSION: "optionsRemoteRulesErrVersion",
   STALE_PAYLOAD:      "optionsRemoteRulesErrStale",
+  DNR_ERROR:          "optionsRemoteRulesErrDnr",
 });
 
 /**
