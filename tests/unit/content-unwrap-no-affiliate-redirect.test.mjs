@@ -96,3 +96,185 @@ describe("#695 invariant: AFFILIATE_REDIRECT_NETWORKS ∩ legacy unwrap map = �
     assert.deepEqual(Object.keys(legacyMap).sort(), []);
   });
 });
+
+// ---------------------------------------------------------------------------
+// #920 — the inline INLINE_AFFILIATE_REDIRECT_NETWORKS guard in cleaner.js
+// mirrors the canonical AFFILIATE_REDIRECT_NETWORKS list.
+//
+// runRedirectUnwrap's GENERIC redirect loop (REDIRECT_PATH_RE + REDIRECT_PARAMS)
+// is host-agnostic: unlike detectWrapper / inlineDetectWrapper it had no
+// affiliate-redirect-host guard. A pass-through network that ever served a
+// redirect-shaped path (/redirect, /out, …) with a ?url= param would be
+// unwrapped client-side, defeating its 30x and stripping the creator's
+// commission. #920 adds an inline host mirror + early bail. This block pins
+// that mirror to the source-of-truth so the two copies cannot silently drift.
+// ---------------------------------------------------------------------------
+function parseInlineAffiliateMirror() {
+  const match = CONTENT_CLEANER_SOURCE.match(
+    /const INLINE_AFFILIATE_REDIRECT_NETWORKS\s*=\s*\[([\s\S]*?)\];/,
+  );
+  assert.ok(
+    match,
+    "src/content/cleaner.js must contain an INLINE_AFFILIATE_REDIRECT_NETWORKS array literal (the #920 guard mirror)",
+  );
+  return [...match[1].matchAll(/"([^"]+)"/g)].map((m) => m[1].toLowerCase());
+}
+
+describe("#920 — cleaner.js INLINE_AFFILIATE_REDIRECT_NETWORKS mirrors the source-of-truth", () => {
+  const inlineMirror = parseInlineAffiliateMirror();
+
+  test("the inline mirror is non-empty", () => {
+    assert.ok(
+      inlineMirror.length > 0,
+      "INLINE_AFFILIATE_REDIRECT_NETWORKS is empty — the guard is a no-op",
+    );
+  });
+
+  test("every host in AFFILIATE_REDIRECT_NETWORKS is in the inline mirror", () => {
+    const mirrorSet = new Set(inlineMirror);
+    for (const host of AFFILIATE_REDIRECT_NETWORKS) {
+      assert.ok(
+        mirrorSet.has(host.toLowerCase()),
+        `${host} is in AFFILIATE_REDIRECT_NETWORKS but missing from the cleaner.js INLINE_AFFILIATE_REDIRECT_NETWORKS mirror — the generic-unwrap guard will not cover it`,
+      );
+    }
+  });
+
+  test("the inline mirror does not contain entries beyond AFFILIATE_REDIRECT_NETWORKS", () => {
+    const sourceSet = new Set(
+      AFFILIATE_REDIRECT_NETWORKS.map((h) => h.toLowerCase()),
+    );
+    for (const host of inlineMirror) {
+      assert.ok(
+        sourceSet.has(host),
+        `${host} is in cleaner.js INLINE_AFFILIATE_REDIRECT_NETWORKS but not in AFFILIATE_REDIRECT_NETWORKS — drift means the mirror is stale`,
+      );
+    }
+  });
+
+  test("runRedirectUnwrap bails via isInlineAffiliateRedirectNetwork before the generic loop", () => {
+    // Structural check: the guard must be wired in AND positioned before the
+    // REDIRECT_PATH_RE generic loop. Without this call, the mirror is a dead
+    // constant.
+    assert.ok(
+      /isInlineAffiliateRedirectNetwork\(location\.hostname\.toLowerCase\(\)\)/.test(
+        CONTENT_CLEANER_SOURCE,
+      ),
+      "cleaner.js must call isInlineAffiliateRedirectNetwork(location.hostname.toLowerCase()) and return when true",
+    );
+    const guardIdx = CONTENT_CLEANER_SOURCE.indexOf(
+      "isInlineAffiliateRedirectNetwork(location.hostname",
+    );
+    const loopIdx = CONTENT_CLEANER_SOURCE.indexOf("const REDIRECT_PATH_RE =");
+    assert.ok(guardIdx !== -1 && loopIdx !== -1, "both the guard and the generic loop must exist");
+    assert.ok(
+      guardIdx < loopIdx,
+      "the affiliate-redirect guard must run BEFORE the generic REDIRECT_PATH_RE loop",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #920 — behavioural regression: the generic redirect loop must NOT unwrap a
+// pass-through affiliate-redirect host, even on a redirect-shaped path, while
+// non-affiliate redirect hosts continue to unwrap unchanged.
+//
+// Replicates the guarded generic-unwrap logic from cleaner.js (IIFE content
+// script — cannot be imported). The inline mirror is parsed from source so
+// the replica stays honest about which hosts the guard covers.
+// ---------------------------------------------------------------------------
+describe("#920 — generic redirect loop bails on affiliate-redirect hosts", () => {
+  const inlineMirror = parseInlineAffiliateMirror();
+
+  function isInlineAffiliateRedirectNetwork(host) {
+    for (const entry of inlineMirror) {
+      if (entry.startsWith("*.")) {
+        if (host.endsWith(entry.slice(1))) return true;
+      } else if (host === entry) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const REDIRECT_PARAMS = ["url", "redirect", "redirect_url", "dest", "goto", "returnurl", "return_url"];
+  const REDIRECT_PATH_RE = /\/(redirect|bounce|out|away|leave|goto|jump|click|track|link|redir|forward|proxy|url|exit)\b/i;
+
+  // Mirrors runRedirectUnwrap's guard + generic loop. Returns the unwrapped
+  // destination href, or null when nothing is unwrapped (guard bail, path
+  // miss, or no matching param).
+  function genericUnwrapWithGuard(rawUrl) {
+    let parsed;
+    try { parsed = new URL(rawUrl); } catch { return null; }
+    if (isInlineAffiliateRedirectNetwork(parsed.hostname.toLowerCase())) return null;
+    if (!REDIRECT_PATH_RE.test(parsed.pathname)) return null;
+    for (const [rawKey, value] of parsed.searchParams) {
+      const param = rawKey.toLowerCase();
+      if (!REDIRECT_PARAMS.includes(param)) continue;
+      if (!value || value.length > 2000) continue;
+      let dest;
+      try { dest = new URL(value); } catch {
+        try { dest = new URL(decodeURIComponent(value)); } catch { continue; }
+      }
+      if (!["http:", "https:"].includes(dest.protocol)) continue;
+      if (!dest.hostname) continue;
+      if (dest.hostname === parsed.hostname) continue;
+      return dest.href;
+    }
+    return null;
+  }
+
+  test("awin1.com on a redirect-shaped path (/redirect?url=) is NOT unwrapped", () => {
+    const dest = genericUnwrapWithGuard(
+      "https://www.awin1.com/redirect?url=https%3A%2F%2Fwww.zalando.es%2Fproduct.html",
+    );
+    assert.equal(dest, null, "affiliate-redirect host must bail before the generic loop (#920)");
+  });
+
+  test("go.skimresources.com on /out?url= is NOT unwrapped (#907 host, #920 guard)", () => {
+    const dest = genericUnwrapWithGuard(
+      "https://go.skimresources.com/out?url=https%3A%2F%2Fshop.example.com%2Fitem",
+    );
+    assert.equal(dest, null);
+  });
+
+  test("shareasale.com on /click?url= is NOT unwrapped (reclassified pass-through)", () => {
+    const dest = genericUnwrapWithGuard(
+      "https://www.shareasale.com/click?url=https%3A%2F%2Fwww.shein.com%2Fdress.html",
+    );
+    assert.equal(dest, null);
+  });
+
+  test("Impact Radius wildcard subdomain (target.pxf.io) on /redirect?url= is NOT unwrapped", () => {
+    const dest = genericUnwrapWithGuard(
+      "https://target.pxf.io/redirect?url=https%3A%2F%2Fwww.target.com%2Fp%2F123",
+    );
+    assert.equal(dest, null, "wildcard *.pxf.io subdomain must be covered by the guard");
+  });
+
+  test("every canonical AFFILIATE_REDIRECT_NETWORKS host bails on /redirect?url=", () => {
+    for (const host of AFFILIATE_REDIRECT_NETWORKS) {
+      // Synthesise a concrete hostname for wildcard entries.
+      const concreteHost = host.startsWith("*.") ? `brand${host.slice(1)}` : host;
+      const dest = genericUnwrapWithGuard(
+        `https://${concreteHost}/redirect?url=https%3A%2F%2Fmerchant.example.com%2Fp`,
+      );
+      assert.equal(dest, null, `${host} (${concreteHost}) must NOT be unwrapped by the content layer`);
+    }
+  });
+
+  // ── Non-affiliate hosts: existing unwrap behaviour is unchanged ──────────
+  test("a plain non-affiliate tracker on /redirect?url= STILL unwraps", () => {
+    const dest = genericUnwrapWithGuard(
+      "https://tracker.example.com/redirect?url=https%3A%2F%2Fshop.com%2Fproduct",
+    );
+    assert.equal(dest, "https://shop.com/product", "non-affiliate hosts must be unaffected by the guard");
+  });
+
+  test("Reddit out.reddit.com/out?url= STILL unwraps (not an affiliate-redirect host)", () => {
+    const dest = genericUnwrapWithGuard(
+      "https://out.reddit.com/out?url=https%3A%2F%2Fexample.com%2Fpost",
+    );
+    assert.equal(dest, "https://example.com/post");
+  });
+});
