@@ -311,10 +311,13 @@ export default Object.freeze({
   row_show_report_button_hint: "Fügt eine Schaltfläche hinzu, um eine URL zu melden, die MUGA falsch bereinigt hat.",
   row_domain_stats_label: "Statistiken pro Domain erfassen",
   row_domain_stats_hint: "Zählt bereinigte URLs und entfernte Parameter pro Website, damit das Popup zeigen kann, woher der meiste Lärm kommt. Wird nur auf diesem Gerät gespeichert.",
+  row_show_badge_label: "Laufenden Zähler im Symbolleisten-Icon anzeigen",
+  row_show_badge_hint: "Zeigt als Badge auf dem Symbolleisten-Icon die Anzahl der Tracking-Parameter an, die MUGA in diesem Tab entfernt hat. Wird erst beim Schließen des Tabs zurückgesetzt.",
   aria_canonical_extractor: "Extraktion des kanonischen Ziels",
   aria_cross_site_frequency: "Erkennung seitenübergreifender Kennungen",
   aria_attribution_ledger: "Speicherung der letzten Aktivität",
   aria_param_breakdown: "Aufschlüsselung der entfernten Parameter anzeigen",
   aria_show_report_button: "Melde-Schaltfläche im Popup anzeigen",
   aria_domain_stats: "Statistiken pro Domain erfassen",
+  aria_show_badge: "Tab-Zähler-Badge im Symbolleisten-Icon anzeigen",
 });
