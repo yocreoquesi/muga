@@ -42,6 +42,12 @@ export const PREF_DEFAULTS = {
   paramBreakdown: true,
   showReportButton: true,
   domainStats: true,
+  // Toolbar badge toggle (#910). Default ON: shows the tab's running count
+  // of tracking params stripped as a native browser badge (setBadgeText)
+  // on the toolbar icon, mirroring uBlock Origin. Deliberately NOT an
+  // icon-variant swap — see toolbar-presenter.js module doc for why a
+  // prior setIcon-based badge attempt (f6a6e2b) was reverted.
+  showBadge: true,
   // Remote rules toggle — lives in sync so the preference follows the user
   // across devices. Default true (#888): the weekly Ed25519-signed GET to
   // rules.muga.app carries no user data (credentials: "omit", no cookies, no

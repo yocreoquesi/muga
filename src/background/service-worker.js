@@ -146,7 +146,12 @@ const _rawActionApi = globalThis.chrome?.action || globalThis.chrome?.browserAct
 // the resolved state hasn't changed). Reset / read via __TEST__ handlers
 // (see below) gated on the test-mode sentinel. Production never reads
 // these counts; the cost is one integer increment per action call.
-let _testActionCalls = { setTitle: 0, setBadgeText: 0 };
+// setIcon is tracked here PURELY as an e2e regression guard (#910): the
+// toolbar presenter must NEVER call it (the prior icon-variant swap raced
+// navigation resets and caused the Firefox MV2 icon to flash/disappear —
+// f6a6e2b). Production code never calls actionApi.setIcon; if this counter
+// is ever non-zero in a test run, that is itself the regression.
+let _testActionCalls = { setTitle: 0, setBadgeText: 0, setIcon: 0 };
 const actionApi = new Proxy(_rawActionApi, {
   get(target, prop) {
     const orig = target[prop];
@@ -161,10 +166,11 @@ const actionApi = new Proxy(_rawActionApi, {
   },
 });
 
-// --- Toolbar presenter (#358) ---
-// All toolbar surface mutations (tooltip, badge text, badge color, icon) flow
-// through this presenter via the event bus. No code outside the presenter calls
-// chrome.action.set* directly.
+// --- Toolbar presenter (#358, badge re-introduced #910) ---
+// All toolbar surface mutations (tooltip, badge text) flow through this
+// presenter via the event bus. No code outside the presenter calls
+// chrome.action.set* directly. setIcon is never called — see
+// toolbar-presenter.js module doc for why (f6a6e2b regression).
 const toolbarBus   = createToolbarEventBus();
 const toolbarState = createTabPresenterState();
 createToolbarPresenter({
@@ -176,6 +182,13 @@ createToolbarPresenter({
   // before the cache is warm, which is fine — tooltip update fires after
   // URL processing, by which point prefs are loaded.
   t: (key) => t(key, cachedPrefs?.language || "en"),
+  // Same call-time-resolution pattern as `t` above. Defaults (cachedPrefs
+  // still null) resolve to showBadge:true / onboardingDone:false — the
+  // latter is the SAFE default: never paint a per-tab badge before we
+  // actually know consent is complete, since that would mask the global
+  // "!" badge for that tab.
+  getShowBadge: () => cachedPrefs?.showBadge !== false,
+  isOnboardingDone: () => cachedPrefs?.onboardingDone === true,
 });
 
 // Run migrations once on startup (no-ops if already done).
@@ -626,29 +639,46 @@ async function syncContextMenus(enabled) {
 
 // --- Badge helpers ---
 //
-// The badge text and tooltip are now driven by the ToolbarPresenter (#358).
-// updateTabBadge emits a urlCleaned event; the presenter accumulates the
-// count and writes the badge text. Session storage is still used so the
-// count survives service-worker termination across the same tab lifecycle.
-
+// The badge text and tooltip are driven by the ToolbarPresenter (#358,
+// badge counter re-introduced #910). updateTabBadge emits a urlCleaned
+// event; the presenter writes the tooltip AND (when showBadge is on and
+// onboarding is done) the native toolbar badge text.
+//
+// TWO session-storage keys, two different reset semantics — do not merge
+// them:
+//   - `tab_{tabId}`       — per-PAGE count, cleared on every navigation.
+//     Feeds the popup's "This page" preview badge (src/popup/popup.js).
+//     Unchanged by #910.
+//   - `tab_badge_{tabId}` — per-TAB running total, cleared ONLY on tab
+//     close. Feeds the toolbar badge (#910's requirement: accumulates
+//     across every navigation in the tab, including SPA). Passed to the
+//     presenter as event.total so the badge stays correct even if the
+//     presenter's in-memory map was wiped by a service-worker restart.
 async function updateTabBadge(tabId, junkRemoved) {
   if (!tabId || junkRemoved <= 0) return;
   const key = `tab_${tabId}`;
   const data = await sessionStorage.get({ [key]: 0 });
   const newCount = data[key] + junkRemoved;
   await sessionStorage.set({ [key]: newCount });
-  toolbarBus.emit({ type: "urlCleaned", tabId, paramsRemoved: junkRemoved });
+
+  const badgeKey = `tab_badge_${tabId}`;
+  const badgeData = await sessionStorage.get({ [badgeKey]: 0 });
+  const badgeTotal = badgeData[badgeKey] + junkRemoved;
+  await sessionStorage.set({ [badgeKey]: badgeTotal });
+
+  toolbarBus.emit({ type: "urlCleaned", tabId, paramsRemoved: junkRemoved, total: badgeTotal });
 }
 
-// Clear badge when a tab starts navigating to a new page.
-// While onboarding is pending we deliberately skip the toolbar bus
-// emit: the presenter responds to navigationStarted by writing a
-// per-tab badge "" via setBadgeText({tabId, text:""}), which in
-// Firefox (and Chrome) overrides the global "!" badge for that tab.
-// The result was that the consent-required cue silently disappeared
-// from any tab the user navigated. Since the cleaner is gated on
-// onboardingDone, there are no per-tab counts to clear in this state,
-// so skipping the emit is safe.
+// Reset the per-PAGE popup preview count and the tooltip on every
+// navigation start. Deliberately does NOT touch `tab_badge_{tabId}` or
+// emit anything badge-related — the toolbar badge is a per-TAB running
+// total that must survive navigation (#910).
+//
+// While onboarding is pending we deliberately skip the toolbar bus emit:
+// the cleaner is gated on onboardingDone, so there is no per-page state to
+// reset in this state, and emitting would still update the tooltip for a
+// tab the user has not consented on. Skipping is safe and matches the
+// pre-#910 behavior.
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   if (changeInfo.status !== "loading") return;
   sessionStorage.remove(`tab_${tabId}`);
@@ -659,9 +689,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   toolbarBus.emit({ type: "navigationStarted", tabId });
 });
 
-// Clean up session data when a tab closes
+// Clean up session data when a tab closes. Both the per-page popup
+// counter AND the per-tab badge running total are tab-scoped and must be
+// evicted here — this is the ONLY place the badge total resets (#910).
 chrome.tabs.onRemoved.addListener((tabId) => {
   sessionStorage.remove(`tab_${tabId}`);
+  sessionStorage.remove(`tab_badge_${tabId}`);
   toolbarBus.emit({ type: "tabClosed", tabId });
 });
 
@@ -727,6 +760,12 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       ? changes.contextMenuEnabled.newValue !== false
       : (await getPrefsWithCache()).contextMenuEnabled !== false;
     await syncContextMenus(enabled);
+  }
+  // showBadge toggled (#910). Tell the presenter immediately so it clears
+  // (or repaints) every currently-tracked tab's badge — "stops updates"
+  // alone would leave stale numbers visible until each tab's next clean.
+  if (changes.showBadge) {
+    toolbarBus.emit({ type: "showBadgePrefChanged", value: changes.showBadge.newValue !== false });
   }
 });
 
@@ -797,9 +836,24 @@ async function handleTestMessage(message, _sender) {
       // navigation that would otherwise generate the event.
       // The inner event lives under `message.event` so its `type` does
       // not collide with the dispatch `type`.
+      //
+      // #910: warm the prefs cache before emitting. Production code always
+      // emits urlCleaned downstream of a getPrefsWithCache() call (inside
+      // handleProcessUrl), so the presenter's getShowBadge()/isOnboardingDone()
+      // accessors never observe a null cachedPrefs when a REAL urlCleaned
+      // event fires. This synthetic test path bypasses that call entirely —
+      // without warming the cache here, a cold/evicted SW would read
+      // cachedPrefs as null and the presenter would (correctly, but
+      // misleadingly for a test) skip the badge write, producing a flaky
+      // false negative that has nothing to do with presenter logic.
+      await getPrefsWithCache();
       const inner = message.event;
       if (!inner || typeof inner.type !== "string") {
         return { ok: false, error: "missing event.type" };
+      }
+      if (inner.type === "showBadgePrefChanged") {
+        toolbarBus.emit({ type: "showBadgePrefChanged", value: inner.value === true });
+        return { ok: true };
       }
       const tabIdNum = Number(inner.tabId);
       if (!Number.isFinite(tabIdNum) || tabIdNum < 0) {
@@ -808,6 +862,7 @@ async function handleTestMessage(message, _sender) {
       const event = { type: inner.type, tabId: tabIdNum };
       if (inner.type === "urlCleaned") {
         event.paramsRemoved = Number(inner.paramsRemoved) || 0;
+        if (Number.isFinite(inner.total)) event.total = Number(inner.total);
       }
       toolbarBus.emit(event);
       return { ok: true };
@@ -827,7 +882,7 @@ async function handleTestMessage(message, _sender) {
       return { ok: true, tabId: tab.id };
     }
     case "__TEST__resetActionApiCounts": {
-      _testActionCalls = { setTitle: 0, setBadgeText: 0 };
+      _testActionCalls = { setTitle: 0, setBadgeText: 0, setIcon: 0 };
       return { ok: true };
     }
     case "__TEST__readActionApiCounts": {

@@ -3,8 +3,8 @@
  *
  * Thin internal pub/sub. The URL-processing path emits semantic events
  * (urlCleaned, creatorReferralPreserved, foreignAffiliateDetected,
- * navigationStarted, tabClosed); the toolbar presenter subscribes and
- * translates them into chrome.action.* calls.
+ * navigationStarted, tabClosed, showBadgePrefChanged); the toolbar
+ * presenter subscribes and translates them into chrome.action.* calls.
  *
  * Decoupling matters: the URL pipeline does not call browser APIs
  * directly, and the presenter does not know about URL cleaning. This is
@@ -12,11 +12,18 @@
  * presentation concerns.
  *
  * Event shapes:
- *   { type: "urlCleaned",                tabId: number, paramsRemoved: number }
+ *   { type: "urlCleaned",                tabId: number, paramsRemoved: number, total?: number }
  *   { type: "creatorReferralPreserved",  tabId: number }
  *   { type: "foreignAffiliateDetected",  tabId: number }
  *   { type: "navigationStarted",         tabId: number }
  *   { type: "tabClosed",                 tabId: number }
+ *   { type: "showBadgePrefChanged",      value: boolean }  // no tabId — global
+ *
+ * `urlCleaned.total`, when present, is the tab's authoritative running
+ * badge total (persisted in chrome.storage.session by the SW so it
+ * survives service-worker restarts — see updateTabBadge() in
+ * service-worker.js). The presenter falls back to in-memory accumulation
+ * when it is absent (#910).
  */
 
 export function createToolbarEventBus() {

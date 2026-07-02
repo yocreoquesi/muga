@@ -1,18 +1,39 @@
 /**
  * MUGA: Toolbar Presenter
  *
- * Single point of design control over the browser-action toolbar surface.
- * Currently manages only the dynamic per-tab tooltip via setTitle.
+ * Single point of design control over the browser-action toolbar surface:
+ * the dynamic per-tab tooltip (setTitle) and the per-tab numeric badge
+ * (setBadgeText). No code outside this module may call chrome.action.set*
+ * for either surface.
  *
- * Subscribes to a ToolbarEventBus, tracks per-tab semantic state (cleaned,
- * creator-referral preserved, foreign affiliate detected) and translates
- * it into the right tooltip string. State is cached in TabPresenterState
- * so the same setTitle call is not issued twice for the same value.
+ * Subscribes to a ToolbarEventBus and tracks two SEPARATE pieces of
+ * per-tab state, deliberately kept apart because their reset semantics
+ * differ:
  *
- * The badge text/color and icon variant surfaces were removed: the per-tab
- * count was confusing and the icon swap to the *-preserved.png variant
- * caused the toolbar icon to flash and disappear in Firefox MV2. The
- * extension now ships a single static icon declared in the manifest.
+ *   - Tooltip state (`state`, a TabPresenterState) — cleaned / creator-
+ *     referral-preserved / foreign-affiliate-detected flags for the
+ *     CURRENT page. Reset on every `navigationStarted` (per-page).
+ *   - Badge total (`badgeTotals`, owned by this module) — the tab's
+ *     running count of tracking params stripped, accumulated across
+ *     EVERY navigation in the tab's lifetime, including SPA/in-page
+ *     navigations. Reset ONLY on `tabClosed` (#910).
+ *
+ * Icon-variant swapping (setIcon) stays permanently removed: the swap to
+ * the *-preserved.png variant raced navigationStarted's icon reset and
+ * made the toolbar icon flash/disappear in Firefox MV2 (f6a6e2b). The
+ * extension ships a single static icon declared in the manifest; the
+ * badge (#910) is a NATIVE browser badge overlay on top of that icon —
+ * never a re-rendered/composited icon (no OffscreenCanvas/ImageData).
+ *
+ * Badge visibility is gated on two live accessors (mirroring how `t`
+ * resolves the current language from cachedPrefs at call time):
+ *   - `getShowBadge()`     — the user's `showBadge` preference.
+ *   - `isOnboardingDone()` — whether consent/onboarding is complete.
+ * The global "!" onboarding badge (src/background/service-worker.js,
+ * applyOnboardingBadge) has NO tabId; a per-tab setBadgeText call —
+ * even with an empty string — creates a per-tab override that masks
+ * that global badge for that tab. So while onboarding is incomplete,
+ * this presenter must never call setBadgeText with a tabId at all.
  */
 
 /**
@@ -26,9 +47,24 @@
  * @param {object} args.actionApi - chrome.action / browserAction shim.
  * @param {(key: string) => string} args.t - i18n lookup. Returns the
  *   localized string for the user's current language.
+ * @param {() => boolean} [args.getShowBadge] - Returns the current
+ *   `showBadge` preference. Defaults to always-true.
+ * @param {() => boolean} [args.isOnboardingDone] - Returns whether
+ *   onboarding/consent is complete. Defaults to always-true.
  * @returns {object} Presenter with introspection helpers.
  */
-export function createToolbarPresenter({ bus, state, actionApi, t }) {
+export function createToolbarPresenter({ bus, state, actionApi, t, getShowBadge, isOnboardingDone }) {
+  const showBadgeEnabled = typeof getShowBadge === "function" ? getShowBadge : () => true;
+  const onboardingDone   = typeof isOnboardingDone === "function" ? isOnboardingDone : () => true;
+
+  // Per-tab running total of tracking params stripped, accumulated across
+  // the tab's whole lifetime. See module doc comment above for why this is
+  // a separate map from `state`. In-memory only — the SW re-hydrates a
+  // tab's authoritative total from chrome.storage.session (survives
+  // service-worker restarts) and passes it as event.total on urlCleaned;
+  // see updateTabBadge() in service-worker.js.
+  const badgeTotals = new Map();
+
   function tooltipFor(s) {
     const cleaned   = s.paramsRemoved > 0;
     const preserved = s.creatorReferralPreserved;
@@ -51,8 +87,30 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
     actionApi.setTitle?.({ tabId, title: t("tooltip_default") });
   }
 
+  // Writes the badge for one tab. Never touches the action surface while
+  // onboarding is pending (see module doc comment) or while showBadge is
+  // off. Empty string when the total is zero — no digit is ever shown for
+  // a fresh tab because this is only called with a positive total.
+  function writeBadge(tabId, total) {
+    if (!onboardingDone() || !showBadgeEnabled()) return;
+    actionApi.setBadgeText?.({ tabId, text: total > 0 ? String(total) : "" });
+  }
+
   bus.subscribe((event) => {
     if (!event || typeof event !== "object" || !event.type) return;
+
+    // Global (non-tab-scoped) event: the showBadge preference flipped.
+    // Repaints or clears every currently-tracked tab's badge immediately
+    // — "stops updates" alone is not enough, existing badges must go too.
+    if (event.type === "showBadgePrefChanged") {
+      if (!onboardingDone()) return; // no per-tab badge exists to touch
+      const enabled = event.value === true;
+      for (const [tabId, total] of badgeTotals) {
+        actionApi.setBadgeText?.({ tabId, text: enabled && total > 0 ? String(total) : "" });
+      }
+      return;
+    }
+
     const tabId = event.tabId;
     if (typeof tabId !== "number" || tabId < 0) return;
 
@@ -62,6 +120,14 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
         if (count === 0) return;
         const { prev, next } = state.update(tabId, { paramsRemoved: count });
         applyTab(tabId, prev, next);
+
+        // Prefer the caller-supplied authoritative running total (survives
+        // SW restarts) over in-memory accumulation.
+        const total = Number.isFinite(event.total)
+          ? Math.max(0, event.total)
+          : (badgeTotals.get(tabId) || 0) + count;
+        badgeTotals.set(tabId, total);
+        writeBadge(tabId, total);
         return;
       }
       case "creatorReferralPreserved": {
@@ -75,11 +141,14 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
         return;
       }
       case "navigationStarted": {
+        // Tooltip only — the badge total is a running tab total and must
+        // NOT reset here, including for SPA/in-page navigations (#910).
         clearTab(tabId);
         return;
       }
       case "tabClosed": {
         state.evict(tabId);
+        badgeTotals.delete(tabId);
         return;
       }
       default:
@@ -89,5 +158,6 @@ export function createToolbarPresenter({ bus, state, actionApi, t }) {
 
   return {
     _tooltipFor: tooltipFor,
+    _badgeTotal: (tabId) => badgeTotals.get(tabId) || 0,
   };
 }

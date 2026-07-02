@@ -2,14 +2,15 @@
  * MUGA — toolbar presenter
  *
  * Verifies the contract: given an event sequence, the presenter writes
- * the right per-tab tooltip. Tests assert the API calls the presenter
- * would make against a recording stub — not screenshots, not real
- * chrome APIs.
+ * the right per-tab tooltip AND the right per-tab badge text. Tests
+ * assert the API calls the presenter would make against a recording
+ * stub — not screenshots, not real chrome APIs.
  *
- * Badge text/color and icon variant surfaces were removed (the icon
- * swap caused a flash-and-disappear regression in Firefox MV2 and the
- * per-tab counter was confusing). The tooltip is the only dynamic
- * surface the presenter currently writes.
+ * Icon-variant swapping stays removed (the setIcon swap caused a
+ * flash-and-disappear regression in Firefox MV2 — see f6a6e2b). The
+ * badge (#910) is re-introduced as a NATIVE browser badge overlay
+ * (setBadgeText only) on top of the single static manifest icon —
+ * never a re-rendered/composited icon.
  */
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -22,6 +23,7 @@ function makeRecordingActionApi() {
   return {
     calls,
     setTitle(arg) { calls.push(["setTitle", arg]); },
+    setBadgeText(arg) { calls.push(["setBadgeText", arg]); },
   };
 }
 
@@ -33,12 +35,35 @@ const STRINGS = {
 };
 const t = (key) => STRINGS[key] ?? key;
 
-function setup() {
+/**
+ * @param {{ showBadge?: boolean, onboardingDone?: boolean }} [opts]
+ * @returns {object} test rig, plus setShowBadge/setOnboardingDone mutators
+ *   so tests can flip the live pref/consent state mid-sequence (mirrors how
+ *   the SW's cachedPrefs-backed accessors behave in production).
+ */
+function setup({ showBadge = true, onboardingDone = true } = {}) {
   const bus = createToolbarEventBus();
   const state = createTabPresenterState();
   const actionApi = makeRecordingActionApi();
-  const presenter = createToolbarPresenter({ bus, state, actionApi, t });
-  return { bus, state, actionApi, presenter };
+  let _showBadge = showBadge;
+  let _onboardingDone = onboardingDone;
+  const presenter = createToolbarPresenter({
+    bus,
+    state,
+    actionApi,
+    t,
+    getShowBadge: () => _showBadge,
+    isOnboardingDone: () => _onboardingDone,
+  });
+  return {
+    bus, state, actionApi, presenter,
+    setShowBadge: (v) => { _showBadge = v; },
+    setOnboardingDone: (v) => { _onboardingDone = v; },
+  };
+}
+
+function badgeCallsFor(actionApi, tabId) {
+  return actionApi.calls.filter(([k, arg]) => k === "setBadgeText" && arg.tabId === tabId);
 }
 
 describe("toolbar-presenter — startup", () => {
@@ -119,6 +144,144 @@ describe("toolbar-presenter — tabClosed", () => {
     bus.emit({ type: "tabClosed", tabId: 11 });
     assert.equal(state.get(11).paramsRemoved, 0);
     assert.equal(state.get(11).creatorReferralPreserved, false);
+  });
+});
+
+describe("toolbar-presenter — badge (#910)", () => {
+  test("does not write a badge at construction", () => {
+    const { actionApi } = setup();
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("first cleaning writes the count as native badge text", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)[1], { tabId: 7, text: "3" });
+  });
+
+  test("accumulates across multiple urlCleaned events on the same tab", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 2 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)[1], { tabId: 7, text: "5" });
+  });
+
+  test("uses the caller-supplied running total when present (survives SW restarts)", () => {
+    // updateTabBadge() in the SW persists the running total in
+    // chrome.storage.session and passes it as event.total so the badge
+    // stays correct even if the presenter's in-memory map was reset by a
+    // service-worker restart mid-tab-lifetime.
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 2, total: 99 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)[1], { tabId: 7, text: "99" });
+  });
+
+  test("accumulates across navigationStarted — badge total survives in-tab navigation (including SPA)", () => {
+    const { bus, actionApi, state } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    bus.emit({ type: "navigationStarted", tabId: 7 });
+    // The per-page tooltip state resets on navigation...
+    assert.equal(state.get(7).paramsRemoved, 0);
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 2 });
+    // ...but the badge total does not: it's the tab's running total.
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)[1], { tabId: 7, text: "5" });
+  });
+
+  test("per-tab isolation: two tabs accumulate independently", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 3 });
+    bus.emit({ type: "urlCleaned", tabId: 2, paramsRemoved: 9 });
+    assert.deepEqual(badgeCallsFor(actionApi, 1).at(-1)[1], { tabId: 1, text: "3" });
+    assert.deepEqual(badgeCallsFor(actionApi, 2).at(-1)[1], { tabId: 2, text: "9" });
+  });
+
+  test("tabClosed resets the running total; reused tabId starts fresh", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 5, paramsRemoved: 8 });
+    bus.emit({ type: "tabClosed", tabId: 5 });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "urlCleaned", tabId: 5, paramsRemoved: 1 });
+    assert.deepEqual(badgeCallsFor(actionApi, 5).at(-1)[1], { tabId: 5, text: "1" });
+  });
+
+  test("zero or negative paramsRemoved does not write a badge", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 0 });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: -3 });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("no digit is shown for a fresh tab (no per-tab override ever written)", () => {
+    const { actionApi } = setup();
+    assert.equal(badgeCallsFor(actionApi, 42).length, 0);
+  });
+});
+
+describe("toolbar-presenter — badge + onboarding precedence (#910)", () => {
+  test("badge is not written while onboarding is incomplete — the global \"!\" badge must win", () => {
+    const { bus, actionApi } = setup({ onboardingDone: false });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("the tooltip is unaffected by onboarding state — only the badge is gated", () => {
+    const { bus, actionApi } = setup({ onboardingDone: false });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    assert.ok(actionApi.calls.find(([k]) => k === "setTitle"));
+  });
+
+  test("badge resumes once onboarding completes; the tracked total is preserved meanwhile", () => {
+    const { bus, actionApi, setOnboardingDone } = setup({ onboardingDone: false });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    setOnboardingDone(true);
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 2 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)[1], { tabId: 7, text: "5" });
+  });
+});
+
+describe("toolbar-presenter — showBadge pref (#910)", () => {
+  test("badge is not written while showBadge is off", () => {
+    const { bus, actionApi } = setup({ showBadge: false });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("showBadgePrefChanged(false) clears the badge on every tracked tab", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 4 });
+    bus.emit({ type: "urlCleaned", tabId: 2, paramsRemoved: 6 });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "showBadgePrefChanged", value: false });
+    assert.deepEqual(badgeCallsFor(actionApi, 1).at(-1)[1], { tabId: 1, text: "" });
+    assert.deepEqual(badgeCallsFor(actionApi, 2).at(-1)[1], { tabId: 2, text: "" });
+  });
+
+  test("showBadgePrefChanged(true) repaints the accumulated totals", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 4 });
+    bus.emit({ type: "showBadgePrefChanged", value: false });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "showBadgePrefChanged", value: true });
+    assert.deepEqual(badgeCallsFor(actionApi, 1).at(-1)[1], { tabId: 1, text: "4" });
+  });
+
+  test("further urlCleaned events stop updating the badge once showBadge is off", () => {
+    const { bus, actionApi, setShowBadge } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 4 });
+    setShowBadge(false);
+    bus.emit({ type: "showBadgePrefChanged", value: false });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 10 });
+    assert.equal(badgeCallsFor(actionApi, 1).length, 0);
+  });
+
+  test("showBadgePrefChanged does not touch the action surface while onboarding is incomplete (does not disturb the \"!\" badge)", () => {
+    const { bus, actionApi, setOnboardingDone } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 4 });
+    setOnboardingDone(false);
+    actionApi.calls.length = 0;
+    bus.emit({ type: "showBadgePrefChanged", value: false });
+    assert.equal(actionApi.calls.length, 0);
   });
 });
 
