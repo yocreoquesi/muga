@@ -93,6 +93,7 @@ export default Object.freeze({
   support_link: "支援する ♥",
   consent_gate_msg: "MUGAを使用する前に利用規約とプライバシーポリシーに同意してください。",
   consent_gate_btn: "規約に同意して続行",
+  aria_consent_gate: "MUGAの同意が必要です",
   rate_nudge_btn_short: "MUGAがお気に入りですか? 評価してください",
   bl_placeholder: "mysite.com  または  amazon.co.jp::tag::youtuber-21",
   wl_placeholder: "mysite.com  または  amazon.co.jp::tag::creator-21",
@@ -291,4 +292,7 @@ export default Object.freeze({
   aria_toast_duration: "通知の表示時間",
   aria_cp_entry: "カスタムトラッキングパラメータ",
   aria_dev_url_input: "テスト用URL",
+  aria_onboarding_affiliate_check: "アフィリエイトサポートを有効にする",
+  aria_onboarding_remote_rules_check: "このデバイスでルールのリモート更新を有効にする",
+  aria_onboarding_tos_check: "利用規約に同意する",
 });

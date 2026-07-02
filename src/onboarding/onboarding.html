@@ -11,7 +11,7 @@
   <div class="container">
     <div class="logo">
       <span class="logo-mark" aria-hidden="true">
-        <svg viewBox="0 0 104 68" fill="none" aria-label="MUGA">
+        <svg viewBox="0 0 104 68" fill="none">
           <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
           <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         </svg>
@@ -94,11 +94,11 @@
           Whoever earned the click keeps it.
         </p>
         <label class="consent-check" id="affiliate-label">
-          <input type="checkbox" id="affiliate-check" aria-label="Enable affiliate support">
+          <input type="checkbox" id="affiliate-check" data-i18n-aria-label="aria_onboarding_affiliate_check">
           <div class="consent-check-label">
             <strong data-i18n="ob_affiliate_check_label">Allow MUGA's affiliate tag on links that have none</strong>
             <small data-i18n="ob_affiliate_check_hint">Same price, always. If a link already has a tag, MUGA never touches it. Verify in our source code.</small>
-            <small id="affiliate-synced-note" class="synced-note" data-i18n="ob_synced_from_other_device" hidden>This setting was enabled on another device. Confirm it for this device, or uncheck to keep it off here.</small>
+            <small id="affiliate-synced-note" data-i18n="ob_synced_from_other_device" hidden>This setting was enabled on another device. Confirm it for this device, or uncheck to keep it off here.</small>
           </div>
         </label>
       </div>
@@ -125,7 +125,7 @@
           Your other device has remote rule updates enabled. With this on, MUGA performs a weekly fetch of a signed tracking-param list from a public GitHub Pages endpoint to keep your protection fresh. No user data is sent.
         </p>
         <label class="consent-check" id="remote-rules-label">
-          <input type="checkbox" id="remote-rules-check" aria-label="Enable remote rule updates on this device">
+          <input type="checkbox" id="remote-rules-check" data-i18n-aria-label="aria_onboarding_remote_rules_check">
           <div class="consent-check-label">
             <strong data-i18n="ob_remote_rules_check_label">Enable remote rule updates on this device</strong>
             <small data-i18n="ob_synced_from_other_device">This setting was enabled on another device. Confirm it for this device, or uncheck to keep it off here.</small>
@@ -146,7 +146,7 @@
     <!-- ToS acceptance -->
     <div class="tos-section">
       <label class="tos-check" id="tos-label">
-        <input type="checkbox" id="tos-check" aria-label="Accept terms of use">
+        <input type="checkbox" id="tos-check" data-i18n-aria-label="aria_onboarding_tos_check">
         <div class="tos-check-label" data-i18n-html="ob_tos_label">
           I have read and accept the
           <a href="../privacy/tos.html" target="_blank" rel="noopener noreferrer">Terms of use</a>

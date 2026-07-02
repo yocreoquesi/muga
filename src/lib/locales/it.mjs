@@ -93,6 +93,7 @@ export default Object.freeze({
   support_link: "Sostieni ♥",
   consent_gate_msg: "Accetta i Termini di utilizzo e l'Informativa sulla privacy prima di usare MUGA.",
   consent_gate_btn: "Accetta i termini per continuare",
+  aria_consent_gate: "Consenso MUGA richiesto",
   rate_nudge_btn_short: "Ti piace MUGA? Valutalo",
   bl_placeholder: "mysite.com  o  amazon.it::tag::youtuber-21",
   wl_placeholder: "mysite.com  o  amazon.it::tag::creator-21",
@@ -291,4 +292,7 @@ export default Object.freeze({
   aria_toast_duration: "Durata della notifica",
   aria_cp_entry: "Parametro di tracciamento personalizzato",
   aria_dev_url_input: "URL da testare",
+  aria_onboarding_affiliate_check: "Attiva il supporto affiliati",
+  aria_onboarding_remote_rules_check: "Attiva gli aggiornamenti remoti delle regole su questo dispositivo",
+  aria_onboarding_tos_check: "Accetta i termini di utilizzo",
 });

@@ -140,7 +140,7 @@ async function init() {
     const gate = document.createElement("div");
     gate.className = "consent-gate";
     gate.setAttribute("role", "alertdialog");
-    gate.setAttribute("aria-label", "MUGA consent required");
+    gate.setAttribute("aria-label", t("aria_consent_gate", lang));
     gate.setAttribute("aria-describedby", "consent-gate-msg");
     const logo = document.createElement("div");
     logo.className = "consent-gate-logo";
@@ -184,9 +184,6 @@ async function init() {
     formatStat(local.stats?.referralsSpotted ?? 0);
 
   const enabledToggle = document.getElementById("enabled-toggle");
-  enabledToggle.setAttribute("aria-label", t("toggle_enabled", lang));
-  enabledToggle.closest(".toggle").setAttribute("title", t("toggle_title", lang));
-
   enabledToggle.checked = prefs.enabled;
 
   enabledToggle.addEventListener("change", async () => {
