@@ -103,6 +103,47 @@
     </div>
   </section>
 
+  <!-- Remote rule updates: visible by default (follow-up to #936 IA reorg —
+       moved back out of the Advanced card so it's on by default and visible).
+       Feature-detected + un-hidden by initRemoteRules at runtime. -->
+  <section id="remote-rules-section" hidden>
+    <h2 class="mt-16" data-i18n="optionsRemoteRulesTitle"></h2>
+    <div class="card">
+      <div class="row">
+        <div class="row-label">
+          <p data-i18n="optionsRemoteRulesDesc"></p>
+        </div>
+      </div>
+      <div class="row">
+        <label class="toggle">
+          <input type="checkbox" id="remote-rules-toggle" data-i18n-aria-label="aria_remote_rules_toggle">
+          <span class="slider"></span>
+        </label>
+        <span data-i18n="optionsRemoteRulesToggle"></span>
+      </div>
+      <div id="remote-rules-status" hidden>
+        <div class="row">
+          <div class="row-label">
+            <span data-i18n="optionsRemoteRulesLastFetch"></span>
+            <span id="remote-rules-last-fetch"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span data-i18n="optionsRemoteRulesParamCount"></span>
+            <span id="remote-rules-param-count"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <a id="remote-rules-source" target="_blank" rel="noopener noreferrer" data-i18n="optionsRemoteRulesSource"></a>
+          </div>
+        </div>
+      </div>
+      <p id="remote-rules-error" class="error" hidden data-i18n="optionsRemoteRulesError"></p>
+    </div>
+  </section>
+
   <!-- ═══ TIER 2 & 3 — Advanced (dev-mode gated) ═══ -->
   <section id="section-dev">
     <h2 data-i18n="section_advanced">Advanced</h2>
@@ -260,46 +301,6 @@
           <label class="toggle"><input type="checkbox" id="domain-stats" data-i18n-aria-label="aria_domain_stats"><span class="slider"></span></label>
         </div>
       </div>
-
-      <!-- Advanced: Remote rule updates (#936 — moved into the gated card).
-           Feature-detected + un-hidden by initRemoteRules at runtime. -->
-      <section id="remote-rules-section" hidden>
-        <h2 class="mt-16" data-i18n="optionsRemoteRulesTitle"></h2>
-        <div class="card">
-          <div class="row">
-            <div class="row-label">
-              <p data-i18n="optionsRemoteRulesDesc"></p>
-            </div>
-          </div>
-          <div class="row">
-            <label class="toggle">
-              <input type="checkbox" id="remote-rules-toggle" data-i18n-aria-label="aria_remote_rules_toggle">
-              <span class="slider"></span>
-            </label>
-            <span data-i18n="optionsRemoteRulesToggle"></span>
-          </div>
-          <div id="remote-rules-status" hidden>
-            <div class="row">
-              <div class="row-label">
-                <span data-i18n="optionsRemoteRulesLastFetch"></span>
-                <span id="remote-rules-last-fetch"></span>
-              </div>
-            </div>
-            <div class="row">
-              <div class="row-label">
-                <span data-i18n="optionsRemoteRulesParamCount"></span>
-                <span id="remote-rules-param-count"></span>
-              </div>
-            </div>
-            <div class="row">
-              <div class="row-label">
-                <a id="remote-rules-source" target="_blank" rel="noopener noreferrer" data-i18n="optionsRemoteRulesSource"></a>
-              </div>
-            </div>
-          </div>
-          <p id="remote-rules-error" class="error" hidden data-i18n="optionsRemoteRulesError"></p>
-        </div>
-      </section>
 
       <!-- Advanced: Follow shortener redirects (#936 — moved into the gated card) -->
       <section id="follow-shorteners">

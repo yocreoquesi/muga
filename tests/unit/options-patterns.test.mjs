@@ -152,15 +152,15 @@ describe("T3.1 remote-rules section in options.html", () => {
     );
   });
 
-  test("section lives inside the Advanced (dev-mode-gated) block", () => {
-    // #936 IA reorg: remote-rules moved INTO the dev-mode-gated Advanced card
-    // (#dev-tools-card, inside #section-dev) so it is only visible with
-    // "Show advanced settings" on. It therefore now appears AFTER the
-    // #section-dev opening tag and inside the #dev-tools-card container, but
-    // still above the version-info / footer. The Advanced section as a whole
-    // still sits above Support + version-info.
+  test("section is visible by default, outside the Advanced (dev-mode-gated) block", () => {
+    // Follow-up to #936: remote-rules was moved back OUT of the dev-mode-gated
+    // Advanced card so it is visible by default (it's an ON-by-default weekly
+    // network fetch feature, not an opt-in advanced setting). It is now a
+    // top-level section that appears BEFORE the #section-dev (Advanced)
+    // opening tag, and therefore is not nested inside #dev-tools-card either.
     const devIdx   = optionsHtml.indexOf('id="section-dev"');
     const cardIdx  = optionsHtml.indexOf('id="dev-tools-card"');
+    const cardEndIdx = optionsHtml.indexOf("</div>", cardIdx);
     const rrIdx    = optionsHtml.indexOf('id="remote-rules-section"');
     const verIdx   = optionsHtml.indexOf('version-info');
 
@@ -170,12 +170,12 @@ describe("T3.1 remote-rules section in options.html", () => {
     assert.ok(verIdx !== -1,  "version-info must still be in the page");
 
     assert.ok(
-      rrIdx > cardIdx,
-      "remote-rules section must now live INSIDE the dev-mode-gated #dev-tools-card (#936)"
+      rrIdx < devIdx,
+      "remote-rules section must now live BEFORE #section-dev, outside the dev-mode-gated Advanced block"
     );
     assert.ok(
-      devIdx < rrIdx && rrIdx < verIdx,
-      "remote-rules must sit inside the Advanced block, which stays above the version-info / footer"
+      rrIdx < cardIdx || rrIdx > cardEndIdx,
+      "remote-rules section must not be nested inside the #dev-tools-card gated container"
     );
   });
 });

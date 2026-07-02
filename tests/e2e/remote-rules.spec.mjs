@@ -160,13 +160,6 @@ test.describe("Remote rules — E2E", () => {
 
   test("SC-02: enable → fetch → verify → UI shows timestamp and correct param count",
     async ({ context: _context, optionsPage: page, extensionId: _extensionId }) => {
-      // #936 reorg: the remote-rules section now lives inside the advanced
-      // (dev-mode-gated) dev-tools card. Enable advanced mode first — the click
-      // persists devMode to chrome.storage.local, so the card stays visible
-      // across the page.reload() further down.
-      await page.evaluate(() => document.getElementById("dev-mode").click());
-      await expect(page.locator("#dev-tools-card")).toBeVisible();
-
       // Remote-rules section must be visible on Chrome (supports alarms + DNR)
       await expect(page.locator("#remote-rules-section")).not.toBeHidden();
 
