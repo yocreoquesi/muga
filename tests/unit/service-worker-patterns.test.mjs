@@ -613,7 +613,9 @@ describe("T2.3 — Message handler source patterns", () => {
 
   test("ENABLE_REMOTE_RULES handler triggers immediate runRemoteRulesFetch", () => {
     const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
-    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    // Window widened (600 → 1200) after the handler grew a per-device override
+    // reconcile step + comment ahead of the immediate fetch (#888 write path).
+    const enableBlock = swSource.slice(enablePos, enablePos + 1200);
     assert.ok(
       enableBlock.includes("runRemoteRulesFetch"),
       "ENABLE handler must call runRemoteRulesFetch for immediate first fetch (REQ-OPT-3)"

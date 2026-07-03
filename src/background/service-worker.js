@@ -19,6 +19,7 @@ import {
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
+import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
@@ -1224,6 +1225,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         await setPrefs({ remoteRulesEnabled: true });
+        // Explicit Settings action → reconcile the per-device override so the
+        // choice sticks. getPrefs() overlays overrides LAST, so a stale
+        // onboarding-decline override would otherwise keep the effective value
+        // OFF despite the sync write (#888 follow-up, write path).
+        await reconcileOverrideForExplicitChoice("remoteRulesEnabled", true);
         _invalidatePrefsCache();
         // Immediate first fetch (REQ-OPT-3, SC-02). Subsequent fetches happen
         // opportunistically via maybeFetchRemoteRules on any SW wake once the
@@ -1242,6 +1248,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         await setPrefs({ remoteRulesEnabled: false });
+        // Explicit Settings action → reconcile the per-device override so the
+        // OFF choice sticks against any pre-existing override (#888 follow-up).
+        await reconcileOverrideForExplicitChoice("remoteRulesEnabled", false);
         _invalidatePrefsCache();
         // Clear remote params + DNR rule 1001. Rule 1000 (custom) is NOT touched. (REQ-OPT-5, SC-03)
         await clearRemoteCache({

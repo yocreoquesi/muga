@@ -76,6 +76,33 @@ export async function setOverrides(partial) {
 }
 
 /**
+ * Reconciles a per-device override after an EXPLICIT Settings toggle of a
+ * guarded pref (#888 follow-up, write path).
+ *
+ * An explicit toggle in Settings is this device's authoritative current choice.
+ * Because getPrefs() overlays per-device overrides LAST, a stale override
+ * (e.g. a `false` recorded when the user declined a sync-inherited onboarding
+ * prompt) would keep winning over the fresh setPrefs() write — the toggle would
+ * silently revert on reload and the behaviour would never change. Recording the
+ * override to match the chosen value makes getPrefs() return it, so the choice
+ * sticks. Precedence note: this deliberately pins the pref to the device-local
+ * choice, consistent with the guard's intent (#364) that these privacy-
+ * sensitive prefs must not silently flip from sync without explicit local
+ * confirmation.
+ *
+ * No-op for non-guarded keys — only GUARDED_PREFS carry per-device overrides,
+ * so a blanket clear/write is neither needed nor allowed for other toggles.
+ *
+ * @param {string} key - Pref key from an explicit Settings action.
+ * @param {boolean} value - The chosen value.
+ * @returns {Promise<void>}
+ */
+export async function reconcileOverrideForExplicitChoice(key, value) {
+  if (!GUARDED_PREFS.includes(key)) return;
+  await setOverrides({ [key]: !!value });
+}
+
+/**
  * Removes all per-device overrides. Intended for testing and devMode reset.
  * @returns {Promise<void>}
  */

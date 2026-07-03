@@ -14,6 +14,8 @@ import {
   removeEntry as removeCreatorAllowlistEntry,
 } from "../lib/creator-allowlist.js";
 import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
+import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
+import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 
 let _currentLang = "en";
@@ -225,7 +227,19 @@ function bindToggle(id, key, prefs) {
   if (!el) return;
   el.checked = prefs[key];
   el.addEventListener("change", () => {
-    try { setPrefs({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
+    try {
+      setPrefs({ [key]: el.checked });
+      // Guarded prefs (injectOwnAffiliate, remoteRulesEnabled) may carry a
+      // per-device override that getPrefs() overlays LAST. An explicit Settings
+      // toggle is this device's authoritative choice, so reconcile the override
+      // to match — otherwise a stale onboarding-decline override keeps winning
+      // and the toggle silently reverts on reload (#888 follow-up). Membership-
+      // gated so non-guarded toggles never touch the override map.
+      if (GUARDED_PREFS.includes(key)) {
+        reconcileOverrideForExplicitChoice(key, el.checked)
+          .catch(err => console.error("[MUGA] reconcile override:", err));
+      }
+    } catch (err) { console.error("[MUGA] save toggle:", err); }
   });
 }
 
