@@ -146,6 +146,31 @@ async function resetActionApiCounts(context, extensionId) {
   if (opened) await page.close();
 }
 
+/**
+ * Drives the REAL production updateTabBadge() path (not the synthetic
+ * toolbar-bus emit). Writes the durable `tab_badge_{tabId}` session key and
+ * emits urlCleaned exactly like the BADGE_AND_STATS handler.
+ * @param {{ tabId: number, junkRemoved: number, coldCache?: boolean }} opts
+ *   coldCache:true invalidates the prefs cache first, mirroring an evicted SW.
+ */
+async function updateTabBadge(context, extensionId, opts) {
+  const extOrigin = `chrome-extension://${extensionId}`;
+  let page = context.pages().find(p => p.url().startsWith(extOrigin));
+  let opened = false;
+  if (!page) {
+    page = await context.newPage();
+    await page.goto(`${extOrigin}/popup/popup.html`);
+    opened = true;
+  }
+  const result = await page.evaluate((o) =>
+    new Promise(resolve => {
+      chrome.runtime.sendMessage({ type: "__TEST__updateTabBadge", ...o }, resolve);
+    }), opts
+  );
+  if (opened) await page.close();
+  return result;
+}
+
 test.describe("Toolbar badge — per-tab running count (#910)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
     await installTestModeSentinel(context, extensionId);
@@ -259,6 +284,25 @@ test.describe("Toolbar badge — per-tab running count (#910)", () => {
     // Sanity: the badge surface DID fire (otherwise the setIcon===0
     // assertion above would pass vacuously because nothing ran at all).
     expect(counts.setBadgeText).toBeGreaterThan(0);
+
+    await hostPage.close();
+  });
+
+  test("cold/evicted SW still paints the badge — updateTabBadge warms prefs before emitting (#910 cold-SW race)", async ({ context, extensionId }) => {
+    // The BADGE_AND_STATS path calls updateTabBadge fire-and-forget on a SW
+    // that may be cold. If updateTabBadge emits urlCleaned before warming the
+    // prefs cache, the presenter's isOnboardingDone() reads a null cachedPrefs,
+    // defaults to false, and silently drops the badge write — the count would
+    // never appear for that clean. This drives the REAL updateTabBadge() with
+    // an invalidated cache and asserts the badge STILL paints.
+    const { page: hostPage, tabId } = await openHostPageWithTabId(context, extensionId);
+
+    const res = await updateTabBadge(context, extensionId, { tabId, junkRemoved: 3, coldCache: true });
+    expect(res.ok).toBe(true);
+
+    const surface = await readActionSurface(context, extensionId, tabId);
+    expect(surface.ok).toBe(true);
+    expect(surface.badgeText).toBe("3");
 
     await hostPage.close();
   });

@@ -666,6 +666,18 @@ async function updateTabBadge(tabId, junkRemoved) {
   const badgeTotal = badgeData[badgeKey] + junkRemoved;
   await sessionStorage.set({ [badgeKey]: badgeTotal });
 
+  // Warm the prefs cache BEFORE emitting so the presenter's live accessors
+  // (getShowBadge / isOnboardingDone, which read cachedPrefs at call time)
+  // never observe a null cache on a cold/evicted MV3 service worker (#910
+  // cold-SW race). The PROCESS_URL path is safe only because
+  // handleProcessUrl() awaits getPrefsWithCache() before calling us — but
+  // the BADGE_AND_STATS fire-and-forget path calls updateTabBadge with no
+  // prior prefs read. Without this await, a cold SW would emit urlCleaned
+  // while cachedPrefs is null, isOnboardingDone() would default to false,
+  // and writeBadge() would silently skip the write — the badge would never
+  // appear for that clean and only self-heal on the next one.
+  await getPrefsWithCache();
+
   toolbarBus.emit({ type: "urlCleaned", tabId, paramsRemoved: junkRemoved, total: badgeTotal });
 }
 
@@ -837,15 +849,17 @@ async function handleTestMessage(message, _sender) {
       // The inner event lives under `message.event` so its `type` does
       // not collide with the dispatch `type`.
       //
-      // #910: warm the prefs cache before emitting. Production code always
-      // emits urlCleaned downstream of a getPrefsWithCache() call (inside
-      // handleProcessUrl), so the presenter's getShowBadge()/isOnboardingDone()
-      // accessors never observe a null cachedPrefs when a REAL urlCleaned
-      // event fires. This synthetic test path bypasses that call entirely —
-      // without warming the cache here, a cold/evicted SW would read
-      // cachedPrefs as null and the presenter would (correctly, but
-      // misleadingly for a test) skip the badge write, producing a flaky
-      // false negative that has nothing to do with presenter logic.
+      // #910: warm the prefs cache before emitting. The production emit
+      // paths warm the cache themselves — handleProcessUrl() for PROCESS_URL,
+      // and updateTabBadge() (which now awaits getPrefsWithCache() before
+      // emitting) for BADGE_AND_STATS — so the presenter's getShowBadge()/
+      // isOnboardingDone() accessors never observe a null cachedPrefs when a
+      // REAL urlCleaned event fires. This SYNTHETIC test path bypasses both
+      // of those functions and emits straight onto the bus, so it must warm
+      // the cache itself; otherwise a cold/evicted SW would read cachedPrefs
+      // as null and the presenter would (correctly, but misleadingly for a
+      // test) skip the badge write — a flaky false negative unrelated to
+      // presenter logic.
       await getPrefsWithCache();
       const inner = message.event;
       if (!inner || typeof inner.type !== "string") {
@@ -883,6 +897,32 @@ async function handleTestMessage(message, _sender) {
     }
     case "__TEST__resetActionApiCounts": {
       _testActionCalls = { setTitle: 0, setBadgeText: 0, setIcon: 0 };
+      return { ok: true };
+    }
+    case "__TEST__updateTabBadge": {
+      // Drive the REAL production updateTabBadge() path — the same function
+      // the BADGE_AND_STATS fire-and-forget handler calls. Deliberately does
+      // NOT go through __TEST__emitToolbarEvent (which warms the prefs cache),
+      // so it exercises updateTabBadge's OWN cache handling and writes the
+      // durable `tab_badge_{tabId}` session key just like production.
+      //
+      // With `coldCache: true` it invalidates the prefs cache immediately
+      // before calling updateTabBadge and does NOT re-warm it here — mirroring
+      // a cold/evicted MV3 service worker (#910 cold-SW race). If updateTabBadge
+      // fails to await getPrefsWithCache() before emitting, the presenter reads
+      // a null cachedPrefs, isOnboardingDone() defaults to false, and the badge
+      // write is silently skipped — which this handler makes observable.
+      const tabId = Number(message.tabId);
+      if (!Number.isFinite(tabId) || tabId < 0) {
+        return { ok: false, error: "invalid tabId" };
+      }
+      const junkRemoved = Number(message.junkRemoved) || 0;
+      // Deterministic starting total for this tab.
+      await sessionStorage.remove(`tab_badge_${tabId}`);
+      if (message.coldCache === true) {
+        _invalidatePrefsCache();
+      }
+      await updateTabBadge(tabId, junkRemoved);
       return { ok: true };
     }
     case "__TEST__readActionApiCounts": {
