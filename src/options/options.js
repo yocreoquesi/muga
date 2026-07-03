@@ -95,6 +95,38 @@ function showConfirm(msg) {
   });
 }
 
+// Discrete toast-duration values offered by the UI. The persisted pref is
+// snapped to the nearest of these so the pref and the <select> can never
+// disagree — an imported/legacy value like 22 or 45 always maps to a real
+// <option> instead of leaving the control blank (#968). The set spans the
+// full 5..60 range the control accepts, so the ceiling is reachable via UI.
+const TOAST_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60];
+
+/** Snaps an arbitrary duration to the nearest offered <option> value. */
+function snapToastDuration(n) {
+  const v = Number.isFinite(n) ? n : 15;
+  return TOAST_DURATION_OPTIONS.reduce((a, b) =>
+    Math.abs(b - v) < Math.abs(a - v) ? b : a);
+}
+
+/**
+ * Reports whether the eight shortener host permissions are currently granted.
+ * Used by the import path so a config file can never silently ENABLE the
+ * permission-gated shortener resolver without the host grant the normal
+ * toggle enforces (#964).
+ *
+ * @returns {Promise<boolean>}
+ */
+async function hasShortenerPermissions() {
+  try {
+    return await chrome.permissions.contains({
+      origins: GENERIC_SHORTENERS.map((host) => `https://${host}/*`),
+    });
+  } catch {
+    return false;
+  }
+}
+
 /** Initializes the options page: loads prefs, binds controls, renders lists. */
 async function init() {
   _currentLang = await getStoredLang();
@@ -162,9 +194,9 @@ async function init() {
 
   // Toast duration select
   const durationSelect = document.getElementById("toast-duration-select");
-  durationSelect.value = String(prefs.toastDuration || 15);
+  durationSelect.value = String(snapToastDuration(prefs.toastDuration));
   durationSelect.addEventListener("change", () => {
-    const val = Math.max(5, Math.min(60, parseInt(durationSelect.value, 10) || 15));
+    const val = snapToastDuration(parseInt(durationSelect.value, 10));
     try { setPrefs({ toastDuration: val }); } catch (err) { console.error("[MUGA] save duration:", err); }
   });
 
@@ -305,6 +337,11 @@ function bindListButtons() {
 
 // ── Creator allowlist editor (#445, B13) ────────────────────────────────────
 
+// Lets the import path refresh the creator-allowlist editor's in-memory list
+// and re-render it WITHOUT rebinding its event listeners (#968). Set by
+// initCreatorAllowlist; null until the editor is initialised.
+let _refreshCreatorAllowlist = null;
+
 /**
  * Initialises the per-creator allowlist editor. Renders the current list,
  * binds the add button + Enter key, and wires per-row remove buttons.
@@ -428,6 +465,14 @@ function initCreatorAllowlist(initial) {
   input.addEventListener("input", clearError);
 
   render(list);
+
+  // Expose a listener-free refresh so the import path can swap the list in
+  // and re-render after writing an imported creatorAllowlist to sync (#968).
+  _refreshCreatorAllowlist = (newList) => {
+    list.length = 0;
+    list.push(...(Array.isArray(newList) ? newList : []));
+    render(list);
+  };
 }
 
 // Serializes tracking-category toggle mutations (#928). Independent of the
@@ -804,6 +849,11 @@ function initExportImport() {
       attributionLedgerEnabled: prefs.attributionLedgerEnabled,
       // #925: the popup-populated custom strip rules, handled like the other sync arrays.
       userCustomRules: prefs.userCustomRules,
+      // #968: round-trip the remaining user-settable prefs that were being
+      // silently dropped — an export/import cycle must not reset them.
+      experimentalParamClassesEnabled: prefs.experimentalParamClassesEnabled,
+      honorCreatorMode: prefs.honorCreatorMode,
+      creatorAllowlist: prefs.creatorAllowlist,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -847,8 +897,11 @@ function initExportImport() {
       // error, is not acceptable.
       const { blacklist, whitelist, customParams, droppedBlacklist, droppedWhitelist, skippedParams } = capImportedLists(data);
       const skipped = skippedParams + droppedBlacklist + droppedWhitelist;
-      // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "showBadge", "followShortenersEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
+      // devMode is device-local — exclude from sync BOOL_KEYS and handle separately.
+      // followShortenersEnabled is ALSO excluded here: it gates on optional host
+      // permissions, so a file must never blindly flip it on (#964). It is
+      // handled below, gated on whether the grant is actually present.
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode", "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
       const toSave = { blacklist, whitelist, customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -862,9 +915,30 @@ function initExportImport() {
       if (Array.isArray(data.disabledCategories) && data.disabledCategories.every(e => VALID_CATEGORIES.has(e))) {
         toSave.disabledCategories = data.disabledCategories;
       }
-      // Handle toastDuration (number 5-60)
+      // Handle toastDuration: snap to the nearest offered <option> so the
+      // stored value always matches a real control state (#968).
       if (typeof data.toastDuration === "number") {
-        toSave.toastDuration = Math.max(5, Math.min(60, data.toastDuration));
+        toSave.toastDuration = snapToastDuration(data.toastDuration);
+      }
+      // #964: followShortenersEnabled is permission-gated. An import may carry
+      // the preference but CANNOT grant the host permissions (no user gesture
+      // survives the async file read, and silently prompting on import is
+      // surprising). So enable it only when the grant is already present;
+      // otherwise force it off. This closes the gate-bypass and keeps the
+      // pref honest — the user re-enables it via the toggle, which prompts.
+      if (typeof data.followShortenersEnabled === "boolean") {
+        toSave.followShortenersEnabled =
+          data.followShortenersEnabled && (await hasShortenerPermissions());
+      }
+      // #968: round-trip the per-creator allowlist. Fold each imported entry
+      // through the same pure validator the add-box uses, so invalid entries,
+      // duplicates, and anything past the cap are dropped exactly as a manual
+      // add would handle them.
+      if (Array.isArray(data.creatorAllowlist)) {
+        toSave.creatorAllowlist = data.creatorAllowlist.reduce(
+          (acc, entry) => addCreatorAllowlistEntry(acc, entry).list,
+          [],
+        );
       }
       // #925: userCustomRules — validate each entry as a bare param name and
       // cap at the customParams ceiling (same shape/limit the popup enforces).
@@ -880,6 +954,19 @@ function initExportImport() {
         toSave.language = data.language;
       }
       await setPrefs(toSave);
+
+      // #965: importing a config is an explicit choice for this device. For
+      // guarded prefs (injectOwnAffiliate), getPrefs() overlays the per-device
+      // override LAST, so a stale onboarding-decline override would keep the
+      // extension's effective value at odds with the freshly imported sync
+      // value AND the checkbox. Reconcile the override to the imported value so
+      // sync, override, effective, and UI all agree. Only keys we actually
+      // wrote (BOOL_KEYS ∩ GUARDED_PREFS) are reconciled.
+      for (const key of BOOL_KEYS) {
+        if (GUARDED_PREFS.includes(key) && typeof data[key] === "boolean") {
+          await reconcileOverrideForExplicitChoice(key, data[key]);
+        }
+      }
 
       // Re-read prefs and update all UI toggles and lists
       const newPrefs = await chrome.storage.sync.get(PREF_DEFAULTS);
@@ -899,9 +986,19 @@ function initExportImport() {
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
       document.getElementById("show-badge").checked = newPrefs.showBadge;
+      // #964: reflect the gated result — the checkbox must match the pref that
+      // actually landed (forced off unless the host grant was already present).
+      const followShortenersEl = document.getElementById("followShortenersEnabled");
+      if (followShortenersEl) followShortenersEl.checked = newPrefs.followShortenersEnabled;
+      // #968: refresh the previously-unrefreshed imported toggles + allowlist.
+      const honorCreatorEl = document.getElementById("honor-creator-mode");
+      if (honorCreatorEl) honorCreatorEl.checked = newPrefs.honorCreatorMode;
+      const experimentalParamEl = document.getElementById("experimental-param-classes");
+      if (experimentalParamEl) experimentalParamEl.checked = newPrefs.experimentalParamClassesEnabled;
+      if (Array.isArray(toSave.creatorAllowlist)) _refreshCreatorAllowlist?.(newPrefs.creatorAllowlist);
       // devMode is device-local — re-read from local storage after import
       document.getElementById("dev-mode").checked = await getDevMode();
-      document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
+      document.getElementById("toast-duration-select").value = String(snapToastDuration(newPrefs.toastDuration));
       syncDevTools();
       if (toSave.language) {
         _currentLang = toSave.language;
