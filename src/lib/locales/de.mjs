@@ -66,6 +66,7 @@ export default Object.freeze({
   milestone_100: "MUGA: Rauschpegel: niedrig",
   milestone_10: "MUGA: Erste Schritte zu sauberen URLs",
   opts_title: "Einstellungen",
+  opts_page_title: "MUGA: Einstellungen",
   opts_subtitle: "Entrausche die URLs, die du besuchst und teilst.",
   section_affiliate_settings: "Affiliate & Creator",
   row_inject_label: "Unser Affiliate-Tag einfügen, wenn ein Link keinen hat",

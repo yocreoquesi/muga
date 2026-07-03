@@ -66,6 +66,7 @@ export default Object.freeze({
   milestone_100: "MUGA: ノイズレベル: 低",
   milestone_10: "MUGA: クリーンURLへの第一歩",
   opts_title: "設定",
+  opts_page_title: "MUGA: 設定",
   opts_subtitle: "訪問・共有するURLのノイズを除去します。",
   section_affiliate_settings: "アフィリエイトとクリエイター",
   row_inject_label: "リンクにアフィリエイトタグがない場合は当方のタグを挿入",

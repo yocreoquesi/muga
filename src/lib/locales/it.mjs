@@ -66,6 +66,7 @@ export default Object.freeze({
   milestone_100: "MUGA: Livello di rumore: basso",
   milestone_10: "MUGA: Primi passi verso URL pulite",
   opts_title: "Impostazioni",
+  opts_page_title: "MUGA: Impostazioni",
   opts_subtitle: "Togli il rumore dalle URL che visiti e condividi.",
   section_affiliate_settings: "Affiliazione e creator",
   row_inject_label: "Inserisci il nostro tag di affiliazione quando un link non ne ha nessuno",

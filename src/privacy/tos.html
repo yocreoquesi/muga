@@ -9,7 +9,7 @@
 <body>
 
   <h1>Terms of Use</h1>
-  <p class="meta">MUGA: Shorter, cleaner URLs — fair to every creator &nbsp;&middot;&nbsp; Version 1.3 &nbsp;&middot;&nbsp; Last updated: 2026-07-01</p>
+  <p class="meta">MUGA: Shorter, cleaner URLs, fair to every creator &nbsp;&middot;&nbsp; Version 1.3 &nbsp;&middot;&nbsp; Last updated: 2026-07-01</p>
 
   <div class="highlight">
     MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3</a>. You control what MUGA does. MUGA never acts behind your back. Nothing happens without your action.
@@ -25,9 +25,9 @@
     <li>Strips tracking parameters (UTMs, click IDs, and similar) from URLs before pages load</li>
     <li>Redirects AMP pages to their canonical article URLs</li>
     <li>Blocks <code>&lt;a ping&gt;</code> tracking beacons on link clicks</li>
-    <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click — see the Privacy Policy for the full list and rationale</li>
-    <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) directly in your browser via a standard HTTP fetch — no URL is sent to any MUGA server. Off by default; requires optional host permissions for the eight shortener domains. Affiliate-redirect networks are NEVER resolved this way</li>
-    <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted — no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
+    <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click; see the Privacy Policy for the full list and rationale</li>
+    <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) directly in your browser via a standard HTTP fetch; no URL is sent to any MUGA server. Off by default; requires optional host permissions for the eight shortener domains. Affiliate-redirect networks are NEVER resolved this way</li>
+    <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted: no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
     <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you have opted in</li>
   </ul>
   <p>You have full control over every feature. MUGA never collects, sells, or shares your browsing data. Any feature that contacts an external service requires your explicit action.</p>
@@ -39,13 +39,13 @@
     <li>By default, MUGA <strong>does not replace</strong> an affiliate tag that is already present in a URL. Replacing requires a separate, deliberate opt-in by the user</li>
     <li>Affiliate tag injection only applies to the supported stores explicitly listed in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">source code</a></li>
     <li>You can disable affiliate tag injection at any time in the Extension's Settings, no questions asked</li>
-    <li>The "Remove all affiliate tags from other sources" option strips third-party tags. MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>. If you have injection off, MUGA's tag is treated like any other and removed too — symmetric with your stated preference</li>
+    <li>The "Remove all affiliate tags from other sources" option strips third-party tags. MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>. If you have injection off, MUGA's tag is treated like any other and removed too, symmetric with your stated preference</li>
     <li>The developer may earn commissions from qualifying purchases through supported affiliate programs. This disclosure is required by the operating agreements of those programs</li>
   </ul>
 
   <h2>4. No data collection</h2>
   <p>MUGA does not collect, transmit, or store your browsing data. Every feature is transparent and configurable. MUGA has no analytics, no telemetry, and no crash-reporting services. Optional features that contact an external service (such as rule updates) never send your browsing history and require your explicit action.</p>
-  <p>Your data lives in two places, neither of which is visible to the developer: behavioural preferences (language, blacklist, whitelist, the affiliate toggles' default values) are stored in <code>chrome.storage.sync</code> and follow you across your own devices via your browser account; consent metadata and per-device decisions are stored in <code>chrome.storage.local</code> on each device individually. Acceptance of these Terms is recorded per device, not per browser account — the rationale is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
+  <p>Your data lives in two places, neither of which is visible to the developer: behavioural preferences (language, blacklist, whitelist, the affiliate toggles' default values) are stored in <code>chrome.storage.sync</code> and follow you across your own devices via your browser account; consent metadata and per-device decisions are stored in <code>chrome.storage.local</code> on each device individually. Acceptance of these Terms is recorded per device, not per browser account; the rationale is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
   <p>For full details, see the <a href="privacy.html">Privacy Policy</a>.</p>
 
   <h2>5. Third-party services</h2>

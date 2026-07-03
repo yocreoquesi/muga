@@ -66,6 +66,7 @@ export default Object.freeze({
   milestone_100: "MUGA: Noise level: low",
   milestone_10: "MUGA: First steps to clean URLs",
   opts_title: "Settings",
+  opts_page_title: "MUGA: Settings",
   opts_subtitle: "Denoise the URLs you visit and share.",
   section_affiliate_settings: "Affiliate & creators",
   row_inject_label: "Inject our affiliate tag when a link has none",
