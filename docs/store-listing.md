@@ -2,7 +2,7 @@
 
 > Version: 2.3.0
 > Last updated: 2026-07-03
-> Status: Listing for Chrome Web Store and Firefox AMO under the 2.1 denoise pivot (creator-agnostic positioning — see ADR-0002). Lead headline: "Shorter, cleaner URLs — fair to every creator". The 2.0-era anti-redirect framing has been removed; MUGA no longer takes a stance against affiliate-redirect networks (their click IS the attribution event and MUGA respects it). Third-party retailer brand names previously enumerated were removed after Chrome Web Store flagged the list as keyword spam (rejection routing ID FZSL, 2026-05). URL Unwrapper section rewritten with honest scope: generic shorteners only (bit.ly, t.co, tinyurl.com, etc.); affiliate redirects pass through unchanged. Privacy claims (no telemetry / no analytics) remain firm but are no longer in the headline.
+> Status: Listing for Chrome Web Store and Firefox AMO under the 2.1 denoise pivot (creator-agnostic positioning, see ADR-0002). Lead headline: "Shorter, cleaner URLs. Fair to every creator". The 2.0-era anti-redirect framing has been removed; MUGA no longer takes a stance against affiliate-redirect networks (their click IS the attribution event and MUGA respects it). Third-party retailer brand names previously enumerated were removed after Chrome Web Store flagged the list as keyword spam (rejection routing ID FZSL, 2026-05). URL Unwrapper section rewritten with honest scope: generic shorteners only (bit.ly, t.co, tinyurl.com, etc.); affiliate redirects pass through unchanged. Privacy claims (no telemetry / no analytics) remain firm but are no longer in the headline.
 
 ---
 
@@ -24,7 +24,7 @@ Quiet URL noise: 450+ tracking patterns (utm, fbclid, gclid). Honor creator refe
 
 MUGA cleans every URL while respecting whoever recommended you the link.
 
-Every other URL cleaner removes utm_source, fbclid, gclid, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate path of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That path is how independent creators get paid for the recommendation — whether it lives as a tag on the merchant's URL or as a redirect through an affiliate network. MUGA leaves it alone, whichever shape it takes. We don't take credit from people who earned it.
+Every other URL cleaner removes utm_source, fbclid, gclid, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate path of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That path is how independent creators get paid for the recommendation, whether it lives as a tag on the merchant's URL or as a redirect through an affiliate network. MUGA leaves it alone, whichever shape it takes. We don't take credit from people who earned it.
 
 When MUGA preserves a creator's referral on the current page, the popup tells you so: a small green badge ("Creator referral preserved") appears with the tag or network that was kept. No other URL cleaner does this. None of them can without contradicting their own pitch.
 
@@ -93,7 +93,7 @@ MORE THAN PARAM STRIPPING
 THE AFFILIATE MODEL: OPT-IN, HONEST, AUDITABLE
 ======================================
 
-MUGA preserves creator affiliate paths on every site where it recognises one — tag-based programs (Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) and redirect-based affiliate networks alike. We don't pick winners by attribution model; whoever earned the click keeps it.
+MUGA preserves creator affiliate paths on every site where it recognises one: tag-based programs (Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) and redirect-based affiliate networks alike. We don't pick winners by attribution model; whoever earned the click keeps it.
 
 MUGA's own affiliate injection is OFF by default. You choose to enable it during onboarding, or manually in Settings at any time.
 
@@ -116,7 +116,7 @@ By default, MUGA processes URLs locally inside your browser. We don't run analyt
 . No analytics, no telemetry, no account, no sign-in
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequestWithHostAccess, clipboardWrite
 . Optional host permission rules.muga.app/*: granted only when you enable "Remote rule updates" in Settings. Used to fetch a signed noise-param payload over HTTPS: a single GET check at most once per 7 days, piggybacked on natural service-worker wake events (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time via browser settings.
-. Optional host permissions bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*: granted per-host only when you enable "Follow shortener redirects" in Settings. The extension fetches the shortener host directly (native, no MUGA server) with credentials omitted to read its redirect. Affiliate redirect networks are NEVER followed — they pass through unchanged to honour the creator's commission. Off by default.
+. Optional host permissions bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*: granted per-host only when you enable "Follow shortener redirects" in Settings. The extension fetches the shortener host directly (native, no MUGA server) with credentials omitted to read its redirect. Affiliate redirect networks are NEVER followed: they pass through unchanged to honour the creator's commission. Off by default.
 
 
 ======================================
@@ -159,9 +159,9 @@ MUGA: The URL denoise extension for the web
 
 ### Summary (250 chars max)
 
-Shorter, cleaner URLs — fair to every creator who recommended you, whatever affiliate model they chose. 450+ tracking patterns removed automatically. No analytics, no telemetry. Open source, GPL v3.
+Shorter, cleaner URLs. Fair to every creator who recommended you, whatever affiliate model they chose. 450+ tracking patterns removed automatically. No analytics, no telemetry. Open source, GPL v3.
 
-*(200 chars)*
+*(197 chars)*
 
 ---
 
@@ -169,7 +169,7 @@ Shorter, cleaner URLs — fair to every creator who recommended you, whatever af
 
 MUGA cleans every URL while respecting whoever recommended you the link.
 
-Every other URL cleaner removes utm_source, fbclid, gclid, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate path of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That path is how independent creators get paid for the recommendation — whether it lives as a tag on the merchant's URL or as a redirect through an affiliate network. MUGA leaves it alone, whichever shape it takes. We don't take credit from people who earned it.
+Every other URL cleaner removes utm_source, fbclid, gclid, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate path of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That path is how independent creators get paid for the recommendation, whether it lives as a tag on the merchant's URL or as a redirect through an affiliate network. MUGA leaves it alone, whichever shape it takes. We don't take credit from people who earned it.
 
 When MUGA preserves a creator's referral on the current page, the popup tells you so: a green badge appears with the tag or network that was kept. No other URL cleaner does this. None of them can without contradicting their own pitch.
 
@@ -210,7 +210,7 @@ More than param stripping
 
 Fair to creators · nice to you · honest about both
 
-By default, MUGA never touches what is not ours. If a link already carries a creator's affiliate path — a tag on the merchant's URL or a redirect through an affiliate network — we leave it alone. A reviewer linked to a product with their tag, it stays. A YouTuber linked through an affiliate network, the redirect stays.
+By default, MUGA never touches what is not ours. If a link already carries a creator's affiliate path (a tag on the merchant's URL or a redirect through an affiliate network), we leave it alone. A reviewer linked to a product with their tag, it stays. A YouTuber linked through an affiliate network, the redirect stays.
 
 MUGA preserves creator affiliate paths on every site where it recognises one: tag-based programs (Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) and redirect-based affiliate networks alike. We don't pick winners by attribution model.
 
@@ -223,7 +223,7 @@ By default, MUGA processes URLs locally inside your browser. We don't run analyt
 . No analytics, no telemetry, no account, no sign-in
 . Core permissions: storage, activeTab, contextMenus, declarativeNetRequest, clipboardWrite
 . Optional permission rules.muga.app/*: granted only when you enable "Remote rule updates". Used to fetch a signed noise-param payload: a single HTTPS GET check at most once per 7 days, piggybacked on natural browser activity (no chrome.alarms permission). Credentials-omit, no user data transmitted, Ed25519-signed payload verified against a public key shipped with the extension. Off by default. Revocable at any time.
-. Optional permissions bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*: granted per-host only when you enable "Follow shortener redirects". The extension fetches the shortener host directly (native, no MUGA server) with credentials omitted to read its redirect. Affiliate redirect networks are NEVER followed — they pass through unchanged to honour the creator's commission. Off by default.
+. Optional permissions bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*: granted per-host only when you enable "Follow shortener redirects". The extension fetches the shortener host directly (native, no MUGA server) with credentials omitted to read its redirect. Affiliate redirect networks are NEVER followed: they pass through unchanged to honour the creator's commission. Off by default.
 
 
 Your rules
