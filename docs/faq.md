@@ -26,15 +26,15 @@ MUGA's design point is narrower and more opinionated:
 
 1. **Remove the same noise parameters those tools remove** — `utm_*`,
    `fbclid`, `gclid`, `msclkid`, `mc_cid`, `igshid`, the rest of the usual
-   set ([`src/lib/affiliates.js:33-100`](../src/lib/affiliates.js#L33-L100)).
+   set ([`src/lib/affiliates-data.js:18`](../src/lib/affiliates-data.js#L18)).
 2. **Preserve affiliate parameters that belong to a creator** — even on
    programs MUGA itself has no commercial relationship with (Booking,
    Vercel, DigitalOcean, etc.). The preservation table is sourced from
    MUGA's documented affiliate-program rules
-   ([`src/lib/affiliates.js:852-861`](../src/lib/affiliates.js#L852-L861)).
+   ([`src/lib/affiliates.js:136`](../src/lib/affiliates.js#L136)).
 3. **Be explicit about the one case where MUGA itself benefits** — affiliate
    injection — and gate it behind an opt-in checkbox during onboarding
-   ([`src/lib/storage.js:84-86`](../src/lib/storage.js#L84-L86)).
+   ([`src/lib/prefs.js:25`](../src/lib/prefs.js#L25)).
 
 If you only want noise removed and don't care about creator attribution,
 a generic cleaner is fine. If you want the YouTuber who recommended you
@@ -49,9 +49,9 @@ identifies **the recommender**, not you. A tracking parameter like
 strips the second and preserves the first.
 
 You can verify the distinction in the code: the `TRACKING_PARAMS` list
-([`src/lib/affiliates.js:33`](../src/lib/affiliates.js#L33)) and the
+([`src/lib/affiliates-data.js:18`](../src/lib/affiliates-data.js#L18)) and the
 `AFFILIATE_PATTERNS` table
-([`src/lib/affiliates.js:852`](../src/lib/affiliates.js#L852)) are
+([`src/lib/affiliates.js:136`](../src/lib/affiliates.js#L136)) are
 separate sources and are joined by the cleaner only at strip time.
 
 ### Q: What about parameters that are technically "noise" but live inside a redirect wrapper?
@@ -87,7 +87,7 @@ Yes. On a small set of supported stores, **if and only if the user opted in
 during onboarding**, MUGA can inject its own affiliate tag into URLs that
 arrive **without any affiliate tag at all**. The set of programs MUGA has
 its own tag for is hardcoded in
-[`src/lib/affiliates.js:790-814`](../src/lib/affiliates.js#L790-L814)
+[`src/lib/affiliates.js:74`](../src/lib/affiliates.js#L74)
 (Amazon and eBay marketplaces; a handful of programs pending account
 approval; everything else is preservation-only).
 
@@ -96,13 +96,13 @@ approval; everything else is preservation-only).
 No. The default for `injectOwnAffiliate` is `false`:
 
 ```js
-// src/lib/storage.js:86
+// src/lib/prefs.js:25
 injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)
 ```
 
 The user is asked explicitly during onboarding via a checkbox that ships
 unchecked unless the preference was already enabled on another device they
-own ([`src/onboarding/onboarding.html:333`](../src/onboarding/onboarding.html#L333),
+own ([`src/onboarding/onboarding.html:96`](../src/onboarding/onboarding.html#L96),
 [`src/onboarding/onboarding.js:183-184`](../src/onboarding/onboarding.js#L183-L184)).
 On a per-device basis, the user can decline even if a sibling device opted
 in — the decline is stored as a local override and does not propagate back
@@ -144,12 +144,12 @@ the URL at injection time is never overwritten in place.
 It is preserved anyway. The `ourTag` map is allowed to be empty for a
 program — preservation does not require MUGA to have its own tag for that
 program. The detection loop at
-[`src/lib/cleaner.js:467-480`](../src/lib/cleaner.js#L467-L480) iterates
+[`src/lib/cleaner.js:679`](../src/lib/cleaner.js#L679) iterates
 every pattern that matches the host, not just patterns where
 `OUR_TAGS[prog.id]` is populated. Programs like Booking, Vercel,
 DigitalOcean, Humble Bundle, and Lemon Squeezy ride this path
-([`src/lib/affiliates.js:811-813`](../src/lib/affiliates.js#L811-L813),
-and the comment block at lines 462-466 in `cleaner.js`).
+(the `AFFILIATE_PATTERNS` table,
+[`src/lib/affiliates.js:136`](../src/lib/affiliates.js#L136)).
 
 ### Q: Does my price change when MUGA injects its tag?
 
@@ -237,7 +237,7 @@ to keep the project small enough to audit.
 
 Affiliate revenue from the injection feature described above, on the
 small set of programs in
-[`src/lib/affiliates.js:790-814`](../src/lib/affiliates.js#L790-L814).
+[`src/lib/affiliates.js:74`](../src/lib/affiliates.js#L74).
 The cost base is intentionally low:
 
 - The cleaner is a local computation; there is no per-user server cost.
@@ -257,10 +257,10 @@ forces user clicks through external tracking servers (the "network-redirect"
 class — Awin, ShareASale, Admitad, Impact Radius, and similar). The
 extension still **strips** their noise parameters when encountered;
 it just will not **inject** them on MUGA's behalf. The rationale is in
-the onboarding copy
-([`src/onboarding/onboarding.html:329-330`](../src/onboarding/onboarding.html#L329-L330))
+the `MUGA_EXCLUDED_IDS` set
+([`src/lib/wrapper-engine.js:226`](../src/lib/wrapper-engine.js#L226))
 and the comment at
-[`src/lib/affiliates.js:815-825`](../src/lib/affiliates.js#L815-L825):
+[`src/lib/affiliates.js:105`](../src/lib/affiliates.js#L105):
 deprecated Booking / Humble Bundle entries are removed, and Apple's PHG
 is intentionally not in `OUR_TAGS` because the program is closed to
 small publishers.
