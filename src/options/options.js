@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
@@ -98,8 +98,14 @@ async function init() {
   _currentLang = await getStoredLang();
   applyTranslations(_currentLang);
 
+  // Initial toggle state MUST come from the canonical merged prefs (sync +
+  // consent + per-device overrides), NOT a raw sync read. A raw sync read
+  // ignores per-device overrides (per-device-prefs), so a toggle like
+  // injectOwnAffiliate or remoteRulesEnabled could DISPLAY a value that
+  // disagrees with the effective value getPrefs() gives the rest of the
+  // extension (#888 follow-up).
   let prefs;
-  try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
+  try { prefs = await getPrefs(); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
 
   // --- Consent gate: redirect to onboarding if user hasn't accepted ToS ---
   // Consent fields moved out of chrome.storage.sync into chrome.storage.local
