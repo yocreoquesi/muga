@@ -722,7 +722,21 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     const prefs = await getPrefsWithCache();
     if (!prefs.onboardingDone) return;
   } catch { /* fall through and emit — toolbar reset is the safer default */ }
-  toolbarBus.emit({ type: "navigationStarted", tabId });
+  // The browser CLEARS the per-tab badge TEXT on every navigation (MDN
+  // action.setBadgeText, `tabId`: "reset when the user navigates this tab to
+  // a new page"). Read the DURABLE running total so the presenter can
+  // re-paint the badge the browser just wiped — otherwise the count vanishes
+  // after any navigation that does not itself trigger a urlCleaned (#910
+  // flicker). Cold-SW safe: this session key survives SW eviction even when
+  // the presenter's in-memory map does not. Best-effort — on a read failure
+  // the presenter falls back to its in-memory total.
+  let total = 0;
+  try {
+    const badgeKey = `tab_badge_${tabId}`;
+    const badgeData = await sessionStorage.get({ [badgeKey]: 0 });
+    total = Math.max(0, Number(badgeData[badgeKey]) || 0);
+  } catch { /* best-effort; presenter falls back to its in-memory total */ }
+  toolbarBus.emit({ type: "navigationStarted", tabId, total });
 });
 
 // Clean up session data when a tab closes. Both the per-page popup

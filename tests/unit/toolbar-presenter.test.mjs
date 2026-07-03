@@ -195,6 +195,52 @@ describe("toolbar-presenter — badge (#910)", () => {
     assert.deepEqual(badgeCallsFor(actionApi, 2).at(-1)[1], { tabId: 2, text: "9" });
   });
 
+  test("navigationStarted RE-PAINTS the badge — the browser clears per-tab badge text on navigation (#950 flicker)", () => {
+    // The browser resets the per-tab badge on every navigation (MDN
+    // action.setBadgeText tabId). navigationStarted must re-write the running
+    // total so the count does not vanish after a navigation that produces no
+    // urlCleaned of its own. Without the re-paint the badge stays blank until
+    // the next clean — the flicker the user reported.
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 4 });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "navigationStarted", tabId: 7 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: "4" });
+  });
+
+  test("navigationStarted re-paints from the caller-supplied durable total when the in-memory map was wiped (cold SW)", () => {
+    // Mirrors production: the SW passes event.total (read from the durable
+    // tab_badge_{tabId} session key). After a service-worker restart the
+    // in-memory map is empty, so the durable total is the only source.
+    const { bus, actionApi, presenter } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 4 });
+    presenter._resetInMemoryTotals();
+    actionApi.calls.length = 0;
+    bus.emit({ type: "navigationStarted", tabId: 7, total: 4 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: "4" });
+  });
+
+  test("navigationStarted does NOT paint a per-tab badge for a fresh tab that has cleaned nothing", () => {
+    // A fresh tab has no running total, so re-painting must not create a
+    // per-tab override (which would mask the global badge and violate the
+    // "no digit on a fresh tab" contract).
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "navigationStarted", tabId: 7 });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("navigationStarted re-paint respects showBadge OFF (no badge written)", () => {
+    const { bus, actionApi } = setup({ showBadge: false });
+    bus.emit({ type: "navigationStarted", tabId: 7, total: 5 });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("navigationStarted re-paint is gated on onboarding (must not mask the global \"!\" badge)", () => {
+    const { bus, actionApi } = setup({ onboardingDone: false });
+    bus.emit({ type: "navigationStarted", tabId: 7, total: 5 });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+  });
+
   test("tabClosed resets the running total; reused tabId starts fresh", () => {
     const { bus, actionApi } = setup();
     bus.emit({ type: "urlCleaned", tabId: 5, paramsRemoved: 8 });

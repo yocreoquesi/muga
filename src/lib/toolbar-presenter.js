@@ -162,9 +162,32 @@ export function createToolbarPresenter({ bus, state, actionApi, t, getShowBadge,
         return;
       }
       case "navigationStarted": {
-        // Tooltip only — the badge total is a running tab total and must
-        // NOT reset here, including for SPA/in-page navigations (#910).
+        // Two independent jobs, deliberately kept apart:
+        //
+        //  1. Tooltip — this is per-PAGE state, so reset it to default.
+        //  2. Badge — the running tab total must NOT reset (it accumulates
+        //     across every navigation, including SPA/in-page — #910). BUT
+        //     the browser CLEARS the per-tab badge TEXT on every navigation
+        //     commit (MDN action.setBadgeText, `tabId`: "The text is reset
+        //     when the user navigates this tab to a new page."). So after a
+        //     navigation the badge the user briefly saw is gone — and unless
+        //     the next page happens to trigger a urlCleaned, nothing ever
+        //     re-writes it. We therefore RE-PAINT the durable total here,
+        //     exactly as uBlock Origin repaints from its stored per-tab
+        //     counter (pageStore.counts.blocked.any) on every tabCommitted
+        //     rather than only when a block occurs.
+        //
+        // Cold-SW safe: prefer the caller-supplied durable total (the SW
+        // reads tab_badge_{tabId} from chrome.storage.session and passes it
+        // as event.total) over the in-memory map, which does not survive a
+        // service-worker restart. Only positive totals are painted — a fresh
+        // tab that has cleaned nothing must never get a per-tab override.
         clearTab(tabId);
+        const total = Number.isFinite(event.total)
+          ? Math.max(0, event.total)
+          : (badgeTotals.get(tabId) || 0);
+        badgeTotals.set(tabId, total);
+        if (total > 0) writeBadge(tabId, total);
         return;
       }
       case "tabClosed": {

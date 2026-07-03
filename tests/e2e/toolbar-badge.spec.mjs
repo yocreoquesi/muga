@@ -190,6 +190,17 @@ async function resetPresenterBadgeMap(context, extensionId) {
   return result;
 }
 
+/** Serves a tiny stub for a real https host so navigation hits no network. */
+async function stubHost(page, hostname) {
+  await page.route(`**://${hostname}/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><html><body>${hostname} stub</body></html>`,
+    }),
+  );
+}
+
 test.describe("Toolbar badge — per-tab running count (#910)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
     await installTestModeSentinel(context, extensionId);
@@ -353,6 +364,41 @@ test.describe("Toolbar badge — per-tab running count (#910)", () => {
 
     await pageA.close();
     await pageB.close();
+  });
+
+  test("badge survives a REAL in-tab navigation — browser clears per-tab badge on navigate; MUGA re-paints the durable total (#950 flicker regression)", async ({ context, extensionId }) => {
+    // The synthetic-event tests above prove the presenter's LOGIC, but they
+    // never trigger the browser's own per-tab badge reset (MDN
+    // action.setBadgeText tabId: "reset when the user navigates this tab to a
+    // new page"). This test drives a REAL navigation so the browser actually
+    // wipes the badge, then asserts MUGA re-paints the running total from the
+    // durable tab_badge_{tabId} session key via the production
+    // chrome.tabs.onUpdated -> navigationStarted path.
+    //
+    // BEFORE the fix, navigationStarted reset only the tooltip, so after the
+    // real navigation the badge stayed BLANK — the exact flicker the user saw.
+    const { page: hostPage, tabId } = await openHostPageWithTabId(context, extensionId);
+
+    // Paint a durable per-tab badge via the REAL updateTabBadge path (writes
+    // the tab_badge_{tabId} session key the onUpdated handler reads back).
+    await updateTabBadge(context, extensionId, { tabId, junkRemoved: 3 });
+    expect((await readActionSurface(context, extensionId, tabId)).badgeText).toBe("3");
+
+    // Perform a REAL in-tab navigation to a stubbed host (no network). This
+    // fires the production onUpdated(status:"loading") handler for this tabId
+    // and makes the browser reset the per-tab badge text.
+    await stubHost(hostPage, "example.com");
+    await hostPage.goto("https://example.com/second");
+
+    // The onUpdated -> bus -> presenter re-paint is async; poll the real
+    // chrome.action badge surface until it settles. It must return to the
+    // accumulated total, NOT stay blank.
+    await expect.poll(
+      async () => (await readActionSurface(context, extensionId, tabId)).badgeText,
+      { timeout: 5000, message: "badge must be re-painted after the navigation reset" },
+    ).toBe("3");
+
+    await hostPage.close();
   });
 
   test("the static manifest icon ships unchanged and is reachable", async ({ context, extensionId }) => {
