@@ -65,3 +65,6 @@ tools/moat-expansion/quarantine/
 # only via the weekly workflow PR, never via direct push.
 tools/moat-expansion/reports/report-*.md
 tools/moat-expansion/reports/report-*.json
+
+# Internal design bundle (chat logs + redesign prototype): not for the public repo
+.muga-design-bundle/
