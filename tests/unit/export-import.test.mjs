@@ -151,10 +151,17 @@ describe("import settings (source verification)", () => {
     );
   });
 
-  test("8. import clamps toastDuration to 5-60 range", () => {
+  test("8. import snaps toastDuration to the nearest offered <option> (#968)", () => {
+    // #968: a continuous clamp let import persist a value (e.g. 45) that matched
+    // no <option>, leaving the control blank. The value is now snapped to the
+    // nearest offered option so pref and UI can never disagree.
     assert.ok(
-      OPTIONS_SOURCE.includes("Math.max(5, Math.min(60, data.toastDuration))"),
-      "Import must clamp toastDuration between 5 and 60"
+      OPTIONS_SOURCE.includes("snapToastDuration(data.toastDuration)"),
+      "Import must snap toastDuration via snapToastDuration"
+    );
+    assert.ok(
+      !OPTIONS_SOURCE.includes("Math.max(5, Math.min(60, data.toastDuration))"),
+      "Import must NOT use the legacy continuous clamp for toastDuration"
     );
   });
 
@@ -361,5 +368,103 @@ describe("import language round-trip (#729)", () => {
     for (const bad of ["", "xx", "EN", "en-US", "klingon", null, undefined, 42]) {
       assert.strictEqual(acceptLanguage(bad), false, `"${String(bad)}" must be rejected`);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Import/export hardening — regressions for #964, #965, #968
+// ---------------------------------------------------------------------------
+const OPTIONS_HTML = readFileSync(join(__dirname, "../../src/options/options.html"), "utf8");
+
+describe("import/export hardening (#964/#965/#968)", () => {
+
+  // #968 — data-loss round-trip
+  test("38. export round-trips the three previously-dropped prefs", () => {
+    for (const key of ["experimentalParamClassesEnabled", "honorCreatorMode", "creatorAllowlist"]) {
+      assert.ok(
+        OPTIONS_SOURCE.includes(`${key}: prefs.${key}`),
+        `Export payload must include "${key}" (was silently dropped)`
+      );
+    }
+  });
+
+  test("39. import round-trips honorCreatorMode + experimentalParamClassesEnabled as booleans", () => {
+    for (const key of ["honorCreatorMode", "experimentalParamClassesEnabled"]) {
+      assert.ok(
+        new RegExp(`BOOL_KEYS[\\s\\S]*"${key}"`).test(OPTIONS_SOURCE),
+        `Import BOOL_KEYS must include "${key}"`
+      );
+    }
+  });
+
+  test("40. import round-trips creatorAllowlist through the pure validator", () => {
+    assert.ok(
+      OPTIONS_SOURCE.includes("Array.isArray(data.creatorAllowlist)"),
+      "Import must validate creatorAllowlist is an array"
+    );
+    assert.ok(
+      /addCreatorAllowlistEntry\(\s*acc\s*,\s*entry\s*\)/.test(OPTIONS_SOURCE),
+      "Import must fold creatorAllowlist entries through addCreatorAllowlistEntry"
+    );
+  });
+
+  // #964 — permission-gate bypass
+  test("41. import gates followShortenersEnabled on the actual host grant", () => {
+    // Must NOT be in the blind BOOL_KEYS loop...
+    assert.ok(
+      !/BOOL_KEYS\s*=\s*\[[^\]]*"followShortenersEnabled"/.test(OPTIONS_SOURCE),
+      "followShortenersEnabled must NOT be a blindly-imported BOOL_KEY"
+    );
+    // ...and enabling it must depend on hasShortenerPermissions().
+    assert.ok(
+      /data\.followShortenersEnabled\s*&&\s*\(await hasShortenerPermissions\(\)\)/.test(OPTIONS_SOURCE),
+      "Import must only enable followShortenersEnabled when the host grant is present"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("chrome.permissions.contains"),
+      "hasShortenerPermissions must check chrome.permissions.contains"
+    );
+  });
+
+  // #965 — guarded-pref override desync
+  test("42. import reconciles the per-device override for guarded prefs", () => {
+    assert.ok(
+      /reconcileOverrideForExplicitChoice\(\s*key\s*,\s*data\[key\]\s*\)/.test(OPTIONS_SOURCE),
+      "Import must reconcile the per-device override to the imported guarded value"
+    );
+  });
+
+  // #968 — toast-duration select
+  test("43. toast-duration options span the full 5..60 range in the UI", () => {
+    for (const v of ["5", "10", "15", "30", "45", "60"]) {
+      assert.ok(
+        OPTIONS_HTML.includes(`value="${v}"`),
+        `toast-duration <select> must offer value="${v}" so the clamp ceiling is reachable`
+      );
+    }
+  });
+
+  test("44. snapToastDuration maps arbitrary values to the nearest offered option", () => {
+    // Mirror of the implementation (options.js is browser-only, not importable).
+    const TOAST_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60];
+    const snap = (n) => {
+      const v = Number.isFinite(n) ? n : 15;
+      return TOAST_DURATION_OPTIONS.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
+    };
+    assert.equal(snap(45), 45, "an offered value maps to itself");
+    assert.equal(snap(60), 60, "the ceiling is reachable");
+    assert.equal(snap(22), 15, "22 snaps to nearest (15, distance 7 < 8)");
+    assert.equal(snap(23), 30, "23 snaps to nearest (30, distance 7 < 8)");
+    assert.equal(snap(1000), 60, "out-of-range high clamps to 60");
+    assert.equal(snap(NaN), 15, "non-finite falls back to 15");
+    // The implementation must define both the option set and the snapper.
+    assert.ok(
+      OPTIONS_SOURCE.includes("TOAST_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60]"),
+      "options.js must define TOAST_DURATION_OPTIONS"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("function snapToastDuration"),
+      "options.js must define snapToastDuration"
+    );
   });
 });
