@@ -37,11 +37,24 @@ describe("#935 — copyWithFeedback helper extracted and shared", () => {
   });
 
   test("all three clipboard call sites route through copyWithFeedback", () => {
-    const calls = popupSrc.match(/copyWithFeedback\(\s*entry\.\w+/g) || [];
+    // #946: the history-entry click and copy-clean button no longer copy
+    // `entry.clean` (the value stored at navigation time, computed with
+    // injectOwnAffiliate ON) directly — they reprocess copy-safe via
+    // getCopySafeCleanUrl(entry.original) first and pass the
+    // resolved `safeUrl` into copyWithFeedback. Only copy-original still
+    // copies `entry.original` directly (it was never MUGA-tagged to begin
+    // with, so it needs no reprocessing).
+    const directEntryCalls = popupSrc.match(/copyWithFeedback\(\s*entry\.\w+/g) || [];
     assert.equal(
-      calls.length,
-      3,
-      `expected 3 copyWithFeedback(entry.___, ...) call sites (history-entry click, copy-clean button, copy-original button); found ${calls.length}`,
+      directEntryCalls.length,
+      1,
+      `expected exactly 1 copyWithFeedback(entry.___, ...) call site (copy-original button); found ${directEntryCalls.length}`,
+    );
+    const copySafeCalls = popupSrc.match(/copyWithFeedback\(\s*safeUrl\b/g) || [];
+    assert.equal(
+      copySafeCalls.length,
+      2,
+      `expected exactly 2 copyWithFeedback(safeUrl, ...) call sites (history-entry click, copy-clean button); found ${copySafeCalls.length}`,
     );
   });
 
@@ -72,7 +85,10 @@ describe("#935 — copyWithFeedback helper extracted and shared", () => {
   test("copy-clean icon button preserves the icon-swap + fontSize behavior", () => {
     const idx = popupSrc.indexOf('copyCleanBtn.addEventListener("click"');
     assert.ok(idx !== -1, "copyCleanBtn click handler must exist");
-    const block = popupSrc.slice(idx, idx + 500);
+    // #946: window widened from 500 — the handler now wraps its body in
+    // getCopySafeCleanUrl(...).then(...), pushing the icon-swap/revert
+    // calls further from the listener's opening line.
+    const block = popupSrc.slice(idx, idx + 650);
     assert.ok(block.includes('copyCleanBtn.textContent = "✓"'), "must still show ✓ on success");
     assert.ok(block.includes('copyCleanBtn.textContent = "✗"'), "must still show ✗ on failure");
     assert.ok(block.includes('_setClipboardIcon(copyCleanBtn)'), "must still restore the clipboard icon on revert");

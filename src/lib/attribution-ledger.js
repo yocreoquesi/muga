@@ -22,6 +22,8 @@
  * user switches language without rebuilding event history.
  */
 
+import { processUrl } from "./cleaner.js";
+
 /** Default size of the ledger ring buffer. Caps how many events the popup ever renders. */
 export const DEFAULT_LEDGER_CAPACITY = 10;
 
@@ -122,17 +124,61 @@ export function presentLedger(ledger) {
 }
 
 /**
+ * Re-derives the tag-free destination for an `injected` result (#946).
+ *
+ * `processUrl()` does not produce a tagless value on a normal injecting
+ * call — the tag is added in the same pass that strips tracking params, so
+ * there is no intermediate "clean but not yet tagged" URL to read off the
+ * result object. Rather than regex-stripping MUGA's tag back out of
+ * `result.cleanUrl` (fragile: tag param names/positions vary per pattern),
+ * we reprocess the ORIGINAL raw URL through the same pipeline with
+ * `injectOwnAffiliate` forced off. This is the same principled approach
+ * background/service-worker.js#handleProcessUrl already uses for its
+ * copy-safe `effectivePrefs` (skipNotify branch) — single source of truth
+ * for "what would this URL look like if MUGA never injected its own tag".
+ *
+ * Falls back to `rawUrl` (the pre-injection original — guaranteed free of
+ * MUGA's tag by construction, though not guaranteed to have tracking
+ * params stripped) when `ctx` is missing or reprocessing throws. This only
+ * matters for callers that don't supply a `ctx` (e.g. isolated unit
+ * tests) — the production caller (pushAttributionAndPersist) always does.
+ *
+ * @param {string} rawUrl
+ * @param {{prefs?: object, domainRules?: Array, pathStripRules?: Array, pathAffiliateRules?: Array, referrer?: string}|undefined} ctx
+ * @returns {string}
+ */
+function deriveTaglessUrl(rawUrl, ctx) {
+  if (!ctx || typeof ctx !== "object" || !ctx.prefs) return rawUrl;
+  try {
+    const tagless = processUrl(
+      rawUrl,
+      { ...ctx.prefs, injectOwnAffiliate: false },
+      ctx.domainRules || [],
+      undefined,
+      undefined,
+      ctx.referrer,
+      ctx.pathStripRules || [],
+      ctx.pathAffiliateRules || [],
+    );
+    return tagless?.cleanUrl ?? rawUrl;
+  } catch {
+    return rawUrl;
+  }
+}
+
+/**
  * Adapts a `processUrl()` result object into a presenter event. Returns
  * null when the action is unrecognized so callers can skip without
  * polluting the ledger with garbage entries.
  *
- * Action mapping:
- *   `untouched`        → navigate         (URL passed through unchanged)
- *   `cleaned`          → clean            (tracking params stripped)
- *   `blacklisted`      → clean            (params stripped via blacklist)
- *   `injected`         → inject-affiliate (our tag added; network from preservedAffiliate.group)
- *   `detected_foreign` → preserve-affiliate (third-party tag preserved; network from detectedAffiliate.pattern.group)
- *   `honored-creator`  → honor-creator    (wrapper passed through; network + creator)
+ * Action mapping (#946 — every `url` here is a COPY-SAFE value: tracking
+ * stripped, no MUGA-injected tag, third-party creator attribution intact):
+ *   `untouched`        → navigate         (URL passed through unchanged; rawUrl)
+ *   `cleaned`          → clean            (result.cleanUrl — tracking stripped)
+ *   `blacklisted`      → clean            (result.cleanUrl — params stripped via blacklist)
+ *   `injected`         → inject-affiliate (tagless destination, see deriveTaglessUrl; network from preservedAffiliate.group)
+ *   `detected_foreign` → preserve-affiliate (result.cleanUrl — third-party tag preserved; network from detectedAffiliate.pattern.group)
+ *   `honored-creator`  → honor-creator    (result.cleanUrl — wrapper passed through unchanged; network + creator)
  *
  * `blocked-opaque` has no cleaner action today — it's a future event the
  * popup may emit when an opaque wrapper (t.co etc.) couldn't be resolved.
@@ -140,9 +186,13 @@ export function presentLedger(ledger) {
  *
  * @param {string} rawUrl
  * @param {object|null|undefined} result - return value from processUrl
+ * @param {{prefs?: object, domainRules?: Array, pathStripRules?: Array, pathAffiliateRules?: Array, referrer?: string}} [ctx]
+ *   Optional reprocessing context, only consulted for the `injected` action.
+ *   Production callers (pushAttributionAndPersist) always supply it so the
+ *   ledger never stores a MUGA-tagged URL.
  * @returns {object|null}
  */
-export function fromCleanerResult(rawUrl, result) {
+export function fromCleanerResult(rawUrl, result, ctx) {
   if (!result || typeof result !== "object") return null;
 
   switch (result.action) {
@@ -150,29 +200,31 @@ export function fromCleanerResult(rawUrl, result) {
       return { type: "navigate", url: rawUrl };
     case "cleaned":
     case "blacklisted":
-      return { type: "clean", url: rawUrl };
+      return { type: "clean", url: result.cleanUrl ?? rawUrl };
     case "injected": {
       // Network sourced from the preservedAffiliate descriptor when the
       // cleaner attached one (group is the program family, e.g. "amazon").
       const network = result.preservedAffiliate?.group || result.preservedAffiliate?.store;
-      const ev = { type: "inject-affiliate", url: rawUrl };
+      const ev = { type: "inject-affiliate", url: deriveTaglessUrl(rawUrl, ctx) };
       if (network) ev.network = network;
       return ev;
     }
     case "detected_foreign": {
       // detectedAffiliate carries the matched pattern; group identifies
-      // the program family the foreign tag belongs to.
+      // the program family the foreign tag belongs to. cleanUrl already
+      // carries the third-party tag (honor-creator attribution) — only
+      // MUGA-irrelevant tracking noise was stripped ahead of this point.
       const network =
         result.detectedAffiliate?.pattern?.group ||
         result.detectedAffiliate?.pattern?.name;
-      const ev = { type: "preserve-affiliate", url: rawUrl };
+      const ev = { type: "preserve-affiliate", url: result.cleanUrl ?? rawUrl };
       if (network) ev.network = network;
       return ev;
     }
     case "honored-creator":
       return {
         type: "honor-creator",
-        url: rawUrl,
+        url: result.cleanUrl ?? rawUrl,
         network: result.network,
         creator: result.creator,
       };

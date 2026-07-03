@@ -15,6 +15,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import {
   DEFAULT_LEDGER_CAPACITY,
   EVENT_TYPES,
@@ -23,6 +24,10 @@ import {
   presentLedger,
   fromCleanerResult,
 } from "../../src/lib/attribution-ledger.js";
+import { processUrl } from "../../src/lib/cleaner.js";
+
+const require = createRequire(import.meta.url);
+const domainRules = require("../../src/rules/domain-rules.json");
 
 const URL_A = "https://example.com/article";
 const URL_B = "https://shop.example/product?utm_source=x";
@@ -295,5 +300,80 @@ describe("fromCleanerResult", () => {
     assert.equal(entry.decision, "honor-creator");
     assert.equal(entry.network, "skimlinks");
     assert.equal(entry.creatorCredit, "youtube.com/@foo");
+  });
+});
+
+// ── #946: copy-safe action table ─────────────────────────────────────────────
+// Every user-facing COPY/SHARE affordance (including the Recent-activity
+// ledger's per-row "Copy" button, which copies `row.url` sourced straight
+// from these events) must put the cleanest SAFE form of a URL on the
+// clipboard: tracking stripped, third-party creator attribution preserved,
+// and — critically — no MUGA-injected affiliate tag. Before this fix,
+// `cleaned`/`blacklisted` stored the raw pre-clean rawUrl (tracking noise
+// intact) and `injected` stored result.cleanUrl verbatim (MUGA's own tag
+// intact) — both wrong for a copy/share affordance.
+const NAV_PREFS = Object.freeze({
+  enabled: true,
+  onboardingDone: true,
+  injectOwnAffiliate: true,
+  notifyForeignAffiliate: false,
+  stripAllAffiliates: false,
+  blacklist: [],
+  whitelist: [],
+  disabledCategories: [],
+});
+
+describe("fromCleanerResult — #946 copy-safe action table", () => {
+  test("'cleaned' uses result.cleanUrl (tracking-stripped), NOT the raw pre-clean url", () => {
+    const raw = "https://shop.example/product?utm_source=newsletter&id=1";
+    const clean = "https://shop.example/product?id=1";
+    const ev = fromCleanerResult(raw, { action: "cleaned", cleanUrl: clean });
+    assert.equal(ev.url, clean);
+    assert.notEqual(ev.url, raw, "must not store the raw URL carrying tracking noise");
+  });
+
+  test("'blacklisted' uses result.cleanUrl, NOT the raw pre-clean url", () => {
+    const raw = "https://shop.example/product?tag=blocked";
+    const clean = "https://shop.example/product";
+    const ev = fromCleanerResult(raw, { action: "blacklisted", cleanUrl: clean });
+    assert.equal(ev.url, clean);
+    assert.notEqual(ev.url, raw);
+  });
+
+  test("'injected' derives a TAGLESS url via ctx reprocessing (real processUrl, injection re-forced off)", () => {
+    const raw = "https://www.amazon.com/dp/B00X?utm_source=newsletter";
+    const navResult = processUrl(raw, NAV_PREFS, domainRules);
+    assert.equal(navResult.action, "injected", "sanity: this URL really gets MUGA's tag injected at navigation time");
+    assert.ok(navResult.cleanUrl.includes("tag="), "sanity: the real nav result carries our tag");
+
+    const ev = fromCleanerResult(raw, navResult, { prefs: NAV_PREFS, domainRules });
+    assert.equal(ev.type, "inject-affiliate");
+    assert.ok(!ev.url.includes("tag="), "ledger must never store MUGA's own injected tag");
+    assert.ok(!ev.url.includes("utm_source"), "tracking noise must still be stripped from the derived copy-safe url");
+  });
+
+  test("'injected' without ctx falls back to the pre-injection rawUrl (backward compatible, still tag-free)", () => {
+    const ev = fromCleanerResult(URL_A, { action: "injected", preservedAffiliate: { group: "amazon" } });
+    assert.equal(ev.url, URL_A, "no ctx supplied — falls back to rawUrl rather than crashing or using a tagged cleanUrl");
+  });
+
+  test("'detected_foreign' preserves the third-party creator tag via result.cleanUrl", () => {
+    const raw = "https://www.amazon.com/dp/B00X?utm_source=x&tag=creator-21";
+    const foreignResult = processUrl(raw, { ...NAV_PREFS, notifyForeignAffiliate: true }, domainRules);
+    assert.equal(foreignResult.action, "detected_foreign");
+
+    const ev = fromCleanerResult(raw, foreignResult);
+    assert.equal(ev.type, "preserve-affiliate");
+    assert.equal(ev.url, foreignResult.cleanUrl);
+    assert.ok(ev.url.includes("tag=creator-21"), "third-party creator tag must survive");
+    assert.ok(!ev.url.includes("utm_source"), "unrelated tracking noise is still stripped");
+  });
+
+  test("'honored-creator' uses result.cleanUrl — the unmodified wrapper", () => {
+    const wrapper = "https://go.skimresources.com/?id=abc&url=https://dest.example";
+    const ev = fromCleanerResult(wrapper, {
+      action: "honored-creator", cleanUrl: wrapper, network: "skimlinks", creator: "yt/@x",
+    });
+    assert.equal(ev.url, wrapper);
   });
 });

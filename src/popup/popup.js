@@ -69,6 +69,43 @@ function copyWithFeedback(text, { onSuccess, onError, onRevert }) {
   });
 }
 
+/**
+ * Reprocesses `originalUrl` through the copy-safe pipeline (#946) instead of
+ * copying the value stored at navigation time. History's "clean" column is
+ * computed with injectOwnAffiliate ON (that's the correct value for what
+ * actually happened at navigation), so copying it verbatim would put MUGA's
+ * own affiliate tag on the clipboard for an `injected` entry. Reusing the
+ * existing PROCESS_URL message with `skipNotify: true` mirrors the same
+ * effectivePrefs branch background/service-worker.js#handleProcessUrl already
+ * applies for keyboard-shortcut/context-menu copy (injectOwnAffiliate +
+ * notifyForeignAffiliate both forced off) — single source of truth instead of
+ * a second nav-time value.
+ *
+ * Degraded fallback (#946): if the service worker is unreachable, return
+ * `originalUrl` — the pre-navigation URL, which by construction NEVER carries
+ * MUGA's own injected tag (injection only happens during cleaning, producing
+ * the nav-time `entry.clean`). We deliberately do NOT fall back to the
+ * nav-time clean value: for an `injected` entry that would put MUGA's own
+ * affiliate tag on the clipboard, the exact leak #946 exists to prevent. The
+ * original may still carry third-party tracking noise in this rare path, but
+ * copy must never leak MUGA's tag — tag-safety wins over noise-freeness here.
+ *
+ * @param {string} originalUrl
+ * @returns {Promise<string>}
+ */
+async function getCopySafeCleanUrl(originalUrl) {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "PROCESS_URL", url: originalUrl, skipNotify: true });
+    if (response && typeof response.cleanUrl === "string" && response.cleanUrl) {
+      return response.cleanUrl;
+    }
+  } catch {
+    // SW unreachable (e.g. cold-killed mid-popup-session) — degrade to the
+    // tag-free original rather than failing the copy or leaking MUGA's tag.
+  }
+  return originalUrl;
+}
+
 // ── Param breakdown ───────────────────────────────────────────────────────────
 
 /** Builds a reverse index: param name → { category key, label, labelEs, labelPt, labelDe }. Cached as singleton. */
@@ -1314,39 +1351,44 @@ async function showHistory(prefs, lang) {
       }
     });
 
-    // Click to copy clean URL (#87)
+    // Click to copy clean URL (#87). Reprocessed copy-safe (#946) — see
+    // getCopySafeCleanUrl for why this doesn't just copy entry.clean.
     entryDiv.addEventListener("click", (e) => {
       if (e.target === copyOrigBtn || copyCleanBtn.contains(e.target)) return; // handled separately
       const orig = afterDiv.textContent;
-      copyWithFeedback(entry.clean, {
-        onSuccess: () => {
-          entryDiv.classList.add("copied");
-          afterDiv.textContent = t("history_copied", lang);
-        },
-        onError: () => { afterDiv.textContent = "✗"; },
-        onRevert: () => {
-          entryDiv.classList.remove("copied");
-          afterDiv.textContent = orig;
-        },
+      getCopySafeCleanUrl(entry.original).then((safeUrl) => {
+        copyWithFeedback(safeUrl, {
+          onSuccess: () => {
+            entryDiv.classList.add("copied");
+            afterDiv.textContent = t("history_copied", lang);
+          },
+          onError: () => { afterDiv.textContent = "✗"; },
+          onRevert: () => {
+            entryDiv.classList.remove("copied");
+            afterDiv.textContent = orig;
+          },
+        });
       });
     });
 
-    // Copy clean URL icon button
+    // Copy clean URL icon button. Reprocessed copy-safe (#946).
     copyCleanBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyWithFeedback(entry.clean, {
-        onSuccess: () => {
-          copyCleanBtn.textContent = "✓";
-          copyCleanBtn.style.fontSize = "11px";
-        },
-        onError: () => {
-          copyCleanBtn.textContent = "✗";
-          copyCleanBtn.style.fontSize = "11px";
-        },
-        onRevert: () => {
-          _setClipboardIcon(copyCleanBtn);
-          copyCleanBtn.style.fontSize = "";
-        },
+      getCopySafeCleanUrl(entry.original).then((safeUrl) => {
+        copyWithFeedback(safeUrl, {
+          onSuccess: () => {
+            copyCleanBtn.textContent = "✓";
+            copyCleanBtn.style.fontSize = "11px";
+          },
+          onError: () => {
+            copyCleanBtn.textContent = "✗";
+            copyCleanBtn.style.fontSize = "11px";
+          },
+          onRevert: () => {
+            _setClipboardIcon(copyCleanBtn);
+            copyCleanBtn.style.fontSize = "";
+          },
+        });
       });
     });
 
