@@ -47,7 +47,7 @@ test.describe("Onboarding", () => {
     const tagline = page.locator('[data-i18n="ob_tagline_sub"]');
     await expect(tagline).toBeVisible();
     const text = await tagline.textContent();
-    expect(text).toContain("Denoise the web");
+    expect(text).toContain("Denoise every URL");
     expect(text).toContain("zero telemetry");
     expect(text).not.toContain("Fair to creators");
     expect(text).not.toContain("honest about both");

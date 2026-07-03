@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "MUGA: The denoise extension for the web",
+  "name": "MUGA: The URL denoise extension for the web",
   "short_name": "MUGA",
   "version": "2.3.0",
   "version_name": "2.3.0",
-  "description": "Quiet the noise. Honor creator referrals. 450+ noise patterns removed (utm, fbclid, gclid). No analytics, no telemetry. Open source.",
+  "description": "Quiet URL noise: 450+ tracking patterns (utm, fbclid, gclid). Honor creator referrals. No analytics, no telemetry. Open source.",
 
   "permissions": [
     "storage",
