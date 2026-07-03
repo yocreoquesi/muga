@@ -247,6 +247,8 @@ export default Object.freeze({
   ob_synced_from_other_device: "Diese Einstellung wurde auf einem anderen Gerät aktiviert. Bestätige sie für dieses Gerät oder hebe die Auswahl auf, um sie hier deaktiviert zu lassen.",
   ob_remote_rules_title: "Remote-Regelaktualisierungen",
   ob_remote_rules_desc: "Dein anderes Gerät hat Remote-Regelaktualisierungen aktiviert. Wenn aktiviert, lädt MUGA einmal pro Woche eine signierte Tracking-Parameter-Liste von einem öffentlichen GitHub-Pages-Endpunkt, um deinen Schutz aktuell zu halten. Es werden keine Nutzerdaten gesendet.",
+  ob_remote_rules_desc_default: "Remote-Regelaktualisierungen sind standardmäßig aktiviert. Wenn aktiviert, lädt MUGA einmal pro Woche eine signierte Tracking-Parameter-Liste von einem öffentlichen GitHub-Pages-Endpunkt, um deinen Schutz aktuell zu halten. Es werden keine Nutzerdaten gesendet.",
+  ob_remote_rules_default_note: "Standardmäßig aktiviert. Bestätige sie für dieses Gerät oder hebe die Auswahl auf, um sie hier deaktiviert zu lassen.",
   ob_remote_rules_check_label: "Remote-Regelaktualisierungen auf diesem Gerät aktivieren",
   ob_reonboard_delta_title: "Seit deiner letzten Zustimmung wurden einige Klauseln ergänzt",
   ob_reonboard_delta_desc: "Deine bisherige Zustimmung gilt weiterhin. Überprüfe die neuen Klauseln unten; akzeptieren schaltet die neuen Verhaltensweisen frei, ablehnen lässt MUGA unter den zuvor akzeptierten Bedingungen weiterlaufen.",
