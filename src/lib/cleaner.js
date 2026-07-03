@@ -448,7 +448,13 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // Step 7 — Action resolution + Bookshop injection + recordFrequency + final payload
   /** @type {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = pipeAction;
-  if (action === "untouched" && (pathCleaned || removedTracking.length > 0)) action = "cleaned";
+  // pathAffiliateUnwrapped (#959): the /a/CREATOR/DEST wrapper was rewritten to
+  // DEST inside unwrapStep (before originalPathname was captured), so pathCleaned
+  // stays false even though the URL changed. Surface it as "cleaned" so the
+  // service worker counts it in urlsCleaned + history — parity with how the
+  // query strip-all path reports a stripped foreign affiliate (no junkRemoved bump).
+  if (action === "untouched" && (pathCleaned || removedTracking.length > 0 || pathAffiliateUnwrapped))
+    action = "cleaned";
 
   // 6b. Path-based MUGA-affiliate injection (e.g. Bookshop.org). Rules are
   // loaded from src/rules/path-affiliate-rules.json via src/lib/path-rules.js.

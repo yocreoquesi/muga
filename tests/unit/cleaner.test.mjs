@@ -3162,10 +3162,15 @@ describe("Bookshop.org path unwrap under stripAllAffiliates (#959)", () => {
 
   test("stripAll ON + inject OFF: /a/creator/p/... unwraps with no affiliate param at all", () => {
     const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
-    const { cleanUrl } = processUrl(
+    const { cleanUrl, action } = processUrl(
       input, STRIP, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
     );
     assert.equal(cleanUrl, "https://bookshop.org/p/books/9780000000000");
+    // #959 Finding 2: the wrapper was rewritten inside unwrapStep (before
+    // pathCleaned is computed), so the strip-only unwrap must still report
+    // "cleaned" — otherwise the service worker logs it as a passthrough and
+    // never counts it in urlsCleaned / history.
+    assert.equal(action, "cleaned");
   });
 
   test("stripAll ON + inject ON: embedded same-origin absolute URL destination unwraps and injects", () => {
