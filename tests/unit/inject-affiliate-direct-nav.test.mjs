@@ -87,13 +87,14 @@ describe("#905 direct-nav injection — processUrl action contract", () => {
     assert.equal(new URL(r.cleanUrl).searchParams.get("tag"), OUR_AMAZON_COM_TAG);
   });
 
-  test("injection is suppressed when stripAllAffiliates is on", () => {
+  test("injects under stripAllAffiliates (strip-all clears foreign, then ours is injected)", () => {
     const r = processUrl(
       "https://www.amazon.com/dp/B00X",
       { ...INJECT_PREFS, stripAllAffiliates: true },
       domainRules,
     );
-    assert.notEqual(r.action, "injected");
+    assert.equal(r.action, "injected");
+    assert.equal(new URL(r.cleanUrl).searchParams.get("tag"), OUR_AMAZON_COM_TAG);
   });
 
   test("injection is suppressed when injectOwnAffiliate is off", () => {

@@ -73,7 +73,7 @@ export default Object.freeze({
   row_notify_label: "Mich benachrichtigen, wenn ein Link ein fremdes Affiliate-Tag hat",
   row_notify_hint: "Zeigt eine kurze Benachrichtigung mit Optionen und schließt sich danach automatisch",
   row_strip_affiliates_label: "Alle fremden Affiliate-Tags entfernen",
-  row_strip_affiliates_hint: "Entfernt von anderen gesetzte Affiliate-Tags aus allen Links. Wenn MUGAs Affiliate-Injektion aktiviert ist, bleibt unser Tag erhalten; andernfalls wird er ebenfalls entfernt.",
+  row_strip_affiliates_hint: "Entfernt von anderen gesetzte Affiliate-Tags aus allen Links. Wenn MUGAs Affiliate-Injektion aktiviert ist, wird stattdessen unser Tag eingefügt; andernfalls bleibt der Link ohne Affiliate-Tag.",
   section_stores: "Affiliate-Shops",
   stores_hint: "Grüner Punkt = Affiliate-Konto aktiv und konfiguriert. Grau = Konto ausstehend.",
   no_active_stores: "Noch keine Affiliate-Konten konfiguriert.",

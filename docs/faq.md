@@ -107,13 +107,20 @@ to sync ([`src/onboarding/onboarding.js:170-176`](../src/onboarding/onboarding.j
 
 ### Q: Does MUGA ever overwrite an existing affiliate tag?
 
-No. The injection branch in the cleaner is gated by
-`!url.searchParams.has(pattern.param)` — if the URL already carries the
-affiliate parameter for that program, injection is skipped entirely:
+Only if you have explicitly enabled BOTH "Remove all affiliate tags from
+other sources" and MUGA's own-tag injection. In that case the foreign tag is
+first stripped (per your remove-all choice), then ours is injected into the
+now-tagless URL. With injection alone (remove-all off), MUGA never touches an
+existing foreign tag: it is detected and honored (`action = "detected_foreign"`).
+
+The injection branch itself is still gated by
+`!url.searchParams.has(pattern.param)`, so it never overwrites a tag that is
+present at injection time (an own tag the remove-all step preserved
+short-circuits it):
 
 ```js
-// src/lib/cleaner.js:589-599
-if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
+// src/lib/cleaner.js (Step 6)
+if (prefs.injectOwnAffiliate && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
   const hostKeyInject = hostname.replace(/^www\./, "");
   for (const pattern of patterns) {
     const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
@@ -126,8 +133,8 @@ if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detecte
 }
 ```
 
-That `!url.searchParams.has(pattern.param)` is the contract: if the
-creator's tag is already there, MUGA does not touch it.
+That `!url.searchParams.has(pattern.param)` is the contract: a tag already on
+the URL at injection time is never overwritten in place.
 
 ### Q: What happens if a creator's tag is on a program MUGA has no account on?
 
