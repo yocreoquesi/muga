@@ -137,6 +137,36 @@
     return _gateOpen;
   }
 
+  // ── Post-commit signal (#951 Layer B) ────────────────────────────────────
+  //
+  // The subset strip above is a synchronous, defense-in-depth measure only
+  // (see file docblock). It does NOT cover path segments (e.g. Amazon's
+  // trailing `/ref=...`) or the full tracking-param list, because doing the
+  // full clean here would require an async round-trip the page might
+  // observe. Instead, once the native call has committed (so
+  // `window.location` already reflects the new URL), we tell the
+  // isolated-world side to run the FULL pipeline (path + query rules) via
+  // `muga:history-committed`. The isolated-world listener lives in
+  // history-defuser.js; the actual reclean logic lives in cleaner.js
+  // (`window.__mugaReclean`), which is only reachable from the isolated
+  // world.
+  //
+  // SECURITY (#811): this event is dispatched from the MAIN (page) world, so
+  // its CustomEvent detail is fully readable by hostile page scripts. It must
+  // NOT carry the gate nonce — leaking it would hand the page the secret that
+  // guards the `muga:history-gate` handshake, letting it forge a gate event
+  // and force the gate closed to disable cleaning. No nonce is needed here:
+  // the isolated reclean this triggers only ever calls history.replaceState()
+  // on the resulting URL, something page scripts can already do directly, so a
+  // forged committed event grants no capability the page lacks.
+  function dispatchCommitted(finalUrl) {
+    try {
+      document.dispatchEvent(new CustomEvent("muga:history-committed", {
+        detail: { url: finalUrl },
+      }));
+    } catch { /* document detached or CustomEvent unavailable — silent */ }
+  }
+
   const origPush = history.pushState;
   const origReplace = history.replaceState;
 
@@ -145,9 +175,11 @@
     if (arguments.length >= 3 && gateOpen()) {
       try { finalUrl = cleanUrl(url); } catch { finalUrl = url; }
     }
-    return arguments.length >= 3
+    const ret = arguments.length >= 3
       ? origPush.call(this, state, title, finalUrl)
       : origPush.call(this, state, title);
+    if (arguments.length >= 3 && gateOpen()) dispatchCommitted(finalUrl);
+    return ret;
   };
 
   history.replaceState = function replaceState(state, title, url) {
@@ -155,8 +187,10 @@
     if (arguments.length >= 3 && gateOpen()) {
       try { finalUrl = cleanUrl(url); } catch { finalUrl = url; }
     }
-    return arguments.length >= 3
+    const ret = arguments.length >= 3
       ? origReplace.call(this, state, title, finalUrl)
       : origReplace.call(this, state, title);
+    if (arguments.length >= 3 && gateOpen()) dispatchCommitted(finalUrl);
+    return ret;
   };
 })();

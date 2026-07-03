@@ -118,6 +118,58 @@
     } catch { /* document detached or CustomEvent unavailable — silent */ }
   }
 
+  // ── SPA reclean on committed history navigation (#951 Layer B) ─────────
+  //
+  // The main-world wrap (history-defuser-mainworld.js) only applies a
+  // synchronous, hard-coded query-param SUBSET before committing a
+  // pushState/replaceState — it has no chrome.* access and can't reach
+  // path rules or the full tracking-param list. After it commits the call,
+  // it dispatches `muga:history-committed` on `document` so this
+  // isolated-world script can trigger the FULL cleaning pipeline
+  // (path-strip + path-affiliate + full query rules) via
+  // `window.__mugaReclean`, which is set by content/cleaner.js — a sibling
+  // isolated-world script sharing the same `window` object.
+  //
+  // No nonce guard here (unlike the gate handshake): `muga:history-committed`
+  // originates in the MAIN world, so its detail is page-readable and cannot
+  // carry a secret without leaking it (see the SECURITY note in
+  // history-defuser-mainworld.js). A forged event is harmless — __mugaReclean
+  // only calls history.replaceState() on the URL, which the page can already
+  // do itself — and is further bounded by the prefs gate + loop guard inside
+  // __mugaReclean.
+  document.addEventListener("muga:history-committed", (e) => {
+    if (!e || !e.detail) return;
+    try {
+      if (typeof window.__mugaReclean === "function") {
+        window.__mugaReclean(e.detail.url);
+      }
+    } catch { /* never let a reclean failure break the page's navigation */ }
+  });
+
+  // ── popstate / hashchange coverage (#951 Layer B, additive) ─────────────
+  //
+  // Back/forward navigation (popstate) and hash-only routing (hashchange)
+  // are ALSO same-document navigations that never hit the network layer,
+  // so DNR never sees them — same gap as pushState/replaceState. These are
+  // genuine browser-dispatched events (not page-triggerable the way a
+  // CustomEvent is), so no nonce handshake is needed here. Gating
+  // (enabled/onboardingDone) happens inside window.__mugaReclean itself.
+  window.addEventListener("popstate", () => {
+    try {
+      if (typeof window.__mugaReclean === "function") {
+        window.__mugaReclean(window.location.href);
+      }
+    } catch { /* never let a reclean failure break the page's navigation */ }
+  });
+
+  window.addEventListener("hashchange", () => {
+    try {
+      if (typeof window.__mugaReclean === "function") {
+        window.__mugaReclean(window.location.href);
+      }
+    } catch { /* never let a reclean failure break the page's navigation */ }
+  });
+
   function readPrefsAndGate() {
     try {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {

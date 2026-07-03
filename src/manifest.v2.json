@@ -78,7 +78,10 @@
     "privacy/privacy.html",
     "privacy/tos.html",
     "content/history-defuser-mainworld.js",
-    "content/window-name-defuser-mainworld.js"
+    "content/window-name-defuser-mainworld.js",
+    "rules/domain-rules.json",
+    "rules/path-strip-rules.json",
+    "rules/path-affiliate-rules.json"
   ],
 
   "declarative_net_request": {
