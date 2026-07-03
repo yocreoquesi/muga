@@ -290,15 +290,24 @@ _hydrateAttributionLedger();
  * @param {string} rawUrl
  * @param {object} result - return value from processUrl
  * @param {object} prefs  - cached prefs (already resolved)
+ * @param {string} [referrer] - navigation referrer (#452/B14), threaded
+ *   through so fromCleanerResult can reprocess an `injected` result with
+ *   the same referrer context when deriving the tagless copy-safe URL (#946).
  */
-function pushAttributionAndPersist(rawUrl, result, prefs) {
+function pushAttributionAndPersist(rawUrl, result, prefs, referrer = "") {
   // Privacy gate: skip both in-memory accumulation AND storage write so
   // a user who flips the toggle off mid-session sees the ring buffer
   // freeze immediately.
   if (prefs?.attributionLedgerEnabled === false) return;
   let event;
   try {
-    event = attributionEventFromCleanerResult(rawUrl, result);
+    // #946: ctx lets fromCleanerResult reprocess `injected` results with
+    // injectOwnAffiliate forced off, so the ledger never stores a
+    // MUGA-tagged URL. domainRules/pathStripRules/pathAffiliateRules are
+    // the same module-level caches handleProcessUrl() itself uses.
+    event = attributionEventFromCleanerResult(rawUrl, result, {
+      prefs, domainRules, pathStripRules, pathAffiliateRules, referrer,
+    });
   } catch (err) {
     console.warn("[MUGA] attribution: fromCleanerResult failed:", err);
     return;
@@ -1535,7 +1544,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // #460 (A2): mirror the cleaner outcome into the Attribution Ledger
   // so the popup's "Recent activity" section can render. Fire-and-forget
   // so a write hiccup never affects the caller's URL processing.
-  pushAttributionAndPersist(rawUrl, result, prefs);
+  pushAttributionAndPersist(rawUrl, result, prefs, referrer);
 
   return result;
 }

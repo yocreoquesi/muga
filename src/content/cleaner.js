@@ -250,12 +250,19 @@
 
       const domainRules = _domainRulesCache || [];
       const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
+      // Copy-safe prefs (#946): the user is copying, not navigating, so
+      // MUGA must never inject its own affiliate tag nor surface the
+      // foreign-affiliate toast on a copy action. Mirrors the effectivePrefs
+      // pattern in background/service-worker.js#handleProcessUrl (skipNotify
+      // branch) — third-party attribution tags are still preserved, only
+      // MUGA's own injection + notification are suppressed.
+      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false, injectOwnAffiliate: false };
       const urlMap = new Map();
       for (const url of allUrls) {
         let r;
         try {
           r = window.__mugaCleaner.processUrl(
-            url, _contentPrefs, domainRules,
+            url, copyPrefs, domainRules,
             undefined, undefined, undefined,
             pathRules.pathStripRules, pathRules.pathAffiliateRules,
           );
@@ -350,6 +357,10 @@
       const sortedMatches = [...matches].sort((a, b) => b[0].length - a[0].length);
       const domainRules = _domainRulesCache || [];
       const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
+      // Copy-safe prefs (#946): same rationale as the GET_AND_COPY_CLEAN_SELECTION
+      // handler above — Ctrl+C is a copy action, not a navigation, so MUGA's own
+      // affiliate injection and the foreign-affiliate toast must both be suppressed.
+      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false, injectOwnAffiliate: false };
       let resultText = trimmed;
       let totalJunkRemoved = 0;
       const allRemovedTracking = [];
@@ -359,7 +370,7 @@
         let r;
         try {
           r = window.__mugaCleaner.processUrl(
-            cleanCandidate, _contentPrefs, domainRules,
+            cleanCandidate, copyPrefs, domainRules,
             undefined, undefined, undefined,
             pathRules.pathStripRules, pathRules.pathAffiliateRules,
           );
