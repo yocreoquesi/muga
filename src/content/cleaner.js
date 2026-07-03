@@ -401,6 +401,117 @@
   // Eagerly load prefs so they're available synchronously for click/copy handlers
   getContentPrefs();
 
+  // ── Reclean helper (#951 Layer B) ───────────────────────────────────────
+  // Single code path for "re-run the full local cleaning pipeline against a
+  // given URL". Used by:
+  //   1. The document_start self-clean below (initial page load).
+  //   2. history-defuser.js's `muga:history-committed` listener, so a
+  //      same-document SPA navigation (history.pushState/replaceState) gets
+  //      the SAME path-aware + query-aware cleaning as a real navigation —
+  //      DNR only intercepts network requests, so pushState traffic never
+  //      hits the network layer at all.
+  //   3. history-defuser.js's popstate/hashchange listeners (also
+  //      same-document navigations DNR never sees).
+  //
+  // Exposed as a global because history-defuser.js runs as a separate
+  // content script in the SAME isolated world — `window.*` properties are
+  // shared between isolated-world scripts (unlike MAIN-world scripts, which
+  // need a CustomEvent to cross the boundary).
+  let _lastRecleanUrl = null;
+  // Per-URL loop cap for the SPA reclean path (see __mugaReclean below).
+  // Keyed on the resolved input URL so a genuine loop (same dirty URL
+  // re-cleaned repeatedly) trips it while legitimate rapid navigation
+  // (distinct URLs) never does.
+  const _recleanLog = new Map(); // resolved url -> { count, firstTs }
+  function isRecleanLoop(url) {
+    const now = Date.now();
+    if (_recleanLog.size > 100) {
+      for (const [key, val] of _recleanLog) {
+        if (now - val.firstTs > 3000) _recleanLog.delete(key);
+      }
+      if (_recleanLog.size > 300) _recleanLog.clear();
+    }
+    const entry = _recleanLog.get(url);
+    if (!entry || now - entry.firstTs > 3000) {
+      _recleanLog.set(url, { count: 1, firstTs: now });
+      return false;
+    }
+    entry.count++;
+    return entry.count > 5;
+  }
+
+  window.__mugaReclean = function (rawUrl) {
+    if (!_contentPrefs || !_contentPrefs.enabled || !_contentPrefs.onboardingDone) return;
+    // Resolve to an absolute URL before anything else. `rawUrl` here is
+    // frequently RELATIVE — history.pushState()/replaceState() accept
+    // relative URLs (the common case for real SPA routers, e.g. React
+    // Router), and the muga:history-committed event forwards whatever
+    // shape the page originally passed (see cleanUrl()'s "same shape"
+    // comment in history-defuser-mainworld.js). By the time this runs the
+    // native pushState/replaceState call has already committed, so
+    // window.location.href is always a safe resolution base.
+    let url;
+    try {
+      url = new URL(rawUrl || window.location.href, window.location.href).href;
+    } catch {
+      return;
+    }
+    if (!url.startsWith("http")) return;
+    // Loop guard: a successful reclean below calls history.replaceState(),
+    // which re-enters the main-world pushState/replaceState wrap and
+    // re-dispatches `muga:history-committed` with the URL we JUST wrote.
+    // Without this short-circuit that would call back into this function
+    // forever. Terminates because the second call sees
+    // `url === _lastRecleanUrl` and returns before ever calling
+    // replaceState again — the recursion depth is bounded to exactly 1.
+    if (url === _lastRecleanUrl) return;
+    // Loop cap keyed on the RESOLVED INPUT url (not hostname): a genuine
+    // loop is the SAME dirty URL re-cleaned repeatedly (e.g. a page that
+    // re-adds a tracking param after each strip), which trips this cap;
+    // legitimate rapid SPA browsing produces DISTINCT urls and is never
+    // throttled. Keying by hostname (as the click-rewrite path's
+    // isRewriteLoop does) would wrongly drop cleaning on fast same-host
+    // navigation, and sharing that budget would starve either path.
+    if (isRecleanLoop(url)) return;
+    if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") return;
+    // Perf note: this runs a full processUrl() per pushState/replaceState
+    // on high-frequency SPA routers. The loop guard above prevents runaway
+    // recursion, but bursty routers (e.g. scroll-driven URL updates) could
+    // still call this often. Not coalesced (microtask/rAF) for now — keep
+    // an eye on this if profiling shows it matters; the main-world sync
+    // subset intentionally avoids this cost for the common case.
+    const domainRules = _domainRulesCache || [];
+    const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
+    let result;
+    try {
+      result = window.__mugaCleaner.processUrl(
+        url, _contentPrefs, domainRules,
+        undefined, undefined, undefined,
+        pathRules.pathStripRules, pathRules.pathAffiliateRules,
+      );
+    } catch (err) {
+      console.error("[MUGA] reclean failed:", err);
+      return;
+    }
+    if (!result || !result.cleanUrl || result.cleanUrl === window.location.href) return;
+    _lastRecleanUrl = result.cleanUrl;
+    try {
+      history.replaceState(history.state, "", result.cleanUrl);
+    } catch { /* cross-origin or sandboxed — ignore */ }
+    // Fire-and-forget: tell the SW to update badge + stats. Failure here
+    // doesn't roll back the URL change — the user's address bar already
+    // reflects the cleaned URL.
+    if (result.junkRemoved > 0) {
+      chrome.runtime.sendMessage({
+        type: "BADGE_AND_STATS",
+        junkRemoved: result.junkRemoved,
+        removedTracking: result.removedTracking,
+        cleanUrl: result.cleanUrl,
+        originalUrl: url,
+      }).catch(() => { /* SW dead — badge will catch up next nav */ });
+    }
+  };
+
   // ── Self-clean: clean the current page URL on load ────────────────────────
   // (#356) Cleans locally via the bundled cleaner attached to
   // `window.__mugaCleaner` by content/cleaner-bundle.js (loaded just before
@@ -424,45 +535,17 @@
   // Domain rules are fetched once at IIFE start (see getDomainRulesCached
   // hoisted above). Stats and badge updates fire-and-forget; SW death is
   // not fatal — only the badge lags by one nav.
+  //
+  // Delegates to window.__mugaReclean (#951) so the document_start path and
+  // the SPA-navigation reclean path (history-defuser.js) share one
+  // implementation. By the time the Promise.all below resolves, each
+  // getXCached() has already set its module-level cache as a side effect
+  // (see definitions above), so __mugaReclean can read them synchronously.
 
   const _hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
 
-  if (!_hasDNR) Promise.all([getContentPrefs(), getDomainRulesCached(), getPathRulesCached()]).then(([prefs, domainRules, pathRules]) => {
-    if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
-    const href = window.location.href;
-    if (!href.startsWith("http")) return;
-    if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") {
-      // Bundle didn't load — should never happen in production. Silent
-      // degrade: leave the URL alone rather than crash.
-      return;
-    }
-    let result;
-    try {
-      result = window.__mugaCleaner.processUrl(
-        href, prefs, domainRules,
-        undefined, undefined, undefined,
-        pathRules.pathStripRules, pathRules.pathAffiliateRules,
-      );
-    } catch (err) {
-      console.error("[MUGA] local self-clean failed:", err);
-      return;
-    }
-    if (!result || !result.cleanUrl || result.cleanUrl === href) return;
-    try {
-      history.replaceState(history.state, "", result.cleanUrl);
-    } catch { /* cross-origin or sandboxed — ignore */ }
-    // Fire-and-forget: tell the SW to update badge + stats. Failure here
-    // doesn't roll back the URL change — the user's address bar already
-    // reflects the cleaned URL.
-    if (result.junkRemoved > 0) {
-      chrome.runtime.sendMessage({
-        type: "BADGE_AND_STATS",
-        junkRemoved: result.junkRemoved,
-        removedTracking: result.removedTracking,
-        cleanUrl: result.cleanUrl,
-        originalUrl: href,
-      }).catch(() => { /* SW dead — badge will catch up next nav */ });
-    }
+  if (!_hasDNR) Promise.all([getContentPrefs(), getDomainRulesCached(), getPathRulesCached()]).then(() => {
+    window.__mugaReclean(window.location.href);
   });
 
   /**

@@ -103,6 +103,17 @@
     "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app; style-src 'self'"
   },
 
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "rules/domain-rules.json",
+        "rules/path-strip-rules.json",
+        "rules/path-affiliate-rules.json"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
