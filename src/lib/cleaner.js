@@ -387,7 +387,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // Step 1 — Unwrap + Honor + Canonical (steps 0a, 0, 0b)
   const unwrapStep = unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules);
   if (unwrapStep.kind === "done") return unwrapStep.payload;
-  const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved } = unwrapStep;
+  const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped } = unwrapStep;
   rawUrl = unwrappedRawUrl;
 
   const hostname = url.hostname;
@@ -458,10 +458,13 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // added to AFFILIATE_PATTERNS. pathPrefix presence + param absence are
   // checked inside getPathAffiliatePolicy (data-driven per spec REQ-3).
   const _policy = getPathAffiliatePolicy(url, pathAffiliateRules);
+  // pathAffiliateUnwrapped bypasses the stripAll guard ONLY for URLs we just
+  // unwrapped from an /a/ wrapper in this same pass (#959); plain non-wrapped
+  // /p/ pages under stripAll still do not inject (see cleaner.test.mjs:3101).
   if (
     _policy.pendingInjection &&
     prefs.injectOwnAffiliate &&
-    !prefs.stripAllAffiliates &&
+    (!prefs.stripAllAffiliates || pathAffiliateUnwrapped) &&
     action !== "detected_foreign" &&
     !creatorReferralPreserved
   ) {
@@ -537,7 +540,7 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
  *   Affiliate-injection rules from `src/lib/path-rules.js`. Used for
  *   Bookshop.org creator-referral detection (step 6). Defaults to `[]`
  *   (no-op) for call sites that do not exercise path-affiliate behavior.
- * @returns {{ kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean } | { kind: "done", payload: object }}
+ * @returns {{ kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean, pathAffiliateUnwrapped: boolean } | { kind: "done", payload: object }}
  */
 function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules = []) {
   // Step 1: parse initial URL
@@ -596,9 +599,37 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
   // Step 6: Path-based creator-referral detection. Computed once post-unwrap so
   // wrapper redirects that land on a referral path are covered. Rules come from
   // src/lib/path-rules.js (loaded from src/rules/path-affiliate-rules.json).
-  const creatorReferralPreserved = getPathAffiliatePolicy(url, pathAffiliateRules).creatorReferralPreserved;
+  //
+  // #959: when stripAllAffiliates is ON and the referral path is an unwrappable
+  // /a/CREATOR/DEST wrapper (unwrapTo present), rewrite the URL to DEST so the
+  // foreign creator's attribution is removed and normal query cleaning plus
+  // Step 6b injection (below, in processUrl) can run on the destination.
+  // /shop/NAME never has unwrapTo (no unwrapReferral match) so it is
+  // unaffected. On any parse failure, fall back to leaving the URL untouched
+  // (today's preserve behavior).
+  const pathPolicy = getPathAffiliatePolicy(url, pathAffiliateRules);
+  let creatorReferralPreserved = pathPolicy.creatorReferralPreserved;
+  let pathAffiliateUnwrapped = false;
 
-  return { kind: "continue", rawUrl, url, creatorReferralPreserved };
+  if (creatorReferralPreserved && prefs.stripAllAffiliates && pathPolicy.unwrapTo) {
+    try {
+      const raw = pathPolicy.unwrapTo;
+      const qIdx = raw.indexOf("?");
+      const destPath = qIdx === -1 ? raw : raw.slice(0, qIdx);
+      const destSearch = qIdx === -1 ? null : raw.slice(qIdx); // includes leading "?"
+      url.pathname = destPath;
+      if (destSearch !== null) {
+        url.search = destSearch;
+      }
+      rawUrl = url.href;
+      creatorReferralPreserved = false;
+      pathAffiliateUnwrapped = true;
+    } catch {
+      // Leave url/rawUrl untouched, fall back to preserve behavior.
+    }
+  }
+
+  return { kind: "continue", rawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped };
 }
 
 // ── handleAffiliatePipeline ───────────────────────────────────────────────────

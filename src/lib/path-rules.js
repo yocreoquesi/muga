@@ -74,6 +74,16 @@ function _validateAffiliateEntry(rule, i) {
       throw new TypeError(`path-affiliate-rules[${i}].referralPaths[${j}] is not a valid regex: ${e.message}`);
     }
   }
+  // unwrapReferral is OPTIONAL (#959): older rule entries / other domains
+  // without it keep working with no unwrap capability.
+  if (rule.unwrapReferral !== undefined) {
+    if (typeof rule.unwrapReferral !== "string") {
+      throw new TypeError(`path-affiliate-rules[${i}].unwrapReferral must be a string`);
+    }
+    try { new RegExp(rule.unwrapReferral); } catch (e) {
+      throw new TypeError(`path-affiliate-rules[${i}].unwrapReferral is not a valid regex: ${e.message}`);
+    }
+  }
 }
 
 // ── Internal index builders ───────────────────────────────────────────────────
@@ -146,6 +156,7 @@ function _ensureAffiliateIndex(rules) {
     const referralRe = new RegExp(rule.referralPaths.join("|"));
     idx.set(rule.domain, {
       referralRe,
+      unwrapRe: rule.unwrapReferral ? new RegExp(rule.unwrapReferral) : null,
       injectPath: rule.injectPath,
       injectParam: rule.injectParam,
       injectValue: rule.injectValue,
@@ -154,6 +165,49 @@ function _ensureAffiliateIndex(rules) {
   }
   _pathAffiliateIndex.set(rules, idx);
   return idx;
+}
+
+/**
+ * Computes the unwrap destination for a matched /a/CREATOR/DEST wrapper
+ * (#959), or undefined when there is nothing to unwrap / unwrap is unsafe.
+ *
+ * @param {{ unwrapRe: RegExp|null }} entry     Compiled affiliate-index entry.
+ * @param {URL} url                             URL being processed.
+ * @param {string} hostname                     Outer url.hostname, already
+ *                                               normalized (www. stripped).
+ * @returns {string|undefined}
+ */
+function _computeUnwrapTo(entry, url, hostname) {
+  if (!entry.unwrapRe) return undefined;
+  const match = entry.unwrapRe.exec(url.pathname);
+  if (!match) return undefined;
+
+  const capture = match[1];
+  if (!capture) return undefined;
+
+  let candidatePathname;
+  let candidateSearch;
+
+  if (/^https?:\/\//i.test(capture)) {
+    let parsed;
+    try {
+      parsed = new URL(capture);
+    } catch {
+      return undefined;
+    }
+    const capturedHostname = parsed.hostname.replace(/^www\./, "");
+    if (capturedHostname !== hostname) return undefined; // cross-origin, refuse to unwrap
+    candidatePathname = parsed.pathname;
+    candidateSearch = parsed.search;
+  } else {
+    candidatePathname = "/" + capture.replace(/^\/+/, "");
+    candidateSearch = "";
+  }
+
+  // Nesting guard: never unwrap into another /a/ wrapper.
+  if (/^\/a\//.test(candidatePathname)) return undefined;
+
+  return candidatePathname + candidateSearch;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -198,7 +252,11 @@ export function applyPathStrip(hostname, pathname, pathStripRules) {
  *
  * @param {URL}   url                  URL being processed (read-only).
  * @param {Array} pathAffiliateRules   Parsed path-affiliate-rules.json array.
- * @returns {{ creatorReferralPreserved: boolean, pendingInjection: object|null }}
+ * @returns {{ creatorReferralPreserved: boolean, pendingInjection: object|null, unwrapTo?: string }}
+ *   `unwrapTo` (#959) is present only when the referral path is an
+ *   unwrappable /a/CREATOR/DEST wrapper (rule.unwrapReferral matched with a
+ *   usable destination); it holds the destination pathname + search to
+ *   rewrite the URL to when the caller opts into unwrapping (stripAllAffiliates).
  */
 export function getPathAffiliatePolicy(url, pathAffiliateRules) {
   const NO_MATCH = { creatorReferralPreserved: false, pendingInjection: null };
@@ -212,7 +270,10 @@ export function getPathAffiliatePolicy(url, pathAffiliateRules) {
 
   // Check creator-referral paths first — any match suppresses injection
   if (entry.referralRe.test(url.pathname)) {
-    return { creatorReferralPreserved: true, pendingInjection: null };
+    const unwrapTo = _computeUnwrapTo(entry, url, hostname);
+    return unwrapTo !== undefined
+      ? { creatorReferralPreserved: true, pendingInjection: null, unwrapTo }
+      : { creatorReferralPreserved: true, pendingInjection: null };
   }
 
   // Data-side injection conditions (spec REQ-3 clarification):
