@@ -4,7 +4,9 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
-Cleaning now follows same-document navigation, copy/share never leaks a tag, a per-tab badge shows what was stripped, and a settings reorganization plus a July audit wave hardens consent gating, accessibility, and Chrome path cleaning.
+## [2.4.0] - 2026-07-03
+
+Cleaning now follows same-document navigation, copy/share never leaks a tag, a per-tab badge shows what was stripped, and a settings reorganization plus a July audit wave hardens consent gating, accessibility, and Chrome path cleaning. Affiliate composition (remove-theirs then add-ours) now extends to Bookshop's path-based creator wrappers.
 
 ### Features
 
@@ -37,6 +39,7 @@ Cleaning now follows same-document navigation, copy/share never leaks a tag, a p
 ### Changed
 
 - **"Remove all affiliate tags from other sources" now composes with tag injection.** When both that toggle and MUGA's own-tag injection are enabled, a foreign tag is stripped and ours is then injected into the now-tagless URL (remove theirs, then add ours), matching the toggle's label. Previously injection was suppressed whenever remove-all was on. With injection off, remove-all still leaves the link with no affiliate tag. Supersedes the earlier #353 guard; the two settings are independent, explicit opt-ins.
+- **Path-based affiliate composition on Bookshop** (#959). The remove-all + inject composition now also covers Bookshop's path-based `/a/{creator}/` creator wrappers. With remove-all on, the foreign creator wrapper is unwrapped to its destination; if injection is also on and the destination is a product page, MUGA's affiliate is then added. Storefront (`/shop/`) pages are never touched, and Honor Creator Mode still preserves the creator wrapper untouched. Cross-origin embedded destinations are refused (no open redirect).
 - **Copy rebranded around URL-cleaner DNA** (#953). User-facing copy makes the URL-cleaning purpose explicit, Spanish copy is peninsular (Castilian), Allowlist/Blocklist terminology, and em-dashes removed.
 
 ### Ruleset pipeline (infrastructure)
@@ -1039,7 +1042,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/yocreoquesi/muga/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/yocreoquesi/muga/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/yocreoquesi/muga/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/yocreoquesi/muga/compare/v2.0.0...v2.1.0
