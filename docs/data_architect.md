@@ -32,7 +32,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `showReportButton` | boolean | `true` | Show "Report a problem" button in popup |
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
 | `showBadge` | boolean | `true` | Show the tab's running count of stripped tracking params as a native toolbar badge (#910) |
-| `remoteRulesEnabled` | boolean | `false` | Opt-in: fetch signed remote parameter updates weekly. Default off (zero network activity on fresh install) |
+| `remoteRulesEnabled` | boolean | `true` | On by default (#888): fetches Ed25519-signed rule updates at most once per 7 days (`credentials: "omit"`, no cookies, no identifiers). A fresh install makes this one outbound GET to rules.muga.app; disable in Settings for zero network activity. Supersedes REQ-OPT-1. |
 | `honorCreatorMode` | boolean | `false` | Opt-in (#435, B12; wired in #452): preserve creator referral chains on trusted social-media and link-shortener redirects (a `detectWrapper()` match) when the referrer is in `creatorAllowlist`. Does not gate affiliate-redirect networks (Awin, Skimlinks, etc.) — those are preserved automatically via unconditional pass-through, independent of this pref (#907). |
 | `creatorAllowlist` | string[] | `[]` | (#445, B13) Per-creator allowlist consumed by Honor Creator Mode. Referrer-domain-shaped strings (e.g. `youtube.com/@LinusTechTips`, `dot-css-news.com`). Capped at 100 entries (storage hygiene). CRUD in `src/lib/creator-allowlist.js`. |
 | `canonicalExtractorEnabled` | boolean | `true` | (#442, B7) When the wrapper engine detects an opaque wrapper (host matched but no destination in URL), consult content-script-supplied `<link rel=canonical>` / JSON-LD `@id` before giving up. Default ON. |
@@ -95,14 +95,18 @@ The core `processUrl(rawUrl, prefs)` function in `src/lib/cleaner.js` returns:
 ```js
 {
   cleanUrl: string,           // The cleaned URL (equals rawUrl if no changes)
-  action: string,             // "untouched" | "blacklisted" | "cleaned" | "error"
+  action: string,             // "untouched" | "cleaned" | "injected" | "detected_foreign" | "blacklisted" | "honored-creator"
   removedTracking: string[],  // Names of tracking params removed
   junkRemoved: number,        // Count of params removed + path segments cleaned
-  detectedAffiliate: {        // null if no foreign affiliate detected
+  detectedAffiliate: {        // null unless a foreign affiliate is detected (notifyForeignAffiliate on)
     param: string,
     value: string,
-    id: string,
-    name: string,
+    pattern: object,          // The matched affiliate pattern
   } | null,
+  preservedAffiliate: object | null,  // A creator/foreign tag deliberately left intact, else null
+  creatorReferralPreserved: boolean,  // true when a path-based creator referral (e.g. Bookshop /a/) was honored
+  // network and creator are present ONLY on the "honored-creator" shape:
+  network?: string,
+  creator?: string,
 }
 ```

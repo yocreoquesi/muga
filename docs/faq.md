@@ -56,12 +56,15 @@ separate sources and are joined by the cleaner only at strip time.
 
 ### Q: What about parameters that are technically "noise" but live inside a redirect wrapper?
 
-Those are stripped. MUGA categorises Awin / ShareASale / Admitad / Impact
-Radius and similar redirect-based networks as "network-redirect" affiliates
-and refuses to collaborate with them — the click is unwrapped to the
-destination and the wrapper's noise is dropped. The architectural
-rationale is in the README's *How it works* section; the implementation
-lives in `src/lib/wrapper-engine.js` and is invoked from the cleaner.
+MUGA leaves the redirect itself alone. Awin / ShareASale / Admitad / Impact
+Radius and similar redirect-based networks are classified as
+"network-redirect" affiliates and pass through unchanged: the redirect click
+is the attribution event, so unwrapping it would break the payout the creator
+earns. MUGA only strips generic tracking noise (UTM tags, click IDs) from the
+final destination URL once you land there. These networks are listed in
+`MUGA_EXCLUDED_IDS` (`src/lib/wrapper-engine.js`) and in
+`AFFILIATE_REDIRECT_NETWORKS` (`src/lib/opaque-networks.js`), which mark them
+pass-through.
 
 ### Q: How do I verify what MUGA does on my own machine?
 
