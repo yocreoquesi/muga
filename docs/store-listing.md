@@ -1,7 +1,7 @@
 # MUGA: Store Listings
 
 > Version: 2.3.0
-> Last updated: 2026-05-25
+> Last updated: 2026-07-03
 > Status: Listing for Chrome Web Store and Firefox AMO under the 2.1 denoise pivot (creator-agnostic positioning — see ADR-0002). Lead headline: "Shorter, cleaner URLs — fair to every creator". The 2.0-era anti-redirect framing has been removed; MUGA no longer takes a stance against affiliate-redirect networks (their click IS the attribution event and MUGA respects it). Third-party retailer brand names previously enumerated were removed after Chrome Web Store flagged the list as keyword spam (rejection routing ID FZSL, 2026-05). URL Unwrapper section rewritten with honest scope: generic shorteners only (bit.ly, t.co, tinyurl.com, etc.); affiliate redirects pass through unchanged. Privacy claims (no telemetry / no analytics) remain firm but are no longer in the headline.
 
 ---
@@ -10,13 +10,13 @@
 
 ### Extension name
 
-MUGA: The denoise extension for the web
+MUGA: The URL denoise extension for the web
 
 ### Short description (132 chars max)
 
-Shorter, cleaner URLs — fair to every creator. 450+ tracking patterns removed automatically. No analytics. Open source.
+Quiet URL noise: 450+ tracking patterns (utm, fbclid, gclid). Honor creator referrals. No analytics, no telemetry. Open source.
 
-*(121 chars)*
+*(127 chars)*
 
 ---
 
@@ -123,8 +123,8 @@ By default, MUGA processes URLs locally inside your browser. We don't run analyt
 YOUR RULES
 ======================================
 
-. Blacklist a domain: strip everything on that site, no affiliate injection
-. Whitelist a tag: protect a specific creator's affiliate link so MUGA never touches it
+. Blocklist a domain: strip everything on that site, no affiliate injection
+. Allowlist a tag: protect a specific creator's affiliate link so MUGA never touches it
 . Custom tracking params: add your own parameter names to strip on any site
 . Affiliate notifications: enable a toast when a third-party affiliate is detected
 . Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. MUGA's own tag is preserved only when you also have affiliate injection enabled on this device, symmetric with your stated preference.
@@ -155,7 +155,7 @@ denoise, URL cleaner, creator-friendly, noise remover, UTM
 
 ### Extension name
 
-MUGA: The denoise extension for the web
+MUGA: The URL denoise extension for the web
 
 ### Summary (250 chars max)
 
@@ -228,8 +228,8 @@ By default, MUGA processes URLs locally inside your browser. We don't run analyt
 
 Your rules
 
-. Blacklist a domain: strip everything on that site, no affiliate injection
-. Whitelist a tag: protect a specific creator's affiliate link
+. Blocklist a domain: strip everything on that site, no affiliate injection
+. Allowlist a tag: protect a specific creator's affiliate link
 . Custom tracking params: add your own parameter names to strip
 . Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. MUGA's own tag is preserved only when you also have affiliate injection enabled on this device, symmetric with your stated preference.
 . Per-domain disable: opt entire domains out of MUGA
@@ -249,7 +249,7 @@ https://github.com/yocreoquesi/muga
 
 ### AMO metadata
 
-- Extension name: MUGA: The denoise extension for the web
+- Extension name: MUGA: The URL denoise extension for the web
 - License: GPL v3
 - Primary category: Privacy & Security
 - Secondary category: Shopping
