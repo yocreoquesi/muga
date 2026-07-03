@@ -613,24 +613,36 @@ describe("T2.3 — Message handler source patterns", () => {
 
   test("ENABLE_REMOTE_RULES handler triggers immediate runRemoteRulesFetch", () => {
     const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
-    const enableBlock = swSource.slice(enablePos, enablePos + 600);
+    // Window widened (600 → 1200) after the handler grew a per-device override
+    // reconcile step + comment ahead of the immediate fetch (#888 write path).
+    const enableBlock = swSource.slice(enablePos, enablePos + 1200);
     assert.ok(
       enableBlock.includes("runRemoteRulesFetch"),
       "ENABLE handler must call runRemoteRulesFetch for immediate first fetch (REQ-OPT-3)"
     );
   });
 
-  test("GET_REMOTE_RULES_STATUS responds with enabled, meta, supportsDNR", () => {
-    // supportsAlarms was retired in #706 — zero consumers across the codebase.
-    // The field had been kept "for backwards compat with any cached UI bundle"
-    // but no such bundle existed; the assertion that pinned it was zombie code.
+  test("GET_REMOTE_RULES_STATUS delegates to buildRemoteRulesStatus (canonical getPrefs value)", () => {
+    // #888 follow-up: the reply (enabled/meta/remoteParams/supportsDNR) is now
+    // built by src/lib/remote-rules-status.js so `enabled` reflects the
+    // CANONICAL effective value via getPrefs() instead of a hardcoded sync
+    // default. The field-level shape is pinned in remote-rules-status.test.mjs.
+    // supportsAlarms was retired in #706 — zero consumers; it must not return.
     const statusPos = swSource.indexOf('"GET_REMOTE_RULES_STATUS"');
     const statusBlock = swSource.slice(statusPos, statusPos + 1500);
-    assert.ok(statusBlock.includes("supportsDNR"), "status must include supportsDNR (REQ-UI-5)");
-    assert.ok(statusBlock.includes("enabled"), "status must include enabled flag");
+    assert.ok(
+      statusBlock.includes("buildRemoteRulesStatus"),
+      "handler must delegate to buildRemoteRulesStatus (single source of truth via getPrefs)"
+    );
+    assert.ok(statusBlock.includes("getPrefs"), "handler must pass getPrefs so enabled is the effective value");
+    assert.ok(statusBlock.includes("hasDNR"), "handler must pass hasDNR for the supportsDNR feature-detect (REQ-UI-5)");
     assert.ok(
       !statusBlock.includes("supportsAlarms"),
       "supportsAlarms must NOT be reintroduced — retired in #706 (zero consumers)"
+    );
+    assert.ok(
+      !/sync\.get\(\{\s*remoteRulesEnabled:\s*false\s*\}\)/.test(statusBlock),
+      "the hardcoded { remoteRulesEnabled: false } sync default must be gone"
     );
   });
 

@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
@@ -14,6 +14,8 @@ import {
   removeEntry as removeCreatorAllowlistEntry,
 } from "../lib/creator-allowlist.js";
 import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
+import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
+import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 
 let _currentLang = "en";
@@ -98,8 +100,14 @@ async function init() {
   _currentLang = await getStoredLang();
   applyTranslations(_currentLang);
 
+  // Initial toggle state MUST come from the canonical merged prefs (sync +
+  // consent + per-device overrides), NOT a raw sync read. A raw sync read
+  // ignores per-device overrides (per-device-prefs), so a toggle like
+  // injectOwnAffiliate or remoteRulesEnabled could DISPLAY a value that
+  // disagrees with the effective value getPrefs() gives the rest of the
+  // extension (#888 follow-up).
   let prefs;
-  try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
+  try { prefs = await getPrefs(); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
 
   // --- Consent gate: redirect to onboarding if user hasn't accepted ToS ---
   // Consent fields moved out of chrome.storage.sync into chrome.storage.local
@@ -219,7 +227,19 @@ function bindToggle(id, key, prefs) {
   if (!el) return;
   el.checked = prefs[key];
   el.addEventListener("change", () => {
-    try { setPrefs({ [key]: el.checked }); } catch (err) { console.error("[MUGA] save toggle:", err); }
+    try {
+      setPrefs({ [key]: el.checked });
+      // Guarded prefs (injectOwnAffiliate, remoteRulesEnabled) may carry a
+      // per-device override that getPrefs() overlays LAST. An explicit Settings
+      // toggle is this device's authoritative choice, so reconcile the override
+      // to match — otherwise a stale onboarding-decline override keeps winning
+      // and the toggle silently reverts on reload (#888 follow-up). Membership-
+      // gated so non-guarded toggles never touch the override map.
+      if (GUARDED_PREFS.includes(key)) {
+        reconcileOverrideForExplicitChoice(key, el.checked)
+          .catch(err => console.error("[MUGA] reconcile override:", err));
+      }
+    } catch (err) { console.error("[MUGA] save toggle:", err); }
   });
 }
 

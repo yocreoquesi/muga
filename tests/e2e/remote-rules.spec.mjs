@@ -163,8 +163,13 @@ test.describe("Remote rules — E2E", () => {
       // Remote-rules section must be visible on Chrome (supports alarms + DNR)
       await expect(page.locator("#remote-rules-section")).not.toBeHidden();
 
-      // Status block starts hidden (toggle is off by default)
-      await expect(page.locator("#remote-rules-status")).toBeHidden();
+      // Remote rule updates default ON (#888): the toggle renders CHECKED and
+      // the status block is visible from load (showing "never fetched" until
+      // the first fetch runs). This asserts the display matches the effective
+      // getPrefs() value — the #888 follow-up fix. Previously the handler read
+      // sync with a hardcoded `false` default and rendered the toggle OFF here.
+      await expect(page.locator("#remote-rules-toggle")).toBeChecked();
+      await expect(page.locator("#remote-rules-status")).not.toBeHidden();
 
       // Grant host permission from the options page (avoids interactive dialog)
       await grantHostPermission(page);

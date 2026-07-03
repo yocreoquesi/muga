@@ -18,6 +18,8 @@ import {
   buildRemoteDnrRule,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
+import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
+import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
@@ -1223,6 +1225,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         await setPrefs({ remoteRulesEnabled: true });
+        // Explicit Settings action → reconcile the per-device override so the
+        // choice sticks. getPrefs() overlays overrides LAST, so a stale
+        // onboarding-decline override would otherwise keep the effective value
+        // OFF despite the sync write (#888 follow-up, write path).
+        await reconcileOverrideForExplicitChoice("remoteRulesEnabled", true);
         _invalidatePrefsCache();
         // Immediate first fetch (REQ-OPT-3, SC-02). Subsequent fetches happen
         // opportunistically via maybeFetchRemoteRules on any SW wake once the
@@ -1241,6 +1248,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         await setPrefs({ remoteRulesEnabled: false });
+        // Explicit Settings action → reconcile the per-device override so the
+        // OFF choice sticks against any pre-existing override (#888 follow-up).
+        await reconcileOverrideForExplicitChoice("remoteRulesEnabled", false);
         _invalidatePrefsCache();
         // Clear remote params + DNR rule 1001. Rule 1000 (custom) is NOT touched. (REQ-OPT-5, SC-03)
         await clearRemoteCache({
@@ -1263,26 +1273,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_REMOTE_RULES_STATUS") {
     (async () => {
       try {
-        // Read enabled from sync (authoritative)
-        const syncData = await chrome.storage.sync.get({ remoteRulesEnabled: false });
-        const enabled = !!syncData.remoteRulesEnabled;
-        // Read meta from local
-        const localData = await chrome.storage.local.get({
-          remoteParams: [],
-          remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
+        // `enabled` MUST be the CANONICAL effective value (sync + consent +
+        // per-device overrides), so the Settings toggle matches what the
+        // extension actually does. A raw sync.get with a hardcoded default
+        // contradicted PREF_DEFAULTS.remoteRulesEnabled=true and rendered the
+        // toggle OFF on fresh installs even though the pref DEFAULTS to enabled
+        // (the weekly signed fetch only starts once the rules.muga.app optional
+        // host permission is granted via the toggle, #888 follow-up).
+        // buildRemoteRulesStatus routes through getPrefs().
+        const status = await buildRemoteRulesStatus({
+          getPrefs,
+          local: chrome.storage.local,
+          hasDNR,
         });
-        // Feature-detect flags (REQ-UI-5). Since v1.10.1 the feature no
-        // longer requires chrome.alarms — the only remaining runtime gate
-        // is DNR availability.
-        const supportsDNR = hasDNR;
         try {
-          sendResponse({
-            ok: true,
-            enabled,
-            meta: localData.remoteRulesMeta,
-            remoteParams: localData.remoteParams,
-            supportsDNR,
-          });
+          sendResponse(status);
         } catch { /* channel closed */ }
       } catch (err) {
         console.error("[MUGA] GET_REMOTE_RULES_STATUS handler failed:", err);

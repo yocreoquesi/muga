@@ -138,6 +138,7 @@ const BASELINE = {
   "docs-prefs-table.test.mjs": 1,          // reads storage source to verify docs table (#824)
   "shortener-stats-race.test.mjs": 1,      // reads SW source for regression guard (#824)
   "shortener-stats.test.mjs": 1,           // reads SW source for regression guard (#824)
+  "options-write-path-override.test.mjs": 2, // SW ENABLE/DISABLE_REMOTE_RULES handlers not importable in Node; 2 guards pin the reconcile wiring (#888 write-path follow-up, #824)
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
