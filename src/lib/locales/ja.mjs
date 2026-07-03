@@ -311,10 +311,13 @@ export default Object.freeze({
   row_show_report_button_hint: "MUGA が誤ってクリーニングした URL を報告するボタンを追加します。",
   row_domain_stats_label: "ドメインごとの統計を記録",
   row_domain_stats_hint: "サイトごとにクリーニングした URL と削除したパラメータを数え、ポップアップでノイズの発生元を表示できるようにします。この端末にのみ保存されます。",
+  row_show_badge_label: "ツールバーアイコンに累計件数を表示",
+  row_show_badge_hint: "MUGA がこのタブで削除したトラッキングパラメータの数を、ツールバーアイコンのバッジとして表示します。タブを閉じたときのみリセットされます。",
   aria_canonical_extractor: "正規リンク先の抽出",
   aria_cross_site_frequency: "サイト横断識別子の検出",
   aria_attribution_ledger: "最近のアクティビティの保存",
   aria_param_breakdown: "削除したパラメータの内訳を表示",
   aria_show_report_button: "ポップアップにレポートボタンを表示",
   aria_domain_stats: "ドメインごとの統計を記録",
+  aria_show_badge: "ツールバーアイコンにタブのバッジ件数を表示",
 });

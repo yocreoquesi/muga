@@ -311,10 +311,13 @@ export default Object.freeze({
   row_show_report_button_hint: "Adiciona um botão para reportar uma URL que o MUGA limpou incorretamente.",
   row_domain_stats_label: "Registrar estatísticas por domínio",
   row_domain_stats_hint: "Conta as URLs limpas e os parâmetros removidos por site para que a janela pop-up possa mostrar de onde vem mais ruído. Armazenado somente neste dispositivo.",
+  row_show_badge_label: "Mostrar uma contagem acumulada no ícone da barra de ferramentas",
+  row_show_badge_hint: "Exibe no ícone da barra de ferramentas um emblema com o número de parâmetros de rastreamento que o MUGA removeu nesta aba. Só é reiniciada ao fechar a aba.",
   aria_canonical_extractor: "Extração do destino canônico",
   aria_cross_site_frequency: "Detecção de identificadores entre sites",
   aria_attribution_ledger: "Persistência da atividade recente",
   aria_param_breakdown: "Mostrar o detalhamento de parâmetros removidos",
   aria_show_report_button: "Mostrar o botão de reporte na janela pop-up",
   aria_domain_stats: "Registrar estatísticas por domínio",
+  aria_show_badge: "Mostrar a contagem da aba no ícone da barra de ferramentas",
 });

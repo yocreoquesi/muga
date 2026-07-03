@@ -311,10 +311,13 @@ export default Object.freeze({
   row_show_report_button_hint: "Adds a button to report a URL that MUGA cleaned incorrectly.",
   row_domain_stats_label: "Record per-domain statistics",
   row_domain_stats_hint: "Counts cleaned URLs and stripped parameters per site so the popup can show where the most noise comes from. Stored on this device only.",
+  row_show_badge_label: "Show a running count on the toolbar icon",
+  row_show_badge_hint: "Displays a badge on the toolbar icon with the number of tracking parameters MUGA has stripped in the current tab. Resets only when you close the tab.",
   aria_canonical_extractor: "Canonical destination extraction",
   aria_cross_site_frequency: "Cross-site identifier detection",
   aria_attribution_ledger: "Recent activity persistence",
   aria_param_breakdown: "Show removed-parameter breakdown",
   aria_show_report_button: "Show report button in popup",
   aria_domain_stats: "Record per-domain statistics",
+  aria_show_badge: "Show tab badge count on the toolbar icon",
 });

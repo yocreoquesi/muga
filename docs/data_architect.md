@@ -31,6 +31,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `paramBreakdown` | boolean | `true` | Show per-category param breakdown in popup cleaned-URL receipt |
 | `showReportButton` | boolean | `true` | Show "Report a problem" button in popup |
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
+| `showBadge` | boolean | `true` | Show the tab's running count of stripped tracking params as a native toolbar badge (#910) |
 | `remoteRulesEnabled` | boolean | `false` | Opt-in: fetch signed remote parameter updates weekly. Default off (zero network activity on fresh install) |
 | `honorCreatorMode` | boolean | `false` | Opt-in (#435, B12; wired in #452): preserve creator referral chains on trusted social-media and link-shortener redirects (a `detectWrapper()` match) when the referrer is in `creatorAllowlist`. Does not gate affiliate-redirect networks (Awin, Skimlinks, etc.) — those are preserved automatically via unconditional pass-through, independent of this pref (#907). |
 | `creatorAllowlist` | string[] | `[]` | (#445, B13) Per-creator allowlist consumed by Honor Creator Mode. Referrer-domain-shaped strings (e.g. `youtube.com/@LinusTechTips`, `dot-css-news.com`). Capped at 100 entries (storage hygiene). CRUD in `src/lib/creator-allowlist.js`. |
@@ -82,7 +83,8 @@ Cleared when the browser closes. No quota concerns.
 | Key | Type | Description |
 |---|---|---|
 | `history` | Array<{original, clean}> | Recent URL clean events (shown in popup history section) |
-| `tab_{tabId}` | number | Count of URLs cleaned for a specific tab (shown as tab badge in popup) |
+| `tab_{tabId}` | number | Count of URLs cleaned for a specific tab, reset on navigation (shown as tab badge in popup) |
+| `tab_badge_{tabId}` | number | Running total of tracking params stripped for a specific tab, reset ONLY on tab close (#910). Drives the native toolbar badge via `setBadgeText`; survives navigation AND service-worker restarts, unlike `tab_{tabId}` above |
 
 ---
 

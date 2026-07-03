@@ -144,6 +144,9 @@ async function init() {
   bindToggle("param-breakdown", "paramBreakdown", prefs);
   bindToggle("show-report-button", "showReportButton", prefs);
   bindToggle("domain-stats", "domainStats", prefs);
+  // Toolbar badge toggle (#910). Default ON; controls the native
+  // setBadgeText running-count overlay on the toolbar icon.
+  bindToggle("show-badge", "showBadge", prefs);
 
   // Per-creator allowlist editor (#445, B13). Lives in the Advanced card
   // (dev-mode gated after the #936 reorg), alongside the honor-creator-mode toggle.
@@ -773,6 +776,7 @@ function initExportImport() {
       paramBreakdown: prefs.paramBreakdown,
       showReportButton: prefs.showReportButton,
       domainStats: prefs.domainStats,
+      showBadge: prefs.showBadge,
       followShortenersEnabled: prefs.followShortenersEnabled,
       // #925: privacy booleans are now user-controllable, so round-trip them.
       canonicalExtractorEnabled: prefs.canonicalExtractorEnabled,
@@ -824,7 +828,7 @@ function initExportImport() {
       const { blacklist, whitelist, customParams, droppedBlacklist, droppedWhitelist, skippedParams } = capImportedLists(data);
       const skipped = skippedParams + droppedBlacklist + droppedWhitelist;
       // devMode is device-local — exclude from sync BOOL_KEYS and handle separately
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "followShortenersEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
+      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "showBadge", "followShortenersEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
       const toSave = { blacklist, whitelist, customParams };
       for (const key of BOOL_KEYS) {
         if (typeof data[key] === "boolean") toSave[key] = data[key];
@@ -874,6 +878,7 @@ function initExportImport() {
       document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
+      document.getElementById("show-badge").checked = newPrefs.showBadge;
       // devMode is device-local — re-read from local storage after import
       document.getElementById("dev-mode").checked = await getDevMode();
       document.getElementById("toast-duration-select").value = String(newPrefs.toastDuration || 15);
