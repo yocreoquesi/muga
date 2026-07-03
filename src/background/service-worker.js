@@ -1597,12 +1597,42 @@ chrome.runtime.onStartup.addListener(async () => {
   migrateConsentToLocal();
 });
 
-// --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
+// --- Dedup: open the onboarding tab at most once while consent is pending. ---
+// Two layers: a module flag guards a double-open within a single background
+// lifetime (onInstalled + fallback both firing), and a persisted
+// chrome.storage.local flag guards across MV3 service-worker cold starts (#967).
+// Without the persisted layer the volatile flag reset on every wake, so an
+// incomplete onboarding reopened a fresh tab on each navigation-triggered
+// restart. The persisted flag is cleared (clearOnboardingTabFlag) once consent
+// is valid, so a later ToS re-onboard can still surface the tab again.
 let _onboardingTabOpened = false;
-function openOnboardingOnce() {
+const ONBOARDING_TAB_FLAG = "mugaOnboardingTabOpened";
+
+async function openOnboardingOnce() {
   if (_onboardingTabOpened) return;
-  _onboardingTabOpened = true;
+  _onboardingTabOpened = true; // synchronous within-lifetime guard (no await above)
+  try {
+    const already = await new Promise((resolve) => {
+      chrome.storage.local.get({ [ONBOARDING_TAB_FLAG]: false }, (r) =>
+        resolve(!!(r && r[ONBOARDING_TAB_FLAG])));
+    });
+    if (already) return; // a prior lifetime already opened it — do not spam a new tab
+    // Set BEFORE creating the tab so a rapid second cold start can't double-open.
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ [ONBOARDING_TAB_FLAG]: true }, () => resolve());
+    });
+  } catch { /* best-effort: worst case one extra tab, never a missing one */ }
   chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+}
+
+// Clears the persisted onboarding-tab guard so a future re-onboard (ToS bump)
+// can open the tab again. Called when consent is valid — i.e. onboarding is not
+// currently needed — which is the natural point to reset the one-shot guard.
+function clearOnboardingTabFlag() {
+  _onboardingTabOpened = false;
+  try {
+    chrome.storage.local.remove(ONBOARDING_TAB_FLAG, () => void chrome.runtime.lastError);
+  } catch { /* ignore */ }
 }
 
 /**
@@ -1648,7 +1678,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     const installPrefs = await getPrefs();
     if (shouldOpenOnboarding(installPrefs)) {
-      openOnboardingOnce();
+      await openOnboardingOnce();
     }
   }
 });
@@ -1662,7 +1692,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     const prefs = await getPrefs();
     if (shouldOpenOnboarding(prefs)) {
-      openOnboardingOnce();
+      await openOnboardingOnce();
+    } else {
+      // Consent satisfied — reset the one-shot guard so a future ToS re-onboard
+      // can surface the tab again (#967).
+      clearOnboardingTabFlag();
     }
     // Surface the consent-required badge on every cold start, not just
     // on first install. onInstalled does not fire on browser restart or
