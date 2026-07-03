@@ -18,6 +18,7 @@ import {
   buildRemoteDnrRule,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
+import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
@@ -1263,26 +1264,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_REMOTE_RULES_STATUS") {
     (async () => {
       try {
-        // Read enabled from sync (authoritative)
-        const syncData = await chrome.storage.sync.get({ remoteRulesEnabled: false });
-        const enabled = !!syncData.remoteRulesEnabled;
-        // Read meta from local
-        const localData = await chrome.storage.local.get({
-          remoteParams: [],
-          remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
+        // `enabled` MUST be the CANONICAL effective value (sync + consent +
+        // per-device overrides), so the Settings toggle matches what the
+        // extension actually does. A raw sync.get with a hardcoded default
+        // contradicted PREF_DEFAULTS.remoteRulesEnabled=true and rendered the
+        // toggle OFF on fresh installs while the weekly fetch was running
+        // (#888 follow-up). buildRemoteRulesStatus routes through getPrefs().
+        const status = await buildRemoteRulesStatus({
+          getPrefs,
+          local: chrome.storage.local,
+          hasDNR,
         });
-        // Feature-detect flags (REQ-UI-5). Since v1.10.1 the feature no
-        // longer requires chrome.alarms — the only remaining runtime gate
-        // is DNR availability.
-        const supportsDNR = hasDNR;
         try {
-          sendResponse({
-            ok: true,
-            enabled,
-            meta: localData.remoteRulesMeta,
-            remoteParams: localData.remoteParams,
-            supportsDNR,
-          });
+          sendResponse(status);
         } catch { /* channel closed */ }
       } catch (err) {
         console.error("[MUGA] GET_REMOTE_RULES_STATUS handler failed:", err);
