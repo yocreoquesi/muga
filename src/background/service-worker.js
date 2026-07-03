@@ -1079,7 +1079,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // that onStartup can't reach. Runs in parallel with URL processing.
     maybeFetchRemoteRules(_remoteRulesDeps());
     const tabId = sender.tab?.id;
-    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, referrer: typeof message.referrer === "string" ? message.referrer : "" })
+    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, skipSideEffects: !!message.skipSideEffects, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         if (typeof tabId === "number" && (result.preservedAffiliate || result.creatorReferralPreserved)) {
@@ -1404,7 +1404,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 });
 
-async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, referrer = "" } = {}) {
+async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, skipSideEffects = false, referrer = "" } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
   // retry on the next call. Both loaders run in a single outer Promise.all so
@@ -1471,7 +1471,13 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   const urlChanged = result.cleanUrl !== rawUrl;
   let parsedRaw;
   try { parsedRaw = new URL(rawUrl); } catch { /* ignore */ }
-  if (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0)) {
+  // #966: copy-safe reprocessing (skipSideEffects) must not mutate any
+  // user-visible tally. Copying an entry re-cleans an already-counted URL, so
+  // counting it again would inflate "URLs cleaned", prepend a DUPLICATE session
+  // history row (evicting real entries), and push a duplicate ledger event. When
+  // skipSideEffects is set we still compute the clean URL (and withOurAffiliate
+  // below) for the response, but write nothing.
+  if (!skipSideEffects && (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0))) {
     if (parsedRaw?.search) {
       const passthroughEntry = { domain: parsedRaw.hostname.replace(/^www\./, "") };
       if (prefs.devMode) {
@@ -1482,7 +1488,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     }
   }
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
-    if (!skipStats) {
+    if (!skipStats && !skipSideEffects) {
       incrementStat("urlsCleaned");
       if (result.junkRemoved > 0) incrementStat("junkRemoved", result.junkRemoved);
       if (prefs.domainStats && result.junkRemoved > 0) {
@@ -1492,38 +1498,44 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
         } catch { /* invalid URL, skip domain stat */ }
       }
     }
-    await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
-    if (parsedRaw) {
-      try {
-        const domain = parsedRaw.hostname.replace(/^www\./, "");
-        const cleanedEntry = {
-          source,
-          domain,
-          action: result.action,
-          junkRemoved: result.junkRemoved,
-        };
-        if (prefs.devMode) {
-          const parsedClean = new URL(result.cleanUrl);
-          cleanedEntry.path = parsedRaw.pathname;
-          cleanedEntry.removed = result.removedTracking;
-          cleanedEntry.originalParams = [...parsedRaw.searchParams.keys()];
-          cleanedEntry.cleanParams = [...parsedClean.searchParams.keys()];
-          cleanedEntry.cleanUrl = result.cleanUrl;
-        }
-        logAction("cleaned", cleanedEntry);
-      } catch { /* malformed cleanUrl — skip logging */ }
+    if (!skipSideEffects) {
+      await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
+      if (parsedRaw) {
+        try {
+          const domain = parsedRaw.hostname.replace(/^www\./, "");
+          const cleanedEntry = {
+            source,
+            domain,
+            action: result.action,
+            junkRemoved: result.junkRemoved,
+          };
+          if (prefs.devMode) {
+            const parsedClean = new URL(result.cleanUrl);
+            cleanedEntry.path = parsedRaw.pathname;
+            cleanedEntry.removed = result.removedTracking;
+            cleanedEntry.originalParams = [...parsedRaw.searchParams.keys()];
+            cleanedEntry.cleanParams = [...parsedClean.searchParams.keys()];
+            cleanedEntry.cleanUrl = result.cleanUrl;
+          }
+          logAction("cleaned", cleanedEntry);
+        } catch { /* malformed cleanUrl — skip logging */ }
+      }
     }
   }
   if (result.action === "detected_foreign") {
-    incrementStat("referralsSpotted");
-    const d = result.detectedAffiliate;
-    logAction("affiliate_detected", {
-      domain: parsedRaw?.hostname.replace(/^www\./, "") ?? "",
-      param: d?.param,
-      value: d?.value,
-      store: d?.pattern?.name ?? null,
-      action: result.action,
-    });
+    // #966: a copy must not bump referralsSpotted or log a detection either;
+    // the with-our-affiliate variant below still builds for the response.
+    if (!skipSideEffects) {
+      incrementStat("referralsSpotted");
+      const d = result.detectedAffiliate;
+      logAction("affiliate_detected", {
+        domain: parsedRaw?.hostname.replace(/^www\./, "") ?? "",
+        param: d?.param,
+        value: d?.value,
+        store: d?.pattern?.name ?? null,
+        action: result.action,
+      });
+    }
     // If injection is enabled, build the URL with our tag so "Remove it" can use it.
     // #523 phase 3: pattern.ourTag is now a { host -> tag } map, not a flat string.
     // Pick the tag for the cleanUrl's hostname; if we have no tag for this
@@ -1544,7 +1556,11 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // #460 (A2): mirror the cleaner outcome into the Attribution Ledger
   // so the popup's "Recent activity" section can render. Fire-and-forget
   // so a write hiccup never affects the caller's URL processing.
-  pushAttributionAndPersist(rawUrl, result, prefs, referrer);
+  // #966: skipped for copy-safe reprocessing so a copy doesn't push a
+  // duplicate ledger event for an already-recorded URL.
+  if (!skipSideEffects) {
+    pushAttributionAndPersist(rawUrl, result, prefs, referrer);
+  }
 
   return result;
 }
