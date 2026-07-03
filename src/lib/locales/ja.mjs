@@ -247,6 +247,8 @@ export default Object.freeze({
   ob_synced_from_other_device: "この設定は別のデバイスで有効になりました。このデバイスでも確認するか、ここではオフのままにするにはチェックを外してください。",
   ob_remote_rules_title: "ルールのリモート更新",
   ob_remote_rules_desc: "他のデバイスでルールのリモート更新が有効になっています。これを有効にすると、MUGAは公開GitHub Pagesエンドポイントから署名済みのトラッキングパラメータリストを週次取得して保護を最新に保ちます。ユーザーデータは送信されません。",
+  ob_remote_rules_desc_default: "ルールのリモート更新はデフォルトで有効です。これを有効にすると、MUGAは公開GitHub Pagesエンドポイントから署名済みのトラッキングパラメータリストを週次取得して保護を最新に保ちます。ユーザーデータは送信されません。",
+  ob_remote_rules_default_note: "デフォルトで有効です。このデバイスでも確認するか、ここではオフのままにするにはチェックを外してください。",
   ob_remote_rules_check_label: "このデバイスでルールのリモート更新を有効にする",
   ob_reonboard_delta_title: "前回の同意以降、いくつかの条項が追加されました",
   ob_reonboard_delta_desc: "既存の同意は引き続き有効です。下記の新しい条項を確認してください。同意すると新しい動作が有効になり、拒否すると以前同意した条件のままMUGAが動作し続けます。",

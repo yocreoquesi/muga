@@ -247,6 +247,8 @@ export default Object.freeze({
   ob_synced_from_other_device: "Este ajuste fue activado en otro dispositivo. Confírmalo para este dispositivo o desmarca la casilla para mantenerlo desactivado aquí.",
   ob_remote_rules_title: "Actualizaciones remotas de reglas",
   ob_remote_rules_desc: "Tu otro dispositivo tiene activadas las actualizaciones remotas de reglas. Con esto activo, MUGA hace una descarga semanal de una lista firmada de parámetros de rastreo desde un endpoint público de GitHub Pages para mantener tu protección al día. No se envían datos del usuario.",
+  ob_remote_rules_desc_default: "Las actualizaciones remotas de reglas vienen activadas por defecto. Con esto activo, MUGA hace una descarga semanal de una lista firmada de parámetros de rastreo desde un endpoint público de GitHub Pages para mantener tu protección al día. No se envían datos del usuario.",
+  ob_remote_rules_default_note: "Activado por defecto. Confírmalo para este dispositivo o desmarca la casilla para mantenerlo desactivado aquí.",
   ob_remote_rules_check_label: "Activar actualizaciones remotas de reglas en este dispositivo",
   ob_reonboard_delta_title: "Se han añadido algunas cláusulas desde la última vez que aceptaste",
   ob_reonboard_delta_desc: "Tu aceptación previa sigue siendo válida. Revisa las cláusulas nuevas abajo; aceptar habilita los nuevos comportamientos, rechazar mantiene MUGA funcionando bajo los términos que ya habías aceptado.",

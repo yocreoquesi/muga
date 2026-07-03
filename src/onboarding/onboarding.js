@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyTranslations(lang);
 
   // --- Read state ----------------------------------------------------------
-  const [syncPrefs, localConsent, existingOverrides, fixtures] = await Promise.all([
+  const [syncPrefs, localConsent, existingOverrides, fixtures, remoteRulesSyncedFromDevice] = await Promise.all([
     new Promise((resolve) => {
       // Source the fallbacks from PREF_DEFAULTS so onboarding sees the SAME
       // default as getPrefs() when a key is absent from sync. After #888
@@ -69,6 +69,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     getConsent(),
     getOverrides(),
     getTestFixtures(),
+    new Promise((resolve) => {
+      // Raw presence read (NO defaults) so we can tell a value genuinely synced
+      // from another device apart from the on-by-default fallback (#969). On a
+      // fresh install remoteRulesEnabled is absent from sync, so the disclosure
+      // must not claim another device enabled it.
+      chrome.storage.sync.get("remoteRulesEnabled", (r) =>
+        resolve(!!(r && r.remoteRulesEnabled === true)));
+    }),
   ]);
 
   // Test-only overrides (#407). Fixtures are null in production.
@@ -136,6 +144,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (pending.has("remoteRulesEnabled")) {
     if (remoteRulesSection) remoteRulesSection.hidden = false;
     if (remoteRulesCheck) remoteRulesCheck.checked = true;
+    if (!remoteRulesSyncedFromDevice) {
+      // On-by-default (e.g. a fresh install), NOT synced from another device:
+      // swap in accurate copy instead of the "your other device enabled it"
+      // wording, which is false when the value comes from the default (#969).
+      const descEl = document.getElementById("remote-rules-desc");
+      const noteEl = document.getElementById("remote-rules-note");
+      if (descEl) descEl.textContent = t("ob_remote_rules_desc_default", lang);
+      if (noteEl) noteEl.textContent = t("ob_remote_rules_default_note", lang);
+    }
   }
 
   function updateButton() {

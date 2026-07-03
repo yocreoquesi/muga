@@ -247,6 +247,8 @@ export default Object.freeze({
   ob_synced_from_other_device: "Ce paramètre a été activé sur un autre appareil. Confirmez-le pour cet appareil, ou décochez pour le laisser désactivé ici.",
   ob_remote_rules_title: "Mises à jour de règles à distance",
   ob_remote_rules_desc: "Votre autre appareil a les mises à jour de règles à distance activées. Avec cette option, MUGA effectue une récupération hebdomadaire d'une liste signée de paramètres de pistage depuis un endpoint GitHub Pages public pour garder votre protection à jour. Aucune donnée utilisateur n'est envoyée.",
+  ob_remote_rules_desc_default: "Les mises à jour de règles à distance sont activées par défaut. Avec cette option, MUGA effectue une récupération hebdomadaire d'une liste signée de paramètres de pistage depuis un endpoint GitHub Pages public pour garder votre protection à jour. Aucune donnée utilisateur n'est envoyée.",
+  ob_remote_rules_default_note: "Activé par défaut. Confirmez-le pour cet appareil, ou décochez pour le laisser désactivé ici.",
   ob_remote_rules_check_label: "Activer les mises à jour de règles à distance sur cet appareil",
   ob_reonboard_delta_title: "Quelques clauses ont été ajoutées depuis votre dernière acceptation",
   ob_reonboard_delta_desc: "Votre acceptation existante reste valable. Examinez les nouvelles clauses ci-dessous ; accepter active les nouveaux comportements, refuser laisse MUGA fonctionner selon les conditions précédemment acceptées.",

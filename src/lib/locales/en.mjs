@@ -247,6 +247,8 @@ export default Object.freeze({
   ob_synced_from_other_device: "This setting was enabled on another device. Confirm it for this device, or uncheck to keep it off here.",
   ob_remote_rules_title: "Remote rule updates",
   ob_remote_rules_desc: "Your other device has remote rule updates enabled. With this on, MUGA performs a weekly fetch of a signed tracking-param list from a public GitHub Pages endpoint to keep your protection fresh. No user data is sent.",
+  ob_remote_rules_desc_default: "Remote rule updates are on by default. With this on, MUGA performs a weekly fetch of a signed tracking-param list from a public GitHub Pages endpoint to keep your protection fresh. No user data is sent.",
+  ob_remote_rules_default_note: "On by default. Confirm it for this device, or uncheck to keep it off here.",
   ob_remote_rules_check_label: "Enable remote rule updates on this device",
   ob_reonboard_delta_title: "A few terms have been added since you last accepted",
   ob_reonboard_delta_desc: "Your existing acceptance still applies. Review the new clauses below; accepting unlocks the new behaviours, declining keeps MUGA running under your previously accepted terms.",
