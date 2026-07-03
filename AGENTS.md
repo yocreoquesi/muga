@@ -138,12 +138,12 @@
 
 ### Issue tracker
 
-Issues are tracked on GitHub at `yocreoquesi/muga`. See `docs/agents/issue-tracker.md`.
+Issues are tracked on GitHub at `yocreoquesi/muga`. Use the `gh` CLI for all issue operations.
 
 ### Triage labels
 
-Five canonical labels with default names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+Five canonical labels with default names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`).
 
 ### Domain docs
 
-Single-context repo. `CONTEXT.md` and `docs/adr/` at the root, created lazily. See `docs/agents/domain.md`.
+Single-context repo. `CONTEXT.md` and `docs/adr/` at the root, created lazily.

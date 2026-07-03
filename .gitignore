@@ -68,3 +68,6 @@ tools/moat-expansion/reports/report-*.json
 
 # Internal design bundle (chat logs + redesign prototype): not for the public repo
 .muga-design-bundle/
+
+# Maintainer-internal docs (AI/triage scaffolding, cross-repo orientation, historical release notes) — not needed to build/run the extension
+internal/
