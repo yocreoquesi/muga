@@ -1277,8 +1277,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // per-device overrides), so the Settings toggle matches what the
         // extension actually does. A raw sync.get with a hardcoded default
         // contradicted PREF_DEFAULTS.remoteRulesEnabled=true and rendered the
-        // toggle OFF on fresh installs while the weekly fetch was running
-        // (#888 follow-up). buildRemoteRulesStatus routes through getPrefs().
+        // toggle OFF on fresh installs even though the pref DEFAULTS to enabled
+        // (the weekly signed fetch only starts once the rules.muga.app optional
+        // host permission is granted via the toggle, #888 follow-up).
+        // buildRemoteRulesStatus routes through getPrefs().
         const status = await buildRemoteRulesStatus({
           getPrefs,
           local: chrome.storage.local,

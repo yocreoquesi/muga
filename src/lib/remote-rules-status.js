@@ -9,10 +9,13 @@
  * overrides — NOT from a raw `chrome.storage.sync.get` with a hardcoded
  * default. On a fresh install the `remoteRulesEnabled` key is never written
  * (the onboarding accept path relies on `PREF_DEFAULTS.remoteRulesEnabled =
- * true`), so a hardcoded `false` default would report the toggle as OFF while
- * the weekly fetch is actually running. Routing through `getPrefs()` keeps the
- * Settings toggle in lockstep with the effective behaviour, including any
- * per-device override written when a user declines a sync-inherited prompt.
+ * true`), so a hardcoded `false` default would report the toggle as OFF even
+ * though the pref DEFAULTS to enabled. The toggle must reflect that default.
+ * (The weekly signed fetch itself only begins once the user grants the
+ * `rules.muga.app` optional host permission via the Settings toggle — it is
+ * not running pre-grant.) Routing through `getPrefs()` keeps the Settings
+ * toggle in lockstep with the effective preference, including any per-device
+ * override written when a user declines a sync-inherited prompt.
  *
  * Dependency-injected (matching runRemoteRulesFetch's shape) so it is unit
  * testable without importing the whole service worker.
