@@ -122,7 +122,7 @@ const EXEMPT = new Set([
 const BASELINE = {
   // Files with SW/content-script source that cannot be imported in Node —
   // migration requires extracting pure functions or an integration harness.
-  "service-worker-patterns.test.mjs": 76,   // SW not importable; behavioral migration is long arc (#824)
+  "service-worker-patterns.test.mjs": 77,   // SW not importable; behavioral migration is long arc (#824). +1 for the FORCE_FETCH_REMOTE_RULES "Update now" handler existence guard (Update now feature) — the (a)/(b)/(c) gate coverage itself is behavioral via a pure forceFetchRemoteRules() mirror, only the "handler exists" check is source-text
   "shortener-stats-sw.test.mjs": 40,        // SW + storage; behavioral migration deferred (#824). +1 for #922 egress-gate guard (SW not importable)
   "misc-regression.test.mjs": 29,           // mixed bag; partial migration possible (#824)
   "content-cleaner-patterns.test.mjs": 27,  // content script not importable (#824)

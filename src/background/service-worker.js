@@ -1297,6 +1297,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "FORCE_FETCH_REMOTE_RULES") {
+    // Manual "Update now" action from Settings. Bypasses the 7-day cadence
+    // gate in maybeFetchRemoteRules (there is none to bypass in
+    // runRemoteRulesFetch itself), but MUST replicate the same consent gate
+    // maybeFetchRemoteRules enforces before the automatic path fetches —
+    // this is still a consent-gated network egress (#888 review C1) and the
+    // button must not be able to leak the signed GET before consent.
+    // DRIFT GUARD: this gate is mirrored by forceFetchRemoteRules() in
+    // tests/unit/service-worker-patterns.test.mjs. If you change either check
+    // below (or their order), update that mirror too — the source-existence
+    // test only pins that this handler exists, NOT that the gate is intact.
+    (async () => {
+      try {
+        const prefs = await getPrefs();
+        if (!prefs.remoteRulesEnabled) {
+          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          return;
+        }
+        if (shouldOpenOnboarding(prefs)) {
+          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          return;
+        }
+        await runRemoteRulesFetch(_remoteRulesDeps());
+        try { sendResponse({ ok: true }); } catch { /* channel closed */ }
+      } catch (err) {
+        console.error("[MUGA] FORCE_FETCH_REMOTE_RULES handler failed:", err);
+        try { sendResponse({ ok: false, error: String(err) }); } catch { /* channel closed */ }
+      }
+    })();
+    return true;
+  }
+
   // ── Shortener resolution: resolve generic shortener via native fetch ─────────
   // ADR-0004 phase 5 (#701): proxy path removed. Native resolver is the SOLE
   // path. On failure (permission denied, fetch throws, no Location header):
