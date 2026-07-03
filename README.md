@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.3.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-2.4.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: The URL denoise extension for the web
@@ -17,7 +17,7 @@
 
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
-> **2.3.0 shipped.** Self-scaling ruleset pipeline (EPIC C), full consent-gate coverage for all DNR rulesets, Firefox wrapper_unwrap parity, 25-issue June 2026 audit wave. See [CHANGELOG](CHANGELOG.md) for the full release notes.
+> **2.4.0 shipped.** Cleaning follows same-document (SPA) navigation, copy/share never leaks MUGA's own tag, a per-tab badge shows what was stripped, affiliate composition (remove theirs, then add ours) now covers Bookshop's path-based creator wrappers, and a July audit wave hardened consent gating, accessibility, and Chrome path cleaning. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
 [Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 

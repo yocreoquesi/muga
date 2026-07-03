@@ -1,14 +1,14 @@
 {
   "name": "muga",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "The denoise extension for the web. Removes 450+ noise patterns from URLs while honoring creator affiliate referrals. Open source.",
   "type": "module",
   "scripts": {
     "dev:chrome": "npm run build:content && web-ext run --source-dir src/ --target chromium",
     "dev:firefox": "npm run build:content && bash scripts/with-firefox-manifest.sh web-ext run --source-dir src/ --target firefox-desktop",
     "build:content": "node tools/bundle-content.mjs",
-    "build:chrome": "npm run build:content && node tools/strip-test-seams.mjs --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest --ignore-files rules/manifest.json manifest.v2.json content/cleaner-bundle-src.mjs _metadata _metadata/** _metadata/**/*",
-    "build:firefox": "npm run build:content && bash scripts/with-firefox-manifest.sh node tools/strip-test-seams.mjs --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest --ignore-files rules/manifest.json manifest.v2.json content/cleaner-bundle-src.mjs _metadata _metadata/** _metadata/**/*",
+    "build:chrome": "npm run build:content && node tools/strip-test-seams.mjs --source-dir src/ --artifacts-dir dist/chrome/ --overwrite-dest --ignore-files rules/manifest.json manifest.v2.json content/cleaner-bundle-src.mjs icons/newicon.png _metadata _metadata/** _metadata/**/*",
+    "build:firefox": "npm run build:content && bash scripts/with-firefox-manifest.sh node tools/strip-test-seams.mjs --source-dir src/ --artifacts-dir dist/firefox/ --overwrite-dest --ignore-files rules/manifest.json manifest.v2.json content/cleaner-bundle-src.mjs icons/newicon.png _metadata _metadata/** _metadata/**/*",
     "build": "npm run build:chrome && npm run build:firefox",
     "lint": "bash scripts/with-firefox-manifest.sh npx --no-install web-ext lint --source-dir src/",
     "test": "node --test --test-reporter=spec tests/unit/*.mjs",
