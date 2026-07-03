@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import vm from "node:vm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cleanerSource = readFileSync(join(__dirname, "../../src/content/cleaner.js"), "utf8");
@@ -184,6 +185,194 @@ describe("RESOLVE_SHORTENER — content-script path", () => {
     assert.ok(
       cleanerSource.includes("shortener-resolve timeout"),
       "must bound the resolve on a timeout so it cannot hang"
+    );
+  });
+});
+
+// ── Behavioral harness: executes content/cleaner.js in a sandboxed vm context ──
+// (#951) Unlike the source-string assertions above, this actually RUNS the
+// content script against mocked chrome/document/window/fetch globals and
+// inspects the real arguments passed to window.__mugaCleaner.processUrl().
+// This is the regression coverage for #951: before the fix, none of the
+// content-script processUrl() call sites threaded pathStripRules /
+// pathAffiliateRules through, so path-based stripping (e.g. Amazon's
+// trailing "/ref=") and path-based affiliate injection (e.g. Bookshop.org)
+// were silently dead on every in-page navigation. A plain text-search
+// assertion checking that the "getPathRulesCached" helper merely EXISTS
+// in the file would not have caught the original bug — the helper could
+// exist and still not be wired into the actual processUrl() call. Only
+// inspecting the real call arguments proves the wiring works. The
+// source-grep ratchet (#824, see tests/unit/source-grep-ratchet.test.mjs)
+// also caps this file's text-search assertion count at its current
+// baseline, so new coverage here must be behavioral rather than another
+// raw-source string-match assertion.
+//
+// Content scripts cannot be `import`-ed (no ES modules, top-level
+// `chrome.*`/`window.*`/`document.*` references), so we execute the raw
+// source text inside a fresh `vm` context populated with minimal stand-ins
+// for the browser globals it touches at document_start.
+
+/**
+ * Runs content/cleaner.js in an isolated vm context configured to exercise
+ * the document_start self-clean branch (`!_hasDNR` guard — DNR is a
+ * background-only API, never present in a content-script context), then
+ * resolves once the async self-clean chain has settled.
+ *
+ * @param {object} opts
+ * @param {string} opts.href - simulated `window.location.href`
+ * @param {Array} opts.pathStripRulesFixture - fixture returned for rules/path-strip-rules.json
+ * @param {Array} opts.pathAffiliateRulesFixture - fixture returned for rules/path-affiliate-rules.json
+ * @returns {Promise<{ processUrlCalls: any[][] }>}
+ */
+function runContentScriptSelfClean({ href, pathStripRulesFixture, pathAffiliateRulesFixture }) {
+  return new Promise((resolve, reject) => {
+    const processUrlCalls = [];
+
+    function mockFetch(url) {
+      if (url.includes("domain-rules.json")) {
+        return Promise.resolve({ json: () => Promise.resolve([]) });
+      }
+      if (url.includes("path-strip-rules.json")) {
+        return Promise.resolve({ json: () => Promise.resolve(pathStripRulesFixture) });
+      }
+      if (url.includes("path-affiliate-rules.json")) {
+        return Promise.resolve({ json: () => Promise.resolve(pathAffiliateRulesFixture) });
+      }
+      return Promise.reject(new Error("unexpected fetch: " + url));
+    }
+
+    const parsedHref = new URL(href);
+    const fakeLocation = { href, hostname: parsedHref.hostname, pathname: parsedHref.pathname };
+
+    const fakeWindow = {
+      location: fakeLocation,
+      getSelection: () => null,
+      open: () => {},
+    };
+    fakeWindow.self = fakeWindow;
+    fakeWindow.top = fakeWindow;
+    fakeWindow.__mugaCleaner = {
+      processUrl: (...args) => {
+        processUrlCalls.push(args);
+        // Return cleanUrl === href so the self-clean branch stops right
+        // after the call (no history.replaceState / sendMessage side
+        // effects to also stub) — we only care about the call arguments.
+        return { cleanUrl: href, junkRemoved: 0 };
+      },
+      isGenericShortener: () => false,
+    };
+
+    const fakeDocument = {
+      addEventListener: () => {},
+      getElementById: () => null,
+      createElement: () => ({
+        style: {}, setAttribute() {}, appendChild() {}, querySelectorAll: () => [], remove() {},
+      }),
+      documentElement: {},
+      body: { appendChild() {} },
+      querySelector: () => null,
+      readyState: "complete",
+      referrer: "",
+    };
+
+    const fakeChrome = {
+      runtime: {
+        id: "test-ext-id",
+        lastError: null,
+        getURL: (path) => path,
+        onMessage: { addListener: () => {} },
+        sendMessage: (msg, cb) => {
+          if (msg && msg.type === "getPrefs" && typeof cb === "function") {
+            cb({ enabled: true, onboardingDone: true, injectOwnAffiliate: false, _affiliateDomains: [] });
+          }
+          return Promise.resolve({ ok: false });
+        },
+      },
+      storage: {
+        sync: { get: (defaults, cb) => cb(defaults) },
+        onChanged: { addListener: () => {} },
+      },
+      // declarativeNetRequest is intentionally omitted: `_hasDNR` must be
+      // false for the self-clean branch under test to run — mirrors the
+      // real content-script context, where the DNR API is never exposed.
+    };
+
+    const sandbox = {
+      window: fakeWindow,
+      document: fakeDocument,
+      chrome: fakeChrome,
+      navigator: { language: "en", clipboard: { writeText: () => Promise.resolve() } },
+      location: fakeLocation,
+      history: { state: null, replaceState: () => {} },
+      fetch: mockFetch,
+      URL,
+      console,
+      setTimeout,
+      clearTimeout,
+    };
+
+    vm.createContext(sandbox);
+    try {
+      vm.runInContext(cleanerSource, sandbox, { filename: "content/cleaner.js" });
+    } catch (err) {
+      reject(err);
+      return;
+    }
+
+    // The self-clean chain is `Promise.all([...]).then(...)` fed by a few
+    // chained fetch()/json() hops. All of that is microtask work, which
+    // fully drains before any macrotask (including a 0ms timer) runs.
+    setTimeout(() => resolve({ processUrlCalls }), 50);
+  });
+}
+
+describe("Self-clean — processUrl() is called with real path rules (#951)", () => {
+  test("document_start self-clean threads non-empty pathStripRules/pathAffiliateRules into processUrl", async () => {
+    const pathStripRulesFixture = [{
+      domain: "amazon",
+      domainPattern: "(?:^|\\.)amazon\\.[a-z.]+$",
+      pathPatterns: ["/ref=[^/]*$"],
+      replacements: [""],
+      flags: [""],
+    }];
+    const pathAffiliateRulesFixture = [{
+      domain: "bookshop.org",
+      referralPaths: [],
+      injectPath: "/p/",
+      injectParam: "affiliate",
+      injectValue: "124046",
+    }];
+
+    const { processUrlCalls } = await runContentScriptSelfClean({
+      href: "https://www.amazon.es/dp/B08N5WRWNW/ref=abc123",
+      pathStripRulesFixture,
+      pathAffiliateRulesFixture,
+    });
+
+    assert.equal(processUrlCalls.length, 1, "self-clean must call processUrl exactly once");
+    const [url, prefs, domainRules, canonicalBundle, frequencyTracker, referrer, pathStripRules, pathAffiliateRules] =
+      processUrlCalls[0];
+
+    assert.equal(processUrlCalls[0].length, 8, "processUrl must be called with the full 8-arg signature");
+    assert.equal(url, "https://www.amazon.es/dp/B08N5WRWNW/ref=abc123");
+    assert.ok(prefs && prefs.enabled, "prefs must be threaded through");
+    assert.ok(Array.isArray(domainRules), "domainRules must be threaded through");
+    assert.equal(canonicalBundle, undefined, "canonicalBundle is unused at this call site");
+    assert.equal(frequencyTracker, undefined, "frequencyTracker is unused at this call site");
+    assert.equal(referrer, undefined, "referrer is unused at this call site");
+
+    // The exact regression this test guards: before #951, these two args
+    // were omitted entirely, so processUrl() silently defaulted them to
+    // `[]` and every path-strip / path-affiliate rule was a no-op.
+    assert.deepEqual(pathStripRules, pathStripRulesFixture);
+    assert.ok(
+      Array.isArray(pathStripRules) && pathStripRules.length > 0,
+      "pathStripRules must be non-empty — an empty array silently disables path stripping (e.g. Amazon's trailing /ref=)"
+    );
+    assert.deepEqual(pathAffiliateRules, pathAffiliateRulesFixture);
+    assert.ok(
+      Array.isArray(pathAffiliateRules) && pathAffiliateRules.length > 0,
+      "pathAffiliateRules must be non-empty — an empty array silently disables path-based affiliate injection (e.g. Bookshop.org)"
     );
   });
 });

@@ -80,6 +80,41 @@
   // package), takes <10ms.
   getDomainRulesCached();
 
+  // Module-level path-rules cache (#951). Mirrors getDomainRulesCached()
+  // above: lazy-once fetch + pending-promise dedupe, hoisted to the top of
+  // the IIFE so the click/copy/self-clean call sites below can read the
+  // warm cache synchronously. Before this fix, none of the content-script
+  // processUrl() call sites passed pathStripRules/pathAffiliateRules, so
+  // path-based stripping (e.g. Amazon trailing "/ref=") and path-based
+  // affiliate injection (e.g. Bookshop.org) were silently dead on every
+  // in-page navigation and copy/click action — only the service-worker
+  // path (copy-clean-link, context menu) had the real rules threaded in.
+  let _pathRulesCache = null;
+  let _pathRulesPending = null;
+  function getPathRulesCached() {
+    if (_pathRulesCache) return Promise.resolve(_pathRulesCache);
+    if (_pathRulesPending) return _pathRulesPending;
+    _pathRulesPending = Promise.all([
+      fetch(chrome.runtime.getURL("rules/path-strip-rules.json")).then(r => r.json()),
+      fetch(chrome.runtime.getURL("rules/path-affiliate-rules.json")).then(r => r.json()),
+    ])
+      .then(([pathStripRules, pathAffiliateRules]) => {
+        _pathRulesCache = { pathStripRules, pathAffiliateRules };
+        _pathRulesPending = null;
+        return _pathRulesCache;
+      })
+      .catch(err => {
+        console.error("[MUGA] path-rules fetch failed:", err);
+        _pathRulesPending = null;
+        // Fail-safe: never block cleaning. applyPathStrip/getPathAffiliatePolicy
+        // both no-op on empty arrays, same as an unloaded domain-rules cache.
+        return { pathStripRules: [], pathAffiliateRules: [] };
+      });
+    return _pathRulesPending;
+  }
+  // Eagerly start the fetch, same rationale as getDomainRulesCached() above.
+  getPathRulesCached();
+
   // Rewrite loop guard: prevents infinite URL rewriting if another extension
   // or the page itself re-injects tracking params after MUGA cleans them.
   const _rewriteLog = new Map(); // hostname -> { count, firstTs }
@@ -214,11 +249,16 @@
       }
 
       const domainRules = _domainRulesCache || [];
+      const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
       const urlMap = new Map();
       for (const url of allUrls) {
         let r;
         try {
-          r = window.__mugaCleaner.processUrl(url, _contentPrefs, domainRules);
+          r = window.__mugaCleaner.processUrl(
+            url, _contentPrefs, domainRules,
+            undefined, undefined, undefined,
+            pathRules.pathStripRules, pathRules.pathAffiliateRules,
+          );
         } catch { r = null; }
         urlMap.set(url, r?.cleanUrl ?? url);
       }
@@ -309,6 +349,7 @@
       // corrupting the longer URL during replaceAll.
       const sortedMatches = [...matches].sort((a, b) => b[0].length - a[0].length);
       const domainRules = _domainRulesCache || [];
+      const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
       let resultText = trimmed;
       let totalJunkRemoved = 0;
       const allRemovedTracking = [];
@@ -317,7 +358,11 @@
         const cleanCandidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
         let r;
         try {
-          r = window.__mugaCleaner.processUrl(cleanCandidate, _contentPrefs, domainRules);
+          r = window.__mugaCleaner.processUrl(
+            cleanCandidate, _contentPrefs, domainRules,
+            undefined, undefined, undefined,
+            pathRules.pathStripRules, pathRules.pathAffiliateRules,
+          );
         } catch { continue; }
         if (r?.cleanUrl && r.cleanUrl !== cleanCandidate) {
           resultText = resultText.replaceAll(cleanCandidate, r.cleanUrl);
@@ -371,7 +416,7 @@
 
   const _hasDNR = typeof chrome.declarativeNetRequest !== "undefined";
 
-  if (!_hasDNR) Promise.all([getContentPrefs(), getDomainRulesCached()]).then(([prefs, domainRules]) => {
+  if (!_hasDNR) Promise.all([getContentPrefs(), getDomainRulesCached(), getPathRulesCached()]).then(([prefs, domainRules, pathRules]) => {
     if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
     const href = window.location.href;
     if (!href.startsWith("http")) return;
@@ -382,7 +427,11 @@
     }
     let result;
     try {
-      result = window.__mugaCleaner.processUrl(href, prefs, domainRules);
+      result = window.__mugaCleaner.processUrl(
+        href, prefs, domainRules,
+        undefined, undefined, undefined,
+        pathRules.pathStripRules, pathRules.pathAffiliateRules,
+      );
     } catch (err) {
       console.error("[MUGA] local self-clean failed:", err);
       return;
@@ -471,7 +520,12 @@
     let result;
     try {
       const domainRules = _domainRulesCache || [];
-      result = window.__mugaCleaner.processUrl(href, _contentPrefs, domainRules);
+      const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
+      result = window.__mugaCleaner.processUrl(
+        href, _contentPrefs, domainRules,
+        undefined, undefined, undefined,
+        pathRules.pathStripRules, pathRules.pathAffiliateRules,
+      );
     } catch (err) {
       console.error("[MUGA] local click clean failed:", err);
       navigate(href, opensNewTab);
