@@ -703,8 +703,17 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     }
   }
 
-  // Step 6: Inject own affiliate tag (generic — AFFILIATE_PATTERNS)
-  if (prefs.injectOwnAffiliate && !prefs.stripAllAffiliates && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
+  // Step 6: Inject own affiliate tag (generic — AFFILIATE_PATTERNS).
+  // Runs even under stripAllAffiliates. That toggle removes affiliate tags
+  // "from other sources" (its label); Step 4b above has already stripped any
+  // foreign tag by this point, so injecting ours here operates on a
+  // now-tagless URL. It is a strip-then-inject of two explicit opt-ins, not an
+  // overwrite: the `!url.searchParams.has(pattern.param)` guard below still
+  // holds (a preserved own tag from Step 4b short-circuits injection). When
+  // stripAll is off, a foreign tag sets action="detected_foreign" and is
+  // honored instead. Supersedes the earlier #353 "no injection under
+  // strip-all" guard, per maintainer decision: remove theirs, then add ours.
+  if (prefs.injectOwnAffiliate && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
     const hostKeyInject = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
       const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";

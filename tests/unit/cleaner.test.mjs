@@ -522,12 +522,12 @@ describe("Scenario B — affiliate injection", () => {
     assert.equal(new URL(cleanUrl).searchParams.get("aff"), "creator-99");
   });
 
-  test("does NOT inject when stripAllAffiliates is on", () => {
+  test("injects under stripAllAffiliates (strip-all clears foreign, then ours is injected)", () => {
     const { action } = processUrl(
       "https://shop.test.muga/product",
       { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true }
     );
-    assert.notEqual(action, "injected");
+    assert.equal(action, "injected");
   });
 
   test("ourTag empty (no host entries) → does NOT inject (safety guard)", () => {
@@ -675,25 +675,25 @@ describe("Preference interaction matrix — amazon.es with real tags", () => {
     assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
-  // --- inject:ON, stripAll:ON (the key ethical test) ---
-  test("inject ON + stripAll ON + foreign tag → foreign removed, ours NOT injected", () => {
+  // --- inject:ON, stripAll:ON (strip theirs, then inject ours — supersedes #353) ---
+  test("inject ON + stripAll ON + foreign tag → foreign removed, ours injected", () => {
     const { cleanUrl, action } = processUrl(
       WITH_FOREIGN,
       { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
       domainRules
     );
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null, "no tag at all — ethical guard");
-    assert.notEqual(action, "injected", "must NOT inject when stripAll is on");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21", "foreign stripped, our tag injected in its place");
+    assert.equal(action, "injected", "strip-all removes theirs, then we inject ours");
   });
 
-  test("inject ON + stripAll ON + no tag → no injection either", () => {
+  test("inject ON + stripAll ON + no tag → our tag injected", () => {
     const { cleanUrl, action } = processUrl(
       CLEAN,
       { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
       domainRules
     );
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
-    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+    assert.equal(action, "injected");
   });
 
   test("inject ON + stripAll ON + our tag already present → our tag preserved", () => {
@@ -1276,23 +1276,24 @@ describe("stripAllAffiliates — strip all affiliate params", () => {
 
   const PREFS_STRIP = { ...PREFS, stripAllAffiliates: true, injectOwnAffiliate: true };
 
-  test("strips affiliate tag even when injectOwnAffiliate is on", () => {
+  test("strips foreign affiliate tag then injects ours when injectOwnAffiliate is on", () => {
     const { cleanUrl, action } = processUrl(
       "https://www.amazon.es/dp/B08?tag=youtuber-21&utm_source=email",
       PREFS_STRIP
     );
     const u = new URL(cleanUrl);
-    assert.equal(u.searchParams.get("tag"), null, "affiliate tag must be gone");
+    assert.equal(u.searchParams.get("tag"), "muga0b-21", "foreign tag replaced with ours");
     assert.equal(u.searchParams.get("utm_source"), null, "tracking must be gone too");
-    assert.equal(action, "cleaned");
+    assert.equal(action, "injected");
   });
 
-  test("does not inject our tag when stripAllAffiliates is on", () => {
-    const { action } = processUrl(
+  test("injects our tag when stripAllAffiliates is on and no foreign tag present", () => {
+    const { action, cleanUrl } = processUrl(
       "https://www.amazon.es/dp/B08?utm_source=email",
       PREFS_STRIP
     );
-    assert.notEqual(action, "injected");
+    assert.equal(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
   });
 
   test("does not trigger foreign affiliate toast when stripAllAffiliates is on", () => {

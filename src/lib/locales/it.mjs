@@ -73,7 +73,7 @@ export default Object.freeze({
   row_notify_label: "Avvisami quando un link contiene il tag di affiliazione di qualcun altro",
   row_notify_hint: "Mostra una notifica rapida con opzioni, poi si chiude automaticamente",
   row_strip_affiliates_label: "Rimuovi tutti i tag di affiliazione di altre fonti",
-  row_strip_affiliates_hint: "Rimuove da tutti i link i tag di affiliazione inseriti da altri. Se l'iniezione di affiliazione di MUGA è attiva, il nostro tag viene preservato; altrimenti viene rimosso anch'esso.",
+  row_strip_affiliates_hint: "Rimuove da tutti i link i tag di affiliazione inseriti da altri. Se l'iniezione di affiliazione di MUGA è attiva, al suo posto viene inserito il nostro; altrimenti il link resta senza tag di affiliazione.",
   section_stores: "Negozi affiliati",
   stores_hint: "Punto verde = account di affiliazione attivo e configurato. Grigio = account in attesa di registrazione.",
   no_active_stores: "Nessun account di affiliazione ancora configurato.",

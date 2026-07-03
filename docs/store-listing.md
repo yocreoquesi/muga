@@ -127,7 +127,7 @@ YOUR RULES
 . Allowlist a tag: protect a specific creator's affiliate link so MUGA never touches it
 . Custom tracking params: add your own parameter names to strip on any site
 . Affiliate notifications: enable a toast when a third-party affiliate is detected
-. Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. MUGA's own tag is preserved only when you also have affiliate injection enabled on this device, symmetric with your stated preference.
+. Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. If you also have MUGA's affiliate injection enabled, our tag is then added in their place; with injection off, the link is left with no affiliate tag.
 . Per-domain disable: opt entire domains out of MUGA
 . Export / Import settings as JSON: back up or move your config across devices
 . Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English). Switchable any time.
@@ -231,7 +231,7 @@ Your rules
 . Blocklist a domain: strip everything on that site, no affiliate injection
 . Allowlist a tag: protect a specific creator's affiliate link
 . Custom tracking params: add your own parameter names to strip
-. Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. MUGA's own tag is preserved only when you also have affiliate injection enabled on this device, symmetric with your stated preference.
+. Strip all third-party affiliates: removes affiliate tags placed by other creators or networks. If you also have MUGA's affiliate injection enabled, our tag is then added in their place; with injection off, the link is left with no affiliate tag.
 . Per-domain disable: opt entire domains out of MUGA
 . Export/Import settings as JSON
 . Languages: English and Spanish (officially maintained), Portuguese and German (community-contributed; missing entries fall back to English). Switchable any time.

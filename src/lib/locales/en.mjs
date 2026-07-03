@@ -73,7 +73,7 @@ export default Object.freeze({
   row_notify_label: "Alert me when a link has someone else's affiliate tag",
   row_notify_hint: "Shows a quick notification with options, then auto-dismisses",
   row_strip_affiliates_label: "Remove all affiliate tags from other sources",
-  row_strip_affiliates_hint: "Removes affiliate tags placed by others from all links. If MUGA's affiliate injection is enabled, our tag is preserved; otherwise it is removed too.",
+  row_strip_affiliates_hint: "Removes affiliate tags placed by others from all links. If MUGA's affiliate injection is enabled, our tag is then added in its place; otherwise the link is left with no affiliate tag.",
   section_stores: "Affiliate stores",
   stores_hint: "Green dot = affiliate account active and configured. Grey = account pending registration.",
   no_active_stores: "No affiliate accounts configured yet.",

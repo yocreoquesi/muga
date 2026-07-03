@@ -4,9 +4,44 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+Cleaning now follows same-document navigation, copy/share never leaks a tag, a per-tab badge shows what was stripped, and a settings reorganization plus a July audit wave hardens consent gating, accessibility, and Chrome path cleaning.
+
+### Features
+
+- **Cleaning on same-document (SPA) navigation** (#951). On-site banner clicks and other `history.pushState`/`replaceState`, `popstate`, and `hashchange` navigations never hit the network, so DNR never saw them and the one-shot self-clean did not re-run. These in-page navigations now re-run the full pipeline, so path rules (Amazon `/ref=`) and domain-scoped params (`aref`) are stripped instead of surviving.
+- **Copy-safe URLs on every copy/share surface** (#946). Copying or sharing a link now yields a tracking-stripped, unwrapped URL that never carries MUGA's own affiliate tag, while third-party creator tags are preserved. Navigation-time injection is unchanged.
+- **Per-tab tracking-param badge** (#910). The toolbar icon shows a running count of tracking params stripped for the active tab (native badge text, behind a `showBadge` pref, default on).
+- **"Update now" for remote rules** (#954). Settings can force an immediate signed remote-rules fetch, bypassing the 7-day cadence.
+- **Amazon internal-nav and SEO-slug cleaning on Chrome** (#916, #903). Scoped DNR rules strip Amazon internal-navigation tracking tags and the SEO path slug on direct Chrome navigation.
+- **Settings reorganization** (#936, #925, #948). Reworked the Settings information architecture: stable controls surfaced, power-user and experimental toggles consolidated behind Advanced (fixing the inverted gate that hid stable options while exposing experimental ones), and the remote-rules section relocated.
+
 ### Security
 
 - **Remote rule updates enabled by default** (#888). The weekly client-side fetch of the Ed25519-signed tracking-param list from `rules.muga.app` (`src/lib/remote-rules.js`) now defaults to on, activating the self-scaling ingestion pipeline (EPIC C, #780–#785) for all installs. Readiness was ratified against evidence: signing infrastructure running in production, freshness/regression guards (#738), and full defense-in-depth coverage (verify → denylist → affiliate-guard → preserve-collision → freshness → version-regression) under test. The fetch remains a single HTTPS GET at most once per 7 days, `credentials: "omit"`, `cache: "no-store"`, carrying no user data. Disable it any time in Settings.
+- **Remote-params DNR rule and shortener egress gated on consent** (#907 family). The dynamic remote-params DNR rule is now cleared when the consent gate closes, and live shortener-resolution network egress is blocked unless the extension is both enabled and onboarded.
+- **Affiliate-redirect unwrapping gated on consent** (#907, #919, #920, #945). Affiliate-redirect hosts are no longer unwrapped before consent; `runRedirectUnwrap` is hardened against affiliate-redirect hosts.
+- **Remote-rules ingestion hardened against empty-params version poisoning**. A payload whose params all dedupe to empty can no longer persist a bad version that blocks later updates.
+- **Onboarding/privacy/ToS styles externalized** (#901). Inline `<style>` removed so the extension-pages CSP keeps `style-src 'self'`.
+
+### Fixed
+
+- **Path and domain-scoped cleaning were dead at runtime on Chrome** (#951, #955). Content scripts could not fetch their rule JSON on Chrome MV3 (the files were missing from `web_accessible_resources`), so path stripping (`/ref=`) and domain-scoped params (`aref`) silently no-op'd on every content-script navigation. The rule files are now web-accessible in both manifests and threaded into all content-script call sites. This is not a permission and adds no install/update warning.
+- **Guarded privacy prefs now display and persist** (#952). Settings could show a guarded pref (e.g. remote rules) as off despite its default and the fetch running; the onboarding↔settings read/write path is reconciled.
+- **Settings import respects the list cap** (#911, #912). Valid entries imported over the list cap are kept instead of rejecting the whole import.
+- **Accessibility: localized aria-labels and AA contrast** (#930, #931, #932, #933). Consent-gate and control `aria-label`s are now translated; diff-strip contrast raised to meet WCAG AA.
+- **`www` host regex escaped** (#934). Prevents partial-host matches (e.g. `wwwshop.com`) in landing-policy and affiliate host matching.
+- **Own affiliate tag resolved by hostname** (#906), not against the pattern map object.
+- **AliExpress redirect-network landing family preserved on item pages without referrer** (#885).
+- **Onboarding shortener description renders bold** (#944); notify hint no longer hardcodes a duration (#929); `bindToggle` guards against missing elements (#927).
+
+### Changed
+
+- **"Remove all affiliate tags from other sources" now composes with tag injection.** When both that toggle and MUGA's own-tag injection are enabled, a foreign tag is stripped and ours is then injected into the now-tagless URL (remove theirs, then add ours), matching the toggle's label. Previously injection was suppressed whenever remove-all was on. With injection off, remove-all still leaves the link with no affiliate tag. Supersedes the earlier #353 guard; the two settings are independent, explicit opt-ins.
+- **Copy rebranded around URL-cleaner DNA** (#953). User-facing copy makes the URL-cleaning purpose explicit, Spanish copy is peninsular (Castilian), Allowlist/Blocklist terminology, and em-dashes removed.
+
+### Ruleset pipeline (infrastructure)
+
+- Expanded the self-scaling ingestion pipeline that feeds `rules.muga.app`: `discovered/` receiver with Ed25519 verification (#787), three-arm corroboration gate combining entropy and cross-site-frequency (#798), ClearURLs gap reporting / moat-expansion (#793), and a corpus-driven false-positive/false-negative harness for `processUrl` (#890). These change which params can be promoted upstream, not the installed extension's behavior directly.
 
 ## [2.3.0] - 2026-06-10
 
