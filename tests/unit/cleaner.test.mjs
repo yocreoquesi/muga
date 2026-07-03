@@ -3125,6 +3125,109 @@ describe("Bookshop.org MUGA affiliate injection", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Bookshop.org path unwrap under stripAllAffiliates (#959)
+//
+// #958 established "strip foreign, then inject ours" for query-param
+// affiliates. #959 extends that principle to the path-based /a/CREATOR/DEST
+// wrapper: when stripAllAffiliates is ON, the foreign creator's wrapper is
+// unwrapped to DEST, and (if injectOwnAffiliate is also ON and DEST is a
+// /p/ product page) MUGA's own affiliate param is injected on top.
+// /lists/ destinations are unwrapped (foreign wrapper removed) but never
+// injected, because injectPath stays scoped to /p/ (documented limitation,
+// see src/rules/path-affiliate-rules.json note field).
+// ---------------------------------------------------------------------------
+describe("Bookshop.org path unwrap under stripAllAffiliates (#959)", () => {
+  const STRIP = { ...PREFS, stripAllAffiliates: true };
+  const STRIP_INJECT = { ...STRIP, injectOwnAffiliate: true };
+  const INJECT = { ...PREFS, injectOwnAffiliate: true };
+
+  test("stripAll ON + inject ON: /a/creator/p/... unwraps and injects our affiliate", () => {
+    const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(
+      input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, "https://bookshop.org/p/books/9780000000000?affiliate=124046");
+    assert.equal(action, "injected");
+    assert.equal(creatorReferralPreserved, false);
+  });
+
+  test("stripAll ON + inject ON: /a/creator/lists/... unwraps but does NOT inject (out of injectPath scope)", () => {
+    const input = "https://bookshop.org/a/some-creator/lists/best-of-2026";
+    const { cleanUrl } = processUrl(
+      input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, "https://bookshop.org/lists/best-of-2026");
+    assert.ok(!cleanUrl.includes("affiliate="));
+  });
+
+  test("stripAll ON + inject OFF: /a/creator/p/... unwraps with no affiliate param at all", () => {
+    const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
+    const { cleanUrl, action } = processUrl(
+      input, STRIP, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, "https://bookshop.org/p/books/9780000000000");
+    // #959 Finding 2: the wrapper was rewritten inside unwrapStep (before
+    // pathCleaned is computed), so the strip-only unwrap must still report
+    // "cleaned" — otherwise the service worker logs it as a passthrough and
+    // never counts it in urlsCleaned / history.
+    assert.equal(action, "cleaned");
+  });
+
+  test("stripAll ON + inject ON: embedded same-origin absolute URL destination unwraps and injects", () => {
+    const input = "https://bookshop.org/a/creator123/https://bookshop.org/p/books/title/123";
+    const { cleanUrl } = processUrl(
+      input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, "https://bookshop.org/p/books/title/123?affiliate=124046");
+  });
+
+  test("stripAll ON (any inject setting): /shop/muga is never touched, not an attribution wrapper", () => {
+    const input = "https://bookshop.org/shop/muga";
+    const { cleanUrl, action, creatorReferralPreserved } = processUrl(
+      input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("stripAll OFF (honor-creator): same /a/.../p/... URL is left completely untouched", () => {
+    const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
+    const { cleanUrl, creatorReferralPreserved } = processUrl(
+      input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, input);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("stripAll OFF (honor-creator): same /a/.../p/... URL untouched regardless of injectOwnAffiliate", () => {
+    const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
+    const { cleanUrl, creatorReferralPreserved } = processUrl(
+      input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, input);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("cross-origin embedded destination: no rewrite at all, wrapper preserved", () => {
+    const input = "https://bookshop.org/a/creator/https://evil.example/phishing";
+    const { cleanUrl, creatorReferralPreserved } = processUrl(
+      input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, input);
+    assert.equal(creatorReferralPreserved, true);
+  });
+
+  test("query-string preservation: tracking params on the wrapper are still cleaned after unwrap", () => {
+    const input = "https://bookshop.org/a/yocreoquesi/lists/best-of-2026?utm_campaign=spring";
+    const { cleanUrl } = processUrl(
+      input, STRIP, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
+    );
+    assert.equal(cleanUrl, "https://bookshop.org/lists/best-of-2026");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Repeated query-param keys — regression #733
 //
 // searchParams.keys() yields one entry per OCCURRENCE of a repeated key, but

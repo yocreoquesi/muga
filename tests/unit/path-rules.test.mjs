@@ -46,6 +46,7 @@ const AFFILIATE_RULES = [
     injectParam: "affiliate",
     injectValue: "124046",
     affiliateIdSource: "MUGA_OWN",
+    unwrapReferral: "^\\/a\\/[^/]+\\/(.+)$",
     note: "Bookshop creator-referral detection + own-affiliate injection",
   },
 ];
@@ -133,13 +134,19 @@ describe("getPathAffiliatePolicy()", () => {
     assert.deepEqual(result, { creatorReferralPreserved: false, pendingInjection: null });
   });
 
-  // Scenario 8 — bookshop.org /a/creator-id/ → creatorReferralPreserved: true
-  test("8. bookshop.org /a/ referral path → creatorReferralPreserved: true", () => {
+  // Scenario 8 — bookshop.org /a/creator-id/ → creatorReferralPreserved: true.
+  // #959: AFFILIATE_RULES now carries unwrapReferral, so this /a/.../... path
+  // also yields an unwrapTo destination (relative capture "some-book").
+  test("8. bookshop.org /a/ referral path → creatorReferralPreserved: true, unwrapTo destination", () => {
     const result = getPathAffiliatePolicy(
       new URL("https://bookshop.org/a/12345/some-book"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+    assert.deepEqual(result, {
+      creatorReferralPreserved: true,
+      pendingInjection: null,
+      unwrapTo: "/some-book",
+    });
   });
 
   // Scenario 9 — bookshop.org /shop/ storefront → creatorReferralPreserved: true
@@ -182,6 +189,107 @@ describe("getPathAffiliatePolicy()", () => {
       creatorReferralPreserved: false,
       pendingInjection: { param: "affiliate", value: "124046" },
     });
+  });
+});
+
+// ── getPathAffiliatePolicy() unwrapTo (#959) ──────────────────────────────────
+
+describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
+  test("/a/creator/p/books/... → unwrapTo product destination", () => {
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/a/creator/p/books/9780000000000"),
+      AFFILIATE_RULES
+    );
+    assert.deepEqual(result, {
+      creatorReferralPreserved: true,
+      pendingInjection: null,
+      unwrapTo: "/p/books/9780000000000",
+    });
+  });
+
+  test("/a/creator/lists/... → unwrapTo list destination", () => {
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/a/creator/lists/best-of-2026"),
+      AFFILIATE_RULES
+    );
+    assert.deepEqual(result, {
+      creatorReferralPreserved: true,
+      pendingInjection: null,
+      unwrapTo: "/lists/best-of-2026",
+    });
+  });
+
+  test("/a/creator123/https://bookshop.org/p/... (same-origin embedded URL) → unwrapTo destination", () => {
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/a/creator123/https://bookshop.org/p/books/title/123"),
+      AFFILIATE_RULES
+    );
+    assert.deepEqual(result, {
+      creatorReferralPreserved: true,
+      pendingInjection: null,
+      unwrapTo: "/p/books/title/123",
+    });
+  });
+
+  test("/a/creator/https://evil.example/... (cross-origin embedded URL) → no unwrapTo", () => {
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/a/creator/https://evil.example/phishing"),
+      AFFILIATE_RULES
+    );
+    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+  });
+
+  test("/shop/muga (no unwrapReferral match) → no unwrapTo", () => {
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/shop/muga"),
+      AFFILIATE_RULES
+    );
+    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+  });
+
+  test("nesting guard: capture starting with /a/ → no unwrapTo", () => {
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/a/creator/a/other-creator/p/books/1"),
+      AFFILIATE_RULES
+    );
+    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+  });
+
+  test("rule entry without unwrapReferral field → old shape, no crash (backward compat)", () => {
+    const rulesNoUnwrap = [
+      {
+        domain: "bookshop.org",
+        referralPaths: ["^\\/a\\/[^/]+\\/", "^\\/shop\\/[^/]+\\/?$"],
+        injectPath: "/p/",
+        injectParam: "affiliate",
+        injectValue: "124046",
+        affiliateIdSource: "MUGA_OWN",
+        // unwrapReferral intentionally omitted
+      },
+    ];
+    const result = getPathAffiliatePolicy(
+      new URL("https://bookshop.org/a/creator/p/books/9780000000000"),
+      rulesNoUnwrap
+    );
+    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+  });
+
+  test("unwrapReferral as an invalid regex string → throws TypeError", () => {
+    const badRule = [
+      {
+        domain: "bookshop.org",
+        referralPaths: ["^\\/a\\/[^/]+\\/"],
+        injectPath: "/p/",
+        injectParam: "affiliate",
+        injectValue: "124046",
+        affiliateIdSource: "MUGA_OWN",
+        unwrapReferral: "(unclosed[", // invalid regex
+      },
+    ];
+    assert.throws(
+      () => getPathAffiliatePolicy(new URL("https://bookshop.org/a/creator/dest"), badRule),
+      /unwrapReferral.*not a valid regex/i
+    );
   });
 });
 
