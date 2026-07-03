@@ -95,7 +95,10 @@ function copyWithFeedback(text, { onSuccess, onError, onRevert }) {
  */
 async function getCopySafeCleanUrl(originalUrl) {
   try {
-    const response = await chrome.runtime.sendMessage({ type: "PROCESS_URL", url: originalUrl, skipNotify: true });
+    // #966: skipSideEffects — this is a copy of an already-processed history
+    // entry, so it must NOT re-count stats, duplicate the session history, or
+    // push another ledger event. skipNotify alone left those side effects on.
+    const response = await chrome.runtime.sendMessage({ type: "PROCESS_URL", url: originalUrl, skipNotify: true, skipSideEffects: true });
     if (response && typeof response.cleanUrl === "string" && response.cleanUrl) {
       return response.cleanUrl;
     }

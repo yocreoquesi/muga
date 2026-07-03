@@ -77,6 +77,7 @@ describe("#946 — getCopySafeCleanUrl helper (behavioral)", () => {
     assert.equal(sentMessage.type, "PROCESS_URL");
     assert.equal(sentMessage.url, "https://example.com/raw?tag=x", "must reprocess the ORIGINAL url, not the stale nav-time clean value");
     assert.equal(sentMessage.skipNotify, true, "must mirror handleProcessUrl's copy-safe effectivePrefs branch");
+    assert.equal(sentMessage.skipSideEffects, true, "#966: a copy must NOT re-count stats, duplicate history, or push a ledger event");
     assert.equal(result, "https://example.com/clean-no-tag");
   });
 

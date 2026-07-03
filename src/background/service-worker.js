@@ -1079,7 +1079,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // that onStartup can't reach. Runs in parallel with URL processing.
     maybeFetchRemoteRules(_remoteRulesDeps());
     const tabId = sender.tab?.id;
-    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, referrer: typeof message.referrer === "string" ? message.referrer : "" })
+    handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, skipSideEffects: !!message.skipSideEffects, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
         if (typeof tabId === "number" && (result.preservedAffiliate || result.creatorReferralPreserved)) {
@@ -1404,7 +1404,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 });
 
-async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, referrer = "" } = {}) {
+async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, skipSideEffects = false, referrer = "" } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
   // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
   // retry on the next call. Both loaders run in a single outer Promise.all so
@@ -1471,7 +1471,13 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   const urlChanged = result.cleanUrl !== rawUrl;
   let parsedRaw;
   try { parsedRaw = new URL(rawUrl); } catch { /* ignore */ }
-  if (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0)) {
+  // #966: copy-safe reprocessing (skipSideEffects) must not mutate any
+  // user-visible tally. Copying an entry re-cleans an already-counted URL, so
+  // counting it again would inflate "URLs cleaned", prepend a DUPLICATE session
+  // history row (evicting real entries), and push a duplicate ledger event. When
+  // skipSideEffects is set we still compute the clean URL (and withOurAffiliate
+  // below) for the response, but write nothing.
+  if (!skipSideEffects && (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0))) {
     if (parsedRaw?.search) {
       const passthroughEntry = { domain: parsedRaw.hostname.replace(/^www\./, "") };
       if (prefs.devMode) {
@@ -1482,7 +1488,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     }
   }
   if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
-    if (!skipStats) {
+    if (!skipStats && !skipSideEffects) {
       incrementStat("urlsCleaned");
       if (result.junkRemoved > 0) incrementStat("junkRemoved", result.junkRemoved);
       if (prefs.domainStats && result.junkRemoved > 0) {
@@ -1492,38 +1498,44 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
         } catch { /* invalid URL, skip domain stat */ }
       }
     }
-    await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
-    if (parsedRaw) {
-      try {
-        const domain = parsedRaw.hostname.replace(/^www\./, "");
-        const cleanedEntry = {
-          source,
-          domain,
-          action: result.action,
-          junkRemoved: result.junkRemoved,
-        };
-        if (prefs.devMode) {
-          const parsedClean = new URL(result.cleanUrl);
-          cleanedEntry.path = parsedRaw.pathname;
-          cleanedEntry.removed = result.removedTracking;
-          cleanedEntry.originalParams = [...parsedRaw.searchParams.keys()];
-          cleanedEntry.cleanParams = [...parsedClean.searchParams.keys()];
-          cleanedEntry.cleanUrl = result.cleanUrl;
-        }
-        logAction("cleaned", cleanedEntry);
-      } catch { /* malformed cleanUrl — skip logging */ }
+    if (!skipSideEffects) {
+      await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
+      if (parsedRaw) {
+        try {
+          const domain = parsedRaw.hostname.replace(/^www\./, "");
+          const cleanedEntry = {
+            source,
+            domain,
+            action: result.action,
+            junkRemoved: result.junkRemoved,
+          };
+          if (prefs.devMode) {
+            const parsedClean = new URL(result.cleanUrl);
+            cleanedEntry.path = parsedRaw.pathname;
+            cleanedEntry.removed = result.removedTracking;
+            cleanedEntry.originalParams = [...parsedRaw.searchParams.keys()];
+            cleanedEntry.cleanParams = [...parsedClean.searchParams.keys()];
+            cleanedEntry.cleanUrl = result.cleanUrl;
+          }
+          logAction("cleaned", cleanedEntry);
+        } catch { /* malformed cleanUrl — skip logging */ }
+      }
     }
   }
   if (result.action === "detected_foreign") {
-    incrementStat("referralsSpotted");
-    const d = result.detectedAffiliate;
-    logAction("affiliate_detected", {
-      domain: parsedRaw?.hostname.replace(/^www\./, "") ?? "",
-      param: d?.param,
-      value: d?.value,
-      store: d?.pattern?.name ?? null,
-      action: result.action,
-    });
+    // #966: a copy must not bump referralsSpotted or log a detection either;
+    // the with-our-affiliate variant below still builds for the response.
+    if (!skipSideEffects) {
+      incrementStat("referralsSpotted");
+      const d = result.detectedAffiliate;
+      logAction("affiliate_detected", {
+        domain: parsedRaw?.hostname.replace(/^www\./, "") ?? "",
+        param: d?.param,
+        value: d?.value,
+        store: d?.pattern?.name ?? null,
+        action: result.action,
+      });
+    }
     // If injection is enabled, build the URL with our tag so "Remove it" can use it.
     // #523 phase 3: pattern.ourTag is now a { host -> tag } map, not a flat string.
     // Pick the tag for the cleanUrl's hostname; if we have no tag for this
@@ -1544,7 +1556,11 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // #460 (A2): mirror the cleaner outcome into the Attribution Ledger
   // so the popup's "Recent activity" section can render. Fire-and-forget
   // so a write hiccup never affects the caller's URL processing.
-  pushAttributionAndPersist(rawUrl, result, prefs, referrer);
+  // #966: skipped for copy-safe reprocessing so a copy doesn't push a
+  // duplicate ledger event for an already-recorded URL.
+  if (!skipSideEffects) {
+    pushAttributionAndPersist(rawUrl, result, prefs, referrer);
+  }
 
   return result;
 }
@@ -1597,12 +1613,42 @@ chrome.runtime.onStartup.addListener(async () => {
   migrateConsentToLocal();
 });
 
-// --- Dedup flag: prevent opening onboarding twice in the same background lifetime ---
+// --- Dedup: open the onboarding tab at most once while consent is pending. ---
+// Two layers: a module flag guards a double-open within a single background
+// lifetime (onInstalled + fallback both firing), and a persisted
+// chrome.storage.local flag guards across MV3 service-worker cold starts (#967).
+// Without the persisted layer the volatile flag reset on every wake, so an
+// incomplete onboarding reopened a fresh tab on each navigation-triggered
+// restart. The persisted flag is cleared (clearOnboardingTabFlag) once consent
+// is valid, so a later ToS re-onboard can still surface the tab again.
 let _onboardingTabOpened = false;
-function openOnboardingOnce() {
+const ONBOARDING_TAB_FLAG = "mugaOnboardingTabOpened";
+
+async function openOnboardingOnce() {
   if (_onboardingTabOpened) return;
-  _onboardingTabOpened = true;
+  _onboardingTabOpened = true; // synchronous within-lifetime guard (no await above)
+  try {
+    const already = await new Promise((resolve) => {
+      chrome.storage.local.get({ [ONBOARDING_TAB_FLAG]: false }, (r) =>
+        resolve(!!(r && r[ONBOARDING_TAB_FLAG])));
+    });
+    if (already) return; // a prior lifetime already opened it — do not spam a new tab
+    // Set BEFORE creating the tab so a rapid second cold start can't double-open.
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ [ONBOARDING_TAB_FLAG]: true }, () => resolve());
+    });
+  } catch { /* best-effort: worst case one extra tab, never a missing one */ }
   chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+}
+
+// Clears the persisted onboarding-tab guard so a future re-onboard (ToS bump)
+// can open the tab again. Called when consent is valid — i.e. onboarding is not
+// currently needed — which is the natural point to reset the one-shot guard.
+function clearOnboardingTabFlag() {
+  _onboardingTabOpened = false;
+  try {
+    chrome.storage.local.remove(ONBOARDING_TAB_FLAG, () => void chrome.runtime.lastError);
+  } catch { /* ignore */ }
 }
 
 /**
@@ -1648,7 +1694,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     const installPrefs = await getPrefs();
     if (shouldOpenOnboarding(installPrefs)) {
-      openOnboardingOnce();
+      await openOnboardingOnce();
     }
   }
 });
@@ -1662,7 +1708,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     const prefs = await getPrefs();
     if (shouldOpenOnboarding(prefs)) {
-      openOnboardingOnce();
+      await openOnboardingOnce();
+    } else {
+      // Consent satisfied — reset the one-shot guard so a future ToS re-onboard
+      // can surface the tab again (#967).
+      clearOnboardingTabFlag();
     }
     // Surface the consent-required badge on every cold start, not just
     // on first install. onInstalled does not fire on browser restart or
