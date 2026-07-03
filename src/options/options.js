@@ -1484,6 +1484,38 @@ async function initRemoteRules() {
       }
     }
   });
+
+  // "Update now" — forces an immediate fetch, bypassing the 7-day cadence
+  // gate. Only visible while #remote-rules-status is shown (i.e. enabled).
+  const updateNowBtn = document.getElementById("remote-rules-update-now");
+  const updateStatusEl = document.getElementById("remote-rules-update-status");
+  if (updateNowBtn) {
+    updateNowBtn.addEventListener("click", async () => {
+      updateNowBtn.disabled = true;
+      if (updateStatusEl) {
+        updateStatusEl.textContent = t("optionsRemoteRulesUpdating", _currentLang);
+        updateStatusEl.hidden = false;
+      }
+      try {
+        const resp = await chrome.runtime.sendMessage({ type: "FORCE_FETCH_REMOTE_RULES" });
+        const statusResp = await chrome.runtime.sendMessage({ type: "GET_REMOTE_RULES_STATUS" });
+        if (statusResp) {
+          renderRemoteRulesStatus({ source: REMOTE_RULES_URL, ...statusResp, ...(statusResp.meta || {}) });
+        }
+        if (resp?.ok && !statusResp?.meta?.lastError) {
+          showToast(t("optionsRemoteRulesUpdated", _currentLang));
+        }
+      } catch (err) {
+        console.error("[MUGA] FORCE_FETCH_REMOTE_RULES:", err);
+      } finally {
+        updateNowBtn.disabled = false;
+        if (updateStatusEl) {
+          updateStatusEl.textContent = "";
+          updateStatusEl.hidden = true;
+        }
+      }
+    });
+  }
 }
 
 /**

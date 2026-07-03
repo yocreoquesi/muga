@@ -668,6 +668,100 @@ describe("T2.3 — Message handler source patterns", () => {
   });
 });
 
+// ── FORCE_FETCH_REMOTE_RULES: manual "Update now" handler ───────────────────
+// Settings "Update now" button forces an immediate fetch, bypassing the 7-day
+// cadence gate in maybeFetchRemoteRules (runRemoteRulesFetch itself has no
+// cadence gate to bypass). This handler MUST replicate the same consent gate
+// maybeFetchRemoteRules enforces so the button cannot leak the signed GET
+// before consent.
+//
+// Behavioral coverage mirrors the makeMaybeFetchHelper() idiom used above
+// (#824 — prefer a pure re-implementation exercised behaviorally over
+// source-text assertions; the #824 source-grep ratchet blocks adding more
+// than one new swSource.* assertion per file). Only one minimal source guard
+// is kept below, to pin that the real handler exists in the SW.
+
+/**
+ * Pure extraction of the FORCE_FETCH_REMOTE_RULES handler body for unit
+ * testing. Mirrors the production logic in service-worker.js exactly:
+ * same gate, same order, same response shapes.
+ *
+ * DRIFT GUARD: the source-existence test below only pins that the real
+ * handler exists, NOT that its consent gate (remoteRulesEnabled +
+ * shouldOpenOnboarding, in that order) is intact. If you edit the real
+ * handler's gate in service-worker.js, edit this mirror to match — otherwise
+ * these behavioral tests keep passing against stale gate logic.
+ */
+async function forceFetchRemoteRules(deps) {
+  const prefs = await deps.getPrefs();
+  if (!prefs.remoteRulesEnabled) return { ok: false, reason: "disabled" };
+  if (deps.shouldOpenOnboarding(prefs)) return { ok: false, reason: "disabled" };
+  await deps.runFetch(deps.fetchDeps);
+  return { ok: true };
+}
+
+describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
+  test("SW defines the FORCE_FETCH_REMOTE_RULES message handler", () => {
+    assert.ok(
+      swSource.includes('"FORCE_FETCH_REMOTE_RULES"'),
+      "SW must handle FORCE_FETCH_REMOTE_RULES"
+    );
+  });
+
+  test("(a) disabled: remoteRulesEnabled false -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
+    let fetchCalled = false;
+    const result = await forceFetchRemoteRules({
+      getPrefs: async () => ({ remoteRulesEnabled: false }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.deepStrictEqual(result, { ok: false, reason: "disabled" });
+    assert.strictEqual(fetchCalled, false, "must not fetch when the feature is disabled");
+  });
+
+  test("(b) consent not accepted: shouldOpenOnboarding true -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
+    let fetchCalled = false;
+    const result = await forceFetchRemoteRules({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => true,
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.deepStrictEqual(result, { ok: false, reason: "disabled" });
+    assert.strictEqual(fetchCalled, false, "must not fetch before consent is accepted");
+  });
+
+  test("(c) enabled + consented: runRemoteRulesFetch IS called, responds {ok:true}", async () => {
+    let fetchCalled = false;
+    let receivedDeps = null;
+    const fakeFetchDeps = { marker: "force-fetch" };
+    const result = await forceFetchRemoteRules({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async (deps) => { fetchCalled = true; receivedDeps = deps; },
+      fetchDeps: fakeFetchDeps,
+    });
+    assert.deepStrictEqual(result, { ok: true });
+    assert.strictEqual(fetchCalled, true, "must fetch once enabled + consent gates both pass");
+    assert.strictEqual(receivedDeps, fakeFetchDeps);
+  });
+
+  test("consent gate is checked even when remoteRulesEnabled is true (both gates independently enforced)", async () => {
+    // Regression guard: a naive implementation might short-circuit on the
+    // first falsy check and skip the second. Both gates must be independent.
+    let fetchCalled = false;
+    const result = await forceFetchRemoteRules({
+      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => true, // consent still not accepted
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(fetchCalled, false);
+  });
+});
+
 // ── T2.4: DNR integration — syncRemoteParamsDNR ──────────────────────────────
 
 import { buildRemoteDnrRule, REMOTE_RULE_ID } from "../../src/lib/remote-rules.js";

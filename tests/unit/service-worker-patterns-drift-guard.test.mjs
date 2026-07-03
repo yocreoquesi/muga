@@ -40,7 +40,11 @@ const PATTERNS_TEST_PATH = join(
 // mugaPerDevicePrefs cache-invalidation branch in the onChanged listener.
 // service-worker.js cannot be imported in Node (top-level chrome.* calls), so
 // a single regex match is the least-brittle available regression for it.
-const MAX_SOURCE_STRING_ASSERTIONS = 71;
+// 71 → 72 (Update now / FORCE_FETCH_REMOTE_RULES): added ONE source-string
+// guard confirming the SW defines the new message handler. The (a)/(b)/(c)
+// gate coverage itself is a behavioral test against a pure
+// forceFetchRemoteRules() mirror function, not a source-string assertion.
+const MAX_SOURCE_STRING_ASSERTIONS = 72;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 
