@@ -83,21 +83,20 @@
       <div class="section-title" data-i18n="ob_step2_title">How MUGA keeps the lights on</div>
       <div class="affiliate-body">
         <p data-i18n-html="ob_affiliate_desc">
-          <strong>Creators come first.</strong> If a creator's affiliate tag is already on a link, MUGA never touches it.
-          We don't take credit from people who earned it.
+          <strong>Creators come first.</strong> When a creator's affiliate tag is already on a link, MUGA aims to leave it untouched,
+          so whoever earned the click keeps it. You stay in control: if you ask MUGA to remove every affiliate tag, it will.
           <br><br>
           On selected stores where a link has <strong>no affiliate tag at all</strong>, MUGA can add ours.
-          <strong>Your price never changes.</strong> The code is open source, you can verify it.
+          <strong>Your price never changes.</strong> The code is open source, so you can check exactly what happens.
           <br><br>
-          MUGA recognises both styles of affiliate attribution: some programs put the creator's tag directly on the
-          merchant's URL, others route the click through an affiliate network's own server. We respect both.
-          Whoever earned the click keeps it.
+          Affiliate attribution comes in two shapes: some programs put the creator's tag on the merchant's URL,
+          others route the click through an affiliate network. MUGA tries to respect both.
         </p>
         <label class="consent-check" id="affiliate-label">
           <input type="checkbox" id="affiliate-check" data-i18n-aria-label="aria_onboarding_affiliate_check">
           <div class="consent-check-label">
             <strong data-i18n="ob_affiliate_check_label">Allow MUGA's affiliate tag on links that have none</strong>
-            <small data-i18n="ob_affiliate_check_hint">Same price, always. If a link already has a tag, MUGA never touches it. Verify in our source code.</small>
+            <small data-i18n="ob_affiliate_check_hint">Same price, always. If a link already has a tag, MUGA aims to leave it untouched unless you ask it to remove it. Check it in our source code.</small>
             <small id="affiliate-synced-note" data-i18n="ob_synced_from_other_device" hidden>This setting was enabled on another device. Confirm it for this device, or uncheck to keep it off here.</small>
           </div>
         </label>
@@ -141,6 +140,11 @@
          doesn't misread the network trace. -->
     <div class="section sync-note-section">
       <p class="sync-note" data-i18n="ob_browser_sync_note">MUGA never sends data anywhere. If you have browser sync enabled, your preferences sync through the browser (Google for Chrome, Firefox Accounts for Firefox). That's a browser feature, not MUGA.</p>
+    </div>
+
+    <!-- Humble note + open invitation to report (#feedback) -->
+    <div class="section feedback-note-section">
+      <p class="feedback-note" data-i18n-html="ob_feedback_note"><strong>Built by learning from mistakes.</strong> MUGA grew through many iterations, and it won't be perfect. If you find a link it cleaned wrong, a referral it shouldn't have touched, or anything that feels off, please <a href="https://github.com/yocreoquesi/muga/issues" target="_blank" rel="noopener noreferrer">let us know</a>. Questions, ideas, and bug reports are genuinely welcome, and they shape where MUGA goes next.</p>
     </div>
 
     <!-- ToS acceptance -->
