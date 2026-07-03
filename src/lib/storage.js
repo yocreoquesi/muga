@@ -340,6 +340,12 @@ const _hasSessionStorage = (() => {
 export const sessionStorage = {
   get: (keys) => {
     if (_hasSessionStorage) return chrome.storage.session.get(keys);
+    // null/undefined → return the entire store (matches chrome.storage.session.get(null)).
+    if (keys === null || keys === undefined) {
+      const all = {};
+      for (const [k, v] of _memStore) all[k] = v;
+      return Promise.resolve(all);
+    }
     const result = {};
     const ks = Array.isArray(keys)
       ? keys

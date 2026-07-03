@@ -275,6 +275,46 @@ describe("toolbar-presenter — showBadge pref (#910)", () => {
     assert.equal(badgeCallsFor(actionApi, 1).length, 0);
   });
 
+  test("showBadgePrefChanged(false) clears badges from the DURABLE tab list even when the in-memory map is empty (SW-restart map blind spot #910)", () => {
+    // A fresh presenter after a service-worker restart: no urlCleaned has
+    // been replayed, so badgeTotals is empty — yet the browser still shows
+    // per-tab badges and the durable tab_badge_* session keys survive. The
+    // SW enumerates those keys and passes them as event.tabs. The OFF toggle
+    // MUST clear every one, not just whatever happens to be in memory.
+    const { bus, actionApi } = setup();
+    bus.emit({
+      type: "showBadgePrefChanged",
+      value: false,
+      tabs: [{ tabId: 1, total: 4 }, { tabId: 2, total: 6 }],
+    });
+    assert.deepEqual(badgeCallsFor(actionApi, 1).at(-1)?.[1], { tabId: 1, text: "" });
+    assert.deepEqual(badgeCallsFor(actionApi, 2).at(-1)?.[1], { tabId: 2, text: "" });
+  });
+
+  test("showBadgePrefChanged(true) repaints from the DURABLE tab list when the in-memory map is empty", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({
+      type: "showBadgePrefChanged",
+      value: true,
+      tabs: [{ tabId: 3, total: 7 }],
+    });
+    assert.deepEqual(badgeCallsFor(actionApi, 3).at(-1)?.[1], { tabId: 3, text: "7" });
+  });
+
+  test("showBadgePrefChanged merges the durable tab list with the in-memory map (union of both is cleared)", () => {
+    const { bus, actionApi } = setup();
+    // tab 1 is tracked in-memory; tab 2 exists only in the durable list.
+    bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 4 });
+    actionApi.calls.length = 0;
+    bus.emit({
+      type: "showBadgePrefChanged",
+      value: false,
+      tabs: [{ tabId: 2, total: 6 }],
+    });
+    assert.deepEqual(badgeCallsFor(actionApi, 1).at(-1)?.[1], { tabId: 1, text: "" });
+    assert.deepEqual(badgeCallsFor(actionApi, 2).at(-1)?.[1], { tabId: 2, text: "" });
+  });
+
   test("showBadgePrefChanged does not touch the action surface while onboarding is incomplete (does not disturb the \"!\" badge)", () => {
     const { bus, actionApi, setOnboardingDone } = setup();
     bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 4 });

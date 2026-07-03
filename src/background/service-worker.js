@@ -173,7 +173,7 @@ const actionApi = new Proxy(_rawActionApi, {
 // toolbar-presenter.js module doc for why (f6a6e2b regression).
 const toolbarBus   = createToolbarEventBus();
 const toolbarState = createTabPresenterState();
-createToolbarPresenter({
+const toolbarPresenter = createToolbarPresenter({
   bus: toolbarBus,
   state: toolbarState,
   actionApi,
@@ -681,6 +681,30 @@ async function updateTabBadge(tabId, junkRemoved) {
   toolbarBus.emit({ type: "urlCleaned", tabId, paramsRemoved: junkRemoved, total: badgeTotal });
 }
 
+// Enumerate every tab's DURABLE running badge total from the
+// `tab_badge_{tabId}` session keys. The presenter's in-memory badgeTotals
+// map does NOT survive service-worker eviction, but these session keys do
+// (and so do the browser-rendered per-tab badges). When the showBadge pref
+// flips we pass this authoritative list to the presenter as event.tabs so
+// it can clear/repaint EVERY tab — including tabs whose badge was painted
+// before a restart wiped the in-memory map (#910 OFF-path map blind spot).
+async function collectBadgeTotals() {
+  try {
+    const all = await sessionStorage.get(null);
+    const prefix = "tab_badge_";
+    const tabs = [];
+    for (const [key, value] of Object.entries(all || {})) {
+      if (!key.startsWith(prefix)) continue;
+      const tabId = Number(key.slice(prefix.length));
+      if (!Number.isFinite(tabId) || tabId < 0) continue;
+      tabs.push({ tabId, total: Math.max(0, Number(value) || 0) });
+    }
+    return tabs;
+  } catch {
+    return [];
+  }
+}
+
 // Reset the per-PAGE popup preview count and the tooltip on every
 // navigation start. Deliberately does NOT touch `tab_badge_{tabId}` or
 // emit anything badge-related — the toolbar badge is a per-TAB running
@@ -777,7 +801,8 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // (or repaints) every currently-tracked tab's badge — "stops updates"
   // alone would leave stale numbers visible until each tab's next clean.
   if (changes.showBadge) {
-    toolbarBus.emit({ type: "showBadgePrefChanged", value: changes.showBadge.newValue !== false });
+    const tabs = await collectBadgeTotals();
+    toolbarBus.emit({ type: "showBadgePrefChanged", value: changes.showBadge.newValue !== false, tabs });
   }
 });
 
@@ -866,7 +891,11 @@ async function handleTestMessage(message, _sender) {
         return { ok: false, error: "missing event.type" };
       }
       if (inner.type === "showBadgePrefChanged") {
-        toolbarBus.emit({ type: "showBadgePrefChanged", value: inner.value === true });
+        // Mirror the production emit path: carry the DURABLE per-tab totals
+        // so the presenter can clear/repaint every tab even when its
+        // in-memory map was wiped by a SW restart (#910 OFF-path fix).
+        const tabs = await collectBadgeTotals();
+        toolbarBus.emit({ type: "showBadgePrefChanged", value: inner.value === true, tabs });
         return { ok: true };
       }
       const tabIdNum = Number(inner.tabId);
@@ -897,6 +926,15 @@ async function handleTestMessage(message, _sender) {
     }
     case "__TEST__resetActionApiCounts": {
       _testActionCalls = { setTitle: 0, setBadgeText: 0, setIcon: 0 };
+      return { ok: true };
+    }
+    case "__TEST__resetPresenterBadgeMap": {
+      // Simulate a service-worker restart WITHOUT touching chrome.storage.session:
+      // wipe the presenter's in-memory badgeTotals map while the durable
+      // `tab_badge_{tabId}` session keys (and the browser-rendered per-tab
+      // badges) survive. Lets the OFF-path regression spec prove the badge
+      // clear no longer depends on the in-memory map (#910).
+      toolbarPresenter._resetInMemoryTotals();
       return { ok: true };
     }
     case "__TEST__updateTabBadge": {

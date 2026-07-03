@@ -171,6 +171,25 @@ async function updateTabBadge(context, extensionId, opts) {
   return result;
 }
 
+/** Wipes the presenter's in-memory badgeTotals map — simulates a SW restart. */
+async function resetPresenterBadgeMap(context, extensionId) {
+  const extOrigin = `chrome-extension://${extensionId}`;
+  let page = context.pages().find(p => p.url().startsWith(extOrigin));
+  let opened = false;
+  if (!page) {
+    page = await context.newPage();
+    await page.goto(`${extOrigin}/popup/popup.html`);
+    opened = true;
+  }
+  const result = await page.evaluate(() =>
+    new Promise(resolve => {
+      chrome.runtime.sendMessage({ type: "__TEST__resetPresenterBadgeMap" }, resolve);
+    })
+  );
+  if (opened) await page.close();
+  return result;
+}
+
 test.describe("Toolbar badge — per-tab running count (#910)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
     await installTestModeSentinel(context, extensionId);
@@ -305,6 +324,35 @@ test.describe("Toolbar badge — per-tab running count (#910)", () => {
     expect(surface.badgeText).toBe("3");
 
     await hostPage.close();
+  });
+
+  test("showBadge OFF clears every tab's badge after a SW restart — durable session keys, empty in-memory map (#910 OFF-path)", async ({ context, extensionId }) => {
+    const { page: pageA, tabId: tabIdA } = await openHostPageWithTabId(context, extensionId);
+    const { page: pageB, tabId: tabIdB } = await openHostPageWithTabId(context, extensionId);
+    expect(tabIdA).not.toBe(tabIdB);
+
+    // Paint durable per-tab badges via the REAL updateTabBadge (writes the
+    // tab_badge_* session keys that survive SW eviction).
+    await updateTabBadge(context, extensionId, { tabId: tabIdA, junkRemoved: 4 });
+    await updateTabBadge(context, extensionId, { tabId: tabIdB, junkRemoved: 6 });
+    expect((await readActionSurface(context, extensionId, tabIdA)).badgeText).toBe("4");
+    expect((await readActionSurface(context, extensionId, tabIdB)).badgeText).toBe("6");
+
+    // Simulate a service-worker restart: the presenter's in-memory badge map
+    // is wiped, but the durable session keys AND the browser-rendered badges
+    // survive. Before the fix, the OFF handler iterated only the (now empty)
+    // in-memory map and cleared nothing.
+    const reset = await resetPresenterBadgeMap(context, extensionId);
+    expect(reset.ok).toBe(true);
+
+    // Toggle showBadge OFF. Must clear BOTH tabs from the durable list.
+    await emitToolbarEvent(context, extensionId, { type: "showBadgePrefChanged", value: false });
+
+    expect((await readActionSurface(context, extensionId, tabIdA)).badgeText).toBe("");
+    expect((await readActionSurface(context, extensionId, tabIdB)).badgeText).toBe("");
+
+    await pageA.close();
+    await pageB.close();
   });
 
   test("the static manifest icon ships unchanged and is reachable", async ({ context, extensionId }) => {

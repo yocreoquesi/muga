@@ -100,13 +100,34 @@ export function createToolbarPresenter({ bus, state, actionApi, t, getShowBadge,
     if (!event || typeof event !== "object" || !event.type) return;
 
     // Global (non-tab-scoped) event: the showBadge preference flipped.
-    // Repaints or clears every currently-tracked tab's badge immediately
-    // — "stops updates" alone is not enough, existing badges must go too.
+    // Repaints or clears every tab's badge immediately — "stops updates"
+    // alone is not enough, existing badges must go too.
+    //
+    // Source of truth for WHICH tabs have a badge: the DURABLE per-tab
+    // totals the SW enumerates from chrome.storage.session (tab_badge_*)
+    // and passes as event.tabs. The in-memory `badgeTotals` map does NOT
+    // survive service-worker eviction, so iterating it alone would leave
+    // stale browser-rendered badges on every tab after a restart — the OFF
+    // toggle would clear nothing (#910 OFF-path map blind spot). We MERGE
+    // the durable list over the in-memory map so every known tab is touched
+    // even when the map is empty.
     if (event.type === "showBadgePrefChanged") {
-      if (!onboardingDone()) return; // no per-tab badge exists to touch
+      if (!onboardingDone()) return; // "!" onboarding badge wins; no per-tab badge exists to touch
       const enabled = event.value === true;
-      for (const [tabId, total] of badgeTotals) {
+      const totals = new Map(badgeTotals);
+      if (Array.isArray(event.tabs)) {
+        for (const entry of event.tabs) {
+          const tabId = Number(entry?.tabId);
+          if (!Number.isFinite(tabId) || tabId < 0) continue;
+          totals.set(tabId, Math.max(0, Number(entry.total) || 0));
+        }
+      }
+      for (const [tabId, total] of totals) {
         actionApi.setBadgeText?.({ tabId, text: enabled && total > 0 ? String(total) : "" });
+        // Keep the in-memory map in sync with the durable totals so
+        // subsequent urlCleaned accumulation continues correctly after a
+        // restart-driven repaint rehydrated the tab set.
+        badgeTotals.set(tabId, total);
       }
       return;
     }
@@ -159,5 +180,10 @@ export function createToolbarPresenter({ bus, state, actionApi, t, getShowBadge,
   return {
     _tooltipFor: tooltipFor,
     _badgeTotal: (tabId) => badgeTotals.get(tabId) || 0,
+    // Test-only: wipe the in-memory running totals to simulate a
+    // service-worker restart (the durable tab_badge_* session keys and the
+    // browser-rendered badges survive; this map does not). Used by the
+    // #910 OFF-path regression to prove the clear no longer depends on it.
+    _resetInMemoryTotals: () => { badgeTotals.clear(); },
   };
 }
