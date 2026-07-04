@@ -138,6 +138,21 @@ describe("buildRemoteRulesStatus — enabled equals the effective getPrefs() val
     assert.strictEqual(status.supportsDNR, false);
     assert.strictEqual(status.ok, true);
   });
+
+  test("passes through remoteRulesChangelog from local storage (#984)", async () => {
+    const changelog = { addedCount: 2, removedCount: 1, added: ["utm_new1", "utm_new2"], removed: ["utm_old"], fetchedAt: "2026-07-01T00:00:00Z", prevFetchedAt: "2026-06-24T00:00:00Z" };
+    stores.localStore.set("remoteRulesChangelog", changelog);
+
+    const getPrefs = await freshGetPrefs();
+    const status = await buildRemoteRulesStatus({ getPrefs, local: stores.local, hasDNR: true });
+    assert.deepEqual(status.changelog, changelog);
+  });
+
+  test("remoteRulesChangelog defaults to null when never written", async () => {
+    const getPrefs = await freshGetPrefs();
+    const status = await buildRemoteRulesStatus({ getPrefs, local: stores.local, hasDNR: true });
+    assert.strictEqual(status.changelog, null);
+  });
 });
 
 describe("service-worker source guard — no hardcoded remote-rules default", () => {
