@@ -54,6 +54,7 @@ const SAMPLE_PREFS = {
   domainStats: true,
   showBadge: true,
   followShortenersEnabled: true,
+  remoteRulesEnabled: true,
   canonicalExtractorEnabled: true,
   crossSiteFrequencyEnabled: true,
   attributionLedgerEnabled: true,
@@ -83,8 +84,9 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
     assert.strictEqual(BOOLEAN_KEYS.length, 19);
   });
 
-  test("followShortenersEnabled and devMode are NOT in BOOLEAN_KEYS", () => {
+  test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
     assert.ok(!BOOLEAN_KEYS.includes("followShortenersEnabled"));
+    assert.ok(!BOOLEAN_KEYS.includes("remoteRulesEnabled"));
     assert.ok(!BOOLEAN_KEYS.includes("devMode"));
   });
 
@@ -295,6 +297,27 @@ describe("planImport — #964 followShortenersEnabled permission gate", () => {
     assert.strictEqual(planImport(validImportData({ followShortenersEnabled: false })).special.followShortenersProvided, true);
     assert.strictEqual(planImport(validImportData({})).special.followShortenersProvided, false);
     assert.strictEqual(planImport(validImportData({ followShortenersEnabled: "true" })).special.followShortenersProvided, false);
+  });
+});
+
+describe("planImport — #987 remoteRulesEnabled permission gate", () => {
+  test("remoteRulesEnabled never appears in toSave — options.js gates it on the host grant", () => {
+    const plan = planImport(validImportData({ remoteRulesEnabled: true }));
+    assert.strictEqual(plan.toSave.remoteRulesEnabled, undefined);
+  });
+
+  test("special.remoteRulesProvided/Requested split present-false from absent", () => {
+    assert.strictEqual(planImport(validImportData({ remoteRulesEnabled: true })).special.remoteRulesRequested, true);
+    assert.strictEqual(planImport(validImportData({ remoteRulesEnabled: true })).special.remoteRulesProvided, true);
+    assert.strictEqual(planImport(validImportData({ remoteRulesEnabled: false })).special.remoteRulesRequested, false);
+    assert.strictEqual(planImport(validImportData({ remoteRulesEnabled: false })).special.remoteRulesProvided, true);
+    assert.strictEqual(planImport(validImportData({})).special.remoteRulesProvided, false);
+    assert.strictEqual(planImport(validImportData({ remoteRulesEnabled: "true" })).special.remoteRulesProvided, false, "non-boolean truthy values must not be treated as a request");
+  });
+
+  test("remoteRulesEnabled round-trips through export (permission-gated kind)", () => {
+    assert.strictEqual(buildExportPayload({ remoteRulesEnabled: false }, {}).remoteRulesEnabled, false);
+    assert.strictEqual(buildExportPayload({ remoteRulesEnabled: true }, {}).remoteRulesEnabled, true);
   });
 });
 
