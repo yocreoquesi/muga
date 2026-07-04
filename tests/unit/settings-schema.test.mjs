@@ -18,6 +18,7 @@ import {
   snapToastDuration,
   buildExportPayload,
   planImport,
+  diffImport,
 } from "../../src/lib/settings-schema.js";
 
 function validImportData(overrides = {}) {
@@ -340,6 +341,86 @@ describe("planImport — devMode (local-only, not a synced pref)", () => {
   test("devMode never appears in toSave (it is not a synced pref)", () => {
     const plan = planImport(validImportData({ devMode: true }));
     assert.strictEqual(plan.toSave.devMode, undefined);
+  });
+});
+
+describe("SETTINGS_FIELDS — label", () => {
+  test("every field carries a non-empty string labelKey", () => {
+    for (const field of SETTINGS_FIELDS) {
+      assert.strictEqual(typeof field.label, "string", `"${field.key}" must have a label`);
+      assert.ok(field.label.length > 0, `"${field.key}".label must not be empty`);
+    }
+  });
+});
+
+describe("diffImport", () => {
+  test("returns [] when nothing changed", () => {
+    assert.deepStrictEqual(diffImport(SAMPLE_PREFS, SAMPLE_PREFS), []);
+  });
+
+  test("returns [] when incomingValues is missing keys present in currentValues (no diff to report)", () => {
+    assert.deepStrictEqual(diffImport(SAMPLE_PREFS, {}), []);
+  });
+
+  test("a boolean flip produces a single scalar row", () => {
+    const incoming = { ...SAMPLE_PREFS, injectOwnAffiliate: false };
+    const rows = diffImport(SAMPLE_PREFS, incoming);
+    assert.strictEqual(rows.length, 1);
+    assert.deepStrictEqual(rows[0], {
+      key: "injectOwnAffiliate",
+      labelKey: "row_inject_label",
+      kind: "scalar",
+      before: true,
+      after: false,
+    });
+  });
+
+  test("a list field with both an add and a removal produces a list row with both arrays populated", () => {
+    const current = { ...SAMPLE_PREFS, blacklist: ["a.com", "b.com"] };
+    const incoming = { ...SAMPLE_PREFS, blacklist: ["b.com", "c.com"] };
+    const rows = diffImport(current, incoming);
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].key, "blacklist");
+    assert.strictEqual(rows[0].kind, "list");
+    assert.deepStrictEqual(rows[0].added, ["c.com"]);
+    assert.deepStrictEqual(rows[0].removed, ["a.com"]);
+  });
+
+  test("a list field with the same entries in a different order produces no row", () => {
+    const current = { ...SAMPLE_PREFS, blacklist: ["a.com", "b.com", "c.com"] };
+    const incoming = { ...SAMPLE_PREFS, blacklist: ["c.com", "a.com", "b.com"] };
+    assert.deepStrictEqual(diffImport(current, incoming), []);
+  });
+
+  test("returns FULL uncapped arrays even when they exceed 20 entries (capping is a rendering concern)", () => {
+    const bigList = Array.from({ length: 25 }, (_, i) => `tracker${i}.com`);
+    const current = { ...SAMPLE_PREFS, blacklist: [] };
+    const incoming = { ...SAMPLE_PREFS, blacklist: bigList };
+    const rows = diffImport(current, incoming);
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].added.length, 25);
+    assert.deepStrictEqual(rows[0].added, bigList);
+  });
+
+  test("a mixed diff touching multiple fields comes back in SETTINGS_FIELDS declaration order", () => {
+    const current = { ...SAMPLE_PREFS, blacklist: ["a.com"], creatorAllowlist: [] };
+    const incoming = {
+      ...SAMPLE_PREFS,
+      // out-of-declaration-order writes below; the result must still follow
+      // SETTINGS_FIELDS order (enabled < blacklist < toastDuration < creatorAllowlist).
+      creatorAllowlist: ["youtube.com/@a"],
+      toastDuration: 60,
+      enabled: false,
+      blacklist: ["a.com", "z.com"],
+    };
+    const rows = diffImport(current, incoming);
+    assert.deepStrictEqual(rows.map((r) => r.key), ["enabled", "blacklist", "toastDuration", "creatorAllowlist"]);
+  });
+
+  test("is pure: does not mutate either input object", () => {
+    const current = Object.freeze({ ...SAMPLE_PREFS, blacklist: Object.freeze(["a.com"]) });
+    const incoming = Object.freeze({ ...SAMPLE_PREFS, blacklist: Object.freeze(["b.com"]) });
+    assert.doesNotThrow(() => diffImport(current, incoming));
   });
 });
 
