@@ -133,6 +133,7 @@ export default Object.freeze({
   import_label: "Importar ajustes",
   import_success: "Ajustes importados correctamente.",
   import_error: "Eso no parece un archivo de ajustes de MUGA. Asegúrate de que sea un .json exportado desde MUGA.",
+  import_error_corrupt: "No hemos podido leer ese archivo. Puede estar dañado o incompleto. Vuelve a exportar tus ajustes desde MUGA e inténtalo otra vez.",
   import_params_skipped: "Ajustes importados. {n} entrada(s) omitida(s): demasiado largo, formato inválido, clave protegida o por encima del límite de la lista.",
   add_entry_invalid: "Esa entrada no es válida. Comprueba el formato e inténtalo de nuevo.",
   list_full: "Esta lista ha alcanzado su tamaño máximo. Elimina una entrada antes de añadir otra.",

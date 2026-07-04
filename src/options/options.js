@@ -114,6 +114,25 @@ async function hasShortenerPermissions() {
   }
 }
 
+/**
+ * True when the optional host permission for the remote-rules endpoint is
+ * already granted. Enabling remote rules needs `https://rules.muga.app/*`
+ * (optional_host_permissions); a settings import cannot request it (no user
+ * gesture survives the async file read), so import may only restore
+ * remoteRulesEnabled:true when this grant already exists — otherwise the pref
+ * would say ON while the weekly signed fetch stays blocked.
+ * @returns {Promise<boolean>}
+ */
+async function hasRemoteRulesPermission() {
+  try {
+    return await chrome.permissions.contains({
+      origins: ["https://rules.muga.app/*"],
+    });
+  } catch {
+    return false;
+  }
+}
+
 /** Initializes the options page: loads prefs, binds controls, renders lists. */
 async function init() {
   _currentLang = await getStoredLang();
@@ -833,16 +852,23 @@ function initExportImport() {
       fileInput.value = "";
       return;
     }
+    // Parse on its own first: a genuinely unreadable/corrupt file gets a
+    // distinct message from a well-formed file that simply isn't a MUGA export.
+    let data;
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
+      data = JSON.parse(await file.text());
+    } catch {
+      showToast(t("import_error_corrupt", _currentLang));
+      fileInput.value = "";
+      return;
+    }
+    try {
       // Structural validation, list capping/filtering, boolean-key extraction,
       // disabledCategories/toastDuration/creatorAllowlist/userCustomRules/language
-      // handling all live in the pure planImport() (settings-schema.js) now — the
-      // single source of truth shared with buildExportPayload(). Anything that
-      // would have thrown here before (missing muga, malformed lists, invalid
-      // entries) now comes back as { ok: false } and falls into the same
-      // catch-all import_error toast below.
+      // handling all live in the pure planImport() (settings-schema.js) — the
+      // single source of truth shared with buildExportPayload(). A well-formed
+      // file that isn't a MUGA export (missing muga, malformed lists, invalid
+      // entries) comes back as { ok: false } and shows the import_error toast.
       const plan = planImport(data);
       if (!plan.ok) throw new Error("invalid");
       const skipped = plan.skipped;
@@ -871,6 +897,15 @@ function initExportImport() {
         toSave.followShortenersEnabled =
           plan.special.followShortenersRequested && (await hasShortenerPermissions());
       }
+      // remoteRulesEnabled follows the same permission gate: enabling remote
+      // rules needs the rules.muga.app optional host grant, which an import
+      // cannot request. Restore true only when the grant already exists;
+      // otherwise force it off. Egress stays double-gated by consentVersion in
+      // the service worker, so this never starts a fetch without consent.
+      if (plan.special.remoteRulesProvided) {
+        toSave.remoteRulesEnabled =
+          plan.special.remoteRulesRequested && (await hasRemoteRulesPermission());
+      }
 
       await setPrefs(toSave);
 
@@ -888,6 +923,17 @@ function initExportImport() {
         if (BOOLEAN_KEYS.includes(key) && key in plan.toSave) {
           await reconcileOverrideForExplicitChoice(key, plan.toSave[key]);
         }
+      }
+      // remoteRulesEnabled is guarded too, but permission-gated so it never
+      // enters plan.toSave / BOOLEAN_KEYS. Reconcile its per-device override to
+      // the value that actually landed (post permission gate). NOTE: unlike the
+      // ENABLE/DISABLE_REMOTE_RULES toggle path, import only writes the pref +
+      // override; it deliberately does NOT force an immediate signed fetch (that
+      // would start egress from a file import, bypassing the gesture the toggle
+      // requires) nor eagerly clear DNR rule 1001. The service worker applies
+      // the change on its next wake / weekly cycle.
+      if (plan.special.remoteRulesProvided) {
+        await reconcileOverrideForExplicitChoice("remoteRulesEnabled", toSave.remoteRulesEnabled);
       }
 
       // Re-read prefs and update all UI toggles and lists
@@ -912,6 +958,15 @@ function initExportImport() {
       // actually landed (forced off unless the host grant was already present).
       const followShortenersEl = document.getElementById("followShortenersEnabled");
       if (followShortenersEl) followShortenersEl.checked = newPrefs.followShortenersEnabled;
+      // Reflect the gated remote-rules result. remoteRulesEnabled is guarded, so
+      // its EFFECTIVE value is the per-device override overlaid on sync
+      // (getPrefs), NOT the raw sync value. Reading raw could show ON while an
+      // override keeps it effectively OFF — e.g. importing a legacy file that
+      // omits the key leaves a prior decline-override in place. Source the
+      // checkbox from the merged effective prefs, matching init()/initRemoteRules.
+      const effectivePrefs = await getPrefs();
+      const remoteRulesToggleEl = document.getElementById("remote-rules-toggle");
+      if (remoteRulesToggleEl) remoteRulesToggleEl.checked = effectivePrefs.remoteRulesEnabled;
       // #968: refresh the previously-unrefreshed imported toggles + allowlist.
       const honorCreatorEl = document.getElementById("honor-creator-mode");
       if (honorCreatorEl) honorCreatorEl.checked = newPrefs.honorCreatorMode;

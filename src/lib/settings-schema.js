@@ -71,8 +71,11 @@ const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noi
  *   - "language"        — validated against SUPPORTED_LANGS
  *   - "creatorAllowlist" — folded through addCreatorAllowlistEntry
  *   - "customRulesList"  — userCustomRules, filtered via isValidCustomParam + capped
- *   - "permissionGated"  — followShortenersEnabled: requires a chrome.permissions
- *                          check that cannot happen inside this pure module
+ *   - "permissionGated"  — followShortenersEnabled / remoteRulesEnabled: each
+ *                          requires an optional host-permission grant that
+ *                          cannot happen inside this pure module, so they are
+ *                          kept OUT of toSave and reported via `special` for
+ *                          options.js to gate against chrome.permissions
  *   - "local"            — devMode: chrome.storage.local, not a synced pref
  *
  * `guarded: true` marks prefs that also appear in GUARDED_PREFS
@@ -103,6 +106,7 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "domainStats", kind: "boolean" },
   { key: "showBadge", kind: "boolean" },
   { key: "followShortenersEnabled", kind: "permissionGated" },
+  { key: "remoteRulesEnabled", kind: "permissionGated", guarded: true },
   { key: "canonicalExtractorEnabled", kind: "boolean" },
   { key: "crossSiteFrequencyEnabled", kind: "boolean" },
   { key: "attributionLedgerEnabled", kind: "boolean" },
@@ -251,6 +255,12 @@ export function planImport(data) {
       // migrate() rewrites the field, the gate follows it automatically.
       followShortenersProvided: typeof migrated.followShortenersEnabled === "boolean",
       followShortenersRequested: migrated.followShortenersEnabled === true,
+      // remoteRulesEnabled is likewise permission-gated (optional host grant for
+      // rules.muga.app) AND guarded (per-device override). options.js enables it
+      // only when the grant is already present, then reconciles the override to
+      // whatever value actually landed. Same provided/requested split as above.
+      remoteRulesProvided: typeof migrated.remoteRulesEnabled === "boolean",
+      remoteRulesRequested: migrated.remoteRulesEnabled === true,
       devMode: typeof migrated.devMode === "boolean" ? migrated.devMode : undefined,
     },
     skipped,
