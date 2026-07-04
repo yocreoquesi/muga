@@ -135,6 +135,7 @@ export default Object.freeze({
   import_label: "Importer les paramètres",
   import_success: "Paramètres importés avec succès.",
   import_error: "Cela ne ressemble pas à un fichier de paramètres MUGA. Assurez-vous d'importer un fichier .json exporté depuis MUGA.",
+  import_error_corrupt: "Impossible de lire ce fichier. Il est peut-être endommagé ou incomplet. Exportez à nouveau vos paramètres depuis MUGA et réessayez.",
   import_params_skipped: "Paramètres importés. {n} entrée(s) ignorée(s) : trop long, format invalide, clé protégée ou au-delà de la limite de la liste.",
   add_entry_invalid: "Cette entrée n'est pas valide. Vérifiez le format et réessayez.",
   list_full: "Cette liste a atteint sa taille maximale. Supprimez une entrée avant d'en ajouter une nouvelle.",
