@@ -159,6 +159,8 @@ export default Object.freeze({
   optionsRemoteRulesErrDnr: "Não foi possível aplicar a atualização no navegador. Lista anterior ainda em uso.",
   optionsRemoteRulesErrUnknown: "Atualização falhou. Verifique o console para detalhes.",
   muga_disabled_for_domain: "MUGA está desativado neste site",
+  pause_site_btn: "Pausar a limpeza neste site",
+  resume_site_btn: "Retomar a limpeza neste site",
   section_advanced: "Avançado",
   advanced_mode_label: "Mostrar configurações avançadas",
   advanced_mode_hint: "Controle detalhado sobre limpeza de URLs, privacidade e ferramentas para desenvolvedores",

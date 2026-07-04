@@ -159,6 +159,8 @@ export default Object.freeze({
   optionsRemoteRulesErrDnr: "更新をブラウザに適用できませんでした。以前のリストを引き続き使用します。",
   optionsRemoteRulesErrUnknown: "更新に失敗しました。詳細はコンソールを確認してください。",
   muga_disabled_for_domain: "MUGAはこのサイトで無効です",
+  pause_site_btn: "このサイトでのクリーニングを一時停止",
+  resume_site_btn: "このサイトでのクリーニングを再開",
   section_advanced: "詳細設定",
   advanced_mode_label: "詳細設定を表示",
   advanced_mode_hint: "URLクリーンアップ、プライバシー、開発ツールの詳細制御",

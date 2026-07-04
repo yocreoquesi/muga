@@ -612,6 +612,32 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   border-color: var(--border-strong, var(--text-1));
 }
 
+/* ---------- Per-site pause control (#980) ------------------------------- */
+.preview-site-control {
+  margin-top: 8px;
+}
+.pause-site-btn {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid var(--border-2);
+  background: var(--surface-1);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.pause-site-btn:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong, var(--text-1));
+}
+.pause-site-btn.paused {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
 /* ---------- Screen-reader only ------------------------------------------ */
 .sr-only {
   position: absolute;
