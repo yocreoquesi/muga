@@ -85,36 +85,41 @@ const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noi
  * there is exactly one copy of that membership list.
  */
 export const SETTINGS_FIELDS = Object.freeze([
-  { key: "enabled", kind: "boolean" },
-  { key: "injectOwnAffiliate", kind: "boolean", guarded: true },
-  { key: "notifyForeignAffiliate", kind: "boolean" },
-  { key: "stripAllAffiliates", kind: "boolean" },
-  { key: "dnrEnabled", kind: "boolean" },
-  { key: "activeDefenseEnabled", kind: "boolean" },
-  { key: "blockPings", kind: "boolean" },
-  { key: "ampRedirect", kind: "boolean" },
-  { key: "unwrapRedirects", kind: "boolean" },
-  { key: "blacklist", kind: "list" },
-  { key: "whitelist", kind: "list" },
-  { key: "customParams", kind: "list" },
-  { key: "contextMenuEnabled", kind: "boolean" },
-  { key: "disabledCategories", kind: "categories" },
-  { key: "toastDuration", kind: "toastDuration" },
-  { key: "language", kind: "language" },
-  { key: "devMode", kind: "local" },
-  { key: "paramBreakdown", kind: "boolean" },
-  { key: "showReportButton", kind: "boolean" },
-  { key: "domainStats", kind: "boolean" },
-  { key: "showBadge", kind: "boolean" },
-  { key: "followShortenersEnabled", kind: "permissionGated" },
-  { key: "remoteRulesEnabled", kind: "permissionGated", guarded: true },
-  { key: "canonicalExtractorEnabled", kind: "boolean" },
-  { key: "crossSiteFrequencyEnabled", kind: "boolean" },
-  { key: "attributionLedgerEnabled", kind: "boolean" },
-  { key: "userCustomRules", kind: "customRulesList" },
-  { key: "experimentalParamClassesEnabled", kind: "boolean" },
-  { key: "honorCreatorMode", kind: "boolean" },
-  { key: "creatorAllowlist", kind: "creatorAllowlist" },
+  // `label` is an i18n key naming the pref for display purposes (currently
+  // consumed by diffImport()'s import-diff-preview rows, #983). Wherever an
+  // existing options.html row/section already names the pref, that exact
+  // key is reused so the diff preview and the settings page never disagree
+  // on wording — no new key was introduced unless nothing suitable existed.
+  { key: "enabled", kind: "boolean", label: "toggle_enabled" },
+  { key: "injectOwnAffiliate", kind: "boolean", guarded: true, label: "row_inject_label" },
+  { key: "notifyForeignAffiliate", kind: "boolean", label: "row_notify_label" },
+  { key: "stripAllAffiliates", kind: "boolean", label: "row_strip_affiliates_label" },
+  { key: "dnrEnabled", kind: "boolean", label: "row_dnr_label" },
+  { key: "activeDefenseEnabled", kind: "boolean", label: "row_active_defense_label" },
+  { key: "blockPings", kind: "boolean", label: "row_pings_label" },
+  { key: "ampRedirect", kind: "boolean", label: "row_amp_label" },
+  { key: "unwrapRedirects", kind: "boolean", label: "row_unwrap_label" },
+  { key: "blacklist", kind: "list", label: "section_blacklist" },
+  { key: "whitelist", kind: "list", label: "section_whitelist" },
+  { key: "customParams", kind: "list", label: "section_custom_params" },
+  { key: "contextMenuEnabled", kind: "boolean", label: "row_context_menu_label" },
+  { key: "disabledCategories", kind: "categories", label: "section_tracking_categories" },
+  { key: "toastDuration", kind: "toastDuration", label: "row_toast_duration_label" },
+  { key: "language", kind: "language", label: "lang_label" },
+  { key: "devMode", kind: "local", label: "advanced_mode_label" },
+  { key: "paramBreakdown", kind: "boolean", label: "row_param_breakdown_label" },
+  { key: "showReportButton", kind: "boolean", label: "row_show_report_button_label" },
+  { key: "domainStats", kind: "boolean", label: "row_domain_stats_label" },
+  { key: "showBadge", kind: "boolean", label: "row_show_badge_label" },
+  { key: "followShortenersEnabled", kind: "permissionGated", label: "follow_shorteners_section_title" },
+  { key: "remoteRulesEnabled", kind: "permissionGated", guarded: true, label: "optionsRemoteRulesTitle" },
+  { key: "canonicalExtractorEnabled", kind: "boolean", label: "row_canonical_extractor_label" },
+  { key: "crossSiteFrequencyEnabled", kind: "boolean", label: "row_cross_site_frequency_label" },
+  { key: "attributionLedgerEnabled", kind: "boolean", label: "row_attribution_ledger_label" },
+  { key: "userCustomRules", kind: "customRulesList", label: "section_user_custom_rules" },
+  { key: "experimentalParamClassesEnabled", kind: "boolean", label: "exp_param_classes_label" },
+  { key: "honorCreatorMode", kind: "boolean", label: "honor_creator_mode_label" },
+  { key: "creatorAllowlist", kind: "creatorAllowlist", label: "creator_allowlist_label" },
 ]);
 
 /**
@@ -266,4 +271,67 @@ export function planImport(data) {
     },
     skipped,
   };
+}
+
+/**
+ * `kind`s whose values are arrays compared as sets (order-insensitive).
+ * Every other kind is treated as a scalar (see diffImport below).
+ */
+const LIST_KINDS = new Set(["list", "categories", "creatorAllowlist", "customRulesList"]);
+
+/**
+ * Builds a dry-run diff between the currently-effective settings and a
+ * resolved set of incoming values, for the Settings import diff-preview
+ * (#983). PURE: no chrome APIs, no DOM, no i18n resolution — the caller
+ * (options.js) resolves `row.labelKey` via t() when rendering.
+ *
+ * Only fields present as a key in `incomingValues` are considered — this
+ * lets the caller build `incomingValues` from an already fully-resolved
+ * `toSave` (permission gates applied, devMode folded in) without diffImport
+ * needing to know about any of that resolution logic itself.
+ *
+ * List-kind fields are compared as sets of strings: two lists with the same
+ * entries in a different order produce NO row. `added`/`removed` are
+ * returned FULL and uncapped — capping the displayed count is a rendering
+ * concern, not a diffing one, and lives in options.js's showImportDiff().
+ *
+ * @param {object} currentValues - Effective current settings (e.g. from
+ *   getPrefs() plus the current devMode), keyed by SETTINGS_FIELDS `key`.
+ * @param {object} incomingValues - Resolved incoming settings (e.g. the
+ *   post-permission-gate `toSave` plus the landed devMode), keyed the same way.
+ * @returns {Array<
+ *   { key: string, labelKey: string, kind: "scalar", before: *, after: * } |
+ *   { key: string, labelKey: string, kind: "list", added: string[], removed: string[] }
+ * >} Rows in SETTINGS_FIELDS declaration order. Empty array when nothing changed.
+ */
+export function diffImport(currentValues, incomingValues) {
+  const current = currentValues || {};
+  const incoming = incomingValues || {};
+  /** @type {Array<{ key: string, labelKey: string, kind: "scalar", before: *, after: * } | { key: string, labelKey: string, kind: "list", added: string[], removed: string[] }>} */
+  const rows = [];
+
+  for (const field of SETTINGS_FIELDS) {
+    const { key, kind, label } = field;
+    if (!(key in incoming)) continue;
+
+    const before = current[key];
+    const after = incoming[key];
+
+    if (LIST_KINDS.has(kind)) {
+      const beforeArr = Array.isArray(before) ? before : [];
+      const afterArr = Array.isArray(after) ? after : [];
+      const beforeSet = new Set(beforeArr);
+      const afterSet = new Set(afterArr);
+      const added = afterArr.filter((entry) => !beforeSet.has(entry));
+      const removed = beforeArr.filter((entry) => !afterSet.has(entry));
+      if (added.length === 0 && removed.length === 0) continue;
+      rows.push({ key, labelKey: label, kind: "list", added, removed });
+      continue;
+    }
+
+    if (before === after) continue;
+    rows.push({ key, labelKey: label, kind: "scalar", before, after });
+  }
+
+  return rows;
 }
