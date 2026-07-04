@@ -17,7 +17,7 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
-import { snapToastDuration, buildExportPayload, planImport, BOOLEAN_KEYS } from "../lib/settings-schema.js";
+import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS } from "../lib/settings-schema.js";
 
 let _currentLang = "en";
 
@@ -92,6 +92,141 @@ function showConfirm(msg) {
     document.addEventListener("keydown", onKey);
     cancelBtn.addEventListener("click", () => close(false));
     okBtn.addEventListener("click", () => close(true));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
+  });
+}
+
+/** Cap on rendered entries per added/removed group in a list diff row (#983). */
+const IMPORT_DIFF_RENDER_CAP = 20;
+
+/**
+ * Renders the localized before/after text for a single scalar diff row.
+ * Booleans render as on/off; toastDuration and language show the raw
+ * value (toastDuration has no seconds-unit locale key to append, and
+ * language is shown as the raw stored code, per #983 scope).
+ */
+function formatScalarValue(value, lang) {
+  if (typeof value === "boolean") return value ? t("import_diff_on", lang) : t("import_diff_off", lang);
+  if (value == null) return "";
+  return String(value);
+}
+
+/**
+ * Shows a dry-run diff preview of a Settings import before anything is
+ * applied (#983). Clones showConfirm()'s accessibility structure exactly
+ * (plain overlay + box, role="alertdialog", aria-modal, aria-labelledby,
+ * prevFocus capture/restore, manual Tab focus-trap, Escape/backdrop-click
+ * cancel) — see showConfirm() above for the reference implementation.
+ *
+ * @param {Array} rows - diffImport() output (see settings-schema.js).
+ * @param {string} lang - current UI language.
+ * @returns {Promise<boolean>} true if the user confirmed, false if cancelled.
+ */
+function showImportDiff(rows, lang) {
+  return new Promise((resolve) => {
+    const prevFocus = document.activeElement;
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+
+    const box = document.createElement("div");
+    box.className = "import-diff-box";
+    box.setAttribute("role", "alertdialog");
+    box.setAttribute("aria-modal", "true");
+
+    const title = document.createElement("p");
+    title.id = "import-diff-title";
+    title.textContent = t("import_diff_title", lang);
+    box.setAttribute("aria-labelledby", "import-diff-title");
+    // Associate the change list with the dialog so assistive tech announces the
+    // actual diff, not just the title + focused button.
+    box.setAttribute("aria-describedby", "import-diff-rows");
+
+    const rowsContainer = document.createElement("div");
+    rowsContainer.className = "import-diff-rows";
+    rowsContainer.id = "import-diff-rows";
+    // Keyboard-focusable so keyboard-only users can scroll the overflow region
+    // (the list can exceed its max-height); also joins the Tab focus-trap below.
+    rowsContainer.tabIndex = 0;
+
+    for (const row of rows) {
+      const label = t(row.labelKey, lang);
+      if (row.kind === "scalar") {
+        const line = document.createElement("div");
+        line.className = "import-diff-row changed";
+        line.textContent = `${label}: ${formatScalarValue(row.before, lang)} → ${formatScalarValue(row.after, lang)}`;
+        rowsContainer.appendChild(line);
+        continue;
+      }
+
+      const header = document.createElement("div");
+      header.className = "import-diff-row changed";
+      header.textContent = label;
+      rowsContainer.appendChild(header);
+
+      const added = row.added.slice(0, IMPORT_DIFF_RENDER_CAP);
+      for (const entry of added) {
+        const line = document.createElement("div");
+        line.className = "import-diff-row added";
+        line.textContent = `+ ${entry}`;
+        rowsContainer.appendChild(line);
+      }
+      if (row.added.length > IMPORT_DIFF_RENDER_CAP) {
+        const more = document.createElement("div");
+        more.className = "import-diff-more";
+        more.textContent = t("import_diff_more", lang).replace("{n}", String(row.added.length - IMPORT_DIFF_RENDER_CAP));
+        rowsContainer.appendChild(more);
+      }
+
+      const removed = row.removed.slice(0, IMPORT_DIFF_RENDER_CAP);
+      for (const entry of removed) {
+        const line = document.createElement("div");
+        line.className = "import-diff-row removed";
+        line.textContent = `− ${entry}`;
+        rowsContainer.appendChild(line);
+      }
+      if (row.removed.length > IMPORT_DIFF_RENDER_CAP) {
+        const more = document.createElement("div");
+        more.className = "import-diff-more";
+        more.textContent = t("import_diff_more", lang).replace("{n}", String(row.removed.length - IMPORT_DIFF_RENDER_CAP));
+        rowsContainer.appendChild(more);
+      }
+    }
+
+    const btns = document.createElement("div");
+    btns.className = "import-diff-btns";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.id = "import-diff-cancel";
+    cancelBtn.textContent = t("confirm_cancel", lang);
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.id = "import-diff-confirm";
+    confirmBtn.className = "primary";
+    confirmBtn.textContent = t("import_diff_confirm_btn", lang);
+
+    btns.appendChild(cancelBtn);
+    btns.appendChild(confirmBtn);
+    box.appendChild(title);
+    box.appendChild(rowsContainer);
+    box.appendChild(btns);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    confirmBtn.focus();
+    const focusable = [rowsContainer, cancelBtn, confirmBtn];
+    const onKey = (e) => {
+      if (e.key === "Escape") close(false);
+      if (e.key === "Tab") {
+        const idx = focusable.indexOf(document.activeElement);
+        const next = e.shiftKey ? (idx <= 0 ? focusable.length - 1 : idx - 1) : (idx + 1) % focusable.length;
+        focusable[next].focus();
+        e.preventDefault();
+      }
+    };
+    const close = (val) => { document.removeEventListener("keydown", onKey); overlay.remove(); if (prevFocus) prevFocus.focus(); resolve(val); };
+    document.addEventListener("keydown", onKey);
+    cancelBtn.addEventListener("click", () => close(false));
+    confirmBtn.addEventListener("click", () => close(true));
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
   });
 }
@@ -873,10 +1008,10 @@ function initExportImport() {
       if (!plan.ok) throw new Error("invalid");
       const skipped = plan.skipped;
 
-      // devMode from imported file → local storage
-      if (plan.special.devMode !== undefined) {
-        await setDevMode(plan.special.devMode);
-      }
+      // #983: everything below this point through the diff preview is
+      // READ-ONLY — no chrome.storage write and no chrome.permissions
+      // request/mutation may happen before the user confirms in the diff
+      // modal. chrome.permissions.contains() is a read, so it is safe here.
 
       // #964: followShortenersEnabled is permission-gated. An import may carry
       // the preference but CANNOT grant the host permissions (no user gesture
@@ -905,6 +1040,38 @@ function initExportImport() {
       if (plan.special.remoteRulesProvided) {
         toSave.remoteRulesEnabled =
           plan.special.remoteRulesRequested && (await hasRemoteRulesPermission());
+      }
+
+      // Build the dry-run diff: currentValues from the EFFECTIVE prefs
+      // (override-resolved, same source the DOM refresh below uses) plus the
+      // current devMode; incomingValues from the fully-resolved toSave
+      // (permission gates already applied above) plus the devMode this
+      // import would land, if the file carries one.
+      const currentValues = { ...(await getPrefs()), devMode: await getDevMode() };
+      const incomingValues = { ...toSave };
+      if (plan.special.devMode !== undefined) {
+        incomingValues.devMode = plan.special.devMode;
+      }
+
+      const rows = diffImport(currentValues, incomingValues);
+      if (rows.length === 0) {
+        showToast(t("import_diff_no_changes", _currentLang));
+        fileInput.value = "";
+        return;
+      }
+
+      const confirmed = await showImportDiff(rows, _currentLang);
+      if (!confirmed) {
+        showToast(t("import_cancelled", _currentLang));
+        fileInput.value = "";
+        return;
+      }
+
+      // ── Everything above is read-only. Nothing is applied until here. ──
+
+      // devMode from imported file → local storage
+      if (plan.special.devMode !== undefined) {
+        await setDevMode(plan.special.devMode);
       }
 
       await setPrefs(toSave);

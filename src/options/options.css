@@ -522,6 +522,80 @@ input[type="text"]:not(.add-row input) {
 }
 .confirm-ok:hover { filter: brightness(1.08); }
 
+/* ---------- Import diff preview --- */
+.import-diff-box {
+  background: var(--surface-1);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-1);
+  padding: 24px;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: var(--shadow-2);
+}
+.import-diff-box p {
+  font-size: 14px;
+  margin-bottom: 12px;
+  line-height: 1.55;
+  color: var(--text-1);
+}
+.import-diff-rows {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-md);
+}
+.import-diff-row {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-1);
+  border-bottom: 1px solid var(--border-1);
+}
+.import-diff-row:last-child { border-bottom: none; }
+.import-diff-row.changed {
+  background: var(--info-soft);
+}
+.import-diff-row.added {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.import-diff-row.removed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.import-diff-more {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.import-diff-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.import-diff-btns button {
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+#import-diff-cancel {
+  background: var(--surface-1);
+  color: var(--text-1);
+  border-color: var(--border-2);
+}
+#import-diff-cancel:hover { background: var(--surface-2); }
+#import-diff-confirm.primary {
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  border-color: var(--accent-strong);
+}
+#import-diff-confirm.primary:hover { background: var(--accent); }
+
 /* ---------- Version + footer ------------------------------------------- */
 .version-info {
   text-align: center;

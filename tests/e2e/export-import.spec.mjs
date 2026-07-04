@@ -101,8 +101,10 @@ test.describe("Export / Import", () => {
     const fileInput = page.locator("#import-file");
     await expect(fileInput).toBeAttached();
 
-    // Import — subsequent expect() calls auto-wait for the UI to update
+    // Import now opens a confirm modal previewing the diff before applying
+    // anything (#983) — wait for it and confirm before asserting UI state.
     await fileInput.setInputFiles(tmpPath);
+    await page.locator("#import-diff-confirm").click();
 
     // Verify toggles updated
     await expect(page.locator("#inject")).toBeChecked();
