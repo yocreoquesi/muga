@@ -134,6 +134,68 @@ export function domainMatches(hostname, entryDomain) {
 }
 
 /**
+ * Returns true if a hostname is exempt from the active-defense content
+ * scripts (window.name defuser, history defuser, DOM link rewriter, click
+ * rewriter) because the user explicitly whitelisted the domain OR paused
+ * MUGA on it (#995 per-site pause). Fixes #1006: those four scripts all
+ * gate on a single muga:history-gate event that was computed only from the
+ * global enabled/onboardingDone prefs, with no per-site escape hatch. This
+ * helper lets the gate dispatcher factor in the whitelist/pause state so a
+ * whitelisted or paused site turns active-defense off entirely, matching
+ * the "MUGA does nothing on this domain" expectation the user already gets
+ * from the whitelist and pause controls.
+ *
+ * A site counts as exempt when EITHER is true:
+ *   (a) a DOMAIN-ONLY whitelist entry matches the host (bare "example.com").
+ *       A param-scoped entry ("example.com::tag::x") does NOT count - that
+ *       only protects one affiliate value, it is not a "leave this site
+ *       alone" signal.
+ *   (b) a per-site pause entry matches (an "example.com::disabled" blacklist
+ *       entry, mirroring isPerDomainDisabled() in src/popup/popup.js).
+ *
+ * Reuses parseListEntry/domainMatches rather than reimplementing domain
+ * matching (a separate cleanup is tracked in #1005).
+ *
+ * Defensive: returns false for any falsy or malformed input so a missing or
+ * corrupt prefs object never accidentally grants an exemption. Fail-safe
+ * direction matters here: active-defense must stay ON unless we are sure
+ * the user opted the site out.
+ *
+ * @param {string} hostname - the current page's hostname.
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {boolean}
+ */
+export function isSiteExemptFromActiveDefense(hostname, prefs) {
+  if (!hostname || typeof hostname !== "string" || !prefs || typeof prefs !== "object") return false;
+
+  const whitelist = Array.isArray(prefs.whitelist) ? prefs.whitelist : [];
+  for (const raw of whitelist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (entry.param !== "disabled" || entry.value || !entry.domain) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+
+  return false;
+}
+
+/**
  * Adds or removes a per-domain "disabled" blacklist entry for a host, returning
  * a NEW blacklist array (pure; never mutates the input). Pausing appends
  * `<host>::disabled` unless the host is already effectively disabled (exact or

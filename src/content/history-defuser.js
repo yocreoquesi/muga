@@ -174,8 +174,27 @@
     try {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
         void chrome.runtime.lastError;
-        const ok = !!(prefs && prefs.enabled && prefs.onboardingDone);
-        dispatchGate(ok);
+        const prefsOk = !!(prefs && prefs.enabled && prefs.onboardingDone);
+        // #1006: a whitelisted domain or a per-site paused domain (#995) must
+        // turn OFF the active-defense scripts entirely - window.name defuser,
+        // this history defuser, the DOM link rewriter, and the click
+        // rewriter all gate on this single muga:history-gate event, so
+        // factoring the exemption in here fixes all four at once instead of
+        // requiring the user to fully disable MUGA to unbreak a site.
+        //
+        // Fail-safe: if the bundle helper is unavailable, throws, or prefs
+        // is malformed, `exempt` stays false and active-defense stays ON.
+        // A missing/failed helper must never silently disable protection.
+        let exempt = false;
+        try {
+          const cleaner = window.__mugaCleaner;
+          if (cleaner && typeof cleaner.isSiteExemptFromActiveDefense === "function") {
+            exempt = cleaner.isSiteExemptFromActiveDefense(location.hostname, prefs);
+          }
+        } catch {
+          // Fail-safe: treat as not exempt, active-defense stays ON.
+        }
+        dispatchGate(prefsOk && !exempt);
       });
     } catch {
       // Extension context invalidated. Leave the gate closed.
