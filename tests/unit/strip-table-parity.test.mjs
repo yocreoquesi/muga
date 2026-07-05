@@ -185,3 +185,42 @@ test("irclickid, cjevent, awc are NOT in TRACKING_PARAMS — inverse attribution
     );
   }
 });
+
+// ── Required hot-path params ────────────────────────────────────────────────
+//
+// The STRIP subset is intentionally SMALLER than TRACKING_PARAMS (it is the
+// curated hot-path subset), so we cannot assert full parity between the two.
+// What we CAN pin is that the highest-volume families a page can re-inject
+// client-side (via history.replaceState or a DOM link rewrite) never quietly
+// drop off the sync hot path — the only race-free strip before a page script
+// reads window.location.search. This is the guard that would have caught the
+// Shopify field report: _pos/_ss/_sid (and the pr_* recommendation family) are
+// in TRACKING_PARAMS so the async pipeline strips them, but they were missing
+// from the sync subset, so a client-side re-add survived until (and unless) the
+// async reclean fired.
+//
+// Every entry here must also be in TRACKING_PARAMS/landingParams (the #815 test
+// above already enforces that for whatever is in STRIP). This list is the
+// reverse contract: these MUST be present.
+const HOT_PATH_REQUIRED = [
+  // UTM core
+  "utm_source", "utm_medium", "utm_campaign",
+  // Highest-volume click IDs
+  "fbclid", "gclid", "msclkid", "ttclid",
+  // Shopify storefront family (search/collection context + product recs),
+  // re-added client-side via replaceState as the user browses a store.
+  "_pos", "_ss", "_psq", "_sid", "_fid",
+  "pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq",
+];
+
+test("high-volume, client-side-reinjectable params stay on the hot-path STRIP subset", () => {
+  const stripKeys = new Set(extractStripKeys(extractStripTable(FILES[0])));
+  const missing = HOT_PATH_REQUIRED.filter((p) => !stripKeys.has(p));
+  assert.deepEqual(
+    missing,
+    [],
+    `These params must be in the content-script STRIP subset so client-side ` +
+    `re-adds (e.g. Shopify's history.replaceState) are stripped synchronously, ` +
+    `not left to the async reclean which can miss on timing:\n  ${missing.join(", ")}`,
+  );
+});

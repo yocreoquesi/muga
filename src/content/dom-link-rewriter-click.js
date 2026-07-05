@@ -62,6 +62,8 @@
     __s: 1, _ga: 1, _gl: 1, _gac: 1,
     ved: 1, ei: 1, sca_esv: 1, sxsrf: 1,
     mibextid: 1, share_id: 1,
+    _pos: 1, _ss: 1, _psq: 1, _sid: 1, _fid: 1,
+    pr_prod_strat: 1, pr_rec_id: 1, pr_ref_pid: 1, pr_rec_pid: 1, pr_seq: 1,
   });
 
   function inlineCleanUrl(rawUrl) {
