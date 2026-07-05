@@ -356,3 +356,28 @@ describe("C11 — replica sync verification (amp-redirect.js)", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// #allowlist-full-inert — a fully-exempt domain (domain-only whitelist entry
+// or #995 ::disabled pause) must stop the AMP redirect too. Firefox MV2 loads
+// this file as its own content_scripts entry (manifest.v2.json) sharing the
+// isolated-world window with cleaner-bundle.js, so window.__mugaCleaner is
+// available; Chrome MV3 does not load this file at all (DNR handles AMP
+// there instead - covered by the network-layer allow rule).
+// ---------------------------------------------------------------------------
+describe("#allowlist-full-inert — amp-redirect respects isSiteFullyExempt", () => {
+  test("source checks isSiteFullyExempt before reading the canonical link", () => {
+    const exemptCheckPos = AMP_REDIRECT_SOURCE.indexOf("isSiteFullyExempt");
+    const canonicalReadPos = AMP_REDIRECT_SOURCE.indexOf('querySelector(\'link[rel="canonical"]\')');
+    assert.ok(exemptCheckPos > -1, "amp-redirect.js must consult isSiteFullyExempt");
+    assert.ok(canonicalReadPos > -1, "the canonical-link read must still exist");
+    assert.ok(exemptCheckPos < canonicalReadPos, "the exemption check must gate the AMP-detection/redirect logic that follows it");
+  });
+
+  test("source defaults to not-exempt on any thrown error (fail-safe)", () => {
+    const exemptCheckPos = AMP_REDIRECT_SOURCE.indexOf("isSiteFullyExempt");
+    const block = AMP_REDIRECT_SOURCE.slice(exemptCheckPos - 200, exemptCheckPos + 300);
+    assert.ok(block.includes("let exempt = false;"), "must default to not-exempt before the try block");
+    assert.ok(block.includes("try {") && block.includes("catch"), "must be wrapped in try/catch so a throw cannot suppress the redirect gate itself");
+  });
+});
