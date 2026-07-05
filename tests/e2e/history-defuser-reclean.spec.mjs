@@ -104,6 +104,45 @@ async function stubAmazonHost(page) {
   );
 }
 
+const SHOP_HOST = "shop.example";
+
+/**
+ * Stubs a Shopify-shaped storefront. The initial load is clean; the button
+ * simulates Shopify's storefront re-writing the URL with its search/collection
+ * context params (_pos, _ss, _sid) via history.replaceState AFTER a product
+ * link is followed inside the store. These params are re-added client-side, so
+ * DNR never sees them — the only race-free defence is the main-world sync
+ * STRIP subset (history-defuser-mainworld.js), which is exactly what a field
+ * report on a live Shopify store exposed as missing.
+ */
+async function stubShopifyHost(page) {
+  await page.route(`**://${SHOP_HOST}/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><html><body>
+        <button id="muga-shopify-btn">product link</button>
+        <script>
+          window.__mugaReplaceCount = 0;
+          const _origReplace = history.replaceState.bind(history);
+          history.replaceState = function (...args) {
+            window.__mugaReplaceCount++;
+            return _origReplace(...args);
+          };
+
+          // Shopify re-adds its storefront context params via replaceState
+          // as the user moves from a collection/search into a product.
+          document.getElementById("muga-shopify-btn").addEventListener("click", () => {
+            history.replaceState({ tag: "muga-test" }, "Product",
+              "/products/exfoliating-polish?_pos=7&_ss=r&_psq=x&_sid=bba2e42bf&_fid=y" +
+              "&pr_prod_strat=jac&pr_rec_id=1&pr_ref_pid=2&pr_rec_pid=3&pr_seq=uniform&variant=42");
+          });
+        </script>
+      </body></html>`,
+    })
+  );
+}
+
 test.describe("SPA reclean on pushState (#951 Layer B)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
     await completeOnboarding(context, extensionId);
@@ -156,6 +195,53 @@ test.describe("SPA reclean on pushState (#951 Layer B)", () => {
     // URL stayed stable after settling (no oscillation).
     const settledUrl = await page.evaluate(() => window.location.href);
     expect(settledUrl).toBe(finalUrl);
+
+    await page.close();
+  });
+
+  test("Shopify storefront params re-added via replaceState are stripped synchronously", async ({ context }) => {
+    const page = await context.newPage();
+    await stubShopifyHost(page);
+    await page.goto(`https://${SHOP_HOST}/index.html`);
+
+    // Wait for the main-world wrap flag set by history-defuser-mainworld.js.
+    await page.waitForFunction(() => window.__mugaHistoryDefused === true, { timeout: 10000 });
+
+    await page.locator("#muga-shopify-btn").click();
+
+    // The whole Shopify storefront family (_pos/_ss/_psq/_sid/_fid + pr_*) is on
+    // the main-world SYNC subset, so it is stripped inside the replaceState wrap
+    // BEFORE the URL is ever committed. Poll defensively for gate arrival, then
+    // assert the committed URL is already clean.
+    await page.waitForFunction(
+      () => !window.location.search.includes("_pos"),
+      { timeout: 10000 }
+    );
+
+    const finalPath = await page.evaluate(() => window.location.pathname);
+    const finalSearch = await page.evaluate(() => window.location.search);
+
+    // Every Shopify storefront param is gone.
+    for (const p of ["_pos", "_ss", "_psq", "_sid", "_fid",
+      "pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"]) {
+      expect(finalSearch).not.toContain(p);
+    }
+    // Functional param preserved; product path untouched.
+    expect(finalSearch).toContain("variant=42");
+    expect(finalPath).toBe("/products/exfoliating-polish");
+
+    // PROOF THE SYNC SUBSET DID THE WORK: the page called replaceState exactly
+    // once. The main-world wrapper cleaned the URL inline before committing, so
+    // the muga:history-committed reclean saw an already-clean URL and never
+    // called replaceState again. If the family were missing from the sync
+    // subset, the async reclean would have to correct it -> a SECOND
+    // replaceState -> count === 2. count === 1 pins the synchronous fix.
+    // REASON: proving the ABSENCE of a second (async) replaceState has no
+    // event to poll for — a short fixed settle wait is the only way to assert
+    // nothing further fired (same rationale as the Amazon test above).
+    await page.waitForTimeout(500);
+    const replaceCount = await page.evaluate(() => window.__mugaReplaceCount);
+    expect(replaceCount).toBe(1);
 
     await page.close();
   });
