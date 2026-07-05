@@ -18,6 +18,7 @@ import {
 } from "../lib/cross-site-frequency.js";
 import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
+import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -111,7 +112,11 @@ async function getCopySafeCleanUrl(originalUrl) {
 
 // ── Param breakdown ───────────────────────────────────────────────────────────
 
-/** Builds a reverse index: param name → { category key, label, labelEs, labelPt, labelDe }. Cached as singleton. */
+/**
+ * Builds a reverse index: param name → { category key, label*, description* }.
+ * Cached as singleton (rebuilt across popup sessions only, not per render —
+ * the history list can render this for many entries in a single popup open).
+ */
 let _paramIndex = null;
 function _buildParamIndex() {
   if (_paramIndex) return _paramIndex;
@@ -124,45 +129,52 @@ function _buildParamIndex() {
         labelEs: catData.labelEs,
         labelPt: catData.labelPt,
         labelDe: catData.labelDe,
+        description: catData.description,
+        descriptionEs: catData.descriptionEs,
+        descriptionPt: catData.descriptionPt,
+        descriptionDe: catData.descriptionDe,
       });
     }
   }
   return _paramIndex;
 }
 
-/** Renders a param breakdown section showing removed params grouped by category. */
+/**
+ * Renders a param breakdown section showing removed params grouped by
+ * category, plus a "why was this cleaned?" description per category (#986).
+ * All grouping / lang-resolution logic lives in the pure, unit-tested
+ * buildParamBreakdownView() — this function is a thin DOM shell.
+ */
 function _renderParamBreakdown(removedTracking, lang) {
   const index = _buildParamIndex();
-  // Group params by category
-  const groups = new Map();
-  for (const param of removedTracking) {
-    const info = index.get(param.toLowerCase());
-    const catKey = info ? info.categoryKey : "other";
-    const label = info
-      ? ({ es: info.labelEs, pt: info.labelPt, de: info.labelDe }[lang] || info.label)
-      : t("param_category_other", lang);
-    if (!groups.has(catKey)) groups.set(catKey, { label, params: [] });
-    groups.get(catKey).params.push(param);
-  }
+  const rows = buildParamBreakdownView(removedTracking, lang, index, t);
 
   const container = document.createElement("div");
   container.className = "param-breakdown";
 
-  for (const [, group] of groups) {
-    const row = document.createElement("div");
-    row.className = "breakdown-row";
+  for (const row of rows) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "breakdown-row";
 
     const catEl = document.createElement("span");
     catEl.className = "breakdown-cat";
-    catEl.textContent = group.label;
+    catEl.textContent = row.label;
 
     const paramsEl = document.createElement("span");
     paramsEl.className = "breakdown-params";
-    paramsEl.textContent = group.params.join(", ");
+    paramsEl.textContent = row.params.join(", ");
 
-    row.appendChild(catEl);
-    row.appendChild(paramsEl);
-    container.appendChild(row);
+    rowEl.appendChild(catEl);
+    rowEl.appendChild(paramsEl);
+
+    if (row.description) {
+      const descEl = document.createElement("span");
+      descEl.className = "breakdown-desc";
+      descEl.textContent = row.description;
+      rowEl.appendChild(descEl);
+    }
+
+    container.appendChild(rowEl);
   }
 
   return container;
