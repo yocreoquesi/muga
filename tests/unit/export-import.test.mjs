@@ -1,9 +1,13 @@
 /**
- * MUGA: Comprehensive tests for export/import settings feature in options.js.
+ * MUGA: Comprehensive tests for the Settings export/import feature.
  *
- * The export/import code is browser-only (chrome.storage.sync, DOM APIs), so we
- * verify logic via source string inspection and extracted pure-function testing,
- * following the same pattern as sanitize-import.test.mjs.
+ * The core export/import logic (buildExportPayload/planImport) was extracted
+ * from options.js into the pure module src/lib/settings-schema.js (single
+ * source of truth). These tests exercise ACTUAL behavior against that
+ * module rather than inspecting options.js source text. A few pieces of
+ * behavior (file-size gate, DOM refresh, fileInput reset) remain inline in
+ * options.js because they are DOM/chrome-bound; those specific assertions
+ * still read OPTIONS_SOURCE.
  */
 
 import { test, describe } from "node:test";
@@ -13,31 +17,46 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../../src/lib/validation.js";
 import { SUPPORTED_LANGS } from "../../src/lib/i18n.js";
+import {
+  SETTINGS_SCHEMA_VERSION,
+  buildExportPayload,
+  planImport,
+  snapToastDuration,
+  TOAST_DURATION_OPTIONS,
+} from "../../src/lib/settings-schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPTIONS_SOURCE = readFileSync(join(__dirname, "../../src/options/options.js"), "utf8");
+const SETTINGS_SCHEMA_SOURCE = readFileSync(join(__dirname, "../../src/lib/settings-schema.js"), "utf8");
+
+// A minimal valid import payload, reused as a base by several tests below.
+function validImportData(overrides = {}) {
+  return {
+    muga: true,
+    blacklist: [],
+    whitelist: [],
+    customParams: [],
+    ...overrides,
+  };
+}
 
 // ---------------------------------------------------------------------------
-// Source verification tests — export
+// Export behavior — buildExportPayload
 // ---------------------------------------------------------------------------
-describe("export settings (source verification)", () => {
+describe("export settings (buildExportPayload behavior)", () => {
 
   test("1. export includes muga: true flag", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes("muga: true"),
-      "Export payload must include muga: true marker"
-    );
+    const payload = buildExportPayload({}, { devMode: false, appVersion: "1.0.0" });
+    assert.strictEqual(payload.muga, true);
   });
 
-  test("2. export includes version from manifest", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes("chrome.runtime.getManifest().version"),
-      "Export payload must include version from manifest"
-    );
+  test("2. export includes version from manifest and schemaVersion", () => {
+    const payload = buildExportPayload({}, { devMode: false, appVersion: "3.4.5" });
+    assert.strictEqual(payload.version, "3.4.5");
+    assert.strictEqual(payload.schemaVersion, SETTINGS_SCHEMA_VERSION);
   });
 
   test("32. export includes ALL expected boolean keys", () => {
-    // devMode is device-local (chrome.storage.local), read via getDevMode(), not prefs.devMode
     const SYNC_BOOL_KEYS = [
       "enabled",
       "injectOwnAffiliate",
@@ -56,130 +75,106 @@ describe("export settings (source verification)", () => {
       "crossSiteFrequencyEnabled",
       "attributionLedgerEnabled",
     ];
-    // Verify each sync boolean key appears in the export payload block
+    const prefs = Object.fromEntries(SYNC_BOOL_KEYS.map((k) => [k, true]));
+    const payload = buildExportPayload(prefs, { devMode: true, appVersion: "1.0.0" });
     for (const key of SYNC_BOOL_KEYS) {
-      assert.ok(
-        OPTIONS_SOURCE.includes(`${key}: prefs.${key}`),
-        `Export payload must include boolean key "${key}"`
-      );
+      assert.strictEqual(payload[key], true, `Export payload must include boolean key "${key}"`);
     }
-    // devMode comes from local storage (devModeLocal), not prefs
-    assert.ok(
-      OPTIONS_SOURCE.includes("devMode: devModeLocal"),
-      "Export payload must set devMode from devModeLocal (local storage)"
-    );
+    // devMode comes from local storage (devModeLocal param), not prefs
+    assert.strictEqual(payload.devMode, true, "Export payload must set devMode from the devMode param (local storage)");
   });
 
   test("33. export includes ALL expected array keys", () => {
     const EXPECTED_ARRAY_KEYS = ["blacklist", "whitelist", "customParams", "disabledCategories"];
+    const prefs = Object.fromEntries(EXPECTED_ARRAY_KEYS.map((k) => [k, [k]]));
+    const payload = buildExportPayload(prefs, { devMode: false, appVersion: "1.0.0" });
     for (const key of EXPECTED_ARRAY_KEYS) {
-      assert.ok(
-        OPTIONS_SOURCE.includes(`${key}: prefs.${key}`),
-        `Export payload must include array key "${key}"`
-      );
+      assert.deepStrictEqual(payload[key], [key], `Export payload must include array key "${key}"`);
     }
   });
 
   test("34. export includes toastDuration field", () => {
-    // toastDuration is not in the export payload (not in the payload block),
-    // but it IS handled during import. Verify the import handling exists.
-    assert.ok(
-      OPTIONS_SOURCE.includes("toastDuration"),
-      "toastDuration must appear in options.js"
-    );
+    const payload = buildExportPayload({ toastDuration: 30 }, { devMode: false, appVersion: "1.0.0" });
+    assert.strictEqual(payload.toastDuration, 30);
+  });
+
+  test("export payload stays flat (no nested 'settings' key)", () => {
+    const payload = buildExportPayload({ enabled: true }, { devMode: false, appVersion: "1.0.0" });
+    assert.strictEqual(payload.settings, undefined, "export payload must not nest fields under a 'settings' key");
+    assert.strictEqual(typeof payload.enabled, "boolean");
   });
 });
 
 // ---------------------------------------------------------------------------
-// Source verification tests — import
+// Import behavior — planImport
 // ---------------------------------------------------------------------------
-describe("import settings (source verification)", () => {
+describe("import settings (planImport behavior)", () => {
 
   test("3. import checks data.muga flag", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes("!data.muga"),
-      "Import must check data.muga flag to validate file format"
-    );
+    assert.deepStrictEqual(planImport(validImportData({ muga: false })), { ok: false });
+    assert.deepStrictEqual(planImport(validImportData({ muga: undefined })), { ok: false });
   });
 
   test("4. import validates arrays with Array.isArray", () => {
-    const matches = OPTIONS_SOURCE.match(/Array\.isArray\(data\.\w+\)/g);
-    assert.ok(matches, "Import must use Array.isArray to validate arrays");
-    assert.ok(matches.length >= 3, `Expected at least 3 Array.isArray checks, found ${matches.length}`);
+    assert.deepStrictEqual(planImport(validImportData({ blacklist: "not-an-array" })), { ok: false });
+    assert.deepStrictEqual(planImport(validImportData({ whitelist: null })), { ok: false });
+    assert.deepStrictEqual(planImport(validImportData({ customParams: {} })), { ok: false });
   });
 
   test("5. import caps lists (500, 500, 200) by TRUNCATION, not whole-import rejection (#911)", () => {
-    // #911: the old behavior hard-threw when a list exceeded its cap, rejecting
-    // a valid-but-large export with a misleading "not a MUGA file" error. Caps
-    // now live in IMPORT_LIST_CAPS and are enforced by truncation in capImportedLists.
     assert.equal(IMPORT_LIST_CAPS.blacklist, 500);
     assert.equal(IMPORT_LIST_CAPS.whitelist, 500);
     assert.equal(IMPORT_LIST_CAPS.customParams, 200);
-    const over = {
+    const plan = planImport(validImportData({
       blacklist: Array.from({ length: 600 }, (_, i) => `b${i}.com`),
       whitelist: Array.from({ length: 600 }, (_, i) => `w${i}.com`),
       customParams: Array.from({ length: 300 }, (_, i) => `p_${i}`),
-    };
-    const out = capImportedLists(over);
-    assert.equal(out.blacklist.length, 500);
-    assert.equal(out.whitelist.length, 500);
-    assert.equal(out.customParams.length, 200);
-    // The count-based whole-import throw must be gone.
-    assert.ok(
-      !/data\.customParams\.length\s*>\s*200/.test(OPTIONS_SOURCE),
-      "Import must NOT abort the whole import when customParams exceeds the cap"
-    );
+    }));
+    assert.equal(plan.ok, true);
+    assert.equal(plan.toSave.blacklist.length, 500);
+    assert.equal(plan.toSave.whitelist.length, 500);
+    assert.equal(plan.toSave.customParams.length, 200);
+    assert.ok(plan.skipped > 0, "over-cap entries must be reported as skipped");
   });
 
   test("6. import validates list entries with isValidListEntry and delegates param cleaning to capImportedLists (#818/#911)", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes("isValidListEntry"),
-      "Import must validate blacklist/whitelist entries with isValidListEntry"
-    );
-    // #818 param validation (isValidCustomParam, MAX_PARAM_LEN=64, denylist +
-    // affiliate guard) now runs inside capImportedLists; the handler delegates to it.
-    assert.ok(
-      OPTIONS_SOURCE.includes("capImportedLists(data)"),
-      "Import must delegate customParams filtering/capping to capImportedLists"
-    );
+    // A malformed blacklist ENTRY (not just an oversized list) signals a
+    // corrupt/foreign file and must abort the whole import.
+    assert.deepStrictEqual(planImport(validImportData({ blacklist: ["ok.com", "bad entry with spaces"] })), { ok: false });
+    // customParams filtering/capping is delegated to capImportedLists, not
+    // reimplemented — cross-check plan output against calling it directly.
+    const data = validImportData({ customParams: ["ref_code", "q", "promo_id"] });
+    const plan = planImport(data);
+    const direct = capImportedLists(data);
+    assert.deepStrictEqual(plan.toSave.customParams, direct.customParams);
   });
 
   test("7. import validates boolean keys by typeof", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes('typeof data[key] === "boolean"'),
-      "Import must validate boolean keys with typeof === boolean"
-    );
+    const plan = planImport(validImportData({ enabled: "true", injectOwnAffiliate: true, dnrEnabled: 1 }));
+    assert.equal(plan.ok, true);
+    assert.strictEqual(plan.toSave.enabled, undefined, "non-boolean typed value must not be imported");
+    assert.strictEqual(plan.toSave.injectOwnAffiliate, true);
+    assert.strictEqual(plan.toSave.dnrEnabled, undefined, "non-boolean typed value must not be imported");
   });
 
   test("8. import snaps toastDuration to the nearest offered <option> (#968)", () => {
-    // #968: a continuous clamp let import persist a value (e.g. 45) that matched
-    // no <option>, leaving the control blank. The value is now snapped to the
-    // nearest offered option so pref and UI can never disagree.
-    assert.ok(
-      OPTIONS_SOURCE.includes("snapToastDuration(data.toastDuration)"),
-      "Import must snap toastDuration via snapToastDuration"
-    );
-    assert.ok(
-      !OPTIONS_SOURCE.includes("Math.max(5, Math.min(60, data.toastDuration))"),
-      "Import must NOT use the legacy continuous clamp for toastDuration"
-    );
+    const plan = planImport(validImportData({ toastDuration: 22 }));
+    assert.equal(plan.ok, true);
+    assert.strictEqual(plan.toSave.toastDuration, snapToastDuration(22));
+    assert.strictEqual(plan.toSave.toastDuration, 15, "22 must snap to 15 (distance 7 < 8)");
   });
 
   test("9. import validates language against the full SUPPORTED_LANGS list", () => {
-    // Regression for #729: the import allowlist must be data-driven from
-    // SUPPORTED_LANGS, NOT a hardcoded subset. A hardcoded array silently drops
-    // any locale added later (fr/it/ja, #707) on an export→import round-trip.
-    assert.ok(
-      OPTIONS_SOURCE.includes("SUPPORTED_LANGS.some(l => l.code === data.language)"),
-      "Import must validate language against SUPPORTED_LANGS, not a hardcoded subset"
-    );
-    assert.ok(
-      !/\[\s*"en",\s*"es",\s*"pt",\s*"de"\s*\]\.includes\(data\.language\)/.test(OPTIONS_SOURCE),
-      "Import must NOT use the legacy hardcoded en/es/pt/de language allowlist"
-    );
+    for (const { code } of SUPPORTED_LANGS) {
+      const plan = planImport(validImportData({ language: code }));
+      assert.strictEqual(plan.toSave.language, code, `language "${code}" must round-trip`);
+    }
+    const rejected = planImport(validImportData({ language: "klingon" }));
+    assert.strictEqual(rejected.toSave.language, undefined, "unsupported language must not be imported");
   });
 
   test("10. file size limit is 102400 bytes", () => {
+    // This gate is DOM/File-bound and stays inline in options.js.
     assert.ok(
       OPTIONS_SOURCE.includes("file.size > 102400"),
       "Import must reject files larger than 102400 bytes"
@@ -187,17 +182,14 @@ describe("import settings (source verification)", () => {
   });
 
   test("11. import validates disabledCategories against known category keys", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes("Array.isArray(data.disabledCategories)"),
-      "Import must validate disabledCategories is an array"
-    );
-    assert.ok(
-      OPTIONS_SOURCE.includes("VALID_CATEGORIES"),
-      "Import must validate disabledCategories against VALID_CATEGORIES set"
-    );
+    const valid = planImport(validImportData({ disabledCategories: ["utm", "ads"] }));
+    assert.deepStrictEqual(valid.toSave.disabledCategories, ["utm", "ads"]);
+    const invalid = planImport(validImportData({ disabledCategories: ["utm", "not-a-category"] }));
+    assert.strictEqual(invalid.toSave.disabledCategories, undefined, "an unknown category must reject the whole array");
   });
 
   test("12. after import, UI elements are refreshed", () => {
+    // DOM refresh wiring stays inline in options.js.
     assert.ok(
       OPTIONS_SOURCE.includes("syncDevTools()"),
       "Import must call syncDevTools() to refresh dev tools UI"
@@ -225,6 +217,15 @@ describe("import settings (source verification)", () => {
       OPTIONS_SOURCE.includes('fileInput.value = ""'),
       "Import must clear fileInput.value after processing"
     );
+  });
+
+  test("legacy file with no schemaVersion still imports exactly as today", () => {
+    const legacy = validImportData({ enabled: true, toastDuration: 45 });
+    assert.strictEqual(legacy.schemaVersion, undefined);
+    const plan = planImport(legacy);
+    assert.equal(plan.ok, true);
+    assert.strictEqual(plan.toSave.enabled, true);
+    assert.strictEqual(plan.toSave.toastDuration, 45);
   });
 });
 
@@ -337,18 +338,17 @@ describe("isValidCustomParam (canonical customParams validator, #818)", () => {
 //
 // The import language allowlist must accept EVERY code exported by the picker.
 // Export writes `language: prefs.language` (any SUPPORTED_LANGS code), so import
-// must mirror that set. acceptLanguage() replicates the import guard against the
+// must mirror that set. This now exercises the real planImport() against the
 // real SUPPORTED_LANGS so a future edit to one side without the other fails here.
 // ---------------------------------------------------------------------------
 describe("import language round-trip (#729)", () => {
-  // Mirror of the import-handler guard at options.js (data-driven, not hardcoded).
-  const acceptLanguage = (lang) => SUPPORTED_LANGS.some((l) => l.code === lang);
 
   test("35. every SUPPORTED_LANGS code survives an export→import round-trip", () => {
     for (const { code } of SUPPORTED_LANGS) {
+      const plan = planImport(validImportData({ language: code }));
       assert.strictEqual(
-        acceptLanguage(code),
-        true,
+        plan.toSave.language,
+        code,
         `exported language "${code}" must be accepted on import`
       );
     }
@@ -360,13 +360,15 @@ describe("import language round-trip (#729)", () => {
         SUPPORTED_LANGS.some((l) => l.code === code),
         `"${code}" must be a supported language`
       );
-      assert.strictEqual(acceptLanguage(code), true, `"${code}" must round-trip`);
+      const plan = planImport(validImportData({ language: code }));
+      assert.strictEqual(plan.toSave.language, code, `"${code}" must round-trip`);
     }
   });
 
   test("37. unknown/invalid language codes are rejected", () => {
     for (const bad of ["", "xx", "EN", "en-US", "klingon", null, undefined, 42]) {
-      assert.strictEqual(acceptLanguage(bad), false, `"${String(bad)}" must be rejected`);
+      const plan = planImport(validImportData({ language: bad }));
+      assert.strictEqual(plan.toSave.language, undefined, `"${String(bad)}" must be rejected`);
     }
   });
 });
@@ -380,45 +382,45 @@ describe("import/export hardening (#964/#965/#968)", () => {
 
   // #968 — data-loss round-trip
   test("38. export round-trips the three previously-dropped prefs", () => {
-    for (const key of ["experimentalParamClassesEnabled", "honorCreatorMode", "creatorAllowlist"]) {
-      assert.ok(
-        OPTIONS_SOURCE.includes(`${key}: prefs.${key}`),
-        `Export payload must include "${key}" (was silently dropped)`
-      );
-    }
+    const prefs = {
+      experimentalParamClassesEnabled: true,
+      honorCreatorMode: true,
+      creatorAllowlist: ["youtube.com/@example"],
+    };
+    const payload = buildExportPayload(prefs, { devMode: false, appVersion: "1.0.0" });
+    assert.strictEqual(payload.experimentalParamClassesEnabled, true, "was silently dropped");
+    assert.strictEqual(payload.honorCreatorMode, true, "was silently dropped");
+    assert.deepStrictEqual(payload.creatorAllowlist, ["youtube.com/@example"], "was silently dropped");
   });
 
   test("39. import round-trips honorCreatorMode + experimentalParamClassesEnabled as booleans", () => {
-    for (const key of ["honorCreatorMode", "experimentalParamClassesEnabled"]) {
-      assert.ok(
-        new RegExp(`BOOL_KEYS[\\s\\S]*"${key}"`).test(OPTIONS_SOURCE),
-        `Import BOOL_KEYS must include "${key}"`
-      );
-    }
+    const plan = planImport(validImportData({ honorCreatorMode: true, experimentalParamClassesEnabled: true }));
+    assert.strictEqual(plan.toSave.honorCreatorMode, true, 'toSave must include "honorCreatorMode"');
+    assert.strictEqual(plan.toSave.experimentalParamClassesEnabled, true, 'toSave must include "experimentalParamClassesEnabled"');
   });
 
   test("40. import round-trips creatorAllowlist through the pure validator", () => {
-    assert.ok(
-      OPTIONS_SOURCE.includes("Array.isArray(data.creatorAllowlist)"),
-      "Import must validate creatorAllowlist is an array"
-    );
-    assert.ok(
-      /addCreatorAllowlistEntry\(\s*acc\s*,\s*entry\s*\)/.test(OPTIONS_SOURCE),
-      "Import must fold creatorAllowlist entries through addCreatorAllowlistEntry"
-    );
+    const plan = planImport(validImportData({ creatorAllowlist: ["YouTube.com/@Example", "youtube.com/@example"] }));
+    // addCreatorAllowlistEntry normalizes case and drops the duplicate
+    assert.deepStrictEqual(plan.toSave.creatorAllowlist, ["youtube.com/@example"]);
   });
 
   // #964 — permission-gate bypass
-  test("41. import gates followShortenersEnabled on the actual host grant", () => {
-    // Must NOT be in the blind BOOL_KEYS loop...
+  test("41. followShortenersEnabled is NOT included in toSave; only surfaced via special", () => {
+    const plan = planImport(validImportData({ followShortenersEnabled: true }));
+    assert.strictEqual(plan.toSave.followShortenersEnabled, undefined, "followShortenersEnabled must never be in toSave (pure module cannot check permissions)");
+    assert.strictEqual(plan.special.followShortenersRequested, true);
+
+    const planFalse = planImport(validImportData({ followShortenersEnabled: false }));
+    assert.strictEqual(planFalse.special.followShortenersRequested, false);
+
+    const planMissing = planImport(validImportData({}));
+    assert.strictEqual(planMissing.special.followShortenersRequested, false);
+
+    // The actual host-permission gate stays in options.js.
     assert.ok(
-      !/BOOL_KEYS\s*=\s*\[[^\]]*"followShortenersEnabled"/.test(OPTIONS_SOURCE),
-      "followShortenersEnabled must NOT be a blindly-imported BOOL_KEY"
-    );
-    // ...and enabling it must depend on hasShortenerPermissions().
-    assert.ok(
-      /data\.followShortenersEnabled\s*&&\s*\(await hasShortenerPermissions\(\)\)/.test(OPTIONS_SOURCE),
-      "Import must only enable followShortenersEnabled when the host grant is present"
+      /followShortenersRequested\s*&&\s*\(await hasShortenerPermissions\(\)\)/.test(OPTIONS_SOURCE),
+      "options.js must only enable followShortenersEnabled when the host grant is present"
     );
     assert.ok(
       OPTIONS_SOURCE.includes("chrome.permissions.contains"),
@@ -427,9 +429,14 @@ describe("import/export hardening (#964/#965/#968)", () => {
   });
 
   // #965 — guarded-pref override desync
-  test("42. import reconciles the per-device override for guarded prefs", () => {
+  test("42. injectOwnAffiliate is reconcilable: present in toSave when boolean", () => {
+    const plan = planImport(validImportData({ injectOwnAffiliate: true }));
+    assert.strictEqual(plan.toSave.injectOwnAffiliate, true);
+    // The reconcile call stays in options.js, but reads the value from the
+    // plan (plan.toSave[key]) rather than raw `data`, so it follows any future
+    // migrate() transform of the payload instead of silently diverging.
     assert.ok(
-      /reconcileOverrideForExplicitChoice\(\s*key\s*,\s*data\[key\]\s*\)/.test(OPTIONS_SOURCE),
+      /reconcileOverrideForExplicitChoice\(\s*key\s*,\s*plan\.toSave\[key\]\s*\)/.test(OPTIONS_SOURCE),
       "Import must reconcile the per-device override to the imported guarded value"
     );
   });
@@ -445,26 +452,21 @@ describe("import/export hardening (#964/#965/#968)", () => {
   });
 
   test("44. snapToastDuration maps arbitrary values to the nearest offered option", () => {
-    // Mirror of the implementation (options.js is browser-only, not importable).
-    const TOAST_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60];
-    const snap = (n) => {
-      const v = Number.isFinite(n) ? n : 15;
-      return TOAST_DURATION_OPTIONS.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
-    };
-    assert.equal(snap(45), 45, "an offered value maps to itself");
-    assert.equal(snap(60), 60, "the ceiling is reachable");
-    assert.equal(snap(22), 15, "22 snaps to nearest (15, distance 7 < 8)");
-    assert.equal(snap(23), 30, "23 snaps to nearest (30, distance 7 < 8)");
-    assert.equal(snap(1000), 60, "out-of-range high clamps to 60");
-    assert.equal(snap(NaN), 15, "non-finite falls back to 15");
-    // The implementation must define both the option set and the snapper.
+    assert.deepStrictEqual([...TOAST_DURATION_OPTIONS], [5, 10, 15, 30, 45, 60]);
+    assert.equal(snapToastDuration(45), 45, "an offered value maps to itself");
+    assert.equal(snapToastDuration(60), 60, "the ceiling is reachable");
+    assert.equal(snapToastDuration(22), 15, "22 snaps to nearest (15, distance 7 < 8)");
+    assert.equal(snapToastDuration(23), 30, "23 snaps to nearest (30, distance 7 < 8)");
+    assert.equal(snapToastDuration(1000), 60, "out-of-range high clamps to 60");
+    assert.equal(snapToastDuration(NaN), 15, "non-finite falls back to 15");
+    // The single source of truth now lives in settings-schema.js.
     assert.ok(
-      OPTIONS_SOURCE.includes("TOAST_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60]"),
-      "options.js must define TOAST_DURATION_OPTIONS"
+      SETTINGS_SCHEMA_SOURCE.includes("export const TOAST_DURATION_OPTIONS"),
+      "settings-schema.js must define TOAST_DURATION_OPTIONS"
     );
     assert.ok(
-      OPTIONS_SOURCE.includes("function snapToastDuration"),
-      "options.js must define snapToastDuration"
+      SETTINGS_SCHEMA_SOURCE.includes("export function snapToastDuration"),
+      "settings-schema.js must define snapToastDuration"
     );
   });
 });

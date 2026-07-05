@@ -401,11 +401,17 @@ describe("addEntry — list-size caps mirror the import path (#728 item 28)", ()
     assert.equal(IMPORT_LIST_CAPS.blacklist, 500);
     assert.equal(IMPORT_LIST_CAPS.whitelist, 500);
     assert.equal(IMPORT_LIST_CAPS.customParams, 200);
-    // The import handler must delegate to capImportedLists (which applies these
-    // caps), not carry its own divergent length literals.
+    // The import handler delegates the whole decision to planImport() (#973
+    // follow-up, settings-schema.js), which applies these caps via
+    // capImportedLists internally — not carrying its own divergent literals.
     assert.ok(
-      optionsJs.includes("capImportedLists(data)"),
-      "import path must apply the caps via capImportedLists, the shared source of truth"
+      optionsJs.includes("planImport(data)"),
+      "import path must apply the caps via planImport, the shared source of truth"
+    );
+    const settingsSchemaJs = readFileSync(join(ROOT, "src/lib/settings-schema.js"), "utf8");
+    assert.ok(
+      settingsSchemaJs.includes("capImportedLists(migrated)"),
+      "planImport must apply the caps via capImportedLists"
     );
   });
 });

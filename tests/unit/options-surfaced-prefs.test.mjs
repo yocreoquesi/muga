@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { PREF_DEFAULTS } from "../../src/lib/prefs.js";
 import { TRANSLATIONS, SUPPORTED_LANGS } from "../../src/lib/i18n.js";
+import { BOOLEAN_KEYS, buildExportPayload, planImport } from "../../src/lib/settings-schema.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../..");
@@ -108,36 +109,31 @@ describe("#925 — userCustomRules view/remove editor", () => {
 });
 
 describe("#925 — export/import round-trips the newly-surfaced prefs", () => {
+  // #973 follow-up: export/import logic moved to the pure src/lib/settings-schema.js
+  // (buildExportPayload/planImport/BOOLEAN_KEYS), single source of truth for options.js.
   test("export payload includes the three privacy booleans", () => {
+    const prefs = { canonicalExtractorEnabled: true, crossSiteFrequencyEnabled: true, attributionLedgerEnabled: true };
+    const payload = buildExportPayload(prefs, { devMode: false, appVersion: "1.0.0" });
     for (const key of ["canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"]) {
-      assert.ok(
-        optionsJs.includes(`${key}: prefs.${key}`),
-        `export payload must include ${key}`
-      );
+      assert.strictEqual(payload[key], true, `export payload must include ${key}`);
     }
   });
 
-  test("import BOOL_KEYS includes the three privacy booleans", () => {
-    const boolKeysMatch = optionsJs.match(/const BOOL_KEYS = \[([^\]]*)\]/);
-    assert.ok(boolKeysMatch, "import handler must define BOOL_KEYS");
+  test("BOOLEAN_KEYS includes the three privacy booleans", () => {
     for (const key of ["canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"]) {
-      assert.ok(
-        boolKeysMatch[1].includes(`"${key}"`),
-        `BOOL_KEYS must include ${key} so import applies it`
-      );
+      assert.ok(BOOLEAN_KEYS.includes(key), `BOOLEAN_KEYS must include ${key} so import applies it`);
     }
   });
 
   test("userCustomRules is exported and validated on import", () => {
-    assert.ok(
-      optionsJs.includes("userCustomRules: prefs.userCustomRules"),
-      "export payload must include userCustomRules"
-    );
-    assert.ok(
-      optionsJs.includes("Array.isArray(data.userCustomRules)") &&
-        optionsJs.includes(".filter(isValidCustomParam)"),
-      "import must validate userCustomRules entries with isValidCustomParam"
-    );
+    const payload = buildExportPayload({ userCustomRules: ["ref_code"] }, { devMode: false, appVersion: "1.0.0" });
+    assert.deepStrictEqual(payload.userCustomRules, ["ref_code"], "export payload must include userCustomRules");
+
+    const plan = planImport({
+      muga: true, blacklist: [], whitelist: [], customParams: [],
+      userCustomRules: ["ref_code", "q", "bad entry"],
+    });
+    assert.deepStrictEqual(plan.toSave.userCustomRules, ["ref_code"], "import must validate userCustomRules entries with isValidCustomParam");
   });
 });
 

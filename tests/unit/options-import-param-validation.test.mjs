@@ -199,15 +199,25 @@ describe("T3 validation.js source — exports and canonical imports", () => {
 });
 
 // ── T4: options.js source guards ─────────────────────────────────────────────
+//
+// #973 follow-up: the export/import logic (including the capImportedLists
+// call) was extracted from options.js into the pure src/lib/settings-schema.js
+// (planImport/buildExportPayload, single source of truth). options.js now
+// delegates to planImport() instead of calling capImportedLists directly.
 
-describe("T4 options.js — delegates param cleaning to capImportedLists, no inline validator", () => {
-  test("imports capImportedLists from validation.js", () => {
-    // #911: the import handler no longer applies isValidCustomParam inline; it
+describe("T4 options.js — delegates param cleaning to planImport, no inline validator", () => {
+  const SETTINGS_SCHEMA_SOURCE = readFileSync(
+    join(__dirname, "../../src/lib/settings-schema.js"),
+    "utf8"
+  );
+
+  test("planImport (settings-schema.js) uses capImportedLists from validation.js", () => {
+    // #911: the import path no longer applies isValidCustomParam inline; it
     // delegates filtering + capping to capImportedLists (which applies the
     // canonical isValidCustomParam under the hood — asserted in T3/below).
     assert.ok(
-      OPTIONS_SOURCE.includes("capImportedLists"),
-      "options.js must import/use capImportedLists"
+      SETTINGS_SCHEMA_SOURCE.includes("capImportedLists"),
+      "settings-schema.js must import/use capImportedLists"
     );
     assert.ok(
       VALIDATION_SOURCE.includes("export function capImportedLists("),
@@ -215,19 +225,25 @@ describe("T4 options.js — delegates param cleaning to capImportedLists, no inl
     );
   });
 
-  test("no inline isValidParam definition remains", () => {
+  test("no inline isValidParam definition remains anywhere", () => {
     assert.ok(
       !OPTIONS_SOURCE.includes("const isValidParam ="),
       "options.js must not contain the old inline isValidParam definition"
     );
+    assert.ok(
+      !SETTINGS_SCHEMA_SOURCE.includes("const isValidParam ="),
+      "settings-schema.js must not contain the old inline isValidParam definition"
+    );
   });
 
-  test("import path applies canonical param validation via capImportedLists", () => {
-    // The import handler calls capImportedLists(data); capImportedLists in
-    // validation.js is what runs isValidCustomParam over the imported params.
+  test("options.js delegates the whole import decision to planImport(data)", () => {
     assert.ok(
-      OPTIONS_SOURCE.includes("capImportedLists(data)"),
-      "import handler must call capImportedLists(data)"
+      OPTIONS_SOURCE.includes("planImport(data)"),
+      "options.js import handler must call planImport(data)"
+    );
+    assert.ok(
+      SETTINGS_SCHEMA_SOURCE.includes("capImportedLists(migrated)"),
+      "planImport must call capImportedLists(migrated)"
     );
     assert.ok(
       VALIDATION_SOURCE.includes("filter(isValidCustomParam)"),
@@ -237,7 +253,7 @@ describe("T4 options.js — delegates param cleaning to capImportedLists, no inl
 
   test("param cleaning filters invalid customParams (not whole-abort)", () => {
     // The behavior: filter invalid entries, count rejections, import the rest —
-    // never throw when only some customParams are invalid. This now lives in
+    // never throw when only some customParams are invalid. This lives in
     // capImportedLists (validation.js), which uses .filter() (not .every() abort).
     assert.ok(
       VALIDATION_SOURCE.includes("filter(isValidCustomParam)"),
@@ -245,11 +261,14 @@ describe("T4 options.js — delegates param cleaning to capImportedLists, no inl
     );
   });
 
-  test("import path reports rejected customParam count to user", () => {
-    // Guard that the skipped-count variable exists in the import handler
+  test("planImport reports rejected customParam count via `skipped`", () => {
     assert.ok(
-      OPTIONS_SOURCE.includes("skipped") || OPTIONS_SOURCE.includes("rejected"),
-      "import path must track and report the count of rejected customParams"
+      SETTINGS_SCHEMA_SOURCE.includes("skipped"),
+      "planImport must track and return the count of rejected customParams"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("import_params_skipped"),
+      "options.js import handler must surface the partial-import toast"
     );
   });
 });

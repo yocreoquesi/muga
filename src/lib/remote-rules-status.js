@@ -24,7 +24,7 @@
  * @param {() => Promise<object>} deps.getPrefs - Canonical merged-prefs reader.
  * @param {{ get: (defaults: object) => Promise<object> }} deps.local - chrome.storage.local (or a fake).
  * @param {boolean} deps.hasDNR - Whether declarativeNetRequest is available.
- * @returns {Promise<{ok: true, enabled: boolean, meta: object, remoteParams: string[], supportsDNR: boolean}>}
+ * @returns {Promise<{ok: true, enabled: boolean, meta: object, remoteParams: string[], changelog: object|null, supportsDNR: boolean}>}
  */
 export async function buildRemoteRulesStatus({ getPrefs, local, hasDNR }) {
   // Canonical effective value (sync + consent + per-device overrides).
@@ -35,6 +35,7 @@ export async function buildRemoteRulesStatus({ getPrefs, local, hasDNR }) {
   const localData = await local.get({
     remoteParams: [],
     remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
+    remoteRulesChangelog: null,
   });
 
   return {
@@ -42,6 +43,9 @@ export async function buildRemoteRulesStatus({ getPrefs, local, hasDNR }) {
     enabled,
     meta: localData.remoteRulesMeta,
     remoteParams: localData.remoteParams,
+    // Weekly diff snapshot from the last mergeIntoCache write (#984), or null
+    // if no fetch has ever completed (or the cache was cleared).
+    changelog: localData.remoteRulesChangelog,
     // Feature-detect flag (REQ-UI-5). Since v1.10.1 the only remaining runtime
     // gate is DNR availability (chrome.alarms dependency was removed).
     supportsDNR: !!hasDNR,
