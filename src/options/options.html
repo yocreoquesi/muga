@@ -189,6 +189,13 @@
         </div>
         <div class="row">
           <div class="row-label">
+            <strong data-i18n="row_active_defense_label">Active defense</strong>
+            <small data-i18n="row_active_defense_hint">Keeps stripping tracking params a page re-adds after it loads: in-page navigation, rewritten links, and window.name. Turn off if a site misbehaves.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="active-defense-enabled" data-i18n-aria-label="aria_active_defense_enabled"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
             <strong data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
             <small data-i18n="row_unwrap_hint">Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)</small>
           </div>

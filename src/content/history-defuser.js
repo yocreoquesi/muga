@@ -194,7 +194,11 @@
         } catch {
           // Fail-safe: treat as not exempt, active-defense stays ON.
         }
-        dispatchGate(prefsOk && !exempt);
+        // #1006: users can disable active-defense content scripts (history pushState/replaceState
+        // cleaning, window.name defusing, DOM link/click rewriting) if they break a site.
+        // Default to ON when the pref key is absent (older installs / not yet synced).
+        const activeDefenseOn = !(prefs && prefs.activeDefenseEnabled === false);
+        dispatchGate(prefsOk && activeDefenseOn && !exempt);
       });
     } catch {
       // Extension context invalidated. Leave the gate closed.

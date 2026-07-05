@@ -41,6 +41,7 @@ const SAMPLE_PREFS = {
   whitelist: ["good.com::tag::abc"],
   customParams: ["ref_code"],
   dnrEnabled: true,
+  activeDefenseEnabled: true,
   contextMenuEnabled: true,
   blockPings: true,
   ampRedirect: true,
@@ -70,16 +71,16 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 18 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 19 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
-      "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
+      "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
       "attributionLedgerEnabled",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 18);
+    assert.strictEqual(BOOLEAN_KEYS.length, 19);
   });
 
   test("followShortenersEnabled and devMode are NOT in BOOLEAN_KEYS", () => {

@@ -18,6 +18,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `whitelist` | string[] | `[]` | Affiliate values to never touch. Format: `"domain::param::value"` |
 | `customParams` | string[] | `[]` | Extra tracking param names to strip beyond built-in list |
 | `dnrEnabled` | boolean | `true` | Enable static DNR rule (declarativeNetRequest) for tracking param stripping |
+| `activeDefenseEnabled` | boolean | `true` | Enable active-defense content scripts (history pushState/replaceState cleaning, window.name defusing, DOM link/click rewriting). Disable if these break a site (#1006) |
 | `contextMenuEnabled` | boolean | `true` | Show "Copy clean link" in the right-click context menu |
 | `blockPings` | boolean | `true` | Block `<a ping>` and `navigator.sendBeacon` calls |
 | `ampRedirect` | boolean | `true` | Redirect AMP pages to canonical URL |
