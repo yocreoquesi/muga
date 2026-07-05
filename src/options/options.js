@@ -9,6 +9,7 @@ import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
+import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
 import {
   addEntry as addCreatorAllowlistEntry,
   removeEntry as removeCreatorAllowlistEntry,
@@ -1468,6 +1469,98 @@ function renderRemoteRulesStatus(status) {
   } else {
     errorEl.textContent = "";
     errorEl.hidden = true;
+  }
+
+  renderRemoteRulesChangelog(status);
+}
+
+/**
+ * Renders the weekly remote-rules changelog block (#984): "N added / M
+ * removed" plus a capped, enumerated diff list of tracking-parameter names
+ * MUGA now cleans (added) or no longer cleans (removed).
+ *
+ * Thin DOM applicator: all framing/branching lives in the pure, unit-tested
+ * planChangelogView (src/lib/remote-rules-changelog-view.js). Uses textContent
+ * only for dynamic data — no innerHTML (REQ-SECURITY-1).
+ *
+ * @param {{ enabled: boolean, changelog?: { addedCount:number, removedCount:number, added:string[], removed:string[], fetchedAt:number|null, prevFetchedAt:number|null }|null }} status
+ */
+function renderRemoteRulesChangelog(status) {
+  const details = document.getElementById("remote-rules-changelog");
+  const summary = document.getElementById("remote-rules-changelog-summary");
+  const emptyEl = document.getElementById("remote-rules-changelog-empty");
+  const addedBlock = document.getElementById("remote-rules-changelog-added-block");
+  const addedList = document.getElementById("remote-rules-changelog-added");
+  const addedMore = document.getElementById("remote-rules-changelog-added-more");
+  const removedBlock = document.getElementById("remote-rules-changelog-removed-block");
+  const removedList = document.getElementById("remote-rules-changelog-removed");
+  const removedMore = document.getElementById("remote-rules-changelog-removed-more");
+
+  if (
+    !details || !summary || !emptyEl ||
+    !addedBlock || !addedList || !addedMore ||
+    !removedBlock || !removedList || !removedMore
+  ) return;
+
+  const view = planChangelogView(status, (k) => t(k, _currentLang));
+
+  details.hidden = !view.visible;
+  summary.textContent = view.summary;
+
+  // Empty/framing line (initial rule set, no-changes) — mutually exclusive
+  // with the added/removed diff lists.
+  if (view.empty !== null) {
+    emptyEl.textContent = view.empty;
+    emptyEl.hidden = false;
+  } else {
+    emptyEl.textContent = "";
+    emptyEl.hidden = true;
+  }
+
+  // Added diff list.
+  if (view.added !== null) {
+    addedBlock.hidden = false;
+    addedList.textContent = "";
+    for (const name of view.added) {
+      const li = document.createElement("li");
+      li.textContent = name;
+      addedList.appendChild(li);
+    }
+    if (view.addedMore !== null) {
+      addedMore.textContent = view.addedMore;
+      addedMore.hidden = false;
+    } else {
+      addedMore.textContent = "";
+      addedMore.hidden = true;
+    }
+  } else {
+    addedBlock.hidden = true;
+    addedList.textContent = "";
+    addedMore.textContent = "";
+    addedMore.hidden = true;
+  }
+
+  // Removed diff list.
+  if (view.removed !== null) {
+    removedBlock.hidden = false;
+    removedList.textContent = "";
+    for (const name of view.removed) {
+      const li = document.createElement("li");
+      li.textContent = name;
+      removedList.appendChild(li);
+    }
+    if (view.removedMore !== null) {
+      removedMore.textContent = view.removedMore;
+      removedMore.hidden = false;
+    } else {
+      removedMore.textContent = "";
+      removedMore.hidden = true;
+    }
+  } else {
+    removedBlock.hidden = true;
+    removedList.textContent = "";
+    removedMore.textContent = "";
+    removedMore.hidden = true;
   }
 }
 

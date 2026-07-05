@@ -948,6 +948,98 @@ describe("mergeIntoCache — writes params + meta to storage", () => {
   });
 });
 
+// ── mergeIntoCache — remoteRulesChangelog (#984) ────────────────────────────────
+
+describe("mergeIntoCache — writes remoteRulesChangelog (#984)", () => {
+  test("first fetch (no prior remoteParams) → everything added, prevFetchedAt null", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    const accepted = ["utm_test1", "fb_custom"];
+
+    await mergeIntoCache(accepted, { version: 1, fetchedAt: "2026-07-01T00:00:00Z", paramCount: 2, lastError: null, published: null }, { storage, dnr });
+
+    const stored = await storage.get({ remoteRulesChangelog: null });
+    assert.deepEqual(stored.remoteRulesChangelog.added, accepted);
+    assert.strictEqual(stored.remoteRulesChangelog.addedCount, 2);
+    assert.deepEqual(stored.remoteRulesChangelog.removed, []);
+    assert.strictEqual(stored.remoteRulesChangelog.removedCount, 0);
+    assert.strictEqual(stored.remoteRulesChangelog.fetchedAt, "2026-07-01T00:00:00Z");
+    assert.strictEqual(stored.remoteRulesChangelog.prevFetchedAt, null, "no prior meta means prevFetchedAt is null");
+  });
+
+  test("second fetch diffs against the previously cached remoteParams", async () => {
+    const storage = makeStorageFake({
+      remoteParams: ["utm_old", "fb_custom"],
+      remoteRulesMeta: { version: 1, fetchedAt: "2026-06-24T00:00:00Z", paramCount: 2, lastError: null, published: null },
+    });
+    const dnr = makeDnrFake();
+    const accepted = ["fb_custom", "utm_new"];
+
+    await mergeIntoCache(accepted, { version: 2, fetchedAt: "2026-07-01T00:00:00Z", paramCount: 2, lastError: null, published: null }, { storage, dnr });
+
+    const stored = await storage.get({ remoteRulesChangelog: null });
+    assert.deepEqual(stored.remoteRulesChangelog.added, ["utm_new"]);
+    assert.strictEqual(stored.remoteRulesChangelog.addedCount, 1);
+    assert.deepEqual(stored.remoteRulesChangelog.removed, ["utm_old"]);
+    assert.strictEqual(stored.remoteRulesChangelog.removedCount, 1);
+    assert.strictEqual(stored.remoteRulesChangelog.prevFetchedAt, "2026-06-24T00:00:00Z", "prevFetchedAt captured from the pre-existing meta");
+  });
+
+  test("no-change fetch → empty added/removed, counts zero", async () => {
+    const storage = makeStorageFake({
+      remoteParams: ["utm_a", "utm_b"],
+      remoteRulesMeta: { version: 1, fetchedAt: "2026-06-24T00:00:00Z", paramCount: 2, lastError: null, published: null },
+    });
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache(["utm_a", "utm_b"], { version: 2, fetchedAt: "2026-07-01T00:00:00Z", paramCount: 2, lastError: null, published: null }, { storage, dnr });
+
+    const stored = await storage.get({ remoteRulesChangelog: null });
+    assert.strictEqual(stored.remoteRulesChangelog.addedCount, 0);
+    assert.strictEqual(stored.remoteRulesChangelog.removedCount, 0);
+  });
+
+  test("empty accepted set (all-dedupe / remove-only path) records a removed-only diff", async () => {
+    const storage = makeStorageFake({
+      remoteParams: ["utm_old1", "utm_old2"],
+      remoteRulesMeta: { version: 1, fetchedAt: "2026-06-24T00:00:00Z", paramCount: 2, lastError: null, published: null },
+    });
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache([], { version: 2, fetchedAt: "2026-07-01T00:00:00Z", paramCount: 0, lastError: null, published: null }, { storage, dnr });
+
+    const stored = await storage.get({ remoteRulesChangelog: null });
+    assert.deepEqual(stored.remoteRulesChangelog.removed.sort(), ["utm_old1", "utm_old2"]);
+    assert.strictEqual(stored.remoteRulesChangelog.removedCount, 2);
+    assert.strictEqual(stored.remoteRulesChangelog.addedCount, 0);
+  });
+
+  test("DNR update failure does NOT write a new changelog and leaves cache untouched (#984)", async () => {
+    // The changelog is built AFTER the DNR update succeeds. If updateDynamicRules
+    // throws, mergeIntoCache bails before touching remoteParams / remoteRulesChangelog,
+    // so a stale changelog must survive verbatim and only lastError is recorded.
+    const priorChangelog = {
+      addedCount: 1, removedCount: 0, added: ["utm_prior"], removed: [],
+      fetchedAt: "2026-06-24T00:00:00Z", prevFetchedAt: null,
+    };
+    const storage = makeStorageFake({
+      remoteParams: ["utm_prior"],
+      remoteRulesMeta: { version: 4, fetchedAt: "2026-06-24T00:00:00Z", paramCount: 1, lastError: null, published: null },
+      remoteRulesChangelog: priorChangelog,
+    });
+    const throwingDnr = {
+      updateDynamicRules() { return Promise.reject(new Error("DNR rejected update")); },
+    };
+
+    await mergeIntoCache(["utm_new"], { version: 5, fetchedAt: "2026-07-01T00:00:00Z", paramCount: 1, lastError: null, published: null }, { storage, dnr: throwingDnr });
+
+    const stored = await storage.get({ remoteRulesChangelog: null, remoteParams: [], remoteRulesMeta: {} });
+    assert.deepEqual(stored.remoteRulesChangelog, priorChangelog, "changelog must be unchanged when the DNR update fails");
+    assert.deepEqual(stored.remoteParams, ["utm_prior"], "remoteParams must NOT be overwritten on DNR failure");
+    assert.strictEqual(stored.remoteRulesMeta.lastError, ERR.DNR_ERROR, "lastError must record the DNR failure code");
+  });
+});
+
 // ── clearRemoteCache ──────────────────────────────────────────────────────────
 
 describe("clearRemoteCache — storage cleanup and DNR removal (REQ-OPT-5)", () => {
@@ -963,6 +1055,18 @@ describe("clearRemoteCache — storage cleanup and DNR removal (REQ-OPT-5)", () 
     const result = await storage.get({ remoteParams: "SENTINEL", remoteRulesMeta: "SENTINEL" });
     assert.strictEqual(result.remoteParams, "SENTINEL", "remoteParams should be cleared");
     assert.strictEqual(result.remoteRulesMeta, "SENTINEL", "remoteRulesMeta should be cleared");
+  });
+
+  test("removes remoteRulesChangelog from storage (#984)", async () => {
+    const storage = makeStorageFake({
+      remoteRulesChangelog: { addedCount: 1, removedCount: 0, added: ["utm_x"], removed: [], fetchedAt: "2026-07-01T00:00:00Z", prevFetchedAt: null },
+    });
+    const dnr = makeDnrFake();
+
+    await clearRemoteCache({ storage, dnr });
+
+    const result = await storage.get({ remoteRulesChangelog: "SENTINEL" });
+    assert.strictEqual(result.remoteRulesChangelog, "SENTINEL", "remoteRulesChangelog should be cleared alongside remoteParams/remoteRulesMeta");
   });
 
   test("removes DNR rule 1001 (REQ-MERGE-4)", async () => {

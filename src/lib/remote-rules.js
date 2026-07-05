@@ -395,6 +395,32 @@ export function validateParams(params, stored, nowMs, opts = {}) {
   return { ok: true, accepted: params };
 }
 
+/** Maximum number of added/removed entries kept per changelog snapshot (#984). */
+export const CHANGELOG_CAP = 50;
+
+/**
+ * Pure set-difference of two remote-param name lists.
+ * added = names in newParams not in oldParams; removed = names in oldParams not in newParams.
+ * Arrays are capped to `cap`; the *Count fields carry the full totals.
+ *
+ * @param {string[]|null|undefined} oldParams - Previously accepted remote params.
+ * @param {string[]|null|undefined} newParams - Newly accepted remote params.
+ * @param {number} [cap] - Maximum number of entries kept per array (default CHANGELOG_CAP).
+ * @returns {{ addedCount: number, removedCount: number, added: string[], removed: string[] }}
+ */
+export function diffRemoteParams(oldParams, newParams, cap = CHANGELOG_CAP) {
+  const oldSet = new Set(Array.isArray(oldParams) ? oldParams : []);
+  const newSet = new Set(Array.isArray(newParams) ? newParams : []);
+  const added = [...newSet].filter((p) => !oldSet.has(p));
+  const removed = [...oldSet].filter((p) => !newSet.has(p));
+  return {
+    addedCount: added.length,
+    removedCount: removed.length,
+    added: added.slice(0, cap),
+    removed: removed.slice(0, cap),
+  };
+}
+
 /**
  * Silently removes params already present in the built-in TRACKING_PARAMS set.
  * This is a dedup filter, NOT a payload rejection trigger. (REQ-VALIDATE-9, ADR-D9)
@@ -513,6 +539,8 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  *
  * Per design §4.3 step 7 and REQ-MERGE-1/2:
  *   - Writes remoteParams + remoteRulesMeta to chrome.storage.local (via storage facade).
+ *   - Also writes remoteRulesChangelog: a set-diff against the previous
+ *     remoteParams cache, surfaced by Settings as "N added / M removed" (#984).
  *   - Calls dnr.updateDynamicRules to add/replace rule 1001.
  *   - Does NOT touch remoteRulesEnabled (sync) or customParams.
  *
@@ -556,9 +584,27 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
     return;
   }
 
+  // Build the weekly changelog against the PREVIOUS cache before overwriting
+  // it (#984). This runs for every successful merge, including the
+  // empty-accepted remove-only path above — that path legitimately produces
+  // a "removed" diff (all previously accepted params dropped).
+  // Read-before-overwrite is TOCTOU-safe here: the fetch pipeline serializes
+  // mergeIntoCache calls. Only the single weekly alarm drives fetches and the
+  // _remoteFetchInFlight guard drops any overlapping run, so there is never a
+  // concurrent merge racing this get/set pair.
+  const prevCache = await storage.get({ remoteParams: [], remoteRulesMeta: null });
+  const prevParams = Array.isArray(prevCache.remoteParams) ? prevCache.remoteParams : [];
+  const diff = diffRemoteParams(prevParams, accepted);
+  const remoteRulesChangelog = {
+    ...diff,
+    fetchedAt: meta?.fetchedAt ?? null,
+    prevFetchedAt: prevCache.remoteRulesMeta?.fetchedAt ?? null,
+  };
+
   await storage.set({
     remoteParams: accepted,
     remoteRulesMeta: meta,
+    remoteRulesChangelog,
   });
 }
 
@@ -572,7 +618,7 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
  * @returns {Promise<void>}
  */
 export async function clearRemoteCache({ storage, dnr }) {
-  await storage.remove(["remoteParams", "remoteRulesMeta"]);
+  await storage.remove(["remoteParams", "remoteRulesMeta", "remoteRulesChangelog"]);
   await dnr.updateDynamicRules({
     removeRuleIds: [REMOTE_RULE_ID],
     addRules: [],
