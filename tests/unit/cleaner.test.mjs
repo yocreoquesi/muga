@@ -941,16 +941,20 @@ describe("preservedAffiliate — UI feedback signal", () => {
     assert.equal(r.preservedAffiliate, null);
   });
 
-  test("domain-whitelisted: third-party tag survives + preservedAffiliate populated", () => {
-    const { preservedAffiliate, cleanUrl } = processUrl(
-      "https://shop.test.muga/product?aff=someone-else-99&utm_source=fb",
+  test("domain-whitelisted: fully inert - URL completely untouched (#allowlist-full-inert)", () => {
+    // A domain-only whitelist entry now makes MUGA fully inert on the site,
+    // not just exempt from affiliate processing - tracking params survive
+    // too, and preservedAffiliate is not populated (nothing was inspected).
+    const rawUrl = "https://shop.test.muga/product?aff=someone-else-99&utm_source=fb";
+    const { preservedAffiliate, cleanUrl, action } = processUrl(
+      rawUrl,
       { ...PREFS, whitelist: ["shop.test.muga"] }
     );
-    // Domain whitelist still strips tracking but leaves affiliates
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, rawUrl);
     assert.equal(new URL(cleanUrl).searchParams.get("aff"), "someone-else-99");
-    assert.equal(new URL(cleanUrl).searchParams.get("utm_source"), null);
-    assert.ok(preservedAffiliate);
-    assert.equal(preservedAffiliate.value, "someone-else-99");
+    assert.equal(new URL(cleanUrl).searchParams.get("utm_source"), "fb");
+    assert.equal(preservedAffiliate, null);
   });
 
 });
@@ -1780,6 +1784,9 @@ describe("Bug #229 — toast whitelist/blacklist entry format", () => {
 
 // ---------------------------------------------------------------------------
 // Bug #185 — Domain-only whitelist entry must skip all affiliate processing
+// Superseded by #allowlist-full-inert: a domain-only whitelist entry no
+// longer just skips affiliate processing, it makes the whole domain fully
+// inert (tracking params survive too - see the last test in this block).
 // ---------------------------------------------------------------------------
 describe("Bug #185 — domain-only whitelist skips affiliate processing", () => {
   before(() => AFFILIATE_PATTERNS.push(TEST_PATTERN));
@@ -1818,20 +1825,73 @@ describe("Bug #185 — domain-only whitelist skips affiliate processing", () => 
       "foreign affiliate detection must be skipped when domain is whitelisted (#185)");
   });
 
-  test("domain-only whitelist entry still allows tracking param stripping (#185)", () => {
+  test("domain-only whitelist entry now makes the site fully inert - tracking params survive too (#allowlist-full-inert supersedes #185)", () => {
+    const rawUrl = "https://shop.test.muga/product?color=blue&utm_source=email";
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
       whitelist: ["shop.test.muga"],
     };
-    const { cleanUrl, removedTracking } = processUrl(
-      "https://shop.test.muga/product?color=blue&utm_source=email",
-      prefs
-    );
-    assert.ok(removedTracking.includes("utm_source"),
-      "utm_source must still be stripped even on a whitelisted domain (#185)");
-    assert.ok(!new URL(cleanUrl).searchParams.has("utm_source"),
-      "utm_source must be absent from clean URL (#185)");
+    const { cleanUrl, removedTracking, action } = processUrl(rawUrl, prefs);
+    assert.equal(action, "untouched",
+      "a domain-only whitelist entry must return the URL fully untouched");
+    assert.equal(cleanUrl, rawUrl,
+      "cleanUrl must be byte-for-byte identical to the raw URL");
+    assert.deepEqual(removedTracking, [],
+      "nothing may be stripped on a fully-exempt domain, including utm_source");
+    assert.ok(new URL(cleanUrl).searchParams.has("utm_source"),
+      "utm_source must survive - the whitelisted site is fully inert now");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #allowlist-full-inert — processUrl choke-point: isSiteFullyExempt governs
+// ALL cleaning, not just affiliate processing. Regression + future-proofing:
+// any mechanism toggled on below (custom params, user-promoted strip rules,
+// own-affiliate injection, stripAllAffiliates, foreign-affiliate notify)
+// must still have zero effect on a fully-exempt domain.
+// ---------------------------------------------------------------------------
+describe("processUrl choke-point — isSiteFullyExempt governs ALL cleaning (#allowlist-full-inert)", () => {
+  test("domain-only whitelist entry: URL is byte-for-byte untouched regardless of which mechanisms are enabled", () => {
+    const rawUrl = "https://example.com/?utm_source=x&gclid=y&aff=someone-99&custom=z";
+    const prefs = {
+      ...PREFS,
+      whitelist: ["example.com"],
+      customParams: ["custom"],
+      userCustomRules: ["custom"],
+      injectOwnAffiliate: true,
+      stripAllAffiliates: true,
+      notifyForeignAffiliate: true,
+    };
+    const result = processUrl(rawUrl, prefs);
+    assert.equal(result.action, "untouched");
+    assert.equal(result.cleanUrl, rawUrl);
+    assert.deepEqual(result.removedTracking, []);
+    assert.equal(result.junkRemoved, 0);
+    assert.equal(result.detectedAffiliate, null);
+    assert.equal(result.preservedAffiliate, null);
+    assert.equal(result.creatorReferralPreserved, false);
+  });
+
+  test("::disabled per-site pause entry: same fully-inert guarantee as domain-only whitelist", () => {
+    const rawUrl = "https://example.com/?utm_source=x&gclid=y";
+    const prefs = { ...PREFS, blacklist: ["example.com::disabled"], injectOwnAffiliate: true };
+    const result = processUrl(rawUrl, prefs);
+    assert.equal(result.action, "untouched");
+    assert.equal(result.cleanUrl, rawUrl);
+    assert.deepEqual(result.removedTracking, []);
+  });
+
+  test("param-scoped whitelist entry does NOT trip the full-exempt path - other tracking still stripped", () => {
+    const rawUrl = "https://example.com/?utm_source=x&tag=creator-21";
+    const prefs = { ...PREFS, whitelist: ["example.com::tag::creator-21"] };
+    const result = processUrl(rawUrl, prefs);
+    assert.notEqual(result.action, "untouched",
+      "a param-scoped whitelist entry must not make the site fully inert");
+    assert.ok(!new URL(result.cleanUrl).searchParams.has("utm_source"),
+      "non-whitelisted tracking param must still be stripped");
+    assert.equal(new URL(result.cleanUrl).searchParams.get("tag"), "creator-21",
+      "the whitelisted param must survive");
   });
 });
 

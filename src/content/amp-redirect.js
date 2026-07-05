@@ -13,6 +13,28 @@
     void chrome.runtime.lastError;
     if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.ampRedirect) return;
 
+    // #allowlist-full-inert: this script rewrites window.location on its own
+    // (not through processUrl, not one of the four muga:history-gate
+    // active-defense scripts), so a fully-exempt domain (domain-only
+    // whitelist entry or #995 ::disabled pause) needs its own explicit
+    // check here. Relevant mainly on Firefox MV2, where this file is
+    // injected as its own content_scripts entry (manifest.v2.json) sharing
+    // the isolated-world window with cleaner-bundle.js from the entry
+    // registered earlier in the same manifest - window.__mugaCleaner is set
+    // there. On Chrome MV3 this file is not loaded at all (AMP redirects run
+    // via the amp_redirect DNR ruleset instead). Fail-safe: if the bundle
+    // helper is unavailable, throws, or prefs is malformed, `exempt` stays
+    // false and the AMP redirect behaves as before.
+    let exempt = false;
+    try {
+      if (window.__mugaCleaner && typeof window.__mugaCleaner.isSiteFullyExempt === "function") {
+        exempt = window.__mugaCleaner.isSiteFullyExempt(location.hostname, prefs);
+      }
+    } catch {
+      // Fail-safe: treat as not exempt, AMP redirect stays governed by prefs.ampRedirect.
+    }
+    if (exempt) return;
+
     // Find the canonical link pointing to the non-AMP version
     const canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical || !canonical.href) return;

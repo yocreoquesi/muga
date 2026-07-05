@@ -4,13 +4,13 @@
  * and maintains extension state.
  */
 
-import { processUrl, parseListEntry } from "../lib/cleaner.js";
+import { processUrl, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
-import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID } from "../lib/dnr-ids.js";
+import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID, DNR_ALLOWLIST_RULE_ID_BASE, DNR_ALLOWLIST_MAX_RULES } from "../lib/dnr-ids.js";
 import { t } from "../lib/i18n.js";
 import {
   runRemoteRulesFetch,
@@ -473,6 +473,113 @@ async function syncCustomParamsDNR(customParams) {
   }
 }
 
+// Full range of allowlist rule IDs ever handed out, so a resync always
+// clears every previously-added rule before adding the current set - no
+// stale rule can survive a domain being removed from the allowlist or the
+// per-site pause being lifted.
+const ALLOWLIST_RULE_ID_RANGE = Array.from(
+  { length: DNR_ALLOWLIST_MAX_RULES },
+  (_, i) => DNR_ALLOWLIST_RULE_ID_BASE + i,
+);
+
+/**
+ * Explicit resourceTypes list for the allowlist "allow" rule.
+ *
+ * IMPORTANT Chrome DNR gotcha: a rule condition that omits `resourceTypes`
+ * (and `excludedResourceTypes`) matches every resource type EXCEPT
+ * `main_frame` - main_frame is excluded from the "match everything" default.
+ * Every real strip/redirect rule MUGA registers explicitly lists
+ * `main_frame` (tracking-params.json, amp-redirect.json,
+ * amazon-path-canonical.json, DNR_CUSTOM_PARAMS_RULE_ID in
+ * syncCustomParamsDNR() above, wrapper-dnr-rules.json, remote-rules.js), so
+ * an allow rule WITHOUT an explicit main_frame entry would never even be
+ * considered for the single most common case - a top-level navigation to an
+ * allowlisted domain with tracking params in the URL - leaving the exact
+ * network-layer bug this feature exists to fix.
+ *
+ * This list is therefore explicit rather than omitted, at the cost of some
+ * future-proofing: a resource type Chrome adds after this list is written
+ * would not automatically be covered by the allow rule (it would need to be
+ * appended here). That tradeoff is accepted because the alternative -
+ * omitting resourceTypes - silently fails on main_frame today, not just in
+ * some hypothetical future. Limited to the resource types stable since MV3's
+ * initial DNR API to avoid rejecting the whole updateDynamicRules() call on
+ * a browser/version that does not recognize a newer enum value (e.g.
+ * Firefox MV2's DNR support).
+ */
+const ALLOWLIST_RESOURCE_TYPES = [
+  "main_frame", "sub_frame", "stylesheet", "script", "image", "font",
+  "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket",
+  "other",
+];
+
+/**
+ * Syncs one dynamic DNR "allow" rule per fully-exempt domain
+ * (#allowlist-full-inert): a domain-only whitelist entry or a `::disabled`
+ * per-site pause. This is the network-layer half of the "allowlist = MUGA
+ * fully inert" choke point - src/lib/cleaner.js#processUrl is the JS-layer
+ * half, both sourced from the same isSiteFullyExempt/getFullyExemptDomains
+ * predicate so the two never drift.
+ *
+ * Each rule uses `action: { type: "allow" }` with an explicit
+ * ALLOWLIST_RESOURCE_TYPES list (see its doc comment for why `main_frame`
+ * must be listed explicitly) and `requestDomains: [domain]` (Chrome matches
+ * this against the domain and its subdomains, same semantics as
+ * domainMatches() in cleaner.js). Priority is set to 1000 - strictly higher
+ * than every strip/redirect rule MUGA registers today (all declared at
+ * priority 1, the DNR default) - so Chrome's documented precedence rule
+ * (a higher-priority "allow" action wins over a lower-priority
+ * "redirect"/"block" action for the same request, regardless of rule order
+ * or ruleset) makes the allow win deterministically. Because the condition
+ * is domain-wide rather than tied to a specific rule ID, this also covers
+ * any STRIP RULE ADDED LATER at the default priority, with no per-mechanism
+ * patch required - that is the future-proofing property this rule exists for.
+ *
+ * Modeled on syncCustomParamsDNR() above: same hasDNR guard, try/catch, and
+ * updateDynamicRules() usage.
+ *
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ */
+async function syncAllowlistDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    const domains = getFullyExemptDomains(prefs);
+
+    if (domains.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: ALLOWLIST_RULE_ID_RANGE,
+        addRules: [],
+      });
+      return;
+    }
+
+    let syncedDomains = domains;
+    if (domains.length > DNR_ALLOWLIST_MAX_RULES) {
+      const dropped = domains.slice(DNR_ALLOWLIST_MAX_RULES);
+      syncedDomains = domains.slice(0, DNR_ALLOWLIST_MAX_RULES);
+      console.warn(
+        `[MUGA] syncAllowlistDNR: ${domains.length} exempt domains exceed the ` +
+        `${DNR_ALLOWLIST_MAX_RULES}-rule cap; dropped from network-level allow rules ` +
+        "(active-defense + JS cleaning stay inert for these via isSiteFullyExempt, " +
+        "only the DNR allow rule is missing):",
+        dropped,
+      );
+    }
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: ALLOWLIST_RULE_ID_RANGE,
+      addRules: syncedDomains.map((domain, i) => ({
+        id: DNR_ALLOWLIST_RULE_ID_BASE + i,
+        priority: 1000,
+        action: { type: "allow" },
+        condition: { requestDomains: [domain], resourceTypes: ALLOWLIST_RESOURCE_TYPES },
+      })),
+    });
+  } catch (err) {
+    console.error("[MUGA] syncAllowlistDNR failed:", err);
+  }
+}
+
 async function applyDnrState(prefs) {
   if (!hasDNR) return;
   // Gate DNR on onboardingDone too (#consent-gate). Content scripts
@@ -535,6 +642,11 @@ async function applyDnrState(prefs) {
       disableRulesetIds,
     }).catch(err => console.warn("[MUGA] applyDnrState enable:", err));
     await syncCustomParamsDNR(prefs.customParams);
+    // Allowlist "allow" rules (#allowlist-full-inert) - rebuilt from current
+    // prefs on every gate-open sync so a whitelist/pause change takes effect
+    // live (see the storage.onChanged handler below and the mugaConsent /
+    // mugaPerDevicePrefs branches, all of which call applyDnrState).
+    await syncAllowlistDNR(prefs);
     // Re-arm the dynamic remote-params rule (id 1001). The gate-closed branch
     // removes it (#921), so a close→open cycle — or a wake where the weekly
     // signed fetch is time-gated and skips re-adding it — would otherwise leave
@@ -550,6 +662,12 @@ async function applyDnrState(prefs) {
       }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
     }
     await syncCustomParamsDNR([]);
+    // Clear the allowlist "allow" rules too: when the gate is closed every
+    // strip/redirect rule is already off (disabled rulesets + cleared
+    // dynamic rules above), so there is nothing left for an "allow" rule to
+    // out-prioritize - leaving them registered would just be a stale,
+    // unnecessary MUGA network footprint while the extension is off.
+    await syncAllowlistDNR({ whitelist: [], blacklist: [] });
     // Disabling the static rulesets and clearing rule 1000 is NOT enough: the
     // remote-params rule (dynamic id 1001) is a DNR redirect that keeps
     // stripping params for a disabled or non-consented extension. Remove it so
@@ -812,7 +930,11 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // must invalidate the prefs cache so the next getPrefsWithCache() reads fresh data.
   _invalidatePrefsCache();
   if (changes.customParams || changes.dnrEnabled || changes.enabled ||
-      changes.ampRedirect || changes.unwrapRedirects) {
+      changes.ampRedirect || changes.unwrapRedirects ||
+      changes.whitelist || changes.blacklist) {
+    // whitelist/blacklist (#allowlist-full-inert): toggling the allowlist or
+    // the per-site pause must re-sync the DNR allow rules live, without
+    // requiring the user to also flip an unrelated pref.
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
   }

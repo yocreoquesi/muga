@@ -188,8 +188,8 @@
         let exempt = false;
         try {
           const cleaner = window.__mugaCleaner;
-          if (cleaner && typeof cleaner.isSiteExemptFromActiveDefense === "function") {
-            exempt = cleaner.isSiteExemptFromActiveDefense(location.hostname, prefs);
+          if (cleaner && typeof cleaner.isSiteFullyExempt === "function") {
+            exempt = cleaner.isSiteFullyExempt(location.hostname, prefs);
           }
         } catch {
           // Fail-safe: treat as not exempt, active-defense stays ON.
