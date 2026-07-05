@@ -7,7 +7,7 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
-import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "../lib/validation.js";
+import { isValidListEntry, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
 import {
@@ -18,6 +18,7 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
+import { snapToastDuration, buildExportPayload, planImport, BOOLEAN_KEYS } from "../lib/settings-schema.js";
 
 let _currentLang = "en";
 
@@ -94,20 +95,6 @@ function showConfirm(msg) {
     okBtn.addEventListener("click", () => close(true));
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
   });
-}
-
-// Discrete toast-duration values offered by the UI. The persisted pref is
-// snapped to the nearest of these so the pref and the <select> can never
-// disagree — an imported/legacy value like 22 or 45 always maps to a real
-// <option> instead of leaving the control blank (#968). The set spans the
-// full 5..60 range the control accepts, so the ceiling is reachable via UI.
-const TOAST_DURATION_OPTIONS = [5, 10, 15, 30, 45, 60];
-
-/** Snaps an arbitrary duration to the nearest offered <option> value. */
-function snapToastDuration(n) {
-  const v = Number.isFinite(n) ? n : 15;
-  return TOAST_DURATION_OPTIONS.reduce((a, b) =>
-    Math.abs(b - v) < Math.abs(a - v) ? b : a);
 }
 
 /**
@@ -820,42 +807,10 @@ function initExportImport() {
     try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] export prefs:", err); return; }
     // devMode is device-local (not in PREF_DEFAULTS) — read separately
     const devModeLocal = await getDevMode();
-    const payload = {
-      muga: true,
-      version: chrome.runtime.getManifest().version,
-      enabled: prefs.enabled,
-      injectOwnAffiliate: prefs.injectOwnAffiliate,
-      notifyForeignAffiliate: prefs.notifyForeignAffiliate,
-      stripAllAffiliates: prefs.stripAllAffiliates,
-      dnrEnabled: prefs.dnrEnabled,
-      blockPings: prefs.blockPings,
-      ampRedirect: prefs.ampRedirect,
-      unwrapRedirects: prefs.unwrapRedirects,
-      blacklist: prefs.blacklist,
-      whitelist: prefs.whitelist,
-      customParams: prefs.customParams,
-      contextMenuEnabled: prefs.contextMenuEnabled,
-      disabledCategories: prefs.disabledCategories,
-      toastDuration: prefs.toastDuration,
-      language: prefs.language,
+    const payload = buildExportPayload(prefs, {
       devMode: devModeLocal,
-      paramBreakdown: prefs.paramBreakdown,
-      showReportButton: prefs.showReportButton,
-      domainStats: prefs.domainStats,
-      showBadge: prefs.showBadge,
-      followShortenersEnabled: prefs.followShortenersEnabled,
-      // #925: privacy booleans are now user-controllable, so round-trip them.
-      canonicalExtractorEnabled: prefs.canonicalExtractorEnabled,
-      crossSiteFrequencyEnabled: prefs.crossSiteFrequencyEnabled,
-      attributionLedgerEnabled: prefs.attributionLedgerEnabled,
-      // #925: the popup-populated custom strip rules, handled like the other sync arrays.
-      userCustomRules: prefs.userCustomRules,
-      // #968: round-trip the remaining user-settable prefs that were being
-      // silently dropped — an export/import cycle must not reset them.
-      experimentalParamClassesEnabled: prefs.experimentalParamClassesEnabled,
-      honorCreatorMode: prefs.honorCreatorMode,
-      creatorAllowlist: prefs.creatorAllowlist,
-    };
+      appVersion: chrome.runtime.getManifest().version,
+    });
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -882,78 +837,42 @@ function initExportImport() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (!data.muga || !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist) || !Array.isArray(data.customParams)) {
-        throw new Error("invalid");
-      }
-      // Structural integrity only: a malformed blacklist/whitelist ENTRY signals a
-      // corrupt or foreign file, so abort. Exceeding a size cap does NOT — a valid
-      // MUGA export can legitimately be larger than fits in chrome.storage.sync.
-      if (!data.blacklist.every(isValidListEntry) || !data.whitelist.every(isValidListEntry)) {
-        throw new Error("invalid");
-      }
-      // Filter (#818) + cap (#911) the three lists via the canonical helper.
-      // Oversized lists are TRUNCATED rather than rejected wholesale, and the
-      // user is told how many entries were dropped — silently discarding data,
-      // or failing a valid-but-large file with a misleading "not a MUGA file"
-      // error, is not acceptable.
-      const { blacklist, whitelist, customParams, droppedBlacklist, droppedWhitelist, skippedParams } = capImportedLists(data);
-      const skipped = skippedParams + droppedBlacklist + droppedWhitelist;
-      // devMode is device-local — exclude from sync BOOL_KEYS and handle separately.
-      // followShortenersEnabled is ALSO excluded here: it gates on optional host
-      // permissions, so a file must never blindly flip it on (#964). It is
-      // handled below, gated on whether the grant is actually present.
-      const BOOL_KEYS = ["enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates", "dnrEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled", "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode", "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled", "attributionLedgerEnabled"];
-      const toSave = { blacklist, whitelist, customParams };
-      for (const key of BOOL_KEYS) {
-        if (typeof data[key] === "boolean") toSave[key] = data[key];
-      }
+      // Structural validation, list capping/filtering, boolean-key extraction,
+      // disabledCategories/toastDuration/creatorAllowlist/userCustomRules/language
+      // handling all live in the pure planImport() (settings-schema.js) now — the
+      // single source of truth shared with buildExportPayload(). Anything that
+      // would have thrown here before (missing muga, malformed lists, invalid
+      // entries) now comes back as { ok: false } and falls into the same
+      // catch-all import_error toast below.
+      const plan = planImport(data);
+      if (!plan.ok) throw new Error("invalid");
+      const skipped = plan.skipped;
+
       // devMode from imported file → local storage
-      if (typeof data.devMode === "boolean") {
-        await setDevMode(data.devMode);
+      if (plan.special.devMode !== undefined) {
+        await setDevMode(plan.special.devMode);
       }
-      // Handle disabledCategories (validated against known category keys)
-      const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noise", "generic"]);
-      if (Array.isArray(data.disabledCategories) && data.disabledCategories.every(e => VALID_CATEGORIES.has(e))) {
-        toSave.disabledCategories = data.disabledCategories;
-      }
-      // Handle toastDuration: snap to the nearest offered <option> so the
-      // stored value always matches a real control state (#968).
-      if (typeof data.toastDuration === "number") {
-        toSave.toastDuration = snapToastDuration(data.toastDuration);
-      }
+
       // #964: followShortenersEnabled is permission-gated. An import may carry
       // the preference but CANNOT grant the host permissions (no user gesture
       // survives the async file read, and silently prompting on import is
       // surprising). So enable it only when the grant is already present;
       // otherwise force it off. This closes the gate-bypass and keeps the
       // pref honest — the user re-enables it via the toggle, which prompts.
-      if (typeof data.followShortenersEnabled === "boolean") {
+      // planImport is pure and cannot call chrome.permissions itself, so it
+      // only reports the request via plan.special (followShortenersProvided =
+      // "the file carries a real boolean"; followShortenersRequested = "that
+      // boolean is true") and this async gate stays here. As before, this
+      // field is written ONLY when the imported file carries it as a boolean —
+      // a missing key leaves the stored value untouched instead of silently
+      // forcing it off. We branch on plan.special, not raw `data`, so the
+      // decision follows any future migrate() transform of the payload.
+      const toSave = { ...plan.toSave };
+      if (plan.special.followShortenersProvided) {
         toSave.followShortenersEnabled =
-          data.followShortenersEnabled && (await hasShortenerPermissions());
+          plan.special.followShortenersRequested && (await hasShortenerPermissions());
       }
-      // #968: round-trip the per-creator allowlist. Fold each imported entry
-      // through the same pure validator the add-box uses, so invalid entries,
-      // duplicates, and anything past the cap are dropped exactly as a manual
-      // add would handle them.
-      if (Array.isArray(data.creatorAllowlist)) {
-        toSave.creatorAllowlist = data.creatorAllowlist.reduce(
-          (acc, entry) => addCreatorAllowlistEntry(acc, entry).list,
-          [],
-        );
-      }
-      // #925: userCustomRules — validate each entry as a bare param name and
-      // cap at the customParams ceiling (same shape/limit the popup enforces).
-      if (Array.isArray(data.userCustomRules)) {
-        toSave.userCustomRules = data.userCustomRules
-          .filter(isValidCustomParam)
-          .slice(0, IMPORT_LIST_CAPS.customParams);
-      }
-      // Handle language (any supported locale) — validate against SUPPORTED_LANGS
-      // so codes added after the legacy en/es/pt/de set (fr/it/ja, #707) survive
-      // an export→import round-trip instead of being silently dropped.
-      if (SUPPORTED_LANGS.some(l => l.code === data.language)) {
-        toSave.language = data.language;
-      }
+
       await setPrefs(toSave);
 
       // #965: importing a config is an explicit choice for this device. For
@@ -961,11 +880,14 @@ function initExportImport() {
       // override LAST, so a stale onboarding-decline override would keep the
       // extension's effective value at odds with the freshly imported sync
       // value AND the checkbox. Reconcile the override to the imported value so
-      // sync, override, effective, and UI all agree. Only keys we actually
-      // wrote (BOOL_KEYS ∩ GUARDED_PREFS) are reconciled.
-      for (const key of BOOL_KEYS) {
-        if (GUARDED_PREFS.includes(key) && typeof data[key] === "boolean") {
-          await reconcileOverrideForExplicitChoice(key, data[key]);
+      // sync, override, effective, and UI all agree. Only guarded keys we
+      // actually wrote (present in plan.toSave, i.e. BOOLEAN_KEYS ∩
+      // GUARDED_PREFS that arrived as booleans) are reconciled, and we read the
+      // value from the plan — not raw `data` — so it follows any future
+      // migrate() transform.
+      for (const key of GUARDED_PREFS) {
+        if (BOOLEAN_KEYS.includes(key) && key in plan.toSave) {
+          await reconcileOverrideForExplicitChoice(key, plan.toSave[key]);
         }
       }
 

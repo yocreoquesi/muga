@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { PREF_DEFAULTS } from "../../src/lib/prefs.js";
 import { TRANSLATIONS, SUPPORTED_LANGS } from "../../src/lib/i18n.js";
+import { BOOLEAN_KEYS, buildExportPayload } from "../../src/lib/settings-schema.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../..");
@@ -53,14 +54,15 @@ describe("#910 — the toggle has an HTML row and a bindToggle wiring", () => {
 });
 
 describe("#910 — export/import round-trips showBadge", () => {
+  // #973 follow-up: export/import logic moved to the pure src/lib/settings-schema.js
+  // (buildExportPayload/BOOLEAN_KEYS), single source of truth for options.js.
   test("export payload includes showBadge", () => {
-    assert.ok(optionsJs.includes("showBadge: prefs.showBadge"), "export payload must include showBadge");
+    const payload = buildExportPayload({ showBadge: true }, { devMode: false, appVersion: "1.0.0" });
+    assert.strictEqual(payload.showBadge, true, "export payload must include showBadge");
   });
 
-  test("import BOOL_KEYS includes showBadge", () => {
-    const boolKeysMatch = optionsJs.match(/const BOOL_KEYS = \[([^\]]*)\]/);
-    assert.ok(boolKeysMatch, "import handler must define BOOL_KEYS");
-    assert.ok(boolKeysMatch[1].includes('"showBadge"'), "BOOL_KEYS must include showBadge so import applies it");
+  test("BOOLEAN_KEYS includes showBadge", () => {
+    assert.ok(BOOLEAN_KEYS.includes("showBadge"), "BOOLEAN_KEYS must include showBadge so import applies it");
   });
 
   test("import handler refreshes the #show-badge checkbox after import", () => {

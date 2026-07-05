@@ -122,9 +122,19 @@ describe("import handler no longer hard-rejects on size (#911)", () => {
   });
 
   test("import handler delegates list cleaning to capImportedLists", () => {
+    // The graceful filter+cap call now lives in the pure planImport()
+    // (src/lib/settings-schema.js), which options.js's import handler calls.
+    const SETTINGS_SCHEMA_SOURCE = readFileSync(
+      join(__dirname, "../../src/lib/settings-schema.js"),
+      "utf8"
+    );
     assert.ok(
-      OPTIONS_SOURCE.includes("capImportedLists(data)"),
-      "import handler must call capImportedLists(data) for graceful filter + cap"
+      SETTINGS_SCHEMA_SOURCE.includes("capImportedLists(migrated)"),
+      "planImport must call capImportedLists(migrated) for graceful filter + cap"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("planImport(data)"),
+      "import handler must delegate to planImport(data)"
     );
   });
 
