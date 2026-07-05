@@ -128,9 +128,36 @@ export function parseListEntry(entry) {
 /**
  * Returns true if a host matches a parsed list entry's domain.
  */
-function domainMatches(hostname, entryDomain) {
+export function domainMatches(hostname, entryDomain) {
   const host = hostname.replace(/^www\./, "");
   return host === entryDomain || host.endsWith("." + entryDomain);
+}
+
+/**
+ * Adds or removes a per-domain "disabled" blacklist entry for a host, returning
+ * a NEW blacklist array (pure; never mutates the input). Pausing appends
+ * `<host>::disabled` unless the host is already effectively disabled (exact or
+ * parent-domain match). Resuming drops every `::disabled` entry that pauses this
+ * host. Plain blacklist entries and `domain::param::value` rules are untouched.
+ *
+ * @param {string[]} blacklist - current blacklist entries.
+ * @param {string} hostname - the current tab hostname.
+ * @param {boolean} disabled - true to pause (add), false to resume (remove).
+ * @returns {string[]} a new blacklist array.
+ */
+export function setPerDomainDisabled(blacklist, hostname, disabled) {
+  const list = Array.isArray(blacklist) ? blacklist.slice() : [];
+  const host = (hostname || "").trim();
+  if (!host) return list;
+  const pausesHost = (raw) => {
+    const e = parseListEntry(raw);
+    return e.param === "disabled" && !e.value && !!e.domain && domainMatches(host, e.domain);
+  };
+  if (disabled) {
+    if (list.some(pausesHost)) return list;
+    return [...list, `${host.replace(/^www\./, "").toLowerCase()}::disabled`];
+  }
+  return list.filter((raw) => !pausesHost(raw));
 }
 
 /**

@@ -84,6 +84,12 @@
       <div class="preview-label" data-i18n="preview_label">This page</div>
       <div class="tab-badge" id="tab-badge" hidden aria-live="polite"></div>
     </div>
+    <!-- Per-site pause control (#980). Hidden until popup.js confirms a real
+         http(s) page with MUGA globally enabled; label + aria-pressed set at
+         runtime. Toggles a `<host>::disabled` blacklist entry. -->
+    <div class="preview-site-control" id="preview-site-control" hidden>
+      <button type="button" id="pause-site-btn" class="pause-site-btn"></button>
+    </div>
     <div class="preview-url before" id="preview-before"></div>
     <div class="preview-url after" id="preview-after"></div>
     <div class="preview-count" id="preview-count" hidden aria-live="polite"></div>

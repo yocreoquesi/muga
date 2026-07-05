@@ -16,6 +16,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const I18N_SOURCE = readFileSync(join(__dirname, "../../src/lib/i18n.js"), "utf8");
 const OPTIONS_SOURCE = readFileSync(join(__dirname, "../../src/options/options.js"), "utf8");
+// #973 follow-up: the import structural checks (muga flag, array types) now
+// live in the pure planImport() in settings-schema.js, not inline in
+// options.js — see export-import.test.mjs for full behavior coverage.
+const SETTINGS_SCHEMA_SOURCE = readFileSync(join(__dirname, "../../src/lib/settings-schema.js"), "utf8");
 
 // ---------------------------------------------------------------------------
 // sanitizeHTML security (i18n.js)
@@ -106,19 +110,25 @@ describe("sanitizeHTML security (i18n.js source verification)", () => {
 // ---------------------------------------------------------------------------
 // Import validation (options.js)
 // ---------------------------------------------------------------------------
-describe("import validation robustness (options.js source verification)", () => {
+describe("import validation robustness (options.js + settings-schema.js source verification)", () => {
 
   test("import checks for muga flag in imported data", () => {
+    // The structural check moved into planImport() (settings-schema.js) but
+    // options.js still delegates to it on every import.
     assert.ok(
-      OPTIONS_SOURCE.includes("data.muga"),
-      "Import must check for .muga flag to validate file format"
+      SETTINGS_SCHEMA_SOURCE.includes("migrated.muga"),
+      "planImport must check for .muga flag to validate file format"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("planImport(data)"),
+      "options.js must delegate import validation to planImport(data)"
     );
   });
 
   test("import validates array types for lists", () => {
     assert.ok(
-      OPTIONS_SOURCE.includes("Array.isArray"),
-      "Import must validate arrays with Array.isArray"
+      SETTINGS_SCHEMA_SOURCE.includes("Array.isArray"),
+      "planImport must validate arrays with Array.isArray"
     );
   });
 

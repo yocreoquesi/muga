@@ -640,3 +640,46 @@ input[type="text"]:not(.add-row input) {
 
 /* Report-btn spacing (the button itself is styled by .report-btn above) */
 .report-btn-inline { margin-top: 8px; font-size: 11px; }
+
+/* ---------- Remote-rules changelog (#984) ------------------------------- */
+#remote-rules-changelog {
+  width: 100%;
+}
+#remote-rules-changelog > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-1);
+  user-select: none;
+}
+#remote-rules-changelog > summary::-webkit-details-marker { display: none; }
+#remote-rules-changelog-empty {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-style: italic;
+  margin-top: 8px;
+}
+.changelog-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.changelog-list li {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+#remote-rules-changelog-added-more,
+#remote-rules-changelog-removed-more {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
