@@ -4,7 +4,7 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
-import { processUrl, parseListEntry } from "../lib/cleaner.js";
+import { processUrl, parseListEntry, domainMatches, setPerDomainDisabled } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
@@ -426,10 +426,43 @@ function isPerDomainDisabled(hostname, blacklist) {
   if (!hostname || !Array.isArray(blacklist)) return false;
   return blacklist.some(raw => {
     const entry = parseListEntry(raw);
-    if (!entry || entry.param !== "disabled" || entry.value) return false;
-    if (!entry.domain) return false;
-    return hostname === entry.domain || hostname.endsWith("." + entry.domain);
+    if (entry.param !== "disabled" || entry.value || !entry.domain) return false;
+    return domainMatches(hostname, entry.domain);
   });
+}
+
+/**
+ * Renders the per-site pause control in the preview section (#980). Visible only
+ * when MUGA is globally enabled and the tab is a real http(s) page. The button
+ * toggles a `<host>::disabled` blacklist entry so the user can pause or resume
+ * URL cleaning for the current site without opening Settings. Re-render is
+ * optimistic; the storage.onChanged listener also refreshes once the write lands.
+ */
+function renderPauseControl(url, prefs, lang) {
+  const wrap = document.getElementById("preview-site-control");
+  const btn = document.getElementById("pause-site-btn");
+  if (!wrap || !btn) return;
+  let host = "";
+  try {
+    const u = new URL(url);
+    if (u.protocol === "http:" || u.protocol === "https:") host = u.hostname;
+  } catch { /* not a web page — leave host empty */ }
+  if (!host || prefs.enabled === false) {
+    wrap.hidden = true;
+    return;
+  }
+  const paused = isPerDomainDisabled(host, prefs.blacklist);
+  // Changing-label button (WAI-ARIA plain-button idiom): the label states the
+  // action, so no aria-pressed (which would contradict the label). Paused state
+  // is conveyed visually via the `.paused` class.
+  btn.textContent = t(paused ? "resume_site_btn" : "pause_site_btn", lang);
+  btn.classList.toggle("paused", paused);
+  wrap.hidden = false;
+  btn.onclick = () => {
+    const nextBlacklist = setPerDomainDisabled(prefs.blacklist, host, !paused);
+    chrome.storage.sync.set({ blacklist: nextBlacklist }).catch((err) => console.error("[MUGA] save pause-site:", err));
+    showUrlPreview({ ...prefs, blacklist: nextBlacklist }, lang).catch((err) => console.error("[MUGA] preview re-render:", err));
+  };
 }
 
 /** Resets preview-related DOM so repeated renders are idempotent. */
@@ -575,6 +608,10 @@ async function showUrlPreview(prefs, lang) {
       badge.hidden = false;
     }
   }
+
+  // Per-site pause control (#980) — shown for real web pages before the
+  // disabled/paused early returns so the user can always toggle it.
+  renderPauseControl(url, prefs, lang);
 
   if (prefs.enabled === false) {
     const previewClean = document.getElementById("preview-clean");
