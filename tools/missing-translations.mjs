@@ -1,22 +1,26 @@
 /**
- * MUGA: Missing-translations diff tool (#361)
+ * MUGA: Missing-translations diff tool (#361, extended #990)
  *
  * Reads `src/lib/i18n.js` and produces, for each community-maintained
- * language (PT, DE), a markdown bullet list of i18n keys that are
- * missing or empty in that language. The output is suitable for
- * pasting into the per-language tracking issues.
+ * language (PT, DE, FR, IT, JA), a markdown bullet list of i18n keys
+ * that are missing or empty in that language. The output is suitable
+ * for pasting into the per-language tracking issues, or for the
+ * non-blocking CI parity report (see .github/workflows/ci.yml).
  *
  * Usage:
- *   node tools/missing-translations.mjs           # both languages, stdout
+ *   node tools/missing-translations.mjs           # all community locales, stdout
  *   node tools/missing-translations.mjs pt        # PT only
  *   node tools/missing-translations.mjs de        # DE only
+ *   node tools/missing-translations.mjs fr        # FR only
+ *   node tools/missing-translations.mjs it        # IT only
+ *   node tools/missing-translations.mjs ja        # JA only
  *
  * Idempotent: same input → same output. Keys are emitted in the order
  * they appear in TRANSLATIONS.
  */
 import { TRANSLATIONS } from "../src/lib/i18n.js";
 
-const COMMUNITY_LOCALES = ["pt", "de"];
+export const COMMUNITY_LOCALES = ["pt", "de", "fr", "it", "ja"];
 
 /**
  * Returns the list of keys missing in `lang`. A key is "missing" if
@@ -59,7 +63,7 @@ export function formatReport(lang) {
 
   lines.push(`${missing.length} of ${total} keys missing in ${langLabel}. Each key below needs a translation in \`src/lib/locales/${lang}.mjs\`.`);
   lines.push("");
-  lines.push(`**Contribution flow:** edit the matching key in \`src/lib/locales/${lang}.mjs\`, run \`npm test\`, open a PR. PT and DE PRs do not need native-speaker review by the maintainer (the maintainer is not a native speaker of either) — the EN+ES floor enforced by the test suite is what gates a merge.`);
+  lines.push(`**Contribution flow:** edit the matching key in \`src/lib/locales/${lang}.mjs\`, run \`npm test\`, open a PR. Community-locale PRs do not need native-speaker review by the maintainer (the maintainer is not a native speaker of any of them); the EN+ES floor enforced by the test suite is what gates a merge.`);
   lines.push("");
   lines.push("## Missing keys");
   lines.push("");
