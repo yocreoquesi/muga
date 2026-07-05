@@ -185,3 +185,23 @@ test("irclickid, cjevent, awc are NOT in TRACKING_PARAMS — inverse attribution
     );
   }
 });
+
+// ── Shopify storefront params on the hot path ───────────────────────────────
+//
+// _pos / _ss / _sid are appended by Shopify's storefront to product links as
+// the user browses a collection or search (position, search session, session
+// ID). They are universal tracking noise (in TRACKING_PARAMS) and are stripped
+// by the full pipeline + DNR. They must ALSO live in the synchronous STRIP
+// subset: Shopify re-adds them client-side via history.replaceState, and the
+// subset is the only race-free strip before a page script can read
+// window.location.search. Regression guard so they can't drop off the hot path.
+test("Shopify storefront params (_pos, _ss, _sid) are on the hot-path STRIP subset", () => {
+  const stripKeys = new Set(extractStripKeys(extractStripTable(FILES[0])));
+  for (const param of ["_pos", "_ss", "_sid"]) {
+    assert.ok(
+      stripKeys.has(param),
+      `"${param}" must be in the content-script STRIP subset so Shopify's ` +
+      `client-side history.replaceState re-adds are stripped synchronously.`,
+    );
+  }
+});
