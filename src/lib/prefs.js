@@ -29,6 +29,13 @@ export const PREF_DEFAULTS = {
   whitelist: [],     // e.g. ["amazon.es::tag::youtuber-21"]
   customParams: [],  // e.g. ["ref_code", "promo_id"]
   dnrEnabled: true,
+  // Active-defense content scripts toggle (#1006): gates the history
+  // pushState/replaceState defuser, the window.name defuser, and the DOM
+  // link/click rewriter (all four gate on the single muga:history-gate
+  // event dispatched by content/history-defuser.js). Default ON so nothing
+  // changes for existing users; users can opt out if these scripts break a
+  // site (e.g. rt.com comments, #1006).
+  activeDefenseEnabled: true,
   contextMenuEnabled: true,
   blockPings: true,
   ampRedirect: true,

@@ -87,6 +87,7 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "notifyForeignAffiliate", kind: "boolean" },
   { key: "stripAllAffiliates", kind: "boolean" },
   { key: "dnrEnabled", kind: "boolean" },
+  { key: "activeDefenseEnabled", kind: "boolean" },
   { key: "blockPings", kind: "boolean" },
   { key: "ampRedirect", kind: "boolean" },
   { key: "unwrapRedirects", kind: "boolean" },
