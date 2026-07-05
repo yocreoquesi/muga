@@ -250,6 +250,22 @@ node tools/missing-translations.mjs ja        # JA only
 
 The script's output is markdown suitable for pasting into the per-language tracking issues. Submit a PR editing the matching key in the relevant `src/lib/locales/<code>.mjs` file and the CI suite will validate the EN+ES floor for you.
 
+### CI parity report (#990)
+
+Every CI run includes a **non-blocking** "Community locale parity report" step that runs `node tools/missing-translations.mjs` for all five community locales and posts the result to the job summary (visible on the "Summary" tab of the workflow run). It never fails the build — pt/de/fr/it/ja are allowed to have gaps, and a missing key falls back to the English string at runtime (`src/lib/i18n.js`'s `t()`). Use it as a quick pointer to where a community locale could use a follow-up PR; it does not gate a merge. The blocking gates that do apply to every PR are:
+
+- `tests/unit/i18n-locale-modules.test.mjs` (#834) — every locale file's key set must exactly match `en.mjs` (no additions, no omissions; a missing key is a `null`/absent slot, not a dropped key).
+- `tests/unit/i18n-completeness.test.mjs` (#359) — `en` and `es` must both have a non-empty, distinct value for every key.
+- `npm run check:i18n` (`tools/check-i18n-fixme.mjs`) — no FIXME markers or empty locale slots in any locale file.
+
+### Copy rules for any new string
+
+Whether you're adding a key to `en.mjs`/`es.mjs` or improving an existing community-locale string, the same house rules apply:
+
+- `es` locale = peninsular/Castilian Spanish (e.g. "enlace", "ajustes"; avoid Latino forms).
+- No em-dashes in user-facing copy.
+- Every string keeps MUGA's URL-cleaner framing explicit (MUGA cleans URLs), even where the surrounding narrative talks about "denoise" or "noise removal".
+
 ### Community locales: native-speaker review welcome
 
 The community-locale strings were produced with AI assistance. They are linguistically sound but have not been signed off by native speakers. If you spot a string that reads awkward, regional, or just wrong, a PR fixing only that single key is a great first contribution:
