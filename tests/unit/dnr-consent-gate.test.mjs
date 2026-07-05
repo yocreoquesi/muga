@@ -467,8 +467,10 @@ describe("service-worker.js source guards — #810 fix present", () => {
 
 describe("service-worker.js source guard — #921 remote-params rule (1001) gated", () => {
   // Extract applyDnrState + the reconcile helper defined immediately after it.
+  // Window bumped 4500 -> 6000 for #allowlist-full-inert: the gate-open and
+  // gate-closed branches both grew a syncAllowlistDNR() call plus comments.
   const applyRegion =
-    swSource.match(/async function applyDnrState\([\s\S]{0,4500}/)?.[0] ?? "";
+    swSource.match(/async function applyDnrState\([\s\S]{0,6000}/)?.[0] ?? "";
   const gateClosed = applyRegion.slice(applyRegion.indexOf("Gate closed:"));
 
   test("applyDnrState region was located", () => {

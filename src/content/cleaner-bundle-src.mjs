@@ -16,7 +16,7 @@
  * content-script's isolated world). See cleaner.js for consumers.
  */
 
-import { processUrl, parseListEntry, getDomainParamSets, getPreservedParams, getLandingPolicy, isSiteExemptFromActiveDefense } from "../lib/cleaner.js";
+import { processUrl, parseListEntry, getDomainParamSets, getPreservedParams, getLandingPolicy, isSiteFullyExempt } from "../lib/cleaner.js";
 import {
   TRACKING_PARAMS,
   TRACKING_PARAM_CATEGORIES,
@@ -59,7 +59,7 @@ if (!window.__mugaCleaner) {
     getDomainParamSets,
     getPreservedParams,
     getLandingPolicy,
-    isSiteExemptFromActiveDefense,
+    isSiteFullyExempt,
     TRACKING_PARAMS,
     TRACKING_PARAM_CATEGORIES,
     TRACKING_PREFIXES,

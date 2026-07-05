@@ -591,6 +591,22 @@
     // tracking param removal without disrupting SPA navigation.
     if (!isAffiliateDomain(url.hostname)) return;
 
+    // #allowlist-full-inert: a fully-exempt destination domain must not even
+    // have its click intercepted (preventDefault + reconstructed navigate).
+    // processUrl() would return the URL untouched anyway, but the native
+    // click should be allowed to proceed as-is rather than being replaced by
+    // an equivalent window.location assignment. Fail-safe: if the bundle
+    // helper is unavailable, throws, or prefs is malformed, interception
+    // proceeds as before.
+    try {
+      if (window.__mugaCleaner && typeof window.__mugaCleaner.isSiteFullyExempt === "function" &&
+          window.__mugaCleaner.isSiteFullyExempt(url.hostname, _contentPrefs)) {
+        return;
+      }
+    } catch {
+      // Fail-safe: fall through to normal interception.
+    }
+
     // Rewrite loop guard: bail if this domain is being rewritten too rapidly
     if (isRewriteLoop(url.hostname)) return;
 
@@ -893,6 +909,22 @@
   // --- Ping blocking (conditional on prefs.blockPings) ---
   getContentPrefs().then((prefs) => {
     if (!prefs || !prefs.enabled || !prefs.onboardingDone) return;
+    // #allowlist-full-inert: a fully-exempt domain (domain-only whitelist
+    // entry or #995 per-site pause) must not have its <a ping> attributes
+    // touched either - this is a content behavior that does not run through
+    // processUrl and was not gated on the muga:history-gate event, so it
+    // needs its own explicit check against the same choke-point predicate.
+    // Fail-safe: if the bundle helper is unavailable, throws, or prefs is
+    // malformed, `exempt` stays false and ping blocking behaves as before.
+    let exempt = false;
+    try {
+      if (window.__mugaCleaner && typeof window.__mugaCleaner.isSiteFullyExempt === "function") {
+        exempt = window.__mugaCleaner.isSiteFullyExempt(location.hostname, prefs);
+      }
+    } catch {
+      // Fail-safe: treat as not exempt, ping blocking stays governed by prefs.blockPings.
+    }
+    if (exempt) return;
     if (prefs.blockPings) {
       // Strip the ping attribute from all existing and future <a ping> elements
       function removePingAttrs(root) {
@@ -990,6 +1022,20 @@
   function runRedirectUnwrap() {
     const apply = (prefs) => {
       if (!prefs || !prefs.enabled || !prefs.onboardingDone || !prefs.unwrapRedirects) return;
+
+      // #allowlist-full-inert: this rewrites window.location directly based
+      // on the CURRENT page's own URL - it does not go through processUrl and
+      // is not one of the four active-defense scripts gated on
+      // muga:history-gate, so it needs its own explicit exemption check.
+      // Fail-safe: if the bundle helper is unavailable, throws, or prefs is
+      // malformed, `exempt` stays false and redirect-unwrap behaves as before.
+      try {
+        if (window.__mugaCleaner && typeof window.__mugaCleaner.isSiteFullyExempt === "function") {
+          if (window.__mugaCleaner.isSiteFullyExempt(location.hostname, prefs)) return;
+        }
+      } catch {
+        // Fail-safe: treat as not exempt, redirect-unwrap stays governed by prefs.unwrapRedirects.
+      }
 
       const currentUrl = window.location.href;
 
