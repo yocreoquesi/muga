@@ -1,6 +1,6 @@
 {
-  "version": 5,
-  "published": "2026-07-01T18:10:58.306Z",
+  "version": 6,
+  "published": "2026-07-05T07:29:16.974Z",
   "params": [
     "__source",
     "__tn__",
@@ -155,6 +155,7 @@
     "unique_k",
     "uniqueid",
     "up_id",
+    "user_id",
     "utm_b64url",
     "utm_medium",
     "utm_source",
@@ -168,5 +169,5 @@
     "xptdk",
     "xtor"
   ],
-  "sig": "hYBJ50OVaAbxT7VCn_hewJF_8vXHjDU_McHmjNYxt8CboFgF2FdE4u7pU2_RYdEZC9tVTcRjPKG7ZPuG-S7MBw"
+  "sig": "Oo9kAJd2fgqauxeUK88Pymk0u3idv_N-AyI2Ct8nJ2XYST_HXS-jsVO12XPzdJZZekcFRA7d1o_RYIQbfJVsAg"
 }
