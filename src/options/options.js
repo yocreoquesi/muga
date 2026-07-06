@@ -146,6 +146,7 @@ async function init() {
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
 
   bindToggle("dnr-enabled", "dnrEnabled", prefs);
+  bindToggle("active-defense-enabled", "activeDefenseEnabled", prefs);
   bindToggle("context-menu-toggle", "contextMenuEnabled", prefs);
   bindToggle("block-pings", "blockPings", prefs);
   bindToggle("amp-redirect", "ampRedirect", prefs);
@@ -897,6 +898,7 @@ function initExportImport() {
       document.getElementById("notify").checked = newPrefs.notifyForeignAffiliate;
       document.getElementById("strip-affiliates").checked = newPrefs.stripAllAffiliates;
       document.getElementById("dnr-enabled").checked = newPrefs.dnrEnabled;
+      document.getElementById("active-defense-enabled").checked = newPrefs.activeDefenseEnabled;
       document.getElementById("context-menu-toggle").checked = newPrefs.contextMenuEnabled;
       document.getElementById("block-pings").checked = newPrefs.blockPings;
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;

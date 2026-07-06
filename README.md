@@ -13,7 +13,7 @@
 
 ---
 
-**MUGA turns the noise down on every URL, without taking credit from the creators who recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. **MUGA leaves it alone** — we don't take credit from people who earned it — and the popup tells you so, every time, with a "Creator referral preserved" badge. No other URL cleaner does this. None of them can without contradicting their own pitch.
+**MUGA turns the noise down on every URL while trying not to strip the credit of whoever recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup shows a "Creator referral preserved" badge so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
 
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
@@ -116,22 +116,20 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; our tag is always preserved)
 - Toast notification when a third-party affiliate is detected (opt-in)
-- **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **On by default** — the signing infrastructure is stable and the fetch is a single Ed25519-signed GET to a public URL at most once every 7 days, with no user data sent (see the [CHANGELOG](CHANGELOG.md) for when this shipped). Disable it any time in Settings.
+- **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **On by default**: the signing infrastructure is stable and the fetch is a single Ed25519-signed GET to a public URL at most once every 7 days, with no user data sent (see the [CHANGELOG](CHANGELOG.md) for when this shipped). Disable it any time in Settings.
 - Export / Import settings as JSON
 - Languages: English and Spanish (officially maintained), Portuguese, German, French, Italian, and Japanese (community-contributed; missing entries fall back to English)
 
-### Mode model
+### Two optional toggles
 
-MUGA combines two independent toggles — **Honor Creator Mode** and **Privacy Proxy** — into four named operating modes:
+Beyond the default local cleaning, MUGA has two independent switches, **both off by default**:
 
-| Mode | Honor Creator | Privacy Proxy | What it does |
-|------|:---:|:---:|---|
-| **Strict Local** | Off | Off | Removes all noise locally. No creator-referral preservation. No network requests. Default. |
-| **Honor Creator** | On | Off | Quiets the noise, but preserves creator referral chains on trusted social-media and link-shortener redirects (e.g. Facebook, t.co) so independent creators get credit for the recommendation. Affiliate-network referrals (Awin, Skimlinks, etc.) are always preserved automatically regardless of this toggle. |
-| **Privacy Proxy** | Off | On | Strips tracking locally; sends opaque affiliate redirect URLs to `unwrap.muga.app` (a Cloudflare Worker operated by MUGA) to retrieve the final destination. Every response is verified with an Ed25519 signature before navigation. Requires an optional host permission. |
-| **Honor + Proxy** | On | On | Full coverage: creator-referral preservation plus proxy-assisted resolution of opaque redirects. Both features active simultaneously. |
+| Toggle | Default | What it does |
+|--------|:---:|---|
+| **Honor Creator Mode** | Off | Tries to preserve creator referral chains on trusted social-media and link-shortener redirects, so the creator who recommended you the link keeps the credit. This is best-effort, not a guarantee, and you can override it. Redirect-based affiliate-network referrals pass through untouched by default, independent of this toggle, unless you opt in to "strip all third-party affiliate tags". |
+| **Follow shortener redirects** | Off | Resolves the eight generic URL shorteners (`bit.ly`, `t.co`, and the like) so you can see where a short link actually leads. Resolution is native: the extension performs the same HTTP request your browser would, reads the redirect target, and rewrites the URL locally, with no MUGA server involved. Requires granting the eight shortener host permissions from Settings. Affiliate-redirect networks are never resolved this way; they pass through unchanged. |
 
-Privacy Proxy can be toggled on and off at any time from Settings. Disabling it revokes no permissions automatically — you can remove the host permission from your browser's extension manager if desired.
+Both toggle on and off at any time in Settings. Turning off "Follow shortener redirects" does not revoke the host permissions automatically; remove them from your browser's extension manager if you prefer.
 
 ---
 
@@ -153,7 +151,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 - The tag is added as a standard URL parameter. Nothing hidden, nothing obfuscated.
 - **Off by default**: enabled during onboarding or manually in Settings at any time
 - Turn it off any time: Settings → toggle off, globally or per domain
-- **By default, we never touch what isn't ours**: if a link already has someone else's affiliate tag on a compatible store, MUGA leaves it alone. Replacing requires a separate, deliberate opt-in
+- **By default, we try not to touch what isn't ours**: if a link already has someone else's affiliate tag on a compatible store, MUGA leaves it in place. Replacing it is a separate, deliberate opt-in, and even then it stays your choice
 
 ---
 

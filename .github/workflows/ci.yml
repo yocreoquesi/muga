@@ -74,6 +74,21 @@ jobs:
       - name: Check i18n quality (no FIXME / stubs / empty locale slots) (#621)
         run: npm run check:i18n
 
+      - name: Community locale parity report (#990)
+        # Non-blocking: pt/de/fr/it/ja are community-maintained and allowed to
+        # have gaps (missing keys degrade to the EN string at runtime — see
+        # src/lib/i18n.js's t() fallback). This step surfaces the gap in the
+        # job summary for contributors; it must never fail the build. The
+        # tool always exits 0 when called with no args, and continue-on-error
+        # is the second line of defense against a hard crash.
+        continue-on-error: true
+        run: |
+          {
+            echo "## Community locale translation parity (#990)"
+            echo ""
+            node tools/missing-translations.mjs
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run unit tests
         run: npm test
 

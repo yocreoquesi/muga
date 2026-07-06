@@ -80,6 +80,48 @@ describe("MutationObserver — ping blocking debounce", () => {
   });
 });
 
+// ── #allowlist-full-inert — content-script mechanisms not covered by ─────────
+// processUrl or the muga:history-gate must consult isSiteFullyExempt directly.
+// These are source guards (content scripts cannot import ES modules / cannot
+// be executed standalone in Node without a DOM+chrome shim), following this
+// file's existing pattern.
+
+describe("#allowlist-full-inert — ping blocking respects isSiteFullyExempt", () => {
+  test("ping-blocking gate checks isSiteFullyExempt before removing <a ping> attributes", () => {
+    const pingSectionStart = cleanerSource.indexOf("Ping blocking (conditional on prefs.blockPings)");
+    const pingSectionEnd = cleanerSource.indexOf("Redirect unwrap (#371)");
+    const pingBlock = cleanerSource.slice(pingSectionStart, pingSectionEnd);
+    const exemptCheckPos = pingBlock.indexOf("isSiteFullyExempt");
+    const removeAttrsPos = pingBlock.indexOf("function removePingAttrs");
+    assert.ok(exemptCheckPos > -1, "ping-blocking must consult isSiteFullyExempt");
+    assert.ok(exemptCheckPos < removeAttrsPos, "the exemption check must gate the ping-removal logic that follows it");
+  });
+});
+
+describe("#allowlist-full-inert — runRedirectUnwrap respects isSiteFullyExempt", () => {
+  test("redirect-unwrap checks isSiteFullyExempt before rewriting window.location", () => {
+    const fnStart = cleanerSource.indexOf("function runRedirectUnwrap()");
+    assert.ok(fnStart > -1, "runRedirectUnwrap must exist");
+    const fnBlock = cleanerSource.slice(fnStart, fnStart + 4000);
+    const exemptCheckPos = fnBlock.indexOf("isSiteFullyExempt");
+    const firstReplacePos = fnBlock.indexOf("window.location.replace");
+    assert.ok(exemptCheckPos > -1, "runRedirectUnwrap must consult isSiteFullyExempt");
+    assert.ok(exemptCheckPos < firstReplacePos, "the exemption check must gate every window.location.replace() call below it");
+  });
+});
+
+describe("#allowlist-full-inert — click interception respects isSiteFullyExempt", () => {
+  test("the click handler checks isSiteFullyExempt before intercepting a click to an affiliate domain", () => {
+    const gateStart = cleanerSource.indexOf('if (!isAffiliateDomain(url.hostname)) return;');
+    assert.ok(gateStart > -1, "affiliate-domain click gate must exist");
+    const block = cleanerSource.slice(gateStart, gateStart + 1400);
+    const exemptCheckPos = block.indexOf("isSiteFullyExempt");
+    const preventDefaultPos = block.indexOf("e.preventDefault()");
+    assert.ok(exemptCheckPos > -1, "click handler must consult isSiteFullyExempt");
+    assert.ok(exemptCheckPos < preventDefaultPos, "the exemption check must run before the click is intercepted");
+  });
+});
+
 describe("Temporal Dead Zone guard — _contentPrefs declaration ordering", () => {
   // Regression for bug reported on nukebg.app (issue #298): Firefox threw
   // "can't access lexical declaration '_contentPrefs' before initialization"

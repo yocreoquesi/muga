@@ -125,10 +125,11 @@ const BASELINE = {
   "service-worker-patterns.test.mjs": 77,   // SW not importable; behavioral migration is long arc (#824). +1 for the FORCE_FETCH_REMOTE_RULES "Update now" handler existence guard (Update now feature) — the (a)/(b)/(c) gate coverage itself is behavioral via a pure forceFetchRemoteRules() mirror, only the "handler exists" check is source-text
   "shortener-stats-sw.test.mjs": 40,        // SW + storage; behavioral migration deferred (#824). +1 for #922 egress-gate guard (SW not importable)
   "misc-regression.test.mjs": 29,           // mixed bag; partial migration possible (#824)
-  "content-cleaner-patterns.test.mjs": 27,  // content script not importable (#824)
+  "content-cleaner-patterns.test.mjs": 34,  // content script not importable (#824). +7 for #allowlist-full-inert: ping-blocking, runRedirectUnwrap, and click-interception isSiteFullyExempt guards
   "content-script.test.mjs": 19,            // content script not importable (#824)
   "dnr-ids.test.mjs": 8,                    // verifies SW + remote-rules import the ids module (#824)
   "dnr-consent-gate.test.mjs": 8,           // SW not importable; mixed with behavioral tests (#824). +1 for #921 rule-1001 gate guard
+  "allowlist-dnr.test.mjs": 7,               // SW not importable; syncAllowlistDNR/applyDnrState wiring guards, mostly behavioral (fake-DNR-facade tests) with a handful of source-region extractions mirroring dnr-consent-gate.test.mjs's pattern (#allowlist-full-inert, #824). +2 for the resourceTypes/main_frame fix (post fresh-context review Finding 1)
   "verify-warnings-regression.test.mjs": 6, // regression guards; some migratable (#824)
   "i18n-orphan.test.mjs": 5,               // reads HTML/JS to find orphaned i18n keys (#824)
   "browser-detect.test.mjs": 4,            // verifies popup/options import the module (#824)

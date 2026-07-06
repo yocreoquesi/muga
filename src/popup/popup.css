@@ -747,6 +747,15 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   color: var(--text-3);
   word-break: break-all;
 }
+/* #986: "why was this cleaned?" category description. flex-basis: 100% on a
+   flex-wrap row pushes it onto its own line below the label + params. */
+.breakdown-desc {
+  flex-basis: 100%;
+  font-size: 10px;
+  color: var(--text-3);
+  opacity: .85;
+  line-height: 1.35;
+}
 
 /* Migration banner (#369) */
 .migration-banner {

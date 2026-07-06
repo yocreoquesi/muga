@@ -63,6 +63,7 @@ describe("export settings (buildExportPayload behavior)", () => {
       "notifyForeignAffiliate",
       "stripAllAffiliates",
       "dnrEnabled",
+      "activeDefenseEnabled",
       "blockPings",
       "ampRedirect",
       "unwrapRedirects",

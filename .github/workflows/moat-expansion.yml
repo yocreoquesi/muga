@@ -69,7 +69,9 @@ jobs:
           # If a branch from a previous failed run exists, recreate from main.
           git checkout -B "$BRANCH"
 
-          git add tools/moat-expansion/reports/
+          # Reports are gitignored (see .gitignore) so they never reach main via a
+          # direct push; force-add the archival copy so it lands on the bot branch.
+          git add -f "${{ steps.report.outputs.report_file }}"
           git commit -m "auto-moat: affiliate-param gap report ($DATE)"
           git push -u origin "$BRANCH" --force-with-lease
 

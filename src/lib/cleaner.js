@@ -134,6 +134,124 @@ export function domainMatches(hostname, entryDomain) {
 }
 
 /**
+ * Returns true if a hostname is FULLY EXEMPT from MUGA - the single
+ * choke-point predicate that governs every cleaning mechanism, present and
+ * future (#allowlist-full-inert). Originally added as
+ * isSiteExemptFromActiveDefense (#1006) to cover only the four active-defense
+ * content scripts (window.name defuser, history defuser, DOM link rewriter,
+ * click rewriter), all of which gate on a single muga:history-gate event.
+ * Renamed and promoted to the general-purpose exemption check consulted by
+ * processUrl (JS cleaning, #allowlist-full-inert) and by the service worker's
+ * DNR allow-rule sync (network-layer cleaning) - so "domain is allowlisted"
+ * now means MUGA has literally no effect on that domain through ANY path,
+ * not a per-mechanism opt-out that has to be re-added every time a new
+ * mechanism ships.
+ *
+ * A site counts as exempt when EITHER is true:
+ *   (a) a DOMAIN-ONLY whitelist entry matches the host (bare "example.com").
+ *       A param-scoped entry ("example.com::tag::x") does NOT count - that
+ *       only protects one affiliate value, it is not a "leave this site
+ *       alone" signal.
+ *   (b) a per-site pause entry matches (an "example.com::disabled" blacklist
+ *       entry, mirroring isPerDomainDisabled() in src/popup/popup.js).
+ *
+ * Reuses parseListEntry/domainMatches rather than reimplementing domain
+ * matching (a separate cleanup is tracked in #1005).
+ *
+ * Defensive: returns false for any falsy or malformed input so a missing or
+ * corrupt prefs object never accidentally grants an exemption. Fail-safe
+ * direction matters here: MUGA must stay ACTIVE unless we are sure the user
+ * opted the site out - a bug in this predicate must never globally disable
+ * cleaning.
+ *
+ * @param {string} hostname - the current page's hostname.
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {boolean}
+ */
+export function isSiteFullyExempt(hostname, prefs) {
+  if (!hostname || typeof hostname !== "string" || !prefs || typeof prefs !== "object") return false;
+
+  const whitelist = Array.isArray(prefs.whitelist) ? prefs.whitelist : [];
+  for (const raw of whitelist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (entry.param !== "disabled" || entry.value || !entry.domain) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns the deduped list of bare domains (www-stripped, lowercased) that
+ * are fully exempt from MUGA - i.e. the same domain-only-whitelist /
+ * `::disabled`-pause signals isSiteFullyExempt() tests against a single
+ * hostname, but exposed here as the raw domain list (#allowlist-full-inert).
+ *
+ * Used by the service worker to build one DNR dynamic "allow" rule per
+ * exempt domain (src/background/service-worker.js#syncAllowlistDNR): DNR
+ * conditions match a `requestDomains` list, not a predicate function, so the
+ * network-layer sync needs the domain list rather than a hostname-in/
+ * boolean-out check. Reuses parseListEntry - no domain-matching logic is
+ * duplicated (the DNR requestDomains match already covers subdomains on
+ * Chrome's side, mirroring what domainMatches() does for the in-JS check).
+ *
+ * Defensive: returns [] for any falsy or malformed prefs, matching
+ * isSiteFullyExempt's fail-safe direction (no domains -> no allow rules ->
+ * cleaning stays active everywhere).
+ *
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {string[]}
+ */
+export function getFullyExemptDomains(prefs) {
+  if (!prefs || typeof prefs !== "object") return [];
+
+  const domains = new Set();
+
+  const whitelist = Array.isArray(prefs.whitelist) ? prefs.whitelist : [];
+  for (const raw of whitelist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    domains.add(entry.domain);
+  }
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (entry.param !== "disabled" || entry.value || !entry.domain) continue;
+    domains.add(entry.domain);
+  }
+
+  return [...domains];
+}
+
+/**
  * Adds or removes a per-domain "disabled" blacklist entry for a host, returning
  * a NEW blacklist array (pure; never mutates the input). Pausing appends
  * `<host>::disabled` unless the host is already effectively disabled (exact or
@@ -354,6 +472,9 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  * Processes a URL according to user preferences and blacklist/whitelist rules.
  *
  * Logic order:
+ *   0.  Full-site exemption (#allowlist-full-inert): a domain-only whitelist
+ *       entry or a `::disabled` pause returns the URL completely untouched,
+ *       before every other step below runs.
  *   0a. Honor Creator Mode (#452): pass redirect-network wrapper through
  *       UNMODIFIED when user opted in AND referrer matches creatorAllowlist
  *   1. Blacklist check: domain-only entry → strip ALL params (Scenario D)
@@ -411,6 +532,30 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *                             `creator` (matching allowlist entry) are set.
  */
 export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer, pathStripRules = [], pathAffiliateRules = []) {
+  // Step 0 — Full-site exemption choke point (#allowlist-full-inert).
+  //
+  // A domain-only whitelist entry or a `::disabled` per-site pause means
+  // MUGA must have NO effect on this hostname at all - not just "skip
+  // affiliate processing" (the old, narrower behavior), but skip every
+  // cleaning mechanism this function performs, current and future. This
+  // check MUST run before unwrap/honor-creator/canonical extraction below,
+  // since those also mutate/inspect the URL - an exempt site must never be
+  // touched by any of them either.
+  //
+  // Fail-safe: if rawUrl fails to parse here, do NOT treat it as exempt -
+  // fall through to the normal pipeline (which re-parses it via
+  // unwrapAndExtract and returns the standard untouched payload on its own
+  // parse failure). A malformed URL must never be interpreted as "exempt",
+  // since that would be indistinguishable from "cleaning disabled".
+  try {
+    const earlyHostname = new URL(rawUrl).hostname;
+    if (isSiteFullyExempt(earlyHostname, prefs)) {
+      return buildReturnPayload("untouched", rawUrl, [], null, {});
+    }
+  } catch {
+    // Unparseable rawUrl - fall through to normal handling below.
+  }
+
   // Step 1 — Unwrap + Honor + Canonical (steps 0a, 0, 0b)
   const unwrapStep = unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules);
   if (unwrapStep.kind === "done") return unwrapStep.payload;

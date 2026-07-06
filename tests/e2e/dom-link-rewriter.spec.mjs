@@ -46,6 +46,8 @@ async function stubPage(page) {
       contentType: "text/html",
       body: `<!doctype html><html><body>
         <a id="pre" href="https://example.com/p?utm_source=marketing&id=1">pre-existing</a>
+        <a id="rel" href="/product?utm_source=newsletter&id=9">relative</a>
+        <a id="rel-clean" href="/already/clean?id=5">already clean relative</a>
         <button id="add-btn">add</button>
         <div id="container"></div>
         <script>
@@ -89,6 +91,24 @@ test.describe("DOM Link Rewriter (#443)", () => {
     , { timeout: 5000 }).not.toContain("utm_source");
     const preHref = await page.evaluate(() => document.getElementById("pre").getAttribute("href"));
     expect(preHref).toContain("id=1");
+
+    // Relative anchor (#1012 regression): a relative href passed straight
+    // to window.__mugaCleaner.processUrl (no base) used to come back
+    // untouched, so tracking survived. The fix must strip utm_source AND
+    // keep the href relative (no scheme/host) — SPA routers string-compare
+    // hrefs, so a shape change would look like a different link.
+    await expect.poll(async () =>
+      page.evaluate(() => document.getElementById("rel").getAttribute("href"))
+    , { timeout: 5000 }).not.toContain("utm_source");
+    const relHref = await page.evaluate(() => document.getElementById("rel").getAttribute("href"));
+    expect(relHref).toBe("/product?id=9");
+
+    // Already-clean relative anchor: by the time the pre-existing anchor
+    // above has settled, the SAME synchronous initial pass has already
+    // processed this one too — idempotency means the href must be the
+    // EXACT original string (no rewrite at all, not even a same-value one).
+    const relCleanHref = await page.evaluate(() => document.getElementById("rel-clean").getAttribute("href"));
+    expect(relCleanHref).toBe("/already/clean?id=5");
 
     // Newly-inserted anchor: insert via button, then poll until the
     // observer's microtask has rewritten it.

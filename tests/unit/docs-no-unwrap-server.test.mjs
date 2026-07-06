@@ -30,6 +30,8 @@ const USER_FACING_DOCS = [
   "docs/faq.md",
   "docs/store-listing.md",
   "docs/affiliate-networks-matrix.md",
+  "README.md",
+  "landing/index.html",
 ];
 
 const DECOMMISSIONED_HOST = "unwrap.muga.app";

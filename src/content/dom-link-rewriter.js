@@ -67,7 +67,17 @@
     __s: 1, _ga: 1, _gl: 1, _gac: 1,
     ved: 1, ei: 1, sca_esv: 1, sxsrf: 1,
     mibextid: 1, share_id: 1,
+    _pos: 1, _ss: 1, _psq: 1, _sid: 1, _fid: 1,
+    pr_prod_strat: 1, pr_rec_id: 1, pr_ref_pid: 1, pr_rec_pid: 1, pr_seq: 1,
   });
+
+  /**
+   * Absolute-URL detector — a bare scheme + "://" prefix. Anything else
+   * (path-relative, query-relative, or hash-only hrefs) is relative.
+   */
+  function isAbsoluteUrl(raw) {
+    return /^[a-z]+:\/\//i.test(raw);
+  }
 
   /**
    * Synchronous URL cleaner. Strips the static tracking-param subset
@@ -96,8 +106,7 @@
       }
     }
     if (!changed) return rawUrl;
-    const isAbsolute = /^[a-z]+:\/\//i.test(rawUrl);
-    if (isAbsolute) return u.toString();
+    if (isAbsoluteUrl(rawUrl)) return u.toString();
     return u.pathname + u.search + u.hash;
   }
 
@@ -108,8 +117,11 @@
    * gate opens the bundle is typically up. The inline subset is the
    * fallback when an extremely-early mutation (rare — observer doesn't
    * start until the gate event) outraces the bundle attach.
+   *
+   * Operates on an ABSOLUTE url string. Relative hrefs are resolved to
+   * absolute before reaching this function — see `urlCleaner` below.
    */
-  function urlCleaner(raw) {
+  function cleanAbsolute(raw) {
     const bundled = window.__mugaCleaner;
     if (bundled && typeof bundled.processUrl === "function") {
       try {
@@ -124,6 +136,62 @@
       }
     }
     return inlineCleanUrl(raw);
+  }
+
+  /**
+   * Public cleaner entry point.
+   *
+   * #1012: the bundled `processUrl` parses with `new URL(rawUrl)` — NO
+   * base — so a relative href (e.g. "/product?utm_source=x") throws
+   * inside it, is caught, and processUrl returns an "untouched" payload
+   * whose `cleanUrl` is the ORIGINAL dirty relative string. A naive
+   * "prefer the bundle" cleaner then returns that dirty string straight
+   * through and never falls back to `inlineCleanUrl` (which IS base-aware
+   * and would have handled it) — relative hrefs pass through uncleaned.
+   *
+   * Fix: resolve relative hrefs against `window.location.href` BEFORE
+   * handing them to the bundle/inline cleaner (same fallback order as
+   * before), then re-emit the result in the SAME shape the caller passed
+   * in. SPA routers string-compare hrefs, so a shape change (relative in,
+   * absolute out) would look like a different link even when the URL is
+   * equivalent. When nothing changed we return the ORIGINAL string (not
+   * the resolved-then-reshaped one) so `rewriteLink`'s
+   * `cleaned === current` check still skips the setAttribute.
+   *
+   * Two guards keep this from over-reaching:
+   *   1. `?`-guard: a relative href with no query of its OWN (e.g.
+   *      "#section", "/about") has nothing to clean. Resolving it against
+   *      the page URL would inherit the PAGE's query — if the page was
+   *      opened via a tracking link, cleanAbsolute would strip those
+   *      inherited params and we'd rewrite an in-page anchor that carried
+   *      no tracking itself, changing its shape and firing a spurious
+   *      setAttribute. Mirror inlineCleanUrl's existing `?`-guard contract.
+   *   2. same-origin guard: cleanAbsolute -> processUrl can UNWRAP a
+   *      redirect wrapper and return a DIFFERENT-origin absolute URL.
+   *      Re-emitting pathname+search+hash would graft that other-origin
+   *      path onto the current origin. Only re-relativize when the cleaned
+   *      result is still same-origin as the resolved input; otherwise
+   *      leave the href untouched.
+   */
+  function urlCleaner(raw) {
+    if (isAbsoluteUrl(raw)) return cleanAbsolute(raw);
+    if (raw.indexOf("?") < 0) return raw;
+
+    let resolved;
+    try {
+      resolved = new URL(raw, window.location.href).toString();
+    } catch {
+      return inlineCleanUrl(raw);
+    }
+    const cleanedAbsolute = cleanAbsolute(resolved);
+    if (cleanedAbsolute === resolved) return raw;
+    try {
+      const cleanedUrl = new URL(cleanedAbsolute);
+      if (cleanedUrl.origin !== new URL(resolved).origin) return raw;
+      return cleanedUrl.pathname + cleanedUrl.search + cleanedUrl.hash;
+    } catch {
+      return raw;
+    }
   }
 
   /**
