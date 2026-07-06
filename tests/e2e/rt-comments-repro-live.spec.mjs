@@ -71,13 +71,13 @@ async function instrumentPage(page) {
   await page.evaluate(() => {
     window.__liveLog = [];
 
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = function (...args) {
+    const origPush = window.history.pushState.bind(window.history);
+    const origReplace = window.history.replaceState.bind(window.history);
+    window.history.pushState = function (...args) {
       window.__liveLog.push({ type: "pushState", args: args.map(String) });
       return origPush(...args);
     };
-    history.replaceState = function (...args) {
+    window.history.replaceState = function (...args) {
       window.__liveLog.push({ type: "replaceState", args: args.map(String) });
       return origReplace(...args);
     };
@@ -87,7 +87,7 @@ async function instrumentPage(page) {
     });
 
     try {
-      const mo = new MutationObserver((records) => {
+      const mo = new window.MutationObserver((records) => {
         for (const r of records) {
           if (r.type === "attributes" && r.attributeName === "href") {
             let href = null;
