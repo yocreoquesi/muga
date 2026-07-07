@@ -407,28 +407,35 @@ describe("service-worker.js source guards — #810 fix present", () => {
     );
   });
 
-  test("applyDnrState references ampRedirect pref", () => {
+  test("applyDnrState delegates the ruleset partition to partitionRulesets", () => {
+    // The per-feature gating (ampRedirect, unwrapRedirects) plus the Firefox
+    // tracking_params disable now live in the pure partitionRulesets helper
+    // (src/lib/dnr-ruleset-state.js), covered behaviorally in
+    // tests/unit/dnr-ruleset-state.test.mjs. Here we only guard that applyDnrState
+    // still delegates to it (a regression that inlined a divergent copy would
+    // bypass that coverage).
     const applyFnStart = swSource.indexOf("async function applyDnrState(");
     assert.ok(applyFnStart !== -1, "applyDnrState must exist in SW");
-    // Use 2600 chars — the function grew with comments after the #810 fix
-    // and the #903 amazon_path_canonical branch
     const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2600);
     assert.ok(
-      applyFnBlock.includes("ampRedirect"),
-      "applyDnrState must check prefs.ampRedirect to gate amp_redirect ruleset"
+      applyFnBlock.includes("partitionRulesets("),
+      "applyDnrState must call partitionRulesets() to decide enabled/disabled rulesets"
+    );
+    assert.ok(
+      applyFnBlock.includes("isFirefoxMV2"),
+      "applyDnrState must pass isFirefoxMV2 so tracking_params is disabled on Firefox"
     );
   });
 
-  test("applyDnrState references unwrapRedirects pref", () => {
-    const applyFnStart = swSource.indexOf("async function applyDnrState(");
-    assert.ok(applyFnStart !== -1, "applyDnrState must exist in SW");
-    // Use 2600 chars — the function grew with comments after the #810 fix
-    // and the #903 amazon_path_canonical branch
-    const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2600);
-    assert.ok(
-      applyFnBlock.includes("unwrapRedirects"),
-      "applyDnrState must check prefs.unwrapRedirects to gate wrapper_unwrap ruleset"
+  test("partitionRulesets source gates on ampRedirect and unwrapRedirects prefs", () => {
+    const stateSource = readFileSync(
+      new URL("../../src/lib/dnr-ruleset-state.js", import.meta.url),
+      "utf8",
     );
+    assert.ok(stateSource.includes("ampRedirect"),
+      "partitionRulesets must gate amp_redirect on prefs.ampRedirect");
+    assert.ok(stateSource.includes("unwrapRedirects"),
+      "partitionRulesets must gate wrapper_unwrap on prefs.unwrapRedirects");
   });
 
   test("storage listener re-triggers applyDnrState on ampRedirect changes", () => {

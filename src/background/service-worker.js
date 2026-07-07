@@ -11,6 +11,7 @@ import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID, DNR_ALLOWLIST_RULE_ID_BASE, DNR_ALLOWLIST_MAX_RULES } from "../lib/dnr-ids.js";
+import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
 import { t } from "../lib/i18n.js";
 import {
   runRemoteRulesFetch,
@@ -442,6 +443,14 @@ const isFirefoxMV2 =
   chrome.runtime.getManifest().manifest_version === 2 &&
   typeof chrome.webRequest?.onBeforeRequest?.addListener === "function";
 
+// Set true once prefs + domain/path rules have all settled (success or failure).
+// The blocking listener passes navigations through until then: stripping with an
+// empty domainRules would miss domain-specific rules AND could over-strip a
+// param that a domain's preserveParams would have kept. The content-script
+// self-clean covers this brief startup window (Firefox's bg page is persistent,
+// so it is effectively just the first navigation after browser start).
+let _fxStripperReady = false;
+
 /**
  * Blocking onBeforeRequest handler. MUST return synchronously (a BlockingResponse
  * or undefined). Reads the warm prefs/rules caches synchronously and delegates the
@@ -452,15 +461,12 @@ const isFirefoxMV2 =
  * @returns {{redirectUrl:string}|undefined}
  */
 function onBeforeNavigateStrip(details) {
-  const prefs = cachedPrefs;
-  // Cold start (only the first navigation after browser start, since Firefox's
-  // background page is persistent): caches not warm yet. Kick the warm-up and let
-  // this request pass — the content-script self-clean is the fallback for this
-  // brief window.
-  if (!prefs) { getPrefsWithCache(); return; }
+  // Pass through until prefs AND rules are warm (see _fxStripperReady). Kick the
+  // warm-up on the way past so it resolves as soon as possible.
+  if (!_fxStripperReady || !cachedPrefs) { getPrefsWithCache(); return; }
 
   const decision = computeNavigationStrip(
-    details.url, prefs, domainRules, pathStripRules, pathAffiliateRules, frequencyTracker,
+    details.url, cachedPrefs, domainRules, pathStripRules, pathAffiliateRules, frequencyTracker,
   );
   if (!decision) return;
 
@@ -470,12 +476,15 @@ function onBeforeNavigateStrip(details) {
 }
 
 if (isFirefoxMV2) {
-  // Warm the caches the blocking listener reads synchronously. Firefox's
-  // background page is persistent, so this runs once at startup (the #629
-  // lazy-load cold-start concern is Chrome-MV3-specific and does not apply).
-  getPrefsWithCache();
+  // Warm the caches the blocking listener reads synchronously, then arm it. Only
+  // strip once domain/path rules have settled so a startup navigation can never
+  // over-strip a preserve-domain param. Firefox's background page is persistent,
+  // so this warm-up runs once at startup.
   if (_domainRulesReady === null) _domainRulesReady = _loadDomainRules();
   if (_pathRulesReady === null) _pathRulesReady = _loadPathRules();
+  Promise.all([getPrefsWithCache(), _domainRulesReady, _pathRulesReady])
+    .catch(() => { /* best-effort warm; failures fall back to pass-through */ })
+    .finally(() => { _fxStripperReady = true; });
   chrome.webRequest.onBeforeRequest.addListener(
     onBeforeNavigateStrip,
     { urls: ["<all_urls>"], types: ["main_frame"] },
@@ -707,42 +716,15 @@ async function applyDnrState(prefs) {
   ).map(r => r.id);
 
   if (prefs.enabled && prefs.dnrEnabled && prefs.onboardingDone) {
-    // Gate open: selectively enable/disable based on per-feature prefs.
-    // The manifest defaults all three to enabled:true, so rulesets whose
-    // feature pref is OFF must be explicitly disabled — otherwise they
-    // stay active from the manifest default.
-    const enableRulesetIds = [];
-    const disableRulesetIds = [];
-
-    for (const id of declaredIds) {
-      if (id === "tracking_params") {
-        enableRulesetIds.push(id);
-      } else if (id === "amazon_path_canonical") {
-        // Amazon /dp/ SEO-slug strip (#903) — always-on when the consent
-        // gate is open, same as tracking_params. There is no dedicated
-        // feature pref for this yet; it is a Chrome-only DNR redirect
-        // (Firefox strips the slug via the in-page cleaner instead).
-        enableRulesetIds.push(id);
-      } else if (id === "amp_redirect") {
-        if (prefs.ampRedirect) {
-          enableRulesetIds.push(id);
-        } else {
-          disableRulesetIds.push(id);
-        }
-      } else if (id === "wrapper_unwrap") {
-        if (prefs.unwrapRedirects) {
-          enableRulesetIds.push(id);
-        } else {
-          disableRulesetIds.push(id);
-        }
-      } else {
-        // A manifest-declared ruleset this gate doesn't know about would
-        // keep its manifest default and silently bypass any feature pref.
-        // Enable it explicitly (matching the manifest default) and warn so
-        // the gap is visible the moment a fourth ruleset is added. (#810)
-        console.warn("[MUGA] applyDnrState: unmanaged ruleset id:", id);
-        enableRulesetIds.push(id);
-      }
+    // Gate open: selectively enable/disable based on per-feature prefs (pure
+    // decision in partitionRulesets). The manifest defaults every ruleset to
+    // enabled:true, so rulesets whose feature pref is OFF — or which a different
+    // mechanism now owns (tracking_params on Firefox, handled by the blocking
+    // webRequest stripper) — must be explicitly disabled here.
+    const { enableRulesetIds, disableRulesetIds, unmanaged } =
+      partitionRulesets(declaredIds, prefs, { isFirefoxMV2 });
+    for (const id of unmanaged) {
+      console.warn("[MUGA] applyDnrState: unmanaged ruleset id:", id);
     }
 
     await chrome.declarativeNetRequest.updateEnabledRulesets({
