@@ -31,7 +31,7 @@ import {
 // ── parseAdguardExceptions ────────────────────────────────────────────────────
 
 describe("parseAdguardExceptions", () => {
-  test("resolves the `@@||host^$removeparam=X` anchored form", () => {
+  test("harvests a whole-host `@@||host^$removeparam=X` rule", () => {
     const { entries, skipped } = parseAdguardExceptions(
       "@@||example.com^$removeparam=fooparam",
     );
@@ -39,56 +39,66 @@ describe("parseAdguardExceptions", () => {
     assert.equal(skipped.length, 0);
   });
 
-  test("resolves the path-based `@@/path...$removeparam=X,domain=A|B` form", () => {
-    const { entries, skipped } = parseAdguardExceptions(
-      "@@/e/er?$removeparam=elq,domain=a.example.com|b.example.org",
-    );
-    assert.deepEqual(entries, [
-      { domain: "a.example.com", param: "elq" },
-      { domain: "b.example.org", param: "elq" },
-    ]);
-    assert.equal(skipped.length, 0);
-  });
-
-  test("collects hosts from BOTH an anchored ||host^ AND a domain= modifier on the same rule", () => {
+  test("harvests the anchored host PLUS positive domain= entries when options are only removeparam/domain", () => {
     const { entries } = parseAdguardExceptions(
-      "@@||edge.example.com/track$removeparam=cuid,xmlhttprequest,domain=origin.example.com",
+      "@@||edge.example.com^$removeparam=cuid,domain=origin.example.com|other.example.net",
     );
     const domains = entries.map((e) => e.domain).sort();
-    assert.deepEqual(domains, ["edge.example.com", "origin.example.com"]);
+    assert.deepEqual(domains, ["edge.example.com", "origin.example.com", "other.example.net"]);
     assert.ok(entries.every((e) => e.param === "cuid"));
   });
 
-  test("stops the removeparam value at the next comma (does not swallow trailing modifiers)", () => {
+  test("ignores negated domain= entries (leading ~) but keeps the anchored host and positive ones", () => {
     const { entries } = parseAdguardExceptions(
-      "@@||shop.example.com/api$removeparam=utm_medium,xmlhttprequest,domain=shop.example.com",
+      "@@||host.example.com^$removeparam=ref,domain=good.example.com|~excluded.example.com",
     );
-    assert.ok(entries.every((e) => e.param === "utm_medium"));
+    const domains = entries.map((e) => e.domain).sort();
+    assert.deepEqual(domains, ["good.example.com", "host.example.com"]);
   });
 
-  test("skips a rule when the host contains a wildcard TLD segment and no domain= modifier resolves it", () => {
+  // ── Scope faithfulness: rules narrower than a whole host must be SKIPPED,
+  //    never widened to the whole host (PR #1021 review, Risk 1). ──────────────
+  test("skips an $app= scoped rule (e.g. msn.com/ocid app=msedgewebview2.exe)", () => {
+    const { entries, skipped } = parseAdguardExceptions(
+      "@@||msn.com^$app=msedgewebview2.exe,removeparam=ocid",
+    );
+    assert.deepEqual(entries, []);
+    assert.equal(skipped.length, 1);
+    assert.match(skipped[0].reason, /app/i);
+  });
+
+  test("skips a request-type scoped rule (xmlhttprequest)", () => {
+    const { entries, skipped } = parseAdguardExceptions(
+      "@@||shop.example.com/api$removeparam=utm_medium,xmlhttprequest,domain=shop.example.com",
+    );
+    assert.deepEqual(entries, []);
+    assert.equal(skipped.length, 1);
+  });
+
+  test("skips a path-scoped rule (e.g. allegro.pl/affiliate)", () => {
+    const { entries, skipped } = parseAdguardExceptions(
+      "@@||allegro.pl/affiliate?redirect_url=$removeparam=utm_source",
+    );
+    assert.deepEqual(entries, []);
+    assert.equal(skipped.length, 1);
+    assert.match(skipped[0].reason, /host anchor/i);
+  });
+
+  test("skips a path-anchored `@@/path...$...,domain=A|B` rule (e.g. Eloqua /e/er?)", () => {
+    const { entries, skipped } = parseAdguardExceptions(
+      "@@/e/er?$removeparam=elq,domain=a.example.com|b.example.org",
+    );
+    assert.deepEqual(entries, []);
+    assert.equal(skipped.length, 1);
+  });
+
+  test("skips a wildcard-host rule", () => {
     const { entries, skipped } = parseAdguardExceptions(
       "@@||brand.*/checkout?$removeparam=clickid",
     );
     assert.deepEqual(entries, []);
     assert.equal(skipped.length, 1);
-    assert.match(skipped[0].reason, /wildcard/i);
     assert.match(skipped[0].line, /brand\.\*/);
-  });
-
-  test("ignores negated domain= entries (leading ~) but keeps the positive ones", () => {
-    const { entries } = parseAdguardExceptions(
-      "@@/r?$removeparam=ref,domain=good.example.com|~excluded.example.com",
-    );
-    assert.deepEqual(entries, [{ domain: "good.example.com", param: "ref" }]);
-  });
-
-  test("skips a rule entirely when every domain= entry is negated and there is no anchored host", () => {
-    const { entries, skipped } = parseAdguardExceptions(
-      "@@/r?$removeparam=ref,domain=~excluded.example.com",
-    );
-    assert.deepEqual(entries, []);
-    assert.equal(skipped.length, 1);
   });
 
   test("ignores non-@@ lines and @@ lines without removeparam=", () => {

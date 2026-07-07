@@ -8,10 +8,13 @@
  * DOMAIN-SCOPED preserve params into src/rules/domain-rules.json:
  *
  *   1. tools/rule-ingestion/quarantine/adguard-tp.raw
- *      AdGuard "URL Tracking" filter. Exception rules of the form
- *      `@@||host^$removeparam=X` (or a path-based rule with a `domain=`
- *      modifier) declare "this site needs param X kept". Each such rule
- *      is a domain-scoped preserve signal.
+ *      AdGuard "URL Tracking" filter. A WHOLE-HOST exception rule of the form
+ *      `@@||host^$removeparam=X` (options limited to removeparam/domain)
+ *      declares "this whole site needs param X kept". Only whole-host rules
+ *      are harvested: a rule scoped by path, query, request-type
+ *      (e.g. xmlhttprequest) or app (e.g. $app=) would be WIDENED to the whole
+ *      host if harvested, silently letting a tracker through site-wide, so
+ *      resolveAdguardScope rejects and logs those.
  *
  *   2. tools/moat-expansion/quarantine/clearurls.raw
  *      ClearURLs `data.min.json`. Each provider's `referralMarketing`
@@ -69,44 +72,74 @@ const HARVEST_NOTE = "Preserve params harvested from AdGuard/ClearURLs exception
 // ── AdGuard exception parsing ─────────────────────────────────────────────────
 
 /**
- * Resolve the domain(s) an AdGuard `@@` exception line applies to.
+ * Resolve the whole-host scope of an AdGuard `@@` exception line, but ONLY when
+ * the rule is faithfully representable as a domain-scoped preserve.
  *
- * Two host sources are combined (a rule may carry both):
- *   - An anchored `||HOST` prefix: the literal host chars right after `||`,
- *     up to the first delimiter (`^`, `/`, `?`, or `$`). Wildcard segments
- *     (`*`) inside the host break this match on purpose — a wildcard TLD
- *     like `amazon.*` is not a resolvable concrete domain.
- *   - A `domain=A|B|C` modifier: each pipe-separated entry is a host.
- *     Entries prefixed with `~` are negated (NOT this domain) and are
- *     skipped rather than resolved.
+ * A domain-rules preserve applies to a host and ALL its subdomains, on every
+ * path, for every request type. So we may only harvest an AdGuard exception
+ * that is itself scoped to a whole host. A rule is harvested when BOTH hold:
+ *   - its pattern is a bare host anchor `||HOST^` (no path, query string, or
+ *     wildcard segment), and
+ *   - its options contain only `removeparam` and/or `domain=` (no `$app=`, no
+ *     request-type modifier like `xmlhttprequest`, etc.).
+ * Anything narrower (a path/query anchor, an app or request-type modifier)
+ * would be WIDENED by harvesting it to the whole host, silently letting a
+ * tracking param through site-wide. Such rules are rejected here and logged by
+ * the caller so they can be reviewed and, if ever needed, added by hand.
  *
- * @param {string} line A single raw filter line (already confirmed to start
- *   with `@@` and contain `removeparam=`).
- * @returns {string[]} Deduped, lowercased hosts. Empty when nothing resolves.
+ * Hosts come from the `||HOST` anchor plus any positive `domain=A|B` entries
+ * (`~`-negated entries are ignored).
+ *
+ * @param {string} line A single raw filter line (starts with `@@`, contains
+ *   `removeparam=`).
+ * @returns {{ hosts: string[], skip: string | null }} `skip` is a non-null
+ *   reason string when the rule is rejected (and `hosts` is empty); otherwise
+ *   `skip` is null and `hosts` holds the resolved whole-host targets.
  */
-function resolveAdguardHosts(line) {
-  const hosts = new Set();
+function resolveAdguardScope(line) {
+  const dollar = line.indexOf("$");
+  if (dollar < 0) return { hosts: [], skip: "no options section" };
 
-  const anchored = line.match(/^@@\|\|([a-z0-9.-]+)(?=[/^?$])/i);
-  if (anchored) {
-    hosts.add(anchored[1].toLowerCase());
-  }
+  const pattern = line.slice(2, dollar); // drop leading `@@`
+  const optionsStr = line.slice(dollar + 1);
 
-  const domainModifier = line.match(/[,$]domain=([^,]+)/);
-  if (domainModifier) {
-    for (const rawHost of domainModifier[1].split("|")) {
-      const host = rawHost.trim();
-      if (!host || host.startsWith("~")) continue;
-      hosts.add(host.toLowerCase());
+  // Options must be limited to removeparam / domain. Any other modifier
+  // (`app=`, a request-type like `xmlhttprequest`, etc.) means the upstream
+  // exception is narrower than a whole-host preserve.
+  const domainHosts = [];
+  for (const token of optionsStr.split(",")) {
+    const key = token.split("=")[0].replace(/^~/, "").trim().toLowerCase();
+    if (key === "removeparam") continue;
+    if (key === "domain") {
+      const value = token.slice(token.indexOf("=") + 1);
+      for (const rawHost of value.split("|")) {
+        const host = rawHost.trim();
+        if (host && !host.startsWith("~")) domainHosts.push(host.toLowerCase());
+      }
+      continue;
     }
+    return {
+      hosts: [],
+      skip: `carries a non-preserve modifier "${key}" (app/request-type scoping); not a whole-host exception`,
+    };
   }
 
-  return [...hosts];
+  // Pattern must be a bare host anchor `||HOST^` — no path, query, or wildcard.
+  const anchor = pattern.match(/^\|\|([a-z0-9.-]+)\^$/i);
+  if (!anchor) {
+    return {
+      hosts: [],
+      skip: `pattern "${pattern}" is not a bare host anchor (path/query/wildcard scoped); would widen the exception to the whole host`,
+    };
+  }
+
+  const hosts = new Set([anchor[1].toLowerCase(), ...domainHosts]);
+  return { hosts: [...hosts], skip: null };
 }
 
 /**
  * Parse AdGuard exception rules (`@@...removeparam=...`) into domain-scoped
- * preserve entries.
+ * preserve entries, keeping only whole-host exceptions (see resolveAdguardScope).
  *
  * @param {string} rawText Raw contents of the AdGuard filter list.
  * @returns {{ entries: Array<{domain: string, param: string}>, skipped: Array<{line: string, reason: string}> }}
@@ -129,16 +162,13 @@ export function parseAdguardExceptions(rawText) {
     // JSON in sync avoids confusing mixed-case entries, see #831 Item 5).
     const param = paramMatch[1].toLowerCase();
 
-    const hosts = resolveAdguardHosts(line);
-    if (hosts.length === 0) {
-      skipped.push({
-        line,
-        reason: "no ||HOST^ or domain= modifier resolved to a concrete host (wildcard TLD segment or unsupported rule shape)",
-      });
+    const scope = resolveAdguardScope(line);
+    if (scope.skip) {
+      skipped.push({ line, reason: scope.skip });
       continue;
     }
 
-    for (const domain of hosts) {
+    for (const domain of scope.hosts) {
       entries.push({ domain, param });
     }
   }

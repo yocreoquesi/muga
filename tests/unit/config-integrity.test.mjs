@@ -21,7 +21,7 @@ describe("domain-rules.json integrity", () => {
   test("all entries have domain, preserveParams (non-empty array), and note", () => {
     // Exact count is pinned so any domain-rules.json growth (e.g. the weekly
     // AdGuard/ClearURLs preserve harvest) is an explicit, reviewed change.
-    assert.equal(domainRules.length, 214, `Expected 214 entries, got ${domainRules.length}`);
+    assert.equal(domainRules.length, 188, `Expected 188 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);

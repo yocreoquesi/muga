@@ -32,12 +32,14 @@
               "_r",
               "source",
               "campaign",
+              "clickid",
               "_hsenc",
               "_hsmi",
               "hsctatracking",
               "mkt_tok",
               "trk",
               "trkcampaign",
+              "ocid",
               "psc",
               "spla",
               "pd_rd_r",
@@ -235,6 +237,9 @@
               "bsft_uid",
               "bsft_eid",
               "bsft_mid",
+              "elqtrackid",
+              "elqaid",
+              "elqat",
               "elqcampaignid",
               "spjobid",
               "spmailingid",
@@ -318,6 +323,8 @@
               "ebisother3",
               "ebisother4",
               "ebisother5",
+              "elq",
+              "elqak",
               "fb_comment_id",
               "fbadid",
               "action_object_map",
@@ -389,6 +396,7 @@
               "btag",
               "cm_cr",
               "cm_me",
+              "cmpid",
               "cstrackid",
               "emcs_t",
               "ems_dl",
@@ -419,6 +427,7 @@
               "tcsack",
               "user_email_address",
               "uzcid",
+              "vc_lpp",
               "vero_conv",
               "vs_campaign_id",
               "vsm_cid",
@@ -453,50 +462,6 @@
         "transform": {
           "queryTransform": {
             "removeParams": [
-              "utm_source"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "3dnews.ru",
-        "allegro.pl",
-        "app.plex.tv",
-        "auto-swiat.pl",
-        "businessinsider.com.pl",
-        "carrefourpl.snrpage.com",
-        "glavnoe.life",
-        "insurancexblog.blogspot.com",
-        "komputerswiat.pl",
-        "lanacion.com.ar",
-        "medonet.pl",
-        "noizz.pl",
-        "ofeminin.pl",
-        "plejada.pl",
-        "plex.tv",
-        "sendgb.com",
-        "t.send.vt.edu",
-        "transfernow.net",
-        "video-shoper.ru",
-        "watch.plex.tv"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 301,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
               "adj_t"
             ]
           }
@@ -515,7 +480,7 @@
     }
   },
   {
-    "id": 302,
+    "id": 301,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -543,155 +508,7 @@
     }
   },
   {
-    "id": 303,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
-              "utm_campaign"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "allegro.pl",
-        "canadacompanyregistry.com",
-        "glavnoe.life",
-        "rd.bizrate.com",
-        "redirects.tradedoubler.com",
-        "t.send.vt.edu",
-        "usprobioticguide.com"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 304,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
-              "clickid"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "allegro.pl"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 305,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
-              "utm_medium"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "apimeishi.meituan.com",
-        "app.plex.tv",
-        "glavnoe.life",
-        "meishi.meituan.com",
-        "mmcref.pl",
-        "portal-portm.meituan.com",
-        "rd.bizrate.com",
-        "t.send.vt.edu"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 306,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
-              "elq",
-              "elqaid",
-              "elqak",
-              "elqat",
-              "elqtrackid"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "app.econnect.utexas.edu",
-        "clk.texaslonghorns.com",
-        "s1740541080.t.eloqua.com"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 307,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
-              "utm_content"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "app.plex.tv",
-        "gaugau.futabanet.jp",
-        "glavnoe.life",
-        "reddit.app.link",
-        "redirects.tradedoubler.com"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 308,
+    "id": 302,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -717,7 +534,7 @@
     }
   },
   {
-    "id": 309,
+    "id": 303,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -725,7 +542,7 @@
         "transform": {
           "queryTransform": {
             "removeParams": [
-              "vc_lpp"
+              "utm_campaign"
             ]
           }
         }
@@ -734,7 +551,11 @@
     "condition": {
       "urlFilter": "*",
       "excludedRequestDomains": [
-        "booklive.jp"
+        "canadacompanyregistry.com",
+        "glavnoe.life",
+        "rd.bizrate.com",
+        "redirects.tradedoubler.com",
+        "usprobioticguide.com"
       ],
       "resourceTypes": [
         "main_frame"
@@ -742,7 +563,7 @@
     }
   },
   {
-    "id": 310,
+    "id": 304,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -750,7 +571,7 @@
         "transform": {
           "queryTransform": {
             "removeParams": [
-              "cmpid"
+              "utm_source"
             ]
           }
         }
@@ -759,7 +580,9 @@
     "condition": {
       "urlFilter": "*",
       "excludedRequestDomains": [
-        "cleviationly.com"
+        "carrefourpl.snrpage.com",
+        "glavnoe.life",
+        "video-shoper.ru"
       ],
       "resourceTypes": [
         "main_frame"
@@ -767,7 +590,7 @@
     }
   },
   {
-    "id": 311,
+    "id": 305,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -794,7 +617,7 @@
     }
   },
   {
-    "id": 312,
+    "id": 306,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -821,7 +644,35 @@
     }
   },
   {
-    "id": 313,
+    "id": 307,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_content"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "gaugau.futabanet.jp",
+        "glavnoe.life",
+        "reddit.app.link",
+        "redirects.tradedoubler.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 308,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -847,7 +698,33 @@
     }
   },
   {
-    "id": 314,
+    "id": 309,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_medium"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "glavnoe.life",
+        "rd.bizrate.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 310,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -872,7 +749,7 @@
     }
   },
   {
-    "id": 315,
+    "id": 311,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -897,32 +774,7 @@
     }
   },
   {
-    "id": 316,
-    "priority": 1,
-    "action": {
-      "type": "redirect",
-      "redirect": {
-        "transform": {
-          "queryTransform": {
-            "removeParams": [
-              "ocid"
-            ]
-          }
-        }
-      }
-    },
-    "condition": {
-      "urlFilter": "*",
-      "excludedRequestDomains": [
-        "msn.com"
-      ],
-      "resourceTypes": [
-        "main_frame"
-      ]
-    }
-  },
-  {
-    "id": 317,
+    "id": 312,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -948,7 +800,7 @@
     }
   },
   {
-    "id": 318,
+    "id": 313,
     "priority": 1,
     "action": {
       "type": "redirect",

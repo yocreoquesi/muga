@@ -501,10 +501,7 @@
     },
     {
       "param": "clickid",
-      "category": "platform_noise",
-      "preservedOnDomains": [
-        "allegro.pl"
-      ]
+      "category": "platform_noise"
     },
     {
       "param": "cm_cr",
@@ -516,10 +513,7 @@
     },
     {
       "param": "cmpid",
-      "category": "generic",
-      "preservedOnDomains": [
-        "cleviationly.com"
-      ]
+      "category": "generic"
     },
     {
       "param": "content-id",
@@ -648,39 +642,19 @@
     },
     {
       "param": "elq",
-      "category": "email",
-      "preservedOnDomains": [
-        "app.econnect.utexas.edu",
-        "clk.texaslonghorns.com",
-        "s1740541080.t.eloqua.com"
-      ]
+      "category": "email"
     },
     {
       "param": "elqaid",
-      "category": "email",
-      "preservedOnDomains": [
-        "app.econnect.utexas.edu",
-        "clk.texaslonghorns.com",
-        "s1740541080.t.eloqua.com"
-      ]
+      "category": "email"
     },
     {
       "param": "elqak",
-      "category": "email",
-      "preservedOnDomains": [
-        "app.econnect.utexas.edu",
-        "clk.texaslonghorns.com",
-        "s1740541080.t.eloqua.com"
-      ]
+      "category": "email"
     },
     {
       "param": "elqat",
-      "category": "email",
-      "preservedOnDomains": [
-        "app.econnect.utexas.edu",
-        "clk.texaslonghorns.com",
-        "s1740541080.t.eloqua.com"
-      ]
+      "category": "email"
     },
     {
       "param": "elqcampaignid",
@@ -688,12 +662,7 @@
     },
     {
       "param": "elqtrackid",
-      "category": "email",
-      "preservedOnDomains": [
-        "app.econnect.utexas.edu",
-        "clk.texaslonghorns.com",
-        "s1740541080.t.eloqua.com"
-      ]
+      "category": "email"
     },
     {
       "param": "emcs_t",
@@ -1266,10 +1235,7 @@
     },
     {
       "param": "ocid",
-      "category": "platform_noise",
-      "preservedOnDomains": [
-        "msn.com"
-      ]
+      "category": "platform_noise"
     },
     {
       "param": "oly_anon_id",
@@ -1717,12 +1683,10 @@
       "param": "utm_campaign",
       "category": "utm",
       "preservedOnDomains": [
-        "allegro.pl",
         "canadacompanyregistry.com",
         "glavnoe.life",
         "rd.bizrate.com",
         "redirects.tradedoubler.com",
-        "t.send.vt.edu",
         "usprobioticguide.com"
       ]
     },
@@ -1734,7 +1698,6 @@
       "param": "utm_content",
       "category": "utm",
       "preservedOnDomains": [
-        "app.plex.tv",
         "gaugau.futabanet.jp",
         "glavnoe.life",
         "reddit.app.link",
@@ -1765,14 +1728,8 @@
       "param": "utm_medium",
       "category": "utm",
       "preservedOnDomains": [
-        "apimeishi.meituan.com",
-        "app.plex.tv",
         "glavnoe.life",
-        "meishi.meituan.com",
-        "mmcref.pl",
-        "portal-portm.meituan.com",
-        "rd.bizrate.com",
-        "t.send.vt.edu"
+        "rd.bizrate.com"
       ]
     },
     {
@@ -1783,26 +1740,9 @@
       "param": "utm_source",
       "category": "utm",
       "preservedOnDomains": [
-        "3dnews.ru",
-        "allegro.pl",
-        "app.plex.tv",
-        "auto-swiat.pl",
-        "businessinsider.com.pl",
         "carrefourpl.snrpage.com",
         "glavnoe.life",
-        "insurancexblog.blogspot.com",
-        "komputerswiat.pl",
-        "lanacion.com.ar",
-        "medonet.pl",
-        "noizz.pl",
-        "ofeminin.pl",
-        "plejada.pl",
-        "plex.tv",
-        "sendgb.com",
-        "t.send.vt.edu",
-        "transfernow.net",
-        "video-shoper.ru",
-        "watch.plex.tv"
+        "video-shoper.ru"
       ]
     },
     {
@@ -1823,10 +1763,7 @@
     },
     {
       "param": "vc_lpp",
-      "category": "generic",
-      "preservedOnDomains": [
-        "booklive.jp"
-      ]
+      "category": "generic"
     },
     {
       "param": "ved",
@@ -2005,13 +1942,6 @@
       "note": "Korean fashion/lifestyle e-commerce. Search query: functional."
     },
     {
-      "domain": "3dnews.ru",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "adj.st",
       "preserveParams": [
         "adj_t"
@@ -2065,15 +1995,6 @@
         "utparam-url"
       ],
       "note": "Search and filters: functional. AliExpress internal tracking and affiliate redirect params stripped (#508 — aff_fcid is the CPS click ID, transient and not creator-attributing)."
-    },
-    {
-      "domain": "allegro.pl",
-      "preserveParams": [
-        "clickid",
-        "utm_campaign",
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "alternate.de",
@@ -3379,33 +3300,6 @@
       "note": "Brazilian retail marketplace. Search, pagination, sort: functional. operationHash is a GraphQL cache-bust token."
     },
     {
-      "domain": "apimeishi.meituan.com",
-      "preserveParams": [
-        "utm_medium"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "app.econnect.utexas.edu",
-      "preserveParams": [
-        "elq",
-        "elqaid",
-        "elqak",
-        "elqat",
-        "elqtrackid"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "app.plex.tv",
-      "preserveParams": [
-        "utm_content",
-        "utm_medium",
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "apple.com",
       "preserveParams": [
         "mt",
@@ -3455,13 +3349,6 @@
         "adid"
       ],
       "note": "eBay Korea auction platform (same group as Gmarket)"
-    },
-    {
-      "domain": "auto-swiat.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "baidu.com",
@@ -3635,20 +3522,6 @@
       "note": "Hotel search and booking: functional. label/sid are tracking."
     },
     {
-      "domain": "booklive.jp",
-      "preserveParams": [
-        "vc_lpp"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "businessinsider.com.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "canadacompanyregistry.com",
       "preserveParams": [
         "utm_campaign"
@@ -3659,24 +3532,6 @@
       "domain": "carrefourpl.snrpage.com",
       "preserveParams": [
         "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "cleviationly.com",
-      "preserveParams": [
-        "cmpid"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "clk.texaslonghorns.com",
-      "preserveParams": [
-        "elq",
-        "elqaid",
-        "elqak",
-        "elqat",
-        "elqtrackid"
       ],
       "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
@@ -4653,13 +4508,6 @@
       "note": "Language: functional. Share tracking (igsh) and app entry metadata stripped."
     },
     {
-      "domain": "insurancexblog.blogspot.com",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "interpark.com",
       "preserveParams": [
         "q"
@@ -4717,13 +4565,6 @@
       "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
-      "domain": "komputerswiat.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "kurly.com",
       "preserveParams": [
         "sword",
@@ -4733,13 +4574,6 @@
       ],
       "stripParams": [],
       "note": "Korean grocery delivery (Market Kurly). Search, pagination, sort: functional."
-    },
-    {
-      "domain": "lanacion.com.ar",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "lenovo.com",
@@ -4857,13 +4691,6 @@
       "note": "Search and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
     },
     {
-      "domain": "medonet.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "meetup.com",
       "preserveParams": [
         "q",
@@ -4878,13 +4705,6 @@
         "searchid"
       ],
       "note": "Meetup. Recommendation/search tracking stripped."
-    },
-    {
-      "domain": "meishi.meituan.com",
-      "preserveParams": [
-        "utm_medium"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "mercadolibre.cl",
@@ -4943,13 +4763,6 @@
       "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
-      "domain": "mmcref.pl",
-      "preserveParams": [
-        "utm_medium"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "mootoon.co.kr",
       "preserveParams": [
         "cuid"
@@ -4959,7 +4772,6 @@
     {
       "domain": "msn.com",
       "preserveParams": [
-        "ocid",
         "q"
       ],
       "stripParams": [
@@ -5080,13 +4892,6 @@
       "note": "Nike. Search query: functional."
     },
     {
-      "domain": "noizz.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "notebooksbilliger.de",
       "preserveParams": [
         "q"
@@ -5108,13 +4913,6 @@
         "impression_id"
       ],
       "note": "Search query and sort: functional. Social media/impression tracking stripped."
-    },
-    {
-      "domain": "ofeminin.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "office.com",
@@ -5256,27 +5054,6 @@
       "note": "App ID and locale: functional"
     },
     {
-      "domain": "plejada.pl",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "plex.tv",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
-      "domain": "portal-portm.meituan.com",
-      "preserveParams": [
-        "utm_medium"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "rd.bizrate.com",
       "preserveParams": [
         "utm_campaign",
@@ -5359,17 +5136,6 @@
       "note": "Search query and pagination: functional"
     },
     {
-      "domain": "s1740541080.t.eloqua.com",
-      "preserveParams": [
-        "elq",
-        "elqaid",
-        "elqak",
-        "elqat",
-        "elqtrackid"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "scholar.google.com",
       "preserveParams": [
         "q",
@@ -5384,13 +5150,6 @@
         "num"
       ],
       "note": "Scholar search, citation filters, pagination: functional"
-    },
-    {
-      "domain": "sendgb.com",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "sharepoint.com",
@@ -5528,15 +5287,6 @@
       "note": "Sort, pagination and search: functional"
     },
     {
-      "domain": "t.send.vt.edu",
-      "preserveParams": [
-        "utm_campaign",
-        "utm_medium",
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "target.com",
       "preserveParams": [
         "s",
@@ -5664,13 +5414,6 @@
       "note": "TradingView. Affiliate tracking stripped. Chart params preserved."
     },
     {
-      "domain": "transfernow.net",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
-    },
-    {
       "domain": "trendyol.com",
       "preserveParams": [
         "q",
@@ -5770,13 +5513,6 @@
         "wmlspartner"
       ],
       "note": "Search and filters: functional. Internal recommendation/affiliate tracking stripped (#508 — athcpid is Walmart's per-impression content ID, sourceid is the campaign source tag)."
-    },
-    {
-      "domain": "watch.plex.tv",
-      "preserveParams": [
-        "utm_source"
-      ],
-      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "wayfair.com",
