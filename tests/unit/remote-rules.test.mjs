@@ -203,6 +203,13 @@ describe("Constants — shape and values", () => {
     assert.ok(AFFILIATE_PARAM_GUARD.size >= 10, `must have >= 10 entries, got ${AFFILIATE_PARAM_GUARD.size}`);
   });
 
+  test("AFFILIATE_PARAM_GUARD contains 'cjevent' (Commission Junction click identifier)", () => {
+    assert.ok(
+      AFFILIATE_PARAM_GUARD.has("cjevent"),
+      "cjevent must be guarded so a compromised remote-rules endpoint can never strip it",
+    );
+  });
+
   test("PARAM_FORMAT_RE is the correct regex", () => {
     assert.ok(PARAM_FORMAT_RE instanceof RegExp);
     assert.ok(PARAM_FORMAT_RE.test("utm_source"));
@@ -568,6 +575,65 @@ describe("validateParams — content validation (REQ-VALIDATE-2 through REQ-VALI
     const r = validateParams(["CAMPID"], { version: 0, published: null }, nowMs, { newVersion: 1, newPublished: freshPub });
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.code, ERR.DENYLIST_HIT);
+  });
+
+  // Newly-added affiliate-network params (candidate-triage of AdGuard Filter 17,
+  // 2026-07) — a compromised or buggy remote payload must never be able to
+  // strip these, or creator/publisher attribution is silently lost with no
+  // user-visible symptom. One representative param per network.
+  describe("affiliate guard — newly-added network params (REQ-VALIDATE-5)", () => {
+    const freshPub = () => new Date(nowMs - 1000 * 60 * 60).toISOString();
+
+    const newlyAdded = [
+      ["impact_click_id", "Impact Radius"],
+      ["cj_aid", "Commission Junction"],
+      ["awinaffid", "Awin"],
+      ["adj_deeplink", "Adjust"],
+      ["af_channel", "AppsFlyer"],
+      ["cnxclid", "Connexity"],
+      ["aff_click_id", "Generic affiliate"],
+      ["airbridge_referrer", "Airbridge"],
+      ["partnerizecampaignid", "Partnerize"],
+    ];
+
+    for (const [param, network] of newlyAdded) {
+      test(`rejects '${param}' (${network}) → DENYLIST_HIT`, () => {
+        const r = validateParams([param], { version: 0, published: null }, nowMs, {
+          newVersion: 1,
+          newPublished: freshPub(),
+        });
+        assert.strictEqual(r.ok, false);
+        assert.strictEqual(r.code, ERR.DENYLIST_HIT);
+      });
+    }
+
+    // Positive control: a normal, non-guarded tracking param must still pass.
+    test("positive control: fresh utm-style param is NOT rejected", () => {
+      const r = validateParams(["utm_campaign_source_2026"], { version: 0, published: null }, nowMs, {
+        newVersion: 1,
+        newPublished: freshPub(),
+      });
+      assert.strictEqual(r.ok, true);
+      assert.deepEqual(r.accepted, ["utm_campaign_source_2026"]);
+    });
+  });
+
+  // Already-present affiliate guard entries — unchanged behavior after this
+  // change (guard is additive only; existing entries must keep rejecting).
+  describe("affiliate guard — pre-existing entries unchanged", () => {
+    const freshPub = () => new Date(nowMs - 1000 * 60 * 60).toISOString();
+    const preExisting = ["af_id", "partnerid", "affid", "aff_id", "awc", "irclickid", "irgwc", "partner"];
+
+    for (const param of preExisting) {
+      test(`still rejects pre-existing entry '${param}' → DENYLIST_HIT`, () => {
+        const r = validateParams([param], { version: 0, published: null }, nowMs, {
+          newVersion: 1,
+          newPublished: freshPub(),
+        });
+        assert.strictEqual(r.ok, false);
+        assert.strictEqual(r.code, ERR.DENYLIST_HIT);
+      });
+    }
   });
 
   // Post-filter count (REQ-VALIDATE-6)
