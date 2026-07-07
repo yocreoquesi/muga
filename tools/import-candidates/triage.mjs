@@ -110,6 +110,10 @@ import { dirname, resolve } from "node:path";
 import { adguardTp } from "../rule-ingestion/adapters/adguard-tp.mjs";
 import { clearurls } from "../rule-ingestion/adapters/clearurls.mjs";
 import { REDIRECT_NETWORK_PATTERNS } from "../../src/lib/affiliates.js";
+// v2.3 guard cross-check: the remote-rules pipeline rejects these at signing
+// time (REQ-VALIDATE-4/5). Mirroring them here keeps the triage from ever
+// surfacing a param in a promotable bucket that could never actually ship.
+import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../../src/lib/remote-rules.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -480,6 +484,8 @@ export function matchAffiliateNetwork(name) {
  * @param {string[]} signals.adguard_scoped_domains
  * @param {boolean} signals.is_affiliate_preserve
  * @param {boolean} signals.is_danger_name
+ * @param {boolean} [signals.is_remote_affiliate_guard]
+ * @param {boolean} [signals.is_remote_denylist]
  * @param {{matched: boolean, pattern: string|null, network: string|null}} signals.affiliate_network_match
  * @param {{matched: boolean, pattern: string|null}} signals.tracking_vendor_match
  * @returns {{ bucket: "excluded_affiliate_preserve"|"affiliate_network_review"|"universal_high_confidence"|"domain_scoped"|"needs_human"|"likely_reject", caution?: string, reason?: string, network?: string }}
@@ -495,8 +501,24 @@ export function classifyCandidate(signals) {
     return { bucket: "excluded_affiliate_preserve" };
   }
 
-  // FIX 2 (runs second, only for candidates not caught by FIX 1).
-  if (signals.is_danger_name) {
+  // v2.1 gate: known affiliate-network vendor match routes to human review with
+  // its network label. Runs before the generic guard cross-check so a param
+  // that matches a specific network keeps the richer, more useful label.
+  if (signals.affiliate_network_match?.matched) {
+    return { bucket: "affiliate_network_review", network: signals.affiliate_network_match.network };
+  }
+
+  // v2.3 guard cross-check. The remote-rules pipeline REJECTS these at signing
+  // time; mirror that so the triage never promotes a param that could never
+  // ship. AFFILIATE_PARAM_GUARD is attribution (never strip) -> review; it is a
+  // catch-all for guard params without a specific vendor pattern above.
+  if (signals.is_remote_affiliate_guard) {
+    return { bucket: "affiliate_network_review", network: "remote-rules AFFILIATE_PARAM_GUARD" };
+  }
+
+  // FIX 2: danger names and remote-denylist functional names get the same
+  // treatment: never universal (scoped -> domain_scoped, else -> likely_reject).
+  if (signals.is_danger_name || signals.is_remote_denylist) {
     if (anyScoped) {
       return { bucket: "domain_scoped", caution: "functional-name" };
     }
@@ -506,14 +528,7 @@ export function classifyCandidate(signals) {
     };
   }
 
-  // v2.1 NEW GATE (runs third, only for candidates not caught by FIX 1 or
-  // FIX 2, and before FIX 3's universal path).
-  if (signals.affiliate_network_match?.matched) {
-    return { bucket: "affiliate_network_review", network: signals.affiliate_network_match.network };
-  }
-
-  // FIX 3 (runs fourth, only for candidates not caught by FIX 1, FIX 2, or
-  // the affiliate-network gate).
+  // FIX 3 (runs last, only for candidates not caught by the gates above).
   const vendorMatched = Boolean(signals.tracking_vendor_match?.matched);
   const adguardGlobal = Boolean(signals.adguard_global);
   const clearurlsGlobal = Boolean(signals.clearurls_global);
@@ -561,6 +576,11 @@ export function annotateCandidate(name, external = {}) {
   const is_danger_name = isDangerName(name);
   const affiliate_network_match = matchAffiliateNetwork(name); // v2.1 NEW
   const tracking_vendor_match = matchTrackingVendor(name);
+  // v2.3 guard cross-check signals (case-insensitive, matching the remote
+  // pipeline which lowercases before comparing).
+  const _lower = name.toLowerCase();
+  const is_remote_affiliate_guard = AFFILIATE_PARAM_GUARD.has(_lower);
+  const is_remote_denylist = REMOTE_PARAM_DENYLIST.has(_lower);
 
   const signals = {
     name,
@@ -570,6 +590,8 @@ export function annotateCandidate(name, external = {}) {
     adguard_scoped_domains: external.adguard_scoped_domains ?? [],
     is_affiliate_preserve,
     is_danger_name,
+    is_remote_affiliate_guard,
+    is_remote_denylist,
     affiliate_network_match,
     tracking_vendor_match,
     tracking_prefix_family,
