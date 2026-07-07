@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-06T22:21:43.382Z",
+  "generated_at": "2026-07-07T07:27:31.069Z",
   "schema_version": "2.1",
   "source_report_path": "C:\\Users\\parada\\Desktop\\test\\muga\\tools\\import-candidates\\report-2026-07-05.json",
   "source_label": "AdGuard Filter 17 (URL Tracking Protection)",
@@ -9,8 +9,8 @@
   "already_in_muga_dropped": 296,
   "bucket_counts": {
     "excluded_affiliate_preserve": 18,
-    "affiliate_network_review": 45,
-    "universal_high_confidence": 43,
+    "affiliate_network_review": 46,
+    "universal_high_confidence": 42,
     "domain_scoped": 156,
     "needs_human": 816,
     "likely_reject": 30
@@ -2771,7 +2771,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -2800,7 +2800,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -2829,7 +2829,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -2858,7 +2858,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -2887,7 +2887,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -2916,7 +2916,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -2945,7 +2945,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3452,7 +3452,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3481,7 +3481,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3510,7 +3510,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3568,7 +3568,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3597,7 +3597,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3626,7 +3626,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3655,7 +3655,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3684,7 +3684,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3741,7 +3741,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3770,7 +3770,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3799,7 +3799,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3828,7 +3828,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3857,7 +3857,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3886,7 +3886,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3915,7 +3915,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3944,7 +3944,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -3973,7 +3973,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -4030,7 +4030,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -4144,7 +4144,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -4464,7 +4464,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -5742,7 +5742,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -7166,7 +7166,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -7195,7 +7195,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -7936,7 +7936,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": false,
@@ -7954,7 +7954,8 @@
       "known_functional_risk": false,
       "genericness_score": 0,
       "muga_preserve_conflict_domains": [],
-      "bucket": "universal_high_confidence"
+      "bucket": "affiliate_network_review",
+      "network": "remote-rules AFFILIATE_PARAM_GUARD"
     },
     {
       "name": "cobrand",
@@ -13258,7 +13259,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -13287,7 +13288,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -13316,7 +13317,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
@@ -18966,7 +18967,7 @@
       "adguard_scoped_domains": [],
       "is_affiliate_preserve": false,
       "is_danger_name": false,
-      "is_remote_affiliate_guard": false,
+      "is_remote_affiliate_guard": true,
       "is_remote_denylist": false,
       "affiliate_network_match": {
         "matched": true,
