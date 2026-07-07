@@ -12,6 +12,8 @@
     "contextMenus",
     "clipboardWrite",
     "declarativeNetRequest",
+    "webRequest",
+    "webRequestBlocking",
     "<all_urls>"
   ],
 

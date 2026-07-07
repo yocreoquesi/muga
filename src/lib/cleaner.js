@@ -660,6 +660,51 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 }
 
 /**
+ * Decides how a top-level navigation should be rewritten by the Firefox blocking
+ * webRequest stripper (service-worker.js onBeforeNavigateStrip). Pure (no chrome.*
+ * access), so it is unit-testable in isolation and shares one code path with the
+ * listener (no divergence).
+ *
+ * Mirrors Chrome's DNR (STRIP only): affiliate injection and the foreign-affiliate
+ * toast are suppressed here so (a) network-layer behavior matches Chrome, where
+ * DNR cannot inject, leaving injection to the content-script self-clean on both
+ * browsers, and (b) the resulting redirect is idempotent: there is no injected
+ * tag for a re-entered clean URL to loop on. All strip/preserve/allowlist/
+ * affiliate guards are honored automatically because they live inside processUrl.
+ *
+ * @param {string} rawUrl
+ * @param {object} prefs the same materialized prefs snapshot the SW caches
+ * @param {Array} [domainRules=[]]
+ * @param {Array} [pathStripRules=[]]
+ * @param {Array} [pathAffiliateRules=[]]
+ * @param {object} [frequencyTracker] cross-site-frequency singleton (optional)
+ * @returns {{cleanUrl:string, result:object}|null} redirect target + full result,
+ *   or null when the navigation must pass through unchanged.
+ */
+export function computeNavigationStrip(rawUrl, prefs, domainRules = [], pathStripRules = [], pathAffiliateRules = [], frequencyTracker) {
+  if (typeof rawUrl !== "string" || (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://"))) {
+    return null;
+  }
+  if (!prefs || !prefs.enabled || !prefs.onboardingDone) return null;
+
+  const stripPrefs = (prefs.injectOwnAffiliate || prefs.notifyForeignAffiliate)
+    ? { ...prefs, injectOwnAffiliate: false, notifyForeignAffiliate: false }
+    : prefs;
+
+  let result;
+  try {
+    result = processUrl(rawUrl, stripPrefs, domainRules, undefined, frequencyTracker, "", pathStripRules, pathAffiliateRules);
+  } catch {
+    return null;
+  }
+
+  if (!result || result.action === "untouched" || !result.cleanUrl || result.cleanUrl === rawUrl) {
+    return null;
+  }
+  return { cleanUrl: result.cleanUrl, result };
+}
+
+/**
  * Fire-and-forget bridge from the cleaner to the cross-site-frequency
  * tracker (#446 / #495). One observe() call per stripped tracking param,
  * with the URL's hostname as the first-party domain and the param's

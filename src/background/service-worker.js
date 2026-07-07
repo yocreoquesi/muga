@@ -4,7 +4,7 @@
  * and maintains extension state.
  */
 
-import { processUrl, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
+import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
@@ -373,6 +373,114 @@ function getPrefsWithCache() {
     });
   }
   return prefsFetchPromise;
+}
+
+// --- Cleaned-URL stats/badge recording (shared) ---
+
+/**
+ * Records a clean into the badge + stats + session history. Extracted so the
+ * content-script BADGE_AND_STATS message handler and the Firefox blocking
+ * webRequest stripper (below) increment identical tallies — the counter must
+ * reflect network-layer strips on Firefox exactly as it reflects content-script
+ * strips. Stat-increment semantics mirror handleProcessUrl:
+ *   - urlsCleaned + junkRemoved fire only when action !== "untouched" AND
+ *     (the URL changed OR junkRemoved > 0);
+ *   - referralsSpotted fires when action === "detected_foreign";
+ *   - domainStats fires only when prefs.domainStats is on AND junk > 0.
+ *
+ * @param {number|undefined} tabId
+ * @param {string} originalUrl
+ * @param {{cleanUrl?:string, action?:string, removedTracking?:string[], junkRemoved?:number}} result
+ */
+function recordNetworkClean(tabId, originalUrl, result) {
+  const junkRemoved = Number(result?.junkRemoved) || 0;
+  const removedTracking = Array.isArray(result?.removedTracking) ? result.removedTracking : [];
+  const action = String(result?.action || "");
+  const cleanUrl = typeof result?.cleanUrl === "string" ? result.cleanUrl : "";
+  const urlChanged = cleanUrl && originalUrl && cleanUrl !== originalUrl;
+
+  if (junkRemoved > 0) updateTabBadge(tabId, junkRemoved);
+
+  if (action !== "untouched" && (urlChanged || junkRemoved > 0)) {
+    incrementStat("urlsCleaned");
+    if (junkRemoved > 0) incrementStat("junkRemoved", junkRemoved);
+    // Domain stats requires the user's pref. Best-effort read; failure skips the
+    // increment without affecting the rest.
+    getPrefsWithCache().then(prefs => {
+      if (prefs.domainStats && junkRemoved > 0) {
+        try {
+          const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
+          incrementDomainStat(hostname, junkRemoved);
+        } catch { /* invalid URL, skip */ }
+      }
+    }).catch(() => { /* prefs unavailable, skip */ });
+    if (originalUrl && cleanUrl) {
+      appendHistory(originalUrl, cleanUrl, removedTracking).catch(err => {
+        console.warn("[MUGA] recordNetworkClean appendHistory:", err);
+      });
+    }
+  }
+
+  if (action === "detected_foreign") {
+    incrementStat("referralsSpotted");
+  }
+}
+
+// --- Firefox network-layer stripper (blocking webRequest) ---
+//
+// Chrome MV3 removed blocking webRequest and cleans navigations via DNR. Firefox
+// MV2 KEEPS blocking webRequest, so on Firefox we use it as the network-layer
+// stripper — the true equivalent of Chrome's DNR: it strips tracking params from
+// the top-level navigation BEFORE the request goes out and, unlike DNR, can feed
+// the cleaned-URL counter (DNR emits no onRuleMatched signal). Chrome is
+// unaffected — it never registers this listener and keeps using DNR.
+//
+// Gate: MV2 manifest (only ever shipped to Firefox via with-firefox-manifest.sh)
+// AND a blocking-capable webRequest. `hasDNR` cannot distinguish the targets
+// (both expose declarativeNetRequest); the manifest version can.
+const isFirefoxMV2 =
+  chrome.runtime.getManifest().manifest_version === 2 &&
+  typeof chrome.webRequest?.onBeforeRequest?.addListener === "function";
+
+/**
+ * Blocking onBeforeRequest handler. MUST return synchronously (a BlockingResponse
+ * or undefined). Reads the warm prefs/rules caches synchronously and delegates the
+ * strip decision to computeNavigationStrip (the same pure logic a unit test
+ * exercises), so behavior never diverges from Chrome.
+ *
+ * @param {{url:string, tabId:number}} details
+ * @returns {{redirectUrl:string}|undefined}
+ */
+function onBeforeNavigateStrip(details) {
+  const prefs = cachedPrefs;
+  // Cold start (only the first navigation after browser start, since Firefox's
+  // background page is persistent): caches not warm yet. Kick the warm-up and let
+  // this request pass — the content-script self-clean is the fallback for this
+  // brief window.
+  if (!prefs) { getPrefsWithCache(); return; }
+
+  const decision = computeNavigationStrip(
+    details.url, prefs, domainRules, pathStripRules, pathAffiliateRules, frequencyTracker,
+  );
+  if (!decision) return;
+
+  // Fire-and-forget stats — keeps this listener's return synchronous.
+  recordNetworkClean(details.tabId, details.url, decision.result);
+  return { redirectUrl: decision.cleanUrl };
+}
+
+if (isFirefoxMV2) {
+  // Warm the caches the blocking listener reads synchronously. Firefox's
+  // background page is persistent, so this runs once at startup (the #629
+  // lazy-load cold-start concern is Chrome-MV3-specific and does not apply).
+  getPrefsWithCache();
+  if (_domainRulesReady === null) _domainRulesReady = _loadDomainRules();
+  if (_pathRulesReady === null) _pathRulesReady = _loadPathRules();
+  chrome.webRequest.onBeforeRequest.addListener(
+    onBeforeNavigateStrip,
+    { urls: ["<all_urls>"], types: ["main_frame"] },
+    ["blocking"],
+  );
 }
 
 // --- Remote-rules opportunistic fetch ---
@@ -1229,40 +1337,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   //   - referralsSpotted fires when action === "detected_foreign".
   //   - domainStats fires only when prefs.domainStats is on AND junk > 0.
   if (message.type === "BADGE_AND_STATS") {
-    const tabId = sender.tab?.id;
-    const junkRemoved = Number(message.junkRemoved) || 0;
-    const removedTracking = Array.isArray(message.removedTracking) ? message.removedTracking : [];
-    const action = String(message.action || "");
-    const cleanUrl = typeof message.cleanUrl === "string" ? message.cleanUrl : "";
     const originalUrl = typeof message.originalUrl === "string" ? message.originalUrl : "";
-    const urlChanged = cleanUrl && originalUrl && cleanUrl !== originalUrl;
-
-    if (junkRemoved > 0) updateTabBadge(tabId, junkRemoved);
-
-    if (action !== "untouched" && (urlChanged || junkRemoved > 0)) {
-      incrementStat("urlsCleaned");
-      if (junkRemoved > 0) incrementStat("junkRemoved", junkRemoved);
-      // Domain stats requires the user's pref. Best-effort read; failure
-      // skips the increment without affecting the rest.
-      getPrefsWithCache().then(prefs => {
-        if (prefs.domainStats && junkRemoved > 0) {
-          try {
-            const hostname = new URL(originalUrl).hostname.replace(/^www\./, "");
-            incrementDomainStat(hostname, junkRemoved);
-          } catch { /* invalid URL, skip */ }
-        }
-      }).catch(() => { /* prefs unavailable, skip */ });
-      if (originalUrl && cleanUrl) {
-        appendHistory(originalUrl, cleanUrl, removedTracking).catch(err => {
-          console.warn("[MUGA] BADGE_AND_STATS appendHistory:", err);
-        });
-      }
-    }
-
-    if (action === "detected_foreign") {
-      incrementStat("referralsSpotted");
-    }
-
+    recordNetworkClean(sender.tab?.id, originalUrl, {
+      cleanUrl: typeof message.cleanUrl === "string" ? message.cleanUrl : "",
+      action: message.action,
+      removedTracking: message.removedTracking,
+      junkRemoved: message.junkRemoved,
+    });
     try { sendResponse({ ok: true }); } catch { /* channel closed */ }
     return false;
   }

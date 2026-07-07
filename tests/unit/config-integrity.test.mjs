@@ -298,15 +298,24 @@ describe("manifest.json integrity", () => {
     }
   });
 
-  test("MV3 and MV2 declare the same permissions (excluding host_permissions and MV-specific equivalents)", () => {
+  test("MV3 and MV2 declare the same permissions (excluding host_permissions, MV-specific equivalents, and Firefox-only network permissions)", () => {
     // MV3 uses declarativeNetRequestWithHostAccess (required for redirect rules in MV3)
     // MV2 uses declarativeNetRequest (Firefox MV2 doesn't support the WithHostAccess variant)
     const MV_EQUIVALENTS = new Map([
       ["declarativeNetRequestWithHostAccess", "declarativeNetRequest"],
     ]);
+    // Firefox MV2 KEEPS blocking webRequest (removed in Chrome MV3) and uses it as
+    // its network-layer stripper — the equivalent of Chrome MV3's DNR redirect. So
+    // these permissions legitimately exist ONLY on MV2. See the Firefox
+    // onBeforeNavigateStrip listener in service-worker.js.
+    const MV2_ONLY = new Set(["webRequest", "webRequestBlocking"]);
     const normalize = (p) => MV_EQUIVALENTS.get(p) ?? p;
     const mv3Perms = new Set(mv3.permissions.map(normalize));
-    const mv2Perms = new Set(mv2.permissions.filter(p => p !== "<all_urls>").map(normalize));
+    const mv2Perms = new Set(
+      mv2.permissions
+        .filter(p => p !== "<all_urls>" && !MV2_ONLY.has(p))
+        .map(normalize)
+    );
     for (const p of mv3Perms) {
       assert.ok(mv2Perms.has(p), `Permission "${p}" in MV3 but missing from MV2`);
     }
