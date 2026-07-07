@@ -324,3 +324,75 @@ describe("classifyCandidate, precedence order is checked independently of annota
     assert.notStrictEqual(result.bucket, "universal_high_confidence");
   });
 });
+
+describe("v2.3 guard cross-check: remote-rules guard/denylist can never reach universal", () => {
+  test("ascsubtag (AFFILIATE_PARAM_GUARD, no vendor pattern) -> affiliate_network_review, never universal even with two-source agreement", () => {
+    // ascsubtag is the Amazon Associates SubTag the remote guard protects
+    // (the ADR-0005 catastrophic path). Two full sources agreeing must NOT
+    // promote it.
+    const r = annotateCandidate("ascsubtag", { adguard_global: true, clearurls_global: true });
+    assert.strictEqual(r.bucket, "affiliate_network_review");
+    assert.strictEqual(r.network, "remote-rules AFFILIATE_PARAM_GUARD");
+  });
+
+  test("campid (AFFILIATE_PARAM_GUARD) -> affiliate_network_review, not universal", () => {
+    const r = annotateCandidate("campid", { adguard_global: true });
+    assert.strictEqual(r.bucket, "affiliate_network_review");
+  });
+
+  test("af_id (guard AND AppsFlyer vendor) keeps the richer vendor label", () => {
+    // The specific-vendor gate runs before the generic guard catch-all.
+    const r = annotateCandidate("af_id", { adguard_global: true });
+    assert.strictEqual(r.bucket, "affiliate_network_review");
+    assert.match(r.network, /AppsFlyer/);
+  });
+
+  test("classifyCandidate: guard flag beats two-source universal promotion", () => {
+    const r = classifyCandidate({
+      is_affiliate_preserve: false,
+      is_danger_name: false,
+      is_remote_affiliate_guard: true,
+      is_remote_denylist: false,
+      clearurls_global: true,
+      clearurls_scoped_domains: [],
+      adguard_global: true,
+      adguard_scoped_domains: [],
+      affiliate_network_match: { matched: false, pattern: null, network: null },
+      tracking_vendor_match: { matched: true, pattern: "utm" },
+    });
+    assert.strictEqual(r.bucket, "affiliate_network_review");
+  });
+
+  test("classifyCandidate: remote-denylist functional name -> likely_reject (global-only), never universal", () => {
+    const r = classifyCandidate({
+      is_affiliate_preserve: false,
+      is_danger_name: false,
+      is_remote_affiliate_guard: false,
+      is_remote_denylist: true,
+      clearurls_global: true,
+      clearurls_scoped_domains: [],
+      adguard_global: true,
+      adguard_scoped_domains: [],
+      affiliate_network_match: { matched: false, pattern: null, network: null },
+      tracking_vendor_match: { matched: true, pattern: "utm" },
+    });
+    assert.strictEqual(r.bucket, "likely_reject");
+  });
+
+  test("classifyCandidate: remote-denylist functional name with scope -> domain_scoped, not universal", () => {
+    const r = classifyCandidate({
+      is_affiliate_preserve: false,
+      is_danger_name: false,
+      is_remote_affiliate_guard: false,
+      is_remote_denylist: true,
+      clearurls_global: false,
+      clearurls_scoped_domains: ["example.com"],
+      adguard_global: false,
+      adguard_scoped_domains: [],
+      affiliate_network_match: { matched: false, pattern: null, network: null },
+      tracking_vendor_match: { matched: false, pattern: null },
+    });
+    assert.strictEqual(r.bucket, "domain_scoped");
+    assert.strictEqual(r.caution, "functional-name");
+  });
+});
