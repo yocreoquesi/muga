@@ -189,3 +189,39 @@ test("each preserved-and-tracked param is EXCLUDED from its domain's profile rul
     }
   }
 });
+
+// True when `host` is `d` or a subdomain of `d` — mirrors Chrome's
+// requestDomains/excludedRequestDomains matching (domain + subdomains).
+function hostUnderAny(host, domains) {
+  return (domains ?? []).some((d) => host === d || host.endsWith("." + d));
+}
+
+/** Faithful Chrome match: requestDomains include (subdomain) minus excluded. */
+function ruleMatchesHost(rule, host) {
+  const c = rule.condition ?? {};
+  if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) return false;
+  if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) return false;
+  return true;
+}
+
+test("ONE-RULE-PER-HOST — subdomain-aware: every tailored host (and a deep subdomain) matches exactly one param rule", () => {
+  // The exact-string tests above miss NESTED tailored domains: Chrome matches a
+  // rule scoped to D on D AND its subdomains, so if maps.google.com and
+  // google.com landed in different profile rules without an exclusion, a request
+  // to maps.google.com (or www.maps.google.com) would match BOTH — Chrome fires
+  // one, half-cleaning it. This probes each tailored host and a synthetic deep
+  // subdomain against ALL rules honoring Chrome's subdomain semantics.
+  const hosts = [...new Set(PROFILE_RULES.flatMap((r) => r.condition?.requestDomains ?? []))];
+  for (const host of hosts) {
+    for (const probe of [host, "deep-probe." + host]) {
+      const matches = RULES.filter((r) => ruleMatchesHost(r, probe));
+      assert.equal(
+        matches.length,
+        1,
+        `host "${probe}" matches ${matches.length} param rules [${matches
+          .map((r) => r.id)
+          .join(", ")}] — Chrome fires one, half-cleaning it. A nested tailored domain likely needs excludedRequestDomains. Run \`npm run build:rules\``,
+      );
+    }
+  }
+});

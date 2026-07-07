@@ -343,11 +343,24 @@ export function buildDnrRules() {
   const deny = new Set([...REMOTE_PARAM_DENYLIST].map((s) => s.toLowerCase()));
   const trackingLc = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
 
-  // Compute each domain's tailored removeParams. A domain needs its own rule iff
-  // its set differs from the global TRACKING_PARAMS: it preserves a tracked param
-  // (making its set a subset) and/or contributes extra strips not already global
-  // (a superset). Domains matching neither stay under the global rule.
-  const perDomain = []; // { domain, removeParams: string[] }
+  // Codepoint comparator — locale-independent so rule ordering (and thus the
+  // 300+i ids) is byte-identical across environments, keeping the compile:rules
+  // clean-diff CI gate stable. Never use String.localeCompare here.
+  const byCodepoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+  // True when `child` is a proper subdomain of `parent`. Mirrors Chrome's
+  // requestDomains/excludedRequestDomains matching (a rule scoped to D matches D
+  // and every subdomain of D).
+  const isProperSubdomain = (child, parent) =>
+    child !== parent && child.endsWith("." + parent);
+
+  // Compute each domain's tailored removeParams. A domain is "tailored" (and so
+  // excluded from the global rule) iff its set differs from the global
+  // TRACKING_PARAMS: it preserves a tracked param (a subset) and/or contributes
+  // extra strips not already global (a superset). Domains matching neither stay
+  // under the global rule.
+  const tailoredDomains = new Set(); // every tailored domain — all excluded from global
+  const perDomain = []; // { domain, removeParams } — only those with something to strip
   for (const rule of domainRules) {
     if (typeof rule.domain !== "string") continue;
     const preserveLc = new Set((rule.preserveParams ?? []).map((p) => p.toLowerCase()));
@@ -367,13 +380,21 @@ export function buildDnrRules() {
 
     if (!preservesTracked && extraStrips.length === 0) continue; // global covers it
 
+    // Tailored: must be excluded from the global rule so it never double-matches.
+    tailoredDomains.add(rule.domain);
+
     // Complete set for this host: all TRACKING_PARAMS minus its preserves, then
     // its extra strips. TRACKING_PARAMS source order is preserved for byte
     // stability; extras are sorted+deduped and are disjoint from the base (they
     // are, by construction, not in TRACKING_PARAMS).
     const base = TRACKING_PARAMS.filter((p) => !preserveLc.has(p.toLowerCase()));
-    const removeParams = [...base, ...[...new Set(extraStrips)].sort()];
-    if (removeParams.length === 0) continue; // never emit an empty redirect rule
+    const removeParams = [...base, ...[...new Set(extraStrips)].sort(byCodepoint)];
+    // A domain that preserves EVERY tracking param (and adds no extra strips) has
+    // nothing to strip: it stays excluded from the global rule (above) but gets no
+    // profile rule, so NO DNR rule matches it and all its params survive. Emitting
+    // an empty-removeParams rule would be invalid DNR; falling back to the global
+    // rule would strip exactly what it wanted to preserve.
+    if (removeParams.length === 0) continue;
     perDomain.push({ domain: rule.domain, removeParams });
   }
 
@@ -384,9 +405,22 @@ export function buildDnrRules() {
     if (!bySig.has(sig)) bySig.set(sig, { removeParams, domains: new Set() });
     bySig.get(sig).domains.add(domain);
   }
+  const allTailored = [...tailoredDomains];
   const groups = [...bySig.values()]
-    .map((g) => ({ removeParams: g.removeParams, domains: [...g.domains].sort() }))
-    .sort((a, b) => a.domains[0].localeCompare(b.domains[0]));
+    .map((g) => {
+      const domains = [...g.domains].sort(byCodepoint);
+      // ONE-RULE-PER-REQUEST across profile rules: a tailored domain that is a
+      // proper subdomain of one of THIS group's domains, but lives in a DIFFERENT
+      // group (different removeParams), would otherwise match both rules — Chrome
+      // fires one, half-cleaning it. Exclude such descendants so the more specific
+      // rule is the only match on that host. Same-group descendants share our
+      // removeParams, so they need no exclusion.
+      const excluded = allTailored
+        .filter((d) => !g.domains.has(d) && domains.some((base) => isProperSubdomain(d, base)))
+        .sort(byCodepoint);
+      return { removeParams: g.removeParams, domains, excluded };
+    })
+    .sort((a, b) => byCodepoint(a.domains[0], b.domains[0]));
 
   if (groups.length > DNR_DOMAIN_PRESERVE_MAX_RULES) {
     process.stderr.write(
@@ -399,7 +433,7 @@ export function buildDnrRules() {
 
   // Every tailored domain is excluded from the global rule so each host matches
   // exactly one param-stripping rule.
-  const excludedRequestDomains = [...new Set(perDomain.map((d) => d.domain))].sort();
+  const excludedRequestDomains = allTailored.sort(byCodepoint);
 
   /**
    * DNR condition shape. The global rule uses urlFilter + excludedRequestDomains;
@@ -440,6 +474,16 @@ export function buildDnrRules() {
   ];
 
   groups.forEach((group, i) => {
+    /** @type {DnrCondition} */
+    const condition = {
+      requestDomains: group.domains,
+      resourceTypes: ["main_frame"],
+    };
+    // Only present when a tailored descendant must be carved out (nested-domain
+    // guard). Rare, but keeps each host matching exactly one profile rule.
+    if (group.excluded.length > 0) {
+      condition.excludedRequestDomains = group.excluded;
+    }
     rules.push({
       id: DNR_DOMAIN_PRESERVE_RULE_ID_BASE + i,
       priority: 1,
@@ -453,10 +497,7 @@ export function buildDnrRules() {
           },
         },
       },
-      condition: /** @type {DnrCondition} */ ({
-        requestDomains: group.domains,
-        resourceTypes: ["main_frame"],
-      }),
+      condition,
     });
   });
 
