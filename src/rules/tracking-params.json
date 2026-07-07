@@ -463,6 +463,136 @@
     }
   },
   {
+    "id": 300,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "cid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "aladin.co.kr",
+        "google.com",
+        "maps.google.com",
+        "sharepoint.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 301,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "ie"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "baidu.com",
+        "naver.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 302,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "ref_"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "imdb.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 303,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "ei"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "yahoo.co.jp",
+        "yahoo.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 304,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "ab_channel"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "youtube.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
     "id": 2,
     "priority": 1,
     "action": {
