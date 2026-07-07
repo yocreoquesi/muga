@@ -4,15 +4,20 @@
  * Verifies that Chrome DNR's global strip and the runtime cleaner produce
  * the same set of stripped params for a 10-URL corpus.
  *
- * Two divergence cases are included where a param is in BOTH TRACKING_PARAMS
- * (so it IS in DNR's removeParams globally) AND in a domain's preserveParams
- * (so the generator EXCLUDED it from the DNR rule for that domain). Both DNR
- * and runtime cleaner correctly PRESERVE the param on those domains — the
- * "divergence" name refers to the MECHANISM being different, not the outcome.
+ * Divergence cases are included where a param is in BOTH TRACKING_PARAMS AND a
+ * domain's preserveParams. The generator emits such a param in a
+ * domain-conditioned DNR rule (excludedRequestDomains = its preserve domains),
+ * so DNR strips it everywhere EXCEPT those domains — matching the runtime
+ * cleaner, which preserves it via the domain rule on those hosts and strips it
+ * elsewhere. On the preserve host both PRESERVE (via different mechanisms); on
+ * any other host both STRIP. This is the fix for the old behavior that dropped
+ * a domain-preserved param from the global rule entirely, un-stripping it
+ * network-wide.
  *
- * Divergence pairs verified by one-liner on 2026-05-13:
- *   sharepoint.com -> cid  (in preserveParams + in TRACKING_PARAMS)
- *   aladin.co.kr   -> cid  (in preserveParams + in TRACKING_PARAMS)
+ * Divergence pairs (in preserveParams + in TRACKING_PARAMS):
+ *   sharepoint.com -> cid
+ *   aladin.co.kr   -> cid
+ *   www.youtube.com -> ab_channel
  *
  * Run with: node --test tests/unit/dnr-runtime-parity.test.mjs
  */
@@ -51,10 +56,13 @@ const PREFS = {
 
 // ── Corpus ────────────────────────────────────────────────────────────────────
 //
-// 8 "must agree" URLs: DNR and runtime strip set MUST be identical.
-// 2 "must diverge by design" URLs: param is in preserveParams for the domain
-//   so both DNR (excluded from removeParams) and runtime (domain rule) PRESERVE
-//   it — test asserts the param survives in BOTH output URLs.
+// "must agree" URLs: DNR and runtime strip set MUST be identical. Includes a
+//   conditioned param (cid) on a NON-preserve host, which must be stripped by
+//   BOTH the domain-conditioned DNR rule and the runtime cleaner — the
+//   regression guard for the old network-wide un-strip.
+// "must diverge" URLs: param is in preserveParams for the host, so both DNR
+//   (host in the rule's excludedRequestDomains) and runtime (domain rule)
+//   PRESERVE it — test asserts the param survives in BOTH output URLs.
 
 const CORPUS = [
   // ── 8 "DNR and runtime MUST agree" cases ─────────────────────────────────
@@ -93,11 +101,21 @@ const CORPUS = [
     url: "https://example.com/?cjevent=abc&irgwc=def&tduid=ghi",
     divergence: false,
   },
+  {
+    // Regression guard (#dnr-domain-preserve): cid is preserved on sharepoint/
+    // aladin/google, so it lives in a domain-conditioned DNR rule. On a host
+    // NOT in that rule's excludedRequestDomains it MUST still be stripped by
+    // DNR — exactly as the runtime cleaner strips it here. Previously cid was
+    // dropped from the global rule and leaked network-wide.
+    url: "https://example.com/?cid=strip_me&utm_source=strip_me",
+    divergence: false,
+  },
 
-  // ── 2 "DNR and runtime MUST DIVERGE by design" (preserveParams) ──────────
+  // ── "DNR and runtime MUST DIVERGE" (preserveParams) ──────────────────────
   // sharepoint.com has cid in preserveParams (domain-rules.json verified).
-  // cid is in TRACKING_PARAMS → excluded from removeParams for this domain.
-  // Both DNR and runtime PRESERVE cid here; utm_source is still stripped.
+  // cid is in TRACKING_PARAMS → emitted in a domain-conditioned rule whose
+  // excludedRequestDomains includes sharepoint.com. Both DNR and runtime
+  // PRESERVE cid here; utm_source is still stripped.
   {
     url: "https://sharepoint.com/page?cid=keep_me&utm_source=strip_me",
     divergence: true,
@@ -110,26 +128,48 @@ const CORPUS = [
     divergence: true,
     preservedParam: "cid",
   },
+  // www.youtube.com has ab_channel in preserveParams; the conditioned rule
+  // excludes youtube.com, so the subdomain www.youtube.com is excluded too.
+  // Both PRESERVE ab_channel; gclid is still stripped.
+  {
+    url: "https://www.youtube.com/watch?v=abc&ab_channel=SomeChannel&gclid=strip_me",
+    divergence: true,
+    preservedParam: "ab_channel",
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Simulates Chrome DNR queryTransform.removeParams semantics.
- * Removes params by exact case-insensitive match — no prefix matching.
+ * True when a hostname is the domain or a subdomain of it — mirrors DNR
+ * requestDomains/excludedRequestDomains matching (domain + subdomains).
+ */
+function hostUnderAny(hostname, domains) {
+  return domains.some((d) => hostname === d || hostname.endsWith("." + d));
+}
+
+/**
+ * Simulates Chrome DNR queryTransform.removeParams semantics across ALL rules
+ * in tracking-params.json, honoring each rule's condition (requestDomains /
+ * excludedRequestDomains). Removes params by exact case-insensitive match — no
+ * prefix matching.
  *
  * @param {string} rawUrl
  * @param {Array}  trackingParamsJson — parsed tracking-params.json array
  * @returns {string} cleaned URL
  */
 function simulateDnr(rawUrl, trackingParamsJson) {
-  const rule = trackingParamsJson[0];
-  const removeParams = new Set(
-    rule.action.redirect.transform.queryTransform.removeParams.map((p) =>
-      p.toLowerCase()
-    )
-  );
   const u = new URL(rawUrl);
+  const host = u.hostname;
+  const removeParams = new Set();
+  for (const rule of trackingParamsJson) {
+    const c = rule.condition;
+    if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) continue;
+    if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) continue;
+    for (const p of rule.action.redirect.transform.queryTransform.removeParams) {
+      removeParams.add(p.toLowerCase());
+    }
+  }
   const toDelete = [];
   for (const key of u.searchParams.keys()) {
     if (removeParams.has(key.toLowerCase())) toDelete.push(key);

@@ -23,7 +23,12 @@ import {
   TRACKING_PREFIXES,
 } from "../src/lib/affiliates.js";
 import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../src/lib/remote-rules.js";
-import { DNR_STATIC_RULE_ID, DNR_AMAZON_PARAMS_RULE_ID } from "../src/lib/dnr-ids.js";
+import {
+  DNR_STATIC_RULE_ID,
+  DNR_AMAZON_PARAMS_RULE_ID,
+  DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
+  DNR_DOMAIN_PRESERVE_MAX_RULES,
+} from "../src/lib/dnr-ids.js";
 
 /** Amazon marketplace hosts we scope the internal-nav strip rule to. */
 const AMAZON_HOST_RE = /(^|\.)amazon\./;
@@ -313,14 +318,40 @@ export function buildDnrRules() {
     process.exit(1);
   }
 
-  const preservedByDomain = new Set();
+  // Reverse index: param -> sorted unique domains where it is preserved.
+  const preservedOnDomains = new Map();
   for (const rule of domainRules) {
+    if (typeof rule.domain !== "string") continue;
     for (const p of rule.preserveParams ?? []) {
-      preservedByDomain.add(p);
+      if (!preservedOnDomains.has(p)) preservedOnDomains.set(p, new Set());
+      preservedOnDomains.get(p).add(rule.domain);
     }
   }
 
-  const filtered = TRACKING_PARAMS.filter((p) => !preservedByDomain.has(p));
+  // Split TRACKING_PARAMS: params preserved on no domain go in the global rule;
+  // params preserved on some domain go in a domain-conditioned rule that strips
+  // them everywhere EXCEPT those domains (excludedRequestDomains). This replaces
+  // the previous behavior of dropping a domain-preserved param from the global
+  // rule entirely, which silently un-stripped it network-wide.
+  //
+  // No guard/denylist filtering here (unlike buildAmazonParamsRule, which adds
+  // EXTRA params): the global + conditioned rules must mirror the runtime
+  // cleaner, which strips all of TRACKING_PARAMS. Filtering only the DNR side
+  // would break DNR<->runtime parity. Keeping an affiliate key out of the strip
+  // is the job of the #815 TRACKING_PARAMS/guard coherence invariant, not this
+  // generator.
+  const globalParams = [];
+  const conditioned = []; // { param, domains: string[] }
+  for (const param of TRACKING_PARAMS) {
+    const domains = preservedOnDomains.get(param);
+    if (domains && domains.size > 0) {
+      conditioned.push({ param, domains: [...domains].sort() });
+    } else {
+      globalParams.push(param);
+    }
+  }
+  // globalParams keeps TRACKING_PARAMS source order (as the previous filter did)
+  // so the generated global rule stays byte-stable except for the moved params.
 
   const rules = [
     {
@@ -331,7 +362,7 @@ export function buildDnrRules() {
         redirect: {
           transform: {
             queryTransform: {
-              removeParams: filtered,
+              removeParams: globalParams,
             },
           },
         },
@@ -343,7 +374,50 @@ export function buildDnrRules() {
     },
   ];
 
-  const amazonRule = buildAmazonParamsRule(domainRules, new Set(filtered));
+  // Group conditioned params by identical exclude-domain set so params that are
+  // preserved on the same domains share one rule, bounding total rule count.
+  const byDomainSet = new Map(); // JSON(domains) -> param[]
+  for (const { param, domains } of conditioned) {
+    const key = JSON.stringify(domains);
+    if (!byDomainSet.has(key)) byDomainSet.set(key, []);
+    byDomainSet.get(key).push(param);
+  }
+  const groups = [...byDomainSet.entries()]
+    .map(([key, params]) => ({ domains: JSON.parse(key), params: params.sort() }))
+    .sort((a, b) => JSON.stringify(a.domains).localeCompare(JSON.stringify(b.domains)));
+
+  if (groups.length > DNR_DOMAIN_PRESERVE_MAX_RULES) {
+    process.stderr.write(
+      `generate-rules.mjs: ${groups.length} domain-conditioned DNR rule groups exceeds ` +
+      `DNR_DOMAIN_PRESERVE_MAX_RULES (${DNR_DOMAIN_PRESERVE_MAX_RULES}). Raise the cap ` +
+      `(and its ID range in dnr-ids.js) or reduce distinct preserve-domain sets.\n`
+    );
+    process.exit(1);
+  }
+
+  groups.forEach((group, i) => {
+    rules.push({
+      id: DNR_DOMAIN_PRESERVE_RULE_ID_BASE + i,
+      priority: 1,
+      action: {
+        type: "redirect",
+        redirect: {
+          transform: {
+            queryTransform: {
+              removeParams: group.params,
+            },
+          },
+        },
+      },
+      condition: {
+        urlFilter: "*",
+        excludedRequestDomains: group.domains,
+        resourceTypes: ["main_frame"],
+      },
+    });
+  });
+
+  const amazonRule = buildAmazonParamsRule(domainRules, new Set(globalParams));
   if (amazonRule) rules.push(amazonRule);
 
   return rules;
@@ -422,7 +496,14 @@ function main() {
   const manifest = buildManifest();
   const dnrRules = buildDnrRules();
 
-  const excluded = TRACKING_PARAMS.length - dnrRules[0].action.redirect.transform.queryTransform.removeParams.length;
+  const globalCount = dnrRules[0].action.redirect.transform.queryTransform.removeParams.length;
+  const conditionedRules = dnrRules.filter(
+    (r) => r.id >= DNR_DOMAIN_PRESERVE_RULE_ID_BASE && r.id < DNR_DOMAIN_PRESERVE_RULE_ID_BASE + DNR_DOMAIN_PRESERVE_MAX_RULES
+  );
+  const conditionedParams = conditionedRules.reduce(
+    (n, r) => n + r.action.redirect.transform.queryTransform.removeParams.length,
+    0
+  );
   const amazonRule = dnrRules.find((r) => r.id === DNR_AMAZON_PARAMS_RULE_ID);
   const amazonCount = amazonRule
     ? amazonRule.action.redirect.transform.queryTransform.removeParams.length
@@ -432,7 +513,7 @@ function main() {
   writeFileSync(DNR_PATH, JSON.stringify(dnrRules, null, 2) + "\n", "utf8");
 
   console.log(
-    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${dnrRules[0].action.redirect.transform.queryTransform.removeParams.length} global DNR params, ${excluded} excluded; ${amazonCount} Amazon-scoped params)`
+    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${globalCount} global DNR params; ${conditionedParams} params across ${conditionedRules.length} domain-conditioned rules; ${amazonCount} Amazon-scoped params)`
   );
 }
 
