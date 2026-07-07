@@ -203,6 +203,13 @@ describe("Constants — shape and values", () => {
     assert.ok(AFFILIATE_PARAM_GUARD.size >= 10, `must have >= 10 entries, got ${AFFILIATE_PARAM_GUARD.size}`);
   });
 
+  test("AFFILIATE_PARAM_GUARD contains 'cjevent' (Commission Junction click identifier)", () => {
+    assert.ok(
+      AFFILIATE_PARAM_GUARD.has("cjevent"),
+      "cjevent must be guarded so a compromised remote-rules endpoint can never strip it",
+    );
+  });
+
   test("PARAM_FORMAT_RE is the correct regex", () => {
     assert.ok(PARAM_FORMAT_RE instanceof RegExp);
     assert.ok(PARAM_FORMAT_RE.test("utm_source"));

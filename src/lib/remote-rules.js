@@ -151,6 +151,8 @@ export const AFFILIATE_PARAM_GUARD = Object.freeze(new Set([
   "awinaffid",
   // Commission Junction
   "cj_aid", "cj_pid",
+  // Commission Junction click identifier (attribution)
+  "cjevent",
   // Impact Radius
   "impact_ad_id", "impact_click_id", "impact_product_sku",
   // Partnerize
