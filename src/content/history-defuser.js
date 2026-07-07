@@ -19,6 +19,7 @@
  * surprising a not-yet-onboarded user with a mutated URL.
  */
 
+/* global exportFunction */
 (function () {
   "use strict";
 
@@ -69,37 +70,58 @@
   crypto.getRandomValues(_nonceBytes);
   const _nonce = Array.from(_nonceBytes, (b) => b.toString(16).padStart(2, "0")).join("");
 
-  // ── Firefox MV2 page-world bootstrap (#509 / B12) ────────────────────
+  // Firefox page-world history wrap reads this at call time to honor the same
+  // active-defense gate the CustomEvent path carries to Chrome's main world.
+  // Fail-closed until prefs land (see readPrefsAndGate).
+  let _fxGateOpen = false;
+
+  // ── Firefox MV2 page-world history wrap (CSP-immune) (#509 / B12) ─────
   //
-  // Chrome MV3 registers `history-defuser-mainworld.js` as a `world: "MAIN"`
-  // content script (see src/manifest.json) — the browser handles loading
-  // it into the page world automatically. Firefox MV2 has no `world: "MAIN"`
-  // support, so the same script must be injected from this isolated-world
-  // script as a `<script src=...>` element pointing at the extension's
-  // web-accessible resource. The injected `<script>` runs in the page world
-  // because that's where `<script>` tags execute by default; the extension
-  // origin and `web_accessible_resources` declaration in manifest.v2.json
-  // make the resource URL loadable cross-origin from the page.
+  // Chrome MV3 wraps history.pushState/replaceState via the `world:"MAIN"`
+  // content script history-defuser-mainworld.js. Firefox MV2 has no
+  // `world:"MAIN"`; the previous approach injected that script as a
+  // `<script src="moz-extension://...">` element, but a page's Content-
+  // Security-Policy (e.g. Amazon) silently blocks that injected script, so
+  // pushState "section" navigations were never detected and never cleaned.
   //
-  // MV3 detection is `manifest_version === 3`. We skip the inject in MV3 so
-  // we don't double-bootstrap.
+  // Firefox content scripts CAN reach the page's real objects via
+  // `window.wrappedJSObject` and inject callables with `exportFunction` — no
+  // `<script>` element is created, so the page CSP cannot block it. We wrap
+  // pushState/replaceState on the PAGE's history to trigger the full
+  // isolated-world reclean (`window.__mugaReclean`, set by cleaner.js in the
+  // same isolated world), exactly as the popstate/hashchange listeners below
+  // already do for those same-document navigation types. No CustomEvent bridge
+  // is needed on Firefox — the wrap and __mugaReclean share this world.
+  //
+  // Loop-safe: __mugaReclean calls the ISOLATED-world history.replaceState
+  // (a different binding than the PAGE object we wrap here), so cleaning does
+  // not re-enter this wrap; __mugaReclean's own _lastRecleanUrl guard is a
+  // second backstop.
   try {
     const mv = chrome.runtime.getManifest && chrome.runtime.getManifest().manifest_version;
-    if (mv === 2) {
-      const s = document.createElement("script");
-      s.src = chrome.runtime.getURL("content/history-defuser-mainworld.js");
-      // Synchronous so the wrap installs before the page's first script runs.
-      // Modern browsers honour async=false for in-document insertion.
-      s.async = false;
-      const target = document.head || document.documentElement;
-      if (target) {
-        target.appendChild(s);
-        // Detach from the DOM as soon as it's executed; the wrap lives on
-        // window.history regardless of whether the <script> node is present.
-        s.remove();
+    if (mv === 2 && typeof exportFunction === "function" && window.wrappedJSObject) {
+      const pageHistory = window.wrappedJSObject.history;
+      if (pageHistory) {
+        const wrapHistoryMethod = (methodName) => {
+          const orig = pageHistory[methodName];
+          if (typeof orig !== "function") return;
+          pageHistory[methodName] = exportFunction(function (state, title, url) {
+            const ret = orig.call(this, state, title, url);
+            if (_fxGateOpen) {
+              try {
+                if (typeof window.__mugaReclean === "function") {
+                  window.__mugaReclean(url == null ? window.location.href : String(url));
+                }
+              } catch { /* never let a reclean failure break navigation */ }
+            }
+            return ret;
+          }, window.wrappedJSObject);
+        };
+        wrapHistoryMethod("pushState");
+        wrapHistoryMethod("replaceState");
       }
     }
-  } catch { /* manifest unavailable / DOM not ready — leave the page-world wrap absent */ }
+  } catch { /* wrappedJSObject/exportFunction unavailable — leave the page-world wrap absent */ }
 
   // Broadcast the nonce once at document_start so all listeners (both worlds)
   // can capture it before any page script executes. This event is fired once
@@ -198,7 +220,10 @@
         // cleaning, window.name defusing, DOM link/click rewriting) if they break a site.
         // Default to ON when the pref key is absent (older installs / not yet synced).
         const activeDefenseOn = !(prefs && prefs.activeDefenseEnabled === false);
-        dispatchGate(prefsOk && activeDefenseOn && !exempt);
+        const gateOpen = prefsOk && activeDefenseOn && !exempt;
+        // Firefox page-world history wrap reads this synchronously at call time.
+        _fxGateOpen = gateOpen;
+        dispatchGate(gateOpen);
       });
     } catch {
       // Extension context invalidated. Leave the gate closed.

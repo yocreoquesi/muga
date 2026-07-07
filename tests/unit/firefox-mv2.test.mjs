@@ -278,6 +278,18 @@ describe("Firefox MV2 manifest structure", () => {
     assert.equal(MANIFEST_V2.version, pkg.version,
       "manifest.v2.json version must match package.json");
   });
+
+  test("declares webRequest + webRequestBlocking (Firefox network-layer stripper)", () => {
+    // Firefox MV2 keeps blocking webRequest (removed in Chrome MV3) and uses it
+    // as its network-layer tracking-param stripper — the equivalent of Chrome's
+    // DNR redirect, and the source of the Firefox cleaned-URL counter. See the
+    // onBeforeNavigateStrip listener in service-worker.js. Without both
+    // permissions the listener silently never fires.
+    assert.ok(MANIFEST_V2.permissions.includes("webRequest"),
+      "manifest.v2.json must request webRequest");
+    assert.ok(MANIFEST_V2.permissions.includes("webRequestBlocking"),
+      "manifest.v2.json must request webRequestBlocking so onBeforeRequest can redirect");
+  });
 });
 
 // ---------------------------------------------------------------------------

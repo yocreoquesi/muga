@@ -1,30 +1,22 @@
 /**
- * MUGA — Firefox MV2 page-world injection contract (#509 / B12).
+ * MUGA — Firefox MV2 page-world wrap contract (#509 / B12).
  *
  * Chrome MV3 loads `history-defuser-mainworld.js` and
- * `window-name-defuser-mainworld.js` automatically via the
- * `world: "MAIN"` content-script directive in `src/manifest.json`.
- * Firefox MV2 (the manifest currently shipped to AMO) has no such
- * directive — the page-world wrap must be injected by the matching
- * isolated-world content script as a `<script src=...>` element
- * pointing at the extension's web-accessible resource.
+ * `window-name-defuser-mainworld.js` automatically via the `world: "MAIN"`
+ * content-script directive in `src/manifest.json`. Firefox MV2 has no such
+ * directive, so each isolated-world dispatcher must install the page-world
+ * wrap itself.
  *
- * This test pins three facts that must hold together for the
- * Firefox path to actually wrap the page world:
+ * HISTORY DEFUSER — CSP-immune wrap (fixed): the previous `<script src=...>`
+ * injection was silently blocked by strict page CSPs (e.g. Amazon), so
+ * pushState "section" navigations were never cleaned on Firefox. It now wraps
+ * `history.pushState`/`replaceState` directly from the isolated world via
+ * Firefox's `window.wrappedJSObject` + `exportFunction` — no `<script>`
+ * element, so no CSP can block it. This test pins that mechanism and, crucially,
+ * asserts NO `<script>` element is created for the history wrap.
  *
- *   1. The MV2 `web_accessible_resources` array exposes both
- *      mainworld scripts so the page can load them by URL.
- *   2. Each isolated-world dispatcher contains the inject helper
- *      gated on `manifest_version === 2` (so MV3 doesn't double-
- *      bootstrap).
- *   3. Each isolated-world dispatcher names the matching mainworld
- *      file in the `chrome.runtime.getURL` argument — typo-proofs
- *      the linkage between the two halves.
- *
- * If any of these break, Firefox users silently lose the active-
- * defense layer (B10/B11) — the unit tests stub the page world so
- * they don't catch this; only Playwright Firefox would, and that
- * spec is a follow-up to this slice.
+ * WINDOW-NAME DEFUSER — still uses the `<script src=...>` injection (its
+ * CSP-immune port is a follow-up). Its injection contract is still pinned here.
  */
 
 import { test, describe } from "node:test";
@@ -47,17 +39,10 @@ describe("Firefox MV2 web_accessible_resources expose the mainworld scripts (#50
       "MV2 web_accessible_resources must be an array");
   });
 
-  test("history-defuser-mainworld.js is web-accessible in MV2", () => {
-    assert.ok(
-      mv2Manifest.web_accessible_resources.includes("content/history-defuser-mainworld.js"),
-      "MV2 must expose history-defuser-mainworld.js so the isolated-world script can <script src> it",
-    );
-  });
-
-  test("window-name-defuser-mainworld.js is web-accessible in MV2", () => {
+  test("window-name-defuser-mainworld.js is web-accessible in MV2 (still <script src>'d)", () => {
     assert.ok(
       mv2Manifest.web_accessible_resources.includes("content/window-name-defuser-mainworld.js"),
-      "MV2 must expose window-name-defuser-mainworld.js for the same reason",
+      "MV2 must expose window-name-defuser-mainworld.js so its isolated-world dispatcher can <script src> it",
     );
   });
 
@@ -77,29 +62,45 @@ describe("Firefox MV2 web_accessible_resources expose the mainworld scripts (#50
   });
 });
 
-describe("Isolated-world dispatchers inject the mainworld script when running on MV2 (#509)", () => {
-  test("history-defuser.js gates the inject on manifest_version === 2", () => {
+describe("history-defuser.js wraps the page world CSP-immune on MV2 (#509)", () => {
+  test("gates the Firefox wrap on manifest_version === 2", () => {
     assert.match(
       histDefuserSrc,
       /manifest_version[^]*===[^]*2/,
-      "history-defuser.js must check manifest_version === 2 before injecting",
+      "history-defuser.js must check manifest_version === 2 before wrapping",
     );
   });
 
-  test("history-defuser.js injects the matching mainworld script via chrome.runtime.getURL", () => {
+  test("wraps pushState/replaceState via wrappedJSObject + exportFunction (not a <script>)", () => {
     assert.match(
       histDefuserSrc,
-      /chrome\.runtime\.getURL\(["'`]content\/history-defuser-mainworld\.js["'`]\)/,
-      "history-defuser.js must reference the mainworld resource by exact path",
+      /window\.wrappedJSObject/,
+      "history-defuser.js must reach the page world via window.wrappedJSObject",
     );
     assert.match(
+      histDefuserSrc,
+      /exportFunction/,
+      "history-defuser.js must inject the wrap via Firefox's exportFunction",
+    );
+    assert.match(histDefuserSrc, /pushState/, "history-defuser.js must wrap pushState");
+    assert.match(histDefuserSrc, /replaceState/, "history-defuser.js must wrap replaceState");
+  });
+
+  test("CSP-immunity guarantee — history-defuser.js creates NO <script> element", () => {
+    // The whole point of the fix: a strict page CSP (Amazon) blocks an injected
+    // <script src="moz-extension://...">. Wrapping via wrappedJSObject creates no
+    // <script>, so nothing for the CSP to block. This assertion is the regression
+    // guard against a future revert to the injection approach.
+    assert.doesNotMatch(
       histDefuserSrc,
       /document\.createElement\(["'`]script["'`]\)/,
-      "history-defuser.js must create a <script> element to inject the wrap",
+      "history-defuser.js must NOT create a <script> element — that reintroduces the CSP-block bug",
     );
   });
+});
 
-  test("window-name-defuser.js gates the inject on manifest_version === 2", () => {
+describe("window-name-defuser.js still injects the mainworld script on MV2 (pending CSP-immune port)", () => {
+  test("gates the inject on manifest_version === 2", () => {
     assert.match(
       winNameDefuserSrc,
       /manifest_version[^]*===[^]*2/,
@@ -107,7 +108,7 @@ describe("Isolated-world dispatchers inject the mainworld script when running on
     );
   });
 
-  test("window-name-defuser.js injects the matching mainworld script via chrome.runtime.getURL", () => {
+  test("injects the matching mainworld script via chrome.runtime.getURL", () => {
     assert.match(
       winNameDefuserSrc,
       /chrome\.runtime\.getURL\(["'`]content\/window-name-defuser-mainworld\.js["'`]\)/,
@@ -120,13 +121,11 @@ describe("Isolated-world dispatchers inject the mainworld script when running on
     );
   });
 
-  test("inject helpers append the script synchronously (async=false) so it runs before page scripts", () => {
-    for (const [name, src] of [["history-defuser.js", histDefuserSrc], ["window-name-defuser.js", winNameDefuserSrc]]) {
-      assert.match(
-        src,
-        /\.async\s*=\s*false/,
-        `${name} must set script.async=false so the page-world wrap installs before any page script runs`,
-      );
-    }
+  test("appends the script synchronously (async=false) so it runs before page scripts", () => {
+    assert.match(
+      winNameDefuserSrc,
+      /\.async\s*=\s*false/,
+      "window-name-defuser.js must set script.async=false so the page-world wrap installs before any page script runs",
+    );
   });
 });
