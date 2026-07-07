@@ -72,7 +72,7 @@ After:  https://www.ebay.es/itm/123456789
 | Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **169 domains** preserve functional query params (search queries, pagination, filters) while removing the noise.
+Domain-specific rules for **214 domains** preserve functional query params (search queries, pagination, filters) while removing the noise.
 
 ---
 

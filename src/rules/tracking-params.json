@@ -8,11 +8,6 @@
         "transform": {
           "queryTransform": {
             "removeParams": [
-              "utm_source",
-              "utm_medium",
-              "utm_campaign",
-              "utm_content",
-              "utm_term",
               "utm_id",
               "utm_source_platform",
               "utm_creative_format",
@@ -37,14 +32,12 @@
               "_r",
               "source",
               "campaign",
-              "clickid",
               "_hsenc",
               "_hsmi",
               "hsctatracking",
               "mkt_tok",
               "trk",
               "trkcampaign",
-              "ocid",
               "psc",
               "spla",
               "pd_rd_r",
@@ -242,9 +235,6 @@
               "bsft_uid",
               "bsft_eid",
               "bsft_mid",
-              "elqtrackid",
-              "elqaid",
-              "elqat",
               "elqcampaignid",
               "spjobid",
               "spmailingid",
@@ -265,7 +255,6 @@
               "ss_email_id",
               "vero_id",
               "oly_anon_id",
-              "oly_enc_id",
               "sms_click",
               "sms_source",
               "sms_uph",
@@ -293,7 +282,6 @@
               "adj_campaign",
               "adj_creative",
               "adj_label",
-              "adj_t",
               "adjust_referrer",
               "adjust_tracker",
               "adjust_tracker_limit",
@@ -330,8 +318,6 @@
               "ebisother3",
               "ebisother4",
               "ebisother5",
-              "elq",
-              "elqak",
               "fb_comment_id",
               "fbadid",
               "action_object_map",
@@ -403,12 +389,9 @@
               "btag",
               "cm_cr",
               "cm_me",
-              "cmpid",
               "cstrackid",
-              "cuid",
               "emcs_t",
               "ems_dl",
-              "erid",
               "external_click_id",
               "famad_xuid",
               "ftag",
@@ -436,7 +419,6 @@
               "tcsack",
               "user_email_address",
               "uzcid",
-              "vc_lpp",
               "vero_conv",
               "vs_campaign_id",
               "vsm_cid",
@@ -471,6 +453,76 @@
         "transform": {
           "queryTransform": {
             "removeParams": [
+              "utm_source"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "3dnews.ru",
+        "allegro.pl",
+        "app.plex.tv",
+        "auto-swiat.pl",
+        "businessinsider.com.pl",
+        "carrefourpl.snrpage.com",
+        "glavnoe.life",
+        "insurancexblog.blogspot.com",
+        "komputerswiat.pl",
+        "lanacion.com.ar",
+        "medonet.pl",
+        "noizz.pl",
+        "ofeminin.pl",
+        "plejada.pl",
+        "plex.tv",
+        "sendgb.com",
+        "t.send.vt.edu",
+        "transfernow.net",
+        "video-shoper.ru",
+        "watch.plex.tv"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 301,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "adj_t"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "adj.st",
+        "yandex.go.link"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 302,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
               "cid"
             ]
           }
@@ -491,7 +543,155 @@
     }
   },
   {
-    "id": 301,
+    "id": 303,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_campaign"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "allegro.pl",
+        "canadacompanyregistry.com",
+        "glavnoe.life",
+        "rd.bizrate.com",
+        "redirects.tradedoubler.com",
+        "t.send.vt.edu",
+        "usprobioticguide.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 304,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "clickid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "allegro.pl"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 305,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_medium"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "apimeishi.meituan.com",
+        "app.plex.tv",
+        "glavnoe.life",
+        "meishi.meituan.com",
+        "mmcref.pl",
+        "portal-portm.meituan.com",
+        "rd.bizrate.com",
+        "t.send.vt.edu"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 306,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "elq",
+              "elqaid",
+              "elqak",
+              "elqat",
+              "elqtrackid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "app.econnect.utexas.edu",
+        "clk.texaslonghorns.com",
+        "s1740541080.t.eloqua.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 307,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_content"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "app.plex.tv",
+        "gaugau.futabanet.jp",
+        "glavnoe.life",
+        "reddit.app.link",
+        "redirects.tradedoubler.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 308,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -517,7 +717,162 @@
     }
   },
   {
-    "id": 302,
+    "id": 309,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "vc_lpp"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "booklive.jp"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 310,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "cmpid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "cleviationly.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 311,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "cuid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "em.dynamicyield.com",
+        "iforms.americanexpress.com",
+        "mootoon.co.kr"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 312,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "erid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "forbes.ru",
+        "kommersant.ru",
+        "lifehacker.ru"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 313,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_term"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "glavnoe.life",
+        "metabase.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 314,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "oly_enc_id"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "greenbuildingadvisor.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 315,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -542,7 +897,32 @@
     }
   },
   {
-    "id": 303,
+    "id": 316,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "ocid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "*",
+      "excludedRequestDomains": [
+        "msn.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 317,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -568,7 +948,7 @@
     }
   },
   {
-    "id": 304,
+    "id": 318,
     "priority": 1,
     "action": {
       "type": "redirect",
