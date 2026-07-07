@@ -247,7 +247,11 @@
     },
     {
       "param": "adj_t",
-      "category": "ads"
+      "category": "ads",
+      "preservedOnDomains": [
+        "adj.st",
+        "yandex.go.link"
+      ]
     },
     {
       "param": "adjust_adgroup",
@@ -533,7 +537,12 @@
     },
     {
       "param": "cuid",
-      "category": "generic"
+      "category": "generic",
+      "preservedOnDomains": [
+        "em.dynamicyield.com",
+        "iforms.americanexpress.com",
+        "mootoon.co.kr"
+      ]
     },
     {
       "param": "customid",
@@ -669,7 +678,12 @@
     },
     {
       "param": "erid",
-      "category": "ads"
+      "category": "ads",
+      "preservedOnDomains": [
+        "forbes.ru",
+        "kommersant.ru",
+        "lifehacker.ru"
+      ]
     },
     {
       "param": "et_rid",
@@ -1229,7 +1243,10 @@
     },
     {
       "param": "oly_enc_id",
-      "category": "email"
+      "category": "email",
+      "preservedOnDomains": [
+        "greenbuildingadvisor.com"
+      ]
     },
     {
       "param": "omnisendcontactid",
@@ -1664,7 +1681,14 @@
     },
     {
       "param": "utm_campaign",
-      "category": "utm"
+      "category": "utm",
+      "preservedOnDomains": [
+        "canadacompanyregistry.com",
+        "glavnoe.life",
+        "rd.bizrate.com",
+        "redirects.tradedoubler.com",
+        "usprobioticguide.com"
+      ]
     },
     {
       "param": "utm_compaign",
@@ -1672,7 +1696,13 @@
     },
     {
       "param": "utm_content",
-      "category": "utm"
+      "category": "utm",
+      "preservedOnDomains": [
+        "gaugau.futabanet.jp",
+        "glavnoe.life",
+        "reddit.app.link",
+        "redirects.tradedoubler.com"
+      ]
     },
     {
       "param": "utm_creative_format",
@@ -1696,7 +1726,11 @@
     },
     {
       "param": "utm_medium",
-      "category": "utm"
+      "category": "utm",
+      "preservedOnDomains": [
+        "glavnoe.life",
+        "rd.bizrate.com"
+      ]
     },
     {
       "param": "utm_newsletterid",
@@ -1704,7 +1738,12 @@
     },
     {
       "param": "utm_source",
-      "category": "utm"
+      "category": "utm",
+      "preservedOnDomains": [
+        "carrefourpl.snrpage.com",
+        "glavnoe.life",
+        "video-shoper.ru"
+      ]
     },
     {
       "param": "utm_source_platform",
@@ -1712,7 +1751,11 @@
     },
     {
       "param": "utm_term",
-      "category": "utm"
+      "category": "utm",
+      "preservedOnDomains": [
+        "glavnoe.life",
+        "metabase.com"
+      ]
     },
     {
       "param": "uzcid",
@@ -1897,6 +1940,13 @@
       ],
       "stripParams": [],
       "note": "Korean fashion/lifestyle e-commerce. Search query: functional."
+    },
+    {
+      "domain": "adj.st",
+      "preserveParams": [
+        "adj_t"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "aladin.co.kr",
@@ -3472,6 +3522,20 @@
       "note": "Hotel search and booking: functional. label/sid are tracking."
     },
     {
+      "domain": "canadacompanyregistry.com",
+      "preserveParams": [
+        "utm_campaign"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
+      "domain": "carrefourpl.snrpage.com",
+      "preserveParams": [
+        "utm_source"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "cnbc.com",
       "preserveParams": [
         "q"
@@ -3906,6 +3970,13 @@
       "note": "Search query and pagination: functional"
     },
     {
+      "domain": "em.dynamicyield.com",
+      "preserveParams": [
+        "cuid"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "emart.com",
       "preserveParams": [
         "keyword"
@@ -4152,6 +4223,13 @@
       "note": "Search query and mode: functional"
     },
     {
+      "domain": "forbes.ru",
+      "preserveParams": [
+        "erid"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "fotocasa.es",
       "preserveParams": [
         "transactiontype",
@@ -4181,6 +4259,13 @@
       ],
       "stripParams": [],
       "note": "US video game retailer. Search query: functional."
+    },
+    {
+      "domain": "gaugau.futabanet.jp",
+      "preserveParams": [
+        "utm_content"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "github.com",
@@ -4219,6 +4304,18 @@
         "glm_content"
       ],
       "note": "GitLab. Marketing referral tracking stripped."
+    },
+    {
+      "domain": "glavnoe.life",
+      "preserveParams": [
+        "utm_campaign",
+        "utm_content",
+        "utm_medium",
+        "utm_referrer",
+        "utm_source",
+        "utm_term"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "gmarket.co.kr",
@@ -4285,6 +4382,13 @@
       "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ved/ei are click tracking."
     },
     {
+      "domain": "greenbuildingadvisor.com",
+      "preserveParams": [
+        "oly_enc_id"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "humblebundle.com",
       "preserveParams": [
         "srch"
@@ -4326,6 +4430,13 @@
         "pagina"
       ],
       "note": "Real estate search filters and pagination: functional"
+    },
+    {
+      "domain": "iforms.americanexpress.com",
+      "preserveParams": [
+        "cuid"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "imdb.com",
@@ -4447,6 +4558,13 @@
       "note": "Kickstarter. Referral/event tracking stripped."
     },
     {
+      "domain": "kommersant.ru",
+      "preserveParams": [
+        "erid"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "kurly.com",
       "preserveParams": [
         "sword",
@@ -4470,6 +4588,13 @@
         "run_key"
       ],
       "note": "Lenovo. Outbrain/campaign tracking stripped."
+    },
+    {
+      "domain": "lifehacker.ru",
+      "preserveParams": [
+        "erid"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "linkedin.com",
@@ -4629,6 +4754,20 @@
       ],
       "stripParams": [],
       "note": "US/Japan secondhand marketplace. Search and item ID: functional."
+    },
+    {
+      "domain": "metabase.com",
+      "preserveParams": [
+        "utm_term"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
+      "domain": "mootoon.co.kr",
+      "preserveParams": [
+        "cuid"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "msn.com",
@@ -4915,6 +5054,21 @@
       "note": "App ID and locale: functional"
     },
     {
+      "domain": "rd.bizrate.com",
+      "preserveParams": [
+        "utm_campaign",
+        "utm_medium"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
+      "domain": "reddit.app.link",
+      "preserveParams": [
+        "utm_content"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "reddit.com",
       "preserveParams": [
         "sort",
@@ -4941,6 +5095,14 @@
         "target_user"
       ],
       "note": "Sort, time filter, pagination, search, comment context: functional. Share/correlation/campaign tracking stripped."
+    },
+    {
+      "domain": "redirects.tradedoubler.com",
+      "preserveParams": [
+        "utm_campaign",
+        "utm_content"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "renfe.com",
@@ -5303,6 +5465,20 @@
       "note": "US beauty retailer. Search query: functional."
     },
     {
+      "domain": "usprobioticguide.com",
+      "preserveParams": [
+        "utm_campaign"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
+      "domain": "video-shoper.ru",
+      "preserveParams": [
+        "utm_source"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+    },
+    {
       "domain": "vk.com",
       "preserveParams": [
         "q",
@@ -5441,6 +5617,13 @@
         "to"
       ],
       "note": "Search query, language, region and pagination: functional"
+    },
+    {
+      "domain": "yandex.go.link",
+      "preserveParams": [
+        "adj_t"
+      ],
+      "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
     },
     {
       "domain": "yandex.ru",

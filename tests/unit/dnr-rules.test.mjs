@@ -189,17 +189,35 @@ test("every lowercase TRACKING_PARAM has a corresponding removeParam entry (exce
   }
 });
 
-test("DNR-excluded params are NOT in the GLOBAL DNR rule", () => {
-  // Scoped to the global rule: a param preserved on domain X must not be stripped
-  // site-wide. A domain-scoped rule MAY strip a param that is preserved on a
-  // DIFFERENT domain (e.g. `ref` is preserved on imdb.com but is Amazon's internal
-  // breadcrumb) — the Amazon rule excludes Amazon's OWN preserveParams instead.
+test("domain-preserved params live in the global rule but their domains are excluded from it", () => {
+  // One-rule-per-request model: a param preserved on domain X stays in the GLOBAL
+  // rule (which strips it everywhere else), and X is listed in the global rule's
+  // excludedRequestDomains so the global rule never matches X. On X, only X's
+  // profile rule matches — and that rule omits the preserved param. This replaces
+  // the old design that dropped the param from the global rule entirely (which
+  // left it un-stripped network-wide until a scoped rule happened to match).
   const removeParamSet = new Set(globalRemoveParams.map(p => p.toLowerCase()));
+  const excludedDomains = new Set(globalRule.condition?.excludedRequestDomains ?? []);
+
+  // Build param -> domains where it is preserved (from domain-rules.json).
+  const preservedOn = new Map();
+  for (const rule of domainRules) {
+    for (const p of rule.preserveParams ?? []) {
+      const key = p.toLowerCase();
+      if (!preservedOn.has(key)) preservedOn.set(key, new Set());
+      preservedOn.get(key).add(rule.domain);
+    }
+  }
 
   for (const param of DNR_EXCLUDED_PARAMS) {
-    assert.ok(
-      !removeParamSet.has(param),
-      `"${param}" should NOT be in the global DNR rule — it conflicts with domain-rules.json preserveParams`
-    );
+    // Only params that are ALSO tracking params can appear in the global rule at
+    // all; a preserved param that MUGA never strips globally simply isn't there.
+    if (!removeParamSet.has(param)) continue;
+    for (const domain of preservedOn.get(param) ?? []) {
+      assert.ok(
+        excludedDomains.has(domain),
+        `"${param}" is preserved on "${domain}" and is in the global DNR rule, but "${domain}" is NOT in the global rule's excludedRequestDomains — it would be stripped there. Run \`npm run build:rules\``,
+      );
+    }
   }
 });

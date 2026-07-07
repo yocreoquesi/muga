@@ -25,7 +25,6 @@ import {
 import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../src/lib/remote-rules.js";
 import {
   DNR_STATIC_RULE_ID,
-  DNR_AMAZON_PARAMS_RULE_ID,
   DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
   DNR_DOMAIN_PRESERVE_MAX_RULES,
 } from "../src/lib/dnr-ids.js";
@@ -302,8 +301,30 @@ export function buildManifest() {
 
 /**
  * Builds the DNR rule array (tracking-params.json format).
- * Output uses the same filter logic as the previous DNR generator.
- * Pure function — no file I/O.
+ * Pure function — no file I/O beyond reading domain-rules.json.
+ *
+ * Chrome applies AT MOST ONE redirect rule per request: redirect actions do NOT
+ * cascade and the request is NOT re-evaluated after a rewrite (confirmed against
+ * Chrome's declarativeNetRequest docs). So every host must match exactly ONE
+ * param-stripping rule, and that rule must remove the COMPLETE set of params
+ * applicable to that host. The earlier design split params across a global rule
+ * plus per-domain/Amazon rules that all matched the same host; Chrome fired only
+ * one, leaving mixed-param URLs half-cleaned.
+ *
+ * Design (one complete rule per host):
+ *   - Global rule (id 1): removeParams = all TRACKING_PARAMS. Matches every host
+ *     EXCEPT domains that need a tailored set (excludedRequestDomains), so those
+ *     never double-match the global rule.
+ *   - Per-domain-profile rules (id 300+i): requestDomains-scoped. removeParams =
+ *     the COMPLETE set for that profile = TRACKING_PARAMS minus the domain's
+ *     preserveParams, plus any domain-specific extra strips (Amazon internal-nav
+ *     params that are unsafe to strip site-wide). Domains sharing an identical
+ *     set share one rule.
+ *
+ * No guard/denylist filtering on the TRACKING_PARAMS base: DNR must mirror the
+ * runtime cleaner, which strips all of TRACKING_PARAMS. Guard/deny only gate the
+ * EXTRA domain strips so a future domain-rules edit can never leak an
+ * affiliate/nav key into a DNR strip.
  *
  * @returns {Array} DNR rule array
  */
@@ -318,40 +339,121 @@ export function buildDnrRules() {
     process.exit(1);
   }
 
-  // Reverse index: param -> sorted unique domains where it is preserved.
-  const preservedOnDomains = new Map();
+  const guard = new Set([...AFFILIATE_PARAM_GUARD].map((s) => s.toLowerCase()));
+  const deny = new Set([...REMOTE_PARAM_DENYLIST].map((s) => s.toLowerCase()));
+  const trackingLc = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
+
+  // Codepoint comparator — locale-independent so rule ordering (and thus the
+  // 300+i ids) is byte-identical across environments, keeping the compile:rules
+  // clean-diff CI gate stable. Never use String.localeCompare here.
+  const byCodepoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+  // True when `child` is a proper subdomain of `parent`. Mirrors Chrome's
+  // requestDomains/excludedRequestDomains matching (a rule scoped to D matches D
+  // and every subdomain of D).
+  const isProperSubdomain = (child, parent) =>
+    child !== parent && child.endsWith("." + parent);
+
+  // Compute each domain's tailored removeParams. A domain is "tailored" (and so
+  // excluded from the global rule) iff its set differs from the global
+  // TRACKING_PARAMS: it preserves a tracked param (a subset) and/or contributes
+  // extra strips not already global (a superset). Domains matching neither stay
+  // under the global rule.
+  const tailoredDomains = new Set(); // every tailored domain — all excluded from global
+  const perDomain = []; // { domain, removeParams } — only those with something to strip
   for (const rule of domainRules) {
     if (typeof rule.domain !== "string") continue;
-    for (const p of rule.preserveParams ?? []) {
-      if (!preservedOnDomains.has(p)) preservedOnDomains.set(p, new Set());
-      preservedOnDomains.get(p).add(rule.domain);
+    const preserveLc = new Set((rule.preserveParams ?? []).map((p) => p.toLowerCase()));
+    const preservesTracked = [...preserveLc].some((p) => trackingLc.has(p));
+
+    // Extra strips: Amazon internal-nav params the cleaner strips on Amazon but
+    // that are unsafe site-wide (absent from TRACKING_PARAMS), minus anything
+    // preserved/guarded/denied. Guard/deny are safety nets against a future edit
+    // leaking an affiliate/nav key.
+    let extraStrips = [];
+    if (AMAZON_HOST_RE.test(rule.domain)) {
+      extraStrips = (rule.stripParams ?? []).filter((p) => {
+        const lc = p.toLowerCase();
+        return !trackingLc.has(lc) && !preserveLc.has(lc) && !guard.has(lc) && !deny.has(lc);
+      });
     }
+
+    if (!preservesTracked && extraStrips.length === 0) continue; // global covers it
+
+    // Tailored: must be excluded from the global rule so it never double-matches.
+    tailoredDomains.add(rule.domain);
+
+    // Complete set for this host: all TRACKING_PARAMS minus its preserves, then
+    // its extra strips. TRACKING_PARAMS source order is preserved for byte
+    // stability; extras are sorted+deduped and are disjoint from the base (they
+    // are, by construction, not in TRACKING_PARAMS).
+    const base = TRACKING_PARAMS.filter((p) => !preserveLc.has(p.toLowerCase()));
+    const removeParams = [...base, ...[...new Set(extraStrips)].sort(byCodepoint)];
+    // A domain that preserves EVERY tracking param (and adds no extra strips) has
+    // nothing to strip: it stays excluded from the global rule (above) but gets no
+    // profile rule, so NO DNR rule matches it and all its params survive. Emitting
+    // an empty-removeParams rule would be invalid DNR; falling back to the global
+    // rule would strip exactly what it wanted to preserve.
+    if (removeParams.length === 0) continue;
+    perDomain.push({ domain: rule.domain, removeParams });
   }
 
-  // Split TRACKING_PARAMS: params preserved on no domain go in the global rule;
-  // params preserved on some domain go in a domain-conditioned rule that strips
-  // them everywhere EXCEPT those domains (excludedRequestDomains). This replaces
-  // the previous behavior of dropping a domain-preserved param from the global
-  // rule entirely, which silently un-stripped it network-wide.
-  //
-  // No guard/denylist filtering here (unlike buildAmazonParamsRule, which adds
-  // EXTRA params): the global + conditioned rules must mirror the runtime
-  // cleaner, which strips all of TRACKING_PARAMS. Filtering only the DNR side
-  // would break DNR<->runtime parity. Keeping an affiliate key out of the strip
-  // is the job of the #815 TRACKING_PARAMS/guard coherence invariant, not this
-  // generator.
-  const globalParams = [];
-  const conditioned = []; // { param, domains: string[] }
-  for (const param of TRACKING_PARAMS) {
-    const domains = preservedOnDomains.get(param);
-    if (domains && domains.size > 0) {
-      conditioned.push({ param, domains: [...domains].sort() });
-    } else {
-      globalParams.push(param);
-    }
+  // Group domains that share an identical removeParams set into one rule.
+  const bySig = new Map(); // JSON(removeParams) -> { removeParams, domains: Set }
+  for (const { domain, removeParams } of perDomain) {
+    const sig = JSON.stringify(removeParams);
+    if (!bySig.has(sig)) bySig.set(sig, { removeParams, domains: new Set() });
+    bySig.get(sig).domains.add(domain);
   }
-  // globalParams keeps TRACKING_PARAMS source order (as the previous filter did)
-  // so the generated global rule stays byte-stable except for the moved params.
+  const allTailored = [...tailoredDomains];
+  const groups = [...bySig.values()]
+    .map((g) => {
+      const domains = [...g.domains].sort(byCodepoint);
+      // ONE-RULE-PER-REQUEST across profile rules: a tailored domain that is a
+      // proper subdomain of one of THIS group's domains, but lives in a DIFFERENT
+      // group (different removeParams), would otherwise match both rules — Chrome
+      // fires one, half-cleaning it. Exclude such descendants so the more specific
+      // rule is the only match on that host. Same-group descendants share our
+      // removeParams, so they need no exclusion.
+      const excluded = allTailored
+        .filter((d) => !g.domains.has(d) && domains.some((base) => isProperSubdomain(d, base)))
+        .sort(byCodepoint);
+      return { removeParams: g.removeParams, domains, excluded };
+    })
+    .sort((a, b) => byCodepoint(a.domains[0], b.domains[0]));
+
+  if (groups.length > DNR_DOMAIN_PRESERVE_MAX_RULES) {
+    process.stderr.write(
+      `generate-rules.mjs: ${groups.length} domain-profile DNR rule groups exceeds ` +
+      `DNR_DOMAIN_PRESERVE_MAX_RULES (${DNR_DOMAIN_PRESERVE_MAX_RULES}). Raise the cap ` +
+      `(and its ID range in dnr-ids.js) or reduce distinct preserve/strip profiles.\n`
+    );
+    process.exit(1);
+  }
+
+  // Every tailored domain is excluded from the global rule so each host matches
+  // exactly one param-stripping rule.
+  const excludedRequestDomains = allTailored.sort(byCodepoint);
+
+  /**
+   * DNR condition shape. The global rule uses urlFilter + excludedRequestDomains;
+   * profile rules use requestDomains. Fields are optional so both shapes share
+   * one type (and the rules array stays homogeneously typed for checkJs).
+   * @typedef {object} DnrCondition
+   * @property {string} [urlFilter]
+   * @property {string[]} [requestDomains]
+   * @property {string[]} [excludedRequestDomains]
+   * @property {string[]} resourceTypes
+   */
+
+  /** @type {DnrCondition} */
+  const globalCondition = {
+    urlFilter: "*",
+    resourceTypes: ["main_frame"],
+  };
+  if (excludedRequestDomains.length > 0) {
+    globalCondition.excludedRequestDomains = excludedRequestDomains;
+  }
 
   const rules = [
     {
@@ -362,40 +464,26 @@ export function buildDnrRules() {
         redirect: {
           transform: {
             queryTransform: {
-              removeParams: globalParams,
+              removeParams: [...TRACKING_PARAMS],
             },
           },
         },
       },
-      condition: {
-        urlFilter: "*",
-        resourceTypes: ["main_frame"],
-      },
+      condition: globalCondition,
     },
   ];
 
-  // Group conditioned params by identical exclude-domain set so params that are
-  // preserved on the same domains share one rule, bounding total rule count.
-  const byDomainSet = new Map(); // JSON(domains) -> param[]
-  for (const { param, domains } of conditioned) {
-    const key = JSON.stringify(domains);
-    if (!byDomainSet.has(key)) byDomainSet.set(key, []);
-    byDomainSet.get(key).push(param);
-  }
-  const groups = [...byDomainSet.entries()]
-    .map(([key, params]) => ({ domains: JSON.parse(key), params: params.sort() }))
-    .sort((a, b) => JSON.stringify(a.domains).localeCompare(JSON.stringify(b.domains)));
-
-  if (groups.length > DNR_DOMAIN_PRESERVE_MAX_RULES) {
-    process.stderr.write(
-      `generate-rules.mjs: ${groups.length} domain-conditioned DNR rule groups exceeds ` +
-      `DNR_DOMAIN_PRESERVE_MAX_RULES (${DNR_DOMAIN_PRESERVE_MAX_RULES}). Raise the cap ` +
-      `(and its ID range in dnr-ids.js) or reduce distinct preserve-domain sets.\n`
-    );
-    process.exit(1);
-  }
-
   groups.forEach((group, i) => {
+    /** @type {DnrCondition} */
+    const condition = {
+      requestDomains: group.domains,
+      resourceTypes: ["main_frame"],
+    };
+    // Only present when a tailored descendant must be carved out (nested-domain
+    // guard). Rare, but keeps each host matching exactly one profile rule.
+    if (group.excluded.length > 0) {
+      condition.excludedRequestDomains = group.excluded;
+    }
     rules.push({
       id: DNR_DOMAIN_PRESERVE_RULE_ID_BASE + i,
       priority: 1,
@@ -404,89 +492,16 @@ export function buildDnrRules() {
         redirect: {
           transform: {
             queryTransform: {
-              removeParams: group.params,
+              removeParams: group.removeParams,
             },
           },
         },
       },
-      condition: {
-        urlFilter: "*",
-        excludedRequestDomains: group.domains,
-        resourceTypes: ["main_frame"],
-      },
+      condition,
     });
   });
 
-  const amazonRule = buildAmazonParamsRule(domainRules, new Set(globalParams));
-  if (amazonRule) rules.push(amazonRule);
-
   return rules;
-}
-
-/**
- * Builds the Amazon-scoped internal-nav param strip rule (#910/#911 follow-up).
- *
- * Chrome cleans the CURRENT page via DNR only (the in-page cleaner is skipped
- * when DNR is present), so any Amazon internal-nav tracking param that the
- * cleaner strips via domain-rules — but that is UNSAFE to strip site-wide, so
- * it's absent from the global rule — survives a direct navigation. This rule
- * closes that gap by removing exactly those params, scoped to Amazon hosts.
- *
- * The param list is DERIVED, never hand-maintained, so it can't drift from the
- * cleaner:  removeParams = (Amazon stripParams)
- *                          − (global DNR removeParams)      // already covered
- *                          − (Amazon preserveParams)        // functional on Amazon
- *                          − (AFFILIATE_PARAM_GUARD)         // creator attribution — NEVER strip
- *                          − (REMOTE_PARAM_DENYLIST)         // protected nav/search keys
- * The last two are safety nets: they currently exclude nothing, but guarantee a
- * future domain-rules edit can never leak an affiliate/nav key into a DNR strip.
- *
- * @param {Array<object>} domainRules - parsed domain-rules.json
- * @param {Set<string>} globalRemoveParams - the global rule's removeParams
- * @returns {object|null} the DNR rule, or null when there is nothing to strip
- */
-export function buildAmazonParamsRule(domainRules, globalRemoveParams) {
-  const amazonEntries = domainRules.filter(
-    (r) => typeof r.domain === "string" && AMAZON_HOST_RE.test(r.domain),
-  );
-  if (amazonEntries.length === 0) return null;
-
-  const requestDomains = [...new Set(amazonEntries.map((r) => r.domain))].sort();
-
-  const strip = new Set();
-  const preserve = new Set();
-  for (const r of amazonEntries) {
-    for (const p of r.stripParams ?? []) strip.add(p);
-    for (const p of r.preserveParams ?? []) preserve.add(p);
-  }
-
-  const guard = new Set([...AFFILIATE_PARAM_GUARD].map((s) => s.toLowerCase()));
-  const deny = new Set([...REMOTE_PARAM_DENYLIST].map((s) => s.toLowerCase()));
-
-  const removeParams = [...strip]
-    .filter(
-      (p) =>
-        !globalRemoveParams.has(p) &&
-        !preserve.has(p) &&
-        !guard.has(p.toLowerCase()) &&
-        !deny.has(p.toLowerCase()),
-    )
-    .sort();
-
-  if (removeParams.length === 0) return null;
-
-  return {
-    id: DNR_AMAZON_PARAMS_RULE_ID,
-    priority: 1,
-    action: {
-      type: "redirect",
-      redirect: { transform: { queryTransform: { removeParams } } },
-    },
-    condition: {
-      requestDomains,
-      resourceTypes: ["main_frame"],
-    },
-  };
 }
 
 /**
@@ -497,23 +512,19 @@ function main() {
   const dnrRules = buildDnrRules();
 
   const globalCount = dnrRules[0].action.redirect.transform.queryTransform.removeParams.length;
-  const conditionedRules = dnrRules.filter(
+  const profileRules = dnrRules.filter(
     (r) => r.id >= DNR_DOMAIN_PRESERVE_RULE_ID_BASE && r.id < DNR_DOMAIN_PRESERVE_RULE_ID_BASE + DNR_DOMAIN_PRESERVE_MAX_RULES
   );
-  const conditionedParams = conditionedRules.reduce(
-    (n, r) => n + r.action.redirect.transform.queryTransform.removeParams.length,
+  const profileDomains = profileRules.reduce(
+    (n, r) => n + (r.condition.requestDomains?.length ?? 0),
     0
   );
-  const amazonRule = dnrRules.find((r) => r.id === DNR_AMAZON_PARAMS_RULE_ID);
-  const amazonCount = amazonRule
-    ? amazonRule.action.redirect.transform.queryTransform.removeParams.length
-    : 0;
 
   writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n", "utf8");
   writeFileSync(DNR_PATH, JSON.stringify(dnrRules, null, 2) + "\n", "utf8");
 
   console.log(
-    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${globalCount} global DNR params; ${conditionedParams} params across ${conditionedRules.length} domain-conditioned rules; ${amazonCount} Amazon-scoped params)`
+    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${globalCount} global DNR params; ${profileRules.length} per-domain-profile rules covering ${profileDomains} domains)`
   );
 }
 

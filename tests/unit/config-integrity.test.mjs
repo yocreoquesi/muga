@@ -18,8 +18,10 @@ const domainRules = require("../../src/rules/domain-rules.json");
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all 169 entries have domain, preserveParams (non-empty array), and note", () => {
-    assert.equal(domainRules.length, 169, `Expected 169 entries, got ${domainRules.length}`);
+  test("all entries have domain, preserveParams (non-empty array), and note", () => {
+    // Exact count is pinned so any domain-rules.json growth (e.g. the weekly
+    // AdGuard/ClearURLs preserve harvest) is an explicit, reviewed change.
+    assert.equal(domainRules.length, 188, `Expected 188 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);
