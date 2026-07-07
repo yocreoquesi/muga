@@ -132,6 +132,31 @@ export const AFFILIATE_PARAM_GUARD = Object.freeze(new Set([
   "afsrc", "af_id",
   // Generic partner / ref family
   "partner", "partnerid", "affid", "aff_id", "refcode",
+  // Adjust
+  "adj_adgroup", "adj_adnomia_click_id", "adj_deep_link", "adj_deeplink",
+  "adj_event_callback_dn2j7g_5mdnim", "adj_install_callback", "adjust_deeplink",
+  // AppsFlyer
+  // These are deep-link/config params, not pure click IDs. Guarding them is
+  // intentional and conservative: when a param plausibly carries attribution,
+  // we preserve it. The cost of a wrong strip is silent creator-economics
+  // harm; the cost of a wrong preserve is one un-stripped low-value param.
+  "af_assettype_id", "af_channel", "af_creative_id", "af_lnk",
+  "af_permalink_id", "af_placement_id", "af_reengagement_window", "af_rid",
+  // Generic affiliate
+  "aff", "aff_c", "aff_click_id", "aff_model", "aff_short_key", "aff_sub2",
+  "aff_sub3", "aff_sub4", "aff_sub5", "aff_track", "affiliate",
+  // Airbridge
+  "airbridge_referrer",
+  // Awin
+  "awinaffid",
+  // Commission Junction
+  "cj_aid", "cj_pid",
+  // Impact Radius
+  "impact_ad_id", "impact_click_id", "impact_product_sku",
+  // Partnerize
+  "partnerizecampaignid",
+  // Connexity (shopping affiliate, flagged separately from the AdGuard triage)
+  "cnxclid",
 ]));
 
 // ── Storage key defaults ──────────────────────────────────────────────────────
