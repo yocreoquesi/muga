@@ -1,17 +1,23 @@
 /**
  * MUGA — DNR ↔ runtime cleaner parity test (TA-4, D5)
  *
- * Verifies that Chrome DNR's global strip and the runtime cleaner produce
- * the same set of stripped params for a 10-URL corpus.
+ * Verifies that Chrome DNR and the runtime cleaner produce the same set of
+ * stripped params for a 10-URL corpus.
+ *
+ * simulateDnr models Chrome faithfully: Chrome applies AT MOST ONE redirect rule
+ * per request (no cascade, no re-evaluation). So exactly one rule may match any
+ * host — the global rule OR that host's profile rule, never both — and the test
+ * asserts that (a multi-match means the generator broke the one-rule-per-request
+ * invariant, which would half-clean mixed-param URLs on real Chrome).
  *
  * Divergence cases are included where a param is in BOTH TRACKING_PARAMS AND a
- * domain's preserveParams. The generator emits such a param in a
- * domain-conditioned DNR rule (excludedRequestDomains = its preserve domains),
- * so DNR strips it everywhere EXCEPT those domains — matching the runtime
- * cleaner, which preserves it via the domain rule on those hosts and strips it
- * elsewhere. On the preserve host both PRESERVE (via different mechanisms); on
- * any other host both STRIP. This is the fix for the old behavior that dropped
- * a domain-preserved param from the global rule entirely, un-stripping it
+ * domain's preserveParams. The generator keeps such a param in the GLOBAL rule
+ * (which strips it everywhere else) but lists the preserve domain in the global
+ * rule's excludedRequestDomains and emits a per-domain profile rule that omits
+ * the param. So on the preserve host only the profile rule matches (param kept);
+ * on any other host only the global rule matches (param stripped) — matching the
+ * runtime cleaner. This is the fix for the old behavior that dropped a
+ * domain-preserved param from the global rule entirely, un-stripping it
  * network-wide.
  *
  * Divergence pairs (in preserveParams + in TRACKING_PARAMS):
@@ -149,10 +155,12 @@ function hostUnderAny(hostname, domains) {
 }
 
 /**
- * Simulates Chrome DNR queryTransform.removeParams semantics across ALL rules
- * in tracking-params.json, honoring each rule's condition (requestDomains /
- * excludedRequestDomains). Removes params by exact case-insensitive match — no
- * prefix matching.
+ * Simulates Chrome DNR queryTransform.removeParams semantics FAITHFULLY: Chrome
+ * applies at most ONE redirect rule per request. This collects every rule whose
+ * condition matches the host and asserts that AT MOST ONE matches — a stronger
+ * guard than unioning, because a multi-match is exactly the one-rule-per-request
+ * violation that would half-clean URLs on real Chrome. It then applies that
+ * single rule's removeParams (exact, case-insensitive; no prefix matching).
  *
  * @param {string} rawUrl
  * @param {Array}  trackingParamsJson — parsed tracking-params.json array
@@ -161,15 +169,27 @@ function hostUnderAny(hostname, domains) {
 function simulateDnr(rawUrl, trackingParamsJson) {
   const u = new URL(rawUrl);
   const host = u.hostname;
-  const removeParams = new Set();
-  for (const rule of trackingParamsJson) {
+
+  const matching = trackingParamsJson.filter((rule) => {
     const c = rule.condition;
-    if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) continue;
-    if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) continue;
-    for (const p of rule.action.redirect.transform.queryTransform.removeParams) {
-      removeParams.add(p.toLowerCase());
-    }
-  }
+    if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) return false;
+    if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) return false;
+    return true;
+  });
+
+  assert.ok(
+    matching.length <= 1,
+    `ONE-RULE-PER-REQUEST violated for host "${host}": rules [${matching
+      .map((r) => r.id)
+      .join(", ")}] all match. Chrome would fire only one, half-cleaning the URL.`,
+  );
+
+  const removeParams = new Set(
+    (matching[0]?.action.redirect.transform.queryTransform.removeParams ?? []).map((p) =>
+      p.toLowerCase(),
+    ),
+  );
+
   const toDelete = [];
   for (const key of u.searchParams.keys()) {
     if (removeParams.has(key.toLowerCase())) toDelete.push(key);

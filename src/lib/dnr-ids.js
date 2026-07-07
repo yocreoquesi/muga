@@ -6,21 +6,21 @@
  * A collision would cause one rule to silently overwrite another with no error.
  *
  * ID allocation:
- *   1        — static ruleset: global tracking-param strip (tracking-params.json)
- *   2        — static ruleset: Amazon-scoped internal-nav param strip — params the
- *              cleaner strips on Amazon that the global rule can't (unsafe to strip
- *              site-wide), scoped via requestDomains to Amazon marketplaces
+ *   1        — static ruleset: global tracking-param strip (tracking-params.json).
+ *              Removes ALL TRACKING_PARAMS on every host EXCEPT the tailored
+ *              domains, which it lists in excludedRequestDomains (see 300-799).
  *   100-102  — static ruleset: AMP unwrap redirects (amp-redirect.json)
  *   1-5      — static ruleset: wrapper-link unwrap redirects (wrapper-dnr-rules.json,
- *              its own file-scoped namespace, distinct from tracking-params.json's 1/2)
+ *              its own file-scoped namespace, distinct from tracking-params.json's 1)
  *   200      — static ruleset: Amazon /dp/ SEO-slug strip, Chrome-only DNR
  *              regexSubstitution redirect (amazon-path-canonical.json) — #903
- *   300-799  — static ruleset: domain-conditioned tracking-param strip
- *              (tracking-params.json). One rule per unique preserve-domain set:
- *              strips a param everywhere EXCEPT the domains where it is
- *              functional (excludedRequestDomains). Replaces the old behavior of
- *              dropping the param from the global rule, which silently
- *              un-stripped it network-wide.
+ *   300-799  — static ruleset: per-domain-profile tracking-param strip
+ *              (tracking-params.json). Chrome applies at most ONE redirect rule
+ *              per request, so each tailored host matches exactly one COMPLETE
+ *              rule: requestDomains-scoped, removeParams = TRACKING_PARAMS minus
+ *              that domain's preserveParams, plus any domain-specific extra strips
+ *              (e.g. Amazon internal-nav params — folded in here, no longer a
+ *              separate rule). Domains sharing a profile share one rule.
  *   1000     — dynamic custom params rule (user-defined params, DNR redirect)
  *   1001     — dynamic remote params rule (signed remote payload, DNR redirect)
  *   2000-2499 — dynamic allowlist "allow" rules (#allowlist-full-inert), one
@@ -39,26 +39,20 @@
 export const DNR_STATIC_RULE_ID = 1;
 
 /**
- * ID of the static Amazon-scoped internal-nav param strip rule, emitted into
- * tracking-params.json alongside the global rule. Scoped via `requestDomains`
- * to Amazon marketplaces so params that are unsafe to strip site-wide (e.g.
- * `ref`, `sr`) are still removed on Chrome's DNR-only current-page path —
- * closing the gap where the in-page cleaner strips them but DNR did not.
- */
-export const DNR_AMAZON_PARAMS_RULE_ID = 2;
-
-/**
- * Base ID for the static domain-conditioned tracking-param strip rules emitted
- * into tracking-params.json. A param that is functional on specific domains
- * (domain-rules preserveParams) is stripped everywhere EXCEPT those domains via
- * `excludedRequestDomains`, instead of being dropped from the global rule (which
- * silently un-stripped it network-wide). Rules are grouped by identical
- * exclude-domain set; id = DNR_DOMAIN_PRESERVE_RULE_ID_BASE + group index.
+ * Base ID for the static per-domain-profile tracking-param strip rules emitted
+ * into tracking-params.json. Chrome applies at most ONE redirect rule per
+ * request (no cascade), so each tailored host must match exactly one COMPLETE
+ * rule. Each profile rule is requestDomains-scoped and removes TRACKING_PARAMS
+ * minus that domain's preserveParams, plus any domain-specific extra strips
+ * (e.g. Amazon internal-nav params). The domains are simultaneously excluded
+ * from the global rule (DNR_STATIC_RULE_ID) so they never double-match. Domains
+ * sharing an identical removeParams profile share one rule;
+ * id = DNR_DOMAIN_PRESERVE_RULE_ID_BASE + group index.
  */
 export const DNR_DOMAIN_PRESERVE_RULE_ID_BASE = 300;
 
 /**
- * Cap on the number of domain-conditioned strip rule groups. Well under
+ * Cap on the number of per-domain-profile strip rule groups. Well under
  * Chrome's static-rule ceiling; the generator fails loudly if exceeded so the
  * 300-799 range can never overrun into DNR_CUSTOM_PARAMS_RULE_ID (1000).
  */
