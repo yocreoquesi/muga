@@ -145,12 +145,33 @@ test.describe("Remote rules — E2E", () => {
    * shared state races between tests.
    */
   test.beforeEach(async ({ context, extensionId: _extensionId }) => {
-    // Intercept at context level so service-worker fetches are also stubbed
+    // Intercept at context level so service-worker fetches are also stubbed.
+    //
+    // Remote rules default ON (#888): opening an extension page wakes the SW,
+    // which opportunistically fetches once (maybeFetchRemoteRules) and stores a
+    // version. The tests then send ENABLE_REMOTE_RULES, which fetches again
+    // UNCONDITIONALLY. With a single fixed payload version the second fetch is
+    // rejected as VERSION_REGRESSION ("older than current"), which sets
+    // remoteRulesMeta.lastError and flakes the "no error shown" assertions
+    // (SC-02/SC-12) depending on whether the wake fetch beat the explicit
+    // enable. Serve a strictly-increasing version on every request so each
+    // fetch is accepted regardless of how many fire or in what order — these
+    // tests exercise dedup/param-count, not the version number.
+    let payloadVersion = 0;
     await context.route("**/rules.muga.app/**", (route) => {
+      payloadVersion += 1;
+      const signed = signPayload(
+        {
+          version: payloadVersion,
+          published: new Date().toISOString(),
+          params: PAYLOAD_PARAMS,
+        },
+        KEYPAIR.privateKey,
+      );
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(SIGNED_PAYLOAD),
+        body: JSON.stringify(signed),
       });
     });
 
