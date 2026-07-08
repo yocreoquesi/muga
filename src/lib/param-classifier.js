@@ -260,7 +260,11 @@ export function classifyByShape(url, prefs) {
   const ruleHits = [];
   const seen = new Set();
 
-  for (const [name, value] of parsed.searchParams.entries()) {
+  // Firefox Xray: searchParams.entries() iterator is not iterable in the
+  // content-script sandbox (throws "not iterable"); collect via forEach. (#1009)
+  const paramEntries = [];
+  parsed.searchParams.forEach((v, k) => paramEntries.push([k, v]));
+  for (const [name, value] of paramEntries) {
     const lower = name.toLowerCase();
     if (seen.has(lower)) continue;
     // Allowlist + affiliate guards run BEFORE the expensive shape checks
@@ -322,7 +326,10 @@ export function classify(url, prefs) {
   // the first prefs check.
   const shape = classifyByShape(url, prefs);
 
-  const params = [...parsed.searchParams.keys()];
+  // Firefox Xray: searchParams.keys() iterator is not iterable in content
+  // scripts; collect via forEach. (#1009)
+  const params = [];
+  parsed.searchParams.forEach((_v, k) => params.push(k));
   if (params.length === 0) {
     // Even on a bare URL, shape can never fire (no params), so empty stays empty.
     return empty;

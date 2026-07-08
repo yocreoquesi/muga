@@ -448,7 +448,17 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
   // occurrences on the first pass. Without the Set, the second iteration would
   // re-push the name (over-counting junkCount/badge) and record a phantom empty
   // value (get() returns null after delete). The first get() captures value "a".
-  for (const param of new Set(url.searchParams.keys())) {
+  //
+  // Firefox Xray: URLSearchParams key/value/entry iterators are NOT iterable in
+  // the content-script sandbox (their Symbol.iterator is filtered by Firefox's
+  // Xray wrappers), so `[...sp.keys()]`, `for..of`, and `new Set(sp.keys())`
+  // throw "not iterable" — crashing the entire content-side processUrl on
+  // Firefox while the identical code runs fine in the background (no Xray).
+  // forEach is a plain callback method, unaffected, so collect via forEach into
+  // a plain array first. (#1009)
+  const paramKeys = [];
+  url.searchParams.forEach((_v, k) => paramKeys.push(k));
+  for (const param of new Set(paramKeys)) {
     const lower = param.toLowerCase();
     if (affiliateParamSet.has(lower)) continue;
     if (preserved.has(lower)) continue;
@@ -590,7 +600,9 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   // Scenario D: domain is fully blacklisted — strip everything, no injection
   if (parsedBlacklist.some(e => !e.param && domainMatches(hostname, e.domain))) {
-    const blacklistedParamCount = [...url.searchParams.keys()].length;  // C10: count before wipe
+    // Firefox Xray safety (see stripTrackingParams): count via forEach, not spread. (#1009)
+    let blacklistedParamCount = 0;  // C10: count before wipe
+    url.searchParams.forEach(() => { blacklistedParamCount++; });
     url.search = "";
     return buildReturnPayload("blacklisted", url, [], null, {
       junkRemoved: blacklistedParamCount + (pathCleaned ? 1 : 0),
@@ -1067,7 +1079,12 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
     // De-dup keys (see stripTrackingParams): delete() removes all occurrences,
     // so iterating raw keys() would double-count repeated keys and push a
     // phantom empty value on the second pass.
-    for (const param of new Set(url.searchParams.keys())) {
+    //
+    // Firefox Xray safety (see stripTrackingParams): searchParams iterators are
+    // not iterable in content scripts; collect via forEach first. (#1009)
+    const paramKeys = [];
+    url.searchParams.forEach((_v, k) => paramKeys.push(k));
+    for (const param of new Set(paramKeys)) {
       const lower = param.toLowerCase();
       if (preserved.has(lower)) continue;
       if (landingPolicy.preserve.has(lower)) continue;

@@ -1177,7 +1177,11 @@
       const REDIRECT_PATH_RE = /\/(redirect|bounce|out|away|leave|goto|jump|click|track|link|redir|forward|proxy|url|exit)\b/i;
       if (!REDIRECT_PATH_RE.test(location.pathname)) return;
 
-      for (const [rawKey, value] of parsed.searchParams) {
+      // Firefox Xray: iterating searchParams directly (Symbol.iterator) is not
+      // iterable in the content-script sandbox; collect via forEach first. (#1009)
+      const redirectEntries = [];
+      parsed.searchParams.forEach((v, k) => redirectEntries.push([k, v]));
+      for (const [rawKey, value] of redirectEntries) {
         const param = rawKey.toLowerCase();
         if (!REDIRECT_PARAMS.includes(param)) continue;
         if (!value || value.length > 2000) continue;
