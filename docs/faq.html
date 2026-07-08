@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA FAQ — The denoise extension for the web</title>
+  <title>MUGA FAQ: The denoise extension for the web</title>
   <meta name="description" content="A direct, evidence-cited FAQ for skeptics. Every factual claim is backed by a line in MUGA's open source. No analytics, no telemetry. GPL v3.">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="/assets/muga-mark.svg">
@@ -36,7 +36,7 @@
   <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Version 2.4.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
-    A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web — it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins — please open an issue.
+    A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web, it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins, please open an issue.
   </div>
 
   <p>This document is intentionally written for a technical audience that has already read the <a href="/privacy-page.html">Privacy policy</a> and the <a href="/tos.html">Terms of service</a> and wants to verify the claims.</p>
@@ -47,14 +47,14 @@
 
   <h3>Q: Why install MUGA when I already have uBlock Origin / Brave / ClearURLs?</h3>
 
-  <p>Because they solve a different problem. The generic class of "URL cleaners and content blockers" (uBO with the privacy lists, Brave's built-in shields, ClearURLs, etc.) is built to <strong>strip everything that looks like noise</strong> — which is the right default for a general-purpose cleaner, but it also strips affiliate parameters indiscriminately, because to a noise-detector they look identical to tracking.</p>
+  <p>Because they solve a different problem. The generic class of "URL cleaners and content blockers" (uBO with the privacy lists, Brave's built-in shields, ClearURLs, etc.) is built to <strong>strip everything that looks like noise</strong>, which is the right default for a general-purpose cleaner, but it also strips affiliate parameters indiscriminately, because to a noise-detector they look identical to tracking.</p>
 
   <p>MUGA's design point is narrower and more opinionated:</p>
 
   <ol>
-    <li><strong>Remove the same noise parameters those tools remove</strong> — <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_cid</code>, <code>igshid</code>, the rest of the usual set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js#L18"><code>src/lib/affiliates-data.js:18</code></a>).</li>
-    <li><strong>Preserve affiliate parameters that belong to a creator</strong> — even on programs MUGA itself has no commercial relationship with (Booking, Vercel, DigitalOcean, etc.). The preservation table is sourced from MUGA's documented affiliate-program rules (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</li>
-    <li><strong>Be explicit about the one case where MUGA itself benefits</strong> — affiliate injection — and gate it behind an opt-in checkbox during onboarding (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L25"><code>src/lib/prefs.js:25</code></a>).</li>
+    <li><strong>Remove the same noise parameters those tools remove</strong>, <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_cid</code>, <code>igshid</code>, the rest of the usual set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js#L18"><code>src/lib/affiliates-data.js:18</code></a>).</li>
+    <li><strong>Preserve affiliate parameters that belong to a creator</strong>, even on programs MUGA itself has no commercial relationship with (Booking, Vercel, DigitalOcean, etc.). The preservation table is sourced from MUGA's documented affiliate-program rules (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</li>
+    <li><strong>Be explicit about the one case where MUGA itself benefits</strong>, affiliate injection, and gate it behind an opt-in checkbox during onboarding (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L25"><code>src/lib/prefs.js:25</code></a>).</li>
   </ol>
 
   <p>If you only want noise removed and don't care about creator attribution, a generic cleaner is fine. If you want the YouTuber who recommended you that USB-C dock to actually get paid for the recommendation, you need a tool that knows the difference between a noise param and an affiliate tag.</p>
@@ -93,7 +93,7 @@
   <pre><code>// src/lib/prefs.js:25
 injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)</code></pre>
 
-  <p>The user is asked explicitly during onboarding via a checkbox that ships unchecked unless the preference was already enabled on another device they own (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.html#L96"><code>src/onboarding/onboarding.html:96</code></a>, <a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L183-L184"><code>src/onboarding/onboarding.js:183-184</code></a>). On a per-device basis, the user can decline even if a sibling device opted in — the decline is stored as a local override and does not propagate back to sync (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L170-L176"><code>src/onboarding/onboarding.js:170-176</code></a>).</p>
+  <p>The user is asked explicitly during onboarding via a checkbox that ships unchecked unless the preference was already enabled on another device they own (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.html#L96"><code>src/onboarding/onboarding.html:96</code></a>, <a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L183-L184"><code>src/onboarding/onboarding.js:183-184</code></a>). On a per-device basis, the user can decline even if a sibling device opted in, the decline is stored as a local override and does not propagate back to sync (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L170-L176"><code>src/onboarding/onboarding.js:170-176</code></a>).</p>
 
   <h3>Q: Does MUGA ever overwrite an existing affiliate tag?</h3>
 
@@ -118,7 +118,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <h3>Q: What happens if a creator's tag is on a program MUGA has no account on?</h3>
 
-  <p>It is preserved anyway. The <code>ourTag</code> map is allowed to be empty for a program — preservation does not require MUGA to have its own tag for that program. The detection loop at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js#L679"><code>src/lib/cleaner.js:679</code></a> iterates every pattern that matches the host, not just patterns where <code>OUR_TAGS[prog.id]</code> is populated. Programs like Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy ride this path (the <code>AFFILIATE_PATTERNS</code> table, <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</p>
+  <p>It is preserved anyway. The <code>ourTag</code> map is allowed to be empty for a program, preservation does not require MUGA to have its own tag for that program. The detection loop at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js#L679"><code>src/lib/cleaner.js:679</code></a> iterates every pattern that matches the host, not just patterns where <code>OUR_TAGS[prog.id]</code> is populated. Programs like Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy ride this path (the <code>AFFILIATE_PATTERNS</code> table, <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</p>
 
   <h3>Q: Does my price change when MUGA injects its tag?</h3>
 
@@ -145,7 +145,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
   <p>Remote Rules is a feature that lets MUGA periodically refresh its noise-parameter list from a signed public endpoint, so users get protection against new noise sources without waiting for an extension release.</p>
 
   <ul>
-    <li>Default: <strong>on</strong> (#888, once the signing infrastructure and defense-in-depth verification were ratified as production-ready — see the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md">CHANGELOG</a>). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L52"><code>src/lib/prefs.js:52</code></a>: <code>remoteRulesEnabled: true</code>. Disable it any time in Settings.</li>
+    <li>Default: <strong>on</strong> (#888, once the signing infrastructure and defense-in-depth verification were ratified as production-ready, see the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md">CHANGELOG</a>). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L52"><code>src/lib/prefs.js:52</code></a>: <code>remoteRulesEnabled: true</code>. Disable it any time in Settings.</li>
     <li>Every fetched payload is verified with an <strong>Ed25519 signature</strong> against a hardcoded list of trusted public keys before any rule is applied. The verification is at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L214-L248"><code>src/lib/remote-rules.js:214-248</code></a>; the orchestrator that calls it is at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L629-L636"><code>src/lib/remote-rules.js:629-636</code></a>.</li>
     <li>On verification failure the previous ruleset is left untouched (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L632-L635"><code>src/lib/remote-rules.js:632-635</code></a>).</li>
     <li>The fetch is size-capped and timeout-capped before the signature check even runs (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L594-L606"><code>src/lib/remote-rules.js:594-606</code></a>).</li>
@@ -155,7 +155,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <p>When "Follow shortener redirects" is enabled, the <strong>extension itself</strong> sends a <code>GET</code> directly to the shortener host (e.g. <code>bit.ly</code>) with credentials omitted and no referrer. No MUGA server is involved; the request goes to the same shortener host your browser would have contacted on click. The only difference is that you never actually navigate to that URL, so no page-load context is handed to the shortener. It only fires on the seven opted-in shortener hosts when the feature is enabled.</p>
 
-  <p>Remote Rules sends no user data at all — it is a one-way <code>GET</code> of a signed JSON file.</p>
+  <p>Remote Rules sends no user data at all: it is a one-way <code>GET</code> of a signed JSON file.</p>
 
   <p>If you want zero network activity, turn off both toggles in Settings. "Follow shortener redirects" already defaults to off; Remote Rules defaults to on (#888) and needs to be disabled explicitly.</p>
 
@@ -173,7 +173,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <ul>
     <li>The cleaner is a local computation; there is no per-user server cost.</li>
-    <li>The "Follow shortener redirects" feature (opt-in, off by default) is resolved entirely inside the extension — no MUGA server is involved, so there is no per-resolution infrastructure cost.</li>
+    <li>The "Follow shortener redirects" feature (opt-in, off by default) is resolved entirely inside the extension, no MUGA server is involved, so there is no per-resolution infrastructure cost.</li>
     <li>Remote Rules is a static signed JSON served from GitHub Pages, fetched at most once per 7 days.</li>
   </ul>
 
@@ -181,15 +181,15 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <h3>Q: What programs are NOT in MUGA, and why?</h3>
 
-  <p>By design, MUGA refuses to participate in affiliate programs whose model forces user clicks through external tracking servers (the "network-redirect" class — Awin, ShareASale, Admitad, Impact Radius, and similar). The extension still <strong>strips</strong> their noise parameters when encountered; it just will not <strong>inject</strong> them on MUGA's behalf. The rationale is in the <code>MUGA_EXCLUDED_IDS</code> set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/wrapper-engine.js#L226"><code>src/lib/wrapper-engine.js:226</code></a>) and the comment at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L105"><code>src/lib/affiliates.js:105</code></a>: deprecated Booking / Humble Bundle entries are removed, and Apple's PHG is intentionally not in <code>OUR_TAGS</code> because the program is closed to small publishers.</p>
+  <p>By design, MUGA refuses to participate in affiliate programs whose model forces user clicks through external tracking servers (the "network-redirect" class, Awin, ShareASale, Admitad, Impact Radius, and similar). The extension still <strong>strips</strong> their noise parameters when encountered; it just will not <strong>inject</strong> them on MUGA's behalf. The rationale is in the <code>MUGA_EXCLUDED_IDS</code> set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/wrapper-engine.js#L226"><code>src/lib/wrapper-engine.js:226</code></a>) and the comment at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L105"><code>src/lib/affiliates.js:105</code></a>: deprecated Booking / Humble Bundle entries are removed, and Apple's PHG is intentionally not in <code>OUR_TAGS</code> because the program is closed to small publishers.</p>
 
   <h3>Q: What is the roadmap?</h3>
 
   <p>The roadmap lives in two places:</p>
 
   <ul>
-    <li><a href="https://github.com/yocreoquesi/muga/blob/main/OBJECTIVES.md"><code>OBJECTIVES.md</code></a> — the high-level objectives and non-goals.</li>
-    <li><a href="https://github.com/yocreoquesi/muga/issues">GitHub Issues</a> — the concrete work items.</li>
+    <li><a href="https://github.com/yocreoquesi/muga/blob/main/OBJECTIVES.md"><code>OBJECTIVES.md</code></a>, the high-level objectives and non-goals.</li>
+    <li><a href="https://github.com/yocreoquesi/muga/issues">GitHub Issues</a>, the concrete work items.</li>
   </ul>
 
   <p>Material changes to the privacy contract trigger a re-onboarding flow on each device the next time the service worker wakes up (<a href="https://github.com/yocreoquesi/muga/blob/main/src/privacy/privacy.html#L59"><code>src/privacy/privacy.html:59</code></a>), so the user always has a chance to re-consent before behaviour changes.</p>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA: Transparency Report — The denoise extension for the web</title>
+  <title>MUGA: Transparency Report: The denoise extension for the web</title>
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="/assets/muga-mark.svg">
   <link rel="stylesheet" href="muga-docs.css">
@@ -47,7 +47,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">External server connections</span>
-      <span class="at-a-glance-value"><em>Remote rule updates</em>: on by default &mdash; at most 1 HTTPS GET per week to <code>rules.muga.app</code>, disable it any time in Settings. Optional <em>Follow shortener redirects</em>: off by default; when enabled, the extension itself fetches the shortener host directly (bit.ly, t.co, tinyurl.com, &hellip;) with credentials omitted to read its redirect &mdash; no MUGA server is involved. No cookies, no identifiers, no POST body. Auditable open-source code.</span>
+      <span class="at-a-glance-value"><em>Remote rule updates</em>: on by default, at most 1 HTTPS GET per week to <code>rules.muga.app</code>, disable it any time in Settings. Optional <em>Follow shortener redirects</em>: off by default; when enabled, the extension itself fetches the shortener host directly (bit.ly, t.co, tinyurl.com, &hellip;) with credentials omitted to read its redirect, no MUGA server is involved. No cookies, no identifiers, no POST body. Auditable open-source code.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Analytics / telemetry</span>
@@ -55,7 +55,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Data sent anywhere</span>
-      <span class="at-a-glance-value">Never your browsing data. Remote rule updates make HTTPS GETs to <code>rules.muga.app</code> weekly, on by default (an Ed25519-signed public payload carrying no user data; disable it any time in Settings). Optional Follow shortener redirects make direct HTTPS GETs to the shortener host (bit.ly, t.co, &hellip;) when enabled &mdash; no MUGA server is contacted.</span>
+      <span class="at-a-glance-value">Never your browsing data. Remote rule updates make HTTPS GETs to <code>rules.muga.app</code> weekly, on by default (an Ed25519-signed public payload carrying no user data; disable it any time in Settings). Optional Follow shortener redirects make direct HTTPS GETs to the shortener host (bit.ly, t.co, &hellip;) when enabled, no MUGA server is contacted.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Third-party dependencies</span>
@@ -110,7 +110,7 @@
     <li><strong>No crash reporting.</strong> If the extension throws an error, it logs to your browser console. Nowhere else.</li>
     <li><strong>No remote configuration or feature flags.</strong> Every toggle is a local preference. There is no server that can change your extension's behavior remotely.</li>
     <li><strong>No server-side rule delivery beyond a weekly signed check.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension at install time; that baseline never depends on the network. On top of it, <strong>Remote rule updates</strong> is on by default: the extension fetches a signed parameter list at most once per 7 days from <code>rules.muga.app</code> via HTTPS GET with <code>credentials: "omit"</code> and <code>cache: "no-store"</code>: no browsing data is sent, no cookies, no identifiers of any kind. You can disable it any time in Settings, which returns the extension to zero outbound requests. <strong>This default was flipped in the release documented in the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG</a></strong> (#888), once the rule-signing infrastructure and defense-in-depth verification were ratified as production-ready.</li>
-    <li><strong>No server-side redirect for affiliate links.</strong> Creators come first — we evaluated 10+ affiliate programs that require routing your click through an external tracking server. We rejected every one of them.</li>
+    <li><strong>No server-side redirect for affiliate links.</strong> Creators come first. We evaluated 10+ affiliate programs that require routing your click through an external tracking server. We rejected every one of them.</li>
     <li><strong>No A/B testing infrastructure.</strong> Every user runs the same code.</li>
     <li><strong>No user accounts or sign-in.</strong> We have no concept of a MUGA user identity.</li>
   </ul>

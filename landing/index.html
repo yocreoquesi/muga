@@ -403,9 +403,9 @@
       <h1>The web, <span class="mark">with the noise turned&nbsp;down.</span></h1>
 
       <p class="lede">
-        MUGA quiets <b>450+ tracking patterns</b> from every link you open — locally, in your browser,
-        without breaking pages. And unlike other URL cleaners, it keeps the affiliate referrals
-        that pay the creators you follow.
+        MUGA quiets the tracking noise from every link you open, locally in your browser,
+        without breaking pages. And unlike most URL cleaners, it tries to keep the referral of
+        whoever recommended you the link, and leaves you in control.
       </p>
 
       <div class="install">
@@ -446,16 +446,16 @@
         <div class="demo-body">
           <div class="url-row">
             <span class="url-tag">Before</span>
-            <div class="url-box before"><span class="domain">amazon.com</span><span class="path">/dp/B0C123ABCD?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;tag=ytcreator-21</span></div>
+            <div class="url-box before"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;ref=creator</span></div>
           </div>
           <div class="url-row">
             <span class="url-tag">After</span>
-            <div class="url-box after"><span class="domain">amazon.com</span><span class="path">/dp/B0C123ABCD</span><span class="keep">?tag=ytcreator-21</span></div>
+            <div class="url-box after"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345</span><span class="keep">?ref=creator</span></div>
           </div>
         </div>
         <div class="demo-foot">
-          <span class="toast">Creator referral preserved · ytcreator-21</span>
-          <span class="tally">7 noise patterns quieted · 1 affiliate kept</span>
+          <span class="toast">Creator referral preserved · ref=creator</span>
+          <span class="tally">7 noise patterns quieted · 1 referral kept</span>
         </div>
       </div>
     </div>
@@ -469,9 +469,9 @@
         <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more, quieted at request time.</div>
       </div>
       <div class="stat">
-        <div class="num">6</div>
-        <div class="label">Affiliate programs preserved</div>
-        <div class="desc">Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners.</div>
+        <div class="num">100<span class="unit">%</span></div>
+        <div class="label">Local</div>
+        <div class="desc">Cleaning runs inside your browser. Nothing about your browsing is ever sent anywhere.</div>
       </div>
       <div class="stat">
         <div class="num">0</div>
@@ -485,32 +485,32 @@
     <div class="wrap wedge-grid">
       <div>
         <div class="section-label">The wedge</div>
-        <h2>URL cleaners shouldn't punish the creators you follow.</h2>
+        <h2>Cleaning your links shouldn't cut off who recommended them.</h2>
         <p>
-          When you click a YouTuber's Amazon link, that <code>?tag=…</code> parameter is how they get paid —
-          a few cents per sale, at no extra cost to you. Most cleaners strip it along with the noise. MUGA tries not to.
+          When a reviewer, a creator or a newsletter shares a link, their referral is often how they get
+          credited for the recommendation, at no extra cost to you. Most cleaners strip it along with the
+          noise. MUGA tries not to.
         </p>
         <p>
-          We maintain an explicit allowlist of <b>6 affiliate programs</b>. When MUGA detects one of those tags,
-          it preserves the referral and shows a small <span class="chip">Creator referral preserved</span> toast
-          so you know it happened.
+          When MUGA recognizes a referral like that, it tries to leave it alone and shows a small
+          <span class="chip">Creator referral preserved</span> toast so you know it happened. It is a
+          best-effort intention, not a guarantee.
         </p>
         <p>
-          The rules are open-sourced as <b>CAPS</b> — the Creator Affiliate Preservation Standard —
-          so any URL cleaner can do the same.
+          And you stay in control: keep those referrals, or strip every third-party one if you prefer.
         </p>
       </div>
 
-      <div class="wedge-card" aria-label="Example URL with creator tag preserved">
+      <div class="wedge-card" aria-label="Example URL with creator referral preserved">
         <div class="header">
-          <span class="ttl">caps://example</span>
-          <span class="meta">amazon · partner-program</span>
+          <span class="ttl">muga · clean</span>
+          <span class="meta">referral kept</span>
         </div>
-        <div class="row"><span class="k">host</span><span class="v">www.amazon.com</span></div>
-        <div class="row"><span class="k">path</span><span class="v">/dp/B0C123ABCD</span></div>
+        <div class="row"><span class="k">host</span><span class="v">shop.example.com</span></div>
+        <div class="row"><span class="k">path</span><span class="v">/p/AZ12345</span></div>
         <div class="row"><span class="k">strip</span><span class="v strip">utm_source, utm_campaign, fbclid, gclid, ref_</span></div>
-        <div class="row"><span class="k">keep</span><span class="v keep-v">tag=ytcreator-21</span></div>
-        <div class="row"><span class="k">action</span><span class="v action">redirect → preserve referral · show toast</span></div>
+        <div class="row"><span class="k">keep</span><span class="v keep-v">ref=creator</span></div>
+        <div class="row"><span class="k">action</span><span class="v action">strip the noise, keep the referral, show a toast</span></div>
       </div>
     </div>
   </section>
@@ -532,19 +532,19 @@
         <div class="trust-cell">
           <span class="ic">02 · quiet</span>
           <h3>No telemetry, no analytics</h3>
-          <p>Default install makes zero outbound requests. The optional weekly rule update is opt-in and disclosed during onboarding. <a href="https://rules.muga.app/transparency.html">Transparency →</a></p>
+          <p>No analytics, no telemetry, no account. The one thing MUGA fetches on its own is a weekly signed rule list, with nothing about you in the request, and it is one switch to turn off. <a href="https://rules.muga.app/transparency.html">Transparency →</a></p>
         </div>
         <div class="trust-cell">
           <span class="ic">03 · honest</span>
           <h3>We document the tradeoffs</h3>
-          <p>Including the cases where MUGA may inject its own affiliate tag if a page has none. Opt-in, fully disclosed. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
+          <p>Including that MUGA can add its own referral on a page that has none, as an optional way to support development, always under your control. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
         </div>
       </div>
 
       <div class="shots" aria-label="Extension screenshots">
         <figure class="shot">
-          <img src="https://rules.muga.app/assets/cws-ss1-popup-amazon.png" alt="MUGA popup on amazon.com showing the preserved creator tag" loading="lazy">
-          <figcaption>popup · amazon.com</figcaption>
+          <img src="https://rules.muga.app/assets/cws-ss1-popup-amazon.png" alt="MUGA popup on a product page showing the preserved creator referral" loading="lazy">
+          <figcaption>popup · product page</figcaption>
         </figure>
         <figure class="shot">
           <img src="https://rules.muga.app/assets/cws-ss4-toast.png" alt="Toast notification: Creator referral preserved" loading="lazy">
@@ -568,7 +568,7 @@
             <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
           </svg>
           <h2>Turn the noise down today.</h2>
-          <p>Free forever. Open source. Fair to the creators who keep the open web running.</p>
+          <p>Free forever. Open source. Respectful of the people who make the web worth reading.</p>
           <div class="install">
             <a class="btn" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Add to Chrome</a>
             <a class="btn ghost" href="https://addons.mozilla.org/firefox/addon/muga/">Add to Firefox</a>
@@ -591,7 +591,7 @@
           </svg>
           <span class="name">muga.app</span>
         </a>
-        <p>The denoise extension for the web. Preserves creator affiliate referrals. Built by independent developers. Free forever.</p>
+        <p>The denoise extension for the web. Tries to keep the referral of whoever recommended you the link. Built by an independent developer. Free forever.</p>
       </div>
       <div class="footer-col">
         <h4>Install</h4>

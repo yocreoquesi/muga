@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MUGA: The denoise extension for the web</title>
-  <meta name="description" content="MUGA quiets the noise on every URL — 450+ noise patterns removed locally before the page loads, while honoring creator affiliate referrals.">
+  <meta name="description" content="MUGA cleans the tracking noise from your URLs without breaking them. No analytics, no telemetry. Open source, GPL v3.">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
@@ -40,7 +40,7 @@
   <link rel="stylesheet" href="muga-docs.css">
 
   <style>
-    /* rules.muga.app home — landing-style components on the shared docs tokens */
+    /* rules.muga.app home: landing-style components on the shared docs tokens */
     main.home { padding: 8px 0 0; }
 
     .hero { text-align: center; padding: 52px 0 36px; }
@@ -151,7 +151,7 @@
       </svg>
       <h1>MUGA</h1>
       <div class="tagline">The denoise extension for the web.</div>
-      <p class="intro">Every URL arrives loaded with noise — tracking parameters, click IDs, share tokens. MUGA removes it all automatically, before the page loads. One install. Zero clicks. The web, quieter.</p>
+      <p class="intro">Every URL arrives loaded with noise: tracking parameters, click IDs, share tokens. MUGA removes it automatically, before the page loads. One install, zero clicks. The web, quieter.</p>
       <div class="backronym" id="backronym"></div>
       <div class="cta-row">
         <a class="cta cta-primary" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Install for Chrome</a>
@@ -175,11 +175,11 @@
       <h2>Before / after</h2>
       <div class="url-box before">
         <div class="label">Before</div>
-        https://www.amazon.es/dp/B09B8YWXDF?tag=youtuber-21<span class="junk">&amp;linkCode=ll1&amp;linkId=abc123&amp;pd_rd_r=xyz&amp;pf_rd_p=def&amp;utm_source=youtube&amp;utm_medium=video&amp;utm_campaign=review2026</span>
+        https://shop.example.com/p/AZ12345?ref=creator<span class="junk">&amp;linkCode=ll1&amp;linkId=abc123&amp;pd_rd_r=xyz&amp;pf_rd_p=def&amp;utm_source=newsletter&amp;utm_medium=email&amp;utm_campaign=review2026</span>
       </div>
       <div class="url-box after">
         <div class="label">After</div>
-        https://www.amazon.es/dp/B09B8YWXDF?tag=youtuber-21
+        https://shop.example.com/p/AZ12345?ref=creator
       </div>
     </div>
   </section>
@@ -201,8 +201,8 @@
           <p>Smart detection protects logins, OAuth flows, and payments. AMP redirect, redirect unwrapping, ping blocking built in.</p>
         </div>
         <div class="feature-card">
-          <h3>Fair to creators</h3>
-          <p>By default, we never replace another person's affiliate tag. If you want that, it requires a separate, deliberate opt-in. We don't touch what isn't ours unless you tell us to.</p>
+          <h3>Respectful of referrals</h3>
+          <p>By default, we never replace another person's referral. If you want that, it takes a separate, deliberate choice. We don't touch what isn't ours unless you tell us to.</p>
         </div>
         <div class="feature-card">
           <h3>Works on Chrome. Today.</h3>
@@ -221,8 +221,8 @@
       <h2>We don't replace by default. We never hide. We always ask.</h2>
       <p>
         Some extensions manipulate your links without telling you. MUGA does the opposite:
-        <strong>we don't touch what isn't ours unless you tell us to</strong>. Our affiliate model is opt-in, disclosed during onboarding,
-        and only activates on links that have no tag at all. The entire source code is public.
+        <strong>we don't touch what isn't ours unless you tell us to</strong>. Our affiliate support is optional, disclosed during onboarding,
+        and only adds a referral to links that have none. The entire source code is public.
         <a href="https://github.com/yocreoquesi/muga">Read it</a>.
       </p>
     </div>
