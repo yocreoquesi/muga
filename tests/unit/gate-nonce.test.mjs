@@ -30,6 +30,7 @@ const src = {
   dispatcher:      readFileSync(join(__dirname, "../../src/content/history-defuser.js"), "utf8"),
   histMainworld:   readFileSync(join(__dirname, "../../src/content/history-defuser-mainworld.js"), "utf8"),
   winNameMainworld:readFileSync(join(__dirname, "../../src/content/window-name-defuser-mainworld.js"), "utf8"),
+  winNameGate:     readFileSync(join(__dirname, "../../src/content/window-name-defuser.js"), "utf8"),
   domRewriter:     readFileSync(join(__dirname, "../../src/content/dom-link-rewriter.js"), "utf8"),
   domRewriterClick:readFileSync(join(__dirname, "../../src/content/dom-link-rewriter-click.js"), "utf8"),
   bounceStateCleaner: readFileSync(join(__dirname, "../../src/content/bounce-state-cleaner.js"), "utf8"),
@@ -82,6 +83,7 @@ describe("gate-nonce — dispatcher (history-defuser.js)", () => {
 const listenerFiles = [
   ["history-defuser-mainworld.js", src.histMainworld],
   ["window-name-defuser-mainworld.js", src.winNameMainworld],
+  ["window-name-defuser.js", src.winNameGate],
   ["dom-link-rewriter.js", src.domRewriter],
   ["dom-link-rewriter-click.js", src.domRewriterClick],
   ["bounce-state-cleaner.js", src.bounceStateCleaner],

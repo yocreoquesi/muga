@@ -15,8 +15,15 @@
  * element, so no CSP can block it. This test pins that mechanism and, crucially,
  * asserts NO `<script>` element is created for the history wrap.
  *
- * WINDOW-NAME DEFUSER — still uses the `<script src=...>` injection (its
- * CSP-immune port is a follow-up). Its injection contract is still pinned here.
+ * WINDOW-NAME DEFUSER — CSP-immune wrap (fixed #509 / B12): same story. The
+ * `<script src=...>` injection of window-name-defuser-mainworld.js was blocked
+ * by strict page CSPs, so `window.name` was never defused on those sites.
+ * window-name-defuser.js now installs the page-world `window.name` accessor
+ * directly via `window.wrappedJSObject` + `exportFunction` — no `<script>`
+ * element. This test pins that mechanism and asserts NO `<script>` element is
+ * created for the window-name wrap either. The mainworld script stays for
+ * Chrome MV3 (world:MAIN) and remains web-accessible in MV2 for parity with
+ * history-defuser-mainworld.js.
  */
 
 import { test, describe } from "node:test";
@@ -39,10 +46,14 @@ describe("Firefox MV2 web_accessible_resources expose the mainworld scripts (#50
       "MV2 web_accessible_resources must be an array");
   });
 
-  test("window-name-defuser-mainworld.js is web-accessible in MV2 (still <script src>'d)", () => {
+  test("window-name-defuser-mainworld.js stays web-accessible in MV2 (parity with history)", () => {
+    // The isolated-world dispatcher no longer <script src>-injects it (the
+    // CSP-immune port wraps window.name via wrappedJSObject instead), but the
+    // entry is retained for parity with history-defuser-mainworld.js and is
+    // harmless — it only exposes an already-public source file.
     assert.ok(
       mv2Manifest.web_accessible_resources.includes("content/window-name-defuser-mainworld.js"),
-      "MV2 must expose window-name-defuser-mainworld.js so its isolated-world dispatcher can <script src> it",
+      "MV2 keeps window-name-defuser-mainworld.js web-accessible for parity",
     );
   });
 
@@ -99,33 +110,47 @@ describe("history-defuser.js wraps the page world CSP-immune on MV2 (#509)", () 
   });
 });
 
-describe("window-name-defuser.js still injects the mainworld script on MV2 (pending CSP-immune port)", () => {
-  test("gates the inject on manifest_version === 2", () => {
+describe("window-name-defuser.js wraps the page world CSP-immune on MV2 (#509)", () => {
+  test("gates the Firefox wrap on manifest_version === 2", () => {
     assert.match(
       winNameDefuserSrc,
       /manifest_version[^]*===[^]*2/,
-      "window-name-defuser.js must check manifest_version === 2 before injecting",
+      "window-name-defuser.js must check manifest_version === 2 before wrapping",
     );
   });
 
-  test("injects the matching mainworld script via chrome.runtime.getURL", () => {
+  test("wraps window.name via wrappedJSObject + exportFunction (not a <script>)", () => {
     assert.match(
       winNameDefuserSrc,
-      /chrome\.runtime\.getURL\(["'`]content\/window-name-defuser-mainworld\.js["'`]\)/,
-      "window-name-defuser.js must reference the mainworld resource by exact path",
+      /window\.wrappedJSObject/,
+      "window-name-defuser.js must reach the page world via window.wrappedJSObject",
     );
     assert.match(
+      winNameDefuserSrc,
+      /exportFunction/,
+      "window-name-defuser.js must inject the wrap via Firefox's exportFunction",
+    );
+    assert.match(
+      winNameDefuserSrc,
+      /Object\.defineProperty\s*\(\s*pageWindow\s*,\s*["'`]name["'`]/,
+      "window-name-defuser.js must redefine window.name on the page-world object",
+    );
+  });
+
+  test("CSP-immunity guarantee — window-name-defuser.js creates NO <script> element", () => {
+    // The whole point of the fix: a strict page CSP blocks an injected
+    // <script src="moz-extension://...">. Wrapping via wrappedJSObject creates
+    // no <script>, so nothing for the CSP to block. This assertion is the
+    // regression guard against a future revert to the injection approach.
+    assert.doesNotMatch(
       winNameDefuserSrc,
       /document\.createElement\(["'`]script["'`]\)/,
-      "window-name-defuser.js must create a <script> element to inject the wrap",
+      "window-name-defuser.js must NOT create a <script> element — that reintroduces the CSP-block bug",
     );
-  });
-
-  test("appends the script synchronously (async=false) so it runs before page scripts", () => {
-    assert.match(
+    assert.doesNotMatch(
       winNameDefuserSrc,
-      /\.async\s*=\s*false/,
-      "window-name-defuser.js must set script.async=false so the page-world wrap installs before any page script runs",
+      /chrome\.runtime\.getURL\(["'`]content\/window-name-defuser-mainworld\.js["'`]\)/,
+      "window-name-defuser.js must NOT load the mainworld resource by URL — the wrap is inline now",
     );
   });
 });

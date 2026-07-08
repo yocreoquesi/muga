@@ -1,17 +1,18 @@
 /**
  * MUGA — STRIP table parity guard (#723, spin-off from #709 item 1)
  *
- * The hot-path UTM/click-id strip subset is hand-copied into four
+ * The hot-path UTM/click-id strip subset is hand-copied into five
  * content scripts (content scripts can't import ES modules):
  *
  *   - src/content/dom-link-rewriter.js
  *   - src/content/dom-link-rewriter-click.js
  *   - src/content/history-defuser-mainworld.js
  *   - src/content/window-name-defuser-mainworld.js
+ *   - src/content/window-name-defuser.js (Firefox MV2 page-world wrap, #509)
  *
  * Each comment claims "kept in sync" but nothing enforced it — adding a new
- * high-volume tracker meant editing four files in lockstep. This test pins
- * that the four `const STRIP = Object.freeze({ ... })` literals are
+ * high-volume tracker meant editing five files in lockstep. This test pins
+ * that the five `const STRIP = Object.freeze({ ... })` literals are
  * byte-identical, the same way cleaner-bundle-sync / sign-rules-denylist-sync
  * pin their respective duplications.
  */
@@ -31,6 +32,7 @@ const FILES = [
   "dom-link-rewriter-click.js",
   "history-defuser-mainworld.js",
   "window-name-defuser-mainworld.js",
+  "window-name-defuser.js",
 ];
 
 /**
@@ -56,7 +58,7 @@ function extractStripTable(relPath) {
   return src.slice(open, i + 1);
 }
 
-test("all four content-script STRIP tables are byte-identical (#723)", () => {
+test("all five content-script STRIP tables are byte-identical (#723)", () => {
   const tables = FILES.map((f) => ({ file: f, body: extractStripTable(f) }));
   const reference = tables[0];
 

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--
+    STRICT PAGE CSP — this is the whole point of the smoke.
+
+    `script-src 'self'` blocks any <script src="moz-extension://…"> that a
+    content script tries to inject into the page (the exact scenario that
+    silently broke the old window.name defuser on CSP-strict sites like
+    Amazon). MUGA's CSP-immune wrap installs the window.name accessor via
+    window.wrappedJSObject WITHOUT creating a <script> element, so this CSP
+    cannot block it. If cleaning still works below, the wrap beat the CSP.
+
+    Inline event handlers are also blocked by script-src 'self', so all page
+    logic lives in the same-origin window-name-csp-immune.js (which IS 'self').
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'">
+  <title>MUGA — window.name CSP-immune smoke</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f; color: #e0e0e0; padding: 32px; line-height: 1.6;
+      max-width: 860px; margin: 0 auto;
+    }
+    h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #666; margin-bottom: 24px; }
+    h2 { font-size: 13px; font-weight: 600; color: #aaa; text-transform: uppercase;
+         letter-spacing: 0.08em; margin: 28px 0 12px; border-bottom: 1px solid #222; padding-bottom: 8px; }
+    ol { margin: 0 0 8px 20px; font-size: 13px; color: #bbb; }
+    ol li { margin-bottom: 4px; }
+    code { font-family: monospace; background: #1c1c1c; padding: 1px 5px; border-radius: 4px; color: #6af; }
+    button {
+      font-size: 14px; font-weight: 600; background: #2563eb; color: #fff; border: 0;
+      border-radius: 8px; padding: 12px 22px; cursor: pointer; margin: 8px 0 4px;
+    }
+    button:hover { background: #1d4ed8; }
+    .env { font-size: 12px; color: #888; margin-bottom: 8px; font-family: monospace; }
+    .env strong { color: #ddd; }
+    .case {
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-left-width: 3px;
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;
+    }
+    .case.pass { border-left-color: #22c55e; }
+    .case.fail { border-left-color: #ef4444; }
+    .case.pending { border-left-color: #555; opacity: 0.6; }
+    .case-title { font-size: 13px; font-weight: 600; color: #ddd; margin-bottom: 6px; }
+    .case-title .tag { font-size: 10px; font-family: monospace; padding: 1px 6px; border-radius: 3px; margin-right: 8px; }
+    .tag.pass { background: #14532d; color: #86efac; }
+    .tag.fail { background: #7f1d1d; color: #fca5a5; }
+    .tag.pending { background: #333; color: #999; }
+    .kv { font-size: 11px; font-family: monospace; color: #999; word-break: break-all; margin-top: 3px; }
+    .kv .k { color: #666; display: inline-block; min-width: 74px; }
+    .note {
+      font-size: 12px; color: #888; background: #131313; border: 1px solid #222;
+      border-radius: 8px; padding: 12px 16px; margin-top: 20px;
+    }
+    .note strong { color: #bbb; }
+    #summary { font-size: 15px; font-weight: 700; margin: 16px 0; }
+    #summary.pass { color: #22c55e; }
+    #summary.fail { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <h1>window.name — CSP-immune defuser smoke</h1>
+  <p class="subtitle">Validates the Firefox MV2 wrappedJSObject wrap under a strict page CSP (#509 / B12).</p>
+
+  <h2>Before you run</h2>
+  <ol>
+    <li>Load MUGA unpacked in <strong>Firefox</strong> (<code>npm run dev:firefox</code> or <code>about:debugging</code>).</li>
+    <li>Make sure MUGA is <strong>enabled</strong>, <strong>onboarding is complete</strong>, and active-defense is ON (default). The gate stays closed otherwise and every case will show the dirty value.</li>
+    <li>Serve this folder: <code>npm run test:serve</code>, then open <code>http://localhost:5555/window-name-csp-immune.html</code>.</li>
+    <li>Click the button below (give the page a second after load so the async prefs gate opens).</li>
+  </ol>
+
+  <div class="env" id="env">detecting environment…</div>
+  <button id="run">Run smoke tests</button>
+  <div id="summary"></div>
+  <div id="results"></div>
+
+  <div class="note">
+    <strong>How to read it.</strong> Case A is the real assertion: a page script writes a URL with
+    <code>utm_source</code> into <code>window.name</code>, and reading it back must return the URL
+    <em>without</em> <code>utm_source</code>. Because this page's CSP is <code>script-src 'self'</code>,
+    an injected <code>&lt;script src="moz-extension://…"&gt;</code> would be blocked — so a PASS here
+    proves the wrap survives strict CSP. On an <strong>unported</strong> build, Case A fails on Firefox
+    under this CSP. The <em>accessor installed</em> line tells you whether Firefox accepted the
+    <code>wrappedJSObject</code> property redefine at all — if it reads <code>no</code> on Firefox, the
+    Xray wrap was rejected and that is the thing to report.
+  </div>
+
+  <script src="window-name-csp-immune.js"></script>
+</body>
+</html>
