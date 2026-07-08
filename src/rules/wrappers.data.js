@@ -29,6 +29,32 @@ export const WRAPPERS_RAW = [
     "addedIn": "1.0.0"
   },
   {
+    "id": "cc-loginfra-com",
+    "label": "cc.loginfra.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "cc.loginfra.com"
+    ],
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "u"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: cc.loginfra.com). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
+  },
+  {
+    "id": "click-redditmail-com",
+    "label": "click.redditmail.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "click.redditmail.com"
+    ],
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "url"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: reddit). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
+  },
+  {
     "id": "facebook-l",
     "label": "Facebook Outbound (web)",
     "hostPatterns": [
@@ -55,6 +81,20 @@ export const WRAPPERS_RAW = [
     },
     "notes": "Same wrapper schema as facebook-l but on the mobile-web surface. Tracked separately so metrics can distinguish where outbound clicks originate.",
     "addedIn": "1.0.0"
+  },
+  {
+    "id": "gate-sc",
+    "label": "gate.sc (ClearURLs redirect)",
+    "hostPatterns": [
+      "gate.sc",
+      "www.gate.sc"
+    ],
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "url"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: gate.sc). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
   },
   {
     "id": "hrefli",
@@ -93,6 +133,20 @@ export const WRAPPERS_RAW = [
     },
     "notes": "Only `l.instagram.com` — parent instagram.com is the social network itself and must never be flagged. The outbound wrapper has no fixed path prefix; the destination travels in `?u=` directly off the root.",
     "addedIn": "1.0.0"
+  },
+  {
+    "id": "l-messenger-com",
+    "label": "l.messenger.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "l.messenger.com"
+    ],
+    "pathPrefix": "/l.php",
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "u"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: messenger.com). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
   },
   {
     "id": "medium-link",
@@ -190,6 +244,20 @@ export const WRAPPERS_RAW = [
     },
     "notes": "Snap's exit-redirect host (separate from snapchat.com). No path constraint — the destination travels in `?url=` off the root.",
     "addedIn": "1.0.0"
+  },
+  {
+    "id": "t-umblr-com",
+    "label": "t.umblr.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "t.umblr.com"
+    ],
+    "pathPrefix": "/redirect",
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "z"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: t.umblr.com). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
   },
   {
     "id": "tco",
