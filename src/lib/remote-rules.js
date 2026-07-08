@@ -103,6 +103,12 @@ export const REMOTE_PARAM_DENYLIST = Object.freeze(new Set([
   // OAuth / redirect
   "state", "redirect", "redirect_uri", "return", "return_to", "return_url",
   "url", "next", "continue", "callback", "error", "error_description",
+  // Embedded-widget / API config — functional identity params (e.g. Remark42's
+  // iframe.html?host=…). A remote payload must never strip these; doing so
+  // breaks embeds and API calls keyed on them (#1006). Kept narrow on purpose:
+  // ambiguous names like `src`/`ref` stay strippable since they are commonly
+  // referral trackers.
+  "host", "origin",
   // Media / layout
   "v", "w", "h", "width", "height", "color", "theme",
 ]));
@@ -656,6 +662,17 @@ export async function clearRemoteCache({ storage, dnr }) {
  * Builds the DNR rule object for remote params.
  * Mirrors the DYNAMIC_RULE_ID = 1000 pattern for custom params. (design §12)
  *
+ * Scoped to `main_frame` ONLY, exactly like the custom-params rule (1000) and
+ * the static tracking-params ruleset. MUGA's model is cleaning the URL the user
+ * navigates to / sees / shares — the top-level document. A previous
+ * `["main_frame", "sub_frame"]` scope also stripped params from embedded
+ * `<iframe>` navigations, which silently broke same-origin widgets whose iframe
+ * src carries functional params (e.g. Remark42 comments —
+ * `iframe.html?host=…&url=…` — on rt.com, #1006). Stripping tracking params
+ * inside third-party sub_frames buys almost no privacy (the embedded tracker
+ * already knows its own attribution) while risking widget breakage, so this
+ * rule stays out of sub_frames — no per-site allowlist required.
+ *
  * @param {string[]} params - Lowercase, deduped, validated array (≤ 500 entries).
  * @returns {object} DNR rule object with id REMOTE_RULE_ID (1001).
  */
@@ -674,7 +691,7 @@ export function buildRemoteDnrRule(params) {
       },
     },
     condition: {
-      resourceTypes: ["main_frame", "sub_frame"],
+      resourceTypes: ["main_frame"],
     },
   };
 }

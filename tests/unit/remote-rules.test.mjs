@@ -191,7 +191,20 @@ describe("Constants — shape and values", () => {
     assert.ok(REMOTE_PARAM_DENYLIST.has("id"), "must contain 'id'");
     assert.ok(REMOTE_PARAM_DENYLIST.has("token"), "must contain 'token'");
     assert.ok(REMOTE_PARAM_DENYLIST.has("url"), "must contain 'url'");
+    // Embedded-widget identity params (#1006): a remote payload must never
+    // strip these — they key same-origin embeds / API calls (Remark42 `host`).
+    assert.ok(REMOTE_PARAM_DENYLIST.has("host"), "must contain 'host'");
+    assert.ok(REMOTE_PARAM_DENYLIST.has("origin"), "must contain 'origin'");
     assert.ok(REMOTE_PARAM_DENYLIST.size >= 20, `must have >= 20 entries, got ${REMOTE_PARAM_DENYLIST.size}`);
+  });
+
+  test("validateParams rejects a remote payload that tries to strip 'host' (#1006)", () => {
+    // Denylist is checked (step 3) before version monotonicity, so a stale
+    // stored version does not mask the denylist hit.
+    const storedV1 = { version: 0, published: "2020-01-01T00:00:00Z" };
+    const r = validateParams(["host"], storedV1, Date.parse("2026-01-01T00:00:00Z"));
+    assert.strictEqual(r.ok, false, "'host' must be denied");
+    assert.strictEqual(r.code, "DENYLIST_HIT");
   });
 
   test("AFFILIATE_PARAM_GUARD is a Set with affiliate protection entries", () => {
@@ -731,10 +744,14 @@ describe("buildRemoteDnrRule — DNR rule shape (design §12)", () => {
     );
   });
 
-  test("rule condition resourceTypes includes main_frame and sub_frame", () => {
+  test("rule condition resourceTypes is main_frame ONLY (no sub_frame) — #1006", () => {
+    // Scoped to the top-level document, like the custom-params rule (1000) and
+    // the static tracking-params ruleset. sub_frame stripping silently broke
+    // same-origin embedded widgets (Remark42 comments on rt.com, #1006).
     const rule = buildRemoteDnrRule(["utm_test"]);
-    assert.ok(rule.condition.resourceTypes.includes("main_frame"));
-    assert.ok(rule.condition.resourceTypes.includes("sub_frame"));
+    assert.deepEqual(rule.condition.resourceTypes, ["main_frame"]);
+    assert.ok(!rule.condition.resourceTypes.includes("sub_frame"),
+      "remote-param stripping must not reach embedded iframes");
   });
 
   test("empty params list → rule has empty removeParams", () => {
