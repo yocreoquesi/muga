@@ -250,10 +250,10 @@ const FIXTURE = JSON.stringify({
       urlPattern: "^https?:\\/\\/(?:[a-z0-9-]+\\.)*?googleadservices\\.com",
       redirections: ["^https?:\\/\\/(?:[a-z0-9-]+\\.)*?googleadservices\\.com\\/.*?adurl=([^&]*)"],
     },
-    // REVIEW: shared-origin content host (bounce-state storage-wipe risk)
-    youtube: {
-      urlPattern: "^https?:\\/\\/(?:[a-z0-9-]+\\.)*?youtube\\.com",
-      redirections: ["^https?:\\/\\/(?:[a-z0-9-]+\\.)*?youtube\\.com\\/redirect\\?.*?q=([^&]*)"],
+    // REVIEW: correctness-review host (tokopedia /promo may be real content)
+    tokopedia: {
+      urlPattern: "^https?:\\/\\/(?:[a-z0-9-]+\\.)*?tokopedia\\.com",
+      redirections: ["^https?:\\/\\/(?:[a-z0-9-]+\\.)*?tokopedia\\.com\\/promo.*r=([^&]*)"],
     },
   },
 });
@@ -301,12 +301,12 @@ describe("parseClearUrlsRedirections", () => {
     assert.ok(!ids.includes("deviantart-com"));
   });
 
-  test("suspicious keys and shared-origin content hosts land in review, never harvested", () => {
+  test("suspicious keys and correctness-review hosts land in review, never harvested", () => {
     const reviewHosts = review.map((r) => r.host).sort();
-    assert.deepEqual(reviewHosts, ["googleadservices.com", "youtube.com"]);
+    assert.deepEqual(reviewHosts, ["googleadservices.com", "tokopedia.com"]);
     const entryHosts = entries.flatMap((e) => e.hostPatterns);
     assert.ok(!entryHosts.includes("googleadservices.com"));
-    assert.ok(!entryHosts.includes("youtube.com"));
+    assert.ok(!entryHosts.includes("tokopedia.com"));
   });
 });
 

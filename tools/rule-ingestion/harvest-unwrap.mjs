@@ -140,33 +140,25 @@ export const HOST_DENYLIST = new Set(["vk.com"]);
 
 /**
  * Hosts that pass every structural gate but must NOT be AUTO-emitted because
- * the local-unwrap (and its bounce-state storage wipe) has a plausible
- * user-facing risk that only a human can clear. These land in the `review`
- * bucket, never the harvested set.
+ * the local-unwrap has a correctness risk that only a human can clear. These
+ * land in the `review` bucket, never the harvested set.
  *
- * SHARED-ORIGIN CONTENT HOSTS (`youtube.com`, `duckduckgo.com`,
- * `steamcommunity.com`, `curseforge.com`): their redirect interstitial lives
- * on the SAME ORIGIN as the user's logged-in session / settings. Web Storage
- * is per-origin, not per-path, so bounce-state-cleaner.js (which wipes
- * localStorage + sessionStorage when it detects a wrapper on the current
- * page) would destroy legitimate first-party state — e.g. DuckDuckGo keeps
- * every preference in localStorage with no account, so a result-click through
- * `duckduckgo.com/l/` would reset all settings. Every SAFE auto-harvested
- * wrapper is instead a DEDICATED redirector host (a `*.` redirect subdomain
- * or a redirect-only apex like `gate.sc`) that holds no user state. Unwrapping
- * these content hosts is still valuable, but it needs a bounce-state
- * exemption (unwrap-without-storage-wipe) before it can ship — a follow-up.
+ * NOTE on the bounce-state storage wipe: harvesting a SHARED-ORIGIN content
+ * host (e.g. `youtube.com/redirect`, `duckduckgo.com/l/`) is now SAFE with
+ * respect to storage, because the bounce-state wipe is gated on a curated
+ * dedicated-redirector allowlist (the inline WRAPPERS table in
+ * src/content/bounce-state-cleaner.js), NOT on the full wrapper engine. A
+ * harvested content host is unwrapped but never has its localStorage wiped
+ * unless a maintainer explicitly adds it to that allowlist. So content apexes
+ * no longer need to sit in review for the storage reason.
  *
- * `tokopedia.com`: same shared-origin concern, and its ClearURLs redirect is
- * scoped to `/promo` (plausibly a real content section) with a single-letter
- * `r` key.
+ * `tokopedia.com` stays here for a CORRECTNESS reason (not storage): its
+ * ClearURLs redirect is scoped to `/promo` (plausibly a real content section)
+ * with a single-letter `r` key, so it needs a live check that `/promo?r=` is
+ * genuinely an interstitial before it is unwrapped.
  * @type {Set<string>}
  */
 export const REVIEW_HOSTS = new Set([
-  "youtube.com",
-  "duckduckgo.com",
-  "steamcommunity.com",
-  "curseforge.com",
   "tokopedia.com",
 ]);
 
