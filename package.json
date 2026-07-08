@@ -31,6 +31,8 @@
     "promo-tiles": "python3 tools/generate-promo-tiles.py",
     "build:rules": "npm run compile:rules",
     "compile:rules": "node tools/generate-rules.mjs",
+    "build:strip": "node tools/generate-strip-table.mjs",
+    "check:strip": "node tools/generate-strip-table.mjs --check",
     "harvest:preserve": "node tools/rule-ingestion/harvest-preserve.mjs",
     "harvest:unwrap": "node tools/rule-ingestion/harvest-unwrap.mjs",
     "sign:wrappers": "node tools/sign-wrappers.mjs",

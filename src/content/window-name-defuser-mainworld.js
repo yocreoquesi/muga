@@ -54,6 +54,7 @@
   // two defusers share the same active-defense param coverage.
   // Object lookup is faster than a Set for this hot path; values are
   // unused (truthiness only).
+  // @generated hot-path STRIP subset - edit src/lib/hot-path-strip.js then run `npm run build:strip`
   const STRIP = Object.freeze({
     utm_source: 1, utm_medium: 1, utm_campaign: 1, utm_content: 1, utm_term: 1, utm_id: 1,
     utm_source_platform: 1, utm_creative_format: 1, utm_marketing_tactic: 1,

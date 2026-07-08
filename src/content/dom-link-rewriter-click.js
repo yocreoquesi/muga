@@ -46,6 +46,7 @@
   // Mirrors content/dom-link-rewriter.js (B8). The `__mugaCleaner`
   // bundle is preferred when available; this is the safety net for
   // very-early clicks that race the bundle attach.
+  // @generated hot-path STRIP subset - edit src/lib/hot-path-strip.js then run `npm run build:strip`
   const STRIP = Object.freeze({
     utm_source: 1, utm_medium: 1, utm_campaign: 1, utm_content: 1, utm_term: 1, utm_id: 1,
     utm_source_platform: 1, utm_creative_format: 1, utm_marketing_tactic: 1,
