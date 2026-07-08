@@ -12,15 +12,22 @@
  * here lets us reuse the same `muga:history-gate` event the rest of the
  * isolated-world scripts already publish — no extra prefs round-trip.
  *
- * Wrapper detection: prefers the cleaner bundle, falls back to the
- *   re-replicated WRAPPERS table below. As of PR #511, the bundle DOES
- *   expose `detectWrapper` (and a full WRAPPERS table — was awin-only
- *   before #511). The resolveEngine() shim picks the bundled engine at
- *   call time, so the inline copy is now defense-in-depth: if a future
- *   change accidentally drops the export, or if the bundle script
- *   somehow hasn't attached by the time the gate event fires, we still
- *   have working detection. Keep both copies in sync when adding new
- *   wrappers.
+ * Wipe gate — CURATED ALLOWLIST, not the full engine: the storage wipe is
+ *   decided by the inline `WRAPPERS` table below (dedicated redirector hosts
+ *   only), via resolveEngine(). It does NOT consult the bundled engine
+ *   (`window.__mugaCleaner`). This is deliberate — the bundled engine also
+ *   recognizes SHARED-ORIGIN content wrappers (youtube.com/redirect,
+ *   duckduckgo.com/l/, steamcommunity.com/linkfilter/, curseforge.com/linkout)
+ *   whose origin holds the user's own session/settings; because Web Storage is
+ *   keyed by origin (not path), wiping there would destroy legitimate
+ *   first-party state. Those hosts are still unwrapped by the main cleaner
+ *   pipeline via the full engine — they are simply never storage-wiped here.
+ *   The inline table is the explicit "safe to wipe" allowlist; a host is
+ *   opted in by adding it here. A pure redirector missing from the table just
+ *   misses cleanup (fail-safe) — it never risks user data. Do NOT restore a
+ *   `window.__mugaCleaner` branch in resolveEngine(): that reintroduces the
+ *   C1 storage-loss regression (guarded by
+ *   tests/unit/bounce-state-wrappers-parity.test.mjs).
  *
  * ── Cookies (intentionally not requested) ────────────────────────────────
  * This module does NOT clear cookies. Doing so would require the
@@ -165,15 +172,22 @@
   }
 
   /**
-   * Prefer the bundled engine when it's available; fall back to the
-   * inline replica. Both are pure, both run synchronously — choose at
-   * call time so a late-arriving bundle doesn't get bypassed.
+   * The bounce-state storage wipe is gated on the CURATED inline WRAPPERS
+   * table above (dedicated redirector hosts only), NOT on the full bundled
+   * wrapper engine. This is deliberate: the bundled engine also recognizes
+   * SHARED-ORIGIN content wrappers (e.g. youtube.com/redirect,
+   * duckduckgo.com/l/, steamcommunity.com/linkfilter/) whose origin holds the
+   * user's own session and settings. Web Storage is keyed by origin, not path,
+   * so wiping localStorage/sessionStorage on such a page would destroy
+   * legitimate first-party state (DuckDuckGo, for instance, keeps every
+   * preference in localStorage with no account). Those hosts are still
+   * unwrapped by the main cleaner pipeline via the full engine; they are just
+   * never storage-wiped here. The inline table is the explicit "safe to wipe"
+   * allowlist — a maintainer opts a host in by adding it there. A pure
+   * redirector missing from the table merely misses cleanup (fail-safe), it
+   * never risks user data.
    */
   function resolveEngine() {
-    const bundled = window.__mugaCleaner;
-    if (bundled && typeof bundled.detectWrapper === "function") {
-      return { detectWrapper: (href) => bundled.detectWrapper(href) };
-    }
     return { detectWrapper: inlineDetectWrapper };
   }
 

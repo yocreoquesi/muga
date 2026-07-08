@@ -55,6 +55,36 @@ export const WRAPPERS_RAW = [
     "addedIn": "2.4.0"
   },
   {
+    "id": "curseforge-com",
+    "label": "curseforge.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "curseforge.com",
+      "www.curseforge.com"
+    ],
+    "pathPrefix": "/linkout",
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "remoteUrl"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: curseforge.com). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
+  },
+  {
+    "id": "duckduckgo-com",
+    "label": "duckduckgo.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "duckduckgo.com",
+      "www.duckduckgo.com"
+    ],
+    "pathPrefix": "/l/",
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "uddg"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: duckduckgo). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
+  },
+  {
     "id": "facebook-l",
     "label": "Facebook Outbound (web)",
     "hostPatterns": [
@@ -246,6 +276,21 @@ export const WRAPPERS_RAW = [
     "addedIn": "1.0.0"
   },
   {
+    "id": "steamcommunity-com",
+    "label": "steamcommunity.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "steamcommunity.com",
+      "www.steamcommunity.com"
+    ],
+    "pathPrefix": "/linkfilter/",
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "url"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: steamcommunity). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
+  },
+  {
     "id": "t-umblr-com",
     "label": "t.umblr.com (ClearURLs redirect)",
     "hostPatterns": [
@@ -301,5 +346,20 @@ export const WRAPPERS_RAW = [
     },
     "notes": "VK's outbound wrapper lives only at `away.vk.com/away.php`. The apex vk.com is the social network itself and must NOT be flagged.",
     "addedIn": "1.0.0"
+  },
+  {
+    "id": "youtube-com",
+    "label": "youtube.com (ClearURLs redirect)",
+    "hostPatterns": [
+      "youtube.com",
+      "www.youtube.com"
+    ],
+    "pathPrefix": "/redirect",
+    "extractor": {
+      "kind": "fromParam",
+      "paramName": "q"
+    },
+    "notes": "Harvested from ClearURLs redirections (provider: youtube). Auto-harvested; verify before release.",
+    "addedIn": "2.4.0"
   }
 ];
