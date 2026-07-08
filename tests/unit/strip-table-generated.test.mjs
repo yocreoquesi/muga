@@ -87,10 +87,17 @@ test("generated STRIP block is non-empty and well-formed", () => {
   assert.ok(expected.length > 0);
 });
 
+// The five content scripts are stored LF in git but a Windows working tree
+// (core.autocrlf=true) checks them out as CRLF, while buildManagedBlock()
+// emits LF. This guard is about PARAM drift, not line endings (EOL is covered
+// by git and by strip-table-parity.test.mjs), so normalise both sides to LF
+// before comparing — otherwise it passes on Windows and fails on Linux/CI.
+const toLf = (s) => s.replace(/\r\n/g, "\n");
+
 for (const file of FILES) {
   test(`src/content/${file} STRIP table matches src/lib/hot-path-strip.js (npm run build:strip)`, () => {
-    const expected = extractStripTable(buildManagedBlock(), "generated managed block");
-    const actual = extractStripTable(readContentScript(file), `src/content/${file}`);
+    const expected = toLf(extractStripTable(buildManagedBlock(), "generated managed block"));
+    const actual = toLf(extractStripTable(readContentScript(file), `src/content/${file}`));
     assert.equal(
       actual,
       expected,

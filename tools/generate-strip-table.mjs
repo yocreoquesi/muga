@@ -17,9 +17,11 @@
  *   npm run build:strip
  *   npm run check:strip
  *
- * Every file in this repo uses CRLF line endings. This tool reads/writes
- * with "utf8" (no newline translation) and emits CRLF explicitly so the
- * generated region matches the rest of each file byte-for-byte.
+ * These files are stored with LF line endings in git (a Windows working tree
+ * with core.autocrlf=true sees them as CRLF locally, Linux/CI sees LF). This
+ * tool reads/writes with "utf8" (no newline translation) and emits the
+ * generated region using the SAME EOL it detects in each target file, so the
+ * region stays byte-identical to the rest of that file on every platform.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -33,6 +35,12 @@ const ROOT = resolve(__dirname, "..");
 const CONTENT_DIR = resolve(ROOT, "src/content");
 
 const CRLF = "\r\n";
+const LF = "\n";
+
+/** Detects a source file's dominant EOL so generated output matches it. */
+function detectEol(src) {
+  return src.includes("\r\n") ? CRLF : LF;
+}
 
 const FILES = [
   "dom-link-rewriter.js",
@@ -58,29 +66,31 @@ const STRIP_BLOCK_RE =
 
 /**
  * Builds the STRIP declaration body (object literal rows) from
- * HOT_PATH_STRIP_ROWS, CRLF-joined, matching the hand-written original
- * exactly: 4-space inner indent, `name: 1` entries joined by ", ", each row
- * ends with a trailing comma.
+ * HOT_PATH_STRIP_ROWS, joined with the given EOL, matching the hand-written
+ * original exactly: 4-space inner indent, `name: 1` entries joined by ", ",
+ * each row ends with a trailing comma.
  *
+ * @param {string} [eol] — line ending to join rows with (defaults to LF)
  * @returns {string}
  */
-export function buildStripRows() {
+export function buildStripRows(eol = LF) {
   return HOT_PATH_STRIP_ROWS.map(
     (row) => "    " + row.map((name) => `${name}: 1`).join(", ") + ","
-  ).join(CRLF);
+  ).join(eol);
 }
 
 /**
  * Builds the full managed region: marker line + `const STRIP = Object.freeze({...});`.
  *
+ * @param {string} [eol] — line ending to emit (defaults to LF, git's canonical form)
  * @returns {string}
  */
-export function buildManagedBlock() {
-  const rows = buildStripRows();
+export function buildManagedBlock(eol = LF) {
+  const rows = buildStripRows(eol);
   return (
-    MARKER + CRLF +
-    "  const STRIP = Object.freeze({" + CRLF +
-    rows + CRLF +
+    MARKER + eol +
+    "  const STRIP = Object.freeze({" + eol +
+    rows + eol +
     "  });"
   );
 }
@@ -100,7 +110,11 @@ function applyToSource(src, relPath) {
       `${relPath}: could not locate "const STRIP = Object.freeze({ ... });" to replace`
     );
   }
-  return src.replace(STRIP_BLOCK_RE, buildManagedBlock());
+  // Emit the managed region with the file's own EOL so it stays byte-identical
+  // to the surrounding source on every platform. Use a replacer function so any
+  // `$` sequence in the generated block is never treated as a replacement token.
+  const block = buildManagedBlock(detectEol(src));
+  return src.replace(STRIP_BLOCK_RE, () => block);
 }
 
 /**
