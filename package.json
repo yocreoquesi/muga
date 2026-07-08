@@ -32,6 +32,8 @@
     "build:rules": "npm run compile:rules",
     "compile:rules": "node tools/generate-rules.mjs",
     "harvest:preserve": "node tools/rule-ingestion/harvest-preserve.mjs",
+    "harvest:unwrap": "node tools/rule-ingestion/harvest-unwrap.mjs",
+    "sign:wrappers": "node tools/sign-wrappers.mjs",
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test",

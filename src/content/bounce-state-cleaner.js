@@ -72,6 +72,17 @@
     { hostPatterns: ["exit.sc"], pathPatterns: null },
     { hostPatterns: ["href.li"], pathPatterns: null },
     { hostPatterns: ["anonym.to"], pathPatterns: null },
+    // Harvested from ClearURLs redirections (see tools/rule-ingestion/
+    // harvest-unwrap.mjs). Kept in parity with wrapper-engine.js by
+    // tests/unit/bounce-state-wrappers-parity.test.mjs. Only DEDICATED
+    // redirector hosts are auto-harvested — never a content apex that shares
+    // its origin (and its Web Storage) with a logged-in user session, so this
+    // storage wipe can never destroy legitimate first-party state.
+    { hostPatterns: ["cc.loginfra.com"], pathPatterns: null },
+    { hostPatterns: ["click.redditmail.com"], pathPatterns: null },
+    { hostPatterns: ["gate.sc", "www.gate.sc"], pathPatterns: null },
+    { hostPatterns: ["l.messenger.com"], pathPatterns: ["/l.php"] },
+    { hostPatterns: ["t.umblr.com"], pathPatterns: ["/redirect"] },
     // Awin (awin1.com), Impact Radius (*.pxf.io), Rakuten
     // (click.linksynergy.com), TradeTracker (tc.tradetracker.net), Skimlinks
     // (go.redirectingat.com, go.skimresources.com), and ShareASale
