@@ -70,7 +70,7 @@ const STRIP_BLOCK_RE =
  * original exactly: 4-space inner indent, `name: 1` entries joined by ", ",
  * each row ends with a trailing comma.
  *
- * @param {string} [eol] — line ending to join rows with (defaults to LF)
+ * @param {string} [eol] - line ending to join rows with (defaults to LF)
  * @returns {string}
  */
 export function buildStripRows(eol = LF) {
@@ -82,7 +82,7 @@ export function buildStripRows(eol = LF) {
 /**
  * Builds the full managed region: marker line + `const STRIP = Object.freeze({...});`.
  *
- * @param {string} [eol] — line ending to emit (defaults to LF, git's canonical form)
+ * @param {string} [eol] - line ending to emit (defaults to LF, git's canonical form)
  * @returns {string}
  */
 export function buildManagedBlock(eol = LF) {
