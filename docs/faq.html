@@ -145,7 +145,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
   <p>Remote Rules is a feature that lets MUGA periodically refresh its noise-parameter list from a signed public endpoint, so users get protection against new noise sources without waiting for an extension release.</p>
 
   <ul>
-    <li>Default: <strong>on</strong> (#888, once the signing infrastructure and defense-in-depth verification were ratified as production-ready, see the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md">CHANGELOG</a>). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L52"><code>src/lib/prefs.js:52</code></a>: <code>remoteRulesEnabled: true</code>. Disable it any time in Settings.</li>
+    <li>Default: <strong>on</strong> (#888, once the signing infrastructure and defense-in-depth verification were ratified as production-ready, see the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md">CHANGELOG</a>). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L65"><code>src/lib/prefs.js:65</code></a>: <code>remoteRulesEnabled: true</code>. Disable it any time in Settings.</li>
     <li>Every fetched payload is verified with an <strong>Ed25519 signature</strong> against a hardcoded list of trusted public keys before any rule is applied. The verification is at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L214-L248"><code>src/lib/remote-rules.js:214-248</code></a>; the orchestrator that calls it is at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L629-L636"><code>src/lib/remote-rules.js:629-636</code></a>.</li>
     <li>On verification failure the previous ruleset is left untouched (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L632-L635"><code>src/lib/remote-rules.js:632-635</code></a>).</li>
     <li>The fetch is size-capped and timeout-capped before the signature check even runs (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L594-L606"><code>src/lib/remote-rules.js:594-606</code></a>).</li>
@@ -155,7 +155,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <p>When "Follow shortener redirects" is enabled, the <strong>extension itself</strong> sends a <code>GET</code> directly to the shortener host (e.g. <code>bit.ly</code>) with credentials omitted and no referrer. No MUGA server is involved; the request goes to the same shortener host your browser would have contacted on click. The only difference is that you never actually navigate to that URL, so no page-load context is handed to the shortener. It only fires on the seven opted-in shortener hosts when the feature is enabled.</p>
 
-  <p>Remote Rules sends no user data at all: it is a one-way <code>GET</code> of a signed JSON file.</p>
+  <p>Remote Rules sends no user data in the request: it is a one-way <code>GET</code> of a signed, public JSON file. Like any request to any website, it does expose your IP address to whoever serves the file (the rules are published on GitHub Pages), which MUGA neither logs nor stores.</p>
 
   <p>If you want zero network activity, turn off both toggles in Settings. "Follow shortener redirects" already defaults to off; Remote Rules defaults to on (#888) and needs to be disabled explicitly.</p>
 

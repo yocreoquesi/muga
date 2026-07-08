@@ -41,7 +41,7 @@
   </div>
 
   <h2>What data does MUGA handle?</h2>
-  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are cleaned inside your browser. MUGA never silently sends your data anywhere. Any feature that contacts an external service requires your explicit action and is disclosed here.</p>
+  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are cleaned inside your browser. MUGA never sends your URLs or browsing data anywhere. MUGA makes very few external requests, and every one of them is disclosed on this page. The only one enabled by default is a weekly signed rule list (see "Remote rule updates" below), which you can turn off in Settings.</p>
 
   <p>MUGA's data lives in two places, deliberately separated:</p>
   <ul>
@@ -79,7 +79,7 @@
 
   <h2>What MUGA never does</h2>
   <ul>
-    <li>Does not silently send your URLs or browsing data to any server. Every external request is gated on an explicit Settings toggle that is off by default.</li>
+    <li>Does not send your URLs, browsing history, or any personal data to any server. The one request MUGA makes on its own is a download of a public, signed rule list (see "Remote rule updates" below); it carries nothing about you and can be turned off in Settings.</li>
     <li>Does not collect your browsing history.</li>
     <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
     <li>Does not strip affiliate-redirect networks (Awin, CJ Affiliate, AliExpress Portals, Impact, Partnerize, Admitad, A8.net, Rakuten, TradeTracker) from URLs. Their redirect IS the attribution event and MUGA respects it. The creator's commission survives.</li>
@@ -104,13 +104,17 @@
     <li><strong>contextMenus</strong>: to add the "Copy clean link" and "Copy clean selection" right-click options.</li>
     <li><strong>clipboardWrite</strong>: to copy clean URLs to your clipboard (fallback for pages where the Clipboard API is blocked).</li>
     <li><strong>declarativeNetRequestWithHostAccess</strong> (Chrome) / <strong>declarativeNetRequest</strong> (Firefox): to strip tracking parameters from URLs before the page loads, using the browser's built-in rule engine.</li>
+    <li><strong>webRequest, webRequestBlocking</strong> (Firefox only): Firefox needs a blocking network listener to strip tracking parameters at the network layer before a request is sent, which is how MUGA does on Firefox what declarativeNetRequest does on Chrome. This runs locally in your browser and sends nothing anywhere. These permissions are not requested on Chrome.</li>
     <li><strong>host_permissions: all_urls</strong>: required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, link-share unwrapping) and for declarativeNetRequest redirect rules to apply on all sites.</li>
   </ul>
-  <p>Optional host permissions (off by default; granted only when you turn on the corresponding feature in Settings, revocable from browser settings at any time):</p>
+  <p>Optional host permission (off by default; granted only when you turn on the corresponding feature in Settings, revocable from browser settings at any time):</p>
   <ul>
-    <li><strong>rules.muga.app/*</strong>, "Remote rule updates". A single HTTPS GET at most once per 7 days, piggybacked on natural service-worker wake events. The response is an Ed25519-signed payload verified against a public key shipped with the extension. Credentials-omit; no user data transmitted.</li>
     <li><strong>bit.ly/*, tinyurl.com/*, t.co/*, link.medium.com/*, lnkd.in/*, fb.me/*, ebay.to/*</strong>, "Follow shortener redirects". Granted per-host only when you enable the feature; off by default, revocable any time via browser settings. When enabled for a given host, the extension performs a direct <code>fetch(url, &#123; redirect: &quot;manual&quot;, credentials: &quot;omit&quot; &#125;)</code> to that shortener host and reads the destination from the <code>Location</code> header. No cookies are sent, no identifying headers are attached, and no MUGA server is contacted. Affiliate-redirect networks are NEVER followed.</li>
   </ul>
+
+  <h2>Remote rule updates</h2>
+  <p>This is the one thing MUGA fetches on its own, and it is <strong>on by default</strong>. You can turn it off in Settings at any time. At most once every 7 days, piggybacked on a natural service-worker wake event, MUGA makes a single HTTPS GET to <code>rules.muga.app</code> for an updated tracking-parameter list. The response is an Ed25519-signed payload verified against a public key shipped inside the extension; an unsigned, tampered, or older payload is rejected and your existing rules are kept.</p>
+  <p>The request is sent with <code>credentials: "omit"</code> and <code>cache: "no-store"</code>: no cookies, no account, no identifiers, and nothing about you or your browsing goes with it. It is a plain download of a public file. Like any request to any website, it does reveal your IP address and the time of the request to whoever serves that file. MUGA neither logs nor stores this, but we would rather say it plainly than imply the request is invisible. The fetch will not happen until you have accepted the onboarding disclosure that describes it, and it never fires while remote rules are turned off.</p>
 
   <h2>Open source</h2>
   <p>MUGA is licensed under the <a href="https://github.com/yocreoquesi/muga/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GNU General Public License v3 (GPL v3)</a>. The complete source code is public. If you want to verify that this privacy policy accurately describes the extension's behaviour, read the code. It's all there.</p>

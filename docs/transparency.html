@@ -59,7 +59,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Third-party dependencies</span>
-      <span class="at-a-glance-value">1 runtime (browser-polyfill.min.js for Firefox compatibility) + 1 build-time (<code>esbuild</code>, used only to bundle the cleaning library into the content script; output is committed to the repo)</span>
+      <span class="at-a-glance-value">1 runtime (browser-polyfill.min.js for Firefox compatibility) + 1 build-time transform of the shipped code (<code>esbuild</code>, used only to bundle the cleaning library into the content script; output is committed to the repo). Development tooling such as the linter and the web-ext packager does not ship in the extension and does not transform what runs.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Open source license</span>
@@ -109,7 +109,7 @@
     <li><strong>No telemetry or usage analytics.</strong> We have no idea how often you use MUGA or which features you use.</li>
     <li><strong>No crash reporting.</strong> If the extension throws an error, it logs to your browser console. Nowhere else.</li>
     <li><strong>No remote configuration or feature flags.</strong> Every toggle is a local preference. There is no server that can change your extension's behavior remotely.</li>
-    <li><strong>No server-side rule delivery beyond a weekly signed check.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension at install time; that baseline never depends on the network. On top of it, <strong>Remote rule updates</strong> is on by default: the extension fetches a signed parameter list at most once per 7 days from <code>rules.muga.app</code> via HTTPS GET with <code>credentials: "omit"</code> and <code>cache: "no-store"</code>: no browsing data is sent, no cookies, no identifiers of any kind. You can disable it any time in Settings, which returns the extension to zero outbound requests. <strong>This default was flipped in the release documented in the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG</a></strong> (#888), once the rule-signing infrastructure and defense-in-depth verification were ratified as production-ready.</li>
+    <li><strong>No server-side rule delivery beyond a weekly signed check.</strong> The 450+ tracking parameter list and domain rules ship bundled with the extension at install time; that baseline never depends on the network. On top of it, <strong>Remote rule updates</strong> is on by default: the extension fetches a signed parameter list at most once per 7 days from <code>rules.muga.app</code> via HTTPS GET with <code>credentials: "omit"</code> and <code>cache: "no-store"</code>: no browsing data is sent, no cookies, no account, no identifiers in the request. Like any request to any website, it does reveal your IP address and the time of the request to whoever serves the file; MUGA neither logs nor stores this. You can disable it any time in Settings, which returns the extension to zero outbound requests. <strong>This default was flipped in the release documented in the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG</a></strong> (#888), once the rule-signing infrastructure and defense-in-depth verification were ratified as production-ready.</li>
     <li><strong>No server-side redirect for affiliate links.</strong> Creators come first. We evaluated 10+ affiliate programs that require routing your click through an external tracking server. We rejected every one of them.</li>
     <li><strong>No A/B testing infrastructure.</strong> Every user runs the same code.</li>
     <li><strong>No user accounts or sign-in.</strong> We have no concept of a MUGA user identity.</li>
@@ -117,7 +117,7 @@
 
   <h2>Permissions Explained</h2>
 
-  <p>Every permission in <code>manifest.json</code> has a specific, minimal purpose. Here is what each one is and why it exists.</p>
+  <p>Every permission MUGA requests, across its Chrome (<code>manifest.json</code>) and Firefox (<code>manifest.v2.json</code>) manifests, has a specific, minimal purpose. Here is what each one is and why it exists.</p>
 
   <div class="permission-block">
     <div class="permission-name">storage</div>
@@ -147,6 +147,11 @@
   <div class="permission-block">
     <div class="permission-name">host_permissions: &lt;all_urls&gt;</div>
     <div class="permission-why">Required for content scripts to run on every page (URL cleaning, ping blocking, AMP redirect, redirect unwrapping) and for declarativeNetRequest redirect rules to apply on all sites. Without this, MUGA would only work on a predefined list of domains.</div>
+  </div>
+
+  <div class="permission-block">
+    <div class="permission-name">webRequest, webRequestBlocking <em>(Firefox only)</em></div>
+    <div class="permission-why">On Firefox, MUGA strips tracking parameters at the network layer with a blocking <code>webRequest</code> listener, which is how it does on Firefox what <code>declarativeNetRequestWithHostAccess</code> does on Chrome. The listener runs locally in your browser, inspects the request URL only to remove known tracking parameters, and sends nothing anywhere. These permissions are not requested on Chrome, which uses the declarative rule engine instead.</div>
   </div>
 
   <div class="permission-block">
