@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MUGA: The denoise extension for the web</title>
 <meta name="description" content="MUGA cleans the tracking noise from your URLs without breaking them. No analytics, no telemetry. Open source, GPL v3.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://muga.app/">
@@ -35,39 +35,24 @@
 
 <style>
   :root {
-    --bg: #FAFAFB;
-    --bg-2: #F3F2F5;
-    --bg-inset: #E9E8EC;
-    --ink: #18171C;
-    --ink-2: #4F4D58;
-    --ink-3: #6E6C78;
-    --rule: #E6E5EA;
-    --rule-2: #D4D3D9;
+    --bg: #0E0C13;
+    --bg-2: #110E17;
+    --panel: #14111B;
+    --panel-2: #1A1622;
+    --ink: #F2EFF7;
+    --ink-2: #A9A2B8;
+    --ink-3: #756D86;
+    --rule: #2A2536;
+    --rule-2: #332C42;
+    --rule-soft: #221D2D;
     --accent: #6A2BCF;
-    --accent-ink: #5318B5;
-    --accent-soft: #EFE6FB;
-    --good: #2F6B3A;
-    --good-soft: #E1EFE2;
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --accent-hi: #7B3FE0;
+    --accent-ink: #A883F0;
+    --accent-soft: #C9B2F5;
+    --good: #4CC38A;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    --maxw: 1080px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #100F14;
-      --bg-2: #1A1820;
-      --bg-inset: #25232E;
-      --ink: #F2F0F5;
-      --ink-2: #B0AEBA;
-      --ink-3: #85838F;
-      --rule: #2C2A36;
-      --rule-2: #3A3848;
-      --accent: #9F7AE8;
-      --accent-ink: #B79CEF;
-      --accent-soft: #2A1C4A;
-      --good: #6FB57C;
-      --good-soft: #1F2F22;
-    }
+    --maxw: 1120px;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -77,340 +62,332 @@
     background: var(--bg); color: var(--ink);
     font-size: 16px; line-height: 1.55;
     -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
   }
-  a { color: inherit; text-underline-offset: 3px; }
-  a:hover { color: var(--accent-ink); }
+  a { color: var(--accent-soft); text-underline-offset: 3px; }
+  a:hover { color: #E4D8FA; }
   ::selection { background: var(--accent); color: #fff; }
   img { max-width: 100%; display: block; }
+  :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 4px; }
 
-  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
 
-  /* ---------- header (non-sticky) ---------- */
-  header.top { padding: 22px 0; }
-  .top-inner { display: flex; align-items: center; justify-content: space-between; }
-  .brand {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-family: var(--mono); font-size: 13px; letter-spacing: .02em;
-    text-decoration: none; color: var(--ink);
+  /* ---------- header ---------- */
+  header.top { padding: 26px 0; }
+  .top-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
+  .brand-mark { color: var(--accent-ink); flex: none; }
+  .brand .name { font-family: var(--mono); font-size: 13.5px; letter-spacing: .02em; }
+  .brand .ver {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    border: 1px solid var(--rule); border-radius: 999px; padding: 2px 9px;
   }
-  .brand-mark { width: 22px; height: 22px; }
-  .brand .ver { color: var(--ink-3); border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 4px; }
-  .nav-links { display: flex; align-items: center; gap: 22px; font-family: var(--mono); font-size: 13px; }
-  .nav-links a { color: var(--ink-2); text-decoration: none; }
-  .nav-links a:hover { color: var(--ink); }
-  @media (max-width: 520px) {
+  .nav-links { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12.5px; }
+  .nav-links a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+  .nav-links a:hover { color: var(--ink); background: var(--panel-2); }
+  .nav-links a.gh { color: var(--ink); border: 1px solid var(--rule); padding: 8px 14px; }
+  .nav-links a.gh:hover { border-color: var(--accent); color: #E4D8FA; background: transparent; }
+  @media (max-width: 560px) {
     .nav-links a:not(.gh) { display: none; }
     .brand .ver { display: none; }
   }
 
   /* ---------- hero ---------- */
-  .hero { padding: 64px 0 56px; }
+  .hero { position: relative; padding: 72px 0 40px; }
+  .hero-glow {
+    position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+    width: 820px; height: 480px;
+    background: radial-gradient(closest-side, rgba(106,43,207,.22), transparent);
+    pointer-events: none;
+  }
+  .hero-inner { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
   .eyebrow {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    border: 1px solid var(--rule); border-radius: 999px;
-    padding: 4px 10px; margin-bottom: 24px;
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+    border: 1px solid var(--rule); background: var(--panel);
+    border-radius: 999px; padding: 6px 14px; margin-bottom: 30px;
   }
-  .eyebrow .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--good); box-shadow: 0 0 0 3px color-mix(in oklab, var(--good), transparent 80%); }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--good); animation: pulseDot 2.4s infinite; }
+  @keyframes pulseDot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(76,195,138,.45); }
+    60% { box-shadow: 0 0 0 6px rgba(76,195,138,0); }
+  }
   h1 {
-    font-size: clamp(40px, 6.4vw, 68px);
-    line-height: 1.02; letter-spacing: -0.028em; font-weight: 600;
-    margin: 0 0 22px; max-width: 14ch;
-    text-wrap: balance;
+    margin: 0 0 22px;
+    font-size: clamp(44px, 7vw, 84px);
+    line-height: 1.0; letter-spacing: -.03em; font-weight: 700;
+    max-width: 15ch; text-wrap: balance;
   }
-  h1 .mark { color: var(--accent); }
+  h1 .mark { color: var(--accent-ink); }
   .lede {
-    font-size: clamp(17px, 1.9vw, 19.5px);
-    color: var(--ink-2); max-width: 56ch;
-    margin: 0 0 32px;
-    text-wrap: pretty;
+    margin: 0 0 36px;
+    font-size: clamp(16px, 1.9vw, 19px); line-height: 1.6;
+    color: var(--ink-2); max-width: 58ch; text-wrap: pretty;
   }
   .lede b { color: var(--ink); font-weight: 600; }
 
-  .install { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+  .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 16px; }
   .btn {
-    appearance: none; cursor: pointer;
-    background: var(--ink); color: var(--bg);
-    border: 1px solid var(--ink);
-    font-family: var(--sans); font-size: 15px; font-weight: 500;
-    padding: 12px 18px; border-radius: 10px;
     display: inline-flex; align-items: center; gap: 10px;
-    text-decoration: none;
-    transition: transform .14s ease, box-shadow .14s ease;
+    background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 12px;
+    box-shadow: 0 10px 30px -10px rgba(106,43,207,.55);
+    transition: transform .14s ease, background .14s ease, border-color .14s ease;
   }
-  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 0 -2px var(--accent); color: var(--bg); }
-  .btn:active { transform: translateY(0); box-shadow: 0 2px 0 -1px var(--accent); }
-  .btn .ico { width: 18px; height: 18px; flex: none; }
-  .btn .sub { font-family: var(--mono); font-size: 11px; opacity: .55; margin-left: 4px; font-weight: 400; }
-  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule-2); }
-  .btn.ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .btn:hover { background: var(--accent-hi); transform: translateY(-1px); color: #fff; }
+  .btn .ico { flex: none; }
+  .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); box-shadow: none; }
+  .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); color: var(--ink); }
+  .btn.bare { background: transparent; color: var(--ink-2); font-weight: 500; box-shadow: none; padding: 14px 20px; }
+  .btn.bare:hover { background: transparent; color: var(--ink); transform: none; }
 
   .install-meta {
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+    display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center;
   }
   .install-meta .sep { color: var(--rule-2); }
 
-  /* backronym understated */
   .bk-slot {
-    margin-top: 28px;
+    margin-top: 26px;
     font-family: var(--mono); font-size: 12.5px; color: var(--ink-3);
     display: inline-flex; align-items: baseline; gap: 8px;
   }
-  .bk-slot .bk-prefix { color: var(--ink-3); }
   .bk-slot .bk-text {
     color: var(--ink-2);
-    border-bottom: 1px dashed var(--rule-2);
-    padding-bottom: 1px;
+    border-bottom: 1px dashed var(--rule-2); padding-bottom: 1px;
     transition: opacity .35s ease;
   }
   .bk-slot .bk-text.fade { opacity: 0; }
 
-  /* ---------- demo (animated URL clean) ---------- */
+  /* ---------- demo terminal ---------- */
   .demo {
-    margin-top: 48px;
-    border: 1px solid var(--rule); border-radius: 14px;
-    background: var(--bg-2); overflow: hidden;
+    position: relative; margin: 56px auto 0; max-width: 920px;
+    border: 1px solid var(--rule); border-radius: 16px;
+    background: var(--panel); overflow: hidden;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(168,131,240,.06);
   }
-  .demo-head {
+  .demo-head, .demo-foot {
     display: flex; align-items: center; gap: 14px;
-    padding: 10px 14px; border-bottom: 1px solid var(--rule);
+    padding: 12px 16px;
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    background: var(--bg);
+    background: var(--bg-2);
   }
+  .demo-head { border-bottom: 1px solid var(--rule-soft); }
+  .demo-foot { border-top: 1px solid var(--rule-soft); flex-wrap: wrap; gap: 10px 16px; }
   .demo-head .lights { display: flex; gap: 6px; }
-  .demo-head .lights span { width: 10px; height: 10px; border-radius: 999px; background: var(--rule-2); }
+  .demo-head .lights span { width: 10px; height: 10px; border-radius: 999px; background: var(--rule); }
   .demo-head .label { margin-left: auto; }
 
-  .demo-body { padding: 18px; display: grid; gap: 12px; }
-  .url-row { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; }
+  .demo-body { padding: 22px; display: grid; gap: 14px; }
+  .url-row { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
   .url-tag {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
     text-transform: uppercase; color: var(--ink-3); text-align: right;
   }
   .url-box {
-    font-family: var(--mono); font-size: 13px;
-    background: var(--bg); border: 1px solid var(--rule);
-    border-radius: 8px; padding: 12px 14px;
+    text-align: left;
+    font-family: var(--mono); font-size: 13px; line-height: 1.6;
+    background: var(--bg); border: 1px solid var(--rule-soft);
+    border-radius: 10px; padding: 13px 15px;
     overflow-x: auto; white-space: nowrap;
-    line-height: 1.5;
   }
+  .url-box.after { border-color: #2E2741; }
   .url-box::-webkit-scrollbar { height: 6px; }
   .url-box::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 999px; }
   .url-box .domain { color: var(--ink); }
-  .url-box .path   { color: var(--ink-2); }
+  .url-box .path { color: var(--ink-2); }
   .url-box .keep {
     color: var(--good);
-    background: color-mix(in oklab, var(--good), transparent 88%);
-    padding: 1px 4px; border-radius: 4px;
-    border: 1px dashed color-mix(in oklab, var(--good), transparent 60%);
+    background: rgba(76,195,138,.1);
+    border: 1px dashed rgba(76,195,138,.4);
+    padding: 1px 5px; border-radius: 5px;
   }
-
-  /* param-by-param strikethrough animation */
-  .url-box .junk {
-    color: var(--ink-3);
-    position: relative;
-    transition: opacity .4s ease, color .4s ease;
-  }
+  .url-box .junk { color: var(--ink-3); position: relative; }
   .url-box .junk::after {
     content: ""; position: absolute; left: 0; right: 100%; top: 50%;
-    height: 1px; background: var(--accent);
-    transition: right .4s ease;
+    height: 1px; background: var(--accent-ink);
   }
-  .url-box .junk.struck::after { right: 0; }
-
-  /* sequence: junk1..7 strike at staggered times, then fade to a faint
-     retired state. Layout stays stable; collapsing max-width while
-     siblings are still visible caused them to overlap mid-animation. */
-  @keyframes strike { from { right: 100%; } to { right: 0; } }
-  @keyframes fade  { 0%, 60% { opacity: .6; } 100% { opacity: .14; } }
-
-  .url-box.before .junk {
-    animation: fade 9s infinite;
-  }
-  .url-box.before .junk::after {
-    animation: strike 9s infinite;
-  }
-  .url-box.before .junk:nth-of-type(1) { animation-delay: 1.0s; } .url-box.before .junk:nth-of-type(1)::after { animation-delay: 1.0s; }
-  .url-box.before .junk:nth-of-type(2) { animation-delay: 1.4s; } .url-box.before .junk:nth-of-type(2)::after { animation-delay: 1.4s; }
-  .url-box.before .junk:nth-of-type(3) { animation-delay: 1.8s; } .url-box.before .junk:nth-of-type(3)::after { animation-delay: 1.8s; }
-  .url-box.before .junk:nth-of-type(4) { animation-delay: 2.2s; } .url-box.before .junk:nth-of-type(4)::after { animation-delay: 2.2s; }
-  .url-box.before .junk:nth-of-type(5) { animation-delay: 2.6s; } .url-box.before .junk:nth-of-type(5)::after { animation-delay: 2.6s; }
-  .url-box.before .junk:nth-of-type(6) { animation-delay: 3.0s; } .url-box.before .junk:nth-of-type(6)::after { animation-delay: 3.0s; }
-  .url-box.before .junk:nth-of-type(7) { animation-delay: 3.4s; } .url-box.before .junk:nth-of-type(7)::after { animation-delay: 3.4s; }
-
+  .url-box.before .junk { animation: junkFade 9s infinite; }
+  .url-box.before .junk::after { animation: strikeIn 9s infinite; }
+  @keyframes strikeIn { 0% { right: 100%; } 12% { right: 0; } 100% { right: 0; } }
+  @keyframes junkFade { 0% { opacity: .75; } 10% { opacity: .75; } 22% { opacity: .18; } 88% { opacity: .18; } 100% { opacity: .75; } }
+  .url-box.before .junk:nth-of-type(1), .url-box.before .junk:nth-of-type(1)::after { animation-delay: 1.0s; }
+  .url-box.before .junk:nth-of-type(2), .url-box.before .junk:nth-of-type(2)::after { animation-delay: 1.4s; }
+  .url-box.before .junk:nth-of-type(3), .url-box.before .junk:nth-of-type(3)::after { animation-delay: 1.8s; }
+  .url-box.before .junk:nth-of-type(4), .url-box.before .junk:nth-of-type(4)::after { animation-delay: 2.2s; }
+  .url-box.before .junk:nth-of-type(5), .url-box.before .junk:nth-of-type(5)::after { animation-delay: 2.6s; }
+  .url-box.before .junk:nth-of-type(6), .url-box.before .junk:nth-of-type(6)::after { animation-delay: 3.0s; }
+  .url-box.before .junk:nth-of-type(7), .url-box.before .junk:nth-of-type(7)::after { animation-delay: 3.4s; }
   @media (prefers-reduced-motion: reduce) {
     .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .35; }
-    .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent); }
+    .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent-ink); }
+    .eyebrow .dot { animation: none; }
   }
 
-  .demo-foot {
-    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
-    padding: 10px 14px; border-top: 1px solid var(--rule);
-    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
-    background: var(--bg);
-  }
   .toast {
     display: inline-flex; align-items: center; gap: 8px;
-    background: var(--good-soft); color: var(--good);
-    border: 1px solid color-mix(in oklab, var(--good), transparent 70%);
-    padding: 4px 10px; border-radius: 999px;
-    font-family: var(--mono); font-size: 11.5px;
+    background: rgba(76,195,138,.1); color: var(--good);
+    border: 1px solid rgba(76,195,138,.3);
+    padding: 5px 12px; border-radius: 999px; font-size: 11.5px;
   }
   .toast::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--good); }
+  .demo-foot .tally { margin-left: auto; }
 
   /* ---------- stats ---------- */
-  .stats {
-    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
-    margin: 88px 0;
-  }
-  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
-  .stat { padding: 36px 24px; border-right: 1px solid var(--rule); }
-  .stat:last-child { border-right: 0; }
+  .stats { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .stat { border: 1px solid var(--rule); border-radius: 16px; background: var(--panel); padding: 32px 28px; }
   .stat .num {
-    font-size: clamp(40px, 5vw, 56px); font-weight: 600;
-    letter-spacing: -0.02em; line-height: 1; margin: 0 0 10px;
-    font-variant-numeric: tabular-nums;
+    font-size: clamp(42px, 4.6vw, 58px); font-weight: 700;
+    letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums;
   }
-  .stat .num .unit { color: var(--accent); }
+  .stat .num .unit { color: var(--accent-ink); }
   .stat .label {
-    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    text-transform: uppercase; letter-spacing: .05em;
+    margin-top: 12px; font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3);
   }
-  .stat .desc { margin-top: 8px; color: var(--ink-2); font-size: 14px; max-width: 32ch; }
-  @media (max-width: 720px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .stat { border-right: 0; border-bottom: 1px solid var(--rule); }
-    .stat:last-child { border-bottom: 0; }
-  }
+  .stat .desc { margin-top: 8px; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
 
   /* ---------- sections ---------- */
-  .section { padding: 80px 0; }
-  .section + .section { border-top: 1px solid var(--rule); }
+  .section { margin-top: 110px; }
   .section-label {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-ink); margin-bottom: 16px;
     display: flex; align-items: center; gap: 10px;
   }
-  .section-label::before { content: ""; width: 18px; height: 1px; background: var(--accent); }
+  .section-label::before { content: ""; width: 20px; height: 1px; background: var(--accent); }
   h2 {
-    font-size: clamp(28px, 3.4vw, 36px); font-weight: 600;
-    letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 16px;
-    text-wrap: balance;
+    margin: 0 0 18px;
+    font-size: clamp(28px, 3.4vw, 40px); font-weight: 700;
+    letter-spacing: -.02em; line-height: 1.12; text-wrap: balance;
   }
-  .section p { color: var(--ink-2); font-size: 16.5px; max-width: 62ch; text-wrap: pretty; }
-  .section p + p { margin-top: 14px; }
+  .section p { color: var(--ink-2); font-size: 16px; line-height: 1.65; max-width: 62ch; text-wrap: pretty; margin: 0 0 14px; }
+  .section p:last-child { margin-bottom: 0; }
+  .section p b { color: var(--ink); font-weight: 600; }
+  .section code {
+    font-family: var(--mono); font-size: 13.5px; color: var(--accent-soft);
+    background: var(--panel-2); padding: 1px 6px; border-radius: 5px;
+  }
 
-  /* ---------- creator-fair wedge ---------- */
-  .wedge { background: var(--bg-2); }
-  .wedge-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 56px; align-items: start; }
-  @media (max-width: 820px) { .wedge-grid { grid-template-columns: 1fr; gap: 36px; } }
-  .wedge-card {
-    border: 1px solid var(--rule); border-radius: 12px;
-    background: var(--bg); padding: 18px;
-    font-family: var(--mono); font-size: 13px;
-  }
-  .wedge-card .row {
-    display: grid; grid-template-columns: 64px 1fr; gap: 10px;
-    padding: 10px 0; border-top: 1px dashed var(--rule);
-  }
-  .wedge-card .row:first-of-type { border-top: 0; }
-  .wedge-card .k { color: var(--ink-3); }
-  .wedge-card .v { color: var(--ink); word-break: break-all; }
-  .wedge-card .v .keep { color: var(--good); }
-  .wedge-card .v .junk-static { color: var(--ink-3); text-decoration: line-through; opacity: .6; }
-  .wedge-card .header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin: -2px 0 10px; padding-bottom: 10px; border-bottom: 1px solid var(--rule);
-  }
-  .wedge-card .header .ttl { color: var(--ink); }
-  .wedge-card .header .meta { color: var(--ink-3); font-size: 11px; }
+  /* ---------- wedge ---------- */
+  .wedge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 56px; align-items: start; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     font-family: var(--mono); font-size: 11.5px;
-    border: 1px solid var(--rule-2); border-radius: 999px;
-    padding: 3px 10px; color: var(--ink-2);
+    color: var(--good); background: rgba(76,195,138,.1);
+    border: 1px solid rgba(76,195,138,.3);
+    border-radius: 999px; padding: 2px 10px; vertical-align: middle;
   }
-  .chip.warm {
-    color: var(--accent-ink); background: var(--accent-soft);
-    border-color: color-mix(in oklab, var(--accent), transparent 60%);
+  .wedge-card {
+    border: 1px solid var(--rule); border-radius: 16px;
+    background: var(--panel); padding: 22px;
+    font-family: var(--mono); font-size: 13px;
+    box-shadow: 0 20px 60px -30px rgba(0,0,0,.6);
   }
+  .wedge-card .header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 12px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 4px;
+  }
+  .wedge-card .header .ttl { color: var(--ink); }
+  .wedge-card .header .meta { color: var(--ink-3); font-size: 11px; }
+  .wedge-card .row {
+    display: grid; grid-template-columns: 64px 1fr; gap: 12px;
+    padding: 11px 0; border-bottom: 1px dashed var(--rule-soft);
+  }
+  .wedge-card .row:last-child { border-bottom: 0; }
+  .wedge-card .k { color: var(--ink-3); }
+  .wedge-card .v { color: var(--ink); word-break: break-all; }
+  .wedge-card .v.strip { color: var(--ink-3); text-decoration: line-through; opacity: .65; }
+  .wedge-card .v.keep-v { color: var(--good); }
+  .wedge-card .v.action { color: var(--accent-soft); }
 
   /* ---------- trust ---------- */
-  .trust-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    border: 1px solid var(--rule); border-radius: 14px; overflow: hidden;
-    margin-top: 32px;
+  .trust-intro { margin-bottom: 36px; }
+  .trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .trust-cell {
+    border: 1px solid var(--rule); border-radius: 16px;
+    background: var(--panel); padding: 26px;
+    transition: border-color .14s ease;
   }
-  .trust-cell { padding: 22px; border-right: 1px solid var(--rule); }
-  .trust-cell:last-child { border-right: 0; }
-  .trust-cell h3 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
-  .trust-cell p { font-size: 14px; color: var(--ink-2); margin: 0; }
+  .trust-cell:hover { border-color: #463A61; }
   .trust-cell .ic {
-    font-family: var(--mono); font-size: 11px; color: var(--accent-ink);
-    margin-bottom: 12px; display: inline-block;
-    border: 1px solid color-mix(in oklab, var(--accent), transparent 70%);
-    background: var(--accent-soft);
-    padding: 2px 8px; border-radius: 4px;
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    color: var(--accent-soft); background: rgba(106,43,207,.16);
+    border: 1px solid rgba(106,43,207,.4);
+    padding: 3px 10px; border-radius: 6px; margin-bottom: 16px;
   }
-  @media (max-width: 720px) {
-    .trust-grid { grid-template-columns: 1fr; }
-    .trust-cell { border-right: 0; border-bottom: 1px solid var(--rule); }
-    .trust-cell:last-child { border-bottom: 0; }
-  }
+  .trust-cell h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+  .trust-cell p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
 
   /* ---------- screenshots ---------- */
-  .shots {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-    margin-top: 32px;
-  }
-  @media (max-width: 720px) { .shots { grid-template-columns: 1fr; } }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 36px; }
   .shot {
-    border: 1px solid var(--rule); border-radius: 12px;
-    background: var(--bg-inset); aspect-ratio: 4 / 3;
-    position: relative; overflow: hidden;
+    margin: 0; position: relative;
+    border: 1px solid var(--rule); border-radius: 14px;
+    background: var(--panel-2); aspect-ratio: 4 / 3; overflow: hidden;
   }
   .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
   .shot figcaption {
     position: absolute; left: 10px; bottom: 10px;
     font-family: var(--mono); font-size: 10.5px; color: var(--ink);
-    background: color-mix(in oklab, var(--bg), transparent 15%);
-    padding: 3px 7px; border-radius: 4px;
-    border: 1px solid var(--rule);
-    backdrop-filter: blur(4px);
+    background: rgba(14,12,19,.8); padding: 4px 9px; border-radius: 6px;
+    border: 1px solid var(--rule); backdrop-filter: blur(4px);
   }
 
+  /* ---------- final CTA ---------- */
+  .cta-panel {
+    position: relative; border: 1px solid var(--rule-2); border-radius: 20px;
+    background: var(--panel); padding: clamp(40px, 6vw, 72px) 32px;
+    text-align: center; overflow: hidden;
+  }
+  .cta-glow {
+    position: absolute; bottom: -160px; left: 50%; transform: translateX(-50%);
+    width: 640px; height: 320px;
+    background: radial-gradient(closest-side, rgba(106,43,207,.25), transparent);
+    pointer-events: none;
+  }
+  .cta-inner { position: relative; }
+  .cta-inner .mark-lg { color: var(--accent-ink); margin-bottom: 20px; }
+  .cta-inner h2 { margin-bottom: 14px; font-size: clamp(26px, 3.2vw, 38px); }
+  .cta-inner p { margin: 0 auto 30px; color: var(--ink-2); font-size: 16px; max-width: 44ch; }
+  .cta-inner .install { margin-bottom: 0; }
+
   /* ---------- footer ---------- */
-  footer { border-top: 1px solid var(--rule); padding: 56px 0 40px; font-size: 14px; }
-  .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; margin-bottom: 36px; }
-  @media (max-width: 720px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+  footer { margin-top: 80px; padding-bottom: 48px; }
+  .footer-grid {
+    border-top: 1px solid var(--rule-soft); padding-top: 44px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px;
+  }
+  .footer-about { min-width: 240px; }
+  .footer-about p { font-size: 13px; color: var(--ink-3); margin: 12px 0 0; max-width: 300px; line-height: 1.6; }
   .footer-col h4 {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
     text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; font-weight: 500;
   }
-  .footer-col ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .footer-col ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; font-size: 14px; }
   .footer-col a { color: var(--ink-2); text-decoration: none; }
   .footer-col a:hover { color: var(--ink); text-decoration: underline; }
   .footer-meta {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
-    padding-top: 24px; border-top: 1px solid var(--rule);
+    margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--rule-soft);
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
   }
-
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 </style>
 </head>
-<body data-screen-label="A · Technical Clean">
+<body>
 
 <header class="top">
   <div class="wrap top-inner">
     <a href="/" class="brand" aria-label="MUGA home">
-      <img class="brand-mark" src="https://rules.muga.app/assets/muga-mark.svg" alt="" width="22" height="22">
-      <span>muga.app</span>
+      <svg class="brand-mark" viewBox="0 0 104 68" width="30" height="20" fill="none" aria-hidden="true">
+        <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span class="name">muga.app</span>
       <span class="ver">v2.4.0</span>
     </a>
     <nav class="nav-links" aria-label="Primary">
       <a href="https://rules.muga.app/transparency.html">Transparency</a>
+      <a href="https://rules.muga.app/privacy-page.html">Privacy</a>
       <a href="https://github.com/yocreoquesi/muga" class="gh" aria-label="GitHub repository">GitHub ↗</a>
     </nav>
   </div>
@@ -419,36 +396,34 @@
 <main>
 
   <section class="hero">
-    <div class="wrap">
+    <div class="hero-glow"></div>
+    <div class="wrap hero-inner">
       <div class="eyebrow"><span class="dot"></span> v2.4.0 · Chrome + Firefox · GPL v3</div>
-      <h1>The web,<br><span class="mark">with the noise turned down.</span></h1>
+
+      <h1>The web, <span class="mark">with the noise turned&nbsp;down.</span></h1>
+
       <p class="lede">
-        MUGA cleans <b>450+ noise patterns</b> from every link you open. Locally, in your browser, without breaking the pages.
-        Unlike most URL cleaners, it also tries to keep the affiliate referrals that fund the creators you follow, and leaves you in control.
-        <b>Cleaner URLs · kinder to creators · nothing hidden.</b>
+        MUGA quiets <b>450+ tracking patterns</b> from every link you open — locally, in your browser,
+        without breaking pages. And unlike other URL cleaners, it keeps the affiliate referrals
+        that pay the creators you follow.
       </p>
 
       <div class="install">
         <a class="btn" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
             <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.6"/>
             <path d="M12 8.5h8.5M7.6 14.2l-4.3 7.4M16.4 14.2l-4.3 7.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
-          Add to Chrome <span class="sub">·web store</span>
+          Add to Chrome
         </a>
-        <a class="btn" href="https://addons.mozilla.org/firefox/addon/muga/">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <a class="btn ghost" href="https://addons.mozilla.org/firefox/addon/muga/">
+          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
             <path d="M5 9c1-3 4-5 7-5 4 0 7 3 7 7 0 5-4 9-9 9-3 0-6-2-7-5 1 1 3 2 5 1-3-1-4-4-3-6 1 1 3 2 5 1-2-1-3-3-2-5 1 2 3 3 5 3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
           </svg>
-          Add to Firefox <span class="sub">·addons.mozilla</span>
+          Add to Firefox
         </a>
-        <a class="btn ghost" href="https://github.com/yocreoquesi/muga">
-          <svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.69-.22.69-.48v-1.69c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.12-1.47-1.12-1.47-.92-.62.07-.61.07-.61 1.01.07 1.55 1.04 1.55 1.04.9 1.55 2.37 1.1 2.95.84.09-.65.35-1.1.64-1.35-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03A9.6 9.6 0 0 1 12 6.84a9.6 9.6 0 0 1 2.5.34c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/>
-          </svg>
-          View source
-        </a>
+        <a class="btn bare" href="https://github.com/yocreoquesi/muga">View source →</a>
       </div>
 
       <div class="install-meta">
@@ -458,12 +433,12 @@
       </div>
 
       <div class="bk-slot" aria-live="polite">
-        <span class="bk-prefix">muga ≈</span>
+        <span>muga ≈</span>
         <span class="bk-text" id="bk">Making URLs Good Again.</span>
       </div>
 
-      <!-- Animated demo -->
-      <div class="demo" aria-label="Before and after URL cleaning">
+      <!-- live demo terminal -->
+      <div class="demo" aria-label="Before and after URL cleaning" style="width:100%;">
         <div class="demo-head">
           <div class="lights"><span></span><span></span><span></span></div>
           <span class="label">muga · live · before / after</span>
@@ -471,20 +446,16 @@
         <div class="demo-body">
           <div class="url-row">
             <span class="url-tag">Before</span>
-            <div class="url-box before" id="url-before">
-              <span class="domain">amazon.com</span><span class="path">/dp/B0C123ABCD</span><span class="path">?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;tag=ytcreator-21</span>
-            </div>
+            <div class="url-box before"><span class="domain">amazon.com</span><span class="path">/dp/B0C123ABCD?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;tag=ytcreator-21</span></div>
           </div>
           <div class="url-row">
             <span class="url-tag">After</span>
-            <div class="url-box">
-              <span class="domain">amazon.com</span><span class="path">/dp/B0C123ABCD</span><span class="keep">?tag=ytcreator-21</span>
-            </div>
+            <div class="url-box after"><span class="domain">amazon.com</span><span class="path">/dp/B0C123ABCD</span><span class="keep">?tag=ytcreator-21</span></div>
           </div>
         </div>
         <div class="demo-foot">
           <span class="toast">Creator referral preserved · ytcreator-21</span>
-          <span style="margin-left:auto">7 noise patterns quieted · 1 affiliate kept</span>
+          <span class="tally">7 noise patterns quieted · 1 affiliate kept</span>
         </div>
       </div>
     </div>
@@ -492,73 +463,65 @@
 
   <div class="wrap">
     <div class="stats">
-      <div class="stats-grid">
-        <div class="stat">
-          <div class="num">450<span class="unit">+</span></div>
-          <div class="label">Noise patterns</div>
-          <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more, quieted at request time.</div>
-        </div>
-        <div class="stat">
-          <div class="num">6</div>
-          <div class="label">Affiliate programs preserved</div>
-          <div class="desc">Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners.</div>
-        </div>
-        <div class="stat">
-          <div class="num">0</div>
-          <div class="label">Telemetry</div>
-          <div class="desc">No analytics, no telemetry, no account. We are not interested in collecting any of that.</div>
-        </div>
+      <div class="stat">
+        <div class="num">450<span class="unit">+</span></div>
+        <div class="label">Noise patterns</div>
+        <div class="desc">utm_*, fbclid, gclid, mc_cid, igshid and 446 more, quieted at request time.</div>
+      </div>
+      <div class="stat">
+        <div class="num">6</div>
+        <div class="label">Affiliate programs preserved</div>
+        <div class="desc">Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners.</div>
+      </div>
+      <div class="stat">
+        <div class="num">0</div>
+        <div class="label">Telemetry</div>
+        <div class="desc">No analytics, no telemetry, no account. We are not interested in collecting any of that.</div>
       </div>
     </div>
   </div>
 
-  <section class="section wedge" id="creator-fair">
-    <div class="wrap">
-      <div class="wedge-grid">
-        <div>
-          <div class="section-label">The wedge</div>
-          <h2>URL cleaners shouldn't punish the creators you follow.</h2>
-          <p>
-            When you click a YouTuber's Amazon link, that <code>?tag=…</code> parameter is how they get paid. Usually a few cents per sale, no extra cost to you.
-            Most cleaners strip it along with the noise. MUGA tries not to.
-          </p>
-          <p>
-            We maintain an explicit allowlist of <b>6 affiliate programs</b>: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy and Apple Performance Partners.
-            When MUGA detects one of those tags, it preserves the referral and shows a small <span class="chip warm">Creator referral preserved</span> toast so you know it happened.
-          </p>
-          <p>
-            We've open-sourced the rules as <b>CAPS</b> (the Creator Affiliate Preservation Standard), so any URL cleaner can do the same.
-          </p>
-        </div>
+  <section class="section" id="creator-fair">
+    <div class="wrap wedge-grid">
+      <div>
+        <div class="section-label">The wedge</div>
+        <h2>URL cleaners shouldn't punish the creators you follow.</h2>
+        <p>
+          When you click a YouTuber's Amazon link, that <code>?tag=…</code> parameter is how they get paid —
+          a few cents per sale, at no extra cost to you. Most cleaners strip it along with the noise. MUGA tries not to.
+        </p>
+        <p>
+          We maintain an explicit allowlist of <b>6 affiliate programs</b>. When MUGA detects one of those tags,
+          it preserves the referral and shows a small <span class="chip">Creator referral preserved</span> toast
+          so you know it happened.
+        </p>
+        <p>
+          The rules are open-sourced as <b>CAPS</b> — the Creator Affiliate Preservation Standard —
+          so any URL cleaner can do the same.
+        </p>
+      </div>
 
-        <div class="wedge-card" aria-label="Example URL with creator tag preserved">
-          <div class="header">
-            <span class="ttl">caps://example</span>
-            <span class="meta">amazon · partner-program</span>
-          </div>
-          <div class="row"><span class="k">host</span><span class="v">www.amazon.com</span></div>
-          <div class="row"><span class="k">path</span><span class="v">/dp/B0C123ABCD</span></div>
-          <div class="row">
-            <span class="k">strip</span>
-            <span class="v">
-              <span class="junk-static">utm_source</span>, <span class="junk-static">utm_campaign</span>,
-              <span class="junk-static">fbclid</span>, <span class="junk-static">gclid</span>,
-              <span class="junk-static">ref_</span>
-            </span>
-          </div>
-          <div class="row"><span class="k">keep</span><span class="v"><span class="keep">tag=ytcreator-21</span></span></div>
-          <div class="row"><span class="k">action</span><span class="v">redirect → preserve referral · show toast</span></div>
+      <div class="wedge-card" aria-label="Example URL with creator tag preserved">
+        <div class="header">
+          <span class="ttl">caps://example</span>
+          <span class="meta">amazon · partner-program</span>
         </div>
+        <div class="row"><span class="k">host</span><span class="v">www.amazon.com</span></div>
+        <div class="row"><span class="k">path</span><span class="v">/dp/B0C123ABCD</span></div>
+        <div class="row"><span class="k">strip</span><span class="v strip">utm_source, utm_campaign, fbclid, gclid, ref_</span></div>
+        <div class="row"><span class="k">keep</span><span class="v keep-v">tag=ytcreator-21</span></div>
+        <div class="row"><span class="k">action</span><span class="v action">redirect → preserve referral · show toast</span></div>
       </div>
     </div>
   </section>
 
-
   <section class="section">
     <div class="wrap">
-      <div class="section-label">Trust, not trust-us</div>
-      <h2>Read the source. Watch the network tab.</h2>
-      <p>Three claims, three verifiable receipts.</p>
+      <div class="trust-intro">
+        <div class="section-label">Trust, not trust-us</div>
+        <h2>Read the source. Watch the network tab.</h2>
+        <p>Three claims, three verifiable receipts.</p>
+      </div>
 
       <div class="trust-grid">
         <div class="trust-cell">
@@ -595,20 +558,40 @@
     </div>
   </section>
 
+  <section class="section">
+    <div class="wrap">
+      <div class="cta-panel">
+        <div class="cta-glow"></div>
+        <div class="cta-inner">
+          <svg class="mark-lg" viewBox="0 0 104 68" width="52" height="34" fill="none" aria-hidden="true">
+            <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <h2>Turn the noise down today.</h2>
+          <p>Free forever. Open source. Fair to the creators who keep the open web running.</p>
+          <div class="install">
+            <a class="btn" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Add to Chrome</a>
+            <a class="btn ghost" href="https://addons.mozilla.org/firefox/addon/muga/">Add to Firefox</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer>
   <div class="wrap">
     <div class="footer-grid">
-      <div class="footer-col">
-        <a href="/" class="brand" style="margin-bottom:12px">
-          <img class="brand-mark" src="https://rules.muga.app/assets/muga-mark.svg" alt="" width="22" height="22">
-          <span>muga.app</span>
+      <div class="footer-about">
+        <a href="/" class="brand" aria-label="MUGA home">
+          <svg class="brand-mark" viewBox="0 0 104 68" width="26" height="17" fill="none" aria-hidden="true">
+            <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="name">muga.app</span>
         </a>
-        <p style="font-size:13px; color:var(--ink-3); margin: 8px 0 0; max-width: 320px;">
-          The denoise extension for the web. Preserves creator affiliate referrals.
-          Built by independent developers. Free forever.
-        </p>
+        <p>The denoise extension for the web. Preserves creator affiliate referrals. Built by independent developers. Free forever.</p>
       </div>
       <div class="footer-col">
         <h4>Install</h4>
@@ -622,14 +605,13 @@
         <ul>
           <li><a href="https://rules.muga.app/privacy-page.html">Privacy policy</a></li>
           <li><a href="https://rules.muga.app/transparency.html">Transparency</a></li>
-          <li><a href="https://github.com/yocreoquesi/muga/blob/main/docs/faq.md">FAQ</a></li>
+          <li><a href="https://rules.muga.app/faq.html">FAQ</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h4>Code</h4>
         <ul>
           <li><a href="https://github.com/yocreoquesi/muga">GitHub repo</a></li>
-          <li><a href="https://github.com/yocreoquesi/muga">CAPS spec</a></li>
           <li><a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL v3 license</a></li>
         </ul>
       </div>
@@ -642,18 +624,18 @@
 </footer>
 
 <script>
-  // Backronym rotator (understated single slot)
+  // Backronym rotator
   (function () {
-    const lines = [
+    var lines = [
       'Most URLs Get Abused.',
       'Mercilessly Undoing Garbage Attachments.',
       'Making URLs Good Again.'
     ];
-    const el = document.getElementById('bk');
-    let i = 2;
-    setInterval(() => {
+    var el = document.getElementById('bk');
+    var i = 2;
+    setInterval(function () {
       el.classList.add('fade');
-      setTimeout(() => {
+      setTimeout(function () {
         i = (i + 1) % lines.length;
         el.textContent = lines[i];
         el.classList.remove('fade');
@@ -665,7 +647,7 @@
   console.log(
     "%cMUGA%c  Welcome to muga.app. View source, you'll like what you see.\nNo analytics. No third-party requests. No build step.\nhttps://github.com/yocreoquesi/muga",
     "background:#6A2BCF;color:#fff;padding:4px 8px;border-radius:4px;font-weight:600;",
-    "color:#555;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;"
+    "color:#888;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;"
   );
 </script>
 </body>
