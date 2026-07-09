@@ -271,7 +271,11 @@ describe("history-defuser — content-script wiring", () => {
     assert.equal(entry.run_at, "document_start");
   });
 
-  test("manifest.v2.json registers both defuser scripts at document_start", () => {
+  test("manifest.v2.json registers the isolated gate but NOT the mainworld wrap (#1026)", () => {
+    // history-defuser-mainworld.js is Chrome-MV3-only (world:MAIN). On
+    // Firefox MV2 the page-world wrap is done directly by history-defuser.js
+    // via window.wrappedJSObject + exportFunction, so the mainworld file must
+    // not be loaded at all on MV2.
     const manifest = JSON.parse(readFileSync(
       join(__dirname, "../../src/manifest.v2.json"), "utf8"
     ));
@@ -283,8 +287,8 @@ describe("history-defuser — content-script wiring", () => {
     );
     assert.ok(gateEntry, "history-defuser.js (gate) must be registered for MV2");
     assert.equal(gateEntry.run_at, "document_start");
-    assert.ok(wrapEntry, "history-defuser-mainworld.js (wrap) must be registered for MV2");
-    assert.equal(wrapEntry.run_at, "document_start");
+    assert.equal(wrapEntry, undefined,
+      "history-defuser-mainworld.js must NOT be registered for MV2 (Chrome-MV3-only)");
   });
 
   test("content/history-defuser.js is an IIFE (no ES module imports)", () => {

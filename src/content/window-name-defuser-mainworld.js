@@ -15,11 +15,14 @@
  * the URL back out post-navigation; non-URL payloads pass through
  * verbatim because the URL-shape gate skips them.
  *
- * Firefox MV2 does not support `world: "MAIN"`; MV2 ships this file as
- * an ordinary content script in the manifest and the lack of a true
- * page-world inject is a known compromise (the gate still works
- * because the property accessor lives on the same `window` reference
- * the page sees in MV2's content-script world).
+ * This file runs ONLY on Chrome MV3, loaded via the `world: "MAIN"`
+ * content_scripts entry in src/manifest.json. Firefox MV2 does not
+ * support `world: "MAIN"` and does NOT load this file at all. On
+ * Firefox the page-world `window.name` wrap is installed directly by
+ * the isolated-world companion `content/window-name-defuser.js`, which
+ * reaches the page's real `window` via `window.wrappedJSObject` and
+ * redefines the property with `exportFunction` (see that file for
+ * details).
  *
  * Important constraints for this file:
  *
