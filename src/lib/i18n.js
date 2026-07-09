@@ -74,7 +74,7 @@ export function t(key, lang) {
 
 // Keys whose values intentionally contain safe HTML (<code>, <br>).
 // All other keys use textContent to prevent any XSS risk.
-const HTML_KEYS = new Set(["bl_hint", "wl_hint", "cp_hint", "ob_affiliate_desc", "ob_tos_label", "creator_allowlist_hint", "ob_shorteners_desc"]);
+const HTML_KEYS = new Set(["bl_hint", "wl_hint", "cp_hint", "ob_affiliate_desc", "ob_tos_label", "creator_allowlist_hint", "ob_shorteners_desc", "ob_feedback_note"]);
 
 // Allowed tags and attributes for HTML_KEYS sanitization.
 const ALLOWED_TAGS = new Set(["code", "br", "strong", "em", "a", "small"]);
