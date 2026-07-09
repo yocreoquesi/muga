@@ -1,11 +1,13 @@
 /**
- * MUGA — Firefox MV2 page-world wrap contract (#509 / B12).
+ * MUGA — Firefox MV2 page-world wrap contract (#509 / B12, #1026).
  *
  * Chrome MV3 loads `history-defuser-mainworld.js` and
  * `window-name-defuser-mainworld.js` automatically via the `world: "MAIN"`
  * content-script directive in `src/manifest.json`. Firefox MV2 has no such
- * directive, so each isolated-world dispatcher must install the page-world
- * wrap itself.
+ * directive and does not support `world: "MAIN"` at all, so these two files
+ * are Chrome-MV3-only: they are NOT part of `src/manifest.v2.json` at all
+ * (neither as a content script nor as a web-accessible resource). Each
+ * isolated-world dispatcher installs the page-world wrap itself instead.
  *
  * HISTORY DEFUSER — CSP-immune wrap (fixed): the previous `<script src=...>`
  * injection was silently blocked by strict page CSPs (e.g. Amazon), so
@@ -21,9 +23,16 @@
  * window-name-defuser.js now installs the page-world `window.name` accessor
  * directly via `window.wrappedJSObject` + `exportFunction` — no `<script>`
  * element. This test pins that mechanism and asserts NO `<script>` element is
- * created for the window-name wrap either. The mainworld script stays for
- * Chrome MV3 (world:MAIN) and remains web-accessible in MV2 for parity with
- * history-defuser-mainworld.js.
+ * created for the window-name wrap either.
+ *
+ * #1026 follow-up: the two *-mainworld.js files used to also be loaded on
+ * Firefox as an ordinary ISOLATED content_scripts group (a leftover from the
+ * old `<script>`-injection mechanism). They have no manifest_version guard
+ * and no wrappedJSObject use, so on Firefox they ran against the Xray-wrapped
+ * isolated-sandbox window and did nothing real, while also registering their
+ * nonce listener too late to ever open the gate. They have been removed from
+ * `src/manifest.v2.json` entirely; the mainworld script stays Chrome-MV3-only
+ * (world:MAIN).
  */
 
 import { test, describe } from "node:test";
@@ -40,20 +49,42 @@ const mv3Manifest = JSON.parse(readFileSync(resolve(ROOT, "src/manifest.json"), 
 const histDefuserSrc = readFileSync(resolve(ROOT, "src/content/history-defuser.js"), "utf8");
 const winNameDefuserSrc = readFileSync(resolve(ROOT, "src/content/window-name-defuser.js"), "utf8");
 
-describe("Firefox MV2 web_accessible_resources expose the mainworld scripts (#509)", () => {
+describe("Firefox MV2 does not load the Chrome-only mainworld scripts (#1026)", () => {
   test("manifest.v2.json declares web_accessible_resources as an array", () => {
     assert.ok(Array.isArray(mv2Manifest.web_accessible_resources),
       "MV2 web_accessible_resources must be an array");
   });
 
-  test("window-name-defuser-mainworld.js stays web-accessible in MV2 (parity with history)", () => {
-    // The isolated-world dispatcher no longer <script src>-injects it (the
-    // CSP-immune port wraps window.name via wrappedJSObject instead), but the
-    // entry is retained for parity with history-defuser-mainworld.js and is
-    // harmless — it only exposes an already-public source file.
+  test("manifest.v2.json content_scripts do not reference the *-mainworld.js files", () => {
+    // These files have no manifest_version guard and no wrappedJSObject use
+    // (they can't reach the page window from world:MAIN on Chrome). Loading
+    // them as an ordinary ISOLATED content script on Firefox (as a leftover
+    // second content_scripts group) makes them run against the Xray-wrapped
+    // isolated-sandbox window, where their wraps are inert, and registers
+    // their nonce listener too late to ever open the gate (#1026). They must
+    // not appear anywhere in MV2's content_scripts.
+    const allMv2Js = (mv2Manifest.content_scripts || []).flatMap((e) => e.js || []);
     assert.ok(
-      mv2Manifest.web_accessible_resources.includes("content/window-name-defuser-mainworld.js"),
-      "MV2 keeps window-name-defuser-mainworld.js web-accessible for parity",
+      !allMv2Js.includes("content/history-defuser-mainworld.js"),
+      "MV2 content_scripts must NOT include history-defuser-mainworld.js",
+    );
+    assert.ok(
+      !allMv2Js.includes("content/window-name-defuser-mainworld.js"),
+      "MV2 content_scripts must NOT include window-name-defuser-mainworld.js",
+    );
+  });
+
+  test("manifest.v2.json web_accessible_resources do not expose the *-mainworld.js files", () => {
+    // These entries only existed for the old <script>-injection mechanism,
+    // which is gone. The mainworld files are Chrome-MV3-only now, so Firefox
+    // has no reason to expose them as web-accessible resources.
+    assert.ok(
+      !mv2Manifest.web_accessible_resources.includes("content/history-defuser-mainworld.js"),
+      "MV2 web_accessible_resources must NOT include history-defuser-mainworld.js",
+    );
+    assert.ok(
+      !mv2Manifest.web_accessible_resources.includes("content/window-name-defuser-mainworld.js"),
+      "MV2 web_accessible_resources must NOT include window-name-defuser-mainworld.js",
     );
   });
 

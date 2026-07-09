@@ -155,13 +155,17 @@ describe("gate-nonce — handshake leaves no readable global behind", () => {
 // ── Manifest ordering invariant ───────────────────────────────────────────────
 //
 // history-defuser.js (the dispatcher) MUST appear AFTER every other script
-// that contains "muga:history-gate:nonce" (i.e., every listener). If a new
-// listener is added without moving the dispatcher to the end, this test fails.
-// Invariant is checked dynamically so adding a new listener without reordering
-// manifests will automatically break this test.
+// that contains "muga:history-gate:nonce" (i.e., every listener), in ALL
+// content_scripts groups, not just the one containing the dispatcher. A
+// nonce-listener script placed in a separate, later document_start group
+// (exactly the bug behind #1026, where the Firefox MV2 manifest carried a
+// second content_scripts group for the *-mainworld.js files) registers its
+// listener AFTER the dispatcher has already fired the one-shot handshake and
+// silently stays fail-closed. Invariant is checked dynamically so adding a
+// new listener without reordering manifests will automatically break this
+// test.
 
 describe("gate-nonce — manifest ordering: dispatcher runs last", () => {
-  const _contentDir = join(__dirname, "../../src/content");
   const DISPATCHER = "content/history-defuser.js";
   const NONCE_PATTERN = /muga:history-gate:nonce/;
 
@@ -189,21 +193,35 @@ describe("gate-nonce — manifest ordering: dispatcher runs last", () => {
     return registrants;
   }
 
-  function extractIsolatedScripts(manifestPath) {
+  /**
+   * Flatten every content_scripts group into a single ordering that
+   * reflects actual execution order, not just array declaration order.
+   *
+   * Chrome MV3 executes `world: "MAIN"` groups as a separate phase that
+   * always runs BEFORE any non-MAIN (ISOLATED) group, regardless of where
+   * the MAIN group sits in the content_scripts array. Firefox MV2 has no
+   * world:MAIN concept at all, so plain declaration order applies there.
+   *
+   * Within each bucket (MAIN vs. everything else), groups are concatenated
+   * in declaration order, and each group's `js` array is concatenated in
+   * order. This means a nonce-listener script dropped into ANY document_start
+   * group — not just the one containing the dispatcher — is caught.
+   */
+  function flattenExecutionOrder(manifestPath) {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    // Find the content_scripts group that is NOT world:MAIN and runs at
-    // document_start — that is the isolated group containing the dispatcher.
     const groups = manifest.content_scripts || [];
+    const mainScripts = [];
+    const otherScripts = [];
     for (const group of groups) {
+      if (!Array.isArray(group.js)) continue;
       const world = group.world || "ISOLATED";
-      const runAt = group.run_at || "document_idle";
-      if (world !== "MAIN" && runAt === "document_start" && Array.isArray(group.js)) {
-        if (group.js.includes(DISPATCHER)) {
-          return group.js;
-        }
+      if (world === "MAIN") {
+        mainScripts.push(...group.js);
+      } else {
+        otherScripts.push(...group.js);
       }
     }
-    return [];
+    return [...mainScripts, ...otherScripts];
   }
 
   const manifests = [
@@ -212,17 +230,17 @@ describe("gate-nonce — manifest ordering: dispatcher runs last", () => {
   ];
 
   for (const [label, manifestPath] of manifests) {
-    test(`${label}: history-defuser.js appears after all nonce-registrant scripts`, () => {
-      const scripts = extractIsolatedScripts(manifestPath);
+    test(`${label}: history-defuser.js appears after all nonce-registrant scripts across all content_scripts groups`, () => {
+      const scripts = flattenExecutionOrder(manifestPath);
       assert.ok(
         scripts.length > 0,
-        `${label}: could not locate the isolated document_start group containing ${DISPATCHER}`,
+        `${label}: no content_scripts entries found`,
       );
 
       const dispatcherIdx = scripts.indexOf(DISPATCHER);
       assert.ok(
         dispatcherIdx !== -1,
-        `${label}: ${DISPATCHER} not found in the isolated document_start group`,
+        `${label}: ${DISPATCHER} not found in the flattened content_scripts execution order`,
       );
 
       const registrants = findNonceRegistrants(scripts);
@@ -235,7 +253,7 @@ describe("gate-nonce — manifest ordering: dispatcher runs last", () => {
         const registrantIdx = scripts.indexOf(registrant);
         assert.ok(
           registrantIdx !== -1,
-          `${label}: registrant ${registrant} is not in the isolated group`,
+          `${label}: registrant ${registrant} is not in the flattened content_scripts execution order`,
         );
         assert.ok(
           registrantIdx < dispatcherIdx,

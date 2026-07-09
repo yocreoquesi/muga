@@ -58,10 +58,16 @@
   //     gate-aware siblings (window-name-defuser.js, dom-link-rewriter.js,
   //     dom-link-rewriter-click.js, bounce-state-cleaner.js) are listed
   //     before this file in the manifest so they register first.
-  //   Firefox MV2 — no world:MAIN group; the window-name-defuser-mainworld
-  //     page copy is injected as a synchronous <script> by
-  //     window-name-defuser.js (which runs before this file). All isolated-
-  //     world siblings are likewise listed before this file in the manifest.
+  //   Firefox MV2 — there is no world:MAIN group at all; the
+  //     *-mainworld.js files are NOT loaded on Firefox. Only the
+  //     isolated-world siblings (window-name-defuser.js, dom-link-rewriter.js,
+  //     dom-link-rewriter-click.js, bounce-state-cleaner.js), all listed
+  //     before this file in manifest.v2.json's single content_scripts
+  //     group, participate in the nonce handshake on Firefox. The
+  //     page-world history and window.name wraps on Firefox are installed
+  //     directly by the isolated-world siblings via `window.wrappedJSObject`
+  //     (see the Firefox page-world wrap section below), not by a
+  //     separately loaded main-world script.
   //
   // No global property stores the nonce after handshake — it lives only
   // inside each listener's closure to prevent page scripts from reading it

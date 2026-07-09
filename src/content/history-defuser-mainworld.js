@@ -8,10 +8,13 @@
  * that forced the removal of the `navigator.sendBeacon` override
  * (see content/cleaner.js comment near line 665).
  *
- * Firefox MV2 does not support `world: "MAIN"`; on that target the
- * companion script `content/history-defuser.js` injects this body
- * via a `<script>` tag (which Firefox MV2 does NOT block via page
- * CSP for extension content scripts).
+ * This file runs ONLY on Chrome MV3, loaded via the `world: "MAIN"`
+ * content_scripts entry in src/manifest.json. Firefox MV2 does not
+ * support `world: "MAIN"` and does NOT load this file at all. On
+ * Firefox the page-world history wrap is done directly by the
+ * isolated-world companion `content/history-defuser.js`, which reaches
+ * the page's real `history` object via `window.wrappedJSObject` and
+ * installs the wrap with `exportFunction` (see that file for details).
  *
  * Important constraints for this file:
  *

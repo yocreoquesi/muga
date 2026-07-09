@@ -40,11 +40,6 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["content/history-defuser-mainworld.js", "content/window-name-defuser-mainworld.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["<all_urls>"],
       "js": ["content/amp-redirect.js"],
       "run_at": "document_end"
     }
@@ -79,8 +74,6 @@
     "onboarding/onboarding.html",
     "privacy/privacy.html",
     "privacy/tos.html",
-    "content/history-defuser-mainworld.js",
-    "content/window-name-defuser-mainworld.js",
     "rules/domain-rules.json",
     "rules/path-strip-rules.json",
     "rules/path-affiliate-rules.json"
