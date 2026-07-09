@@ -129,7 +129,7 @@ describe("canonical merged prefs — the value Settings must display", () => {
   test("no override → getPrefs returns the sync/default value unchanged", async () => {
     const getPrefs = await freshGetPrefs();
     const prefs = await getPrefs();
-    assert.strictEqual(prefs.injectOwnAffiliate, false, "default");
+    assert.strictEqual(prefs.injectOwnAffiliate, true, "default"); // #1032: on by default
     assert.strictEqual(prefs.remoteRulesEnabled, true, "default");
   });
 });
