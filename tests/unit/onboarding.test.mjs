@@ -259,3 +259,42 @@ describe("#728 item 25 — gated-CTA flash + aria-live announcement", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// audit #1038 — re-onboard must honor the per-device override and must NOT
+// re-sync injectOwnAffiliate to shared sync.
+//
+// The affiliate checkbox was defaulted from the raw synced value, ignoring an
+// existing per-device override (#364), and the completion write pushed the
+// checkbox value back to chrome.storage.sync unconditionally. On a re-onboard
+// that both misrepresented THIS device's effective state and clobbered another
+// device's setting the user never touched. injectOwnAffiliate is a guarded
+// per-device pref: only a FRESH install establishes its synced value (#1032);
+// any re-onboard change must be recorded as a per-device override.
+// ---------------------------------------------------------------------------
+describe("#1038 — re-onboard honors per-device affiliate override, no sync clobber", () => {
+  test("the affiliate checkbox defaults from the effective (override-aware) value", () => {
+    assert.ok(
+      /existingOverrides\s*,\s*["']injectOwnAffiliate["']/.test(ONBOARDING_JS),
+      "onboarding must read injectOwnAffiliate from existingOverrides for the effective value",
+    );
+    assert.ok(
+      /affiliateCheck\.checked\s*=\s*effectiveAffiliate/.test(ONBOARDING_JS),
+      "the affiliate checkbox must be initialized from the effective (override-aware) value, not raw sync",
+    );
+  });
+
+  test("injectOwnAffiliate is written to SYNC only on a fresh install", () => {
+    assert.ok(
+      /mode\s*===\s*["']fresh["'][\s\S]{0,160}syncWrites\.injectOwnAffiliate\s*=/.test(ONBOARDING_JS),
+      "the sync write of injectOwnAffiliate must be gated behind mode === 'fresh'",
+    );
+  });
+
+  test("a re-onboard change is recorded as a per-device override, not a sync write", () => {
+    assert.ok(
+      /overrideUpdates\.injectOwnAffiliate\s*=\s*affiliateCheck\.checked/.test(ONBOARDING_JS),
+      "a re-onboard change to injectOwnAffiliate must be recorded as a per-device override",
+    );
+  });
+});
