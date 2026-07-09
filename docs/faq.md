@@ -1,12 +1,12 @@
-# MUGA — Frequently Asked Questions
+# MUGA: Frequently Asked Questions
 
-A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web — it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed
+A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web, it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed
 by a line in the source tree of this repository. If you find a discrepancy
-between what is written here and the code, the code wins — please open an
+between what is written here and the code, the code wins, please open an
 issue.
 
 This document is intentionally written for a technical audience that has
-already read the [Privacy policy](../src/privacy/privacy.html) and the
+already read the [Privacy policy](privacy-page.html) and the
 [Terms of service](../src/privacy/tos.html) and wants to verify the claims.
 
 ---
@@ -17,17 +17,17 @@ already read the [Privacy policy](../src/privacy/privacy.html) and the
 
 Because they solve a different problem. The generic class of "URL cleaners
 and content blockers" (uBO with the privacy lists, Brave's built-in shields,
-ClearURLs, etc.) is built to **strip everything that looks like noise** —
+ClearURLs, etc.) is built to **strip everything that looks like noise**,
 which is the right default for a general-purpose cleaner, but it also strips
 affiliate parameters indiscriminately, because to a noise-detector they look
 identical to tracking.
 
 MUGA's design point is narrower and more opinionated:
 
-1. **Remove the same noise parameters those tools remove** — `utm_*`,
+1. **Remove the same noise parameters those tools remove**, `utm_*`,
    `fbclid`, `gclid`, `msclkid`, `mc_cid`, `igshid`, the rest of the usual
    set ([`src/lib/affiliates-data.js:18`](../src/lib/affiliates-data.js#L18)).
-2. **Preserve affiliate parameters that belong to a creator** — even on
+2. **Preserve affiliate parameters that belong to a creator**, even on
    programs MUGA itself has no commercial relationship with (Booking,
    Vercel, DigitalOcean, etc.). The preservation table is sourced from
    MUGA's documented affiliate-program rules
@@ -74,7 +74,7 @@ pass-through.
 - The content-script bundle that runs in the page is committed at
   `src/content/cleaner-bundle.js` so reviewers can diff it against the
   ES module source it is generated from (noted explicitly in the privacy
-  page at [`src/privacy/privacy.html:76`](../src/privacy/privacy.html#L76)).
+  page at [`docs/privacy-page.html:73`](privacy-page.html#L73)).
 - The unit tests under `tests/unit/` cover the cleaner's behaviour
   exhaustively. Run them locally with `npm test`.
 
@@ -144,7 +144,7 @@ the URL at injection time is never overwritten in place.
 ### Q: What happens if a creator's tag is on a program MUGA has no account on?
 
 It is preserved anyway. The `ourTag` map is allowed to be empty for a
-program — preservation does not require MUGA to have its own tag for that
+program, preservation does not require MUGA to have its own tag for that
 program. The detection loop at
 [`src/lib/cleaner.js:679`](../src/lib/cleaner.js#L679) iterates
 every pattern that matches the host, not just patterns where
@@ -191,9 +191,9 @@ noise-parameter list from a signed public endpoint, so users get
 protection against new noise sources without waiting for an extension release.
 
 - Default: **on** (#888, once the signing infrastructure and defense-in-depth
-  verification were ratified as production-ready — see the
+  verification were ratified as production-ready, see the
   [CHANGELOG](../CHANGELOG.md)). See
-  [`src/lib/prefs.js:52`](../src/lib/prefs.js#L52):
+  [`src/lib/prefs.js:65`](../src/lib/prefs.js#L65):
   `remoteRulesEnabled: true`. Disable it any time in Settings.
 - Every fetched payload is verified with an **Ed25519 signature** against
   a hardcoded list of trusted public keys before any rule is applied.
@@ -217,7 +217,7 @@ navigate to that URL, so no page-load context is handed to the shortener.
 It only fires on the seven opted-in shortener hosts when the feature is
 enabled.
 
-Remote Rules sends no user data at all — it is a one-way `GET` of a
+Remote Rules sends no user data at all: it is a one-way `GET` of a
 signed JSON file.
 
 If you want zero network activity, turn off both toggles in Settings.
@@ -244,7 +244,7 @@ The cost base is intentionally low:
 
 - The cleaner is a local computation; there is no per-user server cost.
 - The "Follow shortener redirects" feature (opt-in, off by default) is
-  resolved entirely inside the extension — no MUGA server is involved,
+  resolved entirely inside the extension, no MUGA server is involved,
   so there is no per-resolution infrastructure cost.
 - Remote Rules is a static signed JSON served from GitHub Pages, fetched
   at most once per 7 days.
@@ -256,7 +256,7 @@ If you want to support the project without enabling injection, the
 
 By design, MUGA refuses to participate in affiliate programs whose model
 forces user clicks through external tracking servers (the "network-redirect"
-class — Awin, ShareASale, Admitad, Impact Radius, and similar). The
+class, Awin, ShareASale, Admitad, Impact Radius, and similar). The
 extension still **strips** their noise parameters when encountered;
 it just will not **inject** them on MUGA's behalf. The rationale is in
 the `MUGA_EXCLUDED_IDS` set
@@ -273,5 +273,5 @@ The roadmap lives in [GitHub Issues](https://github.com/yocreoquesi/muga/issues)
 
 Material changes to the privacy contract trigger a re-onboarding flow on
 each device the next time the service worker wakes up
-([`src/privacy/privacy.html:59`](../src/privacy/privacy.html#L59)), so
+([`docs/privacy-page.html:56`](privacy-page.html#L56)), so
 the user always has a chance to re-consent before behaviour changes.

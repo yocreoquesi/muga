@@ -33,7 +33,7 @@
   <div class="wrap">
 
   <h1>Frequently Asked Questions</h1>
-  <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Version 2.4.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+  <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Version 2.5.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
     A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web, it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins, please open an issue.
@@ -74,7 +74,7 @@
   <ul>
     <li>The full ruleset is in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>.</li>
     <li>The cleaning pipeline is in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js"><code>src/lib/cleaner.js</code></a>.</li>
-    <li>The content-script bundle that runs in the page is committed at <code>src/content/cleaner-bundle.js</code> so reviewers can diff it against the ES module source it is generated from (noted explicitly in the privacy page at <a href="https://github.com/yocreoquesi/muga/blob/main/src/privacy/privacy.html#L76"><code>src/privacy/privacy.html:76</code></a>).</li>
+    <li>The content-script bundle that runs in the page is committed at <code>src/content/cleaner-bundle.js</code> so reviewers can diff it against the ES module source it is generated from (noted explicitly in the privacy page at <a href="https://github.com/yocreoquesi/muga/blob/main/docs/privacy-page.html#L73"><code>docs/privacy-page.html:73</code></a>).</li>
     <li>The unit tests under <code>tests/unit/</code> cover the cleaner's behaviour exhaustively. Run them locally with <code>npm test</code>.</li>
   </ul>
 
@@ -189,7 +189,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <p>The roadmap lives in <a href="https://github.com/yocreoquesi/muga/issues">GitHub Issues</a>, the concrete work items.</p>
 
-  <p>Material changes to the privacy contract trigger a re-onboarding flow on each device the next time the service worker wakes up (<a href="https://github.com/yocreoquesi/muga/blob/main/src/privacy/privacy.html#L59"><code>src/privacy/privacy.html:59</code></a>), so the user always has a chance to re-consent before behaviour changes.</p>
+  <p>Material changes to the privacy contract trigger a re-onboarding flow on each device the next time the service worker wakes up (<a href="https://github.com/yocreoquesi/muga/blob/main/docs/privacy-page.html#L56"><code>docs/privacy-page.html:56</code></a>), so the user always has a chance to re-consent before behaviour changes.</p>
 
   </div>
 </main>
