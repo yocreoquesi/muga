@@ -157,7 +157,8 @@ export function domainMatches(hostname, entryDomain) {
  *       only protects one affiliate value, it is not a "leave this site
  *       alone" signal.
  *   (b) a per-site pause entry matches (an "example.com::disabled" blacklist
- *       entry, mirroring isPerDomainDisabled() in src/popup/popup.js).
+ *       entry - the legacy pause syntax, still fully honored even though the
+ *       popup's pause control now writes to the whitelist instead, #1053).
  *
  * Reuses parseListEntry/domainMatches rather than reimplementing domain
  * matching (a separate cleanup is tracked in #1005).
@@ -256,30 +257,84 @@ export function getFullyExemptDomains(prefs) {
 }
 
 /**
- * Adds or removes a per-domain "disabled" blacklist entry for a host, returning
- * a NEW blacklist array (pure; never mutates the input). Pausing appends
- * `<host>::disabled` unless the host is already effectively disabled (exact or
- * parent-domain match). Resuming drops every `::disabled` entry that pauses this
- * host. Plain blacklist entries and `domain::param::value` rules are untouched.
+ * Returns true if hostname matches a DOMAIN-ONLY whitelist entry (bare
+ * "example.com", no ::param suffix) - i.e. the user fully allowlisted this
+ * site, whether via Settings > Allowlist or the popup's per-site pause
+ * control (#1053). Mirrors the domain-only-whitelist half of
+ * isSiteFullyExempt() but scoped to just the whitelist array, so callers
+ * that already have `prefs.whitelist` in hand don't need to build a fake
+ * prefs object just to ask this one question.
  *
- * @param {string[]} blacklist - current blacklist entries.
- * @param {string} hostname - the current tab hostname.
- * @param {boolean} disabled - true to pause (add), false to resume (remove).
- * @returns {string[]} a new blacklist array.
+ * A param-scoped entry ("example.com::tag::x") does NOT count - that only
+ * protects one affiliate value, it is not a "leave this site alone" signal.
+ *
+ * Defensive: returns false for any falsy or malformed input, matching
+ * isSiteFullyExempt's fail-safe direction (missing/corrupt data must never
+ * be misread as an exemption).
+ *
+ * @param {string} hostname
+ * @param {string[]} whitelist
+ * @returns {boolean}
  */
-export function setPerDomainDisabled(blacklist, hostname, disabled) {
-  const list = Array.isArray(blacklist) ? blacklist.slice() : [];
+export function isDomainAllowlisted(hostname, whitelist) {
+  if (!hostname || typeof hostname !== "string" || !Array.isArray(whitelist)) return false;
+  for (const raw of whitelist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+  return false;
+}
+
+/**
+ * Adds or removes a bare domain-only whitelist entry for a host, returning a
+ * NEW whitelist array (pure; never mutates the input).
+ *
+ * This is the popup per-site "Pause" control's write path (#1053): pausing a
+ * site now means fully allowlisting its domain - the same mechanism
+ * Settings > Allowlist uses - instead of the separate `<host>::disabled`
+ * blacklist entry it used to write. That keeps a single source of truth: a
+ * paused site shows up in the Settings allowlist, and a manually-whitelisted
+ * site correctly shows as paused in the popup. The legacy
+ * `example.com::disabled` blacklist syntax (shipped since v1.13.0) is a
+ * separate, still-fully-supported mechanism - see isSiteFullyExempt - this
+ * function does not read or write it.
+ *
+ * Adding appends `<host>` (www-stripped, lowercased) unless the host is
+ * already allowlisted (exact or parent-domain match). Removing drops every
+ * DOMAIN-ONLY entry that allowlists this host but PRESERVES param-scoped
+ * entries (`example.com::tag::x`) - those protect a single affiliate value,
+ * not a "leave this site alone" signal, so toggling pause off must not
+ * silently delete them.
+ *
+ * @param {string[]} whitelist - current whitelist entries.
+ * @param {string} hostname - the current tab hostname.
+ * @param {boolean} allowed - true to allowlist (pause), false to remove (resume).
+ * @returns {string[]} a new whitelist array.
+ */
+export function setDomainAllowlisted(whitelist, hostname, allowed) {
+  const list = Array.isArray(whitelist) ? whitelist.slice() : [];
   const host = (hostname || "").trim();
   if (!host) return list;
-  const pausesHost = (raw) => {
-    const e = parseListEntry(raw);
-    return e.param === "disabled" && !e.value && !!e.domain && domainMatches(host, e.domain);
+  const isDomainOnlyMatch = (raw) => {
+    let e;
+    try {
+      e = parseListEntry(raw);
+    } catch {
+      return false;
+    }
+    return !!e.domain && !e.param && domainMatches(host, e.domain);
   };
-  if (disabled) {
-    if (list.some(pausesHost)) return list;
-    return [...list, `${host.replace(/^www\./, "").toLowerCase()}::disabled`];
+  if (allowed) {
+    if (list.some(isDomainOnlyMatch)) return list;
+    return [...list, host.replace(/^www\./, "").toLowerCase()];
   }
-  return list.filter((raw) => !pausesHost(raw));
+  return list.filter((raw) => !isDomainOnlyMatch(raw));
 }
 
 /**
