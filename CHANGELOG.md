@@ -16,6 +16,8 @@ Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning work
 - **"Why was this cleaned?" in the popup** (#986). Each stripped parameter shows an inline, per-category explanation of what it was.
 - **Weekly remote-rules changelog in Settings** (#984). Shows the "N added / N removed" diff of the signed rule list after each refresh.
 - **Versioned settings schema** (#992). A single validated import/export path built on a versioned schema.
+- **Settings import previews a dry-run diff before applying** (#994). After validating the file, MUGA shows exactly what will change and applies nothing until you confirm.
+- **Round-trip and granular import errors** (#993). `remoteRulesEnabled` now round-trips through export and import, and a failed import tells a corrupt or unreadable file apart from one that is not a MUGA export.
 
 ### Changed
 
