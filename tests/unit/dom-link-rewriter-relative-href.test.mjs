@@ -238,6 +238,44 @@ describe("#1012 — relative <a href> tracking params are stripped (bundle attac
         "no setAttribute must fire for a query-less relative href (idempotency)");
     });
 
+    // ── audit #1037: protocol-relative hrefs must keep their host ─────────
+
+    test(`${label}: protocol-relative cross-host href is cleaned and KEEPS its //host`, () => {
+      // `//other.example/p?utm_source=x` is scheme-relative but origin-bearing.
+      // The pre-fix code misread it as relative and re-emitted it path-only
+      // against the CURRENT origin, silently repointing a cross-host link at
+      // this page. It must stay protocol-relative with its own host.
+      const dirty = makeAnchor("//other.example/p?utm_source=x&id=1");
+      runContentScript(path, {
+        anchors: [dirty],
+        locationHref: "https://shop.example/category/",
+      });
+      assert.equal(dirty.__href, "//other.example/p?id=1",
+        "utm_source stripped, //other.example host preserved (NOT stripped to /p)");
+    });
+
+    test(`${label}: already-clean protocol-relative href triggers NO setAttribute`, () => {
+      const clean = makeAnchor("//other.example/p?id=9");
+      runContentScript(path, {
+        anchors: [clean],
+        locationHref: "https://shop.example/category/",
+      });
+      assert.equal(clean.__setCalls.length, 0,
+        "a protocol-relative href with no tracking params must not be rewritten");
+    });
+
+    test(`${label}: query-less protocol-relative href is UNCHANGED (no query of its own)`, () => {
+      const anchor = makeAnchor("//other.example/deal");
+      runContentScript(path, {
+        anchors: [anchor],
+        locationHref: "https://shop.example/landing?utm_source=ad",
+      });
+      assert.equal(anchor.__href, "//other.example/deal",
+        "must not inherit + strip the page's query, and must keep its host");
+      assert.equal(anchor.__setCalls.length, 0,
+        "no setAttribute must fire for a query-less protocol-relative href");
+    });
+
     test(`${label}: cross-origin unwrap must NOT be mis-relativized onto the current origin`, () => {
       // processUrl can UNWRAP a redirect wrapper and return a DIFFERENT-
       // origin absolute URL. Re-emitting pathname+search+hash would graft
