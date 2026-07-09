@@ -116,8 +116,8 @@ describe("isValidListEntry — whitelist/blacklist entry validation", () => {
     assert.ok(isValidListEntry("www.amazon.es"));
   });
 
-  test("accepts domain::disabled", () => {
-    assert.ok(isValidListEntry("amazon.es::disabled"));
+  test("rejects domain::disabled (legacy per-site-pause syntax removed)", () => {
+    assert.ok(!isValidListEntry("amazon.es::disabled"));
   });
 
   test("accepts domain::param::value", () => {
@@ -157,9 +157,10 @@ describe("isValidListEntry — whitelist/blacklist entry validation", () => {
     assert.ok(!isValidListEntry("a::b::c::d"));
   });
 
-  test("rejects 2 parts where second is not 'disabled'", () => {
+  test("rejects any 2-part entry", () => {
     assert.ok(!isValidListEntry("amazon.es::tag"));
     assert.ok(!isValidListEntry("amazon.es::something"));
+    assert.ok(!isValidListEntry("amazon.es::disabled"));
   });
 
   test("rejects 3 parts with empty param", () => {

@@ -442,10 +442,9 @@ async function wireMigrationPrompt(lang) {
  * the tab is a real http(s) page. The button toggles a bare domain-only
  * whitelist entry (the same mechanism as Settings > Allowlist) so the user
  * can pause or resume URL cleaning for the current site without opening
- * Settings. This intentionally does NOT touch the legacy `<host>::disabled`
- * blacklist syntax - that remains a separate, still-supported way to
- * fully exempt a site (see isSiteFullyExempt), it is just no longer what
- * this button writes. Re-render is optimistic; the storage.onChanged
+ * Settings. A domain is exempted ONLY via this allowlist entry now - the
+ * legacy `<host>::disabled` blacklist syntax has been removed entirely
+ * (see isSiteFullyExempt). Re-render is optimistic; the storage.onChanged
  * listener also refreshes once the write lands.
  */
 function renderPauseControl(url, prefs, lang) {
@@ -632,9 +631,8 @@ async function showUrlPreview(prefs, lang) {
   }
 
   // Per-domain disable: MUGA globally on, but user has opted this domain out
-  // via a domain-only allowlist entry or a legacy `domain::disabled`
-  // blacklist entry. Show a distinct message so they understand MUGA is
-  // active but intentionally skipped for this site.
+  // via a domain-only allowlist entry. Show a distinct message so they
+  // understand MUGA is active but intentionally skipped for this site.
   const currentHost = (() => { try { return new URL(url).hostname; } catch { return ""; } })();
   if (isSiteFullyExempt(currentHost, prefs)) {
     const previewClean = document.getElementById("preview-clean");

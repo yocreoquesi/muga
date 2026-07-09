@@ -5,16 +5,19 @@
  * Originally added (as isSiteExemptFromActiveDefense) so the active-defense
  * content scripts (window.name defuser, history defuser, DOM link rewriter,
  * click rewriter) - which all gate on a single muga:history-gate event -
- * would respect the per-site whitelist and the per-site pause (#995).
- * Before that fix, whitelisting or pausing a domain did nothing to stop
- * them; only fully disabling MUGA worked.
+ * would respect the per-site whitelist. Before that fix, whitelisting a
+ * domain did nothing to stop them; only fully disabling MUGA worked.
  *
  * #allowlist-full-inert promotes this to the single choke-point predicate
  * consulted by every MUGA mechanism (processUrl's JS cleaning, the DNR
  * allow-rule sync, and the active-defense gate above): a domain-only
- * whitelist entry or a `::disabled` pause must make MUGA fully inert on
- * that domain, present and future. This file's assertions are unchanged -
- * they were already testing the exact predicate now reused everywhere.
+ * whitelist entry must make MUGA fully inert on that domain, present and
+ * future. This file's assertions are unchanged - they were already testing
+ * the exact predicate now reused everywhere.
+ *
+ * The legacy `domain::disabled` blacklist per-site-pause syntax has been
+ * removed entirely - a domain is exempted ONLY via a domain-only whitelist
+ * entry now (see also #1053, migratePerSiteDisableToAllowlist).
  */
 
 import { test, describe } from "node:test";
@@ -53,31 +56,26 @@ describe("isSiteFullyExempt — whitelist", () => {
   });
 });
 
-describe("isSiteFullyExempt — per-site pause (#995)", () => {
-  test("a `<host>::disabled` blacklist entry exempts the site", () => {
+describe("isSiteFullyExempt — blacklist never exempts (legacy `::disabled` removed)", () => {
+  test("a `<host>::disabled` blacklist entry no longer exempts the site", () => {
     const prefs = { blacklist: ["example.com::disabled"] };
-    assert.equal(isSiteFullyExempt("example.com", prefs), true);
-  });
-
-  test("a `<host>::disabled` entry exempts a subdomain of the paused host", () => {
-    const prefs = { blacklist: ["example.com::disabled"] };
-    assert.equal(isSiteFullyExempt("shop.example.com", prefs), true);
-  });
-
-  test("a `disabled`-valued entry (domain::disabled::x) is not a pause and does not exempt", () => {
-    const prefs = { blacklist: ["example.com::disabled::keep"] };
     assert.equal(isSiteFullyExempt("example.com", prefs), false);
   });
 
-  test("a plain blacklist domain entry (no ::disabled) does not exempt", () => {
+  test("a plain blacklist domain entry does not exempt", () => {
     const prefs = { blacklist: ["example.com"] };
+    assert.equal(isSiteFullyExempt("example.com", prefs), false);
+  });
+
+  test("a param-scoped blacklist entry does not exempt", () => {
+    const prefs = { blacklist: ["example.com::disabled::keep"] };
     assert.equal(isSiteFullyExempt("example.com", prefs), false);
   });
 });
 
 describe("isSiteFullyExempt — no match / defensive", () => {
   test("an unrelated domain is not exempt", () => {
-    const prefs = { whitelist: ["example.com"], blacklist: ["other.com::disabled"] };
+    const prefs = { whitelist: ["example.com"], blacklist: ["other.com"] };
     assert.equal(isSiteFullyExempt("rt.com", prefs), false);
   });
 
@@ -105,21 +103,7 @@ describe("isSiteFullyExempt — no match / defensive", () => {
   });
 
   test("non-array whitelist/blacklist are treated as empty", () => {
-    const prefs = { whitelist: "example.com", blacklist: "example.com::disabled" };
+    const prefs = { whitelist: "example.com", blacklist: "example.com" };
     assert.equal(isSiteFullyExempt("example.com", prefs), false);
-  });
-});
-
-describe("isSiteFullyExempt — combined signals", () => {
-  test("either signal alone is sufficient", () => {
-    const prefs = { whitelist: [], blacklist: ["example.com::disabled"] };
-    assert.equal(isSiteFullyExempt("example.com", prefs), true);
-  });
-
-  test("whitelist and pause for different domains both work independently", () => {
-    const prefs = { whitelist: ["a.com"], blacklist: ["b.com::disabled"] };
-    assert.equal(isSiteFullyExempt("a.com", prefs), true);
-    assert.equal(isSiteFullyExempt("b.com", prefs), true);
-    assert.equal(isSiteFullyExempt("c.com", prefs), false);
   });
 });

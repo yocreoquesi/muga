@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "Curtindo o MUGA? Avalie-o",
   bl_placeholder: "mysite.com  ou  amazon.com.br::tag::youtuber-21",
   wl_placeholder: "mysite.com  ou  amazon.com.br::tag::criador-21",
-  bl_hint: "Apenas domínio (ex: <code>mysite.com</code>): remove todos os parâmetros nesse site.<br>Domínio::param::valor (ex: <code>amazon.com.br::tag::youtuber-21</code>): remove uma tag de afiliado específica.<br>Domínio::param::* (ex: <code>amazon.com.br::pid::*</code>): remove um parâmetro independentemente do valor.<br><code>amazon.com.br::disabled</code>: MUGA não toca nada nesse domínio.<br><br>Prioridade: uma correspondência na lista de permissões sempre vence a lista de bloqueio para o mesmo parâmetro.",
+  bl_hint: "Apenas domínio (ex: <code>mysite.com</code>): remove todos os parâmetros nesse site.<br>Domínio::param::valor (ex: <code>amazon.com.br::tag::youtuber-21</code>): remove uma tag de afiliado específica.<br>Domínio::param::* (ex: <code>amazon.com.br::pid::*</code>): remove um parâmetro independentemente do valor.<br><br>Prioridade: uma correspondência na lista de permissões sempre vence a lista de bloqueio para o mesmo parâmetro.",
   wl_hint: "Aceita um domínio (ex: <code>mysite.com</code>): MUGA não toca nenhum afiliado nesse site.<br>Ou <code>domínio::param::valor</code> (ex: <code>amazon.com.br::tag::criador-21</code>): protege uma tag específica.<br>Ou <code>domínio::param::*</code> (ex: <code>amazon.com.br::tag::*</code>): protege um parâmetro independentemente do valor.<br><br>Prioridade: uma correspondência na lista de permissões sempre vence a lista de bloqueio para o mesmo parâmetro.",
   add_btn: "+ Adicionar",
   empty_list: "Nenhuma entrada ainda.",

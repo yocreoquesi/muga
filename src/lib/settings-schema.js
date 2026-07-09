@@ -133,17 +133,63 @@ export const BOOLEAN_KEYS = Object.freeze(
 );
 
 /**
- * Migration seam for future schema versions. Currently a no-op: there is
- * exactly one schema version, and legacy files with no `schemaVersion` at
- * all must import exactly as they do today. Do NOT reject unknown/future
- * versions here — that is out of scope for this slice.
+ * Migration seam for schema versions and removed-syntax cleanup. Runs on the
+ * import path before the structural validity check.
+ *
+ * #1053: the legacy `domain::disabled` per-site-pause blacklist syntax was
+ * removed entirely (a domain is exempted ONLY via a domain-only whitelist
+ * entry now). A pre-#1053 settings backup can still carry `domain::disabled`
+ * entries, which isValidListEntry now rejects (all 2-part entries are
+ * invalid) - and a single invalid entry aborts the whole import. Fold each
+ * domain-only `::disabled` entry into a bare whitelist domain here, exactly
+ * as the runtime migration migratePerSiteDisableToAllowlist() does for live
+ * storage, so an imported legacy backup preserves the exemption intent
+ * instead of failing the import. Keep the two implementations in sync.
+ *
+ * Legacy files with no `schemaVersion` still import as before. Do NOT reject
+ * unknown/future versions here.
  *
  * @param {object} data - Parsed import payload.
  * @param {number|undefined} _fromVersion - data.schemaVersion, if present.
  * @returns {object} The (possibly transformed) data to validate/import.
  */
 function migrate(data, _fromVersion) {
-  return data;
+  if (
+    !data || typeof data !== "object" ||
+    !Array.isArray(data.blacklist) || !Array.isArray(data.whitelist)
+  ) {
+    return data;
+  }
+
+  const normalize = (d) => d.trim().replace(/^www\./, "").toLowerCase();
+  const coversDomain = (host, entry) => {
+    if (typeof entry !== "string" || entry.includes("::")) return false;
+    const e = normalize(entry);
+    return !!e && (host === e || host.endsWith("." + e));
+  };
+
+  const whitelist = data.whitelist.slice();
+  const blacklist = [];
+  let changed = false;
+
+  for (const raw of data.blacklist) {
+    if (typeof raw === "string") {
+      const parts = raw.split("::");
+      if (parts.length === 2 && parts[1].trim().toLowerCase() === "disabled") {
+        // A per-site-disable marker: fold a valid domain into the allowlist
+        // and drop the marker (an empty-domain "::disabled" is just dropped).
+        changed = true;
+        const domain = normalize(parts[0] || "");
+        if (domain && !whitelist.some((w) => coversDomain(domain, w))) {
+          whitelist.push(domain);
+        }
+        continue;
+      }
+    }
+    blacklist.push(raw);
+  }
+
+  return changed ? { ...data, blacklist, whitelist } : data;
 }
 
 /**

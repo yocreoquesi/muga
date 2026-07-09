@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "¿Te gusta MUGA? Valóralo",
   bl_placeholder: "mysite.com  o  amazon.es::tag::youtuber-21",
   wl_placeholder: "mysite.com  o  amazon.es::tag::creador-21",
-  bl_hint: "Solo dominio (ej: <code>mysite.com</code>): elimina todos los parámetros en esa web.<br>Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>): elimina un afiliado concreto.<br>Dominio::param::* (ej: <code>amazon.es::pid::*</code>): elimina un parámetro sin importar su valor.<br><code>amazon.es::disabled</code>: MUGA no toca nada en ese dominio.<br><br>Prioridad: una coincidencia en la lista de permitidos siempre gana sobre la lista de bloqueo para el mismo parámetro.",
+  bl_hint: "Solo dominio (ej: <code>mysite.com</code>): elimina todos los parámetros en esa web.<br>Dominio::param::valor (ej: <code>amazon.es::tag::youtuber-21</code>): elimina un afiliado concreto.<br>Dominio::param::* (ej: <code>amazon.es::pid::*</code>): elimina un parámetro sin importar su valor.<br><br>Prioridad: una coincidencia en la lista de permitidos siempre gana sobre la lista de bloqueo para el mismo parámetro.",
   wl_hint: "Acepta un dominio (ej: <code>mysite.com</code>): MUGA no toca ningún afiliado en esa web.<br>O <code>dominio::parámetro::valor</code> (ej: <code>amazon.es::tag::creador-21</code>): protege un tag concreto.<br>O <code>dominio::parámetro::*</code> (ej: <code>amazon.es::tag::*</code>): protege un parámetro sin importar su valor.<br><br>Prioridad: una coincidencia en la lista de permitidos siempre gana sobre la lista de bloqueo para el mismo parámetro.",
   add_btn: "+ Añadir",
   empty_list: "Sin entradas todavía.",

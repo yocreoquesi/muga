@@ -24,9 +24,9 @@
  *   1000     — dynamic custom params rule (user-defined params, DNR redirect)
  *   1001     — dynamic remote params rule (signed remote payload, DNR redirect)
  *   2000-2499 — dynamic allowlist "allow" rules (#allowlist-full-inert), one
- *              per fully-exempt domain (domain-only whitelist entry or a
- *              `::disabled` per-site pause). Managed by syncAllowlistDNR() in
- *              service-worker.js. A dedicated 500-ID range so it can never
+ *              per fully-exempt domain (domain-only whitelist entry).
+ *              Managed by syncAllowlistDNR() in service-worker.js. A
+ *              dedicated 500-ID range so it can never
  *              collide with 1000/1001 or any future single-purpose dynamic
  *              rule below 2000.
  *

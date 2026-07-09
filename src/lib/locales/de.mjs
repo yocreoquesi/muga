@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "Gefällt dir MUGA? Bewerte es",
   bl_placeholder: "mysite.com  oder  amazon.de::tag::youtuber-21",
   wl_placeholder: "mysite.com  oder  amazon.de::tag::creator-21",
-  bl_hint: "Nur Domain (z.B. <code>mysite.com</code>): entfernt alle Parameter auf dieser Website.<br>Domain::param::Wert (z.B. <code>amazon.de::tag::youtuber-21</code>): entfernt ein bestimmtes Affiliate-Tag.<br>Domain::param::* (z.B. <code>amazon.de::pid::*</code>): entfernt einen Parameter unabhängig vom Wert.<br><code>amazon.de::disabled</code>: MUGA macht nichts auf dieser Domain.<br><br>Priorität: ein Treffer in der Erlaubnisliste gewinnt immer gegen die Sperrliste für denselben Parameter.",
+  bl_hint: "Nur Domain (z.B. <code>mysite.com</code>): entfernt alle Parameter auf dieser Website.<br>Domain::param::Wert (z.B. <code>amazon.de::tag::youtuber-21</code>): entfernt ein bestimmtes Affiliate-Tag.<br>Domain::param::* (z.B. <code>amazon.de::pid::*</code>): entfernt einen Parameter unabhängig vom Wert.<br><br>Priorität: ein Treffer in der Erlaubnisliste gewinnt immer gegen die Sperrliste für denselben Parameter.",
   wl_hint: "Akzeptiert eine Domain (z.B. <code>mysite.com</code>): MUGA berührt keine Affiliates auf dieser Website.<br>Oder <code>Domain::param::Wert</code> (z.B. <code>amazon.de::tag::creator-21</code>): schützt ein bestimmtes Tag.<br>Oder <code>Domain::param::*</code> (z.B. <code>amazon.de::tag::*</code>): schützt einen Parameter unabhängig vom Wert.<br><br>Priorität: ein Treffer in der Erlaubnisliste gewinnt immer gegen die Sperrliste für denselben Parameter.",
   add_btn: "+ Hinzufügen",
   empty_list: "Noch keine Einträge.",

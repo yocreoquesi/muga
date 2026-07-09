@@ -151,14 +151,12 @@ export function domainMatches(hostname, entryDomain) {
  * not a per-mechanism opt-out that has to be re-added every time a new
  * mechanism ships.
  *
- * A site counts as exempt when EITHER is true:
- *   (a) a DOMAIN-ONLY whitelist entry matches the host (bare "example.com").
- *       A param-scoped entry ("example.com::tag::x") does NOT count - that
- *       only protects one affiliate value, it is not a "leave this site
- *       alone" signal.
- *   (b) a per-site pause entry matches (an "example.com::disabled" blacklist
- *       entry - the legacy pause syntax, still fully honored even though the
- *       popup's pause control now writes to the whitelist instead, #1053).
+ * A site counts as exempt when a DOMAIN-ONLY whitelist entry matches the
+ * host (bare "example.com"). A param-scoped entry ("example.com::tag::x")
+ * does NOT count - that only protects one affiliate value, it is not a
+ * "leave this site alone" signal. (The legacy `example.com::disabled`
+ * per-site-pause blacklist syntax was removed entirely - a domain is
+ * exempted ONLY via a domain-only whitelist entry now.)
  *
  * Reuses parseListEntry/domainMatches rather than reimplementing domain
  * matching (a separate cleanup is tracked in #1005).
@@ -188,26 +186,14 @@ export function isSiteFullyExempt(hostname, prefs) {
     if (domainMatches(hostname, entry.domain)) return true;
   }
 
-  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
-  for (const raw of blacklist) {
-    let entry;
-    try {
-      entry = parseListEntry(raw);
-    } catch {
-      continue;
-    }
-    if (entry.param !== "disabled" || entry.value || !entry.domain) continue;
-    if (domainMatches(hostname, entry.domain)) return true;
-  }
-
   return false;
 }
 
 /**
  * Returns the deduped list of bare domains (www-stripped, lowercased) that
- * are fully exempt from MUGA - i.e. the same domain-only-whitelist /
- * `::disabled`-pause signals isSiteFullyExempt() tests against a single
- * hostname, but exposed here as the raw domain list (#allowlist-full-inert).
+ * are fully exempt from MUGA - i.e. the same domain-only-whitelist signal
+ * isSiteFullyExempt() tests against a single hostname, but exposed here as
+ * the raw domain list (#allowlist-full-inert).
  *
  * Used by the service worker to build one DNR dynamic "allow" rule per
  * exempt domain (src/background/service-worker.js#syncAllowlistDNR): DNR
@@ -238,18 +224,6 @@ export function getFullyExemptDomains(prefs) {
       continue;
     }
     if (!entry.domain || entry.param) continue;
-    domains.add(entry.domain);
-  }
-
-  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
-  for (const raw of blacklist) {
-    let entry;
-    try {
-      entry = parseListEntry(raw);
-    } catch {
-      continue;
-    }
-    if (entry.param !== "disabled" || entry.value || !entry.domain) continue;
     domains.add(entry.domain);
   }
 
@@ -301,9 +275,9 @@ export function isDomainAllowlisted(hostname, whitelist) {
  * blacklist entry it used to write. That keeps a single source of truth: a
  * paused site shows up in the Settings allowlist, and a manually-whitelisted
  * site correctly shows as paused in the popup. The legacy
- * `example.com::disabled` blacklist syntax (shipped since v1.13.0) is a
- * separate, still-fully-supported mechanism - see isSiteFullyExempt - this
- * function does not read or write it.
+ * `example.com::disabled` blacklist syntax (shipped since v1.13.0) has been
+ * removed entirely - a domain is exempted ONLY via a domain-only whitelist
+ * entry now (see isSiteFullyExempt).
  *
  * Adding appends `<host>` (www-stripped, lowercased) unless the host is
  * already allowlisted (exact or parent-domain match). Removing drops every
@@ -542,8 +516,8 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *
  * Logic order:
  *   0.  Full-site exemption (#allowlist-full-inert): a domain-only whitelist
- *       entry or a `::disabled` pause returns the URL completely untouched,
- *       before every other step below runs.
+ *       entry returns the URL completely untouched, before every other step
+ *       below runs.
  *   0a. Honor Creator Mode (#452): pass redirect-network wrapper through
  *       UNMODIFIED when user opted in AND referrer matches creatorAllowlist
  *   1. Blacklist check: domain-only entry → strip ALL params (Scenario D)
@@ -603,13 +577,13 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
 export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer, pathStripRules = [], pathAffiliateRules = []) {
   // Step 0 — Full-site exemption choke point (#allowlist-full-inert).
   //
-  // A domain-only whitelist entry or a `::disabled` per-site pause means
-  // MUGA must have NO effect on this hostname at all - not just "skip
-  // affiliate processing" (the old, narrower behavior), but skip every
-  // cleaning mechanism this function performs, current and future. This
-  // check MUST run before unwrap/honor-creator/canonical extraction below,
-  // since those also mutate/inspect the URL - an exempt site must never be
-  // touched by any of them either.
+  // A domain-only whitelist entry means MUGA must have NO effect on this
+  // hostname at all - not just "skip affiliate processing" (the old,
+  // narrower behavior), but skip every cleaning mechanism this function
+  // performs, current and future. This check MUST run before
+  // unwrap/honor-creator/canonical extraction below, since those also
+  // mutate/inspect the URL - an exempt site must never be touched by any
+  // of them either.
   //
   // Fail-safe: if rawUrl fails to parse here, do NOT treat it as exempt -
   // fall through to the normal pipeline (which re-parses it via
@@ -650,11 +624,6 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // still wiped on its non-auth paths.
   const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
   if (AUTH_PATH_RE.test(url.pathname.toLowerCase())) {
-    return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });
-  }
-
-  // Per-domain disable: user wants MUGA to do nothing on this domain
-  if (parsedBlacklist.some(e => e.param === "disabled" && !e.value && domainMatches(hostname, e.domain))) {
     return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });
   }
 

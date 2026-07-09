@@ -933,10 +933,10 @@ describe("preservedAffiliate — UI feedback signal", () => {
     // OAuth path
     r = processUrl("https://shop.test.muga/oauth/callback?aff=someone-99", { ...PREFS });
     assert.equal(r.preservedAffiliate, null);
-    // Per-domain disabled
+    // Domain-only blacklist (Scenario D early return)
     r = processUrl("https://shop.test.muga/x?aff=someone-99", {
       ...PREFS,
-      blacklist: ["shop.test.muga::disabled"],
+      blacklist: ["shop.test.muga"],
     });
     assert.equal(r.preservedAffiliate, null);
   });
@@ -1351,59 +1351,63 @@ describe("Amazon — root-level /ref= path tracking", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Per-domain disable (issue #19)
+// Per-domain disable (issue #19) — legacy `domain::disabled` syntax REMOVED
 // ---------------------------------------------------------------------------
-describe("per-domain disable — domain::disabled blacklist entry", () => {
+//
+// The `domain::disabled` blacklist entry used to make MUGA fully inert on
+// that domain (issue #19). That syntax has been removed entirely — a domain
+// is exempted ONLY via a domain-only whitelist entry now (see
+// tests/unit/domain-allowlist-pause.test.mjs and
+// tests/unit/per-site-disable-migration.test.mjs for the one-time migration
+// that converts any pre-existing `::disabled` entry into a whitelist entry
+// so no user is silently left with a dead, no-longer-honored entry).
+//
+// These tests lock in the new behavior: a stray `domain::disabled` blacklist
+// entry (e.g. one that somehow survived without the migration running) is
+// now INERT — it neither exempts the domain nor wipes it (it carries a
+// non-empty param, so it does not match the domain-only "strip everything"
+// blacklist branch either) — cleaning proceeds completely normally.
+describe("per-domain disable (removed) — domain::disabled is now an inert blacklist entry", () => {
 
-  test("disabled domain returns URL completely untouched", () => {
-    const raw = "https://www.amazon.es/dp/B08?tag=affiliate-21&utm_source=email";
-    const { action, cleanUrl } = processUrl(raw, {
-      ...PREFS,
-      blacklist: ["amazon.es::disabled"],
-    });
-    assert.equal(action, "untouched");
-    assert.equal(cleanUrl, raw);
-  });
-
-  test("disabled domain does not strip tracking params", () => {
+  test("a `domain::disabled` blacklist entry no longer exempts the domain — tracking params are still stripped", () => {
     const raw = "https://example.com/page?utm_source=google&fbclid=abc";
     const { action, cleanUrl, removedTracking } = processUrl(raw, {
       ...PREFS,
       blacklist: ["example.com::disabled"],
     });
-    assert.equal(action, "untouched");
-    assert.equal(cleanUrl, raw);
-    assert.deepEqual(removedTracking, []);
+    assert.notEqual(action, "untouched");
+    assert.notEqual(cleanUrl, raw);
+    assert.ok(removedTracking.includes("utm_source"));
+    assert.ok(removedTracking.includes("fbclid"));
   });
 
-  test("disabled domain does not inject affiliate", () => {
+  test("a `domain::disabled` blacklist entry does not wipe the domain either (it is not a domain-only entry)", () => {
+    const raw = "https://www.amazon.es/dp/B08?tag=affiliate-21";
+    const { action } = processUrl(raw, {
+      ...PREFS,
+      blacklist: ["amazon.es::disabled"],
+    });
+    assert.notEqual(action, "blacklisted");
+  });
+
+  test("affiliate injection still runs normally on a domain with only a stray `::disabled` entry", () => {
     const raw = "https://www.amazon.es/dp/B08";
     const { action } = processUrl(raw, {
       ...PREFS,
       injectOwnAffiliate: true,
       blacklist: ["amazon.es::disabled"],
     });
-    assert.notEqual(action, "injected");
+    assert.equal(action, "injected");
   });
 
-  test("disabled domain takes priority over regular domain blacklist", () => {
+  test("a real domain-only blacklist entry alongside a stray `::disabled` entry still wipes everything", () => {
     const raw = "https://www.amazon.es/dp/B08?tag=x";
     const { action, cleanUrl } = processUrl(raw, {
       ...PREFS,
       blacklist: ["amazon.es::disabled", "amazon.es"],
     });
-    // ::disabled fires first — URL unchanged
-    assert.equal(action, "untouched");
-    assert.equal(cleanUrl, raw);
-  });
-
-  test("non-disabled domain is still processed normally", () => {
-    const raw = "https://www.amazon.es/dp/B08?utm_source=email";
-    const { action } = processUrl(raw, {
-      ...PREFS,
-      blacklist: ["booking.com::disabled"],
-    });
-    assert.equal(action, "cleaned");
+    assert.equal(action, "blacklisted");
+    assert.equal(new URL(cleanUrl).search, "");
   });
 
 });
@@ -1873,13 +1877,13 @@ describe("processUrl choke-point — isSiteFullyExempt governs ALL cleaning (#al
     assert.equal(result.creatorReferralPreserved, false);
   });
 
-  test("::disabled per-site pause entry: same fully-inert guarantee as domain-only whitelist", () => {
+  test("::disabled blacklist entry (removed syntax) no longer grants the fully-inert guarantee", () => {
     const rawUrl = "https://example.com/?utm_source=x&gclid=y";
     const prefs = { ...PREFS, blacklist: ["example.com::disabled"], injectOwnAffiliate: true };
     const result = processUrl(rawUrl, prefs);
-    assert.equal(result.action, "untouched");
-    assert.equal(result.cleanUrl, rawUrl);
-    assert.deepEqual(result.removedTracking, []);
+    assert.notEqual(result.action, "untouched");
+    assert.notEqual(result.cleanUrl, rawUrl);
+    assert.ok(result.removedTracking.length > 0);
   });
 
   test("param-scoped whitelist entry does NOT trip the full-exempt path - other tracking still stripped", () => {

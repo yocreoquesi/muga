@@ -16,9 +16,9 @@
     // #allowlist-full-inert: this script rewrites window.location on its own
     // (not through processUrl, not one of the four muga:history-gate
     // active-defense scripts), so a fully-exempt domain (domain-only
-    // whitelist entry or #995 ::disabled pause) needs its own explicit
-    // check here. Relevant mainly on Firefox MV2, where this file is
-    // injected as its own content_scripts entry (manifest.v2.json) sharing
+    // whitelist entry) needs its own explicit check here. Relevant mainly
+    // on Firefox MV2, where this file is injected as its own content_scripts
+    // entry (manifest.v2.json) sharing
     // the isolated-world window with cleaner-bundle.js from the entry
     // registered earlier in the same manifest - window.__mugaCleaner is set
     // there. On Chrome MV3 this file is not loaded at all (AMP redirects run

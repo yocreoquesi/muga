@@ -150,6 +150,36 @@ describe("import settings (planImport behavior)", () => {
     assert.deepStrictEqual(plan.toSave.customParams, direct.customParams);
   });
 
+  test("6b. legacy backup with a ::disabled entry imports cleanly, folding it into the allowlist (#1053)", () => {
+    // Before #1053, `example.com::disabled` was a valid blacklist entry. It is
+    // now invalid, and a single invalid entry aborts the whole import — so a
+    // pre-#1053 backup would fail entirely. migrate() must fold the domain-only
+    // ::disabled marker into a bare whitelist entry (mirroring the runtime
+    // migration migratePerSiteDisableToAllowlist) so the exemption survives.
+    const plan = planImport(validImportData({
+      blacklist: ["amazon.es::tag::x", "example.com::disabled"],
+      whitelist: ["foo.com"],
+    }));
+    assert.equal(plan.ok, true, "a legacy ::disabled backup must not abort the whole import");
+    assert.ok(plan.toSave.whitelist.includes("example.com"), "the ::disabled domain must be folded into the allowlist");
+    assert.ok(plan.toSave.whitelist.includes("foo.com"), "existing allowlist entries must be preserved");
+    assert.ok(!plan.toSave.blacklist.includes("example.com::disabled"), "the removed ::disabled syntax must not survive into the blacklist");
+    assert.ok(plan.toSave.blacklist.includes("amazon.es::tag::x"), "param-scoped affiliate-protection entries must be preserved");
+  });
+
+  test("6c. ::disabled fold dedups against an existing allowlist entry (#1053)", () => {
+    const plan = planImport(validImportData({
+      blacklist: ["example.com::disabled"],
+      whitelist: ["example.com"],
+    }));
+    assert.equal(plan.ok, true);
+    assert.deepStrictEqual(
+      plan.toSave.whitelist.filter((d) => d === "example.com"),
+      ["example.com"],
+      "a domain already allowlisted must not be duplicated by the fold",
+    );
+  });
+
   test("7. import validates boolean keys by typeof", () => {
     const plan = planImport(validImportData({ enabled: "true", injectOwnAffiliate: true, dnrEnabled: 1 }));
     assert.equal(plan.ok, true);
@@ -243,8 +273,8 @@ describe("isValidListEntry (extracted function)", () => {
     assert.strictEqual(isValidListEntry("amazon.es::tag::youtuber-21"), true);
   });
 
-  test("16. valid domain::disabled: 'amazon.es::disabled' -> true", () => {
-    assert.strictEqual(isValidListEntry("amazon.es::disabled"), true);
+  test("16. domain::disabled (legacy per-site-pause syntax, removed): 'amazon.es::disabled' -> false", () => {
+    assert.strictEqual(isValidListEntry("amazon.es::disabled"), false);
   });
 
   test("17. empty string -> false", () => {

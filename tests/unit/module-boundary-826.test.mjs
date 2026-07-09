@@ -204,6 +204,7 @@ const STORAGE_EXPECTED_EXPORTS = new Set([
   "incrementShortenerStat",
   "migrateStatsToLocal",
   "migrateLegacyProxyPref",
+  "migratePerSiteDisableToAllowlist",
 ]);
 
 // ── Guard (1): prefs.js must not import from storage.js ───────────────────
@@ -265,6 +266,13 @@ describe("module-boundary — storage-migrations.js (#826 PR2)", () => {
     assert.ok(
       src.includes("export async function migrateLegacyProxyPref"),
       "storage-migrations.js must export migrateLegacyProxyPref"
+    );
+  });
+
+  test("storage-migrations.js exports migratePerSiteDisableToAllowlist", () => {
+    assert.ok(
+      src.includes("export async function migratePerSiteDisableToAllowlist"),
+      "storage-migrations.js must export migratePerSiteDisableToAllowlist"
     );
   });
 });

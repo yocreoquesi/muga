@@ -3,9 +3,9 @@
  *
  * Before v1.10.2 the popup computed "MUGA is disabled" (or the clean
  * preview) once at open time. Toggling the extension on/off, or adding
- * the current domain to the blacklist-with-::disabled, did not update
- * the popup until it was reopened. These tests pin the reactive
- * re-render wiring so it cannot silently regress.
+ * the current domain to the allowlist, did not update the popup until
+ * it was reopened. These tests pin the reactive re-render wiring so it
+ * cannot silently regress.
  */
 
 import { test, describe } from "node:test";

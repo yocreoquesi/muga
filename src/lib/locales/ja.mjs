@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "MUGAがお気に入りですか? 評価してください",
   bl_placeholder: "mysite.com  または  amazon.co.jp::tag::youtuber-21",
   wl_placeholder: "mysite.com  または  amazon.co.jp::tag::creator-21",
-  bl_hint: "ドメインのみ (例: <code>mysite.com</code>): そのサイトのすべてのパラメータを削除します。<br>ドメイン::param::値 (例: <code>amazon.co.jp::tag::youtuber-21</code>): 特定のアフィリエイトタグを削除します。<br>ドメイン::param::* (例: <code>amazon.co.jp::pid::*</code>): 値に関係なくパラメータを削除します。<br><code>amazon.co.jp::disabled</code>: MUGAはそのドメインで何もしません。<br><br>優先順位: 同じパラメータについては許可リストの一致が常にブロックリストより優先されます。",
+  bl_hint: "ドメインのみ (例: <code>mysite.com</code>): そのサイトのすべてのパラメータを削除します。<br>ドメイン::param::値 (例: <code>amazon.co.jp::tag::youtuber-21</code>): 特定のアフィリエイトタグを削除します。<br>ドメイン::param::* (例: <code>amazon.co.jp::pid::*</code>): 値に関係なくパラメータを削除します。<br><br>優先順位: 同じパラメータについては許可リストの一致が常にブロックリストより優先されます。",
   wl_hint: "ドメインを受け付けます (例: <code>mysite.com</code>): MUGAはそのサイトのアフィリエイトに一切触れません。<br>または <code>ドメイン::param::値</code> (例: <code>amazon.co.jp::tag::creator-21</code>): 特定のタグを保護します。<br>または <code>ドメイン::param::*</code> (例: <code>amazon.co.jp::tag::*</code>): 値に関係なくパラメータを保護します。<br><br>優先順位: 同じパラメータについては許可リストの一致が常にブロックリストより優先されます。",
   add_btn: "+ 追加",
   empty_list: "エントリはまだありません。",

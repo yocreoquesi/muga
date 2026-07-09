@@ -102,13 +102,12 @@ describe("syncAllowlistDNR — one allow rule per exempt domain", () => {
     assert.ok(rule.id >= DNR_ALLOWLIST_RULE_ID_BASE && rule.id < DNR_ALLOWLIST_RULE_ID_BASE + DNR_ALLOWLIST_MAX_RULES);
   });
 
-  test("a `::disabled` per-site pause entry produces exactly one allow rule", async () => {
+  test("a `::disabled` blacklist entry (legacy syntax, removed) does NOT produce an allow rule", async () => {
     const dnr = makeFakeDnr();
     await syncAllowlistDNRLogic({ whitelist: [], blacklist: ["paused.com::disabled"] }, dnr);
 
     const call = dnr.calls[0];
-    assert.strictEqual(call.addRules.length, 1);
-    assert.deepEqual(call.addRules[0].condition.requestDomains, ["paused.com"]);
+    assert.strictEqual(call.addRules.length, 0);
   });
 
   test("allow rule priority (1000) is strictly higher than every strip/redirect rule (priority 1)", async () => {
@@ -139,14 +138,16 @@ describe("syncAllowlistDNR — one allow rule per exempt domain", () => {
   test("multiple exempt domains each get their own rule with distinct ids", async () => {
     const dnr = makeFakeDnr();
     await syncAllowlistDNRLogic(
+      // c.com::disabled is a stray legacy blacklist entry (removed syntax) and
+      // must NOT produce a rule alongside the two real whitelist entries.
       { whitelist: ["a.com", "b.com"], blacklist: ["c.com::disabled"] },
       dnr,
     );
 
     const call = dnr.calls[0];
-    assert.strictEqual(call.addRules.length, 3);
+    assert.strictEqual(call.addRules.length, 2);
     const domains = call.addRules.map(r => r.condition.requestDomains[0]).sort();
-    assert.deepEqual(domains, ["a.com", "b.com", "c.com"]);
+    assert.deepEqual(domains, ["a.com", "b.com"]);
     const ids = call.addRules.map(r => r.id);
     assert.strictEqual(new Set(ids).size, ids.length, "rule ids must be unique");
   });

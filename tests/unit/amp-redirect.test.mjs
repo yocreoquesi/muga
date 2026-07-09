@@ -358,8 +358,8 @@ describe("C11 — replica sync verification (amp-redirect.js)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// #allowlist-full-inert — a fully-exempt domain (domain-only whitelist entry
-// or #995 ::disabled pause) must stop the AMP redirect too. Firefox MV2 loads
+// #allowlist-full-inert — a fully-exempt domain (domain-only whitelist entry)
+// must stop the AMP redirect too. Firefox MV2 loads
 // this file as its own content_scripts entry (manifest.v2.json) sharing the
 // isolated-world window with cleaner-bundle.js, so window.__mugaCleaner is
 // available; Chrome MV3 does not load this file at all (DNR handles AMP

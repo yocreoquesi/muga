@@ -12,9 +12,11 @@
  * predicate the popup uses to compute the paused state. domainMatches is the
  * shared host-vs-entry matcher reused by both.
  *
- * The legacy `::disabled` blacklist syntax is untouched by this change -
- * see tests/unit/active-defense-exemption.test.mjs, which still exercises
- * isSiteFullyExempt's `::disabled` branch unchanged.
+ * The legacy `::disabled` blacklist per-site-pause syntax has since been
+ * removed entirely (a domain is exempted ONLY via a domain-only whitelist
+ * entry now) - see tests/unit/active-defense-exemption.test.mjs and
+ * tests/unit/per-site-disable-migration.test.mjs for the one-time migration
+ * that converts any existing `::disabled` entry into a whitelist entry.
  */
 
 import { test, describe } from "node:test";

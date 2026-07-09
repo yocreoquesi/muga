@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "MUGA vous plaît ? Évaluez-le",
   bl_placeholder: "mysite.com  ou  amazon.fr::tag::youtuber-21",
   wl_placeholder: "mysite.com  ou  amazon.fr::tag::createur-21",
-  bl_hint: "Domaine seul (ex. <code>mysite.com</code>) : supprime tous les paramètres sur ce site.<br>Domaine::param::valeur (ex. <code>amazon.fr::tag::youtuber-21</code>) : supprime un tag d'affiliation précis.<br>Domaine::param::* (ex. <code>amazon.fr::pid::*</code>) : supprime un paramètre quelle que soit sa valeur.<br><code>amazon.fr::disabled</code> : MUGA ne fait rien sur ce domaine.<br><br>Priorité : une correspondance dans la liste d'autorisation l'emporte toujours sur la liste de blocage pour le même paramètre.",
+  bl_hint: "Domaine seul (ex. <code>mysite.com</code>) : supprime tous les paramètres sur ce site.<br>Domaine::param::valeur (ex. <code>amazon.fr::tag::youtuber-21</code>) : supprime un tag d'affiliation précis.<br>Domaine::param::* (ex. <code>amazon.fr::pid::*</code>) : supprime un paramètre quelle que soit sa valeur.<br><br>Priorité : une correspondance dans la liste d'autorisation l'emporte toujours sur la liste de blocage pour le même paramètre.",
   wl_hint: "Accepte un domaine (ex. <code>mysite.com</code>) : MUGA ne touchera à aucune affiliation sur ce site.<br>Ou <code>domaine::param::valeur</code> (ex. <code>amazon.fr::tag::createur-21</code>) : protège un tag précis.<br>Ou <code>domaine::param::*</code> (ex. <code>amazon.fr::tag::*</code>) : protège un paramètre quelle que soit sa valeur.<br><br>Priorité : une correspondance dans la liste d'autorisation l'emporte toujours sur la liste de blocage pour le même paramètre.",
   add_btn: "+ Ajouter",
   empty_list: "Aucune entrée pour l'instant.",
