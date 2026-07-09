@@ -54,7 +54,7 @@
   <ol>
     <li><strong>Remove the same noise parameters those tools remove</strong>, <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_cid</code>, <code>igshid</code>, the rest of the usual set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js#L18"><code>src/lib/affiliates-data.js:18</code></a>).</li>
     <li><strong>Preserve affiliate parameters that belong to a creator</strong>, even on programs MUGA itself has no commercial relationship with (Booking, Vercel, DigitalOcean, etc.). The preservation table is sourced from MUGA's documented affiliate-program rules (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</li>
-    <li><strong>Be explicit about the one case where MUGA itself benefits</strong>, affiliate injection, and gate it behind an opt-in checkbox during onboarding (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L25"><code>src/lib/prefs.js:25</code></a>).</li>
+    <li><strong>Be explicit about the one case where MUGA itself benefits</strong>, affiliate injection, which is on by default for new installs and can be turned off during onboarding or any time in Settings, with cleaning and every protection unaffected (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L25"><code>src/lib/prefs.js:25</code></a>).</li>
   </ol>
 
   <p>If you only want noise removed and don't care about creator attribution, a generic cleaner is fine. If you want the YouTuber who recommended you that USB-C dock to actually get paid for the recommendation, you need a tool that knows the difference between a noise param and an affiliate tag.</p>
@@ -84,20 +84,22 @@
 
   <h3>Q: Is MUGA monetised? How?</h3>
 
-  <p>Yes. On a small set of supported stores, <strong>if and only if the user opted in during onboarding</strong>, MUGA can inject its own affiliate tag into URLs that arrive <strong>without any affiliate tag at all</strong>. The set of programs MUGA has its own tag for is hardcoded in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L74"><code>src/lib/affiliates.js:74</code></a> (Amazon and eBay marketplaces; a handful of programs pending account approval; everything else is preservation-only).</p>
+  <p>Yes. On a small set of supported stores, MUGA injects its own affiliate tag into URLs that arrive <strong>without any affiliate tag at all</strong>. This is on by default for new installs, and you can turn it off during onboarding or any time in Settings. The set of programs MUGA has its own tag for is hardcoded in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L74"><code>src/lib/affiliates.js:74</code></a> (Amazon and eBay marketplaces; a handful of programs pending account approval; everything else is preservation-only).</p>
 
   <h3>Q: Is injection on by default?</h3>
 
-  <p>No. The default for <code>injectOwnAffiliate</code> is <code>false</code>:</p>
+  <p>Yes, for new installs. The default for <code>injectOwnAffiliate</code> is <code>true</code>:</p>
 
   <pre><code>// src/lib/prefs.js:25
-injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)</code></pre>
+injectOwnAffiliate: true,  // on by default; user can turn it off in onboarding or Settings (#1032)</code></pre>
 
-  <p>The user is asked explicitly during onboarding via a checkbox that ships unchecked unless the preference was already enabled on another device they own (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.html#L96"><code>src/onboarding/onboarding.html:96</code></a>, <a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L183-L184"><code>src/onboarding/onboarding.js:183-184</code></a>). On a per-device basis, the user can decline even if a sibling device opted in, the decline is stored as a local override and does not propagate back to sync (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L170-L176"><code>src/onboarding/onboarding.js:170-176</code></a>).</p>
+  <p>Injection only adds MUGA's own referral on a few supported stores, and only to links that carry no affiliate tag at all. By default it leaves someone else's tag in place, and your price never changes. The honest reason it ships on: it lets an independent project stay maintainable as it grows, and since everything in MUGA is yours to adjust, you are the one who decides. You can turn it off during onboarding via the checkbox, or any time in Settings, and cleaning and every protection keep working exactly the same. The default only affects fresh installs, so nobody's existing choice is changed behind their back.</p>
+
+  <p>The user sees this clearly during onboarding via a checkbox that ships checked, and can uncheck it to opt out before finishing setup (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.html#L96"><code>src/onboarding/onboarding.html:96</code></a>, <a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L183-L184"><code>src/onboarding/onboarding.js:183-184</code></a>). On a per-device basis, the user can turn it off even if a sibling device enabled it; the choice is stored as a local override and does not propagate back to sync (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L170-L176"><code>src/onboarding/onboarding.js:170-176</code></a>).</p>
 
   <h3>Q: Does MUGA ever overwrite an existing affiliate tag?</h3>
 
-  <p>Only if you have explicitly enabled BOTH "Remove all affiliate tags from other sources" and MUGA's own-tag injection. In that case the foreign tag is first stripped (per your remove-all choice), then ours is injected into the now-tagless URL. With injection alone (remove-all off), MUGA never touches an existing foreign tag: it is detected and honored (<code>action = "detected_foreign"</code>).</p>
+  <p>Only if you have BOTH "Remove all affiliate tags from other sources" and MUGA's own-tag injection turned on. In that case the foreign tag is first stripped (per your remove-all choice), then ours is injected into the now-tagless URL. With injection alone (remove-all off), MUGA never touches an existing foreign tag: it is detected and honored (<code>action = "detected_foreign"</code>).</p>
 
   <p>The injection branch itself is still gated by <code>!url.searchParams.has(pattern.param)</code>, so it never overwrites a tag that is present at injection time (an own tag the remove-all step preserved short-circuits it):</p>
 
@@ -185,12 +187,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <h3>Q: What is the roadmap?</h3>
 
-  <p>The roadmap lives in two places:</p>
-
-  <ul>
-    <li><a href="https://github.com/yocreoquesi/muga/blob/main/OBJECTIVES.md"><code>OBJECTIVES.md</code></a>, the high-level objectives and non-goals.</li>
-    <li><a href="https://github.com/yocreoquesi/muga/issues">GitHub Issues</a>, the concrete work items.</li>
-  </ul>
+  <p>The roadmap lives in <a href="https://github.com/yocreoquesi/muga/issues">GitHub Issues</a>, the concrete work items.</p>
 
   <p>Material changes to the privacy contract trigger a re-onboarding flow on each device the next time the service worker wakes up (<a href="https://github.com/yocreoquesi/muga/blob/main/src/privacy/privacy.html#L59"><code>src/privacy/privacy.html:59</code></a>), so the user always has a chance to re-consent before behaviour changes.</p>
 

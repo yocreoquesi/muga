@@ -19,7 +19,7 @@
 
 > **2.5.0 shipped.** Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the old approach was silently blocked. Adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, a weekly remote-rules changelog in Settings, and a large tracking-parameter harvest. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
-[Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Objectives & non-goals](OBJECTIVES.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
+[Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 
 </div>
 
@@ -105,7 +105,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - **Block `<a ping>` beacons**: prevents background ping requests on click
 - **AMP redirect**: silently redirects AMP pages to the canonical article URL
 - **Redirect-wrapper unwrapping**: detects and bypasses intermediary redirect wrappers so you land on the real URL
-- **Affiliate injection**: adds our tag when none is present *(you pay the same price; off by default, enabled during onboarding or manually in Settings at any time)*
+- **Affiliate injection**: adds our tag when none is present *(you pay the same price; on by default, turn it off in onboarding or Settings anytime, at no cost to cleaning or protection)*
 
 ### Configurable
 
@@ -145,11 +145,11 @@ When you navigate to a supported store and there is **no existing affiliate tag*
 - On compatible stores: if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
 - On incompatible stores: MUGA actively strips affiliate noise parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
 
-This is explained during onboarding before the feature is enabled, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/), and verifiable in the source code.
+This is explained during onboarding, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/), and verifiable in the source code.
 
 - Only fires when the link has **no affiliate tag at all**
 - The tag is added as a standard URL parameter. Nothing hidden, nothing obfuscated.
-- **Off by default**: enabled during onboarding or manually in Settings at any time
+- **On by default**: turn it off in onboarding or Settings anytime, at no cost to cleaning or protection
 - Turn it off any time: Settings → toggle off, globally or per domain
 - **By default, we try not to touch what isn't ours**: if a link already has someone else's affiliate tag on a compatible store, MUGA leaves it in place. Replacing it is a separate, deliberate opt-in, and even then it stays your choice
 
@@ -169,7 +169,7 @@ This is explained during onboarding before the feature is enabled, disclosed in 
 
 MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners. The full allowlist is documented in [`src/rules/manifest.json`](src/rules/manifest.json); the decision algorithm that governs preservation is in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
 
-On two of those programs, Amazon (ES, DE, FR, IT, UK, US) and eBay (US, ES, DE, UK, FR, IT), MUGA also has its own affiliate account active. That is where the optional affiliate-injection feature can add MUGA's tag when a link arrives with no tag at all.
+On two of those programs, Amazon (ES, DE, FR, IT, UK, US) and eBay (US, ES, DE, UK, FR, IT), MUGA also has its own affiliate account active. That is where affiliate injection, which is on by default and can be turned off in onboarding or Settings anytime, adds MUGA's tag when a link arrives with no tag at all.
 
 Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based attribution, because routing your clicks through external servers would violate our privacy policy.
 

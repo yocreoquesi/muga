@@ -11,7 +11,7 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `enabled` | boolean | `true` | Master on/off switch for all URL cleaning |
-| `injectOwnAffiliate` | boolean | `false` | Scenario B: inject ourTag when no affiliate present (opt-in during onboarding) |
+| `injectOwnAffiliate` | boolean | `true` | Scenario B: inject ourTag when no affiliate present (on by default; user can turn it off in onboarding or Settings) |
 | `notifyForeignAffiliate` | boolean | `false` | Scenario C: show toast when foreign affiliate detected |
 | `stripAllAffiliates` | boolean | `false` | Strip foreign affiliate params; own tag is still injected afterward if `injectOwnAffiliate` is on |
 | `blacklist` | string[] | `[]` | Domain/param/value entries to always strip. Format: `"domain"` or `"domain::param::value"` |
