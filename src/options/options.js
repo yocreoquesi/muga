@@ -1076,12 +1076,19 @@ function initExportImport() {
 
       // ── Everything above is read-only. Nothing is applied until here. ──
 
-      // devMode from imported file → local storage
+      const saved = await setPrefs(toSave);
+      // Do not report success on a failed write (audit #1044): setPrefs resolves
+      // false on a storage failure (e.g. quota), so without this the code below
+      // would re-read the UNCHANGED prefs, repopulate the UI with the old values,
+      // and still show the success toast. Route to the existing import_error path.
+      // This runs BEFORE the devMode write so a failed sync import never leaves
+      // device-local devMode changed against un-imported sync prefs (#1044).
+      if (!saved) throw new Error("import: setPrefs write did not land");
+
+      // devMode from imported file → local storage (only after the sync write landed)
       if (plan.special.devMode !== undefined) {
         await setDevMode(plan.special.devMode);
       }
-
-      await setPrefs(toSave);
 
       // #965: importing a config is an explicit choice for this device. For
       // guarded prefs (injectOwnAffiliate), getPrefs() overlays the per-device

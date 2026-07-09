@@ -116,23 +116,6 @@
       </div>
     </div>
 
-    <!-- Remote rules confirmation (shown only when sync brings it enabled, #364) -->
-    <div class="section" id="remote-rules-section" hidden>
-      <div class="section-title" data-i18n="ob_remote_rules_title">Remote rule updates</div>
-      <div class="affiliate-body">
-        <p id="remote-rules-desc" data-i18n="ob_remote_rules_desc">
-          Your other device has remote rule updates enabled. With this on, MUGA performs a weekly fetch of a signed tracking-param list from a public GitHub Pages endpoint to keep your protection fresh. No user data is sent.
-        </p>
-        <label class="consent-check" id="remote-rules-label">
-          <input type="checkbox" id="remote-rules-check" data-i18n-aria-label="aria_onboarding_remote_rules_check">
-          <div class="consent-check-label">
-            <strong data-i18n="ob_remote_rules_check_label">Enable remote rule updates on this device</strong>
-            <small id="remote-rules-note" data-i18n="ob_synced_from_other_device">This setting was enabled on another device. Confirm it for this device, or uncheck to keep it off here.</small>
-          </div>
-        </label>
-      </div>
-    </div>
-
     <!-- Browser sync clarification (#631 item 4): the prefs the user opts into
          above are persisted via chrome.storage.sync, which means they cross
          devices ONLY if browser-native sync is on — that's the browser

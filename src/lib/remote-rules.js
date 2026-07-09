@@ -16,6 +16,7 @@
 import { TRUSTED_PUBLIC_KEYS } from "./remote-rules-keys.js";
 import { DNR_REMOTE_PARAMS_RULE_ID } from "./dnr-ids.js";
 import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
+import { REDIRECT_NETWORK_PATTERNS } from "./redirect-networks.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,12 @@ export const AFFILIATE_PARAM_GUARD = Object.freeze(new Set([
   "partnerizecampaignid",
   // Connexity (shopping affiliate, flagged separately from the AdGuard triage)
   "cnxclid",
+  // Redirect-network landing params (#695): the click IDs a merchant tag reads
+  // on the FIRST post-redirect landing. Derived from REDIRECT_NETWORK_PATTERNS
+  // so every declared network stays auto-guarded and a future or compromised
+  // signed payload can never add one to a strip list, which would destroy
+  // attribution on a no-referrer landing the way #695 prevented (audit #1039).
+  ...REDIRECT_NETWORK_PATTERNS.flatMap((n) => n.landingParams).map((p) => p.toLowerCase()),
 ]));
 
 // ── Storage key defaults ──────────────────────────────────────────────────────

@@ -148,59 +148,85 @@ export const PREF_DEFAULTS = {
  * @returns {Promise<object>} Preferences merged with PREF_DEFAULTS.
  */
 export async function getPrefs() {
+  // Each source is read independently and degrades on its OWN failure. A
+  // transient sync-read failure must NOT discard the independently-stored
+  // consent record (onboardingDone) or the per-device overrides — otherwise a
+  // fully onboarded user is treated as never-onboarded for this call, and a
+  // declined per-device pref silently reverts to the synced value (audit #1045).
+  const [sync, consent, overrides, fixtures] = await Promise.all([
+    new Promise((resolve) => {
+      chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
+        if (chrome.runtime.lastError) {
+          console.error("[MUGA] getPrefs sync read failed:", chrome.runtime.lastError);
+          resolve({ ...PREF_DEFAULTS });
+        } else {
+          resolve(result);
+        }
+      });
+    }),
+    getConsent().catch((err) => {
+      console.error("[MUGA] getPrefs consent read failed:", err);
+      return { onboardingDone: false, consentVersion: null, consentDate: null };
+    }),
+    getPerDeviceOverrides().catch((err) => {
+      console.error("[MUGA] getPrefs overrides read failed:", err);
+      return {};
+    }),
+    getTestFixtures().catch(() => null),
+  ]);
+
+  // Consent overlay (#355). Local wins over sync.
+  const overlay = {};
+  if (consent.onboardingDone) overlay.onboardingDone = true;
+  if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
+  if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
+
+  // Hard-reonboard gate (#370). When ConsentPolicy says material change
+  // pending, force `onboardingDone: false` so existing feature gates
+  // (`if (!prefs.onboardingDone) return`) bail until the user re-accepts.
+  // Soft re-onboard does NOT gate features — the user's prior consent
+  // remains valid for previously accepted behaviour.
+  // Under e2e fixtures (#407), the gate fires against the fixture
+  // manifest + required version so tests can drive the dormant path.
+  // Defensive: a malformed stored consentVersion could make evaluateConsentPolicy
+  // throw. getPrefs must never reject on that (callers await it without a catch),
+  // so on an un-evaluable policy we FAIL SAFE — gate features by forcing
+  // onboardingDone:false, matching the pre-#1045 return-defaults behaviour.
+  let policy;
   try {
-    const [sync, consent, overrides, fixtures] = await Promise.all([
-      new Promise((resolve, reject) => {
-        chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
-          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-          else resolve(result);
-        });
-      }),
-      getConsent(),
-      getPerDeviceOverrides(),
-      getTestFixtures(),
-    ]);
-
-    // Consent overlay (#355). Local wins over sync.
-    const overlay = {};
-    if (consent.onboardingDone) overlay.onboardingDone = true;
-    if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
-    if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
-
-    // Hard-reonboard gate (#370). When ConsentPolicy says material change
-    // pending, force `onboardingDone: false` so existing feature gates
-    // (`if (!prefs.onboardingDone) return`) bail until the user re-accepts.
-    // Soft re-onboard does NOT gate features — the user's prior consent
-    // remains valid for previously accepted behaviour.
-    // Under e2e fixtures (#407), the gate fires against the fixture
-    // manifest + required version so tests can drive the dormant path.
-    const policy = evaluateConsentPolicy({
+    policy = evaluateConsentPolicy({
       stored: consent,
       ...(fixtures?.requiredConsentVersion ? { requiredVersion: fixtures.requiredConsentVersion } : {}),
       ...(fixtures?.consentManifest ? { manifest: fixtures.consentManifest } : {}),
     });
-    if (policy.status === "hard-reonboard") {
-      overlay.onboardingDone = false;
-    }
-
-    // Per-device pref overlay (#364). Any key set in overrides wins
-    // over sync. Boolean shape is enforced at the source (overrides
-    // can only be set via per-device-prefs.setOverrides).
-    return { ...sync, ...overlay, ...overrides };
   } catch (err) {
-    console.error("[MUGA] getPrefs failed:", err);
-    return { ...PREF_DEFAULTS };
+    console.error("[MUGA] getPrefs consent-policy eval failed:", err);
+    policy = { status: "hard-reonboard" };
   }
+  if (policy.status === "hard-reonboard") {
+    overlay.onboardingDone = false;
+  }
+
+  // Per-device pref overlay (#364). Any key set in overrides wins
+  // over sync. Boolean shape is enforced at the source (overrides
+  // can only be set via per-device-prefs.setOverrides).
+  return { ...sync, ...overlay, ...overrides };
 }
 
 /**
  * Writes a partial preferences object to chrome.storage.sync.
+ *
+ * Returns whether the write actually landed. It resolves `false` (never throws)
+ * on a storage failure so existing fire-and-forget callers stay unaffected,
+ * while callers that must not report false success — notably the Settings
+ * import path — can gate their success UI on the result (audit #1044).
+ *
  * @param {object} partial - Key/value pairs to merge into stored prefs.
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} true if the write succeeded, false otherwise.
  */
 export async function setPrefs(partial) {
   try {
-    return await new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       chrome.storage.sync.set(partial, () => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
@@ -209,7 +235,9 @@ export async function setPrefs(partial) {
         }
       });
     });
+    return true;
   } catch (err) {
     console.error("[MUGA] setPrefs failed:", err);
+    return false;
   }
 }

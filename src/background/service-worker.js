@@ -1957,7 +1957,12 @@ if (hasContextMenus) chrome.contextMenus.onClicked.addListener(async (info) => {
           let anyChanged = false;
           for (const match of matches) {
             const candidate = match[0].replace(/[.,;:!?)\]]+$/, "");
-            const cleaned = await handleProcessUrl(candidate, { skipNotify: true, source: "copy_selection", skipStats: true });
+            // skipSideEffects (not just skipStats): this fallback loops over
+            // every URL in the selection, so without it appendHistory +
+            // pushAttributionAndPersist would fire once per URL for a single
+            // copy action, evicting real history and desyncing stats (audit
+            // #1041, same rationale as the popup #971 fix).
+            const cleaned = await handleProcessUrl(candidate, { skipNotify: true, source: "copy_selection", skipStats: true, skipSideEffects: true });
             if (cleaned.cleanUrl !== candidate) { result = result.replaceAll(candidate, cleaned.cleanUrl); anyChanged = true; }
           }
           if (anyChanged) incrementStat("urlsCleaned");

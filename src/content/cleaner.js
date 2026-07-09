@@ -280,9 +280,13 @@
           if (clean && clean !== orig) a.setAttribute("href", clean);
         });
 
-        // Apply to text nodes
+        // Apply to text nodes. Replace longest URLs first so a shorter URL
+        // that is a prefix of a longer one cannot corrupt the longer one during
+        // split/join — same guard the Ctrl+C handler uses via sortedMatches
+        // (audit #1040).
         let finalText = sel.toString();
-        for (const [orig, clean] of urlMap) {
+        const sortedEntries = [...urlMap].sort((a, b) => b[0].length - a[0].length);
+        for (const [orig, clean] of sortedEntries) {
           if (clean !== orig) finalText = finalText.split(orig).join(clean);
         }
 

@@ -207,3 +207,24 @@ describe("#933 — .preview-url.before contrast fix", () => {
     );
   });
 });
+
+// ── audit #1042: history disclosure aria-expanded stays in sync ──────────────
+//
+// aria-expanded on #stat-urls-wrap was updated only by its own click handler,
+// so toggling the native <details> <summary> directly left it stale. A toggle
+// listener must resync it, and aria-controls must link the trigger to the panel.
+describe("audit #1042 — popup history aria-expanded resyncs with the native toggle", () => {
+  test("a toggle listener on the history <details> resyncs aria-expanded", () => {
+    assert.ok(
+      /historySection\.addEventListener\(\s*["']toggle["']\s*,[\s\S]{0,180}aria-expanded/.test(POPUP_JS),
+      "popup.js must resync aria-expanded on the history panel's toggle event",
+    );
+  });
+
+  test("the stat trigger declares aria-controls for the history panel", () => {
+    assert.ok(
+      /statUrlsWrap\.setAttribute\(\s*["']aria-controls["']\s*,\s*["']history["']\s*\)/.test(POPUP_JS),
+      'popup.js must set aria-controls="history" on the stat trigger',
+    );
+  });
+});

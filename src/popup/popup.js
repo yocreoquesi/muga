@@ -324,11 +324,18 @@ async function init() {
 
   // Clicking the URLs-cleaned stat always toggles the history panel (#178, #237)
   const statUrlsWrap = document.getElementById("stat-urls-wrap");
+  const historySection = document.getElementById("history");
+  statUrlsWrap.setAttribute("aria-controls", "history");
   statUrlsWrap.setAttribute("aria-expanded", "false");
   statUrlsWrap.addEventListener("click", () => {
-    const historySection = document.getElementById("history");
     historySection.hidden = false;
     historySection.open = !historySection.open;
+    statUrlsWrap.setAttribute("aria-expanded", String(historySection.open));
+  });
+  // The stat is not the only way `open` changes — the panel is a native
+  // <details>, so its own <summary> toggles it too. Resync aria-expanded on
+  // every toggle so a screen reader never announces a stale state (audit #1042).
+  historySection.addEventListener("toggle", () => {
     statUrlsWrap.setAttribute("aria-expanded", String(historySection.open));
   });
   statUrlsWrap.addEventListener("keydown", (e) => {
