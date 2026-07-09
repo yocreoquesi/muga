@@ -194,11 +194,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.body.dataset.mugaReady = "1";
   document.body.dataset.mugaReonboardMode = mode;
 
+  // Guard against a rapid double-click running the async completion twice
+  // (duplicate history writes, double tab-remove, focus flicker) — audit #1048.
+  let submitInFlight = false;
   startBtn.addEventListener("click", async () => {
     if (!tosCheck.checked) {
       flashTosGate();
       return;
     }
+    if (submitInFlight) return;
+    submitInFlight = true;
 
     try {
       // Compute per-device overrides for any synced pref the user
@@ -273,6 +278,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       // not the .disabled property, so the previous reset here was a no-op.
       // Re-sync the gate to the checkbox so the user can retry (#741).
       updateButton();
+      // Release the double-submit guard so the user can retry after a failure.
+      submitInFlight = false;
     }
   });
 });
