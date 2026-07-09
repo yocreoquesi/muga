@@ -4,6 +4,43 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-09
+
+Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the previous approach was silently blocked. This release adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, and a weekly remote-rules changelog in Settings. It also fixes several Firefox Xray crashes, hardens the remote-payload affiliate guards, and lands a large tracking-parameter harvest.
+
+### Features
+
+- **Pause cleaning per site from the popup** (#995). Turn MUGA off for the current domain without disabling it globally.
+- **Active Defense toggle** (#1006). The page-facing defense layer (window.name defuser, history defuser, DOM link rewriting) can be turned off per install from Advanced settings when it breaks a site.
+- **Allowlisted domains are fully inert** (#1011). An allowlisted or per-site-paused domain is now exempt across both the JS content scripts and the DNR layer, not just partially.
+- **"Why was this cleaned?" in the popup** (#986). Each stripped parameter shows an inline, per-category explanation of what it was.
+- **Weekly remote-rules changelog in Settings** (#984). Shows the "N added / N removed" diff of the signed rule list after each refresh.
+- **Versioned settings schema** (#992). A single validated import/export path built on a versioned schema.
+
+### Fixed
+
+- **Firefox: URL cleaning at the network layer, CSP-immune** (#1022). Firefox now strips tracking params via a blocking `webRequest` listener and wraps `history` via `wrappedJSObject`, so cleaning is no longer silently blocked by a strict page Content-Security-Policy (e.g. large retailers). Core cleaning on Chrome is unaffected.
+- **Firefox: searchParams Xray crash fixed** (#1009). Content-side `processUrl` no longer throws on Xray-unwrapped `searchParams` iterators.
+- **Firefox: CSP-immune window.name defuser** wrap on MV2.
+- **Tracking params stripped from relative anchor hrefs** (#1012).
+- **Whitelist / pause exempts the active-defense scripts** (#1008), so a broken site can be unbroken without fully disabling MUGA.
+- **Bounce-tracking storage wipe gated on a curated redirector allowlist** (#1025).
+- **DNR remote-param stripping scoped to `main_frame`** with host and origin denied, preventing over-broad application.
+- **Domain-conditioned DNR strip instead of a global drop** (#1020).
+- **Settings and onboarding hardening**: import hardened against gate bypass and desync (#970); onboarding-tab dedup across service-worker cold starts (#972); copy actions no longer inflate stats or duplicate history/ledger (#971); fresh-install remote-rules disclosure copy corrected (#973).
+
+### Security
+
+- **Remote payloads cannot strip affiliate attribution** (#1016, #1019). The affiliate guard is extended (including `cjevent`) so a signed remote rule list can never remove creator attribution params.
+
+### Rules
+
+- **Large tracking-parameter harvest** from AdGuard and ClearURLs with a corroboration/triage classifier (#998, #1015, #1018, #1021, #1023), plus signed remote params v7 (#1017). Domain-scoped preserve rules keep functional query keys intact.
+
+### Docs
+
+- **Privacy, transparency and FAQ pages corrected** to state that remote rules are on by default, to disclose the Firefox `webRequest` permissions, and to note that the weekly signed fetch exposes only the client IP (never logged or stored). The website was redesigned under a shared design system.
+
 ## [2.4.0] - 2026-07-03
 
 Cleaning now follows same-document navigation, copy/share never leaks a tag, a per-tab badge shows what was stripped, and a settings reorganization plus a July audit wave hardens consent gating, accessibility, and Chrome path cleaning. Affiliate composition (remove-theirs then add-ours) now extends to Bookshop's path-based creator wrappers.
@@ -1042,7 +1079,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/yocreoquesi/muga/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/yocreoquesi/muga/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/yocreoquesi/muga/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/yocreoquesi/muga/compare/v2.1.0...v2.2.0
