@@ -1081,7 +1081,12 @@ function initExportImport() {
         await setDevMode(plan.special.devMode);
       }
 
-      await setPrefs(toSave);
+      const saved = await setPrefs(toSave);
+      // Do not report success on a failed write (audit #1044): setPrefs resolves
+      // false on a storage failure (e.g. quota), so without this the code below
+      // would re-read the UNCHANGED prefs, repopulate the UI with the old values,
+      // and still show the success toast. Route to the existing import_error path.
+      if (!saved) throw new Error("import: setPrefs write did not land");
 
       // #965: importing a config is an explicit choice for this device. For
       // guarded prefs (injectOwnAffiliate), getPrefs() overlays the per-device
