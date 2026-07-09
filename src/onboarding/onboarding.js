@@ -137,6 +137,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     pendingConfirmations({ syncPrefs, localConsent, overrides: existingOverrides })
   );
 
+  // Default the affiliate checkbox to the effective stored value. On a fresh
+  // install this is PREF_DEFAULTS.injectOwnAffiliate (now on by default), so new
+  // users see it enabled and can turn it off here or in Settings. On a
+  // re-onboard it is the user's existing choice, so a consent change never
+  // silently flips their setting (the completion write mirrors this state).
+  affiliateCheck.checked = !!syncPrefs.injectOwnAffiliate;
+
   if (pending.has("injectOwnAffiliate")) {
     affiliateCheck.checked = true;
     if (affiliateSynced) affiliateSynced.hidden = false;

@@ -47,7 +47,7 @@ describe("B12 honorCreatorMode — regression: existing prefs intact", () => {
   test("known existing prefs still present with their original defaults", () => {
     // Sample of stable prefs that must not change shape with the new addition.
     assert.strictEqual(PREF_DEFAULTS.enabled, true);
-    assert.strictEqual(PREF_DEFAULTS.injectOwnAffiliate, false);
+    assert.strictEqual(PREF_DEFAULTS.injectOwnAffiliate, true); // #1032: on by default, revertible in onboarding/Settings
     assert.strictEqual(PREF_DEFAULTS.notifyForeignAffiliate, false);
     assert.strictEqual(PREF_DEFAULTS.stripAllAffiliates, false);
     assert.deepEqual(PREF_DEFAULTS.blacklist, []);
@@ -161,7 +161,7 @@ describe("B12 honorCreatorMode — read/write round-trip", () => {
     assert.strictEqual(prefs.honorCreatorMode, true);
     // sanity: only the targeted key changed
     assert.strictEqual(prefs.enabled, true);
-    assert.strictEqual(prefs.injectOwnAffiliate, false);
+    assert.strictEqual(prefs.injectOwnAffiliate, true); // #1032: on by default
   });
 
   test("setPrefs({ honorCreatorMode: false }) clears the override", async () => {

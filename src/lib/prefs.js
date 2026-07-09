@@ -22,7 +22,7 @@ import { getTestFixtures } from "./test-fixtures.js";
 
 export const PREF_DEFAULTS = {
   enabled: true,
-  injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)
+  injectOwnAffiliate: true,   // on by default to keep the project sustainable; shown in onboarding and revertible any time in Settings, with no loss of cleaning/protection (#224, #1032)
   notifyForeignAffiliate: false,
   stripAllAffiliates: false,
   blacklist: [],     // e.g. ["amazon.es", "booking.com::aid::123456"]

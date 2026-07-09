@@ -56,8 +56,10 @@ describe("PREF_DEFAULTS — shape and default values", () => {
     assert.strictEqual(PREF_DEFAULTS.enabled, true);
   });
 
-  test("injectOwnAffiliate defaults to false", () => {
-    assert.strictEqual(PREF_DEFAULTS.injectOwnAffiliate, false);
+  test("injectOwnAffiliate defaults to true", () => {
+    // #1032: on by default (sustainability), disclosed in onboarding and
+    // revertible any time in Settings with no loss of cleaning/protection.
+    assert.strictEqual(PREF_DEFAULTS.injectOwnAffiliate, true);
   });
 
   test("notifyForeignAffiliate defaults to false", () => {
