@@ -6,7 +6,7 @@ All notable changes to MUGA will be documented in this file.
 
 ## [2.5.0] - 2026-07-09
 
-Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the previous approach was silently blocked. This release adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, and a weekly remote-rules changelog in Settings. It also fixes several Firefox Xray crashes, hardens the remote-payload affiliate guards, and lands a large tracking-parameter harvest.
+Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the previous approach was silently blocked. This release adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, and a weekly remote-rules changelog in Settings. It also fixes several Firefox Xray crashes, hardens the remote-payload affiliate guards, and lands a large tracking-parameter harvest. MUGA's own affiliate injection is now on by default, a deliberate and disclosed step to keep the project sustainable, and you can turn it off during onboarding or any time in Settings with no loss of cleaning or protection.
 
 ### Features
 
@@ -16,6 +16,10 @@ Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning work
 - **"Why was this cleaned?" in the popup** (#986). Each stripped parameter shows an inline, per-category explanation of what it was.
 - **Weekly remote-rules changelog in Settings** (#984). Shows the "N added / N removed" diff of the signed rule list after each refresh.
 - **Versioned settings schema** (#992). A single validated import/export path built on a versioned schema.
+
+### Changed
+
+- **MUGA's own affiliate injection is now on by default** (#1032). On a few supported stores, MUGA adds its own referral only to links that carry no affiliate tag at all, and it never replaces anyone else's. Your price never changes. You can turn it off during onboarding or any time in Settings, and cleaning and every protection keep working exactly the same. This is a deliberate, disclosed choice to keep an independent project sustainable as it grows, and it leaves the decision with you. Existing users are not changed: the new default applies only to fresh installs, and anyone who already completed onboarding keeps the setting they chose.
 
 ### Fixed
 

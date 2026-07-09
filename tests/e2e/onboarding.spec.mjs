@@ -63,13 +63,16 @@ test.describe("Onboarding", () => {
     await expect(syncNote).toContainText("browser feature, not MUGA");
   });
 
-  test("affiliate checkbox is optional and unchecked by default", async ({ onboardingPage: page }) => {
+  test("affiliate checkbox is on by default and can be turned off", async ({ onboardingPage: page }) => {
     const affiliateCheck = page.locator("#affiliate-check");
-    await expect(affiliateCheck).not.toBeChecked();
-
-    // Can check it without affecting start button state
-    await affiliateCheck.check();
+    // #1032: injection is on by default on a fresh install; the onboarding box
+    // reflects that and the user can turn it off right here (revertible, with no
+    // loss of cleaning or protection).
     await expect(affiliateCheck).toBeChecked();
+
+    // Can turn it off without affecting start button state
+    await affiliateCheck.uncheck();
+    await expect(affiliateCheck).not.toBeChecked();
     await expect(page.locator("#start-btn")).toBeDisabled(); // still disabled without ToS
   });
 
