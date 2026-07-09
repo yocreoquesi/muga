@@ -106,8 +106,12 @@ describe("Security: debug export payload privacy (finding 2)", () => {
       optionsSource.indexOf("dev-export-log-btn") + 1500
     );
     assert.ok(
-      exportBlock.includes("window.confirm(") || exportBlock.includes("confirm("),
-      "export handler must show a confirmation dialog before downloading"
+      exportBlock.includes("showConfirm("),
+      "export handler must show the i18n-aware showConfirm dialog before downloading (audit #1046: not native window.confirm)"
+    );
+    assert.ok(
+      !exportBlock.includes("window.confirm("),
+      "export handler must NOT use the native window.confirm (not localized/accessible) — audit #1046"
     );
   });
 

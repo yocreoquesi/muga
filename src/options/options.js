@@ -1356,11 +1356,7 @@ function initDevTools() {
   // Export debug log
   document.getElementById("dev-export-log-btn").addEventListener("click", async () => {
     // Warn before exporting: the file contains browser info and extension settings.
-    const confirmed = window.confirm(
-      "This log includes your browser version and extension settings.\n\n" +
-      "Do NOT share it publicly (e.g. in a GitHub issue) without reviewing it first.\n\n" +
-      "Proceed with export?"
-    );
+    const confirmed = await showConfirm(t("debug_export_confirm", _currentLang));
     if (!confirmed) return;
 
     const [response, prefs, localData] = await Promise.all([
