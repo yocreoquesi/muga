@@ -386,3 +386,34 @@ describe("static-guard source (#794)", () => {
     assert.equal(set.has("ascsubtag"), false);
   });
 });
+
+// ── audit #1039: AFFILIATE_PARAM_GUARD covers every redirect-network landing
+// param ──────────────────────────────────────────────────────────────────────
+//
+// AFFILIATE_PARAM_GUARD is the set validateParams() + isValidCustomParam() use
+// to REFUSE adding a param to any strip list. It must cover every landingParam a
+// redirect network declares (the click IDs a merchant tag reads on the FIRST
+// post-redirect landing), or a future/compromised signed payload could add one
+// and destroy attribution on a no-referrer landing (the exact thing #695
+// prevented). Derived from REDIRECT_NETWORK_PATTERNS so new networks stay
+// auto-guarded (count-agnostic).
+describe("audit #1039 — AFFILIATE_PARAM_GUARD covers all redirect-network landing params", () => {
+  it("every REDIRECT_NETWORK_PATTERNS[].landingParams entry is guarded", async () => {
+    const { AFFILIATE_PARAM_GUARD } = await import("../../src/lib/remote-rules.js");
+    for (const net of REDIRECT_NETWORK_PATTERNS) {
+      for (const lp of net.landingParams) {
+        assert.ok(
+          AFFILIATE_PARAM_GUARD.has(lp.toLowerCase()),
+          `AFFILIATE_PARAM_GUARD must contain landing param '${lp}' (network: ${net.id})`,
+        );
+      }
+    }
+  });
+
+  it("isValidCustomParam rejects redirect-network landing params (tduid, wt_mc, cjdata)", async () => {
+    const { isValidCustomParam } = await import("../../src/lib/validation.js");
+    assert.ok(!isValidCustomParam("tduid"), "tduid (Tradedoubler) must be rejected");
+    assert.ok(!isValidCustomParam("wt_mc"), "wt_mc (Awin) must be rejected");
+    assert.ok(!isValidCustomParam("cjdata"), "cjdata (Commission Junction) must be rejected");
+  });
+});
