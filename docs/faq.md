@@ -32,9 +32,10 @@ MUGA's design point is narrower and more opinionated:
    Vercel, DigitalOcean, etc.). The preservation table is sourced from
    MUGA's documented affiliate-program rules
    ([`src/lib/affiliates.js:136`](../src/lib/affiliates.js#L136)).
-3. **Be explicit about the one case where MUGA itself benefits** — affiliate
-   injection — and gate it behind an opt-in checkbox during onboarding
-   ([`src/lib/prefs.js:25`](../src/lib/prefs.js#L25)).
+3. **Be explicit about the one case where MUGA itself benefits**, affiliate
+   injection, which is on by default for new installs and can be turned off
+   during onboarding or any time in Settings, with cleaning and every
+   protection unaffected ([`src/lib/prefs.js:25`](../src/lib/prefs.js#L25)).
 
 If you only want noise removed and don't care about creator attribution,
 a generic cleaner is fine. If you want the YouTuber who recommended you
@@ -83,9 +84,10 @@ pass-through.
 
 ### Q: Is MUGA monetised? How?
 
-Yes. On a small set of supported stores, **if and only if the user opted in
-during onboarding**, MUGA can inject its own affiliate tag into URLs that
-arrive **without any affiliate tag at all**. The set of programs MUGA has
+Yes. On a small set of supported stores, MUGA injects its own affiliate tag
+into URLs that arrive **without any affiliate tag at all**. This is on by
+default for new installs, and you can turn it off during onboarding or any
+time in Settings. The set of programs MUGA has
 its own tag for is hardcoded in
 [`src/lib/affiliates.js:74`](../src/lib/affiliates.js#L74)
 (Amazon and eBay marketplaces; a handful of programs pending account
@@ -93,25 +95,25 @@ approval; everything else is preservation-only).
 
 ### Q: Is injection on by default?
 
-No. The default for `injectOwnAffiliate` is `false`:
+Yes, for new installs. The default for `injectOwnAffiliate` is `true`:
 
 ```js
 // src/lib/prefs.js:25
-injectOwnAffiliate: false,  // set to true only if user opts in during onboarding (#224)
+injectOwnAffiliate: true,  // on by default; user can turn it off in onboarding or Settings (#1032)
 ```
 
-The user is asked explicitly during onboarding via a checkbox that ships
-unchecked unless the preference was already enabled on another device they
-own ([`src/onboarding/onboarding.html:96`](../src/onboarding/onboarding.html#L96),
+The user sees this clearly during onboarding via a checkbox that ships
+checked, and can uncheck it to opt out before finishing setup
+([`src/onboarding/onboarding.html:96`](../src/onboarding/onboarding.html#L96),
 [`src/onboarding/onboarding.js:183-184`](../src/onboarding/onboarding.js#L183-L184)).
-On a per-device basis, the user can decline even if a sibling device opted
-in — the decline is stored as a local override and does not propagate back
-to sync ([`src/onboarding/onboarding.js:170-176`](../src/onboarding/onboarding.js#L170-L176)).
+On a per-device basis, the user can turn it off even if a sibling device
+enabled it; the choice is stored as a local override and does not propagate
+back to sync ([`src/onboarding/onboarding.js:170-176`](../src/onboarding/onboarding.js#L170-L176)).
 
 ### Q: Does MUGA ever overwrite an existing affiliate tag?
 
-Only if you have explicitly enabled BOTH "Remove all affiliate tags from
-other sources" and MUGA's own-tag injection. In that case the foreign tag is
+Only if you have BOTH "Remove all affiliate tags from other sources" and
+MUGA's own-tag injection turned on. In that case the foreign tag is
 first stripped (per your remove-all choice), then ours is injected into the
 now-tagless URL. With injection alone (remove-all off), MUGA never touches an
 existing foreign tag: it is detected and honored (`action = "detected_foreign"`).
@@ -267,12 +269,7 @@ small publishers.
 
 ### Q: What is the roadmap?
 
-The roadmap lives in two places:
-
-- [`OBJECTIVES.md`](../OBJECTIVES.md) — the high-level objectives and
-  non-goals.
-- [GitHub Issues](https://github.com/yocreoquesi/muga/issues) — the
-  concrete work items.
+The roadmap lives in [GitHub Issues](https://github.com/yocreoquesi/muga/issues), the concrete work items.
 
 Material changes to the privacy contract trigger a re-onboarding flow on
 each device the next time the service worker wakes up

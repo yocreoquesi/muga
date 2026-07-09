@@ -28,15 +28,15 @@
     <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click; see the Privacy Policy for the full list and rationale</li>
     <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) directly in your browser via a standard HTTP fetch; no URL is sent to any MUGA server. Off by default; requires optional host permissions for the eight shortener domains. Affiliate-redirect networks are NEVER resolved this way</li>
     <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted: no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
-    <li>Optionally adds our affiliate tag to links that carry no affiliate tag, if you have opted in</li>
+    <li>Adds our affiliate tag to links that carry no affiliate tag: on by default, and you can turn it off during onboarding or any time in Settings</li>
   </ul>
   <p>You have full control over every feature. MUGA never collects, sells, or shares your browsing data. Any feature that contacts an external service requires your explicit action.</p>
 
   <h2>3. Affiliate model and disclosure</h2>
   <p>MUGA is maintained by an independent developer. To sustain active development, MUGA participates in affiliate programs operated by third-party stores, including but not limited to the programs of supported stores listed in the source code.</p>
-  <p>If you opted in during onboarding, MUGA adds our affiliate tag to URLs that contain <strong>no existing affiliate tag</strong>. This does not change the price you pay. Affiliate tags tell the store who referred the visit, nothing more. The developer may earn a small commission from qualifying purchases.</p>
+  <p>On by default, MUGA adds our affiliate tag to URLs that contain <strong>no existing affiliate tag</strong>. You can turn this off during onboarding or any time in Settings, with no loss of cleaning or protection. This does not change the price you pay. Affiliate tags tell the store who referred the visit, nothing more. The developer may earn a small commission from qualifying purchases.</p>
   <ul>
-    <li>By default, MUGA <strong>does not replace</strong> an affiliate tag that is already present in a URL. Replacing requires a separate, deliberate opt-in by the user</li>
+    <li>By default, MUGA leaves an affiliate tag that is already present in a URL in place. Whether to strip third-party tags is your decision: replacing one only happens if you deliberately turn that on. You stay in control</li>
     <li>Affiliate tag injection only applies to the supported stores explicitly listed in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">source code</a></li>
     <li>You can disable affiliate tag injection at any time in the Extension's Settings, no questions asked</li>
     <li>The "Remove all affiliate tags from other sources" option strips third-party tags. MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>. If you have injection off, MUGA's tag is treated like any other and removed too, symmetric with your stated preference</li>

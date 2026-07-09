@@ -83,7 +83,7 @@
 
   <p><strong>Domain stats.</strong> Domain names and parameter counts only. No full URLs, no paths, no timestamps. Stored locally, capped at 50 domains to prevent unbounded growth. Never transmitted.</p>
 
-  <p><strong>Affiliate tags.</strong> Injected locally by the content script when you visit a supported store with no existing tag. No API call is made to decide when or where to inject. The logic runs entirely in your browser against a list of domains that ships with the extension. If you also enable <em>"Remove all affiliate tags from other sources"</em>, MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>, symmetric with your stated preference.</p>
+  <p><strong>Affiliate tags.</strong> Injected locally by the content script when you visit a supported store with no existing tag. This is on by default for new installs and disclosed in onboarding; it lets an independent project stay maintainable as it grows, and you can turn it off during onboarding or any time in Settings, with cleaning and every protection working exactly the same. No API call is made to decide when or where to inject. The logic runs entirely in your browser against a list of domains that ships with the extension. If you also enable <em>"Remove all affiliate tags from other sources"</em>, MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>, symmetric with your stated preference.</p>
 
   <h2>Architecture: Where the Work Happens</h2>
 
