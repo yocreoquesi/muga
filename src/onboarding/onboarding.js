@@ -36,8 +36,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const tosCheck         = document.getElementById("tos-check");
   const affiliateCheck   = document.getElementById("affiliate-check");
   const affiliateSynced  = document.getElementById("affiliate-synced-note");
-  const remoteRulesSection = document.getElementById("remote-rules-section");
-  const remoteRulesCheck = document.getElementById("remote-rules-check");
   const startBtn         = document.getElementById("start-btn");
   const featuresSection  = document.getElementById("features-section");
   const reonboardDelta   = document.getElementById("reonboard-delta");
@@ -50,7 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyTranslations(lang);
 
   // --- Read state ----------------------------------------------------------
-  const [syncPrefs, localConsent, existingOverrides, fixtures, remoteRulesSyncedFromDevice, rawGuardedSync] = await Promise.all([
+  const [syncPrefs, localConsent, existingOverrides, fixtures, rawGuardedSync] = await Promise.all([
     new Promise((resolve) => {
       // Source the fallbacks from PREF_DEFAULTS so onboarding sees the SAME
       // default as getPrefs() when a key is absent from sync. After #888
@@ -69,14 +67,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     getConsent(),
     getOverrides(),
     getTestFixtures(),
-    new Promise((resolve) => {
-      // Raw presence read (NO defaults) so we can tell a value genuinely synced
-      // from another device apart from the on-by-default fallback (#969). On a
-      // fresh install remoteRulesEnabled is absent from sync, so the disclosure
-      // must not claim another device enabled it.
-      chrome.storage.sync.get("remoteRulesEnabled", (r) =>
-        resolve(!!(r && r.remoteRulesEnabled === true)));
-    }),
     new Promise((resolve) => {
       // Raw presence read (NO defaults) of every guarded pref, fed to
       // pendingConfirmations below. Passing the defaults-merged syncPrefs there
@@ -166,19 +156,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     affiliateCheck.checked = true;
     if (affiliateSynced) affiliateSynced.hidden = false;
   }
-  if (pending.has("remoteRulesEnabled")) {
-    if (remoteRulesSection) remoteRulesSection.hidden = false;
-    if (remoteRulesCheck) remoteRulesCheck.checked = true;
-    if (!remoteRulesSyncedFromDevice) {
-      // On-by-default (e.g. a fresh install), NOT synced from another device:
-      // swap in accurate copy instead of the "your other device enabled it"
-      // wording, which is false when the value comes from the default (#969).
-      const descEl = document.getElementById("remote-rules-desc");
-      const noteEl = document.getElementById("remote-rules-note");
-      if (descEl) descEl.textContent = t("ob_remote_rules_desc_default", lang);
-      if (noteEl) noteEl.textContent = t("ob_remote_rules_default_note", lang);
-    }
-  }
 
   function updateButton() {
     if (tosCheck.checked) {
@@ -230,9 +207,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const overrideUpdates = {};
       if (pending.has("injectOwnAffiliate") && !affiliateCheck.checked) {
         overrideUpdates.injectOwnAffiliate = false;
-      }
-      if (pending.has("remoteRulesEnabled") && !remoteRulesCheck.checked) {
-        overrideUpdates.remoteRulesEnabled = false;
       }
 
       // Sync writes: only push values that were not sync-inherited.

@@ -4,15 +4,13 @@
  * Exercises the per-device override flow introduced by #364.
  *
  * Setup. The user installed MUGA on Device A and enabled
- * `injectOwnAffiliate` and/or `remoteRulesEnabled`. Those prefs live in
- * chrome.storage.sync and propagate. Device B starts with the prefs
- * arriving as `true` from sync but with no local consent yet.
+ * `injectOwnAffiliate`. That pref lives in chrome.storage.sync and
+ * propagates. Device B starts with the pref arriving as `true` from sync
+ * but with no local consent yet.
  *
  * Expected onboarding behaviour:
  *   - The affiliate checkbox is pre-checked AND the synced-from-other-
  *     device note is visible.
- *   - The remote-rules section (hidden by default) is revealed AND the
- *     remote-rules checkbox is pre-checked.
  *   - Unchecking the box and clicking Start writes a per-device
  *     override (`mugaPerDevicePrefs.<key> = false`) without touching
  *     the sync value.
@@ -55,7 +53,7 @@ async function readPostOnboardingState(context, extensionId) {
   const result = await page.evaluate(() =>
     new Promise(resolve => {
       chrome.storage.sync.get(
-        ["injectOwnAffiliate", "remoteRulesEnabled"],
+        ["injectOwnAffiliate"],
         sync => {
           chrome.storage.local.get(
             { mugaConsent: null, mugaPerDevicePrefs: null },
@@ -89,21 +87,6 @@ test.describe("Per-device confirmation prompts (#406)", () => {
     await page.close();
   });
 
-  test("remote-rules prompt: section revealed + checkbox pre-checked when sync has remoteRulesEnabled=true", async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, {
-      sync: { remoteRulesEnabled: true },
-    });
-
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
-    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
-
-    await expect(page.locator("#remote-rules-section")).toBeVisible();
-    await expect(page.locator("#remote-rules-check")).toBeChecked();
-
-    await page.close();
-  });
-
   test("declining the affiliate prompt writes a per-device override without touching sync", async ({ context, extensionId }) => {
     await seedStorage(context, extensionId, {
       sync: { injectOwnAffiliate: true },
@@ -128,27 +111,6 @@ test.describe("Per-device confirmation prompts (#406)", () => {
     expect(local.mugaPerDevicePrefs).toMatchObject({ injectOwnAffiliate: false });
 
     // Onboarding completed.
-    expect(local.mugaConsent.onboardingDone).toBe(true);
-  });
-
-  test("declining the remote-rules prompt writes a per-device override without touching sync", async ({ context, extensionId }) => {
-    await seedStorage(context, extensionId, {
-      sync: { remoteRulesEnabled: true },
-    });
-
-    const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
-    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
-
-    await page.locator("#remote-rules-check").uncheck();
-    await page.locator("#tos-check").check();
-    await page.locator("#start-btn").click();
-    await page.waitForEvent("close", { timeout: 5000 }).catch(() => {});
-
-    const { sync, local } = await readPostOnboardingState(context, extensionId);
-
-    expect(sync.remoteRulesEnabled).toBe(true);
-    expect(local.mugaPerDevicePrefs).toMatchObject({ remoteRulesEnabled: false });
     expect(local.mugaConsent.onboardingDone).toBe(true);
   });
 
@@ -177,11 +139,11 @@ test.describe("Per-device confirmation prompts (#406)", () => {
     expect(local.mugaConsent.onboardingDone).toBe(true);
   });
 
-  test("no prompts when sync has neither pref enabled", async ({ context, extensionId }) => {
-    // Seed sync with the prefs explicitly OFF — pendingConfirmations
-    // should be empty, no synced-note, no remote-rules section.
+  test("no prompts when sync has the pref disabled", async ({ context, extensionId }) => {
+    // Seed sync with the pref explicitly OFF — pendingConfirmations
+    // should be empty, no synced-note.
     await seedStorage(context, extensionId, {
-      sync: { injectOwnAffiliate: false, remoteRulesEnabled: false },
+      sync: { injectOwnAffiliate: false },
     });
 
     const page = await context.newPage();
@@ -189,7 +151,6 @@ test.describe("Per-device confirmation prompts (#406)", () => {
     await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
 
     await expect(page.locator("#affiliate-synced-note")).toBeHidden();
-    await expect(page.locator("#remote-rules-section")).toBeHidden();
     await expect(page.locator("#affiliate-check")).not.toBeChecked();
 
     await page.close();
