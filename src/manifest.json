@@ -100,7 +100,7 @@
   },
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app; style-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app https://bit.ly https://www.bit.ly https://tinyurl.com https://www.tinyurl.com https://t.co https://www.t.co https://link.medium.com https://www.link.medium.com https://lnkd.in https://www.lnkd.in https://fb.me https://www.fb.me https://ebay.to https://www.ebay.to; style-src 'self'"
   },
 
   "web_accessible_resources": [
