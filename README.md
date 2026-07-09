@@ -19,7 +19,7 @@
 
 > **2.5.0 shipped.** Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the old approach was silently blocked. Adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, a weekly remote-rules changelog in Settings, and a large tracking-parameter harvest. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
-[Privacy policy](https://rules.muga.app/) · [Comparison vs other URL cleaners](https://rules.muga.app/comparison.html) · [FAQ](docs/faq.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
+[Privacy policy](https://rules.muga.app/privacy-page.html) · [FAQ](docs/faq.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 
 </div>
 
@@ -145,7 +145,7 @@ When you navigate to a supported store and there is **no existing affiliate tag*
 - On compatible stores: if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
 - On incompatible stores: MUGA actively strips affiliate noise parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
 
-This is explained during onboarding, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/), and verifiable in the source code.
+This is explained during onboarding, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/privacy-page.html), and verifiable in the source code.
 
 - Only fires when the link has **no affiliate tag at all**
 - The tag is added as a standard URL parameter. Nothing hidden, nothing obfuscated.
