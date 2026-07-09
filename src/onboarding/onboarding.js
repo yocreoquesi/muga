@@ -23,7 +23,7 @@ import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { PREF_DEFAULTS } from "../lib/prefs.js";
 import { setConsent, getConsent } from "../lib/consent-storage.js";
 import { setOverrides, getOverrides } from "../lib/per-device-prefs.js";
-import { pendingConfirmations } from "../lib/synced-affiliate-pref-guard.js";
+import { pendingConfirmations, GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import {
   CONSENT_VERSION_MANIFEST,
@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyTranslations(lang);
 
   // --- Read state ----------------------------------------------------------
-  const [syncPrefs, localConsent, existingOverrides, fixtures, remoteRulesSyncedFromDevice] = await Promise.all([
+  const [syncPrefs, localConsent, existingOverrides, fixtures, remoteRulesSyncedFromDevice, rawGuardedSync] = await Promise.all([
     new Promise((resolve) => {
       // Source the fallbacks from PREF_DEFAULTS so onboarding sees the SAME
       // default as getPrefs() when a key is absent from sync. After #888
@@ -76,6 +76,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       // must not claim another device enabled it.
       chrome.storage.sync.get("remoteRulesEnabled", (r) =>
         resolve(!!(r && r.remoteRulesEnabled === true)));
+    }),
+    new Promise((resolve) => {
+      // Raw presence read (NO defaults) of every guarded pref, fed to
+      // pendingConfirmations below. Passing the defaults-merged syncPrefs there
+      // would make an on-by-default guarded pref (injectOwnAffiliate after #1032,
+      // remoteRulesEnabled after #888) look like a value synced-enabled from
+      // another device on a fresh install, so the guard would flag it pending and
+      // the completion write would skip persisting it (#1032).
+      chrome.storage.sync.get([...GUARDED_PREFS], (r) => resolve(r || {}));
     }),
   ]);
 
@@ -134,7 +143,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- Per-device confirmation prompt setup (#364) ------------------------
   const pending = new Set(
-    pendingConfirmations({ syncPrefs, localConsent, overrides: existingOverrides })
+    pendingConfirmations({ syncPrefs: rawGuardedSync, localConsent, overrides: existingOverrides })
   );
 
   // Default the affiliate checkbox to the effective stored value. On a fresh
