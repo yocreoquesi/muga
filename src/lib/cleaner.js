@@ -120,7 +120,11 @@ export function parseListEntry(entry) {
   const parts = entry.split("::");
   return {
     domain: parts[0]?.trim().replace(/^www\./, "").toLowerCase() || "",
-    param:  parts[1]?.trim() || null,
+    // Lowercase the param KEY: tracker param names are lowercase in practice and
+    // the match sites compare it directly, so a mixed-case entry (e.g. "Tag")
+    // otherwise silently never matched a real "tag" query param (audit #1048).
+    // The VALUE stays case-sensitive (affiliate tag values are matched verbatim).
+    param:  parts[1]?.trim().toLowerCase() || null,
     value:  parts[2]?.trim() || null,
   };
 }
@@ -582,6 +586,13 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const parsedWhitelist = prefs._parsedWhitelist || (prefs.whitelist || []).map(parseListEntry);
 
   // OAuth / auth / payment flow exemption: never touch params on these paths.
+  // Precedence is DELIBERATE (audit #1048): this exemption runs BEFORE the
+  // domain-only blacklist "strip everything" branch below, so it wins even on a
+  // user-blacklisted domain. Reordering to let the blacklist win would let a
+  // full-wipe entry strip `code`/`state`/session params on a /checkout or
+  // /callback path and break the user's login or payment, which is exactly what
+  // this exemption exists to prevent. A domain the user wants fully wiped is
+  // still wiped on its non-auth paths.
   const AUTH_PATH_RE = /\/(oauth|oauth2|authorize|callback|auth|signin|login|sso|saml|checkout|payment|pay)(\/|$)/;
   if (AUTH_PATH_RE.test(url.pathname.toLowerCase())) {
     return buildReturnPayload("untouched", rawUrl, [], null, { creatorReferralPreserved });

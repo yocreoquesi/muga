@@ -947,7 +947,7 @@ async function showSuspiciousParams(prefs, lang) {
       detailEl.className = "suspicious-detail";
       // Score gives the user a defensible "why this looks fishy" without
       // forcing them to read the heuristic's reason codes.
-      detailEl.textContent = `score ${flag.score}`;
+      detailEl.textContent = t("entropy_score_label", lang).replace("{score}", String(flag.score));
       row.appendChild(detailEl);
 
       // #536: per-row Strip locally button. Promotes the flagged param
