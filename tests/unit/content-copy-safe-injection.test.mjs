@@ -529,3 +529,32 @@ describe("#946 — effectivePrefs copy-safe logic (pure mirror, behavioral)", ()
     assert.equal(effective, live, "navigation must receive the SAME prefs reference — no copy-safe override");
   });
 });
+
+// ── audit #1040 / #1041: copy-selection side effects ─────────────────────────
+//
+// #1040: GET_AND_COPY_CLEAN_SELECTION replaced cleaned URLs in the selection
+//        text without sorting longest-first, so a shorter URL that is a prefix
+//        of a longer one could corrupt the longer one during split/join. The
+//        sibling Ctrl+C handler already sorts; this path must too.
+// #1041: the service-worker context-menu FALLBACK loops over every URL in the
+//        selection, so it must pass skipSideEffects (not just skipStats) or it
+//        appends one history/ledger entry per URL for a single copy action.
+
+describe("audit #1040 — copy-selection replaces longest URLs first", () => {
+  test("GET_AND_COPY_CLEAN_SELECTION sorts urlMap entries by length descending", () => {
+    assert.ok(
+      /\[\s*\.\.\.\s*urlMap\s*\]\s*\.sort\(\s*\(\s*a\s*,\s*b\s*\)\s*=>\s*b\[0\]\.length\s*-\s*a\[0\]\.length\s*\)/.test(cleanerSource),
+      "the copy-selection text replacement must sort urlMap entries longest-first to avoid prefix corruption",
+    );
+  });
+});
+
+describe("audit #1041 — service-worker copy-selection fallback skips side effects", () => {
+  const swSource = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
+  test("the copy_selection fallback passes skipSideEffects:true (not just skipStats)", () => {
+    assert.ok(
+      /handleProcessUrl\(\s*candidate\s*,\s*\{[^}]*source:\s*["']copy_selection["'][^}]*skipSideEffects:\s*true[^}]*\}/.test(swSource),
+      "the selection-copy fallback must pass skipSideEffects:true so it does not duplicate history/ledger per URL",
+    );
+  });
+});
