@@ -188,11 +188,21 @@ export async function getPrefs() {
   // remains valid for previously accepted behaviour.
   // Under e2e fixtures (#407), the gate fires against the fixture
   // manifest + required version so tests can drive the dormant path.
-  const policy = evaluateConsentPolicy({
-    stored: consent,
-    ...(fixtures?.requiredConsentVersion ? { requiredVersion: fixtures.requiredConsentVersion } : {}),
-    ...(fixtures?.consentManifest ? { manifest: fixtures.consentManifest } : {}),
-  });
+  // Defensive: a malformed stored consentVersion could make evaluateConsentPolicy
+  // throw. getPrefs must never reject on that (callers await it without a catch),
+  // so on an un-evaluable policy we FAIL SAFE — gate features by forcing
+  // onboardingDone:false, matching the pre-#1045 return-defaults behaviour.
+  let policy;
+  try {
+    policy = evaluateConsentPolicy({
+      stored: consent,
+      ...(fixtures?.requiredConsentVersion ? { requiredVersion: fixtures.requiredConsentVersion } : {}),
+      ...(fixtures?.consentManifest ? { manifest: fixtures.consentManifest } : {}),
+    });
+  } catch (err) {
+    console.error("[MUGA] getPrefs consent-policy eval failed:", err);
+    policy = { status: "hard-reonboard" };
+  }
   if (policy.status === "hard-reonboard") {
     overlay.onboardingDone = false;
   }
