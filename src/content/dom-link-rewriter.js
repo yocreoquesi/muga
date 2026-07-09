@@ -176,6 +176,30 @@
    */
   function urlCleaner(raw) {
     if (isAbsoluteUrl(raw)) return cleanAbsolute(raw);
+    // Protocol-relative hrefs (`//host/path`) are scheme-relative but
+    // ORIGIN-bearing. isAbsoluteUrl requires a scheme, so it misses them and
+    // they would fall into the relative branch below, which re-emits path-only
+    // against the CURRENT origin — silently repointing a cross-host link at
+    // this page (audit #1037). Clean here and re-emit in the SAME
+    // protocol-relative shape so the `//host` is preserved (and an unwrapped
+    // cross-origin destination stays expressible, unlike the path-only branch).
+    if (raw.startsWith("//")) {
+      if (raw.indexOf("?") < 0) return raw;
+      let resolvedPR;
+      try {
+        resolvedPR = new URL(raw, window.location.href).toString();
+      } catch {
+        return raw;
+      }
+      const cleanedPR = cleanAbsolute(resolvedPR);
+      if (cleanedPR === resolvedPR) return raw;
+      try {
+        const u = new URL(cleanedPR);
+        return "//" + u.host + u.pathname + u.search + u.hash;
+      } catch {
+        return raw;
+      }
+    }
     if (raw.indexOf("?") < 0) return raw;
 
     let resolved;

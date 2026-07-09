@@ -146,12 +146,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     pendingConfirmations({ syncPrefs: rawGuardedSync, localConsent, overrides: existingOverrides })
   );
 
-  // Default the affiliate checkbox to the effective stored value. On a fresh
-  // install this is PREF_DEFAULTS.injectOwnAffiliate (now on by default), so new
-  // users see it enabled and can turn it off here or in Settings. On a
-  // re-onboard it is the user's existing choice, so a consent change never
-  // silently flips their setting (the completion write mirrors this state).
-  affiliateCheck.checked = !!syncPrefs.injectOwnAffiliate;
+  // Default the affiliate checkbox to the EFFECTIVE value on THIS device: a
+  // per-device override (#364) wins over the synced value. On a fresh install
+  // there is no override, so this is PREF_DEFAULTS.injectOwnAffiliate (on by
+  // default, #1032), which new users can turn off here or in Settings. On a
+  // re-onboard, reading the raw synced value while ignoring an existing
+  // override (audit #1038) both misrepresented this device's effective state
+  // AND — via the completion write below — clobbered another device's setting
+  // the user never touched here.
+  const hasAffiliateOverride = Object.prototype.hasOwnProperty.call(
+    existingOverrides, "injectOwnAffiliate"
+  );
+  const effectiveAffiliate = hasAffiliateOverride
+    ? !!existingOverrides.injectOwnAffiliate
+    : !!syncPrefs.injectOwnAffiliate;
+  affiliateCheck.checked = effectiveAffiliate;
 
   if (pending.has("injectOwnAffiliate")) {
     affiliateCheck.checked = true;
@@ -231,8 +240,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         notifyForeignAffiliate: false,
         language: lang,
       };
+      // injectOwnAffiliate is a GUARDED per-device pref (#364): only a FRESH
+      // install establishes its shared synced value (#1032). On any re-onboard
+      // a change here is device-local and must be recorded as a per-device
+      // override, never pushed back to sync where it would flip other devices
+      // (audit #1038).
       if (!pending.has("injectOwnAffiliate")) {
-        syncWrites.injectOwnAffiliate = affiliateCheck.checked;
+        if (mode === "fresh") {
+          syncWrites.injectOwnAffiliate = affiliateCheck.checked;
+        } else if (affiliateCheck.checked !== effectiveAffiliate) {
+          overrideUpdates.injectOwnAffiliate = affiliateCheck.checked;
+        }
       }
 
       // #741: write sync prefs + per-device overrides FIRST, and only mark

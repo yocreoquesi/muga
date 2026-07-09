@@ -302,3 +302,45 @@ describe("T5 i18n — import_params_skipped key exists", () => {
     );
   });
 });
+
+// ── T6: #1036 — manual "Add" path uses the SAME guard as import ───────────────
+//
+// The Advanced > Custom tracking params ADD box (addEntry) validated
+// customParams with a bare `/^[a-zA-Z0-9_.\-]+$/` regex that skipped the
+// affiliate-attribution + denylist guard. A user could hand-add an affiliate
+// key (tag, ascsubtag…) and strip it globally, breaking attribution (ADR-0005 /
+// #815) — while the IMPORT path (T4) correctly rejected the same string. Both
+// entry points for customParams must go through isValidCustomParam.
+
+describe("T6 #1036 — options.js manual Add path routes customParams through isValidCustomParam", () => {
+  test("the affiliate params blocked here are the ones a user could try to add manually", () => {
+    // Behavioral anchor: these are exactly the strings the manual Add box must
+    // now reject (previously it accepted them via the bare regex).
+    assert.ok(!isValidCustomParam("tag"), "affiliate key 'tag' must be rejected");
+    assert.ok(!isValidCustomParam("ascsubtag"), "affiliate key 'ascsubtag' must be rejected");
+    assert.ok(isValidCustomParam("utm_source"), "a genuine tracking param must still be accepted");
+  });
+
+  test("options.js imports isValidCustomParam from validation.js", () => {
+    assert.ok(
+      /import\s*\{[^}]*\bisValidCustomParam\b[^}]*\}\s*from\s*["'][^"']*validation\.js["']/.test(OPTIONS_SOURCE),
+      "options.js must import isValidCustomParam from validation.js"
+    );
+  });
+
+  test("addEntry validates customParams with isValidCustomParam, not a bare regex", () => {
+    const start = OPTIONS_SOURCE.indexOf("function addEntry(");
+    assert.ok(start !== -1, "addEntry must exist");
+    const end = OPTIONS_SOURCE.indexOf("\nfunction ", start + 1);
+    const body = OPTIONS_SOURCE.slice(start, end === -1 ? undefined : end);
+
+    assert.ok(
+      /isValidCustomParam\(\s*value\s*\)/.test(body),
+      "addEntry must validate customParams via isValidCustomParam(value)"
+    );
+    assert.ok(
+      !body.includes("[a-zA-Z0-9_.\\-]+$"),
+      "addEntry must not reintroduce the old bare /^[a-zA-Z0-9_.\\-]+$/ validator for customParams"
+    );
+  });
+});

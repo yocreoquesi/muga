@@ -7,7 +7,7 @@ import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates
 import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
-import { isValidListEntry, IMPORT_LIST_CAPS } from "../lib/validation.js";
+import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
 import {
@@ -881,7 +881,12 @@ function addEntry(listKey, inputId, containerId) {
   const value = input.value.trim();
   if (!value) return;
   if (listKey === "customParams") {
-    if (!/^[a-zA-Z0-9_.\-]+$/.test(value)) {
+    // Route the manual Add path through the SAME guard the import path uses
+    // (isValidCustomParam → REMOTE_PARAM_DENYLIST + AFFILIATE_PARAM_GUARD, 64-char
+    // cap). The old bare regex let a user hand-add an affiliate-attribution key
+    // (tag, ascsubtag…) to customParams and strip it globally — violating the
+    // never-strip-affiliate promise (ADR-0005 / #815). See audit #1036.
+    if (!isValidCustomParam(value)) {
       showToast(t("add_entry_invalid", _currentLang));
       return;
     }

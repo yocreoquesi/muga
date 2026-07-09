@@ -33,3 +33,50 @@ describe("ADR-0004 phase 2: shortener optional permissions", () => {
     }
   });
 });
+
+// audit #1035: an explicit, restrictive `connect-src` blocks fetch to any host
+// it does not list — independent of host_permissions. The native shortener
+// resolver (service-worker.js -> resolveShortener) fetch()es each allowlisted
+// shortener host, so every shortener origin MUST also appear in connect-src or
+// the whole ADR-0004 native-resolution path fails closed on both browsers.
+// Derived from GENERIC_SHORTENERS (single source of truth) so the manifest CSP
+// fails this test closed the moment it drifts from the resolver allowlist.
+function connectSrcSources(policyString) {
+  const directive = policyString
+    .split(";")
+    .map((s) => s.trim())
+    .find((d) => d === "connect-src" || d.startsWith("connect-src "));
+  return directive ? directive.split(/\s+/).slice(1) : [];
+}
+
+describe("audit #1035: connect-src covers every shortener the resolver fetches", () => {
+  // The resolver's gate (isGenericShortener -> matches() in opaque-networks.js)
+  // strips a leading `www.` before comparing, so `www.bit.ly` is ALSO treated as
+  // an allowlisted shortener and fetched. A CSP host-source matches the exact
+  // host only (no implicit www), so connect-src must carry BOTH the apex and the
+  // www. variant for each shortener or www-prefixed links fail closed.
+  const expectedConnect = GENERIC_SHORTENERS.flatMap((host) => [
+    `https://${host}`,
+    `https://www.${host}`,
+  ]);
+
+  test("MV3 extension_pages connect-src includes every shortener origin", () => {
+    const sources = connectSrcSources(mv3.content_security_policy.extension_pages);
+    for (const origin of expectedConnect) {
+      assert.ok(
+        sources.includes(origin),
+        `MV3 connect-src is missing ${origin} — resolveShortener fetch to it would be CSP-blocked`,
+      );
+    }
+  });
+
+  test("MV2 connect-src includes every shortener origin", () => {
+    const sources = connectSrcSources(mv2.content_security_policy);
+    for (const origin of expectedConnect) {
+      assert.ok(
+        sources.includes(origin),
+        `MV2 connect-src is missing ${origin} — resolveShortener fetch to it would be CSP-blocked`,
+      );
+    }
+  });
+});
