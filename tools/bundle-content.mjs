@@ -18,17 +18,28 @@
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = join(__dir, "..");
 const ENTRY = join(ROOT, "src/content/cleaner-bundle-src.mjs");
 const OUT   = join(ROOT, "src/content/cleaner-bundle.js");
 
+// web-cleaner-tool (#1029, Phase 1): stamp the bundle with package.json's
+// version so window.__mugaCleaner.__version__ lets consumers (the web/
+// tool's adapter) detect which engine snapshot they are running against.
+// Read once at build time — deterministic, changes only on a committed
+// version bump, so the CI git-diff drift gate on the committed bundle holds.
+const { version: MUGA_VERSION } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+
 await build({
   entryPoints: [ENTRY],
   outfile: OUT,
   bundle: true,
   format: "iife",
+  define: {
+    __MUGA_VERSION__: JSON.stringify(MUGA_VERSION),
+  },
   // Targets: Chrome's MV3 baseline + Firefox's MV2-supporting Firefox 128+.
   // Both engines understand modern ES2022 cleanly; no transpilation needed.
   target: ["chrome111", "firefox128"],

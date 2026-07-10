@@ -114,3 +114,26 @@ test("cleaner-bundle.js contains every AFFILIATE_PATTERNS id", () => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// web-cleaner-tool (#1029, Phase 1): the web tool's adapter reads defaults
+// and a version stamp straight off window.__mugaCleaner instead of hand-
+// copying a literal that could silently drift from src/lib/prefs.js. These
+// assertions guard that the bundle keeps exposing both keys.
+// ---------------------------------------------------------------------------
+
+test("cleaner-bundle.js exposes PREF_DEFAULTS via __mugaCleaner", () => {
+  assert.match(
+    BUNDLE,
+    /__mugaCleaner=Object\.freeze\(\{[^}]*PREF_DEFAULTS:/,
+    "bundle's __mugaCleaner namespace must expose PREF_DEFAULTS — run `npm run build:content`",
+  );
+});
+
+test("cleaner-bundle.js exposes __version__ via __mugaCleaner", () => {
+  assert.match(
+    BUNDLE,
+    /__mugaCleaner=Object\.freeze\(\{[^}]*__version__:/,
+    "bundle's __mugaCleaner namespace must expose __version__ — run `npm run build:content`",
+  );
+});

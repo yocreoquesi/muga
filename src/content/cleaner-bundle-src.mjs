@@ -17,6 +17,12 @@
  */
 
 import { processUrl, parseListEntry, getDomainParamSets, getPreservedParams, getLandingPolicy, isSiteFullyExempt } from "../lib/cleaner.js";
+// web-cleaner-tool (#1029, Phase 1): the standalone web/ tool builds its
+// pure-cleaner prefs off the REAL defaults instead of a hand-copied literal
+// that could silently drift from src/lib/prefs.js. getPrefs/setPrefs (the
+// only chrome.storage touchers in prefs.js) are never called here, so
+// esbuild tree-shakes them away — see web-engine-purity.test.mjs.
+import { PREF_DEFAULTS } from "../lib/prefs.js";
 import {
   TRACKING_PARAMS,
   TRACKING_PARAM_CATEGORIES,
@@ -79,5 +85,10 @@ if (!window.__mugaCleaner) {
     AFFILIATE_REDIRECT_NETWORKS,
     isGenericShortener,
     isAffiliateRedirectNetwork,
+    PREF_DEFAULTS,
+    // __MUGA_VERSION__ is substituted at build time by tools/bundle-content.mjs
+    // (esbuild `define`, sourced from package.json's version). Declared as a
+    // global in eslint.config.mjs + jsconfig.json so lint/typecheck stay green.
+    __version__: __MUGA_VERSION__,
   });
 }

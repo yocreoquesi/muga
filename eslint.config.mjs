@@ -41,6 +41,10 @@ export default [
       "src/content/cleaner-bundle.js",
       // Vendored minified file
       "src/lib/browser-polyfill.min.js",
+      // Generated web-cleaner-tool engine copy (#1029) — byte-identical to
+      // src/content/cleaner-bundle.js above; linting the source is already
+      // covered. landing/** already ignores its landing/clean/ mirror.
+      "web/engine/cleaner-bundle.js",
     ],
   },
 
@@ -82,6 +86,26 @@ export default [
         ...globals.browser,
         chrome: "readonly",
         browser: "readonly",
+      },
+    },
+    rules: RULES,
+  },
+
+  // ── src/content/cleaner-bundle-src.mjs — bundler entry source ─────────────
+  // ESM entry for the content-script bundle (see tools/bundle-content.mjs).
+  // __MUGA_VERSION__ is an esbuild `define` substitution (web-cleaner-tool
+  // #1029), not a real identifier — declare it as a global so no-undef
+  // does not flag it.
+  {
+    files: ["src/content/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        chrome: "readonly",
+        browser: "readonly",
+        __MUGA_VERSION__: "readonly",
       },
     },
     rules: RULES,

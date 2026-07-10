@@ -1,0 +1,3839 @@
+/** MUGA: Generated ES module mirror of src/rules/domain-rules.json (#1029, Phase 4).
+ *
+ * A plain named-export copy of the JSON domain rules used by
+ * web/engine/adapter.js, so the web tool can `import { DOMAIN_RULES }
+ * from "./domain-rules.gen.mjs"` instead of a JSON module import with
+ * an import attribute, which has limited support in older browsers.
+ *
+ * DO NOT EDIT BY HAND. Regenerate via `npm run build:web`
+ * (tools/build-web.mjs), sourced from src/rules/domain-rules.json.
+ */
+export const DOMAIN_RULES = [
+  {
+    "domain": "11st.co.kr",
+    "preserveParams": [
+      "kwd",
+      "keyword",
+      "prdno",
+      "page",
+      "sort",
+      "ctgrno"
+    ],
+    "stripParams": [
+      "xfrom",
+      "xzone",
+      "adid",
+      "napm",
+      "trtyp",
+      "trctgr",
+      "trsrc"
+    ],
+    "note": "SK-owned Korean e-commerce marketplace"
+  },
+  {
+    "domain": "20minutos.es",
+    "preserveParams": [
+      "q"
+    ],
+    "note": "Search query: functional"
+  },
+  {
+    "domain": "29cm.co.kr",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "Korean fashion/lifestyle e-commerce. Search query: functional."
+  },
+  {
+    "domain": "adj.st",
+    "preserveParams": [
+      "adj_t"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "aladin.co.kr",
+    "preserveParams": [
+      "search",
+      "start",
+      "type",
+      "cid",
+      "date"
+    ],
+    "stripParams": [],
+    "note": "Korean online bookstore. Search, pagination, category, date: functional."
+  },
+  {
+    "domain": "aliexpress.com",
+    "preserveParams": [
+      "searchtext",
+      "catid",
+      "sorttype",
+      "shipcountry",
+      "groupsort",
+      "maxprice",
+      "minprice",
+      "filtercat",
+      "page"
+    ],
+    "stripParams": [
+      "aff_fcid",
+      "aff_fsk",
+      "aff_platform",
+      "sk",
+      "dp",
+      "terminal_id",
+      "spm",
+      "scm",
+      "pvid",
+      "pdp_npi",
+      "tt",
+      "afsmartredirect",
+      "gatewayadapt",
+      "mall_affr",
+      "cv",
+      "af",
+      "gps-id",
+      "initiative_id",
+      "utparam-url"
+    ],
+    "note": "Search and filters: functional. AliExpress internal tracking and affiliate redirect params stripped (#508 — aff_fcid is the CPS click ID, transient and not creator-attributing)."
+  },
+  {
+    "domain": "alternate.de",
+    "preserveParams": [
+      "q",
+      "articleid",
+      "id",
+      "listing"
+    ],
+    "stripParams": [],
+    "note": "German electronics retailer. Search, product/article ID, listing mode: functional."
+  },
+  {
+    "domain": "amazon.ca",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Canada: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.co.jp",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Japan: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.co.uk",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+  },
+  {
+    "domain": "amazon.com",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+  },
+  {
+    "domain": "amazon.com.au",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Australia: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.com.br",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Brazil: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.com.mx",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Mexico: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.de",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+  },
+  {
+    "domain": "amazon.es",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+  },
+  {
+    "domain": "amazon.fr",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+  },
+  {
+    "domain": "amazon.in",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "India: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.it",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
+  },
+  {
+    "domain": "amazon.nl",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Netherlands: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.pl",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Poland: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.se",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Sweden: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "amazon.sg",
+    "preserveParams": [
+      "k",
+      "i",
+      "rh",
+      "s",
+      "keywords",
+      "field-keywords",
+      "n",
+      "me",
+      "merchant",
+      "node",
+      "page",
+      "th"
+    ],
+    "stripParams": [
+      "field-lbr_brands_browse-bin",
+      "ingress",
+      "visitid",
+      "ref",
+      "social_share",
+      "smid",
+      "spia",
+      "creativeasin",
+      "skiptwisterog",
+      "starsleft",
+      "almbrandid",
+      "mrai",
+      "fpw",
+      "aref",
+      "sp_csd",
+      "sp_cr",
+      "qid",
+      "sr",
+      "crid",
+      "sprefix",
+      "dchild",
+      "dib",
+      "dib_tag",
+      "gid",
+      "qu",
+      "pf_rd_r",
+      "pf_rd_p",
+      "pf_rd_m",
+      "pf_rd_s",
+      "pf_rd_t",
+      "pf_rd_i",
+      "pd_rd_r",
+      "pd_rd_w",
+      "pd_rd_wg",
+      "pd_rd_i",
+      "pd_gw_unk",
+      "linkcode",
+      "linkid",
+      "camp",
+      "creative",
+      "asc_source",
+      "asc_campaign",
+      "asc_refurl",
+      "aaxitk",
+      "hsa_cr_id",
+      "content-id",
+      "_encoding",
+      "ie",
+      "psc",
+      "refrid",
+      "ref_",
+      "colid",
+      "coliid",
+      "rnid",
+      "adid",
+      "qualifier",
+      "storetype",
+      "pagetype",
+      "reftag",
+      "ld"
+    ],
+    "note": "Singapore: same rules as other Amazon TLDs"
+  },
+  {
+    "domain": "americanas.com.br",
+    "preserveParams": [
+      "q",
+      "page",
+      "sort"
+    ],
+    "stripParams": [
+      "operationhash"
+    ],
+    "note": "Brazilian retail marketplace. Search, pagination, sort: functional. operationHash is a GraphQL cache-bust token."
+  },
+  {
+    "domain": "apple.com",
+    "preserveParams": [
+      "mt",
+      "ls",
+      "l",
+      "app",
+      "id"
+    ],
+    "stripParams": [
+      "afid",
+      "ct",
+      "pt"
+    ],
+    "note": "Apple. afid/ct/pt are affiliate/campaign tracking."
+  },
+  {
+    "domain": "apps.apple.com",
+    "preserveParams": [
+      "mt",
+      "ls",
+      "l"
+    ],
+    "note": "Media type, locale: functional"
+  },
+  {
+    "domain": "as.com",
+    "preserveParams": [
+      "q"
+    ],
+    "note": "Search query: functional"
+  },
+  {
+    "domain": "auction.co.kr",
+    "preserveParams": [
+      "keyword",
+      "gdno",
+      "itemno",
+      "page",
+      "sort",
+      "category"
+    ],
+    "stripParams": [
+      "jaession",
+      "enc",
+      "campaign",
+      "srccode",
+      "adid"
+    ],
+    "note": "eBay Korea auction platform (same group as Gmarket)"
+  },
+  {
+    "domain": "baidu.com",
+    "preserveParams": [
+      "wd",
+      "ie",
+      "rsv_spt",
+      "rsv_iqid",
+      "f",
+      "tn",
+      "rsp",
+      "rqlang",
+      "bs"
+    ],
+    "note": "Search query and encoding: functional"
+  },
+  {
+    "domain": "bbc.co.uk",
+    "preserveParams": [
+      "q",
+      "seqid",
+      "page"
+    ],
+    "stripParams": [
+      "facebook_page",
+      "at_bbc_team"
+    ],
+    "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
+  },
+  {
+    "domain": "bbc.com",
+    "preserveParams": [
+      "q",
+      "seqid",
+      "page"
+    ],
+    "stripParams": [
+      "facebook_page",
+      "at_bbc_team"
+    ],
+    "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
+  },
+  {
+    "domain": "bestbuy.com",
+    "preserveParams": [
+      "id",
+      "intl",
+      "page",
+      "q"
+    ],
+    "stripParams": [
+      "loc",
+      "ref"
+    ],
+    "note": "US electronics retailer. Search/product/pagination: functional. ref + loc are referral source + campaign location codes (#508). irclickid/irgwc removed: BestBuy affiliate program runs on Impact network — required-at-landing attribution params (#794)."
+  },
+  {
+    "domain": "bhphotovideo.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "US photo/video equipment retailer. Search query: functional."
+  },
+  {
+    "domain": "bilibili.com",
+    "preserveParams": [
+      "p",
+      "t"
+    ],
+    "stripParams": [
+      "spm_id_from",
+      "from_source",
+      "from",
+      "share_source",
+      "share_medium",
+      "share_plat",
+      "share_session_id",
+      "share_tag",
+      "vd_source",
+      "unique_k",
+      "mid",
+      "seid",
+      "buvid",
+      "plat_id",
+      "is_story_h5",
+      "bbid",
+      "visit_id",
+      "broadcast_type"
+    ],
+    "note": "Chinese video platform. Heavy share/fingerprint tracking. vd_source is a user fingerprint hash."
+  },
+  {
+    "domain": "bing.com",
+    "preserveParams": [
+      "q",
+      "qs",
+      "form",
+      "pq",
+      "sc",
+      "sp",
+      "sk",
+      "first"
+    ],
+    "stripParams": [
+      "cvid"
+    ],
+    "note": "Search query and pagination: functional. cvid is session/conversation tracking."
+  },
+  {
+    "domain": "bloomberg.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "in_source",
+      "leadsource",
+      "sref",
+      "srnd"
+    ],
+    "note": "Bloomberg. in_source/sref are referral tracking."
+  },
+  {
+    "domain": "bonprix.de",
+    "preserveParams": [
+      "query",
+      "text",
+      "shopid",
+      "navigationitemid"
+    ],
+    "stripParams": [
+      "bdits",
+      "opeventid",
+      "traceid",
+      "vcks",
+      "vid",
+      "opadvertisingid",
+      "opfacebook_fbc",
+      "opidfa",
+      "opmaid",
+      "oppinterest_epik",
+      "optiktok_ttclid",
+      "opua_adjust_adid",
+      "opua_gps_adid"
+    ],
+    "note": "German fashion retailer. Search and navigation: functional. op* params are cross-platform ad identifiers, bdits/vcks/vid are session tracking."
+  },
+  {
+    "domain": "booking.com",
+    "preserveParams": [
+      "checkin",
+      "checkout",
+      "adults",
+      "children",
+      "rooms",
+      "currency",
+      "lang",
+      "dest_id",
+      "dest_type",
+      "ss",
+      "group_adults",
+      "group_children",
+      "no_rooms",
+      "nflt"
+    ],
+    "stripParams": [
+      "label",
+      "sid",
+      "keep_landing"
+    ],
+    "note": "Hotel search and booking: functional. label/sid are tracking."
+  },
+  {
+    "domain": "canadacompanyregistry.com",
+    "preserveParams": [
+      "utm_campaign"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "carrefourpl.snrpage.com",
+    "preserveParams": [
+      "utm_source"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "cnbc.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "__source",
+      "par"
+    ],
+    "note": "CNBC. Source/partner tracking stripped."
+  },
+  {
+    "domain": "cnn.com",
+    "preserveParams": [
+      "q"
+    ],
+    "note": "Search query: functional"
+  },
+  {
+    "domain": "coolblue.nl",
+    "preserveParams": [
+      "q",
+      "sort",
+      "page"
+    ],
+    "stripParams": [
+      "ref",
+      "phgref",
+      "cmt"
+    ],
+    "note": "Dutch retailer. clickref removed: Coolblue participates in Partnerize network — clickref required-at-landing for commission attribution (#794). ref + phgref + cmt are non-attribution noise."
+  },
+  {
+    "domain": "coppel.com",
+    "preserveParams": [
+      "search",
+      "orderby",
+      "beginindex",
+      "mejores_ofertas"
+    ],
+    "stripParams": [],
+    "note": "Mexican department store. Search, sort, pagination, deals filter: functional."
+  },
+  {
+    "domain": "coupang.com",
+    "preserveParams": [
+      "q",
+      "page",
+      "sorter",
+      "minprice",
+      "maxprice",
+      "brand",
+      "rating",
+      "rocketall",
+      "filtertype",
+      "picktype"
+    ],
+    "stripParams": [
+      "channel",
+      "component",
+      "eventcategory",
+      "trcid",
+      "traid",
+      "traceid",
+      "clickeventid",
+      "searchid",
+      "src",
+      "spec",
+      "sourcetype",
+      "rmdid",
+      "isaddedcart",
+      "searchproducttype",
+      "campaignid",
+      "rank",
+      "listsize",
+      "ispricerange",
+      "itemid",
+      "vendoritemid",
+      "addtag",
+      "ctag",
+      "lptag",
+      "itime",
+      "pagetype",
+      "pagevalue",
+      "wpcid",
+      "wref",
+      "wtime",
+      "redirect",
+      "mcid"
+    ],
+    "note": "Korea's largest e-commerce. Product ID is in the URL path (/vp/products/ID), so itemId/vendorItemId are tracking noise. subId/hmKeyword are Coupang Partners affiliate params: never stripped."
+  },
+  {
+    "domain": "cyberport.de",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "German electronics retailer. Search query: functional."
+  },
+  {
+    "domain": "dailymail.co.uk",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "ns_mchannel",
+      "ns_campaign",
+      "ito"
+    ],
+    "note": "Daily Mail. Campaign/channel tracking stripped."
+  },
+  {
+    "domain": "danawa.com",
+    "preserveParams": [
+      "q",
+      "keyword",
+      "page",
+      "sort",
+      "cate",
+      "brand",
+      "minprice",
+      "maxprice",
+      "prdcd"
+    ],
+    "stripParams": [
+      "logger_kw",
+      "loc",
+      "da_pg",
+      "da_stc",
+      "da_stc2",
+      "da_soc",
+      "da_soc2",
+      "checkedprodcount",
+      "previouscheckedprodcount",
+      "volumetype",
+      "brandcodearray",
+      "prdinfolink",
+      "cmpnyinfolink",
+      "adattributecode"
+    ],
+    "note": "Korea's largest price comparison site. go_link_goods.php is a redirect wrapper (handled by redirect-unwrap via url= param)."
+  },
+  {
+    "domain": "daum.net",
+    "preserveParams": [
+      "q",
+      "w",
+      "sort",
+      "p",
+      "page",
+      "period",
+      "da"
+    ],
+    "stripParams": [
+      "nil_suggest",
+      "nil_ch",
+      "nil_src",
+      "ref",
+      "trkid",
+      "re_svc"
+    ],
+    "note": "Kakao/Daum search portal: Korean search engine"
+  },
+  {
+    "domain": "dcinside.com",
+    "preserveParams": [
+      "id",
+      "no",
+      "page",
+      "s_type",
+      "s_keyword",
+      "search_pos"
+    ],
+    "stripParams": [
+      "from",
+      "s_url",
+      "s_key",
+      "exception_mode"
+    ],
+    "note": "Korea's largest internet community/imageboard. from is referral tracking, s_url/s_key are login redirect session params."
+  },
+  {
+    "domain": "deepl.com",
+    "preserveParams": [
+      "sl",
+      "tl",
+      "text"
+    ],
+    "stripParams": [
+      "share",
+      "cta"
+    ],
+    "note": "DeepL translator. Share/CTA tracking stripped. Translation params preserved."
+  },
+  {
+    "domain": "docmorris.de",
+    "preserveParams": [
+      "query",
+      "category",
+      "page"
+    ],
+    "stripParams": [
+      "lazyids"
+    ],
+    "note": "German online pharmacy. Search, category, pagination: functional. lazyIds is a rendering artifact."
+  },
+  {
+    "domain": "douglas.de",
+    "preserveParams": [
+      "query"
+    ],
+    "stripParams": [],
+    "note": "German beauty/cosmetics retailer. Search query: functional."
+  },
+  {
+    "domain": "duckduckgo.com",
+    "preserveParams": [
+      "q",
+      "t",
+      "ia",
+      "iax",
+      "iaxm",
+      "kl",
+      "kp",
+      "kz",
+      "km",
+      "ks",
+      "ko",
+      "kt",
+      "ka",
+      "kf",
+      "kaf",
+      "kac",
+      "kad",
+      "kd",
+      "kh",
+      "kn",
+      "kr",
+      "kg",
+      "kb",
+      "kv",
+      "kw"
+    ],
+    "note": "Search query and settings: functional"
+  },
+  {
+    "domain": "dzen.ru",
+    "preserveParams": [
+      "text"
+    ],
+    "stripParams": [
+      "from",
+      "clid",
+      "issue_tld"
+    ],
+    "note": "Russian news/content platform (ex-Yandex Zen). clid is client tracking."
+  },
+  {
+    "domain": "ebay.co.uk",
+    "preserveParams": [
+      "_nkw",
+      "_sacat",
+      "_sop",
+      "_pgn",
+      "_ipg",
+      "_fcid",
+      "lh_bin",
+      "lh_auction",
+      "rt",
+      "nkw"
+    ],
+    "stripParams": [
+      "hash",
+      "amdata",
+      "norover",
+      "_trkparms",
+      "_trksid",
+      "_from"
+    ],
+    "note": "Search query, category, sort and pagination: functional"
+  },
+  {
+    "domain": "ebay.com",
+    "preserveParams": [
+      "_nkw",
+      "_sacat",
+      "_sop",
+      "_pgn",
+      "_ipg",
+      "_fcid",
+      "lh_bin",
+      "lh_auction",
+      "rt",
+      "nkw"
+    ],
+    "stripParams": [
+      "hash",
+      "amdata",
+      "norover",
+      "_trkparms",
+      "_trksid",
+      "_from"
+    ],
+    "note": "Search query, category, sort and pagination: functional"
+  },
+  {
+    "domain": "ebay.de",
+    "preserveParams": [
+      "_nkw",
+      "_sacat",
+      "_sop",
+      "_pgn",
+      "_ipg",
+      "_fcid",
+      "lh_bin",
+      "lh_auction",
+      "rt",
+      "nkw"
+    ],
+    "stripParams": [
+      "hash",
+      "amdata",
+      "norover",
+      "_trkparms",
+      "_trksid",
+      "_from"
+    ],
+    "note": "Search query, category, sort and pagination: functional"
+  },
+  {
+    "domain": "ebay.es",
+    "preserveParams": [
+      "_nkw",
+      "_sacat",
+      "_sop",
+      "_pgn",
+      "_ipg",
+      "_fcid",
+      "lh_bin",
+      "lh_auction",
+      "rt",
+      "nkw"
+    ],
+    "stripParams": [
+      "hash",
+      "amdata",
+      "norover",
+      "_trkparms",
+      "_trksid",
+      "_from"
+    ],
+    "note": "Search query, category, sort and pagination: functional"
+  },
+  {
+    "domain": "ebay.fr",
+    "preserveParams": [
+      "_nkw",
+      "_sacat",
+      "_sop",
+      "_pgn",
+      "_ipg",
+      "_fcid",
+      "lh_bin",
+      "lh_auction",
+      "rt",
+      "nkw"
+    ],
+    "stripParams": [
+      "hash",
+      "amdata",
+      "norover",
+      "_trkparms",
+      "_trksid",
+      "_from"
+    ],
+    "note": "Search query, category, sort and pagination: functional"
+  },
+  {
+    "domain": "ebay.it",
+    "preserveParams": [
+      "_nkw",
+      "_sacat",
+      "_sop",
+      "_pgn",
+      "_ipg",
+      "_fcid",
+      "lh_bin",
+      "lh_auction",
+      "rt",
+      "nkw"
+    ],
+    "stripParams": [
+      "hash",
+      "amdata",
+      "norover",
+      "_trkparms",
+      "_trksid",
+      "_from"
+    ],
+    "note": "Search query, category, sort and pagination: functional"
+  },
+  {
+    "domain": "elcorteingles.es",
+    "preserveParams": [
+      "s",
+      "q",
+      "category",
+      "page",
+      "sort",
+      "brand"
+    ],
+    "stripParams": [
+      "lgw_code",
+      "ref"
+    ],
+    "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "elmundo.es",
+    "preserveParams": [
+      "q",
+      "page"
+    ],
+    "note": "Search query and pagination: functional"
+  },
+  {
+    "domain": "elpais.com",
+    "preserveParams": [
+      "q",
+      "page"
+    ],
+    "note": "Search query and pagination: functional"
+  },
+  {
+    "domain": "em.dynamicyield.com",
+    "preserveParams": [
+      "cuid"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "emart.com",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "Korean hypermarket (Shinsegae Group). Search query: functional."
+  },
+  {
+    "domain": "epicgames.com",
+    "preserveParams": [
+      "q",
+      "sortby",
+      "count"
+    ],
+    "stripParams": [
+      "epic_gameid",
+      "epic_affiliate"
+    ],
+    "note": "Epic Games Store. Affiliate tracking stripped."
+  },
+  {
+    "domain": "etsy.com",
+    "preserveParams": [
+      "q",
+      "page",
+      "order",
+      "min",
+      "max",
+      "ship_to",
+      "search_type",
+      "taxonomy_id"
+    ],
+    "stripParams": [
+      "click_key",
+      "click_sum",
+      "rec_type",
+      "ref",
+      "frs",
+      "sts",
+      "organic_search_click"
+    ],
+    "note": "Search and filters: functional. Click/referral tracking stripped."
+  },
+  {
+    "domain": "exito.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "Colombian retail chain. Search query: functional."
+  },
+  {
+    "domain": "facebook.com",
+    "preserveParams": [
+      "q",
+      "filters",
+      "story_fbid",
+      "id",
+      "v",
+      "set",
+      "type"
+    ],
+    "stripParams": [
+      "mibextid",
+      "paipv",
+      "eav",
+      "ref",
+      "notif_id",
+      "notif_t",
+      "acontext",
+      "hc_ref",
+      "fref",
+      "rc",
+      "__xts__",
+      "__tn__",
+      "action_history",
+      "__cft__",
+      "dti",
+      "tracking",
+      "sfnsn",
+      "wtsid",
+      "rdc",
+      "rdr",
+      "_nc_x",
+      "rdid",
+      "extid",
+      "video_source",
+      "pageid",
+      "ls_ref",
+      "referral_code",
+      "referral_story_type"
+    ],
+    "note": "Search, post/video/album IDs: functional. Mobile tracking, notification refs, clickthrough tokens, and redirect tracking stripped."
+  },
+  {
+    "domain": "falabella.com",
+    "preserveParams": [
+      "q",
+      "f.product.brandname",
+      "f.range.derived.variant.discount",
+      "f.range.product.averageoverallrating",
+      "facetselected",
+      "pagetype"
+    ],
+    "stripParams": [
+      "contextid",
+      "channel"
+    ],
+    "note": "Chilean department store (LATAM). Search, brand/rating/discount filters: functional. contextId/channel are session attribution."
+  },
+  {
+    "domain": "falabella.com.co",
+    "preserveParams": [
+      "q",
+      "f.range.product.averageoverallrating"
+    ],
+    "stripParams": [
+      "contextid",
+      "channel"
+    ],
+    "note": "Falabella Colombia. Same rules as falabella.com."
+  },
+  {
+    "domain": "fandom.com",
+    "preserveParams": [
+      "search",
+      "query"
+    ],
+    "stripParams": [
+      "cb",
+      "so",
+      "ref_"
+    ],
+    "note": "Wiki platform. cb is cache buster, so/ref_ are source tracking."
+  },
+  {
+    "domain": "fb.com",
+    "preserveParams": [
+      "q",
+      "filters",
+      "story_fbid",
+      "id",
+      "v"
+    ],
+    "stripParams": [
+      "mibextid",
+      "paipv",
+      "eav",
+      "ref",
+      "notif_id",
+      "notif_t",
+      "acontext",
+      "hc_ref",
+      "fref",
+      "rc",
+      "__xts__",
+      "__tn__",
+      "action_history",
+      "__cft__",
+      "dti",
+      "tracking",
+      "sfnsn",
+      "wtsid",
+      "rdc",
+      "rdr",
+      "_nc_x",
+      "rdid",
+      "extid",
+      "video_source",
+      "pageid",
+      "ls_ref",
+      "referral_code",
+      "referral_story_type"
+    ],
+    "note": "Facebook short domain: same rules as facebook.com"
+  },
+  {
+    "domain": "fiverr.com",
+    "preserveParams": [
+      "query",
+      "category_id",
+      "page"
+    ],
+    "stripParams": [
+      "context_referrer",
+      "context_type",
+      "imp_id",
+      "pos",
+      "ref_ctx_id",
+      "funnel"
+    ],
+    "note": "Fiverr. Search preserved. Impression/funnel tracking stripped."
+  },
+  {
+    "domain": "flipkart.com",
+    "preserveParams": [
+      "q",
+      "sort",
+      "page",
+      "p"
+    ],
+    "stripParams": [
+      "otracker",
+      "ssid",
+      "marketplace",
+      "srno",
+      "ppn",
+      "ppt",
+      "hpid",
+      "ctx"
+    ],
+    "note": "Indian e-commerce. otracker/ssid/marketplace are internal tracking."
+  },
+  {
+    "domain": "fnac.com",
+    "preserveParams": [
+      "searchquery",
+      "sl",
+      "stype",
+      "mo",
+      "se"
+    ],
+    "stripParams": [
+      "ctrlbtw498",
+      "origin",
+      "ref"
+    ],
+    "note": "Search query and mode: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "fnac.es",
+    "preserveParams": [
+      "searchquery",
+      "sl",
+      "stype",
+      "mo",
+      "se"
+    ],
+    "stripParams": [
+      "ctrlbtw498",
+      "origin",
+      "ref"
+    ],
+    "note": "Search query and mode: functional"
+  },
+  {
+    "domain": "forbes.ru",
+    "preserveParams": [
+      "erid"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "fotocasa.es",
+    "preserveParams": [
+      "transactiontype",
+      "l",
+      "minprice",
+      "maxprice",
+      "minrooms",
+      "maxrooms",
+      "minsurface",
+      "maxsurface",
+      "page"
+    ],
+    "note": "Real estate search filters and pagination: functional"
+  },
+  {
+    "domain": "fravega.com",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "Argentine electronics retailer. Search query: functional."
+  },
+  {
+    "domain": "gamestop.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "US video game retailer. Search query: functional."
+  },
+  {
+    "domain": "gaugau.futabanet.jp",
+    "preserveParams": [
+      "utm_content"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "github.com",
+    "preserveParams": [
+      "tab",
+      "q",
+      "type",
+      "utf8",
+      "search_value",
+      "ref",
+      "l",
+      "o",
+      "s",
+      "p"
+    ],
+    "stripParams": [
+      "email_token",
+      "email_source",
+      "notification_referrer_id"
+    ],
+    "note": "Search, tab, sort, pagination: functional. Email notification tracking stripped."
+  },
+  {
+    "domain": "gitlab.com",
+    "preserveParams": [
+      "tab",
+      "q",
+      "type",
+      "ref",
+      "sort",
+      "page"
+    ],
+    "stripParams": [
+      "referrer_action",
+      "glm_source",
+      "glm_content"
+    ],
+    "note": "GitLab. Marketing referral tracking stripped."
+  },
+  {
+    "domain": "glavnoe.life",
+    "preserveParams": [
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_referrer",
+      "utm_source",
+      "utm_term"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "gmarket.co.kr",
+    "preserveParams": [
+      "keyword",
+      "gdno",
+      "goodscode",
+      "page",
+      "category",
+      "sort"
+    ],
+    "stripParams": [
+      "jaession",
+      "enc",
+      "campaign",
+      "eventcode",
+      "srccode",
+      "adid",
+      "buyboxsellerno"
+    ],
+    "note": "eBay Korea / Shinsegae e-commerce marketplace"
+  },
+  {
+    "domain": "google.com",
+    "preserveParams": [
+      "q",
+      "tbm",
+      "tbs",
+      "hl",
+      "gl",
+      "num",
+      "start",
+      "safe",
+      "as_q",
+      "as_sitesearch",
+      "cid",
+      "nfpr"
+    ],
+    "stripParams": [
+      "sa",
+      "ved",
+      "ei",
+      "gs_lcp",
+      "sclient",
+      "uact",
+      "gs_lp",
+      "bih",
+      "biw",
+      "oq",
+      "aqs",
+      "sourceid",
+      "sca_esv",
+      "sxsrf",
+      "usg",
+      "sei",
+      "iflsig",
+      "pcampaignid",
+      "cshid",
+      "ictx",
+      "fbs",
+      "vet",
+      "dpr"
+    ],
+    "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ved/ei are click tracking."
+  },
+  {
+    "domain": "greenbuildingadvisor.com",
+    "preserveParams": [
+      "oly_enc_id"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "humblebundle.com",
+    "preserveParams": [
+      "srch"
+    ],
+    "stripParams": [
+      "partner",
+      "hmb_medium",
+      "hmb_campaign",
+      "hmb_source",
+      "mcid"
+    ],
+    "note": "Humble Bundle. Partner/campaign tracking stripped."
+  },
+  {
+    "domain": "iberia.com",
+    "preserveParams": [
+      "origin",
+      "destination",
+      "outbounddate",
+      "returndate",
+      "adults",
+      "children",
+      "infants",
+      "cabinclass",
+      "triptype"
+    ],
+    "note": "Flight search parameters: functional"
+  },
+  {
+    "domain": "idealista.com",
+    "preserveParams": [
+      "tipo",
+      "localidad",
+      "metros",
+      "habitaciones",
+      "precio",
+      "order",
+      "ordenado-por",
+      "pagina"
+    ],
+    "note": "Real estate search filters and pagination: functional"
+  },
+  {
+    "domain": "iforms.americanexpress.com",
+    "preserveParams": [
+      "cuid"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "imdb.com",
+    "preserveParams": [
+      "ref_",
+      "q"
+    ],
+    "stripParams": [
+      "pf_rd_m",
+      "pf_rd_t",
+      "pf_rd_i"
+    ],
+    "note": "IMDb. pf_rd_* are internal placement tracking (same family as Amazon)."
+  },
+  {
+    "domain": "immobilienscout24.de",
+    "preserveParams": [
+      "searchquery",
+      "sorting",
+      "pageroffset"
+    ],
+    "stripParams": [
+      "referrer",
+      "navigationserviceurl",
+      "searchid",
+      "searchgeopath",
+      "enteredfrom"
+    ],
+    "note": "German real estate. Internal navigation tracking stripped."
+  },
+  {
+    "domain": "indeed.com",
+    "preserveParams": [
+      "q",
+      "l",
+      "jt",
+      "salary",
+      "fromage",
+      "radius"
+    ],
+    "stripParams": [
+      "from",
+      "tk",
+      "vjs",
+      "cmp",
+      "advn",
+      "adid",
+      "sjdu",
+      "acatk",
+      "pub",
+      "jrtk",
+      "xpse",
+      "xfps",
+      "xkcb"
+    ],
+    "note": "Indeed job search. Search params preserved. Click/session tracking stripped."
+  },
+  {
+    "domain": "instagram.com",
+    "preserveParams": [
+      "hl"
+    ],
+    "stripParams": [
+      "igsh",
+      "img_index",
+      "source",
+      "entry_point"
+    ],
+    "note": "Language: functional. Share tracking (igsh) and app entry metadata stripped."
+  },
+  {
+    "domain": "interpark.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "Korean e-commerce marketplace (entertainment/shopping). Search query: functional."
+  },
+  {
+    "domain": "jd.com",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "Chinese e-commerce giant (JD.com). Search query: functional."
+  },
+  {
+    "domain": "kabum.com.br",
+    "preserveParams": [
+      "q",
+      "pagina"
+    ],
+    "stripParams": [
+      "ed",
+      "eid",
+      "ets"
+    ],
+    "note": "Brazilian electronics retailer. Search and pagination: functional. ed/eid/ets are event tracking identifiers."
+  },
+  {
+    "domain": "kaufland.de",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "German supermarket chain. Search query: functional."
+  },
+  {
+    "domain": "kickstarter.com",
+    "preserveParams": [
+      "term",
+      "category_id"
+    ],
+    "stripParams": [
+      "ref",
+      "event",
+      "total_hits"
+    ],
+    "note": "Kickstarter. Referral/event tracking stripped."
+  },
+  {
+    "domain": "kommersant.ru",
+    "preserveParams": [
+      "erid"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "kurly.com",
+    "preserveParams": [
+      "sword",
+      "page",
+      "per_page",
+      "sorted_type"
+    ],
+    "stripParams": [],
+    "note": "Korean grocery delivery (Market Kurly). Search, pagination, sort: functional."
+  },
+  {
+    "domain": "lenovo.com",
+    "preserveParams": [
+      "q",
+      "sort",
+      "page"
+    ],
+    "stripParams": [
+      "obem",
+      "rrid",
+      "run_key"
+    ],
+    "note": "Lenovo. Outbrain/campaign tracking stripped."
+  },
+  {
+    "domain": "lifehacker.ru",
+    "preserveParams": [
+      "erid"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "linkedin.com",
+    "preserveParams": [
+      "keywords",
+      "location",
+      "geoid",
+      "f_tpr",
+      "f_e",
+      "f_jt",
+      "f_c",
+      "sortby",
+      "pagenum",
+      "start"
+    ],
+    "stripParams": [
+      "trackingid",
+      "lipi",
+      "lici",
+      "midtoken",
+      "midsig",
+      "refid",
+      "trk",
+      "trkemail",
+      "ebp",
+      "lgcta",
+      "lgtemp",
+      "recommendedflavor",
+      "origin"
+    ],
+    "note": "Job/people search filters: functional. trackingId/lipi/lici/trk are click tracking. refId/eBP/lgCta/lgTemp are CTA/template tracking."
+  },
+  {
+    "domain": "liverpool.com.mx",
+    "preserveParams": [
+      "s"
+    ],
+    "stripParams": [],
+    "note": "Mexican department store. Search query: functional."
+  },
+  {
+    "domain": "maps.google.com",
+    "preserveParams": [
+      "q",
+      "ll",
+      "z",
+      "sll",
+      "sspn",
+      "layer",
+      "cid",
+      "ftid",
+      "data",
+      "saddr",
+      "daddr",
+      "dirflg",
+      "ttype",
+      "pb"
+    ],
+    "note": "Maps search, coordinates, zoom, business ID, directions: functional"
+  },
+  {
+    "domain": "marca.com",
+    "preserveParams": [
+      "q"
+    ],
+    "note": "Search query: functional"
+  },
+  {
+    "domain": "mediamarkt.de",
+    "preserveParams": [
+      "query",
+      "searchtype",
+      "page",
+      "pagesize",
+      "sort"
+    ],
+    "stripParams": [
+      "ref"
+    ],
+    "note": "Search and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "mediamarkt.es",
+    "preserveParams": [
+      "query",
+      "searchtype",
+      "page",
+      "pagesize",
+      "sort"
+    ],
+    "stripParams": [
+      "ref"
+    ],
+    "note": "Search and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "meetup.com",
+    "preserveParams": [
+      "q",
+      "location",
+      "categoryid",
+      "eventtype"
+    ],
+    "stripParams": [
+      "eventorigin",
+      "recsource",
+      "recid",
+      "searchid"
+    ],
+    "note": "Meetup. Recommendation/search tracking stripped."
+  },
+  {
+    "domain": "mercadolibre.cl",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "MercadoLibre Chile. Search query: functional."
+  },
+  {
+    "domain": "mercadolibre.com.ar",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "MercadoLibre Argentina. Search query: functional."
+  },
+  {
+    "domain": "mercadolibre.com.co",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "MercadoLibre Colombia. Search query: functional."
+  },
+  {
+    "domain": "mercadolibre.com.mx",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "MercadoLibre Mexico. Search query: functional."
+  },
+  {
+    "domain": "mercadolivre.com.br",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "MercadoLivre Brazil. Search query: functional."
+  },
+  {
+    "domain": "mercari.com",
+    "preserveParams": [
+      "keyword",
+      "id"
+    ],
+    "stripParams": [],
+    "note": "US/Japan secondhand marketplace. Search and item ID: functional."
+  },
+  {
+    "domain": "metabase.com",
+    "preserveParams": [
+      "utm_term"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "mootoon.co.kr",
+    "preserveParams": [
+      "cuid"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "msn.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "pc"
+    ],
+    "note": "MSN. Partner code tracking stripped."
+  },
+  {
+    "domain": "musimundo.com",
+    "preserveParams": [
+      "query"
+    ],
+    "stripParams": [],
+    "note": "Argentine electronics/appliance retailer. Search query: functional."
+  },
+  {
+    "domain": "musinsa.com",
+    "preserveParams": [
+      "q",
+      "keyword",
+      "page",
+      "sort",
+      "category",
+      "category_no",
+      "brand",
+      "price_min",
+      "price_max"
+    ],
+    "stripParams": [
+      "gf_id",
+      "mkt_source",
+      "mkt_medium",
+      "mkt_campaign",
+      "ref"
+    ],
+    "note": "Korea's top fashion e-commerce platform"
+  },
+  {
+    "domain": "namu.wiki",
+    "preserveParams": [
+      "q",
+      "page",
+      "target",
+      "rev",
+      "oldrev"
+    ],
+    "stripParams": [
+      "from"
+    ],
+    "note": "Korea's Wikipedia equivalent. Path-based article URLs (/w/Title). Minimal query params; from is referral tracking."
+  },
+  {
+    "domain": "naver.com",
+    "preserveParams": [
+      "query",
+      "where",
+      "sort",
+      "period",
+      "start",
+      "page",
+      "ie",
+      "nso"
+    ],
+    "stripParams": [
+      "nclid",
+      "sm",
+      "ssc_referrer",
+      "frm",
+      "sca_esv",
+      "napm",
+      "n_media",
+      "n_query",
+      "n_rank",
+      "n_ad_group",
+      "n_ad",
+      "n_keyword",
+      "n_keyword_id",
+      "n_campaign_type",
+      "n_cid",
+      "n_match"
+    ],
+    "note": "Korean search engine + portal. Naver Ad and click tracking params stripped."
+  },
+  {
+    "domain": "netflix.com",
+    "preserveParams": [
+      "q",
+      "jbv"
+    ],
+    "stripParams": [
+      "trackid",
+      "tctx",
+      "jbd",
+      "jbr"
+    ],
+    "note": "Search and content ID: functional. trackId/tctx/jbd/jbr are internal tracking."
+  },
+  {
+    "domain": "newegg.com",
+    "preserveParams": [
+      "keyword",
+      "d",
+      "subcategory",
+      "isnodeid",
+      "start",
+      "limit",
+      "storetype"
+    ],
+    "stripParams": [],
+    "note": "US electronics retailer. Search, category, pagination: functional."
+  },
+  {
+    "domain": "nike.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "Nike. Search query: functional."
+  },
+  {
+    "domain": "notebooksbilliger.de",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "German laptop/electronics retailer. Search query: functional."
+  },
+  {
+    "domain": "nytimes.com",
+    "preserveParams": [
+      "query",
+      "type",
+      "sort"
+    ],
+    "stripParams": [
+      "smid",
+      "referringsource",
+      "sgrp",
+      "impression_id"
+    ],
+    "note": "Search query and sort: functional. Social media/impression tracking stripped."
+  },
+  {
+    "domain": "office.com",
+    "preserveParams": [
+      "auth",
+      "home",
+      "from"
+    ],
+    "note": "Auth flow and navigation: functional"
+  },
+  {
+    "domain": "oliveyoung.co.kr",
+    "preserveParams": [
+      "query",
+      "keyword",
+      "page",
+      "sort",
+      "catecd",
+      "brand"
+    ],
+    "stripParams": [
+      "chid",
+      "adid",
+      "campaign",
+      "src"
+    ],
+    "note": "Korea's top beauty/cosmetics retailer"
+  },
+  {
+    "domain": "open.spotify.com",
+    "preserveParams": [
+      "nd",
+      "go",
+      "context",
+      "theme"
+    ],
+    "stripParams": [
+      "dl_branch",
+      "sp_cid",
+      "dlsi",
+      "pi",
+      "referral"
+    ],
+    "note": "Playback context: functional. dl_branch/sp_cid/dlsi/pi are tracking."
+  },
+  {
+    "domain": "otto.de",
+    "preserveParams": [
+      "q",
+      "sortiertnach",
+      "farbe",
+      "altersgruppe",
+      "laenge",
+      "applyshoesizefilter",
+      "sku",
+      "view"
+    ],
+    "stripParams": [
+      "psr",
+      "entryrule",
+      "rule",
+      "targetcontextpsr",
+      "timelineentryid",
+      "originurl"
+    ],
+    "note": "German e-commerce giant. Search, sort, color/age/size filters, SKU, view mode: functional. psr/entryRule/rule/targetContextPsr are internal personalization tracking."
+  },
+  {
+    "domain": "palacio.mx",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "Palacio de Hierro, Mexican luxury department store. Search query: functional."
+  },
+  {
+    "domain": "paris.cl",
+    "preserveParams": [
+      "q",
+      "page",
+      "sortby"
+    ],
+    "stripParams": [],
+    "note": "Cencosud Chile department store. Search, pagination, sort: functional."
+  },
+  {
+    "domain": "paypal.com",
+    "preserveParams": [
+      "token",
+      "flow",
+      "intent",
+      "fundingsource"
+    ],
+    "stripParams": [
+      "utm_unptid",
+      "ppid",
+      "unptid",
+      "unp_tpcid",
+      "link_ref",
+      "rsta",
+      "cnac",
+      "pgrp"
+    ],
+    "note": "PayPal. Session/campaign tracking params. Functional payment params preserved."
+  },
+  {
+    "domain": "pccomponentes.com",
+    "preserveParams": [
+      "q",
+      "sort",
+      "page",
+      "brands",
+      "price_max",
+      "price_min",
+      "category"
+    ],
+    "stripParams": [
+      "publicidadid",
+      "ref"
+    ],
+    "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "pinterest.com",
+    "preserveParams": [
+      "q",
+      "rs",
+      "page"
+    ],
+    "note": "Search and pagination: functional"
+  },
+  {
+    "domain": "play.google.com",
+    "preserveParams": [
+      "id",
+      "hl",
+      "gl"
+    ],
+    "note": "App ID and locale: functional"
+  },
+  {
+    "domain": "rd.bizrate.com",
+    "preserveParams": [
+      "utm_campaign",
+      "utm_medium"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "reddit.app.link",
+    "preserveParams": [
+      "utm_content"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "reddit.com",
+    "preserveParams": [
+      "sort",
+      "t",
+      "after",
+      "before",
+      "count",
+      "limit",
+      "sr_detail",
+      "q",
+      "type",
+      "context"
+    ],
+    "stripParams": [
+      "share_id",
+      "ref",
+      "ref_source",
+      "correlation_id",
+      "ref_campaign",
+      "rdt",
+      "post_index",
+      "post_fullname",
+      "entry_point",
+      "target_user"
+    ],
+    "note": "Sort, time filter, pagination, search, comment context: functional. Share/correlation/campaign tracking stripped."
+  },
+  {
+    "domain": "redirects.tradedoubler.com",
+    "preserveParams": [
+      "utm_campaign",
+      "utm_content"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "renfe.com",
+    "preserveParams": [
+      "tipobusqueda",
+      "origen",
+      "destino",
+      "fechaida",
+      "fechavuelta",
+      "adultos",
+      "ninos",
+      "jovenes",
+      "mayores"
+    ],
+    "note": "Train search parameters: functional"
+  },
+  {
+    "domain": "ripley.cl",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [],
+    "note": "Chilean department store. Search query: functional."
+  },
+  {
+    "domain": "rtve.es",
+    "preserveParams": [
+      "q",
+      "page"
+    ],
+    "note": "Search query and pagination: functional"
+  },
+  {
+    "domain": "scholar.google.com",
+    "preserveParams": [
+      "q",
+      "hl",
+      "as_sdt",
+      "as_ylo",
+      "as_yhi",
+      "cites",
+      "scisbd",
+      "cluster",
+      "start",
+      "num"
+    ],
+    "note": "Scholar search, citation filters, pagination: functional"
+  },
+  {
+    "domain": "sharepoint.com",
+    "preserveParams": [
+      "id",
+      "e",
+      "cid"
+    ],
+    "stripParams": [
+      "referrerscenario",
+      "referrer",
+      "xsdata",
+      "sdata",
+      "clickparams",
+      "ovuser",
+      "or",
+      "ct"
+    ],
+    "note": "SharePoint/OneDrive. Referral/click tracking stripped. Document IDs preserved."
+  },
+  {
+    "domain": "shein.com",
+    "preserveParams": [
+      "q",
+      "search_type",
+      "src_tab_page_id",
+      "page",
+      "sort",
+      "attr_values",
+      "brand"
+    ],
+    "stripParams": [
+      "url_from",
+      "ref",
+      "onelink"
+    ],
+    "note": "Search, filters and pagination: functional. Affiliate params (redirect-based networks) actively stripped."
+  },
+  {
+    "domain": "shopee.com",
+    "preserveParams": [
+      "keyword",
+      "page"
+    ],
+    "stripParams": [
+      "sp_atk",
+      "xptdk",
+      "af_sub_siteid"
+    ],
+    "note": "Southeast Asian e-commerce. sp_atk/xptdk are tracking tokens."
+  },
+  {
+    "domain": "shopping.naver.com",
+    "preserveParams": [
+      "query",
+      "nv_mid",
+      "cat_id",
+      "catid",
+      "productid",
+      "pagingindex",
+      "pagingsize",
+      "viewtype",
+      "sort"
+    ],
+    "stripParams": [
+      "frm",
+      "t",
+      "h",
+      "bt",
+      "napm",
+      "nv_ad",
+      "adid",
+      "nv_chnl",
+      "nv_src"
+    ],
+    "note": "Naver Shopping. Product clicks via cr3.shopping.naver.com are redirect wrappers (handled by redirect-unwrap via url= param). frm/t/h/NaPm are click attribution tracking."
+  },
+  {
+    "domain": "slickdeals.net",
+    "preserveParams": [
+      "q",
+      "sort",
+      "page"
+    ],
+    "stripParams": [
+      "sdtrk",
+      "attr_track",
+      "trd",
+      "sdtid",
+      "prop",
+      "pv",
+      "au",
+      "peid",
+      "adoberef",
+      "attrsrc",
+      "src"
+    ],
+    "note": "Deal aggregator. Attribution/ad tracking stripped."
+  },
+  {
+    "domain": "ssg.com",
+    "preserveParams": [
+      "query",
+      "q",
+      "page",
+      "sort",
+      "ctgid",
+      "brand"
+    ],
+    "stripParams": [
+      "ssgref",
+      "campaign",
+      "adid",
+      "src",
+      "view"
+    ],
+    "note": "Shinsegae Group online department store"
+  },
+  {
+    "domain": "steampowered.com",
+    "preserveParams": [
+      "curator_clanid"
+    ],
+    "note": "Steam Curator attribution (#614). curator_clanid identifies the curator account whose recommendation card is surfaced inline on the store page when the visitor arrives with this param. Non-monetary creator attribution — same MUGA philosophy as Bookshop /a/{id}/ referrals (#612). Subdomain-aware match covers store.steampowered.com."
+  },
+  {
+    "domain": "stackoverflow.com",
+    "preserveParams": [
+      "tab",
+      "sort",
+      "pagesize",
+      "page",
+      "q"
+    ],
+    "note": "Sort, pagination and search: functional"
+  },
+  {
+    "domain": "target.com",
+    "preserveParams": [
+      "s",
+      "q",
+      "category",
+      "sortby",
+      "nao",
+      "preselect"
+    ],
+    "stripParams": [
+      "ref",
+      "afid",
+      "fndsrc",
+      "dfa",
+      "adgroup",
+      "lnm",
+      "network",
+      "device",
+      "location",
+      "targetid",
+      "cpng",
+      "lid"
+    ],
+    "note": "US retailer. ref/afid/fndsrc are ad attribution tracking."
+  },
+  {
+    "domain": "temu.com",
+    "preserveParams": [
+      "search_key",
+      "search_type",
+      "page_num",
+      "page_size",
+      "sort_type"
+    ],
+    "note": "Search, pagination and sort: functional"
+  },
+  {
+    "domain": "thomann.de",
+    "preserveParams": [
+      "q",
+      "departmentid",
+      "type"
+    ],
+    "stripParams": [],
+    "note": "German musical instrument retailer (Europe's largest). Search, department, type filter: functional."
+  },
+  {
+    "domain": "tiktok.com",
+    "preserveParams": [
+      "q",
+      "lang",
+      "region"
+    ],
+    "stripParams": [
+      "is_from_webapp",
+      "sender_device",
+      "sender_web_id",
+      "is_copy_url",
+      "enter_method",
+      "_t",
+      "u_code",
+      "preview_pb",
+      "_d",
+      "timestamp",
+      "user_id",
+      "share_app_name",
+      "share_iid",
+      "share_app_id",
+      "share_link_id",
+      "share_item_id",
+      "sec_user_id",
+      "tt_from",
+      "share_author_id",
+      "checksum",
+      "referer_video_id",
+      "refer",
+      "web_id",
+      "embed_source",
+      "referer_url"
+    ],
+    "note": "Search and locale: functional. Share/embed/referral tracking stripped."
+  },
+  {
+    "domain": "tistory.com",
+    "preserveParams": [
+      "page",
+      "category"
+    ],
+    "stripParams": [],
+    "note": "Kakao-owned blog platform. Path-based post URLs. Tracking is server-side (Kakao Tiara), not in URL params. Standard UTMs handled by global rules."
+  },
+  {
+    "domain": "tmon.co.kr",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "Korean e-commerce (TMON/Ticket Monster). Search query: functional."
+  },
+  {
+    "domain": "tokopedia.com",
+    "preserveParams": [
+      "q",
+      "ob",
+      "page"
+    ],
+    "stripParams": [
+      "src",
+      "trkid",
+      "whid"
+    ],
+    "note": "Indonesian e-commerce. src/trkid are referral tracking."
+  },
+  {
+    "domain": "tradingview.com",
+    "preserveParams": [
+      "symbol",
+      "interval"
+    ],
+    "stripParams": [
+      "exchange",
+      "aff_id",
+      "aff_sub"
+    ],
+    "note": "TradingView. Affiliate tracking stripped. Chart params preserved."
+  },
+  {
+    "domain": "trendyol.com",
+    "preserveParams": [
+      "q",
+      "qt",
+      "st",
+      "os"
+    ],
+    "stripParams": [
+      "link_userid",
+      "link_contentid",
+      "tyutm_source",
+      "tyutm_medium",
+      "tyutm_campaign",
+      "utm_subaff"
+    ],
+    "note": "Turkish e-commerce. Link/campaign tracking stripped."
+  },
+  {
+    "domain": "twitch.tv",
+    "preserveParams": [
+      "query",
+      "type"
+    ],
+    "note": "Search query and content type: functional"
+  },
+  {
+    "domain": "twitter.com",
+    "preserveParams": [
+      "q",
+      "f",
+      "lang"
+    ],
+    "stripParams": [
+      "t",
+      "s",
+      "ref_src",
+      "ref_url",
+      "src",
+      "cn"
+    ],
+    "note": "Search query and filters: functional. t/s/src/cn are share/campaign tracking."
+  },
+  {
+    "domain": "ulta.com",
+    "preserveParams": [
+      "search"
+    ],
+    "stripParams": [],
+    "note": "US beauty retailer. Search query: functional."
+  },
+  {
+    "domain": "usprobioticguide.com",
+    "preserveParams": [
+      "utm_campaign"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "video-shoper.ru",
+    "preserveParams": [
+      "utm_source"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "vk.com",
+    "preserveParams": [
+      "q",
+      "section",
+      "w",
+      "z"
+    ],
+    "stripParams": [
+      "from",
+      "ref"
+    ],
+    "note": "Russian social network. from/ref are referral tracking."
+  },
+  {
+    "domain": "walmart.com",
+    "preserveParams": [
+      "q",
+      "sort",
+      "page",
+      "min_price",
+      "max_price",
+      "cat_id",
+      "query"
+    ],
+    "stripParams": [
+      "athbdg",
+      "athcpid",
+      "athena",
+      "from",
+      "povid",
+      "sourceid",
+      "wmlspartner"
+    ],
+    "note": "Search and filters: functional. Internal recommendation/affiliate tracking stripped (#508 — athcpid is Walmart's per-impression content ID, sourceid is the campaign source tag)."
+  },
+  {
+    "domain": "wayfair.com",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "US furniture/home goods retailer. Search keyword: functional."
+  },
+  {
+    "domain": "wikipedia.org",
+    "preserveParams": [
+      "search",
+      "title",
+      "action",
+      "oldid",
+      "diff",
+      "curid",
+      "redirect",
+      "section"
+    ],
+    "note": "Page navigation, search, revision: functional"
+  },
+  {
+    "domain": "wsj.com",
+    "preserveParams": [
+      "query",
+      "page"
+    ],
+    "stripParams": [
+      "mod",
+      "reflink"
+    ],
+    "note": "Wall Street Journal. Module/referral tracking stripped."
+  },
+  {
+    "domain": "x.com",
+    "preserveParams": [
+      "q",
+      "f",
+      "lang"
+    ],
+    "stripParams": [
+      "t",
+      "s",
+      "ref_src",
+      "ref_url",
+      "src",
+      "cn"
+    ],
+    "note": "Search query and filters: functional. t/s/src/cn are share/campaign tracking."
+  },
+  {
+    "domain": "yahoo.co.jp",
+    "preserveParams": [
+      "p",
+      "fr",
+      "fr2",
+      "fp",
+      "b",
+      "pz",
+      "bct",
+      "bkcat",
+      "n",
+      "ei"
+    ],
+    "stripParams": [
+      "soc_src",
+      "soc_trk"
+    ],
+    "note": "Japanese Yahoo search: same functional params as yahoo.com. Social tracking stripped."
+  },
+  {
+    "domain": "yahoo.com",
+    "preserveParams": [
+      "p",
+      "fr",
+      "fr2",
+      "fp",
+      "b",
+      "pz",
+      "bct",
+      "bkcat",
+      "n",
+      "ei"
+    ],
+    "stripParams": [
+      "soc_src",
+      "soc_trk"
+    ],
+    "note": "Search query and pagination: functional. Social tracking stripped."
+  },
+  {
+    "domain": "yandex.com",
+    "preserveParams": [
+      "text",
+      "lr",
+      "lang",
+      "p",
+      "within",
+      "from",
+      "to"
+    ],
+    "note": "Search query, language, region and pagination: functional"
+  },
+  {
+    "domain": "yandex.go.link",
+    "preserveParams": [
+      "adj_t"
+    ],
+    "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "yandex.ru",
+    "preserveParams": [
+      "text",
+      "lr",
+      "lang",
+      "p",
+      "within",
+      "from",
+      "to"
+    ],
+    "note": "Search query, language, region and pagination: functional"
+  },
+  {
+    "domain": "yes24.com",
+    "preserveParams": [
+      "query",
+      "domain"
+    ],
+    "stripParams": [],
+    "note": "Korean online bookstore/entertainment. Search and content domain filter: functional."
+  },
+  {
+    "domain": "youtu.be",
+    "preserveParams": [
+      "t",
+      "list",
+      "index"
+    ],
+    "stripParams": [
+      "feature",
+      "pp",
+      "si",
+      "cbrd",
+      "ucbcb",
+      "start_radio"
+    ],
+    "note": "YouTube short links: timestamp and playlist functional. si (share token) stripped. start_radio is redundant UI flag — list=RD... already defines the radio mix."
+  },
+  {
+    "domain": "youtube.com",
+    "preserveParams": [
+      "v",
+      "t",
+      "list",
+      "index",
+      "ab_channel",
+      "search_query",
+      "lc"
+    ],
+    "stripParams": [
+      "feature",
+      "pp",
+      "rco",
+      "source_ve_path",
+      "si",
+      "cbrd",
+      "ucbcb",
+      "embeds_referring_euri",
+      "embeds_referring_origin",
+      "kw",
+      "start_radio"
+    ],
+    "note": "Video ID, timestamp, playlist, channel, comment link: functional. si (share token), feature/pp, embed referrer tracking stripped. start_radio is redundant UI flag — list=RD... already defines the radio mix."
+  },
+  {
+    "domain": "zalando.de",
+    "preserveParams": [
+      "q",
+      "order",
+      "p",
+      "size",
+      "color",
+      "brand",
+      "price_from",
+      "price_to"
+    ],
+    "stripParams": [
+      "wmc"
+    ],
+    "note": "Search, filter and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "zalando.es",
+    "preserveParams": [
+      "q",
+      "order",
+      "p",
+      "size",
+      "color",
+      "brand",
+      "price_from",
+      "price_to"
+    ],
+    "stripParams": [
+      "wmc"
+    ],
+    "note": "Search, filter and pagination: functional. Affiliate params (Awin redirect model) actively stripped."
+  },
+  {
+    "domain": "zigzag.kr",
+    "preserveParams": [
+      "keyword"
+    ],
+    "stripParams": [],
+    "note": "Korean fashion e-commerce platform. Search query: functional."
+  }
+];

@@ -24,7 +24,7 @@ const SECURITY_HEADERS = {
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline'; " +
     "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' https://rules.muga.app; " +
+    "img-src 'self' https://rules.muga.app data:; " +
     "font-src 'none'; " +
     "object-src 'none'; " +
     "frame-ancestors 'none'; " +
