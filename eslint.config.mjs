@@ -87,6 +87,26 @@ export default [
     rules: RULES,
   },
 
+  // ── src/content/cleaner-bundle-src.mjs — bundler entry source ─────────────
+  // ESM entry for the content-script bundle (see tools/bundle-content.mjs).
+  // __MUGA_VERSION__ is an esbuild `define` substitution (web-cleaner-tool
+  // #1029), not a real identifier — declare it as a global so no-undef
+  // does not flag it.
+  {
+    files: ["src/content/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        chrome: "readonly",
+        browser: "readonly",
+        __MUGA_VERSION__: "readonly",
+      },
+    },
+    rules: RULES,
+  },
+
   // ── tools/ — Node.js build and ingestion scripts ───────────────────────────
   {
     files: ["tools/**/*.mjs"],
