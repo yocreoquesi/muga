@@ -337,4 +337,8 @@ export default Object.freeze({
   aria_show_report_button: "ポップアップにレポートボタンを表示",
   aria_domain_stats: "ドメインごとの統計を記録",
   aria_show_badge: "ツールバーアイコンにタブのバッジ件数を表示",
+  row_hover_preview_label: "ホバー時の遷移先プレビュー",
+  row_hover_preview_hint: "デスクトップでは、リンクの上に数秒間マウスを止めると、実際のクリーンな遷移先をプレビューできます(他のサイトにリダイレクトするリンクのみ)。",
+  aria_hover_preview: "ホバー時にリンクの実際の遷移先をプレビュー表示する",
+  hover_preview_label: "遷移先:",
 });

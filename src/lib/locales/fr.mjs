@@ -337,4 +337,8 @@ export default Object.freeze({
   aria_show_report_button: "Afficher le bouton de signalement dans la fenêtre contextuelle",
   aria_domain_stats: "Enregistrer les statistiques par domaine",
   aria_show_badge: "Afficher le badge de comptage de l'onglet sur l'icône de la barre d'outils",
+  row_hover_preview_label: "Aperçu de la destination au survol",
+  row_hover_preview_hint: "Sur ordinateur, laissez la souris quelques secondes sur un lien pour voir sa vraie destination nettoyée (uniquement pour les liens qui redirigent ailleurs).",
+  aria_hover_preview: "Afficher un aperçu de la vraie destination du lien au survol",
+  hover_preview_label: "Mène à :",
 });

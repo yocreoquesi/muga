@@ -305,6 +305,9 @@ async function init() {
   bindToggle("block-pings", "blockPings", prefs);
   bindToggle("amp-redirect", "ampRedirect", prefs);
   bindToggle("unwrap-redirects", "unwrapRedirects", prefs);
+  // Hover destination preview (#1028). Plain boolean toggle; not
+  // guarded (no per-device override reconciliation needed).
+  bindToggle("hover-preview-toggle", "hoverPreviewEnabled", prefs);
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
@@ -1128,6 +1131,7 @@ function initExportImport() {
       document.getElementById("block-pings").checked = newPrefs.blockPings;
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
+      document.getElementById("hover-preview-toggle").checked = newPrefs.hoverPreviewEnabled;
       // #925: refresh the newly-surfaced privacy + display toggles after import
       document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
       document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;

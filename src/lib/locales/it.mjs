@@ -337,4 +337,8 @@ export default Object.freeze({
   aria_show_report_button: "Mostra il pulsante di segnalazione nella finestra popup",
   aria_domain_stats: "Registra le statistiche per dominio",
   aria_show_badge: "Mostra il badge del conteggio della scheda sull'icona della barra degli strumenti",
+  row_hover_preview_label: "Anteprima della destinazione al passaggio del mouse",
+  row_hover_preview_hint: "Su desktop, tieni il mouse fermo su un link per qualche secondo per vedere la sua vera destinazione pulita (solo per i link che reindirizzano altrove).",
+  aria_hover_preview: "Mostra un'anteprima della vera destinazione del link al passaggio del mouse",
+  hover_preview_label: "Porta a:",
 });

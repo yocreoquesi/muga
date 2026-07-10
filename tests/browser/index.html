@@ -99,6 +99,17 @@
   <h1>MUGA: Browser Test Suite</h1>
   <p class="subtitle">Manual validation checklist · Open this page with the extension active in Chrome</p>
 
+  <!-- ─── FEATURE-SPECIFIC PAGES ─────────────────────────────────────────── -->
+  <h2>📄 Feature-specific pages</h2>
+  <div class="note">
+    Some features have their own dedicated fixture page instead of a section below. Serve this
+    folder (<code>npm run test:serve</code>) and open these from <code>http://localhost:5555/</code>:<br><br>
+    &bull; <a class="test-link" href="window-name-csp-immune.html" style="margin:0 6px 4px 0;">window-name-csp-immune.html</a>
+    — Firefox <code>window.name</code> CSP-immune defuser smoke (#509 / B12)<br><br>
+    &bull; <a class="test-link" href="hover-preview.html" style="margin:0 6px 4px 0;">hover-preview.html</a>
+    — Hover destination preview fixture (#1028)
+  </div>
+
   <!-- ─── SETUP ──────────────────────────────────────────────────────────── -->
   <h2>⚙ Setup</h2>
   <div class="note">

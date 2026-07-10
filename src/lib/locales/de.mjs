@@ -337,4 +337,8 @@ export default Object.freeze({
   aria_show_report_button: "Melde-Schaltfläche im Popup anzeigen",
   aria_domain_stats: "Statistiken pro Domain erfassen",
   aria_show_badge: "Tab-Zähler-Badge im Symbolleisten-Icon anzeigen",
+  row_hover_preview_label: "Vorschau des Linkziels beim Hovern",
+  row_hover_preview_hint: "Halte am Desktop die Maus einige Sekunden über einen Link, um das echte, bereinigte Ziel zu sehen (nur bei Links, die woanders hin weiterleiten).",
+  aria_hover_preview: "Vorschau des echten Linkziels beim Hovern anzeigen",
+  hover_preview_label: "Führt zu:",
 });
