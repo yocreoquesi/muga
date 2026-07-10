@@ -105,12 +105,23 @@
   .result-message.is-clean { color: var(--good); }
 
   .result-url-row { display: none; }
-  .result-url-row.visible { display: block; }
+  .result-url-row.visible { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .result-url-box {
+    flex: 1 1 260px;
     font-family: var(--mono); font-size: 13.5px; color: var(--ink);
     background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
-    padding: 13px 15px; word-break: break-all; margin-bottom: 14px;
+    padding: 13px 15px; word-break: break-all;
   }
+
+  .length-bar { margin: 0 0 18px; }
+  .length-bar[hidden] { display: none; }
+  .length-bar-headline { font-size: 14.5px; color: var(--good); margin: 0 0 8px; font-weight: 600; }
+  .length-bar-track {
+    display: flex; height: 8px; border-radius: 999px; overflow: hidden;
+    background: var(--panel-2); border: 1px solid var(--rule);
+  }
+  .length-bar-kept { background: var(--good); }
+  .length-bar-removed { background: var(--bad); }
 
   .transparency { display: none; }
   .transparency.visible { display: block; }
@@ -124,10 +135,27 @@
     background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px;
     padding: 2px 8px; text-decoration: line-through;
   }
-  .transparency .destination {
-    font-family: var(--mono); font-size: 13px; color: var(--good);
+  .destination {
+    font-family: var(--mono); font-size: 13px; color: var(--good); margin: 0 0 8px;
   }
-  .transparency .destination .host { color: var(--good); font-weight: 600; }
+  .destination .host { color: var(--good); font-weight: 600; }
+
+  .param-insight { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .param-insight .breakdown-row { display: flex; flex-direction: column; gap: 2px; }
+  .param-insight .breakdown-cat { font-size: 13px; color: var(--ink); font-weight: 600; }
+  .param-insight .breakdown-params { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .param-insight .breakdown-desc { font-size: 12.5px; color: var(--ink-2); }
+
+  .unwrap-callout {
+    border: 1px solid var(--rule-2); border-radius: 12px; background: var(--panel-2);
+    padding: 14px 16px; margin: 18px 0 0;
+  }
+  .unwrap-callout[hidden] { display: none; }
+  .unwrap-disclaimer { font-size: 12.5px; color: var(--ink-3); margin: 0; }
+
+  .report-block { margin-top: 18px; }
+  .report-block[hidden] { display: none; }
+  .report-warning { font-size: 12px; color: var(--ink-3); margin: 8px 0 0; }
 
   .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -162,9 +190,10 @@
     <h1>Clean a URL, right here.</h1>
     <p class="lede">
       Paste any link below and MUGA strips tracking parameters (<code>utm_*</code>, <code>fbclid</code>,
-      <code>gclid</code>, <code>mc_cid</code> and more) and unwraps known redirect wrappers, entirely in
-      your browser. <b>Nothing about this URL is ever sent anywhere.</b> Existing affiliate or creator
-      referral tags are left untouched.
+      <code>gclid</code>, <code>mc_cid</code> and more) and unwraps known redirect wrappers. The cleaning
+      happens entirely in your browser and nothing about the URL is sent anywhere. If you choose to
+      report a bad result, that opens a prefilled GitHub issue you review and submit yourself. Existing
+      affiliate or creator referral tags are left untouched.
     </p>
 
     <section class="panel" aria-labelledby="input-heading">
@@ -173,7 +202,6 @@
       <textarea id="url-input" placeholder="https://example.com/page?utm_source=newsletter&#38;fbclid=abc123" spellcheck="false" autocomplete="off"></textarea>
       <div class="actions">
         <button type="button" class="btn" id="clean-btn">Clean this URL</button>
-        <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
       </div>
     </section>
 
@@ -183,6 +211,15 @@
 
       <div class="result-url-row" id="result-url-row">
         <div class="result-url-box" id="result-url-box"></div>
+        <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
+      </div>
+
+      <div class="length-bar" id="length-bar" hidden>
+        <p class="length-bar-headline" id="length-bar-headline"></p>
+        <div class="length-bar-track" role="img" aria-hidden="true">
+          <div class="length-bar-kept" id="length-bar-kept"></div>
+          <div class="length-bar-removed" id="length-bar-removed"></div>
+        </div>
       </div>
 
       <div class="transparency" id="transparency">
@@ -190,12 +227,27 @@
           <h2>Removed</h2>
           <ul id="removed-list"></ul>
         </div>
-        <p class="destination" id="destination-line" hidden></p>
+        <div class="param-insight" id="param-insight"></div>
+      </div>
+
+      <div class="unwrap-callout" id="unwrap-callout" hidden>
+        <p class="destination" id="destination-line"></p>
+        <p class="unwrap-disclaimer">
+          The percentage above is measured against this final destination, not the original wrapper link.
+        </p>
+      </div>
+
+      <div class="report-block" id="report-block" hidden>
+        <a href="#" class="btn ghost" id="report-link" target="_blank" rel="noopener noreferrer">Report a bad result</a>
+        <p class="report-warning">
+          Opening this creates a public GitHub issue containing the URLs above. Only continue if you are
+          fine sharing them publicly.
+        </p>
       </div>
     </section>
 
     <footer class="trust">
-      <p>No analytics. No third-party requests. No account. This tool never contacts a server.</p>
+      <p>No analytics. No third-party requests. No account. Cleaning never contacts a server; reporting a result opens GitHub only if you click it.</p>
       <p><a href="https://github.com/yocreoquesi/muga">View source</a> &middot; <a href="https://muga.app/">Get the MUGA extension</a></p>
     </footer>
   </div>
