@@ -68,6 +68,45 @@ function buildChangeSummary(removedList, unwrapped) {
 }
 
 /**
+ * @typedef {object} LengthReductionView
+ * @property {number} shorterPercent Whole-number percent shorter (0 when isClean).
+ * @property {string} label Length-only headline text (never a "tracking" claim).
+ * @property {number} keptLen Character length of the cleaned URL.
+ * @property {number} removedLen Character length removed (`max(0, original - clean)`).
+ * @property {boolean} isClean True when nothing was removed.
+ */
+
+/**
+ * Computes the length-reduction bar view-model from the original (pasted)
+ * URL and the cleaned URL. A pure LENGTH claim: never phrased as a
+ * "% was tracking" claim (spec "Length-reduction bar"). Never renders 0%
+ * while a real reduction happened (design D4's clamp guard); when nothing
+ * was removed, short-circuits to the "already clean" label instead of a
+ * 0% bar.
+ *
+ * @param {string} originalUrl The URL as pasted by the user.
+ * @param {string} cleanUrl The cleaned URL returned by the adapter.
+ * @returns {LengthReductionView}
+ */
+export function computeLengthReduction(originalUrl, cleanUrl) {
+  const originalLen = typeof originalUrl === "string" ? originalUrl.length : 0;
+  const cleanLen = typeof cleanUrl === "string" ? cleanUrl.length : 0;
+  const removedLen = Math.max(0, originalLen - cleanLen);
+  const isClean = removedLen === 0;
+  const shorterPercent = isClean || originalLen === 0
+    ? 0
+    : Math.max(1, Math.round((removedLen / originalLen) * 100));
+
+  return {
+    shorterPercent,
+    label: isClean ? "Already clean, nothing to remove" : `This link is ${shorterPercent}% shorter`,
+    keptLen: cleanLen,
+    removedLen,
+    isClean,
+  };
+}
+
+/**
  * Formats a web/engine/adapter.js `cleanUrl()` result into a render-ready
  * view-model. Never throws: a missing/malformed result degrades to the
  * "error" state with a generic message, same as the adapter's own
