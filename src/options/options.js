@@ -305,7 +305,7 @@ async function init() {
   bindToggle("block-pings", "blockPings", prefs);
   bindToggle("amp-redirect", "ampRedirect", prefs);
   bindToggle("unwrap-redirects", "unwrapRedirects", prefs);
-  // Hover destination preview (#1028, PoC). Plain boolean toggle; not
+  // Hover destination preview (#1028). Plain boolean toggle; not
   // guarded (no per-device override reconciliation needed).
   bindToggle("hover-preview-toggle", "hoverPreviewEnabled", prefs);
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so

@@ -1,5 +1,5 @@
 /**
- * MUGA: Hover destination preview (#1028, Proof of Concept)
+ * MUGA: Hover destination preview (#1028)
  *
  * Desktop-only, fully local content script. When the user hovers AND holds
  * the mouse still over a link for ~hoverPreviewDelayMs (default 2.5s), shows a
@@ -14,14 +14,14 @@
  *
  * Fully local: no network access, no new permissions, no mutation of the
  * anchor's href, no interference with the click. Native-shortener
- * resolution (fetch-based) is explicitly out of scope for this PoC —
+ * resolution (fetch-based) is explicitly out of scope for this feature —
  * shorteners never show a preview here since resolving them requires a
  * network round trip.
  *
  * Note: ES module imports are not supported in MV3/MV2 content scripts, so
  * (like content/cleaner.js) the tooltip label translations are inlined
  * below. Keep LABELS in sync with the "hover_preview_label" key in
- * src/lib/i18n.js (en/es/pt/de/fr/it/ja).
+ * src/lib/locales/*.mjs (en/es/pt/de/fr/it/ja).
  */
 
 (function () {
@@ -90,6 +90,7 @@
   // ── Tooltip (single reused element, styled via one injected <style>) ────
   const TOOLTIP_CLASS = "muga-hover-preview-tooltip";
   const LABEL_CLASS = "muga-hover-preview-label";
+  const TOOLTIP_ID = "muga-hover-preview-tip";
   let _styleInjected = false;
   let _tooltip = null;
 
@@ -120,7 +121,20 @@
           "z-index:2147483647;" +
           "pointer-events:none;" +
         "}" +
-        "." + LABEL_CLASS + "{font-weight:600;margin-right:5px;color:#a8a8ad;}";
+        "." + LABEL_CLASS + "{font-weight:600;margin-right:5px;color:#a8a8ad;}" +
+        // Windows High Contrast (and other forced-colors modes): defer to the
+        // user's chosen system palette instead of the hardcoded dark colors
+        // above, so the tooltip stays legible and respects OS-level contrast
+        // preferences.
+        "@media (forced-colors: active) {" +
+          "." + TOOLTIP_CLASS + "{" +
+            "background:Canvas;" +
+            "color:CanvasText;" +
+            "border-color:CanvasText;" +
+            "box-shadow:none;" +
+          "}" +
+          "." + LABEL_CLASS + "{color:CanvasText;}" +
+        "}";
       (document.head || document.documentElement).appendChild(style);
     } catch {
       // Style injection failed (e.g. a strict page CSP blocking inline
@@ -133,6 +147,7 @@
     if (_tooltip && _tooltip.isConnected) return _tooltip;
     ensureStyle();
     const el = document.createElement("div");
+    el.id = TOOLTIP_ID;
     el.className = TOOLTIP_CLASS;
     el.setAttribute("role", "tooltip");
     el.setAttribute("aria-hidden", "true");
@@ -155,6 +170,44 @@
     if (!_tooltip) return;
     _tooltip.style.display = "none";
     _tooltip.setAttribute("aria-hidden", "true");
+    clearDescribedBy();
+  }
+
+  // ── Screen-reader link: anchor[aria-describedby] -> tooltip#id ──────────
+  // Only one anchor is ever described at a time. If the anchor already had
+  // its own aria-describedby (from the page itself), that original value is
+  // restored when the tooltip moves on or hides — MUGA must never leak a
+  // stale reference to an id it owns, and must never permanently clobber a
+  // value the page had set.
+  let _describedAnchor = null;
+  let _describedAnchorPrevValue = null;
+
+  function clearDescribedBy() {
+    if (!_describedAnchor) return;
+    try {
+      if (_describedAnchorPrevValue === null) {
+        _describedAnchor.removeAttribute("aria-describedby");
+      } else {
+        _describedAnchor.setAttribute("aria-describedby", _describedAnchorPrevValue);
+      }
+    } catch {
+      // Anchor may have been detached from the DOM; nothing to restore.
+    }
+    _describedAnchor = null;
+    _describedAnchorPrevValue = null;
+  }
+
+  function describeAnchor(anchor) {
+    if (_describedAnchor === anchor) return; // already describing this anchor
+    clearDescribedBy(); // restore the previously-described anchor, if any
+    try {
+      _describedAnchorPrevValue = anchor.getAttribute("aria-describedby");
+      anchor.setAttribute("aria-describedby", TOOLTIP_ID);
+      _describedAnchor = anchor;
+    } catch {
+      _describedAnchor = null;
+      _describedAnchorPrevValue = null;
+    }
   }
 
   function positionTooltip(el, anchor) {
@@ -183,10 +236,10 @@
     labelEl.textContent = _label;
     el.appendChild(labelEl);
     el.appendChild(document.createTextNode(truncate(destinationUrl, 120)));
-    el.title = destinationUrl; // full URL always available on hover of the tooltip itself
     el.style.display = "block";
     el.setAttribute("aria-hidden", "false");
     positionTooltip(el, anchor);
+    describeAnchor(anchor);
   }
 
   // ── Gate — re-checked immediately before showing, not just at hover-start ─

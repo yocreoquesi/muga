@@ -4,6 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
+### Features
+
+- **Hover destination preview** (#1028). On desktop, hover and hold a link to see where it really goes, already cleaned. Shown only for links that redirect elsewhere. On by default, fully local, opt-out in Settings > Advanced.
+
 ## [2.5.0] - 2026-07-09
 
 Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the previous approach was silently blocked. This release adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, and a weekly remote-rules changelog in Settings. It also fixes several Firefox Xray crashes, hardens the remote-payload affiliate guards, and lands a large tracking-parameter harvest. MUGA's own affiliate injection is now on by default, a deliberate and disclosed step to keep the project sustainable, and you can turn it off during onboarding or any time in Settings with no loss of cleaning or protection.

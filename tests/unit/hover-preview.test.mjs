@@ -1,16 +1,16 @@
 /**
- * MUGA — Hover destination preview (#1028, Proof of Concept)
+ * MUGA — Hover destination preview (#1028)
  *
  * Coverage:
  *   1. Behavioral: processUrl's decision surface that hover-preview.js relies
  *      on — a redirect-wrapper link (l.facebook.com/l.php?u=...) unwraps to a
- *      DIFFERENT host (the case the PoC would show a tooltip for), while a
- *      plain UTM-decorated link cleans to the SAME host (the case the PoC
- *      must show nothing for).
+ *      DIFFERENT host (the case the feature shows a tooltip for), while a
+ *      plain UTM-decorated link cleans to the SAME host (the case the
+ *      feature must show nothing for).
  *   2. Source guards on src/content/hover-preview.js: the PC-only gate, the
  *      prefs fetch, the site-exemption check, the delay/default wiring, the
  *      host-change decision, and the pref name it gates on.
- *   3. PREF_DEFAULTS carries the PoC defaults (hoverPreviewEnabled: true,
+ *   3. PREF_DEFAULTS carries the shipped defaults (hoverPreviewEnabled: true,
  *      hoverPreviewDelayMs: 2500).
  *
  * Content scripts cannot import ES modules (MV3/MV2), so hover-preview.js
@@ -45,7 +45,7 @@ const PREFS = {
 };
 
 // ---------------------------------------------------------------------------
-// 1. Behavioral: the "does the host change?" decision the PoC is built on
+// 1. Behavioral: the "does the host change?" decision the feature is built on
 // ---------------------------------------------------------------------------
 
 describe("hover-preview decision surface — processUrl host-change behavior", () => {
@@ -63,7 +63,7 @@ describe("hover-preview decision surface — processUrl host-change behavior", (
     assert.equal(
       changed, true,
       "l.facebook.com/l.php?u=... must unwrap to a different host — this is the case " +
-      "the hover preview tooltip is supposed to show",
+      "the hover preview tooltip shows",
     );
     assert.equal(new URL(cleanUrl).host, "merchant.example.com");
   });
@@ -166,7 +166,7 @@ describe("hover-preview.js — source guards", () => {
 // 3. Prefs defaults
 // ---------------------------------------------------------------------------
 
-describe("PREF_DEFAULTS — hover preview (#1028, PoC)", () => {
+describe("PREF_DEFAULTS — hover preview (#1028)", () => {
   test("hoverPreviewEnabled defaults to true", () => {
     assert.equal(PREF_DEFAULTS.hoverPreviewEnabled, true);
   });
