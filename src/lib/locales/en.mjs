@@ -337,4 +337,8 @@ export default Object.freeze({
   aria_show_report_button: "Show report button in popup",
   aria_domain_stats: "Record per-domain statistics",
   aria_show_badge: "Show tab badge count on the toolbar icon",
+  row_hover_preview_label: "Hover destination preview",
+  row_hover_preview_hint: "On desktop, hold the mouse over a link for a few seconds to preview its real cleaned destination (only for links that redirect elsewhere).",
+  aria_hover_preview: "Show a hover preview of the real link destination",
+  hover_preview_label: "Goes to:",
 });

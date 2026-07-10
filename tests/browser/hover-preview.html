@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA: Hover Preview Fixture (#1028)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      padding: 32px;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #666; margin-bottom: 32px; }
+    h2 { font-size: 14px; font-weight: 600; color: #aaa; text-transform: uppercase;
+         letter-spacing: 0.08em; margin: 32px 0 12px; border-bottom: 1px solid #222; padding-bottom: 8px; }
+    .test {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .test-id { font-size: 10px; color: #555; font-family: monospace; margin-bottom: 4px; }
+    .test-title { font-size: 13px; font-weight: 500; color: #ddd; margin-bottom: 6px; }
+    .test-action { font-size: 12px; color: #888; margin-bottom: 10px; }
+    .test-action strong { color: #bbb; }
+    .test-link {
+      display: inline-block;
+      font-size: 11px;
+      font-family: monospace;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 5px;
+      padding: 5px 10px;
+      color: #6af;
+      text-decoration: none;
+      word-break: break-all;
+      margin-top: 2px;
+    }
+    .test-link:hover { background: #1c1c1c; border-color: #555; }
+    .expected {
+      font-size: 11px;
+      color: #555;
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: #111;
+      border-left: 2px solid #333;
+      border-radius: 0 4px 4px 0;
+    }
+    .expected .label { color: #4a4; font-weight: 600; }
+    .expected.gap { border-left-color: #a85; }
+    .expected.gap .label { color: #da5; }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      font-weight: 600;
+    }
+    .badge-yes { background: #1a3a1a; color: #5c5; }
+    .badge-no { background: #3a1a1a; color: #f55; }
+    .badge-gap { background: #3a2a1a; color: #da5; }
+    .note {
+      font-size: 12px;
+      color: #666;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .note a { color: #6af; }
+    .note strong { color: #bbb; }
+    .checklist { list-style: none; }
+    .checklist li { font-size: 13px; color: #aaa; padding: 4px 0; }
+    .checklist li::before { content: "☐  "; color: #444; }
+    code {
+      font-family: monospace;
+      background: #222;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 8px 0; }
+    .recipe { font-size: 11px; color: #888; font-family: monospace; margin-top: 6px; }
+    .recipe span { color: #6af; }
+  </style>
+</head>
+<body>
+
+  <h1>MUGA: Hover Preview Fixture <span class="badge badge-gap">#1028</span></h1>
+  <p class="subtitle">Manual validation for <code>src/content/hover-preview.js</code> · Open with the extension active in Chrome</p>
+
+  <div class="note">
+    <strong>How to use this page:</strong> Hover your mouse over a test link below and
+    <strong>hold it still for about 2.5 seconds</strong> — do not click. If MUGA's local unwrap
+    changes the link's destination <strong>host</strong>, a small tooltip appears near the link
+    showing "Goes to: &lt;cleaned URL&gt;". Moving the mouse, scrolling, or pressing Escape
+    cancels the hold and hides the tooltip. This feature is desktop-only (fine pointer + hover
+    capability) and fully local — no network requests are made to resolve any link.
+  </div>
+
+  <!-- SECTION 1: WRAPPERS MUGA UNWRAPS -->
+  <h2>Section 1 &middot; Wrappers MUGA unwraps <span class="badge badge-yes">tooltip SHOULD appear</span></h2>
+
+  <div class="test">
+    <div class="test-id">HP-01</div>
+    <div class="test-title">Facebook outbound link (l.facebook.com/l.php)</div>
+    <div class="test-action">Hover and hold ~2.5s <strong>without clicking</strong>.</div>
+    <a class="test-link" href="https://l.facebook.com/l.php?u=https%3A%2F%2Fshop.example.com%2Fproduct%3Fid%3D9%26utm_source%3Dfb&h=AT1abc">
+      https://l.facebook.com/l.php?u=https%3A%2F%2Fshop.example.com%2Fproduct%3Fid%3D9%26utm_source%3Dfb&h=AT1abc
+    </a>
+    <div class="expected">
+      <span class="label">Expected tooltip:</span> Goes to: https://shop.example.com/product?id=9
+    </div>
+    <div class="recipe">Recipe: <span>facebook-l</span> — hostPatterns: l.facebook.com · pathPrefix: /l.php · extractor: fromParam "u" (src/rules/wrappers.data.js). Host changes l.facebook.com &rarr; shop.example.com, and utm_source is stripped by the normal cleaning pass that runs on the unwrapped URL.</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">HP-02</div>
+    <div class="test-title">Reddit mail redirect (click.redditmail.com)</div>
+    <div class="test-action">Hover and hold ~2.5s <strong>without clicking</strong>.</div>
+    <a class="test-link" href="https://click.redditmail.com/redirect?url=https%3A%2F%2Fnews.example.org%2Fpost%3Fid%3D3">
+      https://click.redditmail.com/redirect?url=https%3A%2F%2Fnews.example.org%2Fpost%3Fid%3D3
+    </a>
+    <div class="expected">
+      <span class="label">Expected tooltip:</span> Goes to: https://news.example.org/post?id=3
+    </div>
+    <div class="recipe">Recipe: <span>click-redditmail-com</span> — hostPatterns: click.redditmail.com · no pathPrefix (any path matches) · extractor: fromParam "url" (src/rules/wrappers.data.js). Host changes click.redditmail.com &rarr; news.example.org.</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">HP-03</div>
+    <div class="test-title">DuckDuckGo redirect (duckduckgo.com/l/)</div>
+    <div class="test-action">Hover and hold ~2.5s <strong>without clicking</strong>.</div>
+    <a class="test-link" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fnews.example.org%2Fart%3Fid%3D5">
+      https://duckduckgo.com/l/?uddg=https%3A%2F%2Fnews.example.org%2Fart%3Fid%3D5
+    </a>
+    <div class="expected">
+      <span class="label">Expected tooltip:</span> Goes to: https://news.example.org/art?id=5
+    </div>
+    <div class="recipe">Recipe: <span>duckduckgo-com</span> — hostPatterns: duckduckgo.com, www.duckduckgo.com · pathPrefix: /l/ · extractor: fromParam "uddg" (src/rules/wrappers.data.js). Host changes duckduckgo.com &rarr; news.example.org.</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 2: PLAIN LINKS -->
+  <h2>Section 2 &middot; Plain links <span class="badge badge-no">tooltip should NOT appear</span></h2>
+
+  <div class="test">
+    <div class="test-id">HP-04</div>
+    <div class="test-title">Fully clean link, same host</div>
+    <div class="test-action">Hover and hold ~2.5s. Nothing has to be cleaned, so there is no hidden destination worth surfacing.</div>
+    <a class="test-link" href="https://example.com/clean-page">
+      https://example.com/clean-page
+    </a>
+    <div class="expected"><span class="label">Expected:</span> No tooltip (destination host unchanged)</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">HP-05</div>
+    <div class="test-title">UTM-only tracking link, same host</div>
+    <div class="test-action">MUGA strips the UTM params on click, but the destination <strong>host</strong> is still example.com either way — no wrapper is involved.</div>
+    <a class="test-link" href="https://example.com/page?utm_source=x&utm_medium=y">
+      https://example.com/page?utm_source=x&utm_medium=y
+    </a>
+    <div class="expected"><span class="label">Expected:</span> No tooltip (destination host unchanged, even though params would be stripped on click)</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 3: KNOWN COVERAGE GAP -->
+  <h2>Section 3 &middot; Known coverage gap <span class="badge badge-gap">tracks live coverage</span></h2>
+
+  <div class="note">
+    This section doubles as a coverage tracker. It documents wrappers that are <strong>known
+    redirect networks but not yet in MUGA's signed wrapper recipes</strong>. As recipes are added
+    (e.g. via the unwrap-harvest pipeline), move the corresponding entry to Section 1 and update
+    its badge from ⏳ to ✅.
+  </div>
+
+  <div class="test">
+    <div class="test-id">HP-06</div>
+    <div class="test-title">Google search redirect (google.com/url) <span class="badge badge-gap">⏳ KNOWN GAP</span></div>
+    <div class="test-action">Hover and hold ~2.5s.</div>
+    <a class="test-link" href="https://www.google.com/url?q=https%3A%2F%2Fnews.example.org%2Fart%3Fid%3D5&sa=U">
+      https://www.google.com/url?q=https%3A%2F%2Fnews.example.org%2Fart%3Fid%3D5&sa=U
+    </a>
+    <div class="expected gap">
+      <span class="label">⏳ KNOWN GAP —</span> MUGA does not yet unwrap <code>google.com/url</code>
+      (not in the signed wrapper recipes in <code>src/rules/wrappers.data.js</code>). No tooltip
+      is expected TODAY. This will flip to ✅ once the unwrap-harvest lands a
+      <code>google.com/url</code> recipe.
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 4: GATE CHECKS -->
+  <h2>Section 4 &middot; Gate checks (manual)</h2>
+
+  <div class="note">These are behavioural gates around the tooltip itself, not individual links. Verify each one by hand.</div>
+
+  <ul class="checklist">
+    <li>Settings &rarr; Advanced &rarr; disable "hover preview" &rarr; no tooltip appears on any HP-01/02/03 link</li>
+    <li>Re-enable "hover preview" in Settings &rarr; Advanced &rarr; tooltips return on HP-01/02/03</li>
+    <li>Pause MUGA for this site from the popup &rarr; no tooltip appears on any link on this page</li>
+    <li>Un-pause the site &rarr; tooltips return</li>
+    <li>Tooltips are PC-only: on a touch device (or Chrome DevTools device emulation with touch enabled), no tooltip ever appears, even after a long press</li>
+    <li>Clicking any link on this page (HP-01 through HP-06) still navigates normally — the hover preview never interferes with the click</li>
+    <li>The hold delay is roughly 2.5s: moving the mouse away before ~2.5s has elapsed cancels the tooltip; holding past ~2.5s shows it</li>
+  </ul>
+
+</body>
+</html>

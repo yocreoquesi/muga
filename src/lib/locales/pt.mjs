@@ -337,4 +337,8 @@ export default Object.freeze({
   aria_show_report_button: "Mostrar o botão de reporte na janela pop-up",
   aria_domain_stats: "Registrar estatísticas por domínio",
   aria_show_badge: "Mostrar a contagem da aba no ícone da barra de ferramentas",
+  row_hover_preview_label: "Prévia do destino ao passar o mouse",
+  row_hover_preview_hint: "No computador, mantenha o mouse sobre um link por alguns segundos para ver seu destino real já limpo (somente para links que redirecionam para outro lugar).",
+  aria_hover_preview: "Mostrar uma prévia do destino real do link ao passar o mouse",
+  hover_preview_label: "Vai para:",
 });

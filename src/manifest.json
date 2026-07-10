@@ -44,7 +44,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/window-name-defuser.js", "content/dom-link-rewriter.js", "content/dom-link-rewriter-click.js", "content/bounce-state-cleaner.js", "content/history-defuser.js", "content/cleaner.js"],
+      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/window-name-defuser.js", "content/dom-link-rewriter.js", "content/dom-link-rewriter-click.js", "content/bounce-state-cleaner.js", "content/history-defuser.js", "content/cleaner.js", "content/hover-preview.js"],
       "run_at": "document_start"
     }
   ],

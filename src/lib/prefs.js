@@ -124,6 +124,16 @@ export const PREF_DEFAULTS = {
   // Migration: on startup, if chrome.storage.sync contains privacyProxyEnabled=true,
   // this field is set to true and the old key is deleted (see migrateLegacyProxyPref).
   followShortenersEnabled: false,
+  // Hover destination preview (#1028, PoC). Desktop-only: shows a small
+  // text-only tooltip with the real cleaned destination when hovering AND
+  // holding still over a link for hoverPreviewDelayMs, but ONLY when MUGA's
+  // local unwrap/clean changes the link's host (wrappers / redirect
+  // networks). A plain link whose host is unchanged shows nothing. Fully
+  // local: no network, no new permissions. Default ON for this PoC so it
+  // can be tested immediately; revisit the default before a real ship.
+  hoverPreviewEnabled: true,
+  // Hold duration (ms) before the hover preview tooltip appears.
+  hoverPreviewDelayMs: 2500,
   // NOTE (ADR-0004 phase 5, 2026-06-01): privacyProxyEnabled was the Privacy Proxy
   // toggle removed in phase 5. Retained as a deprecation comment only — do NOT add
   // it back to PREF_DEFAULTS. Any live value is migrated to followShortenersEnabled

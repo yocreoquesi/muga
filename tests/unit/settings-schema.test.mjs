@@ -73,16 +73,16 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 19 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
-      "attributionLedgerEnabled",
+      "attributionLedgerEnabled", "hoverPreviewEnabled",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 19);
+    assert.strictEqual(BOOLEAN_KEYS.length, 20);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
