@@ -27,6 +27,7 @@
     "surface:rules": "node tools/rule-ingestion/format-surface.mjs",
     "conformance:contextual": "node --test --test-reporter=spec tests/unit/conformance-contextual.test.mjs",
     "test:serve": "npx serve tests/browser --listen 5555 --no-clipboard",
+    "test:serve:web": "npx serve web --listen 5557 --no-clipboard",
     "brand": "npx serve tools --listen 5556 --no-clipboard",
     "screenshots": "node tools/screenshots/capture.mjs",
     "promo-tile": "node tools/screenshots/capture-promo.mjs",

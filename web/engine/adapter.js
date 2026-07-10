@@ -14,10 +14,13 @@
  * tests/unit/helpers/load-web-engine.mjs.
  */
 
-// web/engine/domain-rules.json is a generated, drift-gated byte copy of
-// src/rules/domain-rules.json (tools/build-web.mjs) — gives the web tool
-// full per-domain preserveParams/stripParams parity with MUGA core.
-import domainRules from "./domain-rules.json" with { type: "json" };
+// web/engine/domain-rules.gen.mjs is a generated, drift-gated named-export
+// ES module mirror of src/rules/domain-rules.json (tools/build-web.mjs) —
+// gives the web tool full per-domain preserveParams/stripParams parity
+// with MUGA core. A plain ES module import (no import-attribute syntax)
+// so every module-supporting browser can load it; see build-web.mjs for
+// why this replaced a JSON `with { type: "json" }` import (Phase 4).
+import { DOMAIN_RULES } from "./domain-rules.gen.mjs";
 
 /** Redirect-destination length cap, mirrored from AGENTS.md security rules. */
 const MAX_URL_LENGTH = 2000;
@@ -130,7 +133,7 @@ export function cleanUrl(input, engine = resolveEngine()) {
 
   let result;
   try {
-    result = engine.processUrl(input, prefs, domainRules);
+    result = engine.processUrl(input, prefs, DOMAIN_RULES);
   } catch {
     return { ...buildFailure("error", "processing-failed", input) };
   }

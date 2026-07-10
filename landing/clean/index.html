@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MUGA Clean: paste a URL, strip the tracking noise</title>
+<meta name="description" content="Paste any URL and MUGA Clean strips tracking parameters and unwraps known redirect wrappers, entirely in your browser. No server, no analytics, nothing about the URL ever leaves your device.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDQgNjgiPjxwYXRoIGQ9Ik0gMTIgNTYgQyAxMiA4LCA0NiA4LCA1MiA0NiBMIDYyIDIyIEwgNzIgNTAgTCA4NCA1MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQTg4M0YwIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNIDgwIDM3IEwgOTggNTAgTCA4MCA2MyBaIiBmaWxsPSIjQTg4M0YwIiBzdHJva2U9IiNBODgzRjAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==">
+
+<style>
+  :root {
+    --bg: #0E0C13;
+    --bg-2: #110E17;
+    --panel: #14111B;
+    --panel-2: #1A1622;
+    --ink: #F2EFF7;
+    --ink-2: #A9A2B8;
+    --ink-3: #756D86;
+    --rule: #2A2536;
+    --rule-2: #332C42;
+    --rule-soft: #221D2D;
+    --accent: #6A2BCF;
+    --accent-hi: #7B3FE0;
+    --accent-ink: #A883F0;
+    --accent-soft: #C9B2F5;
+    --good: #4CC38A;
+    --bad: #E0665C;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --maxw: 760px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg); color: var(--ink);
+    font-size: 16px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-soft); text-underline-offset: 3px; }
+  a:hover { color: #E4D8FA; }
+  ::selection { background: var(--accent); color: #fff; }
+  :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 4px; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  header.top { padding: 26px 0; border-bottom: 1px solid var(--rule-soft); }
+  .top-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
+  .brand-mark { color: var(--accent-ink); flex: none; }
+  .brand .name { font-family: var(--mono); font-size: 13.5px; letter-spacing: .02em; }
+  .top-inner nav a { color: var(--ink-2); text-decoration: none; font-family: var(--mono); font-size: 12.5px; padding: 8px 12px; border-radius: 8px; }
+  .top-inner nav a:hover { color: var(--ink); background: var(--panel-2); }
+
+  main { padding: 56px 0 64px; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+    border: 1px solid var(--rule); background: var(--panel);
+    border-radius: 999px; padding: 6px 14px; margin-bottom: 22px;
+  }
+  h1 { margin: 0 0 14px; font-size: clamp(30px, 5vw, 42px); line-height: 1.08; letter-spacing: -.02em; font-weight: 700; }
+  .lede { margin: 0 0 36px; color: var(--ink-2); font-size: 16px; max-width: 60ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  .panel {
+    border: 1px solid var(--rule); border-radius: 16px;
+    background: var(--panel); padding: 22px; margin-bottom: 20px;
+  }
+
+  label.field-label {
+    display: block; font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+
+  textarea#url-input {
+    width: 100%; min-height: 84px; resize: vertical;
+    font-family: var(--mono); font-size: 14px; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--rule-2); border-radius: 10px;
+    padding: 12px 14px; line-height: 1.5;
+  }
+  textarea#url-input::placeholder { color: var(--ink-3); }
+
+  .actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 600; font-size: 14.5px; padding: 11px 20px; border-radius: 10px;
+    border: none; cursor: pointer;
+    transition: background .14s ease, transform .14s ease;
+  }
+  .btn:hover { background: var(--accent-hi); }
+  .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); }
+  .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:disabled:hover { background: var(--panel-2); }
+
+  .result-panel { border-color: var(--rule-2); }
+  .result-message { font-size: 14.5px; color: var(--ink-2); margin: 0 0 14px; }
+  .result-message.is-error { color: var(--bad); }
+  .result-message.is-clean { color: var(--good); }
+
+  .result-url-row { display: none; }
+  .result-url-row.visible { display: block; }
+  .result-url-box {
+    font-family: var(--mono); font-size: 13.5px; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
+    padding: 13px 15px; word-break: break-all; margin-bottom: 14px;
+  }
+
+  .transparency { display: none; }
+  .transparency.visible { display: block; }
+  .transparency h2 {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; font-weight: 500;
+  }
+  .transparency ul { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .transparency li {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+    background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 2px 8px; text-decoration: line-through;
+  }
+  .transparency .destination {
+    font-family: var(--mono); font-size: 13px; color: var(--good);
+  }
+  .transparency .destination .host { color: var(--good); font-weight: 600; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  footer.trust { margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--rule-soft); }
+  footer.trust p { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+  footer.trust a { color: var(--ink-2); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <a href="https://muga.app/" class="brand" aria-label="MUGA home">
+      <svg class="brand-mark" viewBox="0 0 104 68" width="26" height="17" fill="none" aria-hidden="true">
+        <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span class="name">muga.app / clean</span>
+    </a>
+    <nav aria-label="Primary">
+      <a href="https://muga.app/">Get the extension</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="eyebrow">Paste a link, get the clean version</div>
+    <h1>Clean a URL, right here.</h1>
+    <p class="lede">
+      Paste any link below and MUGA strips tracking parameters (<code>utm_*</code>, <code>fbclid</code>,
+      <code>gclid</code>, <code>mc_cid</code> and more) and unwraps known redirect wrappers, entirely in
+      your browser. <b>Nothing about this URL is ever sent anywhere.</b> Existing affiliate or creator
+      referral tags are left untouched.
+    </p>
+
+    <section class="panel" aria-labelledby="input-heading">
+      <h2 id="input-heading" class="sr-only">Paste a URL to clean</h2>
+      <label class="field-label" for="url-input">URL to clean</label>
+      <textarea id="url-input" placeholder="https://example.com/page?utm_source=newsletter&#38;fbclid=abc123" spellcheck="false" autocomplete="off"></textarea>
+      <div class="actions">
+        <button type="button" class="btn" id="clean-btn">Clean this URL</button>
+        <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
+      </div>
+    </section>
+
+    <section class="panel result-panel" aria-labelledby="result-heading">
+      <h2 id="result-heading" class="sr-only">Result</h2>
+      <p class="result-message" id="result-message" role="status" aria-live="polite"></p>
+
+      <div class="result-url-row" id="result-url-row">
+        <div class="result-url-box" id="result-url-box"></div>
+      </div>
+
+      <div class="transparency" id="transparency">
+        <div id="removed-block">
+          <h2>Removed</h2>
+          <ul id="removed-list"></ul>
+        </div>
+        <p class="destination" id="destination-line" hidden></p>
+      </div>
+    </section>
+
+    <footer class="trust">
+      <p>No analytics. No third-party requests. No account. This tool never contacts a server.</p>
+      <p><a href="https://github.com/yocreoquesi/muga">View source</a> &middot; <a href="https://muga.app/">Get the MUGA extension</a></p>
+    </footer>
+  </div>
+</main>
+
+<script src="./engine/cleaner-bundle.js"></script>
+<script type="module" src="./ui.js"></script>
+</body>
+</html>

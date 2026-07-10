@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUGA Clean: Manual Test Battery (#1029)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      padding: 32px;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #666; margin-bottom: 32px; }
+    h2 { font-size: 14px; font-weight: 600; color: #aaa; text-transform: uppercase;
+         letter-spacing: 0.08em; margin: 32px 0 12px; border-bottom: 1px solid #222; padding-bottom: 8px; }
+    .test {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .test-id { font-size: 10px; color: #555; font-family: monospace; margin-bottom: 4px; }
+    .test-title { font-size: 13px; font-weight: 500; color: #ddd; margin-bottom: 6px; }
+    .test-input {
+      display: block;
+      font-size: 11px;
+      font-family: monospace;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 5px;
+      padding: 8px 10px;
+      color: #6af;
+      word-break: break-all;
+      margin: 6px 0;
+      user-select: all;
+    }
+    .expected {
+      font-size: 11px;
+      color: #555;
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: #111;
+      border-left: 2px solid #333;
+      border-radius: 0 4px 4px 0;
+    }
+    .expected .label { color: #4a4; font-weight: 600; }
+    .expected.negative .label { color: #f55; }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      font-weight: 600;
+    }
+    .badge-strip { background: #1a3a1a; color: #5c5; }
+    .badge-unwrap { background: #1a2a3a; color: #5af; }
+    .badge-affiliate { background: #3a2a1a; color: #fa5; }
+    .badge-negative { background: #3a1a1a; color: #f55; }
+    .note {
+      font-size: 12px;
+      color: #666;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .note a { color: #6af; }
+    code {
+      font-family: monospace;
+      background: #222;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>MUGA Clean: Manual Test Battery</h1>
+  <p class="subtitle">Runs the real engine + adapter + UI at web/index.html · #1029</p>
+
+  <h2>Setup</h2>
+  <div class="note">
+    <strong>Step 1:</strong> serve the actual tool: <code>npm run test:serve:web</code><br><br>
+    <strong>Step 2:</strong> open <code>http://localhost:5557/</code> in a second tab. That page IS
+    <code>web/index.html</code> loading the real <code>cleaner-bundle.js</code> + <code>adapter.js</code> +
+    <code>ui.js</code>, not a mock.<br><br>
+    <strong>Step 3:</strong> for each case below, click the input URL to select it, copy it
+    (<kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>C</kbd>), paste it into the tool's textarea, click
+    <strong>Clean this URL</strong>, and compare the result against <strong>Expected</strong>.
+  </div>
+
+  <!-- TRACKING PARAM STRIP -->
+  <h2>Tracking parameter removal <span class="badge badge-strip">strip</span></h2>
+
+  <div class="test">
+    <div class="test-id">WC-01</div>
+    <div class="test-title">Multiple tracking params stripped, functional param kept</div>
+    <div class="test-input">https://example.com/search?q=shoes&amp;utm_source=newsletter&amp;utm_medium=email&amp;fbclid=IwAR0abc&amp;gclid=Cj0KCQjw</div>
+    <div class="expected"><span class="label">Expected:</span> https://example.com/search?q=shoes &middot; 4 tracking parameters removed (utm_source, utm_medium, fbclid, gclid)</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">WC-02</div>
+    <div class="test-title">mc_cid stripped</div>
+    <div class="test-input">https://example.com/article?mc_cid=abc123</div>
+    <div class="expected"><span class="label">Expected:</span> https://example.com/article &middot; 1 tracking parameter removed (mc_cid)</div>
+  </div>
+
+  <!-- WRAPPER UNWRAP -->
+  <h2>Redirect wrapper unwrapping <span class="badge badge-unwrap">unwrap</span></h2>
+
+  <div class="test">
+    <div class="test-id">WC-03</div>
+    <div class="test-title">google.com/url unwraps to the real destination, cleaned</div>
+    <div class="test-input">https://www.google.com/url?q=https%3A%2F%2Fexample.com%2Fpage%3Futm_source%3Dnewsletter</div>
+    <div class="expected"><span class="label">Expected:</span> https://example.com/page &middot; unwrapped, real destination example.com &middot; 1 tracking parameter removed (utm_source)</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">WC-04</div>
+    <div class="test-title">l.facebook.com/l.php unwraps to the real destination</div>
+    <div class="test-input">https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com%2Fpage</div>
+    <div class="expected"><span class="label">Expected:</span> https://example.com/page &middot; unwrapped, real destination example.com &middot; no tracking parameters to remove</div>
+  </div>
+
+  <!-- AFFILIATE PRESERVATION -->
+  <h2>Affiliate / referral preservation <span class="badge badge-affiliate">affiliate</span></h2>
+
+  <div class="test">
+    <div class="test-id">WC-05</div>
+    <div class="test-title">Amazon: existing affiliate tag preserved, tracking still stripped</div>
+    <div class="test-input">https://www.amazon.es/dp/B08N5WRWNW?tag=somecreator-20&amp;utm_source=email</div>
+    <div class="expected"><span class="label">Expected:</span> https://www.amazon.es/dp/B08N5WRWNW?tag=somecreator-20 &middot; 1 tracking parameter removed (utm_source) &middot; affiliate tag kept, no injection of MUGA's own tag</div>
+  </div>
+
+  <!-- NO-OP -->
+  <h2>No-op on already-clean input</h2>
+
+  <div class="test">
+    <div class="test-id">WC-06</div>
+    <div class="test-title">Already-clean URL is returned unchanged</div>
+    <div class="test-input">https://example.com/already-clean?id=42</div>
+    <div class="expected"><span class="label">Expected:</span> unchanged &middot; "No tracking parameters or redirect wrappers found. This URL is already clean."</div>
+  </div>
+
+  <!-- NEGATIVES -->
+  <h2>Negatives (must never crash) <span class="badge badge-negative">negative</span></h2>
+
+  <div class="test">
+    <div class="test-id">WC-07</div>
+    <div class="test-title">Non-URL text</div>
+    <div class="test-input">not a url at all</div>
+    <div class="expected negative"><span class="label">Expected:</span> friendly error, "That doesn't look like a valid URL." No crash, no console error.</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">WC-08</div>
+    <div class="test-title">javascript: scheme rejected</div>
+    <div class="test-input">javascript:alert(1)</div>
+    <div class="expected negative"><span class="label">Expected:</span> friendly error, "Only http and https links can be cleaned." The script must NOT execute.</div>
+  </div>
+
+  <div class="test">
+    <div class="test-id">WC-09</div>
+    <div class="test-title">Empty input</div>
+    <div class="test-title">Leave the textarea empty and click Clean this URL.</div>
+    <div class="expected negative"><span class="label">Expected:</span> friendly error, "Enter a URL to clean." No crash.</div>
+  </div>
+
+  <hr>
+
+  <h2>Cross-cutting checks</h2>
+  <ul>
+    <li>DevTools Network tab: zero requests fire during any of the above (fully local).</li>
+    <li>DevTools Console: zero errors for any case, including the negatives.</li>
+    <li>Keyboard-only flow: Tab to the textarea, type a URL, Tab to Clean, press Enter/Space, Tab to Copy, press Enter/Space. Clipboard should contain the cleaned URL.</li>
+    <li>Copy button is disabled until a successful clean, then enabled.</li>
+  </ul>
+
+</body>
+</html>
