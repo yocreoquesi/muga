@@ -72,6 +72,28 @@ export function t(key, lang) {
   return entry[lang] ?? entry["en"] ?? key;
 }
 
+/**
+ * Builds the "Right-click -> Copy clean link" row hint, appending the
+ * keyboard-shortcut clause only when the caller reports the capability is
+ * actually available.
+ *
+ * t() has no interpolation, so the shortcut clause cannot be folded into a
+ * single templated string. Instead the translation is split across two keys
+ * (row_context_menu_hint for the base, row_context_menu_hint_shortcut for the
+ * clause) and joined here. Firefox Android has no chrome.commands, so the
+ * base hint alone (right-click / Ctrl+C behavior, which works everywhere)
+ * must not claim a keyboard shortcut that doesn't exist there (#991).
+ *
+ * @param {string} lang
+ * @param {boolean} hasShortcut - whether the keyboard shortcut is available (see hasCommands() in browser-detect.js)
+ * @returns {string}
+ */
+export function buildContextMenuHint(lang, hasShortcut) {
+  const base = t("row_context_menu_hint", lang);
+  if (!hasShortcut) return base;
+  return `${base} ${t("row_context_menu_hint_shortcut", lang)}`;
+}
+
 // Keys whose values intentionally contain safe HTML (<code>, <br>).
 // All other keys use textContent to prevent any XSS risk.
 const HTML_KEYS = new Set(["bl_hint", "wl_hint", "cp_hint", "ob_affiliate_desc", "ob_tos_label", "creator_allowlist_hint", "ob_shorteners_desc", "ob_feedback_note"]);

@@ -46,6 +46,33 @@ function _setClipboardIcon(el) {
 }
 
 /**
+ * Writes `text` to the clipboard via the Clipboard API, falling back to the
+ * legacy `document.execCommand("copy")` path (mirrors src/content/cleaner.js's
+ * copyToClipboard()) when the Clipboard API is unavailable, blocked, or
+ * rejects. Some Android WebExtension popup contexts restrict
+ * navigator.clipboard, so without this fallback copy silently fails there
+ * and every caller shows the "✗" failure state even though the legacy
+ * execCommand path would have worked (#991).
+ *
+ * @param {string} text
+ * @returns {Promise<void>} Resolves if either copy path succeeded, rejects if both failed.
+ */
+function copyToClipboard(text) {
+  return navigator.clipboard.writeText(text).catch(() => {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { /* legacy fallback unsupported in this context — treated as failure below */ }
+    el.remove();
+    if (!ok) throw new Error("clipboard fallback failed");
+  });
+}
+
+/**
  * Writes `text` to the clipboard, then shows one-shot visual feedback that
  * reverts after 1200ms. Centralizes the try/writeText/timeout pattern shared
  * by the history-entry click-to-copy, the copy-clean icon button, and the
@@ -61,7 +88,7 @@ function _setClipboardIcon(el) {
  * @param {Function} handlers.onRevert  Called 1200ms after either outcome; restore the pre-copy state.
  */
 function copyWithFeedback(text, { onSuccess, onError, onRevert }) {
-  navigator.clipboard.writeText(text).then(() => {
+  copyToClipboard(text).then(() => {
     onSuccess();
     setTimeout(onRevert, 1200);
   }).catch(() => {
@@ -1210,9 +1237,10 @@ function _renderStripLocallyCount(count, lang) {
  * empty. The summary still renders so the user can discover the section
  * after their first navigation.
  *
- * Per-row copy button uses navigator.clipboard.writeText. Failures
- * silently restore the icon — clipboard access can be denied in some
- * popup contexts and a clean URL is still visible for manual copy.
+ * Per-row copy button uses copyToClipboard() (Clipboard API with the
+ * document.execCommand("copy") legacy fallback, #991). Failures silently
+ * restore the icon — clipboard access can be denied in some popup contexts
+ * and a clean URL is still visible for manual copy.
  */
 async function showRecentActivity(lang) {
   const section = document.getElementById("recent-activity");
@@ -1309,7 +1337,7 @@ async function showRecentActivity(lang) {
     copyBtn.setAttribute("aria-label", t("ledger_copy_btn_label", lang));
     copyBtn.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(row.url);
+        await copyToClipboard(row.url);
         const orig = copyBtn.textContent;
         copyBtn.textContent = t("ledger_copy_btn_copied", lang);
         setTimeout(() => { copyBtn.textContent = orig; }, 1200);

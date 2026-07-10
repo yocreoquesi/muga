@@ -27,11 +27,15 @@ describe("#935 — copyWithFeedback helper extracted and shared", () => {
     );
   });
 
-  test("copyWithFeedback writes to the clipboard and reverts after exactly 1200ms on both outcomes", () => {
+  test("copyWithFeedback writes to the clipboard (via copyToClipboard) and reverts after exactly 1200ms on both outcomes", () => {
     const fnIdx = popupSrc.indexOf("function copyWithFeedback");
     assert.ok(fnIdx !== -1, "copyWithFeedback must be defined");
     const body = popupSrc.slice(fnIdx, fnIdx + 500);
-    assert.ok(/navigator\.clipboard\.writeText\(\s*text\s*\)/.test(body), "must call navigator.clipboard.writeText(text)");
+    // #991: copyWithFeedback routes through the shared copyToClipboard()
+    // helper (Clipboard API + document.execCommand("copy") legacy fallback)
+    // instead of calling navigator.clipboard.writeText directly, so copy
+    // still works in restricted popup contexts (e.g. Android WebExtension).
+    assert.ok(/copyToClipboard\(\s*text\s*\)/.test(body), "must call copyToClipboard(text)");
     const revertCalls = body.match(/setTimeout\(\s*onRevert\s*,\s*1200\s*\)/g) || [];
     assert.equal(revertCalls.length, 2, "onRevert must be scheduled via setTimeout(onRevert, 1200) on both the success and error paths");
   });
@@ -59,18 +63,40 @@ describe("#935 — copyWithFeedback helper extracted and shared", () => {
   });
 
   test("no call site still hand-rolls its own navigator.clipboard.writeText(...).then/.catch pattern", () => {
-    // Only the copyWithFeedback definition itself may call writeText directly.
+    // #991: navigator.clipboard.writeText is now called from exactly ONE
+    // place — inside the shared copyToClipboard(text) helper, which adds the
+    // document.execCommand("copy") legacy fallback (mirroring
+    // src/content/cleaner.js) for contexts where the Clipboard API is
+    // unavailable or blocked (e.g. some Android WebExtension popups).
+    // copyWithFeedback and showRecentActivity's per-row copy button both
+    // route through copyToClipboard() instead of calling writeText directly.
     const writeTextCalls = [...popupSrc.matchAll(/navigator\.clipboard\.writeText\(/g)];
-    // The showRecentActivity per-row copy button (#460) uses its own await/try-catch
-    // flow (different shape entirely — no revert-to-previous-label semantics), so it
-    // is intentionally out of scope for #935 and still calls writeText directly.
-    // Expected surviving direct call sites: copyWithFeedback's own body (1) +
-    // showRecentActivity's per-row copy button (1).
     assert.equal(
       writeTextCalls.length,
-      2,
-      `expected exactly 2 direct navigator.clipboard.writeText(...) call sites after the #935 extraction (copyWithFeedback itself + the unrelated showRecentActivity row-copy flow); found ${writeTextCalls.length}`,
+      1,
+      `expected exactly 1 direct navigator.clipboard.writeText(...) call site (inside copyToClipboard) after the #991 fallback extraction; found ${writeTextCalls.length}`,
     );
+    // Exactly one definition, and exactly the two intended call sites.
+    // (Doc-comment prose may also mention "copyToClipboard()" by name, so a
+    // raw substring count would over-match — check the specific code shapes
+    // instead.)
+    assert.equal(
+      (popupSrc.match(/function copyToClipboard\(text\)/g) || []).length,
+      1,
+      "copyToClipboard(text) must be defined exactly once",
+    );
+    assert.ok(/copyWithFeedback\(text, \{ onSuccess, onError, onRevert \}\) \{\s*copyToClipboard\(text\)/.test(popupSrc), "copyWithFeedback must call copyToClipboard(text)");
+    assert.ok(popupSrc.includes("await copyToClipboard(row.url)"), "showRecentActivity's row copy button must call copyToClipboard(row.url)");
+  });
+
+  test("copyToClipboard falls back to document.execCommand(\"copy\") when the Clipboard API rejects (#991)", () => {
+    const fnIdx = popupSrc.indexOf("function copyToClipboard");
+    assert.ok(fnIdx !== -1, "popup.js must declare a copyToClipboard(text) helper");
+    const body = popupSrc.slice(fnIdx, fnIdx + 700);
+    assert.ok(/navigator\.clipboard\.writeText\(\s*text\s*\)/.test(body), "must attempt the Clipboard API first");
+    assert.ok(/\.catch\(/.test(body), "must catch a Clipboard API rejection to trigger the fallback");
+    assert.ok(body.includes('document.execCommand("copy")'), "must fall back to document.execCommand(\"copy\")");
+    assert.ok(/try\s*\{[^}]*document\.execCommand\("copy"\)/.test(body), "execCommand call must be wrapped in try/catch, matching cleaner.js's defensive pattern");
   });
 
   test("history-entry click preserves the 'copied' classList toggle behavior", () => {

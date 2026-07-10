@@ -2,11 +2,11 @@
  * MUGA: Options page
  */
 
-import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS } from "../lib/i18n.js";
+import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getShortenerStats } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
-import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
+import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
@@ -21,6 +21,20 @@ import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS } from "../lib/settings-schema.js";
 
 let _currentLang = "en";
+
+/**
+ * Re-renders the "Right-click -> Copy clean link" row hint, appending the
+ * Alt+Shift+C shortcut clause only when chrome.commands is actually
+ * available. applyTranslations() already writes the shortcut-free base hint
+ * to this element via its data-i18n attribute; this call runs immediately
+ * after every applyTranslations(_currentLang) call site so a language
+ * switch never leaves a stale hint behind (#991).
+ * @param {string} lang
+ */
+function renderContextMenuHint(lang) {
+  const el = document.getElementById("row-context-menu-hint");
+  if (el) el.textContent = buildContextMenuHint(lang, hasCommands());
+}
 
 // ── Toast & confirm helpers ─────────────────────────────────────────────────
 
@@ -273,6 +287,7 @@ async function hasRemoteRulesPermission() {
 async function init() {
   _currentLang = await getStoredLang();
   applyTranslations(_currentLang);
+  renderContextMenuHint(_currentLang);
 
   // Initial toggle state MUST come from the canonical merged prefs (sync +
   // consent + per-device overrides), NOT a raw sync read. A raw sync read
@@ -862,6 +877,7 @@ function initLanguageSelect() {
     try { await setPrefs({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
     document.documentElement.lang = _currentLang;
     applyTranslations(_currentLang);
+    renderContextMenuHint(_currentLang);
     // Re-render dynamic lists with new language
     let prefs;
     try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] reload prefs:", err); prefs = { ...PREF_DEFAULTS }; }
@@ -1167,6 +1183,7 @@ function initExportImport() {
         _currentLang = toSave.language;
         document.getElementById("lang-select").value = _currentLang;
         applyTranslations(_currentLang);
+        renderContextMenuHint(_currentLang);
       }
       renderList("blacklist-items", newPrefs.blacklist, "blacklist");
       renderList("whitelist-items", newPrefs.whitelist, "whitelist");
