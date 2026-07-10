@@ -3,9 +3,9 @@
  *
  * Before v1.10.2 the popup computed "MUGA is disabled" (or the clean
  * preview) once at open time. Toggling the extension on/off, or adding
- * the current domain to the blacklist-with-::disabled, did not update
- * the popup until it was reopened. These tests pin the reactive
- * re-render wiring so it cannot silently regress.
+ * the current domain to the allowlist, did not update the popup until
+ * it was reopened. These tests pin the reactive re-render wiring so it
+ * cannot silently regress.
  */
 
 import { test, describe } from "node:test";
@@ -18,28 +18,47 @@ const popupSource = readFileSync(resolve(ROOT, "src/popup/popup.js"), "utf8");
 // i18nSource removed — translation data moved to src/lib/locales/*.mjs (#834).
 
 describe("popup reactive status (v1.10.2)", () => {
-  test("popup.js imports parseListEntry from cleaner.js", () => {
+  test("popup.js imports isDomainAllowlisted and setDomainAllowlisted from cleaner.js (#1053)", () => {
     assert.ok(
-      /import\s*\{[^}]*parseListEntry[^}]*\}\s*from\s*["']\.\.\/lib\/cleaner\.js["']/.test(popupSource),
-      "popup.js must import parseListEntry to evaluate per-domain disable entries"
+      /import\s*\{[^}]*isDomainAllowlisted[^}]*\}\s*from\s*["']\.\.\/lib\/cleaner\.js["']/.test(popupSource),
+      "popup.js must import isDomainAllowlisted to compute the pause control's paused state"
+    );
+    assert.ok(
+      /import\s*\{[^}]*setDomainAllowlisted[^}]*\}\s*from\s*["']\.\.\/lib\/cleaner\.js["']/.test(popupSource),
+      "popup.js must import setDomainAllowlisted to write the pause control's allowlist entry"
     );
   });
 
-  test("popup.js defines isPerDomainDisabled helper", () => {
+  test("popup.js no longer defines or imports isPerDomainDisabled / setPerDomainDisabled (#1053)", () => {
     assert.ok(
-      /function\s+isPerDomainDisabled\s*\(/.test(popupSource),
-      "popup.js must declare isPerDomainDisabled(hostname, blacklist) helper"
+      !/isPerDomainDisabled/.test(popupSource),
+      "popup.js must not reference isPerDomainDisabled anymore - pause state now derives from the allowlist"
+    );
+    assert.ok(
+      !/setPerDomainDisabled/.test(popupSource),
+      "popup.js must not import setPerDomainDisabled anymore - the pause control writes to the whitelist instead"
     );
   });
 
-  test("popup.js checks per-domain disable and renders muga_disabled_for_domain", () => {
+  test("popup.js derives paused state via isDomainAllowlisted and renders muga_disabled_for_domain", () => {
     assert.ok(
-      /isPerDomainDisabled\s*\(/.test(popupSource),
-      "popup.js must call isPerDomainDisabled before the normal preview"
+      /isDomainAllowlisted\s*\(/.test(popupSource),
+      "popup.js must call isDomainAllowlisted for the paused state"
     );
     assert.ok(
       /t\(\s*["']muga_disabled_for_domain["']/.test(popupSource),
       "popup.js must render the muga_disabled_for_domain i18n key when the domain is opted out"
+    );
+  });
+
+  test("popup.js pause control writes to the whitelist, not the blacklist (#1053)", () => {
+    assert.ok(
+      /set\(\s*\{\s*whitelist:\s*nextWhitelist/.test(popupSource),
+      "the pause control's onclick handler must call chrome.storage.sync.set({ whitelist: nextWhitelist })"
+    );
+    assert.ok(
+      !/set\(\s*\{\s*blacklist:\s*nextBlacklist/.test(popupSource),
+      "the pause control's onclick handler must no longer write { blacklist: nextBlacklist }"
     );
   });
 

@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "Ti piace MUGA? Valutalo",
   bl_placeholder: "mysite.com  o  amazon.it::tag::youtuber-21",
   wl_placeholder: "mysite.com  o  amazon.it::tag::creator-21",
-  bl_hint: "Solo dominio (es. <code>mysite.com</code>): rimuove tutti i parametri su quel sito.<br>Dominio::param::valore (es. <code>amazon.it::tag::youtuber-21</code>): rimuove un tag di affiliazione specifico.<br>Dominio::param::* (es. <code>amazon.it::pid::*</code>): rimuove un parametro indipendentemente dal valore.<br><code>amazon.it::disabled</code>: MUGA non tocca nulla su quel dominio.<br><br>Priorità: una corrispondenza nella lista consentiti vince sempre sulla lista bloccati per lo stesso parametro.",
+  bl_hint: "Solo dominio (es. <code>mysite.com</code>): rimuove tutti i parametri su quel sito.<br>Dominio::param::valore (es. <code>amazon.it::tag::youtuber-21</code>): rimuove un tag di affiliazione specifico.<br>Dominio::param::* (es. <code>amazon.it::pid::*</code>): rimuove un parametro indipendentemente dal valore.<br><br>Priorità: una corrispondenza nella lista consentiti vince sempre sulla lista bloccati per lo stesso parametro.",
   wl_hint: "Accetta un dominio (es. <code>mysite.com</code>): MUGA non toccherà alcuna affiliazione su quel sito.<br>Oppure <code>dominio::param::valore</code> (es. <code>amazon.it::tag::creator-21</code>): protegge un tag specifico.<br>Oppure <code>dominio::param::*</code> (es. <code>amazon.it::tag::*</code>): protegge un parametro indipendentemente dal valore.<br><br>Priorità: una corrispondenza nella lista consentiti vince sempre sulla lista bloccati per lo stesso parametro.",
   add_btn: "+ Aggiungi",
   empty_list: "Nessuna voce ancora.",

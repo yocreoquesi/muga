@@ -4,7 +4,7 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
-import { processUrl, parseListEntry, domainMatches, setPerDomainDisabled } from "../lib/cleaner.js";
+import { processUrl, isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
@@ -437,25 +437,15 @@ async function wireMigrationPrompt(lang) {
 }
 
 /**
- * Returns true if the current hostname matches a per-domain-disable entry
- * in the blacklist — i.e. the user added an entry like `example.com::disabled`
- * meaning "MUGA does nothing on this domain" (cleaner.js:206).
- */
-function isPerDomainDisabled(hostname, blacklist) {
-  if (!hostname || !Array.isArray(blacklist)) return false;
-  return blacklist.some(raw => {
-    const entry = parseListEntry(raw);
-    if (entry.param !== "disabled" || entry.value || !entry.domain) return false;
-    return domainMatches(hostname, entry.domain);
-  });
-}
-
-/**
- * Renders the per-site pause control in the preview section (#980). Visible only
- * when MUGA is globally enabled and the tab is a real http(s) page. The button
- * toggles a `<host>::disabled` blacklist entry so the user can pause or resume
- * URL cleaning for the current site without opening Settings. Re-render is
- * optimistic; the storage.onChanged listener also refreshes once the write lands.
+ * Renders the per-site pause control in the preview section (#980, repointed
+ * to the allowlist in #1053). Visible only when MUGA is globally enabled and
+ * the tab is a real http(s) page. The button toggles a bare domain-only
+ * whitelist entry (the same mechanism as Settings > Allowlist) so the user
+ * can pause or resume URL cleaning for the current site without opening
+ * Settings. A domain is exempted ONLY via this allowlist entry now - the
+ * legacy `<host>::disabled` blacklist syntax has been removed entirely
+ * (see isSiteFullyExempt). Re-render is optimistic; the storage.onChanged
+ * listener also refreshes once the write lands.
  */
 function renderPauseControl(url, prefs, lang) {
   const wrap = document.getElementById("preview-site-control");
@@ -470,7 +460,7 @@ function renderPauseControl(url, prefs, lang) {
     wrap.hidden = true;
     return;
   }
-  const paused = isPerDomainDisabled(host, prefs.blacklist);
+  const paused = isDomainAllowlisted(host, prefs.whitelist);
   // Changing-label button (WAI-ARIA plain-button idiom): the label states the
   // action, so no aria-pressed (which would contradict the label). Paused state
   // is conveyed visually via the `.paused` class.
@@ -478,9 +468,9 @@ function renderPauseControl(url, prefs, lang) {
   btn.classList.toggle("paused", paused);
   wrap.hidden = false;
   btn.onclick = () => {
-    const nextBlacklist = setPerDomainDisabled(prefs.blacklist, host, !paused);
-    chrome.storage.sync.set({ blacklist: nextBlacklist }).catch((err) => console.error("[MUGA] save pause-site:", err));
-    showUrlPreview({ ...prefs, blacklist: nextBlacklist }, lang).catch((err) => console.error("[MUGA] preview re-render:", err));
+    const nextWhitelist = setDomainAllowlisted(prefs.whitelist, host, !paused);
+    chrome.storage.sync.set({ whitelist: nextWhitelist }).catch((err) => console.error("[MUGA] save pause-site:", err));
+    showUrlPreview({ ...prefs, whitelist: nextWhitelist }, lang).catch((err) => console.error("[MUGA] preview re-render:", err));
   };
 }
 
@@ -641,10 +631,10 @@ async function showUrlPreview(prefs, lang) {
   }
 
   // Per-domain disable: MUGA globally on, but user has opted this domain out
-  // via a `domain::disabled` blacklist entry. Show a distinct message so they
+  // via a domain-only allowlist entry. Show a distinct message so they
   // understand MUGA is active but intentionally skipped for this site.
   const currentHost = (() => { try { return new URL(url).hostname; } catch { return ""; } })();
-  if (isPerDomainDisabled(currentHost, prefs.blacklist)) {
+  if (isSiteFullyExempt(currentHost, prefs)) {
     const previewClean = document.getElementById("preview-clean");
     previewClean.hidden = false;
     previewClean.textContent = t("muga_disabled_for_domain", lang);

@@ -69,9 +69,9 @@ describe("isValidListEntry — valid formats", () => {
     assert.ok(isValidListEntry("sub.domain.co.uk"));
   });
 
-  test("accepts domain::disabled", () => {
-    assert.ok(isValidListEntry("amazon.es::disabled"));
-    assert.ok(isValidListEntry("example.com::disabled"));
+  test("rejects domain::disabled (legacy per-site-pause syntax removed)", () => {
+    assert.ok(!isValidListEntry("amazon.es::disabled"));
+    assert.ok(!isValidListEntry("example.com::disabled"));
   });
 
   test("accepts domain::param::value", () => {
@@ -120,10 +120,11 @@ describe("isValidListEntry — invalid formats", () => {
     assert.ok(!isValidListEntry("amazon.es!"));
   });
 
-  test("rejects 2-part entry that isn't ::disabled", () => {
+  test("rejects any 2-part entry", () => {
     assert.ok(!isValidListEntry("amazon.es::tag"));
     assert.ok(!isValidListEntry("amazon.es::something"));
     assert.ok(!isValidListEntry("amazon.es::enabled"));
+    assert.ok(!isValidListEntry("amazon.es::disabled"));
   });
 
   test("rejects 3-part entry with empty param", () => {

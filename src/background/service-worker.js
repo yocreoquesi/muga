@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -195,9 +195,10 @@ const toolbarPresenter = createToolbarPresenter({
 });
 
 // Run migrations once on startup (no-ops if already done).
-// Both are idempotent and best-effort — failures must not break startup.
+// All are idempotent and best-effort — failures must not break startup.
 migrateStatsToLocal();
 migrateConsentToLocal();
+migratePerSiteDisableToAllowlist().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
@@ -632,9 +633,9 @@ const ALLOWLIST_RESOURCE_TYPES = [
 
 /**
  * Syncs one dynamic DNR "allow" rule per fully-exempt domain
- * (#allowlist-full-inert): a domain-only whitelist entry or a `::disabled`
- * per-site pause. This is the network-layer half of the "allowlist = MUGA
- * fully inert" choke point - src/lib/cleaner.js#processUrl is the JS-layer
+ * (#allowlist-full-inert): a domain-only whitelist entry. This is the
+ * network-layer half of the "allowlist = MUGA fully inert" choke point -
+ * src/lib/cleaner.js#processUrl is the JS-layer
  * half, both sourced from the same isSiteFullyExempt/getFullyExemptDomains
  * predicate so the two never drift.
  *
@@ -1792,6 +1793,9 @@ chrome.runtime.onStartup.addListener(async () => {
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   // on first startup after upgrade. Best-effort; failure must not break startup.
   migrateLegacyProxyPref().catch(() => {});
+  // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
+  // domain-only whitelist entries. Best-effort; failure must not break startup.
+  migratePerSiteDisableToAllowlist().catch(() => {});
   // #833: bootstrap firstUsed + run migrations here so the hot path is free.
   _initFirstUsed();
   migrateStatsToLocal();
@@ -1867,6 +1871,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   maybeFetchRemoteRules(_remoteRulesDeps());
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   migrateLegacyProxyPref().catch(() => {});
+  // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
+  // domain-only whitelist entries. Best-effort; failure must not break startup.
+  migratePerSiteDisableToAllowlist().catch(() => {});
   // #833: bootstrap firstUsed + run migrations so hot path is free.
   _initFirstUsed();
   migrateStatsToLocal();

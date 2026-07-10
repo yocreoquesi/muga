@@ -100,7 +100,7 @@ export default Object.freeze({
   rate_nudge_btn_short: "Enjoying MUGA? Rate it",
   bl_placeholder: "mysite.com  or  amazon.es::tag::youtuber-21",
   wl_placeholder: "mysite.com  or  amazon.es::tag::creator-21",
-  bl_hint: "Domain only (e.g. <code>mysite.com</code>): strips all params on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>): strips one specific affiliate tag.<br>Domain::param::* (e.g. <code>amazon.es::pid::*</code>): strips a param regardless of its value.<br><code>amazon.es::disabled</code>: MUGA does nothing on that domain.<br><br>Priority: an Allowlist match always wins over a Blocklist match for the same parameter.",
+  bl_hint: "Domain only (e.g. <code>mysite.com</code>): strips all params on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>): strips one specific affiliate tag.<br>Domain::param::* (e.g. <code>amazon.es::pid::*</code>): strips a param regardless of its value.<br><br>Priority: an Allowlist match always wins over a Blocklist match for the same parameter.",
   wl_hint: "Accepts a domain (e.g. <code>mysite.com</code>): MUGA won't touch any affiliate on that site.<br>Or <code>domain::param::value</code> (e.g. <code>amazon.es::tag::creator-21</code>): protects one specific tag.<br>Or <code>domain::param::*</code> (e.g. <code>amazon.es::tag::*</code>): protects a param regardless of its value.<br><br>Priority: an Allowlist match always wins over a Blocklist match for the same parameter.",
   add_btn: "+ Add",
   empty_list: "No entries yet.",

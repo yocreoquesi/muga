@@ -9,6 +9,15 @@
  * keeping the module dependency-free from its sibling.
  */
 
+// migratePerSiteDisableToAllowlist() reuses the entry parser/domain-matcher
+// from cleaner.js rather than re-implementing "domain::disabled" splitting.
+// Safe: cleaner.js (and its full dependency chain — affiliates.js,
+// wrapper-engine.js, opaque-networks.js, canonical-extractor.js,
+// honor-creator.js, param-classifier.js, path-rules.js,
+// cross-site-frequency.js, creator-allowlist.js) never imports storage.js or
+// storage-migrations.js, so this import cannot create a cycle.
+import { parseListEntry, domainMatches } from "./cleaner.js";
+
 // ── One-time migration ────────────────────────────────────────────────────────
 
 /**
@@ -109,6 +118,89 @@ export async function migrateLegacyProxyPref() {
       chrome.storage.sync.remove("privacyProxyEnabled", () => {
         void chrome.runtime.lastError; // non-critical
         resolve();
+      })
+    );
+  } catch {
+    // Migration is best-effort — a failure here must never break startup.
+  }
+}
+
+/**
+ * One-time migration: the legacy `domain::disabled` per-site-pause blacklist
+ * syntax has been removed entirely — a domain is exempted ONLY via a
+ * domain-only whitelist (allowlist) entry now. This migration converts each
+ * existing `domain::disabled` blacklist entry into a bare, lowercased,
+ * www-stripped domain whitelist entry, so no existing user (or the
+ * maintainer's own test data) is silently left with a dead entry that no
+ * longer exempts anything.
+ *
+ * Param-scoped blacklist entries (e.g. "domain.com::tag::x" or
+ * "domain.com::disabled::keep", where "disabled" is itself a param value
+ * rather than the marker) are left untouched — only the domain-only
+ * `disabled` marker (no value) is converted.
+ *
+ * Dedup: a domain already covered by an existing (or just-migrated)
+ * domain-only whitelist entry — exact match or parent-domain match, via
+ * domainMatches() — is not added again.
+ *
+ * Idempotent: after running once, no `::disabled` entries remain in the
+ * blacklist, so a second run finds nothing to convert and exits as a no-op
+ * without writing anything back. Safe to call on every startup.
+ *
+ * Fail-safe: wrapped in try/catch — a storage error or malformed data must
+ * never throw out to the caller or break startup.
+ */
+export async function migratePerSiteDisableToAllowlist() {
+  try {
+    const data = await new Promise((resolve, reject) =>
+      chrome.storage.sync.get({ whitelist: [], blacklist: [] }, (result) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(result);
+      })
+    ).catch(() => ({ whitelist: [], blacklist: [] }));
+
+    const blacklist = Array.isArray(data.blacklist) ? data.blacklist : [];
+    const newWhitelist = Array.isArray(data.whitelist) ? data.whitelist.slice() : [];
+
+    const isDomainOnlyCovered = (domain) =>
+      newWhitelist.some((raw) => {
+        let e;
+        try {
+          e = parseListEntry(raw);
+        } catch {
+          return false;
+        }
+        return !!e.domain && !e.param && domainMatches(domain, e.domain);
+      });
+
+    const newBlacklist = [];
+    let changed = false;
+
+    for (const raw of blacklist) {
+      let entry;
+      try {
+        entry = parseListEntry(raw);
+      } catch {
+        newBlacklist.push(raw); // unparseable — leave untouched, never drop silently
+        continue;
+      }
+      const isPerSiteDisable = !!entry.domain && entry.param === "disabled" && !entry.value;
+      if (!isPerSiteDisable) {
+        newBlacklist.push(raw);
+        continue;
+      }
+      changed = true;
+      if (!isDomainOnlyCovered(entry.domain)) {
+        newWhitelist.push(entry.domain);
+      }
+    }
+
+    if (!changed) return; // no `::disabled` entries found — nothing to do
+
+    await new Promise((resolve, reject) =>
+      chrome.storage.sync.set({ whitelist: newWhitelist, blacklist: newBlacklist }, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
       })
     );
   } catch {
