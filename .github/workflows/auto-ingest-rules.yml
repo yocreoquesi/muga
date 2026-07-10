@@ -139,6 +139,22 @@ jobs:
             exit 1
           fi
 
+      - name: Refresh web engine + landing mirror
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run build:web
+
+      - name: Check web engine + landing mirror are up to date
+        if: steps.pipeline.outputs.noop == 'false'
+        run: |
+          if ! git diff --exit-code -- web/engine landing/clean; then
+            echo "ERROR: web/ engine copy or landing/clean mirror out of sync."
+            exit 1
+          fi
+
+      - name: Check web/src dependency-direction boundary
+        if: steps.pipeline.outputs.noop == 'false'
+        run: npm run check:web-boundary
+
       - name: Verify browser-polyfill integrity
         if: steps.pipeline.outputs.noop == 'false'
         run: node tools/verify-polyfill-integrity.mjs

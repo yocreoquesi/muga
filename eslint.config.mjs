@@ -41,6 +41,10 @@ export default [
       "src/content/cleaner-bundle.js",
       // Vendored minified file
       "src/lib/browser-polyfill.min.js",
+      // Generated web-cleaner-tool engine copy (#1029) — byte-identical to
+      // src/content/cleaner-bundle.js above; linting the source is already
+      // covered. landing/** already ignores its landing/clean/ mirror.
+      "web/engine/cleaner-bundle.js",
     ],
   },
 
