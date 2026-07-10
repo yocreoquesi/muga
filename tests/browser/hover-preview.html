@@ -177,29 +177,30 @@
 
   <hr class="divider">
 
-  <!-- SECTION 3: KNOWN COVERAGE GAP -->
-  <h2>Section 3 &middot; Known coverage gap <span class="badge badge-gap">tracks live coverage</span></h2>
+  <!-- SECTION 3: COVERAGE TRACKER -->
+  <h2>Section 3 &middot; Coverage tracker <span class="badge badge-yes">no known gaps today</span></h2>
 
   <div class="note">
-    This section doubles as a coverage tracker. It documents wrappers that are <strong>known
-    redirect networks but not yet in MUGA's signed wrapper recipes</strong>. As recipes are added
-    (e.g. via the unwrap-harvest pipeline), move the corresponding entry to Section 1 and update
-    its badge from ⏳ to ✅.
+    This section tracks redirect networks that were <strong>known but not yet in MUGA's signed
+    wrapper recipes</strong>. As recipes are added (hand-authored or via the unwrap-harvest
+    pipeline), the corresponding entry flips from ⏳ to ✅ and moves into Section 1. There are no
+    outstanding gaps right now: the remaining ClearURLs redirections MUGA does not unwrap are
+    ad-click / affiliate-deeplink networks (e.g. <code>googleadservices.com</code>,
+    <code>adform.net</code>), deliberately excluded because the click there IS the attribution
+    event (ADR-0005) — not coverage gaps.
   </div>
 
   <div class="test">
     <div class="test-id">HP-06</div>
-    <div class="test-title">Google search redirect (google.com/url) <span class="badge badge-gap">⏳ KNOWN GAP</span></div>
-    <div class="test-action">Hover and hold ~2.5s.</div>
+    <div class="test-title">Google search redirect (google.com/url) <span class="badge badge-yes">✅ COVERED (#1028 follow-up)</span></div>
+    <div class="test-action">Hover and hold ~2.5s <strong>without clicking</strong>.</div>
     <a class="test-link" href="https://www.google.com/url?q=https%3A%2F%2Fnews.example.org%2Fart%3Fid%3D5&sa=U">
       https://www.google.com/url?q=https%3A%2F%2Fnews.example.org%2Fart%3Fid%3D5&sa=U
     </a>
-    <div class="expected gap">
-      <span class="label">⏳ KNOWN GAP —</span> MUGA does not yet unwrap <code>google.com/url</code>
-      (not in the signed wrapper recipes in <code>src/rules/wrappers.data.js</code>). No tooltip
-      is expected TODAY. This will flip to ✅ once the unwrap-harvest lands a
-      <code>google.com/url</code> recipe.
+    <div class="expected">
+      <span class="label">Expected tooltip:</span> Goes to: https://news.example.org/art?id=5
     </div>
+    <div class="recipe">Recipe: <span>google-url</span> — hostPatterns: <code>^(?:www\.)?google\.(?:[a-z]{2,3}|(?:co|com|org|net|ac|gov|edu)\.[a-z]{2})$</code> · pathPrefix: /url · extractor: fromAnyParam ["url","q"] (src/rules/wrappers.data.js). Host changes www.google.com &rarr; news.example.org, so the tooltip appears. The scoped host regex covers all Google ccTLDs while rejecting impostors like <code>google.evil.com</code>.</div>
   </div>
 
   <hr class="divider">

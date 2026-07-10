@@ -77,6 +77,15 @@
     "addedIn": "2.4.0"
   },
   {
+    "id": "google-url",
+    "label": "Google search / result redirect",
+    "hostPatterns": ["^(?:www\\.)?google\\.(?:[a-z]{2,3}|(?:co|com|org|net|ac|gov|edu)\\.[a-z]{2})$"],
+    "pathPrefix": "/url",
+    "extractor": { "kind": "fromAnyParam", "paramName": ["url", "q"] },
+    "notes": "Google's search-result / outbound redirect (google.<ccTLD>/url?url=... or q=...). Hand-authored (#1028 follow-up): the automated harvester skips it because ClearURLs anchors the host on a multi-TLD wildcard (google(?:\\.[a-z]{2,}){1,}) and gate #1 requires a concrete literal host. Not an affiliate network (the /url redirect is not an attribution event) and not on the harvester's HOST_DENYLIST. The host regex is anchored so google.<label>.<tld> impostors (e.g. google.evil.com) do not match; the /url path is matched by prefix (intentional; Google exposes no other /url* path); destination is http(s)-only and length-capped by the runtime extractor.",
+    "addedIn": "2.6.0"
+  },
+  {
     "id": "hrefli",
     "label": "href.li (privacy proxy)",
     "hostPatterns": ["href.li"],
