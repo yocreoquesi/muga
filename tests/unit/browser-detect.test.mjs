@@ -8,12 +8,12 @@
  *   - source uses the capability-based check, not just navigator.userAgent
  */
 
-import { test, describe } from "node:test";
+import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import { isFirefox } from "../../src/lib/browser-detect.js";
+import { isFirefox, hasCommands } from "../../src/lib/browser-detect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BROWSER_DETECT_SOURCE = readFileSync(
@@ -56,6 +56,45 @@ describe("isFirefox() — source-level verification", () => {
       BROWSER_DETECT_SOURCE.includes('navigator.userAgent.includes("Firefox")'),
       "isFirefox must include navigator.userAgent fallback for edge cases"
     );
+  });
+});
+
+describe("hasCommands() — in Node.js test environment", () => {
+  afterEach(() => {
+    delete globalThis.chrome;
+  });
+
+  test("returns false in Node.js (no chrome global)", () => {
+    // In Node.js, typeof chrome === 'undefined' — no keyboard-shortcut API.
+    assert.strictEqual(hasCommands(), false);
+  });
+
+  test("returns false when chrome is defined but chrome.commands is absent (#991, Firefox Android)", () => {
+    globalThis.chrome = {};
+    assert.strictEqual(hasCommands(), false);
+  });
+
+  test("returns true when chrome.commands is present (desktop Chrome/Firefox)", () => {
+    globalThis.chrome = { commands: { onCommand: { addListener: () => {} } } };
+    assert.strictEqual(hasCommands(), true);
+  });
+});
+
+describe("hasCommands() — source-level verification", () => {
+  test("hasCommands is exported", () => {
+    assert.ok(
+      BROWSER_DETECT_SOURCE.includes("export function hasCommands()"),
+      "hasCommands must be exported from browser-detect.js"
+    );
+  });
+
+  test("checks typeof chrome and chrome.commands presence, guarded by try/catch", () => {
+    const idx = BROWSER_DETECT_SOURCE.indexOf("export function hasCommands()");
+    assert.ok(idx !== -1, "hasCommands must be defined");
+    const body = BROWSER_DETECT_SOURCE.slice(idx, idx + 300);
+    assert.ok(body.includes('typeof chrome !== "undefined"'), "must feature-detect typeof chrome");
+    assert.ok(body.includes("chrome.commands"), "must check chrome.commands presence");
+    assert.ok(body.includes("try"), "must guard the check in try/catch like isFirefox()");
   });
 });
 

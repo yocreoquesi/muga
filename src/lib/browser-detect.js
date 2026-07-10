@@ -36,3 +36,23 @@ export function isFirefox() {
     return false;
   }
 }
+
+/**
+ * Returns true when the runtime exposes `chrome.commands` — the API that
+ * backs keyboard-shortcut registration (e.g. the Alt+Shift+C "copy clean
+ * URL" shortcut).
+ *
+ * Firefox Android does not implement `chrome.commands` (mobile browsers
+ * have no keyboard-shortcut surface), so any UI copy that claims a
+ * keyboard shortcut exists must gate on this capability rather than
+ * assuming desktop behavior everywhere (#991).
+ *
+ * @returns {boolean}
+ */
+export function hasCommands() {
+  try {
+    return typeof chrome !== "undefined" && !!chrome.commands;
+  } catch {
+    return false;
+  }
+}

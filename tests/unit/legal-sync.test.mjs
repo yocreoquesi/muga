@@ -71,6 +71,37 @@ describe("Legal-sync — privacy policy mentions chrome.storage.local", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 1b. Privacy policy must not unconditionally claim the Alt+Shift+C shortcut
+// ---------------------------------------------------------------------------
+//
+// Firefox Android has no chrome.commands, so the keyboard shortcut does not
+// exist there (#991). The "Copy clean link" bullet used to state flatly
+// that Alt+Shift+C is "also available" — false on that platform. Both the
+// shipped policy and its published docs/ copy must qualify the claim.
+//
+describe("Legal-sync — privacy policy does not unconditionally claim the keyboard shortcut", () => {
+  const unqualifiedClaim = /Also available via keyboard shortcut \(Alt\+Shift\+C\)/;
+
+  test("src/privacy/privacy.html qualifies the Alt+Shift+C shortcut claim", () => {
+    const html = read("src/privacy/privacy.html");
+    assert.ok(
+      !unqualifiedClaim.test(html),
+      "src/privacy/privacy.html must not unconditionally claim the Alt+Shift+C shortcut works; it does not exist on Firefox Android (#991)"
+    );
+    assert.ok(html.includes("Alt+Shift+C"), "the shortcut should still be documented, just qualified");
+  });
+
+  test("docs/privacy-page.html qualifies the Alt+Shift+C shortcut claim", () => {
+    const html = read("docs/privacy-page.html");
+    assert.ok(
+      !unqualifiedClaim.test(html),
+      "docs/privacy-page.html must not unconditionally claim the Alt+Shift+C shortcut works; it does not exist on Firefox Android (#991)"
+    );
+    assert.ok(html.includes("Alt+Shift+C"), "the shortcut should still be documented, just qualified");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 2. AMO approval-notes must reference the bundle pipeline
 // ---------------------------------------------------------------------------
 //
