@@ -383,7 +383,7 @@
   /* ---------- final CTA ---------- */
   .cta-panel {
     position: relative; border: 1px solid var(--rule-2); border-radius: 20px;
-    background: var(--panel); padding: clamp(40px, 6vw, 72px) 32px;
+    background: var(--panel); padding: clamp(40px, 6vw, 72px) clamp(20px, 5vw, 32px);
     text-align: center; overflow: hidden;
   }
   .cta-glow {
@@ -397,6 +397,38 @@
   .cta-inner h2 { margin-bottom: 14px; font-size: clamp(26px, 3.2vw, 38px); }
   .cta-inner p { margin: 0 auto 30px; color: var(--ink-2); font-size: 16px; max-width: 44ch; }
   .cta-inner .install { margin-bottom: 0; }
+
+  /* three ways to use MUGA — always shows every option, for every visitor */
+  .ways {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-top: 32px; text-align: left;
+  }
+  .way {
+    position: relative; display: flex; flex-direction: column; gap: 9px;
+    border: 1px solid var(--rule); border-radius: 16px; background: var(--panel);
+    padding: 22px 20px 20px; text-decoration: none; color: var(--ink);
+    transition: transform .16s ease, border-color .16s ease, background .16s ease;
+  }
+  .way:hover { transform: translateY(-3px); border-color: var(--accent); background: var(--panel-2); color: var(--ink); }
+  .way:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
+  .way-ico { color: var(--accent-ink); }
+  .way-title { font-size: 16px; font-weight: 600; }
+  .way-desc { flex: 1; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+  .way-cta { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--accent-ink); }
+  .way-cta .arr { transition: transform .16s ease; }
+  .way:hover .way-cta .arr { transform: translateX(3px); }
+  .way.is-you { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 12px 40px -18px rgba(106,43,207,.6); }
+  .way-badge {
+    position: absolute; top: 13px; right: 13px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+    color: var(--accent-ink); background: rgba(106,43,207,.14);
+    border: 1px solid var(--rule-2); border-radius: 999px; padding: 3px 9px;
+  }
+  @media (max-width: 620px) { .ways { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) {
+    .way:hover { transform: none; }
+    .way-cta .arr, .way:hover .way-cta .arr { transition: none; transform: none; }
+  }
 
   /* ---------- footer ---------- */
   footer { margin-top: 80px; padding-bottom: 48px; }
@@ -421,6 +453,14 @@
 </style>
 </head>
 <body>
+
+<!-- Official Chrome and Firefox brand logos, inlined once as a <symbol>
+     sprite (zero external requests, CSP-safe). Gradient IDs are namespaced
+     so instances never collide. Referenced below via <use href="#logo-*">. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<symbol id="logo-chrome" viewBox="0 0 48 48"><defs><linearGradient id="chrome-a" x1="3.2173" y1="15" x2="44.7812" y2="15" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d93025"/><stop offset="1" stop-color="#ea4335"/></linearGradient><linearGradient id="chrome-b" x1="20.7219" y1="47.6791" x2="41.5039" y2="11.6837" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fcc934"/><stop offset="1" stop-color="#fbbc04"/></linearGradient><linearGradient id="chrome-c" x1="26.5981" y1="46.5015" x2="5.8161" y2="10.506" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1e8e3e"/><stop offset="1" stop-color="#34a853"/></linearGradient></defs><circle cx="24" cy="23.9947" r="12" style="fill:#fff"/><path d="M3.2154,36A24,24,0,1,0,12,3.2154,24,24,0,0,0,3.2154,36ZM34.3923,18A12,12,0,1,1,18,13.6077,12,12,0,0,1,34.3923,18Z" style="fill:none"/><path d="M24,12H44.7812a23.9939,23.9939,0,0,0-41.5639.0029L13.6079,30l.0093-.0024A11.9852,11.9852,0,0,1,24,12Z" style="fill:url(#chrome-a)"/><circle cx="24" cy="24" r="9.5" style="fill:#1a73e8"/><path d="M34.3913,30.0029,24.0007,48A23.994,23.994,0,0,0,44.78,12.0031H23.9989l-.0025.0093A11.985,11.985,0,0,1,34.3913,30.0029Z" style="fill:url(#chrome-b)"/><path d="M13.6086,30.0031,3.218,12.006A23.994,23.994,0,0,0,24.0025,48L34.3931,30.0029l-.0067-.0068a11.9852,11.9852,0,0,1-20.7778.007Z" style="fill:url(#chrome-c)"/></symbol>
+<symbol id="logo-firefox" viewBox="0 0 512 512"><defs><radialGradient id="firefox-g" cx="210%" cy="-100%" r="290%"><stop offset=".1" stop-color="#ffe226"/><stop offset=".79" stop-color="#ff7139"/></radialGradient><radialGradient id="firefox-c" cx="49%" cy="40%" r="128%" gradientTransform="matrix(.82 0 0 1 .088 0)"><stop offset=".3" stop-color="#960e18"/><stop offset=".35" stop-color="#b11927" stop-opacity=".74"/><stop offset=".43" stop-color="#db293d" stop-opacity=".34"/><stop offset=".5" stop-color="#f5334b" stop-opacity=".09"/><stop offset=".53" stop-color="#ff3750" stop-opacity="0"/></radialGradient><radialGradient id="firefox-d" cx="48%" cy="-12%" r="140%"><stop offset=".13" stop-color="#fff44f"/><stop offset=".53" stop-color="#ff980e"/></radialGradient><radialGradient id="firefox-e" cx="22.76%" cy="110.11%" r="100%"><stop offset=".35" stop-color="#3a8ee6"/><stop offset=".67" stop-color="#9059ff"/><stop offset="1" stop-color="#c139e6"/></radialGradient><radialGradient id="firefox-f" cx="52%" cy="33%" r="59%" gradientTransform="scale(.9 1)"><stop offset=".21" stop-color="#9059ff" stop-opacity="0"/><stop offset=".97" stop-color="#6e008b" stop-opacity=".6"/></radialGradient><radialGradient id="firefox-b" cx="87.4%" cy="-12.9%" r="128%" gradientTransform="matrix(.8 0 0 1 .178 .129)"><stop offset=".13" stop-color="#ffbd4f"/><stop offset=".28" stop-color="#ff980e"/><stop offset=".47" stop-color="#ff3750"/><stop offset=".78" stop-color="#eb0878"/><stop offset=".86" stop-color="#e50080"/></radialGradient><radialGradient id="firefox-h" cx="84%" cy="-41%" r="180%"><stop offset=".11" stop-color="#fff44f"/><stop offset=".46" stop-color="#ff980e"/><stop offset=".72" stop-color="#ff3647"/><stop offset=".9" stop-color="#e31587"/></radialGradient><radialGradient id="firefox-i" cx="16.1%" cy="-18.6%" r="348.8%" gradientTransform="scale(1 .47) rotate(84 .279 -.297)"><stop offset="0" stop-color="#fff44f"/><stop offset=".3" stop-color="#ff980e"/><stop offset=".57" stop-color="#ff3647"/><stop offset=".74" stop-color="#e31587"/></radialGradient><radialGradient id="firefox-j" cx="18.9%" cy="-42.5%" r="238.4%"><stop offset=".14" stop-color="#fff44f"/><stop offset=".48" stop-color="#ff980e"/><stop offset=".66" stop-color="#ff3647"/><stop offset=".9" stop-color="#e31587"/></radialGradient><radialGradient id="firefox-k" cx="159.3%" cy="-44.72%" r="313.1%"><stop offset=".09" stop-color="#fff44f"/><stop offset=".63" stop-color="#ff980e"/></radialGradient><linearGradient id="firefox-a" x1="87.25%" y1="15.5%" x2="9.4%" y2="93.1%"><stop offset=".05" stop-color="#fff44f"/><stop offset=".37" stop-color="#ff980e"/><stop offset=".53" stop-color="#ff3647"/><stop offset=".7" stop-color="#e31587"/></linearGradient><linearGradient id="firefox-l" x1="80%" y1="14%" x2="18%" y2="84%"><stop offset=".17" stop-color="#fff44f" stop-opacity=".8"/><stop offset=".6" stop-color="#fff44f" stop-opacity="0"/></linearGradient></defs><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0 .039.015.136.047.4C427.706 111.135 381.627 83.823 344 24.355c-1.9-3.007-3.805-6.022-5.661-9.2a73.716 73.716 0 01-2.646-4.972A43.7 43.7 0 01332.1.677a.626.626 0 00-.546-.644.818.818 0 00-.451 0c-.034.012-.084.051-.12.065-.053.021-.12.069-.176.1.027-.036.083-.117.1-.136-60.37 35.356-80.85 100.761-82.732 133.484a120.249 120.249 0 00-66.142 25.488 71.355 71.355 0 00-6.225-4.7 111.338 111.338 0 01-.674-58.732c-24.688 11.241-43.89 29.01-57.85 44.7h-.111c-9.527-12.067-8.855-51.873-8.312-60.184-.114-.515-7.107 3.63-8.023 4.255a175.073 175.073 0 00-23.486 20.12 210.478 210.478 0 00-22.442 26.913c0 .012-.007.026-.011.038 0-.013.007-.026.011-.038a202.838 202.838 0 00-32.247 72.805c-.115.521-.212 1.061-.324 1.586-.452 2.116-2.08 12.7-2.365 15-.022.177-.032.347-.053.524a229.066 229.066 0 00-3.9 33.157c0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746zM201.716 354.447c1.124.537 2.18 1.124 3.334 1.639.048.033.114.07.163.1a126.191 126.191 0 01-3.497-1.739zm55.053-144.93zm198.131-30.59l-.032-.233c.012.085.027.174.04.259z" fill="url(#firefox-a)"/><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0-.058.011.048.036.226.012.085.027.174.04.259 22.675 61.47 10.322 123.978-7.479 162.175-27.539 59.1-94.215 119.67-198.576 116.716C136.1 454.651 36.766 370.988 18.223 261.41c-3.379-17.28 0-26.054 1.7-40.084-2.071 10.816-2.86 13.94-3.9 33.157 0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746z" fill="url(#firefox-b)"/><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0-.058.011.048.036.226.012.085.027.174.04.259 22.675 61.47 10.322 123.978-7.479 162.175-27.539 59.1-94.215 119.67-198.576 116.716C136.1 454.651 36.766 370.988 18.223 261.41c-3.379-17.28 0-26.054 1.7-40.084-2.071 10.816-2.86 13.94-3.9 33.157 0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746z" fill="url(#firefox-c)"/><path d="M361.922 194.6c.524.368 1 .734 1.493 1.1a130.706 130.706 0 00-22.31-29.112C266.4 91.892 321.516 4.626 330.811.194c.027-.036.083-.117.1-.136-60.37 35.356-80.85 100.761-82.732 133.484 2.8-.194 5.592-.429 8.442-.429 45.051 0 84.289 24.77 105.301 61.487z" fill="url(#firefox-d)"/><path d="M256.772 209.514c-.393 5.978-21.514 26.593-28.9 26.593-68.339 0-79.432 41.335-79.432 41.335 3.027 34.81 27.261 63.475 56.611 78.643 1.339.692 2.694 1.317 4.05 1.935a132.768 132.768 0 007.059 2.886 106.743 106.743 0 0031.271 6.031c119.78 5.618 142.986-143.194 56.545-186.408 22.137-3.85 45.115 5.053 57.947 14.067-21.012-36.714-60.25-61.484-105.3-61.484-2.85 0-5.641.235-8.442.429a120.249 120.249 0 00-66.142 25.488c3.664 3.1 7.8 7.244 16.514 15.828 16.302 16.067 58.13 32.705 58.219 34.657z" fill="url(#firefox-e)"/><path d="M256.772 209.514c-.393 5.978-21.514 26.593-28.9 26.593-68.339 0-79.432 41.335-79.432 41.335 3.027 34.81 27.261 63.475 56.611 78.643 1.339.692 2.694 1.317 4.05 1.935a132.768 132.768 0 007.059 2.886 106.743 106.743 0 0031.271 6.031c119.78 5.618 142.986-143.194 56.545-186.408 22.137-3.85 45.115 5.053 57.947 14.067-21.012-36.714-60.25-61.484-105.3-61.484-2.85 0-5.641.235-8.442.429a120.249 120.249 0 00-66.142 25.488c3.664 3.1 7.8 7.244 16.514 15.828 16.302 16.067 58.13 32.705 58.219 34.657z" fill="url(#firefox-f)"/><path d="M170.829 151.036a244.042 244.042 0 014.981 3.3 111.338 111.338 0 01-.674-58.732c-24.688 11.241-43.89 29.01-57.85 44.7 1.155-.033 36.014-.66 53.543 10.732z" fill="url(#firefox-g)"/><path d="M18.223 261.41C36.766 370.988 136.1 454.651 248.855 457.844c104.361 2.954 171.037-57.62 198.576-116.716 17.8-38.2 30.154-100.7 7.479-162.175l-.008-.026-.032-.233c-.025-.178-.04-.284-.036-.226 0 .039.015.136.047.4 8.524 55.661-19.79 109.584-64.051 146.044l-.133.313c-86.245 70.223-168.774 42.368-185.484 30.966a144.108 144.108 0 01-3.5-1.743c-50.282-24.029-71.054-69.838-66.6-109.124-42.457 0-56.934-35.809-56.934-35.809s38.119-27.179 88.358-3.541c46.53 21.893 90.228 3.543 90.233 3.541-.089-1.952-41.917-18.59-58.223-34.656-8.713-8.584-12.85-12.723-16.514-15.828a71.355 71.355 0 00-6.225-4.7 282.929 282.929 0 00-4.981-3.3c-17.528-11.392-52.388-10.765-53.543-10.735h-.111c-9.527-12.067-8.855-51.873-8.312-60.184-.114-.515-7.107 3.63-8.023 4.255a175.073 175.073 0 00-23.486 20.12 210.478 210.478 0 00-22.442 26.919c0 .012-.007.026-.011.038 0-.013.007-.026.011-.038a202.838 202.838 0 00-32.247 72.805c-.115.521-8.65 37.842-4.44 57.199z" fill="url(#firefox-h)"/><path d="M341.105 166.587a130.706 130.706 0 0122.31 29.112c1.323.994 2.559 1.985 3.608 2.952 54.482 50.2 25.936 121.2 23.807 126.26 44.261-36.46 72.575-90.383 64.051-146.044C427.706 111.135 381.627 83.823 344 24.355c-1.9-3.007-3.805-6.022-5.661-9.2a73.716 73.716 0 01-2.646-4.972A43.7 43.7 0 01332.1.677a.626.626 0 00-.546-.644.818.818 0 00-.451 0c-.034.012-.084.051-.12.065-.053.021-.12.069-.176.1-9.291 4.428-64.407 91.694 10.298 166.389z" fill="url(#firefox-i)"/><path d="M367.023 198.651c-1.049-.967-2.285-1.958-3.608-2.952-.489-.368-.969-.734-1.493-1.1-12.832-9.014-35.81-17.917-57.947-14.067 86.441 43.214 63.235 192.026-56.545 186.408a106.743 106.743 0 01-31.271-6.031 134.51 134.51 0 01-7.059-2.886c-1.356-.618-2.711-1.243-4.05-1.935.048.033.114.07.163.1 16.71 11.4 99.239 39.257 185.484-30.966l.133-.313c2.129-5.054 30.675-76.057-23.807-126.258z" fill="url(#firefox-j)"/><path d="M148.439 277.443s11.093-41.335 79.432-41.335c7.388 0 28.509-20.615 28.9-26.593s-43.7 18.352-90.233-3.541c-50.239-23.638-88.358 3.541-88.358 3.541s14.477 35.809 56.934 35.809c-4.453 39.286 16.319 85.1 66.6 109.124 1.124.537 2.18 1.124 3.334 1.639-29.348-15.169-53.582-43.834-56.609-78.644z" fill="url(#firefox-k)"/><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0 .039.015.136.047.4C427.706 111.135 381.627 83.823 344 24.355c-1.9-3.007-3.805-6.022-5.661-9.2a73.716 73.716 0 01-2.646-4.972A43.7 43.7 0 01332.1.677a.626.626 0 00-.546-.644.818.818 0 00-.451 0c-.034.012-.084.051-.12.065-.053.021-.12.069-.176.1.027-.036.083-.117.1-.136-60.37 35.356-80.85 100.761-82.732 133.484 2.8-.194 5.592-.429 8.442-.429 45.053 0 84.291 24.77 105.3 61.484-12.832-9.014-35.81-17.917-57.947-14.067 86.441 43.214 63.235 192.026-56.545 186.408a106.743 106.743 0 01-31.271-6.031 134.51 134.51 0 01-7.059-2.886c-1.356-.618-2.711-1.243-4.05-1.935.048.033.114.07.163.1a144.108 144.108 0 01-3.5-1.743c1.124.537 2.18 1.124 3.334 1.639-29.35-15.168-53.584-43.833-56.611-78.643 0 0 11.093-41.335 79.432-41.335 7.388 0 28.509-20.615 28.9-26.593-.089-1.952-41.917-18.59-58.223-34.656-8.713-8.584-12.85-12.723-16.514-15.828a71.355 71.355 0 00-6.225-4.7 111.338 111.338 0 01-.674-58.732c-24.688 11.241-43.89 29.01-57.85 44.7h-.111c-9.527-12.067-8.855-51.873-8.312-60.184-.114-.515-7.107 3.63-8.023 4.255a175.073 175.073 0 00-23.486 20.12 210.478 210.478 0 00-22.435 26.916c0 .012-.007.026-.011.038 0-.013.007-.026.011-.038a202.838 202.838 0 00-32.247 72.805c-.115.521-.212 1.061-.324 1.586-.452 2.116-2.486 12.853-2.77 15.156-.022.177.021-.176 0 0a279.565 279.565 0 00-3.544 33.53c0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746zm-23.841 12.341c.012.085.027.174.04.259l-.008-.026-.032-.233z" fill="url(#firefox-l)"/></symbol>
+</defs></svg>
 
 <header class="top">
   <div class="wrap top-inner">
@@ -455,21 +495,22 @@
         whoever recommended you the link, and leaves you in control.
       </p>
 
-      <div class="install">
-        <a class="btn" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
-          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
-            <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.6"/>
-            <path d="M12 8.5h8.5M7.6 14.2l-4.3 7.4M16.4 14.2l-4.3 7.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          </svg>
+      <div class="install" id="hero-install">
+        <a class="btn" id="cta-chrome" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
+          <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-chrome"/></svg>
           Add to Chrome
         </a>
-        <a class="btn ghost" href="https://addons.mozilla.org/firefox/addon/muga/">
-          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-            <path d="M5 9c1-3 4-5 7-5 4 0 7 3 7 7 0 5-4 9-9 9-3 0-6-2-7-5 1 1 3 2 5 1-3-1-4-4-3-6 1 1 3 2 5 1-2-1-3-3-2-5 1 2 3 3 5 3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-          </svg>
+        <a class="btn ghost" id="cta-firefox" href="https://addons.mozilla.org/firefox/addon/muga/">
+          <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-firefox"/></svg>
           Add to Firefox
         </a>
+        <a class="btn" id="cta-web" href="https://muga.app/clean" hidden>
+          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+            <path d="M9 15l6-6M8.5 9.5H7a4 4 0 100 8h1.5M15.5 14.5H17a4 4 0 100-8h-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          Clean a link now
+        </a>
+        <a class="btn bare" id="cta-desktop-hint" href="#get" hidden>Get the desktop extension →</a>
         <a class="btn bare" href="https://github.com/yocreoquesi/muga">View source →</a>
       </div>
 
@@ -637,7 +678,7 @@
     </div>
   </section>
 
-  <section class="section">
+  <section class="section" id="get">
     <div class="wrap">
       <div class="cta-panel">
         <div class="cta-glow"></div>
@@ -647,10 +688,29 @@
             <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
           </svg>
           <h2>Turn the noise down today.</h2>
-          <p>Free forever. Open source. Respectful of the people who make the web worth reading.</p>
-          <div class="install">
-            <a class="btn" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Add to Chrome</a>
-            <a class="btn ghost" href="https://addons.mozilla.org/firefox/addon/muga/">Add to Firefox</a>
+          <p>Free forever and open source. Pick whichever way fits how you browse.</p>
+          <div class="ways">
+            <a class="way" data-plat="chrome" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
+              <svg class="way-ico" width="26" height="26" aria-hidden="true"><use href="#logo-chrome"/></svg>
+              <span class="way-title">Chrome &amp; Chromium</span>
+              <span class="way-desc">The full extension for Chrome, Edge, Brave and Opera. Cleans every link as you browse.</span>
+              <span class="way-cta">Add to Chrome <span class="arr" aria-hidden="true">→</span></span>
+            </a>
+            <a class="way" data-plat="firefox" href="https://addons.mozilla.org/firefox/addon/muga/">
+              <svg class="way-ico" width="26" height="26" aria-hidden="true"><use href="#logo-firefox"/></svg>
+              <span class="way-title">Firefox</span>
+              <span class="way-desc">The full extension for Firefox on desktop, and on Firefox for Android too.</span>
+              <span class="way-cta">Add to Firefox <span class="arr" aria-hidden="true">→</span></span>
+            </a>
+            <a class="way" data-plat="web" href="https://muga.app/clean">
+              <svg class="way-ico" viewBox="0 0 104 68" width="40" height="26" fill="none" aria-hidden="true">
+                <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+              <span class="way-title">MUGA Clean (web)</span>
+              <span class="way-desc">No install, any device. Paste a link, get the clean version. Runs entirely in your browser.</span>
+              <span class="way-cta">Open MUGA Clean <span class="arr" aria-hidden="true">→</span></span>
+            </a>
           </div>
         </div>
       </div>
@@ -677,6 +737,7 @@
         <ul>
           <li><a href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Chrome Web Store</a></li>
           <li><a href="https://addons.mozilla.org/firefox/addon/muga/">Firefox Add-ons</a></li>
+          <li><a href="https://muga.app/clean">MUGA Clean (web)</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -720,6 +781,51 @@
         el.classList.remove('fade');
       }, 360);
     }, 4200);
+  })();
+
+  // Platform-aware install CTA — progressive enhancement, no analytics.
+  // Without JS the hero shows Chrome + Firefox and the section below shows
+  // ALL three options, so nothing is ever hidden from anyone. This only
+  // promotes the option the visitor can act on right now, and highlights
+  // the matching card down in the "three ways" grid; it hides nothing there.
+  (function () {
+    var ua = navigator.userAgent || '';
+    var isFirefox = /firefox|fxios/i.test(ua);
+    var isIOS = /iphone|ipod|ipad/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var isAndroid = /android/i.test(ua);
+    var isMobile = isIOS || isAndroid || /Mobile/.test(ua);
+
+    var install = document.getElementById('hero-install');
+    var chrome = document.getElementById('cta-chrome');
+    var firefox = document.getElementById('cta-firefox');
+    var web = document.getElementById('cta-web');
+    var hint = document.getElementById('cta-desktop-hint');
+    var youPlat = 'chrome';
+
+    if (isMobile && !isFirefox) {
+      // Chrome for Android, iOS, other mobile browsers: the extension cannot
+      // install here, so lead with the web tool they can use immediately.
+      if (chrome) chrome.hidden = true;
+      if (firefox) firefox.hidden = true;
+      if (web && install) { web.hidden = false; install.insertBefore(web, install.firstChild); }
+      if (hint) hint.hidden = false;
+      youPlat = 'web';
+    } else if (isFirefox) {
+      // Desktop Firefox or Firefox for Android — the extension installs on both.
+      if (firefox && install) { firefox.className = 'btn'; install.insertBefore(firefox, install.firstChild); }
+      if (chrome) chrome.className = 'btn ghost';
+      youPlat = 'firefox';
+    }
+    // else desktop Chromium: keep the defaults.
+
+    var card = document.querySelector('.way[data-plat="' + youPlat + '"]');
+    if (card) {
+      card.classList.add('is-you');
+      var badge = document.createElement('span');
+      badge.className = 'way-badge';
+      badge.textContent = 'Best for your browser';
+      card.appendChild(badge);
+    }
   })();
 
   // Console easter egg
