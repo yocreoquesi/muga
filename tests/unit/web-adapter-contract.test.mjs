@@ -117,6 +117,7 @@ describe("web adapter contract — naked-link MUGA referral injection (web-tool-
     assert.equal(out.ok, true);
     assert.equal(out.action, "injected");
     assert.equal(out.mugaReferralInjected, true);
+    assert.equal(out.mugaReferralPresent, true, "an injected tag is also present in the output");
     const injected = new URL(out.cleanUrl);
     assert.equal(injected.searchParams.get("tag"), "muga0b-20");
     assert.ok(out.cleanUrlNoMugaReferral, "cleanUrlNoMugaReferral must be present when injected");
@@ -156,14 +157,46 @@ describe("web adapter contract — naked-link MUGA referral injection (web-tool-
     assert.equal(out.ok, true);
     assert.equal(out.affiliatePreserved, true);
     assert.equal(out.mugaReferralInjected, false, "MUGA must not add anything when a referral already exists");
-    assert.equal(out.cleanUrlNoMugaReferral, null, "nothing to opt out of when MUGA injected nothing");
+    assert.equal(out.mugaReferralPresent, false, "a foreign referral is not MUGA's own — no opt-out");
+    assert.equal(out.cleanUrlNoMugaReferral, null, "nothing to opt out of when the referral is not MUGA's");
     assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "somecreator-20");
+  });
+
+  test("a pasted link that ALREADY carries MUGA's own tag surfaces the opt-out (not just the inject case)", () => {
+    // The bug this fixes: re-cleaning a link that already carries our tag left
+    // the referral on the output with no way to copy a tag-free variant, because
+    // the opt-out was gated on action === "injected".
+    const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=muga0b-20", engine);
+    assert.equal(out.ok, true);
+    assert.notEqual(out.action, "injected", "MUGA did not inject — the tag was already there");
+    assert.equal(out.mugaReferralInjected, false);
+    assert.equal(out.mugaReferralPresent, true, "our own tag is present in the output, so the opt-out must appear");
+    assert.ok(out.cleanUrlNoMugaReferral, "a tag-free variant must be offered");
+    assert.equal(
+      new URL(out.cleanUrlNoMugaReferral).searchParams.has("tag"),
+      false,
+      "the opt-out URL must carry no MUGA tag",
+    );
+    // The default (with-referral) URL still carries our tag.
+    assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "muga0b-20");
+  });
+
+  test("already-present tag with extra tracking: tracking is cleaned, our tag opt-out still offered", () => {
+    const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=muga0b-20&utm_source=news", engine);
+    assert.equal(out.ok, true);
+    assert.ok(out.removed.includes("utm_source"), "tracking params must still be removed");
+    assert.equal(out.mugaReferralPresent, true);
+    assert.ok(out.cleanUrlNoMugaReferral);
+    const optOut = new URL(out.cleanUrlNoMugaReferral);
+    assert.equal(optOut.searchParams.has("tag"), false, "opt-out drops our tag");
+    assert.equal(optOut.searchParams.has("utm_source"), false, "opt-out keeps the cleaned tracking removed");
   });
 
   test("non-supported program / plain link: no injection, no opt-out URL", () => {
     const out = cleanUrl("https://example.com/already-clean?id=42", engine);
     assert.equal(out.ok, true);
     assert.equal(out.mugaReferralInjected, false);
+    assert.equal(out.mugaReferralPresent, false);
     assert.equal(out.cleanUrlNoMugaReferral, null);
   });
 
@@ -178,6 +211,7 @@ describe("web adapter contract — naked-link MUGA referral injection (web-tool-
     assert.equal(out.affiliatePreserved, false);
     assert.equal(out.action, "cleaned");
     assert.equal(out.mugaReferralInjected, false);
+    assert.equal(out.mugaReferralPresent, false);
     assert.equal(out.cleanUrlNoMugaReferral, null);
   });
 });

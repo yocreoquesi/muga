@@ -69,7 +69,7 @@ function render(refs, view, originalUrl) {
   refs.urlBox.textContent = hasCleanUrl ? view.cleanUrl : "";
   refs.copyBtn.disabled = !hasCleanUrl;
 
-  const showNoReferralBtn = hasCleanUrl && view.mugaReferralInjected && typeof view.cleanUrlNoMugaReferral === "string";
+  const showNoReferralBtn = hasCleanUrl && view.mugaReferralPresent && typeof view.cleanUrlNoMugaReferral === "string";
   refs.copyNoReferralBtn.hidden = !showNoReferralBtn;
   refs.copyNoReferralBtn.disabled = !showNoReferralBtn;
 

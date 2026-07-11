@@ -65,6 +65,7 @@ function buildFailure(action, error, rawInput) {
     destinationHost: null,
     affiliatePreserved: false,
     mugaReferralInjected: false,
+    mugaReferralPresent: false,
     cleanUrlNoMugaReferral: null,
     action,
     error,
@@ -77,22 +78,24 @@ function buildFailure(action, error, rawInput) {
  * REAL defaults (`engine.PREF_DEFAULTS`) so behavioural defaults never
  * hand-drift from `src/lib/prefs.js`.
  *
- * `injectOwnAffiliate` is now conditional (design D1, web-tool-naked-link-injection
+ * `injectOwnAffiliate` stays on (design D1, web-tool-naked-link-injection
  * slice 2, ADR-1): the web tool injects MUGA's own tag on naked Amazon/eBay
- * links by default so the tool can fund itself, while every other web-tool
- * policy override (no notify, no honor-creator, no lists) stays in place.
- * Callers that need the tag-free variant pass `injectMugaReferral: false`.
+ * links so the tool can fund itself, while every other web-tool policy
+ * override (no notify, no honor-creator, no lists) stays in place. The
+ * tag-free variant is no longer produced by a second injection-off run; it
+ * is derived by surgically stripping MUGA's own tag from the cleaned URL
+ * (see detectOwnReferral), which also covers links that ALREADY carried our
+ * referral before cleaning.
  *
  * @param {object} prefDefaults
- * @param {{ injectMugaReferral?: boolean }} [options]
  * @returns {object}
  */
-function buildPureCleanerPrefs(prefDefaults, { injectMugaReferral = true } = {}) {
+function buildPureCleanerPrefs(prefDefaults) {
   return {
     ...prefDefaults,
     enabled: true,
     onboardingDone: true,
-    injectOwnAffiliate: injectMugaReferral,
+    injectOwnAffiliate: true,
     notifyForeignAffiliate: false,
     honorCreatorMode: false,
     blacklist: [],
@@ -100,6 +103,66 @@ function buildPureCleanerPrefs(prefDefaults, { injectMugaReferral = true } = {})
     customParams: [],
     userCustomRules: [],
   };
+}
+
+/**
+ * Resolves MUGA's own affiliate tag for an affiliate pattern + hostname.
+ * Adapter-local mirror of src/lib/affiliates.js `resolveOurTag`: the engine
+ * bundle exposes `AFFILIATE_PATTERNS` (each pattern carries its per-host
+ * `ourTag` map) and `getPatternsForHost`, but not `resolveOurTag` itself.
+ * Reading the already-exposed `ourTag` map keeps the tag VALUES single-
+ * sourced in the engine, so this adapter never hard-codes them.
+ *
+ * @param {{ourTag?: Object}|null|undefined} pattern
+ * @param {string} hostname
+ * @returns {string} the tag configured for this host, or "" when none.
+ */
+function resolveOurTag(pattern, hostname) {
+  if (!pattern || !pattern.ourTag || !hostname) return "";
+  const host = hostname.replace(/^www\./, "");
+  return pattern.ourTag[host] || pattern.ourTag[hostname] || "";
+}
+
+/**
+ * Detects whether a cleaned URL carries MUGA's OWN affiliate referral and,
+ * when it does, returns the URL with only that param removed.
+ *
+ * Matches our tag by VALUE against the engine's per-host affiliate patterns,
+ * so a foreign/creator referral (a different value on the same param, e.g.
+ * `tag=somecreator-20`) is never stripped: the preservation moat stays
+ * intact. Covers BOTH the just-injected case and a link the user pasted that
+ * already carried MUGA's tag (design "copy-without-referral parity"). Never
+ * throws: any failure degrades to "no own referral".
+ *
+ * @param {string} cleanUrl            The cleaned URL returned by the engine.
+ * @param {string|null} destinationHost  Its hostname (already parsed by the caller).
+ * @param {object} engine              The resolved engine handle.
+ * @returns {{ present: boolean, stripped: string|null }}
+ */
+function detectOwnReferral(cleanUrl, destinationHost, engine) {
+  const none = { present: false, stripped: null };
+  if (typeof cleanUrl !== "string" || !destinationHost) return none;
+  if (!engine || typeof engine.getPatternsForHost !== "function") return none;
+
+  let url;
+  try {
+    url = new URL(cleanUrl);
+  } catch {
+    return none;
+  }
+
+  const host = destinationHost.replace(/^www\./, "");
+  const patterns = engine.getPatternsForHost(host) || [];
+  let present = false;
+  for (const pattern of patterns) {
+    const ourTag = resolveOurTag(pattern, host);
+    if (!ourTag) continue;
+    if (url.searchParams.get(pattern.param) === ourTag) {
+      url.searchParams.delete(pattern.param);
+      present = true;
+    }
+  }
+  return present ? { present: true, stripped: url.toString() } : none;
 }
 
 /**
@@ -121,6 +184,7 @@ function buildPureCleanerPrefs(prefDefaults, { injectMugaReferral = true } = {})
  *   destinationHost: string|null,
  *   affiliatePreserved: boolean,
  *   mugaReferralInjected: boolean,
+ *   mugaReferralPresent: boolean,
  *   cleanUrlNoMugaReferral: string|null,
  *   action: string,
  *   error?: string,
@@ -171,27 +235,19 @@ export function cleanUrl(input, engine = resolveEngine()) {
   const unwrapped = destinationHost !== null && destinationHost !== inputUrl.hostname;
 
   // mugaReferralInjected (design D2): keyed off action === "injected", NOT
-  // affiliatePreserved. "injected" means MUGA added its own tag; a preserved
-  // creator/foreign referral means nothing MUGA-owned was added. The engine
-  // guard (D4) makes these mutually exclusive.
+  // affiliatePreserved. "injected" means MUGA added its own tag THIS run; a
+  // preserved creator/foreign referral means nothing MUGA-owned was added.
+  // It drives the disclosure WORDING (added vs already present).
   const mugaReferralInjected = result.action === "injected";
 
-  // cleanUrlNoMugaReferral (design D1): re-run the engine with injection OFF
-  // instead of string-stripping the known tag. Single source of truth —
-  // byte-exact to what the engine produces without injection, and this
-  // adapter never has to know MUGA's own param names.
-  let cleanUrlNoMugaReferral = null;
-  if (mugaReferralInjected) {
-    const noInjectPrefs = buildPureCleanerPrefs(engine.PREF_DEFAULTS || {}, { injectMugaReferral: false });
-    try {
-      const noInjectResult = engine.processUrl(input, noInjectPrefs, DOMAIN_RULES, undefined, undefined, undefined, PATH_STRIP_RULES);
-      if (noInjectResult && typeof noInjectResult.cleanUrl === "string") {
-        cleanUrlNoMugaReferral = noInjectResult.cleanUrl;
-      }
-    } catch {
-      cleanUrlNoMugaReferral = null;
-    }
-  }
+  // mugaReferralPresent + cleanUrlNoMugaReferral: the "copy without referral"
+  // opt-out must appear whenever the cleaned URL carries MUGA's OWN referral,
+  // whether MUGA injected it this run OR the pasted link already carried it
+  // (a MUGA-tagged link the user re-cleans). Detect our tag by value against
+  // the engine's per-host affiliate patterns and surgically remove only that
+  // param, so a foreign/creator referral is never stripped. This replaces the
+  // old injection-off rerun, which missed the already-present case entirely.
+  const ownReferral = detectOwnReferral(result.cleanUrl, destinationHost, engine);
 
   return {
     ok: true,
@@ -201,7 +257,8 @@ export function cleanUrl(input, engine = resolveEngine()) {
     destinationHost,
     affiliatePreserved: !!(result.preservedAffiliate || result.creatorReferralPreserved),
     mugaReferralInjected,
-    cleanUrlNoMugaReferral,
+    mugaReferralPresent: ownReferral.present,
+    cleanUrlNoMugaReferral: ownReferral.stripped,
     action: result.action,
   };
 }
