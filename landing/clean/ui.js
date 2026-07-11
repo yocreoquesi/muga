@@ -69,6 +69,13 @@ function render(refs, view, originalUrl) {
   refs.urlBox.textContent = hasCleanUrl ? view.cleanUrl : "";
   refs.copyBtn.disabled = !hasCleanUrl;
 
+  const showNoReferralBtn = hasCleanUrl && view.mugaReferralInjected && typeof view.cleanUrlNoMugaReferral === "string";
+  refs.copyNoReferralBtn.hidden = !showNoReferralBtn;
+  refs.copyNoReferralBtn.disabled = !showNoReferralBtn;
+
+  refs.referralDisclosure.hidden = !view.disclosure;
+  refs.referralDisclosure.textContent = view.disclosure || "";
+
   const showTransparency = view.state === "clean" && !view.noChanges;
   refs.transparency.classList.toggle("visible", showTransparency);
 
@@ -127,6 +134,8 @@ function init() {
     input: document.getElementById("url-input"),
     cleanBtn: document.getElementById("clean-btn"),
     copyBtn: document.getElementById("copy-btn"),
+    copyNoReferralBtn: document.getElementById("copy-no-referral-btn"),
+    referralDisclosure: document.getElementById("referral-disclosure"),
     message: document.getElementById("result-message"),
     urlRow: document.getElementById("result-url-row"),
     urlBox: document.getElementById("result-url-box"),
@@ -144,6 +153,7 @@ function init() {
   };
 
   let lastCleanUrl = null;
+  let lastCleanUrlNoMugaReferral = null;
 
   render(refs, emptyStateView(), "");
 
@@ -151,6 +161,9 @@ function init() {
     const originalUrl = refs.input.value;
     const result = cleanUrl(originalUrl);
     lastCleanUrl = result && result.ok && typeof result.cleanUrl === "string" ? result.cleanUrl : null;
+    lastCleanUrlNoMugaReferral = result && result.ok && typeof result.cleanUrlNoMugaReferral === "string"
+      ? result.cleanUrlNoMugaReferral
+      : null;
     render(refs, formatCleanResult(result), originalUrl);
   }
 
@@ -172,6 +185,18 @@ function init() {
     }).catch(() => {
       refs.copyBtn.textContent = "Copy failed";
       setTimeout(() => { refs.copyBtn.textContent = originalLabel; }, 1200);
+    });
+  });
+
+  refs.copyNoReferralBtn.addEventListener("click", () => {
+    if (!lastCleanUrlNoMugaReferral) return;
+    const originalLabel = refs.copyNoReferralBtn.textContent;
+    navigator.clipboard.writeText(lastCleanUrlNoMugaReferral).then(() => {
+      refs.copyNoReferralBtn.textContent = "Copied";
+      setTimeout(() => { refs.copyNoReferralBtn.textContent = originalLabel; }, 1200);
+    }).catch(() => {
+      refs.copyNoReferralBtn.textContent = "Copy failed";
+      setTimeout(() => { refs.copyNoReferralBtn.textContent = originalLabel; }, 1200);
     });
   });
 }

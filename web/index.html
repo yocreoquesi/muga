@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MUGA Clean: paste a URL, strip the tracking noise</title>
-<meta name="description" content="Paste any URL and MUGA Clean strips tracking parameters and unwraps known redirect wrappers, entirely in your browser. No server, no analytics, nothing about the URL ever leaves your device.">
+<meta name="description" content="Paste any link and MUGA strips tracking parameters and unwraps redirect wrappers, entirely in your browser. Nothing about the URL is sent anywhere. Existing creator or affiliate referrals are always kept. MUGA only uses its own referral in selected stores, and only when there is no existing referral.">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDQgNjgiPjxwYXRoIGQ9Ik0gMTIgNTYgQyAxMiA4LCA0NiA4LCA1MiA0NiBMIDYyIDIyIEwgNzIgNTAgTCA4NCA1MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQTg4M0YwIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNIDgwIDM3IEwgOTggNTAgTCA4MCA2MyBaIiBmaWxsPSIjQTg4M0YwIiBzdHJva2U9IiNBODgzRjAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==">
 
@@ -114,6 +114,11 @@
     padding: 13px 15px; word-break: break-all;
   }
 
+  .referral-disclosure {
+    font-size: 12.5px; color: var(--ink-3); margin: 0 0 14px;
+  }
+  .referral-disclosure[hidden] { display: none; }
+
   .length-bar { margin: 0 0 18px; }
   .length-bar[hidden] { display: none; }
   .length-bar-headline { font-size: 14.5px; color: var(--good); margin: 0 0 8px; font-weight: 600; }
@@ -185,11 +190,12 @@
     <div class="eyebrow">Paste a link, get the clean version</div>
     <h1>Clean a URL, right here.</h1>
     <p class="lede">
-      Paste any link below and MUGA strips tracking parameters (<code>utm_*</code>, <code>fbclid</code>,
-      <code>gclid</code>, <code>mc_cid</code> and more) and unwraps known redirect wrappers. The cleaning
-      happens entirely in your browser and nothing about the URL is sent anywhere. If you choose to
-      report a bad result, that opens a prefilled GitHub issue you review and submit yourself. Existing
-      affiliate or creator referral tags are left untouched.
+      Paste any link and MUGA strips tracking parameters (<code>utm_*</code>, <code>fbclid</code>,
+      <code>gclid</code>, <code>mc_cid</code> and more) and unwraps redirect wrappers, entirely in your
+      browser. Nothing about the URL is sent anywhere. Existing creator or affiliate referrals are
+      always kept. For a few selected stores, if a link carries no referral at all, MUGA may add its
+      own so the tool can stay free, and you can always copy the version without it. If you choose to
+      report a bad result, that opens a prefilled GitHub issue you review and submit yourself.
     </p>
 
     <section class="panel" aria-labelledby="input-heading">
@@ -208,7 +214,10 @@
       <div class="result-url-row" id="result-url-row">
         <div class="result-url-box" id="result-url-box"></div>
         <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
+        <button type="button" class="btn ghost" id="copy-no-referral-btn" hidden>Copy without MUGA's referral</button>
       </div>
+
+      <p class="referral-disclosure" id="referral-disclosure" hidden></p>
 
       <div class="length-bar" id="length-bar" hidden>
         <p class="length-bar-headline" id="length-bar-headline"></p>
@@ -243,6 +252,7 @@
 
     <footer class="trust">
       <p>No analytics. No third-party requests. No account. Cleaning never contacts a server; reporting a result opens GitHub only if you click it.</p>
+      <p>MUGA only uses its own referral in selected stores, and only when there is no existing referral. Any creator or foreign referral is always kept.</p>
       <p><a href="https://github.com/yocreoquesi/muga">View source</a> &middot; <a href="https://muga.app/">Get the MUGA extension</a></p>
     </footer>
   </div>

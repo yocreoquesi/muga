@@ -156,11 +156,24 @@ describe("Copy style constraints (spec: Copy Style Constraints)", () => {
     assert.ok(/tracking/i.test(htmlBody), "page copy must reference tracking parameters");
   });
 
-  test("page copy never mentions injecting an affiliate tag (pure cleaner, no Scenario B)", () => {
-    assert.ok(!/inject/i.test(htmlBody), "index.html must never mention injecting MUGA's own affiliate tag");
+  test("page copy honestly describes MUGA's own scoped referral (web-tool-naked-link-injection)", () => {
+    // Flipped from the original #1029 anti-injection assertion: the web tool
+    // now injects MUGA's own referral on naked Amazon/eBay links (ADR-1),
+    // so the copy must describe that honestly instead of denying it. The
+    // em-dash / "--" bans above and the zero-request promise below still
+    // hold; only the "never injects" claim is retired.
+    assert.ok(/own referral/i.test(htmlBody), "index.html must describe MUGA's own referral");
+    assert.ok(/selected store/i.test(htmlBody), "index.html must scope injection to selected stores");
     assert.ok(
-      !/inject/i.test(stripJsComments(UI_JS) + stripJsComments(UI_VIEW_JS)),
-      "ui.js/ui-view.js code (excluding developer doc comments) must never mention injecting an affiliate tag",
+      /existing|already|no referral of its own|no existing referral/i.test(htmlBody),
+      "index.html must state that an existing referral is always kept",
+    );
+  });
+
+  test("the zero-request promise still holds after the honest copy rewrite", () => {
+    assert.ok(
+      /entirely in your browser/i.test(htmlBody) || /never contacts a server/i.test(htmlBody),
+      "index.html must still promise nothing about the URL leaves the device",
     );
   });
 });
@@ -203,6 +216,38 @@ describe("sdd/web-cleaning-insight (Slice 1) DOM wiring", () => {
     assert.ok(body.includes("entirely in your browser"), "lede must state the cleaning happens entirely in your browser");
     assert.ok(body.includes("prefilled GitHub issue"), "lede must describe the report flow as a prefilled GitHub issue");
     assert.ok(body.includes("Cleaning never contacts a server"), "footer must state cleaning never contacts a server");
+  });
+});
+
+describe("MUGA referral opt-out and disclosure (web-tool-naked-link-injection)", () => {
+  test("#copy-no-referral-btn exists adjacent to #copy-btn and is hidden by default", () => {
+    const resultUrlRowIndex = HTML.indexOf('id="result-url-row"');
+    const noReferralBtnIndex = HTML.indexOf('id="copy-no-referral-btn"');
+    assert.ok(resultUrlRowIndex !== -1 && noReferralBtnIndex !== -1, "both #result-url-row and #copy-no-referral-btn must exist");
+    assert.ok(noReferralBtnIndex > resultUrlRowIndex, "#copy-no-referral-btn must sit inside/adjacent to #result-url-row");
+
+    const resultUrlRowBlock = HTML.slice(resultUrlRowIndex, resultUrlRowIndex + 900);
+    const btnMatch = resultUrlRowBlock.match(/<button[^>]*id\s*=\s*["']copy-no-referral-btn["'][^>]*>/);
+    assert.ok(btnMatch, "#copy-no-referral-btn must be a <button> inside the result-url-row block");
+    assert.ok(/\bhidden\b/.test(btnMatch[0]), "#copy-no-referral-btn must be hidden by default");
+  });
+
+  test("#referral-disclosure element exists near the result", () => {
+    assert.ok(HTML.includes('id="referral-disclosure"'), "a #referral-disclosure element must exist");
+  });
+
+  test("ui.js toggles #copy-no-referral-btn on view.mugaReferralInjected and copies cleanUrlNoMugaReferral", () => {
+    const code = stripJsComments(UI_JS);
+    assert.ok(/mugaReferralInjected/.test(code), "ui.js must reference view.mugaReferralInjected");
+    assert.ok(/cleanUrlNoMugaReferral/.test(code), "ui.js must reference view.cleanUrlNoMugaReferral");
+  });
+
+  test("ui.js renders view.disclosure without adding new decision logic", () => {
+    const code = stripJsComments(UI_JS);
+    assert.ok(/disclosure/.test(code), "ui.js must render view.disclosure");
+    // Structural-guard precedent: ui.js applies the view-model, it does not
+    // compute affiliate/injection eligibility itself.
+    assert.ok(!/action\s*===\s*["']injected["']/.test(code), "ui.js must not re-derive injection eligibility itself");
   });
 });
 
