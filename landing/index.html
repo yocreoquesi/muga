@@ -102,17 +102,6 @@
     pointer-events: none;
   }
   .hero-inner { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
-  .eyebrow {
-    display: inline-flex; align-items: center; gap: 9px;
-    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
-    border: 1px solid var(--rule); background: var(--panel);
-    border-radius: 999px; padding: 6px 14px; margin-bottom: 30px;
-  }
-  .eyebrow .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--good); animation: pulseDot 2.4s infinite; }
-  @keyframes pulseDot {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(76,195,138,.45); }
-    60% { box-shadow: 0 0 0 6px rgba(76,195,138,0); }
-  }
   h1 {
     margin: 0 0 22px;
     font-size: clamp(44px, 7vw, 84px);
@@ -146,11 +135,6 @@
   .btn.bare { background: transparent; color: var(--ink-2); font-weight: 500; box-shadow: none; padding: 14px 20px; }
   .btn.bare:hover { background: transparent; color: var(--ink); transform: none; }
 
-  .install-meta {
-    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center;
-  }
-  .install-meta .sep { color: var(--rule-2); }
 
   .bk-slot {
     margin-top: 26px;
@@ -226,7 +210,6 @@
   @media (prefers-reduced-motion: reduce) {
     .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .35; }
     .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent-ink); }
-    .eyebrow .dot { animation: none; }
     .demo-output, .demo-foot { transition: none; }
     .hero-glow, .cta-glow { animation: none; }
     .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
@@ -599,8 +582,6 @@
   <section class="hero">
     <div class="hero-glow"></div>
     <div class="wrap hero-inner">
-      <div class="eyebrow"><span class="dot"></span> v2.5.0 · Chrome + Firefox · GPL v3</div>
-
       <h1>The web, <span class="mark">with the noise turned&nbsp;down.</span></h1>
 
       <p class="lede">
@@ -624,10 +605,6 @@
           </svg>
           Clean a URL
         </a>
-      </div>
-
-      <div class="install-meta">
-        <span>Free · GPL v3</span>
       </div>
 
       <div class="bk-slot" aria-live="polite">

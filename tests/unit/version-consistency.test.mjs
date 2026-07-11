@@ -136,13 +136,6 @@ describe("Version consistency — all files must match package.json", () => {
     assert.equal(match[1], VERSION, `landing .ver has "${match[1]}", expected "${VERSION}"`);
   });
 
-  test("landing/index.html hero eyebrow version matches", () => {
-    const html = read("landing/index.html");
-    const match = html.match(/class="dot"><\/span>\s*v(\d+\.\d+\.\d+)\s*·/);
-    assert.ok(match, "landing/index.html hero eyebrow must contain 'vX.Y.Z ·'");
-    assert.equal(match[1], VERSION, `landing eyebrow has "${match[1]}", expected "${VERSION}"`);
-  });
-
   test("landing/index.html footer version matches", () => {
     const html = read("landing/index.html");
     const match = html.match(/<span>v(\d+\.\d+\.\d+)\s*·\s*published/);
