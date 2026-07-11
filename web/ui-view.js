@@ -9,8 +9,12 @@
  * Mirrors the precedent set by src/lib/remote-rules-changelog-view.js.
  *
  * Copy constraints (spec "Copy Style Constraints"): messages never use
- * an em-dash or "--", and never describe injecting an affiliate tag (the
- * web tool is a pure cleaner, Scenario A + preservation only).
+ * an em-dash or "--". MUGA injects its own referral on naked Amazon/eBay
+ * links (web-tool-naked-link-injection slice 2, ADR-1). When it does, this
+ * module surfaces `mugaReferralInjected`, `cleanUrlNoMugaReferral`, and a
+ * disclosure string, so the DOM layer can render the FTC-style notice and
+ * the "Copy without MUGA's referral" opt-out. Any creator/foreign referral
+ * is always preserved and never gets a disclosure (nothing MUGA added).
  */
 
 /**
@@ -24,7 +28,18 @@
  * @property {string|null} destinationHost
  * @property {boolean} affiliatePreserved
  * @property {boolean} noChanges
+ * @property {boolean} mugaReferralInjected
+ * @property {string|null} cleanUrlNoMugaReferral
+ * @property {string|null} disclosure
  */
+
+/**
+ * FTC-style disclosure shown only when MUGA injected its own referral
+ * (design "Copy direction"; maintainer-approved verbatim copy).
+ */
+const REFERRAL_DISCLOSURE =
+  "This link had no referral of its own, so MUGA added one for a selected store " +
+  "to help keep the tool free. Prefer a clean link? Use the button below.";
 
 /**
  * The view shown before the user has cleaned anything yet.
@@ -41,6 +56,9 @@ export function emptyStateView() {
     destinationHost: null,
     affiliatePreserved: false,
     noChanges: false,
+    mugaReferralInjected: false,
+    cleanUrlNoMugaReferral: null,
+    disclosure: null,
   };
 }
 
@@ -119,6 +137,8 @@ export function computeLengthReduction(originalUrl, cleanUrl) {
  *   unwrapped?: boolean,
  *   destinationHost?: string|null,
  *   affiliatePreserved?: boolean,
+ *   mugaReferralInjected?: boolean,
+ *   cleanUrlNoMugaReferral?: string|null,
  *   action?: string,
  *   error?: string,
  * }|null|undefined} result
@@ -139,12 +159,16 @@ export function formatCleanResult(result) {
       destinationHost: null,
       affiliatePreserved: false,
       noChanges: false,
+      mugaReferralInjected: false,
+      cleanUrlNoMugaReferral: null,
+      disclosure: null,
     };
   }
 
   const removedList = Array.isArray(result.removed) ? result.removed : [];
   const unwrapped = !!result.unwrapped;
   const noChanges = removedList.length === 0 && !unwrapped;
+  const mugaReferralInjected = !!result.mugaReferralInjected;
 
   return {
     state: "clean",
@@ -156,5 +180,10 @@ export function formatCleanResult(result) {
     destinationHost: result.destinationHost ?? null,
     affiliatePreserved: !!result.affiliatePreserved,
     noChanges,
+    mugaReferralInjected,
+    cleanUrlNoMugaReferral: mugaReferralInjected && typeof result.cleanUrlNoMugaReferral === "string"
+      ? result.cleanUrlNoMugaReferral
+      : null,
+    disclosure: mugaReferralInjected ? REFERRAL_DISCLOSURE : null,
   };
 }

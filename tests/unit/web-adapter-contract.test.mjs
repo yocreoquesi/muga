@@ -111,6 +111,61 @@ describe("web adapter contract — negative / invalid input handling", () => {
   });
 });
 
+describe("web adapter contract — naked-link MUGA referral injection (web-tool-naked-link-injection)", () => {
+  test("naked Amazon link gets MUGA's own tag; cleanUrlNoMugaReferral is the injection-off rerun", () => {
+    const out = cleanUrl("https://www.amazon.com/dp/B000123456", engine);
+    assert.equal(out.ok, true);
+    assert.equal(out.action, "injected");
+    assert.equal(out.mugaReferralInjected, true);
+    const injected = new URL(out.cleanUrl);
+    assert.equal(injected.searchParams.get("tag"), "muga0b-20");
+    assert.ok(out.cleanUrlNoMugaReferral, "cleanUrlNoMugaReferral must be present when injected");
+    const optOut = new URL(out.cleanUrlNoMugaReferral);
+    assert.equal(optOut.searchParams.has("tag"), false, "opt-out URL must carry no MUGA tag");
+    assert.equal(optOut.pathname, injected.pathname);
+  });
+
+  test("naked eBay link gets MUGA's own referral, same opt-out contract", () => {
+    const out = cleanUrl("https://www.ebay.com/itm/123456789", engine);
+    assert.equal(out.ok, true);
+    assert.equal(out.action, "injected");
+    assert.equal(out.mugaReferralInjected, true);
+    assert.equal(new URL(out.cleanUrl).searchParams.get("campid"), "5339147108");
+    assert.ok(out.cleanUrlNoMugaReferral);
+    assert.equal(new URL(out.cleanUrlNoMugaReferral).searchParams.has("campid"), false);
+  });
+
+  test("existing creator/foreign referral is preserved: no injection, no opt-out URL", () => {
+    const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=somecreator-20", engine);
+    assert.equal(out.ok, true);
+    assert.equal(out.affiliatePreserved, true);
+    assert.equal(out.mugaReferralInjected, false, "MUGA must not add anything when a referral already exists");
+    assert.equal(out.cleanUrlNoMugaReferral, null, "nothing to opt out of when MUGA injected nothing");
+    assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "somecreator-20");
+  });
+
+  test("non-supported program / plain link: no injection, no opt-out URL", () => {
+    const out = cleanUrl("https://example.com/already-clean?id=42", engine);
+    assert.equal(out.ok, true);
+    assert.equal(out.mugaReferralInjected, false);
+    assert.equal(out.cleanUrlNoMugaReferral, null);
+  });
+
+  test("existing fields (removed, unwrapped, affiliatePreserved, action) are unchanged by the new fields", () => {
+    const out = cleanUrl(
+      "https://example.com/shop/item?utm_source=news&utm_medium=email&id=42",
+      engine,
+    );
+    assert.equal(out.ok, true);
+    assert.deepEqual(out.removed.sort(), ["utm_medium", "utm_source"]);
+    assert.equal(out.unwrapped, false);
+    assert.equal(out.affiliatePreserved, false);
+    assert.equal(out.action, "cleaned");
+    assert.equal(out.mugaReferralInjected, false);
+    assert.equal(out.cleanUrlNoMugaReferral, null);
+  });
+});
+
 describe("web adapter contract — domain-rules.json parity", () => {
   test("preserves a domain-rule preserveParams entry that would otherwise be stripped as tracking", () => {
     // web/engine/domain-rules.json (mirrored from src/rules/domain-rules.json)

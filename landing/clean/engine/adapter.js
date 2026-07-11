@@ -56,6 +56,8 @@ function buildFailure(action, error, rawInput) {
     unwrapped: false,
     destinationHost: null,
     affiliatePreserved: false,
+    mugaReferralInjected: false,
+    cleanUrlNoMugaReferral: null,
     action,
     error,
   };
@@ -67,15 +69,22 @@ function buildFailure(action, error, rawInput) {
  * REAL defaults (`engine.PREF_DEFAULTS`) so behavioural defaults never
  * hand-drift from `src/lib/prefs.js`.
  *
+ * `injectOwnAffiliate` is now conditional (design D1, web-tool-naked-link-injection
+ * slice 2, ADR-1): the web tool injects MUGA's own tag on naked Amazon/eBay
+ * links by default so the tool can fund itself, while every other web-tool
+ * policy override (no notify, no honor-creator, no lists) stays in place.
+ * Callers that need the tag-free variant pass `injectMugaReferral: false`.
+ *
  * @param {object} prefDefaults
+ * @param {{ injectMugaReferral?: boolean }} [options]
  * @returns {object}
  */
-function buildPureCleanerPrefs(prefDefaults) {
+function buildPureCleanerPrefs(prefDefaults, { injectMugaReferral = true } = {}) {
   return {
     ...prefDefaults,
     enabled: true,
     onboardingDone: true,
-    injectOwnAffiliate: false,
+    injectOwnAffiliate: injectMugaReferral,
     notifyForeignAffiliate: false,
     honorCreatorMode: false,
     blacklist: [],
@@ -103,6 +112,8 @@ function buildPureCleanerPrefs(prefDefaults) {
  *   unwrapped: boolean,
  *   destinationHost: string|null,
  *   affiliatePreserved: boolean,
+ *   mugaReferralInjected: boolean,
+ *   cleanUrlNoMugaReferral: string|null,
  *   action: string,
  *   error?: string,
  * }}
@@ -151,6 +162,29 @@ export function cleanUrl(input, engine = resolveEngine()) {
 
   const unwrapped = destinationHost !== null && destinationHost !== inputUrl.hostname;
 
+  // mugaReferralInjected (design D2): keyed off action === "injected", NOT
+  // affiliatePreserved. "injected" means MUGA added its own tag; a preserved
+  // creator/foreign referral means nothing MUGA-owned was added. The engine
+  // guard (D4) makes these mutually exclusive.
+  const mugaReferralInjected = result.action === "injected";
+
+  // cleanUrlNoMugaReferral (design D1): re-run the engine with injection OFF
+  // instead of string-stripping the known tag. Single source of truth —
+  // byte-exact to what the engine produces without injection, and this
+  // adapter never has to know MUGA's own param names.
+  let cleanUrlNoMugaReferral = null;
+  if (mugaReferralInjected) {
+    const noInjectPrefs = buildPureCleanerPrefs(engine.PREF_DEFAULTS || {}, { injectMugaReferral: false });
+    try {
+      const noInjectResult = engine.processUrl(input, noInjectPrefs, DOMAIN_RULES);
+      if (noInjectResult && typeof noInjectResult.cleanUrl === "string") {
+        cleanUrlNoMugaReferral = noInjectResult.cleanUrl;
+      }
+    } catch {
+      cleanUrlNoMugaReferral = null;
+    }
+  }
+
   return {
     ok: true,
     cleanUrl: result.cleanUrl,
@@ -158,6 +192,8 @@ export function cleanUrl(input, engine = resolveEngine()) {
     unwrapped,
     destinationHost,
     affiliatePreserved: !!(result.preservedAffiliate || result.creatorReferralPreserved),
+    mugaReferralInjected,
+    cleanUrlNoMugaReferral,
     action: result.action,
   };
 }
