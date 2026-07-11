@@ -170,10 +170,16 @@ describe("Copy style constraints (spec: Copy Style Constraints)", () => {
     );
   });
 
-  test("the zero-request promise still holds after the honest copy rewrite", () => {
+  test("the page keeps truthful, non-eternal privacy signals after the narrative softening", () => {
+    // The eternal local-only promise was intentionally dropped (the product
+    // may add server-side features later). The page still communicates the
+    // present-tense stance, and the behavioral no-fetch guarantee stays
+    // enforced by the "never issue network requests" tests above.
+    assert.ok(/runs right here in the page/i.test(htmlBody), "index.html must state the cleaning runs right here in the page");
+    assert.ok(/no third-party requests/i.test(htmlBody), "index.html must still state there are no third-party requests");
     assert.ok(
-      /entirely in your browser/i.test(htmlBody) || /never contacts a server/i.test(htmlBody),
-      "index.html must still promise nothing about the URL leaves the device",
+      !/entirely in your browser|never contacts a server|nothing about the URL (is|ever) (sent|leaves)/i.test(htmlBody),
+      "index.html must not make an eternal local-only promise",
     );
   });
 });
@@ -211,11 +217,12 @@ describe("sdd/web-cleaning-insight (Slice 1) DOM wiring", () => {
     assert.ok(/unwrapCallout\.hidden/.test(UI_JS), "ui.js must toggle refs.unwrapCallout.hidden based on view.unwrapped");
   });
 
-  test("the rescoped lede and footer contain the exact honest-promise phrasing (design: Copy Rescope)", () => {
+  test("the lede and footer describe the report flow without an eternal local-only promise (design: Copy Rescope + narrative softening)", () => {
     const body = stripStyleBlocks(HTML);
-    assert.ok(body.includes("entirely in your browser"), "lede must state the cleaning happens entirely in your browser");
+    assert.ok(body.includes("runs right here in the page"), "lede must state the cleaning runs right here in the page (present-tense mechanism, not an eternal local promise)");
     assert.ok(body.includes("prefilled GitHub issue"), "lede must describe the report flow as a prefilled GitHub issue");
-    assert.ok(body.includes("Cleaning never contacts a server"), "footer must state cleaning never contacts a server");
+    assert.ok(body.includes("opens GitHub only if you click it"), "footer must state reporting opens GitHub only on click");
+    assert.ok(!/never contacts a server|nothing (about the URL )?ever leaves|entirely in your browser/i.test(body), "copy must not make an eternal local-only promise (product may add server features later)");
   });
 });
 

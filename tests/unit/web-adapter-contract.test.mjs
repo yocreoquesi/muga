@@ -166,6 +166,22 @@ describe("web adapter contract — naked-link MUGA referral injection (web-tool-
   });
 });
 
+describe("web adapter contract — path-strip-rules.json parity", () => {
+  test("strips the Amazon product-name slug (bug: web tool never applied path-strip)", () => {
+    const out = cleanUrl(
+      "https://www.amazon.es/-/en/Sony-MDR-7506-Reduction-Closed-Headphones/dp/B000AJIF4E/?th=1",
+      engine,
+    );
+    assert.equal(out.ok, true);
+    assert.ok(
+      !out.cleanUrl.includes("Sony-MDR-7506"),
+      "the Amazon product-name slug must be stripped from the cleaned URL",
+    );
+    const cleaned = new URL(out.cleanUrl);
+    assert.equal(cleaned.pathname, "/-/en/dp/B000AJIF4E/");
+  });
+});
+
 describe("web adapter contract — domain-rules.json parity", () => {
   test("preserves a domain-rule preserveParams entry that would otherwise be stripped as tracking", () => {
     // web/engine/domain-rules.json (mirrored from src/rules/domain-rules.json)

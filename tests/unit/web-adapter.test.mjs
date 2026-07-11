@@ -13,6 +13,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import { cleanUrl, resolveEngine } from "../../web/engine/adapter.js";
+import { PATH_STRIP_RULES } from "../../web/engine/path-strip-rules.gen.mjs";
 
 const FAKE_PREF_DEFAULTS = {
   enabled: true,
@@ -30,8 +31,8 @@ const FAKE_PREF_DEFAULTS = {
 function makeFakeEngine({ result, throwError, capture } = {}) {
   return {
     PREF_DEFAULTS: FAKE_PREF_DEFAULTS,
-    processUrl(rawUrl, prefs, rules) {
-      if (capture) capture({ rawUrl, prefs, rules });
+    processUrl(rawUrl, prefs, rules, ...rest) {
+      if (capture) capture({ rawUrl, prefs, rules, rest });
       if (throwError) throw throwError;
       return result;
     },
@@ -138,6 +139,35 @@ describe("web adapter — pure-cleaner prefs", () => {
     assert.ok(Array.isArray(captured.rules), "domainRules must be an array");
     assert.ok(captured.rules.length > 0, "domainRules must not be empty");
     assert.ok("domain" in captured.rules[0]);
+  });
+});
+
+describe("web adapter — path-strip rules wiring", () => {
+  test("passes the mirrored path-strip-rules.json as processUrl's 7th argument (pathStripRules)", () => {
+    let captured;
+    const engine = makeFakeEngine({
+      result: {
+        cleanUrl: "https://example.com/",
+        action: "untouched",
+        removedTracking: [],
+        preservedAffiliate: null,
+        creatorReferralPreserved: false,
+      },
+      capture: (args) => { captured = args; },
+    });
+
+    cleanUrl("https://example.com/", engine);
+
+    assert.ok(captured, "processUrl must have been called");
+    // rest = [canonicalBundle, frequencyTracker, referrer, pathStripRules, pathAffiliateRules]
+    assert.equal(captured.rest[0], undefined, "canonicalBundle (4th arg) must stay undefined");
+    assert.equal(captured.rest[1], undefined, "frequencyTracker (5th arg) must stay undefined");
+    assert.equal(captured.rest[2], undefined, "referrer (6th arg) must stay undefined");
+    const pathStripRules = captured.rest[3];
+    assert.ok(Array.isArray(pathStripRules), "pathStripRules (7th arg) must be an array");
+    assert.ok(pathStripRules.length > 0, "pathStripRules must not be empty");
+    assert.deepEqual(pathStripRules, PATH_STRIP_RULES);
+    assert.equal(captured.rest[4], undefined, "pathAffiliateRules (8th arg) must stay unwired");
   });
 });
 
