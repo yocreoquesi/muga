@@ -107,7 +107,10 @@ describe("web adapter — pure-cleaner prefs", () => {
     assert.ok(captured, "processUrl must have been called");
     assert.equal(captured.prefs.enabled, true);
     assert.equal(captured.prefs.onboardingDone, true);
-    assert.equal(captured.prefs.injectOwnAffiliate, false);
+    // injectOwnAffiliate defaults to true for the web tool (design D1,
+    // web-tool-naked-link-injection slice 2): MUGA injects its own referral
+    // on naked Amazon/eBay links by default, disclosed with an opt-out.
+    assert.equal(captured.prefs.injectOwnAffiliate, true);
     assert.equal(captured.prefs.notifyForeignAffiliate, false);
     assert.equal(captured.prefs.honorCreatorMode, false);
     assert.deepEqual(captured.prefs.blacklist, []);

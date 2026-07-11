@@ -173,6 +173,74 @@ describe("formatCleanResult() — success paths", () => {
   });
 });
 
+describe("formatCleanResult() — MUGA referral disclosure and opt-out (web-tool-naked-link-injection)", () => {
+  test("injected result surfaces mugaReferralInjected, the opt-out URL, and a disclosure line", () => {
+    const result = {
+      ok: true,
+      cleanUrl: "https://www.amazon.com/dp/B000123456?tag=muga0b-20",
+      removed: [],
+      unwrapped: false,
+      destinationHost: "amazon.com",
+      affiliatePreserved: false,
+      mugaReferralInjected: true,
+      cleanUrlNoMugaReferral: "https://www.amazon.com/dp/B000123456",
+      action: "injected",
+    };
+    const view = formatCleanResult(result);
+    assert.equal(view.mugaReferralInjected, true);
+    assert.equal(view.cleanUrlNoMugaReferral, "https://www.amazon.com/dp/B000123456");
+    assert.equal(typeof view.disclosure, "string");
+    assert.ok(view.disclosure.length > 0);
+    assert.ok(!view.disclosure.includes("—"), "disclosure must not contain an em-dash");
+    assert.ok(!view.disclosure.includes("--"), "disclosure must not contain \"--\"");
+  });
+
+  test("non-injected result (preserved referral) has no disclosure and no opt-out URL", () => {
+    const result = {
+      ok: true,
+      cleanUrl: "https://amazon.es/dp/B0?tag=creator-20",
+      removed: [],
+      unwrapped: false,
+      destinationHost: "amazon.es",
+      affiliatePreserved: true,
+      mugaReferralInjected: false,
+      cleanUrlNoMugaReferral: null,
+      action: "cleaned",
+    };
+    const view = formatCleanResult(result);
+    assert.equal(view.mugaReferralInjected, false);
+    assert.equal(view.cleanUrlNoMugaReferral, null);
+    assert.equal(view.disclosure, null);
+  });
+
+  test("plain clean result has no disclosure and no opt-out URL", () => {
+    const result = {
+      ok: true,
+      cleanUrl: "https://example.com/already-clean?id=42",
+      removed: [],
+      unwrapped: false,
+      destinationHost: "example.com",
+      affiliatePreserved: false,
+      mugaReferralInjected: false,
+      cleanUrlNoMugaReferral: null,
+      action: "untouched",
+    };
+    const view = formatCleanResult(result);
+    assert.equal(view.disclosure, null);
+    assert.equal(view.cleanUrlNoMugaReferral, null);
+  });
+
+  test("empty and error states carry the same three fields with safe defaults", () => {
+    assert.equal(emptyStateView().mugaReferralInjected, false);
+    assert.equal(emptyStateView().cleanUrlNoMugaReferral, null);
+    assert.equal(emptyStateView().disclosure, null);
+    const errorView = formatCleanResult(null);
+    assert.equal(errorView.mugaReferralInjected, false);
+    assert.equal(errorView.cleanUrlNoMugaReferral, null);
+    assert.equal(errorView.disclosure, null);
+  });
+});
+
 describe("computeLengthReduction() (sdd/web-cleaning-insight, spec Length-reduction bar)", () => {
   test("reports a positive percent and a length-only headline for a shortened URL", () => {
     const original = "https://example.com/shop/item?id=42&utm_source=newsletter&utm_medium=email&fbclid=abc123xyz";

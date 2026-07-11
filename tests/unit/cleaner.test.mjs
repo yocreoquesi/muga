@@ -546,6 +546,45 @@ describe("Scenario B — affiliate injection", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Defensive non-overlap guard (design D4, web-tool-naked-link-injection
+// slice 2): Step 6 generic query-param injection must never fire when a
+// creator/foreign referral has already been preserved for that URL, even
+// if a future host gains BOTH a query-param AFFILIATE_PATTERNS entry and a
+// path-affiliate referral rule. No real host has both today, so this test
+// constructs a synthetic overlap on the fictional shop.test.muga domain.
+// ---------------------------------------------------------------------------
+describe("Defensive non-overlap guard — creatorReferralPreserved blocks Step 6 (D4)", () => {
+  before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
+  after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
+
+  // Synthetic path-affiliate rule that marks /a/{id}/ paths on
+  // shop.test.muga as a preserved creator referral — mirrors the real
+  // Bookshop.org shape but on the same host as TEST_PATTERN's open "aff"
+  // query-param slot, so both guards can be exercised together.
+  const OVERLAP_PATH_RULES = [{
+    domain: "shop.test.muga",
+    referralPaths: ["^\\/a\\/[^/]+\\/"],
+    injectPath: "/never-matches/",
+    injectParam: "affiliate",
+    injectValue: "000000",
+    affiliateIdSource: "MUGA_OWN",
+  }];
+
+  test("creatorReferralPreserved blocks Step 6 injection even with open param slot", () => {
+    const input = "https://shop.test.muga/a/creator123/product";
+    const { action, cleanUrl, creatorReferralPreserved } = processUrl(
+      input,
+      { ...PREFS, injectOwnAffiliate: true },
+      [], undefined, undefined, undefined, [], OVERLAP_PATH_RULES,
+    );
+    assert.equal(creatorReferralPreserved, true, "path rule must mark the referral as preserved");
+    assert.notEqual(action, "injected", "Step 6 must not inject over a preserved creator referral");
+    assert.ok(!new URL(cleanUrl).searchParams.has("aff"), "no MUGA tag must be added to the open param slot");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // Amazon affiliate tags — real tag injection per marketplace
 // ---------------------------------------------------------------------------
 describe("Amazon affiliate tags — real tag injection per marketplace", () => {

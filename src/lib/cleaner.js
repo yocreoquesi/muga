@@ -662,7 +662,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   // Step 6 — Affiliate pipeline (Scenarios B + C + blacklist-value strip)
   const { action: pipeAction, detectedAffiliate, blacklistStripped } =
-    handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname);
+    handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname, creatorReferralPreserved);
 
   // Step 7 — Action resolution + Bookshop injection + recordFrequency + final payload
   /** @type {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} */
@@ -918,9 +918,15 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
  * @param {Array} parsedBlacklist
  * @param {Array} parsedWhitelist
  * @param {string} hostname
+ * @param {boolean} [creatorReferralPreserved=false]
+ *   Defensive non-overlap guard (design D4, web-tool-naked-link-injection
+ *   slice 2): when true, a creator/foreign referral was already preserved
+ *   for this URL (via unwrapAndExtract's path-affiliate policy). Step 6
+ *   generic injection MUST NOT co-tag over it, even if a future host gains
+ *   BOTH a query-param AFFILIATE_PATTERNS entry and a path-affiliate rule.
  * @returns {{ action: "untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number }}
  */
-function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname) {
+function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname, creatorReferralPreserved = false) {
   // Build isWhitelisted closure for this host
   const whitelistedValues = new Set();
   const whitelistedParams = new Set();
@@ -1014,7 +1020,10 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   // stripAll is off, a foreign tag sets action="detected_foreign" and is
   // honored instead. Supersedes the earlier #353 "no injection under
   // strip-all" guard, per maintainer decision: remove theirs, then add ours.
-  if (prefs.injectOwnAffiliate && action !== "detected_foreign" && !blacklistRemovedAffiliate) {
+  // !creatorReferralPreserved (design D4): defensive non-overlap guard —
+  // a preserved creator/foreign referral can never be co-tagged here either,
+  // mirroring the same guard Step 6b already has via the orchestrator.
+  if (prefs.injectOwnAffiliate && action !== "detected_foreign" && !blacklistRemovedAffiliate && !creatorReferralPreserved) {
     const hostKeyInject = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
       const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
