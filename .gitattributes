@@ -21,3 +21,15 @@ web/engine/domain-rules.gen.mjs            text eol=lf
 landing/clean/engine/cleaner-bundle.js     text eol=lf
 landing/clean/engine/domain-rules.json     text eol=lf
 landing/clean/engine/domain-rules.gen.mjs  text eol=lf
+
+# web-cleaning-insight (#1058) generated taxonomy mirrors: same LF discipline
+# so the mirror-drift + deterministic-render tests pass identically on Windows
+# (core.autocrlf=true) and Linux CI, and `npm run build:web` stays idempotent.
+# param-breakdown-view.gen.mjs is a byte-copy of src/lib/param-breakdown-view.js,
+# so BOTH sides of that byte-identity comparison must be pinned (the #991 lesson:
+# pin the source too, or a fresh Windows checkout diverges src=CRLF vs mirror=LF).
+src/lib/param-breakdown-view.js                    text eol=lf
+web/engine/param-categories.gen.mjs                text eol=lf
+web/engine/param-breakdown-view.gen.mjs            text eol=lf
+landing/clean/engine/param-categories.gen.mjs      text eol=lf
+landing/clean/engine/param-breakdown-view.gen.mjs  text eol=lf
