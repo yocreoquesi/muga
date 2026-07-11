@@ -94,7 +94,7 @@
   }
 
   /* ---------- hero ---------- */
-  .hero { position: relative; padding: 72px 0 40px; }
+  .hero { position: relative; padding: 40px 0 40px; }
   .hero-glow {
     position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
     width: 820px; height: 480px;
@@ -110,13 +110,14 @@
   }
   h1 .mark { color: var(--accent-ink); }
   .lede {
-    margin: 0 0 36px;
-    font-size: clamp(16px, 1.9vw, 19px); line-height: 1.6;
-    color: var(--ink-2); max-width: 58ch; text-wrap: pretty;
+    margin: 0 0 32px;
+    font-size: clamp(15px, 1.7vw, 17px); line-height: 1.6;
+    color: var(--ink-2); max-width: 54ch; text-wrap: pretty;
   }
   .lede b { color: var(--ink); font-weight: 600; }
 
   .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 16px; }
+  .install[hidden] { display: none; }
   .btn {
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--accent); color: #fff; text-decoration: none;
@@ -137,9 +138,10 @@
 
 
   .bk-slot {
-    margin-top: 26px;
-    font-family: var(--mono); font-size: 12.5px; color: var(--ink-3);
-    display: inline-flex; align-items: baseline; gap: 8px;
+    margin-top: 20px; padding-top: 16px;
+    border-top: 1px solid var(--rule-soft);
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+    display: flex; align-items: baseline; justify-content: center; gap: 8px;
   }
   .bk-slot .bk-text {
     color: var(--ink-2);
@@ -155,96 +157,43 @@
     background: var(--panel); overflow: hidden;
     box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(168,131,240,.06);
   }
-  .demo-head, .demo-foot {
+  .demo-head {
     display: flex; align-items: center; gap: 14px;
     padding: 12px 16px;
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
     background: var(--bg-2);
+    border-bottom: 1px solid var(--rule-soft);
   }
-  .demo-head { border-bottom: 1px solid var(--rule-soft); }
-  .demo-foot { border-top: 1px solid var(--rule-soft); flex-wrap: wrap; gap: 10px 16px; }
   .demo-head .lights { display: flex; gap: 6px; }
   .demo-head .lights span { width: 10px; height: 10px; border-radius: 999px; background: var(--rule); }
   .demo-head .label { margin-left: auto; }
 
-  .demo-body { padding: 22px; display: grid; gap: 14px; }
-  .url-row { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
-  .url-tag {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--ink-3); text-align: right;
-  }
-  .url-box {
-    text-align: left;
-    font-family: var(--mono); font-size: 13px; line-height: 1.6;
-    background: var(--bg); border: 1px solid var(--rule-soft);
-    border-radius: 10px; padding: 13px 15px;
-    overflow-x: auto; white-space: nowrap;
-  }
-  .url-box.after { border-color: #2E2741; }
-  .url-box::-webkit-scrollbar { height: 6px; }
-  .url-box::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 999px; }
-  .url-box .domain { color: var(--ink); }
-  .url-box .path { color: var(--ink-2); }
-  .url-box .keep {
-    color: var(--good);
-    background: rgba(76,195,138,.1);
-    border: 1px dashed rgba(76,195,138,.4);
-    padding: 1px 5px; border-radius: 5px;
-  }
-  .url-box .junk { color: var(--ink-3); position: relative; }
-  .url-box .junk::after {
-    content: ""; position: absolute; left: 0; right: 100%; top: 50%;
-    height: 1px; background: var(--accent-ink);
-  }
-  .url-box.before .junk { animation: junkFade 9s infinite; }
-  .url-box.before .junk::after { animation: strikeIn 9s infinite; }
-  @keyframes strikeIn { 0% { right: 100%; } 12% { right: 0; } 100% { right: 0; } }
-  @keyframes junkFade { 0% { opacity: .75; } 10% { opacity: .75; } 22% { opacity: .18; } 88% { opacity: .18; } 100% { opacity: .75; } }
-  .url-box.before .junk:nth-of-type(1), .url-box.before .junk:nth-of-type(1)::after { animation-delay: 1.0s; }
-  .url-box.before .junk:nth-of-type(2), .url-box.before .junk:nth-of-type(2)::after { animation-delay: 1.4s; }
-  .url-box.before .junk:nth-of-type(3), .url-box.before .junk:nth-of-type(3)::after { animation-delay: 1.8s; }
-  .url-box.before .junk:nth-of-type(4), .url-box.before .junk:nth-of-type(4)::after { animation-delay: 2.2s; }
-  .url-box.before .junk:nth-of-type(5), .url-box.before .junk:nth-of-type(5)::after { animation-delay: 2.6s; }
-  .url-box.before .junk:nth-of-type(6), .url-box.before .junk:nth-of-type(6)::after { animation-delay: 3.0s; }
-  .url-box.before .junk:nth-of-type(7), .url-box.before .junk:nth-of-type(7)::after { animation-delay: 3.4s; }
   @media (prefers-reduced-motion: reduce) {
-    .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .35; }
-    .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent-ink); }
-    .demo-output, .demo-foot { transition: none; }
     .hero-glow, .cta-glow { animation: none; }
     .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
     .wedge-card .v.strip, .wedge-card .v.strip::after { animation: none !important; }
   }
 
-  .toast {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(76,195,138,.1); color: var(--good);
-    border: 1px solid rgba(76,195,138,.3);
-    padding: 5px 12px; border-radius: 999px; font-size: 11.5px;
-  }
-  .toast::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--good); }
-  .demo-foot .tally { margin-left: auto; }
-
-  /* ---------- demo terminal: inline live tool (progressive enhancement) ----------
-     Clicking "Clean a link now" (#cta-web) hides the static before/after
-     example (#demo-example) and reveals #demo-tool, the FULL /clean tool.
-     The tool is driven by landing/clean/ui.js (the mirror of web/ui.js);
-     the markup and the styles below are kept in sync with web/index.html. */
+  /* ---------- demo terminal: always-visible live tool ----------
+     #demo-tool is the FULL /clean tool, visible from page load and driven by
+     landing/clean/ui.js (the mirror of web/ui.js). The engine bundle and the
+     UI module are loaded lazily on the first interaction with the tool (see
+     the inline bootstrap script near the end of this file); the markup and the
+     styles below are kept in sync with web/index.html. */
   #demo-tool { padding: 22px; }
-  .demo.is-live #demo-example { display: none; }
 
   #demo-tool .field-label {
     display: block; font-family: var(--mono); font-size: 11.5px;
     letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
     margin-bottom: 10px;
   }
-  #demo-tool textarea#url-input {
-    width: 100%; min-height: 84px; resize: vertical;
+  #demo-tool input#url-input {
+    width: 100%; height: 46px;
     font-family: var(--mono); font-size: 14px; color: var(--ink);
     background: var(--bg); border: 1px solid var(--rule-2); border-radius: 10px;
     padding: 12px 14px; line-height: 1.5;
   }
-  #demo-tool textarea#url-input::placeholder { color: var(--ink-3); }
+  #demo-tool input#url-input::placeholder { color: var(--ink-3); }
   #demo-tool .tool-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
   #demo-tool .tool-result { margin-top: 18px; }
   #demo-tool .result-message { font-size: 14.5px; color: var(--ink-2); margin: 0 0 14px; }
@@ -599,56 +548,24 @@
           <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-firefox"/></svg>
           Add to Firefox
         </a>
-        <a class="btn ghost" id="cta-web" href="https://muga.app/clean">
-          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-            <path d="M9 15l6-6M8.5 9.5H7a4 4 0 100 8h1.5M15.5 14.5H17a4 4 0 100-8h-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          </svg>
-          Clean a URL
-        </a>
       </div>
 
-      <div class="bk-slot" aria-live="polite">
-        <span>muga ≈</span>
-        <span class="bk-text" id="bk">Making URLs Good Again.</span>
-      </div>
-
-      <!-- live demo terminal. Static by default; with JS, clicking "Clean a
-           link now" (#cta-web) morphs it in place into a working mini-cleaner
-           (see the inline script near the end of this file). -->
-      <div class="demo" id="demo" aria-label="Before and after URL cleaning" style="width:100%;">
+      <!-- Live tool terminal. The FULL /clean tool (#demo-tool) is visible from
+           page load, driven by the REAL controller (landing/clean/ui.js, the
+           mirror of web/ui.js) with ZERO cleaning logic duplicated here. The
+           engine bundle and the UI module load lazily on the first interaction
+           with the tool (see the bootstrap script near the end of this file).
+           Keep the ID list below in sync with web/ui.js init() bindings; this
+           markup and its styles are kept in sync with web/index.html. -->
+      <div class="demo" id="demo" aria-label="MUGA URL cleaner" style="width:100%;">
         <div class="demo-head">
           <div class="lights"><span></span><span></span><span></span></div>
-          <span class="label" id="demo-label">muga · live · before / after</span>
-        </div>
-        <!-- Static before/after illustration. Shown until the live tool
-             morphs in; hidden under .demo.is-live (see the CSS above). -->
-        <div id="demo-example">
-          <div class="demo-body">
-            <div class="demo-output" id="demo-output" aria-live="polite">
-              <div class="url-row">
-                <span class="url-tag">Before</span>
-                <div class="url-box before" id="demo-before"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;ref=creator</span></div>
-              </div>
-              <div class="url-row">
-                <span class="url-tag">After</span>
-                <div class="url-box after" id="demo-after"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345</span><span class="keep">?ref=creator</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="demo-foot" id="demo-foot" aria-live="polite">
-            <span class="toast" id="demo-toast">Creator referral preserved · ref=creator</span>
-            <span class="tally" id="demo-tally">7 noise patterns quieted · 1 referral kept</span>
-          </div>
+          <span class="label">muga · clean</span>
         </div>
 
-        <!-- Live tool: the FULL /clean tool, driven by the REAL controller
-             (landing/clean/ui.js, the mirror of web/ui.js) with ZERO cleaning
-             logic duplicated here. Hidden until #cta-web is clicked.
-             Keep the ID list below in sync with web/ui.js init() bindings;
-             this markup and its styles are kept in sync with web/index.html. -->
-        <div id="demo-tool" hidden>
+        <div id="demo-tool">
           <label class="field-label" for="url-input">URL to clean</label>
-          <textarea id="url-input" placeholder="https://example.com/page?utm_source=newsletter&#38;fbclid=abc123" spellcheck="false" autocomplete="off"></textarea>
+          <input type="url" id="url-input" placeholder="https://example.com/page?utm_source=newsletter&#38;fbclid=abc123" spellcheck="false" autocomplete="off">
           <div class="tool-actions">
             <button type="button" class="btn" id="clean-btn">Clean this URL</button>
           </div>
@@ -693,6 +610,11 @@
                 fine sharing them publicly.
               </p>
             </div>
+          </div>
+
+          <div class="bk-slot" aria-live="polite">
+            <span>muga ≈</span>
+            <span class="bk-text" id="bk">Making URLs Good Again.</span>
           </div>
         </div>
       </div>
@@ -887,7 +809,7 @@
         <ul>
           <li><a href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Chrome Web Store</a></li>
           <li><a href="https://addons.mozilla.org/firefox/addon/muga/">Firefox Add-ons</a></li>
-          <li><a href="https://muga.app/clean">MUGA Clean (web)</a></li>
+          <li><a href="https://muga.app/clean">MUGA URL Cleaner</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -948,31 +870,42 @@
 
     var chrome = document.getElementById('cta-chrome');
     var firefox = document.getElementById('cta-firefox');
-    var web = document.getElementById('cta-web');
     var youPlat;
 
     function hide(el) { if (el) el.hidden = true; }
     function primary(el) { if (el) el.className = 'btn'; }
-    function secondary(el) { if (el) el.className = 'btn ghost'; }
 
     if (isFirefox) {
-      // Firefox on desktop or Android — the extension installs on both. Lead
-      // with Firefox plus the web tool; Chrome's button is not relevant here.
+      // Firefox on desktop or Android: the extension installs on both. Lead
+      // with Firefox; Chrome's button is not relevant here. The badge still
+      // resolves to the Firefox card in the "three ways" grid below.
       hide(chrome);
-      primary(firefox); secondary(web);
+      primary(firefox);
       youPlat = 'firefox';
     } else if (isMobile) {
       // iOS, Chrome for Android, other mobile browsers: no installable
-      // extension here, so the web tool is the only thing to lead with.
+      // extension here, so the install row has nothing to lead with. The
+      // always-visible tool below is the call to action, and the badge points
+      // at the web card in the "three ways" grid.
       hide(chrome); hide(firefox);
-      primary(web);
       youPlat = 'web';
     } else {
-      // Desktop Chromium: lead with Chrome plus the web tool; Firefox's button
-      // is not relevant up top (it still lives in the "three ways" grid).
+      // Desktop Chromium: lead with Chrome; Firefox's button is not relevant
+      // up top (it still lives in the "three ways" grid).
       hide(firefox);
-      primary(chrome); secondary(web);
+      primary(chrome);
       youPlat = 'chrome';
+    }
+
+    // If platform detection hid every install button (mobile with no
+    // installable extension), collapse the empty row so it leaves no gap.
+    var install = document.getElementById('hero-install');
+    if (install) {
+      var anyVisible = Array.prototype.some.call(
+        install.querySelectorAll('.btn'),
+        function (b) { return !b.hidden; }
+      );
+      if (!anyVisible) install.hidden = true;
     }
 
     var card = document.querySelector('.way[data-plat="' + youPlat + '"]');
@@ -985,43 +918,30 @@
     }
   })();
 
-  // Inline morph: clicking "Clean a link now" (#cta-web) replaces the static
-  // before/after illustration (#demo-example) with the FULL /clean tool
-  // (#demo-tool), driven by the SAME controller as muga.app/clean
-  // (landing/clean/ui.js, the mirror of web/ui.js) with ZERO cleaning logic
-  // duplicated here. Progressive enhancement only: the anchor keeps its
-  // href="https://muga.app/clean" for no-JS visitors, and neither the engine
-  // bundle nor the UI module is fetched on page load, only on the first
-  // click, same-origin, lazily, once, and cached.
+  // Lazy tool bootstrap: the FULL /clean tool (#demo-tool) is visible from
+  // page load, but nothing is fetched until the visitor actually engages it.
+  // On the first focusin of the URL input OR the first pointerdown inside the
+  // tool, startTool() injects the same-origin engine bundle, imports the real
+  // /clean controller (landing/clean/ui.js, the mirror of web/ui.js) and calls
+  // its idempotent init(). Loaded once, cached; the bootstrap listeners are
+  // then removed so ui.js's own bound handlers take over. If the initiating
+  // interaction was the Clean button, the clean is replayed once after init()
+  // so an eager first click is not lost.
   //
   // Security (AGENTS.md): addEventListener only, no inline handlers. All
   // result rendering lives in landing/clean/ui.js, which itself renders every
   // user-controlled string via textContent/createElement, never innerHTML.
   (function () {
-    var ctaWeb = document.getElementById('cta-web');
-    var demo = document.getElementById('demo');
-    if (!ctaWeb || !demo) return;
-
-    var demoLabel = document.getElementById('demo-label');
-    var example = document.getElementById('demo-example');
     var tool = document.getElementById('demo-tool');
+    if (!tool) return;
     var toolInput = document.getElementById('url-input');
-    if (!example || !tool) return;
 
-    var isLive = false;
     var toolPromise = null;
-
-    function reducedMotion() {
-      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    }
-
-    function focusInput() {
-      window.setTimeout(function () { if (toolInput) toolInput.focus(); }, 0);
-    }
+    var pendingClean = false;
 
     // Degrades gracefully if the engine bundle or UI module fails to load.
-    // There is no separate full-tool page to fall back to anymore, so the
-    // message just states the tool is unavailable and to try again.
+    // There is no separate full-tool page to fall back to, so the message just
+    // states the tool is unavailable and to try again.
     function showUnavailable() {
       var message = document.getElementById('result-message');
       if (!message) return;
@@ -1032,10 +952,10 @@
     }
 
     // Loads the engine bundle (same-origin), then the real /clean UI module,
-    // and initializes it against the injected #demo-tool markup. Lazy, once,
-    // cached. Never called on page load. On failure the cached promise is
-    // dropped so a later click can retry the load.
-    function loadTool() {
+    // and initializes it against the #demo-tool markup. Lazy, once, cached.
+    // Never called on page load. On failure the cached promise is dropped so a
+    // later interaction can retry the load.
+    function startTool() {
       if (toolPromise) return toolPromise;
       toolPromise = new Promise(function (resolve, reject) {
         var script = document.createElement('script');
@@ -1053,33 +973,56 @@
       return toolPromise;
     }
 
-    function enterLiveMode() {
-      if (!isLive) {
-        isLive = true;
-        if (demoLabel) demoLabel.textContent = 'muga · clean · try it';
-        tool.hidden = false;
-        var reveal = function () { demo.classList.add('is-live'); };
-        if (reducedMotion() || !window.requestAnimationFrame) reveal();
-        else window.requestAnimationFrame(reveal);
-
-        var rect = demo.getBoundingClientRect();
-        if (rect.top < 0 || rect.bottom > window.innerHeight) {
-          try {
-            demo.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
-          } catch (e) {
-            demo.scrollIntoView();
-          }
-        }
+    // One-time bootstrap. Fires on the first focusin (focusin bubbles, so the
+    // container catches the input) or the first pointerdown inside the tool.
+    // Listeners are removed only once the tool has loaded successfully, so
+    // ui.js's bound handlers take over; if the load fails it re-arms so a
+    // later interaction can retry (startTool drops the cached promise on error).
+    var toolStarted = false;
+    function bootstrap(event) {
+      if (toolStarted) return;
+      toolStarted = true;
+      // If the visitor pressed Clean before the tool finished loading, mark it
+      // so the clean runs once after ui.init() binds the real handler.
+      if (event && event.type === 'pointerdown' && event.target &&
+          event.target.closest && event.target.closest('#clean-btn')) {
+        pendingClean = true;
       }
-      // Load (or retry) the real tool, then focus the input. A second click
-      // while already live returns the cached promise, so it just refocuses.
-      loadTool().then(focusInput).catch(showUnavailable);
+      startTool().then(function () {
+        tool.removeEventListener('focusin', bootstrap);
+        tool.removeEventListener('pointerdown', bootstrap);
+        if (pendingClean) {
+          pendingClean = false;
+          // The native pointerdown fired before init() bound anything, so this
+          // click runs ONLY ui.js's bound handler: exactly one clean.
+          var btn = document.getElementById('clean-btn');
+          if (btn) btn.click();
+        }
+      }).catch(function () {
+        // Load failed: re-arm so the next interaction retries the load.
+        toolStarted = false;
+        showUnavailable();
+      });
     }
 
-    ctaWeb.addEventListener('click', function (event) {
-      event.preventDefault();
-      enterLiveMode();
-    });
+    tool.addEventListener('focusin', bootstrap);
+    tool.addEventListener('pointerdown', bootstrap);
+
+    // Single-line input: Enter triggers Clean, matching the button. Landing-
+    // only; web/ui.js (shared with /clean) is untouched. Focusing the input to
+    // type already fired the bootstrap, so the tool is loaded (or loading) by
+    // the time Enter is pressed.
+    if (toolInput) {
+      toolInput.addEventListener('keydown', function (e) {
+        // Plain Enter only: ui.js already handles Ctrl/Cmd+Enter, so guarding
+        // the modifiers here avoids cleaning twice on the same keypress.
+        if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          var btn = document.getElementById('clean-btn');
+          if (btn) btn.click();
+        }
+      });
+    }
   })();
 
   // Console easter egg
