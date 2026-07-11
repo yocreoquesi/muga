@@ -139,6 +139,10 @@
   .btn .ico { flex: none; }
   .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); box-shadow: none; }
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); color: var(--ink); }
+  /* .btn sets display:inline-flex, which would otherwise override the UA
+     [hidden] rule and leave a hidden button (e.g. the demo tool's
+     copy-no-referral-btn) visible. Restore hidden semantics explicitly. */
+  .btn[hidden] { display: none; }
   .btn.bare { background: transparent; color: var(--ink-2); font-weight: 500; box-shadow: none; padding: 14px 20px; }
   .btn.bare:hover { background: transparent; color: var(--ink); transform: none; }
 
@@ -618,9 +622,8 @@
           <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
             <path d="M9 15l6-6M8.5 9.5H7a4 4 0 100 8h1.5M15.5 14.5H17a4 4 0 100-8h-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
-          Clean a link now
+          Clean a URL
         </a>
-        <a class="btn bare" id="cta-all-ways" href="#get" hidden>See all ways to install →</a>
       </div>
 
       <div class="install-meta">
@@ -969,7 +972,6 @@
     var chrome = document.getElementById('cta-chrome');
     var firefox = document.getElementById('cta-firefox');
     var web = document.getElementById('cta-web');
-    var allWays = document.getElementById('cta-all-ways');
     var youPlat;
 
     function hide(el) { if (el) el.hidden = true; }
@@ -987,7 +989,6 @@
       // extension here, so the web tool is the only thing to lead with.
       hide(chrome); hide(firefox);
       primary(web);
-      if (allWays) allWays.hidden = false;
       youPlat = 'web';
     } else {
       // Desktop Chromium: lead with Chrome plus the web tool; Firefox's button

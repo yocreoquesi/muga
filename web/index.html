@@ -99,6 +99,10 @@
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
   .btn:disabled:hover { background: var(--panel-2); }
+  /* .btn sets display:inline-flex, which would otherwise override the UA
+     [hidden] rule and leave a hidden button (e.g. copy-no-referral-btn)
+     visible. Restore hidden semantics explicitly. */
+  .btn[hidden] { display: none; }
 
   .result-panel { border-color: var(--rule-2); }
   .result-message { font-size: 14.5px; color: var(--ink-2); margin: 0 0 14px; }

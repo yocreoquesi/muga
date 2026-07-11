@@ -256,6 +256,19 @@ describe("MUGA referral opt-out and disclosure (web-tool-naked-link-injection)",
     // compute affiliate/injection eligibility itself.
     assert.ok(!/action\s*===\s*["']injected["']/.test(code), "ui.js must not re-derive injection eligibility itself");
   });
+
+  test("CSS restores [hidden] semantics for .btn so the opt-out button actually hides", () => {
+    // Regression guard: `.btn { display: inline-flex }` overrides the UA
+    // `[hidden] { display: none }` rule, so a hidden .btn (copy-no-referral-btn)
+    // would stay visible. The stylesheet must neutralize this explicitly.
+    const styleMatch = HTML.match(/<style[\s\S]*?<\/style>/i);
+    assert.ok(styleMatch, "index.html must have a <style> block");
+    const css = styleMatch[0];
+    assert.ok(
+      /\.btn\[hidden\]\s*\{[^}]*display:\s*none/i.test(css) || /(^|[^-\w])\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i.test(css),
+      "CSS must hide a hidden .btn (e.g. `.btn[hidden] { display: none }`) so copy-no-referral-btn does not show while hidden",
+    );
+  });
 });
 
 describe("Bootstrap: on-demand init export + guarded auto-boot", () => {

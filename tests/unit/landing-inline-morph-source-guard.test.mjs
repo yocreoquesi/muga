@@ -177,6 +177,18 @@ describe("landing inline morph — hosts the real controller's full markup", () 
     assert.ok(HTML.includes('id="copy-no-referral-btn"'), "#copy-no-referral-btn (copy without MUGA referral) must exist");
     assert.ok(HTML.includes('id="referral-disclosure"'), "#referral-disclosure must exist");
   });
+
+  test("CSS restores [hidden] semantics for .btn so the opt-out button hides when not injected", () => {
+    // Regression guard for the live bug: `.btn { display: inline-flex }`
+    // overrides the UA `[hidden]` rule, so copy-no-referral-btn stayed visible
+    // even when hidden. The landing stylesheet must neutralize this.
+    const styleMatch = HTML.match(/<style[\s\S]*?<\/style>/i);
+    assert.ok(styleMatch, "landing/index.html must have a <style> block");
+    assert.ok(
+      /\.btn\[hidden\]\s*\{[^}]*display:\s*none/i.test(styleMatch[0]),
+      "landing CSS must include `.btn[hidden] { display: none }` so the hidden opt-out button does not show",
+    );
+  });
 });
 
 describe("landing inline morph — security (AGENTS.md)", () => {
