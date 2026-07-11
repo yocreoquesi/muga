@@ -72,13 +72,7 @@ function render(refs, view, originalUrl) {
   const showTransparency = view.state === "clean" && !view.noChanges;
   refs.transparency.classList.toggle("visible", showTransparency);
 
-  clearChildren(refs.removedList);
   refs.removedBlock.hidden = view.removedList.length === 0;
-  for (const paramName of view.removedList) {
-    const li = document.createElement("li");
-    li.textContent = paramName;
-    refs.removedList.appendChild(li);
-  }
 
   clearChildren(refs.paramInsight);
   if (hasCleanUrl) {
@@ -138,7 +132,6 @@ function init() {
     urlBox: document.getElementById("result-url-box"),
     transparency: document.getElementById("transparency"),
     removedBlock: document.getElementById("removed-block"),
-    removedList: document.getElementById("removed-list"),
     paramInsight: document.getElementById("param-insight"),
     lengthBar: document.getElementById("length-bar"),
     lengthBarHeadline: document.getElementById("length-bar-headline"),
