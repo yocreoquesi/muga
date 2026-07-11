@@ -12,7 +12,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import { emptyStateView, formatCleanResult } from "../../web/ui-view.js";
+import { computeLengthReduction, emptyStateView, formatCleanResult } from "../../web/ui-view.js";
 
 describe("emptyStateView()", () => {
   test("returns the initial empty state with no result yet", () => {
@@ -170,6 +170,34 @@ describe("formatCleanResult() — success paths", () => {
     const view = formatCleanResult(result);
     assert.deepEqual(view.removedList, []);
     assert.equal(view.removedCount, 0);
+  });
+});
+
+describe("computeLengthReduction() (sdd/web-cleaning-insight, spec Length-reduction bar)", () => {
+  test("reports a positive percent and a length-only headline for a shortened URL", () => {
+    const original = "https://example.com/shop/item?id=42&utm_source=newsletter&utm_medium=email&fbclid=abc123xyz";
+    const clean = "https://example.com/shop/item?id=42";
+    const view = computeLengthReduction(original, clean);
+    assert.ok(view.shorterPercent > 0, "shorterPercent must be greater than 0");
+    assert.equal(view.label, `This link is ${view.shorterPercent}% shorter`);
+    assert.equal(view.isClean, false);
+  });
+
+  test("shows the already-clean label and no percent when nothing was removed", () => {
+    const url = "https://example.com/already-clean?id=42";
+    const view = computeLengthReduction(url, url);
+    assert.equal(view.isClean, true);
+    assert.equal(view.shorterPercent, 0);
+    assert.equal(view.label, "Already clean, nothing to remove");
+  });
+
+  test("never renders 0% while a real (if tiny) reduction happened", () => {
+    const original = "a".repeat(1000) + "x";
+    const clean = "a".repeat(1000);
+    const view = computeLengthReduction(original, clean);
+    assert.equal(view.removedLen, 1);
+    assert.equal(view.isClean, false);
+    assert.ok(view.shorterPercent > 0, "shorterPercent must never be 0 when removedLen > 0");
   });
 });
 

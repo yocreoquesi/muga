@@ -15,11 +15,39 @@
  */
 
 import { cleanUrl } from "./engine/adapter.js";
-import { emptyStateView, formatCleanResult } from "./ui-view.js";
+import { computeLengthReduction, emptyStateView, formatCleanResult } from "./ui-view.js";
+import { buildParamInsight } from "./param-insight.js";
+import { buildReportUrl } from "./report-link.js";
 
 /** Removes all child nodes without ever assigning innerHTML with dynamic data. */
 function clearChildren(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+/** Builds one param-insight breakdown row (category label, params, and
+ * optional why-description) via createElement only. */
+function buildInsightRow(group) {
+  const rowEl = document.createElement("div");
+  rowEl.className = "breakdown-row";
+
+  const catEl = document.createElement("span");
+  catEl.className = "breakdown-cat";
+  catEl.textContent = group.label;
+  rowEl.appendChild(catEl);
+
+  const paramsEl = document.createElement("span");
+  paramsEl.className = "breakdown-params";
+  paramsEl.textContent = group.params.join(", ");
+  rowEl.appendChild(paramsEl);
+
+  if (group.description) {
+    const descEl = document.createElement("span");
+    descEl.className = "breakdown-desc";
+    descEl.textContent = group.description;
+    rowEl.appendChild(descEl);
+  }
+
+  return rowEl;
 }
 
 /**
@@ -27,8 +55,10 @@ function clearChildren(el) {
  *
  * @param {object} refs DOM element references (see init()).
  * @param {import("./ui-view.js").CleanResultView} view
+ * @param {string} originalUrl The raw text the user pasted, used for the
+ *   length-reduction bar and the report link (adapter never echoes it back).
  */
-function render(refs, view) {
+function render(refs, view, originalUrl) {
   refs.message.textContent = view.message;
   refs.message.classList.remove("is-error", "is-clean");
   if (view.state === "error") refs.message.classList.add("is-error");
@@ -42,16 +72,30 @@ function render(refs, view) {
   const showTransparency = view.state === "clean" && !view.noChanges;
   refs.transparency.classList.toggle("visible", showTransparency);
 
-  clearChildren(refs.removedList);
   refs.removedBlock.hidden = view.removedList.length === 0;
-  for (const paramName of view.removedList) {
-    const li = document.createElement("li");
-    li.textContent = paramName;
-    refs.removedList.appendChild(li);
+
+  clearChildren(refs.paramInsight);
+  if (hasCleanUrl) {
+    for (const group of buildParamInsight(view.removedList)) {
+      refs.paramInsight.appendChild(buildInsightRow(group));
+    }
   }
 
-  if (view.unwrapped && view.destinationHost) {
-    refs.destinationLine.hidden = false;
+  if (hasCleanUrl) {
+    const lengthView = computeLengthReduction(originalUrl, view.cleanUrl);
+    refs.lengthBar.hidden = false;
+    refs.lengthBarHeadline.textContent = lengthView.label;
+    const totalLen = lengthView.keptLen + lengthView.removedLen;
+    const removedShare = totalLen === 0 ? 0 : (lengthView.removedLen / totalLen) * 100;
+    refs.lengthBarKept.style.width = `${100 - removedShare}%`;
+    refs.lengthBarRemoved.style.width = `${removedShare}%`;
+  } else {
+    refs.lengthBar.hidden = true;
+    refs.lengthBarHeadline.textContent = "";
+  }
+
+  if (hasCleanUrl && view.unwrapped && view.destinationHost) {
+    refs.unwrapCallout.hidden = false;
     clearChildren(refs.destinationLine);
     refs.destinationLine.appendChild(document.createTextNode("Real destination: "));
     const hostEl = document.createElement("span");
@@ -59,8 +103,22 @@ function render(refs, view) {
     hostEl.textContent = view.destinationHost;
     refs.destinationLine.appendChild(hostEl);
   } else {
-    refs.destinationLine.hidden = true;
+    refs.unwrapCallout.hidden = true;
     clearChildren(refs.destinationLine);
+  }
+
+  if (hasCleanUrl) {
+    refs.reportBlock.hidden = false;
+    refs.reportLink.href = buildReportUrl({
+      originalUrl,
+      cleanUrl: view.cleanUrl,
+      removed: view.removedList,
+      unwrapped: view.unwrapped,
+      destinationHost: view.destinationHost,
+    });
+  } else {
+    refs.reportBlock.hidden = true;
+    refs.reportLink.href = "#";
   }
 }
 
@@ -74,18 +132,26 @@ function init() {
     urlBox: document.getElementById("result-url-box"),
     transparency: document.getElementById("transparency"),
     removedBlock: document.getElementById("removed-block"),
-    removedList: document.getElementById("removed-list"),
+    paramInsight: document.getElementById("param-insight"),
+    lengthBar: document.getElementById("length-bar"),
+    lengthBarHeadline: document.getElementById("length-bar-headline"),
+    lengthBarKept: document.getElementById("length-bar-kept"),
+    lengthBarRemoved: document.getElementById("length-bar-removed"),
+    unwrapCallout: document.getElementById("unwrap-callout"),
     destinationLine: document.getElementById("destination-line"),
+    reportBlock: document.getElementById("report-block"),
+    reportLink: document.getElementById("report-link"),
   };
 
   let lastCleanUrl = null;
 
-  render(refs, emptyStateView());
+  render(refs, emptyStateView(), "");
 
   function runClean() {
-    const result = cleanUrl(refs.input.value);
+    const originalUrl = refs.input.value;
+    const result = cleanUrl(originalUrl);
     lastCleanUrl = result && result.ok && typeof result.cleanUrl === "string" ? result.cleanUrl : null;
-    render(refs, formatCleanResult(result));
+    render(refs, formatCleanResult(result), originalUrl);
   }
 
   refs.cleanBtn.addEventListener("click", runClean);

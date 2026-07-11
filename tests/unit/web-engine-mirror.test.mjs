@@ -24,10 +24,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
-import { renderDomainRulesModule } from "../../tools/build-web.mjs";
+import { renderDomainRulesModule, renderParamCategoriesModule } from "../../tools/build-web.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
@@ -67,5 +67,51 @@ test("landing/clean/engine/domain-rules.gen.mjs is byte-identical to web/engine/
   assert.ok(
     source.equals(mirror),
     "landing/clean/engine/domain-rules.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("landing/clean/engine/param-categories.gen.mjs is byte-identical to web/engine/param-categories.gen.mjs", () => {
+  const source = readFileSync(join(ROOT, "web/engine/param-categories.gen.mjs"));
+  const mirror = readFileSync(join(ROOT, "landing/clean/engine/param-categories.gen.mjs"));
+  assert.ok(
+    source.equals(mirror),
+    "landing/clean/engine/param-categories.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("landing/clean/engine/param-breakdown-view.gen.mjs is byte-identical to web/engine/param-breakdown-view.gen.mjs", () => {
+  const source = readFileSync(join(ROOT, "web/engine/param-breakdown-view.gen.mjs"));
+  const mirror = readFileSync(join(ROOT, "landing/clean/engine/param-breakdown-view.gen.mjs"));
+  assert.ok(
+    source.equals(mirror),
+    "landing/clean/engine/param-breakdown-view.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("web/engine/param-categories.gen.mjs matches the deterministic rendering of TRACKING_PARAM_CATEGORIES", async () => {
+  const { TRACKING_PARAM_CATEGORIES } = await import(pathToFileURL(join(ROOT, "src/lib/affiliates-data.js")).href);
+  const expected = renderParamCategoriesModule(TRACKING_PARAM_CATEGORIES);
+  const actual = readFileSync(join(ROOT, "web/engine/param-categories.gen.mjs"), "utf8");
+  assert.equal(
+    actual,
+    expected,
+    "web/engine/param-categories.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("web/engine/param-breakdown-view.gen.mjs is byte-identical to src/lib/param-breakdown-view.js", () => {
+  const source = readFileSync(join(ROOT, "src/lib/param-breakdown-view.js"));
+  const mirror = readFileSync(join(ROOT, "web/engine/param-breakdown-view.gen.mjs"));
+  assert.ok(
+    source.equals(mirror),
+    "web/engine/param-breakdown-view.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("web/engine/param-breakdown-view.gen.mjs has zero import statements (self-contained mirror)", () => {
+  const mirror = readFileSync(join(ROOT, "web/engine/param-breakdown-view.gen.mjs"), "utf8");
+  assert.ok(
+    !/^\s*import /m.test(mirror),
+    "web/engine/param-breakdown-view.gen.mjs must stay import-free — it is byte-copied verbatim, so its source (src/lib/param-breakdown-view.js) must never gain an import either",
   );
 });

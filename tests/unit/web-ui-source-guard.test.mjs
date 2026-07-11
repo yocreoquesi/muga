@@ -22,6 +22,8 @@ const ROOT = join(__dirname, "..", "..");
 const HTML = readFileSync(join(ROOT, "web/index.html"), "utf8");
 const UI_JS = readFileSync(join(ROOT, "web/ui.js"), "utf8");
 const UI_VIEW_JS = readFileSync(join(ROOT, "web/ui-view.js"), "utf8");
+const PARAM_INSIGHT_JS = readFileSync(join(ROOT, "web/param-insight.js"), "utf8");
+const REPORT_LINK_JS = readFileSync(join(ROOT, "web/report-link.js"), "utf8");
 
 /** Strips <style>...</style> blocks, whose CSS custom properties (--bg,
  * --accent, ...) legitimately contain "--" and would otherwise false-
@@ -67,6 +69,20 @@ describe("Security boundary (spec: Security Boundary)", () => {
       assert.ok(!text.includes("fetch("), `${label} must not call fetch( — nothing about the URL may leave the device`);
       assert.ok(!text.includes("XMLHttpRequest"), `${label} must not use XMLHttpRequest`);
     }
+  });
+
+  test("web/param-insight.js and web/report-link.js never issue network requests (spec: Report flow is user-initiated navigation, not an auto request)", () => {
+    for (const [label, text] of [["param-insight.js", PARAM_INSIGHT_JS], ["report-link.js", REPORT_LINK_JS]]) {
+      assert.ok(!text.includes("fetch("), `${label} must not call fetch(`);
+      assert.ok(!text.includes("XMLHttpRequest"), `${label} must not use XMLHttpRequest`);
+    }
+  });
+
+  test("the report control is a user-initiated anchor navigation, not an auto request", () => {
+    const reportLinkMatch = HTML.match(/<a[^>]*id\s*=\s*["']report-link["'][^>]*>/i);
+    assert.ok(reportLinkMatch, "a #report-link anchor must exist");
+    assert.ok(/target\s*=\s*["']_blank["']/.test(reportLinkMatch[0]), "#report-link must open in a new tab (target=\"_blank\")");
+    assert.ok(/rel\s*=\s*["'][^"']*noopener/.test(reportLinkMatch[0]), "#report-link must set rel=\"noopener\" for a target=_blank anchor");
   });
 
   test("web/index.html loads only same-origin scripts", () => {
@@ -122,6 +138,19 @@ describe("Copy style constraints (spec: Copy Style Constraints)", () => {
     }
   });
 
+  test("web/param-insight.js and web/report-link.js user-facing strings have no em-dash", () => {
+    // Doc comments legitimately use em-dashes elsewhere in the repo; strip
+    // them the same way UI_JS/UI_VIEW_JS are scanned by stripping only
+    // string-literal risk is out of scope here — these two modules carry
+    // no user-facing copy at all besides the "Other" label and report body
+    // text, both plain ASCII, so a raw scan is sufficient and won't
+    // false-positive on doc comments containing an em-dash.
+    for (const [label, text] of [["param-insight.js", stripJsComments(PARAM_INSIGHT_JS)], ["report-link.js", stripJsComments(REPORT_LINK_JS)]]) {
+      assert.ok(!text.includes("—"), `${label} code (excluding doc comments) must not contain an em-dash (—)`);
+      assert.ok(!text.includes("--"), `${label} code (excluding doc comments) must not contain "--"`);
+    }
+  });
+
   test("the URL-cleaning purpose is explicit in the page copy", () => {
     assert.ok(/clean/i.test(htmlBody), "page copy must reference cleaning");
     assert.ok(/tracking/i.test(htmlBody), "page copy must reference tracking parameters");
@@ -133,6 +162,47 @@ describe("Copy style constraints (spec: Copy Style Constraints)", () => {
       !/inject/i.test(stripJsComments(UI_JS) + stripJsComments(UI_VIEW_JS)),
       "ui.js/ui-view.js code (excluding developer doc comments) must never mention injecting an affiliate tag",
     );
+  });
+});
+
+describe("sdd/web-cleaning-insight (Slice 1) DOM wiring", () => {
+  test("copy sits by the result, not inside the input panel (spec: Copy button placement)", () => {
+    const inputPanelMatch = HTML.match(/<section class="panel" aria-labelledby="input-heading">[\s\S]*?<\/section>/);
+    assert.ok(inputPanelMatch, "the input panel section must exist");
+    assert.ok(
+      !/id\s*=\s*["']copy-btn["']/.test(inputPanelMatch[0]),
+      "copy-btn must not exist inside the input panel's .actions block",
+    );
+
+    const resultUrlRowIndex = HTML.indexOf('id="result-url-row"');
+    const copyBtnIndex = HTML.indexOf('id="copy-btn"');
+    assert.ok(resultUrlRowIndex !== -1 && copyBtnIndex !== -1, "both #result-url-row and #copy-btn must exist");
+    assert.ok(copyBtnIndex > resultUrlRowIndex, "copy-btn must be adjacent to/after #result-url-row");
+
+    const resultUrlRowBlock = HTML.slice(resultUrlRowIndex, resultUrlRowIndex + 600);
+    assert.ok(resultUrlRowBlock.includes('id="copy-btn"'), "copy-btn must sit inside/adjacent to the #result-url-row block");
+  });
+
+  test("the unwrap callout is a structurally distinct container from the length-reduction bar", () => {
+    assert.ok(HTML.includes('id="length-bar"'), "a #length-bar container must exist");
+    assert.ok(HTML.includes('id="unwrap-callout"'), "a #unwrap-callout container must exist");
+    const lengthBarMatch = HTML.match(/<div class="length-bar" id="length-bar"[^>]*>[\s\S]*?<\/div>\s*<\/div>/);
+    assert.ok(lengthBarMatch, "the #length-bar block must be extractable");
+    assert.ok(
+      !lengthBarMatch[0].includes('id="unwrap-callout"'),
+      "#unwrap-callout must not be nested inside #length-bar (spec: callout is separate from the bar)",
+    );
+  });
+
+  test("ui.js gates the unwrap callout on view.unwrapped", () => {
+    assert.ok(/unwrapCallout\.hidden/.test(UI_JS), "ui.js must toggle refs.unwrapCallout.hidden based on view.unwrapped");
+  });
+
+  test("the rescoped lede and footer contain the exact honest-promise phrasing (design: Copy Rescope)", () => {
+    const body = stripStyleBlocks(HTML);
+    assert.ok(body.includes("entirely in your browser"), "lede must state the cleaning happens entirely in your browser");
+    assert.ok(body.includes("prefilled GitHub issue"), "lede must describe the report flow as a prefilled GitHub issue");
+    assert.ok(body.includes("Cleaning never contacts a server"), "footer must state cleaning never contacts a server");
   });
 });
 
