@@ -50,6 +50,7 @@
     --accent-ink: #A883F0;
     --accent-soft: #C9B2F5;
     --good: #4CC38A;
+    --bad: #E0665C;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --maxw: 1120px;
@@ -222,6 +223,7 @@
     .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .35; }
     .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent-ink); }
     .eyebrow .dot { animation: none; }
+    .demo-live-row, .demo-output, .demo-foot { transition: none; }
   }
 
   .toast {
@@ -232,6 +234,55 @@
   }
   .toast::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--good); }
   .demo-foot .tally { margin-left: auto; }
+
+  /* ---------- demo terminal: inline morph (JS-only, progressive enhancement) ---------- */
+  .demo-live-row {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    gap: 10px;
+    align-items: center;
+    transition: max-height .32s ease, opacity .28s ease;
+  }
+  .demo.is-live .demo-live-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    max-height: 90px;
+    opacity: 1;
+    margin-bottom: 4px;
+  }
+  .demo-input {
+    font-family: var(--mono); font-size: 13px; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
+    padding: 11px 13px; width: 100%; min-width: 0;
+  }
+  .demo-input::placeholder { color: var(--ink-3); }
+  .demo-clean-btn { padding: 11px 18px; font-size: 13.5px; border-radius: 10px; box-shadow: none; white-space: nowrap; }
+
+  .demo-output, .demo-foot { transition: opacity .25s ease; }
+  .demo.is-example .demo-output, .demo.is-example .demo-foot { opacity: .55; }
+
+  .demo.is-live .url-box.before .junk,
+  .demo.is-live .url-box.before .junk::after { animation: none; }
+  .demo.is-live .url-box.before .junk {
+    opacity: .55; text-decoration: line-through; text-decoration-color: var(--accent-ink);
+  }
+
+  .url-after-wrap { display: flex; align-items: center; gap: 10px; }
+  .url-after-wrap .url-box.after { flex: 1; min-width: 0; }
+  .demo-copy-btn {
+    flex: none; font-family: var(--sans); font-weight: 600; font-size: 12.5px;
+    color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule-2);
+    border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    transition: border-color .14s ease, background .14s ease;
+  }
+  .demo-copy-btn:hover { border-color: var(--accent); background: var(--panel-2); }
+
+  .url-box .error-text { color: var(--bad); }
+
+  .demo-destination { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+  .demo-open-full { font-family: var(--mono); font-size: 11.5px; color: var(--accent-soft); text-decoration: none; }
+  .demo-open-full:hover { color: #E4D8FA; text-decoration: underline; }
 
   /* ---------- stats ---------- */
   .stats { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
@@ -522,25 +573,38 @@
         <span class="bk-text" id="bk">Making URLs Good Again.</span>
       </div>
 
-      <!-- live demo terminal -->
-      <div class="demo" aria-label="Before and after URL cleaning" style="width:100%;">
+      <!-- live demo terminal. Static by default; with JS, clicking "Clean a
+           link now" (#cta-web) morphs it in place into a working mini-cleaner
+           (see the inline script near the end of this file). -->
+      <div class="demo" id="demo" aria-label="Before and after URL cleaning" style="width:100%;">
         <div class="demo-head">
           <div class="lights"><span></span><span></span><span></span></div>
-          <span class="label">muga · live · before / after</span>
+          <span class="label" id="demo-label">muga · live · before / after</span>
         </div>
         <div class="demo-body">
-          <div class="url-row">
-            <span class="url-tag">Before</span>
-            <div class="url-box before"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;ref=creator</span></div>
+          <div class="demo-live-row" id="demo-live-row" hidden>
+            <input type="url" id="hero-clean-input" class="demo-input" placeholder="https://example.com/p?utm_source=..." autocomplete="off" spellcheck="false">
+            <button type="button" id="hero-clean-btn" class="btn demo-clean-btn">Clean</button>
           </div>
-          <div class="url-row">
-            <span class="url-tag">After</span>
-            <div class="url-box after"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345</span><span class="keep">?ref=creator</span></div>
+          <div class="demo-output" id="demo-output" aria-live="polite">
+            <div class="url-row">
+              <span class="url-tag">Before</span>
+              <div class="url-box before" id="demo-before"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;ref=creator</span></div>
+            </div>
+            <div class="url-row">
+              <span class="url-tag">After</span>
+              <div class="url-after-wrap">
+                <div class="url-box after" id="demo-after"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345</span><span class="keep">?ref=creator</span></div>
+                <button type="button" class="demo-copy-btn" id="demo-copy-btn" hidden>Copy</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="demo-foot">
-          <span class="toast">Creator referral preserved · ref=creator</span>
-          <span class="tally">7 noise patterns quieted · 1 referral kept</span>
+        <div class="demo-foot" id="demo-foot" aria-live="polite">
+          <span class="toast" id="demo-toast">Creator referral preserved · ref=creator</span>
+          <span class="demo-destination" id="demo-destination" hidden></span>
+          <span class="tally" id="demo-tally">7 noise patterns quieted · 1 referral kept</span>
+          <a class="demo-open-full" id="demo-open-full" href="https://muga.app/clean" hidden target="_blank" rel="noopener">Open the full tool →</a>
         </div>
       </div>
     </div>
@@ -832,6 +896,227 @@
       badge.textContent = 'Best for your browser';
       card.appendChild(badge);
     }
+  })();
+
+  // Inline morph: clicking "Clean a link now" (#cta-web) turns the static
+  // demo terminal into a live, working mini-cleaner instead of navigating
+  // away. Progressive enhancement only: the anchor keeps its
+  // href="https://muga.app/clean" for no-JS visitors, and the cleaning
+  // engine is never fetched on page load, only on the first actual clean
+  // action (Clean button / Enter), same-origin, lazily, once, and cached.
+  //
+  // Security (AGENTS.md): addEventListener only, no inline handlers, the
+  // pasted URL is untrusted and is rendered via textContent/createElement
+  // only, never innerHTML with dynamic data.
+  (function () {
+    var ctaWeb = document.getElementById('cta-web');
+    var demo = document.getElementById('demo');
+    if (!ctaWeb || !demo) return;
+
+    var demoLabel = document.getElementById('demo-label');
+    var liveRow = document.getElementById('demo-live-row');
+    var input = document.getElementById('hero-clean-input');
+    var cleanBtn = document.getElementById('hero-clean-btn');
+    var beforeBox = document.getElementById('demo-before');
+    var afterBox = document.getElementById('demo-after');
+    var copyBtn = document.getElementById('demo-copy-btn');
+    var toastEl = document.getElementById('demo-toast');
+    var tallyEl = document.getElementById('demo-tally');
+    var destinationEl = document.getElementById('demo-destination');
+    var openFullLink = document.getElementById('demo-open-full');
+
+    var isLive = false;
+    var enginePromise = null;
+    var lastCleanUrl = null;
+
+    function reducedMotion() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    function clearChildren(el) {
+      while (el.firstChild) el.removeChild(el.firstChild);
+    }
+
+    function textSpan(className, text) {
+      var span = document.createElement('span');
+      span.className = className;
+      span.textContent = text;
+      return span;
+    }
+
+    // Loads the cleaning engine same-origin, exactly once, lazily. Never
+    // called on page load. Falls back to the full tool link on any failure.
+    function loadEngine() {
+      if (enginePromise) return enginePromise;
+      enginePromise = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = './clean/engine/cleaner-bundle.js';
+        script.onload = function () {
+          import('./clean/engine/adapter.js').then(resolve, reject);
+        };
+        script.onerror = function () { reject(new Error('engine-load-failed')); };
+        document.body.appendChild(script);
+      });
+      // Drop the cached rejection on failure so a later click can retry the
+      // load instead of being stuck on the fallback for the rest of the session.
+      enginePromise.catch(function () { enginePromise = null; });
+      return enginePromise;
+    }
+
+    function enterLiveMode() {
+      if (isLive) { input.focus(); return; }
+      isLive = true;
+      demoLabel.textContent = 'muga · clean · try it';
+      liveRow.hidden = false;
+      openFullLink.hidden = false;
+      demo.classList.add('is-example');
+      var reveal = function () { demo.classList.add('is-live'); };
+      if (reducedMotion() || !window.requestAnimationFrame) reveal();
+      else window.requestAnimationFrame(reveal);
+
+      var rect = demo.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        try {
+          demo.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+        } catch (e) {
+          demo.scrollIntoView();
+        }
+      }
+      window.setTimeout(function () { input.focus(); }, 0);
+    }
+
+    // Renders the original pasted URL, striking through the params the
+    // engine actually removed. Best-effort: if the input doesn't parse as a
+    // URL (shouldn't happen once the adapter has validated it), it just
+    // shows the raw text.
+    function renderBefore(box, rawUrl, removed) {
+      clearChildren(box);
+      var parsed;
+      try { parsed = new URL(rawUrl); } catch (e) {
+        box.appendChild(textSpan('domain', rawUrl));
+        return;
+      }
+      box.appendChild(textSpan('domain', parsed.hostname));
+      box.appendChild(textSpan('path', parsed.pathname + (parsed.search ? '?' : '')));
+      if (parsed.search) {
+        var pairs = parsed.search.slice(1).split('&');
+        for (var i = 0; i < pairs.length; i++) {
+          var prefix = i === 0 ? '' : '&';
+          var key = pairs[i].split('=')[0];
+          var isJunk = removed.indexOf(key) !== -1;
+          box.appendChild(textSpan(isJunk ? 'junk' : 'keep', prefix + pairs[i]));
+        }
+      }
+    }
+
+    function renderAfter(box, cleanUrlStr) {
+      clearChildren(box);
+      var parsed;
+      try { parsed = new URL(cleanUrlStr); } catch (e) {
+        box.appendChild(textSpan('domain', cleanUrlStr));
+        return;
+      }
+      box.appendChild(textSpan('domain', parsed.hostname));
+      box.appendChild(textSpan('path', parsed.pathname));
+      if (parsed.search) box.appendChild(textSpan('keep', parsed.search));
+    }
+
+    function renderError(message) {
+      clearChildren(afterBox);
+      afterBox.appendChild(textSpan('error-text', message));
+      copyBtn.hidden = true;
+      lastCleanUrl = null;
+      toastEl.hidden = true;
+      destinationEl.hidden = true;
+      clearChildren(destinationEl);
+      tallyEl.textContent = '';
+      demo.classList.remove('is-example');
+    }
+
+    function renderResult(originalUrl, result) {
+      if (!result || !result.ok) {
+        renderBefore(beforeBox, originalUrl, []);
+        // Invalid-input errors from the adapter are already user-friendly;
+        // internal "error" tokens (engine-unavailable, processing-failed) are
+        // not, so they get a friendly fallback instead of leaking a code.
+        var message = (result && result.action === 'error')
+          ? 'Could not clean that link here. Open the full tool to try again.'
+          : ((result && result.error) || 'Could not clean that URL.');
+        renderError(message);
+        return;
+      }
+      var removedParams = Array.isArray(result.removed) ? result.removed : [];
+      renderBefore(beforeBox, originalUrl, removedParams);
+      renderAfter(afterBox, result.cleanUrl);
+      lastCleanUrl = result.cleanUrl;
+      copyBtn.hidden = false;
+
+      // The engine only tells us a referral was preserved, not which one, so
+      // the live toast stays generic and honest (the static example can name
+      // ref=creator because it is an illustration, not a real result).
+      if (result.affiliatePreserved) {
+        toastEl.textContent = 'Referral preserved';
+        toastEl.hidden = false;
+      } else {
+        toastEl.hidden = true;
+      }
+
+      if (result.unwrapped && result.destinationHost) {
+        clearChildren(destinationEl);
+        destinationEl.appendChild(document.createTextNode('Real destination: ' + result.destinationHost));
+        destinationEl.hidden = false;
+      } else {
+        destinationEl.hidden = true;
+        clearChildren(destinationEl);
+      }
+
+      var kept = result.affiliatePreserved ? 1 : 0;
+      tallyEl.textContent = removedParams.length + ' noise patterns quieted · ' + kept + ' referral kept';
+      demo.classList.remove('is-example');
+    }
+
+    function runClean() {
+      var value = input.value.trim();
+      if (!value) { input.focus(); return; }
+      var originalLabel = cleanBtn.textContent;
+      cleanBtn.disabled = true;
+      cleanBtn.textContent = 'Cleaning';
+      loadEngine().then(function (mod) {
+        cleanBtn.disabled = false;
+        cleanBtn.textContent = originalLabel;
+        var result = mod.cleanUrl(value);
+        renderResult(value, result);
+      }).catch(function () {
+        cleanBtn.disabled = false;
+        cleanBtn.textContent = originalLabel;
+        renderError('Could not load the cleaner here. Use the full tool below instead.');
+      });
+    }
+
+    ctaWeb.addEventListener('click', function (event) {
+      event.preventDefault();
+      enterLiveMode();
+    });
+
+    cleanBtn.addEventListener('click', runClean);
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        runClean();
+      }
+    });
+
+    copyBtn.addEventListener('click', function () {
+      if (!lastCleanUrl) return;
+      var originalLabel = copyBtn.textContent;
+      navigator.clipboard.writeText(lastCleanUrl).then(function () {
+        copyBtn.textContent = 'Copied';
+        window.setTimeout(function () { copyBtn.textContent = originalLabel; }, 1200);
+      }).catch(function () {
+        copyBtn.textContent = 'Copy failed';
+        window.setTimeout(function () { copyBtn.textContent = originalLabel; }, 1200);
+      });
+    });
   })();
 
   // Console easter egg
