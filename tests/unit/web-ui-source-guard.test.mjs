@@ -243,9 +243,12 @@ describe("MUGA referral opt-out and disclosure (web-tool-naked-link-injection)",
     assert.ok(HTML.includes('id="referral-disclosure"'), "a #referral-disclosure element must exist");
   });
 
-  test("ui.js toggles #copy-no-referral-btn on view.mugaReferralInjected and copies cleanUrlNoMugaReferral", () => {
+  test("ui.js toggles #copy-no-referral-btn on view.mugaReferralPresent and copies cleanUrlNoMugaReferral", () => {
     const code = stripJsComments(UI_JS);
-    assert.ok(/mugaReferralInjected/.test(code), "ui.js must reference view.mugaReferralInjected");
+    // The opt-out must show whenever OUR referral is present in the output
+    // (injected this run OR already on the pasted link), not only when we
+    // injected it — so the gate is mugaReferralPresent, not mugaReferralInjected.
+    assert.ok(/mugaReferralPresent/.test(code), "ui.js must reference view.mugaReferralPresent");
     assert.ok(/cleanUrlNoMugaReferral/.test(code), "ui.js must reference view.cleanUrlNoMugaReferral");
   });
 

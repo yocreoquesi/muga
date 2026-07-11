@@ -29,17 +29,26 @@
  * @property {boolean} affiliatePreserved
  * @property {boolean} noChanges
  * @property {boolean} mugaReferralInjected
+ * @property {boolean} mugaReferralPresent
  * @property {string|null} cleanUrlNoMugaReferral
  * @property {string|null} disclosure
  */
 
 /**
- * FTC-style disclosure shown only when MUGA injected its own referral
- * (design "Copy direction"; maintainer-approved verbatim copy).
+ * FTC-style disclosures shown when the cleaned URL carries MUGA's own
+ * referral. Two variants (maintainer-approved verbatim copy):
+ *  - INJECTED: MUGA added its tag to a link that had none this run.
+ *  - PRESENT:  the pasted link already carried MUGA's tag (re-cleaned).
+ * Both point at the opt-out without a directional phrase ("below"/"above"),
+ * because the opt-out button sits ABOVE this text in the DOM.
  */
-const REFERRAL_DISCLOSURE =
+const REFERRAL_DISCLOSURE_INJECTED =
   "This link had no referral of its own, so MUGA added one for a selected store " +
-  "to help keep the tool free. Prefer a clean link? Use the button below.";
+  "to help keep the tool free. Prefer a clean link? You can copy one without it too.";
+
+const REFERRAL_DISCLOSURE_PRESENT =
+  "This link already carries MUGA's referral, which helps keep the tool free. " +
+  "Prefer a clean link? You can copy one without it too.";
 
 /**
  * The view shown before the user has cleaned anything yet.
@@ -57,6 +66,7 @@ export function emptyStateView() {
     affiliatePreserved: false,
     noChanges: false,
     mugaReferralInjected: false,
+    mugaReferralPresent: false,
     cleanUrlNoMugaReferral: null,
     disclosure: null,
   };
@@ -138,6 +148,7 @@ export function computeLengthReduction(originalUrl, cleanUrl) {
  *   destinationHost?: string|null,
  *   affiliatePreserved?: boolean,
  *   mugaReferralInjected?: boolean,
+ *   mugaReferralPresent?: boolean,
  *   cleanUrlNoMugaReferral?: string|null,
  *   action?: string,
  *   error?: string,
@@ -160,6 +171,7 @@ export function formatCleanResult(result) {
       affiliatePreserved: false,
       noChanges: false,
       mugaReferralInjected: false,
+      mugaReferralPresent: false,
       cleanUrlNoMugaReferral: null,
       disclosure: null,
     };
@@ -169,6 +181,9 @@ export function formatCleanResult(result) {
   const unwrapped = !!result.unwrapped;
   const noChanges = removedList.length === 0 && !unwrapped;
   const mugaReferralInjected = !!result.mugaReferralInjected;
+  // A just-injected referral is always present in the output too, so treat
+  // "injected" as a superset of "present" even if the adapter only set one.
+  const mugaReferralPresent = !!result.mugaReferralPresent || mugaReferralInjected;
 
   return {
     state: "clean",
@@ -181,9 +196,14 @@ export function formatCleanResult(result) {
     affiliatePreserved: !!result.affiliatePreserved,
     noChanges,
     mugaReferralInjected,
-    cleanUrlNoMugaReferral: mugaReferralInjected && typeof result.cleanUrlNoMugaReferral === "string"
+    mugaReferralPresent,
+    cleanUrlNoMugaReferral: mugaReferralPresent && typeof result.cleanUrlNoMugaReferral === "string"
       ? result.cleanUrlNoMugaReferral
       : null,
-    disclosure: mugaReferralInjected ? REFERRAL_DISCLOSURE : null,
+    // Wording follows how the referral got there: added this run vs already
+    // on the pasted link. Both only show when our referral is present.
+    disclosure: mugaReferralInjected
+      ? REFERRAL_DISCLOSURE_INJECTED
+      : (mugaReferralPresent ? REFERRAL_DISCLOSURE_PRESENT : null),
   };
 }
