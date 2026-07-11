@@ -125,6 +125,22 @@ describe("web adapter contract — naked-link MUGA referral injection (web-tool-
     assert.equal(optOut.pathname, injected.pathname);
   });
 
+  test("naked Amazon link WITH a product-name slug strips the slug in BOTH the injected and opt-out URLs", () => {
+    const out = cleanUrl("https://www.amazon.es/-/en/Sony-MDR-7506-Reduction-Closed-Headphones/dp/B000AJIF4E", engine);
+    assert.equal(out.ok, true);
+    assert.equal(out.mugaReferralInjected, true);
+    assert.ok(!out.cleanUrl.includes("Sony-MDR-7506"), "injected URL must strip the Amazon slug");
+    assert.ok(out.cleanUrlNoMugaReferral, "opt-out URL must be present when injected");
+    // Regression guard: the injection-off rerun once omitted path-strip, so
+    // the opt-out URL kept the slug the injected URL had already dropped.
+    assert.ok(!out.cleanUrlNoMugaReferral.includes("Sony-MDR-7506"), "opt-out URL must also strip the Amazon slug");
+    assert.equal(
+      new URL(out.cleanUrlNoMugaReferral).pathname,
+      new URL(out.cleanUrl).pathname,
+      "opt-out and injected URLs must share the same slug-stripped pathname",
+    );
+  });
+
   test("naked eBay link gets MUGA's own referral, same opt-out contract", () => {
     const out = cleanUrl("https://www.ebay.com/itm/123456789", engine);
     assert.equal(out.ok, true);

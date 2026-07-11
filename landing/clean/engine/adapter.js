@@ -184,7 +184,7 @@ export function cleanUrl(input, engine = resolveEngine()) {
   if (mugaReferralInjected) {
     const noInjectPrefs = buildPureCleanerPrefs(engine.PREF_DEFAULTS || {}, { injectMugaReferral: false });
     try {
-      const noInjectResult = engine.processUrl(input, noInjectPrefs, DOMAIN_RULES);
+      const noInjectResult = engine.processUrl(input, noInjectPrefs, DOMAIN_RULES, undefined, undefined, undefined, PATH_STRIP_RULES);
       if (noInjectResult && typeof noInjectResult.cleanUrl === "string") {
         cleanUrlNoMugaReferral = noInjectResult.cleanUrl;
       }
