@@ -198,11 +198,12 @@ describe("sdd/web-cleaning-insight (Slice 1) DOM wiring", () => {
     assert.ok(/unwrapCallout\.hidden/.test(UI_JS), "ui.js must toggle refs.unwrapCallout.hidden based on view.unwrapped");
   });
 
-  test("the rescoped lede and footer contain the exact honest-promise phrasing (design: Copy Rescope)", () => {
+  test("the lede and footer describe the report flow without an eternal local-only promise (design: Copy Rescope + narrative softening)", () => {
     const body = stripStyleBlocks(HTML);
-    assert.ok(body.includes("entirely in your browser"), "lede must state the cleaning happens entirely in your browser");
+    assert.ok(body.includes("runs right here in the page"), "lede must state the cleaning runs right here in the page (present-tense mechanism, not an eternal local promise)");
     assert.ok(body.includes("prefilled GitHub issue"), "lede must describe the report flow as a prefilled GitHub issue");
-    assert.ok(body.includes("Cleaning never contacts a server"), "footer must state cleaning never contacts a server");
+    assert.ok(body.includes("opens GitHub only if you click it"), "footer must state reporting opens GitHub only on click");
+    assert.ok(!/never contacts a server|nothing (about the URL )?ever leaves|entirely in your browser/i.test(body), "copy must not make an eternal local-only promise (product may add server features later)");
   });
 });
 
