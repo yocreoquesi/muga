@@ -22,6 +22,16 @@ landing/clean/engine/cleaner-bundle.js     text eol=lf
 landing/clean/engine/domain-rules.json     text eol=lf
 landing/clean/engine/domain-rules.gen.mjs  text eol=lf
 
+# web-tool Amazon path-strip wiring fix: same LF discipline for the new
+# path-strip-rules mirrors (see build-web.mjs's header comment for why
+# they exist), so mirror-drift tests pass identically on Windows
+# (core.autocrlf=true) and Linux CI.
+src/rules/path-strip-rules.json                text eol=lf
+web/engine/path-strip-rules.json               text eol=lf
+web/engine/path-strip-rules.gen.mjs            text eol=lf
+landing/clean/engine/path-strip-rules.json     text eol=lf
+landing/clean/engine/path-strip-rules.gen.mjs  text eol=lf
+
 # web-cleaning-insight (#1058) generated taxonomy mirrors: same LF discipline
 # so the mirror-drift + deterministic-render tests pass identically on Windows
 # (core.autocrlf=true) and Linux CI, and `npm run build:web` stays idempotent.

@@ -27,7 +27,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
-import { renderDomainRulesModule, renderParamCategoriesModule } from "../../tools/build-web.mjs";
+import {
+  renderDomainRulesModule,
+  renderParamCategoriesModule,
+  renderPathStripRulesModule,
+} from "../../tools/build-web.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
@@ -113,5 +117,43 @@ test("web/engine/param-breakdown-view.gen.mjs has zero import statements (self-c
   assert.ok(
     !/^\s*import /m.test(mirror),
     "web/engine/param-breakdown-view.gen.mjs must stay import-free — it is byte-copied verbatim, so its source (src/lib/param-breakdown-view.js) must never gain an import either",
+  );
+});
+
+test("web/engine/path-strip-rules.json is byte-identical to src/rules/path-strip-rules.json", () => {
+  const source = readFileSync(join(ROOT, "src/rules/path-strip-rules.json"));
+  const mirror = readFileSync(join(ROOT, "web/engine/path-strip-rules.json"));
+  assert.ok(
+    source.equals(mirror),
+    "web/engine/path-strip-rules.json is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("web/engine/path-strip-rules.gen.mjs matches the deterministic rendering of src/rules/path-strip-rules.json", () => {
+  const pathStripRules = JSON.parse(readFileSync(join(ROOT, "src/rules/path-strip-rules.json"), "utf8"));
+  const expected = renderPathStripRulesModule(pathStripRules);
+  const actual = readFileSync(join(ROOT, "web/engine/path-strip-rules.gen.mjs"), "utf8");
+  assert.equal(
+    actual,
+    expected,
+    "web/engine/path-strip-rules.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("landing/clean/engine/path-strip-rules.json is byte-identical to web/engine/path-strip-rules.json", () => {
+  const source = readFileSync(join(ROOT, "web/engine/path-strip-rules.json"));
+  const mirror = readFileSync(join(ROOT, "landing/clean/engine/path-strip-rules.json"));
+  assert.ok(
+    source.equals(mirror),
+    "landing/clean/engine/path-strip-rules.json is out of sync — run 'npm run build:web' and commit the result",
+  );
+});
+
+test("landing/clean/engine/path-strip-rules.gen.mjs is byte-identical to web/engine/path-strip-rules.gen.mjs", () => {
+  const source = readFileSync(join(ROOT, "web/engine/path-strip-rules.gen.mjs"));
+  const mirror = readFileSync(join(ROOT, "landing/clean/engine/path-strip-rules.gen.mjs"));
+  assert.ok(
+    source.equals(mirror),
+    "landing/clean/engine/path-strip-rules.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
   );
 });

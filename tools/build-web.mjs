@@ -10,6 +10,17 @@
  *   4. src/lib/param-breakdown-view.js   -> web/engine/param-breakdown-view.gen.mjs
  *   5. src/lib/affiliates-data.js's
  *      TRACKING_PARAM_CATEGORIES         -> web/engine/param-categories.gen.mjs
+ *   6. src/rules/path-strip-rules.json   -> web/engine/path-strip-rules.json
+ *   7. src/rules/path-strip-rules.json   -> web/engine/path-strip-rules.gen.mjs
+ *
+ * (6) and (7) fix a bug where the web tool never applied Amazon-style
+ * path-strip (product-name slug removal): web/engine/adapter.js called
+ * processUrl() without a pathStripRules argument, so it silently
+ * defaulted to `[]`. They follow the exact (2)/(3) pattern (a byte-copy
+ * JSON mirror plus a named-export ES module mirror, `PATH_STRIP_RULES`),
+ * for the same import-attribute-compat reason (3) exists. Only
+ * pathStripRules is wired this way; pathAffiliateRules (processUrl's 8th
+ * argument) is deliberately out of scope here and stays deferred.
  *
  * (4) and (5), added for the web-cleaning-insight slice (Slice 1), let
  * web/param-insight.js build the same per-parameter what/why breakdown
@@ -59,6 +70,7 @@ const ROOT = join(__dir, "..");
 const SRC_BUNDLE = join(ROOT, "src/content/cleaner-bundle.js");
 const SRC_DOMAIN_RULES = join(ROOT, "src/rules/domain-rules.json");
 const SRC_PARAM_BREAKDOWN_VIEW = join(ROOT, "src/lib/param-breakdown-view.js");
+const SRC_PATH_STRIP_RULES = join(ROOT, "src/rules/path-strip-rules.json");
 
 const WEB_DIR = join(ROOT, "web");
 const WEB_ENGINE_DIR = join(WEB_DIR, "engine");
@@ -67,6 +79,8 @@ const WEB_DOMAIN_RULES = join(WEB_ENGINE_DIR, "domain-rules.json");
 const WEB_DOMAIN_RULES_MODULE = join(WEB_ENGINE_DIR, "domain-rules.gen.mjs");
 const WEB_PARAM_BREAKDOWN_VIEW_MODULE = join(WEB_ENGINE_DIR, "param-breakdown-view.gen.mjs");
 const WEB_PARAM_CATEGORIES_MODULE = join(WEB_ENGINE_DIR, "param-categories.gen.mjs");
+const WEB_PATH_STRIP_RULES = join(WEB_ENGINE_DIR, "path-strip-rules.json");
+const WEB_PATH_STRIP_RULES_MODULE = join(WEB_ENGINE_DIR, "path-strip-rules.gen.mjs");
 
 const LANDING_CLEAN_DIR = join(ROOT, "landing/clean");
 
@@ -123,16 +137,46 @@ export function renderParamCategoriesModule(categories) {
   );
 }
 
+/**
+ * Renders `web/engine/path-strip-rules.gen.mjs`'s deterministic content
+ * from the parsed path-strip rules array. Exported so tests can
+ * regenerate the expected content and byte-compare it against the
+ * committed file, mirroring `renderDomainRulesModule`'s drift-gate
+ * pattern.
+ *
+ * @param {Array<object>} pathStripRules Parsed src/rules/path-strip-rules.json.
+ * @returns {string} Full file contents, including the DO NOT EDIT header.
+ */
+export function renderPathStripRulesModule(pathStripRules) {
+  return (
+    "/** MUGA: Generated ES module mirror of src/rules/path-strip-rules.json.\n" +
+    " *\n" +
+    " * A plain named-export copy of the path-strip rules used by\n" +
+    " * web/engine/adapter.js, so the web tool can `import { PATH_STRIP_RULES }\n" +
+    " * from \"./path-strip-rules.gen.mjs\"` instead of a JSON module import with\n" +
+    " * an import attribute, which has limited support in older browsers.\n" +
+    " *\n" +
+    " * DO NOT EDIT BY HAND. Regenerate via `npm run build:web`\n" +
+    " * (tools/build-web.mjs), sourced from src/rules/path-strip-rules.json.\n" +
+    " */\n" +
+    `export const PATH_STRIP_RULES = ${JSON.stringify(pathStripRules, null, 2)};\n`
+  );
+}
+
 function main() {
   mkdirSync(WEB_ENGINE_DIR, { recursive: true });
 
   copyFileSync(SRC_BUNDLE, WEB_BUNDLE);
   copyFileSync(SRC_DOMAIN_RULES, WEB_DOMAIN_RULES);
   copyFileSync(SRC_PARAM_BREAKDOWN_VIEW, WEB_PARAM_BREAKDOWN_VIEW_MODULE);
+  copyFileSync(SRC_PATH_STRIP_RULES, WEB_PATH_STRIP_RULES);
 
   const domainRules = JSON.parse(readFileSync(SRC_DOMAIN_RULES, "utf8"));
   writeFileSync(WEB_DOMAIN_RULES_MODULE, renderDomainRulesModule(domainRules));
   writeFileSync(WEB_PARAM_CATEGORIES_MODULE, renderParamCategoriesModule(TRACKING_PARAM_CATEGORIES));
+
+  const pathStripRules = JSON.parse(readFileSync(SRC_PATH_STRIP_RULES, "utf8"));
+  writeFileSync(WEB_PATH_STRIP_RULES_MODULE, renderPathStripRulesModule(pathStripRules));
 
   // Mirror the whole authored+vendored web/ tree into landing/clean/ so
   // relative asset paths (./engine/cleaner-bundle.js, ./adapter.js, ...)
@@ -144,6 +188,8 @@ function main() {
   console.log(`[muga]                            ${WEB_DOMAIN_RULES_MODULE}`);
   console.log(`[muga]                            ${WEB_PARAM_BREAKDOWN_VIEW_MODULE}`);
   console.log(`[muga]                            ${WEB_PARAM_CATEGORIES_MODULE}`);
+  console.log(`[muga]                            ${WEB_PATH_STRIP_RULES}`);
+  console.log(`[muga]                            ${WEB_PATH_STRIP_RULES_MODULE}`);
   console.log(`[muga] landing mirror written: ${LANDING_CLEAN_DIR}`);
 }
 
