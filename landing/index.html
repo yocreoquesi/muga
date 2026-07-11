@@ -94,7 +94,7 @@
   }
 
   /* ---------- hero ---------- */
-  .hero { position: relative; padding: 72px 0 40px; }
+  .hero { position: relative; padding: 40px 0 40px; }
   .hero-glow {
     position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
     width: 820px; height: 480px;
@@ -102,17 +102,6 @@
     pointer-events: none;
   }
   .hero-inner { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
-  .eyebrow {
-    display: inline-flex; align-items: center; gap: 9px;
-    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
-    border: 1px solid var(--rule); background: var(--panel);
-    border-radius: 999px; padding: 6px 14px; margin-bottom: 30px;
-  }
-  .eyebrow .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--good); animation: pulseDot 2.4s infinite; }
-  @keyframes pulseDot {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(76,195,138,.45); }
-    60% { box-shadow: 0 0 0 6px rgba(76,195,138,0); }
-  }
   h1 {
     margin: 0 0 22px;
     font-size: clamp(44px, 7vw, 84px);
@@ -121,13 +110,14 @@
   }
   h1 .mark { color: var(--accent-ink); }
   .lede {
-    margin: 0 0 36px;
-    font-size: clamp(16px, 1.9vw, 19px); line-height: 1.6;
-    color: var(--ink-2); max-width: 58ch; text-wrap: pretty;
+    margin: 0 0 32px;
+    font-size: clamp(15px, 1.7vw, 17px); line-height: 1.6;
+    color: var(--ink-2); max-width: 54ch; text-wrap: pretty;
   }
   .lede b { color: var(--ink); font-weight: 600; }
 
   .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 16px; }
+  .install[hidden] { display: none; }
   .btn {
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--accent); color: #fff; text-decoration: none;
@@ -139,19 +129,19 @@
   .btn .ico { flex: none; }
   .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); box-shadow: none; }
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); color: var(--ink); }
+  /* .btn sets display:inline-flex, which would otherwise override the UA
+     [hidden] rule and leave a hidden button (e.g. the demo tool's
+     copy-no-referral-btn) visible. Restore hidden semantics explicitly. */
+  .btn[hidden] { display: none; }
   .btn.bare { background: transparent; color: var(--ink-2); font-weight: 500; box-shadow: none; padding: 14px 20px; }
   .btn.bare:hover { background: transparent; color: var(--ink); transform: none; }
 
-  .install-meta {
-    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center;
-  }
-  .install-meta .sep { color: var(--rule-2); }
 
   .bk-slot {
-    margin-top: 26px;
-    font-family: var(--mono); font-size: 12.5px; color: var(--ink-3);
-    display: inline-flex; align-items: baseline; gap: 8px;
+    margin-top: 20px; padding-top: 16px;
+    border-top: 1px solid var(--rule-soft);
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+    display: flex; align-items: baseline; justify-content: center; gap: 8px;
   }
   .bk-slot .bk-text {
     color: var(--ink-2);
@@ -167,122 +157,91 @@
     background: var(--panel); overflow: hidden;
     box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(168,131,240,.06);
   }
-  .demo-head, .demo-foot {
+  .demo-head {
     display: flex; align-items: center; gap: 14px;
     padding: 12px 16px;
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
     background: var(--bg-2);
+    border-bottom: 1px solid var(--rule-soft);
   }
-  .demo-head { border-bottom: 1px solid var(--rule-soft); }
-  .demo-foot { border-top: 1px solid var(--rule-soft); flex-wrap: wrap; gap: 10px 16px; }
   .demo-head .lights { display: flex; gap: 6px; }
   .demo-head .lights span { width: 10px; height: 10px; border-radius: 999px; background: var(--rule); }
   .demo-head .label { margin-left: auto; }
 
-  .demo-body { padding: 22px; display: grid; gap: 14px; }
-  .url-row { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
-  .url-tag {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--ink-3); text-align: right;
-  }
-  .url-box {
-    text-align: left;
-    font-family: var(--mono); font-size: 13px; line-height: 1.6;
-    background: var(--bg); border: 1px solid var(--rule-soft);
-    border-radius: 10px; padding: 13px 15px;
-    overflow-x: auto; white-space: nowrap;
-  }
-  .url-box.after { border-color: #2E2741; }
-  .url-box::-webkit-scrollbar { height: 6px; }
-  .url-box::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 999px; }
-  .url-box .domain { color: var(--ink); }
-  .url-box .path { color: var(--ink-2); }
-  .url-box .keep {
-    color: var(--good);
-    background: rgba(76,195,138,.1);
-    border: 1px dashed rgba(76,195,138,.4);
-    padding: 1px 5px; border-radius: 5px;
-  }
-  .url-box .junk { color: var(--ink-3); position: relative; }
-  .url-box .junk::after {
-    content: ""; position: absolute; left: 0; right: 100%; top: 50%;
-    height: 1px; background: var(--accent-ink);
-  }
-  .url-box.before .junk { animation: junkFade 9s infinite; }
-  .url-box.before .junk::after { animation: strikeIn 9s infinite; }
-  @keyframes strikeIn { 0% { right: 100%; } 12% { right: 0; } 100% { right: 0; } }
-  @keyframes junkFade { 0% { opacity: .75; } 10% { opacity: .75; } 22% { opacity: .18; } 88% { opacity: .18; } 100% { opacity: .75; } }
-  .url-box.before .junk:nth-of-type(1), .url-box.before .junk:nth-of-type(1)::after { animation-delay: 1.0s; }
-  .url-box.before .junk:nth-of-type(2), .url-box.before .junk:nth-of-type(2)::after { animation-delay: 1.4s; }
-  .url-box.before .junk:nth-of-type(3), .url-box.before .junk:nth-of-type(3)::after { animation-delay: 1.8s; }
-  .url-box.before .junk:nth-of-type(4), .url-box.before .junk:nth-of-type(4)::after { animation-delay: 2.2s; }
-  .url-box.before .junk:nth-of-type(5), .url-box.before .junk:nth-of-type(5)::after { animation-delay: 2.6s; }
-  .url-box.before .junk:nth-of-type(6), .url-box.before .junk:nth-of-type(6)::after { animation-delay: 3.0s; }
-  .url-box.before .junk:nth-of-type(7), .url-box.before .junk:nth-of-type(7)::after { animation-delay: 3.4s; }
   @media (prefers-reduced-motion: reduce) {
-    .url-box.before .junk, .url-box.before .junk::after { animation: none; opacity: .35; }
-    .url-box.before .junk { text-decoration: line-through; text-decoration-color: var(--accent-ink); }
-    .eyebrow .dot { animation: none; }
-    .demo-live-row, .demo-output, .demo-foot { transition: none; }
+    .hero-glow, .cta-glow { animation: none; }
+    .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .wedge-card .v.strip, .wedge-card .v.strip::after { animation: none !important; }
   }
 
-  .toast {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(76,195,138,.1); color: var(--good);
-    border: 1px solid rgba(76,195,138,.3);
-    padding: 5px 12px; border-radius: 999px; font-size: 11.5px;
-  }
-  .toast::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--good); }
-  .demo-foot .tally { margin-left: auto; }
+  /* ---------- demo terminal: always-visible live tool ----------
+     #demo-tool is the FULL /clean tool, visible from page load and driven by
+     landing/clean/ui.js (the mirror of web/ui.js). The engine bundle and the
+     UI module are loaded lazily on the first interaction with the tool (see
+     the inline bootstrap script near the end of this file); the markup and the
+     styles below are kept in sync with web/index.html. */
+  #demo-tool { padding: 22px; }
 
-  /* ---------- demo terminal: inline morph (JS-only, progressive enhancement) ---------- */
-  .demo-live-row {
-    overflow: hidden;
-    max-height: 0;
-    opacity: 0;
-    gap: 10px;
-    align-items: center;
-    transition: max-height .32s ease, opacity .28s ease;
+  #demo-tool .field-label {
+    display: block; font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+    margin-bottom: 10px;
   }
-  .demo.is-live .demo-live-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    max-height: 90px;
-    opacity: 1;
-    margin-bottom: 4px;
+  #demo-tool input#url-input {
+    width: 100%; height: 46px;
+    font-family: var(--mono); font-size: 14px; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--rule-2); border-radius: 10px;
+    padding: 12px 14px; line-height: 1.5;
   }
-  .demo-input {
-    font-family: var(--mono); font-size: 13px; color: var(--ink);
+  #demo-tool input#url-input::placeholder { color: var(--ink-3); }
+  #demo-tool .tool-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  #demo-tool .tool-result { margin-top: 18px; }
+  #demo-tool .result-message { font-size: 14.5px; color: var(--ink-2); margin: 0 0 14px; }
+  #demo-tool .result-message.is-error { color: var(--bad); }
+  #demo-tool .result-message.is-clean { color: var(--good); }
+  #demo-tool .result-url-row { display: none; }
+  #demo-tool .result-url-row.visible { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  #demo-tool .result-url-box {
+    flex: 1 1 260px; font-family: var(--mono); font-size: 13.5px; color: var(--ink);
     background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
-    padding: 11px 13px; width: 100%; min-width: 0;
+    padding: 13px 15px; word-break: break-all;
   }
-  .demo-input::placeholder { color: var(--ink-3); }
-  .demo-clean-btn { padding: 11px 18px; font-size: 13.5px; border-radius: 10px; box-shadow: none; white-space: nowrap; }
-
-  .demo-output, .demo-foot { transition: opacity .25s ease; }
-  .demo.is-example .demo-output, .demo.is-example .demo-foot { opacity: .55; }
-
-  .demo.is-live .url-box.before .junk,
-  .demo.is-live .url-box.before .junk::after { animation: none; }
-  .demo.is-live .url-box.before .junk {
-    opacity: .55; text-decoration: line-through; text-decoration-color: var(--accent-ink);
+  #demo-tool .referral-disclosure { font-size: 12.5px; color: var(--ink-3); margin: 0 0 14px; }
+  #demo-tool .referral-disclosure[hidden] { display: none; }
+  #demo-tool .length-bar { margin: 0 0 18px; }
+  #demo-tool .length-bar[hidden] { display: none; }
+  #demo-tool .length-bar-headline { font-size: 14.5px; color: var(--good); margin: 0 0 8px; font-weight: 600; }
+  #demo-tool .length-bar-track {
+    display: flex; height: 8px; border-radius: 999px; overflow: hidden;
+    background: var(--panel-2); border: 1px solid var(--rule);
   }
-
-  .url-after-wrap { display: flex; align-items: center; gap: 10px; }
-  .url-after-wrap .url-box.after { flex: 1; min-width: 0; }
-  .demo-copy-btn {
-    flex: none; font-family: var(--sans); font-weight: 600; font-size: 12.5px;
-    color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule-2);
-    border-radius: 8px; padding: 8px 12px; cursor: pointer;
-    transition: border-color .14s ease, background .14s ease;
+  #demo-tool .length-bar-kept { background: var(--good); }
+  #demo-tool .length-bar-removed { background: var(--bad); }
+  #demo-tool .transparency { display: none; }
+  #demo-tool .transparency.visible { display: block; }
+  #demo-tool .transparency h2 {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; font-weight: 500;
   }
-  .demo-copy-btn:hover { border-color: var(--accent); background: var(--panel-2); }
-
-  .url-box .error-text { color: var(--bad); }
-
-  .demo-destination { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
-  .demo-open-full { font-family: var(--mono); font-size: 11.5px; color: var(--accent-soft); text-decoration: none; }
-  .demo-open-full:hover { color: #E4D8FA; text-decoration: underline; }
+  #demo-tool .destination {
+    font-family: var(--mono); font-size: 13px; color: var(--good); margin: 0 0 8px;
+    word-break: break-word;
+  }
+  #demo-tool .destination .host { color: var(--good); font-weight: 600; }
+  #demo-tool .param-insight { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  #demo-tool .param-insight .breakdown-row { display: flex; flex-direction: column; gap: 2px; }
+  #demo-tool .param-insight .breakdown-cat { font-size: 13px; color: var(--ink); font-weight: 600; }
+  #demo-tool .param-insight .breakdown-params { font-family: var(--mono); font-size: 12px; color: var(--ink-3); overflow-wrap: anywhere; }
+  #demo-tool .param-insight .breakdown-desc { font-size: 12.5px; color: var(--ink-2); }
+  #demo-tool .unwrap-callout {
+    border: 1px solid var(--rule-2); border-radius: 12px; background: var(--panel-2);
+    padding: 14px 16px; margin: 18px 0 0;
+  }
+  #demo-tool .unwrap-callout[hidden] { display: none; }
+  #demo-tool .unwrap-disclaimer { font-size: 12.5px; color: var(--ink-3); margin: 0; }
+  #demo-tool .report-block { margin-top: 18px; }
+  #demo-tool .report-block[hidden] { display: none; }
+  #demo-tool .report-warning { font-size: 12px; color: var(--ink-3); margin: 8px 0 0; }
 
   /* ---------- stats ---------- */
   .stats { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
@@ -319,6 +278,33 @@
     background: var(--panel-2); padding: 1px 6px; border-radius: 5px;
   }
 
+  /* Contained-block framing for content sections. A flatter background than
+     the nested .wedge-card/.trust-cell/.shot boxes so those still stand out
+     as the focal elements, not a jarring box-in-box. */
+  .wrap.section-frame {
+    border: 1px solid var(--rule); border-radius: 16px;
+    background: var(--bg-2);
+    padding: clamp(32px, 5vw, 56px) clamp(20px, 4vw, 40px);
+  }
+
+  /* ---------- scroll reveal + ambient motion (progressive enhancement) ----------
+     .reveal is only ever added by JS, and only right before JS also sets up
+     an IntersectionObserver to un-hide it. Without JS (or without
+     IntersectionObserver support) this class never appears, so every
+     section/card stays fully visible by default. */
+  .reveal {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+  @keyframes glowDrift {
+    0%, 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: .9; }
+    50% { transform: translateX(-50%) translateY(-16px) scale(1.05); opacity: 1; }
+  }
+  .hero-glow { animation: glowDrift 16s ease-in-out infinite; }
+  .cta-glow { animation: glowDrift 19s ease-in-out infinite reverse; animation-delay: -5s; }
+
   /* ---------- wedge ---------- */
   .wedge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 56px; align-items: start; }
   .chip {
@@ -347,9 +333,18 @@
   .wedge-card .row:last-child { border-bottom: 0; }
   .wedge-card .k { color: var(--ink-3); }
   .wedge-card .v { color: var(--ink); word-break: break-all; }
-  .wedge-card .v.strip { color: var(--ink-3); text-decoration: line-through; opacity: .65; }
+  .wedge-card .v.strip { color: var(--ink-3); opacity: .65; position: relative; }
+  .wedge-card .v.strip::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%;
+    height: 1px; background: var(--accent-ink);
+  }
   .wedge-card .v.keep-v { color: var(--good); }
   .wedge-card .v.action { color: var(--accent-soft); }
+
+  /* Echoes the hero demo's junkFade/strikeIn keyframes: a one-shot "strike
+     it out" play when a wedge-card example first scrolls into view. */
+  .wedge-card.wedge-anim .v.strip { animation: junkFade 2.6s ease-out 1 both; }
+  .wedge-card.wedge-anim .v.strip::after { right: 100%; animation: strikeIn 2.6s ease-out 1 both; }
 
   /* ---------- trust ---------- */
   .trust-intro { margin-bottom: 36px; }
@@ -536,8 +531,6 @@
   <section class="hero">
     <div class="hero-glow"></div>
     <div class="wrap hero-inner">
-      <div class="eyebrow"><span class="dot"></span> v2.5.0 · Chrome + Firefox · GPL v3</div>
-
       <h1>The web, <span class="mark">with the noise turned&nbsp;down.</span></h1>
 
       <p class="lede">
@@ -555,56 +548,74 @@
           <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-firefox"/></svg>
           Add to Firefox
         </a>
-        <a class="btn ghost" id="cta-web" href="https://muga.app/clean">
-          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-            <path d="M9 15l6-6M8.5 9.5H7a4 4 0 100 8h1.5M15.5 14.5H17a4 4 0 100-8h-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          </svg>
-          Clean a link now
-        </a>
-        <a class="btn bare" id="cta-all-ways" href="#get" hidden>See all ways to install →</a>
       </div>
 
-      <div class="install-meta">
-        <span>Free · GPL v3</span>
-      </div>
-
-      <div class="bk-slot" aria-live="polite">
-        <span>muga ≈</span>
-        <span class="bk-text" id="bk">Making URLs Good Again.</span>
-      </div>
-
-      <!-- live demo terminal. Static by default; with JS, clicking "Clean a
-           link now" (#cta-web) morphs it in place into a working mini-cleaner
-           (see the inline script near the end of this file). -->
-      <div class="demo" id="demo" aria-label="Before and after URL cleaning" style="width:100%;">
+      <!-- Live tool terminal. The FULL /clean tool (#demo-tool) is visible from
+           page load, driven by the REAL controller (landing/clean/ui.js, the
+           mirror of web/ui.js) with ZERO cleaning logic duplicated here. The
+           engine bundle and the UI module load lazily on the first interaction
+           with the tool (see the bootstrap script near the end of this file).
+           Keep the ID list below in sync with web/ui.js init() bindings; this
+           markup and its styles are kept in sync with web/index.html. -->
+      <div class="demo" id="demo" aria-label="MUGA URL cleaner" style="width:100%;">
         <div class="demo-head">
           <div class="lights"><span></span><span></span><span></span></div>
-          <span class="label" id="demo-label">muga · live · before / after</span>
+          <span class="label">muga · clean</span>
         </div>
-        <div class="demo-body">
-          <div class="demo-live-row" id="demo-live-row" hidden>
-            <input type="url" id="hero-clean-input" class="demo-input" placeholder="https://example.com/p?utm_source=..." autocomplete="off" spellcheck="false">
-            <button type="button" id="hero-clean-btn" class="btn demo-clean-btn">Clean</button>
+
+        <div id="demo-tool">
+          <label class="field-label" for="url-input">URL to clean</label>
+          <input type="url" id="url-input" placeholder="https://example.com/page?utm_source=newsletter&#38;fbclid=abc123" spellcheck="false" autocomplete="off">
+          <div class="tool-actions">
+            <button type="button" class="btn" id="clean-btn">Clean this URL</button>
           </div>
-          <div class="demo-output" id="demo-output" aria-live="polite">
-            <div class="url-row">
-              <span class="url-tag">Before</span>
-              <div class="url-box before" id="demo-before"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345?</span><span class="junk">utm_source=newsletter</span><span class="junk">&amp;utm_medium=email</span><span class="junk">&amp;utm_campaign=may26</span><span class="junk">&amp;fbclid=IwAR0xY2</span><span class="junk">&amp;gclid=Cj0KCQjw</span><span class="junk">&amp;ref_=nav_search</span><span class="junk">&amp;mc_cid=a1b2</span><span class="keep">&amp;ref=creator</span></div>
+
+          <div class="tool-result">
+            <p class="result-message" id="result-message" role="status" aria-live="polite"></p>
+
+            <div class="result-url-row" id="result-url-row">
+              <div class="result-url-box" id="result-url-box"></div>
+              <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
+              <button type="button" class="btn ghost" id="copy-no-referral-btn" hidden>Copy without MUGA's referral</button>
             </div>
-            <div class="url-row">
-              <span class="url-tag">After</span>
-              <div class="url-after-wrap">
-                <div class="url-box after" id="demo-after"><span class="domain">shop.example.com</span><span class="path">/p/AZ12345</span><span class="keep">?ref=creator</span></div>
-                <button type="button" class="demo-copy-btn" id="demo-copy-btn" hidden>Copy</button>
+
+            <p class="referral-disclosure" id="referral-disclosure" hidden></p>
+
+            <div class="length-bar" id="length-bar" hidden>
+              <p class="length-bar-headline" id="length-bar-headline"></p>
+              <div class="length-bar-track" role="img" aria-hidden="true">
+                <div class="length-bar-kept" id="length-bar-kept"></div>
+                <div class="length-bar-removed" id="length-bar-removed"></div>
               </div>
             </div>
+
+            <div class="transparency" id="transparency">
+              <div id="removed-block">
+                <h2>Removed</h2>
+                <div class="param-insight" id="param-insight"></div>
+              </div>
+            </div>
+
+            <div class="unwrap-callout" id="unwrap-callout" hidden>
+              <p class="destination" id="destination-line"></p>
+              <p class="unwrap-disclaimer">
+                The percentage above is measured against this final destination, not the original wrapper link.
+              </p>
+            </div>
+
+            <div class="report-block" id="report-block" hidden>
+              <a href="#" class="btn ghost" id="report-link" target="_blank" rel="noopener noreferrer">Report a bad result</a>
+              <p class="report-warning">
+                Opening this creates a public GitHub issue containing the URLs above. Only continue if you are
+                fine sharing them publicly.
+              </p>
+            </div>
           </div>
-        </div>
-        <div class="demo-foot" id="demo-foot" aria-live="polite">
-          <span class="toast" id="demo-toast">Creator referral preserved · ref=creator</span>
-          <span class="demo-destination" id="demo-destination" hidden></span>
-          <span class="tally" id="demo-tally">7 noise patterns quieted · 1 referral kept</span>
-          <a class="demo-open-full" id="demo-open-full" href="https://muga.app/clean" hidden target="_blank" rel="noopener">Open the full tool →</a>
+
+          <div class="bk-slot" aria-live="polite">
+            <span>muga ≈</span>
+            <span class="bk-text" id="bk">Making URLs Good Again.</span>
+          </div>
         </div>
       </div>
     </div>
@@ -631,7 +642,7 @@
   </div>
 
   <section class="section" id="creator-fair">
-    <div class="wrap wedge-grid">
+    <div class="wrap wedge-grid section-frame">
       <div>
         <div class="section-label">The wedge</div>
         <h2>Cleaning your links shouldn't cut off who recommended them.</h2>
@@ -665,7 +676,7 @@
   </section>
 
   <section class="section" id="hover-preview">
-    <div class="wrap wedge-grid">
+    <div class="wrap wedge-grid section-frame">
       <div>
         <div class="section-label">Before you click</div>
         <h2>See where a link really goes.</h2>
@@ -697,7 +708,7 @@
   </section>
 
   <section class="section">
-    <div class="wrap">
+    <div class="wrap section-frame">
       <div class="trust-intro">
         <div class="section-label">Trust, not trust-us</div>
         <h2>Read the source. Watch the network tab.</h2>
@@ -798,7 +809,7 @@
         <ul>
           <li><a href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">Chrome Web Store</a></li>
           <li><a href="https://addons.mozilla.org/firefox/addon/muga/">Firefox Add-ons</a></li>
-          <li><a href="https://muga.app/clean">MUGA Clean (web)</a></li>
+          <li><a href="https://muga.app/clean">MUGA URL Cleaner</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -859,33 +870,42 @@
 
     var chrome = document.getElementById('cta-chrome');
     var firefox = document.getElementById('cta-firefox');
-    var web = document.getElementById('cta-web');
-    var allWays = document.getElementById('cta-all-ways');
     var youPlat;
 
     function hide(el) { if (el) el.hidden = true; }
     function primary(el) { if (el) el.className = 'btn'; }
-    function secondary(el) { if (el) el.className = 'btn ghost'; }
 
     if (isFirefox) {
-      // Firefox on desktop or Android — the extension installs on both. Lead
-      // with Firefox plus the web tool; Chrome's button is not relevant here.
+      // Firefox on desktop or Android: the extension installs on both. Lead
+      // with Firefox; Chrome's button is not relevant here. The badge still
+      // resolves to the Firefox card in the "three ways" grid below.
       hide(chrome);
-      primary(firefox); secondary(web);
+      primary(firefox);
       youPlat = 'firefox';
     } else if (isMobile) {
       // iOS, Chrome for Android, other mobile browsers: no installable
-      // extension here, so the web tool is the only thing to lead with.
+      // extension here, so the install row has nothing to lead with. The
+      // always-visible tool below is the call to action, and the badge points
+      // at the web card in the "three ways" grid.
       hide(chrome); hide(firefox);
-      primary(web);
-      if (allWays) allWays.hidden = false;
       youPlat = 'web';
     } else {
-      // Desktop Chromium: lead with Chrome plus the web tool; Firefox's button
-      // is not relevant up top (it still lives in the "three ways" grid).
+      // Desktop Chromium: lead with Chrome; Firefox's button is not relevant
+      // up top (it still lives in the "three ways" grid).
       hide(firefox);
-      primary(chrome); secondary(web);
+      primary(chrome);
       youPlat = 'chrome';
+    }
+
+    // If platform detection hid every install button (mobile with no
+    // installable extension), collapse the empty row so it leaves no gap.
+    var install = document.getElementById('hero-install');
+    if (install) {
+      var anyVisible = Array.prototype.some.call(
+        install.querySelectorAll('.btn'),
+        function (b) { return !b.hidden; }
+      );
+      if (!anyVisible) install.hidden = true;
     }
 
     var card = document.querySelector('.way[data-plat="' + youPlat + '"]');
@@ -898,225 +918,111 @@
     }
   })();
 
-  // Inline morph: clicking "Clean a link now" (#cta-web) turns the static
-  // demo terminal into a live, working mini-cleaner instead of navigating
-  // away. Progressive enhancement only: the anchor keeps its
-  // href="https://muga.app/clean" for no-JS visitors, and the cleaning
-  // engine is never fetched on page load, only on the first actual clean
-  // action (Clean button / Enter), same-origin, lazily, once, and cached.
+  // Lazy tool bootstrap: the FULL /clean tool (#demo-tool) is visible from
+  // page load, but nothing is fetched until the visitor actually engages it.
+  // On the first focusin of the URL input OR the first pointerdown inside the
+  // tool, startTool() injects the same-origin engine bundle, imports the real
+  // /clean controller (landing/clean/ui.js, the mirror of web/ui.js) and calls
+  // its idempotent init(). Loaded once, cached; the bootstrap listeners are
+  // then removed so ui.js's own bound handlers take over. If the initiating
+  // interaction was the Clean button, the clean is replayed once after init()
+  // so an eager first click is not lost.
   //
-  // Security (AGENTS.md): addEventListener only, no inline handlers, the
-  // pasted URL is untrusted and is rendered via textContent/createElement
-  // only, never innerHTML with dynamic data.
+  // Security (AGENTS.md): addEventListener only, no inline handlers. All
+  // result rendering lives in landing/clean/ui.js, which itself renders every
+  // user-controlled string via textContent/createElement, never innerHTML.
   (function () {
-    var ctaWeb = document.getElementById('cta-web');
-    var demo = document.getElementById('demo');
-    if (!ctaWeb || !demo) return;
+    var tool = document.getElementById('demo-tool');
+    if (!tool) return;
+    var toolInput = document.getElementById('url-input');
 
-    var demoLabel = document.getElementById('demo-label');
-    var liveRow = document.getElementById('demo-live-row');
-    var input = document.getElementById('hero-clean-input');
-    var cleanBtn = document.getElementById('hero-clean-btn');
-    var beforeBox = document.getElementById('demo-before');
-    var afterBox = document.getElementById('demo-after');
-    var copyBtn = document.getElementById('demo-copy-btn');
-    var toastEl = document.getElementById('demo-toast');
-    var tallyEl = document.getElementById('demo-tally');
-    var destinationEl = document.getElementById('demo-destination');
-    var openFullLink = document.getElementById('demo-open-full');
+    var toolPromise = null;
+    var pendingClean = false;
 
-    var isLive = false;
-    var enginePromise = null;
-    var lastCleanUrl = null;
-
-    function reducedMotion() {
-      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Degrades gracefully if the engine bundle or UI module fails to load.
+    // There is no separate full-tool page to fall back to, so the message just
+    // states the tool is unavailable and to try again.
+    function showUnavailable() {
+      var message = document.getElementById('result-message');
+      if (!message) return;
+      var text = 'Cleaning is unavailable right now. Please try again in a moment.';
+      message.textContent = text;
+      message.classList.remove('is-clean');
+      message.classList.add('is-error');
     }
 
-    function clearChildren(el) {
-      while (el.firstChild) el.removeChild(el.firstChild);
-    }
-
-    function textSpan(className, text) {
-      var span = document.createElement('span');
-      span.className = className;
-      span.textContent = text;
-      return span;
-    }
-
-    // Loads the cleaning engine same-origin, exactly once, lazily. Never
-    // called on page load. Falls back to the full tool link on any failure.
-    function loadEngine() {
-      if (enginePromise) return enginePromise;
-      enginePromise = new Promise(function (resolve, reject) {
+    // Loads the engine bundle (same-origin), then the real /clean UI module,
+    // and initializes it against the #demo-tool markup. Lazy, once, cached.
+    // Never called on page load. On failure the cached promise is dropped so a
+    // later interaction can retry the load.
+    function startTool() {
+      if (toolPromise) return toolPromise;
+      toolPromise = new Promise(function (resolve, reject) {
         var script = document.createElement('script');
         script.src = './clean/engine/cleaner-bundle.js';
         script.onload = function () {
-          import('./clean/engine/adapter.js').then(resolve, reject);
+          import('./clean/ui.js').then(resolve, reject);
         };
         script.onerror = function () { reject(new Error('engine-load-failed')); };
         document.body.appendChild(script);
+      }).then(function (ui) {
+        ui.init();
+        return ui;
       });
-      // Drop the cached rejection on failure so a later click can retry the
-      // load instead of being stuck on the fallback for the rest of the session.
-      enginePromise.catch(function () { enginePromise = null; });
-      return enginePromise;
+      toolPromise.catch(function () { toolPromise = null; });
+      return toolPromise;
     }
 
-    function enterLiveMode() {
-      if (isLive) { input.focus(); return; }
-      isLive = true;
-      demoLabel.textContent = 'muga · clean · try it';
-      liveRow.hidden = false;
-      openFullLink.hidden = false;
-      demo.classList.add('is-example');
-      var reveal = function () { demo.classList.add('is-live'); };
-      if (reducedMotion() || !window.requestAnimationFrame) reveal();
-      else window.requestAnimationFrame(reveal);
-
-      var rect = demo.getBoundingClientRect();
-      if (rect.top < 0 || rect.bottom > window.innerHeight) {
-        try {
-          demo.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
-        } catch (e) {
-          demo.scrollIntoView();
+    // One-time bootstrap. Fires on the first focusin (focusin bubbles, so the
+    // container catches the input) or the first pointerdown inside the tool.
+    // Listeners are removed only once the tool has loaded successfully, so
+    // ui.js's bound handlers take over; if the load fails it re-arms so a
+    // later interaction can retry (startTool drops the cached promise on error).
+    var toolStarted = false;
+    function bootstrap(event) {
+      if (toolStarted) return;
+      toolStarted = true;
+      // If the visitor pressed Clean before the tool finished loading, mark it
+      // so the clean runs once after ui.init() binds the real handler.
+      if (event && event.type === 'pointerdown' && event.target &&
+          event.target.closest && event.target.closest('#clean-btn')) {
+        pendingClean = true;
+      }
+      startTool().then(function () {
+        tool.removeEventListener('focusin', bootstrap);
+        tool.removeEventListener('pointerdown', bootstrap);
+        if (pendingClean) {
+          pendingClean = false;
+          // The native pointerdown fired before init() bound anything, so this
+          // click runs ONLY ui.js's bound handler: exactly one clean.
+          var btn = document.getElementById('clean-btn');
+          if (btn) btn.click();
         }
-      }
-      window.setTimeout(function () { input.focus(); }, 0);
+      }).catch(function () {
+        // Load failed: re-arm so the next interaction retries the load.
+        toolStarted = false;
+        showUnavailable();
+      });
     }
 
-    // Renders the original pasted URL, striking through the params the
-    // engine actually removed. Best-effort: if the input doesn't parse as a
-    // URL (shouldn't happen once the adapter has validated it), it just
-    // shows the raw text.
-    function renderBefore(box, rawUrl, removed) {
-      clearChildren(box);
-      var parsed;
-      try { parsed = new URL(rawUrl); } catch (e) {
-        box.appendChild(textSpan('domain', rawUrl));
-        return;
-      }
-      box.appendChild(textSpan('domain', parsed.hostname));
-      box.appendChild(textSpan('path', parsed.pathname + (parsed.search ? '?' : '')));
-      if (parsed.search) {
-        var pairs = parsed.search.slice(1).split('&');
-        for (var i = 0; i < pairs.length; i++) {
-          var prefix = i === 0 ? '' : '&';
-          var key = pairs[i].split('=')[0];
-          var isJunk = removed.indexOf(key) !== -1;
-          box.appendChild(textSpan(isJunk ? 'junk' : 'keep', prefix + pairs[i]));
+    tool.addEventListener('focusin', bootstrap);
+    tool.addEventListener('pointerdown', bootstrap);
+
+    // Single-line input: Enter triggers Clean, matching the button. Landing-
+    // only; web/ui.js (shared with /clean) is untouched. Focusing the input to
+    // type already fired the bootstrap, so the tool is loaded (or loading) by
+    // the time Enter is pressed.
+    if (toolInput) {
+      toolInput.addEventListener('keydown', function (e) {
+        // Plain Enter only: ui.js already handles Ctrl/Cmd+Enter, so guarding
+        // the modifiers here avoids cleaning twice on the same keypress.
+        if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          var btn = document.getElementById('clean-btn');
+          if (btn) btn.click();
         }
-      }
-    }
-
-    function renderAfter(box, cleanUrlStr) {
-      clearChildren(box);
-      var parsed;
-      try { parsed = new URL(cleanUrlStr); } catch (e) {
-        box.appendChild(textSpan('domain', cleanUrlStr));
-        return;
-      }
-      box.appendChild(textSpan('domain', parsed.hostname));
-      box.appendChild(textSpan('path', parsed.pathname));
-      if (parsed.search) box.appendChild(textSpan('keep', parsed.search));
-    }
-
-    function renderError(message) {
-      clearChildren(afterBox);
-      afterBox.appendChild(textSpan('error-text', message));
-      copyBtn.hidden = true;
-      lastCleanUrl = null;
-      toastEl.hidden = true;
-      destinationEl.hidden = true;
-      clearChildren(destinationEl);
-      tallyEl.textContent = '';
-      demo.classList.remove('is-example');
-    }
-
-    function renderResult(originalUrl, result) {
-      if (!result || !result.ok) {
-        renderBefore(beforeBox, originalUrl, []);
-        // Invalid-input errors from the adapter are already user-friendly;
-        // internal "error" tokens (engine-unavailable, processing-failed) are
-        // not, so they get a friendly fallback instead of leaking a code.
-        var message = (result && result.action === 'error')
-          ? 'Could not clean that link here. Open the full tool to try again.'
-          : ((result && result.error) || 'Could not clean that URL.');
-        renderError(message);
-        return;
-      }
-      var removedParams = Array.isArray(result.removed) ? result.removed : [];
-      renderBefore(beforeBox, originalUrl, removedParams);
-      renderAfter(afterBox, result.cleanUrl);
-      lastCleanUrl = result.cleanUrl;
-      copyBtn.hidden = false;
-
-      // The engine only tells us a referral was preserved, not which one, so
-      // the live toast stays generic and honest (the static example can name
-      // ref=creator because it is an illustration, not a real result).
-      if (result.affiliatePreserved) {
-        toastEl.textContent = 'Referral preserved';
-        toastEl.hidden = false;
-      } else {
-        toastEl.hidden = true;
-      }
-
-      if (result.unwrapped && result.destinationHost) {
-        clearChildren(destinationEl);
-        destinationEl.appendChild(document.createTextNode('Real destination: ' + result.destinationHost));
-        destinationEl.hidden = false;
-      } else {
-        destinationEl.hidden = true;
-        clearChildren(destinationEl);
-      }
-
-      var kept = result.affiliatePreserved ? 1 : 0;
-      tallyEl.textContent = removedParams.length + ' noise patterns quieted · ' + kept + ' referral kept';
-      demo.classList.remove('is-example');
-    }
-
-    function runClean() {
-      var value = input.value.trim();
-      if (!value) { input.focus(); return; }
-      var originalLabel = cleanBtn.textContent;
-      cleanBtn.disabled = true;
-      cleanBtn.textContent = 'Cleaning';
-      loadEngine().then(function (mod) {
-        cleanBtn.disabled = false;
-        cleanBtn.textContent = originalLabel;
-        var result = mod.cleanUrl(value);
-        renderResult(value, result);
-      }).catch(function () {
-        cleanBtn.disabled = false;
-        cleanBtn.textContent = originalLabel;
-        renderError('Could not load the cleaner here. Use the full tool below instead.');
       });
     }
-
-    ctaWeb.addEventListener('click', function (event) {
-      event.preventDefault();
-      enterLiveMode();
-    });
-
-    cleanBtn.addEventListener('click', runClean);
-    input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        runClean();
-      }
-    });
-
-    copyBtn.addEventListener('click', function () {
-      if (!lastCleanUrl) return;
-      var originalLabel = copyBtn.textContent;
-      navigator.clipboard.writeText(lastCleanUrl).then(function () {
-        copyBtn.textContent = 'Copied';
-        window.setTimeout(function () { copyBtn.textContent = originalLabel; }, 1200);
-      }).catch(function () {
-        copyBtn.textContent = 'Copy failed';
-        window.setTimeout(function () { copyBtn.textContent = originalLabel; }, 1200);
-      });
-    });
   })();
 
   // Console easter egg
@@ -1202,6 +1108,91 @@
       if (e.key === 'Escape') close();
       else if (e.key === 'ArrowLeft') go(-1);
       else if (e.key === 'ArrowRight') go(1);
+    });
+  })();
+
+  // Stat count-up — progressive enhancement, no dependencies.
+  // The static markup already shows the final numbers (450+, 100%, 0), so if
+  // IntersectionObserver or requestAnimationFrame is unavailable, or the
+  // visitor prefers reduced motion, this does nothing and those numbers stay
+  // exactly as written. Only when it can also observe and animate does it
+  // reset a number to 0 first, so nothing is ever left stuck mid-count.
+  (function () {
+    if (typeof IntersectionObserver === 'undefined' || !window.requestAnimationFrame) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var statsRow = document.querySelector('.stats');
+    if (!statsRow) return;
+
+    var counters = [];
+    Array.prototype.forEach.call(statsRow.querySelectorAll('.num'), function (numEl) {
+      var textNode = null;
+      for (var i = 0; i < numEl.childNodes.length; i++) {
+        var node = numEl.childNodes[i];
+        if (node.nodeType === 3 && node.nodeValue.trim() !== '') { textNode = node; break; }
+      }
+      if (!textNode) return;
+      var target = parseInt(textNode.nodeValue.trim(), 10);
+      if (isNaN(target)) return;
+      counters.push({ node: textNode, target: target });
+    });
+    if (!counters.length) return;
+
+    var DURATION = 1100;
+
+    function runCount(counter) {
+      var start = null;
+      function step(ts) {
+        if (start === null) start = ts;
+        var progress = Math.min((ts - start) / DURATION, 1);
+        var eased = 1 - Math.pow(1 - progress, 3);
+        counter.node.nodeValue = String(Math.round(counter.target * eased));
+        if (progress < 1) window.requestAnimationFrame(step);
+        else counter.node.nodeValue = String(counter.target);
+      }
+      window.requestAnimationFrame(step);
+    }
+
+    // Only zero the numbers out once the observer is actually wired, so a
+    // failure between here and observe() can never leave them blank.
+    counters.forEach(function (counter) { counter.node.nodeValue = '0'; });
+
+    var statsObserver = new IntersectionObserver(function (entries, obs) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        counters.forEach(runCount);
+        obs.unobserve(entry.target);
+      });
+    }, { threshold: 0.4 });
+    statsObserver.observe(statsRow);
+  })();
+
+  // Scroll-reveal entrances + wedge-card strike echo — progressive
+  // enhancement, no dependencies. The .reveal/.wedge-anim classes are only
+  // ever added here, right before this same code also observes the element,
+  // so without IntersectionObserver (or under reduced motion) nothing is
+  // ever hidden and every section/card stays fully visible by default.
+  (function () {
+    if (typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var revealObserver = new IntersectionObserver(function (entries, obs) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        obs.unobserve(el);
+        el.classList.add('is-visible');
+        if (el.classList.contains('wedge-card')) el.classList.add('wedge-anim');
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+    ['.section-frame', '.stat', '.trust-cell', '.way', '.wedge-card'].forEach(function (selector) {
+      var els = document.querySelectorAll(selector);
+      Array.prototype.forEach.call(els, function (el, i) {
+        el.classList.add('reveal');
+        el.style.transitionDelay = Math.min(i * 70, 210) + 'ms';
+        revealObserver.observe(el);
+      });
     });
   })();
 </script>

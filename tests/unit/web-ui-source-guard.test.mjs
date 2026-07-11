@@ -256,6 +256,52 @@ describe("MUGA referral opt-out and disclosure (web-tool-naked-link-injection)",
     // compute affiliate/injection eligibility itself.
     assert.ok(!/action\s*===\s*["']injected["']/.test(code), "ui.js must not re-derive injection eligibility itself");
   });
+
+  test("CSS restores [hidden] semantics for .btn so the opt-out button actually hides", () => {
+    // Regression guard: `.btn { display: inline-flex }` overrides the UA
+    // `[hidden] { display: none }` rule, so a hidden .btn (copy-no-referral-btn)
+    // would stay visible. The stylesheet must neutralize this explicitly.
+    const styleMatch = HTML.match(/<style[\s\S]*?<\/style>/i);
+    assert.ok(styleMatch, "index.html must have a <style> block");
+    const css = styleMatch[0];
+    assert.ok(
+      /\.btn\[hidden\]\s*\{[^}]*display:\s*none/i.test(css) || /(^|[^-\w])\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i.test(css),
+      "CSS must hide a hidden .btn (e.g. `.btn[hidden] { display: none }`) so copy-no-referral-btn does not show while hidden",
+    );
+  });
+});
+
+describe("Bootstrap: on-demand init export + guarded auto-boot", () => {
+  test("web/ui.js exposes a callable init export (hosts like the landing init it after injecting the panel)", () => {
+    assert.ok(
+      /export\s*\{\s*init\s*\}/.test(UI_JS) || /export\s+function\s+init\b/.test(UI_JS),
+      "ui.js must export init so a host that injects the tool markup later can initialize it",
+    );
+  });
+
+  test("auto-boot is guarded on the tool markup being present, not an unconditional DOMContentLoaded init", () => {
+    const code = stripJsComments(UI_JS);
+    assert.ok(
+      /function boot\s*\(/.test(code),
+      "ui.js must wrap auto-init in a boot() guard",
+    );
+    assert.ok(
+      /boot\s*\(\s*\)\s*\{[\s\S]*?getElementById\(\s*["']clean-btn["']\s*\)/.test(code),
+      "boot() must auto-init only when the tool markup (clean-btn) is already present, so a later-injecting host gets a no-op at load",
+    );
+    assert.ok(
+      !/addEventListener\(\s*["']DOMContentLoaded["']\s*,\s*init\s*\)/.test(code),
+      "ui.js must not bind init directly to DOMContentLoaded (it now boots through the markup-presence guard)",
+    );
+  });
+
+  test("init() is idempotent — a second call (host + auto-boot) does not double-bind", () => {
+    const code = stripJsComments(UI_JS);
+    assert.ok(
+      /dataset\.\w+\s*===\s*["']1["']/.test(code) || /dataset\.\w+\s*=\s*["']1["']/.test(code),
+      "init() must guard re-entry (e.g. a bound marker on an element) so calling it twice is safe",
+    );
+  });
 });
 
 describe("Accessibility (spec: UI Controls and Accessibility)", () => {

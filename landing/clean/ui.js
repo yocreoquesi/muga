@@ -130,9 +130,19 @@ function render(refs, view, originalUrl) {
 }
 
 function init() {
+  const cleanBtn = document.getElementById("clean-btn");
+  // Idempotent and host-safe. The standalone /clean page auto-inits via
+  // boot() below (the markup is present at load). A host that injects or
+  // reveals the panel later (the landing's inline morph) calls init()
+  // itself. If the markup is absent, or init already ran (a second call
+  // after boot() already bound, which happens when the host also calls
+  // init after auto-boot), do nothing instead of double-binding handlers.
+  if (!cleanBtn || cleanBtn.dataset.mugaUiBound === "1") return;
+  cleanBtn.dataset.mugaUiBound = "1";
+
   const refs = {
     input: document.getElementById("url-input"),
-    cleanBtn: document.getElementById("clean-btn"),
+    cleanBtn,
     copyBtn: document.getElementById("copy-btn"),
     copyNoReferralBtn: document.getElementById("copy-no-referral-btn"),
     referralDisclosure: document.getElementById("referral-disclosure"),
@@ -201,4 +211,23 @@ function init() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", init);
+export { init };
+
+/**
+ * Guarded self-bootstrap. Auto-inits ONLY when the tool markup is already
+ * in the document at load time (the standalone /clean page, which loads
+ * this module via a <script type="module">). A host that injects or
+ * reveals the panel LATER (the landing's inline morph, which imports this
+ * module on demand) gets a no-op here and calls init() itself once the
+ * markup exists. Because init() is idempotent, the landing calling init()
+ * after this auto-boot is a safe no-op.
+ */
+function boot() {
+  if (document.getElementById("clean-btn")) init();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
+}

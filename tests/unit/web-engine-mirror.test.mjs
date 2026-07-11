@@ -157,3 +157,18 @@ test("landing/clean/engine/path-strip-rules.gen.mjs is byte-identical to web/eng
     "landing/clean/engine/path-strip-rules.gen.mjs is out of sync — run 'npm run build:web' and commit the result",
   );
 });
+
+// The landing hero morph now loads landing/clean/ui.js (and its sibling
+// modules) as its REAL runtime controller, so any drift between web/ and
+// landing/clean/ silently breaks the landing tool. Guard byte-parity of the
+// controller modules the same way the engine artifacts above are guarded.
+for (const rel of ["ui.js", "ui-view.js", "param-insight.js", "report-link.js"]) {
+  test(`landing/clean/${rel} is byte-identical to web/${rel}`, () => {
+    const source = readFileSync(join(ROOT, "web", rel));
+    const mirror = readFileSync(join(ROOT, "landing/clean", rel));
+    assert.ok(
+      source.equals(mirror),
+      `landing/clean/${rel} is out of sync — run 'npm run build:web' and commit the result`,
+    );
+  });
+}
