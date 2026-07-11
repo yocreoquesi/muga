@@ -22,6 +22,14 @@
 // why this replaced a JSON `with { type: "json" }` import (Phase 4).
 import { DOMAIN_RULES } from "./domain-rules.gen.mjs";
 
+// web/engine/path-strip-rules.gen.mjs is a generated, drift-gated named-export
+// ES module mirror of src/rules/path-strip-rules.json (tools/build-web.mjs) —
+// gives the web tool the same Amazon-style path-strip (product-name slug
+// removal) behaviour as MUGA core. Wired as processUrl's 7th argument only;
+// pathAffiliateRules (8th argument) is deliberately deferred to a later
+// change.
+import { PATH_STRIP_RULES } from "./path-strip-rules.gen.mjs";
+
 /** Redirect-destination length cap, mirrored from AGENTS.md security rules. */
 const MAX_URL_LENGTH = 2000;
 
@@ -133,7 +141,7 @@ export function cleanUrl(input, engine = resolveEngine()) {
 
   let result;
   try {
-    result = engine.processUrl(input, prefs, DOMAIN_RULES);
+    result = engine.processUrl(input, prefs, DOMAIN_RULES, undefined, undefined, undefined, PATH_STRIP_RULES);
   } catch {
     return { ...buildFailure("error", "processing-failed", input) };
   }
