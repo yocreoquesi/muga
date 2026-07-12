@@ -280,6 +280,8 @@ export default Object.freeze({
   follow_shorteners_enabled: "Resolver encurtadores no meu navegador",
   enable_follow_shorteners_cta: "Resolver encurtadores no meu navegador",
   follow_shorteners_disclosure: "Quando isto está ativado, o MUGA segue os links de encurtadores genéricos (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) diretamente no seu navegador para descobrir para onde eles realmente levam e, em seguida, limpa o ruído do destino. A requisição vai direto ao encurtador (a mesma que o seu navegador faria se você clicasse) sem nenhum servidor do MUGA no meio. Links de redes de afiliados nunca são tocados. Você concede permissão para esses oito domínios e pode desativar isto aqui a qualquer momento.",
+  shortener_regrant_notice: "O MUGA agora oferece suporte a novos encurtadores. Reative para ver para onde eles realmente levam antes de clicar.",
+  shortener_regrant_cta: "Reativar",
   ob_shorteners_title: "Links curtos, resolvidos localmente",
   ob_shorteners_desc: "<strong>Links curtos escondem para onde vão.</strong> Links como bit.ly ou t.co não mostram seu destino real. Se você permitir, o MUGA os segue diretamente no seu navegador (sem servidor no meio) e limpa o ruído de onde eles chegam. Você mantém o controle: aplica-se apenas a uma lista curta e conhecida de encurtadores, e somente se você ativar nas configurações.",
   shortener_stats_label: "Estatísticas de resolução de encurtadores (beta)",

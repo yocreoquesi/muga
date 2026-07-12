@@ -280,6 +280,8 @@ export default Object.freeze({
   follow_shorteners_enabled: "Risolvi gli abbreviatori nel mio browser",
   enable_follow_shorteners_cta: "Risolvi gli abbreviatori nel mio browser",
   follow_shorteners_disclosure: "Quando questa opzione è attiva, MUGA segue i link degli abbreviatori generici (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) direttamente nel tuo browser per scoprire dove portano davvero, poi rimuove il rumore dalla destinazione. La richiesta va direttamente all'abbreviatore (la stessa che farebbe il tuo browser se cliccassi) senza alcun server MUGA nel mezzo. I link di reindirizzamento delle reti di affiliazione non vengono mai toccati. Concedi il permesso per questi otto domini e puoi disattivarlo qui in qualsiasi momento.",
+  shortener_regrant_notice: "MUGA ora supporta nuovi abbreviatori di URL. Riattivali per vedere la destinazione reale prima di cliccare.",
+  shortener_regrant_cta: "Riattiva",
   ob_shorteners_title: "Link brevi, risolti localmente",
   ob_shorteners_desc: "<strong>I link brevi nascondono dove portano.</strong> Link come bit.ly o t.co non mostrano la loro vera destinazione. Se lo consenti, MUGA li segue direttamente nel tuo browser (senza server nel mezzo) e rimuove il rumore da dove arrivano. Mantieni il controllo: si applica solo a un breve elenco noto di abbreviatori e solo se lo attivi nelle impostazioni.",
   shortener_stats_label: "Statistiche di risoluzione degli abbreviatori (beta)",

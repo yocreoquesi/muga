@@ -1903,6 +1903,26 @@ async function requestShortenerPermissions() {
 }
 
 /**
+ * Shows or hides the "new shorteners available, re-enable" notice
+ * (shortener-resolver-expansion Slice 1, design D3). Only relevant while the
+ * toggle is ON: GENERIC_SHORTENERS grew from 7 to 13 hosts, so an existing
+ * grantee's original 7-origin grant no longer covers every host and
+ * hasShortenerPermissions() now returns false for them. The notice's button
+ * reuses requestShortenerPermissions() (all origins) — Chrome/Firefox
+ * silently no-op already-granted origins and prompt only for the delta.
+ *
+ * @param {boolean} enabled - Current followShortenersEnabled checkbox state
+ */
+async function updateShortenerRegrantNotice(enabled) {
+  const notice = document.getElementById("shortener-regrant-notice");
+  const btn = document.getElementById("shortener-regrant-btn");
+  if (!notice || !btn) return;
+  const needsRegrant = enabled && !(await hasShortenerPermissions());
+  notice.hidden = !needsRegrant;
+  btn.hidden = !needsRegrant;
+}
+
+/**
  * Initialises the "Follow shortener redirects" toggle (ADR-0004 phase 2, #699).
  * The permission request is the first await in the enable path (Firefox MV2
  * gesture-frame requirement). The pref persists to chrome.storage.sync, and a
@@ -1914,6 +1934,7 @@ async function initFollowShorteners(prefs) {
   const checkbox = document.getElementById("followShortenersEnabled");
   if (!checkbox) return;
   checkbox.checked = !!prefs.followShortenersEnabled;
+  await updateShortenerRegrantNotice(checkbox.checked);
 
   checkbox.addEventListener("change", async () => {
     if (checkbox.checked) {
@@ -1927,11 +1948,28 @@ async function initFollowShorteners(prefs) {
       }
       try { await setPrefs({ followShortenersEnabled: true }); }
       catch (err) { console.error("[MUGA] save followShortenersEnabled:", err); }
+      await updateShortenerRegrantNotice(true);
     } else {
       try { await setPrefs({ followShortenersEnabled: false }); }
       catch (err) { console.error("[MUGA] save followShortenersEnabled:", err); }
+      await updateShortenerRegrantNotice(false);
     }
   });
+
+  const regrantBtn = document.getElementById("shortener-regrant-btn");
+  if (regrantBtn) {
+    regrantBtn.addEventListener("click", async () => {
+      // CRITICAL: chrome.permissions.request MUST be the FIRST await in this
+      // handler (Firefox MV2 gesture-frame requirement) — same rule as the
+      // toggle's enable branch above.
+      const granted = await requestShortenerPermissions();
+      if (granted) {
+        await updateShortenerRegrantNotice(true);
+      } else {
+        showToast(t("optionsRemoteRulesPermDenied", _currentLang));
+      }
+    });
+  }
 }
 
 /**

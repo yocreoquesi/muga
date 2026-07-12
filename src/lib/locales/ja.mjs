@@ -280,6 +280,8 @@ export default Object.freeze({
   follow_shorteners_enabled: "ブラウザで短縮URLを解決する",
   enable_follow_shorteners_cta: "ブラウザで短縮URLを解決する",
   follow_shorteners_disclosure: "これを有効にすると、MUGAは汎用短縮URL (bit.ly、tinyurl.com、t.co、link.medium.com、lnkd.in、fb.me、ebay.to) をブラウザ内で直接たどって実際のリンク先を見つけ、その宛先からノイズを取り除きます。リクエストは短縮URLに直接送られます（クリックしたときにブラウザが送るのと同じものです）。MUGAのサーバーは介在しません。アフィリエイトネットワークのリダイレクトリンクは決して変更されません。これら8つのホストに対して許可を与えます。このスイッチでいつでもオフにできます。",
+  shortener_regrant_notice: "MUGAが新しい短縮URLサービスに対応しました。クリックする前に本当の行き先を確認するには、再度有効にしてください。",
+  shortener_regrant_cta: "再度有効にする",
   ob_shorteners_title: "短縮リンクをローカルで解決",
   ob_shorteners_desc: "<strong>短縮リンクは行き先を隠します。</strong> bit.ly や t.co のようなリンクは本当の宛先を表示しません。許可すれば、MUGAはそれらをブラウザ内で直接たどり（間にサーバーを挟まずに）到達先からノイズを取り除きます。コントロールはあなたの手に: 短く既知の短縮URLのリストにのみ適用され、設定でオンにした場合だけ動作します。",
   shortener_stats_label: "短縮URL解決統計（ベータ）",
