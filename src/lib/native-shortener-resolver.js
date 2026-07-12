@@ -130,11 +130,14 @@ export function isAllowlistedShortener(hostname) {
 
 /**
  * Resolves a branded URL shortener to its destination via a native
- * `fetch(url, { redirect: "manual" })`, reading the `Location` header.
+ * `fetch(url, { redirect: "follow" })`, reading `response.url` (the final URL
+ * after the browser follows the chain). `redirect: "manual"` yields an opaque
+ * response in a service worker, so the Location can't be read there — see the
+ * file header. The response body is discarded (only the URL is needed).
  *
- * Redirect chains are followed manually but ONLY while the next hop is itself
- * an allowlisted shortener (the extension only holds host permissions for the
- * eight). The first non-shortener destination ends the chain and is returned.
+ * The browser follows the WHOLE chain, so only the FINAL destination is
+ * validated (scheme, length, private-host). `hops` is always 1 — the per-hop
+ * count is no longer observable.
  *
  * @param {string} url              - The shortener URL to resolve.
  * @param {object} [opts]
