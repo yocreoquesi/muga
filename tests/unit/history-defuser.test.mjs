@@ -498,11 +498,28 @@ describe("content/cleaner.js — window.__mugaReclean wiring (#951 Layer B)", ()
     assert.ok(guardIdx !== -1, "must compare url === _lastRecleanUrl");
     assert.ok(guardIdx < processIdx,
       "the loop-guard check must run before processUrl() is invoked");
-    // _lastRecleanUrl must be updated with the cleaned result so a
-    // subsequent re-entrant call (triggered by our own replaceState) is
-    // recognized and short-circuited.
-    assert.ok(/_lastRecleanUrl\s*=\s*result\.cleanUrl/.test(body),
-      "_lastRecleanUrl must be set to the cleaned URL after a successful clean");
+    // _lastRecleanUrl must be updated with the URL we actually WROTE (the
+    // fragment-safe target), so a re-entrant call triggered by our own
+    // replaceState is recognized and short-circuited.
+    assert.ok(/_lastRecleanUrl\s*=\s*target/.test(body),
+      "_lastRecleanUrl must be set to the written target after a successful clean");
+  });
+
+  test("__mugaReclean is fragment-safe: rewrites via computeRecleanTarget, not a raw cleanUrl string compare", () => {
+    const body = recleanBody();
+    // The rewrite decision MUST go through the fragment-safe guard so a
+    // hashchange (carousel arrow, hash router, in-page tab) never triggers a
+    // replaceState that stomps the page's fragment (repro: amazon.es carousel).
+    assert.ok(/computeRecleanTarget\(\s*window\.location\.href\s*,\s*result\.cleanUrl\s*\)/.test(body),
+      "__mugaReclean must compute the rewrite target via computeRecleanTarget(window.location.href, result.cleanUrl)");
+    // The address bar must be written with the fragment-preserving target,
+    // NOT the raw result.cleanUrl (which can drop/normalize the fragment).
+    assert.ok(/replaceState\(\s*history\.state\s*,\s*""\s*,\s*target\s*\)/.test(body),
+      "replaceState must write the fragment-safe target, not result.cleanUrl");
+    // Guard against a regression back to the raw string compare that caused
+    // the bug: `result.cleanUrl === window.location.href`.
+    assert.equal(/result\.cleanUrl\s*===\s*window\.location\.href/.test(body), false,
+      "must not gate the rewrite on a raw result.cleanUrl === location.href compare (fragment-blind)");
   });
 
   test("__mugaReclean bails when prefs are missing/disabled/not onboarded", () => {

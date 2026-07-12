@@ -444,6 +444,31 @@
     return entry.count > 5;
   }
 
+  // Fragment-safe rewrite guard. Mirrors src/lib/reclean-target.js
+  // (unit-tested there; content scripts can't ES-import cross-browser — same
+  // pattern as dom-link-rewriter). Rewrite the address bar ONLY when the
+  // origin/path/query actually changed; a fragment-only difference (hashchange
+  // from a carousel arrow, hash router, in-page tab) must NEVER trigger a
+  // replaceState — that stomps the fragment the page just set and silently
+  // breaks in-page navigation (repro: amazon.es feed carousel `<a href="#">`).
+  // On a legitimate rewrite, preserve the EXACT live fragment (incl. a bare
+  // "#") by string-splice, since the URL `hash` setter normalizes "" away.
+  function computeRecleanTarget(currentHref, cleanUrl) {
+    if (typeof currentHref !== "string" || typeof cleanUrl !== "string") return null;
+    let cur, next;
+    try { cur = new URL(currentHref); } catch { return null; }
+    try { next = new URL(cleanUrl, currentHref); } catch { return null; }
+    if (cur.origin === next.origin && cur.pathname === next.pathname && cur.search === next.search) {
+      return null;
+    }
+    const liveHashAt = currentHref.indexOf("#");
+    const liveFragment = liveHashAt >= 0 ? currentHref.slice(liveHashAt) : "";
+    const nextStr = next.href;
+    const nextHashAt = nextStr.indexOf("#");
+    const nextWithoutFragment = nextHashAt >= 0 ? nextStr.slice(0, nextHashAt) : nextStr;
+    return nextWithoutFragment + liveFragment;
+  }
+
   window.__mugaReclean = function (rawUrl) {
     if (!_contentPrefs || !_contentPrefs.enabled || !_contentPrefs.onboardingDone) return;
     // Resolve to an absolute URL before anything else. `rawUrl` here is
@@ -497,10 +522,15 @@
       console.error("[MUGA] reclean failed:", err);
       return;
     }
-    if (!result || !result.cleanUrl || result.cleanUrl === window.location.href) return;
-    _lastRecleanUrl = result.cleanUrl;
+    if (!result || !result.cleanUrl) return;
+    // Fragment-safe: only rewrite on a real origin/path/query change, and carry
+    // the live fragment through untouched. A fragment-only diff => null => the
+    // page's hash navigation (carousels, tabs, hash routers) is never stomped.
+    const target = computeRecleanTarget(window.location.href, result.cleanUrl);
+    if (!target || target === _lastRecleanUrl) return;
+    _lastRecleanUrl = target;
     try {
-      history.replaceState(history.state, "", result.cleanUrl);
+      history.replaceState(history.state, "", target);
     } catch { /* cross-origin or sandboxed — ignore */ }
     // Fire-and-forget: tell the SW to update badge + stats. Failure here
     // doesn't roll back the URL change — the user's address bar already
@@ -589,6 +619,22 @@
       return;
     }
     if (!["http:", "https:"].includes(url.protocol)) return;
+
+    // In-page fragment navigation — carousel arrows (<a href="#">), tabs,
+    // accordions, "back to top", hash routers — MUST pass through untouched.
+    // If we preventDefault + navigate() one of these we hijack the click and
+    // the in-page control dies (repro: amazon.es feed carousel arrows, whose
+    // href="#" the page handles itself; the page just reloads instead of
+    // rotating). The `href.startsWith("#")` guard above is on `anchor.href` —
+    // the IDL PROPERTY, which RESOLVES a bare "#"/"#section" to an ABSOLUTE
+    // URL — so it never catches same-document anchors. Same document ==
+    // same origin+path+query, differing only by fragment. Mirrors the pure
+    // isSameDocumentNavigation() in src/lib/same-document-nav.js.
+    if (url.origin === location.origin &&
+        url.pathname === location.pathname &&
+        url.search === location.search) {
+      return;
+    }
 
     // Only intercept clicks to affiliate store domains. All other clicks
     // pass through unmodified: DNR (Chrome) and self-clean (Firefox) handle

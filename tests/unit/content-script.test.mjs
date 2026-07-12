@@ -371,6 +371,35 @@ describe("Content script — affiliate-only click interception", () => {
       "click handler must return early for non-affiliate domains"
     );
   });
+
+  test("click handler returns early for same-document (in-page fragment) navigation BEFORE preventDefault", () => {
+    // Regression guard for the carousel bug: `<a href="#">` arrows, tabs and
+    // hash routers on affiliate domains (amazon.es) were hijacked because the
+    // `anchor.href` startsWith("#") guard reads the RESOLVED absolute URL and
+    // never matches. The interceptor MUST detect same-document navigation
+    // (same origin+path+query, only fragment differs) and return BEFORE
+    // e.preventDefault(), or it reloads the page instead of letting the
+    // in-page control run. See src/lib/same-document-nav.js.
+    const clickHandler = contentSource.match(
+      /document\.addEventListener\("click"[\s\S]*?\}, true\)/
+    )[0];
+
+    // Must compare origin + pathname + search against the live location.
+    assert.ok(/url\.origin === location\.origin/.test(clickHandler),
+      "click handler must compare url.origin === location.origin");
+    assert.ok(/url\.pathname === location\.pathname/.test(clickHandler),
+      "click handler must compare url.pathname === location.pathname");
+    assert.ok(/url\.search === location\.search/.test(clickHandler),
+      "click handler must compare url.search === location.search");
+
+    // The same-document early return MUST run before preventDefault, or the
+    // in-page click is already hijacked by the time we notice.
+    const sameDocIdx = clickHandler.indexOf("url.pathname === location.pathname");
+    const preventIdx = clickHandler.indexOf("e.preventDefault()");
+    assert.ok(sameDocIdx !== -1 && preventIdx !== -1, "both markers must exist");
+    assert.ok(sameDocIdx < preventIdx,
+      "the same-document guard must return BEFORE e.preventDefault()");
+  });
 });
 
 // ── getAffiliateDomains helper ──────────────────────────────────────────────
