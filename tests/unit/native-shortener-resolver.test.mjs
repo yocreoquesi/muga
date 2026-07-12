@@ -156,6 +156,20 @@ describe("resolveShortener — failure modes", () => {
     assert.deepEqual(r, { ok: false, reason: "not_shortener" });
   });
 
+  // shortener-resolver-expansion Slice 1 (D1): ad-gateway hosts are rejected
+  // with a distinct reason before any network fetch is attempted.
+  test("ad_gateway: known ad-gateway host is rejected without fetching", async () => {
+    installFetch(() => assert.fail("must not fetch an ad-gateway host"));
+    const r = await resolveShortener("https://ouo.io/x");
+    assert.deepEqual(r, { ok: false, reason: "ad_gateway" });
+  });
+
+  test("not_shortener: an unrelated unknown host still returns not_shortener (unaffected by ad_gateway guard)", async () => {
+    installFetch(() => assert.fail("must not fetch a non-allowlisted host"));
+    const r = await resolveShortener("https://some-random-unknown-host.example/x");
+    assert.deepEqual(r, { ok: false, reason: "not_shortener" });
+  });
+
   test("network: fetch throws a generic error", async () => {
     installFetch(() => { throw new Error("ECONNREFUSED"); });
     const r = await resolveShortener("https://bit.ly/x");

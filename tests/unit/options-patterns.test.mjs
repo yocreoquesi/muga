@@ -554,3 +554,81 @@ describe("options.js routes sync read-mutate-write call sites through the shared
     );
   });
 });
+
+// ── shortener-resolver-expansion Slice 1 (D3): re-grant notice ────────────────
+// GENERIC_SHORTENERS grew from 7 to 13 hosts. Existing grantees who granted the
+// original 7-host origin set now have partial coverage (hasShortenerPermissions
+// returns false). The notice tells them to re-enable; the browser silently
+// no-ops already-granted origins and prompts only for the missing delta.
+
+describe("shortener re-grant notice in options.html", () => {
+  test("notice paragraph #shortener-regrant-notice exists, initially hidden, i18n-driven", () => {
+    assert.ok(
+      optionsHtml.includes('id="shortener-regrant-notice"'),
+      "options.html must contain a notice element with id=shortener-regrant-notice"
+    );
+    const match = optionsHtml.match(/<p[^>]+id="shortener-regrant-notice"[^>]*>/);
+    assert.ok(match, "shortener-regrant-notice must be a <p>");
+    assert.ok(match[0].includes("hidden"), "shortener-regrant-notice must be initially hidden");
+    assert.ok(
+      optionsHtml.includes('data-i18n="shortener_regrant_notice"'),
+      "shortener-regrant-notice must use data-i18n=shortener_regrant_notice"
+    );
+  });
+
+  test("re-enable button #shortener-regrant-btn exists, initially hidden, i18n-driven", () => {
+    assert.ok(
+      optionsHtml.includes('id="shortener-regrant-btn"'),
+      "options.html must contain a button with id=shortener-regrant-btn"
+    );
+    const match = optionsHtml.match(/<button[^>]+id="shortener-regrant-btn"[^>]*>/);
+    assert.ok(match, "shortener-regrant-btn must be a <button>");
+    assert.ok(match[0].includes('type="button"'), "shortener-regrant-btn must be type=button");
+    assert.ok(match[0].includes("hidden"), "shortener-regrant-btn must be initially hidden");
+    assert.ok(
+      optionsHtml.includes('data-i18n="shortener_regrant_cta"'),
+      "shortener-regrant-btn must use data-i18n=shortener_regrant_cta"
+    );
+  });
+});
+
+describe("shortener re-grant notice wiring in options.js", () => {
+  test("updateShortenerRegrantNotice derives visibility from hasShortenerPermissions, not a hardcoded flag", () => {
+    assert.ok(
+      optionsJs.includes("function updateShortenerRegrantNotice("),
+      "options.js must define updateShortenerRegrantNotice"
+    );
+    const fnStart = optionsJs.indexOf("function updateShortenerRegrantNotice(");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}", fnStart));
+    assert.ok(
+      fnBody.includes("await hasShortenerPermissions()"),
+      "updateShortenerRegrantNotice must re-check hasShortenerPermissions(), not assume state"
+    );
+  });
+
+  test("initFollowShorteners calls updateShortenerRegrantNotice on init and after both toggle branches", () => {
+    const fnStart = optionsJs.indexOf("async function initFollowShorteners(");
+    const fnBody = optionsJs.slice(fnStart, optionsJs.indexOf("\n}\n", fnStart));
+    const calls = (fnBody.match(/updateShortenerRegrantNotice\(/g) || []).length;
+    assert.ok(
+      calls >= 3,
+      `initFollowShorteners must call updateShortenerRegrantNotice at init, on enable, and on disable — found ${calls} call(s)`
+    );
+  });
+
+  test("the re-grant button's click handler calls requestShortenerPermissions as its first await (Firefox gesture-frame rule)", () => {
+    const btnIdx = optionsJs.indexOf("regrantBtn.addEventListener");
+    assert.ok(btnIdx !== -1, "options.js must wire a click listener on the regrant button");
+    const window_ = optionsJs.slice(btnIdx, btnIdx + 700);
+    const listenerMatch = window_.match(/addEventListener\("click",\s*async\s*\(\)\s*=>\s*\{([\s\S]*?)\}\);/);
+    assert.ok(listenerMatch, "shortener-regrant-btn must have an async click listener");
+    const firstCodeLine = listenerMatch[1]
+      .split("\n")
+      .map((l) => l.trim())
+      .find((l) => l.length > 0 && !l.startsWith("//"));
+    assert.ok(
+      firstCodeLine && firstCodeLine.includes("await requestShortenerPermissions()"),
+      `requestShortenerPermissions() must be the first statement (comments aside) in the click handler, got: ${firstCodeLine}`
+    );
+  });
+});

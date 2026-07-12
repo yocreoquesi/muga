@@ -25,7 +25,13 @@
     "https://link.medium.com/*",
     "https://lnkd.in/*",
     "https://fb.me/*",
-    "https://ebay.to/*"
+    "https://ebay.to/*",
+    "https://is.gd/*",
+    "https://v.gd/*",
+    "https://cutt.ly/*",
+    "https://rebrand.ly/*",
+    "https://ow.ly/*",
+    "https://buff.ly/*"
   ],
 
   "background": {
@@ -108,7 +114,7 @@
     }
   },
 
-  "content_security_policy": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app https://bit.ly https://www.bit.ly https://tinyurl.com https://www.tinyurl.com https://t.co https://www.t.co https://link.medium.com https://www.link.medium.com https://lnkd.in https://www.lnkd.in https://fb.me https://www.fb.me https://ebay.to https://www.ebay.to; style-src 'self'",
+  "content_security_policy": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app https://bit.ly https://www.bit.ly https://tinyurl.com https://www.tinyurl.com https://t.co https://www.t.co https://link.medium.com https://www.link.medium.com https://lnkd.in https://www.lnkd.in https://fb.me https://www.fb.me https://ebay.to https://www.ebay.to https://is.gd https://www.is.gd https://v.gd https://www.v.gd https://cutt.ly https://www.cutt.ly https://rebrand.ly https://www.rebrand.ly https://ow.ly https://www.ow.ly https://buff.ly https://www.buff.ly; style-src 'self'",
 
   "icons": {
     "16": "icons/16.png",

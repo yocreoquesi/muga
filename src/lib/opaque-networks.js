@@ -25,6 +25,11 @@
 //   Under 2.1 these MUST pass through unchanged. See matrix §"Tier-1",
 //   §"Tier-2", §"Tier-3" per-network "Recommended cleaner policy".
 //
+//   AD_GATEWAY_NETWORKS — shortener-resolver-expansion Slice 1: hosts that
+//   present as shorteners but gate the real destination behind an
+//   ad-interstitial or paywall instead of a plain HTTP redirect. Recognized
+//   and never resolved; see isAdGateway() below.
+//
 //   PENDING_VERDICT — entries waiting for a P4.2 (#665) verdict. Kept in
 //   the legacy union to preserve existing behavior until the verdict
 //   lands; do NOT use the new helpers for these.
@@ -65,6 +70,15 @@ export const GENERIC_SHORTENERS = Object.freeze([
   "lnkd.in",
   "fb.me",
   "ebay.to",
+
+  // shortener-resolver-expansion Slice 1 (confident-tier, no probe needed —
+  // long-established generic shorteners with no ad-interstitial history):
+  "is.gd",       // is.gd — generic shortener
+  "v.gd",        // v.gd — is.gd's sister service
+  "cutt.ly",     // cutt.ly — generic shortener
+  "rebrand.ly",  // rebrand.ly — generic shortener
+  "ow.ly",       // ow.ly — Hootsuite's generic shortener
+  "buff.ly",     // buff.ly — Buffer's generic shortener
 ]);
 
 /**
@@ -156,6 +170,24 @@ export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
 ]);
 
 /**
+ * Ad-gateway hosts: present as shorteners but gate the real destination
+ * behind an ad-interstitial, paywall, or JS-timer page instead of a plain
+ * HTTP redirect. shortener-resolver-expansion Slice 1 (D1): the resolver's
+ * default-deny already excludes any host absent from GENERIC_SHORTENERS, so
+ * this bucket's real value is (1) a mutual-disjointness invariant that
+ * catches any future accidental addition of one of these hosts to
+ * GENERIC_SHORTENERS, and (2) a distinct `resolveShortener` failure reason
+ * ("ad_gateway") for hosts that must never be resolved. Intentionally
+ * excluded from optional_host_permissions and CSP connect-src in both
+ * manifests — no permission, no fetch, fails closed by construction.
+ */
+export const AD_GATEWAY_NETWORKS = Object.freeze([
+  "ouo.io",
+  "linkvertise.com",
+  "soo.gd",
+]);
+
+/**
  * Hosts waiting for a P4.2 (#665) bucket verdict. Kept in the legacy
  * OPAQUE_NETWORKS union for behavior compat; NOT addressed by the new
  * isGenericShortener / isAffiliateRedirectNetwork helpers.
@@ -217,6 +249,18 @@ export function isGenericShortener(hostname) {
  */
 export function isAffiliateRedirectNetwork(hostname) {
   return matches(AFFILIATE_REDIRECT_NETWORKS, hostname);
+}
+
+/**
+ * Returns true when the given hostname is a known ad-gateway host — a
+ * shortener-shaped link whose real destination is behind an ad-interstitial
+ * or paywall. Never resolved by resolveShortener, regardless of toggle state.
+ *
+ * @param {string|null|undefined} hostname
+ * @returns {boolean}
+ */
+export function isAdGateway(hostname) {
+  return matches(AD_GATEWAY_NETWORKS, hostname);
 }
 
 /**

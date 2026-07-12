@@ -24,7 +24,7 @@
 // so the permission list never drifts from the classifier. amzn.to is
 // intentionally absent — it sits in opaque-networks' PENDING_VERDICT bucket
 // awaiting issue #665 (Amazon-affiliate decision), so this work leaves it be.
-import { GENERIC_SHORTENERS, isGenericShortener } from "./opaque-networks.js";
+import { GENERIC_SHORTENERS, isGenericShortener, isAdGateway } from "./opaque-networks.js";
 export { GENERIC_SHORTENERS };
 
 /** Default fetch timeout in milliseconds. */
@@ -145,6 +145,8 @@ export function isAllowlistedShortener(hostname) {
  *
  * Failure reasons:
  *   "not_shortener"           input host is not in the allowlist
+ *   "ad_gateway"              input host is a known ad-gateway (opaque-networks.js
+ *                             AD_GATEWAY_NETWORKS) — never resolved, no fetch attempted
  *   "network"                 fetch threw (network error / DNS / CSP)
  *   "timeout"                 fetch aborted after timeoutMs
  *   "no_redirect"             response was not a 3xx with Location
@@ -164,6 +166,13 @@ export async function resolveShortener(url, opts) {
     inputUrl = new URL(url);
   } catch {
     return { ok: false, reason: "not_shortener" };
+  }
+  // shortener-resolver-expansion Slice 1 (D1): reject known ad-gateway hosts
+  // before the network fetch, with a distinct reason. Belt-and-suspenders —
+  // ad-gateway hosts are also absent from GENERIC_SHORTENERS, so the
+  // allowlist check below would already fail closed with "not_shortener".
+  if (isAdGateway(inputUrl.hostname)) {
+    return { ok: false, reason: "ad_gateway" };
   }
   if (!isAllowlistedShortener(inputUrl.hostname)) {
     return { ok: false, reason: "not_shortener" };
