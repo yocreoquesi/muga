@@ -268,12 +268,18 @@
   // ── Hover-and-hold interaction ────────────────────────────────────────────
   let _currentAnchor = null;
   let _timer = null;
+  // Monotonic hover epoch. Bumped on every hover reset so an in-flight async
+  // shortener resolution from a PREVIOUS hover (even to the same anchor, if the
+  // pointer flicked off and back) is recognised as stale after its await and
+  // does not show its tooltip before the new 2.5s hold has elapsed.
+  let _hoverGen = 0;
 
   function clearHoverState() {
     if (_timer) {
       clearTimeout(_timer);
       _timer = null;
     }
+    _hoverGen++;
     _currentAnchor = null;
     hideTooltip();
   }
@@ -351,6 +357,11 @@
     }
     if (!isShortener) return;
 
+    // Pin the hover epoch so a resolution that finishes AFTER the pointer left
+    // (and possibly re-entered the same anchor, starting a fresh hold) does not
+    // display early. See _hoverGen.
+    const gen = _hoverGen;
+
     (async () => {
       let response;
       try {
@@ -365,10 +376,13 @@
         return;
       }
 
-      // The hover could have moved to a different anchor (or off entirely)
-      // while we were awaiting the network round trip, and the gate could
-      // have flipped closed (prefs changed, site got exempted) — re-check
-      // both before ever touching the DOM.
+      // The hover could have moved to a different anchor (or off entirely) while
+      // we were awaiting the network round trip, and the gate could have flipped
+      // closed (prefs changed, site got exempted) — re-check all before ever
+      // touching the DOM. The epoch check also catches a flick-off-and-back to
+      // the SAME anchor: a new hold is in progress, so this stale resolution
+      // must not preempt it.
+      if (gen !== _hoverGen) return;
       if (_currentAnchor !== anchor) return;
       if (!gatePasses() || _prefs.followShortenersEnabled !== true) return;
       if (!response || response.ok !== true) return;
