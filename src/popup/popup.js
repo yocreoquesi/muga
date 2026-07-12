@@ -19,6 +19,7 @@ import {
 import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
+import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -585,6 +586,21 @@ function _resetPreviewDom() {
     previewCount.classList.remove("is-clean");
     previewCount.removeAttribute("data-animating");
   }
+  // #1062 slice 1: length-reduction "% shorter" line + green/red bar. Reset
+  // every render (idempotent, same rationale as the other preview slots
+  // above) so a prior navigation's percentage/widths never bleed into a
+  // render where the URL turned out to already be clean.
+  const previewShorter = el("preview-shorter");
+  if (previewShorter) {
+    previewShorter.hidden = true;
+    previewShorter.textContent = "";
+  }
+  const previewLengthBar = el("preview-length-bar");
+  if (previewLengthBar) previewLengthBar.hidden = true;
+  const previewLengthKept = el("preview-length-kept");
+  if (previewLengthKept) previewLengthKept.style.width = "";
+  const previewLengthRemoved = el("preview-length-removed");
+  if (previewLengthRemoved) previewLengthRemoved.style.width = "";
   const previewPreserved = el("preview-preserved");
   if (previewPreserved) {
     previewPreserved.hidden = true;
@@ -728,6 +744,30 @@ async function showUrlPreview(prefs, lang) {
   //  - count === 0 with path cleanup / blacklist only → no count line; the
   //    visible URL diff already communicates what happened.
   renderCountCelebration(result, url, lang);
+
+  // #1062 slice 1: honest length-reduction insight. A LENGTH-only claim
+  // (never "N% of trackers") — see src/lib/length-reduction.js. Rendered
+  // whenever the cleaner actually removed characters, independent of the
+  // "untouched" action check below (e.g. path-cleanup-only URLs still get
+  // an honest bar even though they don't hit the tracker-count branch).
+  const lengthView = computeLengthReduction(url, result.cleanUrl);
+  if (!lengthView.isClean) {
+    const bar = computeLengthBar(lengthView);
+    const shorterEl = document.getElementById("preview-shorter");
+    if (shorterEl) {
+      const template = t("preview_shorter", lang);
+      shorterEl.textContent = template.replace("{n}", String(lengthView.shorterPercent));
+      shorterEl.hidden = false;
+    }
+    const lengthBarEl = document.getElementById("preview-length-bar");
+    const lengthKeptEl = document.getElementById("preview-length-kept");
+    const lengthRemovedEl = document.getElementById("preview-length-removed");
+    if (lengthBarEl && lengthKeptEl && lengthRemovedEl) {
+      lengthKeptEl.style.width = `${bar.keptPercent}%`;
+      lengthRemovedEl.style.width = `${bar.removedPercent}%`;
+      lengthBarEl.hidden = false;
+    }
+  }
 
   if (result.cleanUrl === url && result.action === "untouched") {
     // Show original URL as plain reference. No strikethrough, no "after" URL
