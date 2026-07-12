@@ -527,7 +527,14 @@
     // the live fragment through untouched. A fragment-only diff => null => the
     // page's hash navigation (carousels, tabs, hash routers) is never stomped.
     const target = computeRecleanTarget(window.location.href, result.cleanUrl);
-    if (!target || target === _lastRecleanUrl) return;
+    // computeRecleanTarget already returns null when nothing meaningful changed
+    // (same origin/path/search as the live URL). Do NOT also gate on
+    // `target === _lastRecleanUrl`: two DIFFERENT dirty URLs can clean to the
+    // SAME target (e.g. ?ref=a and ?ref=b both -> /product), and gating on the
+    // last-written target would skip the second clean and leak ?ref=b. Loop
+    // re-entrancy is handled by the INPUT guard above (`url === _lastRecleanUrl`)
+    // once we record the target below — not by suppressing distinct cleans.
+    if (!target) return;
     _lastRecleanUrl = target;
     try {
       history.replaceState(history.state, "", target);

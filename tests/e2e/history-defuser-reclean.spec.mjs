@@ -78,6 +78,7 @@ async function stubAmazonHost(page) {
       contentType: "text/html",
       body: `<!doctype html><html><body>
         <button id="muga-push-btn">on-site banner link</button>
+        <button id="muga-push-btn-2">on-site banner link 2</button>
         <script>
           // Count replaceState calls at the page-world level (same world as
           // history-defuser-mainworld.js, since it runs with world: MAIN).
@@ -97,6 +98,15 @@ async function stubAmazonHost(page) {
           document.getElementById("muga-push-btn").addEventListener("click", () => {
             history.pushState({ tag: "muga-test" }, "Product",
               "/Some-Product-Name/dp/B0044R881I/ref=sr_1_1?aref=abc123&th=1");
+          });
+
+          // A SECOND dirty variant of the SAME product: different /ref= marker
+          // and different aref value, so it cleans to the SAME target as the
+          // first button. Used to prove the reclean does not skip a genuine
+          // clean just because its target matches the previously-written one.
+          document.getElementById("muga-push-btn-2").addEventListener("click", () => {
+            history.pushState({ tag: "muga-test" }, "Product",
+              "/Some-Product-Name/dp/B0044R881I/ref=sr_2_9?aref=zzz999&th=1");
           });
         </script>
       </body></html>`,
@@ -195,6 +205,45 @@ test.describe("SPA reclean on pushState (#951 Layer B)", () => {
     // URL stayed stable after settling (no oscillation).
     const settledUrl = await page.evaluate(() => window.location.href);
     expect(settledUrl).toBe(finalUrl);
+
+    await page.close();
+  });
+
+  test("two different dirty URLs that clean to the SAME target are BOTH cleaned (no output-history skip)", async ({ context }) => {
+    // Regression guard: the reclean rewrite must NOT be gated on
+    // `target === _lastRecleanUrl`. Two distinct dirty navigations can clean to
+    // the same target (here: same product, different /ref= + aref values). If
+    // the guard compared the computed target against the LAST WRITTEN target it
+    // would skip the second clean and leak the second URL's tracking. The loop
+    // guard lives on the INPUT (url === _lastRecleanUrl), not the output.
+    const page = await context.newPage();
+    await stubAmazonHost(page);
+    await page.goto(`https://${HOST}/index.html`);
+    await page.waitForFunction(() => window.__mugaHistoryDefused === true, { timeout: 10000 });
+
+    // First dirty nav -> cleans to target T, records _lastRecleanUrl = T.
+    await page.locator("#muga-push-btn").click();
+    await page.waitForFunction(
+      () => !window.location.pathname.includes("/ref=") && !window.location.search.includes("aref"),
+      { timeout: 10000 }
+    );
+
+    // Second dirty nav -> DIFFERENT dirty URL, SAME clean target T. Must still
+    // be cleaned. With the buggy output-history guard this would leave
+    // /ref=sr_2_9 and aref=zzz999 in the address bar (target === _lastRecleanUrl
+    // bails), so the wait below would time out.
+    await page.locator("#muga-push-btn-2").click();
+    await page.waitForFunction(
+      () => !window.location.pathname.includes("/ref=") && !window.location.search.includes("aref"),
+      { timeout: 10000 }
+    );
+
+    const finalPath = await page.evaluate(() => window.location.pathname);
+    const finalSearch = await page.evaluate(() => window.location.search);
+    expect(finalPath).not.toContain("/ref=");
+    expect(finalPath).toContain("/dp/B0044R881I");
+    expect(finalSearch).not.toContain("aref");
+    expect(finalSearch).toContain("th=1");
 
     await page.close();
   });
