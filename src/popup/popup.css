@@ -322,6 +322,41 @@ header {
   100% { transform: scale(1);    opacity: 1;   }
 }
 
+/* #1062 slice 1: honest length-reduction insight. Mirrors the web tool's
+   length bar (web/index.html .length-bar-track) using the popup's own
+   diff-strip/diff-keep pair (already used for the before/after URL rows)
+   instead of assuming --good/--bad exist here. Neither element sets
+   `display` on the node that carries the `hidden` attribute, so the UA
+   [hidden] rule keeps applying (same CSS trap the web-ui-source-guard
+   .btn[hidden] regression test covers). */
+.preview-shorter {
+  font-size: 12.5px;
+  color: var(--text-2);
+  margin-top: 8px;
+  line-height: 1.3;
+}
+
+.preview-length-bar {
+  margin-top: 6px;
+}
+
+.preview-length-track {
+  display: flex;
+  height: 8px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+}
+
+.preview-length-kept {
+  background: var(--diff-keep);
+}
+
+.preview-length-removed {
+  background: var(--diff-strip);
+}
+
 .preview-removed {
   font-size: 10px;
   color: var(--text-3);
