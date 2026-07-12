@@ -88,6 +88,14 @@ export const GENERIC_SHORTENERS = Object.freeze([
   "dlvr.it",     // dlvr.it — generic shortener
   "ift.tt",      // ift.tt — IFTTT's generic shortener
   "qr.ae",       // qr.ae — Quora's generic shortener
+
+  // shortener-resolver-expansion Slice 3 (re-probed with a real browser
+  // User-Agent — see tools/probe-shortener-redirect.mjs — a plain curl
+  // without a browser UA gets a Cloudflare bot-challenge (403), but the
+  // extension's background fetch() always carries the browser's real UA
+  // and resolves cleanly with a direct 3xx; a Cloudflare challenge would
+  // just fail the resolver's fetch, which is fail-safe):
+  "t.ly",        // t.ly — generic shortener
 ]);
 
 /**
