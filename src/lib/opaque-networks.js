@@ -79,6 +79,15 @@ export const GENERIC_SHORTENERS = Object.freeze([
   "rebrand.ly",  // rebrand.ly — generic shortener
   "ow.ly",       // ow.ly — Hootsuite's generic shortener
   "buff.ly",     // buff.ly — Buffer's generic shortener
+
+  // shortener-resolver-expansion Slice 2 (probable-tier, graduated after a
+  // live redirect probe — see tools/probe-shortener-redirect.mjs — confirmed
+  // each gives a direct 3xx to a real destination with no ad-interstitial):
+  "rb.gy",       // rb.gy — Rebrandly's generic shortener
+  "tiny.cc",     // tiny.cc — generic shortener
+  "dlvr.it",     // dlvr.it — generic shortener
+  "ift.tt",      // ift.tt — IFTTT's generic shortener
+  "qr.ae",       // qr.ae — Quora's generic shortener
 ]);
 
 /**
