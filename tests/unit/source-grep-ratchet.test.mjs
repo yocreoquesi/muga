@@ -115,7 +115,6 @@ const EXEMPT = new Set([
 //
 // Top offenders targeted for migration in the #824 arc (NOT this PR):
 //   service-worker-patterns.test.mjs  76  ← largest; SW not importable in Node
-//   shortener-stats-sw.test.mjs       39  ← SW + storage both not importable
 //   misc-regression.test.mjs          29  ← mixed; some migratable
 //   content-cleaner-patterns.test.mjs 27  ← content script not importable
 //   content-script.test.mjs           19  ← content script not importable
@@ -123,7 +122,6 @@ const BASELINE = {
   // Files with SW/content-script source that cannot be imported in Node —
   // migration requires extracting pure functions or an integration harness.
   "service-worker-patterns.test.mjs": 77,   // SW not importable; behavioral migration is long arc (#824). +1 for the FORCE_FETCH_REMOTE_RULES "Update now" handler existence guard (Update now feature) — the (a)/(b)/(c) gate coverage itself is behavioral via a pure forceFetchRemoteRules() mirror, only the "handler exists" check is source-text
-  "shortener-stats-sw.test.mjs": 40,        // SW + storage; behavioral migration deferred (#824). +1 for #922 egress-gate guard (SW not importable)
   "misc-regression.test.mjs": 29,           // mixed bag; partial migration possible (#824)
   "content-cleaner-patterns.test.mjs": 34,  // content script not importable (#824). +7 for #allowlist-full-inert: ping-blocking, runRedirectUnwrap, and click-interception isSiteFullyExempt guards
   "content-script.test.mjs": 20,            // content script not importable (#824); +1: same-document click-guard mirror (carousel regression)
@@ -137,8 +135,6 @@ const BASELINE = {
   "storage.test.mjs": 2,                   // verifies storage structure patterns (#824)
   "url-regex-sync.test.mjs": 2,            // verifies SW + cleaner regex are byte-identical (#824)
   "docs-prefs-table.test.mjs": 1,          // reads storage source to verify docs table (#824)
-  "shortener-stats-race.test.mjs": 1,      // reads SW source for regression guard (#824)
-  "shortener-stats.test.mjs": 1,           // reads SW source for regression guard (#824)
   "options-write-path-override.test.mjs": 2, // SW ENABLE/DISABLE_REMOTE_RULES handlers not importable in Node; 2 guards pin the reconcile wiring (#888 write-path follow-up, #824)
 };
 
