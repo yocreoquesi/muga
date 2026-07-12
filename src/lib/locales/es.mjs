@@ -224,6 +224,7 @@ export default Object.freeze({
   preview_count_other: "MUGA eliminó {n} bits de ruido de esta URL",
   preview_count_clean: "Esta página está limpia. MUGA limpia los enlaces automáticamente mientras navegas.",
   preview_shorter: "Este enlace es un {n}% más corto",
+  preview_unwrapped: "Destino real revelado: {host}",
   preview_preserved_creator: "Referido del creador preservado",
   preview_preserved_creator_hint: "MUGA procura no tocar ningún tag de afiliado que no sea el nuestro, para que quien te lo recomendó conserve su crédito. Si alguna vez nos equivocamos, puedes reportarlo con el enlace de abajo.",
   rate_muga_short: "Valorar MUGA",
