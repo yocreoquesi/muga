@@ -26,14 +26,14 @@ const LOCALES = { en, es, de, fr, it, ja, pt };
 
 // ── #1046: i18n + UI copy ────────────────────────────────────────────────────
 
-describe("#1046 — shortener disclosure says seven hosts, not eight", () => {
-  test("en no longer claims 'eight hosts'", () => {
-    assert.ok(/seven hosts/.test(en.follow_shorteners_disclosure));
-    assert.ok(!/eight hosts/.test(en.follow_shorteners_disclosure));
+describe("shortener-resolver-expansion — disclosure is illustrative, no hard host count", () => {
+  test("en does not claim a specific host count", () => {
+    assert.ok(!/\bseven\b/i.test(en.follow_shorteners_disclosure));
+    assert.ok(!/\beight\b/i.test(en.follow_shorteners_disclosure));
   });
-  test("es no longer claims 'ocho dominios'", () => {
-    assert.ok(/siete dominios/.test(es.follow_shorteners_disclosure));
-    assert.ok(!/ocho dominios/.test(es.follow_shorteners_disclosure));
+  test("es does not claim a specific host count", () => {
+    assert.ok(!/\bsiete\b/i.test(es.follow_shorteners_disclosure));
+    assert.ok(!/\bocho\b/i.test(es.follow_shorteners_disclosure));
   });
 });
 

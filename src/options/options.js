@@ -1966,7 +1966,7 @@ async function initFollowShorteners(prefs) {
       if (granted) {
         await updateShortenerRegrantNotice(true);
       } else {
-        showToast(t("optionsRemoteRulesPermDenied", _currentLang));
+        showToast(t("shortener_regrant_denied", _currentLang));
       }
     });
   }
