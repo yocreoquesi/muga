@@ -33,7 +33,8 @@
     "https://tiny.cc/*",
     "https://dlvr.it/*",
     "https://ift.tt/*",
-    "https://qr.ae/*"
+    "https://qr.ae/*",
+    "https://t.ly/*"
   ],
 
   "host_permissions": [
@@ -111,7 +112,7 @@
   },
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app https://bit.ly https://www.bit.ly https://tinyurl.com https://www.tinyurl.com https://t.co https://www.t.co https://link.medium.com https://www.link.medium.com https://lnkd.in https://www.lnkd.in https://fb.me https://www.fb.me https://ebay.to https://www.ebay.to https://is.gd https://www.is.gd https://v.gd https://www.v.gd https://cutt.ly https://www.cutt.ly https://rebrand.ly https://www.rebrand.ly https://ow.ly https://www.ow.ly https://buff.ly https://www.buff.ly https://rb.gy https://www.rb.gy https://tiny.cc https://www.tiny.cc https://dlvr.it https://www.dlvr.it https://ift.tt https://www.ift.tt https://qr.ae https://www.qr.ae; style-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; default-src 'self'; connect-src 'self' https://rules.muga.app https://bit.ly https://www.bit.ly https://tinyurl.com https://www.tinyurl.com https://t.co https://www.t.co https://link.medium.com https://www.link.medium.com https://lnkd.in https://www.lnkd.in https://fb.me https://www.fb.me https://ebay.to https://www.ebay.to https://is.gd https://www.is.gd https://v.gd https://www.v.gd https://cutt.ly https://www.cutt.ly https://rebrand.ly https://www.rebrand.ly https://ow.ly https://www.ow.ly https://buff.ly https://www.buff.ly https://rb.gy https://www.rb.gy https://tiny.cc https://www.tiny.cc https://dlvr.it https://www.dlvr.it https://ift.tt https://www.ift.tt https://qr.ae https://www.qr.ae https://t.ly https://www.t.ly; style-src 'self'"
   },
 
   "web_accessible_resources": [
