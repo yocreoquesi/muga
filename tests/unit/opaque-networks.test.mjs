@@ -10,9 +10,11 @@ import {
   OPAQUE_NETWORKS,
   GENERIC_SHORTENERS,
   AFFILIATE_REDIRECT_NETWORKS,
+  AD_GATEWAY_NETWORKS,
   isOpaqueNetworkHost,
   isGenericShortener,
   isAffiliateRedirectNetwork,
+  isAdGateway,
 } from "../../src/lib/opaque-networks.js";
 
 describe("OPAQUE_NETWORKS — shape and content", () => {
@@ -68,10 +70,12 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
 
   // redirector-coverage-expansion (T24): assert all 7 new/activated hosts present
   // Batch 3 (#607): plus 3 branded shorteners (lnkd.in, fb.me, ebay.to)
-  test("has at least 16 entries (original 6 + 7 redirector-coverage + 3 batch-3)", () => {
+  // shortener-resolver-expansion Slice 1: plus 6 confident-tier generic
+  // shorteners (is.gd, v.gd, cutt.ly, rebrand.ly, ow.ly, buff.ly).
+  test("has at least 22 entries (original 6 + 7 redirector-coverage + 3 batch-3 + 6 slice-1)", () => {
     assert.ok(
-      OPAQUE_NETWORKS.length >= 16,
-      `Expected >= 16 entries, got ${OPAQUE_NETWORKS.length}`,
+      OPAQUE_NETWORKS.length >= 22,
+      `Expected >= 22 entries, got ${OPAQUE_NETWORKS.length}`,
     );
   });
 
@@ -146,8 +150,12 @@ describe("GENERIC_SHORTENERS — split bucket", () => {
     }
   });
 
-  test("contains the seven expected generic shortener hosts", () => {
-    const expected = ["bit.ly", "tinyurl.com", "t.co", "link.medium.com", "lnkd.in", "fb.me", "ebay.to"];
+  test("contains the thirteen expected generic shortener hosts", () => {
+    const expected = [
+      "bit.ly", "tinyurl.com", "t.co", "link.medium.com", "lnkd.in", "fb.me", "ebay.to",
+      // shortener-resolver-expansion Slice 1 (#confident-tier)
+      "is.gd", "v.gd", "cutt.ly", "rebrand.ly", "ow.ly", "buff.ly",
+    ];
     for (const host of expected) {
       assert.ok(GENERIC_SHORTENERS.includes(host), `Expected ${host} in GENERIC_SHORTENERS`);
     }
@@ -158,6 +166,81 @@ describe("GENERIC_SHORTENERS — split bucket", () => {
     for (const host of affiliateHosts) {
       assert.ok(!GENERIC_SHORTENERS.includes(host), `${host} must NOT be in GENERIC_SHORTENERS`);
     }
+  });
+
+  test("does NOT contain any AD_GATEWAY_NETWORKS host (no bucket leakage)", () => {
+    for (const host of AD_GATEWAY_NETWORKS) {
+      assert.ok(!GENERIC_SHORTENERS.includes(host), `${host} must NOT be in GENERIC_SHORTENERS`);
+    }
+  });
+});
+
+// shortener-resolver-expansion Slice 1 (D1): a third bucket for hosts that
+// present as shorteners but gate the destination behind an ad-interstitial or
+// paywall. Never resolved — recognized so the disjointness invariant catches
+// any future accidental addition to GENERIC_SHORTENERS.
+describe("AD_GATEWAY_NETWORKS — ad-gateway bucket", () => {
+  test("is a frozen array of non-empty lowercase hostname strings", () => {
+    assert.ok(Array.isArray(AD_GATEWAY_NETWORKS));
+    assert.ok(Object.isFrozen(AD_GATEWAY_NETWORKS));
+    for (const entry of AD_GATEWAY_NETWORKS) {
+      assert.strictEqual(typeof entry, "string");
+      assert.ok(entry.length > 0);
+      assert.ok(entry.includes("."), `Entry "${entry}" has no dot`);
+      assert.strictEqual(entry, entry.toLowerCase(), `Entry "${entry}" is not lowercase`);
+    }
+  });
+
+  test("contains ouo.io, linkvertise.com, soo.gd", () => {
+    const expected = ["ouo.io", "linkvertise.com", "soo.gd"];
+    for (const host of expected) {
+      assert.ok(AD_GATEWAY_NETWORKS.includes(host), `Expected ${host} in AD_GATEWAY_NETWORKS`);
+    }
+  });
+
+  test("does NOT contain any affiliate-redirect host (no bucket leakage)", () => {
+    for (const host of AFFILIATE_REDIRECT_NETWORKS) {
+      assert.ok(!AD_GATEWAY_NETWORKS.includes(host), `${host} must NOT be in AD_GATEWAY_NETWORKS`);
+    }
+  });
+});
+
+describe("isAdGateway", () => {
+  test("returns true for known ad-gateway hosts", () => {
+    assert.strictEqual(isAdGateway("ouo.io"), true);
+    assert.strictEqual(isAdGateway("linkvertise.com"), true);
+    assert.strictEqual(isAdGateway("soo.gd"), true);
+  });
+
+  test("returns false for generic shorteners and affiliate networks", () => {
+    assert.strictEqual(isAdGateway("bit.ly"), false);
+    assert.strictEqual(isAdGateway("prf.hn"), false);
+  });
+
+  test("handles www. prefix defensively", () => {
+    assert.strictEqual(isAdGateway("www.ouo.io"), true);
+  });
+
+  test("returns false for null/undefined/empty", () => {
+    for (const value of [null, undefined, ""]) {
+      assert.strictEqual(isAdGateway(value), false);
+    }
+  });
+});
+
+describe("Three-way bucket disjointness (D1 invariant)", () => {
+  test("GENERIC_SHORTENERS, AFFILIATE_REDIRECT_NETWORKS, AD_GATEWAY_NETWORKS are pairwise disjoint", () => {
+    const genericSet = new Set(GENERIC_SHORTENERS);
+    const affiliateSet = new Set(AFFILIATE_REDIRECT_NETWORKS);
+    const adGatewaySet = new Set(AD_GATEWAY_NETWORKS);
+
+    const genericVsAffiliate = [...genericSet].filter((h) => affiliateSet.has(h));
+    const genericVsAdGateway = [...genericSet].filter((h) => adGatewaySet.has(h));
+    const affiliateVsAdGateway = [...affiliateSet].filter((h) => adGatewaySet.has(h));
+
+    assert.deepStrictEqual(genericVsAffiliate, [], `GENERIC ∩ AFFILIATE: ${genericVsAffiliate.join(", ")}`);
+    assert.deepStrictEqual(genericVsAdGateway, [], `GENERIC ∩ AD_GATEWAY: ${genericVsAdGateway.join(", ")}`);
+    assert.deepStrictEqual(affiliateVsAdGateway, [], `AFFILIATE ∩ AD_GATEWAY: ${affiliateVsAdGateway.join(", ")}`);
   });
 });
 
