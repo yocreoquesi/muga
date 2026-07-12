@@ -1,21 +1,28 @@
 /** MUGA: Native shortener resolver — resolves branded URL shorteners in-extension */
 //
 // Sole shortener resolution path as of ADR-0004 phase 5 (proxy decommissioned).
-// Performs the same HTTP redirect the browser would perform,
-// reads the `Location` header, and returns the destination — no server hop.
+// Follows the shortener's redirect chain the same way the browser would and
+// returns the final destination (response.url) — no server hop.
+//
+// IN-BROWSER CONSTRAINT: a `fetch(url, { redirect: "manual" })` in a service
+// worker yields an OPAQUE response (status 0, headers unreadable), so the
+// `Location` header can never be read there — the earlier manual, per-hop
+// implementation was silently a no-op in the extension (it only worked in Node,
+// where the maintainer probe runs). We therefore use `redirect: "follow"` and
+// read `response.url`. Consequence: the browser follows the WHOLE chain, so the
+// per-hop "stop at the first non-shortener host" control is gone; only the FINAL
+// destination is validated (Option A, best-effort affiliate handling).
 //
 // Behaviour & safety floor — MUGA is a denoise tool, not a security/privacy
 // product, so these are CORRECTNESS guards (don't hand back garbage), not a
 // security posture. Notably http:// destinations are allowed: the user clicked
 // a shortener and wants to reach it, whatever its scheme.
-//   - credentials: "omit", cache: "no-store", redirect: "manual".
+//   - credentials: "omit", cache: "no-store", redirect: "follow"; body cancelled.
+//   - http:// shortener URLs are upgraded to https for the fetch (CSP connect-src
+//     whitelists only https shortener origins); the destination scheme is kept.
 //   - Only allowlisted generic shorteners (opaque-networks.js) are resolved.
-//   - Destination scheme must be http(s); javascript:/data:/… are rejected.
-//   - Destination length capped at 2000 chars.
-//   - Private/loopback/link-local destinations are rejected — never a real web
-//     destination, and it keeps the resolver from becoming an SSRF helper.
-//   - Redirect chains are followed manually ONLY across allowlisted shorteners,
-//     up to MAX_HOPS; loops and over-limit chains fail closed.
+//   - Final destination scheme must be http(s); length capped at 2000 chars.
+//   - Private/loopback/link-local FINAL destinations are rejected.
 //   - Fetch aborted after timeoutMs (default 5000).
 
 // The allowlisted generic shorteners are the single canonical list in
@@ -32,12 +39,6 @@ const DEFAULT_TIMEOUT_MS = 5000;
 
 /** Maximum destination URL length accepted. Mirrors the cleaner.js 2000-char cap. */
 const MAX_DESTINATION_LENGTH = 2000;
-
-/** Maximum number of allowlisted-shortener hops to follow before failing closed. */
-const MAX_HOPS = 5;
-
-/** HTTP status codes that carry a `Location` redirect. */
-const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 // ── Private-host detection ────────────────────────────────────────────────────
 // Self-contained: does not depend on any deleted proxy module.
@@ -147,15 +148,13 @@ export function isAllowlistedShortener(hostname) {
  *   "not_shortener"           input host is not in the allowlist
  *   "ad_gateway"              input host is a known ad-gateway (opaque-networks.js
  *                             AD_GATEWAY_NETWORKS) — never resolved, no fetch attempted
- *   "network"                 fetch threw (network error / DNS / CSP)
+ *   "network"                 fetch threw (network error / DNS / CSP / too many
+ *                             redirects)
  *   "timeout"                 fetch aborted after timeoutMs
- *   "no_redirect"             response was not a 3xx with Location
- *   "missing_location"        3xx response had no Location header
- *   "oversize_location"       Location exceeded MAX_DESTINATION_LENGTH
- *   "invalid_url"             Location unparseable or non-http(s) scheme
+ *   "no_redirect"             the request never left the shortener host
+ *   "oversize_location"       destination exceeded MAX_DESTINATION_LENGTH
+ *   "invalid_url"             final URL unparseable or non-http(s) scheme
  *   "private_address_blocked" destination resolved to a private/loopback host
- *   "redirect_loop"           the chain revisited a URL already seen
- *   "too_many_hops"           chain exceeded MAX_HOPS
  */
 export async function resolveShortener(url, opts) {
   const timeoutMs = (opts && typeof opts.timeoutMs === "number") ? opts.timeoutMs : DEFAULT_TIMEOUT_MS;
@@ -178,71 +177,75 @@ export async function resolveShortener(url, opts) {
     return { ok: false, reason: "not_shortener" };
   }
 
-  const seen = new Set();
-  let current = inputUrl.toString();
-
-  for (let hop = 0; hop < MAX_HOPS; hop++) {
-    if (seen.has(current)) {
-      return { ok: false, reason: "redirect_loop" };
-    }
-    seen.add(current);
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    let response;
-    try {
-      response = await fetch(current, {
-        signal: controller.signal,
-        credentials: "omit",
-        cache: "no-store",
-        redirect: "manual",
-      });
-    } catch (err) {
-      if (err && err.name === "AbortError") {
-        return { ok: false, reason: "timeout" };
-      }
-      return { ok: false, reason: "network" };
-    } finally {
-      clearTimeout(timer);
-    }
-
-    if (!REDIRECT_STATUSES.has(response.status)) {
-      return { ok: false, reason: "no_redirect" };
-    }
-
-    const location = response.headers.get("location");
-    if (!location) {
-      return { ok: false, reason: "missing_location" };
-    }
-    if (location.length > MAX_DESTINATION_LENGTH) {
-      return { ok: false, reason: "oversize_location" };
-    }
-
-    // Resolve relative Locations against the current hop.
-    let destUrl;
-    try {
-      destUrl = new URL(location, current);
-    } catch {
-      return { ok: false, reason: "invalid_url" };
-    }
-    if (destUrl.protocol !== "http:" && destUrl.protocol !== "https:") {
-      return { ok: false, reason: "invalid_url" };
-    }
-    if (isPrivateHost(destUrl.hostname)) {
-      return { ok: false, reason: "private_address_blocked" };
-    }
-
-    // If the destination is itself an allowlisted shortener, follow it (we hold
-    // the host permission). Otherwise the chain is done.
-    if (isAllowlistedShortener(destUrl.hostname)) {
-      current = destUrl.toString();
-      continue;
-    }
-
-    // Final destination reached. Scheme (http/https) already validated above.
-    return { ok: true, destination: destUrl.toString(), hops: hop + 1 };
+  // CSP connect-src whitelists only https shortener origins, and every
+  // allowlisted shortener serves https (an http short link just 301s to it), so
+  // upgrade the fetch URL to https or connect-src blocks it (throws "network").
+  // The destination is read from response.url below, so an http:// destination
+  // is still preserved as-is — we never re-fetch it.
+  let fetchUrl = inputUrl.toString();
+  if (fetchUrl.startsWith("http://")) {
+    fetchUrl = "https://" + fetchUrl.slice("http://".length);
   }
 
-  return { ok: false, reason: "too_many_hops" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    // redirect:"follow" (NOT "manual"): in a browser service worker a manual
+    // redirect yields an OPAQUE response (status 0, headers unreadable), so the
+    // Location can never be read and the resolver was silently a no-op. Following
+    // the chain and reading response.url is the only readable path in-browser.
+    // Trade-off (accepted, Option A): the browser follows the WHOLE chain, so the
+    // per-hop "stop at the first non-shortener host" affiliate/SSRF control is
+    // gone — only the FINAL destination is validated. MUGA is a denoise tool and
+    // affiliate handling here is best-effort, so revealing/cleaning the true
+    // destination wins over per-hop control.
+    response = await fetch(fetchUrl, {
+      signal: controller.signal,
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "follow",
+    });
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      return { ok: false, reason: "timeout" };
+    }
+    // Also covers net::ERR_TOO_MANY_REDIRECTS (loops / over-long chains).
+    return { ok: false, reason: "network" };
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // We only ever need the final URL, never the body — cancel the stream so the
+  // destination page is not downloaded.
+  try { await (response.body && response.body.cancel()); } catch { /* noop */ }
+
+  const finalUrl = response.url;
+  if (typeof finalUrl !== "string" || !finalUrl) {
+    return { ok: false, reason: "no_redirect" };
+  }
+
+  let destUrl;
+  try {
+    destUrl = new URL(finalUrl);
+  } catch {
+    return { ok: false, reason: "invalid_url" };
+  }
+  if (destUrl.protocol !== "http:" && destUrl.protocol !== "https:") {
+    return { ok: false, reason: "invalid_url" };
+  }
+  // Still on an allowlisted shortener host → the request never redirected off
+  // the shortener, so nothing was resolved.
+  if (isAllowlistedShortener(destUrl.hostname)) {
+    return { ok: false, reason: "no_redirect" };
+  }
+  if (destUrl.toString().length > MAX_DESTINATION_LENGTH) {
+    return { ok: false, reason: "oversize_location" };
+  }
+  if (isPrivateHost(destUrl.hostname)) {
+    return { ok: false, reason: "private_address_blocked" };
+  }
+
+  return { ok: true, destination: destUrl.toString(), hops: 1 };
 }

@@ -134,6 +134,28 @@ describe("hover-preview.js — source guards", () => {
     );
   });
 
+  test("resolves shorteners over the network when followShortenersEnabled is on (#1088)", () => {
+    // When the local unwrap finds no host change, a generic shortener whose
+    // destination needs a network round trip is resolved via RESOLVE_SHORTENER.
+    // Regression guard for the whole hover-shortener path.
+    assert.ok(
+      HOVER_PREVIEW_SRC.includes("maybeResolveShortener"),
+      "must fall through to maybeResolveShortener when the host is unchanged",
+    );
+    assert.ok(
+      /_prefs\.followShortenersEnabled\s*!==\s*true/.test(HOVER_PREVIEW_SRC),
+      "must gate the network resolution on followShortenersEnabled",
+    );
+    assert.ok(
+      HOVER_PREVIEW_SRC.includes("isGenericShortener"),
+      "must only resolve allowlisted generic shorteners",
+    );
+    assert.ok(
+      /type:\s*["']RESOLVE_SHORTENER["']/.test(HOVER_PREVIEW_SRC),
+      "must resolve via the RESOLVE_SHORTENER service-worker message",
+    );
+  });
+
   test("calls processUrl with the documented argument shape", () => {
     assert.ok(
       /__mugaCleaner\.processUrl\(\s*href,\s*_?prefs,\s*\[\],\s*undefined,\s*undefined,\s*["']["'],\s*\[\],\s*\[\]\s*\)/.test(
