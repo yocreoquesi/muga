@@ -1,22 +1,30 @@
 /**
  * MUGA: Hover destination preview (#1028)
  *
- * Desktop-only, fully local content script. When the user hovers AND holds
- * the mouse still over a link for ~hoverPreviewDelayMs (default 2.5s), shows a
- * small text-only tooltip with the link's REAL, cleaned destination — never
- * page content, never a screenshot.
+ * Desktop-only content script. When the user hovers AND holds the mouse
+ * still over a link for ~hoverPreviewDelayMs (default 2.5s), shows a small
+ * text-only tooltip with the link's REAL, cleaned destination — never page
+ * content, never a screenshot.
  *
- * Shown ONLY when MUGA's local unwrap/clean pipeline changes the link's
- * HOST — i.e. the link is a redirect wrapper (l.facebook.com/l.php?u=…,
- * google.com/url?q=…, generic redirect networks). A plain link whose
- * destination host is unchanged (e.g. a UTM-only tracking link) shows
- * NOTHING — that case has no hidden destination worth surfacing.
+ * Two ways the tooltip can be populated:
  *
- * Fully local: no network access, no new permissions, no mutation of the
- * anchor's href, no interference with the click. Native-shortener
- * resolution (fetch-based) is explicitly out of scope for this feature —
- * shorteners never show a preview here since resolving them requires a
- * network round trip.
+ * 1. Local unwrap (always on when the feature is enabled): shown when MUGA's
+ *    local unwrap/clean pipeline changes the link's HOST — i.e. the link is
+ *    a redirect wrapper (l.facebook.com/l.php?u=…, google.com/url?q=…,
+ *    generic redirect networks). This path is fully local: no network
+ *    access, no new permissions.
+ *
+ * 2. Shortener resolution (opt-in, network access): if the local unwrap
+ *    leaves the host unchanged AND the anchor host is a known generic
+ *    shortener (bit.ly, tinyurl.com, …) AND the user has enabled "Follow
+ *    shortener redirects" (followShortenersEnabled) in Settings, the real
+ *    destination is resolved with a service-worker round trip
+ *    (RESOLVE_SHORTENER, the same mechanism already used at click time in
+ *    content/cleaner.js). This performs a network request but reuses an
+ *    opt-in the user already granted — it requests no NEW permission.
+ *
+ * A plain link that neither unwraps locally nor resolves via case 2 shows
+ * NOTHING — no mutation of the anchor's href, no interference with the click.
  *
  * Note: ES module imports are not supported in MV3/MV2 content scripts, so
  * (like content/cleaner.js) the tooltip label translations are inlined
@@ -306,9 +314,77 @@
     } catch {
       return;
     }
-    if (!changed) return; // plain link, destination host unchanged — show nothing
 
-    showTooltip(anchor, result.cleanUrl);
+    if (changed) {
+      showTooltip(anchor, result.cleanUrl);
+      return;
+    }
+
+    let anchorHost;
+    try {
+      anchorHost = new URL(href).host;
+    } catch {
+      return;
+    }
+
+    // Local unwrap left the host unchanged. Generic shorteners never unwrap
+    // locally (resolving them needs a network round trip) — if this host is
+    // one AND the user opted into "follow shorteners", resolve it over the
+    // network. Otherwise this is a plain link: show nothing.
+    maybeResolveShortener(anchor, href, anchorHost);
+  }
+
+  // ── Shortener resolution (network, opt-in only) ──────────────────────────
+  // Only reached when the local unwrap above found no host change. Mirrors
+  // the click-time RESOLVE_SHORTENER flow in content/cleaner.js.
+  const SHORTENER_RESOLVE_TIMEOUT_MS = 6000;
+
+  function maybeResolveShortener(anchor, href, anchorHost) {
+    if (!_prefs || _prefs.followShortenersEnabled !== true) return;
+    if (!window.__mugaCleaner || typeof window.__mugaCleaner.isGenericShortener !== "function") return;
+
+    let isShortener = false;
+    try {
+      isShortener = window.__mugaCleaner.isGenericShortener(anchorHost);
+    } catch {
+      return;
+    }
+    if (!isShortener) return;
+
+    (async () => {
+      let response;
+      try {
+        response = await Promise.race([
+          chrome.runtime.sendMessage({ type: "RESOLVE_SHORTENER", url: href }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("shortener-resolve timeout")), SHORTENER_RESOLVE_TIMEOUT_MS)
+          ),
+        ]);
+      } catch {
+        // SW message failed or timed out — never leave a pending tooltip.
+        return;
+      }
+
+      // The hover could have moved to a different anchor (or off entirely)
+      // while we were awaiting the network round trip, and the gate could
+      // have flipped closed (prefs changed, site got exempted) — re-check
+      // both before ever touching the DOM.
+      if (_currentAnchor !== anchor) return;
+      if (!gatePasses() || _prefs.followShortenersEnabled !== true) return;
+      if (!response || response.ok !== true) return;
+
+      const dest = response.destination;
+      if (typeof dest !== "string" || dest.length > 2000) return;
+      if (!/^https?:\/\//i.test(dest)) return;
+      try {
+        const destUrl = new URL(dest);
+        if (destUrl.protocol !== "http:" && destUrl.protocol !== "https:") return;
+      } catch {
+        return;
+      }
+
+      showTooltip(anchor, dest);
+    })();
   }
 
   document.addEventListener("mouseover", (e) => {
