@@ -74,10 +74,12 @@ describe("OPAQUE_NETWORKS — shape and content", () => {
   // shorteners (is.gd, v.gd, cutt.ly, rebrand.ly, ow.ly, buff.ly).
   // shortener-resolver-expansion Slice 2: plus 5 probe-verified generic
   // shorteners (rb.gy, tiny.cc, dlvr.it, ift.tt, qr.ae).
-  test("has at least 27 entries (original 6 + 7 redirector-coverage + 3 batch-3 + 6 slice-1 + 5 slice-2)", () => {
+  // shortener-resolver-expansion Slice 3: plus 1 re-probed generic shortener
+  // (t.ly — verified CLEAN with a real browser UA).
+  test("has at least 28 entries (original 6 + 7 redirector-coverage + 3 batch-3 + 6 slice-1 + 5 slice-2 + 1 slice-3)", () => {
     assert.ok(
-      OPAQUE_NETWORKS.length >= 27,
-      `Expected >= 27 entries, got ${OPAQUE_NETWORKS.length}`,
+      OPAQUE_NETWORKS.length >= 28,
+      `Expected >= 28 entries, got ${OPAQUE_NETWORKS.length}`,
     );
   });
 
@@ -152,13 +154,15 @@ describe("GENERIC_SHORTENERS — split bucket", () => {
     }
   });
 
-  test("contains the eighteen expected generic shortener hosts", () => {
+  test("contains the nineteen expected generic shortener hosts", () => {
     const expected = [
       "bit.ly", "tinyurl.com", "t.co", "link.medium.com", "lnkd.in", "fb.me", "ebay.to",
       // shortener-resolver-expansion Slice 1 (confident-tier)
       "is.gd", "v.gd", "cutt.ly", "rebrand.ly", "ow.ly", "buff.ly",
       // shortener-resolver-expansion Slice 2 (probe-verified CLEAN)
       "rb.gy", "tiny.cc", "dlvr.it", "ift.tt", "qr.ae",
+      // shortener-resolver-expansion Slice 3 (re-probed CLEAN with browser UA)
+      "t.ly",
     ];
     for (const host of expected) {
       assert.ok(GENERIC_SHORTENERS.includes(host), `Expected ${host} in GENERIC_SHORTENERS`);

@@ -34,7 +34,8 @@
  * documents the sample short link used, the expected verdict, and (for
  * CLEAN hosts) the real destination hostname the redirect landed on. Kept
  * here so re-running this tool reproduces and documents the verdicts that
- * justified graduating rb.gy, tiny.cc, dlvr.it, ift.tt, and qr.ae to
+ * justified graduating rb.gy, tiny.cc, dlvr.it, ift.tt, qr.ae (Slice 2), and
+ * t.ly (Slice 3 — re-probed with a real browser User-Agent) to
  * GENERIC_SHORTENERS, and why the rest stayed excluded.
  *
  * @type {Record<string, { sample: string, verdict: string, note: string }>}
@@ -86,9 +87,13 @@ export const PROBE_DATASET = Object.freeze({
     note: "no functioning sample link found",
   },
   "t.ly": {
-    sample: "https://t.ly/",
-    verdict: "BOT-BLOCKED",
-    note: "Cloudflare challenge intercepts the request before any redirect",
+    sample: "https://t.ly/5ZMtg",
+    verdict: "CLEAN",
+    note: "destination: amazon.com (301, Location header). Requires a real browser " +
+      "User-Agent: plain curl without one gets a 403 Cloudflare bot-challenge, but " +
+      "the extension's background fetch() always carries the browser's real UA and " +
+      "resolves cleanly; a Cloudflare challenge would just fail the resolver's " +
+      "fetch, which is fail-safe.",
   },
   "bl.ink": {
     sample: "https://bl.ink/",
