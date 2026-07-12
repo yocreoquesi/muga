@@ -80,25 +80,20 @@ async function freshPrefs() {
 
 afterEach(() => { delete globalThis.chrome; });
 
-describe("followShortenersEnabled — browser-dependent default (PREF_DEFAULTS)", () => {
-  test("MV3 (Chrome) manifest → PREF_DEFAULTS.followShortenersEnabled is true", async () => {
+describe("followShortenersEnabled — PREF_DEFAULTS stays a pure literal (web-engine boundary)", () => {
+  // PREF_DEFAULTS is bundled into the chrome-free web engine (cleaner-bundle.js),
+  // so it MUST NOT embed a chrome.* call. The literal is false on every browser;
+  // the Chrome-MV3 default-on is applied in getPrefs() (see below), not here.
+  test("PREF_DEFAULTS.followShortenersEnabled is a literal false on Chrome MV3", async () => {
     installChromeStub({ manifestVersion: 3 });
-    const { PREF_DEFAULTS } = await freshPrefs();
-    assert.equal(PREF_DEFAULTS.followShortenersEnabled, true);
-  });
-
-  test("MV2 (Firefox) manifest → PREF_DEFAULTS.followShortenersEnabled is false", async () => {
-    installChromeStub({ manifestVersion: 2 });
     const { PREF_DEFAULTS } = await freshPrefs();
     assert.equal(PREF_DEFAULTS.followShortenersEnabled, false);
   });
 
-  test("getManifest unavailable (stubbed host) → PREF_DEFAULTS.followShortenersEnabled is false, never throws", async () => {
-    installChromeStub({}); // no getManifest at all
-    await assert.doesNotReject(async () => {
-      const { PREF_DEFAULTS } = await freshPrefs();
-      assert.equal(PREF_DEFAULTS.followShortenersEnabled, false);
-    });
+  test("PREF_DEFAULTS.followShortenersEnabled is a literal false on Firefox MV2 too", async () => {
+    installChromeStub({ manifestVersion: 2 });
+    const { PREF_DEFAULTS } = await freshPrefs();
+    assert.equal(PREF_DEFAULTS.followShortenersEnabled, false);
   });
 });
 
@@ -135,5 +130,14 @@ describe("followShortenersEnabled — a stored value always wins over the browse
     const { getPrefs } = await freshPrefs();
     const effective = await getPrefs();
     assert.equal(effective.followShortenersEnabled, false);
+  });
+
+  test("getManifest unavailable → getPrefs resolves followShortenersEnabled to false, never rejects", async () => {
+    installChromeStub({}); // no getManifest at all
+    const { getPrefs } = await freshPrefs();
+    await assert.doesNotReject(async () => {
+      const effective = await getPrefs();
+      assert.equal(effective.followShortenersEnabled, false);
+    });
   });
 });

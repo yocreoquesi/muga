@@ -87,11 +87,11 @@ describe("hover-preview decision surface — processUrl host-change behavior", (
 // ---------------------------------------------------------------------------
 
 describe("hover-preview.js — source guards", () => {
-  test("gates on matchMedia PC-only hover/pointer capability", () => {
+  test("gates on matchMedia mouse-available capability (any-* so a mouse on a touch laptop counts)", () => {
     assert.match(
       HOVER_PREVIEW_SRC,
-      /matchMedia\(\s*["']\(hover:\s*hover\)/,
-      "must early-return unless matchMedia(\"(hover: hover) and (pointer: fine)\") matches",
+      /matchMedia\(\s*["']\(any-hover:\s*hover\)\s*and\s*\(any-pointer:\s*fine\)/,
+      "must early-return unless matchMedia(\"(any-hover: hover) and (any-pointer: fine)\") matches — the primary-pointer variants wrongly exclude touchscreen laptops with a mouse",
     );
   });
 

@@ -40,13 +40,18 @@
   if (window.__mugaHoverPreview) return;
   window.__mugaHoverPreview = true;
 
-  // ── Guard 1 (PC-only) ───────────────────────────────────────────────────
-  // Desktop = coarse-vs-fine pointer AND hover capability. On touch-only
-  // devices (Firefox Android) this never matches, so the entire script is a
-  // no-op there — no listeners are ever registered.
+  // ── Guard 1 (a mouse must be available) ─────────────────────────────────
+  // Require a hover-capable fine pointer to EXIST — not necessarily the
+  // PRIMARY one. `(pointer: fine)` / `(hover: hover)` describe only the primary
+  // input, so a touchscreen laptop (primary = coarse touch) with a mouse
+  // attached failed the check and got NO hover preview at all (reported on
+  // Windows touch devices). The `any-*` variants match when ANY input
+  // qualifies, so a mouse alongside a touchscreen counts, while a pure-touch
+  // device (phone/tablet, Firefox Android) still matches nothing and the whole
+  // script stays a no-op there.
   let _mq;
   try {
-    _mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    _mq = window.matchMedia("(any-hover: hover) and (any-pointer: fine)");
   } catch {
     return;
   }
