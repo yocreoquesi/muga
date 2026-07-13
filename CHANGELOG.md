@@ -2,11 +2,33 @@
 
 All notable changes to MUGA will be documented in this file.
 
-## [Unreleased]
+## [2.6.0] - 2026-07-13
 
 ### Features
 
-- **Hover destination preview** (#1028). On desktop, hover and hold a link to see where it really goes, already cleaned. Shown only for links that redirect elsewhere. On by default, fully local, opt-out in Settings > Advanced.
+- **The MUGA Clean web tool** (#1029) at muga.app/clean. Paste any URL and it strips tracking parameters and unwraps known redirect wrappers right in the page, no install. Runs in your browser.
+- **Cleaning insight on the web tool** (#1063). A length-reduction bar, a per-parameter what/why breakdown, an unwrap callout, and a shareable report.
+- **Hover destination preview** (#1028). On desktop, hover and hold a link to see where it really goes, already cleaned, including short links resolved to their real destination and `google.com/url` search redirects. Shown only for links that redirect elsewhere. On by default, fully local, opt-out in Settings > Advanced.
+- **Popup unwrap indicator** (#1062). The popup shows the real destination behind a redirect, plus an honest length-reduction insight (percent shorter, kept/removed bar).
+- **Wider short-link coverage** (#1075, #1077, #1078). The generic-shortener resolver allowlist expanded to more probe-verified hosts, with an ad-gateway reject bucket.
+- **Web tool referral parity** (#1067, #1073). On a few supported stores, the web tool can add MUGA's own referral to a naked link the same way the extension does, and offers a copy-without-referral option when a link already carries MUGA's tag.
+- **Landing refresh** (#1064, #1066, #1069, #1056). Platform-aware install buttons with official browser logos, a relevant-only hero, an inline cleaner that morphs into the real tool, and a click-to-enlarge screenshot lightbox.
+
+### Changed
+
+- **Follow shortener redirects is on by default on Chrome** (c42e8f6). On Firefox it asks for permission first. You can turn it off anytime in Settings.
+- **Removed the "Shortener resolution stats (beta)" panel** (96ee845). It did not add enough value to keep.
+- **Softened absolute wording across copy** (59bab53). Language is now factual and control-first, while keeping the verifiable facts: no telemetry, no analytics, open source, GPLv3.
+
+### Fixed
+
+- **In-page navigation on affiliate sites** (f311357). MUGA no longer interferes with same-page anchor navigation, for example Amazon's side-section carousels.
+- **Short-link resolution actually works in the browser** (51631b0). Switched to a follow-redirect approach so the resolved destination is read correctly.
+- **Reclean no longer skips distinct cleans that share a target** (5a69e4b).
+- **Web cleaner applies Amazon path/slug stripping** (#1065, #1068), including the tag-free opt-out URL.
+- **Stale /clean assets after deploy** (#1082, #1083). Contract assets revalidate so a deploy never serves stale JS.
+- **Firefox Android no longer claims an unavailable keyboard shortcut** (#991).
+- **Pre-release audit fixes** (5987572). The shortener click gate reaches the resolver, the hover preview waits for onboarding consent, an options toast string was corrected, and a contrast and Firefox user-agent detection issue on the site were fixed.
 
 ## [2.5.0] - 2026-07-09
 
@@ -1089,7 +1111,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/yocreoquesi/muga/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/yocreoquesi/muga/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/yocreoquesi/muga/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/yocreoquesi/muga/compare/v2.2.0...v2.3.0
