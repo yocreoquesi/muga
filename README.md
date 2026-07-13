@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.5.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-2.6.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: The URL denoise extension for the web
@@ -17,7 +17,7 @@
 
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
 
-> **2.5.0 shipped.** Firefox now cleans at the network layer with a CSP-immune wrap, so cleaning works on strict-CSP sites where the old approach was silently blocked. Adds per-site control (pause cleaning, an Active Defense toggle, a fully inert allowlist), a popup that explains why each parameter was cleaned, a weekly remote-rules changelog in Settings, and a large tracking-parameter harvest. See [CHANGELOG](CHANGELOG.md) for the full release notes.
+> **2.6.0 shipped.** A new web tool at muga.app/clean cleans and unwraps any URL right in the browser, no install, with a length-reduction bar and a per-parameter breakdown. Hovering a link on desktop now previews its real, cleaned destination before you click, and the popup shows the same unwrap and length-reduction insight. Short-link coverage is wider, and following shortener redirects is on by default on Chrome. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
 [Privacy policy](https://rules.muga.app/privacy-page.html) · [FAQ](docs/faq.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 
