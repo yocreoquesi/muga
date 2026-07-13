@@ -8,23 +8,26 @@ import {
 } from "../../src/lib/native-shortener-resolver.js";
 
 // ── fetch mock harness ───────────────────────────────────────────────────────
-// Each test installs a `handler(url) => { status, location }` (or a thrower).
+// The resolver uses redirect:"follow" and reads response.url (the final URL
+// after the browser followed the chain); the body is cancelled, never read. So
+// each test installs a `handler(fetchedUrl) => finalUrl` (or a thrower), and the
+// mock response only needs { url, body:{cancel} }.
 
 const realFetch = globalThis.fetch;
 
-function fakeResponse({ status = 302, location = null } = {}) {
+function fakeResponse(finalUrl) {
   return {
-    status,
-    headers: {
-      get(name) {
-        return name.toLowerCase() === "location" ? location : null;
-      },
-    },
+    url: finalUrl,
+    body: { cancel: async () => {} },
   };
 }
 
 function installFetch(handler) {
-  globalThis.fetch = async (url) => handler(String(url));
+  globalThis.fetch = async (url) => {
+    const out = handler(String(url));
+    // A handler may return a bare final-URL string or a full fake response.
+    return typeof out === "string" ? fakeResponse(out) : out;
+  };
 }
 
 afterEach(() => {
@@ -109,36 +112,26 @@ describe("allowlist + private-host helpers", () => {
 // ── happy paths ──────────────────────────────────────────────────────────────
 
 describe("resolveShortener — happy paths", () => {
-  test("resolves each allowlisted host to an https destination", async () => {
+  test("resolves each allowlisted host to its final destination", async () => {
     for (const host of GENERIC_SHORTENERS) {
-      installFetch(() => fakeResponse({ status: 302, location: "https://example.com/dest" }));
+      installFetch(() => "https://example.com/dest");
       const r = await resolveShortener(`https://${host}/abc`);
       assert.deepEqual(r, { ok: true, destination: "https://example.com/dest", hops: 1 }, `host ${host}`);
     }
   });
 
-  test("follows a chain across allowlisted shorteners and counts hops", async () => {
-    installFetch((url) => {
-      if (url.startsWith("https://bit.ly/")) return fakeResponse({ location: "https://t.co/step2" });
-      if (url.startsWith("https://t.co/")) return fakeResponse({ location: "https://example.com/final" });
-      return fakeResponse({ status: 200 });
-    });
-    const r = await resolveShortener("https://bit.ly/start");
-    assert.deepEqual(r, { ok: true, destination: "https://example.com/final", hops: 2 });
-  });
-
   test("allows an http:// destination (denoise tool, not an https-enforcer)", async () => {
-    installFetch(() => fakeResponse({ status: 302, location: "http://example.com/x" }));
+    installFetch(() => "http://example.com/x");
     const r = await resolveShortener("https://bit.ly/x");
     assert.deepEqual(r, { ok: true, destination: "http://example.com/x", hops: 1 });
   });
 
-  test("honors 301/307/308 redirect statuses", async () => {
-    for (const status of [301, 303, 307, 308]) {
-      installFetch(() => fakeResponse({ status, location: "https://example.com/x" }));
-      const r = await resolveShortener("https://tinyurl.com/x");
-      assert.equal(r.ok, true, `status ${status}`);
-    }
+  test("upgrades an http:// shortener URL to https for the fetch (https preferred)", async () => {
+    let fetchedUrl = null;
+    installFetch((url) => { fetchedUrl = url; return "https://example.com/dest"; });
+    const r = await resolveShortener("http://bit.ly/1PZiIBZ");
+    assert.equal(r.ok, true);
+    assert.equal(fetchedUrl, "https://bit.ly/1PZiIBZ", "the shortener must be fetched over https");
   });
 });
 
@@ -182,47 +175,29 @@ describe("resolveShortener — failure modes", () => {
     assert.deepEqual(r, { ok: false, reason: "timeout" });
   });
 
-  test("no_redirect: non-3xx response", async () => {
-    installFetch(() => fakeResponse({ status: 200 }));
+  test("no_redirect: the request never left the shortener host", async () => {
+    // response.url still points at the shortener → nothing was resolved.
+    installFetch(() => "https://bit.ly/x");
     const r = await resolveShortener("https://bit.ly/x");
     assert.deepEqual(r, { ok: false, reason: "no_redirect" });
   });
 
-  test("missing_location: 3xx without Location header", async () => {
-    installFetch(() => fakeResponse({ status: 302, location: null }));
-    const r = await resolveShortener("https://bit.ly/x");
-    assert.deepEqual(r, { ok: false, reason: "missing_location" });
-  });
-
-  test("oversize_location: Location exceeds the 2000-char cap", async () => {
+  test("oversize_location: final destination exceeds the 2000-char cap", async () => {
     const huge = "https://example.com/" + "a".repeat(2100);
-    installFetch(() => fakeResponse({ status: 302, location: huge }));
+    installFetch(() => huge);
     const r = await resolveShortener("https://bit.ly/x");
     assert.deepEqual(r, { ok: false, reason: "oversize_location" });
   });
 
-  test("invalid_url: non-http(s) scheme in Location", async () => {
-    installFetch(() => fakeResponse({ status: 302, location: "javascript:alert(1)" }));
+  test("invalid_url: final destination has a non-http(s) scheme", async () => {
+    installFetch(() => "ftp://example.com/x");
     const r = await resolveShortener("https://bit.ly/x");
     assert.deepEqual(r, { ok: false, reason: "invalid_url" });
   });
 
-  test("private_address_blocked: destination resolves to a loopback host", async () => {
-    installFetch(() => fakeResponse({ status: 302, location: "https://127.0.0.1/x" }));
+  test("private_address_blocked: final destination resolves to a loopback host", async () => {
+    installFetch(() => "https://127.0.0.1/x");
     const r = await resolveShortener("https://bit.ly/x");
     assert.deepEqual(r, { ok: false, reason: "private_address_blocked" });
-  });
-
-  test("redirect_loop: chain revisits a URL already seen", async () => {
-    installFetch(() => fakeResponse({ status: 302, location: "https://bit.ly/loop" }));
-    const r = await resolveShortener("https://bit.ly/loop");
-    assert.deepEqual(r, { ok: false, reason: "redirect_loop" });
-  });
-
-  test("too_many_hops: chain of allowlisted shorteners exceeds MAX_HOPS", async () => {
-    let n = 0;
-    installFetch(() => fakeResponse({ status: 302, location: `https://bit.ly/${++n}` }));
-    const r = await resolveShortener("https://bit.ly/0");
-    assert.deepEqual(r, { ok: false, reason: "too_many_hops" });
   });
 });

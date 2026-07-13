@@ -18,6 +18,35 @@ import { evaluate as evaluateConsentPolicy } from "./consent-policy.js";
 // E2E fixture overrides (#407). Returns null in production.
 import { getTestFixtures } from "./test-fixtures.js";
 
+/**
+ * Computes the browser-dependent default for `followShortenersEnabled`.
+ *
+ * - Chrome (MV3): `host_permissions` already grants `<all_urls>` at install
+ *   time (src/manifest.json), so the native shortener-resolution fetch works
+ *   with zero extra permission prompts. Default ON.
+ * - Firefox (MV2): the shortener origins are only ever granted via an
+ *   explicit `chrome.permissions.request()` gesture from the Settings
+ *   toggle (src/options/options.js requestShortenerPermissions). Default
+ *   OFF (unchanged) — nobody is prompted without asking first.
+ *
+ * Evaluated once at module load (the manifest never changes mid-session).
+ * Never throws: an absent/stubbed `chrome.runtime.getManifest` (unit-test
+ * environments, or an unforeseen host) fails closed to `false`.
+ *
+ * A value the user has explicitly stored always wins over this default —
+ * chrome.storage.sync.get() only substitutes a default for a key that is
+ * ABSENT from storage (see getPrefs() below).
+ *
+ * @returns {boolean}
+ */
+function defaultFollowShortenersEnabled() {
+  try {
+    return chrome.runtime.getManifest().manifest_version === 3;
+  } catch {
+    return false;
+  }
+}
+
 // ── Sync: user preferences ──────────────────────────────────────────────────
 
 export const PREF_DEFAULTS = {
@@ -118,21 +147,32 @@ export const PREF_DEFAULTS = {
   // Default empty — opt-in by user click only.
   userCustomRules: [],
   // Follow shortener redirects natively (ADR-0004 phase 2, #699; renamed from
-  // privacyProxyEnabled in phase 5, #701). When ON, MUGA resolves the eight
-  // generic shorteners in-browser via fetch(redirect:"manual"). Default OFF:
-  // requires the eight shortener host permissions, granted from the options toggle.
+  // privacyProxyEnabled in phase 5, #701). When ON, MUGA resolves generic
+  // shorteners in-browser via fetch(redirect:"manual"). Requires the
+  // shortener host permissions, granted from the options toggle.
+  // MUST stay a pure literal: this defaults object is bundled into the
+  // chrome-free web engine (cleaner-bundle.js / web/engine), so it cannot
+  // reference chrome.*. The BROWSER-DEPENDENT default (true on Chrome MV3, false
+  // on Firefox MV2) is applied in getPrefs() below — the extension-only path
+  // where chrome.runtime.getManifest is available — via
+  // defaultFollowShortenersEnabled(). An explicitly stored value (the user
+  // toggled it) always wins over that default.
   // Migration: on startup, if chrome.storage.sync contains privacyProxyEnabled=true,
   // this field is set to true and the old key is deleted (see migrateLegacyProxyPref).
   followShortenersEnabled: false,
   // Hover destination preview (#1028). Desktop-only: shows a small
   // text-only tooltip with the real cleaned destination when hovering AND
-  // holding still over a link for hoverPreviewDelayMs, but ONLY when MUGA's
+  // holding still over a link for hoverPreviewDelayMs. Shown when MUGA's
   // local unwrap/clean changes the link's host (wrappers / redirect
-  // networks). A plain link whose host is unchanged shows nothing. Default
-  // ON: it is local-only (no network access, no new permissions), PC-only
-  // (never activates on touch-only devices), and unobtrusive (appears only
-  // after a ~2.5s hold, and only on links that actually redirect elsewhere).
-  // Opt-out any time in Settings > Advanced.
+  // networks) — that path is fully local, no network access. It is ALSO
+  // shown for a generic shortener link (bit.ly etc.) whose host does NOT
+  // change locally, but only when followShortenersEnabled is ON: that path
+  // performs the same network resolution the click-time follow-shorteners
+  // flow already does (RESOLVE_SHORTENER), gated behind the user's existing
+  // opt-in — no new permission is requested by this feature itself. A plain
+  // link that neither unwraps nor resolves shows nothing. Default ON,
+  // PC-only (never activates on touch-only devices), and unobtrusive
+  // (appears only after a ~2.5s hold). Opt-out any time in Settings > Advanced.
   hoverPreviewEnabled: true,
   // Hold duration (ms) before the hover preview tooltip appears.
   hoverPreviewDelayMs: 2500,
@@ -165,7 +205,7 @@ export async function getPrefs() {
   // consent record (onboardingDone) or the per-device overrides — otherwise a
   // fully onboarded user is treated as never-onboarded for this call, and a
   // declined per-device pref silently reverts to the synced value (audit #1045).
-  const [sync, consent, overrides, fixtures] = await Promise.all([
+  const [sync, followStored, consent, overrides, fixtures] = await Promise.all([
     new Promise((resolve) => {
       chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
         if (chrome.runtime.lastError) {
@@ -174,6 +214,16 @@ export async function getPrefs() {
         } else {
           resolve(result);
         }
+      });
+    }),
+    // Bare read (NO default) to detect whether followShortenersEnabled was
+    // ever explicitly stored. The merged read above cannot tell "user set it
+    // to false" apart from "never set" (both surface as false). We need that
+    // distinction to apply the Chrome-MV3 default-on ONLY when the user never
+    // chose, without clobbering an explicit opt-out.
+    new Promise((resolve) => {
+      chrome.storage.sync.get("followShortenersEnabled", (result) => {
+        resolve(chrome.runtime.lastError ? {} : (result || {}));
       });
     }),
     getConsent().catch((err) => {
@@ -217,6 +267,20 @@ export async function getPrefs() {
   }
   if (policy.status === "hard-reonboard") {
     overlay.onboardingDone = false;
+  }
+
+  // Browser-aware default for followShortenersEnabled. PREF_DEFAULTS keeps a
+  // pure literal `false` (it is bundled into the chrome-free web engine), so the
+  // Chrome-MV3 default-on is applied HERE, where chrome.runtime.getManifest is
+  // available, and ONLY when the user never explicitly stored the pref. A stored
+  // value (from the merged `sync` read) or a per-device override both win, since
+  // overlay is applied over `sync` and overrides are applied last.
+  // A stored value is always a boolean; anything else (key absent → undefined)
+  // means the user never chose, so the browser default applies. Using a typeof
+  // check rather than `in` is robust to storage stubs that surface an absent key
+  // as `{ key: undefined }` instead of omitting it.
+  if (typeof followStored.followShortenersEnabled !== "boolean") {
+    overlay.followShortenersEnabled = defaultFollowShortenersEnabled();
   }
 
   // Per-device pref overlay (#364). Any key set in overrides wins

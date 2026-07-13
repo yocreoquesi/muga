@@ -87,11 +87,11 @@ describe("hover-preview decision surface — processUrl host-change behavior", (
 // ---------------------------------------------------------------------------
 
 describe("hover-preview.js — source guards", () => {
-  test("gates on matchMedia PC-only hover/pointer capability", () => {
+  test("gates on matchMedia mouse-available capability (any-* so a mouse on a touch laptop counts)", () => {
     assert.match(
       HOVER_PREVIEW_SRC,
-      /matchMedia\(\s*["']\(hover:\s*hover\)/,
-      "must early-return unless matchMedia(\"(hover: hover) and (pointer: fine)\") matches",
+      /matchMedia\(\s*["']\(any-hover:\s*hover\)\s*and\s*\(any-pointer:\s*fine\)/,
+      "must early-return unless matchMedia(\"(any-hover: hover) and (any-pointer: fine)\") matches — the primary-pointer variants wrongly exclude touchscreen laptops with a mouse",
     );
   });
 
@@ -131,6 +131,28 @@ describe("hover-preview.js — source guards", () => {
     assert.ok(
       HOVER_PREVIEW_SRC.includes("hoverPreviewEnabled"),
       "must gate on prefs.hoverPreviewEnabled === false",
+    );
+  });
+
+  test("resolves shorteners over the network when followShortenersEnabled is on (#1088)", () => {
+    // When the local unwrap finds no host change, a generic shortener whose
+    // destination needs a network round trip is resolved via RESOLVE_SHORTENER.
+    // Regression guard for the whole hover-shortener path.
+    assert.ok(
+      HOVER_PREVIEW_SRC.includes("maybeResolveShortener"),
+      "must fall through to maybeResolveShortener when the host is unchanged",
+    );
+    assert.ok(
+      /_prefs\.followShortenersEnabled\s*!==\s*true/.test(HOVER_PREVIEW_SRC),
+      "must gate the network resolution on followShortenersEnabled",
+    );
+    assert.ok(
+      HOVER_PREVIEW_SRC.includes("isGenericShortener"),
+      "must only resolve allowlisted generic shorteners",
+    );
+    assert.ok(
+      /type:\s*["']RESOLVE_SHORTENER["']/.test(HOVER_PREVIEW_SRC),
+      "must resolve via the RESOLVE_SHORTENER service-worker message",
     );
   });
 
