@@ -259,6 +259,9 @@
   function gatePasses() {
     if (!_prefs) return false;
     if (_prefs.enabled === false) return false;
+    // No preview (and no network resolution) until the user has onboarded —
+    // every sibling content path gates on this; the hover tooltip must too.
+    if (_prefs.onboardingDone !== true) return false;
     if (_prefs.hoverPreviewEnabled === false) return false;
     try {
       if (window.__mugaCleaner && typeof window.__mugaCleaner.isSiteFullyExempt === "function") {

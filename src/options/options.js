@@ -1866,7 +1866,7 @@ async function initFollowShorteners(prefs) {
       const granted = await requestShortenerPermissions();
       if (!granted) {
         checkbox.checked = false;
-        showToast(t("optionsRemoteRulesPermDenied", _currentLang));
+        showToast(t("shortener_regrant_denied", _currentLang));
         return;
       }
       try { await setPrefs({ followShortenersEnabled: true }); }
