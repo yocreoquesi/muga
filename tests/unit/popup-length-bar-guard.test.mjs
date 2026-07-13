@@ -17,7 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const popupJs = readFileSync(join(ROOT, "src/popup/popup.js"), "utf8");
 const popupHtml = readFileSync(join(ROOT, "src/popup/popup.html"), "utf8");
 
-const SLOT_IDS = ["preview-shorter", "preview-length-bar", "preview-length-kept", "preview-length-removed"];
+const SLOT_IDS = ["preview-shorter", "preview-length-bar", "preview-length-kept", "preview-length-removed", "preview-unwrap"];
 
 test("popup.js imports the pure length-reduction module", () => {
   assert.match(popupJs, /from "\.\.\/lib\/length-reduction\.js"/);

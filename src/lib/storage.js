@@ -11,10 +11,6 @@
  *           keep working unchanged.
  */
 
-// Allowlist guard for the per-shortener counters (ADR-0004 phase 4, #700):
-// only the eight GENERIC_SHORTENERS may be recorded — never arbitrary hosts.
-import { isGenericShortener } from "./opaque-networks.js";
-
 // ── Re-exports: prefs domain ──────────────────────────────────────────────────
 // Keeps the full pre-split public API available at the storage.js import path.
 export { PREF_DEFAULTS, getPrefs, setPrefs } from "./prefs.js";
@@ -239,9 +235,6 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onSuspend) {
     }
     if (Object.keys(_pendingDomainStats).length > 0) {
       _flushDomainStats();
-    }
-    if (Object.keys(_pendingShortenerStats).length > 0) {
-      _flushShortenerStats();
     }
   });
 }
@@ -484,117 +477,3 @@ export async function setRemoteParams(params, meta) {
   }
 }
 
-// ── Per-shortener pass/fail counters (ADR-0004 phase 4, #700) ────────────────
-//
-// Counts native-resolution outcomes per shortener host. Device-local only;
-// NEVER transmitted (not in PREF_DEFAULTS / chrome.storage.sync). Visible in
-// the Options advanced section when dev-mode is ON.
-//
-// Shape: shortenerStats: { "bit.ly": { pass: N, fail: N }, … }
-// The key "shortenerStats" lives exclusively in chrome.storage.local.
-
-/**
- * Reads the per-shortener pass/fail counters from chrome.storage.local.
- * Returns the stored map (may be empty `{}`).
- *
- * @returns {Promise<Record<string, { pass: number, fail: number }>>}
- */
-export async function getShortenerStats() {
-  try {
-    return await new Promise((resolve, reject) => {
-      chrome.storage.local.get({ shortenerStats: {} }, (result) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(result.shortenerStats || {});
-        }
-      });
-    });
-  } catch (err) {
-    console.error("[MUGA] getShortenerStats failed:", err);
-    return {};
-  }
-}
-
-// ── Per-shortener pending+flush (mirrors incrementStat / incrementDomainStat) ──
-//
-// Two concurrent RESOLVE_SHORTENER handlers both called the old implementation
-// before either write completed → the second write silently overwrote the first,
-// losing one increment (#817). The pending+flush pattern eliminates the race:
-// all in-flight calls accumulate synchronously into the pending map; a single
-// coalesced flush does one read + one write per 50ms window.
-
-let _pendingShortenerStats = {};
-let _shortenerStatsFlushTimer = null;
-
-async function _flushShortenerStats() {
-  _shortenerStatsFlushTimer = null;
-  if (Object.keys(_pendingShortenerStats).length === 0) return;
-  const toFlush = _pendingShortenerStats;
-  _pendingShortenerStats = {};
-
-  try {
-    const current = await getShortenerStats();
-    for (const [host, delta] of Object.entries(toFlush)) {
-      const entry = current[host] || { pass: 0, fail: 0 };
-      current[host] = {
-        pass: entry.pass + (delta.pass || 0),
-        fail: entry.fail + (delta.fail || 0),
-      };
-    }
-    await new Promise((resolve, reject) => {
-      chrome.storage.local.set({ shortenerStats: current }, () => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve();
-        }
-      });
-    });
-  } catch (err) {
-    console.error("[MUGA] _flushShortenerStats failed:", err);
-    // Restore pending deltas so they are not lost on write failure
-    for (const [host, delta] of Object.entries(toFlush)) {
-      if (!_pendingShortenerStats[host]) _pendingShortenerStats[host] = { pass: 0, fail: 0 };
-      _pendingShortenerStats[host].pass += delta.pass || 0;
-      _pendingShortenerStats[host].fail += delta.fail || 0;
-    }
-  }
-}
-
-/**
- * Flushes pending shortener stats immediately (bypasses the 50ms timer).
- * Exported for test harnesses; production code should not call this directly.
- *
- * @returns {Promise<void>}
- */
-export async function flushShortenerStats() {
-  clearTimeout(_shortenerStatsFlushTimer);
-  await _flushShortenerStats();
-}
-
-/**
- * Increments the pass or fail counter for a specific shortener host.
- * Silently ignores unknown hosts and invalid outcomes.
- *
- * Uses a pending+flush pattern (same as incrementStat / incrementDomainStat)
- * to eliminate the lost-update race: multiple concurrent calls accumulate
- * synchronously into an in-memory map; a single coalesced flush does one
- * chrome.storage.local read + write per 50ms window.
- *
- * @param {string} host   - Hostname of the shortener (e.g. "bit.ly").
- * @param {"pass"|"fail"} outcome - Which counter to increment.
- */
-export function incrementShortenerStat(host, outcome) {
-  if (outcome !== "pass" && outcome !== "fail") return;
-  // Defense-in-depth: never accumulate arbitrary hostnames in local storage.
-  // The privacy contract is "only the eight GENERIC_SHORTENERS are tracked";
-  // this guard enforces it at the source, independent of any callsite.
-  if (!isGenericShortener(host)) return;
-  if (!_pendingShortenerStats[host]) _pendingShortenerStats[host] = { pass: 0, fail: 0 };
-  if (outcome === "pass") _pendingShortenerStats[host].pass += 1;
-  else _pendingShortenerStats[host].fail += 1;
-  if (!_shortenerStatsFlushTimer) {
-    _shortenerStatsFlushTimer = setTimeout(_flushShortenerStats, 50);
-  }
-}

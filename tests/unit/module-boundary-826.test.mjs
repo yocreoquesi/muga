@@ -13,8 +13,8 @@
  *   prefs.js              — PREF_DEFAULTS + getPrefs/setPrefs (sync domain)
  *   storage-migrations.js — one-time migration helpers (migrateStatsToLocal,
  *                           migrateLegacyProxyPref)
- *   storage.js            — stats, session, domain-rules, remote-params,
- *                           shortener counters + re-export hub (pre-split API)
+ *   storage.js            — stats, session, domain-rules, remote-params
+ *                           + re-export hub (pre-split API)
  *
  * Guards (per split):
  *   (1) extracted data/leaf modules must NOT import from their hub (acyclicity)
@@ -199,9 +199,6 @@ const STORAGE_EXPECTED_EXPORTS = new Set([
   "getCachedDomainRules",
   "getRemoteParams",
   "setRemoteParams",
-  "getShortenerStats",
-  "flushShortenerStats",
-  "incrementShortenerStat",
   "migrateStatsToLocal",
   "migrateLegacyProxyPref",
   "migratePerSiteDisableToAllowlist",

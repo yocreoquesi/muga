@@ -75,7 +75,6 @@ Device-only. ~10 MB quota.
 | `remoteRulesMeta` | object | see below | Metadata for the last remote-rules fetch: `{ version, fetchedAt, paramCount, lastError, published }` |
 | `crossSiteFreq` | object | `{ params: {} }` | (#446, B16) Local-only frequency tracker state. Shape: `{ params: { [paramName]: { domains: string[], values: string[] /* sha256 hex */, lastSeen: number } } }`. LRU-capped at 1000 paramNames. NEVER transmitted. |
 | `attributionLedger` | object | `{ events: [], capacity: 10 }` | (#460, A2) Rolling ring buffer of the last cleaner-pipeline events feeding the popup "Recent activity" section. Shape: `{ events: Array<{type, url, network?, creator?}>, capacity: number }`. Capacity caps the event count so the popup render is bounded. SW writes after every `processUrl` return; gated on `attributionLedgerEnabled`. Pure presenter lives in `src/lib/attribution-ledger.js`; popup view layer in `src/lib/attribution-ledger-view.js`. |
-| `shortenerStats` | object | `{}` | (ADR-0004 phase 4, #700) Per-shortener native-resolution outcome counters. Shape: `{ "bit.ly": { pass: N, fail: N }, … }` for each host in `GENERIC_SHORTENERS`. Incremented by `incrementShortenerStat()` in `src/lib/storage.js` at the native-resolution callsite in the service worker. NEVER transmitted (not in PREF_DEFAULTS / sync). Visible in the Options advanced section when dev-mode is ON. |
 
 ---
 

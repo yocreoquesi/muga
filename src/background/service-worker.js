@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, incrementShortenerStat } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -1575,9 +1575,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Native resolution — sole path as of ADR-0004 phase 5.
         const result = await resolveShortener(rawUrl);
-        // ADR-0004 phase 4: per-shortener pass/fail counter (local-only, never
-        // transmitted). Synchronous accumulate-and-flush since #817 — no .catch.
-        incrementShortenerStat(hostname, result.ok ? "pass" : "fail");
 
         try { sendResponse(result); } catch { /* channel closed */ }
       } catch (err) {

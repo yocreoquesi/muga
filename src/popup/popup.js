@@ -20,6 +20,7 @@ import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledge
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
+import { computeUnwrapView } from "../lib/unwrap-view.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -597,6 +598,13 @@ function _resetPreviewDom() {
   }
   const previewLengthBar = el("preview-length-bar");
   if (previewLengthBar) previewLengthBar.hidden = true;
+  // #1062 part 3: unwrap indicator, reset every render like the slots above so
+  // a prior navigation's revealed host never bleeds into a param-only clean.
+  const previewUnwrap = el("preview-unwrap");
+  if (previewUnwrap) {
+    previewUnwrap.hidden = true;
+    previewUnwrap.textContent = "";
+  }
   const previewLengthKept = el("preview-length-kept");
   if (previewLengthKept) previewLengthKept.style.width = "";
   const previewLengthRemoved = el("preview-length-removed");
@@ -767,6 +775,17 @@ async function showUrlPreview(prefs, lang) {
       lengthRemovedEl.style.width = `${bar.removedPercent}%`;
       lengthBarEl.hidden = false;
     }
+  }
+
+  // #1062 part 3: unwrap indicator. A host change means MUGA revealed the real
+  // destination behind a redirect wrapper / shortener (param cleaning never
+  // touches the host) — surface WHERE the link really goes. Mirrors the web
+  // tool's unwrap callout (src/lib/unwrap-view.js).
+  const unwrapView = computeUnwrapView(url, result.cleanUrl);
+  const unwrapEl = document.getElementById("preview-unwrap");
+  if (unwrapEl && unwrapView.unwrapped) {
+    unwrapEl.textContent = t("preview_unwrapped", lang).replace("{host}", unwrapView.destinationHost);
+    unwrapEl.hidden = false;
   }
 
   if (result.cleanUrl === url && result.action === "untouched") {
