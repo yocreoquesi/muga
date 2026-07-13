@@ -12,21 +12,21 @@
   <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Effective date: 2026-05-25 &nbsp;·&nbsp; Version 2.5.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
 
   <div class="highlight">
-    <strong>Short version:</strong> You control what MUGA does. Every feature is transparent and configurable.
-    MUGA never acts behind your back. Nothing happens without your action.
+    <strong>Short version:</strong> You control what MUGA does, and every feature is transparent and configurable.
+    The features that reach out to a network are listed below, so nothing is hidden from you.
     The code is open source. You can read every line at the link above.
     For the questions a skeptic would ask (affiliate model, network behaviour, sustainability), see the <a href="https://github.com/yocreoquesi/muga/blob/main/docs/faq.md" target="_blank" rel="noopener noreferrer">FAQ</a>.
   </div>
 
   <h2>What data does MUGA handle?</h2>
-  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are cleaned inside your browser. MUGA never silently sends your data anywhere. Any feature that contacts an external service requires your explicit action and is disclosed here.</p>
+  <p>MUGA receives URLs when you click links or right-click to copy a clean link. These URLs are cleaned inside your browser. MUGA does not quietly send your data elsewhere: any feature that contacts an external service is listed in this policy, and you can turn it off in Settings.</p>
 
   <p>MUGA's data lives in two places, deliberately separated:</p>
   <ul>
     <li><strong>Per-device, on this machine only</strong> (<code>chrome.storage.local</code>): your acceptance of these terms and the version of the policy you agreed to (<code>onboardingDone</code>, <code>consentVersion</code>, <code>consentDate</code>); per-device decisions you made about behaviours your other devices may have enabled (<code>injectOwnAffiliate</code>, <code>remoteRulesEnabled</code> overrides; see <strong>Per-device consent</strong> below); usage counters (URLs cleaned, parameters removed, referrals spotted); and short-lived session data (debug logs, per-tab badge counts, recently cleaned URLs).</li>
     <li><strong>Across your own devices, via your browser account</strong> (<code>chrome.storage.sync</code>): behavioural preferences you would expect to follow you between devices: language, blacklist, whitelist, custom tracking parameters, the affiliate toggles' default values, the remote-rule-updates default value. Sync happens through your browser, never through MUGA.</li>
   </ul>
-  <p>Neither bucket is ever visible to MUGA. Session data (<code>chrome.storage.session</code>) is automatically cleared when the browser restarts. Usage counters are never transmitted anywhere.</p>
+  <p>Neither bucket is ever visible to MUGA. Session data (<code>chrome.storage.session</code>) is automatically cleared when the browser restarts. Usage counters stay on your device.</p>
 
   <h2>Per-device consent</h2>
   <p>Acceptance of these terms is recorded <strong>per device</strong>, not per browser account. If you install MUGA on a second device, you will be asked to read and accept the terms on that device too, even if you already accepted them somewhere else. The reasoning is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>: consent is an act between you and the device you are using; inheriting it across devices silently would deny each device's user the chance to read and decide.</p>
@@ -47,7 +47,7 @@
     <li><strong>Link-share unwrapping:</strong> Detects link-share wrappers where the destination URL is embedded directly in the redirect URL's query string (Facebook's <code>l.facebook.com/?u=</code>, Instagram's <code>l.instagram.com/?u=</code>, Twitter's <code>t.co</code> in some templates) and navigates straight to the embedded destination. This is not an affiliate-attribution event; these wrappers are share-link tracking, not commission-bearing redirects. Affiliate-redirect networks (Awin, CJ, AliExpress Portals, etc.) are deliberately NOT unwrapped; see "Affiliate networks" below.</li>
     <li><strong>Right-click "Copy clean link":</strong> Cleans URLs when you copy them via context menu. On browsers and platforms that support keyboard shortcuts, also available via Alt+Shift+C.</li>
   </ul>
-  <p>All of these operate entirely within your browser. No external requests are made.</p>
+  <p>All of these run locally in your browser and make no external requests of their own.</p>
   <p>URL cleaning (and the click, copy, page-load self-clean paths) runs as a local computation inside your browser. It does not round-trip through any extension service worker or external server. The cleaning logic ships in the extension package as a small bundled file (<code>src/content/cleaner-bundle.js</code>) generated from the ES module source under <code>src/lib/</code> via <code>tools/bundle-content.mjs</code>; the bundle is committed to the repository so reviewers can verify it matches the unbundled source.</p>
 
   <h2>Affiliate tags</h2>
@@ -59,7 +59,7 @@
   <ul>
     <li>Does not silently send your URLs or browsing data to any server. Every external request is either a direct, in-browser fetch to the destination itself with no MUGA server involved (Follow shortener redirects: on by default on Chrome since the extension's existing host access already covers it; opt-in on Firefox), or gated on an explicit Settings toggle that sends no user data (Remote rule updates, on by default; see Permissions below).</li>
     <li>Does not collect your browsing history.</li>
-    <li>Does not silently replace other people's affiliate tags. The default is always "keep the original".</li>
+    <li>Does not silently replace other people's affiliate tags. By default, it keeps the original.</li>
     <li>Does not strip affiliate-redirect networks (Awin, CJ Affiliate, AliExpress Portals, Impact, Partnerize, Admitad, A8.net, Rakuten, TradeTracker) from URLs. Their redirect IS the attribution event and MUGA respects it; the creator's commission survives.</li>
     <li>Does not collect, store, or transmit any personally identifiable information.</li>
     <li>Does not use analytics, telemetry, or crash reporting services.</li>

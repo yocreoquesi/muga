@@ -18,8 +18,9 @@
 // security posture. Notably http:// destinations are allowed: the user clicked
 // a shortener and wants to reach it, whatever its scheme.
 //   - credentials: "omit", cache: "no-store", redirect: "follow"; body cancelled.
-//   - http:// shortener URLs are upgraded to https for the fetch (CSP connect-src
-//     whitelists only https shortener origins); the destination scheme is kept.
+//   - http:// shortener URLs are upgraded to https for the fetch (prefer https:
+//     the shortener serves it and it skips an extra http->https hop — a hygiene
+//     choice, not a CSP requirement); the destination scheme is kept.
 //   - Only allowlisted generic shorteners (opaque-networks.js) are resolved.
 //   - Final destination scheme must be http(s); length capped at 2000 chars.
 //   - Private/loopback/link-local FINAL destinations are rejected.

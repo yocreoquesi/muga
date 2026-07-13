@@ -194,9 +194,11 @@ export const AFFILIATE_REDIRECT_NETWORKS = Object.freeze([
  * this bucket's real value is (1) a mutual-disjointness invariant that
  * catches any future accidental addition of one of these hosts to
  * GENERIC_SHORTENERS, and (2) a distinct `resolveShortener` failure reason
- * ("ad_gateway") for hosts that must never be resolved. Intentionally
- * excluded from optional_host_permissions and CSP connect-src in both
- * manifests — no permission, no fetch, fails closed by construction.
+ * ("ad_gateway") for hosts that must never be resolved. These fail closed at
+ * the CODE level: they are absent from GENERIC_SHORTENERS, so resolveShortener
+ * rejects them before any fetch. (They are no longer excluded at the platform
+ * layer — connect-src is 'self' https: http: and host_permissions is <all_urls>
+ * — so the in-code guard is what keeps them from being resolved.)
  */
 export const AD_GATEWAY_NETWORKS = Object.freeze([
   "ouo.io",

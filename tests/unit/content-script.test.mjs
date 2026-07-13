@@ -361,14 +361,22 @@ describe("Content script — affiliate-only click interception", () => {
     );
   });
 
-  test("click handler returns early for non-affiliate domains (no preventDefault)", () => {
-    // The pattern: if (!isAffiliateDomain(...)) return; must appear before e.preventDefault()
+  test("click gate lets affiliate domains AND (opted-in) generic shorteners through, everything else returns early", () => {
     const clickHandler = contentSource.match(
       /document\.addEventListener\("click"[\s\S]*?\}, true\)/
     )[0];
+    // Regression guard: an affiliate-ONLY gate made click-time shortener
+    // resolution DEAD CODE — no generic shortener host is an affiliate store
+    // domain, so bit.ly/t.co clicks never reached the RESOLVE_SHORTENER branch
+    // (hover resolved them, click didn't). The gate must ALSO admit a generic
+    // shortener when the user opted into follow-shorteners.
     assert.ok(
-      clickHandler.includes("if (!isAffiliateDomain(url.hostname)) return;"),
-      "click handler must return early for non-affiliate domains"
+      /const isFollowableShortener\s*=[\s\S]*?followShortenersEnabled === true[\s\S]*?isGenericShortener/.test(clickHandler),
+      "must compute isFollowableShortener from followShortenersEnabled === true AND isGenericShortener(hostname)",
+    );
+    assert.ok(
+      clickHandler.includes("if (!isAffiliateDomain(url.hostname) && !isFollowableShortener) return;"),
+      "the early-return gate must be (!isAffiliateDomain && !isFollowableShortener) so shortener clicks reach the resolver",
     );
   });
 

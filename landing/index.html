@@ -41,7 +41,7 @@
     --panel-2: #1A1622;
     --ink: #F2EFF7;
     --ink-2: #A9A2B8;
-    --ink-3: #756D86;
+    --ink-3: #8C84A2;
     --rule: #2A2536;
     --rule-2: #332C42;
     --rule-soft: #221D2D;
@@ -729,7 +729,7 @@
         <div class="trust-cell">
           <span class="ic">03 · honest</span>
           <h3>We document the tradeoffs</h3>
-          <p>Including that MUGA adds its own referral, on by default, on a page that has none, always under your control: turn it off in onboarding or Settings anytime, and your price never changes. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
+          <p>Including that MUGA adds its own referral, on by default, on a page that has none, and it stays under your control: turn it off in onboarding or Settings anytime, and your price stays the same. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
         </div>
       </div>
 
@@ -760,7 +760,7 @@
             <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
           </svg>
           <h2>Turn the noise down today.</h2>
-          <p>Free forever and open source. Pick whichever way fits how you browse.</p>
+          <p>Free and open source. Pick whichever way fits how you browse.</p>
           <div class="ways">
             <a class="way" data-plat="chrome" href="https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
               <svg class="way-ico" width="26" height="26" aria-hidden="true"><use href="#logo-chrome"/></svg>
@@ -780,7 +780,7 @@
                 <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
               </svg>
               <span class="way-title">MUGA Clean (web)</span>
-              <span class="way-desc">No install, any device. Paste a link, get the clean version. Runs entirely in your browser.</span>
+              <span class="way-desc">No install, any device. Paste a link, get the clean version. Runs right in your browser.</span>
               <span class="way-cta">Open MUGA Clean <span class="arr" aria-hidden="true">→</span></span>
             </a>
           </div>
@@ -802,7 +802,7 @@
           </svg>
           <span class="name">muga.app</span>
         </a>
-        <p>The denoise extension for the web. Tries to keep the referral of whoever recommended you the link. Built by an independent developer. Free forever.</p>
+        <p>The denoise extension for the web. Tries to keep the referral of whoever recommended you the link. Built by an independent developer. Free and open source.</p>
       </div>
       <div class="footer-col">
         <h4>Install</h4>
@@ -863,7 +863,10 @@
   // still lists all options for everyone.
   (function () {
     var ua = navigator.userAgent || '';
-    var isFirefox = /firefox|fxios/i.test(ua);
+    // NB: exclude Firefox-for-iOS (FxiOS). It is WebKit and cannot install the
+    // AMO extension, so it must fall through to the mobile/web CTA, not the
+    // dead-end "Add to Firefox" button.
+    var isFirefox = /firefox/i.test(ua) && !/fxios/i.test(ua);
     var isIOS = /iphone|ipod|ipad/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     var isAndroid = /android/i.test(ua);
     var isMobile = isIOS || isAndroid || /Mobile/.test(ua);

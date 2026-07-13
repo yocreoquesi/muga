@@ -643,10 +643,17 @@
       return;
     }
 
-    // Only intercept clicks to affiliate store domains. All other clicks
-    // pass through unmodified: DNR (Chrome) and self-clean (Firefox) handle
-    // tracking param removal without disrupting SPA navigation.
-    if (!isAffiliateDomain(url.hostname)) return;
+    // Intercept clicks to affiliate store domains, OR — when the user opted
+    // into "Follow shortener redirects" — clicks to a generic shortener, so the
+    // shortener-resolution branch below is actually reachable at click time.
+    // (Audit: that branch was dead code behind an affiliate-only gate, since no
+    // generic shortener host is an affiliate store domain — hover resolved them
+    // but click never did.) All other clicks pass through unmodified: DNR
+    // (Chrome) and self-clean (Firefox) handle tracking-param removal without
+    // disrupting SPA navigation.
+    const isFollowableShortener = _contentPrefs?.followShortenersEnabled === true &&
+      !!window.__mugaCleaner?.isGenericShortener?.(url.hostname);
+    if (!isAffiliateDomain(url.hostname) && !isFollowableShortener) return;
 
     // #allowlist-full-inert: a fully-exempt destination domain must not even
     // have its click intercepted (preventDefault + reconstructed navigate).

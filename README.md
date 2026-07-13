@@ -157,8 +157,8 @@ This is explained during onboarding, disclosed in the extension description, doc
 
 ## Privacy
 
-- Every URL is processed **entirely inside your browser**. MUGA never acts behind your back.
-- Zero browsing data collected, zero analytics, zero telemetry
+- Every URL is processed **locally in your browser**. You stay in control of what MUGA does.
+- No browsing data collected, no analytics, no telemetry
 - No account, no sign-in, no cloud
 - Minimal permissions: `storage`, `activeTab`, `contextMenus`, `declarativeNetRequestWithHostAccess`, `clipboardWrite`. Nothing else.
 - The extension also holds `host_permissions: <all_urls>`, required by `declarativeNetRequestWithHostAccess` to clean URLs on all sites.

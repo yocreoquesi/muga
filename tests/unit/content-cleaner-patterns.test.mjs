@@ -112,8 +112,8 @@ describe("#allowlist-full-inert — runRedirectUnwrap respects isSiteFullyExempt
 
 describe("#allowlist-full-inert — click interception respects isSiteFullyExempt", () => {
   test("the click handler checks isSiteFullyExempt before intercepting a click to an affiliate domain", () => {
-    const gateStart = cleanerSource.indexOf('if (!isAffiliateDomain(url.hostname)) return;');
-    assert.ok(gateStart > -1, "affiliate-domain click gate must exist");
+    const gateStart = cleanerSource.indexOf('if (!isAffiliateDomain(url.hostname) && !isFollowableShortener) return;');
+    assert.ok(gateStart > -1, "affiliate-domain / shortener click gate must exist");
     const block = cleanerSource.slice(gateStart, gateStart + 1400);
     const exemptCheckPos = block.indexOf("isSiteFullyExempt");
     const preventDefaultPos = block.indexOf("e.preventDefault()");
