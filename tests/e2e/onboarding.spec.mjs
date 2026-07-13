@@ -59,7 +59,7 @@ test.describe("Onboarding", () => {
     // The point of this paragraph is to prevent the misread "MUGA syncs my
     // data": it must explicitly say MUGA doesn't send data anywhere AND that
     // the sync is the browser's, not MUGA's. Both assertions, both load-bearing.
-    await expect(syncNote).toContainText("MUGA never sends data anywhere");
+    await expect(syncNote).toContainText("MUGA does not send your data anywhere on its own");
     await expect(syncNote).toContainText("browser feature, not MUGA");
   });
 
