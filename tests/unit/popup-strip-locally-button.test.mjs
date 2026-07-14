@@ -78,6 +78,39 @@ test("popup.js click-handler reads + writes userCustomRules via chrome.storage.s
   );
 });
 
+test("#1099: popup.js routes the Strip locally add through the capped addUserCustomRule helper", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  // Before #1099, the click-handler pushed onto the userCustomRules array
+  // directly, with no cap — unlike every other write path (options.js's
+  // manual Add button, the settings-import path), which already enforce
+  // IMPORT_LIST_CAPS.customParams (200). Growing unbounded can exceed
+  // chrome.storage.sync's ~8 KB per-item quota and silently fail to save.
+  assert.ok(
+    /import\s*\{\s*addUserCustomRule\s*\}\s*from\s*"\.\.\/lib\/user-custom-rules\.js"/.test(popupSrc),
+    "popup.js must import the shared, cap-enforcing addUserCustomRule helper",
+  );
+  assert.ok(
+    /addUserCustomRule\(\s*currentList\s*,\s*paramName\s*\)/.test(popupSrc),
+    "the Strip locally click-handler must call addUserCustomRule(currentList, paramName) instead of pushing directly",
+  );
+  assert.ok(
+    !/\.push\(\s*paramName\s*\)/.test(popupSrc),
+    "the Strip locally click-handler must no longer push(paramName) onto the list directly",
+  );
+});
+
+test("#1099: popup.js surfaces the cap error to the user instead of failing silently", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  assert.ok(
+    /error\s*===\s*"max"/.test(popupSrc),
+    "popup.js must branch on the 'max' error from addUserCustomRule",
+  );
+  assert.ok(
+    /t\("list_full",\s*lang\)/.test(popupSrc),
+    "popup.js must surface the translated list_full message when the cap is reached",
+  );
+});
+
 test("popup.js renders the active custom-rules counter via the i18n template", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
   assert.ok(
