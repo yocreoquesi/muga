@@ -68,6 +68,31 @@
       check: function (out) { return out === "https://a.test/"; },
       expectText: "https://a.test/",
     },
+    // ── audit-2026-07 S3: surviving params must keep their EXACT bytes ────────
+    // The old URLSearchParams.toString() rebuild re-encoded every survivor
+    // (%20 -> +, !()~ -> %XX), corrupting a signature/token in a neighbour.
+    // These cases FAIL on the old code and PASS on the raw-query splice.
+    {
+      id: "F",
+      title: "S3: a %20 in a surviving param is NOT turned into '+'",
+      input: "https://example.com/p?sig=ab%20cd&utm_source=x",
+      check: function (out) { return out === "https://example.com/p?sig=ab%20cd"; },
+      expectText: "https://example.com/p?sig=ab%20cd (old code gave ...sig=ab+cd)",
+    },
+    {
+      id: "G",
+      title: "S3: !()~ in a surviving param are NOT percent-encoded",
+      input: "https://example.com/p?tok=a!b(c)~d*e&fbclid=z",
+      check: function (out) { return out === "https://example.com/p?tok=a!b(c)~d*e"; },
+      expectText: "https://example.com/p?tok=a!b(c)~d*e (old code percent-encoded !()~)",
+    },
+    {
+      id: "H",
+      title: "S3: a hash-router pseudo-query in the fragment is left untouched",
+      input: "https://example.com/#/route?utm_source=x",
+      check: function (out) { return out === "https://example.com/#/route?utm_source=x"; },
+      expectText: "https://example.com/#/route?utm_source=x (unchanged — '?' is in the fragment)",
+    },
   ];
 
   function esc(s) {
