@@ -112,24 +112,31 @@
    */
   function cleanUrl(rawUrl) {
     if (typeof rawUrl !== "string" || rawUrl.length === 0) return rawUrl;
-    if (rawUrl.indexOf("?") < 0) return rawUrl;
-    let u;
-    try {
-      u = new URL(rawUrl);
-    } catch {
-      return rawUrl;
-    }
+    const qIndex = rawUrl.indexOf("?");
+    if (qIndex < 0) return rawUrl;
+    // audit-2026-07 S3: splice the raw query bytes instead of rebuilding via
+    // URLSearchParams.toString(), which re-encodes every surviving param and
+    // could corrupt a signature/token computed over exact bytes. Mirrors
+    // src/lib/hot-path-strip.js stripHotPathQuery — keep the two in sync.
+    const hashIndex = rawUrl.indexOf("#", qIndex);
+    const prefix = rawUrl.slice(0, qIndex);
+    const query = hashIndex < 0 ? rawUrl.slice(qIndex + 1) : rawUrl.slice(qIndex + 1, hashIndex);
+    const hash = hashIndex < 0 ? "" : rawUrl.slice(hashIndex);
     let changed = false;
-    const keys = [];
-    u.searchParams.forEach((_v, k) => keys.push(k));
-    for (let i = 0; i < keys.length; i++) {
-      if (Object.prototype.hasOwnProperty.call(STRIP, keys[i])) {
-        u.searchParams.delete(keys[i]);
-        changed = true;
-      }
+    const kept = [];
+    const pairs = query.split("&");
+    for (let i = 0; i < pairs.length; i++) {
+      const pair = pairs[i];
+      const eq = pair.indexOf("=");
+      const rawKey = eq < 0 ? pair : pair.slice(0, eq);
+      let key = rawKey;
+      try { key = decodeURIComponent(rawKey); } catch { /* malformed %-escape: match raw */ }
+      if (Object.prototype.hasOwnProperty.call(STRIP, key)) { changed = true; continue; }
+      kept.push(pair);
     }
     if (!changed) return rawUrl;
-    return u.toString();
+    const newQuery = kept.join("&");
+    return newQuery ? prefix + "?" + newQuery + hash : prefix + hash;
   }
 
   // ── Disabled-state gate (reuse B10 nonce handshake) ──────────────────────
