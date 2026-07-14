@@ -963,14 +963,30 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   if (prefs.stripAllAffiliates) {
     const hostKeyStrip = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
-      const val = url.searchParams.get(pattern.param);
-      if (val) {
-        const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
-        if (prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost) continue;
-        if (!isWhitelisted(pattern.param, val)) {
-          url.searchParams.delete(pattern.param);
-          if (action === "untouched") action = "cleaned";
+      if (!url.searchParams.has(pattern.param)) continue;
+      const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
+      // #1091: decide per-OCCURRENCE, not from a single get() call. A repeated
+      // param (?tag=evil-20&tag=creator-21) can carry a foreign value in one
+      // occurrence and a whitelisted/creator (or our own) value in another —
+      // get() only ever sees the FIRST occurrence, but delete() below would
+      // remove EVERY occurrence, so a get()-decides/delete()-removes-all
+      // split let a foreign duplicate mask (and destroy) the exact value the
+      // whitelist/injection guard exists to protect.
+      const values = url.searchParams.getAll(pattern.param);
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        const isOurs = prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost;
+        if (isOurs || isWhitelisted(pattern.param, val)) {
+          kept.push(val);
+        } else {
+          strippedAny = true;
         }
+      }
+      if (strippedAny) {
+        url.searchParams.delete(pattern.param);
+        for (const val of kept) url.searchParams.append(pattern.param, val);
+        if (action === "untouched") action = "cleaned";
       }
     }
   }
