@@ -574,6 +574,19 @@ async function syncCustomParamsDNR(customParams) {
     const normalized = customParams
       .filter(p => /^[a-zA-Z0-9_.-]+$/.test(p.trim()))
       .map(p => p.trim().toLowerCase());
+    // #1104: every entry may fail the format filter above (e.g. all-symbol
+    // junk input), leaving normalized empty. Registering a DNR rule with
+    // removeParams: [] is a no-op that serves no purpose and pollutes the
+    // dynamic rule table with a dead entry. Treat an empty post-filter list
+    // the same as "no customParams at all" — mirrors the mergeIntoCache()
+    // empty-accepted guard in remote-rules.js (#923).
+    if (normalized.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
       addRules: [{
