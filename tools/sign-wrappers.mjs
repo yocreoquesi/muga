@@ -9,7 +9,8 @@
  * This is a DIFFERENT key and a DIFFERENT artifact from tools/sign-rules.mjs:
  *   - sign-rules.mjs signs a canonical `version|published|params` message for
  *     the remote params.json artifact, under MUGA_SIGNING_KEY_PATH, verified
- *     by signer-pubkey.txt / TRUSTED_PUBLIC_KEYS.
+ *     against src/lib/remote-rules-keys.js's TRUSTED_PUBLIC_KEYS (the single
+ *     source of truth for that key — #1102).
  *   - sign-wrappers.mjs signs the raw file bytes of wrappers.json under
  *     MUGA_WORKER_SIGNING_KEY_PATH, verified by worker-pubkey.txt.
  * The two are not interchangeable.
