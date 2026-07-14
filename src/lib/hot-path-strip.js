@@ -64,3 +64,59 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
 export const HOT_PATH_STRIP = Object.freeze(
   new Set(HOT_PATH_STRIP_ROWS.flat())
 );
+
+/**
+ * Surgically removes the hot-path tracking params from a URL's query string
+ * WITHOUT re-serializing the surviving params.
+ *
+ * The five synchronous content-script copies historically parsed with
+ * `new URL()` and rebuilt the query via `URLSearchParams.toString()`. That
+ * re-encodes EVERY surviving param, not just the stripped ones: a space that
+ * arrived as `%20` comes back as `+`, and `!()~*` get percent-encoded. When a
+ * non-tracking param carries a signature/HMAC/JWT computed over exact bytes,
+ * stripping a neighbouring `utm_*` silently invalidated it. (audit-2026-07 S3)
+ *
+ * This operates on the RAW query bytes: it splits on `&`, drops only the pairs
+ * whose (decoded) key is in the strip set, and rejoins the survivors verbatim.
+ * Non-query parts (scheme, host, path, fragment) are preserved byte-for-byte,
+ * so the result keeps the caller's exact shape (absolute stays absolute,
+ * relative stays relative) — no normalization, minimal mutation.
+ *
+ * @param {string} rawUrl - The URL string (absolute or relative).
+ * @param {ReadonlySet<string>|Record<string,unknown>} [strip=HOT_PATH_STRIP]
+ *        The strip set (or a plain object used as a lookup table, matching the
+ *        `const STRIP = { name: 1 }` shape the content scripts inline).
+ * @returns {string} The cleaned URL, or the original string when nothing
+ *        changed, the input is not a string, or it has no query.
+ */
+export function stripHotPathQuery(rawUrl, strip = HOT_PATH_STRIP) {
+  if (typeof rawUrl !== "string" || rawUrl.length === 0) return rawUrl;
+  const qIndex = rawUrl.indexOf("?");
+  if (qIndex < 0) return rawUrl;
+
+  const has = strip instanceof Set
+    ? (k) => strip.has(k)
+    : (k) => Object.prototype.hasOwnProperty.call(strip, k);
+
+  // Fragment starts at the first '#' AFTER the query marker; a '#' before '?'
+  // cannot exist here (the query marker is the first '?').
+  const hashIndex = rawUrl.indexOf("#", qIndex);
+  const prefix = rawUrl.slice(0, qIndex);
+  const query = hashIndex < 0 ? rawUrl.slice(qIndex + 1) : rawUrl.slice(qIndex + 1, hashIndex);
+  const hash = hashIndex < 0 ? "" : rawUrl.slice(hashIndex);
+
+  let changed = false;
+  const kept = [];
+  for (const pair of query.split("&")) {
+    const eq = pair.indexOf("=");
+    const rawKey = eq < 0 ? pair : pair.slice(0, eq);
+    let key = rawKey;
+    try { key = decodeURIComponent(rawKey); } catch { /* malformed %-escape: match on raw bytes */ }
+    if (has(key)) { changed = true; continue; }
+    kept.push(pair);
+  }
+
+  if (!changed) return rawUrl;
+  const newQuery = kept.join("&");
+  return newQuery ? `${prefix}?${newQuery}${hash}` : `${prefix}${hash}`;
+}
