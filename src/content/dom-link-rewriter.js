@@ -97,7 +97,8 @@
     // could corrupt a signature/token computed over exact bytes. A raw splice
     // also preserves the caller's shape (relative stays relative) for free.
     // Mirrors src/lib/hot-path-strip.js stripHotPathQuery — keep the two in sync.
-    const hashIndex = rawUrl.indexOf("#", qIndex);
+    const hashIndex = rawUrl.indexOf("#");
+    if (hashIndex >= 0 && hashIndex < qIndex) return rawUrl;
     const prefix = rawUrl.slice(0, qIndex);
     const query = hashIndex < 0 ? rawUrl.slice(qIndex + 1) : rawUrl.slice(qIndex + 1, hashIndex);
     const hash = hashIndex < 0 ? "" : rawUrl.slice(hashIndex);

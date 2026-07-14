@@ -92,6 +92,17 @@ describe("stripHotPathQuery — shape and fragment preservation", () => {
     );
   });
 
+  test("does NOT strip a hash-router pseudo-query (no real query present)", () => {
+    // The '?' lives inside the fragment; there is no real query to clean.
+    for (const url of [
+      "https://example.com/#/route?utm_source=x",
+      "https://example.com/p#section?fbclid=abc",
+      "https://example.com/#/dashboard?gclid=1&tab=2",
+    ]) {
+      assert.equal(stripHotPathQuery(url), url, `must not touch the fragment of ${url}`);
+    }
+  });
+
   test("does not add a trailing slash or otherwise normalize", () => {
     // Pure splice: no URL normalization, unlike new URL().toString().
     assert.equal(stripHotPathQuery("https://example.com?utm_source=x"), "https://example.com");

@@ -98,9 +98,11 @@ export function stripHotPathQuery(rawUrl, strip = HOT_PATH_STRIP) {
     ? (k) => strip.has(k)
     : (k) => Object.prototype.hasOwnProperty.call(strip, k);
 
-  // Fragment starts at the first '#' AFTER the query marker; a '#' before '?'
-  // cannot exist here (the query marker is the first '?').
-  const hashIndex = rawUrl.indexOf("#", qIndex);
+  // A '?' that sits AFTER the fragment '#' is inside the fragment (hash-router
+  // routes like `#/route?a=1`), not a real query — leave the URL untouched so
+  // we never reach into and mangle the fragment.
+  const hashIndex = rawUrl.indexOf("#");
+  if (hashIndex >= 0 && hashIndex < qIndex) return rawUrl;
   const prefix = rawUrl.slice(0, qIndex);
   const query = hashIndex < 0 ? rawUrl.slice(qIndex + 1) : rawUrl.slice(qIndex + 1, hashIndex);
   const hash = hashIndex < 0 ? "" : rawUrl.slice(hashIndex);
