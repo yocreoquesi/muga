@@ -63,18 +63,25 @@ describe("#935 — copyWithFeedback helper extracted and shared", () => {
   });
 
   test("no call site still hand-rolls its own navigator.clipboard.writeText(...).then/.catch pattern", () => {
-    // #991: navigator.clipboard.writeText is now called from exactly ONE
-    // place — inside the shared copyToClipboard(text) helper, which adds the
-    // document.execCommand("copy") legacy fallback (mirroring
-    // src/content/cleaner.js) for contexts where the Clipboard API is
-    // unavailable or blocked (e.g. some Android WebExtension popups).
-    // copyWithFeedback and showRecentActivity's per-row copy button both
-    // route through copyToClipboard() instead of calling writeText directly.
-    const writeTextCalls = [...popupSrc.matchAll(/navigator\.clipboard\.writeText\(/g)];
-    assert.equal(
-      writeTextCalls.length,
-      1,
-      `expected exactly 1 direct navigator.clipboard.writeText(...) call site (inside copyToClipboard) after the #991 fallback extraction; found ${writeTextCalls.length}`,
+    // #991 + #1098: navigator.clipboard is never chained with
+    // .writeText(...).catch/.then directly in popup.js's CODE (doc-comment
+    // prose may still mention the shape descriptively) — that decision
+    // (Clipboard API vs. legacy fallback, including the #1098
+    // synchronous-throw guard) now lives entirely inside the shared
+    // writeToClipboard() helper (../lib/clipboard.js, unit tested in
+    // tests/unit/clipboard.test.mjs). copyToClipboard(text) only passes
+    // `navigator.clipboard` through as a value. copyWithFeedback and
+    // showRecentActivity's per-row copy button both route through
+    // copyToClipboard() instead of touching the Clipboard API directly.
+    const fnIdx = popupSrc.indexOf("function copyToClipboard");
+    const fnBody = popupSrc.slice(fnIdx, popupSrc.indexOf("\n}", fnIdx));
+    assert.ok(
+      !/navigator\.clipboard\.writeText\(/.test(fnBody),
+      "copyToClipboard's body must not chain .writeText(...) directly off navigator.clipboard",
+    );
+    assert.ok(
+      /writeToClipboard\(\s*navigator\.clipboard\s*,/.test(fnBody),
+      "copyToClipboard's body must pass navigator.clipboard as a plain value into writeToClipboard(...)",
     );
     // Exactly one definition, and exactly the two intended call sites.
     // (Doc-comment prose may also mention "copyToClipboard()" by name, so a
@@ -89,14 +96,27 @@ describe("#935 — copyWithFeedback helper extracted and shared", () => {
     assert.ok(popupSrc.includes("await copyToClipboard(row.url)"), "showRecentActivity's row copy button must call copyToClipboard(row.url)");
   });
 
-  test("copyToClipboard falls back to document.execCommand(\"copy\") when the Clipboard API rejects (#991)", () => {
+  test("copyToClipboard falls back to document.execCommand(\"copy\") when the Clipboard API rejects or is unavailable (#991, #1098)", () => {
     const fnIdx = popupSrc.indexOf("function copyToClipboard");
     assert.ok(fnIdx !== -1, "popup.js must declare a copyToClipboard(text) helper");
     const body = popupSrc.slice(fnIdx, fnIdx + 700);
-    assert.ok(/navigator\.clipboard\.writeText\(\s*text\s*\)/.test(body), "must attempt the Clipboard API first");
-    assert.ok(/\.catch\(/.test(body), "must catch a Clipboard API rejection to trigger the fallback");
+    // #1098: copyToClipboard delegates the Clipboard-API-vs-fallback DECISION
+    // to the shared writeToClipboard() helper (../lib/clipboard.js, unit
+    // tested directly in tests/unit/clipboard.test.mjs) instead of calling
+    // navigator.clipboard.writeText(...).catch(...) inline — a bare inline
+    // call throws SYNCHRONOUSLY when navigator.clipboard itself is undefined
+    // (e.g. Firefox for Android), which never reaches a .catch() and skips
+    // the fallback below entirely.
+    assert.ok(/writeToClipboard\(\s*navigator\.clipboard\s*,\s*text\s*,/.test(body), "must delegate to writeToClipboard(navigator.clipboard, text, fallback)");
     assert.ok(body.includes('document.execCommand("copy")'), "must fall back to document.execCommand(\"copy\")");
     assert.ok(/try\s*\{[^}]*document\.execCommand\("copy"\)/.test(body), "execCommand call must be wrapped in try/catch, matching cleaner.js's defensive pattern");
+  });
+
+  test("popup.js imports writeToClipboard from ../lib/clipboard.js", () => {
+    assert.ok(
+      /import\s*\{\s*writeToClipboard\s*\}\s*from\s*"\.\.\/lib\/clipboard\.js"/.test(popupSrc),
+      "popup.js must import the shared writeToClipboard helper",
+    );
   });
 
   test("history-entry click preserves the 'copied' classList toggle behavior", () => {
