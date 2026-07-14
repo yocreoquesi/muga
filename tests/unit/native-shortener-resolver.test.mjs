@@ -107,6 +107,19 @@ describe("allowlist + private-host helpers", () => {
     assert.equal(isPrivateHost("192.88.98.1"), false,  "192.88.98.1 is not 6to4 relay");
     assert.equal(isPrivateHost("192.88.100.1"), false, "192.88.100.1 is not 6to4 relay");
   });
+
+  // ── IPv6 Unique Local Addresses fc00::/7 (RFC 4193) ─────────────────────────
+  // ULA is the IPv6 analogue of RFC 1918 private space and must never be a
+  // valid shortener destination. Covers both fc00::/8 and fd00::/8 halves, in
+  // bare and bracketed forms.
+  test("isPrivateHost blocks IPv6 ULA fc00::/7", () => {
+    for (const h of ["fd00::1", "fc00::1", "[fd00::1]", "[fc00::1]", "fdff:ffff::1", "fc12:3456::abcd"]) {
+      assert.equal(isPrivateHost(h), true, `${h} is IPv6 ULA (private)`);
+    }
+    // A global-unicast IPv6 address must still resolve (not ULA).
+    assert.equal(isPrivateHost("2606:4700::1111"), false, "2606:4700::1111 is global unicast");
+    assert.equal(isPrivateHost("[2606:4700::1111]"), false, "bracketed global unicast");
+  });
 });
 
 // ── happy paths ──────────────────────────────────────────────────────────────
