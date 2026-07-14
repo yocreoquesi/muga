@@ -83,6 +83,10 @@ export function isPrivateHost(hostname) {
   // IPv6 link-local: fe80::/10
   if (/^fe[89ab][0-9a-f]:/i.test(h)) return true;
 
+  // IPv6 Unique Local Address: fc00::/7 (RFC 4193) — the IPv6 analogue of
+  // RFC 1918 private space (first hextet fc00–fdff). Never a valid destination.
+  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return true;
+
   // IPv4-mapped IPv6 (::ffff:a.b.c.d, or the compact hex form ::ffff:7f00:1).
   const mapped = h.match(/^::ffff:(.+)$/i);
   if (mapped) {

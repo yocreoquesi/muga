@@ -632,7 +632,7 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
   // mergeIntoCache calls. Only the single weekly alarm drives fetches and the
   // _remoteFetchInFlight guard drops any overlapping run, so there is never a
   // concurrent merge racing this get/set pair.
-  const prevCache = await storage.get({ remoteParams: [], remoteRulesMeta: null });
+  const prevCache = await storage.get({ remoteParams: [], remoteRulesMeta: null, remoteRulesVersionFloor: 0 });
   const prevParams = Array.isArray(prevCache.remoteParams) ? prevCache.remoteParams : [];
   const diff = diffRemoteParams(prevParams, accepted);
   const remoteRulesChangelog = {
@@ -641,10 +641,16 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
     prevFetchedAt: prevCache.remoteRulesMeta?.fetchedAt ?? null,
   };
 
+  // Advance the persistent anti-rollback floor. This key deliberately survives
+  // clearRemoteCache so a disable → re-enable cycle cannot reset the version
+  // monotonicity floor. (audit-2026-07)
+  const remoteRulesVersionFloor = Math.max(prevCache.remoteRulesVersionFloor ?? 0, meta?.version ?? 0);
+
   await storage.set({
     remoteParams: accepted,
     remoteRulesMeta: meta,
     remoteRulesChangelog,
+    remoteRulesVersionFloor,
   });
 }
 
@@ -801,12 +807,20 @@ export async function runRemoteRulesFetch(deps = {}) {
     }
 
     // 5. Read stored meta and validate params
-    const stored = await storage.get({ remoteRulesMeta: { ...DEFAULT_META } });
+    const stored = await storage.get({ remoteRulesMeta: { ...DEFAULT_META }, remoteRulesVersionFloor: 0 });
     const storedMeta = stored.remoteRulesMeta ?? { ...DEFAULT_META };
+
+    // Anti-rollback floor: clearRemoteCache (user disable) deletes
+    // remoteRulesMeta, which would drop the version monotonicity floor to 0 and
+    // let a MITM/CDN replay an OLDER but validly-signed payload after a
+    // disable → re-enable cycle. remoteRulesVersionFloor is a persistent
+    // high-water mark that clearRemoteCache MUST NOT remove, so the floor is
+    // the max of the (possibly-cleared) meta version and that mark. (audit-2026-07)
+    const floorVersion = Math.max(storedMeta.version ?? 0, stored.remoteRulesVersionFloor ?? 0);
 
     const validResult = validateParams(
       obj.params,
-      { version: storedMeta.version, published: storedMeta.published },
+      { version: floorVersion, published: storedMeta.published },
       nowMs,
       { newVersion: obj.version, newPublished: obj.published }
     );

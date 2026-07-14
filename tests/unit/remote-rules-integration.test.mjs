@@ -357,3 +357,51 @@ describe("SC-11 — Dedup guard: concurrent alarm fires drop the second trigger"
     assert.strictEqual(fetchCallCount, 1, "fetch count stays 1 after first completes");
   });
 });
+
+// ── SC-ROLLBACK: anti-rollback floor survives disable → re-enable ─────────────
+// Regression for the audit-2026-07 finding: clearRemoteCache used to delete
+// remoteRulesMeta, resetting the version floor to 0 so a MITM/CDN could serve
+// an OLDER but validly-signed payload after a disable → re-enable cycle. The
+// floor must persist across clearRemoteCache.
+describe("SC-ROLLBACK — version floor persists across clearRemoteCache", () => {
+  test("an older signed payload is rejected after disable → re-enable", async () => {
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+    const trustedKeys = [testPubKeyBase64()];
+
+    // 1. Accept a high version (v20).
+    const high = makeSignedFetch(["remote_tracker_hi"], 20);
+    await runRemoteRulesFetch({ fetchImpl: high.fetchImpl, subtle: globalThis.crypto.subtle, trustedKeys, storage, dnr });
+    assert.deepEqual(storage._raw.remoteParams, ["remote_tracker_hi"], "v20 must be accepted");
+
+    // 2. User disables remote rules.
+    await clearRemoteCache({ storage, dnr });
+    assert.strictEqual(storage._raw.remoteParams, undefined, "params cleared on disable");
+    assert.strictEqual(storage._raw.remoteRulesMeta, undefined, "meta cleared on disable");
+
+    // 3. A validly-signed OLDER payload (v5) arrives on re-enable.
+    const old = makeSignedFetch(["remote_tracker_old"], 5);
+    await runRemoteRulesFetch({ fetchImpl: old.fetchImpl, subtle: globalThis.crypto.subtle, trustedKeys, storage, dnr });
+
+    // The floor persisted, so v5 must NOT be accepted.
+    assert.notDeepEqual(storage._raw.remoteParams, ["remote_tracker_old"], "an older signed payload must be rejected after re-enable");
+    assert.ok(
+      storage._raw.remoteParams === undefined || !storage._raw.remoteParams.includes("remote_tracker_old"),
+      "rolled-back params must never land in storage"
+    );
+  });
+
+  test("a newer signed payload is still accepted after disable → re-enable", async () => {
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+    const trustedKeys = [testPubKeyBase64()];
+
+    const v10 = makeSignedFetch(["p10"], 10);
+    await runRemoteRulesFetch({ fetchImpl: v10.fetchImpl, subtle: globalThis.crypto.subtle, trustedKeys, storage, dnr });
+    await clearRemoteCache({ storage, dnr });
+
+    const v11 = makeSignedFetch(["p11"], 11);
+    await runRemoteRulesFetch({ fetchImpl: v11.fetchImpl, subtle: globalThis.crypto.subtle, trustedKeys, storage, dnr });
+    assert.deepEqual(storage._raw.remoteParams, ["p11"], "a newer version must still be accepted");
+  });
+});
