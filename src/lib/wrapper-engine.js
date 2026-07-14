@@ -144,6 +144,12 @@ function extractFromAnyParam(paramNames) {
  * this shape declaratively keeps wrapper entries one-line additions to the
  * WRAPPERS table — same authoring ergonomics as `extractFromParam('u')`.
  *
+ * #1103: `new URL()` treats everything after the LAST "#" in the wrapper URL
+ * as ITS OWN hash — not part of the naked-query destination — so a
+ * destination fragment (`href.li/?https://x.com/a#sec`) lands in `url.hash`,
+ * not `url.search`. Re-attach it when reconstructing the destination string,
+ * otherwise the fragment silently disappears from the unwrapped URL.
+ *
  * @returns {(url: URL) => string|null}
  */
 function extractFromUrlAfterQuery() {
@@ -151,15 +157,18 @@ function extractFromUrlAfterQuery() {
     // url.search includes the leading "?"; strip it. Empty (no query) → null.
     const raw = url.search.startsWith("?") ? url.search.slice(1) : url.search;
     if (!raw) return null;
+    // Re-attach the outer URL's #fragment (if any) — it is really the
+    // destination's fragment, not a fragment on href.li/anonym.to itself.
+    const full = raw + (url.hash || "");
     // Redirect-destination length cap (see extractFromParam).
-    if (raw.length > GENERIC_DEST_LENGTH_CAP) return null;
+    if (full.length > GENERIC_DEST_LENGTH_CAP) return null;
     // Cheap pre-check: must start with http:// or https:// to be a destination.
     // Avoids wasting a try/catch on tracker tokens like "?id=abc".
     if (!/^https?:\/\//i.test(raw)) return null;
     try {
-      const dest = new URL(raw);
+      const dest = new URL(full);
       if (dest.protocol !== "https:" && dest.protocol !== "http:") return null;
-      return raw;
+      return full;
     } catch {
       return null;
     }

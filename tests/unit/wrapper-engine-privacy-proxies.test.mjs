@@ -204,6 +204,18 @@ describe("Wrapper Engine — href.li (path-embedded URL)", () => {
   test("returns null when href.li 'destination' is not a URL at all", () => {
     assert.equal(unwrap("https://href.li/?just-some-string"), null);
   });
+
+  // #1103 — the destination's own #fragment must survive unwrapping. `new
+  // URL()` parses everything after the LAST "#" as the OUTER href.li URL's
+  // own hash, not part of the naked-query destination, so it was silently
+  // dropped unless the extractor explicitly re-attaches url.hash.
+  test("preserves the destination's #fragment (#1103)", () => {
+    const dest = "https://merchant.example.com/article#section";
+    const input = "https://href.li/?" + dest;
+    const result = unwrap(input);
+    assert.ok(result, "expected an unwrap result");
+    assert.equal(result.unwrapped, dest);
+  });
 });
 
 // ---------------------------------------------------------------------------
