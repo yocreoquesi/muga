@@ -130,10 +130,29 @@ export function parseListEntry(entry) {
 }
 
 /**
+ * Strips a single trailing dot from a hostname (#1095).
+ *
+ * `amazon.com.` is a valid FQDN — the trailing dot denotes the DNS root —
+ * and browsers/resolvers treat it as IDENTICAL to `amazon.com`. Every
+ * host-matching helper in this module already strips a leading `www.`
+ * before comparing; without the same treatment for a trailing dot, a page
+ * on `www.amazon.com.` bypassed affiliate-pattern lookup entirely
+ * (`getPatternsForHost` found zero patterns, so stripAllAffiliates left a
+ * foreign tag completely untouched) and slipped past domain-only
+ * whitelist/blacklist/pause-by-site entries for `amazon.com`.
+ *
+ * @param {string} hostname
+ * @returns {string}
+ */
+export function stripTrailingDot(hostname) {
+  return hostname.endsWith(".") ? hostname.slice(0, -1) : hostname;
+}
+
+/**
  * Returns true if a host matches a parsed list entry's domain.
  */
 export function domainMatches(hostname, entryDomain) {
-  const host = hostname.replace(/^www\./, "");
+  const host = stripTrailingDot(hostname).replace(/^www\./, "");
   return host === entryDomain || host.endsWith("." + entryDomain);
 }
 
@@ -644,7 +663,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped } = unwrapStep;
   rawUrl = unwrappedRawUrl;
 
-  const hostname = url.hostname;
+  // #1095: strip a single trailing dot before this hostname feeds ANY
+  // matching below (getPatternsForHost, domainMatches via blacklist/
+  // whitelist, handleAffiliatePipeline's ourTag lookups, …). Mirrors the
+  // domainMatches() trailing-dot fix so the two central lookup points agree.
+  const hostname = stripTrailingDot(url.hostname);
   // Per-landing matrix-required preservation (#656). Computed once and
   // threaded through every strip call site below; empty when the referrer
   // is not a known redirect-network host.
