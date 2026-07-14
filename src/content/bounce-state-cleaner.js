@@ -136,10 +136,18 @@
   ];
 
   function isInlineAffiliateRedirectNetwork(host) {
+    // #1101: strip a leading "www." before comparing, mirroring
+    // src/lib/opaque-networks.js's matches(). Most entries above have an
+    // explicit "www.foo" duplicate (awin1.com / www.awin1.com,
+    // shareasale.com / www.shareasale.com) that accidentally masked this
+    // gap, but hosts without one (e.g. anrdoezrs.net) let a www.-prefixed
+    // affiliate-redirect URL slip past the guard and get unwrapped,
+    // defeating the network's 30x attribution.
+    const normalizedHost = host.replace(/^www\./, "");
     for (const entry of INLINE_AFFILIATE_REDIRECT_NETWORKS) {
       if (entry.startsWith("*.")) {
-        if (host.endsWith(entry.slice(1))) return true;
-      } else if (host === entry) {
+        if (normalizedHost.endsWith(entry.slice(1))) return true;
+      } else if (normalizedHost === entry) {
         return true;
       }
     }
