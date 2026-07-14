@@ -132,6 +132,7 @@ const BASELINE = {
   "i18n-orphan.test.mjs": 5,               // reads HTML/JS to find orphaned i18n keys (#824)
   "browser-detect.test.mjs": 4,            // verifies popup/options import the module (#824)
   "popup-reactive-status.test.mjs": 4,     // popup source; mixed behavioral/source (#824)
+  "custom-params-dnr.test.mjs": 3,         // SW not importable; behavioral fake-DNR-facade tests plus a source-region guard confirming the syncCustomParamsDNR empty-normalized-list fix landed in production, mirroring allowlist-dnr.test.mjs's pattern (#1104, #824)
   "storage.test.mjs": 2,                   // verifies storage structure patterns (#824)
   "url-regex-sync.test.mjs": 2,            // verifies SW + cleaner regex are byte-identical (#824)
   "docs-prefs-table.test.mjs": 1,          // reads storage source to verify docs table (#824)
