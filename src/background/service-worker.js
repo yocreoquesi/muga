@@ -1897,8 +1897,43 @@ function shouldOpenOnboarding(prefs) {
   return result.status !== "valid";
 }
 
+// --- Migration banner support: persist the previous version (#1100) --------
+// The popup's migration banner (src/lib/migration-prompt.js) computes a
+// version delta by reading `mugaPrevVersion` from chrome.storage.local and
+// comparing it against chrome.runtime.getManifest().version (see
+// popup.js's readState). Nothing wrote that key before this fix, so the read
+// always fell back to currentVersion, previousVersion === currentVersion
+// held forever, and the banner could never fire once a migration entry is
+// added to MIGRATIONS (migration-spec.js) — latent until this is fixed.
+//
+// Chrome supplies the real prior version via details.previousVersion, but
+// ONLY when details.reason === "update" (it is undefined on first
+// "install"). On install there is no meaningful prior version, so we seed
+// the key with the current version — no delta, no migration fires, matching
+// the pre-fix fallback behavior for a fresh install.
+const MUGA_PREV_VERSION_KEY = "mugaPrevVersion";
+
+async function persistPrevVersion(details) {
+  const currentVersion = chrome.runtime.getManifest().version;
+  const previousVersion =
+    details.reason === "update" && details.previousVersion
+      ? details.previousVersion
+      : currentVersion;
+  try {
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ [MUGA_PREV_VERSION_KEY]: previousVersion }, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
+      });
+    });
+  } catch (e) {
+    console.error("[MUGA] persistPrevVersion failed:", e);
+  }
+}
+
 // --- On install: open onboarding on first run, sync DNR + maybe fetch rules ---
 chrome.runtime.onInstalled.addListener(async (details) => {
+  await persistPrevVersion(details);
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
   await applyOnboardingBadge(prefs);
