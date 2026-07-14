@@ -198,6 +198,23 @@ describe("Constants — shape and values", () => {
     assert.ok(REMOTE_PARAM_DENYLIST.size >= 20, `must have >= 20 entries, got ${REMOTE_PARAM_DENYLIST.size}`);
   });
 
+  // #1105 — defense-in-depth: common functional keys a compromised or buggy
+  // remote payload must never be able to add to the strip list.
+  test("REMOTE_PARAM_DENYLIST contains common functional keys added for defense-in-depth (#1105)", () => {
+    assert.ok(REMOTE_PARAM_DENYLIST.has("email"), "must contain 'email' — login/newsletter/contact forms");
+    assert.ok(REMOTE_PARAM_DENYLIST.has("content"), "must contain 'content' — Open Graph / share metadata");
+    assert.ok(REMOTE_PARAM_DENYLIST.has("title"), "must contain 'title' — Open Graph / Web Share API metadata");
+  });
+
+  test("validateParams rejects a remote payload that tries to strip 'email', 'content', or 'title' (#1105)", () => {
+    const stored = { version: 0, published: "2020-01-01T00:00:00Z" };
+    for (const param of ["email", "content", "title"]) {
+      const r = validateParams([param], stored, Date.parse("2026-01-01T00:00:00Z"));
+      assert.strictEqual(r.ok, false, `'${param}' must be denied`);
+      assert.strictEqual(r.code, "DENYLIST_HIT");
+    }
+  });
+
   test("validateParams rejects a remote payload that tries to strip 'host' (#1006)", () => {
     // Denylist is checked (step 3) before version monotonicity, so a stale
     // stored version does not mask the denylist hit.

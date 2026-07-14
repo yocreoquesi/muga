@@ -112,6 +112,13 @@ export const REMOTE_PARAM_DENYLIST = Object.freeze(new Set([
   "host", "origin",
   // Media / layout
   "v", "w", "h", "width", "height", "color", "theme",
+  // Contact / share metadata (#1105, defense-in-depth) — common functional
+  // keys not covered by any category above. `email` carries login/newsletter/
+  // contact-form values; `content` and `title` carry Open Graph / Web Share
+  // API metadata (e.g. navigator.share({ title, text, url })). None of these
+  // are tracking noise, so a remote payload must never be allowed to strip
+  // them.
+  "email", "content", "title",
 ]));
 
 /**
