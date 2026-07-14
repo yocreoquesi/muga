@@ -16,6 +16,7 @@ import {
   applyPathStrip,
   getPathAffiliatePolicy,
 } from "../../src/lib/path-rules.js";
+import { pathStripRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ import {
 const STRIP_RULES = [
   {
     domain: "amazon",
-    domainPattern: "(?:^|\\.)amazon\\.[a-z.]+$",
+    domainPattern: "(?:^|\\.)amazon\\.(?:com|co\\.uk|co\\.jp|com\\.au|com\\.br|com\\.mx|de|es|fr|in|it|nl|pl|se|sg|ca)$",
     pathPatterns: [
       "\\/[^/]+\\/dp\\/([A-Za-z0-9]{10})",
       "(\\/dp\\/[A-Za-z0-9]{10})\\/.+",
@@ -119,6 +120,76 @@ describe("applyPathStrip()", () => {
       applyPathStrip("test.example.com", "/anything/here", stripAllRule),
       "/"
     );
+  });
+});
+
+// ── #1094 — Amazon domainPattern must not over-match lookalike domains ───────
+//
+// The previous domainPattern "(?:^|\\.)amazon\\.[a-z.]+$" matched ANY
+// multi-label suffix after "amazon.", so amazon.com.attacker.net and
+// amazon.attacker.net were (incorrectly) treated as Amazon and had their
+// paths rewritten by applyPathStrip. Mirrors the #734 AliExpress lookalike
+// fix: anchor to the exact known set of real Amazon TLDs instead of an
+// open-ended character class.
+describe("#1094 — Amazon domainPattern lookalike anchoring", () => {
+  const PATH = "/Some-Product-Slug/dp/B0B9N3QSL3/ref=sr_1_1";
+  const STRIPPED = "/dp/B0B9N3QSL3/";
+
+  test("lookalike hosts are NOT matched — path is left untouched", () => {
+    for (const host of [
+      "amazon.com.attacker.net",
+      "amazon.attacker.net",
+      "amazon.co.uk.attacker.net",
+      "notamazon.com",
+      "myamazon.com",
+    ]) {
+      assert.equal(
+        applyPathStrip(host, PATH, STRIP_RULES),
+        PATH,
+        `${host} must NOT be treated as Amazon (path must stay unrewritten)`
+      );
+    }
+  });
+
+  test("real amazon.<tld> hosts (and subdomains) still strip the path", () => {
+    for (const host of [
+      "amazon.com",
+      "www.amazon.com",
+      "amazon.co.uk",
+      "amazon.co.jp",
+      "amazon.de",
+      "amazon.es",
+      "amazon.fr",
+      "amazon.it",
+      "amazon.nl",
+      "amazon.pl",
+      "amazon.se",
+      "amazon.sg",
+      "amazon.ca",
+      "amazon.in",
+      "amazon.com.au",
+      "amazon.com.br",
+      "amazon.com.mx",
+      "smile.amazon.com",
+    ]) {
+      assert.equal(
+        applyPathStrip(host, PATH, STRIP_RULES),
+        STRIPPED,
+        `${host} must still be treated as Amazon (path must be stripped)`
+      );
+    }
+  });
+
+  // Guards the real src/rules/path-strip-rules.json file directly (not just
+  // the inline STRIP_RULES mirror above), so a future edit to the JSON that
+  // reintroduces an open-ended TLD suffix is caught here too.
+  test("real path-strip-rules.json fixture rejects lookalikes and accepts genuine TLDs", () => {
+    for (const host of ["amazon.com.attacker.net", "amazon.attacker.net"]) {
+      assert.equal(applyPathStrip(host, PATH, pathStripRulesFixture), PATH);
+    }
+    for (const host of ["amazon.com", "amazon.co.uk", "amazon.com.au"]) {
+      assert.equal(applyPathStrip(host, PATH, pathStripRulesFixture), STRIPPED);
+    }
   });
 });
 
