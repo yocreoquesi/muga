@@ -16,8 +16,20 @@
   if (window.__mugaActive) return;
   window.__mugaActive = true;
 
+  // #1110: mirrors src/lib/clipboard.js's writeToClipboard() (unit-tested
+  // there for the popup.js fix, #1098) — content scripts cannot ES-import
+  // (see file header), so the same guarded decision logic is inlined here,
+  // matching the pattern this file already uses for other pure-logic
+  // mirrors (computeRecleanTarget, INLINE_AFFILIATE_REDIRECT_NETWORKS).
+  //
+  // A bare `navigator.clipboard.writeText(text).catch(fallback)` throws
+  // SYNCHRONOUSLY instead of rejecting when `navigator.clipboard` itself is
+  // undefined (some restricted WebExtension contexts, e.g. Firefox for
+  // Android, don't expose it at all) — a synchronous throw never reaches
+  // `.catch()`, so the legacy execCommand fallback below never ran and the
+  // copy failed silently with no fallback attempted.
   function copyToClipboard(text) {
-    return navigator.clipboard.writeText(text).catch(() => {
+    const legacyFallback = () => {
       const el = document.createElement("textarea");
       el.value = text;
       el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
@@ -26,7 +38,17 @@
       el.select();
       try { document.execCommand("copy"); } catch { /* legacy fallback — failure is silent by design */ }
       el.remove();
-    });
+    };
+    const clipboardApi = navigator.clipboard;
+    if (!clipboardApi || typeof clipboardApi.writeText !== "function") {
+      return Promise.resolve().then(legacyFallback);
+    }
+    try {
+      return clipboardApi.writeText(text).catch(legacyFallback);
+    } catch {
+      // Some contexts throw synchronously instead of rejecting (#1098/#1110).
+      return Promise.resolve().then(legacyFallback);
+    }
   }
 
   // Matches http/https URLs including query strings, stops at whitespace or common trailing punctuation.
@@ -235,14 +257,14 @@
       if (allUrls.length === 0) {
         // Nothing to clean. Copy plain text as-is.
         const plainText = sel.toString();
-        navigator.clipboard.writeText(plainText).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+        copyToClipboard(plainText).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
         return true;
       }
 
       // 4. Clean each URL locally (#366). No SW round-trip per URL.
       if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") {
         // Bundle didn't load — copy plain text as fallback.
-        navigator.clipboard.writeText(sel.toString())
+        copyToClipboard(sel.toString())
           .then(() => sendResponse({ ok: true }))
           .catch(() => sendResponse({ ok: false }));
         return true;
@@ -294,7 +316,7 @@
         const anyChanged = [...urlMap.values()].some((clean, i) => clean !== allUrls[i]);
         if (anyChanged) chrome.runtime.sendMessage({ type: "INCREMENT_STAT", key: "urlsCleaned" }).catch(() => { /* expected: channel may close */ });
 
-        navigator.clipboard.writeText(finalText)
+        copyToClipboard(finalText)
           .then(() => sendResponse({ ok: true }))
           .catch(() => sendResponse({ ok: false }));
       }).catch(() => sendResponse({ ok: false }));
@@ -398,7 +420,7 @@
         }).catch(() => { /* expected: channel may close */ });
       }
     } catch {
-      navigator.clipboard.writeText(trimmed).catch(() => { /* best-effort fallback */ });
+      copyToClipboard(trimmed);
     }
   });
 

@@ -459,13 +459,17 @@ function findParamKeyCI(url, paramName) {
  * @returns {{param:string,value:string,store:string,group:string}|null}
  */
 function detectPreservedAffiliate(url, patterns) {
-  const host = url.hostname.replace(/^www\./, "");
+  // #1111: normalize a trailing-dot FQDN (amazon.com.) before host matching,
+  // consistent with domainMatches()/processUrl — otherwise our own injected tag
+  // on a trailing-dot host would not be recognized and would be mis-reported.
+  const normalizedHost = stripTrailingDot(url.hostname);
+  const host = normalizedHost.replace(/^www\./, "");
   for (const pattern of patterns) {
     const actualKey = findParamKeyCI(url, pattern.param);
     if (!actualKey) continue;
     const value = url.searchParams.get(actualKey);
     if (!value) continue;
-    const ourTagForHost = pattern.ourTag[host] || pattern.ourTag[url.hostname] || "";
+    const ourTagForHost = pattern.ourTag[host] || pattern.ourTag[normalizedHost] || "";
     if (ourTagForHost && value === ourTagForHost) continue; // our own injection, skip
     return {
       param: pattern.param,
@@ -506,7 +510,10 @@ function isAliExpressItemPage(hostname, pathname) {
  * cross-site-frequency tracker the (paramName, value) tuple. (#495)
  */
 function stripTrackingParams(url, prefs, domainRules, disabledCategories, classifierStripSet, landingPolicy = EMPTY_LANDING_POLICY) {
-  const hostname = url.hostname;
+  // #1111: normalize a trailing-dot FQDN before host-scoped lookups so domain
+  // preserve/strip rules and the affiliate param set match the same way they
+  // do for the non-dotted host (consistent with domainMatches()/processUrl).
+  const hostname = stripTrailingDot(url.hostname);
   // #629 win 2: cached Set, allocated once per host.
   const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
@@ -1075,14 +1082,29 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
       // URL's actual key may not be — look it up case-insensitively.
       const actualKey = findParamKeyCI(url, entry.param);
       if (!actualKey) continue;
-      const current = url.searchParams.get(actualKey);
-      if (current === null) continue;
+      const values = url.searchParams.getAll(actualKey);
+      if (values.length === 0) continue;
       const isWildcard = entry.value === "*";
-      const matches = isWildcard || current === entry.value;
-      if (!matches) continue;
-      // Whitelist always wins over blacklist (#301).
-      if (isWhitelisted(entry.param, current)) continue;
+      // #1111: decide per-occurrence, same as the #1091 affiliate-strip path.
+      // get()-decides / delete()-removes-all destroyed a non-blacklisted (e.g.
+      // whitelisted/creator) duplicate whenever the FIRST value matched the
+      // blacklist rule (?tag=evil-20&tag=creator-21 with rule tag::evil-20).
+      // Whitelist always wins over blacklist (#301) — kept per value.
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        const matches = isWildcard || val === entry.value;
+        if (matches && !isWhitelisted(entry.param, val)) {
+          strippedAny = true;
+        } else {
+          kept.push(val);
+        }
+      }
+      if (!strippedAny) continue;
+      // actualKey (not entry.param) so surviving values keep their original
+      // casing (#1093 — widen the SEARCH, do not rewrite the stored key casing).
       url.searchParams.delete(actualKey);
+      for (const val of kept) url.searchParams.append(actualKey, val);
       blacklistStripped++;
       if (affiliateParamSet.has(entry.param.toLowerCase())) {
         blacklistRemovedAffiliate = true;
