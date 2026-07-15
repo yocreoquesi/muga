@@ -42,7 +42,12 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["mc_cid", "mc_eid", "igshid", "igsh"],
   ["_hsenc", "_hsmi", "mkt_tok"],
   ["yclid", "ysclid", "_openstat"],
-  ["irclickid", "cjevent", "awc"],
+  // NOTE: redirect-network ATTRIBUTION params (irclickid/cjevent/awc and the
+  // rest of REDIRECT_NETWORK_PATTERNS.landingParams) are DELIBERATELY absent
+  // here. They are excluded from TRACKING_PARAMS and preserved by the async
+  // engine; the sync hot-path must match that (never destroy a creator's
+  // commission on the SPA-hydration race). Enforced by
+  // tests/unit/hot-path-preserves-landing-params-1092.test.mjs (#1092).
   ["ttclid", "sccid", "rdt_cid"],
   ["_branch_match_id", "_branch_referrer"],
   ["pk_campaign", "pk_kwd", "pk_source", "pk_medium"],
