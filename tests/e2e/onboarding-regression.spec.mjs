@@ -146,7 +146,7 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     );
     expect(consent).not.toBeNull();
     expect(consent.onboardingDone).toBe(true);
-    expect(consent.consentVersion).toBe("1.1");
+    expect(consent.consentVersion).toBe("1.2");
     expect(consent.consentDate).toBeGreaterThan(0);
     await verify.close();
 

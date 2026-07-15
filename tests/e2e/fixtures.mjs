@@ -58,9 +58,10 @@ async function completeOnboarding(context, extensionId) {
             mugaConsent: {
               onboardingDone: true,
               // Current required consent version. Keep in sync with
-              // REQUIRED_CONSENT_VERSION (bumped to 1.1 in #888); seeding an
-              // older version puts fixtured users into a soft re-onboard state.
-              consentVersion: "1.1",
+              // REQUIRED_CONSENT_VERSION (bumped to 1.2 in #1027, previously
+              // 1.1 in #888); seeding an older version puts fixtured users
+              // into a soft re-onboard state.
+              consentVersion: "1.2",
               consentDate: Date.now(),
             },
           },
