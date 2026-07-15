@@ -257,14 +257,14 @@
       if (allUrls.length === 0) {
         // Nothing to clean. Copy plain text as-is.
         const plainText = sel.toString();
-        navigator.clipboard.writeText(plainText).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+        copyToClipboard(plainText).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
         return true;
       }
 
       // 4. Clean each URL locally (#366). No SW round-trip per URL.
       if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") {
         // Bundle didn't load — copy plain text as fallback.
-        navigator.clipboard.writeText(sel.toString())
+        copyToClipboard(sel.toString())
           .then(() => sendResponse({ ok: true }))
           .catch(() => sendResponse({ ok: false }));
         return true;
@@ -316,7 +316,7 @@
         const anyChanged = [...urlMap.values()].some((clean, i) => clean !== allUrls[i]);
         if (anyChanged) chrome.runtime.sendMessage({ type: "INCREMENT_STAT", key: "urlsCleaned" }).catch(() => { /* expected: channel may close */ });
 
-        navigator.clipboard.writeText(finalText)
+        copyToClipboard(finalText)
           .then(() => sendResponse({ ok: true }))
           .catch(() => sendResponse({ ok: false }));
       }).catch(() => sendResponse({ ok: false }));
@@ -420,7 +420,7 @@
         }).catch(() => { /* expected: channel may close */ });
       }
     } catch {
-      navigator.clipboard.writeText(trimmed).catch(() => { /* best-effort fallback */ });
+      copyToClipboard(trimmed);
     }
   });
 
