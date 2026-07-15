@@ -467,16 +467,21 @@ function detectPreservedAffiliate(url, patterns) {
   for (const pattern of patterns) {
     const actualKey = findParamKeyCI(url, pattern.param);
     if (!actualKey) continue;
-    const value = url.searchParams.get(actualKey);
-    if (!value) continue;
     const ourTagForHost = pattern.ourTag[host] || pattern.ourTag[normalizedHost] || "";
-    if (ourTagForHost && value === ourTagForHost) continue; // our own injection, skip
-    return {
-      param: pattern.param,
-      value,
-      store: pattern.name,
-      group: pattern.group || pattern.name,
-    };
+    // #1111 pt.3: scan every occurrence — a foreign creator tag hiding behind
+    // our own in a duplicate (?tag=ours&tag=foreign) is still preserved in the
+    // URL and must be reported (feeds the popup + attribution ledger), not
+    // masked by our own tag being the FIRST occurrence get() returned.
+    for (const value of url.searchParams.getAll(actualKey)) {
+      if (!value) continue;
+      if (ourTagForHost && value === ourTagForHost) continue; // our own injection, skip
+      return {
+        param: pattern.param,
+        value,
+        store: pattern.name,
+        group: pattern.group || pattern.name,
+      };
+    }
   }
   return null;
 }
@@ -1037,15 +1042,23 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     for (const pattern of patterns) {
       const actualKey = findParamKeyCI(url, pattern.param);
       if (!actualKey) continue;
-      const value = url.searchParams.get(actualKey);
-      if (!value) continue;
       const ourTagForHost = pattern.ourTag[hostKey] || pattern.ourTag[hostname] || "";
-      if (ourTagForHost && value === ourTagForHost) continue;
-      if (!isWhitelisted(pattern.param, value)) {
-        detectedAffiliate = { param: pattern.param, value, pattern };
-        action = "detected_foreign";
+      // #1111 pt.3: scan every occurrence, not just get() (the FIRST). A foreign
+      // creator tag hiding behind our own or a whitelisted duplicate
+      // (?tag=ours&tag=foreign) must still raise the notification — get() only
+      // ever saw the first value and continue'd past the foreign one.
+      let foreignValue = null;
+      for (const val of url.searchParams.getAll(actualKey)) {
+        if (!val) continue;
+        if (ourTagForHost && val === ourTagForHost) continue; // our own injection
+        if (isWhitelisted(pattern.param, val)) continue;       // user-approved value
+        foreignValue = val;
         break;
       }
+      if (foreignValue === null) continue;
+      detectedAffiliate = { param: pattern.param, value: foreignValue, pattern };
+      action = "detected_foreign";
+      break;
     }
   }
 
