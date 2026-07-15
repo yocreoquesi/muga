@@ -176,6 +176,17 @@ export const PREF_DEFAULTS = {
   hoverPreviewEnabled: true,
   // Hold duration (ms) before the hover preview tooltip appears.
   hoverPreviewDelayMs: 2500,
+  // Cookie Consent Minimizer (#1027). Opt-in, safe-by-default: when a
+  // supported CMP (currently OneTrust only) exposes a confirmed reject /
+  // necessary-only path, MUGA exercises it on the user's behalf. On a
+  // hard wall (only a broad consent-granting action exists, no reject
+  // path), MUGA does nothing and leaves the banner for the user — it
+  // never invokes that action itself (see src/lib/cmp-adapters.js's
+  // docblock for the full rule). Default OFF: this calls a page-authored
+  // global directly, a new capability class disclosed via the consent-
+  // version bump (see src/lib/consent-version-manifest.js "1.2"). Opt-in
+  // any time in Settings > Advanced.
+  cookieConsentMinimizerEnabled: false,
   // NOTE (ADR-0004 phase 5, 2026-06-01): privacyProxyEnabled was the Privacy Proxy
   // toggle removed in phase 5. Retained as a deprecation comment only — do NOT add
   // it back to PREF_DEFAULTS. Any live value is migrated to followShortenersEnabled
