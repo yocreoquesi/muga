@@ -59,22 +59,26 @@ export const ACTIONS = Object.freeze({
   REJECT_ALL: "reject-all",
 });
 
-/** Confidence at/above which an adapter may act. See detect() below. */
+/**
+ * OneTrust multi-signal detection + confidence gate. Requires the
+ * mandatory RejectAll function signal PLUS at least one corroborating
+ * secondary signal before reaching the acting confidence — a bare
+ * global-name match (some other script defining `window.OneTrust`) or
+ * bare DOM markup (a banner present but the API not yet initialized) is
+ * NOT enough on its own. Fail-closed: anything short of full
+ * corroboration returns a confidence below the threshold.
+ *
+ * Content scripts cannot import this module (AGENTS.md — no ES imports
+ * in content scripts), so this exact block (from the start marker to the
+ * end marker) is hand-copied, byte-for-byte modulo indentation, into
+ * content/cookie-noise-mainworld.js and content/cookie-noise.js. Do not
+ * edit one copy without the other two — tests/unit/cookie-noise-sync.test.mjs
+ * fails the build if they drift.
+ */
+// @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
 
-/**
- * OneTrust multi-signal detection. Requires the mandatory RejectAll
- * function signal PLUS at least one corroborating secondary signal before
- * reaching the acting confidence — a bare global-name match (some other
- * script defining `window.OneTrust`) or bare DOM markup (a banner present
- * but the API not yet initialized) is NOT enough on its own. Fail-closed:
- * anything short of full corroboration returns a confidence below the
- * threshold.
- *
- * @param {CmpSignals} signals
- * @returns {number} Confidence in [0, 1].
- */
-function detect(signals) {
+function detectOneTrust(signals) {
   if (!signals || signals.hasOneTrustGlobal !== true || signals.hasRejectAllFn !== true) {
     return 0;
   }
@@ -85,13 +89,10 @@ function detect(signals) {
   return secondary >= 1 ? 1 : 0.4;
 }
 
-/**
- * @param {CmpSignals} signals
- * @returns {boolean} True only when detect() reaches the acting threshold.
- */
-function canReject(signals) {
-  return detect(signals) >= CONFIDENCE_THRESHOLD;
+function canRejectOneTrust(signals) {
+  return detectOneTrust(signals) >= CONFIDENCE_THRESHOLD;
 }
+// @sync:cmp-adapters:end
 
 /**
  * Invokes the caller-supplied reject call. Kept pure (no `window` access
@@ -112,12 +113,12 @@ function reject(callRejectAll) {
   }
 }
 
-/** @type {Readonly<{id: "onetrust", tier: 1, detect: typeof detect, canReject: typeof canReject, reject: typeof reject}>} */
+/** @type {Readonly<{id: "onetrust", tier: 1, detect: typeof detectOneTrust, canReject: typeof canRejectOneTrust, reject: typeof reject}>} */
 export const oneTrustAdapter = Object.freeze({
   id: "onetrust",
   tier: 1,
-  detect,
-  canReject,
+  detect: detectOneTrust,
+  canReject: canRejectOneTrust,
   reject,
 });
 
