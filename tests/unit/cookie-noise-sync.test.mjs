@@ -102,6 +102,53 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
   });
 });
 
+// ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
+//
+// computeCookieGate is a pure helper in src/lib/cmp-adapters.js (unit-tested
+// there) whose body is hand-inlined into content/cookie-noise.js (isolated
+// world) because content scripts cannot import ES modules. The main-world
+// caller never reads prefs, so it does NOT carry this block. This guard
+// proves the library copy and the content-script copy never drift.
+
+const GATE_START = "@sync:cookie-gate:start";
+const GATE_END = "@sync:cookie-gate:end";
+
+function extractMarkedBlock(source, startMarker, endMarker, label) {
+  const lines = source.split(/\r?\n/);
+  const startIdx = lines.findIndex((l) => l.includes(startMarker));
+  const endIdx = lines.findIndex((l) => l.includes(endMarker));
+  assert.ok(startIdx !== -1, `${label}: missing ${startMarker} marker`);
+  assert.ok(endIdx !== -1, `${label}: missing ${endMarker} marker`);
+  assert.ok(endIdx > startIdx, `${label}: ${endMarker} marker must come after ${startMarker}`);
+  return lines
+    .slice(startIdx + 1, endIdx)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+}
+
+describe("cookie-noise-sync — @sync:cookie-gate block matches src/lib/cmp-adapters.js", () => {
+  const libBlock = extractMarkedBlock(sources.lib, GATE_START, GATE_END, "cmp-adapters.js");
+  const isolatedBlock = extractMarkedBlock(sources.isolated, GATE_START, GATE_END, "cookie-noise.js");
+
+  test("cookie-gate sync block is non-empty and defines computeCookieGate", () => {
+    assert.ok(libBlock.length > 0, "extracted cookie-gate block must not be empty — check the markers");
+    assert.ok(/function computeCookieGate/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js cookie-gate block matches src/lib/cmp-adapters.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cookie-gate block has drifted from src/lib/cmp-adapters.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the cookie-gate block (it never reads prefs)", () => {
+    assert.equal(sources.mainworld.includes(GATE_START), false,
+      "cookie-noise-mainworld.js must not inline the prefs gate — it has no prefs access");
+  });
+});
+
 // ── Content-script structural shape ─────────────────────────────────────────
 
 describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {

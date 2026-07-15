@@ -25,6 +25,7 @@ import {
   TIER2,
   oneTrustAdapter,
   decideAction,
+  computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -186,6 +187,73 @@ describe("oneTrustAdapter.reject — pure callback invocation", () => {
   test("non-function argument -> status noop, no call", () => {
     const r = oneTrustAdapter.reject(undefined);
     assert.equal(r.status, "noop");
+  });
+});
+
+// ── computeCookieGate — disabled-state gate truth table ────────────────────
+//
+// W2/S2 (#1027): the gate decision used to live in a non-exported IIFE
+// closure in content/cookie-noise.js, so these branches had no executed
+// coverage (only a structural regex). Extracting it as a pure helper lets
+// every branch run here.
+
+const GATE_ON_PREFS = Object.freeze({
+  enabled: true,
+  onboardingDone: true,
+  cookieConsentMinimizerEnabled: true,
+});
+
+describe("computeCookieGate — disabled-state gate", () => {
+  test("all gate conditions pass -> gate opens (true)", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS), true);
+  });
+
+  test("feature pref OFF -> gate stays closed", () => {
+    assert.equal(
+      computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMinimizerEnabled: false }),
+      false,
+    );
+  });
+
+  test("onboardingDone false -> gate stays closed", () => {
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, onboardingDone: false }), false);
+  });
+
+  test("master enabled false -> gate stays closed", () => {
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, enabled: false }), false);
+  });
+
+  test("null / undefined prefs -> gate stays closed, never throws", () => {
+    assert.doesNotThrow(() => computeCookieGate(null));
+    assert.equal(computeCookieGate(null), false);
+    assert.equal(computeCookieGate(undefined), false);
+  });
+
+  test("isSiteFullyExempt true -> gate stays closed even when every pref passes", () => {
+    const deps = { hostname: "example.com", isSiteFullyExempt: () => true };
+    assert.equal(computeCookieGate(GATE_ON_PREFS, deps), false);
+  });
+
+  test("isSiteFullyExempt false -> gate opens (site not exempt)", () => {
+    const deps = { hostname: "example.com", isSiteFullyExempt: () => false };
+    assert.equal(computeCookieGate(GATE_ON_PREFS, deps), true);
+  });
+
+  test("isSiteFullyExempt receives the injected hostname and prefs", () => {
+    let seen = null;
+    const deps = {
+      hostname: "shop.example.com",
+      isSiteFullyExempt: (hostname, prefs) => { seen = { hostname, prefs }; return false; },
+    };
+    computeCookieGate(GATE_ON_PREFS, deps);
+    assert.equal(seen.hostname, "shop.example.com");
+    assert.strictEqual(seen.prefs, GATE_ON_PREFS);
+  });
+
+  test("a throwing isSiteFullyExempt is swallowed and treated as not exempt (fail-safe -> open)", () => {
+    const deps = { hostname: "example.com", isSiteFullyExempt: () => { throw new Error("boom"); } };
+    assert.doesNotThrow(() => computeCookieGate(GATE_ON_PREFS, deps));
+    assert.equal(computeCookieGate(GATE_ON_PREFS, deps), true);
   });
 });
 

@@ -166,3 +166,47 @@ export function decideAction(signals) {
   }
   return { action: null, reason: "uncertain", adapterId: null };
 }
+
+/**
+ * Pure disabled-state gate for the Cookie Consent Minimizer (#1027).
+ * Decides whether the isolated-world gatekeeper (content/cookie-noise.js)
+ * should open the gate, from the user's prefs plus injected environment
+ * dependencies. Kept pure (no `window`/`location` access) so every
+ * branch — feature off, pre-onboarding, pref off, per-site exemption,
+ * all-pass — is unit-tested directly here instead of only structurally in
+ * a content script that Node cannot import.
+ *
+ * Content scripts cannot import this module (AGENTS.md — no ES imports in
+ * content scripts), so the block between the `@sync:cookie-gate` markers
+ * is hand-copied, modulo indentation, into content/cookie-noise.js. Do not
+ * edit one copy without the other — tests/unit/cookie-noise-sync.test.mjs
+ * fails the build if they drift.
+ *
+ * Fail-closed: a missing/false signal, or an unexpected throw from the
+ * injected exemption predicate, returns false.
+ *
+ * @param {object|null|undefined} prefs Merged prefs (see PREF_DEFAULTS).
+ * @param {{hostname?: string, isSiteFullyExempt?: (hostname: string, prefs: object) => boolean}} [deps]
+ *   Environment hooks the content-script call site injects: the current
+ *   hostname and the cleaner's per-site exemption predicate.
+ * @returns {boolean} true only when the gate should open.
+ */
+// @sync:cookie-gate:start
+function computeCookieGate(prefs, deps) {
+  if (!prefs) return false;
+  if (prefs.enabled === false) return false;
+  if (prefs.onboardingDone !== true) return false;
+  if (prefs.cookieConsentMinimizerEnabled !== true) return false;
+  const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
+  if (typeof isSiteFullyExempt === "function") {
+    try {
+      if (isSiteFullyExempt(deps.hostname, prefs)) return false;
+    } catch {
+      // Fail-safe: treat as not exempt on any unexpected throw.
+    }
+  }
+  return true;
+}
+// @sync:cookie-gate:end
+
+export { computeCookieGate };

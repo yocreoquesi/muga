@@ -170,19 +170,40 @@
   }
 
   // ── Disabled-state gate (prefs) ──────────────────────────────────────────
-  function computeGate(prefs) {
+  // Inline copy of computeCookieGate from src/lib/cmp-adapters.js — content
+  // scripts cannot use ES module imports (AGENTS.md). Kept byte-identical
+  // (modulo indentation) to the library copy by
+  // tests/unit/cookie-noise-sync.test.mjs. The pure helper takes injected
+  // deps so it stays unit-testable in src/lib/; the thin call site below
+  // supplies this world's real location + cleaner exemption predicate.
+  // @sync:cookie-gate:start
+  function computeCookieGate(prefs, deps) {
     if (!prefs) return false;
     if (prefs.enabled === false) return false;
     if (prefs.onboardingDone !== true) return false;
     if (prefs.cookieConsentMinimizerEnabled !== true) return false;
-    try {
-      if (window.__mugaCleaner && typeof window.__mugaCleaner.isSiteFullyExempt === "function") {
-        if (window.__mugaCleaner.isSiteFullyExempt(location.hostname, prefs)) return false;
+    const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
+    if (typeof isSiteFullyExempt === "function") {
+      try {
+        if (isSiteFullyExempt(deps.hostname, prefs)) return false;
+      } catch {
+        // Fail-safe: treat as not exempt on any unexpected throw.
       }
-    } catch {
-      // Fail-safe: treat as not exempt on any unexpected throw.
     }
     return true;
+  }
+  // @sync:cookie-gate:end
+
+  function computeGate(prefs) {
+    // isSiteFullyExempt is a standalone function on __mugaCleaner (no `this`
+    // dependency — see src/lib/cleaner.js), so passing the reference detached
+    // is safe.
+    const cleaner = window.__mugaCleaner;
+    return computeCookieGate(prefs, {
+      hostname: location.hostname,
+      isSiteFullyExempt:
+        cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
+    });
   }
 
   function readPrefsAndGate() {
