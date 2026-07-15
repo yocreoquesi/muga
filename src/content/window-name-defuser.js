@@ -76,7 +76,6 @@
     mc_cid: 1, mc_eid: 1, igshid: 1, igsh: 1,
     _hsenc: 1, _hsmi: 1, mkt_tok: 1,
     yclid: 1, ysclid: 1, _openstat: 1,
-    irclickid: 1, cjevent: 1, awc: 1,
     ttclid: 1, sccid: 1, rdt_cid: 1,
     _branch_match_id: 1, _branch_referrer: 1,
     pk_campaign: 1, pk_kwd: 1, pk_source: 1, pk_medium: 1,
