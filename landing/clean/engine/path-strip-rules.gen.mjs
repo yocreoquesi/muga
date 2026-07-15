@@ -11,7 +11,7 @@
 export const PATH_STRIP_RULES = [
   {
     "domain": "amazon",
-    "domainPattern": "(?:^|\\.)amazon\\.(?:com|co\\.uk|co\\.jp|com\\.au|com\\.br|com\\.mx|de|es|fr|in|it|nl|pl|se|sg|ca)$",
+    "domainPattern": "(?:^|\\.)amazon\\.(?:com|co\\.uk|co\\.jp|com\\.au|com\\.br|com\\.mx|com\\.tr|com\\.be|de|es|fr|in|it|nl|pl|se|sg|ca|ae|sa|eg)$",
     "pathPatterns": [
       "\\/[^/]+\\/dp\\/([A-Za-z0-9]{10})",
       "(\\/dp\\/[A-Za-z0-9]{10})\\/.+",

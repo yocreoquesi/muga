@@ -280,6 +280,12 @@ describe("amazon-path-canonical.json — #1109 lookalike domain anchoring", () =
       "amazon.com.au",
       "amazon.com.br",
       "amazon.com.mx",
+      // Active marketplaces the anti-lookalike anchoring must not drop.
+      "amazon.ae",
+      "amazon.sa",
+      "amazon.eg",
+      "amazon.com.tr",
+      "amazon.com.be",
     ];
     for (const host of hosts) {
       const result = applyRule(RULE, `https://${host}/Some-Slug/dp/B0044R881I`);
