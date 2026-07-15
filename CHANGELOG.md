@@ -2,6 +2,12 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [Unreleased]
+
+### Features
+
+- **Cookie Consent Minimizer** (#1027). Opt-in, off by default: on supported cookie-consent banners (currently OneTrust), MUGA can click reject / necessary-only for you the same way it already strips tracking noise from URLs. It never clicks "accept" or grants broader tracking on your behalf; if no safe reject option exists, it leaves the banner alone. Disclosed via a consent-version bump, opt-in any time in Settings > Advanced.
+
 ## [2.6.0] - 2026-07-13
 
 ### Features
