@@ -1082,14 +1082,29 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
       // URL's actual key may not be — look it up case-insensitively.
       const actualKey = findParamKeyCI(url, entry.param);
       if (!actualKey) continue;
-      const current = url.searchParams.get(actualKey);
-      if (current === null) continue;
+      const values = url.searchParams.getAll(actualKey);
+      if (values.length === 0) continue;
       const isWildcard = entry.value === "*";
-      const matches = isWildcard || current === entry.value;
-      if (!matches) continue;
-      // Whitelist always wins over blacklist (#301).
-      if (isWhitelisted(entry.param, current)) continue;
+      // #1111: decide per-occurrence, same as the #1091 affiliate-strip path.
+      // get()-decides / delete()-removes-all destroyed a non-blacklisted (e.g.
+      // whitelisted/creator) duplicate whenever the FIRST value matched the
+      // blacklist rule (?tag=evil-20&tag=creator-21 with rule tag::evil-20).
+      // Whitelist always wins over blacklist (#301) — kept per value.
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        const matches = isWildcard || val === entry.value;
+        if (matches && !isWhitelisted(entry.param, val)) {
+          strippedAny = true;
+        } else {
+          kept.push(val);
+        }
+      }
+      if (!strippedAny) continue;
+      // actualKey (not entry.param) so surviving values keep their original
+      // casing (#1093 — widen the SEARCH, do not rewrite the stored key casing).
       url.searchParams.delete(actualKey);
+      for (const val of kept) url.searchParams.append(actualKey, val);
       blacklistStripped++;
       if (affiliateParamSet.has(entry.param.toLowerCase())) {
         blacklistRemovedAffiliate = true;
