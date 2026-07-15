@@ -233,9 +233,19 @@ describe("amazon-path-canonical.json — safe-fail on malformed locale prefix", 
 // was the unanchored character class "amazon\.[a-z.]+", which matches ANY
 // multi-label suffix after "amazon." — so amazon.com.attacker.net and
 // amazon.attacker.net were (incorrectly) treated as Amazon and had their
-// /dp/ path slug stripped/redirected. Fixed by enumerating the exact known
-// Amazon TLDs (same list as #1094), mirroring the #734 AliExpress and #1094
-// path-strip-rules.json lookalike fixes.
+// /dp/ path slug stripped/redirected.
+//
+// FIX: a bounded-shape TLD matcher "[a-z]{2,3}(?:\.[a-z]{2,3})?" (1-2 labels,
+// each 2-3 letters). It rejects the multi-label lookalikes AND auto-covers
+// every real (and future) Amazon marketplace TLD without a maintained list.
+//
+// WHY NOT a full TLD enumeration (the first attempt): Chrome DNR imposes a
+// per-rule regex MEMORY budget on top of RE2 syntax validity. A ~16+ branch
+// TLD alternation combined with the "(?:[a-z0-9-]+\.)*" subdomain star blows
+// that budget, so Chrome SILENTLY DROPS rule 200 — disabling Amazon slug
+// canonicalization for every real user. RE2 accepts the pattern and these
+// unit tests pass; only tests/e2e/amazon-path-canonical.spec.mjs (real
+// Chromium) catches the drop. DO NOT revert to an enumeration here.
 // ---------------------------------------------------------------------------
 describe("amazon-path-canonical.json — #1109 lookalike domain anchoring", () => {
   const re = () => new RegExp(RULE.condition.regexFilter);
@@ -280,7 +290,7 @@ describe("amazon-path-canonical.json — #1109 lookalike domain anchoring", () =
       "amazon.com.au",
       "amazon.com.br",
       "amazon.com.mx",
-      // Active marketplaces the anti-lookalike anchoring must not drop.
+      // Marketplaces the bounded-shape matcher covers with no maintained list.
       "amazon.ae",
       "amazon.sa",
       "amazon.eg",
