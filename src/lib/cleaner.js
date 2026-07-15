@@ -675,6 +675,23 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // whitelist, handleAffiliatePipeline's ourTag lookups, …). Mirrors the
   // domainMatches() trailing-dot fix so the two central lookup points agree.
   const hostname = stripTrailingDot(url.hostname);
+
+  // #1096: honor a fully-exempt destination reached THROUGH a wrapper. The
+  // entry host was already checked at earlyHostname (and returned "untouched"
+  // for a direct navigation), so reaching here with an exempt host means the
+  // foreign wrapper was unwrapped to an allowlisted destination. We keep the
+  // unwrap (the wrapper host was NOT exempt) but stop before any strip so the
+  // destination's own params stay intact — never touched by any path. Surface
+  // as "cleaned", NOT "untouched": the URL changed by unwrapping, so it must be
+  // APPLIED. An "untouched" result is dropped by computeNavigationStrip (below,
+  // the `action === "untouched"` guard that gates the Firefox blocking-
+  // webRequest redirect) AND by the SW stats/passthrough gate — so it would
+  // leave the wrapper in place. Do NOT weaken this to "untouched". When unwrap
+  // did NOT change the URL, both gates no-op (cleanUrl === rawUrl), so "cleaned"
+  // is safe there too.
+  if (isSiteFullyExempt(hostname, prefs)) {
+    return buildReturnPayload("cleaned", rawUrl, [], null, { creatorReferralPreserved });
+  }
   // Per-landing matrix-required preservation (#656). Computed once and
   // threaded through every strip call site below; empty when the referrer
   // is not a known redirect-network host.
