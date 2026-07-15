@@ -136,8 +136,22 @@
   document.addEventListener("muga:cookie-gate:nonce", _onNonce);
 
   let _gateOpen = false;
+  let _warnedOrder = false;
   document.addEventListener("muga:cookie-gate", (e) => {
-    if (!e || !e.detail || e.detail.nonce !== _capturedNonce) return;
+    // Reject events that do not carry the handshake nonce. A missing or
+    // mismatched nonce is either a spoofed dispatch from page-script code
+    // OR — the case this once-guarded diagnostic surfaces — a gate event
+    // that arrived BEFORE we captured the nonce, which only happens if the
+    // manifest loads the dispatcher (content/cookie-noise.js) ahead of this
+    // listener. Silent failure there means the feature just never engages,
+    // so leave a breadcrumb. Mirrors content/history-defuser-mainworld.js.
+    if (!e || !e.detail || e.detail.nonce !== _capturedNonce) {
+      if (!_warnedOrder && e && e.detail && typeof e.detail.nonce === "string" && _capturedNonce === null) {
+        _warnedOrder = true;
+        console.warn("[MUGA] cookie-gate event before nonce capture — check manifest script order");
+      }
+      return;
+    }
     _gateOpen = !!e.detail.enabled;
     if (_gateOpen) {
       runDispatcher(); // initial sweep — the banner may already exist
