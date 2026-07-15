@@ -187,6 +187,39 @@ describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
   });
 });
 
+// ── Bounded observer give-up (#1027) ────────────────────────────────────────
+//
+// On the majority of pages an opted-in user visits, no OneTrust banner ever
+// appears. Both worlds must therefore bound their MutationObserver: after the
+// DOM has settled (a grace window past DOMContentLoaded) with no reject
+// having fired, the observer is disconnected so it does not run per-mutation
+// for the whole page lifetime. The give-up is fail-closed — it only
+// disconnects, it never acts. Content scripts cannot be imported in Node
+// (see AGENTS.md), so this is verified structurally.
+
+describe("cookie-noise observers — bounded give-up on non-OneTrust pages", () => {
+  for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+    const src = sources[key];
+
+    test(`${label} defines a bounded give-up window constant`, () => {
+      assert.ok(/GIVE_UP_AFTER_DOM_READY_MS\s*=\s*\d+/.test(src),
+        `${label} must define a numeric give-up window`);
+    });
+
+    test(`${label} anchors the give-up to DOMContentLoaded and schedules it on a timer`, () => {
+      assert.ok(/DOMContentLoaded/.test(src), `${label} must anchor the give-up to DOMContentLoaded`);
+      assert.ok(/setTimeout/.test(src), `${label} must schedule the give-up on a timer`);
+    });
+
+    test(`${label} disconnects the observer when the give-up fires without a reject`, () => {
+      // The timer body must guard on the "already acted" flag before stopping,
+      // so a fired reject is never undone and giving up stays fail-closed.
+      assert.ok(/if\s*\(\s*!_(fx)?[Aa]cted\s*\)\s*(fx)?[sS]topObserver\(\)/.test(src),
+        `${label} must only give up (disconnect) when no reject has fired`);
+    });
+  }
+});
+
 describe("cookie-noise gate handshake — separate channel from muga:history-gate", () => {
   test("cookie-noise-mainworld.js and cookie-noise.js do not dispatch/listen on muga:history-gate", () => {
     // The docblocks legitimately MENTION muga:history-gate in prose to

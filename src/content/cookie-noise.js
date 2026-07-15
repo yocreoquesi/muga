@@ -140,6 +140,31 @@
     }
   }
 
+  // Bounded give-up window (#1027) — Firefox mirror of the MAIN-world
+  // caller's give-up (see content/cookie-noise-mainworld.js for the full
+  // rationale). Most pages never show a OneTrust banner; without a give-up
+  // the observer + dispatcher would run per-mutation for the whole page
+  // lifetime. Fail-closed: giving up just disconnects, never acts.
+  const FX_GIVE_UP_AFTER_DOM_READY_MS = 10000;
+  let _fxGiveUpArmed = false;
+  let _fxGiveUpTimer = null;
+
+  function fxArmGiveUp() {
+    if (_fxGiveUpArmed) return;
+    _fxGiveUpArmed = true;
+    const schedule = () => {
+      _fxGiveUpTimer = setTimeout(() => {
+        _fxGiveUpTimer = null;
+        if (!_fxActed) fxStopObserver();
+      }, FX_GIVE_UP_AFTER_DOM_READY_MS);
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", schedule, { once: true });
+    } else {
+      schedule();
+    }
+  }
+
   function fxStartObserver() {
     if (_fxObserver || _fxActed) return;
     if (!document || !document.documentElement) return;
@@ -149,9 +174,16 @@
     } catch {
       _fxObserver = null;
     }
+    fxArmGiveUp();
   }
 
   function fxStopObserver() {
+    if (_fxGiveUpTimer !== null) {
+      clearTimeout(_fxGiveUpTimer);
+      _fxGiveUpTimer = null;
+    }
+    // Reset so a later gate reopen (Settings toggle) arms a fresh window.
+    _fxGiveUpArmed = false;
     if (!_fxObserver) return;
     try {
       _fxObserver.disconnect();

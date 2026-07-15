@@ -151,7 +151,38 @@
     return _gateOpen;
   }
 
+  // Bounded give-up window (#1027). The MAJORITY of pages an opted-in user
+  // visits never show a OneTrust banner, yet without a give-up the
+  // MutationObserver + dispatcher would run on EVERY DOM mutation for the
+  // whole page lifetime. A OneTrust banner that is going to appear does so
+  // within a few seconds of a ready DOM (its SDK + geo lookup are
+  // front-loaded); once that window passes, keeping the observer alive only
+  // burns CPU with no chance of acting. Fail-closed: giving up just
+  // disconnects the observer — it never rejects or grants anything.
+  const GIVE_UP_AFTER_DOM_READY_MS = 10000;
+
   let _observer = null;
+  let _giveUpArmed = false;
+  let _giveUpTimer = null;
+
+  function armGiveUp() {
+    if (_giveUpArmed) return;
+    _giveUpArmed = true;
+    const schedule = () => {
+      _giveUpTimer = setTimeout(() => {
+        _giveUpTimer = null;
+        if (!_acted) stopObserver();
+      }, GIVE_UP_AFTER_DOM_READY_MS);
+    };
+    // Anchor the window to a settled DOM. A document_start MAIN-world script
+    // sees readyState "loading" at first, but the gate may also open only
+    // after the DOM is already parsed — handle both.
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", schedule, { once: true });
+    } else {
+      schedule();
+    }
+  }
 
   function startObserver() {
     if (_observer || _acted) return;
@@ -162,9 +193,16 @@
     } catch {
       _observer = null;
     }
+    armGiveUp();
   }
 
   function stopObserver() {
+    if (_giveUpTimer !== null) {
+      clearTimeout(_giveUpTimer);
+      _giveUpTimer = null;
+    }
+    // Reset so a later gate reopen (Settings toggle) arms a fresh window.
+    _giveUpArmed = false;
     if (!_observer) return;
     try {
       _observer.disconnect();
