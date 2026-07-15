@@ -9,7 +9,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^(https?://(?:[a-z0-9-]+\\.)*amazon\\.[a-z.]+(?:/-/[a-z]{2,3})?)/[^/]+/(dp/[A-Za-z0-9]{10})((?:[/?].*)?)$",
+      "regexFilter": "^(https?://(?:[a-z0-9-]+\\.)*amazon\\.(?:com|co\\.uk|co\\.jp|com\\.au|com\\.br|com\\.mx|de|es|fr|in|it|nl|pl|se|sg|ca)(?:/-/[a-z]{2,3})?)/[^/]+/(dp/[A-Za-z0-9]{10})((?:[/?].*)?)$",
       "resourceTypes": ["main_frame"]
     }
   }

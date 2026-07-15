@@ -227,6 +227,67 @@ describe("amazon-path-canonical.json — safe-fail on malformed locale prefix", 
   });
 });
 
+// ---------------------------------------------------------------------------
+// #1109 — regexFilter must not over-match lookalike domains. Same bug class
+// as #1094 (src/rules/path-strip-rules.json domainPattern): the TLD portion
+// was the unanchored character class "amazon\.[a-z.]+", which matches ANY
+// multi-label suffix after "amazon." — so amazon.com.attacker.net and
+// amazon.attacker.net were (incorrectly) treated as Amazon and had their
+// /dp/ path slug stripped/redirected. Fixed by enumerating the exact known
+// Amazon TLDs (same list as #1094), mirroring the #734 AliExpress and #1094
+// path-strip-rules.json lookalike fixes.
+// ---------------------------------------------------------------------------
+describe("amazon-path-canonical.json — #1109 lookalike domain anchoring", () => {
+  const re = () => new RegExp(RULE.condition.regexFilter);
+
+  test("lookalike hosts do NOT match — amazon.com.attacker.net", () => {
+    assert.equal(
+      re().test("https://amazon.com.attacker.net/Some-Slug/dp/B0044R881I"),
+      false
+    );
+  });
+
+  test("lookalike hosts do NOT match — amazon.attacker.net", () => {
+    assert.equal(
+      re().test("https://amazon.attacker.net/Some-Slug/dp/B0044R881I"),
+      false
+    );
+  });
+
+  test("lookalike hosts do NOT match — amazon.co.uk.attacker.net", () => {
+    assert.equal(
+      re().test("https://amazon.co.uk.attacker.net/Some-Slug/dp/B0044R881I"),
+      false
+    );
+  });
+
+  test("real amazon.<tld> hosts still match and strip the slug", () => {
+    const hosts = [
+      "amazon.com",
+      "www.amazon.com",
+      "amazon.co.uk",
+      "amazon.co.jp",
+      "amazon.de",
+      "amazon.es",
+      "amazon.fr",
+      "amazon.it",
+      "amazon.nl",
+      "amazon.pl",
+      "amazon.se",
+      "amazon.sg",
+      "amazon.ca",
+      "amazon.in",
+      "amazon.com.au",
+      "amazon.com.br",
+      "amazon.com.mx",
+    ];
+    for (const host of hosts) {
+      const result = applyRule(RULE, `https://${host}/Some-Slug/dp/B0044R881I`);
+      assert.equal(result, `https://${host}/dp/B0044R881I`, `expected ${host} to match and strip`);
+    }
+  });
+});
+
 describe("amazon-path-canonical.json — non-product pages are not matched", () => {
   const re = () => new RegExp(RULE.condition.regexFilter);
 
