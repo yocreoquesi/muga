@@ -273,6 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "Wichtig: die Nutzungsbedingungen haben sich wesentlich geändert",
   ob_reonboard_material_desc: "MUGAs Nutzungsbedingungen wurden in einer Weise aktualisiert, die deine bisherige Zustimmung berührt. Die weitere Nutzung der Erweiterung erfordert die Annahme der neuen Bedingungen. Bitte überprüfe die unten verlinkten Nutzungsbedingungen und Datenschutzrichtlinien.",
   ob_clause_remote_rules_default: "Wöchentliche Regelaktualisierungen sind jetzt standardmäßig aktiviert: MUGA lädt etwa einmal pro Woche eine aktualisierte Liste von Tracking-Parametern von rules.muga.app. Es handelt sich um eine Ed25519-signierte Anfrage, die keine personenbezogenen Daten sendet (keinen Browserverlauf, keine Cookies) und du kannst sie jederzeit in den Einstellungen deaktivieren.",
+  ob_clause_cookie_consent_minimizer: null,
   migration_accept: "Aktivieren",
   migration_decline: "Nein, danke",
   migration_counter: "{n} von {total}",
@@ -342,4 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "Halte am Desktop die Maus einige Sekunden über einen Link, um das echte, bereinigte Ziel zu sehen (nur bei Links, die woanders hin weiterleiten).",
   aria_hover_preview: "Vorschau des echten Linkziels beim Hovern anzeigen",
   hover_preview_label: "Führt zu:",
+  row_cookie_consent_minimizer_label: null,
+  row_cookie_consent_minimizer_hint: null,
+  aria_cookie_consent_minimizer: "Cookie-Consent-Banner automatisch ablehnen, wenn eine sichere Option existiert",
 });

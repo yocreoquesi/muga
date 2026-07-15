@@ -169,3 +169,39 @@ describe("consent-clauses — #888 remote-rules default clause (live map)", () =
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// #1027 — the 1.2 additive bump surfaces the cookie-consent-minimizer clause
+// in the delta list. Mirrors the #888 section above against the LIVE map.
+// ---------------------------------------------------------------------------
+describe("consent-clauses — #1027 cookie-consent-minimizer clause (live map)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.2'] discloses the cookie-consent-minimizer clause", () => {
+    assert.deepEqual(
+      [...(CONSENT_CLAUSES_BY_VERSION["1.2"] || [])],
+      ["ob_clause_cookie_consent_minimizer"]
+    );
+  });
+
+  test("user at 1.1, required 1.2 -> delta surfaces the cookie-consent-minimizer clause", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.1",
+      requiredVersion: "1.2",
+      manifest: CONSENT_VERSION_MANIFEST,
+      // default clausesByVersion (live map)
+    });
+    assert.deepEqual(r, ["ob_clause_cookie_consent_minimizer"]);
+  });
+
+  test("the clause i18n key resolves to non-empty text in EN and ES (official locales)", () => {
+    assert.ok(
+      typeof TRANSLATIONS.ob_clause_cookie_consent_minimizer?.en === "string" &&
+        TRANSLATIONS.ob_clause_cookie_consent_minimizer.en.trim().length > 0,
+      "EN clause text must exist"
+    );
+    assert.ok(
+      typeof TRANSLATIONS.ob_clause_cookie_consent_minimizer?.es === "string" &&
+        TRANSLATIONS.ob_clause_cookie_consent_minimizer.es.trim().length > 0,
+      "ES clause text must exist"
+    );
+  });
+});

@@ -273,6 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "Important: terms have changed materially",
   ob_reonboard_material_desc: "MUGA's terms have been updated in a way that affects what you previously agreed to. Continued use of the extension requires accepting the new terms. Please review the linked Terms of Use and Privacy Policy below.",
   ob_clause_remote_rules_default: "Weekly rule updates are now on by default: MUGA fetches an updated tracker-parameter list from rules.muga.app about once a week. It is an Ed25519-signed request that sends no personal data (no browsing history, no cookies) and you can turn it off any time in Settings.",
+  ob_clause_cookie_consent_minimizer: "New, off by default: on supported cookie-consent banners (currently OneTrust), MUGA can click reject / necessary-only for you, the same way it already strips tracking noise from URLs. It never accepts or grants broader tracking on your behalf. If no safe reject option exists, MUGA leaves the banner alone. Turn it on any time in Settings.",
   migration_accept: "Enable",
   migration_decline: "No thanks",
   migration_counter: "{n} of {total}",
@@ -342,4 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "On desktop, hold the mouse over a link for a few seconds to preview its real cleaned destination (only for links that redirect elsewhere).",
   aria_hover_preview: "Show a hover preview of the real link destination",
   hover_preview_label: "Goes to:",
+  row_cookie_consent_minimizer_label: "Cookie Consent Minimizer",
+  row_cookie_consent_minimizer_hint: "On supported cookie-consent banners (currently OneTrust), MUGA clicks reject / necessary-only for you. It never accepts or grants broader tracking on your behalf; if no safe reject option exists, it leaves the banner alone. Off by default.",
+  aria_cookie_consent_minimizer: "Automatically reject cookie-consent banners when a safe option exists",
 });

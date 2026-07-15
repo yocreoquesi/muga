@@ -273,6 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "Important : les conditions ont changé de manière substantielle",
   ob_reonboard_material_desc: "Les conditions de MUGA ont été mises à jour d'une manière qui affecte ce que vous avez accepté précédemment. L'utilisation continue de l'extension nécessite l'acceptation des nouvelles conditions. Veuillez consulter les Conditions d'utilisation et la Politique de confidentialité ci-dessous.",
   ob_clause_remote_rules_default: "Les mises à jour hebdomadaires des règles sont désormais activées par défaut : MUGA récupère une liste à jour de paramètres de suivi depuis rules.muga.app environ une fois par semaine. Il s'agit d'une requête signée (Ed25519) qui n'envoie aucune donnée personnelle (ni historique de navigation, ni cookies) et vous pouvez la désactiver à tout moment dans les Paramètres.",
+  ob_clause_cookie_consent_minimizer: null,
   migration_accept: "Activer",
   migration_decline: "Non merci",
   migration_counter: "{n} sur {total}",
@@ -342,4 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "Sur ordinateur, laissez la souris quelques secondes sur un lien pour voir sa vraie destination nettoyée (uniquement pour les liens qui redirigent ailleurs).",
   aria_hover_preview: "Afficher un aperçu de la vraie destination du lien au survol",
   hover_preview_label: "Mène à :",
+  row_cookie_consent_minimizer_label: null,
+  row_cookie_consent_minimizer_hint: null,
+  aria_cookie_consent_minimizer: "Rejeter automatiquement les bandeaux de consentement aux cookies lorsqu'une option sûre existe",
 });

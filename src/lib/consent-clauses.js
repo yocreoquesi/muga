@@ -34,6 +34,11 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // clause disclosing the new weekly signed network egress. The i18n key
   // resolves to the localized clause text rendered in the delta list.
   "1.1": Object.freeze(["ob_clause_remote_rules_default"]),
+  // 1.2 (#1027): the opt-in Cookie Consent Minimizer. Single additive
+  // clause disclosing the new capability (calling a page's own reject
+  // function). The feature itself stays OFF until the user opts in from
+  // Settings; this clause is disclosure, not an activation.
+  "1.2": Object.freeze(["ob_clause_cookie_consent_minimizer"]),
 });
 
 /**
