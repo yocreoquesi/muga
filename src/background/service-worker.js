@@ -574,6 +574,19 @@ async function syncCustomParamsDNR(customParams) {
     const normalized = customParams
       .filter(p => /^[a-zA-Z0-9_.-]+$/.test(p.trim()))
       .map(p => p.trim().toLowerCase());
+    // #1104: every entry may fail the format filter above (e.g. all-symbol
+    // junk input), leaving normalized empty. Registering a DNR rule with
+    // removeParams: [] is a no-op that serves no purpose and pollutes the
+    // dynamic rule table with a dead entry. Treat an empty post-filter list
+    // the same as "no customParams at all" — mirrors the mergeIntoCache()
+    // empty-accepted guard in remote-rules.js (#923).
+    if (normalized.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
       addRules: [{
@@ -855,6 +868,31 @@ async function syncContextMenus(enabled) {
   });
 }
 
+// Serialize chrome.storage.session read-modify-write mutations (badge totals,
+// per-page counters, session history) the same way _listMutationQueue (above)
+// serializes whitelist/blacklist chrome.storage.sync mutations. In MV3,
+// chrome.storage.session is real async IPC (not a synchronous in-memory Map),
+// so two of these cycles racing on the same tab/key can each read the
+// pre-update value and the second write clobbers the first (#1097 — badge
+// undercounts under fast frames/SPAs). Mirrors the createMutex/withSyncMutation
+// shape in src/options/sync-mutation.js, scoped to session storage here.
+let _sessionMutationQueue = Promise.resolve();
+
+/**
+ * Runs `fn` after every previously-queued session-storage mutation has
+ * settled, so concurrent callers never race on the same read-modify-write
+ * cycle. Uses `.then(fn, fn)` (not `.then(fn).catch(...)`) so a throwing
+ * mutation does not permanently poison the queue for later callers — the
+ * next mutation still runs, mirroring createMutex()'s self-healing chain.
+ *
+ * @param {() => Promise<any>} fn - the read-modify-write cycle to serialize
+ * @returns {Promise<any>} whatever `fn` resolves to
+ */
+function withSessionMutation(fn) {
+  _sessionMutationQueue = _sessionMutationQueue.then(fn, fn);
+  return _sessionMutationQueue;
+}
+
 // Badge background color is set by the toolbar presenter at startup (#358).
 
 // --- Badge helpers ---
@@ -877,14 +915,23 @@ async function syncContextMenus(enabled) {
 async function updateTabBadge(tabId, junkRemoved) {
   if (!tabId || junkRemoved <= 0) return;
   const key = `tab_${tabId}`;
-  const data = await sessionStorage.get({ [key]: 0 });
-  const newCount = data[key] + junkRemoved;
-  await sessionStorage.set({ [key]: newCount });
-
   const badgeKey = `tab_badge_${tabId}`;
-  const badgeData = await sessionStorage.get({ [badgeKey]: 0 });
-  const badgeTotal = badgeData[badgeKey] + junkRemoved;
-  await sessionStorage.set({ [badgeKey]: badgeTotal });
+
+  // Serialized (#1097): without this, two rapid clean events on the same tab
+  // (fast frames/SPA navigations) can each read the pre-update count before
+  // either write lands, so the second write clobbers the first and the badge
+  // undercounts. withSessionMutation queues this whole read-modify-write
+  // cycle behind any other pending session-storage mutation.
+  const badgeTotal = await withSessionMutation(async () => {
+    const data = await sessionStorage.get({ [key]: 0 });
+    const newCount = data[key] + junkRemoved;
+    await sessionStorage.set({ [key]: newCount });
+
+    const badgeData = await sessionStorage.get({ [badgeKey]: 0 });
+    const newBadgeTotal = badgeData[badgeKey] + junkRemoved;
+    await sessionStorage.set({ [badgeKey]: newBadgeTotal });
+    return newBadgeTotal;
+  });
 
   // Warm the prefs cache BEFORE emitting so the presenter's live accessors
   // (getShowBadge / isOnboardingDone, which read cachedPrefs at call time)
@@ -974,10 +1021,15 @@ const HISTORY_MAX = 10;
 
 async function appendHistory(original, clean, removedTracking = []) {
   if (original === clean) return;
-  const data = await sessionStorage.get({ history: [] });
-  const entry = { original, clean, ts: Date.now(), removedTracking };
-  const history = [entry, ...data.history].slice(0, HISTORY_MAX);
-  await sessionStorage.set({ history });
+  // Serialized (#1097): same race as updateTabBadge above — two rapid clean
+  // events can each read the same pre-update history array, and the second
+  // write would silently drop the first entry without this queue.
+  await withSessionMutation(async () => {
+    const data = await sessionStorage.get({ history: [] });
+    const entry = { original, clean, ts: Date.now(), removedTracking };
+    const history = [entry, ...data.history].slice(0, HISTORY_MAX);
+    await sessionStorage.set({ history });
+  });
 }
 
 // --- Storage change listener: invalidate cache and re-apply DNR state ---
@@ -1858,8 +1910,43 @@ function shouldOpenOnboarding(prefs) {
   return result.status !== "valid";
 }
 
+// --- Migration banner support: persist the previous version (#1100) --------
+// The popup's migration banner (src/lib/migration-prompt.js) computes a
+// version delta by reading `mugaPrevVersion` from chrome.storage.local and
+// comparing it against chrome.runtime.getManifest().version (see
+// popup.js's readState). Nothing wrote that key before this fix, so the read
+// always fell back to currentVersion, previousVersion === currentVersion
+// held forever, and the banner could never fire once a migration entry is
+// added to MIGRATIONS (migration-spec.js) — latent until this is fixed.
+//
+// Chrome supplies the real prior version via details.previousVersion, but
+// ONLY when details.reason === "update" (it is undefined on first
+// "install"). On install there is no meaningful prior version, so we seed
+// the key with the current version — no delta, no migration fires, matching
+// the pre-fix fallback behavior for a fresh install.
+const MUGA_PREV_VERSION_KEY = "mugaPrevVersion";
+
+async function persistPrevVersion(details) {
+  const currentVersion = chrome.runtime.getManifest().version;
+  const previousVersion =
+    details.reason === "update" && details.previousVersion
+      ? details.previousVersion
+      : currentVersion;
+  try {
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ [MUGA_PREV_VERSION_KEY]: previousVersion }, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
+      });
+    });
+  } catch (e) {
+    console.error("[MUGA] persistPrevVersion failed:", e);
+  }
+}
+
 // --- On install: open onboarding on first run, sync DNR + maybe fetch rules ---
 chrome.runtime.onInstalled.addListener(async (details) => {
+  await persistPrevVersion(details);
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
   await applyOnboardingBadge(prefs);

@@ -21,6 +21,8 @@ import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-
 import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 import { computeUnwrapView } from "../lib/unwrap-view.js";
+import { writeToClipboard } from "../lib/clipboard.js";
+import { addUserCustomRule } from "../lib/user-custom-rules.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -56,11 +58,22 @@ function _setClipboardIcon(el) {
  * and every caller shows the "✗" failure state even though the legacy
  * execCommand path would have worked (#991).
  *
+ * #1098: navigator.clipboard can be `undefined` in those same restricted
+ * contexts, and accessing writeText on `undefined` throws SYNCHRONOUSLY
+ * instead of rejecting a Promise — calling it inline and chaining .catch()
+ * on the result never reaches that catch in that case, so the execCommand
+ * fallback below never ran and the caller got no feedback at all.
+ * writeToClipboard() (imported from
+ * ../lib/clipboard.js, unit-tested in tests/unit/clipboard.test.mjs since
+ * popup.js itself has no exports) guards both "API absent" and "API
+ * present but throws synchronously" so they route through the same
+ * fallback as an ordinary rejection.
+ *
  * @param {string} text
  * @returns {Promise<void>} Resolves if either copy path succeeded, rejects if both failed.
  */
 function copyToClipboard(text) {
-  return navigator.clipboard.writeText(text).catch(() => {
+  return writeToClipboard(navigator.clipboard, text, () => {
     const el = document.createElement("textarea");
     el.value = text;
     el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
@@ -1121,17 +1134,25 @@ function _appendStripLocallyButton(row, paramName, alreadyPromoted, prefs, lang)
             else resolve(r);
           });
         });
-        const list = Array.isArray(current.userCustomRules) ? current.userCustomRules : [];
-        const lowerSet = new Set(list.map(p => p.toLowerCase()));
-        if (!lowerSet.has(paramName.toLowerCase())) {
-          list.push(paramName);
+        const currentList = Array.isArray(current.userCustomRules) ? current.userCustomRules : [];
+        // #1099: enforce the same 200-entry cap + dedupe every other
+        // userCustomRules write path already applies (options.js's manual
+        // Add button, the settings-import path) instead of pushing
+        // unbounded — an uncapped list can exceed chrome.storage.sync's
+        // ~8 KB per-item quota and fail to persist silently.
+        const { list, error } = addUserCustomRule(currentList, paramName);
+        if (error === "max") {
+          _flashStripLocallyMessage(t("list_full", lang), currentList.length, lang);
+          return;
         }
-        await new Promise((resolve, reject) => {
-          chrome.storage.sync.set({ userCustomRules: list }, () => {
-            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-            else resolve();
+        if (error !== "duplicate") {
+          await new Promise((resolve, reject) => {
+            chrome.storage.sync.set({ userCustomRules: list }, () => {
+              if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+              else resolve();
+            });
           });
-        });
+        }
         // Mutate the in-flight prefs object so a follow-up re-render
         // (from the storage.onChanged listener or otherwise) sees the
         // new state without an extra round-trip.
@@ -1280,6 +1301,26 @@ function _renderStripLocallyCount(count, lang) {
   // textContent + manual {n} replace — never innerHTML.
   el.textContent = t("strip_locally_active_count", lang).replace("{n}", String(count));
   el.hidden = false;
+}
+
+/**
+ * Temporarily shows an error message in the strip-locally-count aria-live
+ * region (#1099), then restores the normal count display after 3000ms.
+ * Used when the "Strip locally" cap (IMPORT_LIST_CAPS.customParams, 200
+ * entries) is reached, so the failure is surfaced to the user instead of
+ * failing silently — previously there was no cap at all, and therefore no
+ * error path either.
+ *
+ * @param {string} message  Translated message to show (e.g. t("list_full", lang)).
+ * @param {number} count    The unchanged current list length, to restore after the flash.
+ * @param {string} lang     Active UI language code.
+ */
+function _flashStripLocallyMessage(message, count, lang) {
+  const el = document.getElementById("strip-locally-count");
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = false;
+  setTimeout(() => _renderStripLocallyCount(count, lang), 3000);
 }
 
 /**

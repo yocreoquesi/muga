@@ -11,7 +11,7 @@
 export const PATH_STRIP_RULES = [
   {
     "domain": "amazon",
-    "domainPattern": "(?:^|\\.)amazon\\.[a-z.]+$",
+    "domainPattern": "(?:^|\\.)amazon\\.(?:com|co\\.uk|co\\.jp|com\\.au|com\\.br|com\\.mx|de|es|fr|in|it|nl|pl|se|sg|ca)$",
     "pathPatterns": [
       "\\/[^/]+\\/dp\\/([A-Za-z0-9]{10})",
       "(\\/dp\\/[A-Za-z0-9]{10})\\/.+",
@@ -31,6 +31,6 @@ export const PATH_STRIP_RULES = [
       ""
     ],
     "fallbackPathname": "/",
-    "note": "Amazon path-strip — all TLDs. Migrated from cleanAmazonPath() in src/lib/cleaner.js:243-251 (issue #625). Pass 4: /ref=[^/]*$ anchored to pathname end — only trailing ref markers stripped, not mid-path /ref= segments (#831)."
+    "note": "Amazon path-strip — all TLDs. Migrated from cleanAmazonPath() in src/lib/cleaner.js:243-251 (issue #625). Pass 4: /ref=[^/]*$ anchored to pathname end — only trailing ref markers stripped, not mid-path /ref= segments (#831). domainPattern enumerates the exact known Amazon TLDs (#1094): the previous `[a-z.]+$` suffix matched any multi-label TLD, so amazon.com.attacker.net and amazon.attacker.net were treated as Amazon and had their paths rewritten. Mirrors the #734 AliExpress lookalike fix (anchor to known real hosts, not an open-ended character class)."
   }
 ];

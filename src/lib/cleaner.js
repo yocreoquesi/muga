@@ -130,10 +130,29 @@ export function parseListEntry(entry) {
 }
 
 /**
+ * Strips a single trailing dot from a hostname (#1095).
+ *
+ * `amazon.com.` is a valid FQDN — the trailing dot denotes the DNS root —
+ * and browsers/resolvers treat it as IDENTICAL to `amazon.com`. Every
+ * host-matching helper in this module already strips a leading `www.`
+ * before comparing; without the same treatment for a trailing dot, a page
+ * on `www.amazon.com.` bypassed affiliate-pattern lookup entirely
+ * (`getPatternsForHost` found zero patterns, so stripAllAffiliates left a
+ * foreign tag completely untouched) and slipped past domain-only
+ * whitelist/blacklist/pause-by-site entries for `amazon.com`.
+ *
+ * @param {string} hostname
+ * @returns {string}
+ */
+export function stripTrailingDot(hostname) {
+  return hostname.endsWith(".") ? hostname.slice(0, -1) : hostname;
+}
+
+/**
  * Returns true if a host matches a parsed list entry's domain.
  */
 export function domainMatches(hostname, entryDomain) {
-  const host = hostname.replace(/^www\./, "");
+  const host = stripTrailingDot(hostname).replace(/^www\./, "");
   return host === entryDomain || host.endsWith("." + entryDomain);
 }
 
@@ -388,6 +407,40 @@ export function getPreservedParams(hostname, domainRules = []) {
 }
 
 /**
+ * Finds the actual query-string key present in `url.searchParams` that
+ * matches `paramName` case-insensitively (#1093). Affiliate param names in
+ * AFFILIATE_PATTERNS / blacklist / whitelist entries are always compared in
+ * their canonical lowercase form (e.g. "tag"), but real-world URLs are not
+ * guaranteed to use that exact casing — `?TAG=creator-21` is a valid query
+ * string and browsers pass it through unchanged. Without this lookup,
+ * `searchParams.get(pattern.param)` / `.has(pattern.param)` silently miss an
+ * uppercase-keyed tag, which let MUGA inject its OWN tag under the canonical
+ * lowercase key ALONGSIDE an existing uppercase-keyed creator tag — two
+ * "tag" params stacked on the same URL, a non-superposition violation — and
+ * let blacklist/whitelist entries fail to match an uppercase param name.
+ *
+ * Returns the FIRST matching key exactly as it appears in the URL (its
+ * original casing is preserved — this function only widens the SEARCH, it
+ * never rewrites the stored key), or null when no key matches.
+ *
+ * Firefox Xray safety (see stripTrackingParams): searchParams key iterators
+ * are not iterable in content-script sandboxes; forEach is a plain callback,
+ * unaffected. (#1009)
+ *
+ * @param {URL} url
+ * @param {string} paramName
+ * @returns {string|null}
+ */
+function findParamKeyCI(url, paramName) {
+  const lower = paramName.toLowerCase();
+  let found = null;
+  url.searchParams.forEach((_v, k) => {
+    if (found === null && k.toLowerCase() === lower) found = k;
+  });
+  return found;
+}
+
+/**
  * Detects whether the FINAL URL still carries a third-party affiliate tag for
  * a known store — i.e. a tag MUGA decided to preserve. Independent of
  * notifyForeignAffiliate (read-only signal for UI feedback). Skips empty
@@ -398,6 +451,9 @@ export function getPreservedParams(hostname, domainRules = []) {
  * URL's value matches MUGA's own tag for THIS hostname — that's our
  * injection, not a foreign creator.
  *
+ * #1093: looks up the param key case-insensitively so an uppercase-keyed tag
+ * (?TAG=creator-21) is recognized the same as the canonical lowercase form.
+ *
  * @param {URL}   url
  * @param {Array} patterns - Affiliate patterns scoped to the hostname.
  * @returns {{param:string,value:string,store:string,group:string}|null}
@@ -405,7 +461,9 @@ export function getPreservedParams(hostname, domainRules = []) {
 function detectPreservedAffiliate(url, patterns) {
   const host = url.hostname.replace(/^www\./, "");
   for (const pattern of patterns) {
-    const value = url.searchParams.get(pattern.param);
+    const actualKey = findParamKeyCI(url, pattern.param);
+    if (!actualKey) continue;
+    const value = url.searchParams.get(actualKey);
     if (!value) continue;
     const ourTagForHost = pattern.ourTag[host] || pattern.ourTag[url.hostname] || "";
     if (ourTagForHost && value === ourTagForHost) continue; // our own injection, skip
@@ -605,7 +663,11 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped } = unwrapStep;
   rawUrl = unwrappedRawUrl;
 
-  const hostname = url.hostname;
+  // #1095: strip a single trailing dot before this hostname feeds ANY
+  // matching below (getPatternsForHost, domainMatches via blacklist/
+  // whitelist, handleAffiliatePipeline's ourTag lookups, …). Mirrors the
+  // domainMatches() trailing-dot fix so the two central lookup points agree.
+  const hostname = stripTrailingDot(url.hostname);
   // Per-landing matrix-required preservation (#656). Computed once and
   // threaded through every strip call site below; empty when the referrer
   // is not a known redirect-network host.
@@ -944,10 +1006,14 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
 
   // Step 3: Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
   // #523 phase 3: detection no longer gates on ourTag.
+  // #1093: look up the key case-insensitively — an uppercase-keyed tag
+  // (?TAG=creator-21) must be detected the same as the canonical lowercase form.
   if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
     const hostKey = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
-      const value = url.searchParams.get(pattern.param);
+      const actualKey = findParamKeyCI(url, pattern.param);
+      if (!actualKey) continue;
+      const value = url.searchParams.get(actualKey);
       if (!value) continue;
       const ourTagForHost = pattern.ourTag[hostKey] || pattern.ourTag[hostname] || "";
       if (ourTagForHost && value === ourTagForHost) continue;
@@ -963,14 +1029,35 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   if (prefs.stripAllAffiliates) {
     const hostKeyStrip = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
-      const val = url.searchParams.get(pattern.param);
-      if (val) {
-        const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
-        if (prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost) continue;
-        if (!isWhitelisted(pattern.param, val)) {
-          url.searchParams.delete(pattern.param);
-          if (action === "untouched") action = "cleaned";
+      // #1093: case-insensitive key lookup (see findParamKeyCI doc comment).
+      const actualKey = findParamKeyCI(url, pattern.param);
+      if (!actualKey) continue;
+      const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
+      // #1091: decide per-OCCURRENCE, not from a single get() call. A repeated
+      // param (?tag=evil-20&tag=creator-21) can carry a foreign value in one
+      // occurrence and a whitelisted/creator (or our own) value in another —
+      // get() only ever sees the FIRST occurrence, but delete() below would
+      // remove EVERY occurrence, so a get()-decides/delete()-removes-all
+      // split let a foreign duplicate mask (and destroy) the exact value the
+      // whitelist/injection guard exists to protect.
+      const values = url.searchParams.getAll(actualKey);
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        const isOurs = prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost;
+        if (isOurs || isWhitelisted(pattern.param, val)) {
+          kept.push(val);
+        } else {
+          strippedAny = true;
         }
+      }
+      if (strippedAny) {
+        // actualKey (not pattern.param) so the surviving values keep their
+        // original casing in the output (#1093 — this fix widens the SEARCH,
+        // it does not rewrite the stored key's casing).
+        url.searchParams.delete(actualKey);
+        for (const val of kept) url.searchParams.append(actualKey, val);
+        if (action === "untouched") action = "cleaned";
       }
     }
   }
@@ -984,14 +1071,18 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
-      const current = url.searchParams.get(entry.param);
+      // #1093: entry.param is always lowercased by parseListEntry, but the
+      // URL's actual key may not be — look it up case-insensitively.
+      const actualKey = findParamKeyCI(url, entry.param);
+      if (!actualKey) continue;
+      const current = url.searchParams.get(actualKey);
       if (current === null) continue;
       const isWildcard = entry.value === "*";
       const matches = isWildcard || current === entry.value;
       if (!matches) continue;
       // Whitelist always wins over blacklist (#301).
       if (isWhitelisted(entry.param, current)) continue;
-      url.searchParams.delete(entry.param);
+      url.searchParams.delete(actualKey);
       blacklistStripped++;
       if (affiliateParamSet.has(entry.param.toLowerCase())) {
         blacklistRemovedAffiliate = true;
@@ -1027,7 +1118,11 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     const hostKeyInject = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
       const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
-      if (ourTagForHost && !url.searchParams.has(pattern.param)) {
+      // #1093: case-insensitive presence check — without it, an existing
+      // uppercase-keyed tag (?TAG=creator-21) was invisible to
+      // `.has(pattern.param)` and MUGA would inject a SECOND "tag" param
+      // under the canonical lowercase key alongside it (non-superposition).
+      if (ourTagForHost && !findParamKeyCI(url, pattern.param)) {
         url.searchParams.set(pattern.param, ourTagForHost);
         action = "injected";
         break;
