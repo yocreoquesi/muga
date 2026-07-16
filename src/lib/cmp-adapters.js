@@ -126,7 +126,8 @@ function canRejectCookiebot(signals) {
  * Invokes the caller-supplied reject call. Kept pure (no `window` access
  * here) by requiring the caller to inject the actual global call as a
  * zero-argument callback — the content-script shell is the one place that
- * touches `window.OneTrust.RejectAll` directly. Never throws.
+ * touches the vendor CMP global directly (e.g. `window.OneTrust.RejectAll`,
+ * `window.Cookiebot.submitCustomConsent`). Never throws.
  *
  * @param {() => void} [callRejectAll]
  * @returns {{status: "rejected"|"noop"}}
