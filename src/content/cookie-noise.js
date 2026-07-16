@@ -524,7 +524,7 @@
     if (!prefs) return false;
     if (prefs.enabled === false) return false;
     if (prefs.onboardingDone !== true) return false;
-    if (prefs.cookieConsentMinimizerEnabled !== true) return false;
+    if (prefs.cookieConsentMode !== "reject-only") return false;
     const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
     if (typeof isSiteFullyExempt === "function") {
       try {

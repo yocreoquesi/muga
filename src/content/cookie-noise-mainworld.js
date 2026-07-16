@@ -8,9 +8,9 @@
  * paired with an isolated-world gatekeeper (content/cookie-noise.js) that
  * reads prefs and controls the gate via a nonce-gated CustomEvent
  * handshake — on a channel SEPARATE from `muga:history-gate`. This
- * feature's pref (`cookieConsentMinimizerEnabled`) defaults OFF while
- * `activeDefenseEnabled` defaults ON; sharing a gate would conflate two
- * independent opt-ins.
+ * feature's pref (`cookieConsentMode`, default "reject-only" for new
+ * installs) is independent from `activeDefenseEnabled` (default ON);
+ * sharing a gate would conflate two independent opt-ins.
  *
  * Firefox MV2 does NOT load this file at all (no `world: "MAIN"`
  * support). On Firefox the isolated-world companion performs the reject

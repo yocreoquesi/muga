@@ -945,19 +945,43 @@ describe("usercentricsAdapter.reject — pure callback invocation", () => {
 const GATE_ON_PREFS = Object.freeze({
   enabled: true,
   onboardingDone: true,
-  cookieConsentMinimizerEnabled: true,
+  cookieConsentMode: "reject-only",
 });
 
 describe("computeCookieGate — disabled-state gate", () => {
-  test("all gate conditions pass -> gate opens (true)", () => {
+  test("all gate conditions pass (reject-only) -> gate opens (true)", () => {
     assert.equal(computeCookieGate(GATE_ON_PREFS), true);
   });
 
-  test("feature pref OFF -> gate stays closed", () => {
+  test("mode off -> gate stays closed", () => {
     assert.equal(
-      computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMinimizerEnabled: false }),
+      computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: "off" }),
       false,
     );
+  });
+
+  // Slice 1 scope note: "accept-when-necessary" is a valid PREF_DEFAULTS /
+  // settings-schema enum member (forward-compat for Slice 2), but the
+  // never-accept lexical guard (this file's own STRUCTURAL guard below,
+  // mirrored in cookie-noise-sync.test.mjs) forbids the substring "accept"
+  // anywhere in cmp-adapters.js or the content-script copies. The gate can
+  // therefore only compare against "reject-only" today — it does NOT (yet)
+  // special-case accept-when-necessary. Nothing in Slice 1 ever writes that
+  // value (migration never does; the UI doesn't offer it), so this is inert
+  // in practice. Relaxing the guard to let the gate open for
+  // accept-when-necessary too is explicitly deferred to Slice 2 (see the
+  // design doc's Part 1 table: "Relax to POSITIONAL guard").
+  test("mode accept-when-necessary -> gate stays closed in Slice 1 (not yet special-cased; see scope note above)", () => {
+    assert.equal(
+      computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: "accept-when-necessary" }),
+      false,
+    );
+  });
+
+  test("mode null/undefined/unrecognized -> gate stays closed (fail-closed)", () => {
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: null }), false);
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: undefined }), false);
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: "bogus" }), false);
   });
 
   test("onboardingDone false -> gate stays closed", () => {
