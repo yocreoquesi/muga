@@ -63,6 +63,19 @@
  *   Secondary/corroborating signal.
  * @property {boolean} [hasGetCurrentUserStatusFn] - `typeof window.Didomi.getCurrentUserStatus === "function"`.
  *   Secondary/corroborating signal.
+ * @property {boolean} [hasGetCkyConsentFn] - `typeof window.getCkyConsent === "function"`.
+ *   Mandatory signal (dual-mandatory with hasPerformBannerActionFn below):
+ *   both bare CookieYes globals are required together, since neither one
+ *   alone is a vendor-namespaced anchor like `window.OneTrust`.
+ * @property {boolean} [hasPerformBannerActionFn] - `typeof window.performBannerAction === "function"`.
+ *   Mandatory signal (dual-mandatory with hasGetCkyConsentFn above): without
+ *   both, no reject action can be confirmed.
+ * @property {boolean} [hasCkyConsentContainerDom] - `.cky-consent-container`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCkyOverlayDom] - `.cky-overlay` present in the DOM.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasCkyConsentBarDom] - `.cky-consent-bar` present in
+ *   the DOM. Secondary/corroborating signal.
  */
 
 /**
@@ -98,6 +111,17 @@ export const ACTIONS = Object.freeze({
  * (`Didomi.setUserDisagreeToAll()`) is a direct zero-argument vendor-global
  * method call, so it is modeled on the OneTrust detection shape rather than
  * Cookiebot's literal-args guard.
+ *
+ * The CookieYes adapter (#1120) DEVIATES from this shape on purpose: its
+ * reject call (`performBannerAction("reject")`) is a BARE global function,
+ * not a method on a vendor-namespaced object like `window.OneTrust` /
+ * `window.Cookiebot` / `window.Didomi`. A single bare, generically-named
+ * global would be a weaker anchor than the other three (name-collision
+ * risk with an unrelated page script), so detectCookieYes strengthens the
+ * MANDATORY bar instead of weakening the corroboration bar: it requires
+ * BOTH `getCkyConsent` and `performBannerAction` bare globals present
+ * together, still gated by the same >=1 DOM secondary signal and the same
+ * CONFIDENCE_THRESHOLD.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -144,6 +168,25 @@ function detectDidomi(signals) {
 
 function canRejectDidomi(signals) {
   return detectDidomi(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+function detectCookieYes(signals) {
+  if (
+    !signals ||
+    signals.hasGetCkyConsentFn !== true ||
+    signals.hasPerformBannerActionFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCkyConsentContainerDom === true ? 1 : 0) +
+    (signals.hasCkyOverlayDom === true ? 1 : 0) +
+    (signals.hasCkyConsentBarDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectCookieYes(signals) {
+  return detectCookieYes(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -213,8 +256,35 @@ export const didomiAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * CookieYes Tier 1 adapter (#1120). The reject call
+ * (`performBannerAction("reject")`) is invoked by the caller-supplied
+ * callback via the shared `reject()` helper above — this adapter
+ * definition never touches `window` itself.
+ *
+ * Detection deviates from the other three adapters' shape ON PURPOSE: the
+ * reject call is a BARE global function (`window.performBannerAction`),
+ * not a method on a vendor-namespaced object like `window.OneTrust` /
+ * `window.Cookiebot` / `window.Didomi`. A single bare, generically-named
+ * global has a real name-collision risk (an unrelated page script could
+ * define its own `performBannerAction`), so this adapter requires BOTH
+ * CookieYes-specific bare globals (`getCkyConsent` AND
+ * `performBannerAction`) as the mandatory gate — strengthening the
+ * mandatory bar instead of weakening the corroboration bar — plus the
+ * usual >=1 DOM secondary signal before crossing the confidence
+ * threshold. See detectCookieYes above.
+ * @type {Readonly<{id: "cookieyes", tier: 1, detect: typeof detectCookieYes, canReject: typeof canRejectCookieYes, reject: typeof reject}>}
+ */
+export const cookieYesAdapter = Object.freeze({
+  id: "cookieyes",
+  tier: 1,
+  detect: detectCookieYes,
+  canReject: canRejectCookieYes,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
-export const TIER1 = Object.freeze([oneTrustAdapter, cookiebotAdapter, didomiAdapter]);
+export const TIER1 = Object.freeze([oneTrustAdapter, cookiebotAdapter, didomiAdapter, cookieYesAdapter]);
 
 /**
  * Tier 2 registry: declarative click-rule adapters (Consent-O-Matic-style).
@@ -259,6 +329,9 @@ export function decideAction(signals) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   if (s.hasDidomiGlobal === true && s.hasSetUserDisagreeToAllFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  if (s.hasGetCkyConsentFn === true && s.hasPerformBannerActionFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };

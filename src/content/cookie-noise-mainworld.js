@@ -86,6 +86,25 @@
   function canRejectDidomi(signals) {
     return detectDidomi(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  function detectCookieYes(signals) {
+    if (
+      !signals ||
+      signals.hasGetCkyConsentFn !== true ||
+      signals.hasPerformBannerActionFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCkyConsentContainerDom === true ? 1 : 0) +
+      (signals.hasCkyOverlayDom === true ? 1 : 0) +
+      (signals.hasCkyConsentBarDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieYes(signals) {
+    return detectCookieYes(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -164,6 +183,28 @@
     } catch {
       // ignore
     }
+    // CookieYes (#1120): unlike the three adapters above, the reject call
+    // is a BARE global (`window.performBannerAction`), not a method on a
+    // vendor-namespaced object. Both bare globals are checked directly —
+    // see the dual-mandatory-signal rationale on detectCookieYes above.
+    let hasGetCkyConsentFn = false;
+    let hasPerformBannerActionFn = false;
+    try {
+      hasGetCkyConsentFn = typeof window.getCkyConsent === "function";
+      hasPerformBannerActionFn = typeof window.performBannerAction === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasCkyConsentContainerDom = false;
+    let hasCkyOverlayDom = false;
+    let hasCkyConsentBarDom = false;
+    try {
+      hasCkyConsentContainerDom = !!document.querySelector(".cky-consent-container");
+      hasCkyOverlayDom = !!document.querySelector(".cky-overlay");
+      hasCkyConsentBarDom = !!document.querySelector(".cky-consent-bar");
+    } catch {
+      // document not ready / detached — leave all false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -179,6 +220,11 @@
       hasSetUserDisagreeToAllFn,
       hasDidomiHostDom,
       hasGetCurrentUserStatusFn,
+      hasGetCkyConsentFn,
+      hasPerformBannerActionFn,
+      hasCkyConsentContainerDom,
+      hasCkyOverlayDom,
+      hasCkyConsentBarDom,
     };
   }
 
@@ -229,6 +275,21 @@
       _acted = true;
       try {
         window.Didomi.setUserDisagreeToAll();
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: CookieYes API adapter (#1120). performBannerAction is a bare
+    // global function, not a vendor-namespaced method — the dual-mandatory
+    // detection gate (both getCkyConsent and performBannerAction present)
+    // is what makes this a confident CookieYes match. The literal string
+    // "reject" is the only argument this call site ever passes.
+    if (canRejectCookieYes(signals)) {
+      _acted = true;
+      try {
+        window.performBannerAction("reject");
       } catch {
         // A throwing page global must never break the page's own script.
       }

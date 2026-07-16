@@ -82,6 +82,25 @@
   function canRejectDidomi(signals) {
     return detectDidomi(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  function detectCookieYes(signals) {
+    if (
+      !signals ||
+      signals.hasGetCkyConsentFn !== true ||
+      signals.hasPerformBannerActionFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCkyConsentContainerDom === true ? 1 : 0) +
+      (signals.hasCkyOverlayDom === true ? 1 : 0) +
+      (signals.hasCkyConsentBarDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieYes(signals) {
+    return detectCookieYes(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -202,6 +221,30 @@
     } catch {
       // ignore
     }
+    // CookieYes (#1120): unlike the three adapters above, the reject call
+    // is a BARE global (`wrappedJSObject.performBannerAction`), not a
+    // method on a vendor-namespaced object. Both bare globals are checked
+    // directly — see the dual-mandatory-signal rationale on
+    // detectCookieYes in cookie-noise-mainworld.js / cmp-adapters.js.
+    let hasGetCkyConsentFn = false;
+    let hasPerformBannerActionFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      hasGetCkyConsentFn = wrapped && typeof wrapped.getCkyConsent === "function";
+      hasPerformBannerActionFn = wrapped && typeof wrapped.performBannerAction === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasCkyConsentContainerDom = false;
+    let hasCkyOverlayDom = false;
+    let hasCkyConsentBarDom = false;
+    try {
+      hasCkyConsentContainerDom = !!document.querySelector(".cky-consent-container");
+      hasCkyOverlayDom = !!document.querySelector(".cky-overlay");
+      hasCkyConsentBarDom = !!document.querySelector(".cky-consent-bar");
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -217,6 +260,11 @@
       hasSetUserDisagreeToAllFn,
       hasDidomiHostDom,
       hasGetCurrentUserStatusFn,
+      hasGetCkyConsentFn,
+      hasPerformBannerActionFn,
+      hasCkyConsentContainerDom,
+      hasCkyOverlayDom,
+      hasCkyConsentBarDom,
     };
   }
 
@@ -251,6 +299,19 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.Didomi.setUserDisagreeToAll();
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: CookieYes API adapter (#1120). Same dual-mandatory-signal
+    // detection and literal "reject"-only argument as the Chrome
+    // MAIN-world caller — see cookie-noise-mainworld.js.
+    if (canRejectCookieYes(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.performBannerAction("reject");
       } catch {
         // A throwing page global must never break the page.
       }

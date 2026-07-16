@@ -112,6 +112,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectDidomi/.test(joined));
     assert.ok(/function canRejectDidomi/.test(joined));
   });
+
+  test("sync block also defines detectCookieYes and canRejectCookieYes (#1120)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectCookieYes/.test(joined));
+    assert.ok(/function canRejectCookieYes/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -328,6 +334,25 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       assert.ok(calls.length > 0, `${label} must call setUserDisagreeToAll`);
       for (const args of calls) {
         assert.equal(args, "", `${label} setUserDisagreeToAll must be called with zero arguments`);
+      }
+    }
+  });
+
+  test("only performBannerAction (or wrappedJSObject equivalent) is invoked as the CookieYes reject call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/performBannerAction\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call performBannerAction`);
+    }
+  });
+
+  test('every performBannerAction call passes the literal "reject" argument — never accept_all/accept_partial, never a variable', () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/performBannerAction\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call performBannerAction`);
+      for (const args of calls) {
+        assert.equal(args, '"reject"', `${label} performBannerAction must be called with the literal string "reject"`);
       }
     }
   });

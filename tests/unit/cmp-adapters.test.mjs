@@ -26,6 +26,7 @@ import {
   oneTrustAdapter,
   cookiebotAdapter,
   didomiAdapter,
+  cookieYesAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -35,11 +36,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust, Cookiebot and Didomi adapters, in order", () => {
-    assert.equal(TIER1.length, 3);
+  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi and CookieYes adapters, in order", () => {
+    assert.equal(TIER1.length, 4);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
     assert.strictEqual(TIER1[2], didomiAdapter);
+    assert.strictEqual(TIER1[3], cookieYesAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -74,6 +76,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof didomiAdapter.detect, "function");
     assert.equal(typeof didomiAdapter.canReject, "function");
     assert.equal(typeof didomiAdapter.reject, "function");
+  });
+
+  test("cookieYesAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(cookieYesAdapter.id, "cookieyes");
+    assert.equal(cookieYesAdapter.tier, 1);
+    assert.equal(typeof cookieYesAdapter.detect, "function");
+    assert.equal(typeof cookieYesAdapter.canReject, "function");
+    assert.equal(typeof cookieYesAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -203,6 +213,55 @@ describe("decideAction — truth table", () => {
       hasSetUserDisagreeToAllFn: true,
       hasDidomiHostDom: false,
       hasGetCurrentUserStatusFn: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("CookieYes: both bare globals + corroborating DOM -> reject", () => {
+    const r = decideAction({
+      hasGetCkyConsentFn: true,
+      hasPerformBannerActionFn: true,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: true,
+      hasCkyConsentBarDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "cookieyes");
+  });
+
+  test("CookieYes: performBannerAction present but getCkyConsent missing (only one global) -> NOOP, uncertain", () => {
+    const r = decideAction({
+      hasGetCkyConsentFn: false,
+      hasPerformBannerActionFn: true,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: true,
+      hasCkyConsentBarDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("CookieYes: getCkyConsent present but performBannerAction missing (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasGetCkyConsentFn: true,
+      hasPerformBannerActionFn: false,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: true,
+      hasCkyConsentBarDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("CookieYes: both globals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasGetCkyConsentFn: true,
+      hasPerformBannerActionFn: true,
+      hasCkyConsentContainerDom: false,
+      hasCkyOverlayDom: false,
+      hasCkyConsentBarDom: false,
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "uncertain");
@@ -370,6 +429,87 @@ describe("didomiAdapter.detect — confidence gate", () => {
   });
 });
 
+describe("cookieYesAdapter.detect — dual-mandatory confidence gate", () => {
+  const FULL_COOKIEYES_SIGNALS = Object.freeze({
+    hasGetCkyConsentFn: true,
+    hasPerformBannerActionFn: true,
+    hasCkyConsentContainerDom: true,
+    hasCkyOverlayDom: true,
+    hasCkyConsentBarDom: true,
+  });
+
+  test("both mandatory globals + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = cookieYesAdapter.detect(FULL_COOKIEYES_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(cookieYesAdapter.canReject(FULL_COOKIEYES_SIGNALS), true);
+  });
+
+  test("both mandatory globals + exactly one secondary (.cky-consent-container only) -> canReject true", () => {
+    const s = {
+      hasGetCkyConsentFn: true,
+      hasPerformBannerActionFn: true,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: false,
+      hasCkyConsentBarDom: false,
+    };
+    assert.equal(cookieYesAdapter.canReject(s), true);
+  });
+
+  test("both mandatory globals present, zero DOM corroboration -> uncertain, canReject false", () => {
+    const s = {
+      hasGetCkyConsentFn: true,
+      hasPerformBannerActionFn: true,
+      hasCkyConsentContainerDom: false,
+      hasCkyOverlayDom: false,
+      hasCkyConsentBarDom: false,
+    };
+    assert.equal(cookieYesAdapter.canReject(s), false);
+    assert.ok(cookieYesAdapter.detect(s) < 1);
+  });
+
+  test("only getCkyConsent present (performBannerAction missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasGetCkyConsentFn: true,
+      hasPerformBannerActionFn: false,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: true,
+      hasCkyConsentBarDom: true,
+    };
+    assert.equal(cookieYesAdapter.detect(s), 0);
+    assert.equal(cookieYesAdapter.canReject(s), false);
+  });
+
+  test("only performBannerAction present (getCkyConsent missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasGetCkyConsentFn: false,
+      hasPerformBannerActionFn: true,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: true,
+      hasCkyConsentBarDom: true,
+    };
+    assert.equal(cookieYesAdapter.detect(s), 0);
+    assert.equal(cookieYesAdapter.canReject(s), false);
+  });
+
+  test("DOM-only (both mandatory globals missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasGetCkyConsentFn: false,
+      hasPerformBannerActionFn: false,
+      hasCkyConsentContainerDom: true,
+      hasCkyOverlayDom: true,
+      hasCkyConsentBarDom: true,
+    };
+    assert.equal(cookieYesAdapter.detect(s), 0);
+    assert.equal(cookieYesAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => cookieYesAdapter.detect(null));
+    assert.doesNotThrow(() => cookieYesAdapter.detect(undefined));
+    assert.equal(cookieYesAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -425,6 +565,25 @@ describe("didomiAdapter.reject — pure callback invocation", () => {
 
   test("non-function argument -> status noop, no call", () => {
     const r = didomiAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+});
+
+describe("cookieYesAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = cookieYesAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = cookieYesAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = cookieYesAdapter.reject(undefined);
     assert.equal(r.status, "noop");
   });
 });
@@ -542,5 +701,12 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
     assert.ok(TIER1.includes(didomiAdapter), "TIER1 must include didomiAdapter");
     assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
     assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+  });
+
+  test("cookieYesAdapter is registered in TIER1 alongside the other three adapters (#1120)", () => {
+    assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must include cookieYesAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
   });
 });
