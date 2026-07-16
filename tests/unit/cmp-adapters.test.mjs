@@ -24,6 +24,7 @@ import {
   TIER1,
   TIER2,
   oneTrustAdapter,
+  cookiebotAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -33,9 +34,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust adapter", () => {
-    assert.equal(TIER1.length, 1);
+  test("TIER1 contains exactly the OneTrust and Cookiebot adapters, in order", () => {
+    assert.equal(TIER1.length, 2);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
+    assert.strictEqual(TIER1[1], cookiebotAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -54,6 +56,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof oneTrustAdapter.detect, "function");
     assert.equal(typeof oneTrustAdapter.canReject, "function");
     assert.equal(typeof oneTrustAdapter.reject, "function");
+  });
+
+  test("cookiebotAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(cookiebotAdapter.id, "cookiebot");
+    assert.equal(cookiebotAdapter.tier, 1);
+    assert.equal(typeof cookiebotAdapter.detect, "function");
+    assert.equal(typeof cookiebotAdapter.canReject, "function");
+    assert.equal(typeof cookiebotAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -116,6 +126,43 @@ describe("decideAction — truth table", () => {
     assert.equal(r.action, null);
     assert.equal(r.reason, "uncertain");
   });
+
+  test("Cookiebot submitCustomConsent present + corroborated -> reject", () => {
+    const r = decideAction({
+      hasCookiebotGlobal: true,
+      hasSubmitCustomConsentFn: true,
+      hasCybotDialogDom: true,
+      hasConsentObjectGlobal: true,
+      hasResponseBooleanGlobal: true,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "cookiebot");
+  });
+
+  test("Cookiebot global present but submitCustomConsent absent (hard wall) -> NOOP", () => {
+    const r = decideAction({
+      hasCookiebotGlobal: true,
+      hasSubmitCustomConsentFn: false,
+      hasCybotDialogDom: true,
+      hasConsentObjectGlobal: true,
+      hasResponseBooleanGlobal: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("Cookiebot mandatory signal present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasCookiebotGlobal: true,
+      hasSubmitCustomConsentFn: true,
+      hasCybotDialogDom: false,
+      hasConsentObjectGlobal: false,
+      hasResponseBooleanGlobal: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
 });
 
 // ── detect() / canReject() — multi-signal confidence gate ──────────────────
@@ -169,6 +216,63 @@ describe("oneTrustAdapter.detect — confidence gate", () => {
   });
 });
 
+describe("cookiebotAdapter.detect — confidence gate", () => {
+  const FULL_COOKIEBOT_SIGNALS = Object.freeze({
+    hasCookiebotGlobal: true,
+    hasSubmitCustomConsentFn: true,
+    hasCybotDialogDom: true,
+    hasConsentObjectGlobal: true,
+    hasResponseBooleanGlobal: true,
+  });
+
+  test("mandatory + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = cookiebotAdapter.detect(FULL_COOKIEBOT_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(cookiebotAdapter.canReject(FULL_COOKIEBOT_SIGNALS), true);
+  });
+
+  test("mandatory + exactly one secondary (Cybot dialog DOM only) -> canReject true", () => {
+    const s = {
+      hasCookiebotGlobal: true,
+      hasSubmitCustomConsentFn: true,
+      hasCybotDialogDom: true,
+      hasConsentObjectGlobal: false,
+      hasResponseBooleanGlobal: false,
+    };
+    assert.equal(cookiebotAdapter.canReject(s), true);
+  });
+
+  test("global-only (mandatory present, zero secondary signals) -> uncertain, canReject false", () => {
+    const s = {
+      hasCookiebotGlobal: true,
+      hasSubmitCustomConsentFn: true,
+      hasCybotDialogDom: false,
+      hasConsentObjectGlobal: false,
+      hasResponseBooleanGlobal: false,
+    };
+    assert.equal(cookiebotAdapter.canReject(s), false);
+    assert.ok(cookiebotAdapter.detect(s) < 1);
+  });
+
+  test("DOM-only (mandatory submitCustomConsent fn missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasCookiebotGlobal: false,
+      hasSubmitCustomConsentFn: false,
+      hasCybotDialogDom: true,
+      hasConsentObjectGlobal: true,
+      hasResponseBooleanGlobal: true,
+    };
+    assert.equal(cookiebotAdapter.detect(s), 0);
+    assert.equal(cookiebotAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => cookiebotAdapter.detect(null));
+    assert.doesNotThrow(() => cookiebotAdapter.detect(undefined));
+    assert.equal(cookiebotAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -186,6 +290,25 @@ describe("oneTrustAdapter.reject — pure callback invocation", () => {
 
   test("non-function argument -> status noop, no call", () => {
     const r = oneTrustAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+});
+
+describe("cookiebotAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = cookiebotAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = cookiebotAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = cookiebotAdapter.reject(undefined);
     assert.equal(r.status, "noop");
   });
 });
@@ -292,5 +415,10 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
         assert.doesNotMatch(key, FORBIDDEN, `adapter "${adapter.id}" exposes a forbidden method: ${key}`);
       }
     }
+  });
+
+  test("cookiebotAdapter is registered in TIER1 alongside oneTrustAdapter (#1118)", () => {
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must include cookiebotAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
   });
 });
