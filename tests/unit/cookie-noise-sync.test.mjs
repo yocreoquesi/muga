@@ -118,6 +118,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectCookieYes/.test(joined));
     assert.ok(/function canRejectCookieYes/.test(joined));
   });
+
+  test("sync block also defines detectSourcepoint and canRejectSourcepoint (#1123)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectSourcepoint/.test(joined));
+    assert.ok(/function canRejectSourcepoint/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -353,6 +359,25 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       assert.ok(calls.length > 0, `${label} must call performBannerAction`);
       for (const args of calls) {
         assert.equal(args, '"reject"', `${label} performBannerAction must be called with the literal string "reject"`);
+      }
+    }
+  });
+
+  test("only __tcfapi (or wrappedJSObject equivalent) is invoked as the Sourcepoint reject call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__tcfapi\s*\(([^)]*)/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call __tcfapi`);
+    }
+  });
+
+  test("every __tcfapi call's first argument is exactly the literal 'postRejectAll' — never another command, never a variable", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__tcfapi\s*\(([^,]*),/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call __tcfapi`);
+      for (const firstArg of calls) {
+        assert.equal(firstArg, "\"postRejectAll\"", `${label} __tcfapi's first argument must be the literal "postRejectAll"`);
       }
     }
   });

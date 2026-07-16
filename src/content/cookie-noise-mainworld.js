@@ -105,6 +105,26 @@
   function canRejectCookieYes(signals) {
     return detectCookieYes(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // Sourcepoint (#1123): __tcfapi is generic to ALL TCF-compliant CMPs
+  // (including Didomi above), so it can never be the sole mandatory anchor.
+  // Both hasTcfApiFn AND the Sourcepoint-specific DOM signal
+  // (div[id^="sp_message_container"]) are mandatory together — see the
+  // TCF-generic-signal discrimination rationale above detectCookieYes.
+  function detectSourcepoint(signals) {
+    if (!signals || signals.hasTcfApiFn !== true || signals.hasSpMessageContainerDom !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasSpPrivacyMgmtIframeDom === true ? 1 : 0) +
+      (signals.hasSpProdIframeDom === true ? 1 : 0) +
+      (signals.hasSpProdScriptDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectSourcepoint(signals) {
+    return detectSourcepoint(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -205,6 +225,28 @@
     } catch {
       // document not ready / detached — leave all false.
     }
+    // Sourcepoint (#1123): __tcfapi is the generic IAB TCF surface every
+    // TCF-compliant CMP exposes (including Didomi above), so it can never
+    // be the sole mandatory anchor on its own — see the dual-mandatory
+    // rationale on detectSourcepoint above.
+    let hasTcfApiFn = false;
+    try {
+      hasTcfApiFn = typeof window.__tcfapi === "function";
+    } catch {
+      // Leave false — fail-closed.
+    }
+    let hasSpMessageContainerDom = false;
+    let hasSpPrivacyMgmtIframeDom = false;
+    let hasSpProdIframeDom = false;
+    let hasSpProdScriptDom = false;
+    try {
+      hasSpMessageContainerDom = !!document.querySelector('div[id^="sp_message_container"]');
+      hasSpPrivacyMgmtIframeDom = !!document.querySelector('iframe[src*="privacy-mgmt.com"]');
+      hasSpProdIframeDom = !!document.querySelector('iframe[src*="sp-prod.net"]');
+      hasSpProdScriptDom = !!document.querySelector('script[src*="sp-prod.net"]');
+    } catch {
+      // document not ready / detached — leave all false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -225,6 +267,11 @@
       hasCkyConsentContainerDom,
       hasCkyOverlayDom,
       hasCkyConsentBarDom,
+      hasTcfApiFn,
+      hasSpMessageContainerDom,
+      hasSpPrivacyMgmtIframeDom,
+      hasSpProdIframeDom,
+      hasSpProdScriptDom,
     };
   }
 
@@ -290,6 +337,24 @@
       _acted = true;
       try {
         window.performBannerAction("reject");
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: Sourcepoint API adapter (#1123). postRejectAll is async
+    // (callback-based), but this call site is fire-and-forget: the arrow
+    // function below returns SYNCHRONOUSLY right after queuing the call —
+    // _acted and stopObserver() fire synchronously right here, never gated
+    // on the async callback's later result. The callback is optional-log-
+    // only and must never re-trigger dispatch or flip _acted back.
+    if (canRejectSourcepoint(signals)) {
+      _acted = true;
+      try {
+        window.__tcfapi("postRejectAll", 2, (success) => {
+          void success; // fire-and-forget — log only, never gates control flow
+        });
       } catch {
         // A throwing page global must never break the page's own script.
       }

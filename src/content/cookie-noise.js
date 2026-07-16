@@ -101,6 +101,26 @@
   function canRejectCookieYes(signals) {
     return detectCookieYes(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // Sourcepoint (#1123): __tcfapi is generic to ALL TCF-compliant CMPs
+  // (including Didomi above), so it can never be the sole mandatory anchor.
+  // Both hasTcfApiFn AND the Sourcepoint-specific DOM signal
+  // (div[id^="sp_message_container"]) are mandatory together — see the
+  // TCF-generic-signal discrimination rationale above detectCookieYes.
+  function detectSourcepoint(signals) {
+    if (!signals || signals.hasTcfApiFn !== true || signals.hasSpMessageContainerDom !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasSpPrivacyMgmtIframeDom === true ? 1 : 0) +
+      (signals.hasSpProdIframeDom === true ? 1 : 0) +
+      (signals.hasSpProdScriptDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectSourcepoint(signals) {
+    return detectSourcepoint(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -245,6 +265,29 @@
     } catch {
       // ignore
     }
+    // Sourcepoint (#1123): __tcfapi is the generic IAB TCF surface every
+    // TCF-compliant CMP exposes (including Didomi above), so it can never
+    // be the sole mandatory anchor on its own — see the dual-mandatory
+    // rationale on detectSourcepoint above. Reached via wrappedJSObject,
+    // same Xray-safety pattern as the other Firefox signal reads above.
+    let hasTcfApiFn = false;
+    try {
+      hasTcfApiFn = typeof window.wrappedJSObject.__tcfapi === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasSpMessageContainerDom = false;
+    let hasSpPrivacyMgmtIframeDom = false;
+    let hasSpProdIframeDom = false;
+    let hasSpProdScriptDom = false;
+    try {
+      hasSpMessageContainerDom = !!document.querySelector('div[id^="sp_message_container"]');
+      hasSpPrivacyMgmtIframeDom = !!document.querySelector('iframe[src*="privacy-mgmt.com"]');
+      hasSpProdIframeDom = !!document.querySelector('iframe[src*="sp-prod.net"]');
+      hasSpProdScriptDom = !!document.querySelector('script[src*="sp-prod.net"]');
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -265,6 +308,11 @@
       hasCkyConsentContainerDom,
       hasCkyOverlayDom,
       hasCkyConsentBarDom,
+      hasTcfApiFn,
+      hasSpMessageContainerDom,
+      hasSpPrivacyMgmtIframeDom,
+      hasSpProdIframeDom,
+      hasSpProdScriptDom,
     };
   }
 
@@ -312,6 +360,22 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.performBannerAction("reject");
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: Sourcepoint API adapter (#1123). Same fire-and-forget,
+    // synchronous _fxActed + fxStopObserver() shape as the Chrome
+    // MAIN-world caller — see cookie-noise-mainworld.js. postRejectAll's
+    // async callback is optional-log-only and never gates control flow.
+    if (canRejectSourcepoint(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.__tcfapi("postRejectAll", 2, (success) => {
+          void success; // fire-and-forget — log only, never gates control flow
+        });
       } catch {
         // A throwing page global must never break the page.
       }
