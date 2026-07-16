@@ -50,6 +50,26 @@ export function snapToastDuration(n) {
 }
 
 /**
+ * The 3-state Cookie Consent Minimizer mode enum (cookie-consent modes
+ * redesign, Slice 1). `"reject-only"` is the safe default. `"accept-when-
+ * necessary"` is a recognized member for export/import round-tripping and
+ * settings-schema completeness, but is NOT offered by the Slice 1 options
+ * UI and is never written by the startup migration — see
+ * migrateCookieConsentMode() in src/lib/storage-migrations.js.
+ */
+export const COOKIE_CONSENT_MODE_OPTIONS = Object.freeze(["off", "reject-only", "accept-when-necessary"]);
+
+/**
+ * Clamps an arbitrary imported value to a valid cookieConsentMode member,
+ * mirroring the snapToastDuration precedent: an unrecognized or non-string
+ * value falls back to the safe default ("reject-only") rather than
+ * rejecting the whole import.
+ */
+export function clampCookieConsentMode(v) {
+  return COOKIE_CONSENT_MODE_OPTIONS.includes(v) ? v : "reject-only";
+}
+
+/**
  * Tracking-category keys accepted for `disabledCategories`. Kept as its own
  * literal set (not derived from TRACKING_PARAM_CATEGORIES in affiliates.js)
  * so this import allowlist cannot silently drift if that taxonomy changes
@@ -127,8 +147,14 @@ export const SETTINGS_FIELDS = Object.freeze([
   // hoverPreviewEnabled is a plain boolean and round-trips normally via
   // BOOLEAN_KEYS.
   { key: "hoverPreviewEnabled", kind: "boolean", label: "row_hover_preview_label" },
-  // #1027: Cookie Consent Minimizer. Plain boolean, opt-in, default false.
-  { key: "cookieConsentMinimizerEnabled", kind: "boolean", label: "row_cookie_consent_minimizer_label" },
+  // Cookie Consent Minimizer — 3-state modes (Slice 1, supersedes #1027's
+  // boolean). cookieConsentMode is clamped via clampCookieConsentMode on
+  // import (mirrors the toastDuration precedent) so a malformed/unknown
+  // string can never land in storage. cookieConsentAcceptConsented is a
+  // plain boolean hard gate for Slice 2's accept-when-necessary mode —
+  // unused today, but round-trips like any other boolean pref.
+  { key: "cookieConsentMode", kind: "cookieConsentMode", label: "row_cookie_consent_mode_label" },
+  { key: "cookieConsentAcceptConsented", kind: "boolean", label: "row_cookie_consent_accept_label" },
 ]);
 
 /**
@@ -273,6 +299,10 @@ export function planImport(data) {
 
   if (typeof migrated.toastDuration === "number") {
     toSave.toastDuration = snapToastDuration(migrated.toastDuration);
+  }
+
+  if (typeof migrated.cookieConsentMode === "string") {
+    toSave.cookieConsentMode = clampCookieConsentMode(migrated.cookieConsentMode);
   }
 
   // #968: fold each imported creator-allowlist entry through the same pure

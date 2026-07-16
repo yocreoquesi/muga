@@ -16,6 +16,8 @@ import {
   BOOLEAN_KEYS,
   TOAST_DURATION_OPTIONS,
   snapToastDuration,
+  COOKIE_CONSENT_MODE_OPTIONS,
+  clampCookieConsentMode,
   buildExportPayload,
   planImport,
   diffImport,
@@ -63,6 +65,8 @@ const SAMPLE_PREFS = {
   experimentalParamClassesEnabled: true,
   honorCreatorMode: true,
   creatorAllowlist: ["youtube.com/@example"],
+  cookieConsentMode: "reject-only",
+  cookieConsentAcceptConsented: false,
 };
 
 describe("SETTINGS_SCHEMA_VERSION", () => {
@@ -79,7 +83,7 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
-      "attributionLedgerEnabled", "hoverPreviewEnabled", "cookieConsentMinimizerEnabled",
+      "attributionLedgerEnabled", "hoverPreviewEnabled", "cookieConsentAcceptConsented",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
     assert.strictEqual(BOOLEAN_KEYS.length, 21);
@@ -241,6 +245,23 @@ describe("planImport — full round-trip of every field", () => {
       const plan = planImport(validImportData({ toastDuration: raw }));
       assert.strictEqual(plan.toSave.toastDuration, snapToastDuration(raw));
     }
+  });
+
+  test("cookieConsentMode round-trips valid enum members via clampCookieConsentMode", () => {
+    for (const mode of COOKIE_CONSENT_MODE_OPTIONS) {
+      const plan = planImport(validImportData({ cookieConsentMode: mode }));
+      assert.strictEqual(plan.toSave.cookieConsentMode, mode);
+    }
+  });
+
+  test("cookieConsentMode clamps an unrecognized value to the safe default (reject-only)", () => {
+    const plan = planImport(validImportData({ cookieConsentMode: "bogus-mode" }));
+    assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
+  });
+
+  test("cookieConsentAcceptConsented round-trips as a plain boolean via BOOLEAN_KEYS", () => {
+    const plan = planImport(validImportData({ cookieConsentAcceptConsented: true }));
+    assert.strictEqual(plan.toSave.cookieConsentAcceptConsented, true);
   });
 
   test("language round-trips for every SUPPORTED_LANGS code, rejects unknown codes", () => {
@@ -436,5 +457,24 @@ describe("TOAST_DURATION_OPTIONS / snapToastDuration", () => {
     assert.equal(snapToastDuration(23), 30);
     assert.equal(snapToastDuration(1000), 60);
     assert.equal(snapToastDuration(NaN), 15);
+  });
+});
+
+describe("COOKIE_CONSENT_MODE_OPTIONS / clampCookieConsentMode", () => {
+  test("the enum has exactly the three documented members, reject-only first", () => {
+    assert.deepStrictEqual([...COOKIE_CONSENT_MODE_OPTIONS], ["off", "reject-only", "accept-when-necessary"]);
+  });
+
+  test("clamps every valid member to itself", () => {
+    for (const mode of COOKIE_CONSENT_MODE_OPTIONS) {
+      assert.equal(clampCookieConsentMode(mode), mode);
+    }
+  });
+
+  test("clamps an unrecognized value, or a non-string, to the safe default (reject-only)", () => {
+    assert.equal(clampCookieConsentMode("bogus"), "reject-only");
+    assert.equal(clampCookieConsentMode(undefined), "reject-only");
+    assert.equal(clampCookieConsentMode(null), "reject-only");
+    assert.equal(clampCookieConsentMode(123), "reject-only");
   });
 });
