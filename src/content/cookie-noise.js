@@ -53,6 +53,21 @@
   function canRejectOneTrust(signals) {
     return detectOneTrust(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  function detectCookiebot(signals) {
+    if (!signals || signals.hasCookiebotGlobal !== true || signals.hasSubmitCustomConsentFn !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCybotDialogDom === true ? 1 : 0) +
+      (signals.hasConsentObjectGlobal === true ? 1 : 0) +
+      (signals.hasResponseBooleanGlobal === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookiebot(signals) {
+    return detectCookiebot(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -123,7 +138,44 @@
     } catch {
       // ignore
     }
-    return { hasOneTrustGlobal, hasRejectAllFn, hasBannerDom, hasActiveGroupsGlobal, hasRejectHandlerDom };
+    let hasCookiebotGlobal = false;
+    let hasSubmitCustomConsentFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const cb = wrapped && wrapped.Cookiebot;
+      hasCookiebotGlobal = typeof cb === "object" && cb !== null;
+      hasSubmitCustomConsentFn = hasCookiebotGlobal && typeof cb.submitCustomConsent === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasCybotDialogDom = false;
+    try {
+      hasCybotDialogDom = !!document.getElementById("CybotCookiebotDialog");
+    } catch {
+      // ignore
+    }
+    let hasConsentObjectGlobal = false;
+    let hasResponseBooleanGlobal = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const cb = wrapped && wrapped.Cookiebot;
+      hasConsentObjectGlobal = hasCookiebotGlobal && typeof cb.consent === "object";
+      hasResponseBooleanGlobal = hasCookiebotGlobal && typeof cb.hasResponse === "boolean";
+    } catch {
+      // ignore
+    }
+    return {
+      hasOneTrustGlobal,
+      hasRejectAllFn,
+      hasBannerDom,
+      hasActiveGroupsGlobal,
+      hasRejectHandlerDom,
+      hasCookiebotGlobal,
+      hasSubmitCustomConsentFn,
+      hasCybotDialogDom,
+      hasConsentObjectGlobal,
+      hasResponseBooleanGlobal,
+    };
   }
 
   function fxRunDispatcher() {
@@ -133,6 +185,18 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.OneTrust.RejectAll();
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: Cookiebot API adapter (#1118). Same literal-false-only reject
+    // call as the Chrome MAIN-world caller — see cookie-noise-mainworld.js.
+    if (canRejectCookiebot(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.Cookiebot.submitCustomConsent(false, false, false);
       } catch {
         // A throwing page global must never break the page.
       }
