@@ -19,7 +19,8 @@ const workflowsDir = join(__dirname, "../../.github/workflows");
 // npm test, duplicating PR CI with no additional signal. A meaningful
 // canary will be re-added when a stable fixture set is available.
 // validate-rules.yml and publish-rules.yml added in Phase 6 (T6.2, T6.3).
-const WORKFLOW_FILES = ["ci.yml", "release.yml", "validate-rules.yml", "publish-rules.yml", "auto-ingest-rules.yml"];
+// cmp-canary.yml added with the nightly CMP drift alarm (#1129).
+const WORKFLOW_FILES = ["ci.yml", "release.yml", "validate-rules.yml", "publish-rules.yml", "auto-ingest-rules.yml", "cmp-canary.yml"];
 
 function readWorkflow(name) {
   return readFileSync(join(workflowsDir, name), "utf8");
