@@ -76,6 +76,21 @@
  *   Secondary/corroborating signal.
  * @property {boolean} [hasCkyConsentBarDom] - `.cky-consent-bar` present in
  *   the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTcfApiFn] - `typeof window.__tcfapi === "function"`.
+ *   Mandatory signal (dual-mandatory with hasSpMessageContainerDom below):
+ *   `__tcfapi` is the generic IAB TCF surface every TCF-compliant CMP
+ *   exposes (including Didomi, already handled above), so it can never be
+ *   a sole mandatory anchor on its own.
+ * @property {boolean} [hasSpMessageContainerDom] - `div[id^="sp_message_container"]`
+ *   present in the DOM. Mandatory signal (dual-mandatory with hasTcfApiFn
+ *   above): the Sourcepoint-specific anchor that discriminates this CMP
+ *   from every other `__tcfapi`-exposing vendor.
+ * @property {boolean} [hasSpPrivacyMgmtIframeDom] - `iframe[src*="privacy-mgmt.com"]`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasSpProdIframeDom] - `iframe[src*="sp-prod.net"]`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasSpProdScriptDom] - `script[src*="sp-prod.net"]`
+ *   present in the DOM. Secondary/corroborating signal.
  */
 
 /**
@@ -122,6 +137,21 @@ export const ACTIONS = Object.freeze({
  * BOTH `getCkyConsent` and `performBannerAction` bare globals present
  * together, still gated by the same >=1 DOM secondary signal and the same
  * CONFIDENCE_THRESHOLD.
+ *
+ * The Sourcepoint adapter (#1123) DEVIATES from every prior adapter's
+ * discrimination shape on purpose (TCF-generic-signal discrimination): its
+ * reject call rides `window.__tcfapi`, the generic IAB TCF surface that
+ * EVERY TCF-compliant CMP exposes — including Didomi, already handled
+ * above. Unlike OneTrust/Cookiebot/Didomi's vendor-namespaced anchor or
+ * CookieYes's dual-bare-global anchor, `hasTcfApiFn` alone is true on any
+ * TCF CMP's page and can never be a safe mandatory anchor by itself.
+ * detectSourcepoint therefore requires BOTH `hasTcfApiFn` AND the
+ * Sourcepoint-specific DOM signal `hasSpMessageContainerDom`
+ * (`div[id^="sp_message_container"]`) as dual-mandatory, mirroring
+ * detectCookieYes's dual-mandatory shape but anchored on one generic
+ * function signal + one vendor-specific DOM signal instead of two bare
+ * globals. This is what lets Sourcepoint coexist with Didomi in the same
+ * registry without misfiring on Didomi's (or any other TCF CMP's) pages.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -187,6 +217,26 @@ function detectCookieYes(signals) {
 
 function canRejectCookieYes(signals) {
   return detectCookieYes(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// Sourcepoint (#1123): __tcfapi is generic to ALL TCF-compliant CMPs
+// (including Didomi above), so it can never be the sole mandatory anchor.
+// Both hasTcfApiFn AND the Sourcepoint-specific DOM signal
+// (div[id^="sp_message_container"]) are mandatory together — see the
+// TCF-generic-signal discrimination rationale above detectCookieYes.
+function detectSourcepoint(signals) {
+  if (!signals || signals.hasTcfApiFn !== true || signals.hasSpMessageContainerDom !== true) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasSpPrivacyMgmtIframeDom === true ? 1 : 0) +
+    (signals.hasSpProdIframeDom === true ? 1 : 0) +
+    (signals.hasSpProdScriptDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectSourcepoint(signals) {
+  return detectSourcepoint(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -283,8 +333,43 @@ export const cookieYesAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * Sourcepoint Tier 1 adapter (#1123). The reject call
+ * (`window.__tcfapi("postRejectAll", 2, callback)`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself.
+ *
+ * Async call shape, fire-and-forget: `__tcfapi` is callback-based (its
+ * second-argument callback fires later, asynchronously), but the injected
+ * callback the content-script call site supplies is a zero-argument arrow
+ * that just invokes `__tcfapi(...)` and returns SYNCHRONOUSLY right after —
+ * the async callback passed to `postRejectAll` is optional-log-only and
+ * never gates `reject()`'s control flow. `reject()` sees the exact same
+ * zero-arg, non-throwing shape as every other adapter here.
+ *
+ * Registered LAST in TIER1 (after didomiAdapter): Didomi's reject call is a
+ * direct, unambiguous vendor-global method, while Sourcepoint rides the
+ * shared/generic `__tcfapi` surface — on a hypothetical dual-CMP page,
+ * more-certain adapters should get first refusal. See detectSourcepoint's
+ * TCF-generic-signal discrimination rationale above.
+ * @type {Readonly<{id: "sourcepoint", tier: 1, detect: typeof detectSourcepoint, canReject: typeof canRejectSourcepoint, reject: typeof reject}>}
+ */
+export const sourcepointAdapter = Object.freeze({
+  id: "sourcepoint",
+  tier: 1,
+  detect: detectSourcepoint,
+  canReject: canRejectSourcepoint,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
-export const TIER1 = Object.freeze([oneTrustAdapter, cookiebotAdapter, didomiAdapter, cookieYesAdapter]);
+export const TIER1 = Object.freeze([
+  oneTrustAdapter,
+  cookiebotAdapter,
+  didomiAdapter,
+  cookieYesAdapter,
+  sourcepointAdapter,
+]);
 
 /**
  * Tier 2 registry: declarative click-rule adapters (Consent-O-Matic-style).
@@ -332,6 +417,13 @@ export function decideAction(signals) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   if (s.hasGetCkyConsentFn === true && s.hasPerformBannerActionFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  // Sourcepoint (#1123) hard wall is the MIRROR IMAGE of the checks above:
+  // keyed off the Sourcepoint-specific DOM signal, NOT hasTcfApiFn alone —
+  // a bare hasTcfApiFn is true on every TCF CMP (Didomi included) and must
+  // fall through to "uncertain" below, never claim Sourcepoint.
+  if (s.hasSpMessageContainerDom === true && s.hasTcfApiFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };

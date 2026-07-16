@@ -27,6 +27,7 @@ import {
   cookiebotAdapter,
   didomiAdapter,
   cookieYesAdapter,
+  sourcepointAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -36,12 +37,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi and CookieYes adapters, in order", () => {
-    assert.equal(TIER1.length, 4);
+  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes and Sourcepoint adapters, in order", () => {
+    assert.equal(TIER1.length, 5);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
     assert.strictEqual(TIER1[2], didomiAdapter);
     assert.strictEqual(TIER1[3], cookieYesAdapter);
+    assert.strictEqual(TIER1[4], sourcepointAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -84,6 +86,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof cookieYesAdapter.detect, "function");
     assert.equal(typeof cookieYesAdapter.canReject, "function");
     assert.equal(typeof cookieYesAdapter.reject, "function");
+  });
+
+  test("sourcepointAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(sourcepointAdapter.id, "sourcepoint");
+    assert.equal(sourcepointAdapter.tier, 1);
+    assert.equal(typeof sourcepointAdapter.detect, "function");
+    assert.equal(typeof sourcepointAdapter.canReject, "function");
+    assert.equal(typeof sourcepointAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -265,6 +275,67 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "uncertain");
+  });
+
+  test("Sourcepoint: __tcfapi fn + sp_message_container DOM + corroboration -> reject", () => {
+    const r = decideAction({
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasSpProdIframeDom: false,
+      hasSpProdScriptDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "sourcepoint");
+  });
+
+  test("Sourcepoint: sp_message_container DOM present but __tcfapi missing (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasTcfApiFn: false,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("Sourcepoint: __tcfapi present but sp_message_container DOM missing -> NOOP, uncertain (generic TCF CMP, not Sourcepoint)", () => {
+    const r = decideAction({
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: false,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasSpProdIframeDom: true,
+      hasSpProdScriptDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("Sourcepoint: both mandatory signals present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: false,
+      hasSpProdIframeDom: false,
+      hasSpProdScriptDom: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("Didomi-shaped signals (window.Didomi + __tcfapi, NO sp_message_container) resolve to Didomi, never misfire as Sourcepoint", () => {
+    const r = decideAction({
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: true,
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "didomi");
   });
 });
 
@@ -510,6 +581,88 @@ describe("cookieYesAdapter.detect — dual-mandatory confidence gate", () => {
   });
 });
 
+describe("sourcepointAdapter.detect — dual-mandatory TCF-generic-signal discrimination", () => {
+  const FULL_SP_SIGNALS = Object.freeze({
+    hasTcfApiFn: true,
+    hasSpMessageContainerDom: true,
+    hasSpPrivacyMgmtIframeDom: true,
+    hasSpProdIframeDom: true,
+    hasSpProdScriptDom: true,
+  });
+
+  test("both mandatory signals + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = sourcepointAdapter.detect(FULL_SP_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(sourcepointAdapter.canReject(FULL_SP_SIGNALS), true);
+  });
+
+  test("both mandatory signals + exactly one secondary (privacy-mgmt.com iframe only) -> canReject true", () => {
+    const s = {
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasSpProdIframeDom: false,
+      hasSpProdScriptDom: false,
+    };
+    assert.equal(sourcepointAdapter.canReject(s), true);
+  });
+
+  test("both mandatory signals present, zero DOM corroboration -> uncertain, canReject false (fail-closed)", () => {
+    const s = {
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: false,
+      hasSpProdIframeDom: false,
+      hasSpProdScriptDom: false,
+    };
+    assert.equal(sourcepointAdapter.canReject(s), false);
+    assert.ok(sourcepointAdapter.detect(s) < 1);
+  });
+
+  test("__tcfapi present but sp_message_container DOM missing -> confidence 0 (generic TCF CMP, e.g. Didomi)", () => {
+    const s = {
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: false,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasSpProdIframeDom: true,
+      hasSpProdScriptDom: true,
+    };
+    assert.equal(sourcepointAdapter.detect(s), 0);
+    assert.equal(sourcepointAdapter.canReject(s), false);
+  });
+
+  test("sp_message_container DOM present but __tcfapi missing -> confidence 0, canReject false", () => {
+    const s = {
+      hasTcfApiFn: false,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasSpProdIframeDom: true,
+      hasSpProdScriptDom: true,
+    };
+    assert.equal(sourcepointAdapter.detect(s), 0);
+    assert.equal(sourcepointAdapter.canReject(s), false);
+  });
+
+  test("Didomi-shaped signal set (window.Didomi + __tcfapi, NO sp_message_container) yields NOOP (confidence 0) for the Sourcepoint adapter", () => {
+    const s = {
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: true,
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: false,
+    };
+    assert.equal(sourcepointAdapter.detect(s), 0);
+    assert.equal(sourcepointAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => sourcepointAdapter.detect(null));
+    assert.doesNotThrow(() => sourcepointAdapter.detect(undefined));
+    assert.equal(sourcepointAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -584,6 +737,25 @@ describe("cookieYesAdapter.reject — pure callback invocation", () => {
 
   test("non-function argument -> status noop, no call", () => {
     const r = cookieYesAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+});
+
+describe("sourcepointAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = sourcepointAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = sourcepointAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = sourcepointAdapter.reject(undefined);
     assert.equal(r.status, "noop");
   });
 });
@@ -708,5 +880,13 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
     assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
     assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
     assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
+  });
+
+  test("sourcepointAdapter is registered in TIER1 alongside the other four adapters (#1123)", () => {
+    assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must include sourcepointAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
+    assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
   });
 });
