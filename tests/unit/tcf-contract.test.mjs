@@ -85,6 +85,36 @@ function splitTopLevelArgs(source, startIndex) {
       continue;
     }
 
+    // Comment awareness (only when NOT inside a string). A `//` line comment
+    // or `/* ... */` block comment must not be tokenized: its contents can
+    // legitimately contain apostrophes (a contraction like `don't`), an
+    // unbalanced quote, or an unbalanced paren that would otherwise flip the
+    // splitter into phantom-string mode and mis-parse or throw. Copy the
+    // comment text through verbatim without touching string/paren/brace state.
+    if (ch === "/" && source[i + 1] === "/") {
+      current += ch;
+      i++;
+      while (i < source.length && source[i] !== "\n") {
+        current += source[i];
+        i++;
+      }
+      i--; // let the for-loop's i++ land back on the newline (or past end)
+      continue;
+    }
+    if (ch === "/" && source[i + 1] === "*") {
+      current += "/*";
+      i += 2;
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) {
+        current += source[i];
+        i++;
+      }
+      if (i < source.length) {
+        current += "*/";
+        i++; // land on the closing '/'; the for-loop's i++ moves past it
+      }
+      continue;
+    }
+
     if (ch === '"' || ch === "'" || ch === "`") {
       inString = ch;
       current += ch;
@@ -156,6 +186,10 @@ function findTcfapiCalls(source) {
 // ── TCF v2.2 command-signature validator ─────────────────────────────────
 
 const REJECT_COMMAND_LITERAL = /^(["'])postRejectAll\1$/;
+// Known limitation (deliberately left fail-closed): the `[^()=]*` parameter
+// class does not admit a default-param arrow like `(ok = foo()) =>`. Such a
+// callback would fail this check rather than pass — safe by design. Widening
+// it risks a false-pass, so it is intentionally NOT broadened.
 const ARROW_CALLBACK = /^(async\s*)?\(?[^()=]*\)?\s*=>/;
 const FUNCTION_CALLBACK = /^(async\s+)?function\b/;
 
@@ -333,6 +367,24 @@ describe("tcf-contract — top-level argument splitter handles nested parens/bra
     const src = 'window.__tcfapi("postRejectAll", 2, (ok) => { console.log("a, (b)"); });';
     const [call] = findTcfapiCalls(src);
     assert.equal(call.args.length, 3);
+    assert.equal(validateTcfapiCall(call).valid, true);
+  });
+
+  test("does not mis-parse a line comment (inside the callback body) containing an apostrophe/contraction", () => {
+    // The `don't` apostrophe inside a `//` comment WITHIN the callback body
+    // must NOT flip the splitter into phantom-string mode (which would swallow
+    // the closing `)` and throw "Unterminated __tcfapi(...) call"). Mirrors the
+    // natural-language comment carried at src/content/cookie-noise-mainworld.js:403.
+    const src = 'window.__tcfapi("postRejectAll", 2, (success) => {\n  // we don\'t gate on this\n  return success;\n});';
+    const [call] = findTcfapiCalls(src);
+    assert.equal(call.args.length, 3, "a line comment's apostrophe must not create phantom string state");
+    assert.equal(validateTcfapiCall(call).valid, true);
+  });
+
+  test("does not mis-parse a block comment containing an apostrophe/contraction", () => {
+    const src = 'window.__tcfapi("postRejectAll", 2, (success) => { /* we don\'t gate on this */ });';
+    const [call] = findTcfapiCalls(src);
+    assert.equal(call.args.length, 3, "a block comment's apostrophe must not create phantom string state");
     assert.equal(validateTcfapiCall(call).valid, true);
   });
 });
