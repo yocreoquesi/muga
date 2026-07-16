@@ -87,21 +87,90 @@ describe("migrateCookieConsentMode", () => {
     assert.equal(stores.syncStore.has("cookieConsentMinimizerEnabled"), false);
   });
 
-  test("legacy absent + existing user (onboardingDone true) -> off", async () => {
+  test("update path: legacy absent + existing user -> off, legacy key removed", async () => {
+    // Existing-user upgrade is discriminated by onInstalled reason === "update",
+    // NOT by onboardingDone. A legacy-absent existing user maps to off.
     stores = installChromeStub({
       sync: {},
       local: { mugaConsent: { onboardingDone: true, consentVersion: "1.1", consentDate: 1 } },
     });
     const { migrateCookieConsentMode } = await loadMigration();
-    await migrateCookieConsentMode();
+    await migrateCookieConsentMode({ reason: "update" });
 
     assert.equal(stores.syncStore.get("cookieConsentMode"), "off");
   });
 
-  test("fresh install (onboardingDone not true) -> does NOT write cookieConsentMode; PREF_DEFAULTS default stands", async () => {
+  test("update path: legacy true -> reject-only, legacy key removed", async () => {
+    stores = installChromeStub({
+      sync: { cookieConsentMinimizerEnabled: true },
+      local: {},
+    });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode({ reason: "update" });
+
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+    assert.equal(stores.syncStore.get("cookieConsentAcceptConsented"), false);
+    assert.equal(stores.syncStore.has("cookieConsentMinimizerEnabled"), false);
+  });
+
+  test("update path: idempotent second run is a no-op once mode is present", async () => {
     stores = installChromeStub({
       sync: {},
-      local: {},
+      local: { mugaConsent: { onboardingDone: true } },
+    });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode({ reason: "update" });
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "off");
+    // Second run: mode already present -> no-op, value unchanged.
+    await migrateCookieConsentMode({ reason: "update" });
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "off");
+  });
+
+  test("install seed: reason install -> reject-only + acceptConsented false", async () => {
+    stores = installChromeStub({ sync: {}, local: {} });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode({ reason: "install" });
+
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+    assert.equal(stores.syncStore.get("cookieConsentAcceptConsented"), false);
+  });
+
+  test("REGRESSION: fresh-install lifecycle never silently flips to off after onboarding", async () => {
+    // 1. Genuine fresh install seeds the disclosed default.
+    stores = installChromeStub({ sync: {}, local: {} });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode({ reason: "install" });
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+
+    // 2. Onboarding completes (persists onboardingDone). A later service-worker
+    //    wake / onStartup runs the safe idempotent pass (no reason). It MUST
+    //    leave the seeded mode untouched and MUST NEVER write "off".
+    stores.localStore.set("mugaConsent", { onboardingDone: true, consentVersion: "1.2", consentDate: 1 });
+    await migrateCookieConsentMode();
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+    assert.notEqual(stores.syncStore.get("cookieConsentMode"), "off");
+  });
+
+  test("safe pass: pre-onboarding, no install seed -> writes nothing; later install seed -> reject-only", async () => {
+    // Top-level module load / onStartup before onInstalled fires: the safe pass
+    // must not infer anything from an absent mode. Mode stays absent so the
+    // PREF_DEFAULTS "reject-only" overlay applies.
+    stores = installChromeStub({ sync: {}, local: {} });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode();
+    assert.equal(stores.syncStore.has("cookieConsentMode"), false);
+
+    // Then the genuine install seed lands.
+    await migrateCookieConsentMode({ reason: "install" });
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+  });
+
+  test("safe pass: legacy absent + onboardingDone true -> writes NOTHING (mode stays absent)", async () => {
+    // This is the core of the bug: the old code inferred "off" here from
+    // onboardingDone. The safe pass must leave the mode absent.
+    stores = installChromeStub({
+      sync: {},
+      local: { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: 1 } },
     });
     const { migrateCookieConsentMode } = await loadMigration();
     await migrateCookieConsentMode();

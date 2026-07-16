@@ -1968,7 +1968,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
-  migrateCookieConsentMode().catch(() => {});
+  // Pass the onInstalled reason so a genuine "install" latches the disclosed
+  // reject-only default and an "update" runs the existing-user migration. The
+  // top-level and onStartup call sites pass no reason (safe idempotent pass).
+  migrateCookieConsentMode({ reason: details.reason }).catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);
