@@ -112,7 +112,7 @@ test.describe("Onboarding", () => {
 
     expect(consent.onboardingDone).toBe(true);
     expect(sync.injectOwnAffiliate).toBe(true);
-    expect(consent.consentVersion).toBe("1.1");
+    expect(consent.consentVersion).toBe("1.2");
     expect(consent.consentDate).toBeGreaterThan(0);
 
     await verifyPage.close();

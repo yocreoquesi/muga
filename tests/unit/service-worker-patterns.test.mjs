@@ -456,11 +456,14 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     assert.strictEqual(fetchCalled, false);
   });
 
-  test("C1: DOES fetch when consent is valid (stored 1.1 === required)", async () => {
+  test("C1: DOES fetch when consent is valid (stored version === required)", async () => {
     let fetchCalled = false;
     const maybe = makeMaybeFetchHelper();
     const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true, onboardingDone: true, consentVersion: "1.1" }),
+      // Uses the live REQUIRED_CONSENT_VERSION (via VALID_CONSENT) rather than
+      // a hardcoded literal so this test does not go stale every time a new
+      // consent version ships.
+      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},

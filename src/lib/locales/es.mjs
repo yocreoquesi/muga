@@ -273,6 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "Importante: los términos cambiaron sustancialmente",
   ob_reonboard_material_desc: "Los términos de MUGA se han actualizado de una manera que afecta a lo que aceptaste anteriormente. El uso continuado de la extensión requiere aceptar los nuevos términos. Revisa los Términos de uso y la Política de privacidad enlazados abajo.",
   ob_clause_remote_rules_default: "Las actualizaciones semanales de reglas ahora están activadas de forma predeterminada: MUGA descarga una lista actualizada de parámetros de rastreo desde rules.muga.app aproximadamente una vez por semana. Es una solicitud firmada con Ed25519 que no envía ningún dato personal (ni historial de navegación ni cookies) y puedes desactivarla cuando quieras en los Ajustes.",
+  ob_clause_cookie_consent_minimizer: "Nueva función, desactivada por defecto: en avisos de cookies compatibles (por ahora OneTrust), MUGA puede pulsar por ti \"rechazar\" o \"solo necesarias\", igual que ya elimina el ruido de rastreo de las URL. Nunca acepta ni concede más rastreo en tu nombre. Si no existe una opción segura de rechazo, MUGA deja el aviso tal cual. Actívalo cuando quieras en los Ajustes.",
   migration_accept: "Activar",
   migration_decline: "No, gracias",
   migration_counter: "{n} de {total}",
@@ -342,4 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "En el ordenador, mantén el ratón sobre un enlace unos segundos para ver su destino real ya limpio (solo en enlaces que redirigen a otro sitio).",
   aria_hover_preview: "Mostrar una vista previa del destino real del enlace al pasar el ratón",
   hover_preview_label: "Va a:",
+  row_cookie_consent_minimizer_label: "Minimizador de avisos de cookies",
+  row_cookie_consent_minimizer_hint: "En avisos de cookies compatibles (por ahora OneTrust), MUGA pulsa por ti \"rechazar\" o \"solo necesarias\". Nunca acepta ni concede más rastreo en tu nombre; si no existe una opción segura de rechazo, deja el aviso tal cual. Desactivado por defecto.",
+  aria_cookie_consent_minimizer: "Rechazar automáticamente los avisos de cookies cuando exista una opción segura",
 });

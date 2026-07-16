@@ -50,6 +50,19 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
     version: "1.1",
     additive: true,
   }),
+  Object.freeze({
+    // #1027: the opt-in Cookie Consent Minimizer can, when enabled, call a
+    // page-authored global (`window.OneTrust.RejectAll()`) directly — a new
+    // capability class the extension did not have before. The feature ships
+    // OFF by default (no behaviour change until the user opts in), and it
+    // never invokes a consent-granting action, but calling a site's own
+    // function at all is new enough to disclose. Purely ADDITIVE — no
+    // existing term is modified or removed — so users who accepted an
+    // earlier version get a SOFT re-onboard (delta review) surfacing this
+    // one new clause, not a hard gate.
+    version: "1.2",
+    additive: true,
+  }),
 ]);
 
 /**
@@ -57,4 +70,4 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
  * to the latest entry in CONSENT_VERSION_MANIFEST. ConsentPolicy uses
  * this to decide whether a stored consent record is still current.
  */
-export const REQUIRED_CONSENT_VERSION = "1.1";
+export const REQUIRED_CONSENT_VERSION = "1.2";

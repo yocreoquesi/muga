@@ -49,14 +49,14 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/history-defuser-mainworld.js", "content/window-name-defuser-mainworld.js"],
+      "js": ["content/history-defuser-mainworld.js", "content/window-name-defuser-mainworld.js", "content/cookie-noise-mainworld.js"],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": false
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/window-name-defuser.js", "content/dom-link-rewriter.js", "content/dom-link-rewriter-click.js", "content/bounce-state-cleaner.js", "content/history-defuser.js", "content/cleaner.js", "content/hover-preview.js"],
+      "js": ["lib/browser-polyfill.min.js", "content/cleaner-bundle.js", "content/window-name-defuser.js", "content/dom-link-rewriter.js", "content/dom-link-rewriter-click.js", "content/bounce-state-cleaner.js", "content/history-defuser.js", "content/cleaner.js", "content/hover-preview.js", "content/cookie-noise.js"],
       "run_at": "document_start"
     }
   ],

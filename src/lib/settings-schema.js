@@ -127,6 +127,8 @@ export const SETTINGS_FIELDS = Object.freeze([
   // hoverPreviewEnabled is a plain boolean and round-trips normally via
   // BOOLEAN_KEYS.
   { key: "hoverPreviewEnabled", kind: "boolean", label: "row_hover_preview_label" },
+  // #1027: Cookie Consent Minimizer. Plain boolean, opt-in, default false.
+  { key: "cookieConsentMinimizerEnabled", kind: "boolean", label: "row_cookie_consent_minimizer_label" },
 ]);
 
 /**

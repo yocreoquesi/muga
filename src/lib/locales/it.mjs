@@ -273,6 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "Importante: i termini sono cambiati in modo sostanziale",
   ob_reonboard_material_desc: "I termini di MUGA sono stati aggiornati in modo che incide su quanto hai accettato in precedenza. L'uso continuato dell'estensione richiede l'accettazione dei nuovi termini. Esamina i Termini di utilizzo e l'Informativa sulla privacy collegati qui sotto.",
   ob_clause_remote_rules_default: "Gli aggiornamenti settimanali delle regole sono ora attivi per impostazione predefinita: MUGA scarica un elenco aggiornato di parametri di tracciamento da rules.muga.app circa una volta alla settimana. È una richiesta firmata con Ed25519 che non invia alcun dato personale (nessuna cronologia di navigazione, nessun cookie) e puoi disattivarla in qualsiasi momento nelle Impostazioni.",
+  ob_clause_cookie_consent_minimizer: "Novità, disattivata per impostazione predefinita: sui banner di consenso ai cookie supportati (al momento OneTrust), MUGA può cliccare al posto tuo su «rifiuta» o «solo necessari», esattamente come già rimuove il rumore di tracciamento dagli URL. Non accetta né concede mai un tracciamento più ampio a tuo nome. Se non esiste un'opzione di rifiuto sicura, MUGA lascia il banner così com'è. Puoi attivarlo quando vuoi nelle Impostazioni.",
   migration_accept: "Attiva",
   migration_decline: "No, grazie",
   migration_counter: "{n} di {total}",
@@ -342,4 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "Su desktop, tieni il mouse fermo su un link per qualche secondo per vedere la sua vera destinazione pulita (solo per i link che reindirizzano altrove).",
   aria_hover_preview: "Mostra un'anteprima della vera destinazione del link al passaggio del mouse",
   hover_preview_label: "Porta a:",
+  row_cookie_consent_minimizer_label: "Minimizzatore di banner sui cookie",
+  row_cookie_consent_minimizer_hint: "Sui banner di consenso ai cookie supportati (al momento OneTrust), MUGA clicca al posto tuo su «rifiuta» o «solo necessari». Non accetta né concede mai un tracciamento più ampio a tuo nome; se non esiste un'opzione di rifiuto sicura, lascia il banner così com'è. Disattivato per impostazione predefinita.",
+  aria_cookie_consent_minimizer: "Rifiuta automaticamente i banner di consenso ai cookie quando esiste un'opzione sicura",
 });
