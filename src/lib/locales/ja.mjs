@@ -273,7 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "重要: 利用規約が実質的に変更されました",
   ob_reonboard_material_desc: "MUGAの利用規約が、以前同意した内容に影響する形で更新されました。拡張機能を引き続き使用するには新しい規約への同意が必要です。下記にリンクされた利用規約とプライバシーポリシーをご確認ください。",
   ob_clause_remote_rules_default: "毎週のルール更新が既定で有効になりました。MUGAは約週に1回、rules.muga.app から最新のトラッキングパラメータ一覧を取得します。これはEd25519で署名されたリクエストで、閲覧履歴やCookieなどの個人データは一切送信しません。設定からいつでもオフにできます。",
-  ob_clause_cookie_consent_minimizer: null,
+  ob_clause_cookie_consent_minimizer: "新機能で、デフォルトではオフになっています。対応するCookie同意バナー（現在はOneTrust）では、MUGAがURLからトラッキングノイズを取り除くのと同じように、あなたの代わりに「拒否」または「必須のみ」をクリックできます。あなたに代わってより広範なトラッキングを承諾したり許可したりすることは一切ありません。安全な拒否オプションが存在しない場合、MUGAはバナーをそのままにします。設定でいつでもオンにできます。",
   migration_accept: "有効にする",
   migration_decline: "結構です",
   migration_counter: "{total}件中{n}件",
@@ -343,7 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "デスクトップでは、リンクの上に数秒間マウスを止めると、実際のクリーンな遷移先をプレビューできます(他のサイトにリダイレクトするリンクのみ)。",
   aria_hover_preview: "ホバー時にリンクの実際の遷移先をプレビュー表示する",
   hover_preview_label: "遷移先:",
-  row_cookie_consent_minimizer_label: null,
-  row_cookie_consent_minimizer_hint: null,
+  row_cookie_consent_minimizer_label: "Cookie同意バナーの最小化",
+  row_cookie_consent_minimizer_hint: "対応するCookie同意バナー（現在はOneTrust）では、MUGAがあなたの代わりに「拒否」または「必須のみ」をクリックします。あなたに代わってより広範なトラッキングを承諾したり許可したりすることは一切ありません。安全な拒否オプションが存在しない場合は、バナーをそのままにします。デフォルトではオフです。",
   aria_cookie_consent_minimizer: "安全な選択肢がある場合、Cookie同意バナーを自動的に拒否する",
 });

@@ -273,7 +273,7 @@ export default Object.freeze({
   ob_reonboard_material_title: "Important : les conditions ont changé de manière substantielle",
   ob_reonboard_material_desc: "Les conditions de MUGA ont été mises à jour d'une manière qui affecte ce que vous avez accepté précédemment. L'utilisation continue de l'extension nécessite l'acceptation des nouvelles conditions. Veuillez consulter les Conditions d'utilisation et la Politique de confidentialité ci-dessous.",
   ob_clause_remote_rules_default: "Les mises à jour hebdomadaires des règles sont désormais activées par défaut : MUGA récupère une liste à jour de paramètres de suivi depuis rules.muga.app environ une fois par semaine. Il s'agit d'une requête signée (Ed25519) qui n'envoie aucune donnée personnelle (ni historique de navigation, ni cookies) et vous pouvez la désactiver à tout moment dans les Paramètres.",
-  ob_clause_cookie_consent_minimizer: null,
+  ob_clause_cookie_consent_minimizer: "Nouveau, désactivé par défaut : sur les bandeaux de consentement aux cookies pris en charge (actuellement OneTrust), MUGA peut cliquer sur « refuser » ou « nécessaires uniquement » à votre place, de la même façon qu'il supprime déjà le bruit de pistage des URL. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom. S'il n'existe aucune option de refus sûre, MUGA laisse le bandeau tel quel. Vous pouvez l'activer à tout moment dans les Paramètres.",
   migration_accept: "Activer",
   migration_decline: "Non merci",
   migration_counter: "{n} sur {total}",
@@ -343,7 +343,7 @@ export default Object.freeze({
   row_hover_preview_hint: "Sur ordinateur, laissez la souris quelques secondes sur un lien pour voir sa vraie destination nettoyée (uniquement pour les liens qui redirigent ailleurs).",
   aria_hover_preview: "Afficher un aperçu de la vraie destination du lien au survol",
   hover_preview_label: "Mène à :",
-  row_cookie_consent_minimizer_label: null,
-  row_cookie_consent_minimizer_hint: null,
+  row_cookie_consent_minimizer_label: "Minimiseur de bandeaux de cookies",
+  row_cookie_consent_minimizer_hint: "Sur les bandeaux de consentement aux cookies pris en charge (actuellement OneTrust), MUGA clique sur « refuser » ou « nécessaires uniquement » à votre place. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom ; s'il n'existe aucune option de refus sûre, il laisse le bandeau tel quel. Désactivé par défaut.",
   aria_cookie_consent_minimizer: "Rejeter automatiquement les bandeaux de consentement aux cookies lorsqu'une option sûre existe",
 });
