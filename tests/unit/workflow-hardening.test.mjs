@@ -43,6 +43,9 @@ describe("G1 — SHA pinning across all hardened workflows", () => {
     "auto-ingest-rules.yml",
     "validate-rules.yml",
     "cmp-canary.yml",
+    // firefox-smoke.yml added with the Firefox WebExtension smoke harness CI
+    // gate (#1128) — a new workflow must never escape this hardening net.
+    "firefox-smoke.yml",
   ];
 
   for (const file of FILES) {
