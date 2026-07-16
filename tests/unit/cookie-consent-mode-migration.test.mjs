@@ -14,7 +14,7 @@
  * re-imports the module fresh per test to bypass module caching of the
  * chrome ref.
  */
-import { test, describe, beforeEach } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 function installChromeStub({ sync = {}, local = {} } = {}) {
