@@ -57,6 +57,21 @@
   function canRejectOneTrust(signals) {
     return detectOneTrust(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  function detectCookiebot(signals) {
+    if (!signals || signals.hasCookiebotGlobal !== true || signals.hasSubmitCustomConsentFn !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCybotDialogDom === true ? 1 : 0) +
+      (signals.hasConsentObjectGlobal === true ? 1 : 0) +
+      (signals.hasResponseBooleanGlobal === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookiebot(signals) {
+    return detectCookiebot(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -90,7 +105,41 @@
     } catch {
       // ignore
     }
-    return { hasOneTrustGlobal, hasRejectAllFn, hasBannerDom, hasActiveGroupsGlobal, hasRejectHandlerDom };
+    let hasCookiebotGlobal = false;
+    let hasSubmitCustomConsentFn = false;
+    try {
+      hasCookiebotGlobal = typeof window.Cookiebot === "object" && window.Cookiebot !== null;
+      hasSubmitCustomConsentFn =
+        hasCookiebotGlobal && typeof window.Cookiebot.submitCustomConsent === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasCybotDialogDom = false;
+    try {
+      hasCybotDialogDom = !!document.getElementById("CybotCookiebotDialog");
+    } catch {
+      // document not ready / detached — leave false.
+    }
+    let hasConsentObjectGlobal = false;
+    let hasResponseBooleanGlobal = false;
+    try {
+      hasConsentObjectGlobal = hasCookiebotGlobal && typeof window.Cookiebot.consent === "object";
+      hasResponseBooleanGlobal = hasCookiebotGlobal && typeof window.Cookiebot.hasResponse === "boolean";
+    } catch {
+      // ignore
+    }
+    return {
+      hasOneTrustGlobal,
+      hasRejectAllFn,
+      hasBannerDom,
+      hasActiveGroupsGlobal,
+      hasRejectHandlerDom,
+      hasCookiebotGlobal,
+      hasSubmitCustomConsentFn,
+      hasCybotDialogDom,
+      hasConsentObjectGlobal,
+      hasResponseBooleanGlobal,
+    };
   }
 
   // Idempotency guard (#1027): once a decisive reject has fired, never
@@ -112,6 +161,21 @@
       _acted = true;
       try {
         window.OneTrust.RejectAll();
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: Cookiebot API adapter (#1118). Necessary cookies are
+    // implicit/always-on in Cookiebot's model — the three positional
+    // booleans (preferences, statistics, marketing) are always literal
+    // `false`, never a variable, so this call structurally cannot grant
+    // broad consent.
+    if (canRejectCookiebot(signals)) {
+      _acted = true;
+      try {
+        window.Cookiebot.submitCustomConsent(false, false, false);
       } catch {
         // A throwing page global must never break the page's own script.
       }

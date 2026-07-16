@@ -47,6 +47,15 @@
  *   Secondary/corroborating signal.
  * @property {boolean} [hasRejectHandlerDom] - `#onetrust-reject-all-handler`
  *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCookiebotGlobal] - `typeof window.Cookiebot === "object"`.
+ * @property {boolean} [hasSubmitCustomConsentFn] - `typeof window.Cookiebot.submitCustomConsent === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasCybotDialogDom] - `#CybotCookiebotDialog` present
+ *   in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasConsentObjectGlobal] - `typeof window.Cookiebot.consent === "object"`.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasResponseBooleanGlobal] - `typeof window.Cookiebot.hasResponse === "boolean"`.
+ *   Secondary/corroborating signal.
  */
 
 /**
@@ -74,6 +83,10 @@ export const ACTIONS = Object.freeze({
  * content/cookie-noise-mainworld.js and content/cookie-noise.js. Do not
  * edit one copy without the other two — tests/unit/cookie-noise-sync.test.mjs
  * fails the build if they drift.
+ *
+ * The same shape (mandatory reject-function signal + >=1 corroborating
+ * secondary signal) is reused verbatim for the Cookiebot adapter below
+ * (#1118) — same fail-closed confidence gate, same threshold.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -92,13 +105,29 @@ function detectOneTrust(signals) {
 function canRejectOneTrust(signals) {
   return detectOneTrust(signals) >= CONFIDENCE_THRESHOLD;
 }
+
+function detectCookiebot(signals) {
+  if (!signals || signals.hasCookiebotGlobal !== true || signals.hasSubmitCustomConsentFn !== true) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCybotDialogDom === true ? 1 : 0) +
+    (signals.hasConsentObjectGlobal === true ? 1 : 0) +
+    (signals.hasResponseBooleanGlobal === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectCookiebot(signals) {
+  return detectCookiebot(signals) >= CONFIDENCE_THRESHOLD;
+}
 // @sync:cmp-adapters:end
 
 /**
  * Invokes the caller-supplied reject call. Kept pure (no `window` access
  * here) by requiring the caller to inject the actual global call as a
  * zero-argument callback — the content-script shell is the one place that
- * touches `window.OneTrust.RejectAll` directly. Never throws.
+ * touches the vendor CMP global directly (e.g. `window.OneTrust.RejectAll`,
+ * `window.Cookiebot.submitCustomConsent`). Never throws.
  *
  * @param {() => void} [callRejectAll]
  * @returns {{status: "rejected"|"noop"}}
@@ -122,8 +151,26 @@ export const oneTrustAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * Cookiebot Tier 1 adapter (#1118). The reject call
+ * (`Cookiebot.submitCustomConsent(false, false, false)`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. Necessary cookies are
+ * implicit/always-on in Cookiebot's model and are not one of the three
+ * positional booleans, so this call has no code path that can grant broad
+ * consent.
+ * @type {Readonly<{id: "cookiebot", tier: 1, detect: typeof detectCookiebot, canReject: typeof canRejectCookiebot, reject: typeof reject}>}
+ */
+export const cookiebotAdapter = Object.freeze({
+  id: "cookiebot",
+  tier: 1,
+  detect: detectCookiebot,
+  canReject: canRejectCookiebot,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
-export const TIER1 = Object.freeze([oneTrustAdapter]);
+export const TIER1 = Object.freeze([oneTrustAdapter, cookiebotAdapter]);
 
 /**
  * Tier 2 registry: declarative click-rule adapters (Consent-O-Matic-style).
@@ -162,6 +209,9 @@ export function decideAction(signals) {
   }
 
   if (s.hasOneTrustGlobal === true && s.hasRejectAllFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  if (s.hasCookiebotGlobal === true && s.hasSubmitCustomConsentFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };
