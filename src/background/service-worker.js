@@ -201,8 +201,10 @@ migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
 // Cookie-consent 3-state modes (Slice 1): converts the legacy
 // cookieConsentMinimizerEnabled boolean into cookieConsentMode + the
-// cookieConsentAcceptConsented gate. Runs after migrateConsentToLocal so the
-// onboarding-completed signal it reads is already in its final local shape.
+// cookieConsentAcceptConsented gate. This top-level call passes no reason, so
+// it runs the SAFE idempotent pass only (maps a present legacy key; never
+// infers "off" from an absent mode). Genuine installs are seeded by the
+// onInstalled call site, which passes details.reason.
 migrateCookieConsentMode().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
