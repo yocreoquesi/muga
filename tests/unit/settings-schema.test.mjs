@@ -77,16 +77,20 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 21 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
+    // cookieConsentAcceptConsented is deliberately NOT here: it is the reserved
+    // accept-gate flag for Slice 2 and must never be imported until then, so it
+    // is kept out of the importable BOOLEAN_KEYS set (export still round-trips
+    // it via SETTINGS_FIELDS).
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
-      "attributionLedgerEnabled", "hoverPreviewEnabled", "cookieConsentAcceptConsented",
+      "attributionLedgerEnabled", "hoverPreviewEnabled",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 21);
+    assert.strictEqual(BOOLEAN_KEYS.length, 20);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -247,11 +251,18 @@ describe("planImport — full round-trip of every field", () => {
     }
   });
 
-  test("cookieConsentMode round-trips valid enum members via clampCookieConsentMode", () => {
-    for (const mode of COOKIE_CONSENT_MODE_OPTIONS) {
+  test("cookieConsentMode import keeps off/reject-only verbatim", () => {
+    for (const mode of ["off", "reject-only"]) {
       const plan = planImport(validImportData({ cookieConsentMode: mode }));
       assert.strictEqual(plan.toSave.cookieConsentMode, mode);
     }
+  });
+
+  test("cookieConsentMode import collapses accept-when-necessary to reject-only (not pre-seedable until Slice 2)", () => {
+    // Importing must never pre-seed the reserved accept state without a consent
+    // gesture; only the import path is clamped this hard.
+    const plan = planImport(validImportData({ cookieConsentMode: "accept-when-necessary" }));
+    assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
   });
 
   test("cookieConsentMode clamps an unrecognized value to the safe default (reject-only)", () => {
@@ -259,9 +270,11 @@ describe("planImport — full round-trip of every field", () => {
     assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
   });
 
-  test("cookieConsentAcceptConsented round-trips as a plain boolean via BOOLEAN_KEYS", () => {
+  test("cookieConsentAcceptConsented is NOT importable (reserved accept-gate for Slice 2)", () => {
     const plan = planImport(validImportData({ cookieConsentAcceptConsented: true }));
-    assert.strictEqual(plan.toSave.cookieConsentAcceptConsented, true);
+    assert.strictEqual(plan.toSave.cookieConsentAcceptConsented, undefined);
+    const planFalse = planImport(validImportData({ cookieConsentAcceptConsented: false }));
+    assert.strictEqual(planFalse.toSave.cookieConsentAcceptConsented, undefined);
   });
 
   test("language round-trips for every SUPPORTED_LANGS code, rejects unknown codes", () => {
