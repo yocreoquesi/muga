@@ -106,6 +106,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectCookiebot/.test(joined));
     assert.ok(/function canRejectCookiebot/.test(joined));
   });
+
+  test("sync block also defines detectDidomi and canRejectDidomi (#1119)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectDidomi/.test(joined));
+    assert.ok(/function canRejectDidomi/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -300,6 +306,28 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       assert.ok(calls.length > 0, `${label} must call submitCustomConsent`);
       for (const args of calls) {
         assert.equal(args, "false, false, false", `${label} submitCustomConsent must be called with (false, false, false)`);
+      }
+    }
+  });
+
+  test("only window.Didomi.setUserDisagreeToAll (or wrappedJSObject equivalent) is invoked — no other Didomi method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/Didomi\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call Didomi.setUserDisagreeToAll`);
+      for (const fn of calls) {
+        assert.equal(fn, "setUserDisagreeToAll", `${label} calls Didomi.${fn}() — only setUserDisagreeToAll is permitted`);
+      }
+    }
+  });
+
+  test("every setUserDisagreeToAll call passes zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/setUserDisagreeToAll\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call setUserDisagreeToAll`);
+      for (const args of calls) {
+        assert.equal(args, "", `${label} setUserDisagreeToAll must be called with zero arguments`);
       }
     }
   });

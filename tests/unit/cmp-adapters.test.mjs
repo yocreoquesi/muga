@@ -25,6 +25,7 @@ import {
   TIER2,
   oneTrustAdapter,
   cookiebotAdapter,
+  didomiAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -34,10 +35,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust and Cookiebot adapters, in order", () => {
-    assert.equal(TIER1.length, 2);
+  test("TIER1 contains exactly the OneTrust, Cookiebot and Didomi adapters, in order", () => {
+    assert.equal(TIER1.length, 3);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
+    assert.strictEqual(TIER1[2], didomiAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -64,6 +66,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof cookiebotAdapter.detect, "function");
     assert.equal(typeof cookiebotAdapter.canReject, "function");
     assert.equal(typeof cookiebotAdapter.reject, "function");
+  });
+
+  test("didomiAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(didomiAdapter.id, "didomi");
+    assert.equal(didomiAdapter.tier, 1);
+    assert.equal(typeof didomiAdapter.detect, "function");
+    assert.equal(typeof didomiAdapter.canReject, "function");
+    assert.equal(typeof didomiAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -159,6 +169,40 @@ describe("decideAction — truth table", () => {
       hasCybotDialogDom: false,
       hasConsentObjectGlobal: false,
       hasResponseBooleanGlobal: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("Didomi setUserDisagreeToAll present + corroborated -> reject", () => {
+    const r = decideAction({
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: true,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "didomi");
+  });
+
+  test("Didomi global present but setUserDisagreeToAll absent (hard wall) -> NOOP", () => {
+    const r = decideAction({
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: false,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("Didomi mandatory signal present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: false,
+      hasGetCurrentUserStatusFn: false,
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "uncertain");
@@ -273,6 +317,59 @@ describe("cookiebotAdapter.detect — confidence gate", () => {
   });
 });
 
+describe("didomiAdapter.detect — confidence gate", () => {
+  const FULL_DIDOMI_SIGNALS = Object.freeze({
+    hasDidomiGlobal: true,
+    hasSetUserDisagreeToAllFn: true,
+    hasDidomiHostDom: true,
+    hasGetCurrentUserStatusFn: true,
+  });
+
+  test("mandatory + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = didomiAdapter.detect(FULL_DIDOMI_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(didomiAdapter.canReject(FULL_DIDOMI_SIGNALS), true);
+  });
+
+  test("mandatory + exactly one secondary (#didomi-host DOM only) -> canReject true", () => {
+    const s = {
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: false,
+    };
+    assert.equal(didomiAdapter.canReject(s), true);
+  });
+
+  test("global-only (mandatory present, zero secondary signals) -> uncertain, canReject false", () => {
+    const s = {
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: false,
+      hasGetCurrentUserStatusFn: false,
+    };
+    assert.equal(didomiAdapter.canReject(s), false);
+    assert.ok(didomiAdapter.detect(s) < 1);
+  });
+
+  test("DOM-only (mandatory setUserDisagreeToAll fn missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasDidomiGlobal: false,
+      hasSetUserDisagreeToAllFn: false,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: true,
+    };
+    assert.equal(didomiAdapter.detect(s), 0);
+    assert.equal(didomiAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => didomiAdapter.detect(null));
+    assert.doesNotThrow(() => didomiAdapter.detect(undefined));
+    assert.equal(didomiAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -309,6 +406,25 @@ describe("cookiebotAdapter.reject — pure callback invocation", () => {
 
   test("non-function argument -> status noop, no call", () => {
     const r = cookiebotAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+});
+
+describe("didomiAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = didomiAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = didomiAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = didomiAdapter.reject(undefined);
     assert.equal(r.status, "noop");
   });
 });
@@ -420,5 +536,11 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
   test("cookiebotAdapter is registered in TIER1 alongside oneTrustAdapter (#1118)", () => {
     assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must include cookiebotAdapter");
     assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+  });
+
+  test("didomiAdapter is registered in TIER1 alongside oneTrustAdapter and cookiebotAdapter (#1119)", () => {
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must include didomiAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
   });
 });

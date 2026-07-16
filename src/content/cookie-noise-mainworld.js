@@ -72,6 +72,20 @@
   function canRejectCookiebot(signals) {
     return detectCookiebot(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  function detectDidomi(signals) {
+    if (!signals || signals.hasDidomiGlobal !== true || signals.hasSetUserDisagreeToAllFn !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasDidomiHostDom === true ? 1 : 0) +
+      (signals.hasGetCurrentUserStatusFn === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectDidomi(signals) {
+    return detectDidomi(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -128,6 +142,28 @@
     } catch {
       // ignore
     }
+    let hasDidomiGlobal = false;
+    let hasSetUserDisagreeToAllFn = false;
+    try {
+      hasDidomiGlobal = typeof window.Didomi === "object" && window.Didomi !== null;
+      hasSetUserDisagreeToAllFn =
+        hasDidomiGlobal && typeof window.Didomi.setUserDisagreeToAll === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasDidomiHostDom = false;
+    try {
+      hasDidomiHostDom = !!document.getElementById("didomi-host");
+    } catch {
+      // document not ready / detached — leave false.
+    }
+    let hasGetCurrentUserStatusFn = false;
+    try {
+      hasGetCurrentUserStatusFn =
+        hasDidomiGlobal && typeof window.Didomi.getCurrentUserStatus === "function";
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -139,6 +175,10 @@
       hasCybotDialogDom,
       hasConsentObjectGlobal,
       hasResponseBooleanGlobal,
+      hasDidomiGlobal,
+      hasSetUserDisagreeToAllFn,
+      hasDidomiHostDom,
+      hasGetCurrentUserStatusFn,
     };
   }
 
@@ -176,6 +216,19 @@
       _acted = true;
       try {
         window.Cookiebot.submitCustomConsent(false, false, false);
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: Didomi API adapter (#1119). Same zero-argument, synchronous
+    // reject-call shape as OneTrust.RejectAll() — setUserDisagreeToAll()
+    // takes no consent-granting parameter at all.
+    if (canRejectDidomi(signals)) {
+      _acted = true;
+      try {
+        window.Didomi.setUserDisagreeToAll();
       } catch {
         // A throwing page global must never break the page's own script.
       }
