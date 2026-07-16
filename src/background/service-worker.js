@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -199,6 +199,11 @@ const toolbarPresenter = createToolbarPresenter({
 migrateStatsToLocal();
 migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
+// Cookie-consent 3-state modes (Slice 1): converts the legacy
+// cookieConsentMinimizerEnabled boolean into cookieConsentMode + the
+// cookieConsentAcceptConsented gate. Runs after migrateConsentToLocal so the
+// onboarding-completed signal it reads is already in its final local shape.
+migrateCookieConsentMode().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
@@ -1849,6 +1854,7 @@ chrome.runtime.onStartup.addListener(async () => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
+  migrateCookieConsentMode().catch(() => {});
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
@@ -1962,6 +1968,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
+  migrateCookieConsentMode().catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

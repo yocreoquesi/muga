@@ -17,6 +17,11 @@
 // cross-site-frequency.js, creator-allowlist.js) never imports storage.js or
 // storage-migrations.js, so this import cannot create a cycle.
 import { parseListEntry, domainMatches } from "./cleaner.js";
+// migrateCookieConsentMode() needs the per-device onboarding-completed signal
+// to distinguish existing users from fresh installs. consent-storage.js is a
+// standalone leaf module (no imports of its own), so importing it here
+// cannot create a cycle either.
+import { getConsent } from "./consent-storage.js";
 
 // ── One-time migration ────────────────────────────────────────────────────────
 
@@ -201,6 +206,81 @@ export async function migratePerSiteDisableToAllowlist() {
       chrome.storage.sync.set({ whitelist: newWhitelist, blacklist: newBlacklist }, () => {
         if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
         else resolve();
+      })
+    );
+  } catch {
+    // Migration is best-effort — a failure here must never break startup.
+  }
+}
+
+/**
+ * One-time migration (cookie-consent 3-state modes, Slice 1): converts the
+ * legacy `cookieConsentMinimizerEnabled` boolean into the new
+ * `cookieConsentMode` enum ("off" | "reject-only" | "accept-when-necessary")
+ * plus the separate `cookieConsentAcceptConsented` hard-gate flag. Safe to
+ * call on every startup; idempotent once `cookieConsentMode` is present.
+ *
+ * Keyed off the onboarding-completed signal (chrome.storage.local's
+ * `mugaConsent.onboardingDone`, via consent-storage.js — NOT the sync-side
+ * PREF_DEFAULTS.onboardingDone, which prefs.js overlays with this same local
+ * value) to distinguish existing users from fresh installs:
+ *
+ *   - legacy `cookieConsentMinimizerEnabled === true` -> preserve the user's
+ *     prior opt-in as the SAFE mode: `cookieConsentMode: "reject-only"`,
+ *     `cookieConsentAcceptConsented: false`. NEVER auto-upgrades to accept.
+ *   - legacy `=== false` or ABSENT, AND onboarding already completed
+ *     (existing user) -> `cookieConsentMode: "off"`. Existing users are not
+ *     force-enabled into a new capability; no re-consent event fires.
+ *   - fresh install (onboarding not yet completed) -> writes nothing; the
+ *     PREF_DEFAULTS default (`"reject-only"`) stands, disclosed via
+ *     onboarding itself.
+ *   - `cookieConsentMode` already present -> no-op (idempotent); the legacy
+ *     key is left exactly as-is (it was already removed the run it migrated).
+ *
+ * The legacy key is deleted after a successful migration write (both the
+ * true-legacy and existing-user branches). Fail-safe: wrapped in try/catch
+ * — a storage error must never throw out to the caller or break startup.
+ */
+export async function migrateCookieConsentMode() {
+  try {
+    const syncData = await new Promise((resolve, reject) =>
+      chrome.storage.sync.get(
+        { cookieConsentMinimizerEnabled: null, cookieConsentMode: null },
+        (result) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(result);
+        }
+      )
+    ).catch(() => ({ cookieConsentMinimizerEnabled: null, cookieConsentMode: null }));
+
+    if (syncData.cookieConsentMode !== null) return; // already migrated — no-op
+
+    const consent = await getConsent().catch(() => ({ onboardingDone: false }));
+    const legacy = syncData.cookieConsentMinimizerEnabled;
+
+    let updates = null;
+    if (legacy === true) {
+      // Preserve the user's opt-in as the safe mode — never auto-upgrade to accept.
+      updates = { cookieConsentMode: "reject-only", cookieConsentAcceptConsented: false };
+    } else if (consent.onboardingDone === true) {
+      // Existing user (legacy false or absent) — stay off, no forced upgrade.
+      updates = { cookieConsentMode: "off" };
+    }
+    // else: fresh install — write nothing, let the PREF_DEFAULTS default stand.
+
+    if (!updates) return;
+
+    await new Promise((resolve, reject) =>
+      chrome.storage.sync.set(updates, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
+      })
+    );
+
+    await new Promise((resolve) =>
+      chrome.storage.sync.remove("cookieConsentMinimizerEnabled", () => {
+        void chrome.runtime.lastError; // non-critical
+        resolve();
       })
     );
   } catch {
