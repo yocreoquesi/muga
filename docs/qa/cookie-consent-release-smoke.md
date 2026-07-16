@@ -45,6 +45,18 @@ To run it as part of a release:
    only prints a warning - it never fails the run, because real sites are
    flaky, geo-variant, or already-consented on a given run.
 
+**Geo limitation:** consent banners render based on the visitor's inferred
+geography, so the automated canary's vantage point matters. From a non-EU
+vantage - including the US-based GitHub Actions runners this workflow runs
+on - most EU-gated CMP banners never appear at all, and those runs land as
+`inconclusive` rather than pass or fail (see the GEO LIMITATION note in
+`tests/canary/cmp-canary.spec.mjs`, #1135). A first real-site calibration
+run confirmed this: 9 of 12 candidate sites came back inconclusive from US
+CI. This means the automated Chrome portion is a coarse, US-CI-biased
+signal, not a release gate on its own - the manual Chrome + Firefox
+checklist below, run from a correct (EU) geo vantage, remains the real
+release gate.
+
 **What this covers, and what it does not:** the automated Chrome portion
 confirms the Chrome MAIN-world detection signals fire and the reject call
 executes without the banner staying visible, on real vendor pages, in

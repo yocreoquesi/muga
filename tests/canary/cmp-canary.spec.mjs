@@ -24,6 +24,24 @@
  *     drift and opening a tracking issue — a single flaky site never
  *     triggers an alert.
  *
+ * ── GEO LIMITATION (2026-07 calibration finding, #1135) ────────────────────
+ *
+ * Consent banners render based on the visitor's inferred geography. From a
+ * non-EU vantage point — including US-based GitHub Actions runners — most
+ * EU-gated CMP banners never appear at all, and that run is recorded as
+ * "inconclusive" per the self-validation rule above, not "fail". A first
+ * real-site calibration run (12 candidate sites) produced 1 pass / 2 fail /
+ * 9 inconclusive from this repo's US CI vantage; both "fail" results were
+ * independently confirmed (via a Playwright probe) to be a flaky vendor
+ * site and a documented fail-closed gap, not adapter drift — see the `note`
+ * fields on the cookiebot.com and heraldscotland.com entries in
+ * cmp-sites.json. Because of this geo skew, this canary is a COARSE drift
+ * alarm only — it is NOT a substitute for the manual release smoke checklist
+ * (docs/qa/cookie-consent-release-smoke.md), which a human runs from a
+ * correct (EU) geo vantage. Treat a single flaky/low-confidence "fail" as
+ * noise; a real drift signal is >=2 "fail" results on representative sites,
+ * matching the same >=2 threshold tools/canary-report.mjs already enforces.
+ *
  * This file is NOT picked up by the normal `npm run test:e2e` run —
  * playwright.config.mjs's testDir is "tests/e2e", not "tests/canary". It
  * runs only via `npm run test:canary` (playwright.canary.config.mjs) or the

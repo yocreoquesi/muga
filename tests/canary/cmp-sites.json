@@ -21,7 +21,7 @@
     "cmp": "cookiebot",
     "url": "https://www.cookiebot.com",
     "bannerSelector": "#CybotCookiebotDialog",
-    "note": "LOWER CONFIDENCE: Cookiebot's own marketing site — inferred from the industry-standard practice of CMP vendors running their own product on their own site (\"dogfooding\"), not from an independent citation. A direct WebFetch script-tag check was inconclusive because HTML-to-markdown conversion strips <script> tags before analysis; only one confidently-sourced Cookiebot site (clece.es above) was found via search. The canary's self-validation (inconclusive vs fail) covers this if wrong."
+    "note": "LOWER CONFIDENCE: Cookiebot's own marketing site — inferred from the industry-standard practice of CMP vendors running their own product on their own site (\"dogfooding\"), not from an independent citation. A Playwright probe (2026-07 calibration) confirmed the adapter's top-frame preconditions ARE present on this site (window.Cookiebot.submitCustomConsent function, window.Cookiebot.consent object, window.Cookiebot.hasResponse boolean) — the calibration run's 'fail' here was vendor-site flakiness (the probe observed the dialog as dialogVisible:false on a fresh load), not adapter drift. Replacement with a representative Cookiebot customer deployment is tracked in #1135."
   },
   {
     "cmp": "didomi",
@@ -57,7 +57,7 @@
     "cmp": "sourcepoint",
     "url": "https://www.heraldscotland.com",
     "bannerSelector": "div[id^=\"sp_message_container\"]",
-    "note": "LOWER CONFIDENCE: heraldscotland.com is a masthead of Newsquest, and Sourcepoint's own case-studies page (https://sourcepoint.com/case-studies/) names Newsquest as running Sourcepoint's \"Consent or Pay\" across 200+ Newsquest sites — the specific masthead itself is not individually named in the case study."
+    "note": "LOWER CONFIDENCE: heraldscotland.com is a masthead of Newsquest, and Sourcepoint's own case-studies page (https://sourcepoint.com/case-studies/) names Newsquest as running Sourcepoint's \"Consent or Pay\" across 200+ Newsquest sites — the specific masthead itself is not individually named in the case study. A Playwright probe (2026-07 calibration) confirmed the calibration run's 'fail' here is the documented self-hosted/proxied Sourcepoint fail-closed case: the consent message renders in an iframe on the publisher's own domain (a02342.heraldscotland.com) with no sp-prod.net/privacy-mgmt.com secondary signals, so confidence lands at 0.4, below the adapter's threshold of 1 — a deliberate NOOP, not drift. Replacement with a representative Sourcepoint deployment is tracked in #1135."
   },
   {
     "cmp": "usercentrics",
