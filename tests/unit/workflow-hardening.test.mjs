@@ -42,6 +42,7 @@ describe("G1 — SHA pinning across all hardened workflows", () => {
     "publish-rules.yml",
     "auto-ingest-rules.yml",
     "validate-rules.yml",
+    "cmp-canary.yml",
   ];
 
   for (const file of FILES) {

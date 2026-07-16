@@ -1,0 +1,74 @@
+[
+  {
+    "cmp": "onetrust",
+    "url": "https://www.aircanada.com",
+    "bannerSelector": "#onetrust-banner-sdk",
+    "note": "Air Canada is named as a OneTrust customer on OneTrust's own customers page (https://www.onetrust.com/customers/). Not independently confirmed via script inspection (see limitations note in cmp-canary.spec.mjs) — the canary self-validates on first real run."
+  },
+  {
+    "cmp": "onetrust",
+    "url": "https://www.bertelsmann.com",
+    "bannerSelector": "#onetrust-banner-sdk",
+    "note": "Bertelsmann is named as a OneTrust customer on OneTrust's own customers page (https://www.onetrust.com/customers/). Same confidence caveat as the Air Canada entry above."
+  },
+  {
+    "cmp": "cookiebot",
+    "url": "https://www.clece.es",
+    "bannerSelector": "#CybotCookiebotDialog",
+    "note": "Clece is named in Usercentrics' \"All Around\" Cookiebot case study (https://usercentrics.com/resources/all-around-cookiebot-case-study/) as a company whose ~34 domains are governed under Cookiebot CMP via reseller partner All Around."
+  },
+  {
+    "cmp": "cookiebot",
+    "url": "https://www.cookiebot.com",
+    "bannerSelector": "#CybotCookiebotDialog",
+    "note": "LOWER CONFIDENCE: Cookiebot's own marketing site — inferred from the industry-standard practice of CMP vendors running their own product on their own site (\"dogfooding\"), not from an independent citation. A direct WebFetch script-tag check was inconclusive because HTML-to-markdown conversion strips <script> tags before analysis; only one confidently-sourced Cookiebot site (clece.es above) was found via search. The canary's self-validation (inconclusive vs fail) covers this if wrong."
+  },
+  {
+    "cmp": "didomi",
+    "url": "https://www.orange.fr",
+    "bannerSelector": "#didomi-host",
+    "note": "Orange is a long-standing named Didomi customer per Didomi's own case studies (https://www.didomi.io/blog/didomi-x-orange and https://www.didomi.io/blog/client-testimonial-orange-cookie-compliance), using Didomi across web, app, and TV."
+  },
+  {
+    "cmp": "didomi",
+    "url": "https://www.europcar.com",
+    "bannerSelector": "#didomi-host",
+    "note": "Europcar is named in Didomi's own case study (https://www.didomi.io/blog/europcar-case-study) covering ~20 Europcar-brand websites using Didomi."
+  },
+  {
+    "cmp": "cookieyes",
+    "url": "https://ahrefs.com",
+    "bannerSelector": ".cky-consent-container, .cky-consent-bar",
+    "note": "Ahrefs is named explicitly as a CookieYes example in CookieYes's own blog post (https://www.cookieyes.com/blog/cookieyes-cookie-banner-examples/)."
+  },
+  {
+    "cmp": "cookieyes",
+    "url": "https://www.dominos.gr",
+    "bannerSelector": ".cky-consent-container, .cky-consent-bar",
+    "note": "Domino's (Greece) is named in the same CookieYes blog post (https://www.cookieyes.com/blog/cookieyes-cookie-banner-examples/) as a CookieYes example."
+  },
+  {
+    "cmp": "sourcepoint",
+    "url": "https://9gag.com",
+    "bannerSelector": "div[id^=\"sp_message_container\"]",
+    "note": "Sourcepoint's own case study (https://sourcepoint.com/case-studies/how-9gag-successfully-migrated-consent-management-platforms/) explicitly states Sourcepoint is live on 9gag.com."
+  },
+  {
+    "cmp": "sourcepoint",
+    "url": "https://www.heraldscotland.com",
+    "bannerSelector": "div[id^=\"sp_message_container\"]",
+    "note": "LOWER CONFIDENCE: heraldscotland.com is a masthead of Newsquest, and Sourcepoint's own case-studies page (https://sourcepoint.com/case-studies/) names Newsquest as running Sourcepoint's \"Consent or Pay\" across 200+ Newsquest sites — the specific masthead itself is not individually named in the case study."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.dish.com",
+    "bannerSelector": "#usercentrics-root",
+    "note": "DISH is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"DISH — Consent experience streamlining\")."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.conrad.de",
+    "bannerSelector": "#usercentrics-root",
+    "note": "Conrad Electronic is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"Conrad Electronic — Privacy compliance at scale\")."
+  }
+]
