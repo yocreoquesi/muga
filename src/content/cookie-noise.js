@@ -121,6 +121,25 @@
   function canRejectSourcepoint(signals) {
     return detectSourcepoint(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // Usercentrics (#1121): window.UC_UI is a vendor-namespaced global (like
+  // Didomi's window.Didomi), NOT a shared/generic surface like __tcfapi and
+  // NOT a bare global like CookieYes's — so this mirrors detectDidomi's
+  // shape (mandatory global + mandatory reject-fn signal, plus >=1
+  // corroborating secondary signal).
+  function detectUsercentrics(signals) {
+    if (!signals || signals.hasUcUiGlobal !== true || signals.hasDenyAllConsentsFn !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasUsercentricsRootDom === true ? 1 : 0) +
+      (signals.hasIsInitializedFn === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectUsercentrics(signals) {
+    return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -288,6 +307,35 @@
     } catch {
       // ignore
     }
+    // Usercentrics (#1121): window.UC_UI is the drop-in banner's
+    // vendor-namespaced global, reached via wrappedJSObject — same
+    // Xray-safety pattern as the other Firefox signal reads above. Do NOT
+    // key off __tcfapi or an __ucCmp global — those are the generic-TCF /
+    // headless-SDK surfaces, not this signal.
+    let hasUcUiGlobal = false;
+    let hasDenyAllConsentsFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const uc = wrapped && wrapped.UC_UI;
+      hasUcUiGlobal = typeof uc === "object" && uc !== null;
+      hasDenyAllConsentsFn = hasUcUiGlobal && typeof uc.denyAllConsents === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasUsercentricsRootDom = false;
+    try {
+      hasUsercentricsRootDom = !!document.getElementById("usercentrics-root");
+    } catch {
+      // ignore
+    }
+    let hasIsInitializedFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const uc = wrapped && wrapped.UC_UI;
+      hasIsInitializedFn = hasUcUiGlobal && typeof uc.isInitialized === "function";
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -313,6 +361,10 @@
       hasSpPrivacyMgmtIframeDom,
       hasSpProdIframeDom,
       hasSpProdScriptDom,
+      hasUcUiGlobal,
+      hasDenyAllConsentsFn,
+      hasUsercentricsRootDom,
+      hasIsInitializedFn,
     };
   }
 
@@ -376,6 +428,21 @@
         window.wrappedJSObject.__tcfapi("postRejectAll", 2, (success) => {
           void success; // fire-and-forget — log only, never gates control flow
         });
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: Usercentrics API adapter (#1121). Same fire-and-forget,
+    // synchronous _fxActed + fxStopObserver() shape as the Chrome
+    // MAIN-world caller — see cookie-noise-mainworld.js. denyAllConsents()
+    // returns a Promise; .catch(() => {}) swallows any floating rejection
+    // and the promise is never awaited.
+    if (canRejectUsercentrics(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.UC_UI.denyAllConsents().catch(() => {});
       } catch {
         // A throwing page global must never break the page.
       }

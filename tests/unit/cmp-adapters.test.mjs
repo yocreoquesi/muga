@@ -28,6 +28,7 @@ import {
   didomiAdapter,
   cookieYesAdapter,
   sourcepointAdapter,
+  usercentricsAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -37,13 +38,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes and Sourcepoint adapters, in order", () => {
-    assert.equal(TIER1.length, 5);
+  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint and Usercentrics adapters, in order", () => {
+    assert.equal(TIER1.length, 6);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
     assert.strictEqual(TIER1[2], didomiAdapter);
     assert.strictEqual(TIER1[3], cookieYesAdapter);
     assert.strictEqual(TIER1[4], sourcepointAdapter);
+    assert.strictEqual(TIER1[5], usercentricsAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -94,6 +96,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof sourcepointAdapter.detect, "function");
     assert.equal(typeof sourcepointAdapter.canReject, "function");
     assert.equal(typeof sourcepointAdapter.reject, "function");
+  });
+
+  test("usercentricsAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(usercentricsAdapter.id, "usercentrics");
+    assert.equal(usercentricsAdapter.tier, 1);
+    assert.equal(typeof usercentricsAdapter.detect, "function");
+    assert.equal(typeof usercentricsAdapter.canReject, "function");
+    assert.equal(typeof usercentricsAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -336,6 +346,67 @@ describe("decideAction — truth table", () => {
     assert.equal(r.action, ACTIONS.REJECT_ALL);
     assert.equal(r.reason, "reject");
     assert.equal(r.adapterId, "didomi");
+  });
+
+  test("Usercentrics: UC_UI global + denyAllConsents fn + corroborating DOM host -> reject", () => {
+    const r = decideAction({
+      hasUcUiGlobal: true,
+      hasDenyAllConsentsFn: true,
+      hasUsercentricsRootDom: true,
+      hasIsInitializedFn: true,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "usercentrics");
+  });
+
+  test("Usercentrics: UC_UI global present but denyAllConsents absent (hard wall) -> NOOP", () => {
+    const r = decideAction({
+      hasUcUiGlobal: true,
+      hasDenyAllConsentsFn: false,
+      hasUsercentricsRootDom: true,
+      hasIsInitializedFn: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("Usercentrics mandatory signals present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasUcUiGlobal: true,
+      hasDenyAllConsentsFn: true,
+      hasUsercentricsRootDom: false,
+      hasIsInitializedFn: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("Didomi-shaped signals (window.Didomi, NO UC_UI) resolve to Didomi, never misfire as Usercentrics", () => {
+    const r = decideAction({
+      hasDidomiGlobal: true,
+      hasSetUserDisagreeToAllFn: true,
+      hasDidomiHostDom: true,
+      hasGetCurrentUserStatusFn: true,
+      hasUcUiGlobal: false,
+      hasDenyAllConsentsFn: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "didomi");
+  });
+
+  test("TCF-shaped signals (__tcfapi + sp_message_container, NO UC_UI) resolve to Sourcepoint, never misfire as Usercentrics", () => {
+    const r = decideAction({
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasUcUiGlobal: false,
+      hasDenyAllConsentsFn: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "sourcepoint");
   });
 });
 
@@ -663,6 +734,69 @@ describe("sourcepointAdapter.detect — dual-mandatory TCF-generic-signal discri
   });
 });
 
+describe("usercentricsAdapter.detect — dual-mandatory confidence gate", () => {
+  const FULL_UC_SIGNALS = Object.freeze({
+    hasUcUiGlobal: true,
+    hasDenyAllConsentsFn: true,
+    hasUsercentricsRootDom: true,
+    hasIsInitializedFn: true,
+  });
+
+  test("both mandatory signals + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = usercentricsAdapter.detect(FULL_UC_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(usercentricsAdapter.canReject(FULL_UC_SIGNALS), true);
+  });
+
+  test("both mandatory signals + exactly one secondary (#usercentrics-root DOM only) -> canReject true", () => {
+    const s = {
+      hasUcUiGlobal: true,
+      hasDenyAllConsentsFn: true,
+      hasUsercentricsRootDom: true,
+      hasIsInitializedFn: false,
+    };
+    assert.equal(usercentricsAdapter.canReject(s), true);
+  });
+
+  test("both mandatory signals + exactly one secondary (isInitialized fn only) -> canReject true", () => {
+    const s = {
+      hasUcUiGlobal: true,
+      hasDenyAllConsentsFn: true,
+      hasUsercentricsRootDom: false,
+      hasIsInitializedFn: true,
+    };
+    assert.equal(usercentricsAdapter.canReject(s), true);
+  });
+
+  test("global-only (mandatory present, zero secondary signals) -> uncertain, canReject false", () => {
+    const s = {
+      hasUcUiGlobal: true,
+      hasDenyAllConsentsFn: true,
+      hasUsercentricsRootDom: false,
+      hasIsInitializedFn: false,
+    };
+    assert.equal(usercentricsAdapter.canReject(s), false);
+    assert.ok(usercentricsAdapter.detect(s) < 1);
+  });
+
+  test("DOM-only (mandatory denyAllConsents fn missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasUcUiGlobal: false,
+      hasDenyAllConsentsFn: false,
+      hasUsercentricsRootDom: true,
+      hasIsInitializedFn: true,
+    };
+    assert.equal(usercentricsAdapter.detect(s), 0);
+    assert.equal(usercentricsAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => usercentricsAdapter.detect(null));
+    assert.doesNotThrow(() => usercentricsAdapter.detect(undefined));
+    assert.equal(usercentricsAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -757,6 +891,47 @@ describe("sourcepointAdapter.reject — pure callback invocation", () => {
   test("non-function argument -> status noop, no call", () => {
     const r = sourcepointAdapter.reject(undefined);
     assert.equal(r.status, "noop");
+  });
+});
+
+describe("usercentricsAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = usercentricsAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = usercentricsAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = usercentricsAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+
+  test("a callback that returns a Promise is handled fire-and-forget: reject() reports rejected synchronously without awaiting, and a later rejection on that promise never surfaces as an unhandled rejection or a thrown error here", async () => {
+    let settleReject;
+    let called = false;
+    const promise = new Promise((_resolve, rej) => {
+      settleReject = rej;
+    });
+    const r = usercentricsAdapter.reject(() => {
+      called = true;
+      return promise.catch(() => {});
+    });
+    // Synchronous contract: reject() must report "rejected" immediately,
+    // without waiting for the returned promise to settle.
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+    // Now settle the floating promise with a rejection — this must never
+    // produce an unhandled-rejection warning (the .catch(() => {}) above,
+    // mirroring the real denyAllConsents().catch(() => {}) call-site shape,
+    // already swallowed it) and must not throw here.
+    settleReject(new Error("denyAllConsents rejected"));
+    await promise.catch(() => {});
   });
 });
 
@@ -888,5 +1063,14 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
     assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
     assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
     assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
+  });
+
+  test("usercentricsAdapter is registered in TIER1 alongside the other five adapters (#1121)", () => {
+    assert.ok(TIER1.includes(usercentricsAdapter), "TIER1 must include usercentricsAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
+    assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
+    assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must still include sourcepointAdapter");
   });
 });
