@@ -217,8 +217,9 @@ test.describe("Cookie Consent Minimizer — Sourcepoint (#1123)", () => {
 
     await page.waitForFunction(() => window.__mugaCookieNoise === true, { timeout: 10000 });
 
-    // Negative assertion: no positive signal to wait on — fixed settle
-    // window, same pattern as the disabled-feature test above.
+    // REASON: negative assertion (no misfire) has no positive signal to
+    // wait on — fixed settle window, same pattern as the disabled-feature
+    // test above.
     await page.waitForTimeout(1500);
 
     const tcfCalls = await page.evaluate(() => window.__tcfapiCalls);
