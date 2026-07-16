@@ -46,7 +46,8 @@
     "typecheck": "tsc -p jsconfig.json",
     "lint:js": "eslint .",
     "moat:report": "node tools/moat-expansion/cli.mjs",
-    "fpfn": "node tools/fpfn-harness/run.mjs"
+    "fpfn": "node tools/fpfn-harness/run.mjs",
+    "smoke:release": "node tools/release-smoke-report.mjs"
   },
   "engines": {
     "node": ">=20.11"
