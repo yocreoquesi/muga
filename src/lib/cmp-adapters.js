@@ -91,6 +91,15 @@
  *   present in the DOM. Secondary/corroborating signal.
  * @property {boolean} [hasSpProdScriptDom] - `script[src*="sp-prod.net"]`
  *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasUcUiGlobal] - `typeof window.UC_UI === "object"`.
+ * @property {boolean} [hasDenyAllConsentsFn] - `typeof window.UC_UI.denyAllConsents === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasUsercentricsRootDom] - `#usercentrics-root`
+ *   present in the DOM (the drop-in banner's host element — its own markup
+ *   lives in an open Shadow DOM, but the host itself is always plain-DOM
+ *   queryable). Secondary/corroborating signal.
+ * @property {boolean} [hasIsInitializedFn] - `typeof window.UC_UI.isInitialized === "function"`.
+ *   Secondary/corroborating signal.
  */
 
 /**
@@ -152,6 +161,18 @@ export const ACTIONS = Object.freeze({
  * function signal + one vendor-specific DOM signal instead of two bare
  * globals. This is what lets Sourcepoint coexist with Didomi in the same
  * registry without misfiring on Didomi's (or any other TCF CMP's) pages.
+ *
+ * The Usercentrics adapter (#1121) reuses the OneTrust/Didomi shape again:
+ * `window.UC_UI` is a vendor-namespaced global (not a shared/generic
+ * surface like `__tcfapi`, and not a bare global like CookieYes's), so
+ * detectUsercentrics requires the mandatory `hasUcUiGlobal` +
+ * `hasDenyAllConsentsFn` pair plus >=1 corroborating signal
+ * (`hasUsercentricsRootDom` or `hasIsInitializedFn`) — same fail-closed
+ * confidence gate, same threshold. Do NOT key detection off `__tcfapi` or
+ * an `__ucCmp` global: those are the generic-TCF / headless-SDK surfaces
+ * (a separate, rarer Usercentrics integration mode) and would either
+ * collide with Sourcepoint/Didomi discrimination or fail to discriminate
+ * at all.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -237,6 +258,25 @@ function detectSourcepoint(signals) {
 
 function canRejectSourcepoint(signals) {
   return detectSourcepoint(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// Usercentrics (#1121): window.UC_UI is a vendor-namespaced global (like
+// Didomi's window.Didomi), NOT a shared/generic surface like __tcfapi and
+// NOT a bare global like CookieYes's — so this mirrors detectDidomi's
+// shape (mandatory global + mandatory reject-fn signal, plus >=1
+// corroborating secondary signal).
+function detectUsercentrics(signals) {
+  if (!signals || signals.hasUcUiGlobal !== true || signals.hasDenyAllConsentsFn !== true) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasUsercentricsRootDom === true ? 1 : 0) +
+    (signals.hasIsInitializedFn === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectUsercentrics(signals) {
+  return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -362,6 +402,36 @@ export const sourcepointAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * Usercentrics Tier 1 adapter (#1121). The reject call
+ * (`window.UC_UI.denyAllConsents()`) is invoked by the caller-supplied
+ * callback via the shared `reject()` helper above — this adapter
+ * definition never touches `window` itself.
+ *
+ * Async call shape, fire-and-forget: unlike every prior adapter here,
+ * `denyAllConsents()` returns a Promise. The content-script call site
+ * attaches `.catch(() => {})` to swallow any floating rejection, then
+ * returns SYNCHRONOUSLY right after — `_acted`/`_fxActed` and
+ * `stopObserver()`/`fxStopObserver()` fire immediately, never gated on the
+ * promise settling. `reject()` sees the exact same zero-arg, non-throwing
+ * callback shape as every other adapter here; the callback's returned
+ * promise (already `.catch`-guarded by the caller) is never awaited.
+ *
+ * Registered LAST in TIER1 (after sourcepointAdapter): `window.UC_UI` is a
+ * direct, unambiguous vendor-namespaced global (like Didomi's), so ordering
+ * relative to Sourcepoint (which rides the shared `__tcfapi` surface) is
+ * not safety-critical either way — appended at the end to keep the
+ * registry's history append-only.
+ * @type {Readonly<{id: "usercentrics", tier: 1, detect: typeof detectUsercentrics, canReject: typeof canRejectUsercentrics, reject: typeof reject}>}
+ */
+export const usercentricsAdapter = Object.freeze({
+  id: "usercentrics",
+  tier: 1,
+  detect: detectUsercentrics,
+  canReject: canRejectUsercentrics,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
 export const TIER1 = Object.freeze([
   oneTrustAdapter,
@@ -369,6 +439,7 @@ export const TIER1 = Object.freeze([
   didomiAdapter,
   cookieYesAdapter,
   sourcepointAdapter,
+  usercentricsAdapter,
 ]);
 
 /**
@@ -424,6 +495,11 @@ export function decideAction(signals) {
   // a bare hasTcfApiFn is true on every TCF CMP (Didomi included) and must
   // fall through to "uncertain" below, never claim Sourcepoint.
   if (s.hasSpMessageContainerDom === true && s.hasTcfApiFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  // Usercentrics (#1121) hard wall: same shape as the OneTrust/Didomi
+  // checks above (mandatory global present, mandatory reject fn absent).
+  if (s.hasUcUiGlobal === true && s.hasDenyAllConsentsFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };

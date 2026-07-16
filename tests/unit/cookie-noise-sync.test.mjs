@@ -124,6 +124,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectSourcepoint/.test(joined));
     assert.ok(/function canRejectSourcepoint/.test(joined));
   });
+
+  test("sync block also defines detectUsercentrics and canRejectUsercentrics (#1121)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectUsercentrics/.test(joined));
+    assert.ok(/function canRejectUsercentrics/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -379,6 +385,38 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       for (const firstArg of calls) {
         assert.equal(firstArg, "\"postRejectAll\"", `${label} __tcfapi's first argument must be the literal "postRejectAll"`);
       }
+    }
+  });
+
+  test("only UC_UI.denyAllConsents (or wrappedJSObject equivalent) is invoked — no other UC_UI method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/UC_UI\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call UC_UI.denyAllConsents`);
+      for (const fn of calls) {
+        assert.equal(fn, "denyAllConsents", `${label} calls UC_UI.${fn}() — only denyAllConsents is permitted`);
+      }
+    }
+  });
+
+  test("every denyAllConsents call passes zero arguments — never a variable, never accept/allowAll", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/denyAllConsents\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call denyAllConsents`);
+      for (const args of calls) {
+        assert.equal(args, "", `${label} denyAllConsents must be called with zero arguments`);
+      }
+    }
+  });
+
+  test("every denyAllConsents() call is immediately followed by a .catch(...) to swallow the returned promise's rejection", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      assert.ok(
+        /denyAllConsents\(\)\s*\.catch\s*\(/.test(src),
+        `${label} must chain .catch(...) directly onto the denyAllConsents() call`,
+      );
     }
   });
 });

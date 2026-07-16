@@ -125,6 +125,25 @@
   function canRejectSourcepoint(signals) {
     return detectSourcepoint(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // Usercentrics (#1121): window.UC_UI is a vendor-namespaced global (like
+  // Didomi's window.Didomi), NOT a shared/generic surface like __tcfapi and
+  // NOT a bare global like CookieYes's — so this mirrors detectDidomi's
+  // shape (mandatory global + mandatory reject-fn signal, plus >=1
+  // corroborating secondary signal).
+  function detectUsercentrics(signals) {
+    if (!signals || signals.hasUcUiGlobal !== true || signals.hasDenyAllConsentsFn !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasUsercentricsRootDom === true ? 1 : 0) +
+      (signals.hasIsInitializedFn === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectUsercentrics(signals) {
+    return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -247,6 +266,30 @@
     } catch {
       // document not ready / detached — leave all false.
     }
+    // Usercentrics (#1121): window.UC_UI is the drop-in banner's
+    // vendor-namespaced global. Do NOT key off __tcfapi or an __ucCmp
+    // global — those are the generic-TCF / headless-SDK surfaces (a
+    // separate, rarer Usercentrics integration mode), not this signal.
+    let hasUcUiGlobal = false;
+    let hasDenyAllConsentsFn = false;
+    try {
+      hasUcUiGlobal = typeof window.UC_UI === "object" && window.UC_UI !== null;
+      hasDenyAllConsentsFn = hasUcUiGlobal && typeof window.UC_UI.denyAllConsents === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasUsercentricsRootDom = false;
+    try {
+      hasUsercentricsRootDom = !!document.getElementById("usercentrics-root");
+    } catch {
+      // document not ready / detached — leave false.
+    }
+    let hasIsInitializedFn = false;
+    try {
+      hasIsInitializedFn = hasUcUiGlobal && typeof window.UC_UI.isInitialized === "function";
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -272,6 +315,10 @@
       hasSpPrivacyMgmtIframeDom,
       hasSpProdIframeDom,
       hasSpProdScriptDom,
+      hasUcUiGlobal,
+      hasDenyAllConsentsFn,
+      hasUsercentricsRootDom,
+      hasIsInitializedFn,
     };
   }
 
@@ -355,6 +402,21 @@
         window.__tcfapi("postRejectAll", 2, (success) => {
           void success; // fire-and-forget — log only, never gates control flow
         });
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: Usercentrics API adapter (#1121). denyAllConsents() returns a
+    // Promise (unlike every prior adapter here) — this call site is
+    // fire-and-forget: .catch(() => {}) swallows any floating rejection,
+    // and _acted + stopObserver() fire SYNCHRONOUSLY right after, never
+    // awaited, never gating control flow on the promise settling.
+    if (canRejectUsercentrics(signals)) {
+      _acted = true;
+      try {
+        window.UC_UI.denyAllConsents().catch(() => {});
       } catch {
         // A throwing page global must never break the page's own script.
       }
