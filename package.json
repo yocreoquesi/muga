@@ -42,6 +42,7 @@
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test",
+    "test:canary": "playwright test --config playwright.canary.config.mjs",
     "typecheck": "tsc -p jsconfig.json",
     "lint:js": "eslint .",
     "moat:report": "node tools/moat-expansion/cli.mjs",
