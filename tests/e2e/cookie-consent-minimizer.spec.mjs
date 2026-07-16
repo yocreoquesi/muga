@@ -10,7 +10,7 @@
  *
  * Mirrors tests/e2e/dom-link-rewriter-click.spec.mjs's structure: a
  * dedicated completeOnboarding() that also opts into the feature
- * (cookieConsentMinimizerEnabled: true) and accepts the disclosing
+ * (cookieConsentMode: "reject-only") and accepts the disclosing
  * consent version (1.2, see src/lib/consent-version-manifest.js).
  *
  * HONEST LIMIT (per design doc): this is a REGRESSION oracle only — a
@@ -38,7 +38,7 @@ async function completeOnboarding(context, extensionId, { enableFeature = true }
     ({ enableFeature }) =>
       new Promise((resolve) => {
         chrome.storage.sync.set(
-          { enabled: true, cookieConsentMinimizerEnabled: enableFeature },
+          { enabled: true, cookieConsentMode: enableFeature ? "reject-only" : "off" },
           () => {
             chrome.storage.local.set(
               {

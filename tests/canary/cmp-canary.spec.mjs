@@ -76,11 +76,10 @@ function recordResult(site, status, detail) {
 }
 
 /**
- * Completes onboarding and turns on cookieConsentMinimizerEnabled directly
+ * Completes onboarding and sets cookieConsentMode to "reject-only" directly
  * via chrome.storage — mirrors tests/e2e/fixtures.mjs's completeOnboarding()
- * but additionally flips the feature pref, which defaults OFF (see
- * src/content/cookie-noise-mainworld.js's docblock) and is not touched by
- * the shared e2e fixture.
+ * but additionally sets the feature pref explicitly (not touched by the
+ * shared e2e fixture), rather than relying on the PREF_DEFAULTS default.
  *
  * @param {import("@playwright/test").BrowserContext} context
  * @param {string} extensionId
@@ -101,7 +100,7 @@ async function enableCookieConsentMinimizer(context, extensionId) {
             injectOwnAffiliate: false,
             notifyForeignAffiliate: false,
             language: "en",
-            cookieConsentMinimizerEnabled: true,
+            cookieConsentMode: "reject-only",
           },
           r,
         ),

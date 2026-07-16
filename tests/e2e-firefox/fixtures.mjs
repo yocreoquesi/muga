@@ -126,7 +126,7 @@ export async function completeOnboarding(driver, extensionOrigin, { enableFeatur
       chrome.storage.sync.set(
         {
           enabled: true,
-          cookieConsentMinimizerEnabled: enableFeatureArg,
+          cookieConsentMode: enableFeatureArg ? "reject-only" : "off",
           injectOwnAffiliate: false,
           notifyForeignAffiliate: false,
           language: "en",

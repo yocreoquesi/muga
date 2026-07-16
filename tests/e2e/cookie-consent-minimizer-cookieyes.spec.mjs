@@ -45,7 +45,7 @@ async function completeOnboarding(context, extensionId, { enableFeature = true }
     ({ enableFeature }) =>
       new Promise((resolve) => {
         chrome.storage.sync.set(
-          { enabled: true, cookieConsentMinimizerEnabled: enableFeature },
+          { enabled: true, cookieConsentMode: enableFeature ? "reject-only" : "off" },
           () => {
             chrome.storage.local.set(
               {
