@@ -255,6 +255,7 @@
         // A throwing page global must never break the page.
       }
       fxStopObserver();
+      return;
     }
   }
 
