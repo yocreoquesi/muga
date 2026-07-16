@@ -68,6 +68,20 @@
   function canRejectCookiebot(signals) {
     return detectCookiebot(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  function detectDidomi(signals) {
+    if (!signals || signals.hasDidomiGlobal !== true || signals.hasSetUserDisagreeToAllFn !== true) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasDidomiHostDom === true ? 1 : 0) +
+      (signals.hasGetCurrentUserStatusFn === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectDidomi(signals) {
+    return detectDidomi(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -164,6 +178,30 @@
     } catch {
       // ignore
     }
+    let hasDidomiGlobal = false;
+    let hasSetUserDisagreeToAllFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const di = wrapped && wrapped.Didomi;
+      hasDidomiGlobal = typeof di === "object" && di !== null;
+      hasSetUserDisagreeToAllFn = hasDidomiGlobal && typeof di.setUserDisagreeToAll === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasDidomiHostDom = false;
+    try {
+      hasDidomiHostDom = !!document.getElementById("didomi-host");
+    } catch {
+      // ignore
+    }
+    let hasGetCurrentUserStatusFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const di = wrapped && wrapped.Didomi;
+      hasGetCurrentUserStatusFn = hasDidomiGlobal && typeof di.getCurrentUserStatus === "function";
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -175,6 +213,10 @@
       hasCybotDialogDom,
       hasConsentObjectGlobal,
       hasResponseBooleanGlobal,
+      hasDidomiGlobal,
+      hasSetUserDisagreeToAllFn,
+      hasDidomiHostDom,
+      hasGetCurrentUserStatusFn,
     };
   }
 
@@ -201,6 +243,19 @@
         // A throwing page global must never break the page.
       }
       fxStopObserver();
+      return;
+    }
+    // Tier 1: Didomi API adapter (#1119). Same zero-argument, synchronous
+    // reject-call shape as OneTrust.RejectAll() — see cookie-noise-mainworld.js.
+    if (canRejectDidomi(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.Didomi.setUserDisagreeToAll();
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
     }
   }
 

@@ -56,6 +56,13 @@
  *   Secondary/corroborating signal.
  * @property {boolean} [hasResponseBooleanGlobal] - `typeof window.Cookiebot.hasResponse === "boolean"`.
  *   Secondary/corroborating signal.
+ * @property {boolean} [hasDidomiGlobal] - `typeof window.Didomi === "object"`.
+ * @property {boolean} [hasSetUserDisagreeToAllFn] - `typeof window.Didomi.setUserDisagreeToAll === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasDidomiHostDom] - `#didomi-host` present in the DOM.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasGetCurrentUserStatusFn] - `typeof window.Didomi.getCurrentUserStatus === "function"`.
+ *   Secondary/corroborating signal.
  */
 
 /**
@@ -86,7 +93,11 @@ export const ACTIONS = Object.freeze({
  *
  * The same shape (mandatory reject-function signal + >=1 corroborating
  * secondary signal) is reused verbatim for the Cookiebot adapter below
- * (#1118) — same fail-closed confidence gate, same threshold.
+ * (#1118) — same fail-closed confidence gate, same threshold. The Didomi
+ * adapter (#1119) reuses it again: like OneTrust, its reject call
+ * (`Didomi.setUserDisagreeToAll()`) is a direct zero-argument vendor-global
+ * method call, so it is modeled on the OneTrust detection shape rather than
+ * Cookiebot's literal-args guard.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -119,6 +130,20 @@ function detectCookiebot(signals) {
 
 function canRejectCookiebot(signals) {
   return detectCookiebot(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+function detectDidomi(signals) {
+  if (!signals || signals.hasDidomiGlobal !== true || signals.hasSetUserDisagreeToAllFn !== true) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasDidomiHostDom === true ? 1 : 0) +
+    (signals.hasGetCurrentUserStatusFn === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectDidomi(signals) {
+  return detectDidomi(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -169,8 +194,27 @@ export const cookiebotAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * Didomi Tier 1 adapter (#1119). The reject call
+ * (`Didomi.setUserDisagreeToAll()`) is invoked by the caller-supplied
+ * callback via the shared `reject()` helper above — this adapter
+ * definition never touches `window` itself. Same call shape as
+ * `oneTrustAdapter.RejectAll()`: synchronous, zero arguments, void return.
+ * Unlike Cookiebot's three positional booleans, this call has no
+ * consent-granting parameter at all — there is no argument surface a
+ * future edit could flip to grant broad consent.
+ * @type {Readonly<{id: "didomi", tier: 1, detect: typeof detectDidomi, canReject: typeof canRejectDidomi, reject: typeof reject}>}
+ */
+export const didomiAdapter = Object.freeze({
+  id: "didomi",
+  tier: 1,
+  detect: detectDidomi,
+  canReject: canRejectDidomi,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
-export const TIER1 = Object.freeze([oneTrustAdapter, cookiebotAdapter]);
+export const TIER1 = Object.freeze([oneTrustAdapter, cookiebotAdapter, didomiAdapter]);
 
 /**
  * Tier 2 registry: declarative click-rule adapters (Consent-O-Matic-style).
@@ -212,6 +256,9 @@ export function decideAction(signals) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   if (s.hasCookiebotGlobal === true && s.hasSubmitCustomConsentFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  if (s.hasDidomiGlobal === true && s.hasSetUserDisagreeToAllFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };
