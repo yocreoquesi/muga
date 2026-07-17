@@ -69,29 +69,17 @@ describe("consent-version-manifest — #1027 cookie-consent-minimizer additive b
     assert.equal(entry.additive, true, "1.2 must be additive (soft re-onboard), not material");
   });
 
+  test("REQUIRED_CONSENT_VERSION points at the latest manifest entry", () => {
+    const latest = CONSENT_VERSION_MANIFEST[CONSENT_VERSION_MANIFEST.length - 1];
+    assert.equal(
+      REQUIRED_CONSENT_VERSION,
+      latest.version,
+      "REQUIRED_CONSENT_VERSION must equal the last (latest) manifest entry"
+    );
+  });
+
   test("REQUIRED_CONSENT_VERSION is 1.2", () => {
     assert.equal(REQUIRED_CONSENT_VERSION, "1.2");
-  });
-});
-
-describe("consent-version-manifest — cookie-consent-modes Slice 1 staged 1.3 entry", () => {
-  test("manifest contains a 1.3 entry marked additive: true", () => {
-    const entry = CONSENT_VERSION_MANIFEST.find(m => m.version === "1.3");
-    assert.ok(entry, "manifest must contain the 1.3 entry (cookie-consent-modes Slice 1)");
-    assert.equal(entry.additive, true, "1.3 must be additive (would be soft re-onboard if activated)");
-  });
-
-  // Staged entry: appended for the historical record, but deliberately NOT
-  // yet required — existing users' cookieConsentMode capability does not
-  // change (migrateCookieConsentMode pins them to "off"), so per the
-  // design's resolved default-reconciliation decision, no forced
-  // re-consent / soft re-onboard fires for them. Only new installs see the
-  // disclosure, via the ordinary fresh-onboarding features list. See the
-  // module docblock's "Staged entries" note.
-  test("REQUIRED_CONSENT_VERSION intentionally stays behind the staged 1.3 entry", () => {
-    const latest = CONSENT_VERSION_MANIFEST[CONSENT_VERSION_MANIFEST.length - 1];
-    assert.equal(latest.version, "1.3", "1.3 must be the latest manifest entry");
-    assert.equal(REQUIRED_CONSENT_VERSION, "1.2", "REQUIRED_CONSENT_VERSION must NOT yet point at the staged 1.3 entry");
   });
 });
 
