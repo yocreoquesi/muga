@@ -168,6 +168,28 @@
   function canRejectCookieInformation(signals) {
     return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // CookieScript: the reject call lives on window.CookieScript.instance, not
+  // directly on the vendor global — see the TRIPLE-mandatory-gate rationale
+  // above detectCookieScript in the docblock preceding this sync block.
+  function detectCookieScript(signals) {
+    if (
+      !signals ||
+      signals.hasCookieScriptGlobal !== true ||
+      signals.hasCookieScriptInstance !== true ||
+      signals.hasRejectAllActionFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCookiescriptInjectedDom === true ? 1 : 0) +
+      (signals.hasCookiescriptDescriptionDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieScript(signals) {
+    return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -394,6 +416,30 @@
     } catch {
       // ignore
     }
+    // CookieScript: the reject call lives on window.CookieScript.instance,
+    // not directly on the vendor global, reached via wrappedJSObject — same
+    // Xray-safety pattern as the other Firefox signal reads above.
+    let hasCookieScriptGlobal = false;
+    let hasCookieScriptInstance = false;
+    let hasRejectAllActionFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const cs = wrapped && wrapped.CookieScript;
+      hasCookieScriptGlobal = typeof cs === "object" && cs !== null;
+      const instance = hasCookieScriptGlobal && cs.instance;
+      hasCookieScriptInstance = typeof instance === "object" && instance !== null;
+      hasRejectAllActionFn = hasCookieScriptInstance && typeof instance.rejectAllAction === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasCookiescriptInjectedDom = false;
+    let hasCookiescriptDescriptionDom = false;
+    try {
+      hasCookiescriptInjectedDom = !!document.getElementById("cookiescript_injected");
+      hasCookiescriptDescriptionDom = !!document.getElementById("cookiescript_description");
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -430,6 +476,11 @@
       hasCoiSummeryDom,
       hasCoiBannerWrapperDom,
       hasCoiConsentSummaryDom,
+      hasCookieScriptGlobal,
+      hasCookieScriptInstance,
+      hasRejectAllActionFn,
+      hasCookiescriptInjectedDom,
+      hasCookiescriptDescriptionDom,
     };
   }
 
@@ -521,6 +572,18 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.CookieInformation.declineAllCategories();
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: CookieScript API adapter. Same zero-argument, synchronous
+    // reject-call shape as the adapters above — see cookie-noise-mainworld.js.
+    if (canRejectCookieScript(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.CookieScript.instance.rejectAllAction();
       } catch {
         // A throwing page global must never break the page.
       }
