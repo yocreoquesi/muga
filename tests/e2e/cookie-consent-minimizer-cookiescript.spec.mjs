@@ -218,4 +218,77 @@ test.describe("Cookie Consent Minimizer — CookieScript", () => {
 
     await page.close();
   });
+
+  test("does not throw or reject when CookieScript is present but has no .instance (null-safety)", async ({
+    context,
+    extensionId,
+  }) => {
+    // Regression guard for the exact TypeError hazard the triple-mandatory
+    // gate exists to prevent: window.CookieScript is a truthy object but has
+    // NO `.instance` (the vendor SDK attaches the global before the instance
+    // is constructed). Reading `window.CookieScript.instance.rejectAllAction`
+    // naively would throw "Cannot read properties of undefined". The signal
+    // collector short-circuits on the missing instance, so detection must
+    // fail closed and the adapter must NOOP — with zero page errors captured.
+    await completeOnboarding(context, extensionId, { enableFeature: true });
+
+    const NO_INSTANCE_HOST = "muga-test-cookie-consent-cookiescript-no-instance.invalid";
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (err) => pageErrors.push(err));
+
+    await page.route(`**://${NO_INSTANCE_HOST}/**`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: `<!doctype html><html><body>
+          <div id="cookiescript_injected">
+            <button id="cookiescript_accept">Accept</button>
+            <button id="cookiescript_reject">Reject all</button>
+          </div>
+          <p id="page-content">Real page content</p>
+          <script>
+            // Truthy CookieScript global WITHOUT an .instance — the exact
+            // present-but-not-yet-populated shape the triple gate guards.
+            window.CookieScript = {};
+          </script>
+        </body></html>`,
+      })
+    );
+    await page.goto(`https://${NO_INSTANCE_HOST}/index.html`);
+
+    // Wait for the MAIN-world caller's once-guard flag — proves the signal
+    // collection path (including the CookieScript `.instance`-undefined
+    // branch) actually ran under real page-error capture.
+    await page.waitForFunction(() => window.__mugaCookieNoise === true, { timeout: 10000 });
+
+    // Asserting an ABSENCE of behavior (the gate must stay closed and no
+    // TypeError must surface) has no positive DOM/window signal to wait on.
+    // REASON: a fixed settle window is the standard pattern for a negative
+    // assertion in this suite — there is nothing to waitForFunction on.
+    await page.waitForTimeout(1500);
+
+    // The adapter must NOT have acted: no consent state was mutated.
+    const consentState = await page.evaluate(() => window.__consentState);
+    expect(consentState).toBeUndefined();
+
+    // Banner is untouched — the feature-safe NOOP left the page alone.
+    const bannerStillThere = await page.evaluate(
+      () => document.getElementById("cookiescript_injected") !== null
+    );
+    expect(bannerStillThere).toBe(true);
+
+    // The global is still the instance-less object we planted (no crash
+    // mid-collection that would have aborted the script).
+    const csShape = await page.evaluate(() => ({
+      isObject: typeof window.CookieScript === "object" && window.CookieScript !== null,
+      hasInstance: typeof window.CookieScript?.instance !== "undefined",
+    }));
+    expect(csShape).toEqual({ isObject: true, hasInstance: false });
+
+    // The whole point: reading `.instance.rejectAllAction` never threw.
+    expect(pageErrors).toHaveLength(0);
+
+    await page.close();
+  });
 });
