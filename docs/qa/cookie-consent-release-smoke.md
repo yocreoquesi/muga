@@ -2,9 +2,9 @@
 
 ## Why this exists
 
-The 7 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
-Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information)
-are unit-green:
+The 8 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
+Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information,
+CookieScript) are unit-green:
 every detection truth table, every reject call shape, and every
 never-auto-accept structural guard is covered by `npm test`. Unit-green is
 not the same thing as real-env-green. Every adapter's merge PR shipped with
@@ -78,7 +78,7 @@ sites (`src/content/cookie-noise-mainworld.js` for Chrome MAIN world,
 `tests/canary/cmp-sites.json` - do not test against a different site
 without first adding it there.
 
-General Chrome steps (same shape for all 7 adapters unless noted):
+General Chrome steps (same shape for all 8 adapters unless noted):
 
 1. `npm run build:content` then load the unpacked extension from `src/`
    in `chrome://extensions` (Developer mode > Load unpacked).
@@ -93,7 +93,7 @@ General Chrome steps (same shape for all 7 adapters unless noted):
    inspector (where available) to confirm the resulting consent state is
    reject / necessary-only, not accept.
 
-General Firefox steps (same shape for all 7 adapters unless noted):
+General Firefox steps (same shape for all 8 adapters unless noted):
 manual only, automation is tracked separately in #1128.
 
 1. `bash scripts/with-firefox-manifest.sh npm run build:content` then load
@@ -315,9 +315,40 @@ following before marking this adapter PASS:
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
+### 8. CookieScript
+
+- **Reject call:** `window.CookieScript.instance.rejectAllAction()` (Chrome
+  MAIN world); `window.wrappedJSObject.CookieScript.instance.rejectAllAction()`
+  (Firefox). Synchronous, zero-argument, void return — "rejects all cookies
+  except strictly necessary" per the vendor's own documentation.
+- **Detection signals:** TRIPLE-mandatory (all three required together,
+  since the reject call lives on `.instance`, not directly on the vendor
+  global): `hasCookieScriptGlobal` (`typeof window.CookieScript === "object"`),
+  `hasCookieScriptInstance` (`typeof window.CookieScript.instance === "object"`),
+  and `hasRejectAllActionFn`
+  (`typeof window.CookieScript.instance.rejectAllAction === "function"`);
+  corroborating (>=1 required): `hasCookiescriptInjectedDom`
+  (`#cookiescript_injected`), `hasCookiescriptDescriptionDom`
+  (`#cookiescript_description`).
+- **Candidate live site(s):** `https://cookie-script.com` (PLACEHOLDER —
+  UNVERIFIED, needs curation; vendor's own site, banner selector
+  `#cookiescript_injected, #cookiescript_description`). Replace with an
+  independently-confirmed customer deployment before treating this as a
+  release gate.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path and
+  live-CookieScript compatibility are structurally tested only (the
+  Chromium e2e fixture is a regression oracle, not a real-vendor test) —
+  confirm `instance.rejectAllAction()` actually clears the banner on a live
+  site, not just in the fixture. Also confirm `.instance` is reliably
+  populated by the time the dispatcher's MutationObserver fires (the vendor
+  SDK may attach `.instance` asynchronously after the global itself
+  appears) — a real-site smoke is the only way to observe this timing.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
 ## Sign-off table
 
-All 14 cells (7 adapters x Chrome/Firefox) must be green before the
+All 16 cells (8 adapters x Chrome/Firefox) must be green before the
 `develop -> main` release PR opens.
 
 | Adapter | Chrome | Firefox |
@@ -329,5 +360,6 @@ All 14 cells (7 adapters x Chrome/Firefox) must be green before the
 | Sourcepoint | ____ | ____ |
 | Usercentrics | ____ | ____ |
 | Cookie Information | ____ | ____ |
+| CookieScript | ____ | ____ |
 
 Reviewer: ______________________  Date: ______________________

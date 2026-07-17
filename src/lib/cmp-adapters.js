@@ -113,6 +113,16 @@
  *   present in the DOM. Secondary/corroborating signal.
  * @property {boolean} [hasCoiConsentSummaryDom] - `.coi-consent-summary`
  *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCookieScriptGlobal] - `typeof window.CookieScript === "object"`.
+ * @property {boolean} [hasCookieScriptInstance] - `typeof window.CookieScript.instance === "object"`.
+ *   Mandatory signal: the reject call lives on `.instance`, so this must be
+ *   present before probing for the reject function itself.
+ * @property {boolean} [hasRejectAllActionFn] - `typeof window.CookieScript.instance.rejectAllAction === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasCookiescriptInjectedDom] - `#cookiescript_injected`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCookiescriptDescriptionDom] - `#cookiescript_description`
+ *   present in the DOM. Secondary/corroborating signal.
  */
 
 /**
@@ -198,6 +208,19 @@ export const ACTIONS = Object.freeze({
  * `data-tcf-v2-enabled`), which is Sourcepoint's dual-mandatory anchor
  * above, not this adapter's. Detection here is keyed ONLY off the
  * `window.CookieInformation` vendor global + `declineAllCategories`.
+ *
+ * The CookieScript adapter DEVIATES from the vendor-namespaced-global shape
+ * on purpose: its reject call (`CookieScript.instance.rejectAllAction()`)
+ * lives on a `.instance` property, not directly on the vendor global
+ * itself. detectCookieScript therefore strengthens the mandatory bar to a
+ * TRIPLE gate — `hasCookieScriptGlobal` AND `hasCookieScriptInstance` AND
+ * `hasRejectAllActionFn` — because `.instance` can be present-but-not-yet
+ * populated (or absent) even when the vendor global itself already exists,
+ * and probing `.rejectAllAction` before confirming `.instance` is an object
+ * would either throw or silently read `undefined`. The usual >=1
+ * corroborating DOM secondary (`#cookiescript_injected`,
+ * `#cookiescript_description`) still gates the same fail-closed
+ * CONFIDENCE_THRESHOLD as every other adapter here.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -329,6 +352,28 @@ function detectCookieInformation(signals) {
 
 function canRejectCookieInformation(signals) {
   return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// CookieScript: the reject call lives on window.CookieScript.instance, not
+// directly on the vendor global — see the TRIPLE-mandatory-gate rationale
+// above detectCookieScript in the docblock preceding this sync block.
+function detectCookieScript(signals) {
+  if (
+    !signals ||
+    signals.hasCookieScriptGlobal !== true ||
+    signals.hasCookieScriptInstance !== true ||
+    signals.hasRejectAllActionFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCookiescriptInjectedDom === true ? 1 : 0) +
+    (signals.hasCookiescriptDescriptionDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectCookieScript(signals) {
+  return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -510,6 +555,32 @@ export const cookieInformationAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * CookieScript Tier 1 adapter. The reject call
+ * (`window.CookieScript.instance.rejectAllAction()`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. Synchronous,
+ * zero-argument, void return — "rejects all cookies except strictly
+ * necessary" per the vendor's own documentation, the same call shape as
+ * `oneTrustAdapter.RejectAll()` / `didomiAdapter.setUserDisagreeToAll()` /
+ * `cookieInformationAdapter.declineAllCategories()`.
+ *
+ * Registered LAST in TIER1 (after cookieInformationAdapter): the
+ * `.instance` indirection makes this adapter's mandatory gate the
+ * strictest of the eight (see detectCookieScript's TRIPLE-mandatory-gate
+ * rationale above), so ordering relative to the others is not
+ * safety-critical — appended at the end to keep the registry's history
+ * append-only.
+ * @type {Readonly<{id: "cookiescript", tier: 1, detect: typeof detectCookieScript, canReject: typeof canRejectCookieScript, reject: typeof reject}>}
+ */
+export const cookieScriptAdapter = Object.freeze({
+  id: "cookiescript",
+  tier: 1,
+  detect: detectCookieScript,
+  canReject: canRejectCookieScript,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
 export const TIER1 = Object.freeze([
   oneTrustAdapter,
@@ -519,6 +590,7 @@ export const TIER1 = Object.freeze([
   sourcepointAdapter,
   usercentricsAdapter,
   cookieInformationAdapter,
+  cookieScriptAdapter,
 ]);
 
 /**
@@ -585,6 +657,13 @@ export function decideAction(signals) {
   // Usercentrics checks above (mandatory global present, mandatory reject
   // fn absent).
   if (s.hasCookieInformationGlobal === true && s.hasDeclineAllCategoriesFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  // CookieScript hard wall: mandatory global present but the reject
+  // function is not reachable — either `.instance` itself is absent, or
+  // `.instance` exists but `.rejectAllAction` is not a function. Both
+  // sub-cases collapse to `hasRejectAllActionFn !== true` here.
+  if (s.hasCookieScriptGlobal === true && s.hasRejectAllActionFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };

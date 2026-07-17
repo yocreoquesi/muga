@@ -171,6 +171,28 @@
   function canRejectCookieInformation(signals) {
     return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // CookieScript: the reject call lives on window.CookieScript.instance, not
+  // directly on the vendor global — see the TRIPLE-mandatory-gate rationale
+  // above detectCookieScript in the docblock preceding this sync block.
+  function detectCookieScript(signals) {
+    if (
+      !signals ||
+      signals.hasCookieScriptGlobal !== true ||
+      signals.hasCookieScriptInstance !== true ||
+      signals.hasRejectAllActionFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCookiescriptInjectedDom === true ? 1 : 0) +
+      (signals.hasCookiescriptDescriptionDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieScript(signals) {
+    return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -345,6 +367,30 @@
     } catch {
       // document not ready / detached — leave all false.
     }
+    // CookieScript: the reject call lives on window.CookieScript.instance,
+    // not directly on the vendor global — hasCookieScriptInstance must be
+    // confirmed an object BEFORE probing .rejectAllAction, otherwise reading
+    // a property off `undefined` would throw inside this try block (still
+    // caught, but the intent is explicit here).
+    let hasCookieScriptGlobal = false;
+    let hasCookieScriptInstance = false;
+    let hasRejectAllActionFn = false;
+    try {
+      hasCookieScriptGlobal = typeof window.CookieScript === "object" && window.CookieScript !== null;
+      const instance = hasCookieScriptGlobal && window.CookieScript.instance;
+      hasCookieScriptInstance = typeof instance === "object" && instance !== null;
+      hasRejectAllActionFn = hasCookieScriptInstance && typeof instance.rejectAllAction === "function";
+    } catch {
+      // Leave all false — fail-closed.
+    }
+    let hasCookiescriptInjectedDom = false;
+    let hasCookiescriptDescriptionDom = false;
+    try {
+      hasCookiescriptInjectedDom = !!document.getElementById("cookiescript_injected");
+      hasCookiescriptDescriptionDom = !!document.getElementById("cookiescript_description");
+    } catch {
+      // document not ready / detached — leave both false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -381,6 +427,11 @@
       hasCoiSummeryDom,
       hasCoiBannerWrapperDom,
       hasCoiConsentSummaryDom,
+      hasCookieScriptGlobal,
+      hasCookieScriptInstance,
+      hasRejectAllActionFn,
+      hasCookiescriptInjectedDom,
+      hasCookiescriptDescriptionDom,
     };
   }
 
@@ -493,6 +544,19 @@
       _acted = true;
       try {
         window.CookieInformation.declineAllCategories();
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: CookieScript API adapter. Same zero-argument, synchronous
+    // reject-call shape as the adapters above — rejectAllAction() "rejects
+    // all cookies except strictly necessary" per the vendor's own docs.
+    if (canRejectCookieScript(signals)) {
+      _acted = true;
+      try {
+        window.CookieScript.instance.rejectAllAction();
       } catch {
         // A throwing page global must never break the page's own script.
       }

@@ -136,6 +136,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectCookieInformation/.test(joined));
     assert.ok(/function canRejectCookieInformation/.test(joined));
   });
+
+  test("sync block also defines detectCookieScript and canRejectCookieScript", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectCookieScript/.test(joined));
+    assert.ok(/function canRejectCookieScript/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -444,6 +450,28 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       assert.ok(calls.length > 0, `${label} must call declineAllCategories`);
       for (const args of calls) {
         assert.equal(args, "", `${label} declineAllCategories must be called with zero arguments`);
+      }
+    }
+  });
+
+  test("only CookieScript.instance.rejectAllAction (or wrappedJSObject equivalent) is invoked — no other CookieScript method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/CookieScript\.instance\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call CookieScript.instance.rejectAllAction`);
+      for (const fn of calls) {
+        assert.equal(fn, "rejectAllAction", `${label} calls CookieScript.instance.${fn}() — only rejectAllAction is permitted`);
+      }
+    }
+  });
+
+  test("every rejectAllAction call passes zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/rejectAllAction\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call rejectAllAction`);
+      for (const args of calls) {
+        assert.equal(args, "", `${label} rejectAllAction must be called with zero arguments`);
       }
     }
   });
