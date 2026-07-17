@@ -77,20 +77,22 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
     additive: true,
   }),
   Object.freeze({
-    // Cookie-consent-modes redesign, Slice 1: the boolean
-    // cookieConsentMinimizerEnabled becomes a 3-state cookieConsentMode
-    // ("off" | "reject-only" | "accept-when-necessary"), default
-    // "reject-only" for NEW installs only. Existing users are migrated to
-    // "off" (migrateCookieConsentMode, storage-migrations.js) — no
-    // existing user's capability changes, so per the design's resolved
-    // default-reconciliation decision, no forced re-consent / soft
-    // re-onboard fires for them. The disclosure is shown to new users
-    // only, through the ordinary fresh-onboarding features list. This is
-    // a STAGED entry (see the module docblock above): additive: true is
-    // recorded for the historical record, but REQUIRED_CONSENT_VERSION
-    // intentionally stays at "1.2" in this slice — bump it (and add a
-    // CONSENT_CLAUSES_BY_VERSION["1.3"] entry) only when a future slice
-    // needs to disclose something to existing users too.
+    // Originally staged inert by the cookie-consent-modes redesign Slice 1
+    // (the boolean cookieConsentMinimizerEnabled became a 3-state
+    // cookieConsentMode: "off" | "reject-only" | "accept-when-necessary").
+    // That part alone changed no existing user's capability (migrated to
+    // "off"), so it did not warrant a forced re-consent on its own.
+    //
+    // cookie-consent-accept Slice 2a ACTIVATES this entry: the
+    // accept-when-necessary mode now has a real, working pilot (Didomi
+    // only) that lets MUGA submit a minimum-consent payload on a genuine
+    // hard wall — a new capability class worth disclosing, even though it
+    // stays off until the user opts in from Settings AND completes a
+    // dedicated, explicit consent gesture (see
+    // src/lib/cmp-accept-adapters.js's L2 double-gate). Purely ADDITIVE —
+    // no existing term is modified or removed — so users who accepted an
+    // earlier version get a SOFT re-onboard (delta review) surfacing this
+    // one new clause, not a hard gate.
     version: "1.3",
     additive: true,
   }),
@@ -101,4 +103,4 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
  * to the latest entry in CONSENT_VERSION_MANIFEST. ConsentPolicy uses
  * this to decide whether a stored consent record is still current.
  */
-export const REQUIRED_CONSENT_VERSION = "1.2";
+export const REQUIRED_CONSENT_VERSION = "1.3";

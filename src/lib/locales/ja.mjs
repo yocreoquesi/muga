@@ -276,6 +276,7 @@ export default Object.freeze({
   ob_reonboard_material_desc: "MUGAの利用規約が、以前同意した内容に影響する形で更新されました。拡張機能を引き続き使用するには新しい規約への同意が必要です。下記にリンクされた利用規約とプライバシーポリシーをご確認ください。",
   ob_clause_remote_rules_default: "毎週のルール更新が既定で有効になりました。MUGAは約週に1回、rules.muga.app から最新のトラッキングパラメータ一覧を取得します。これはEd25519で署名されたリクエストで、閲覧履歴やCookieなどの個人データは一切送信しません。設定からいつでもオフにできます。",
   ob_clause_cookie_consent_minimizer: "新機能で、デフォルトではオフになっています。対応するCookie同意バナー（現在はOneTrust）では、MUGAがURLからトラッキングノイズを取り除くのと同じように、あなたの代わりに「拒否」または「必須のみ」をクリックできます。あなたに代わってより広範なトラッキングを承諾したり許可したりすることは一切ありません。安全な拒否オプションが存在しない場合、MUGAはバナーをそのままにします。設定でいつでもオンにできます。",
+  ob_clause_cookie_consent_accept_pilot: "新機能で、デフォルトではオフになっています。「必要な場合は最小限を許可」を有効にして確認すると、コンテンツをブロックし拒否オプションを提供しないCookieバナー（現在はDidomiに対応）で、MUGAが最小限の選択を送信し、必須のCookieのみを許可して先に進めるようにできます。トラッキングCookieを許可することは一切ありません。設定で別途明示的な確認が必要で、有効にするまでオフのままです。",
   migration_accept: "有効にする",
   migration_decline: "結構です",
   migration_counter: "{total}件中{n}件",
@@ -350,4 +351,8 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Cookie同意バナー最小化のモード",
   cookie_consent_mode_opt_reject_only: "拒否のみ（推奨）",
   cookie_consent_mode_opt_off: "オフ",
+  cookie_consent_mode_opt_accept: "必要な場合は最小限を許可",
+  row_cookie_consent_accept_gesture_label: "拒否できないバナーで最小限の選択を許可する",
+  row_cookie_consent_accept_gesture_hint: "Cookieバナーに答えるまでコンテンツをブロックし、拒否オプションを提供しないサイトでは、MUGAが最小限の選択を送信し、必須のCookieのみを許可することで、先に進めるようにします。MUGAがトラッキングCookieを許可することは一切ありません。これは上のモードが「必要な場合は最小限を許可」に設定されている場合のみ適用されます。",
+  aria_cookie_consent_accept_gesture: "拒否できないバナーで最小限の選択を確認する",
 });

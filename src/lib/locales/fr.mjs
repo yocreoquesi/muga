@@ -276,6 +276,7 @@ export default Object.freeze({
   ob_reonboard_material_desc: "Les conditions de MUGA ont été mises à jour d'une manière qui affecte ce que vous avez accepté précédemment. L'utilisation continue de l'extension nécessite l'acceptation des nouvelles conditions. Veuillez consulter les Conditions d'utilisation et la Politique de confidentialité ci-dessous.",
   ob_clause_remote_rules_default: "Les mises à jour hebdomadaires des règles sont désormais activées par défaut : MUGA récupère une liste à jour de paramètres de suivi depuis rules.muga.app environ une fois par semaine. Il s'agit d'une requête signée (Ed25519) qui n'envoie aucune donnée personnelle (ni historique de navigation, ni cookies) et vous pouvez la désactiver à tout moment dans les Paramètres.",
   ob_clause_cookie_consent_minimizer: "Nouveau, désactivé par défaut : sur les bandeaux de consentement aux cookies pris en charge (actuellement OneTrust), MUGA peut cliquer sur « refuser » ou « nécessaires uniquement » à votre place, de la même façon qu'il supprime déjà le bruit de pistage des URL. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom. S'il n'existe aucune option de refus sûre, MUGA laisse le bandeau tel quel. Vous pouvez l'activer à tout moment dans les Paramètres.",
+  ob_clause_cookie_consent_accept_pilot: "Nouveau, désactivé par défaut : si vous activez « Accepter le minimum si nécessaire » et le confirmez, MUGA peut envoyer le choix minimal sur les bandeaux de cookies qui bloquent le contenu et n'offrent aucune option de refus (pris en charge pour l'instant sur Didomi), n'accordant que les cookies strictement nécessaires afin que vous puissiez continuer. Il n'accorde jamais de cookies de pistage. Cela nécessite une confirmation explicite distincte dans les Paramètres et reste désactivé jusqu'à ce que vous l'activiez.",
   migration_accept: "Activer",
   migration_decline: "Non merci",
   migration_counter: "{n} sur {total}",
@@ -350,4 +351,8 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Mode du minimiseur de bandeaux de cookies",
   cookie_consent_mode_opt_reject_only: "Refuser uniquement (recommandé)",
   cookie_consent_mode_opt_off: "Désactivé",
+  cookie_consent_mode_opt_accept: "Accepter le minimum si nécessaire",
+  row_cookie_consent_accept_gesture_label: "Autoriser le choix minimal en l'absence d'option de refus",
+  row_cookie_consent_accept_gesture_hint: "Sur les sites qui bloquent le contenu jusqu'à ce que vous répondiez à un bandeau de cookies et qui n'offrent aucune option de refus, MUGA enverra le choix minimal, n'accordant que les cookies strictement nécessaires, afin que vous puissiez continuer. MUGA n'accorde jamais de cookies de pistage. Cela ne s'applique que lorsque le mode ci-dessus est réglé sur « Accepter le minimum si nécessaire ».",
+  aria_cookie_consent_accept_gesture: "Confirmer le choix minimal en l'absence d'option de refus",
 });
