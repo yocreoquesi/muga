@@ -5,9 +5,9 @@
  * Reduces the existing CMP canary results (tests/canary/cmp-sites.json +
  * tools/canary-report.mjs's `test-results/canary-results.json` schema,
  * `{cmp, url, status: "pass"|"fail"|"inconclusive", detail}`) into a
- * per-adapter RELEASE verdict for the 6 Tier 1 cookie-consent adapters
+ * per-adapter RELEASE verdict for the 7 Tier 1 cookie-consent adapters
  * (src/lib/cmp-adapters.js TIER1: onetrust, cookiebot, didomi, cookieyes,
- * sourcepoint, usercentrics).
+ * sourcepoint, usercentrics, cookieinformation).
  *
  * This does NOT run the canary itself — see tools/canary-report.mjs for
  * that (drift-alarm reporting) and .github/workflows/cmp-canary.yml (the
@@ -28,7 +28,7 @@
  * decision logic vs. CLI I/O boundary).
  *
  * Public API (named exports only — no default):
- *   RELEASE_CMPS → the 6 Tier 1 CMP ids, in cmp-adapters.js TIER1 order.
+ *   RELEASE_CMPS → the 7 Tier 1 CMP ids, in cmp-adapters.js TIER1 order.
  *   summarizeRelease(results) → Record<string, {verdict, passCount, failCount, inconclusiveCount, sites}>
  *   formatReleaseTable(summary) → string
  *
@@ -46,7 +46,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Pure decision logic ───────────────────────────────────────────────────
 
 /**
- * The 6 Tier 1 cookie-consent CMP ids, in the same order as
+ * The 7 Tier 1 cookie-consent CMP ids, in the same order as
  * src/lib/cmp-adapters.js's TIER1 registry.
  * @type {ReadonlyArray<string>}
  */
@@ -57,6 +57,7 @@ export const RELEASE_CMPS = Object.freeze([
   "cookieyes",
   "sourcepoint",
   "usercentrics",
+  "cookieinformation",
 ]);
 
 function emptyBucket() {
@@ -71,8 +72,8 @@ function emptyBucket() {
  * (canary run never covered it, or the results file is empty/missing)
  * still shows up as UNVERIFIED rather than silently disappearing. Any
  * other `cmp` value present in `results` is also tracked defensively
- * (forward-compatible with a 7th adapter before this file's RELEASE_CMPS
- * list is updated), just not required to be READY for `formatReleaseTable`
+ * (forward-compatible with a not-yet-registered adapter before this file's
+ * RELEASE_CMPS list is updated), just not required to be READY for `formatReleaseTable`
  * to render cleanly.
  *
  * Pure: no I/O, no Date.now(). Never throws on well-formed input;

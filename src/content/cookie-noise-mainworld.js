@@ -144,6 +144,33 @@
   function canRejectUsercentrics(signals) {
     return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // Cookie Information: window.CookieInformation is a vendor-namespaced
+  // global (like OneTrust/Didomi/UC_UI), so this mirrors detectDidomi's shape
+  // (mandatory global + mandatory reject-fn signal, plus >=1 corroborating
+  // secondary signal). Do NOT key off __tcfapi — see the discrimination
+  // rationale above detectCookieInformation in the docblock preceding this
+  // sync block.
+  function detectCookieInformation(signals) {
+    if (
+      !signals ||
+      signals.hasCookieInformationGlobal !== true ||
+      signals.hasDeclineAllCategoriesFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCoiOverlayDom === true ? 1 : 0) +
+      (signals.hasCoiConsentBannerDom === true ? 1 : 0) +
+      (signals.hasCoiSummeryDom === true ? 1 : 0) +
+      (signals.hasCoiBannerWrapperDom === true ? 1 : 0) +
+      (signals.hasCoiConsentSummaryDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieInformation(signals) {
+    return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -290,6 +317,34 @@
     } catch {
       // ignore
     }
+    // Cookie Information: window.CookieInformation is a vendor-namespaced
+    // global. Do NOT key off the generic __tcfapi surface (hasTcfApiFn,
+    // already collected above) — this vendor's TCF surface is opt-in per
+    // site and is Sourcepoint's dual-mandatory anchor, not this adapter's.
+    let hasCookieInformationGlobal = false;
+    let hasDeclineAllCategoriesFn = false;
+    try {
+      hasCookieInformationGlobal =
+        typeof window.CookieInformation === "object" && window.CookieInformation !== null;
+      hasDeclineAllCategoriesFn =
+        hasCookieInformationGlobal && typeof window.CookieInformation.declineAllCategories === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasCoiOverlayDom = false;
+    let hasCoiConsentBannerDom = false;
+    let hasCoiSummeryDom = false;
+    let hasCoiBannerWrapperDom = false;
+    let hasCoiConsentSummaryDom = false;
+    try {
+      hasCoiOverlayDom = !!document.getElementById("coiOverlay");
+      hasCoiConsentBannerDom = !!document.getElementById("coiConsentBanner");
+      hasCoiSummeryDom = !!document.getElementById("coiSummery");
+      hasCoiBannerWrapperDom = !!document.getElementById("coi-banner-wrapper");
+      hasCoiConsentSummaryDom = !!document.querySelector(".coi-consent-summary");
+    } catch {
+      // document not ready / detached — leave all false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -319,6 +374,13 @@
       hasDenyAllConsentsFn,
       hasUsercentricsRootDom,
       hasIsInitializedFn,
+      hasCookieInformationGlobal,
+      hasDeclineAllCategoriesFn,
+      hasCoiOverlayDom,
+      hasCoiConsentBannerDom,
+      hasCoiSummeryDom,
+      hasCoiBannerWrapperDom,
+      hasCoiConsentSummaryDom,
     };
   }
 
@@ -417,6 +479,20 @@
       _acted = true;
       try {
         window.UC_UI.denyAllConsents().catch(() => {});
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: Cookie Information API adapter. Same zero-argument,
+    // synchronous reject-call shape as OneTrust.RejectAll() /
+    // Didomi.setUserDisagreeToAll() — declineAllCategories() takes no
+    // consent-granting parameter at all.
+    if (canRejectCookieInformation(signals)) {
+      _acted = true;
+      try {
+        window.CookieInformation.declineAllCategories();
       } catch {
         // A throwing page global must never break the page's own script.
       }

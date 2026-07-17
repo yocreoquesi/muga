@@ -141,6 +141,33 @@
   function canRejectUsercentrics(signals) {
     return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // Cookie Information: window.CookieInformation is a vendor-namespaced
+  // global (like OneTrust/Didomi/UC_UI), so this mirrors detectDidomi's shape
+  // (mandatory global + mandatory reject-fn signal, plus >=1 corroborating
+  // secondary signal). Do NOT key off __tcfapi — see the discrimination
+  // rationale above detectCookieInformation in the docblock preceding this
+  // sync block.
+  function detectCookieInformation(signals) {
+    if (
+      !signals ||
+      signals.hasCookieInformationGlobal !== true ||
+      signals.hasDeclineAllCategoriesFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCoiOverlayDom === true ? 1 : 0) +
+      (signals.hasCoiConsentBannerDom === true ? 1 : 0) +
+      (signals.hasCoiSummeryDom === true ? 1 : 0) +
+      (signals.hasCoiBannerWrapperDom === true ? 1 : 0) +
+      (signals.hasCoiConsentSummaryDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieInformation(signals) {
+    return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -337,6 +364,36 @@
     } catch {
       // ignore
     }
+    // Cookie Information: window.CookieInformation is a vendor-namespaced
+    // global, reached via wrappedJSObject — same Xray-safety pattern as the
+    // other Firefox signal reads above. Do NOT key off the generic __tcfapi
+    // surface (hasTcfApiFn, already collected above) — this vendor's TCF
+    // surface is opt-in per site and is Sourcepoint's dual-mandatory
+    // anchor, not this adapter's.
+    let hasCookieInformationGlobal = false;
+    let hasDeclineAllCategoriesFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const ci = wrapped && wrapped.CookieInformation;
+      hasCookieInformationGlobal = typeof ci === "object" && ci !== null;
+      hasDeclineAllCategoriesFn = hasCookieInformationGlobal && typeof ci.declineAllCategories === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasCoiOverlayDom = false;
+    let hasCoiConsentBannerDom = false;
+    let hasCoiSummeryDom = false;
+    let hasCoiBannerWrapperDom = false;
+    let hasCoiConsentSummaryDom = false;
+    try {
+      hasCoiOverlayDom = !!document.getElementById("coiOverlay");
+      hasCoiConsentBannerDom = !!document.getElementById("coiConsentBanner");
+      hasCoiSummeryDom = !!document.getElementById("coiSummery");
+      hasCoiBannerWrapperDom = !!document.getElementById("coi-banner-wrapper");
+      hasCoiConsentSummaryDom = !!document.querySelector(".coi-consent-summary");
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -366,6 +423,13 @@
       hasDenyAllConsentsFn,
       hasUsercentricsRootDom,
       hasIsInitializedFn,
+      hasCookieInformationGlobal,
+      hasDeclineAllCategoriesFn,
+      hasCoiOverlayDom,
+      hasCoiConsentBannerDom,
+      hasCoiSummeryDom,
+      hasCoiBannerWrapperDom,
+      hasCoiConsentSummaryDom,
     };
   }
 
@@ -444,6 +508,19 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.UC_UI.denyAllConsents().catch(() => {});
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: Cookie Information API adapter. Same zero-argument,
+    // synchronous reject-call shape as OneTrust.RejectAll() /
+    // Didomi.setUserDisagreeToAll() — see cookie-noise-mainworld.js.
+    if (canRejectCookieInformation(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.CookieInformation.declineAllCategories();
       } catch {
         // A throwing page global must never break the page.
       }

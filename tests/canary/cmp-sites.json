@@ -70,5 +70,11 @@
     "url": "https://www.conrad.de",
     "bannerSelector": "#usercentrics-root",
     "note": "Conrad Electronic is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"Conrad Electronic — Privacy compliance at scale\")."
+  },
+  {
+    "cmp": "cookieinformation",
+    "url": "https://cookieinformation.com",
+    "bannerSelector": "#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper, .coi-consent-summary",
+    "note": "PLACEHOLDER — UNVERIFIED, needs curation. Cookie Information's own marketing site, following the same dogfooding-inference pattern used for the Cookiebot entry above (CMP vendors commonly run their own product on their own site). Not independently confirmed via script inspection. Replace with a representative, independently-confirmed Cookie Information customer deployment before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
   }
 ]

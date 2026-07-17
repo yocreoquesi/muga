@@ -29,6 +29,7 @@ import {
   cookieYesAdapter,
   sourcepointAdapter,
   usercentricsAdapter,
+  cookieInformationAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -38,14 +39,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint and Usercentrics adapters, in order", () => {
-    assert.equal(TIER1.length, 6);
+  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics and Cookie Information adapters, in order", () => {
+    assert.equal(TIER1.length, 7);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
     assert.strictEqual(TIER1[2], didomiAdapter);
     assert.strictEqual(TIER1[3], cookieYesAdapter);
     assert.strictEqual(TIER1[4], sourcepointAdapter);
     assert.strictEqual(TIER1[5], usercentricsAdapter);
+    assert.strictEqual(TIER1[6], cookieInformationAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -104,6 +106,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof usercentricsAdapter.detect, "function");
     assert.equal(typeof usercentricsAdapter.canReject, "function");
     assert.equal(typeof usercentricsAdapter.reject, "function");
+  });
+
+  test("cookieInformationAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(cookieInformationAdapter.id, "cookieinformation");
+    assert.equal(cookieInformationAdapter.tier, 1);
+    assert.equal(typeof cookieInformationAdapter.detect, "function");
+    assert.equal(typeof cookieInformationAdapter.canReject, "function");
+    assert.equal(typeof cookieInformationAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -407,6 +417,58 @@ describe("decideAction — truth table", () => {
     assert.equal(r.action, ACTIONS.REJECT_ALL);
     assert.equal(r.reason, "reject");
     assert.equal(r.adapterId, "sourcepoint");
+  });
+
+  test("Cookie Information: CookieInformation global + declineAllCategories fn + corroborating DOM -> reject", () => {
+    const r = decideAction({
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: true,
+      hasCoiOverlayDom: true,
+      hasCoiConsentBannerDom: false,
+      hasCoiSummeryDom: false,
+      hasCoiBannerWrapperDom: false,
+      hasCoiConsentSummaryDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "cookieinformation");
+  });
+
+  test("Cookie Information: global present but declineAllCategories absent (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: false,
+      hasCoiOverlayDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("Cookie Information: mandatory signals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: true,
+      hasCoiOverlayDom: false,
+      hasCoiConsentBannerDom: false,
+      hasCoiSummeryDom: false,
+      hasCoiBannerWrapperDom: false,
+      hasCoiConsentSummaryDom: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("Cookie Information: __tcfapi ALSO present (opt-in TCF mode) still resolves to cookieinformation, never misfires as Sourcepoint/uncertain", () => {
+    const r = decideAction({
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: true,
+      hasCoiOverlayDom: true,
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "cookieinformation");
   });
 });
 
@@ -797,6 +859,82 @@ describe("usercentricsAdapter.detect — dual-mandatory confidence gate", () => 
   });
 });
 
+describe("cookieInformationAdapter.detect — confidence gate", () => {
+  const FULL_COI_SIGNALS = Object.freeze({
+    hasCookieInformationGlobal: true,
+    hasDeclineAllCategoriesFn: true,
+    hasCoiOverlayDom: true,
+    hasCoiConsentBannerDom: true,
+    hasCoiSummeryDom: true,
+    hasCoiBannerWrapperDom: true,
+    hasCoiConsentSummaryDom: true,
+  });
+
+  test("mandatory + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = cookieInformationAdapter.detect(FULL_COI_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(cookieInformationAdapter.canReject(FULL_COI_SIGNALS), true);
+  });
+
+  test("mandatory + exactly one secondary (#coiOverlay only) -> canReject true", () => {
+    const s = {
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: true,
+      hasCoiOverlayDom: true,
+      hasCoiConsentBannerDom: false,
+      hasCoiSummeryDom: false,
+      hasCoiBannerWrapperDom: false,
+      hasCoiConsentSummaryDom: false,
+    };
+    assert.equal(cookieInformationAdapter.canReject(s), true);
+  });
+
+  test("mandatory + exactly one secondary (.coi-consent-summary only) -> canReject true", () => {
+    const s = {
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: true,
+      hasCoiOverlayDom: false,
+      hasCoiConsentBannerDom: false,
+      hasCoiSummeryDom: false,
+      hasCoiBannerWrapperDom: false,
+      hasCoiConsentSummaryDom: true,
+    };
+    assert.equal(cookieInformationAdapter.canReject(s), true);
+  });
+
+  test("global-only (mandatory present, zero secondary signals) -> uncertain, canReject false", () => {
+    const s = {
+      hasCookieInformationGlobal: true,
+      hasDeclineAllCategoriesFn: true,
+      hasCoiOverlayDom: false,
+      hasCoiConsentBannerDom: false,
+      hasCoiSummeryDom: false,
+      hasCoiBannerWrapperDom: false,
+      hasCoiConsentSummaryDom: false,
+    };
+    assert.equal(cookieInformationAdapter.canReject(s), false);
+    assert.ok(cookieInformationAdapter.detect(s) < 1);
+  });
+
+  test("DOM-only (mandatory declineAllCategories fn missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasCookieInformationGlobal: false,
+      hasDeclineAllCategoriesFn: false,
+      hasCoiOverlayDom: true,
+      hasCoiConsentBannerDom: true,
+      hasCoiSummeryDom: true,
+    };
+    assert.equal(cookieInformationAdapter.detect(s), 0);
+    assert.equal(cookieInformationAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => cookieInformationAdapter.detect(null));
+    assert.doesNotThrow(() => cookieInformationAdapter.detect(undefined));
+    assert.equal(cookieInformationAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -932,6 +1070,25 @@ describe("usercentricsAdapter.reject — pure callback invocation", () => {
     // already swallowed it) and must not throw here.
     settleReject(new Error("denyAllConsents rejected"));
     await promise.catch(() => {});
+  });
+});
+
+describe("cookieInformationAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = cookieInformationAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = cookieInformationAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = cookieInformationAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
   });
 });
 
@@ -1096,5 +1253,15 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
     assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
     assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
     assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must still include sourcepointAdapter");
+  });
+
+  test("cookieInformationAdapter is registered in TIER1 alongside the other six adapters", () => {
+    assert.ok(TIER1.includes(cookieInformationAdapter), "TIER1 must include cookieInformationAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
+    assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
+    assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must still include sourcepointAdapter");
+    assert.ok(TIER1.includes(usercentricsAdapter), "TIER1 must still include usercentricsAdapter");
   });
 });
