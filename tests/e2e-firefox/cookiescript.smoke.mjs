@@ -18,7 +18,10 @@ import { serveFixturePage } from "./helpers/local-server.mjs";
 // tests/e2e/cookie-consent-minimizer-cookiescript.spec.mjs's
 // stubCookieScriptPage: all three mandatory signals (global, instance,
 // rejectAllAction fn) plus the #cookiescript_injected DOM anchor as the
-// corroborating secondary signal.
+// corroborating secondary signal. `window.CookieScript` is a callable
+// FUNCTION with `.instance` hung off it — the real vendor shape confirmed
+// on cookie-script.com via real-site verification (2026-07-17), not the
+// plain object this fixture originally (incorrectly) modeled.
 const COOKIESCRIPT_FIXTURE_HTML = `<!doctype html><html><body>
   <div id="cookiescript_injected">
     <button id="cookiescript_accept">Accept</button>
@@ -27,13 +30,12 @@ const COOKIESCRIPT_FIXTURE_HTML = `<!doctype html><html><body>
   <p id="page-content">Real page content</p>
   <script>
     window.__csCalls = [];
-    window.CookieScript = {
-      instance: {
-        rejectAllAction: function () {
-          window.__csCalls.push("rejectAllAction");
-          window.__consentState = "necessary-only";
-          document.getElementById("cookiescript_injected").remove();
-        },
+    window.CookieScript = function CookieScript() {};
+    window.CookieScript.instance = {
+      rejectAllAction: function () {
+        window.__csCalls.push("rejectAllAction");
+        window.__consentState = "necessary-only";
+        document.getElementById("cookiescript_injected").remove();
       },
     };
   </script>

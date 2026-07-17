@@ -2,11 +2,14 @@
  * E2E: Cookie Consent Minimizer — CookieScript Tier 1 adapter
  *
  * Verifies the CookieScript reject path against a real Chromium with the
- * extension loaded. The fixture page mimics a CookieScript banner: a
- * `window.CookieScript.instance` object with a `rejectAllAction()` method
- * plus the `#cookiescript_injected` DOM anchor — the triple-mandatory
- * (global + instance + fn) plus corroboration signal combination the
- * dispatcher requires before acting (src/lib/cmp-adapters.js).
+ * extension loaded. The fixture page mimics a CookieScript banner:
+ * `window.CookieScript` is a callable FUNCTION (matching the real
+ * cookie-script.com deployment confirmed via real-site verification,
+ * 2026-07-17 — `typeof window.CookieScript === "function"`, NOT
+ * `"object"`) with an `.instance` object exposing `rejectAllAction()`, plus
+ * the `#cookiescript_injected` DOM anchor — the triple-mandatory (global +
+ * instance + fn) plus corroboration signal combination the dispatcher
+ * requires before acting (src/lib/cmp-adapters.js).
  *
  * Mirrors tests/e2e/cookie-consent-minimizer-cookieinformation.spec.mjs's
  * structure exactly (same onboarding helper shape, same feature pref, same
@@ -61,11 +64,14 @@ async function completeOnboarding(context, extensionId, { enableFeature = true }
 
 /**
  * Fixture page: a CookieScript banner offering a reject-all via
- * `CookieScript.instance.rejectAllAction()`. All three mandatory signals
- * (global, instance, rejectAllAction fn) are present alongside the
- * `#cookiescript_injected` DOM anchor — the confidence gate in
- * cmp-adapters.js requires the mandatory triple plus at least one
- * corroborating DOM secondary.
+ * `CookieScript.instance.rejectAllAction()`. `window.CookieScript` is a
+ * callable FUNCTION with `.instance` hung off it — the real vendor shape
+ * confirmed on cookie-script.com via real-site verification (2026-07-17),
+ * not the plain object this fixture originally (incorrectly) modeled. All
+ * three mandatory signals (global, instance, rejectAllAction fn) are
+ * present alongside the `#cookiescript_injected` DOM anchor — the
+ * confidence gate in cmp-adapters.js requires the mandatory triple plus at
+ * least one corroborating DOM secondary.
  */
 async function stubCookieScriptPage(page) {
   await page.route(`**://${HOST}/**`, (route) =>
@@ -80,13 +86,12 @@ async function stubCookieScriptPage(page) {
         <p id="page-content">Real page content</p>
         <script>
           window.__csCalls = [];
-          window.CookieScript = {
-            instance: {
-              rejectAllAction: function () {
-                window.__csCalls.push("rejectAllAction");
-                window.__consentState = "necessary-only";
-                document.getElementById("cookiescript_injected").remove();
-              },
+          window.CookieScript = function CookieScript() {};
+          window.CookieScript.instance = {
+            rejectAllAction: function () {
+              window.__csCalls.push("rejectAllAction");
+              window.__consentState = "necessary-only";
+              document.getElementById("cookiescript_injected").remove();
             },
           };
         </script>
@@ -224,12 +229,14 @@ test.describe("Cookie Consent Minimizer — CookieScript", () => {
     extensionId,
   }) => {
     // Regression guard for the exact TypeError hazard the triple-mandatory
-    // gate exists to prevent: window.CookieScript is a truthy object but has
-    // NO `.instance` (the vendor SDK attaches the global before the instance
-    // is constructed). Reading `window.CookieScript.instance.rejectAllAction`
-    // naively would throw "Cannot read properties of undefined". The signal
-    // collector short-circuits on the missing instance, so detection must
-    // fail closed and the adapter must NOOP — with zero page errors captured.
+    // gate exists to prevent: window.CookieScript is a truthy FUNCTION (the
+    // real vendor shape, confirmed via real-site verification 2026-07-17)
+    // but has NO `.instance` (the vendor SDK attaches the global before the
+    // instance is constructed). Reading
+    // `window.CookieScript.instance.rejectAllAction` naively would throw
+    // "Cannot read properties of undefined". The signal collector
+    // short-circuits on the missing instance, so detection must fail closed
+    // and the adapter must NOOP — with zero page errors captured.
     await completeOnboarding(context, extensionId, { enableFeature: true });
 
     const NO_INSTANCE_HOST = "muga-test-cookie-consent-cookiescript-no-instance.invalid";
@@ -248,9 +255,10 @@ test.describe("Cookie Consent Minimizer — CookieScript", () => {
           </div>
           <p id="page-content">Real page content</p>
           <script>
-            // Truthy CookieScript global WITHOUT an .instance — the exact
+            // Truthy CookieScript global (function-shaped, the real vendor
+            // shape) WITHOUT an .instance — the exact
             // present-but-not-yet-populated shape the triple gate guards.
-            window.CookieScript = {};
+            window.CookieScript = function CookieScript() {};
           </script>
         </body></html>`,
       })
@@ -278,13 +286,13 @@ test.describe("Cookie Consent Minimizer — CookieScript", () => {
     );
     expect(bannerStillThere).toBe(true);
 
-    // The global is still the instance-less object we planted (no crash
+    // The global is still the instance-less function we planted (no crash
     // mid-collection that would have aborted the script).
     const csShape = await page.evaluate(() => ({
-      isObject: typeof window.CookieScript === "object" && window.CookieScript !== null,
+      isFunction: typeof window.CookieScript === "function",
       hasInstance: typeof window.CookieScript?.instance !== "undefined",
     }));
-    expect(csShape).toEqual({ isObject: true, hasInstance: false });
+    expect(csShape).toEqual({ isFunction: true, hasInstance: false });
 
     // The whole point: reading `.instance.rejectAllAction` never threw.
     expect(pageErrors).toHaveLength(0);
