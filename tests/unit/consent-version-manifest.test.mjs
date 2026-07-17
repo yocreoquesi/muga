@@ -68,30 +68,32 @@ describe("consent-version-manifest — #1027 cookie-consent-minimizer additive b
     assert.ok(entry, "manifest must contain the 1.2 entry (#1027)");
     assert.equal(entry.additive, true, "1.2 must be additive (soft re-onboard), not material");
   });
-
-  test("REQUIRED_CONSENT_VERSION is 1.2", () => {
-    assert.equal(REQUIRED_CONSENT_VERSION, "1.2");
-  });
 });
 
-describe("consent-version-manifest — cookie-consent-modes Slice 1 staged 1.3 entry", () => {
+// cookie-consent-accept Slice 2a: the 1.3 entry (originally staged inert by
+// the cookie-consent-modes redesign Slice 1) is now ACTIVE —
+// REQUIRED_CONSENT_VERSION points at it. This is the genuinely-new
+// capability class the module docblock's "Staged entries" note anticipated:
+// the accept-when-necessary pilot lets MUGA submit a minimum-consent
+// payload on a genuine hard wall, which is disclosure-worthy even though
+// the feature itself stays off until the user opts in AND completes the
+// explicit consent gesture (see src/lib/cmp-accept-adapters.js's L2).
+// Existing users who accepted 1.2 get a SOFT re-onboard (delta review)
+// surfacing this one new clause, not a hard gate.
+describe("consent-version-manifest — cookie-consent-accept Slice 2a activates the 1.3 entry", () => {
   test("manifest contains a 1.3 entry marked additive: true", () => {
     const entry = CONSENT_VERSION_MANIFEST.find(m => m.version === "1.3");
-    assert.ok(entry, "manifest must contain the 1.3 entry (cookie-consent-modes Slice 1)");
-    assert.equal(entry.additive, true, "1.3 must be additive (would be soft re-onboard if activated)");
+    assert.ok(entry, "manifest must contain the 1.3 entry");
+    assert.equal(entry.additive, true, "1.3 must be additive (soft re-onboard), not material");
   });
 
-  // Staged entry: appended for the historical record, but deliberately NOT
-  // yet required — existing users' cookieConsentMode capability does not
-  // change (migrateCookieConsentMode pins them to "off"), so per the
-  // design's resolved default-reconciliation decision, no forced
-  // re-consent / soft re-onboard fires for them. Only new installs see the
-  // disclosure, via the ordinary fresh-onboarding features list. See the
-  // module docblock's "Staged entries" note.
-  test("REQUIRED_CONSENT_VERSION intentionally stays behind the staged 1.3 entry", () => {
+  test("REQUIRED_CONSENT_VERSION is 1.3", () => {
+    assert.equal(REQUIRED_CONSENT_VERSION, "1.3");
+  });
+
+  test("1.3 is the latest manifest entry", () => {
     const latest = CONSENT_VERSION_MANIFEST[CONSENT_VERSION_MANIFEST.length - 1];
-    assert.equal(latest.version, "1.3", "1.3 must be the latest manifest entry");
-    assert.equal(REQUIRED_CONSENT_VERSION, "1.2", "REQUIRED_CONSENT_VERSION must NOT yet point at the staged 1.3 entry");
+    assert.equal(latest.version, "1.3");
   });
 });
 

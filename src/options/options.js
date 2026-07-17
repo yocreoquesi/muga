@@ -18,7 +18,7 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
-import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS } from "../lib/settings-schema.js";
+import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode, resolveConsentGestureOnModeChange } from "../lib/settings-schema.js";
 
 let _currentLang = "en";
 
@@ -323,18 +323,54 @@ async function init() {
   // Hover destination preview (#1028). Plain boolean toggle; not
   // guarded (no per-device override reconciliation needed).
   bindToggle("hover-preview-toggle", "hoverPreviewEnabled", prefs);
-  // Cookie Consent Minimizer — 3-state modes (Slice 1). Not guarded (no
-  // per-device override reconciliation needed). Only "reject-only" and
-  // "off" are offered; "accept-when-necessary" is a recognized enum
-  // member (see settings-schema.js) reserved for a later slice and is
-  // deliberately not rendered as an option here.
+  // Cookie Consent Minimizer — 3-state modes. Not guarded (no per-device
+  // override reconciliation needed). All three enum members are offered
+  // (cookie-consent-accept Slice 2a activated the third, "accept-when-
+  // necessary" — the Didomi-only minimum-grant pilot).
+  //
+  // Selecting "accept-when-necessary" here does NOT by itself grant
+  // MUGA the ability to act: computeAcceptGate (src/lib/cmp-accept-
+  // adapters.js) requires BOTH this mode AND cookieConsentAcceptConsented
+  // === true. That second flag is set ONLY by a real click on the
+  // dedicated gesture checkbox below — never by this select, never by
+  // import (settings-schema.js's exportOnlyBoolean kind keeps it out of
+  // the import path entirely).
   const cookieConsentModeSelect = document.getElementById("cookie-consent-mode-select");
+  const cookieConsentAcceptGestureCheckbox = document.getElementById("cookie-consent-accept-gesture-checkbox");
+
   if (cookieConsentModeSelect) {
-    cookieConsentModeSelect.value =
-      prefs.cookieConsentMode === "off" ? "off" : "reject-only";
+    cookieConsentModeSelect.value = clampCookieConsentMode(prefs.cookieConsentMode);
+    if (cookieConsentAcceptGestureCheckbox) {
+      cookieConsentAcceptGestureCheckbox.checked = prefs.cookieConsentAcceptConsented === true;
+    }
+    syncCookieConsentAcceptGestureVisibility();
+    // Revoke the gesture when leaving accept-when-necessary so re-entering
+    // requires a fresh click; this path never GRANTS it (see
+    // resolveConsentGestureOnModeChange). Persisted together with the mode in
+    // a single write, with cookieConsentMode first so the gesture flag is
+    // never the leading key of a standalone consent-granting write.
     cookieConsentModeSelect.addEventListener("change", () => {
-      try { setPrefs({ cookieConsentMode: cookieConsentModeSelect.value }); }
+      const nextMode = cookieConsentModeSelect.value;
+      const nextConsented = resolveConsentGestureOnModeChange(nextMode, prefs.cookieConsentAcceptConsented);
+      prefs.cookieConsentAcceptConsented = nextConsented;
+      syncCookieConsentAcceptGestureVisibility();
+      if (cookieConsentAcceptGestureCheckbox) cookieConsentAcceptGestureCheckbox.checked = nextConsented === true;
+      try { setPrefs({ cookieConsentMode: nextMode, cookieConsentAcceptConsented: nextConsented }); }
       catch (err) { console.error("[MUGA] save cookie consent mode:", err); }
+    });
+  }
+  if (cookieConsentAcceptGestureCheckbox) {
+    // A "change" event on a checkbox only fires from a real user
+    // interaction — setting `.checked` from script (as done above, to
+    // reflect the stored pref) never dispatches it. This is what
+    // structurally guarantees the gesture is a real click, not something
+    // this page's own initialization code could ever trigger.
+    cookieConsentAcceptGestureCheckbox.addEventListener("change", () => {
+      try {
+        setPrefs({ cookieConsentAcceptConsented: cookieConsentAcceptGestureCheckbox.checked === true });
+      } catch (err) {
+        console.error("[MUGA] save cookie consent accept gesture:", err);
+      }
     });
   }
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
@@ -426,6 +462,21 @@ async function init() {
   // Called AFTER all prefs and i18n are applied so the section is fully
   // rendered when the scroll fires.
   await readOptionsAnchor();
+}
+
+/**
+ * Shows the informed-consent gesture row (checkbox + copy) only while the
+ * Cookie Consent Minimizer mode select is set to "accept-when-necessary".
+ * Module-level (not nested in init()) so both init() and the post-import
+ * refresh in initExportImport() can call it via the same DOM query — a
+ * fresh document.getElementById() each time, not a shared closure
+ * variable, since those two functions never share scope.
+ */
+function syncCookieConsentAcceptGestureVisibility() {
+  const select = document.getElementById("cookie-consent-mode-select");
+  const row = document.getElementById("cookie-consent-accept-gesture-row");
+  if (!select || !row) return;
+  row.hidden = select.value !== "accept-when-necessary";
 }
 
 /** Binds a checkbox to a sync storage preference key. */
@@ -1162,8 +1213,19 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("hover-preview-toggle").checked = newPrefs.hoverPreviewEnabled;
+      // cookieConsentAcceptConsented is exportOnlyBoolean (never imported —
+      // settings-schema.js's planImport never writes it), so an import can
+      // never silently flip mode to accept-when-necessary AND consented to
+      // true together. clampImportedCookieConsentMode already collapsed
+      // any imported "accept-when-necessary" to "reject-only" before this
+      // point; clampCookieConsentMode here is just the display clamp.
       document.getElementById("cookie-consent-mode-select").value =
-        newPrefs.cookieConsentMode === "off" ? "off" : "reject-only";
+        clampCookieConsentMode(newPrefs.cookieConsentMode);
+      const importedGestureCheckbox = document.getElementById("cookie-consent-accept-gesture-checkbox");
+      if (importedGestureCheckbox) {
+        importedGestureCheckbox.checked = newPrefs.cookieConsentAcceptConsented === true;
+      }
+      syncCookieConsentAcceptGestureVisibility();
       // #925: refresh the newly-surfaced privacy + display toggles after import
       document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
       document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;

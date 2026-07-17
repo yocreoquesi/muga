@@ -276,6 +276,7 @@ export default Object.freeze({
   ob_reonboard_material_desc: "MUGAs Nutzungsbedingungen wurden in einer Weise aktualisiert, die deine bisherige Zustimmung berührt. Die weitere Nutzung der Erweiterung erfordert die Annahme der neuen Bedingungen. Bitte überprüfe die unten verlinkten Nutzungsbedingungen und Datenschutzrichtlinien.",
   ob_clause_remote_rules_default: "Wöchentliche Regelaktualisierungen sind jetzt standardmäßig aktiviert: MUGA lädt etwa einmal pro Woche eine aktualisierte Liste von Tracking-Parametern von rules.muga.app. Es handelt sich um eine Ed25519-signierte Anfrage, die keine personenbezogenen Daten sendet (keinen Browserverlauf, keine Cookies) und du kannst sie jederzeit in den Einstellungen deaktivieren.",
   ob_clause_cookie_consent_minimizer: "Neu, standardmäßig deaktiviert: Bei unterstützten Cookie-Consent-Bannern (derzeit OneTrust) kann MUGA für dich auf „ablehnen“ bzw. „nur erforderliche“ klicken, genauso wie es bereits Tracking-Rauschen aus URLs entfernt. MUGA akzeptiert oder gewährt dabei nie weitergehendes Tracking in deinem Namen. Gibt es keine sichere Ablehnoption, lässt MUGA den Banner unangetastet. Du kannst die Funktion jederzeit in den Einstellungen aktivieren.",
+  ob_clause_cookie_consent_accept_pilot: "Neu, standardmäßig deaktiviert: Wenn du „Minimum akzeptieren, wenn nötig“ aktivierst und bestätigst, kann MUGA bei Cookie-Bannern, die Inhalte blockieren und keine Ablehnoption bieten (derzeit unterstützt bei Didomi), die minimale Auswahl senden und nur unbedingt erforderliche Cookies gewähren, damit du fortfahren kannst. MUGA gewährt dabei niemals Tracking-Cookies. Dies erfordert eine separate, ausdrückliche Bestätigung in den Einstellungen und bleibt deaktiviert, bis du es aktivierst.",
   migration_accept: "Aktivieren",
   migration_decline: "Nein, danke",
   migration_counter: "{n} von {total}",
@@ -350,4 +351,8 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Modus des Cookie-Consent-Minimierers",
   cookie_consent_mode_opt_reject_only: "Nur ablehnen (empfohlen)",
   cookie_consent_mode_opt_off: "Aus",
+  cookie_consent_mode_opt_accept: "Minimum akzeptieren, wenn nötig",
+  row_cookie_consent_accept_gesture_label: "Minimale Auswahl bei fehlender Ablehnoption zulassen",
+  row_cookie_consent_accept_gesture_hint: "Auf Seiten, die Inhalte blockieren, bis du einen Cookie-Banner beantwortest, und die keine Ablehnoption anbieten, sendet MUGA die minimale Auswahl und gewährt nur unbedingt erforderliche Cookies, damit du fortfahren kannst. MUGA gewährt niemals Tracking-Cookies. Dies gilt nur, solange der Modus oben auf „Minimum akzeptieren, wenn nötig“ eingestellt ist.",
+  aria_cookie_consent_accept_gesture: "Minimale Auswahl bei fehlender Ablehnoption bestätigen",
 });

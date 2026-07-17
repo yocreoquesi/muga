@@ -205,3 +205,49 @@ describe("consent-clauses — #1027 cookie-consent-minimizer clause (live map)",
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// cookie-consent-accept Slice 2a — the 1.3 additive bump surfaces the
+// accept-when-necessary pilot clause in the delta list. Mirrors the #888 /
+// #1027 sections above against the LIVE map.
+// ---------------------------------------------------------------------------
+describe("consent-clauses — cookie-consent-accept Slice 2a clause (live map)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.3'] discloses the minimum-consent pilot clause", () => {
+    assert.deepEqual(
+      [...(CONSENT_CLAUSES_BY_VERSION["1.3"] || [])],
+      ["ob_clause_cookie_consent_accept_pilot"]
+    );
+  });
+
+  test("user at 1.2, required 1.3 -> delta surfaces the minimum-consent pilot clause", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.2",
+      requiredVersion: "1.3",
+      manifest: CONSENT_VERSION_MANIFEST,
+      // default clausesByVersion (live map)
+    });
+    assert.deepEqual(r, ["ob_clause_cookie_consent_accept_pilot"]);
+  });
+
+  test("the clause i18n key resolves to non-empty text in EN and ES (official locales)", () => {
+    assert.ok(
+      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_pilot?.en === "string" &&
+        TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.en.trim().length > 0,
+      "EN clause text must exist"
+    );
+    assert.ok(
+      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_pilot?.es === "string" &&
+        TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.es.trim().length > 0,
+      "ES clause text must exist"
+    );
+  });
+
+  test("the clause text discloses the MINIMUM (necessary-only) framing, never a blanket accept-all promise", () => {
+    const en = TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.en.toLowerCase();
+    assert.ok(en.includes("minimum") || en.includes("necessary"), "EN clause must name the minimum/necessary-only framing");
+  });
+
+  test("no em-dash in the EN clause copy (project copy convention)", () => {
+    assert.ok(!TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.en.includes("—"));
+  });
+});

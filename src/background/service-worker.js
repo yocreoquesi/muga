@@ -9,6 +9,7 @@ import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
+import { isCookieConsentModeActive } from "../lib/settings-schema.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID, DNR_ALLOWLIST_RULE_ID_BASE, DNR_ALLOWLIST_MAX_RULES } from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
@@ -1314,7 +1315,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "getPrefs") {
     getPrefsWithCache()
-      .then(prefs => sendResponse({ ...prefs, _affiliateDomains }))
+      .then(prefs => sendResponse({
+        ...prefs,
+        _affiliateDomains,
+        // Cookie Consent Minimizer gate wiring (cookie-consent-accept Slice
+        // 2a): content scripts cannot import settings-schema.js (no ES
+        // imports — AGENTS.md), and src/lib/cmp-adapters.js's
+        // computeCookieGate is lexically restricted, so this pre-validated
+        // boolean is computed here (the one place both concerns are
+        // importable) and handed down verbatim. See the @sync:cookie-gate
+        // comment in cmp-adapters.js / content/cookie-noise.js.
+        modeActive: isCookieConsentModeActive(prefs.cookieConsentMode),
+      }))
       .catch(() => { try { sendResponse(null); } catch { /* channel closed */ } });
     return true;
   }

@@ -276,6 +276,7 @@ export default Object.freeze({
   ob_reonboard_material_desc: "Los términos de MUGA se han actualizado de una manera que afecta a lo que aceptaste anteriormente. El uso continuado de la extensión requiere aceptar los nuevos términos. Revisa los Términos de uso y la Política de privacidad enlazados abajo.",
   ob_clause_remote_rules_default: "Las actualizaciones semanales de reglas ahora están activadas de forma predeterminada: MUGA descarga una lista actualizada de parámetros de rastreo desde rules.muga.app aproximadamente una vez por semana. Es una solicitud firmada con Ed25519 que no envía ningún dato personal (ni historial de navegación ni cookies) y puedes desactivarla cuando quieras en los Ajustes.",
   ob_clause_cookie_consent_minimizer: "Nueva función, desactivada por defecto: en avisos de cookies compatibles (por ahora OneTrust), MUGA puede pulsar por ti \"rechazar\" o \"solo necesarias\", igual que ya elimina el ruido de rastreo de las URL. Nunca acepta ni concede más rastreo en tu nombre. Si no existe una opción segura de rechazo, MUGA deja el aviso tal cual. Actívalo cuando quieras en los Ajustes.",
+  ob_clause_cookie_consent_accept_pilot: "Nueva función, desactivada por defecto: si activas \"Aceptar el mínimo cuando sea necesario\" y lo confirmas, MUGA puede enviar la elección mínima en avisos de cookies que bloquean el contenido y no ofrecen ninguna opción de rechazo (por ahora compatible con Didomi), concediendo solo las cookies estrictamente necesarias para que puedas continuar. Nunca concede cookies de rastreo. Requiere una confirmación explícita aparte en los Ajustes y permanece desactivada hasta que la activas.",
   migration_accept: "Activar",
   migration_decline: "No, gracias",
   migration_counter: "{n} de {total}",
@@ -350,4 +351,8 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Modo del minimizador de avisos de cookies",
   cookie_consent_mode_opt_reject_only: "Solo rechazar (recomendado)",
   cookie_consent_mode_opt_off: "Desactivado",
+  cookie_consent_mode_opt_accept: "Aceptar el mínimo cuando sea necesario",
+  row_cookie_consent_accept_gesture_label: "Permitir la elección mínima en muros sin rechazo",
+  row_cookie_consent_accept_gesture_hint: "En sitios que bloquean el contenido hasta que respondes a un aviso de cookies y no ofrecen ninguna opción de rechazo, MUGA enviará la elección mínima, concediendo solo las cookies estrictamente necesarias, para que puedas continuar. MUGA nunca concede cookies de rastreo. Esto solo se aplica mientras el modo de arriba esté en \"Aceptar el mínimo cuando sea necesario\".",
+  aria_cookie_consent_accept_gesture: "Confirmar la elección mínima en muros sin rechazo",
 });

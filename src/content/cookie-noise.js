@@ -243,6 +243,143 @@
   }
   // @sync:cmp-adapters:end
 
+  // Cookie Consent Minimizer — Didomi minimum-grant pilot (see the design
+  // docs for the full mode name; this file's own structural guard forbids
+  // spelling it outside the fenced regions below). The two pure functions
+  // in the fenced block directly below are a hand-maintained COPY of the
+  // sibling lib module's own same-named block (content scripts cannot use
+  // ES module imports — AGENTS.md). Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. World-agnostic and pure — never
+  // touches `window` itself; the dispatch regions further below supply
+  // the real page-global reads.
+  // @sync:cmp-accept:start
+  function canAttemptDidomiMinimumAccept(signals) {
+    const s = signals && typeof signals === "object" ? signals : {};
+    if (s.hasDidomiGlobal !== true) return false;
+    if (s.hasSetUserDisagreeToAllFn === true) return false;
+    if (s.hasSetCurrentUserStatusFn !== true) return false;
+    if (s.hasGetRequiredPurposeIdsFn !== true) return false;
+    if (s.hasGetRequiredVendorIdsFn !== true) return false;
+    if (s.hasGetPurposesFn !== true) return false;
+    if (s.hasGetVendorsFn !== true) return false;
+    return true;
+  }
+
+  // Broad, permissive normalizer for the vendor's FULL registry getters
+  // (getPurposes()/getVendors()): an array of id strings, an array of {id}
+  // objects, or an id-keyed object map all normalize to a plain array of id
+  // strings. This breadth is SAFE here because the "all" lists are only ever
+  // intersected against the strictly-parsed required set below — a broad read
+  // of the registry can never, by itself, widen consent. Never throws;
+  // unrecognized shapes resolve to an empty array (fail-closed).
+  function extractDidomiIds(value) {
+    try {
+      if (Array.isArray(value)) {
+        const ids = [];
+        for (const item of value) {
+          if (typeof item === "string") ids.push(item);
+          else if (item && typeof item.id === "string") ids.push(item.id);
+        }
+        return ids;
+      }
+      if (value && typeof value === "object") {
+        return Object.keys(value);
+      }
+    } catch {
+      // Fall through to the fail-closed empty array below.
+    }
+    return [];
+  }
+
+  // STRICT, fail-closed parser for the REQUIRED getters
+  // (getRequiredPurposeIds()/getRequiredVendorIds()). Didomi's real getters
+  // return a plain array of id strings (engram sdd/cookie-consent-accept
+  // probe, id 1324); this accepts ONLY that exact shape. Anything else — a
+  // flag-map object, an array of registry objects, an array with a non-string
+  // or empty-string member, null, a non-array — is UNRESOLVABLE and returns
+  // null so the caller abandons the entire accept rather than guessing a
+  // payload that could widen consent. Never throws.
+  function extractRequiredIds(value) {
+    if (!Array.isArray(value)) return null;
+    const ids = [];
+    for (const item of value) {
+      if (typeof item !== "string" || item.length === 0) return null;
+      ids.push(item);
+    }
+    return ids;
+  }
+
+  function buildMinimumPayload(input) {
+    const i = input && typeof input === "object" ? input : {};
+    const allPurposeIds = Array.isArray(i.allPurposeIds) ? i.allPurposeIds : [];
+    const allVendorIds = Array.isArray(i.allVendorIds) ? i.allVendorIds : [];
+    const requiredPurposeIds = Array.isArray(i.requiredPurposeIds) ? i.requiredPurposeIds : [];
+    const requiredVendorIds = Array.isArray(i.requiredVendorIds) ? i.requiredVendorIds : [];
+
+    const enabledPurposes = allPurposeIds.filter((id) => requiredPurposeIds.includes(id));
+    const enabledVendors = allVendorIds.filter((id) => requiredVendorIds.includes(id));
+    const enabledPurposeSet = new Set(enabledPurposes);
+    const enabledVendorSet = new Set(enabledVendors);
+
+    return {
+      purposes: {
+        enabled: enabledPurposes,
+        disabled: allPurposeIds.filter((id) => !enabledPurposeSet.has(id)),
+      },
+      vendors: {
+        enabled: enabledVendors,
+        disabled: allVendorIds.filter((id) => !enabledVendorSet.has(id)),
+      },
+    };
+  }
+
+  // Runtime seam the content-script dispatch regions call with the RAW return
+  // values of Didomi's four getters. Owns the fail-closed contract: the
+  // REQUIRED lists are parsed STRICTLY (extractRequiredIds); if EITHER is
+  // unresolvable the whole accept is abandoned (returns null → the caller must
+  // NOT call setCurrentUserStatus, leaving the banner as the safe outcome).
+  // A DEGENERATE full registry (both getPurposes() and getVendors() collapse
+  // to empty) also NOOPs — there is no valid minimum to construct, so the
+  // call must never fire with an all-empty payload. Returns a validly-
+  // constructed minimum payload otherwise. Pure; never throws (the getter
+  // calls themselves stay in the world-specific dispatch region, wrapped
+  // there).
+  function resolveDidomiMinimumStatus(raw) {
+    const r = raw && typeof raw === "object" ? raw : {};
+    const requiredPurposeIds = extractRequiredIds(r.requiredPurposeIds);
+    const requiredVendorIds = extractRequiredIds(r.requiredVendorIds);
+    if (requiredPurposeIds === null || requiredVendorIds === null) return null;
+    const allPurposeIds = extractDidomiIds(r.allPurposeIds);
+    const allVendorIds = extractDidomiIds(r.allVendorIds);
+    if (allPurposeIds.length === 0 && allVendorIds.length === 0) return null;
+    return buildMinimumPayload({ requiredPurposeIds, requiredVendorIds, allPurposeIds, allVendorIds });
+  }
+  // @sync:cmp-accept:end
+
+  // Pure double-gate for the minimum-grant path (mirrors
+  // computeCookieGate's @sync:cookie-gate shape). Hand-maintained COPY of
+  // the sibling lib module's own same-named block. Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. The main-world caller does NOT
+  // carry this block — it never reads prefs.
+  // @sync:cmp-accept-gate:start
+  function computeAcceptGate(prefs, deps) {
+    if (!prefs) return false;
+    if (prefs.enabled === false) return false;
+    if (prefs.onboardingDone !== true) return false;
+    if (prefs.cookieConsentMode !== "accept-when-necessary") return false;
+    if (prefs.cookieConsentAcceptConsented !== true) return false;
+    const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
+    if (typeof isSiteFullyExempt === "function") {
+      try {
+        if (isSiteFullyExempt(deps.hostname, prefs)) return false;
+      } catch {
+        // Fail-safe: treat as not exempt on any unexpected throw.
+      }
+    }
+    return true;
+  }
+  // @sync:cmp-accept-gate:end
+
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
   // Mirrors the #811 pattern from history-defuser.js on its own channel.
   // The nonce lives only in this closure — no global property stores it.
@@ -261,10 +398,10 @@
   }
   dispatchNonceOnce();
 
-  function dispatchGate(enabled) {
+  function dispatchGate(enabled, didomiMinimumGateOpen) {
     try {
       document.dispatchEvent(new CustomEvent("muga:cookie-gate", {
-        detail: { enabled: !!enabled, nonce: _nonce },
+        detail: { enabled: !!enabled, didomiMinimumGateOpen: !!didomiMinimumGateOpen, nonce: _nonce },
       }));
     } catch {
       // document detached or CustomEvent unavailable — silent. Harmless
@@ -280,6 +417,10 @@
   // needed here — we only READ `wrappedJSObject.OneTrust` and CALL its
   // `RejectAll` method, we don't install anything onto the page.
   let _fxGateOpen = false;
+  // Firefox-local mirror of the minimum-grant double-gate — computed
+  // directly from prefs in this same world (Firefox has no MAIN-world
+  // relay to receive), via computeDidomiMinimumGate() further below.
+  let _fxDidomiMinimumGateOpen = false;
   let _fxActed = false;
   let _fxObserver = null;
 
@@ -360,6 +501,25 @@
       hasGetCurrentUserStatusFn = hasDidomiGlobal && typeof di.getCurrentUserStatus === "function";
     } catch {
       // ignore
+    }
+    // Didomi minimum-grant pilot signals (Firefox wrappedJSObject path) —
+    // same five signals as the Chrome MAIN-world caller, see
+    // cookie-noise-mainworld.js for the full rationale.
+    let hasSetCurrentUserStatusFn = false;
+    let hasGetRequiredPurposeIdsFn = false;
+    let hasGetRequiredVendorIdsFn = false;
+    let hasGetPurposesFn = false;
+    let hasGetVendorsFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const di = wrapped && wrapped.Didomi;
+      hasSetCurrentUserStatusFn = hasDidomiGlobal && typeof di.setCurrentUserStatus === "function";
+      hasGetRequiredPurposeIdsFn = hasDidomiGlobal && typeof di.getRequiredPurposeIds === "function";
+      hasGetRequiredVendorIdsFn = hasDidomiGlobal && typeof di.getRequiredVendorIds === "function";
+      hasGetPurposesFn = hasDidomiGlobal && typeof di.getPurposes === "function";
+      hasGetVendorsFn = hasDidomiGlobal && typeof di.getVendors === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
     }
     // CookieYes (#1120): unlike the three adapters above, the reject call
     // is a BARE global (`wrappedJSObject.performBannerAction`), not a
@@ -563,6 +723,11 @@
       hasSetUserDisagreeToAllFn,
       hasDidomiHostDom,
       hasGetCurrentUserStatusFn,
+      hasSetCurrentUserStatusFn,
+      hasGetRequiredPurposeIdsFn,
+      hasGetRequiredVendorIdsFn,
+      hasGetPurposesFn,
+      hasGetVendorsFn,
       hasGetCkyConsentFn,
       hasPerformBannerActionFn,
       hasCkyConsentContainerDom,
@@ -739,6 +904,31 @@
       fxStopObserver();
       return;
     }
+    // Cookie Consent Minimizer — Didomi minimum-grant pilot, own fenced
+    // region below (this file's structural guard forbids spelling the
+    // mode name outside it). Same shape as the Chrome MAIN-world caller's
+    // dispatch — see cookie-noise-mainworld.js — reached ONLY after every
+    // Tier 1 reject adapter above returned false for this page (a genuine
+    // hard wall), double-gated by a boolean computed directly from prefs
+    // in this world, AND the region's own signal check.
+    // @sync:cmp-accept-dispatch:start
+    if (_fxDidomiMinimumGateOpen && canAttemptDidomiMinimumAccept(signals)) {
+      _fxActed = true;
+      try {
+        const payload = resolveDidomiMinimumStatus({
+          requiredPurposeIds: window.wrappedJSObject.Didomi.getRequiredPurposeIds(),
+          requiredVendorIds: window.wrappedJSObject.Didomi.getRequiredVendorIds(),
+          allPurposeIds: window.wrappedJSObject.Didomi.getPurposes(),
+          allVendorIds: window.wrappedJSObject.Didomi.getVendors(),
+        });
+        if (payload) window.wrappedJSObject.Didomi.setCurrentUserStatus(payload);
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // @sync:cmp-accept-dispatch:end
   }
 
   // Bounded give-up window (#1027) — Firefox mirror of the MAIN-world
@@ -808,13 +998,16 @@
   // (modulo indentation) to the library copy by
   // tests/unit/cookie-noise-sync.test.mjs. The pure helper takes injected
   // deps so it stays unit-testable in src/lib/; the thin call site below
-  // supplies this world's real location + cleaner exemption predicate.
+  // supplies this world's real location + cleaner exemption predicate. The
+  // `modeActive` deps field is a boolean already pre-validated upstream
+  // (background/service-worker.js, via settings-schema.js's closed-enum
+  // check) — this gate never reads or compares the raw mode string itself.
   // @sync:cookie-gate:start
   function computeCookieGate(prefs, deps) {
     if (!prefs) return false;
     if (prefs.enabled === false) return false;
     if (prefs.onboardingDone !== true) return false;
-    if (prefs.cookieConsentMode !== "reject-only") return false;
+    if (!deps || deps.modeActive !== true) return false;
     const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
     if (typeof isSiteFullyExempt === "function") {
       try {
@@ -830,25 +1023,49 @@
   function computeGate(prefs) {
     // isSiteFullyExempt is a standalone function on __mugaCleaner (no `this`
     // dependency — see src/lib/cleaner.js), so passing the reference detached
-    // is safe.
+    // is safe. modeActive is precomputed by the service worker's getPrefs
+    // response (see the @sync:cookie-gate comment above) — read verbatim,
+    // never recomputed here.
     const cleaner = window.__mugaCleaner;
     return computeCookieGate(prefs, {
+      modeActive: !!(prefs && prefs.modeActive === true),
       hostname: location.hostname,
       isSiteFullyExempt:
         cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
     });
   }
 
+  // Computes the minimum-grant double-gate from the real prefs in this
+  // world — this world is the only one with prefs access; the Chrome
+  // MAIN-world caller receives the already-computed boolean via the
+  // nonce-gated event (see dispatchGate above), and Firefox reads this
+  // function's result directly (no cross-world relay needed, same world).
+  // This thin wrapper is itself fenced (this file's structural guard
+  // forbids spelling the wrapped function's name outside a fenced
+  // region — see the fenced block directly below).
+  // @sync:cmp-accept-gate-call:start
+  function computeDidomiMinimumGate(prefs) {
+    const cleaner = window.__mugaCleaner;
+    return computeAcceptGate(prefs, {
+      hostname: location.hostname,
+      isSiteFullyExempt:
+        cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
+    });
+  }
+  // @sync:cmp-accept-gate-call:end
+
   function readPrefsAndGate() {
     try {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
         void chrome.runtime.lastError;
         const open = computeGate(prefs);
+        const minimumGateOpen = computeDidomiMinimumGate(prefs);
         // Always dispatch — harmless no-op on Firefox, where no MAIN-world
         // listener is ever loaded (no world:"MAIN" content script there).
-        dispatchGate(open);
+        dispatchGate(open, minimumGateOpen);
         if (_isFirefox) {
           _fxGateOpen = open;
+          _fxDidomiMinimumGateOpen = minimumGateOpen;
           if (open) {
             fxRunDispatcher(); // initial sweep — the banner may already exist
             fxStartObserver();

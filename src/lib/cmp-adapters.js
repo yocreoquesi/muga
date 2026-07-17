@@ -780,10 +780,19 @@ export const TIER2 = Object.freeze([]);
  * Two-tier pure decision function. Tries every Tier 1 adapter, then every
  * Tier 2 adapter (empty today), and returns the first confirmed reject
  * action. When nothing can confidently reject, distinguishes two NOOP
- * reasons for observability/testing: `"no-reject-path"` when the OneTrust
+ * reasons for observability/testing: `"no-reject-path"` when a vendor
  * global is present but its reject function is not (a hard wall), and
  * `"uncertain"` for everything else (no CMP detected, or insufficient
  * corroboration — fail-closed).
+ *
+ * `adapterId` is threaded through every `"no-reject-path"` branch (the
+ * specific vendor whose hard wall was detected) — a small enhancement that
+ * keeps this file's own structural guard intact (see the file docblock):
+ * this file still never spells the word that guard forbids, and never
+ * decides anything beyond the reject family. A SEPARATE module can use
+ * this id downstream to decide what, if anything, to do about a specific
+ * vendor's hard wall, without this file ever knowing what that separate
+ * module does with it.
  *
  * Pure: given the same signals it always returns the same result. Never
  * throws.
@@ -806,41 +815,41 @@ export function decideAction(signals) {
   }
 
   if (s.hasOneTrustGlobal === true && s.hasRejectAllFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "onetrust" };
   }
   if (s.hasCookiebotGlobal === true && s.hasSubmitCustomConsentFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "cookiebot" };
   }
   if (s.hasDidomiGlobal === true && s.hasSetUserDisagreeToAllFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "didomi" };
   }
   if (s.hasGetCkyConsentFn === true && s.hasPerformBannerActionFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "cookieyes" };
   }
   // Sourcepoint (#1123) hard wall is the MIRROR IMAGE of the checks above:
   // keyed off the Sourcepoint-specific DOM signal, NOT hasTcfApiFn alone —
   // a bare hasTcfApiFn is true on every TCF CMP (Didomi included) and must
   // fall through to "uncertain" below, never claim Sourcepoint.
   if (s.hasSpMessageContainerDom === true && s.hasTcfApiFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "sourcepoint" };
   }
   // Usercentrics (#1121) hard wall: same shape as the OneTrust/Didomi
   // checks above (mandatory global present, mandatory reject fn absent).
   if (s.hasUcUiGlobal === true && s.hasDenyAllConsentsFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "usercentrics" };
   }
   // Cookie Information hard wall: same shape as the OneTrust/Didomi/
   // Usercentrics checks above (mandatory global present, mandatory reject
   // fn absent).
   if (s.hasCookieInformationGlobal === true && s.hasDeclineAllCategoriesFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "cookieinformation" };
   }
   // CookieScript hard wall: mandatory global present but the reject
   // function is not reachable — either `.instance` itself is absent, or
   // `.instance` exists but `.rejectAllAction` is not a function. Both
   // sub-cases collapse to `hasRejectAllActionFn !== true` here.
   if (s.hasCookieScriptGlobal === true && s.hasRejectAllActionFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "cookiescript" };
   }
   // tarteaucitron hard wall: mandatory global present but the reject
   // function is not reachable — either `.userInterface` itself is absent,
@@ -848,7 +857,7 @@ export function decideAction(signals) {
   // sub-cases collapse to `hasRespondAllFn !== true` here, same shape as
   // the CookieScript hard wall above.
   if (s.hasTarteaucitronGlobal === true && s.hasRespondAllFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "tarteaucitron" };
   }
   // consentmanager.net hard wall: the MIRROR IMAGE of the Sourcepoint check
   // above, keyed off the vendor-specific DOM anchor (hasCmpBoxDom), NOT
@@ -856,7 +865,7 @@ export function decideAction(signals) {
   // CMP and must fall through to "uncertain" below, never claim
   // consentmanager.net.
   if (s.hasCmpBoxDom === true && (s.hasCmpMngrGlobal !== true || s.hasCmpFn !== true)) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "consentmanager" };
   }
   return { action: null, reason: "uncertain", adapterId: null };
 }
@@ -870,15 +879,16 @@ export function decideAction(signals) {
  * all-pass — is unit-tested directly here instead of only structurally in
  * a content script that Node cannot import.
  *
- * Mode scope (3-state `cookieConsentMode` pref): this gate only opens for
- * `"reject-only"` today. The enum's third member is a recognized
- * PREF_DEFAULTS / settings-schema value reserved for a later slice, but is
- * intentionally NOT special-cased here — this file's own STRUCTURAL guard
- * (see the describe block in tests/unit/cmp-adapters.test.mjs) forbids the
- * word for "granting broad consent" anywhere in this source, and that
- * word is a substring of the third enum member's name. Nothing writes
- * that value today (no migration path, no UI control), so this is a
- * forward-compatible placeholder, not a behavior gap.
+ * Mode scope (3-state `cookieConsentMode` pref): the reject ladder must run
+ * first in EVERY active mode, not only `"reject-only"` (see this project's
+ * design docs, Part B "L3" + "Gate wiring reconciliation") — but
+ * this file's own STRUCTURAL guard (see the describe block in
+ * tests/unit/cmp-adapters.test.mjs) forbids naming the newer mode anywhere
+ * in this source. So this gate no longer reads `prefs.cookieConsentMode`
+ * at all: the caller validates the raw pref against the closed enum at the
+ * settings-schema.js boundary (which has no such lexical restriction) and
+ * passes a pre-validated `deps.modeActive` boolean instead. Fail-closed:
+ * anything other than the literal boolean `true` keeps the gate shut.
  *
  * Content scripts cannot import this module (AGENTS.md — no ES imports in
  * content scripts), so the block between the `@sync:cookie-gate` markers
@@ -890,9 +900,10 @@ export function decideAction(signals) {
  * injected exemption predicate, returns false.
  *
  * @param {object|null|undefined} prefs Merged prefs (see PREF_DEFAULTS).
- * @param {{hostname?: string, isSiteFullyExempt?: (hostname: string, prefs: object) => boolean}} [deps]
- *   Environment hooks the content-script call site injects: the current
- *   hostname and the cleaner's per-site exemption predicate.
+ * @param {{modeActive?: boolean, hostname?: string, isSiteFullyExempt?: (hostname: string, prefs: object) => boolean}} [deps]
+ *   Environment hooks the content-script call site injects: the
+ *   pre-validated active-mode boolean, the current hostname, and the
+ *   cleaner's per-site exemption predicate.
  * @returns {boolean} true only when the gate should open.
  */
 // @sync:cookie-gate:start
@@ -900,7 +911,7 @@ function computeCookieGate(prefs, deps) {
   if (!prefs) return false;
   if (prefs.enabled === false) return false;
   if (prefs.onboardingDone !== true) return false;
-  if (prefs.cookieConsentMode !== "reject-only") return false;
+  if (!deps || deps.modeActive !== true) return false;
   const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
   if (typeof isSiteFullyExempt === "function") {
     try {

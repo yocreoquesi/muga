@@ -39,6 +39,13 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // function). The feature itself stays OFF until the user opts in from
   // Settings; this clause is disclosure, not an activation.
   "1.2": Object.freeze(["ob_clause_cookie_consent_minimizer"]),
+  // 1.3 (cookie-consent-accept Slice 2a): the accept-when-necessary mode's
+  // Didomi-only pilot. Single additive clause disclosing that, on a
+  // genuine hard wall with no reject option, MUGA can submit the MINIMUM
+  // consent choice on the user's behalf. This mode stays off by default
+  // and requires BOTH selecting it in Settings AND completing a separate,
+  // explicit consent gesture — this clause is disclosure, not activation.
+  "1.3": Object.freeze(["ob_clause_cookie_consent_accept_pilot"]),
 });
 
 /**
