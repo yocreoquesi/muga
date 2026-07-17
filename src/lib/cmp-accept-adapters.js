@@ -149,7 +149,7 @@ export function decideMinimumAccept(decision, mode, consented) {
  * @returns {boolean} true only when the accept gate should open.
  */
 // @sync:cmp-accept-gate:start
-export function computeAcceptGate(prefs, deps) {
+function computeAcceptGate(prefs, deps) {
   if (!prefs) return false;
   if (prefs.enabled === false) return false;
   if (prefs.onboardingDone !== true) return false;
@@ -166,6 +166,8 @@ export function computeAcceptGate(prefs, deps) {
   return true;
 }
 // @sync:cmp-accept-gate:end
+
+export { computeAcceptGate };
 
 /**
  * Builds the Didomi minimum-consent payload (L4). Pure — never touches
@@ -184,6 +186,41 @@ export function computeAcceptGate(prefs, deps) {
  * @param {{requiredPurposeIds?: string[], requiredVendorIds?: string[], allPurposeIds?: string[], allVendorIds?: string[]}} [input]
  * @returns {{purposes: {enabled: string[], disabled: string[]}, vendors: {enabled: string[], disabled: string[]}}}
  */
+/**
+ * Pure hard-wall + accept-capability detection (mirrors the reject
+ * ladder's per-vendor detect() shape in cmp-adapters.js). Confirms BOTH:
+ *   - a genuine Didomi hard wall for this page (global present, the
+ *     reject function absent — the exact "no-reject-path" condition), and
+ *   - every accept-specific signal this Slice's minimum-payload
+ *     construction needs (`setCurrentUserStatus` plus both the required-
+ *     ids getters and both the full-registry getters).
+ *
+ * Content scripts cannot import this module (AGENTS.md — no ES imports in
+ * content scripts), so the block between the `@sync:cmp-accept` markers
+ * below (this function AND `buildMinimumPayload` above it) is hand-copied,
+ * modulo indentation, into content/cookie-noise-mainworld.js (Chrome MAIN
+ * world) and content/cookie-noise.js (Firefox `wrappedJSObject` path).
+ * Kept in sync by tests/unit/cookie-noise-sync.test.mjs.
+ *
+ * Pure: given the same signals it always returns the same result. Never
+ * throws.
+ *
+ * @param {object|null|undefined} signals
+ * @returns {boolean}
+ */
+// @sync:cmp-accept:start
+function canAttemptDidomiMinimumAccept(signals) {
+  const s = signals && typeof signals === "object" ? signals : {};
+  if (s.hasDidomiGlobal !== true) return false;
+  if (s.hasSetUserDisagreeToAllFn === true) return false;
+  if (s.hasSetCurrentUserStatusFn !== true) return false;
+  if (s.hasGetRequiredPurposeIdsFn !== true) return false;
+  if (s.hasGetRequiredVendorIdsFn !== true) return false;
+  if (s.hasGetPurposesFn !== true) return false;
+  if (s.hasGetVendorsFn !== true) return false;
+  return true;
+}
+
 function buildMinimumPayload(input) {
   const i = input && typeof input === "object" ? input : {};
   const allPurposeIds = Array.isArray(i.allPurposeIds) ? i.allPurposeIds : [];
@@ -207,6 +244,7 @@ function buildMinimumPayload(input) {
     },
   };
 }
+// @sync:cmp-accept:end
 
 /**
  * Invokes the caller-supplied accept call. Kept pure (no `window` access
@@ -256,3 +294,5 @@ export const didomiAcceptAdapter = Object.freeze({
   buildMinimumPayload,
   accept,
 });
+
+export { canAttemptDidomiMinimumAccept };

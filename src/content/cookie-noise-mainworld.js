@@ -246,6 +246,78 @@
   }
   // @sync:cmp-adapters:end
 
+  // Cookie Consent Minimizer — Didomi minimum-grant pilot (see the design
+  // docs for the full mode name; this file's own structural guard forbids
+  // spelling it outside the fenced region directly below). The two pure
+  // functions in that fenced block are a hand-maintained COPY of the
+  // sibling lib module's own same-named block (content scripts cannot use
+  // ES module imports — AGENTS.md). Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. World-agnostic and pure — never
+  // touches `window` itself; the dispatch region further below supplies
+  // the real page-global reads.
+  // @sync:cmp-accept:start
+  function canAttemptDidomiMinimumAccept(signals) {
+    const s = signals && typeof signals === "object" ? signals : {};
+    if (s.hasDidomiGlobal !== true) return false;
+    if (s.hasSetUserDisagreeToAllFn === true) return false;
+    if (s.hasSetCurrentUserStatusFn !== true) return false;
+    if (s.hasGetRequiredPurposeIdsFn !== true) return false;
+    if (s.hasGetRequiredVendorIdsFn !== true) return false;
+    if (s.hasGetPurposesFn !== true) return false;
+    if (s.hasGetVendorsFn !== true) return false;
+    return true;
+  }
+
+  function buildMinimumPayload(input) {
+    const i = input && typeof input === "object" ? input : {};
+    const allPurposeIds = Array.isArray(i.allPurposeIds) ? i.allPurposeIds : [];
+    const allVendorIds = Array.isArray(i.allVendorIds) ? i.allVendorIds : [];
+    const requiredPurposeIds = Array.isArray(i.requiredPurposeIds) ? i.requiredPurposeIds : [];
+    const requiredVendorIds = Array.isArray(i.requiredVendorIds) ? i.requiredVendorIds : [];
+
+    const enabledPurposes = allPurposeIds.filter((id) => requiredPurposeIds.includes(id));
+    const enabledVendors = allVendorIds.filter((id) => requiredVendorIds.includes(id));
+    const enabledPurposeSet = new Set(enabledPurposes);
+    const enabledVendorSet = new Set(enabledVendors);
+
+    return {
+      purposes: {
+        enabled: enabledPurposes,
+        disabled: allPurposeIds.filter((id) => !enabledPurposeSet.has(id)),
+      },
+      vendors: {
+        enabled: enabledVendors,
+        disabled: allVendorIds.filter((id) => !enabledVendorSet.has(id)),
+      },
+    };
+  }
+  // @sync:cmp-accept:end
+
+  // Normalizes Didomi's getPurposes()/getVendors() return shape (array of
+  // ids, array of {id} objects, or an id-keyed object map — the exact
+  // shape was not fully confirmed by a live probe against real Didomi
+  // sites, see the project's design docs) into a plain array of id
+  // strings. Never throws; unrecognized shapes resolve to an empty array
+  // (fail-closed).
+  function extractDidomiIds(value) {
+    try {
+      if (Array.isArray(value)) {
+        const ids = [];
+        for (const item of value) {
+          if (typeof item === "string") ids.push(item);
+          else if (item && typeof item.id === "string") ids.push(item.id);
+        }
+        return ids;
+      }
+      if (value && typeof value === "object") {
+        return Object.keys(value);
+      }
+    } catch {
+      // Fall through to the fail-closed empty array below.
+    }
+    return [];
+  }
+
   /**
    * Collects world-specific signals from the page's real globals/DOM.
    * Wrapped defensively: a hostile or broken page-authored getter on
@@ -321,6 +393,27 @@
         hasDidomiGlobal && typeof window.Didomi.getCurrentUserStatus === "function";
     } catch {
       // ignore
+    }
+    // Didomi minimum-grant pilot signals: setCurrentUserStatus is the
+    // granular grant-call surface; getRequiredPurposeIds/
+    // getRequiredVendorIds report the vendor's OWN minimum-required ids;
+    // getPurposes/getVendors report the vendor's OWN full registry (used
+    // to build the "disable everything else" half of the minimum
+    // payload). All five are typeof-checked only here — never invoked as
+    // part of signal collection.
+    let hasSetCurrentUserStatusFn = false;
+    let hasGetRequiredPurposeIdsFn = false;
+    let hasGetRequiredVendorIdsFn = false;
+    let hasGetPurposesFn = false;
+    let hasGetVendorsFn = false;
+    try {
+      hasSetCurrentUserStatusFn = hasDidomiGlobal && typeof window.Didomi.setCurrentUserStatus === "function";
+      hasGetRequiredPurposeIdsFn = hasDidomiGlobal && typeof window.Didomi.getRequiredPurposeIds === "function";
+      hasGetRequiredVendorIdsFn = hasDidomiGlobal && typeof window.Didomi.getRequiredVendorIds === "function";
+      hasGetPurposesFn = hasDidomiGlobal && typeof window.Didomi.getPurposes === "function";
+      hasGetVendorsFn = hasDidomiGlobal && typeof window.Didomi.getVendors === "function";
+    } catch {
+      // Leave all false — fail-closed.
     }
     // CookieYes (#1120): unlike the three adapters above, the reject call
     // is a BARE global (`window.performBannerAction`), not a method on a
@@ -510,6 +603,11 @@
       hasSetUserDisagreeToAllFn,
       hasDidomiHostDom,
       hasGetCurrentUserStatusFn,
+      hasSetCurrentUserStatusFn,
+      hasGetRequiredPurposeIdsFn,
+      hasGetRequiredVendorIdsFn,
+      hasGetPurposesFn,
+      hasGetVendorsFn,
       hasGetCkyConsentFn,
       hasPerformBannerActionFn,
       hasCkyConsentContainerDom,
@@ -713,6 +811,32 @@
       stopObserver();
       return;
     }
+    // Cookie Consent Minimizer — Didomi minimum-grant pilot, own fenced
+    // region below (this file's structural guard forbids spelling the
+    // mode name outside it). Reached ONLY after every Tier 1 reject
+    // adapter above returned false for this page — i.e. a genuine hard
+    // wall, mirroring cmp-adapters.js's decideAction "no-reject-path"
+    // reason exactly. Double-gated by a boolean computed in the isolated
+    // world from the user's real prefs (this world never reads prefs) and
+    // relayed here over the same nonce-gated event channel as the reject
+    // gate, AND the region's own signal check.
+    // @sync:cmp-accept-dispatch:start
+    if (_didomiMinimumGateOpen && canAttemptDidomiMinimumAccept(signals)) {
+      _acted = true;
+      try {
+        const requiredPurposeIds = extractDidomiIds(window.Didomi.getRequiredPurposeIds());
+        const requiredVendorIds = extractDidomiIds(window.Didomi.getRequiredVendorIds());
+        const allPurposeIds = extractDidomiIds(window.Didomi.getPurposes());
+        const allVendorIds = extractDidomiIds(window.Didomi.getVendors());
+        const payload = buildMinimumPayload({ requiredPurposeIds, requiredVendorIds, allPurposeIds, allVendorIds });
+        window.Didomi.setCurrentUserStatus(payload);
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // @sync:cmp-accept-dispatch:end
     // Tier 2: declarative click-rule adapters. Empty in this slice.
   }
 
@@ -731,6 +855,10 @@
   document.addEventListener("muga:cookie-gate:nonce", _onNonce);
 
   let _gateOpen = false;
+  // Relayed from the isolated world (content/cookie-noise.js), which is
+  // the only world with prefs access — this world never reads prefs
+  // itself. See computeDidomiMinimumGate() there.
+  let _didomiMinimumGateOpen = false;
   let _warnedOrder = false;
   document.addEventListener("muga:cookie-gate", (e) => {
     // Reject events that do not carry the handshake nonce. A missing or
@@ -748,6 +876,7 @@
       return;
     }
     _gateOpen = !!e.detail.enabled;
+    _didomiMinimumGateOpen = !!e.detail.didomiMinimumGateOpen;
     if (_gateOpen) {
       runDispatcher(); // initial sweep — the banner may already exist
       startObserver();

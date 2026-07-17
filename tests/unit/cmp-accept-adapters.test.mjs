@@ -28,6 +28,7 @@ import {
   ACTIONS_ACCEPT,
   decideMinimumAccept,
   computeAcceptGate,
+  canAttemptDidomiMinimumAccept,
   didomiAcceptAdapter,
 } from "../../src/lib/cmp-accept-adapters.js";
 
@@ -156,7 +157,7 @@ describe("computeAcceptGate — double-gate as a DATA invariant", () => {
   });
 
   test("cookieConsentAcceptConsented missing/undefined -> gate stays closed (must be exactly true)", () => {
-    const { cookieConsentAcceptConsented, ...rest } = ACCEPT_GATE_ON_PREFS;
+    const { cookieConsentAcceptConsented: _omit, ...rest } = ACCEPT_GATE_ON_PREFS;
     assert.equal(computeAcceptGate(rest), false);
   });
 
@@ -204,6 +205,67 @@ describe("computeAcceptGate — double-gate as a DATA invariant", () => {
     const deps = { hostname: "example.com", isSiteFullyExempt: () => { throw new Error("boom"); } };
     assert.doesNotThrow(() => computeAcceptGate(ACCEPT_GATE_ON_PREFS, deps));
     assert.equal(computeAcceptGate(ACCEPT_GATE_ON_PREFS, deps), true);
+  });
+});
+
+// ── canAttemptDidomiMinimumAccept — content-script hard-wall detection ─────
+//
+// This is the pure predicate hand-copied into the @sync:cmp-accept region
+// of both content scripts (they cannot import this module — no ES imports
+// in content scripts, AGENTS.md), mirroring the @sync:cmp-adapters /
+// @sync:cookie-gate precedent. It is deliberately narrower than the reject
+// ladder's signal shape: it re-confirms the Didomi hard wall (global
+// present, reject fn absent) AND the accept-specific signals this Slice
+// needs (setCurrentUserStatus + both getters), so a page that has Didomi
+// but not the accept-capable API surface never reaches a call attempt.
+
+describe("canAttemptDidomiMinimumAccept — hard-wall + accept-capability detection", () => {
+  const FULL_ACCEPT_SIGNALS = Object.freeze({
+    hasDidomiGlobal: true,
+    hasSetUserDisagreeToAllFn: false,
+    hasSetCurrentUserStatusFn: true,
+    hasGetRequiredPurposeIdsFn: true,
+    hasGetRequiredVendorIdsFn: true,
+    hasGetPurposesFn: true,
+    hasGetVendorsFn: true,
+  });
+
+  test("Didomi hard wall (global present, reject fn absent) + full accept signal set -> true", () => {
+    assert.equal(canAttemptDidomiMinimumAccept(FULL_ACCEPT_SIGNALS), true);
+  });
+
+  test("Didomi global absent -> false", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasDidomiGlobal: false }), false);
+  });
+
+  test("reject fn present (a real reject path exists — not a hard wall) -> false, even with every accept signal present", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasSetUserDisagreeToAllFn: true }), false);
+  });
+
+  test("setCurrentUserStatus fn missing -> false (no accept call surface at all)", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasSetCurrentUserStatusFn: false }), false);
+  });
+
+  test("getRequiredPurposeIds fn missing -> false (cannot build a minimum payload)", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasGetRequiredPurposeIdsFn: false }), false);
+  });
+
+  test("getRequiredVendorIds fn missing -> false", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasGetRequiredVendorIdsFn: false }), false);
+  });
+
+  test("getPurposes fn missing -> false (cannot build the disabled list)", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasGetPurposesFn: false }), false);
+  });
+
+  test("getVendors fn missing -> false", () => {
+    assert.equal(canAttemptDidomiMinimumAccept({ ...FULL_ACCEPT_SIGNALS, hasGetVendorsFn: false }), false);
+  });
+
+  test("malformed/missing signals object never throws, resolves to false", () => {
+    assert.doesNotThrow(() => canAttemptDidomiMinimumAccept(null));
+    assert.doesNotThrow(() => canAttemptDidomiMinimumAccept(undefined));
+    assert.equal(canAttemptDidomiMinimumAccept(null), false);
   });
 });
 
