@@ -30,6 +30,8 @@ import {
   computeAcceptGate,
   canAttemptDidomiMinimumAccept,
   didomiAcceptAdapter,
+  resolveDidomiMinimumStatus,
+  extractRequiredIds,
 } from "../../src/lib/cmp-accept-adapters.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -358,6 +360,154 @@ describe("didomiAcceptAdapter.accept — pure callback invocation", () => {
   test("non-function argument -> status noop, no call", () => {
     const r = didomiAcceptAdapter.accept(undefined);
     assert.equal(r.status, "noop");
+  });
+});
+
+// ── resolveDidomiMinimumStatus — fail-closed required-id parsing (L5) ───────
+//
+// This is the runtime-facing seam the two content-script dispatch regions
+// call with the RAW return values of Didomi's four getters. It owns the
+// fail-closed contract that buildMinimumPayload alone could not enforce:
+// the REQUIRED lists must be a clean array of non-empty strings; ANY other
+// shape (a flag-map object, an array of registry objects, null, a member
+// that is not a non-empty string) makes the required set UNRESOLVABLE and
+// the WHOLE accept is abandoned (returns null → the caller never calls
+// setCurrentUserStatus, the banner is left as the safe fail-closed outcome).
+
+describe("resolveDidomiMinimumStatus — fail-closed required-id parsing", () => {
+  test("clean array-of-strings required getters (Didomi's real shape) -> builds the minimum payload", () => {
+    const payload = resolveDidomiMinimumStatus({
+      requiredPurposeIds: ["cookies_functional"],
+      requiredVendorIds: ["vendor-required-1"],
+      allPurposeIds: ["cookies_functional", "advertising", "analytics"],
+      allVendorIds: ["vendor-required-1", "vendor-ads-2", "vendor-analytics-3"],
+    });
+    assert.notEqual(payload, null, "the clean happy path must build a payload, not NOOP");
+    assert.deepEqual(payload.purposes.enabled, ["cookies_functional"]);
+    assert.deepEqual(payload.purposes.disabled, ["advertising", "analytics"]);
+    assert.deepEqual(payload.vendors.enabled, ["vendor-required-1"]);
+    assert.deepEqual(payload.vendors.disabled, ["vendor-ads-2", "vendor-analytics-3"]);
+  });
+
+  test("ADVERSARIAL: a REQUIRED getter returning a flag-map object -> NOOP (never widens to the false/non-essential ids)", () => {
+    // The exact vulnerability: a getRequiredPurposeIds() shaped as a
+    // consent flag-map. The broad normalizer would have returned every KEY
+    // (ignoring the booleans), enabling advertising + analytics = accept-all.
+    // The strict parser rejects the shape entirely -> the whole accept NOOPs.
+    const payload = resolveDidomiMinimumStatus({
+      requiredPurposeIds: { cookies_functional: true, advertising: false, analytics: false },
+      requiredVendorIds: ["vendor-required-1"],
+      allPurposeIds: ["cookies_functional", "advertising", "analytics"],
+      allVendorIds: ["vendor-required-1", "vendor-ads-2", "vendor-analytics-3"],
+    });
+    assert.equal(payload, null, "a flag-map required list must NOOP the entire accept, never build a payload");
+  });
+
+  test("ADVERSARIAL: a REQUIRED getter returning an array of registry objects enumerating the whole registry -> NOOP", () => {
+    const payload = resolveDidomiMinimumStatus({
+      requiredPurposeIds: [
+        { id: "cookies_functional" },
+        { id: "advertising" },
+        { id: "analytics" },
+      ],
+      requiredVendorIds: ["vendor-required-1"],
+      allPurposeIds: ["cookies_functional", "advertising", "analytics"],
+      allVendorIds: ["vendor-required-1", "vendor-ads-2", "vendor-analytics-3"],
+    });
+    assert.equal(payload, null, "an array-of-objects required list must NOOP the entire accept");
+  });
+
+  test("ADVERSARIAL: a REQUIRED getter containing a non-string / empty-string member -> NOOP", () => {
+    assert.equal(
+      resolveDidomiMinimumStatus({
+        requiredPurposeIds: ["cookies_functional", 42],
+        requiredVendorIds: [],
+        allPurposeIds: ["cookies_functional"],
+        allVendorIds: [],
+      }),
+      null,
+    );
+    assert.equal(
+      resolveDidomiMinimumStatus({
+        requiredPurposeIds: ["cookies_functional", ""],
+        requiredVendorIds: [],
+        allPurposeIds: ["cookies_functional"],
+        allVendorIds: [],
+      }),
+      null,
+    );
+  });
+
+  test("either required getter returning null/undefined -> NOOP", () => {
+    assert.equal(
+      resolveDidomiMinimumStatus({
+        requiredPurposeIds: null,
+        requiredVendorIds: ["vendor-required-1"],
+        allPurposeIds: ["p1"],
+        allVendorIds: ["vendor-required-1"],
+      }),
+      null,
+    );
+    assert.equal(
+      resolveDidomiMinimumStatus({
+        requiredPurposeIds: ["cookies_functional"],
+        requiredVendorIds: undefined,
+        allPurposeIds: ["cookies_functional"],
+        allVendorIds: ["v1"],
+      }),
+      null,
+    );
+  });
+
+  test("empty required arrays are a LEGITIMATE all-essential-disabled minimum (not a NOOP), as long as the registry is readable", () => {
+    const payload = resolveDidomiMinimumStatus({
+      requiredPurposeIds: [],
+      requiredVendorIds: [],
+      allPurposeIds: ["p1", "p2"],
+      allVendorIds: ["v1"],
+    });
+    assert.notEqual(payload, null);
+    assert.deepEqual(payload.purposes.enabled, []);
+    assert.deepEqual(payload.purposes.disabled, ["p1", "p2"]);
+    assert.deepEqual(payload.vendors.enabled, []);
+    assert.deepEqual(payload.vendors.disabled, ["v1"]);
+  });
+
+  test("malformed/missing input never throws, resolves to NOOP", () => {
+    assert.doesNotThrow(() => resolveDidomiMinimumStatus(null));
+    assert.doesNotThrow(() => resolveDidomiMinimumStatus(undefined));
+    assert.equal(resolveDidomiMinimumStatus(null), null);
+  });
+});
+
+describe("extractRequiredIds — strict array-of-non-empty-strings-or-null", () => {
+  test("a clean array of non-empty strings passes through unchanged", () => {
+    assert.deepEqual(extractRequiredIds(["a", "b"]), ["a", "b"]);
+  });
+
+  test("an empty array is valid (returns [])", () => {
+    assert.deepEqual(extractRequiredIds([]), []);
+  });
+
+  test("a flag-map object -> null", () => {
+    assert.equal(extractRequiredIds({ a: true, b: false }), null);
+  });
+
+  test("an array of objects -> null", () => {
+    assert.equal(extractRequiredIds([{ id: "a" }]), null);
+  });
+
+  test("an array with a non-string or empty-string member -> null", () => {
+    assert.equal(extractRequiredIds(["a", 1]), null);
+    assert.equal(extractRequiredIds(["a", ""]), null);
+    assert.equal(extractRequiredIds(["a", null]), null);
+  });
+
+  test("null / undefined / non-array -> null, never throws", () => {
+    assert.doesNotThrow(() => extractRequiredIds(null));
+    assert.equal(extractRequiredIds(null), null);
+    assert.equal(extractRequiredIds(undefined), null);
+    assert.equal(extractRequiredIds("nope"), null);
   });
 });
 

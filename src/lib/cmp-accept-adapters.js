@@ -177,11 +177,17 @@ export { computeAcceptGate };
  * reports (`getPurposes()` / `getVendors()`) — NEVER a hardcoded id list,
  * NEVER "everything enabled".
  *
- * Fail-closed on corrupted/hostile page data: an id present in
- * `requiredPurposeIds`/`requiredVendorIds` but ABSENT from
- * `allPurposeIds`/`allVendorIds` is never enabled — this function only
- * ever enables ids it can also see in the full registry, so a compromised
- * or malformed "required" list can widen consent by, at most, zero ids.
+ * Widening is prevented by a defense-in-depth chain, NOT by this function
+ * alone: the runtime seam `resolveDidomiMinimumStatus` parses the vendor's
+ * REQUIRED getters STRICTLY (array-of-non-empty-strings-or-NOOP — see
+ * `extractRequiredIds`) before this function ever runs, so a hostile
+ * "required" shape (a flag-map, an array of registry objects, anything that
+ * is not a clean id array) abandons the whole accept instead of reaching
+ * here. On top of that, this function only ever enables ids it can also see
+ * in the full registry (`allPurposeIds`/`allVendorIds`), so an id present
+ * in `requiredPurposeIds`/`requiredVendorIds` but ABSENT from the registry
+ * is never enabled. Strict required-parse + registry intersection +
+ * NOOP-on-unexpected-shape is the actual guarantee.
  *
  * @param {{requiredPurposeIds?: string[], requiredVendorIds?: string[], allPurposeIds?: string[], allVendorIds?: string[]}} [input]
  * @returns {{purposes: {enabled: string[], disabled: string[]}, vendors: {enabled: string[], disabled: string[]}}}
@@ -221,6 +227,50 @@ function canAttemptDidomiMinimumAccept(signals) {
   return true;
 }
 
+// Broad, permissive normalizer for the vendor's FULL registry getters
+// (getPurposes()/getVendors()): an array of id strings, an array of {id}
+// objects, or an id-keyed object map all normalize to a plain array of id
+// strings. This breadth is SAFE here because the "all" lists are only ever
+// intersected against the strictly-parsed required set below — a broad read
+// of the registry can never, by itself, widen consent. Never throws;
+// unrecognized shapes resolve to an empty array (fail-closed).
+function extractDidomiIds(value) {
+  try {
+    if (Array.isArray(value)) {
+      const ids = [];
+      for (const item of value) {
+        if (typeof item === "string") ids.push(item);
+        else if (item && typeof item.id === "string") ids.push(item.id);
+      }
+      return ids;
+    }
+    if (value && typeof value === "object") {
+      return Object.keys(value);
+    }
+  } catch {
+    // Fall through to the fail-closed empty array below.
+  }
+  return [];
+}
+
+// STRICT, fail-closed parser for the REQUIRED getters
+// (getRequiredPurposeIds()/getRequiredVendorIds()). Didomi's real getters
+// return a plain array of id strings (engram sdd/cookie-consent-accept
+// probe, id 1324); this accepts ONLY that exact shape. Anything else — a
+// flag-map object, an array of registry objects, an array with a non-string
+// or empty-string member, null, a non-array — is UNRESOLVABLE and returns
+// null so the caller abandons the entire accept rather than guessing a
+// payload that could widen consent. Never throws.
+function extractRequiredIds(value) {
+  if (!Array.isArray(value)) return null;
+  const ids = [];
+  for (const item of value) {
+    if (typeof item !== "string" || item.length === 0) return null;
+    ids.push(item);
+  }
+  return ids;
+}
+
 function buildMinimumPayload(input) {
   const i = input && typeof input === "object" ? input : {};
   const allPurposeIds = Array.isArray(i.allPurposeIds) ? i.allPurposeIds : [];
@@ -243,6 +293,24 @@ function buildMinimumPayload(input) {
       disabled: allVendorIds.filter((id) => !enabledVendorSet.has(id)),
     },
   };
+}
+
+// Runtime seam the content-script dispatch regions call with the RAW return
+// values of Didomi's four getters. Owns the fail-closed contract: the
+// REQUIRED lists are parsed STRICTLY (extractRequiredIds); if EITHER is
+// unresolvable the whole accept is abandoned (returns null → the caller must
+// NOT call setCurrentUserStatus, leaving the banner as the safe outcome).
+// Returns a validly-constructed minimum payload otherwise. Pure; never
+// throws (the getter calls themselves stay in the world-specific dispatch
+// region, wrapped there).
+function resolveDidomiMinimumStatus(raw) {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const requiredPurposeIds = extractRequiredIds(r.requiredPurposeIds);
+  const requiredVendorIds = extractRequiredIds(r.requiredVendorIds);
+  if (requiredPurposeIds === null || requiredVendorIds === null) return null;
+  const allPurposeIds = extractDidomiIds(r.allPurposeIds);
+  const allVendorIds = extractDidomiIds(r.allVendorIds);
+  return buildMinimumPayload({ requiredPurposeIds, requiredVendorIds, allPurposeIds, allVendorIds });
 }
 // @sync:cmp-accept:end
 
@@ -295,4 +363,4 @@ export const didomiAcceptAdapter = Object.freeze({
   accept,
 });
 
-export { canAttemptDidomiMinimumAccept };
+export { canAttemptDidomiMinimumAccept, extractDidomiIds, extractRequiredIds, resolveDidomiMinimumStatus };
