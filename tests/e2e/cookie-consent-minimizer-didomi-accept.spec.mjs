@@ -150,8 +150,8 @@ test.describe("Cookie Consent Minimizer — Didomi accept-when-necessary pilot (
     await stubDidomiHardWallPage(page);
     await page.goto(`https://${HOST}/index.html`);
 
-    // Negative assertion — no positive signal to poll on, matches the
-    // existing suite's standard pattern for a disabled/inert state.
+    // REASON: negative assertion — no positive signal to poll on, matches
+    // the existing suite's standard pattern for a disabled/inert state.
     await page.waitForTimeout(1500);
 
     const consentState = await page.evaluate(() => window.__consentState);
@@ -173,6 +173,8 @@ test.describe("Cookie Consent Minimizer — Didomi accept-when-necessary pilot (
     await stubDidomiHardWallPage(page);
     await page.goto(`https://${HOST}/index.html`);
 
+    // REASON: negative assertion — no positive signal to poll on, matches
+    // the existing suite's standard pattern for a disabled/inert state.
     await page.waitForTimeout(1500);
 
     const consentState = await page.evaluate(() => window.__consentState);
@@ -194,6 +196,8 @@ test.describe("Cookie Consent Minimizer — Didomi accept-when-necessary pilot (
     await stubDidomiHardWallPage(page);
     await page.goto(`https://${HOST}/index.html`);
 
+    // REASON: negative assertion — no positive signal to poll on, matches
+    // the existing suite's standard pattern for a disabled/inert state.
     await page.waitForTimeout(1500);
 
     const consentState = await page.evaluate(() => window.__consentState);
