@@ -176,6 +176,60 @@ manual only, automation is tracked separately in #1128.
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
+#### Didomi accept-when-necessary pilot (minimum-grant) — BLOCKING EU-geo item
+
+cookie-consent-accept Slice 2a adds a second, opt-in Didomi capability on
+top of the reject adapter above: when the user selects "Accept minimum
+when necessary" in Settings AND completes the dedicated informed-consent
+gesture, MUGA can submit a minimum-consent payload
+(`window.Didomi.setCurrentUserStatus({purposes, vendors})`, built from the
+vendor's OWN `getRequiredPurposeIds()`/`getRequiredVendorIds()`/
+`getPurposes()`/`getVendors()`) on a genuine Didomi hard wall — a page
+where `setUserDisagreeToAll` is absent, so the reject adapter above cannot
+act at all.
+
+**This item is a HARD PRE-ENABLE GATE, not an optional nice-to-have.** The
+synthetic e2e/Firefox fixtures (`tests/e2e/cookie-consent-minimizer-didomi-accept.spec.mjs`,
+`tests/e2e-firefox/didomi-accept.smoke.mjs`) only prove the MECHANICS: MUGA
+calls `setCurrentUserStatus` with the minimum payload, only in the
+consented accept-when-necessary state, and never in reject-only mode or
+without the gesture. They run against a stub page and CANNOT verify that a
+real Didomi SDK actually honors the call — i.e. that it dismisses a real
+hard wall AND grants zero non-essential purposes/vendors. A prior probe
+(engram `sdd/cookie-consent-accept/didomi-probe`) confirmed the API shape
+(getter names, sync boolean return) on 3 real production Didomi sites but
+was geo-blocked from observing an actual hard-wall/consent-wall session
+from a non-EU vantage — `getCurrentUserStatus()` showed every purpose/
+vendor already `enabled: true` before any call, meaning there was no live
+consent transaction to mutate.
+
+- [ ] **BLOCKING:** run a real behavioral smoke from a genuine EU/France
+  vantage point (VPN/proxy or an EU-hosted CI runner) against a live
+  Didomi hard-wall page (a site where `setUserDisagreeToAll` is absent —
+  `abeille-assurances.fr` migrated away from Didomi during the probe, so
+  needs a fresh candidate; do not reuse `orange.fr`/`europcar.com` as-is
+  unless re-confirmed as a genuine hard wall from that vantage).
+- [ ] Confirm the minimum-payload call actually DISMISSES the wall (the
+  page's own banner/host element goes away or the page unblocks), not
+  just that the call returns without throwing.
+- [ ] Confirm `getCurrentUserStatus()` (or the vendor's own consent
+  inspector) shows ONLY the required purposes/vendors as enabled
+  afterward — zero non-essential/tracking purposes or vendors granted.
+- [ ] Confirm the checkbox gesture in Settings actually gates this: with
+  the mode selected but the gesture NOT confirmed, the hard wall must
+  stay untouched (same manual check as the automated adversarial suite,
+  repeated against the real vendor as a sanity cross-check).
+- [ ] Repeat once in Firefox (the `wrappedJSObject.Didomi.setCurrentUserStatus`
+  path is a separate code path from the Chrome MAIN-world call and has
+  never been exercised against a live vendor script).
+
+**Until every box above is checked, "Accept minimum when necessary" must
+NOT be enabled/released to real users** — ship it dormant (the mode
+selectable in Settings is fine; the underlying capability working
+correctly on real Didomi infrastructure is not yet proven). Track this
+alongside the Didomi reject row in the sign-off table below as its own
+line.
+
 ### 4. CookieYes
 
 - **Reject call:** `window.performBannerAction("reject")` (Chrome MAIN
@@ -431,14 +485,18 @@ following before marking this adapter PASS:
 
 ## Sign-off table
 
-All 20 cells (10 adapters x Chrome/Firefox) must be green before the
-`develop -> main` release PR opens.
+All 20 reject-adapter cells (10 adapters x Chrome/Firefox), PLUS the
+Didomi accept-when-necessary row below, must be green before the
+`develop -> main` release PR opens. The accept row is a HARD PRE-ENABLE
+GATE (see the "Didomi accept-when-necessary pilot" subsection above) — a
+release may ship with the mode dormant (unchecked) but must NOT enable it
+for real users while that row is unchecked.
 
 | Adapter | Chrome | Firefox |
 | --- | --- | --- |
 | OneTrust | ____ | ____ |
 | Cookiebot | ____ | ____ |
-| Didomi | ____ | ____ |
+| Didomi (reject) | ____ | ____ |
 | CookieYes | ____ | ____ |
 | Sourcepoint | ____ | ____ |
 | Usercentrics | ____ | ____ |
@@ -446,5 +504,6 @@ All 20 cells (10 adapters x Chrome/Firefox) must be green before the
 | CookieScript | ____ | ____ |
 | tarteaucitron | ____ | ____ |
 | consentmanager.net | ____ | ____ |
+| **Didomi accept-when-necessary (minimum-grant) - EU-geo vantage required** | ____ | ____ |
 
 Reviewer: ______________________  Date: ______________________
