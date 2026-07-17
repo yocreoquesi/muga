@@ -478,6 +478,42 @@ describe("resolveDidomiMinimumStatus — fail-closed required-id parsing", () =>
     assert.doesNotThrow(() => resolveDidomiMinimumStatus(undefined));
     assert.equal(resolveDidomiMinimumStatus(null), null);
   });
+
+  test("DEGENERATE: strict required parse succeeds but the FULL registry read yields nothing (both getPurposes and getVendors empty/garbage) -> NOOP, never calls with an empty payload", () => {
+    // getPurposes()/getVendors() returned an unreadable/garbage shape that
+    // the broad normalizer collapsed to []. Even though the required lists
+    // parsed cleanly, there is no valid minimum to construct — the call
+    // must not fire with a fully-empty payload.
+    assert.equal(
+      resolveDidomiMinimumStatus({
+        requiredPurposeIds: ["cookies_functional"],
+        requiredVendorIds: ["vendor-required-1"],
+        allPurposeIds: 12345,
+        allVendorIds: null,
+      }),
+      null,
+    );
+    assert.equal(
+      resolveDidomiMinimumStatus({
+        requiredPurposeIds: [],
+        requiredVendorIds: [],
+        allPurposeIds: [],
+        allVendorIds: [],
+      }),
+      null,
+    );
+  });
+
+  test("a PARTIALLY readable registry (one of purposes/vendors non-empty) still builds — only a fully-empty registry NOOPs", () => {
+    const payload = resolveDidomiMinimumStatus({
+      requiredPurposeIds: ["p1"],
+      requiredVendorIds: [],
+      allPurposeIds: ["p1", "p2"],
+      allVendorIds: [],
+    });
+    assert.notEqual(payload, null);
+    assert.deepEqual(payload.purposes.enabled, ["p1"]);
+  });
 });
 
 describe("extractRequiredIds — strict array-of-non-empty-strings-or-null", () => {

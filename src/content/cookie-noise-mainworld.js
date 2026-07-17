@@ -341,9 +341,12 @@
   // REQUIRED lists are parsed STRICTLY (extractRequiredIds); if EITHER is
   // unresolvable the whole accept is abandoned (returns null → the caller must
   // NOT call setCurrentUserStatus, leaving the banner as the safe outcome).
-  // Returns a validly-constructed minimum payload otherwise. Pure; never
-  // throws (the getter calls themselves stay in the world-specific dispatch
-  // region, wrapped there).
+  // A DEGENERATE full registry (both getPurposes() and getVendors() collapse
+  // to empty) also NOOPs — there is no valid minimum to construct, so the
+  // call must never fire with an all-empty payload. Returns a validly-
+  // constructed minimum payload otherwise. Pure; never throws (the getter
+  // calls themselves stay in the world-specific dispatch region, wrapped
+  // there).
   function resolveDidomiMinimumStatus(raw) {
     const r = raw && typeof raw === "object" ? raw : {};
     const requiredPurposeIds = extractRequiredIds(r.requiredPurposeIds);
@@ -351,6 +354,7 @@
     if (requiredPurposeIds === null || requiredVendorIds === null) return null;
     const allPurposeIds = extractDidomiIds(r.allPurposeIds);
     const allVendorIds = extractDidomiIds(r.allVendorIds);
+    if (allPurposeIds.length === 0 && allVendorIds.length === 0) return null;
     return buildMinimumPayload({ requiredPurposeIds, requiredVendorIds, allPurposeIds, allVendorIds });
   }
   // @sync:cmp-accept:end
