@@ -113,7 +113,12 @@
  *   present in the DOM. Secondary/corroborating signal.
  * @property {boolean} [hasCoiConsentSummaryDom] - `.coi-consent-summary`
  *   present in the DOM. Secondary/corroborating signal.
- * @property {boolean} [hasCookieScriptGlobal] - `typeof window.CookieScript === "object"`.
+ * @property {boolean} [hasCookieScriptGlobal] - `typeof window.CookieScript === "object" || typeof window.CookieScript === "function"`.
+ *   Real-site verification (2026-07-17) found cookie-script.com ships the
+ *   vendor global as a callable FUNCTION with `.instance` hung off it, not
+ *   a plain object — the global itself may be either shape; the real
+ *   discriminators are `.instance` and `.instance.rejectAllAction` below,
+ *   which stay strictly object/function-typed.
  * @property {boolean} [hasCookieScriptInstance] - `typeof window.CookieScript.instance === "object"`.
  *   Mandatory signal: the reject call lives on `.instance`, so this must be
  *   present before probing for the reject function itself.
@@ -247,8 +252,18 @@ export const ACTIONS = Object.freeze({
  * `hasRejectAllActionFn` — because `.instance` can be present-but-not-yet
  * populated (or absent) even when the vendor global itself already exists,
  * and probing `.rejectAllAction` before confirming `.instance` is an object
- * would either throw or silently read `undefined`. The usual >=1
- * corroborating DOM secondary (`#cookiescript_injected`,
+ * would either throw or silently read `undefined`. Real-site verification
+ * (2026-07-17, EU sweep) found cookie-script.com exposes `window.CookieScript`
+ * as a callable FUNCTION (with `.instance` and `.init` as its own
+ * properties), not a plain object as originally assumed — the signal
+ * collectors in the content-script copies (`collectSignals`/
+ * `fxCollectSignals`) allow EITHER `typeof === "object"` OR
+ * `typeof === "function"` for the bare global while `hasCookieScriptGlobal`
+ * itself stays a plain boolean here, so this pure detect function's shape
+ * is unaffected — only what feeds it changed. `.instance` and
+ * `.rejectAllAction` remain the real, strictly object/function-typed
+ * discriminators; this does not loosen detection against any other CMP.
+ * The usual >=1 corroborating DOM secondary (`#cookiescript_injected`,
  * `#cookiescript_description`) still gates the same fail-closed
  * CONFIDENCE_THRESHOLD as every other adapter here.
  *

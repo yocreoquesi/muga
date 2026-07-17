@@ -556,13 +556,20 @@
     // not directly on the vendor global — hasCookieScriptInstance must be
     // confirmed an object BEFORE probing .rejectAllAction, otherwise reading
     // a property off `undefined` would throw inside this try block (still
-    // caught, but the intent is explicit here).
+    // caught, but the intent is explicit here). The vendor global itself
+    // can be EITHER an object OR a callable function with `.instance` hung
+    // off it (real-site verification found cookie-script.com ships the
+    // function-shaped variant) — allow both shapes for the global itself;
+    // `.instance` and `.rejectAllAction` are the real discriminators and
+    // stay strictly object/function-typed, so this does not loosen
+    // detection against any other CMP.
     let hasCookieScriptGlobal = false;
     let hasCookieScriptInstance = false;
     let hasRejectAllActionFn = false;
     try {
-      hasCookieScriptGlobal = typeof window.CookieScript === "object" && window.CookieScript !== null;
-      const instance = hasCookieScriptGlobal && window.CookieScript.instance;
+      const cs = window.CookieScript;
+      hasCookieScriptGlobal = (typeof cs === "object" || typeof cs === "function") && cs !== null;
+      const instance = hasCookieScriptGlobal && cs.instance;
       hasCookieScriptInstance = typeof instance === "object" && instance !== null;
       hasRejectAllActionFn = hasCookieScriptInstance && typeof instance.rejectAllAction === "function";
     } catch {
