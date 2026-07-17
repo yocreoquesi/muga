@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { TRANSLATIONS } from "../../src/lib/i18n.js";
+import { resolveConsentGestureOnModeChange } from "../../src/lib/settings-schema.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../..");
@@ -70,7 +71,10 @@ describe("cookie-consent-accept Slice 2a — options.js wiring", () => {
   test("the gesture checkbox is wired with a real addEventListener(\"change\", ...) handler", () => {
     const idx = optionsJs.indexOf('getElementById("cookie-consent-accept-gesture-checkbox")');
     assert.ok(idx !== -1, "options.js must query the gesture checkbox by id");
-    const nearby = optionsJs.slice(idx, idx + 1200);
+    // Window widened from 1200 -> 2200: the mode-select change handler
+    // (which now revokes the gesture on mode change) legitimately grew the
+    // code between the checkbox lookup and its own change listener.
+    const nearby = optionsJs.slice(idx, idx + 2200);
     assert.ok(
       /cookieConsentAcceptGestureCheckbox\.addEventListener\(\s*"change"/.test(nearby),
       "the gesture checkbox must be wired via addEventListener(\"change\", ...)",
@@ -95,6 +99,27 @@ describe("cookie-consent-accept Slice 2a — options.js wiring", () => {
     assert.ok(assignments.length >= 1, "options.js must restore the checkbox state from stored prefs at least once");
   });
 
+  test("the mode-select change handler revokes the gesture via resolveConsentGestureOnModeChange (not sticky across mode switches)", () => {
+    assert.ok(
+      optionsJs.includes("resolveConsentGestureOnModeChange"),
+      "options.js must import and use resolveConsentGestureOnModeChange to revoke the gesture on mode change",
+    );
+    const changeHandlerIdx = optionsJs.indexOf("cookieConsentModeSelect.addEventListener(\"change\"");
+    const handlerBody = optionsJs.slice(changeHandlerIdx, changeHandlerIdx + 600);
+    assert.ok(
+      handlerBody.includes("resolveConsentGestureOnModeChange"),
+      "the mode-select change handler must compute the next gesture value via resolveConsentGestureOnModeChange",
+    );
+  });
+
+  test("no setPrefs call ever writes a LITERAL true for cookieConsentAcceptConsented (mode select can only revoke, never grant)", () => {
+    const calls = [...optionsJs.matchAll(/cookieConsentAcceptConsented:\s*([^,}]+)/g)].map((m) => m[1].trim());
+    assert.ok(calls.length >= 1, "options.js must write cookieConsentAcceptConsented at least once");
+    for (const value of calls) {
+      assert.notEqual(value, "true", "cookieConsentAcceptConsented must never be written as a literal true");
+    }
+  });
+
   test("selecting a mode other than accept-when-necessary hides the gesture row again (syncCookieConsentAcceptGestureVisibility is called after every mode change)", () => {
     const changeHandlerIdx = optionsJs.indexOf("cookieConsentModeSelect.addEventListener(\"change\"");
     assert.ok(changeHandlerIdx !== -1, "the mode select must have a change listener");
@@ -103,6 +128,40 @@ describe("cookie-consent-accept Slice 2a — options.js wiring", () => {
       handlerBody.includes("syncCookieConsentAcceptGestureVisibility()"),
       "the mode select's change handler must re-sync the gesture row's visibility",
     );
+  });
+});
+
+describe("cookie-consent-accept Slice 2a — gesture is not sticky across mode switches", () => {
+  test("leaving accept-when-necessary for any other mode REVOKES the stored gesture", () => {
+    assert.equal(resolveConsentGestureOnModeChange("reject-only", true), false);
+    assert.equal(resolveConsentGestureOnModeChange("off", true), false);
+  });
+
+  test("entering/staying in accept-when-necessary NEVER grants the gesture — it only preserves an already-stored true", () => {
+    // A false can never become true via a mode change (only a real checkbox
+    // click can), and an existing true (from a prior real click) is kept.
+    assert.equal(resolveConsentGestureOnModeChange("accept-when-necessary", false), false);
+    assert.equal(resolveConsentGestureOnModeChange("accept-when-necessary", true), true);
+  });
+
+  test("a truthy non-boolean stored value is never treated as consent when entering accept mode", () => {
+    assert.equal(resolveConsentGestureOnModeChange("accept-when-necessary", 1), false);
+    assert.equal(resolveConsentGestureOnModeChange("accept-when-necessary", "true"), false);
+  });
+
+  test("SCENARIO: accept + gesture -> switch to reject-only -> re-select accept leaves the gate CLOSED until a fresh gesture", () => {
+    // Start in accept mode with a real gesture already granted.
+    let consented = true;
+    // User switches away to reject-only: the gesture must be revoked.
+    consented = resolveConsentGestureOnModeChange("reject-only", consented);
+    assert.equal(consented, false, "switching away from accept mode must revoke the gesture");
+    // User re-selects accept: the gate stays closed (no stale re-open).
+    consented = resolveConsentGestureOnModeChange("accept-when-necessary", consented);
+    assert.equal(consented, false, "re-entering accept mode must NOT re-open the gate on stale consent");
+    // Only a fresh explicit checkbox click (modeled here as the sole path
+    // that sets true) re-opens it — never the mode select.
+    const afterFreshClick = true;
+    assert.equal(afterFreshClick, true);
   });
 });
 

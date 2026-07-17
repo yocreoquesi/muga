@@ -109,6 +109,31 @@ export function clampImportedCookieConsentMode(v) {
 }
 
 /**
+ * Decides what `cookieConsentAcceptConsented` should become when the user
+ * changes the cookieConsentMode select (cookie-consent-accept Slice 2a).
+ *
+ * The gesture must NOT be sticky across mode switches: leaving
+ * "accept-when-necessary" REVOKES the stored gesture (returns false), so
+ * re-entering the accept mode later requires a fresh explicit click on the
+ * gesture checkbox — the double-gate never re-opens on stale consent.
+ *
+ * Entering or staying in "accept-when-necessary" NEVER grants the gesture:
+ * it preserves whatever was already stored, and only an exact boolean
+ * `true` (set by a real prior checkbox click) survives. This path can only
+ * ever keep an existing true or leave it false; it can never turn a false
+ * (or a truthy non-boolean) into a true — that guarantee is what keeps the
+ * mode select from ever opening the gate on its own.
+ *
+ * @param {*} nextMode The mode the select is changing to.
+ * @param {*} currentConsented The currently stored gesture flag.
+ * @returns {boolean}
+ */
+export function resolveConsentGestureOnModeChange(nextMode, currentConsented) {
+  if (nextMode !== "accept-when-necessary") return false;
+  return currentConsented === true;
+}
+
+/**
  * Tracking-category keys accepted for `disabledCategories`. Kept as its own
  * literal set (not derived from TRACKING_PARAM_CATEGORIES in affiliates.js)
  * so this import allowlist cannot silently drift if that taxonomy changes

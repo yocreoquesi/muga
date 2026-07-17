@@ -18,7 +18,7 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
-import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode } from "../lib/settings-schema.js";
+import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode, resolveConsentGestureOnModeChange } from "../lib/settings-schema.js";
 
 let _currentLang = "en";
 
@@ -344,10 +344,19 @@ async function init() {
       cookieConsentAcceptGestureCheckbox.checked = prefs.cookieConsentAcceptConsented === true;
     }
     syncCookieConsentAcceptGestureVisibility();
+    // Revoke the gesture when leaving accept-when-necessary so re-entering
+    // requires a fresh click; this path never GRANTS it (see
+    // resolveConsentGestureOnModeChange). Persisted together with the mode in
+    // a single write, with cookieConsentMode first so the gesture flag is
+    // never the leading key of a standalone consent-granting write.
     cookieConsentModeSelect.addEventListener("change", () => {
-      try { setPrefs({ cookieConsentMode: cookieConsentModeSelect.value }); }
-      catch (err) { console.error("[MUGA] save cookie consent mode:", err); }
+      const nextMode = cookieConsentModeSelect.value;
+      const nextConsented = resolveConsentGestureOnModeChange(nextMode, prefs.cookieConsentAcceptConsented);
+      prefs.cookieConsentAcceptConsented = nextConsented;
       syncCookieConsentAcceptGestureVisibility();
+      if (cookieConsentAcceptGestureCheckbox) cookieConsentAcceptGestureCheckbox.checked = nextConsented === true;
+      try { setPrefs({ cookieConsentMode: nextMode, cookieConsentAcceptConsented: nextConsented }); }
+      catch (err) { console.error("[MUGA] save cookie consent mode:", err); }
     });
   }
   if (cookieConsentAcceptGestureCheckbox) {
