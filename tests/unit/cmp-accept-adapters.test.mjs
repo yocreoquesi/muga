@@ -271,6 +271,91 @@ describe("canAttemptDidomiMinimumAccept — hard-wall + accept-capability detect
   });
 });
 
+// ── PARITY: decideMinimumAccept (spec) ↔ runtime gate + canAttempt ─────────
+//
+// decideMinimumAccept is the SPEC-MIRROR pure decision (mode/consented/
+// reason/adapterId) and is exhaustively tested above. The content scripts,
+// however, do NOT call it — they gate on the inlined runtime pair
+// `computeAcceptGate(prefs) && canAttemptDidomiMinimumAccept(signals)`, the
+// same pure-lib-fn ↔ inlined-runtime split as decideAction ↔ the inlined
+// canReject ladder. This block proves the two agree across the
+// signal/mode/consent matrix so the extensive decideMinimumAccept suite
+// transitively covers the runtime path and the two cannot drift.
+
+describe("cmp-accept-adapters — PARITY: spec decision ↔ inlined runtime gate", () => {
+  // Mirrors how cmp-adapters.js's decideAction classifies a Didomi page,
+  // derived from the SAME signals the runtime canAttempt predicate reads —
+  // this is the reject-first ordering: a present reject fn means a reject
+  // path exists, so the page is NOT a hard wall.
+  function deriveDidomiDecision(signals) {
+    if (signals.hasDidomiGlobal !== true) return { action: null, reason: "uncertain", adapterId: null };
+    if (signals.hasSetUserDisagreeToAllFn === true) return { action: "reject-all", reason: "reject", adapterId: "didomi" };
+    return { action: null, reason: "no-reject-path", adapterId: "didomi" };
+  }
+
+  function prefsFor(mode, consented) {
+    return { enabled: true, onboardingDone: true, cookieConsentMode: mode, cookieConsentAcceptConsented: consented };
+  }
+
+  const CAPABLE = Object.freeze({
+    hasDidomiGlobal: true, hasSetUserDisagreeToAllFn: false, hasSetCurrentUserStatusFn: true,
+    hasGetRequiredPurposeIdsFn: true, hasGetRequiredVendorIdsFn: true, hasGetPurposesFn: true, hasGetVendorsFn: true,
+  });
+  const REJECT_AVAILABLE = Object.freeze({ ...CAPABLE, hasSetUserDisagreeToAllFn: true });
+  const DIDOMI_ABSENT = Object.freeze({ ...CAPABLE, hasDidomiGlobal: false });
+  const HARDWALL_INCAPABLE = Object.freeze({ ...CAPABLE, hasGetPurposesFn: false });
+
+  const MODES = ["off", "reject-only", "accept-when-necessary"];
+  const CONSENTS = [true, false];
+
+  test("runtime (gate ∧ canAttempt) === (spec decision ∧ capability) for EVERY signal/mode/consent combo", () => {
+    for (const signals of [CAPABLE, REJECT_AVAILABLE, DIDOMI_ABSENT, HARDWALL_INCAPABLE]) {
+      for (const mode of MODES) {
+        for (const consented of CONSENTS) {
+          const gateOpen = computeAcceptGate(prefsFor(mode, consented));
+          const canAttempt = canAttemptDidomiMinimumAccept(signals);
+          const runtimeFires = gateOpen && canAttempt;
+
+          const decision = deriveDidomiDecision(signals);
+          const specFires = decideMinimumAccept(decision, mode, consented).action === ACTIONS_ACCEPT.ACCEPT_MINIMUM;
+
+          assert.equal(
+            runtimeFires,
+            specFires && canAttempt,
+            `parity broke for mode=${mode} consented=${consented} signals=${JSON.stringify(signals)}`,
+          );
+        }
+      }
+    }
+  });
+
+  test("on a FULLY capable Didomi hard wall the runtime collapses to the spec decision exactly (canAttempt is satisfied)", () => {
+    for (const mode of MODES) {
+      for (const consented of CONSENTS) {
+        const runtimeFires = computeAcceptGate(prefsFor(mode, consented)) && canAttemptDidomiMinimumAccept(CAPABLE);
+        const specFires =
+          decideMinimumAccept(deriveDidomiDecision(CAPABLE), mode, consented).action === ACTIONS_ACCEPT.ACCEPT_MINIMUM;
+        assert.equal(runtimeFires, specFires, `capable-page parity broke for mode=${mode} consented=${consented}`);
+      }
+    }
+  });
+
+  test("reject-first ordering: a present reject fn makes BOTH the spec (reason=reject) and the runtime (canAttempt=false) refuse accept", () => {
+    const decision = deriveDidomiDecision(REJECT_AVAILABLE);
+    assert.equal(decision.reason, "reject");
+    assert.equal(decideMinimumAccept(decision, "accept-when-necessary", true).action, null);
+    assert.equal(canAttemptDidomiMinimumAccept(REJECT_AVAILABLE), false);
+  });
+
+  test("the runtime is STRICTER than the spec alone: a hard wall missing an accept getter is blocked by canAttempt even when the spec decision would allow", () => {
+    // Documents WHY canAttempt is a necessary extra runtime layer: the spec
+    // decision cannot see the page's accept-capability surface.
+    const decision = deriveDidomiDecision(HARDWALL_INCAPABLE);
+    assert.equal(decideMinimumAccept(decision, "accept-when-necessary", true).action, ACTIONS_ACCEPT.ACCEPT_MINIMUM);
+    assert.equal(canAttemptDidomiMinimumAccept(HARDWALL_INCAPABLE), false);
+  });
+});
+
 // ── didomiAcceptAdapter — minimum-payload construction ──────────────────────
 
 describe("didomiAcceptAdapter — minimum payload construction (L4)", () => {

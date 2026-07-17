@@ -109,6 +109,14 @@ const ACCEPT_CAPABLE_ADAPTER_IDS = new Set(["didomi"]);
  * Any other combination — including malformed input — resolves to NOOP.
  * Pure and never throws.
  *
+ * SPEC-MIRROR counterpart: this is the exhaustively-tested pure decision,
+ * but the content scripts do NOT call it — they gate on the inlined runtime
+ * pair `computeAcceptGate(prefs) && canAttemptDidomiMinimumAccept(signals)`
+ * (the same pure-lib-fn ↔ inlined-runtime split as `decideAction` ↔ the
+ * inlined canReject ladder in cmp-adapters.js / the content scripts). A
+ * PARITY test (tests/unit/cmp-accept-adapters.test.mjs) proves the two
+ * agree across the signal/mode/consent matrix so they cannot drift.
+ *
  * @param {{reason?: string, adapterId?: string|null}|null|undefined} decision
  *   The result of cmp-adapters.js's decideAction() for this page.
  * @param {*} mode - The raw `cookieConsentMode` pref value.
@@ -210,6 +218,15 @@ export { computeAcceptGate };
  *
  * Pure: given the same signals it always returns the same result. Never
  * throws.
+ *
+ * RUNTIME-INLINE counterpart: this is the predicate the content scripts
+ * actually gate on (hand-copied into the @sync:cmp-accept region of both),
+ * the runtime half of the SPEC-MIRROR `decideMinimumAccept` above — mirrors
+ * `decideAction` ↔ the inlined canReject ladder. A PARITY test
+ * (tests/unit/cmp-accept-adapters.test.mjs) proves the two agree across the
+ * signal/mode/consent matrix. It is deliberately STRICTER than the spec
+ * decision alone: it also re-confirms the accept-capability surface the
+ * spec decision cannot see, so a hard wall lacking a getter never acts.
  *
  * @param {object|null|undefined} signals
  * @returns {boolean}
