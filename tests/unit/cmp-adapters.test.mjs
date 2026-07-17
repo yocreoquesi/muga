@@ -31,6 +31,7 @@ import {
   usercentricsAdapter,
   cookieInformationAdapter,
   cookieScriptAdapter,
+  tarteaucitronAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -40,8 +41,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information and CookieScript adapters, in order", () => {
-    assert.equal(TIER1.length, 8);
+  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information, CookieScript and tarteaucitron adapters, in order", () => {
+    assert.equal(TIER1.length, 9);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
     assert.strictEqual(TIER1[2], didomiAdapter);
@@ -50,6 +51,7 @@ describe("cmp-adapters — registry shape", () => {
     assert.strictEqual(TIER1[5], usercentricsAdapter);
     assert.strictEqual(TIER1[6], cookieInformationAdapter);
     assert.strictEqual(TIER1[7], cookieScriptAdapter);
+    assert.strictEqual(TIER1[8], tarteaucitronAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -124,6 +126,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof cookieScriptAdapter.detect, "function");
     assert.equal(typeof cookieScriptAdapter.canReject, "function");
     assert.equal(typeof cookieScriptAdapter.reject, "function");
+  });
+
+  test("tarteaucitronAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(tarteaucitronAdapter.id, "tarteaucitron");
+    assert.equal(tarteaucitronAdapter.tier, 1);
+    assert.equal(typeof tarteaucitronAdapter.detect, "function");
+    assert.equal(typeof tarteaucitronAdapter.canReject, "function");
+    assert.equal(typeof tarteaucitronAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -523,6 +533,57 @@ describe("decideAction — truth table", () => {
       hasRejectAllActionFn: true,
       hasCookiescriptInjectedDom: false,
       hasCookiescriptDescriptionDom: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("tarteaucitron: global + userInterface + respondAll fn + corroborating DOM -> reject", () => {
+    const r = decideAction({
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: true,
+      hasRespondAllFn: true,
+      hasTarteaucitronRootDom: true,
+      hasTarteaucitronAlertBigDom: false,
+      hasTarteaucitronBackDom: false,
+      hasTarteaucitronModalOpenDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "tarteaucitron");
+  });
+
+  test("tarteaucitron: global present but userInterface/respondAll absent (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: false,
+      hasRespondAllFn: false,
+      hasTarteaucitronRootDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("tarteaucitron: global + userInterface present but respondAll fn absent (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: true,
+      hasRespondAllFn: false,
+      hasTarteaucitronRootDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("tarteaucitron: mandatory signals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: true,
+      hasRespondAllFn: true,
+      hasTarteaucitronRootDom: false,
+      hasTarteaucitronAlertBigDom: false,
+      hasTarteaucitronBackDom: false,
+      hasTarteaucitronModalOpenDom: false,
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "uncertain");
@@ -1061,6 +1122,82 @@ describe("cookieScriptAdapter.detect — dual-mandatory-plus-instance confidence
   });
 });
 
+describe("tarteaucitronAdapter.detect — triple-mandatory confidence gate", () => {
+  const FULL_TAC_SIGNALS = Object.freeze({
+    hasTarteaucitronGlobal: true,
+    hasTarteaucitronUserInterface: true,
+    hasRespondAllFn: true,
+    hasTarteaucitronRootDom: true,
+    hasTarteaucitronAlertBigDom: true,
+    hasTarteaucitronBackDom: true,
+    hasTarteaucitronModalOpenDom: true,
+  });
+
+  test("mandatory triple + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = tarteaucitronAdapter.detect(FULL_TAC_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(tarteaucitronAdapter.canReject(FULL_TAC_SIGNALS), true);
+  });
+
+  test("mandatory triple + exactly one secondary (#tarteaucitronRoot only) -> canReject true", () => {
+    const s = {
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: true,
+      hasRespondAllFn: true,
+      hasTarteaucitronRootDom: true,
+      hasTarteaucitronAlertBigDom: false,
+      hasTarteaucitronBackDom: false,
+      hasTarteaucitronModalOpenDom: false,
+    };
+    assert.equal(tarteaucitronAdapter.canReject(s), true);
+  });
+
+  test("global-only (mandatory triple present, zero secondary signals) -> uncertain, canReject false", () => {
+    const s = {
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: true,
+      hasRespondAllFn: true,
+      hasTarteaucitronRootDom: false,
+      hasTarteaucitronAlertBigDom: false,
+      hasTarteaucitronBackDom: false,
+      hasTarteaucitronModalOpenDom: false,
+    };
+    assert.equal(tarteaucitronAdapter.canReject(s), false);
+    assert.ok(tarteaucitronAdapter.detect(s) < 1);
+  });
+
+  test("DOM-only (mandatory respondAll fn missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasTarteaucitronGlobal: false,
+      hasTarteaucitronUserInterface: false,
+      hasRespondAllFn: false,
+      hasTarteaucitronRootDom: true,
+      hasTarteaucitronAlertBigDom: true,
+      hasTarteaucitronBackDom: true,
+      hasTarteaucitronModalOpenDom: true,
+    };
+    assert.equal(tarteaucitronAdapter.detect(s), 0);
+    assert.equal(tarteaucitronAdapter.canReject(s), false);
+  });
+
+  test("global present but userInterface absent (respondAll unreachable) -> confidence 0, canReject false", () => {
+    const s = {
+      hasTarteaucitronGlobal: true,
+      hasTarteaucitronUserInterface: false,
+      hasRespondAllFn: false,
+      hasTarteaucitronRootDom: true,
+    };
+    assert.equal(tarteaucitronAdapter.detect(s), 0);
+    assert.equal(tarteaucitronAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => tarteaucitronAdapter.detect(null));
+    assert.doesNotThrow(() => tarteaucitronAdapter.detect(undefined));
+    assert.equal(tarteaucitronAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -1233,6 +1370,25 @@ describe("cookieScriptAdapter.reject — pure callback invocation", () => {
 
   test("non-function argument -> status noop, no call", () => {
     const r = cookieScriptAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+});
+
+describe("tarteaucitronAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = tarteaucitronAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = tarteaucitronAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = tarteaucitronAdapter.reject(undefined);
     assert.equal(r.status, "noop");
   });
 });
@@ -1419,5 +1575,17 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
     assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must still include sourcepointAdapter");
     assert.ok(TIER1.includes(usercentricsAdapter), "TIER1 must still include usercentricsAdapter");
     assert.ok(TIER1.includes(cookieInformationAdapter), "TIER1 must still include cookieInformationAdapter");
+  });
+
+  test("tarteaucitronAdapter is registered in TIER1 alongside the other eight adapters", () => {
+    assert.ok(TIER1.includes(tarteaucitronAdapter), "TIER1 must include tarteaucitronAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
+    assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
+    assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must still include sourcepointAdapter");
+    assert.ok(TIER1.includes(usercentricsAdapter), "TIER1 must still include usercentricsAdapter");
+    assert.ok(TIER1.includes(cookieInformationAdapter), "TIER1 must still include cookieInformationAdapter");
+    assert.ok(TIER1.includes(cookieScriptAdapter), "TIER1 must still include cookieScriptAdapter");
   });
 });

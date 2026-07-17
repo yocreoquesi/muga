@@ -82,5 +82,11 @@
     "url": "https://cookie-script.com",
     "bannerSelector": "#cookiescript_injected, #cookiescript_description",
     "note": "PLACEHOLDER — UNVERIFIED, needs curation. CookieScript's own marketing site, following the same dogfooding-inference pattern used for the Cookiebot entry above. Not independently confirmed via script inspection. Replace with a representative, independently-confirmed CookieScript customer deployment before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
+  },
+  {
+    "cmp": "tarteaucitron",
+    "url": "https://tarteaucitron.io",
+    "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
+    "note": "PLACEHOLDER — UNVERIFIED, needs curation. tarteaucitron.js's own project/marketing site, following the same dogfooding-inference pattern used for the Cookiebot/Cookie Information/CookieScript entries above. Not independently confirmed via script inspection. Replace with a representative, independently-confirmed tarteaucitron customer deployment (strong France/gov-sector presence per the CMP triage in engram) before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
   }
 ]

@@ -123,6 +123,20 @@
  *   present in the DOM. Secondary/corroborating signal.
  * @property {boolean} [hasCookiescriptDescriptionDom] - `#cookiescript_description`
  *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronGlobal] - `typeof window.tarteaucitron === "object"`.
+ * @property {boolean} [hasTarteaucitronUserInterface] - `typeof window.tarteaucitron.userInterface === "object"`.
+ *   Mandatory signal: the reject call lives on `.userInterface`, so this
+ *   must be present before probing for the reject function itself.
+ * @property {boolean} [hasRespondAllFn] - `typeof window.tarteaucitron.userInterface.respondAll === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasTarteaucitronRootDom] - `#tarteaucitronRoot`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronAlertBigDom] - `#tarteaucitronAlertBig`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronBackDom] - `#tarteaucitronBack`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronModalOpenDom] - `.tarteaucitron-modal-open`
+ *   present on `document.body`. Secondary/corroborating signal.
  */
 
 /**
@@ -220,6 +234,17 @@ export const ACTIONS = Object.freeze({
  * would either throw or silently read `undefined`. The usual >=1
  * corroborating DOM secondary (`#cookiescript_injected`,
  * `#cookiescript_description`) still gates the same fail-closed
+ * CONFIDENCE_THRESHOLD as every other adapter here.
+ *
+ * The tarteaucitron adapter reuses the CookieScript TRIPLE-mandatory-gate
+ * shape on purpose: its reject call (`tarteaucitron.userInterface.respondAll(false)`)
+ * lives on a `.userInterface` property, not directly on the vendor global
+ * itself — the same "present-but-not-yet-populated-with-the-nested-object"
+ * hazard the CookieScript rationale above describes. detectTarteaucitron
+ * therefore requires `hasTarteaucitronGlobal` AND `hasTarteaucitronUserInterface`
+ * AND `hasRespondAllFn` together, before probing for the usual >=1
+ * corroborating DOM secondary (`#tarteaucitronRoot`, `#tarteaucitronAlertBig`,
+ * `#tarteaucitronBack`, `.tarteaucitron-modal-open`) — same fail-closed
  * CONFIDENCE_THRESHOLD as every other adapter here.
  */
 // @sync:cmp-adapters:start
@@ -374,6 +399,31 @@ function detectCookieScript(signals) {
 
 function canRejectCookieScript(signals) {
   return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+// not directly on the vendor global — see the TRIPLE-mandatory-gate
+// rationale above detectTarteaucitron in the docblock preceding this sync
+// block.
+function detectTarteaucitron(signals) {
+  if (
+    !signals ||
+    signals.hasTarteaucitronGlobal !== true ||
+    signals.hasTarteaucitronUserInterface !== true ||
+    signals.hasRespondAllFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasTarteaucitronRootDom === true ? 1 : 0) +
+    (signals.hasTarteaucitronAlertBigDom === true ? 1 : 0) +
+    (signals.hasTarteaucitronBackDom === true ? 1 : 0) +
+    (signals.hasTarteaucitronModalOpenDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectTarteaucitron(signals) {
+  return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -581,6 +631,35 @@ export const cookieScriptAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * tarteaucitron Tier 1 adapter. The reject call
+ * (`window.tarteaucitron.userInterface.respondAll(false)`) is invoked by
+ * the caller-supplied callback via the shared `reject()` helper above —
+ * this adapter definition never touches `window` itself. Synchronous
+ * (a plain `for` loop over `tarteaucitron.job`, no Promise/callback) — the
+ * `false` status argument denies every registered service, mirroring the
+ * vendor's own "tout refuser" (reject all) UI button, which calls this
+ * exact function with the exact same literal argument.
+ *
+ * Detection deviates from the vendor-namespaced-global shape on purpose
+ * (same TRIPLE-mandatory-gate rationale as CookieScript): the reject call
+ * lives on `.userInterface`, not directly on `window.tarteaucitron` — see
+ * detectTarteaucitron's rationale above.
+ *
+ * Registered LAST in TIER1 (after cookieScriptAdapter): `window.tarteaucitron`
+ * is a direct, unambiguous vendor-namespaced global (like CookieScript's),
+ * so ordering relative to the other adapters is not safety-critical —
+ * appended at the end to keep the registry's history append-only.
+ * @type {Readonly<{id: "tarteaucitron", tier: 1, detect: typeof detectTarteaucitron, canReject: typeof canRejectTarteaucitron, reject: typeof reject}>}
+ */
+export const tarteaucitronAdapter = Object.freeze({
+  id: "tarteaucitron",
+  tier: 1,
+  detect: detectTarteaucitron,
+  canReject: canRejectTarteaucitron,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
 export const TIER1 = Object.freeze([
   oneTrustAdapter,
@@ -591,6 +670,7 @@ export const TIER1 = Object.freeze([
   usercentricsAdapter,
   cookieInformationAdapter,
   cookieScriptAdapter,
+  tarteaucitronAdapter,
 ]);
 
 /**
@@ -664,6 +744,14 @@ export function decideAction(signals) {
   // `.instance` exists but `.rejectAllAction` is not a function. Both
   // sub-cases collapse to `hasRejectAllActionFn !== true` here.
   if (s.hasCookieScriptGlobal === true && s.hasRejectAllActionFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  // tarteaucitron hard wall: mandatory global present but the reject
+  // function is not reachable — either `.userInterface` itself is absent,
+  // or `.userInterface` exists but `.respondAll` is not a function. Both
+  // sub-cases collapse to `hasRespondAllFn !== true` here, same shape as
+  // the CookieScript hard wall above.
+  if (s.hasTarteaucitronGlobal === true && s.hasRespondAllFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };
