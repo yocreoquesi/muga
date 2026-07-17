@@ -193,6 +193,31 @@
   function canRejectCookieScript(signals) {
     return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+  // not directly on the vendor global — see the TRIPLE-mandatory-gate
+  // rationale above detectTarteaucitron in the docblock preceding this sync
+  // block.
+  function detectTarteaucitron(signals) {
+    if (
+      !signals ||
+      signals.hasTarteaucitronGlobal !== true ||
+      signals.hasTarteaucitronUserInterface !== true ||
+      signals.hasRespondAllFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasTarteaucitronRootDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronAlertBigDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronBackDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronModalOpenDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectTarteaucitron(signals) {
+    return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -391,6 +416,35 @@
     } catch {
       // document not ready / detached — leave both false.
     }
+    // tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+    // not directly on the vendor global — hasTarteaucitronUserInterface must
+    // be confirmed an object BEFORE probing .respondAll, otherwise reading a
+    // property off `undefined` would throw inside this try block (still
+    // caught, but the intent is explicit here). Null-safe staged checks, not
+    // a naive chained typeof.
+    let hasTarteaucitronGlobal = false;
+    let hasTarteaucitronUserInterface = false;
+    let hasRespondAllFn = false;
+    try {
+      hasTarteaucitronGlobal = typeof window.tarteaucitron === "object" && window.tarteaucitron !== null;
+      const ui = hasTarteaucitronGlobal && window.tarteaucitron.userInterface;
+      hasTarteaucitronUserInterface = typeof ui === "object" && ui !== null;
+      hasRespondAllFn = hasTarteaucitronUserInterface && typeof ui.respondAll === "function";
+    } catch {
+      // Leave all false — fail-closed.
+    }
+    let hasTarteaucitronRootDom = false;
+    let hasTarteaucitronAlertBigDom = false;
+    let hasTarteaucitronBackDom = false;
+    let hasTarteaucitronModalOpenDom = false;
+    try {
+      hasTarteaucitronRootDom = !!document.getElementById("tarteaucitronRoot");
+      hasTarteaucitronAlertBigDom = !!document.getElementById("tarteaucitronAlertBig");
+      hasTarteaucitronBackDom = !!document.getElementById("tarteaucitronBack");
+      hasTarteaucitronModalOpenDom = !!(document.body && document.body.classList.contains("tarteaucitron-modal-open"));
+    } catch {
+      // document not ready / detached — leave all false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -432,6 +486,13 @@
       hasRejectAllActionFn,
       hasCookiescriptInjectedDom,
       hasCookiescriptDescriptionDom,
+      hasTarteaucitronGlobal,
+      hasTarteaucitronUserInterface,
+      hasRespondAllFn,
+      hasTarteaucitronRootDom,
+      hasTarteaucitronAlertBigDom,
+      hasTarteaucitronBackDom,
+      hasTarteaucitronModalOpenDom,
     };
   }
 
@@ -557,6 +618,22 @@
       _acted = true;
       try {
         window.CookieScript.instance.rejectAllAction();
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: tarteaucitron API adapter. Same zero-argument-shape family as
+    // the adapters above, except respondAll takes one literal argument:
+    // `false` denies every registered service (the vendor's own "tout
+    // refuser" button calls this exact function with the exact same
+    // literal). Synchronous — a plain for-loop over tarteaucitron.job, no
+    // Promise/callback.
+    if (canRejectTarteaucitron(signals)) {
+      _acted = true;
+      try {
+        window.tarteaucitron.userInterface.respondAll(false);
       } catch {
         // A throwing page global must never break the page's own script.
       }

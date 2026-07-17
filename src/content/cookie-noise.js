@@ -190,6 +190,31 @@
   function canRejectCookieScript(signals) {
     return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+  // not directly on the vendor global — see the TRIPLE-mandatory-gate
+  // rationale above detectTarteaucitron in the docblock preceding this sync
+  // block.
+  function detectTarteaucitron(signals) {
+    if (
+      !signals ||
+      signals.hasTarteaucitronGlobal !== true ||
+      signals.hasTarteaucitronUserInterface !== true ||
+      signals.hasRespondAllFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasTarteaucitronRootDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronAlertBigDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronBackDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronModalOpenDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectTarteaucitron(signals) {
+    return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -440,6 +465,36 @@
     } catch {
       // ignore
     }
+    // tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+    // not directly on the vendor global, reached via wrappedJSObject — same
+    // Xray-safety pattern as the other Firefox signal reads above. Null-safe
+    // staged checks, not a naive chained typeof — hasTarteaucitronUserInterface
+    // must be confirmed an object BEFORE probing .respondAll.
+    let hasTarteaucitronGlobal = false;
+    let hasTarteaucitronUserInterface = false;
+    let hasRespondAllFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const tac = wrapped && wrapped.tarteaucitron;
+      hasTarteaucitronGlobal = typeof tac === "object" && tac !== null;
+      const ui = hasTarteaucitronGlobal && tac.userInterface;
+      hasTarteaucitronUserInterface = typeof ui === "object" && ui !== null;
+      hasRespondAllFn = hasTarteaucitronUserInterface && typeof ui.respondAll === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasTarteaucitronRootDom = false;
+    let hasTarteaucitronAlertBigDom = false;
+    let hasTarteaucitronBackDom = false;
+    let hasTarteaucitronModalOpenDom = false;
+    try {
+      hasTarteaucitronRootDom = !!document.getElementById("tarteaucitronRoot");
+      hasTarteaucitronAlertBigDom = !!document.getElementById("tarteaucitronAlertBig");
+      hasTarteaucitronBackDom = !!document.getElementById("tarteaucitronBack");
+      hasTarteaucitronModalOpenDom = !!(document.body && document.body.classList.contains("tarteaucitron-modal-open"));
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -481,6 +536,13 @@
       hasRejectAllActionFn,
       hasCookiescriptInjectedDom,
       hasCookiescriptDescriptionDom,
+      hasTarteaucitronGlobal,
+      hasTarteaucitronUserInterface,
+      hasRespondAllFn,
+      hasTarteaucitronRootDom,
+      hasTarteaucitronAlertBigDom,
+      hasTarteaucitronBackDom,
+      hasTarteaucitronModalOpenDom,
     };
   }
 
@@ -584,6 +646,20 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.CookieScript.instance.rejectAllAction();
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: tarteaucitron API adapter. Same zero-argument-shape family as
+    // the adapters above, except respondAll takes one literal argument:
+    // `false` denies every registered service — see
+    // cookie-noise-mainworld.js for the full rationale.
+    if (canRejectTarteaucitron(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.tarteaucitron.userInterface.respondAll(false);
       } catch {
         // A throwing page global must never break the page.
       }

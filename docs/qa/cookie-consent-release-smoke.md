@@ -2,9 +2,9 @@
 
 ## Why this exists
 
-The 8 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
+The 9 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
 Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information,
-CookieScript) are unit-green:
+CookieScript, tarteaucitron) are unit-green:
 every detection truth table, every reject call shape, and every
 never-auto-accept structural guard is covered by `npm test`. Unit-green is
 not the same thing as real-env-green. Every adapter's merge PR shipped with
@@ -78,7 +78,7 @@ sites (`src/content/cookie-noise-mainworld.js` for Chrome MAIN world,
 `tests/canary/cmp-sites.json` - do not test against a different site
 without first adding it there.
 
-General Chrome steps (same shape for all 8 adapters unless noted):
+General Chrome steps (same shape for all 9 adapters unless noted):
 
 1. `npm run build:content` then load the unpacked extension from `src/`
    in `chrome://extensions` (Developer mode > Load unpacked).
@@ -93,7 +93,7 @@ General Chrome steps (same shape for all 8 adapters unless noted):
    inspector (where available) to confirm the resulting consent state is
    reject / necessary-only, not accept.
 
-General Firefox steps (same shape for all 8 adapters unless noted):
+General Firefox steps (same shape for all 9 adapters unless noted):
 manual only, automation is tracked separately in #1128.
 
 1. `bash scripts/with-firefox-manifest.sh npm run build:content` then load
@@ -346,9 +346,46 @@ following before marking this adapter PASS:
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
+### 9. tarteaucitron
+
+- **Reject call:** `window.tarteaucitron.userInterface.respondAll(false)`
+  (Chrome MAIN world); `window.wrappedJSObject.tarteaucitron.userInterface.respondAll(false)`
+  (Firefox). Synchronous (a plain `for` loop over `tarteaucitron.job`, no
+  Promise/callback) — the literal `false` status argument denies every
+  registered service; this is the exact function/argument the vendor's own
+  "tout refuser" (reject all) UI button calls.
+- **Detection signals:** TRIPLE-mandatory (all three required together,
+  since the reject call lives on `.userInterface`, not directly on the
+  vendor global): `hasTarteaucitronGlobal` (`typeof window.tarteaucitron === "object"`),
+  `hasTarteaucitronUserInterface` (`typeof window.tarteaucitron.userInterface === "object"`),
+  and `hasRespondAllFn`
+  (`typeof window.tarteaucitron.userInterface.respondAll === "function"`);
+  corroborating (>=1 required): `hasTarteaucitronRootDom`
+  (`#tarteaucitronRoot`), `hasTarteaucitronAlertBigDom`
+  (`#tarteaucitronAlertBig`), `hasTarteaucitronBackDom`
+  (`#tarteaucitronBack`), `hasTarteaucitronModalOpenDom`
+  (`.tarteaucitron-modal-open` on `document.body`).
+- **Candidate live site(s):** `https://tarteaucitron.io` (PLACEHOLDER —
+  UNVERIFIED, needs curation; the project's own site, banner selector
+  `#tarteaucitronRoot, #tarteaucitronAlertBig`). Replace with an
+  independently-confirmed customer deployment (strong France/gov-sector
+  presence) before treating this as a release gate.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path and
+  live-tarteaucitron compatibility are structurally tested only (the
+  Chromium e2e fixture is a regression oracle, not a real-vendor test) —
+  confirm `userInterface.respondAll(false)` actually clears the banner on a
+  live site, not just in the fixture. Also confirm `.userInterface` is
+  reliably populated by the time the dispatcher's MutationObserver fires,
+  and that the literal `false` argument (not `true`, not omitted) is the
+  one that actually denies consent on a live deployment — `respondAll`'s
+  second and third arguments (`type`, `allowSafeAnalytics`) are never
+  passed by this adapter.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
 ## Sign-off table
 
-All 16 cells (8 adapters x Chrome/Firefox) must be green before the
+All 18 cells (9 adapters x Chrome/Firefox) must be green before the
 `develop -> main` release PR opens.
 
 | Adapter | Chrome | Firefox |
@@ -361,5 +398,6 @@ All 16 cells (8 adapters x Chrome/Firefox) must be green before the
 | Usercentrics | ____ | ____ |
 | Cookie Information | ____ | ____ |
 | CookieScript | ____ | ____ |
+| tarteaucitron | ____ | ____ |
 
 Reviewer: ______________________  Date: ______________________

@@ -142,6 +142,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectCookieScript/.test(joined));
     assert.ok(/function canRejectCookieScript/.test(joined));
   });
+
+  test("sync block also defines detectTarteaucitron and canRejectTarteaucitron", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectTarteaucitron/.test(joined));
+    assert.ok(/function canRejectTarteaucitron/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -472,6 +478,35 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       assert.ok(calls.length > 0, `${label} must call rejectAllAction`);
       for (const args of calls) {
         assert.equal(args, "", `${label} rejectAllAction must be called with zero arguments`);
+      }
+    }
+  });
+
+  test("only tarteaucitron.userInterface.respondAll (or wrappedJSObject equivalent) is invoked — no other tarteaucitron method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/tarteaucitron\.userInterface\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call tarteaucitron.userInterface.respondAll`);
+      for (const fn of calls) {
+        assert.equal(fn, "respondAll", `${label} calls tarteaucitron.userInterface.${fn}() — only respondAll is permitted`);
+      }
+    }
+  });
+
+  // LITERAL-ARG GUARD (unlike the zero-argument adapters above): respondAll's
+  // first argument is a boolean where false = deny and true = accept-all —
+  // this call site must be pinned to the literal `false`, mirroring the
+  // Cookiebot submitCustomConsent(false, false, false) literal-args guard
+  // above. A future edit to `respondAll(true)` or `respondAll()` (default
+  // parameter semantics aside, the call site itself must never read that
+  // way) must fail here.
+  test("every respondAll call passes the literal false — never true, never a variable, never zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/respondAll\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call respondAll`);
+      for (const args of calls) {
+        assert.equal(args, "false", `${label} respondAll must be called with the literal false, and only false`);
       }
     }
   });
