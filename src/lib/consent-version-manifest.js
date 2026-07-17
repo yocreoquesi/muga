@@ -23,6 +23,19 @@
  * Once REQUIRED_CONSENT_VERSION points at the new entry, ConsentPolicy
  * will fire `soft-reonboard` or `hard-reonboard` on the next service
  * worker wake for users who accepted an earlier version.
+ *
+ * **Staged entries** (cookie-consent-modes redesign, Slice 1): a manifest
+ * entry MAY exist without REQUIRED_CONSENT_VERSION pointing at it yet —
+ * i.e. it is appended but not yet "active". This is a deliberate
+ * exception to the normal "bump REQUIRED_CONSENT_VERSION to match"
+ * instruction above, used when a bump's disclosure is scoped to NEW
+ * installs only (surfaced through the ordinary fresh-onboarding flow, not
+ * the version-clause delta system) and existing users' capabilities have
+ * not changed at all, so no soft-reonboard is warranted for them yet. See
+ * the "1.3" entry below for the concrete case. When a later slice needs to
+ * disclose something to existing users too, bump REQUIRED_CONSENT_VERSION
+ * to the staged version and add its CONSENT_CLAUSES_BY_VERSION entry at
+ * that time.
  */
 
 /**
@@ -61,6 +74,24 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
     // earlier version get a SOFT re-onboard (delta review) surfacing this
     // one new clause, not a hard gate.
     version: "1.2",
+    additive: true,
+  }),
+  Object.freeze({
+    // Cookie-consent-modes redesign, Slice 1: the boolean
+    // cookieConsentMinimizerEnabled becomes a 3-state cookieConsentMode
+    // ("off" | "reject-only" | "accept-when-necessary"), default
+    // "reject-only" for NEW installs only. Existing users are migrated to
+    // "off" (migrateCookieConsentMode, storage-migrations.js) — no
+    // existing user's capability changes, so per the design's resolved
+    // default-reconciliation decision, no forced re-consent / soft
+    // re-onboard fires for them. The disclosure is shown to new users
+    // only, through the ordinary fresh-onboarding features list. This is
+    // a STAGED entry (see the module docblock above): additive: true is
+    // recorded for the historical record, but REQUIRED_CONSENT_VERSION
+    // intentionally stays at "1.2" in this slice — bump it (and add a
+    // CONSENT_CLAUSES_BY_VERSION["1.3"] entry) only when a future slice
+    // needs to disclose something to existing users too.
+    version: "1.3",
     additive: true,
   }),
 ]);
