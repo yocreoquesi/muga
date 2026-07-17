@@ -218,6 +218,32 @@
   function canRejectTarteaucitron(signals) {
     return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // consentmanager.net: __cmp is the legacy IAB TCF v1.1 generic surface
+  // every v1.1-era CMP can expose, so it can never be the sole mandatory
+  // anchor — see the dual-anchor discrimination rationale above
+  // detectSourcepoint. hasCmpMngrGlobal AND hasCmpFn AND hasCmpBoxDom are all
+  // mandatory together (see the TRIPLE-mandatory rationale in the docblock
+  // preceding this sync block).
+  function detectConsentmanager(signals) {
+    if (
+      !signals ||
+      signals.hasCmpMngrGlobal !== true ||
+      signals.hasCmpFn !== true ||
+      signals.hasCmpBoxDom !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCmpWelcomeBtnYesDom === true ? 1 : 0) +
+      (signals.hasCmpWelcomeBtnNoDom === true ? 1 : 0) +
+      (signals.hasCmpBoxBtnDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectConsentmanager(signals) {
+    return detectConsentmanager(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   /**
@@ -445,6 +471,30 @@
     } catch {
       // document not ready / detached — leave all false.
     }
+    // consentmanager.net: window.cmpmngr is the vendor-specific global,
+    // window.__cmp is the legacy IAB TCF v1.1 generic reject surface — do
+    // NOT key detection off __cmp alone, see the dual-anchor discrimination
+    // rationale above detectConsentmanager.
+    let hasCmpMngrGlobal = false;
+    let hasCmpFn = false;
+    try {
+      hasCmpMngrGlobal = typeof window.cmpmngr === "object" && window.cmpmngr !== null;
+      hasCmpFn = typeof window.__cmp === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasCmpBoxDom = false;
+    let hasCmpWelcomeBtnYesDom = false;
+    let hasCmpWelcomeBtnNoDom = false;
+    let hasCmpBoxBtnDom = false;
+    try {
+      hasCmpBoxDom = !!document.getElementById("cmpbox");
+      hasCmpWelcomeBtnYesDom = !!document.getElementById("cmpwelcomebtnyes");
+      hasCmpWelcomeBtnNoDom = !!document.getElementById("cmpwelcomebtnno");
+      hasCmpBoxBtnDom = !!document.querySelector("#cmpbox .cmpboxbtn");
+    } catch {
+      // document not ready / detached — leave all false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -493,6 +543,12 @@
       hasTarteaucitronAlertBigDom,
       hasTarteaucitronBackDom,
       hasTarteaucitronModalOpenDom,
+      hasCmpMngrGlobal,
+      hasCmpFn,
+      hasCmpBoxDom,
+      hasCmpWelcomeBtnYesDom,
+      hasCmpWelcomeBtnNoDom,
+      hasCmpBoxBtnDom,
     };
   }
 
@@ -634,6 +690,23 @@
       _acted = true;
       try {
         window.tarteaucitron.userInterface.respondAll(false);
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      stopObserver();
+      return;
+    }
+    // Tier 1: consentmanager.net API adapter. setConsent's second argument
+    // is the literal `0` (reject-all) — `1` would grant broad consent, so
+    // this call site must never pass a variable there. Same fire-and-forget
+    // family as the Sourcepoint adapter above: the callback fires in
+    // practice but is optional-log-only and never gates control flow —
+    // _acted and stopObserver() fire synchronously right after the call
+    // returns.
+    if (canRejectConsentmanager(signals)) {
+      _acted = true;
+      try {
+        window.__cmp("setConsent", 0, () => {}, true);
       } catch {
         // A throwing page global must never break the page's own script.
       }

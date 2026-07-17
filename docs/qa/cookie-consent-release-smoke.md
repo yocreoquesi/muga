@@ -2,9 +2,9 @@
 
 ## Why this exists
 
-The 9 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
+The 10 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
 Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information,
-CookieScript, tarteaucitron) are unit-green:
+CookieScript, tarteaucitron, consentmanager.net) are unit-green:
 every detection truth table, every reject call shape, and every
 never-auto-accept structural guard is covered by `npm test`. Unit-green is
 not the same thing as real-env-green. Every adapter's merge PR shipped with
@@ -78,7 +78,7 @@ sites (`src/content/cookie-noise-mainworld.js` for Chrome MAIN world,
 `tests/canary/cmp-sites.json` - do not test against a different site
 without first adding it there.
 
-General Chrome steps (same shape for all 9 adapters unless noted):
+General Chrome steps (same shape for all 10 adapters unless noted):
 
 1. `npm run build:content` then load the unpacked extension from `src/`
    in `chrome://extensions` (Developer mode > Load unpacked).
@@ -93,7 +93,7 @@ General Chrome steps (same shape for all 9 adapters unless noted):
    inspector (where available) to confirm the resulting consent state is
    reject / necessary-only, not accept.
 
-General Firefox steps (same shape for all 9 adapters unless noted):
+General Firefox steps (same shape for all 10 adapters unless noted):
 manual only, automation is tracked separately in #1128.
 
 1. `bash scripts/with-firefox-manifest.sh npm run build:content` then load
@@ -383,9 +383,55 @@ following before marking this adapter PASS:
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
+### 10. consentmanager.net
+
+- **Reject call:** `window.__cmp("setConsent", 0, callback, true)` (Chrome
+  MAIN world); `window.wrappedJSObject.__cmp("setConsent", 0, callback, true)`
+  (Firefox). Fire-and-forget: the callback fires in practice but is
+  optional-log-only and never gates control flow — `_acted`/`stopObserver()`
+  fire synchronously right after the call returns. The literal `0`
+  consent-value argument denies all (reject-all); `1` would grant broad
+  consent, so this call site never passes a variable there — confirmed
+  behaviorally on 3 live customer deployments (see the specific-risk note
+  below).
+- **Detection signals:** TRIPLE-mandatory (all three required together, since
+  `window.__cmp` is the legacy IAB TCF v1.1 generic surface every v1.1-era
+  CMP can expose and can never be a sole anchor): `hasCmpMngrGlobal`
+  (`typeof window.cmpmngr === "object"`, the vendor-specific global),
+  `hasCmpFn` (`typeof window.__cmp === "function"`, the reject surface), and
+  `hasCmpBoxDom` (`#cmpbox`, the vendor-specific DOM anchor); corroborating
+  (>=1 required): `hasCmpWelcomeBtnYesDom` (`#cmpwelcomebtnyes`),
+  `hasCmpWelcomeBtnNoDom` (`#cmpwelcomebtnno`), `hasCmpBoxBtnDom`
+  (`#cmpbox .cmpboxbtn`).
+- **Candidate live site(s):** `https://www.hoerzu.de` (banner selector
+  `#cmpbox`) — PLACEHOLDER, needs independent curation/confirmation before
+  relying on this entry for release gating. This is one of the real customer
+  deployments (alongside adac.de, blic.rs, hrt.hr) where a live headless-
+  Chromium behavioral probe confirmed `window.cmpmngr`/`window.__cmp`
+  present, `#cmpbox` visible, and `__cmp("setConsent", 0, callback, true)`
+  dismissing the banner with parity to the native reject button (engram
+  `sdd/cookie-consent-coverage/tier1-live-probe`) — but that probe was a
+  one-off verification run, not the same repeatable canary-site curation
+  process used for the other 9 adapters' entries.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path is
+  structurally tested only — confirm `__cmp("setConsent", 0, callback, true)`
+  actually clears the banner on a live site in Firefox, not just via the
+  Chrome probe evidence above. Also confirm the dual-anchor discrimination
+  holds: this vendor's `__cmp` is the shared/generic legacy TCF v1.1 surface,
+  so verify on a real consentmanager.net page that the adapter fires (not a
+  misfire from some other bare-`__cmp`-exposing v1.1 CMP), and that a
+  non-consentmanager.net page exposing only a bare `__cmp` never triggers
+  this adapter. consentmanager.net's banner is geo-gated per-deployment
+  (confirmed during the live probe — 2 of 5 real customer sites did not
+  render from a non-EU vantage), so a single failed manual check from a
+  non-EU location is not evidence of drift; retry from an EU vantage or a
+  different candidate site before treating a no-show as a FAIL.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
 ## Sign-off table
 
-All 18 cells (9 adapters x Chrome/Firefox) must be green before the
+All 20 cells (10 adapters x Chrome/Firefox) must be green before the
 `develop -> main` release PR opens.
 
 | Adapter | Chrome | Firefox |
@@ -399,5 +445,6 @@ All 18 cells (9 adapters x Chrome/Firefox) must be green before the
 | Cookie Information | ____ | ____ |
 | CookieScript | ____ | ____ |
 | tarteaucitron | ____ | ____ |
+| consentmanager.net | ____ | ____ |
 
 Reviewer: ______________________  Date: ______________________

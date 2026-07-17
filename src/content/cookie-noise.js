@@ -215,6 +215,32 @@
   function canRejectTarteaucitron(signals) {
     return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
   }
+
+  // consentmanager.net: __cmp is the legacy IAB TCF v1.1 generic surface
+  // every v1.1-era CMP can expose, so it can never be the sole mandatory
+  // anchor — see the dual-anchor discrimination rationale above
+  // detectSourcepoint. hasCmpMngrGlobal AND hasCmpFn AND hasCmpBoxDom are all
+  // mandatory together (see the TRIPLE-mandatory rationale in the docblock
+  // preceding this sync block).
+  function detectConsentmanager(signals) {
+    if (
+      !signals ||
+      signals.hasCmpMngrGlobal !== true ||
+      signals.hasCmpFn !== true ||
+      signals.hasCmpBoxDom !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCmpWelcomeBtnYesDom === true ? 1 : 0) +
+      (signals.hasCmpWelcomeBtnNoDom === true ? 1 : 0) +
+      (signals.hasCmpBoxBtnDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectConsentmanager(signals) {
+    return detectConsentmanager(signals) >= CONFIDENCE_THRESHOLD;
+  }
   // @sync:cmp-adapters:end
 
   // ── Nonce handshake (separate channel: muga:cookie-gate) ────────────────
@@ -495,6 +521,33 @@
     } catch {
       // ignore
     }
+    // consentmanager.net: window.cmpmngr is the vendor-specific global,
+    // window.__cmp is the legacy IAB TCF v1.1 generic reject surface,
+    // reached via wrappedJSObject — same Xray-safety pattern as the other
+    // Firefox signal reads above. Do NOT key detection off __cmp alone —
+    // see the dual-anchor discrimination rationale above detectConsentmanager.
+    let hasCmpMngrGlobal = false;
+    let hasCmpFn = false;
+    try {
+      const wrapped = window.wrappedJSObject;
+      const cm = wrapped && wrapped.cmpmngr;
+      hasCmpMngrGlobal = typeof cm === "object" && cm !== null;
+      hasCmpFn = wrapped && typeof wrapped.__cmp === "function";
+    } catch {
+      // Xray wrapper / permission failure — fail closed.
+    }
+    let hasCmpBoxDom = false;
+    let hasCmpWelcomeBtnYesDom = false;
+    let hasCmpWelcomeBtnNoDom = false;
+    let hasCmpBoxBtnDom = false;
+    try {
+      hasCmpBoxDom = !!document.getElementById("cmpbox");
+      hasCmpWelcomeBtnYesDom = !!document.getElementById("cmpwelcomebtnyes");
+      hasCmpWelcomeBtnNoDom = !!document.getElementById("cmpwelcomebtnno");
+      hasCmpBoxBtnDom = !!document.querySelector("#cmpbox .cmpboxbtn");
+    } catch {
+      // ignore
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -543,6 +596,12 @@
       hasTarteaucitronAlertBigDom,
       hasTarteaucitronBackDom,
       hasTarteaucitronModalOpenDom,
+      hasCmpMngrGlobal,
+      hasCmpFn,
+      hasCmpBoxDom,
+      hasCmpWelcomeBtnYesDom,
+      hasCmpWelcomeBtnNoDom,
+      hasCmpBoxBtnDom,
     };
   }
 
@@ -660,6 +719,20 @@
       _fxActed = true;
       try {
         window.wrappedJSObject.tarteaucitron.userInterface.respondAll(false);
+      } catch {
+        // A throwing page global must never break the page.
+      }
+      fxStopObserver();
+      return;
+    }
+    // Tier 1: consentmanager.net API adapter. Same literal-`0`,
+    // fire-and-forget shape as the Chrome MAIN-world caller — see
+    // cookie-noise-mainworld.js. setConsent's callback is optional-log-only
+    // and never gates control flow.
+    if (canRejectConsentmanager(signals)) {
+      _fxActed = true;
+      try {
+        window.wrappedJSObject.__cmp("setConsent", 0, () => {}, true);
       } catch {
         // A throwing page global must never break the page.
       }

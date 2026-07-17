@@ -137,6 +137,22 @@
  *   present in the DOM. Secondary/corroborating signal.
  * @property {boolean} [hasTarteaucitronModalOpenDom] - `.tarteaucitron-modal-open`
  *   present on `document.body`. Secondary/corroborating signal.
+ * @property {boolean} [hasCmpMngrGlobal] - `typeof window.cmpmngr === "object"`.
+ *   Mandatory signal: the consentmanager.net-specific vendor global.
+ * @property {boolean} [hasCmpFn] - `typeof window.__cmp === "function"`.
+ *   Mandatory signal: `__cmp` is the legacy IAB TCF v1.1 generic surface
+ *   (shared risk with other v1.1-era CMPs), so it can never be a sole
+ *   anchor — see the dual-anchor discrimination rationale above
+ *   detectConsentmanager below.
+ * @property {boolean} [hasCmpBoxDom] - `#cmpbox` present in the DOM.
+ *   Mandatory signal: the consentmanager.net-specific DOM anchor that
+ *   discriminates this CMP from every other bare-`__cmp`-exposing vendor.
+ * @property {boolean} [hasCmpWelcomeBtnYesDom] - `#cmpwelcomebtnyes`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCmpWelcomeBtnNoDom] - `#cmpwelcomebtnno` present
+ *   in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCmpBoxBtnDom] - `#cmpbox .cmpboxbtn` present in
+ *   the DOM. Secondary/corroborating signal.
  */
 
 /**
@@ -246,6 +262,25 @@ export const ACTIONS = Object.freeze({
  * corroborating DOM secondary (`#tarteaucitronRoot`, `#tarteaucitronAlertBig`,
  * `#tarteaucitronBack`, `.tarteaucitron-modal-open`) — same fail-closed
  * CONFIDENCE_THRESHOLD as every other adapter here.
+ *
+ * The consentmanager.net adapter DEVIATES from every prior adapter's
+ * discrimination shape on purpose (dual-anchor discrimination, extended to
+ * a mandatory TRIPLE): its reject call rides `window.__cmp`, the legacy IAB
+ * TCF v1.1 generic global name — shared risk with other v1.1-era CMPs, so
+ * it can never be a sole anchor, mirroring the TCF-generic-signal
+ * discrimination rationale on detectSourcepoint above. Unlike Sourcepoint's
+ * dual-mandatory (generic fn + vendor DOM), this adapter requires a THIRD
+ * mandatory signal on top of that pair: `hasCmpMngrGlobal`
+ * (`typeof window.cmpmngr === "object"`, the vendor-specific global) AND
+ * `hasCmpFn` (`typeof window.__cmp === "function"`, the legacy generic
+ * reject surface) AND `hasCmpBoxDom` (`#cmpbox`, the vendor-specific DOM
+ * anchor) are all mandatory together — a bare `__cmp` function is common to
+ * every TCF v1.1 CMP and must never claim this adapter on its own, and
+ * `window.cmpmngr` alone (without the DOM anchor or the reject surface) is
+ * not enough either. The usual >=1 corroborating DOM secondary
+ * (`#cmpwelcomebtnyes`, `#cmpwelcomebtnno`, `#cmpbox .cmpboxbtn`) still
+ * gates the same fail-closed CONFIDENCE_THRESHOLD as every other adapter
+ * here.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -424,6 +459,32 @@ function detectTarteaucitron(signals) {
 
 function canRejectTarteaucitron(signals) {
   return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// consentmanager.net: __cmp is the legacy IAB TCF v1.1 generic surface
+// every v1.1-era CMP can expose, so it can never be the sole mandatory
+// anchor — see the dual-anchor discrimination rationale above
+// detectSourcepoint. hasCmpMngrGlobal AND hasCmpFn AND hasCmpBoxDom are all
+// mandatory together (see the TRIPLE-mandatory rationale in the docblock
+// preceding this sync block).
+function detectConsentmanager(signals) {
+  if (
+    !signals ||
+    signals.hasCmpMngrGlobal !== true ||
+    signals.hasCmpFn !== true ||
+    signals.hasCmpBoxDom !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCmpWelcomeBtnYesDom === true ? 1 : 0) +
+    (signals.hasCmpWelcomeBtnNoDom === true ? 1 : 0) +
+    (signals.hasCmpBoxBtnDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectConsentmanager(signals) {
+  return detectConsentmanager(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -660,6 +721,40 @@ export const tarteaucitronAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * consentmanager.net Tier 1 adapter. The reject call
+ * (`window.__cmp("setConsent", 0, callback, true)`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. The literal `0`
+ * consent-value argument denies all (reject-all); `1` would grant broad
+ * consent, so this call site must never pass a variable there — see the
+ * literal-arg guard in tests/unit/cookie-noise-sync.test.mjs.
+ *
+ * Async call shape, fire-and-forget, same family as the Sourcepoint
+ * adapter's `__tcfapi("postRejectAll", 2, callback)`: the callback fires in
+ * practice but is optional-log-only and never gates control flow —
+ * `_acted`/`stopObserver()` fire synchronously right after the call
+ * returns, never awaited on the callback settling.
+ *
+ * Detection deviates from every prior adapter's discrimination shape on
+ * purpose (dual-anchor discrimination extended to a mandatory TRIPLE) — see
+ * detectConsentmanager's rationale above.
+ *
+ * Registered LAST in TIER1 (after tarteaucitronAdapter): `window.__cmp` is
+ * a shared/generic legacy TCF v1.1 surface (like Sourcepoint's
+ * `__tcfapi`), so ordering relative to the vendor-namespaced-global
+ * adapters is not safety-critical — appended at the end to keep the
+ * registry's history append-only.
+ * @type {Readonly<{id: "consentmanager", tier: 1, detect: typeof detectConsentmanager, canReject: typeof canRejectConsentmanager, reject: typeof reject}>}
+ */
+export const consentmanagerAdapter = Object.freeze({
+  id: "consentmanager",
+  tier: 1,
+  detect: detectConsentmanager,
+  canReject: canRejectConsentmanager,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
 export const TIER1 = Object.freeze([
   oneTrustAdapter,
@@ -671,6 +766,7 @@ export const TIER1 = Object.freeze([
   cookieInformationAdapter,
   cookieScriptAdapter,
   tarteaucitronAdapter,
+  consentmanagerAdapter,
 ]);
 
 /**
@@ -752,6 +848,14 @@ export function decideAction(signals) {
   // sub-cases collapse to `hasRespondAllFn !== true` here, same shape as
   // the CookieScript hard wall above.
   if (s.hasTarteaucitronGlobal === true && s.hasRespondAllFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  // consentmanager.net hard wall: the MIRROR IMAGE of the Sourcepoint check
+  // above, keyed off the vendor-specific DOM anchor (hasCmpBoxDom), NOT
+  // bare hasCmpFn alone — a bare __cmp function is true on every TCF v1.1
+  // CMP and must fall through to "uncertain" below, never claim
+  // consentmanager.net.
+  if (s.hasCmpBoxDom === true && (s.hasCmpMngrGlobal !== true || s.hasCmpFn !== true)) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };
