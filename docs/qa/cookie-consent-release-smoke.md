@@ -78,7 +78,7 @@ sites (`src/content/cookie-noise-mainworld.js` for Chrome MAIN world,
 `tests/canary/cmp-sites.json` - do not test against a different site
 without first adding it there.
 
-General Chrome steps (same shape for all 6 adapters unless noted):
+General Chrome steps (same shape for all 7 adapters unless noted):
 
 1. `npm run build:content` then load the unpacked extension from `src/`
    in `chrome://extensions` (Developer mode > Load unpacked).
@@ -93,7 +93,7 @@ General Chrome steps (same shape for all 6 adapters unless noted):
    inspector (where available) to confirm the resulting consent state is
    reject / necessary-only, not accept.
 
-General Firefox steps (same shape for all 6 adapters unless noted):
+General Firefox steps (same shape for all 7 adapters unless noted):
 manual only, automation is tracked separately in #1128.
 
 1. `bash scripts/with-firefox-manifest.sh npm run build:content` then load
