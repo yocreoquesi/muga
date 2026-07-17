@@ -100,6 +100,19 @@
  *   queryable). Secondary/corroborating signal.
  * @property {boolean} [hasIsInitializedFn] - `typeof window.UC_UI.isInitialized === "function"`.
  *   Secondary/corroborating signal.
+ * @property {boolean} [hasCookieInformationGlobal] - `typeof window.CookieInformation === "object"`.
+ * @property {boolean} [hasDeclineAllCategoriesFn] - `typeof window.CookieInformation.declineAllCategories === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasCoiOverlayDom] - `#coiOverlay` present in the DOM.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasCoiConsentBannerDom] - `#coiConsentBanner` present
+ *   in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCoiSummeryDom] - `#coiSummery` present in the DOM.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasCoiBannerWrapperDom] - `#coi-banner-wrapper`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCoiConsentSummaryDom] - `.coi-consent-summary`
+ *   present in the DOM. Secondary/corroborating signal.
  */
 
 /**
@@ -173,6 +186,18 @@ export const ACTIONS = Object.freeze({
  * (a separate, rarer Usercentrics integration mode) and would either
  * collide with Sourcepoint/Didomi discrimination or fail to discriminate
  * at all.
+ *
+ * The Cookie Information adapter reuses the OneTrust/Didomi/Usercentrics
+ * shape again: `window.CookieInformation` is a vendor-namespaced global, so
+ * detectCookieInformation requires the mandatory `hasCookieInformationGlobal`
+ * + `hasDeclineAllCategoriesFn` pair plus >=1 corroborating DOM secondary
+ * (`#coiOverlay`, `#coiConsentBanner`, `#coiSummery`, `#coi-banner-wrapper`,
+ * `.coi-consent-summary`) — same fail-closed confidence gate, same
+ * threshold. Do NOT key detection off `window.__tcfapi`: Cookie Information
+ * can ALSO expose the generic IAB TCF surface (opt-in per site via
+ * `data-tcf-v2-enabled`), which is Sourcepoint's dual-mandatory anchor
+ * above, not this adapter's. Detection here is keyed ONLY off the
+ * `window.CookieInformation` vendor global + `declineAllCategories`.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -277,6 +302,33 @@ function detectUsercentrics(signals) {
 
 function canRejectUsercentrics(signals) {
   return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// Cookie Information: window.CookieInformation is a vendor-namespaced
+// global (like OneTrust/Didomi/UC_UI), so this mirrors detectDidomi's shape
+// (mandatory global + mandatory reject-fn signal, plus >=1 corroborating
+// secondary signal). Do NOT key off __tcfapi — see the discrimination
+// rationale above detectCookieInformation in the docblock preceding this
+// sync block.
+function detectCookieInformation(signals) {
+  if (
+    !signals ||
+    signals.hasCookieInformationGlobal !== true ||
+    signals.hasDeclineAllCategoriesFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCoiOverlayDom === true ? 1 : 0) +
+    (signals.hasCoiConsentBannerDom === true ? 1 : 0) +
+    (signals.hasCoiSummeryDom === true ? 1 : 0) +
+    (signals.hasCoiBannerWrapperDom === true ? 1 : 0) +
+    (signals.hasCoiConsentSummaryDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectCookieInformation(signals) {
+  return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
 }
 // @sync:cmp-adapters:end
 
@@ -432,6 +484,32 @@ export const usercentricsAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * Cookie Information Tier 1 adapter. The reject call
+ * (`window.CookieInformation.declineAllCategories()`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. Same call shape as
+ * `oneTrustAdapter.RejectAll()` / `didomiAdapter.setUserDisagreeToAll()`:
+ * synchronous, zero arguments, void return — the library's own default
+ * decline button listens for click and calls this exact method (a core SDK
+ * global method, not gated behind custom-template opt-in). Independent of
+ * IAB TCF (`window.__tcfapi`, which for this vendor is additionally opt-in
+ * per site) — see detectCookieInformation's discrimination rationale above.
+ *
+ * Registered LAST in TIER1 (after usercentricsAdapter): `window.CookieInformation`
+ * is a direct, unambiguous vendor-namespaced global (like Didomi's/UC_UI's),
+ * so ordering relative to the other adapters is not safety-critical either
+ * way — appended at the end to keep the registry's history append-only.
+ * @type {Readonly<{id: "cookieinformation", tier: 1, detect: typeof detectCookieInformation, canReject: typeof canRejectCookieInformation, reject: typeof reject}>}
+ */
+export const cookieInformationAdapter = Object.freeze({
+  id: "cookieinformation",
+  tier: 1,
+  detect: detectCookieInformation,
+  canReject: canRejectCookieInformation,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
 export const TIER1 = Object.freeze([
   oneTrustAdapter,
@@ -440,6 +518,7 @@ export const TIER1 = Object.freeze([
   cookieYesAdapter,
   sourcepointAdapter,
   usercentricsAdapter,
+  cookieInformationAdapter,
 ]);
 
 /**
@@ -500,6 +579,12 @@ export function decideAction(signals) {
   // Usercentrics (#1121) hard wall: same shape as the OneTrust/Didomi
   // checks above (mandatory global present, mandatory reject fn absent).
   if (s.hasUcUiGlobal === true && s.hasDenyAllConsentsFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: null };
+  }
+  // Cookie Information hard wall: same shape as the OneTrust/Didomi/
+  // Usercentrics checks above (mandatory global present, mandatory reject
+  // fn absent).
+  if (s.hasCookieInformationGlobal === true && s.hasDeclineAllCategoriesFn !== true) {
     return { action: null, reason: "no-reject-path", adapterId: null };
   }
   return { action: null, reason: "uncertain", adapterId: null };

@@ -130,6 +130,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectUsercentrics/.test(joined));
     assert.ok(/function canRejectUsercentrics/.test(joined));
   });
+
+  test("sync block also defines detectCookieInformation and canRejectCookieInformation", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectCookieInformation/.test(joined));
+    assert.ok(/function canRejectCookieInformation/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -417,6 +423,28 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
         /denyAllConsents\(\)\s*\.catch\s*\(/.test(src),
         `${label} must chain .catch(...) directly onto the denyAllConsents() call`,
       );
+    }
+  });
+
+  test("only CookieInformation.declineAllCategories (or wrappedJSObject equivalent) is invoked — no other CookieInformation method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/CookieInformation\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call CookieInformation.declineAllCategories`);
+      for (const fn of calls) {
+        assert.equal(fn, "declineAllCategories", `${label} calls CookieInformation.${fn}() — only declineAllCategories is permitted`);
+      }
+    }
+  });
+
+  test("every declineAllCategories call passes zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/declineAllCategories\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call declineAllCategories`);
+      for (const args of calls) {
+        assert.equal(args, "", `${label} declineAllCategories must be called with zero arguments`);
+      }
     }
   });
 });
