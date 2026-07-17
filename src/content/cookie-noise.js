@@ -4,9 +4,10 @@
  * Reads the user's prefs, computes the disabled-state gate, and controls
  * the MAIN-world caller (content/cookie-noise-mainworld.js, Chrome MV3
  * only) via a nonce-gated CustomEvent handshake on a channel SEPARATE
- * from `muga:history-gate` — this feature's pref
- * (`cookieConsentMinimizerEnabled`) defaults OFF while `activeDefenseEnabled`
- * defaults ON, so sharing a gate would conflate two independent opt-ins.
+ * from `muga:history-gate` — this feature's pref (`cookieConsentMode`,
+ * default "reject-only" for new installs) is independent from
+ * `activeDefenseEnabled` (default ON); sharing a gate would conflate two
+ * independent opt-ins.
  *
  * On Firefox MV2 (no `world: "MAIN"` support) this script ALSO performs
  * the reject call directly, reaching the page's real OneTrust object via
@@ -524,7 +525,7 @@
     if (!prefs) return false;
     if (prefs.enabled === false) return false;
     if (prefs.onboardingDone !== true) return false;
-    if (prefs.cookieConsentMinimizerEnabled !== true) return false;
+    if (prefs.cookieConsentMode !== "reject-only") return false;
     const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
     if (typeof isSiteFullyExempt === "function") {
       try {

@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -199,6 +199,13 @@ const toolbarPresenter = createToolbarPresenter({
 migrateStatsToLocal();
 migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
+// Cookie-consent 3-state modes (Slice 1): converts the legacy
+// cookieConsentMinimizerEnabled boolean into cookieConsentMode + the
+// cookieConsentAcceptConsented gate. This top-level call passes no reason, so
+// it runs the SAFE idempotent pass only (maps a present legacy key; never
+// infers "off" from an absent mode). Genuine installs are seeded by the
+// onInstalled call site, which passes details.reason.
+migrateCookieConsentMode().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
@@ -1849,6 +1856,7 @@ chrome.runtime.onStartup.addListener(async () => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
+  migrateCookieConsentMode().catch(() => {});
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
@@ -1962,6 +1970,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
+  // Pass the onInstalled reason so a genuine "install" latches the disclosed
+  // reject-only default and an "update" runs the existing-user migration. The
+  // top-level and onStartup call sites pass no reason (safe idempotent pass).
+  migrateCookieConsentMode({ reason: details.reason }).catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

@@ -343,7 +343,9 @@ export default Object.freeze({
   row_hover_preview_hint: "No computador, mantenha o mouse sobre um link por alguns segundos para ver seu destino real já limpo (somente para links que redirecionam para outro lugar).",
   aria_hover_preview: "Mostrar uma prévia do destino real do link ao passar o mouse",
   hover_preview_label: "Vai para:",
-  row_cookie_consent_minimizer_label: "Minimizador de avisos de cookies",
-  row_cookie_consent_minimizer_hint: "Em avisos de cookies compatíveis (atualmente OneTrust), o MUGA clica em «rejeitar» ou «apenas necessários» por você. Ele nunca aceita nem concede mais rastreamento em seu nome; se não existir uma opção segura de rejeição, deixa o aviso como está. Desativado por padrão.",
-  aria_cookie_consent_minimizer: "Rejeitar automaticamente os avisos de cookies quando existir uma opção segura",
+  row_cookie_consent_mode_label: "Minimizador de avisos de cookies",
+  row_cookie_consent_mode_hint: "Em avisos de cookies compatíveis, o MUGA rejeita automaticamente os cookies de rastreamento ou escolhe apenas os necessários por você, da mesma forma que já limpa suas URLs. Ele nunca aceita nem concede mais rastreamento em seu nome.",
+  aria_cookie_consent_mode: "Modo do minimizador de avisos de cookies",
+  cookie_consent_mode_opt_reject_only: "Rejeitar apenas (recomendado)",
+  cookie_consent_mode_opt_off: "Desativado",
 });

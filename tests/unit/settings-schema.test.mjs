@@ -16,6 +16,8 @@ import {
   BOOLEAN_KEYS,
   TOAST_DURATION_OPTIONS,
   snapToastDuration,
+  COOKIE_CONSENT_MODE_OPTIONS,
+  clampCookieConsentMode,
   buildExportPayload,
   planImport,
   diffImport,
@@ -63,6 +65,8 @@ const SAMPLE_PREFS = {
   experimentalParamClassesEnabled: true,
   honorCreatorMode: true,
   creatorAllowlist: ["youtube.com/@example"],
+  cookieConsentMode: "reject-only",
+  cookieConsentAcceptConsented: false,
 };
 
 describe("SETTINGS_SCHEMA_VERSION", () => {
@@ -73,16 +77,20 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 21 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
+    // cookieConsentAcceptConsented is deliberately NOT here: it is the reserved
+    // accept-gate flag for Slice 2 and must never be imported until then, so it
+    // is kept out of the importable BOOLEAN_KEYS set (export still round-trips
+    // it via SETTINGS_FIELDS).
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
-      "attributionLedgerEnabled", "hoverPreviewEnabled", "cookieConsentMinimizerEnabled",
+      "attributionLedgerEnabled", "hoverPreviewEnabled",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 21);
+    assert.strictEqual(BOOLEAN_KEYS.length, 20);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -241,6 +249,32 @@ describe("planImport — full round-trip of every field", () => {
       const plan = planImport(validImportData({ toastDuration: raw }));
       assert.strictEqual(plan.toSave.toastDuration, snapToastDuration(raw));
     }
+  });
+
+  test("cookieConsentMode import keeps off/reject-only verbatim", () => {
+    for (const mode of ["off", "reject-only"]) {
+      const plan = planImport(validImportData({ cookieConsentMode: mode }));
+      assert.strictEqual(plan.toSave.cookieConsentMode, mode);
+    }
+  });
+
+  test("cookieConsentMode import collapses accept-when-necessary to reject-only (not pre-seedable until Slice 2)", () => {
+    // Importing must never pre-seed the reserved accept state without a consent
+    // gesture; only the import path is clamped this hard.
+    const plan = planImport(validImportData({ cookieConsentMode: "accept-when-necessary" }));
+    assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
+  });
+
+  test("cookieConsentMode clamps an unrecognized value to the safe default (reject-only)", () => {
+    const plan = planImport(validImportData({ cookieConsentMode: "bogus-mode" }));
+    assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
+  });
+
+  test("cookieConsentAcceptConsented is NOT importable (reserved accept-gate for Slice 2)", () => {
+    const plan = planImport(validImportData({ cookieConsentAcceptConsented: true }));
+    assert.strictEqual(plan.toSave.cookieConsentAcceptConsented, undefined);
+    const planFalse = planImport(validImportData({ cookieConsentAcceptConsented: false }));
+    assert.strictEqual(planFalse.toSave.cookieConsentAcceptConsented, undefined);
   });
 
   test("language round-trips for every SUPPORTED_LANGS code, rejects unknown codes", () => {
@@ -436,5 +470,24 @@ describe("TOAST_DURATION_OPTIONS / snapToastDuration", () => {
     assert.equal(snapToastDuration(23), 30);
     assert.equal(snapToastDuration(1000), 60);
     assert.equal(snapToastDuration(NaN), 15);
+  });
+});
+
+describe("COOKIE_CONSENT_MODE_OPTIONS / clampCookieConsentMode", () => {
+  test("the enum has exactly the three documented members, reject-only first", () => {
+    assert.deepStrictEqual([...COOKIE_CONSENT_MODE_OPTIONS], ["off", "reject-only", "accept-when-necessary"]);
+  });
+
+  test("clamps every valid member to itself", () => {
+    for (const mode of COOKIE_CONSENT_MODE_OPTIONS) {
+      assert.equal(clampCookieConsentMode(mode), mode);
+    }
+  });
+
+  test("clamps an unrecognized value, or a non-string, to the safe default (reject-only)", () => {
+    assert.equal(clampCookieConsentMode("bogus"), "reject-only");
+    assert.equal(clampCookieConsentMode(undefined), "reject-only");
+    assert.equal(clampCookieConsentMode(null), "reject-only");
+    assert.equal(clampCookieConsentMode(123), "reject-only");
   });
 });

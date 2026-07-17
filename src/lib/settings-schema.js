@@ -50,6 +50,41 @@ export function snapToastDuration(n) {
 }
 
 /**
+ * The 3-state Cookie Consent Minimizer mode enum (cookie-consent modes
+ * redesign, Slice 1). `"reject-only"` is the safe default. `"accept-when-
+ * necessary"` is a recognized member for export/import round-tripping and
+ * settings-schema completeness, but is NOT offered by the Slice 1 options
+ * UI and is never written by the startup migration — see
+ * migrateCookieConsentMode() in src/lib/storage-migrations.js.
+ */
+export const COOKIE_CONSENT_MODE_OPTIONS = Object.freeze(["off", "reject-only", "accept-when-necessary"]);
+
+/**
+ * Clamps an arbitrary imported value to a valid cookieConsentMode member,
+ * mirroring the snapToastDuration precedent: an unrecognized or non-string
+ * value falls back to the safe default ("reject-only") rather than
+ * rejecting the whole import.
+ */
+export function clampCookieConsentMode(v) {
+  return COOKIE_CONSENT_MODE_OPTIONS.includes(v) ? v : "reject-only";
+}
+
+/**
+ * Import-only clamp for cookieConsentMode. Until Slice 2 ships the double-gate
+ * that governs "accept-when-necessary", an imported blob must never pre-seed
+ * that reserved accept state (nor any unknown value) without a real consent
+ * gesture. Only "off" survives verbatim; everything else — including
+ * "accept-when-necessary" — collapses to the safe default "reject-only".
+ *
+ * This is deliberately stricter than clampCookieConsentMode(), which still
+ * recognizes "accept-when-necessary" as a valid enum member for in-app and
+ * forward-compat use. ONLY the import path is clamped this hard.
+ */
+export function clampImportedCookieConsentMode(v) {
+  return v === "off" ? "off" : "reject-only";
+}
+
+/**
  * Tracking-category keys accepted for `disabledCategories`. Kept as its own
  * literal set (not derived from TRACKING_PARAM_CATEGORIES in affiliates.js)
  * so this import allowlist cannot silently drift if that taxonomy changes
@@ -71,6 +106,10 @@ const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noi
  *   - "language"        — validated against SUPPORTED_LANGS
  *   - "creatorAllowlist" — folded through addCreatorAllowlistEntry
  *   - "customRulesList"  — userCustomRules, filtered via isValidCustomParam + capped
+ *   - "exportOnlyBoolean" — cookieConsentAcceptConsented: a boolean that
+ *                          round-trips through EXPORT but is never read on
+ *                          IMPORT (reserved accept-gate for Slice 2), so it is
+ *                          kept out of BOOLEAN_KEYS and never written by planImport
  *   - "permissionGated"  — followShortenersEnabled / remoteRulesEnabled: each
  *                          requires an optional host-permission grant that
  *                          cannot happen inside this pure module, so they are
@@ -127,8 +166,17 @@ export const SETTINGS_FIELDS = Object.freeze([
   // hoverPreviewEnabled is a plain boolean and round-trips normally via
   // BOOLEAN_KEYS.
   { key: "hoverPreviewEnabled", kind: "boolean", label: "row_hover_preview_label" },
-  // #1027: Cookie Consent Minimizer. Plain boolean, opt-in, default false.
-  { key: "cookieConsentMinimizerEnabled", kind: "boolean", label: "row_cookie_consent_minimizer_label" },
+  // Cookie Consent Minimizer — 3-state modes (Slice 1, supersedes #1027's
+  // boolean). cookieConsentMode is clamped via clampImportedCookieConsentMode
+  // on import so a malformed/unknown string — and the reserved
+  // "accept-when-necessary" mode — can never land in storage from an import.
+  // cookieConsentAcceptConsented is the reserved hard-gate flag for Slice 2's
+  // accept-when-necessary mode. It uses the "exportOnlyBoolean" kind so it
+  // round-trips through EXPORT (forward-compat) but is deliberately kept OUT
+  // of BOOLEAN_KEYS and the import path: an imported blob must never pre-seed
+  // the accept gate without a real consent gesture (see planImport).
+  { key: "cookieConsentMode", kind: "cookieConsentMode", label: "row_cookie_consent_mode_label" },
+  { key: "cookieConsentAcceptConsented", kind: "exportOnlyBoolean", label: "row_cookie_consent_accept_label" },
 ]);
 
 /**
@@ -273,6 +321,14 @@ export function planImport(data) {
 
   if (typeof migrated.toastDuration === "number") {
     toSave.toastDuration = snapToastDuration(migrated.toastDuration);
+  }
+
+  if (typeof migrated.cookieConsentMode === "string") {
+    // Import-only clamp: collapses "accept-when-necessary" and any unknown
+    // value to "reject-only" so an imported blob can never pre-seed the
+    // reserved accept state before Slice 2. cookieConsentAcceptConsented is
+    // NOT read at all on import (exportOnlyBoolean kind — not in BOOLEAN_KEYS).
+    toSave.cookieConsentMode = clampImportedCookieConsentMode(migrated.cookieConsentMode);
   }
 
   // #968: fold each imported creator-allowlist entry through the same pure

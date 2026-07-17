@@ -343,7 +343,9 @@ export default Object.freeze({
   row_hover_preview_hint: "Sur ordinateur, laissez la souris quelques secondes sur un lien pour voir sa vraie destination nettoyée (uniquement pour les liens qui redirigent ailleurs).",
   aria_hover_preview: "Afficher un aperçu de la vraie destination du lien au survol",
   hover_preview_label: "Mène à :",
-  row_cookie_consent_minimizer_label: "Minimiseur de bandeaux de cookies",
-  row_cookie_consent_minimizer_hint: "Sur les bandeaux de consentement aux cookies pris en charge (actuellement OneTrust), MUGA clique sur « refuser » ou « nécessaires uniquement » à votre place. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom ; s'il n'existe aucune option de refus sûre, il laisse le bandeau tel quel. Désactivé par défaut.",
-  aria_cookie_consent_minimizer: "Rejeter automatiquement les bandeaux de consentement aux cookies lorsqu'une option sûre existe",
+  row_cookie_consent_mode_label: "Minimiseur de bandeaux de cookies",
+  row_cookie_consent_mode_hint: "Sur les bandeaux de consentement aux cookies pris en charge, MUGA refuse automatiquement les cookies de pistage ou choisit uniquement les cookies nécessaires à votre place, de la même façon qu'il nettoie déjà vos URL. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom.",
+  aria_cookie_consent_mode: "Mode du minimiseur de bandeaux de cookies",
+  cookie_consent_mode_opt_reject_only: "Refuser uniquement (recommandé)",
+  cookie_consent_mode_opt_off: "Désactivé",
 });

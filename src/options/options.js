@@ -323,10 +323,20 @@ async function init() {
   // Hover destination preview (#1028). Plain boolean toggle; not
   // guarded (no per-device override reconciliation needed).
   bindToggle("hover-preview-toggle", "hoverPreviewEnabled", prefs);
-  // Cookie Consent Minimizer (#1027). Plain boolean toggle, opt-in,
-  // default false; not guarded (no per-device override reconciliation
-  // needed).
-  bindToggle("cookie-consent-minimizer-toggle", "cookieConsentMinimizerEnabled", prefs);
+  // Cookie Consent Minimizer — 3-state modes (Slice 1). Not guarded (no
+  // per-device override reconciliation needed). Only "reject-only" and
+  // "off" are offered; "accept-when-necessary" is a recognized enum
+  // member (see settings-schema.js) reserved for a later slice and is
+  // deliberately not rendered as an option here.
+  const cookieConsentModeSelect = document.getElementById("cookie-consent-mode-select");
+  if (cookieConsentModeSelect) {
+    cookieConsentModeSelect.value =
+      prefs.cookieConsentMode === "off" ? "off" : "reject-only";
+    cookieConsentModeSelect.addEventListener("change", () => {
+      try { setPrefs({ cookieConsentMode: cookieConsentModeSelect.value }); }
+      catch (err) { console.error("[MUGA] save cookie consent mode:", err); }
+    });
+  }
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
@@ -1152,7 +1162,8 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("hover-preview-toggle").checked = newPrefs.hoverPreviewEnabled;
-      document.getElementById("cookie-consent-minimizer-toggle").checked = newPrefs.cookieConsentMinimizerEnabled;
+      document.getElementById("cookie-consent-mode-select").value =
+        newPrefs.cookieConsentMode === "off" ? "off" : "reject-only";
       // #925: refresh the newly-surfaced privacy + display toggles after import
       document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
       document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;

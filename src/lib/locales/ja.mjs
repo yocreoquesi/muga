@@ -343,7 +343,9 @@ export default Object.freeze({
   row_hover_preview_hint: "デスクトップでは、リンクの上に数秒間マウスを止めると、実際のクリーンな遷移先をプレビューできます(他のサイトにリダイレクトするリンクのみ)。",
   aria_hover_preview: "ホバー時にリンクの実際の遷移先をプレビュー表示する",
   hover_preview_label: "遷移先:",
-  row_cookie_consent_minimizer_label: "Cookie同意バナーの最小化",
-  row_cookie_consent_minimizer_hint: "対応するCookie同意バナー（現在はOneTrust）では、MUGAがあなたの代わりに「拒否」または「必須のみ」をクリックします。あなたに代わってより広範なトラッキングを承諾したり許可したりすることは一切ありません。安全な拒否オプションが存在しない場合は、バナーをそのままにします。デフォルトではオフです。",
-  aria_cookie_consent_minimizer: "安全な選択肢がある場合、Cookie同意バナーを自動的に拒否する",
+  row_cookie_consent_mode_label: "Cookie同意バナーの最小化",
+  row_cookie_consent_mode_hint: "対応するCookie同意バナーでは、MUGAがトラッキングCookieを自動的に拒否するか、必須のみを選んであなたの代わりに処理します。これはURLをきれいにする仕組みと同じです。あなたに代わってより広範なトラッキングを承諾したり許可したりすることは一切ありません。",
+  aria_cookie_consent_mode: "Cookie同意バナー最小化のモード",
+  cookie_consent_mode_opt_reject_only: "拒否のみ（推奨）",
+  cookie_consent_mode_opt_off: "オフ",
 });

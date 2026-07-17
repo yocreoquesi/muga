@@ -343,7 +343,9 @@ export default Object.freeze({
   row_hover_preview_hint: "Su desktop, tieni il mouse fermo su un link per qualche secondo per vedere la sua vera destinazione pulita (solo per i link che reindirizzano altrove).",
   aria_hover_preview: "Mostra un'anteprima della vera destinazione del link al passaggio del mouse",
   hover_preview_label: "Porta a:",
-  row_cookie_consent_minimizer_label: "Minimizzatore di banner sui cookie",
-  row_cookie_consent_minimizer_hint: "Sui banner di consenso ai cookie supportati (al momento OneTrust), MUGA clicca al posto tuo su «rifiuta» o «solo necessari». Non accetta né concede mai un tracciamento più ampio a tuo nome; se non esiste un'opzione di rifiuto sicura, lascia il banner così com'è. Disattivato per impostazione predefinita.",
-  aria_cookie_consent_minimizer: "Rifiuta automaticamente i banner di consenso ai cookie quando esiste un'opzione sicura",
+  row_cookie_consent_mode_label: "Minimizzatore di banner sui cookie",
+  row_cookie_consent_mode_hint: "Sui banner di consenso ai cookie supportati, MUGA rifiuta automaticamente i cookie di tracciamento o sceglie solo quelli necessari al posto tuo, proprio come già ripulisce i tuoi URL. Non accetta né concede mai un tracciamento più ampio a tuo nome.",
+  aria_cookie_consent_mode: "Modalità del minimizzatore di banner sui cookie",
+  cookie_consent_mode_opt_reject_only: "Solo rifiuta (consigliato)",
+  cookie_consent_mode_opt_off: "Disattivato",
 });

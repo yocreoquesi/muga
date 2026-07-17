@@ -343,7 +343,9 @@ export default Object.freeze({
   row_hover_preview_hint: "On desktop, hold the mouse over a link for a few seconds to preview its real cleaned destination (only for links that redirect elsewhere).",
   aria_hover_preview: "Show a hover preview of the real link destination",
   hover_preview_label: "Goes to:",
-  row_cookie_consent_minimizer_label: "Cookie Consent Minimizer",
-  row_cookie_consent_minimizer_hint: "On supported cookie-consent banners (currently OneTrust), MUGA clicks reject / necessary-only for you. It never accepts or grants broader tracking on your behalf; if no safe reject option exists, it leaves the banner alone. Off by default.",
-  aria_cookie_consent_minimizer: "Automatically reject cookie-consent banners when a safe option exists",
+  row_cookie_consent_mode_label: "Cookie Consent Minimizer",
+  row_cookie_consent_mode_hint: "On supported cookie-consent banners, MUGA automatically rejects tracking cookies or picks necessary-only for you, the same way it already cleans your URLs. It never accepts or grants broader tracking on your behalf.",
+  aria_cookie_consent_mode: "Cookie consent minimizer mode",
+  cookie_consent_mode_opt_reject_only: "Reject only (recommended)",
+  cookie_consent_mode_opt_off: "Off",
 });

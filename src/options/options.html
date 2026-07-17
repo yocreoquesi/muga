@@ -210,10 +210,13 @@
         </div>
         <div class="row">
           <div class="row-label">
-            <strong data-i18n="row_cookie_consent_minimizer_label">Cookie Consent Minimizer</strong>
-            <small data-i18n="row_cookie_consent_minimizer_hint">On supported cookie-consent banners (currently OneTrust), MUGA clicks reject / necessary-only for you. It never accepts or grants broader tracking on your behalf; if no safe reject option exists, it leaves the banner alone. Off by default.</small>
+            <strong data-i18n="row_cookie_consent_mode_label">Cookie Consent Minimizer</strong>
+            <small data-i18n="row_cookie_consent_mode_hint">On supported cookie-consent banners, MUGA automatically rejects tracking cookies or picks necessary-only for you, the same way it already cleans your URLs. It never accepts or grants broader tracking on your behalf.</small>
           </div>
-          <label class="toggle"><input type="checkbox" id="cookie-consent-minimizer-toggle" data-i18n-aria-label="aria_cookie_consent_minimizer"><span class="slider"></span></label>
+          <select class="lang-select" id="cookie-consent-mode-select" data-i18n-aria-label="aria_cookie_consent_mode">
+            <option value="reject-only" data-i18n="cookie_consent_mode_opt_reject_only">Reject only (recommended)</option>
+            <option value="off" data-i18n="cookie_consent_mode_opt_off">Off</option>
+          </select>
         </div>
         <div class="row">
           <div class="row-label">

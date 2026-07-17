@@ -176,17 +176,42 @@ export const PREF_DEFAULTS = {
   hoverPreviewEnabled: true,
   // Hold duration (ms) before the hover preview tooltip appears.
   hoverPreviewDelayMs: 2500,
-  // Cookie Consent Minimizer (#1027). Opt-in, safe-by-default: when a
-  // supported CMP (currently OneTrust only) exposes a confirmed reject /
-  // necessary-only path, MUGA exercises it on the user's behalf. On a
-  // hard wall (only a broad consent-granting action exists, no reject
-  // path), MUGA does nothing and leaves the banner for the user — it
-  // never invokes that action itself (see src/lib/cmp-adapters.js's
-  // docblock for the full rule). Default OFF: this calls a page-authored
-  // global directly, a new capability class disclosed via the consent-
-  // version bump (see src/lib/consent-version-manifest.js "1.2"). Opt-in
-  // any time in Settings > Advanced.
-  cookieConsentMinimizerEnabled: false,
+  // Cookie Consent Minimizer — 3-state modes (Slice 1 of the mode redesign;
+  // supersedes the #1027 boolean). When a supported CMP exposes a confirmed
+  // reject / necessary-only path, MUGA exercises it on the user's behalf. On
+  // a hard wall (only a broad consent-granting action exists, no reject
+  // path), MUGA does nothing and leaves the banner for the user — it never
+  // invokes that action itself (see src/lib/cmp-adapters.js's docblock for
+  // the full rule).
+  //
+  //   "off"                  — the gate never opens; no CMP interaction at all.
+  //   "reject-only"          — the gate opens; only ever rejects / picks an
+  //                            existing necessary-only path. DEFAULT for new
+  //                            installs (disclosed via onboarding). Existing
+  //                            users are migrated to "off" (see
+  //                            migrateCookieConsentMode in storage-migrations.js)
+  //                            — nobody is silently upgraded into a new
+  //                            capability.
+  //   "accept-when-necessary" — a valid enum value recognised by the gate and
+  //                            the settings schema, but NOT selectable in the
+  //                            Slice 1 UI and NEVER written by migration. It
+  //                            exists only so downstream code can already
+  //                            branch on it; the actual gated minimum-accept
+  //                            behaviour ships in Slice 2, behind its own
+  //                            explicit consent gesture (cookieConsentAcceptConsented).
+  //
+  // This calls a page-authored global directly, a capability class disclosed
+  // via the consent-version bump (see src/lib/consent-version-manifest.js
+  // "1.2" for the original disclosure and "1.3" for the mode-aware follow-up,
+  // shown to new users through onboarding). Changeable any time in
+  // Settings > Advanced.
+  cookieConsentMode: "reject-only",
+  // Hard gate for accept-when-necessary mode (Slice 2). Unused in Slice 1 —
+  // no code path ever sets this to true yet — but defined now so the pref
+  // shape, settings-schema round-trip, and the eventual Slice 2 double-gate
+  // (mode === "accept-when-necessary" AND this flag === true) are all in
+  // place ahead of time. Only ever set via an explicit in-UI consent gesture.
+  cookieConsentAcceptConsented: false,
   // NOTE (ADR-0004 phase 5, 2026-06-01): privacyProxyEnabled was the Privacy Proxy
   // toggle removed in phase 5. Retained as a deprecation comment only — do NOT add
   // it back to PREF_DEFAULTS. Any live value is migrated to followShortenersEnabled

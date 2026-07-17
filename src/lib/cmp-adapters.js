@@ -506,13 +506,23 @@ export function decideAction(signals) {
 }
 
 /**
- * Pure disabled-state gate for the Cookie Consent Minimizer (#1027).
+ * Pure disabled-state gate for the Cookie Consent Minimizer.
  * Decides whether the isolated-world gatekeeper (content/cookie-noise.js)
  * should open the gate, from the user's prefs plus injected environment
  * dependencies. Kept pure (no `window`/`location` access) so every
- * branch — feature off, pre-onboarding, pref off, per-site exemption,
+ * branch — feature off, pre-onboarding, mode not on, per-site exemption,
  * all-pass — is unit-tested directly here instead of only structurally in
  * a content script that Node cannot import.
+ *
+ * Mode scope (3-state `cookieConsentMode` pref): this gate only opens for
+ * `"reject-only"` today. The enum's third member is a recognized
+ * PREF_DEFAULTS / settings-schema value reserved for a later slice, but is
+ * intentionally NOT special-cased here — this file's own STRUCTURAL guard
+ * (see the describe block in tests/unit/cmp-adapters.test.mjs) forbids the
+ * word for "granting broad consent" anywhere in this source, and that
+ * word is a substring of the third enum member's name. Nothing writes
+ * that value today (no migration path, no UI control), so this is a
+ * forward-compatible placeholder, not a behavior gap.
  *
  * Content scripts cannot import this module (AGENTS.md — no ES imports in
  * content scripts), so the block between the `@sync:cookie-gate` markers
@@ -534,7 +544,7 @@ function computeCookieGate(prefs, deps) {
   if (!prefs) return false;
   if (prefs.enabled === false) return false;
   if (prefs.onboardingDone !== true) return false;
-  if (prefs.cookieConsentMinimizerEnabled !== true) return false;
+  if (prefs.cookieConsentMode !== "reject-only") return false;
   const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
   if (typeof isSiteFullyExempt === "function") {
     try {

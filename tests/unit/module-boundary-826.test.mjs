@@ -202,6 +202,7 @@ const STORAGE_EXPECTED_EXPORTS = new Set([
   "migrateStatsToLocal",
   "migrateLegacyProxyPref",
   "migratePerSiteDisableToAllowlist",
+  "migrateCookieConsentMode",
 ]);
 
 // ── Guard (1): prefs.js must not import from storage.js ───────────────────
@@ -270,6 +271,13 @@ describe("module-boundary — storage-migrations.js (#826 PR2)", () => {
     assert.ok(
       src.includes("export async function migratePerSiteDisableToAllowlist"),
       "storage-migrations.js must export migratePerSiteDisableToAllowlist"
+    );
+  });
+
+  test("storage-migrations.js exports migrateCookieConsentMode", () => {
+    assert.ok(
+      src.includes("export async function migrateCookieConsentMode"),
+      "storage-migrations.js must export migrateCookieConsentMode"
     );
   });
 });
