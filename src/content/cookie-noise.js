@@ -808,13 +808,16 @@
   // (modulo indentation) to the library copy by
   // tests/unit/cookie-noise-sync.test.mjs. The pure helper takes injected
   // deps so it stays unit-testable in src/lib/; the thin call site below
-  // supplies this world's real location + cleaner exemption predicate.
+  // supplies this world's real location + cleaner exemption predicate. The
+  // `modeActive` deps field is a boolean already pre-validated upstream
+  // (background/service-worker.js, via settings-schema.js's closed-enum
+  // check) — this gate never reads or compares the raw mode string itself.
   // @sync:cookie-gate:start
   function computeCookieGate(prefs, deps) {
     if (!prefs) return false;
     if (prefs.enabled === false) return false;
     if (prefs.onboardingDone !== true) return false;
-    if (prefs.cookieConsentMode !== "reject-only") return false;
+    if (!deps || deps.modeActive !== true) return false;
     const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
     if (typeof isSiteFullyExempt === "function") {
       try {
@@ -830,9 +833,12 @@
   function computeGate(prefs) {
     // isSiteFullyExempt is a standalone function on __mugaCleaner (no `this`
     // dependency — see src/lib/cleaner.js), so passing the reference detached
-    // is safe.
+    // is safe. modeActive is precomputed by the service worker's getPrefs
+    // response (see the @sync:cookie-gate comment above) — read verbatim,
+    // never recomputed here.
     const cleaner = window.__mugaCleaner;
     return computeCookieGate(prefs, {
+      modeActive: !!(prefs && prefs.modeActive === true),
       hostname: location.hostname,
       isSiteFullyExempt:
         cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,

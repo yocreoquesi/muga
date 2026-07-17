@@ -170,7 +170,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "onetrust");
   });
 
-  test("OneTrust global present but RejectAll absent (hard wall) -> NOOP", () => {
+  test("OneTrust global present but RejectAll absent (hard wall) -> NOOP, adapterId threaded", () => {
     const r = decideAction({
       hasOneTrustGlobal: true,
       hasRejectAllFn: false,
@@ -180,6 +180,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "onetrust");
   });
 
   test("no signals at all (non-OneTrust page) -> NOOP, uncertain", () => {
@@ -220,7 +221,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "cookiebot");
   });
 
-  test("Cookiebot global present but submitCustomConsent absent (hard wall) -> NOOP", () => {
+  test("Cookiebot global present but submitCustomConsent absent (hard wall) -> NOOP, adapterId threaded", () => {
     const r = decideAction({
       hasCookiebotGlobal: true,
       hasSubmitCustomConsentFn: false,
@@ -230,6 +231,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "cookiebot");
   });
 
   test("Cookiebot mandatory signal present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -256,7 +258,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "didomi");
   });
 
-  test("Didomi global present but setUserDisagreeToAll absent (hard wall) -> NOOP", () => {
+  test("Didomi global present but setUserDisagreeToAll absent (hard wall) -> NOOP, adapterId threaded", () => {
     const r = decideAction({
       hasDidomiGlobal: true,
       hasSetUserDisagreeToAllFn: false,
@@ -265,6 +267,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "didomi");
   });
 
   test("Didomi mandatory signal present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -303,7 +306,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.reason, "uncertain");
   });
 
-  test("CookieYes: getCkyConsent present but performBannerAction missing (hard wall) -> NOOP, no-reject-path", () => {
+  test("CookieYes: getCkyConsent present but performBannerAction missing (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasGetCkyConsentFn: true,
       hasPerformBannerActionFn: false,
@@ -313,6 +316,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "cookieyes");
   });
 
   test("CookieYes: both globals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -340,7 +344,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "sourcepoint");
   });
 
-  test("Sourcepoint: sp_message_container DOM present but __tcfapi missing (hard wall) -> NOOP, no-reject-path", () => {
+  test("Sourcepoint: sp_message_container DOM present but __tcfapi missing (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasTcfApiFn: false,
       hasSpMessageContainerDom: true,
@@ -348,6 +352,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "sourcepoint");
   });
 
   test("Sourcepoint: __tcfapi present but sp_message_container DOM missing -> NOOP, uncertain (generic TCF CMP, not Sourcepoint)", () => {
@@ -400,7 +405,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "usercentrics");
   });
 
-  test("Usercentrics: UC_UI global present but denyAllConsents absent (hard wall) -> NOOP", () => {
+  test("Usercentrics: UC_UI global present but denyAllConsents absent (hard wall) -> NOOP, adapterId threaded", () => {
     const r = decideAction({
       hasUcUiGlobal: true,
       hasDenyAllConsentsFn: false,
@@ -409,6 +414,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "usercentrics");
   });
 
   test("Usercentrics mandatory signals present but zero corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -464,7 +470,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "cookieinformation");
   });
 
-  test("Cookie Information: global present but declineAllCategories absent (hard wall) -> NOOP, no-reject-path", () => {
+  test("Cookie Information: global present but declineAllCategories absent (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasCookieInformationGlobal: true,
       hasDeclineAllCategoriesFn: false,
@@ -472,6 +478,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "cookieinformation");
   });
 
   test("Cookie Information: mandatory signals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -514,7 +521,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "cookiescript");
   });
 
-  test("CookieScript: global present but instance/rejectAllAction absent (hard wall) -> NOOP, no-reject-path", () => {
+  test("CookieScript: global present but instance/rejectAllAction absent (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasCookieScriptGlobal: true,
       hasCookieScriptInstance: false,
@@ -523,9 +530,10 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "cookiescript");
   });
 
-  test("CookieScript: global + instance present but rejectAllAction fn absent (hard wall) -> NOOP, no-reject-path", () => {
+  test("CookieScript: global + instance present but rejectAllAction fn absent (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasCookieScriptGlobal: true,
       hasCookieScriptInstance: true,
@@ -534,6 +542,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "cookiescript");
   });
 
   test("CookieScript: mandatory signals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -563,7 +572,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "tarteaucitron");
   });
 
-  test("tarteaucitron: global present but userInterface/respondAll absent (hard wall) -> NOOP, no-reject-path", () => {
+  test("tarteaucitron: global present but userInterface/respondAll absent (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasTarteaucitronGlobal: true,
       hasTarteaucitronUserInterface: false,
@@ -572,9 +581,10 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "tarteaucitron");
   });
 
-  test("tarteaucitron: global + userInterface present but respondAll fn absent (hard wall) -> NOOP, no-reject-path", () => {
+  test("tarteaucitron: global + userInterface present but respondAll fn absent (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasTarteaucitronGlobal: true,
       hasTarteaucitronUserInterface: true,
@@ -583,6 +593,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "tarteaucitron");
   });
 
   test("tarteaucitron: mandatory signals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
@@ -613,7 +624,7 @@ describe("decideAction — truth table", () => {
     assert.equal(r.adapterId, "consentmanager");
   });
 
-  test("consentmanager.net: #cmpbox DOM present but cmpmngr global missing (hard wall) -> NOOP, no-reject-path", () => {
+  test("consentmanager.net: #cmpbox DOM present but cmpmngr global missing (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasCmpMngrGlobal: false,
       hasCmpFn: true,
@@ -622,9 +633,10 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "consentmanager");
   });
 
-  test("consentmanager.net: #cmpbox DOM present but __cmp fn missing (hard wall) -> NOOP, no-reject-path", () => {
+  test("consentmanager.net: #cmpbox DOM present but __cmp fn missing (hard wall) -> NOOP, no-reject-path, adapterId threaded", () => {
     const r = decideAction({
       hasCmpMngrGlobal: true,
       hasCmpFn: false,
@@ -633,6 +645,7 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "no-reject-path");
+    assert.equal(r.adapterId, "consentmanager");
   });
 
   test("consentmanager.net: cmpmngr + __cmp present but #cmpbox DOM missing -> NOOP, uncertain (generic TCF v1.1 CMP, not consentmanager.net)", () => {
@@ -1584,76 +1597,85 @@ describe("consentmanagerAdapter.reject — pure callback invocation", () => {
 // closure in content/cookie-noise.js, so these branches had no executed
 // coverage (only a structural regex). Extracting it as a pure helper lets
 // every branch run here.
+//
+// cookie-consent-accept Slice 2a: this gate no longer compares
+// `prefs.cookieConsentMode` against a literal mode string itself — that
+// string comparison (which would need to name every active enum member,
+// including the newer one this file must never spell — see the STRUCTURAL
+// guard below) moved to the settings-schema.js boundary
+// (isCookieConsentModeActive), which is lexically unrestricted. The caller
+// resolves the raw pref there and hands this gate a pre-validated boolean
+// via `deps.modeActive`. This lets the reject ladder run first in every
+// active mode (design's L3) without this file ever knowing a second mode
+// exists.
 
 const GATE_ON_PREFS = Object.freeze({
   enabled: true,
   onboardingDone: true,
-  cookieConsentMode: "reject-only",
 });
 
+const GATE_ON_DEPS = Object.freeze({ modeActive: true });
+
 describe("computeCookieGate — disabled-state gate", () => {
-  test("all gate conditions pass (reject-only) -> gate opens (true)", () => {
-    assert.equal(computeCookieGate(GATE_ON_PREFS), true);
+  test("all gate conditions pass (modeActive true) -> gate opens (true)", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS, GATE_ON_DEPS), true);
   });
 
-  test("mode off -> gate stays closed", () => {
-    assert.equal(
-      computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: "off" }),
-      false,
-    );
+  // modeActive is computed upstream (settings-schema.js's
+  // isCookieConsentModeActive) for BOTH "reject-only" and
+  // "accept-when-necessary" — this gate treats them identically: it only
+  // ever sees the pre-validated boolean, never the mode string.
+  test("modeActive true opens the gate the same way regardless of which active mode produced it", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS, { modeActive: true }), true);
   });
 
-  // Slice 1 scope note: "accept-when-necessary" is a valid PREF_DEFAULTS /
-  // settings-schema enum member (forward-compat for Slice 2), but the
-  // never-accept lexical guard (this file's own STRUCTURAL guard below,
-  // mirrored in cookie-noise-sync.test.mjs) forbids the substring "accept"
-  // anywhere in cmp-adapters.js or the content-script copies. The gate can
-  // therefore only compare against "reject-only" today — it does NOT (yet)
-  // special-case accept-when-necessary. Nothing in Slice 1 ever writes that
-  // value (migration never does; the UI doesn't offer it), so this is inert
-  // in practice. Relaxing the guard to let the gate open for
-  // accept-when-necessary too is explicitly deferred to Slice 2 (see the
-  // design doc's Part 1 table: "Relax to POSITIONAL guard").
-  test("mode accept-when-necessary -> gate stays closed in Slice 1 (not yet special-cased; see scope note above)", () => {
-    assert.equal(
-      computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: "accept-when-necessary" }),
-      false,
-    );
+  test("modeActive false -> gate stays closed (e.g. mode is off)", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS, { modeActive: false }), false);
   });
 
-  test("mode null/undefined/unrecognized -> gate stays closed (fail-closed)", () => {
-    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: null }), false);
-    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: undefined }), false);
-    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, cookieConsentMode: "bogus" }), false);
+  test("modeActive missing/undefined -> gate stays closed (fail-closed)", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS, {}), false);
+    assert.equal(computeCookieGate(GATE_ON_PREFS, { modeActive: undefined }), false);
+  });
+
+  test("deps entirely missing -> gate stays closed (fail-closed)", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS), false);
+    assert.equal(computeCookieGate(GATE_ON_PREFS, null), false);
+  });
+
+  test("modeActive as a truthy non-boolean (e.g. the string 'true') does NOT open the gate — must be exactly true", () => {
+    assert.equal(computeCookieGate(GATE_ON_PREFS, { modeActive: "true" }), false);
+    assert.equal(computeCookieGate(GATE_ON_PREFS, { modeActive: 1 }), false);
   });
 
   test("onboardingDone false -> gate stays closed", () => {
-    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, onboardingDone: false }), false);
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, onboardingDone: false }, GATE_ON_DEPS), false);
   });
 
   test("master enabled false -> gate stays closed", () => {
-    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, enabled: false }), false);
+    assert.equal(computeCookieGate({ ...GATE_ON_PREFS, enabled: false }, GATE_ON_DEPS), false);
   });
 
   test("null / undefined prefs -> gate stays closed, never throws", () => {
-    assert.doesNotThrow(() => computeCookieGate(null));
-    assert.equal(computeCookieGate(null), false);
-    assert.equal(computeCookieGate(undefined), false);
+    assert.doesNotThrow(() => computeCookieGate(null, GATE_ON_DEPS));
+    assert.equal(computeCookieGate(null, GATE_ON_DEPS), false);
+    assert.equal(computeCookieGate(undefined, GATE_ON_DEPS), false);
   });
 
   test("isSiteFullyExempt true -> gate stays closed even when every pref passes", () => {
-    const deps = { hostname: "example.com", isSiteFullyExempt: () => true };
+    const deps = { modeActive: true, hostname: "example.com", isSiteFullyExempt: () => true };
     assert.equal(computeCookieGate(GATE_ON_PREFS, deps), false);
   });
 
   test("isSiteFullyExempt false -> gate opens (site not exempt)", () => {
-    const deps = { hostname: "example.com", isSiteFullyExempt: () => false };
+    const deps = { modeActive: true, hostname: "example.com", isSiteFullyExempt: () => false };
     assert.equal(computeCookieGate(GATE_ON_PREFS, deps), true);
   });
 
   test("isSiteFullyExempt receives the injected hostname and prefs", () => {
     let seen = null;
     const deps = {
+      modeActive: true,
       hostname: "shop.example.com",
       isSiteFullyExempt: (hostname, prefs) => { seen = { hostname, prefs }; return false; },
     };
@@ -1663,7 +1685,7 @@ describe("computeCookieGate — disabled-state gate", () => {
   });
 
   test("a throwing isSiteFullyExempt is swallowed and treated as not exempt (fail-safe -> open)", () => {
-    const deps = { hostname: "example.com", isSiteFullyExempt: () => { throw new Error("boom"); } };
+    const deps = { modeActive: true, hostname: "example.com", isSiteFullyExempt: () => { throw new Error("boom"); } };
     assert.doesNotThrow(() => computeCookieGate(GATE_ON_PREFS, deps));
     assert.equal(computeCookieGate(GATE_ON_PREFS, deps), true);
   });

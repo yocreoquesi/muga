@@ -70,6 +70,30 @@ export function clampCookieConsentMode(v) {
 }
 
 /**
+ * Closed-enum "is this mode an active minimizer mode" check (cookie-
+ * consent-accept Slice 2a, design Part B "Gate wiring reconciliation").
+ *
+ * src/lib/cmp-adapters.js's `computeCookieGate` reject gate needs to open
+ * for BOTH `"reject-only"` and `"accept-when-necessary"` (the reject
+ * ladder must run first in every active mode — design's L3), but that
+ * file is lexically restricted and must never spell the enum member name
+ * that names the newer mode. This module has no such restriction, so the
+ * caller (background/service-worker.js, which already imports this
+ * module) validates the raw pref string here and hands the CALLER of
+ * computeCookieGate a pre-validated boolean instead — the fenced block in
+ * cmp-adapters.js / content/cookie-noise.js never compares the mode
+ * string itself again.
+ *
+ * Fail-closed: an unrecognized value, or a non-string, is never active.
+ *
+ * @param {*} mode
+ * @returns {boolean}
+ */
+export function isCookieConsentModeActive(mode) {
+  return mode === "reject-only" || mode === "accept-when-necessary";
+}
+
+/**
  * Import-only clamp for cookieConsentMode. Until Slice 2 ships the double-gate
  * that governs "accept-when-necessary", an imported blob must never pre-seed
  * that reserved accept state (nor any unknown value) without a real consent

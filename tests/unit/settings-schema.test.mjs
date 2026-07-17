@@ -18,6 +18,7 @@ import {
   snapToastDuration,
   COOKIE_CONSENT_MODE_OPTIONS,
   clampCookieConsentMode,
+  isCookieConsentModeActive,
   buildExportPayload,
   planImport,
   diffImport,
@@ -489,5 +490,34 @@ describe("COOKIE_CONSENT_MODE_OPTIONS / clampCookieConsentMode", () => {
     assert.equal(clampCookieConsentMode(undefined), "reject-only");
     assert.equal(clampCookieConsentMode(null), "reject-only");
     assert.equal(clampCookieConsentMode(123), "reject-only");
+  });
+});
+
+// isCookieConsentModeActive (cookie-consent-accept Slice 2a): the
+// modeActive gate-wiring boundary — src/lib/cmp-adapters.js's
+// computeCookieGate no longer compares the mode string itself (that file
+// stays lexically restricted, see its structural guard); instead the
+// caller (background/service-worker.js) validates the mode against this
+// closed-enum boundary here and hands a pre-validated boolean down. This
+// module has no lexical restriction, so it is the one safe place to name
+// every active enum member explicitly.
+describe("isCookieConsentModeActive", () => {
+  test("reject-only is active", () => {
+    assert.equal(isCookieConsentModeActive("reject-only"), true);
+  });
+
+  test("accept-when-necessary is active", () => {
+    assert.equal(isCookieConsentModeActive("accept-when-necessary"), true);
+  });
+
+  test("off is not active", () => {
+    assert.equal(isCookieConsentModeActive("off"), false);
+  });
+
+  test("an unrecognized string, or a non-string, is not active (fail-closed)", () => {
+    assert.equal(isCookieConsentModeActive("bogus"), false);
+    assert.equal(isCookieConsentModeActive(undefined), false);
+    assert.equal(isCookieConsentModeActive(null), false);
+    assert.equal(isCookieConsentModeActive(123), false);
   });
 });
