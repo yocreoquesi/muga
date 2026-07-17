@@ -88,5 +88,11 @@
     "url": "https://tarteaucitron.io",
     "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
     "note": "PLACEHOLDER — UNVERIFIED, needs curation. tarteaucitron.js's own project/marketing site, following the same dogfooding-inference pattern used for the Cookiebot/Cookie Information/CookieScript entries above. Not independently confirmed via script inspection. Replace with a representative, independently-confirmed tarteaucitron customer deployment (strong France/gov-sector presence per the CMP triage in engram) before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
+  },
+  {
+    "cmp": "consentmanager",
+    "url": "https://www.hoerzu.de",
+    "bannerSelector": "#cmpbox",
+    "note": "PLACEHOLDER — flagged as needing independent curation like the other placeholder entries above, but with STRONGER evidence than a dogfooding inference: a live headless-Chromium behavioral probe (2026-07, engram sdd/cookie-consent-coverage/tier1-live-probe) confirmed window.cmpmngr/window.__cmp present, #cmpbox visible, and __cmp('setConsent', 0, callback, true) dismissing the banner with parity to the native reject button on this real customer deployment (one of adac.de/hoerzu.de/blic.rs/hrt.hr tested in that probe). Geo-gated per-deployment — the same probe found 2 of 5 real customer sites did not render the banner from a non-EU vantage, so a single inconclusive canary run here is expected noise, not drift."
   }
 ]

@@ -32,6 +32,7 @@ import {
   cookieInformationAdapter,
   cookieScriptAdapter,
   tarteaucitronAdapter,
+  consentmanagerAdapter,
   decideAction,
   computeCookieGate,
 } from "../../src/lib/cmp-adapters.js";
@@ -41,8 +42,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Registry shape ──────────────────────────────────────────────────────────
 
 describe("cmp-adapters — registry shape", () => {
-  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information, CookieScript and tarteaucitron adapters, in order", () => {
-    assert.equal(TIER1.length, 9);
+  test("TIER1 contains exactly the OneTrust, Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information, CookieScript, tarteaucitron and consentmanager.net adapters, in order", () => {
+    assert.equal(TIER1.length, 10);
     assert.strictEqual(TIER1[0], oneTrustAdapter);
     assert.strictEqual(TIER1[1], cookiebotAdapter);
     assert.strictEqual(TIER1[2], didomiAdapter);
@@ -52,6 +53,7 @@ describe("cmp-adapters — registry shape", () => {
     assert.strictEqual(TIER1[6], cookieInformationAdapter);
     assert.strictEqual(TIER1[7], cookieScriptAdapter);
     assert.strictEqual(TIER1[8], tarteaucitronAdapter);
+    assert.strictEqual(TIER1[9], consentmanagerAdapter);
   });
 
   test("TIER2 ships empty in this slice", () => {
@@ -134,6 +136,14 @@ describe("cmp-adapters — registry shape", () => {
     assert.equal(typeof tarteaucitronAdapter.detect, "function");
     assert.equal(typeof tarteaucitronAdapter.canReject, "function");
     assert.equal(typeof tarteaucitronAdapter.reject, "function");
+  });
+
+  test("consentmanagerAdapter exposes id, tier, detect, canReject, reject", () => {
+    assert.equal(consentmanagerAdapter.id, "consentmanager");
+    assert.equal(consentmanagerAdapter.tier, 1);
+    assert.equal(typeof consentmanagerAdapter.detect, "function");
+    assert.equal(typeof consentmanagerAdapter.canReject, "function");
+    assert.equal(typeof consentmanagerAdapter.reject, "function");
   });
 
   test("ACTIONS is a closed set containing only the reject-family action", () => {
@@ -587,6 +597,90 @@ describe("decideAction — truth table", () => {
     });
     assert.equal(r.action, null);
     assert.equal(r.reason, "uncertain");
+  });
+
+  test("consentmanager.net: cmpmngr global + __cmp fn + #cmpbox DOM + corroborating DOM -> reject", () => {
+    const r = decideAction({
+      hasCmpMngrGlobal: true,
+      hasCmpFn: true,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: true,
+      hasCmpWelcomeBtnNoDom: false,
+      hasCmpBoxBtnDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "consentmanager");
+  });
+
+  test("consentmanager.net: #cmpbox DOM present but cmpmngr global missing (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasCmpMngrGlobal: false,
+      hasCmpFn: true,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("consentmanager.net: #cmpbox DOM present but __cmp fn missing (hard wall) -> NOOP, no-reject-path", () => {
+    const r = decideAction({
+      hasCmpMngrGlobal: true,
+      hasCmpFn: false,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "no-reject-path");
+  });
+
+  test("consentmanager.net: cmpmngr + __cmp present but #cmpbox DOM missing -> NOOP, uncertain (generic TCF v1.1 CMP, not consentmanager.net)", () => {
+    const r = decideAction({
+      hasCmpMngrGlobal: true,
+      hasCmpFn: true,
+      hasCmpBoxDom: false,
+      hasCmpWelcomeBtnYesDom: true,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("consentmanager.net: all three mandatory signals present but zero DOM corroboration -> NOOP, uncertain (fail-closed)", () => {
+    const r = decideAction({
+      hasCmpMngrGlobal: true,
+      hasCmpFn: true,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: false,
+      hasCmpWelcomeBtnNoDom: false,
+      hasCmpBoxBtnDom: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("bare __cmp function present alone (no cmpmngr, no #cmpbox) -> NOOP, uncertain — never misfires as consentmanager.net", () => {
+    const r = decideAction({
+      hasCmpFn: true,
+      hasCmpMngrGlobal: false,
+      hasCmpBoxDom: false,
+    });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+
+  test("Sourcepoint-shaped signals (__tcfapi + sp_message_container, NO cmpmngr/#cmpbox) resolve to Sourcepoint, never misfire as consentmanager.net", () => {
+    const r = decideAction({
+      hasTcfApiFn: true,
+      hasSpMessageContainerDom: true,
+      hasSpPrivacyMgmtIframeDom: true,
+      hasCmpMngrGlobal: false,
+      hasCmpFn: false,
+      hasCmpBoxDom: false,
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "sourcepoint");
   });
 });
 
@@ -1198,6 +1292,78 @@ describe("tarteaucitronAdapter.detect — triple-mandatory confidence gate", () 
   });
 });
 
+describe("consentmanagerAdapter.detect — triple-mandatory confidence gate", () => {
+  const FULL_CMP_SIGNALS = Object.freeze({
+    hasCmpMngrGlobal: true,
+    hasCmpFn: true,
+    hasCmpBoxDom: true,
+    hasCmpWelcomeBtnYesDom: true,
+    hasCmpWelcomeBtnNoDom: true,
+    hasCmpBoxBtnDom: true,
+  });
+
+  test("mandatory triple + >=1 secondary -> confidence at ceiling, canReject true", () => {
+    const c = consentmanagerAdapter.detect(FULL_CMP_SIGNALS);
+    assert.ok(c >= 1);
+    assert.equal(consentmanagerAdapter.canReject(FULL_CMP_SIGNALS), true);
+  });
+
+  test("mandatory triple + exactly one secondary (#cmpwelcomebtnyes only) -> canReject true", () => {
+    const s = {
+      hasCmpMngrGlobal: true,
+      hasCmpFn: true,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: true,
+      hasCmpWelcomeBtnNoDom: false,
+      hasCmpBoxBtnDom: false,
+    };
+    assert.equal(consentmanagerAdapter.canReject(s), true);
+  });
+
+  test("mandatory triple present, zero secondary signals -> uncertain, canReject false", () => {
+    const s = {
+      hasCmpMngrGlobal: true,
+      hasCmpFn: true,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: false,
+      hasCmpWelcomeBtnNoDom: false,
+      hasCmpBoxBtnDom: false,
+    };
+    assert.equal(consentmanagerAdapter.canReject(s), false);
+    assert.ok(consentmanagerAdapter.detect(s) < 1);
+  });
+
+  test("DOM-only (mandatory global/fn missing) -> confidence 0, canReject false", () => {
+    const s = {
+      hasCmpMngrGlobal: false,
+      hasCmpFn: false,
+      hasCmpBoxDom: true,
+      hasCmpWelcomeBtnYesDom: true,
+      hasCmpWelcomeBtnNoDom: true,
+      hasCmpBoxBtnDom: true,
+    };
+    assert.equal(consentmanagerAdapter.detect(s), 0);
+    assert.equal(consentmanagerAdapter.canReject(s), false);
+  });
+
+  test("cmpmngr global + __cmp fn present but #cmpbox DOM absent -> confidence 0, canReject false", () => {
+    const s = {
+      hasCmpMngrGlobal: true,
+      hasCmpFn: true,
+      hasCmpBoxDom: false,
+      hasCmpWelcomeBtnYesDom: true,
+    };
+    assert.equal(consentmanagerAdapter.detect(s), 0);
+    assert.equal(consentmanagerAdapter.canReject(s), false);
+  });
+
+  test("malformed/missing signals object never throws", () => {
+    assert.doesNotThrow(() => consentmanagerAdapter.detect(null));
+    assert.doesNotThrow(() => consentmanagerAdapter.detect(undefined));
+    assert.equal(consentmanagerAdapter.detect(null), 0);
+  });
+});
+
 // ── reject() — pure, callback-injected global call ──────────────────────────
 
 describe("oneTrustAdapter.reject — pure callback invocation", () => {
@@ -1389,6 +1555,25 @@ describe("tarteaucitronAdapter.reject — pure callback invocation", () => {
 
   test("non-function argument -> status noop, no call", () => {
     const r = tarteaucitronAdapter.reject(undefined);
+    assert.equal(r.status, "noop");
+  });
+});
+
+describe("consentmanagerAdapter.reject — pure callback invocation", () => {
+  test("calls the injected function and reports rejected", () => {
+    let called = false;
+    const r = consentmanagerAdapter.reject(() => { called = true; });
+    assert.equal(called, true);
+    assert.equal(r.status, "rejected");
+  });
+
+  test("a throwing callback is swallowed -> status noop, never throws", () => {
+    const r = consentmanagerAdapter.reject(() => { throw new Error("boom"); });
+    assert.equal(r.status, "noop");
+  });
+
+  test("non-function argument -> status noop, no call", () => {
+    const r = consentmanagerAdapter.reject(undefined);
     assert.equal(r.status, "noop");
   });
 });
@@ -1587,5 +1772,18 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
     assert.ok(TIER1.includes(usercentricsAdapter), "TIER1 must still include usercentricsAdapter");
     assert.ok(TIER1.includes(cookieInformationAdapter), "TIER1 must still include cookieInformationAdapter");
     assert.ok(TIER1.includes(cookieScriptAdapter), "TIER1 must still include cookieScriptAdapter");
+  });
+
+  test("consentmanagerAdapter is registered in TIER1 alongside the other nine adapters", () => {
+    assert.ok(TIER1.includes(consentmanagerAdapter), "TIER1 must include consentmanagerAdapter");
+    assert.ok(TIER1.includes(oneTrustAdapter), "TIER1 must still include oneTrustAdapter");
+    assert.ok(TIER1.includes(cookiebotAdapter), "TIER1 must still include cookiebotAdapter");
+    assert.ok(TIER1.includes(didomiAdapter), "TIER1 must still include didomiAdapter");
+    assert.ok(TIER1.includes(cookieYesAdapter), "TIER1 must still include cookieYesAdapter");
+    assert.ok(TIER1.includes(sourcepointAdapter), "TIER1 must still include sourcepointAdapter");
+    assert.ok(TIER1.includes(usercentricsAdapter), "TIER1 must still include usercentricsAdapter");
+    assert.ok(TIER1.includes(cookieInformationAdapter), "TIER1 must still include cookieInformationAdapter");
+    assert.ok(TIER1.includes(cookieScriptAdapter), "TIER1 must still include cookieScriptAdapter");
+    assert.ok(TIER1.includes(tarteaucitronAdapter), "TIER1 must still include tarteaucitronAdapter");
   });
 });

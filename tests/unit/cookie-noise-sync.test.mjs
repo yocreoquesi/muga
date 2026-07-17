@@ -148,6 +148,12 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectTarteaucitron/.test(joined));
     assert.ok(/function canRejectTarteaucitron/.test(joined));
   });
+
+  test("sync block also defines detectConsentmanager and canRejectConsentmanager", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectConsentmanager/.test(joined));
+    assert.ok(/function canRejectConsentmanager/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -507,6 +513,46 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
       assert.ok(calls.length > 0, `${label} must call respondAll`);
       for (const args of calls) {
         assert.equal(args, "false", `${label} respondAll must be called with the literal false, and only false`);
+      }
+    }
+  });
+
+  // consentmanager.net (__cmp): a DUAL literal-arg guard — unlike every
+  // prior single-literal-arg adapter above, setConsent's command name
+  // ("setConsent") AND its consent-value argument (`0`) must BOTH be
+  // pinned. `setConsent(...)`'s documented shape is
+  // (command, consentValue, callback, isAsync) where consentValue: `0` =
+  // reject-all, `1` = accept-all (grants broad consent) — verified via a
+  // live behavioral probe (engram sdd/cookie-consent-coverage/tier1-live-probe).
+  // A future edit to `__cmp("setConsent", 1, ...)` (accept) or any other
+  // __cmp command must fail here.
+
+  test("only __cmp (or wrappedJSObject equivalent) is invoked as the consentmanager.net reject call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__cmp\s*\(([^)]*)/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call __cmp`);
+    }
+  });
+
+  test("every __cmp call's first argument is exactly the literal 'setConsent' — never another command, never a variable", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__cmp\s*\(([^,]*),/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call __cmp`);
+      for (const firstArg of calls) {
+        assert.equal(firstArg, "\"setConsent\"", `${label} __cmp's first argument must be the literal "setConsent"`);
+      }
+    }
+  });
+
+  test("every __cmp setConsent call's second argument (the consent value) is exactly the literal 0 — never 1 (accept), never a variable", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__cmp\s*\(\s*"setConsent"\s*,\s*([^,]+),/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call __cmp("setConsent", ...)`);
+      for (const secondArg of calls) {
+        assert.equal(secondArg, "0", `${label} __cmp("setConsent", ...)'s second argument must be the literal 0, and only 0`);
       }
     }
   });
