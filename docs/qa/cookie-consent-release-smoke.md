@@ -2,8 +2,9 @@
 
 ## Why this exists
 
-The 6 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
-Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics) are unit-green:
+The 7 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
+Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information)
+are unit-green:
 every detection truth table, every reject call shape, and every
 never-auto-accept structural guard is covered by `npm test`. Unit-green is
 not the same thing as real-env-green. Every adapter's merge PR shipped with
@@ -284,9 +285,39 @@ following before marking this adapter PASS:
       across third-party sources per PR #1127 - note the finding either
       way, do not silently assume).
 
+### 7. Cookie Information
+
+- **Reject call:** `window.CookieInformation.declineAllCategories()` (Chrome
+  MAIN world); `window.wrappedJSObject.CookieInformation.declineAllCategories()`
+  (Firefox). Synchronous, zero-argument, void return — same call shape as
+  `Didomi.setUserDisagreeToAll()`; there is no consent-granting parameter on
+  this call at all.
+- **Detection signals:** mandatory `hasCookieInformationGlobal`
+  (`typeof window.CookieInformation === "object"`) + `hasDeclineAllCategoriesFn`
+  (`typeof window.CookieInformation.declineAllCategories === "function"`);
+  corroborating (>=1 required): `hasCoiOverlayDom` (`#coiOverlay`),
+  `hasCoiConsentBannerDom` (`#coiConsentBanner`), `hasCoiSummeryDom`
+  (`#coiSummery`), `hasCoiBannerWrapperDom` (`#coi-banner-wrapper`),
+  `hasCoiConsentSummaryDom` (`.coi-consent-summary`).
+- **Candidate live site(s):** `https://cookieinformation.com` (PLACEHOLDER —
+  UNVERIFIED, needs curation; vendor's own site, banner selector
+  `#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper,
+  .coi-consent-summary`). Replace with an independently-confirmed customer
+  deployment before treating this as a release gate.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path and
+  live-Cookie-Information compatibility are structurally tested only (the
+  Chromium e2e fixture is a regression oracle, not a real-vendor test) —
+  confirm `declineAllCategories()` actually clears the banner on a live
+  site, not just in the fixture. Also confirm the discrimination note
+  holds: this vendor can additionally expose the generic `__tcfapi` surface
+  (opt-in per site) without this adapter or the Sourcepoint adapter
+  misfiring on each other.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
 ## Sign-off table
 
-All 12 cells (6 adapters x Chrome/Firefox) must be green before the
+All 14 cells (7 adapters x Chrome/Firefox) must be green before the
 `develop -> main` release PR opens.
 
 | Adapter | Chrome | Firefox |
@@ -297,5 +328,6 @@ All 12 cells (6 adapters x Chrome/Firefox) must be green before the
 | CookieYes | ____ | ____ |
 | Sourcepoint | ____ | ____ |
 | Usercentrics | ____ | ____ |
+| Cookie Information | ____ | ____ |
 
 Reviewer: ______________________  Date: ______________________
