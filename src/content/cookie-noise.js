@@ -970,6 +970,8 @@
   const FX_GIVE_UP_AFTER_DOM_READY_MS = 10000;
   let _fxGiveUpArmed = false;
   let _fxGiveUpTimer = null;
+  // Unconditional fallback timer (FIX C) — see fxArmGiveUp() below.
+  let _fxGiveUpFallbackTimer = null;
 
   function fxArmGiveUp() {
     if (_fxGiveUpArmed) return;
@@ -981,6 +983,19 @@
       }, FX_GIVE_UP_AFTER_DOM_READY_MS);
     };
     if (document.readyState === "loading") {
+      // Bounded fallback (FIX C, all_frames:true): a frame that never
+      // reaches DOMContentLoaded at all (e.g. a pending subresource that
+      // never settles in a sandboxed child frame) would otherwise never
+      // arm `schedule` above, leaving the observer running for the whole
+      // page lifetime. This fallback fires unconditionally on the SAME
+      // give-up window, independent of `schedule`'s own timer — both just
+      // call the idempotent fxStopObserver(), so no harm if
+      // DOMContentLoaded eventually does fire and both timers end up
+      // disconnecting.
+      _fxGiveUpFallbackTimer = setTimeout(() => {
+        _fxGiveUpFallbackTimer = null;
+        if (!_fxActed) fxStopObserver();
+      }, FX_GIVE_UP_AFTER_DOM_READY_MS);
       document.addEventListener("DOMContentLoaded", schedule, { once: true });
     } else {
       schedule();
@@ -1003,6 +1018,10 @@
     if (_fxGiveUpTimer !== null) {
       clearTimeout(_fxGiveUpTimer);
       _fxGiveUpTimer = null;
+    }
+    if (_fxGiveUpFallbackTimer !== null) {
+      clearTimeout(_fxGiveUpFallbackTimer);
+      _fxGiveUpFallbackTimer = null;
     }
     // Reset so a later gate reopen (Settings toggle) arms a fresh window.
     _fxGiveUpArmed = false;
@@ -1311,12 +1330,16 @@
     }
   }
   } catch {
-    // Frame-safety (all_frames:true): this module must never throw an
-    // uncaught exception in ANY frame (top, same-origin iframe,
-    // cross-origin consent iframe, ad/embed iframe, restricted/opaque
-    // frame). Every individual signal read and dispatch call is already
-    // wrapped fail-closed above; this is the outer backstop for anything
-    // unexpected during setup (e.g. `document`/`chrome.*` being
-    // unavailable in a sandboxed frame).
+    // Frame-safety (all_frames:true): this guards only the SYNCHRONOUS
+    // setup above — dispatchNonceOnce()'s call, readPrefsAndGate()'s
+    // initial call, and the storage.onChanged listener REGISTRATION — in
+    // ANY frame (top, same-origin iframe, cross-origin consent iframe,
+    // ad/embed iframe, restricted/opaque frame), e.g. `document`/`chrome.*`
+    // being unavailable in a sandboxed frame. It does NOT reach code that
+    // runs from a LATER event-loop turn: the getPrefs sendMessage
+    // callback, the MutationObserver callback, the give-up setTimeout
+    // callback, and the storage.onChanged callback itself all fire after
+    // this try block's dynamic extent has already ended — each of those is
+    // individually wrapped fail-closed where it is defined above.
   }
 })();

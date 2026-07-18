@@ -966,6 +966,8 @@
   let _observer = null;
   let _giveUpArmed = false;
   let _giveUpTimer = null;
+  // Unconditional fallback timer (FIX C) — see armGiveUp() below.
+  let _giveUpFallbackTimer = null;
 
   function armGiveUp() {
     if (_giveUpArmed) return;
@@ -980,6 +982,18 @@
     // sees readyState "loading" at first, but the gate may also open only
     // after the DOM is already parsed — handle both.
     if (document.readyState === "loading") {
+      // Bounded fallback (FIX C, all_frames:true): a frame that never
+      // reaches DOMContentLoaded at all (e.g. a pending subresource that
+      // never settles in a sandboxed child frame) would otherwise never
+      // arm `schedule` above, leaving the observer running for the whole
+      // page lifetime. This fallback fires unconditionally on the SAME
+      // give-up window, independent of `schedule`'s own timer — both just
+      // call the idempotent stopObserver(), so no harm if DOMContentLoaded
+      // eventually does fire and both timers end up disconnecting.
+      _giveUpFallbackTimer = setTimeout(() => {
+        _giveUpFallbackTimer = null;
+        if (!_acted) stopObserver();
+      }, GIVE_UP_AFTER_DOM_READY_MS);
       document.addEventListener("DOMContentLoaded", schedule, { once: true });
     } else {
       schedule();
@@ -1003,6 +1017,10 @@
       clearTimeout(_giveUpTimer);
       _giveUpTimer = null;
     }
+    if (_giveUpFallbackTimer !== null) {
+      clearTimeout(_giveUpFallbackTimer);
+      _giveUpFallbackTimer = null;
+    }
     // Reset so a later gate reopen (Settings toggle) arms a fresh window.
     _giveUpArmed = false;
     if (!_observer) return;
@@ -1014,12 +1032,17 @@
     _observer = null;
   }
   } catch {
-    // Frame-safety (all_frames:true): this module must never throw an
-    // uncaught exception into the page's own MAIN-world execution context,
-    // in ANY frame (top, same-origin iframe, cross-origin consent iframe,
-    // ad/embed iframe). A restricted/opaque frame (about:blank, sandboxed)
-    // or an unexpected page-global shape hitting an uncovered code path
-    // resolves to a silent no-op here — the individual dispatch branches
-    // above already fail-closed per-adapter; this is the outer backstop.
+    // Frame-safety (all_frames:true): this guards only the SYNCHRONOUS
+    // setup above — the `muga:cookie-gate:nonce` listener REGISTRATION,
+    // the `muga:cookie-gate` listener REGISTRATION, and the give-up timer
+    // scheduling call itself — against an uncaught throw during setup in
+    // ANY frame (top, same-origin iframe, cross-origin consent iframe,
+    // ad/embed iframe, restricted/opaque frame such as about:blank or a
+    // sandboxed frame). It does NOT reach code that runs from a LATER
+    // event-loop turn: the `muga:cookie-gate` event listener callback, the
+    // MutationObserver callback, and the give-up setTimeout callback all
+    // fire after this try block's dynamic extent has already ended — each
+    // of those is individually wrapped fail-closed where it is defined
+    // above.
   }
 })();
