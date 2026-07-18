@@ -63,34 +63,54 @@ async function completeOnboarding(
  * button to the SAME wall (Variant A); omitted, the wall is a true hard
  * wall with no free path except accept (Variant B).
  */
-async function stubPaywallPages(page, { withFreeReject = false, includeAcceptButton = true } = {}) {
+async function stubPaywallPages(
+  page,
+  { withFreeReject = false, includeAcceptButton = true, spUrlShape = true, wallButtonsHtml = null } = {}
+) {
+  // The consent-or-pay iframe URL. When spUrlShape is true it carries the
+  // Sourcepoint message-iframe markers isPaywallFrame now REQUIRES: `hasCsp=true`
+  // in the query AND the literal `consent/tcfv2` segment in the PATH. NOTE: the
+  // marker MUST be a real `/` — a percent-encoded `%2F` never decodes back in
+  // location.href, so `consent/tcfv2` would never match and the SP-URL-shape
+  // branch would silently never be exercised (the original fixture bug). When
+  // false, the iframe is a generic cross-origin frame (an ad/embed shape) with
+  // no SP markers at all.
+  const iframePath = spUrlShape
+    ? "/consent/tcfv2/index.html?hasCsp=true&consent_origin=x&message_id=1"
+    : "/embed/widget.html?ad=1";
   await page.route(`**://${TOP_HOST}/**`, (route) =>
     route.fulfill({
       status: 200,
       contentType: "text/html",
       body: `<!doctype html><html><body>
         <p id="page-content">Real page content</p>
-        <iframe id="sp-frame" src="https://${IFRAME_HOST}/index.html?hasCsp=true&consent_origin=x&message_id=1&x=consent%2Ftcfv2" title="consent"></iframe>
+        <iframe id="sp-frame" src="https://${IFRAME_HOST}${iframePath}" title="consent"></iframe>
       </body></html>`,
     })
   );
 
-  const acceptButton = includeAcceptButton
-    ? `<button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>`
-    : "";
-  const rejectButton = withFreeReject
-    ? `<button id="reject-btn" onclick="window.__mugaTestClicked='reject'">Reject</button>`
-    : "";
+  let wallHtml;
+  if (wallButtonsHtml !== null) {
+    wallHtml = wallButtonsHtml;
+  } else {
+    const acceptButton = includeAcceptButton
+      ? `<button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>`
+      : "";
+    const rejectButton = withFreeReject
+      ? `<button id="reject-btn" onclick="window.__mugaTestClicked='reject'">Reject</button>`
+      : "";
+    wallHtml = `
+          ${acceptButton}
+          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>
+          ${rejectButton}`;
+  }
 
   await page.route(`**://${IFRAME_HOST}/**`, (route) =>
     route.fulfill({
       status: 200,
       contentType: "text/html",
       body: `<!doctype html><html><body>
-        <div id="wall">
-          ${acceptButton}
-          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>
-          ${rejectButton}
+        <div id="wall">${wallHtml}
         </div>
       </body></html>`,
     })
@@ -291,6 +311,144 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     const iframe = await waitForIframe(page);
 
     // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  // ── ADVERSARIAL harm-path cases added for the fail-closed hardening ────────
+
+  test("FIX 1: NEVER acts in a cross-origin, NON-Sourcepoint iframe with a lone Continue button (not a consent-or-pay wall)", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, {
+      spUrlShape: false,
+      wallButtonsHtml: `
+          <button id="continue-btn" onclick="window.__mugaTestClicked='continue'">Continue</button>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("FIX 3: NEVER clicks a German spelled-price pay tier ('Zustimmen für 9,99 EUR pro Monat') — clicks only the free accept", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Alle akzeptieren und weiter</button>
+          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Zustimmen f&uuml;r 9,99 EUR pro Monat</button>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    await iframe.waitForFunction(() => window.__mugaTestClicked === "accept", { timeout: 10000 });
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBe("accept");
+    expect(clicked).not.toBe("pay");
+
+    await page.close();
+  });
+
+  test("FIX 2: NEVER acts when a free reject uses a non-basic label ('Ohne Einwilligung fortfahren')", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>
+          <button id="reject-btn" onclick="window.__mugaTestClicked='reject'">Ohne Einwilligung fortfahren</button>
+          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("FIX 2: NEVER accepts a [Accept all][Settings] banner — a settings pane implies a reachable free reject", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all</button>
+          <button id="settings-btn" onclick="window.__mugaTestClicked='settings'">Settings</button>
+          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("FIX 3/M1: NEVER clicks a pay button hidden behind an aria-label of 'Continue' (price only in the visible text)", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="aria-pay-btn" aria-label="Continue" onclick="window.__mugaTestClicked='pay'">Subscribe for 9,99&euro; pro Monat</button>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    // REASON: negative assertion — the aria-label must NOT be read as a free
+    // accept; there is no positive signal to wait on.
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
