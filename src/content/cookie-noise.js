@@ -290,6 +290,7 @@
     "continue",
     "zustimmen",
     "einwilligen",
+    "einverstanden",
     "akzeptieren",
     "und weiter",
     "annehmen",
@@ -414,7 +415,14 @@
     if (!text) return "unknown";
     if (containsAnyToken(text, SETTINGS_TOKENS)) return "settings";
     if (containsAnyToken(text, REJECT_TOKENS)) return "reject";
-    if (containsAnyToken(text, ACCEPT_TOKENS)) return "accept";
+    // ACCEPT is matched WORD-BOUNDARY-SAFE (not bare substring): a bare
+    // `.includes("und weiter")` false-matches inside "Verwendung und Weitergabe"
+    // and `.includes("consent")` inside "Consenthub" (both observed on real SP
+    // walls — engram id 1339/1341). Boundaries keep "und weiter" from matching
+    // "…und Weitergabe" and "consent" from "Consenthub", while still matching a
+    // real free-accept label. PAY/SETTINGS/REJECT stay bare substring on purpose:
+    // over-matching those only ever produces MORE vetoes (the safe direction).
+    if (containsWordBoundaryToken(text, ACCEPT_TOKENS)) return "accept";
     return "unknown";
   }
 
@@ -472,6 +480,66 @@
     return false;
   }
 
+  // ── SP-STRUCTURAL decision-button targeting (PART A, real-wall recalibration) ─
+  //
+  // Sourcepoint renders its consent-or-pay message with a STABLE structure:
+  // every DECISION control carries a `sp_choice_type_<N>` class (surfaced on each
+  // candidate as `spChoice`, the "<N>" suffix), while incidental links
+  // (Datenschutz / Impressum / FAQ / Privacy Center / login) are plain
+  // `text-link` anchors with NO such class (engram id 1339/1341 real-EU capture:
+  // zeit / spiegel / faz / welt / sueddeutsche). Canonical choice types:
+  //   11 = "Accept all / consent" — the FREE-accept button, the ONLY click target
+  //   12 = "Show options / manage / settings"  → a free reject is reachable
+  //   13 = "Reject all"                          → a free reject is present
+  //   9 / link / 5 / … = the pay / subscribe / login alternative
+  // Scoping the decision to ONLY the `sp_choice_type_*` set removes the
+  // incidental-link false-veto (id 1339: every real wall carries privacy links
+  // that classify "unknown" → the generic ambiguity veto killed every firing)
+  // WITHOUT weakening reject detection: a real free reject on an SP wall is ALWAYS
+  // an sp_choice button (12/13), never an incidental link.
+  //
+  // Fail-closed inside the decision set (each condition alone VETOES → ambiguous):
+  //   - any settings/reject choice type (12/13) present   → reject reachable
+  //   - any control classifying reject/settings by token  → reject reachable
+  //   - the accept-all (type 11) button classifying PAY   → deny-precedence
+  //   - not EXACTLY ONE actionable free-accept (type 11)   → ambiguity / none
+  //   - no non-accept alternative decision button present  → not a consent-or-pay
+  // Only the type-11 button is ever the click target; the pay/login/link choices
+  // are never clicked, so an unreadable ("unknown") NON-accept SP choice does NOT
+  // veto — its choice type already proves it is not the accept button. That
+  // structural fact is what lets a genuine hard wall fire while zeit/spiegel/welt
+  // (which additionally expose a Settings choice) correctly stay vetoed.
+  const SP_ACCEPT_ALL_CHOICE = "11";
+  const SP_REJECT_REACHABLE_CHOICES = Object.freeze(["12", "13"]);
+
+  function findSpFreeAcceptTarget(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [];
+    const decisions = [];
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (typeof candidate.spChoice !== "string" || candidate.spChoice.length === 0) continue;
+      decisions.push(candidate);
+    }
+    if (decisions.length === 0) return { status: "noop", target: null };
+    const accepts = [];
+    let hasAlternative = false;
+    for (const candidate of decisions) {
+      if (SP_REJECT_REACHABLE_CHOICES.includes(candidate.spChoice)) return { status: "ambiguous", target: null };
+      const kind = classifyConsentButton(candidate.text, candidate.fullText);
+      if (kind === "reject" || kind === "settings") return { status: "ambiguous", target: null };
+      if (candidate.spChoice === SP_ACCEPT_ALL_CHOICE) {
+        if (kind === "pay") return { status: "ambiguous", target: null };
+        if (kind === "accept" && candidate.actionable === true) accepts.push(candidate);
+      } else if (candidate.actionable === true) {
+        hasAlternative = true;
+      }
+    }
+    if (accepts.length === 0) return { status: "noop", target: null };
+    if (accepts.length > 1) return { status: "ambiguous", target: null };
+    if (!hasAlternative) return { status: "noop", target: null };
+    return { status: "single", target: accepts[0] };
+  }
+
   // isPaywallFrame (PART B of the design): a POSITIVE, CONJUNCTIVE pre-filter.
   // True ONLY when the frame is a SUBFRAME (never the top frame — a consent-or-
   // pay dialog always renders in a child iframe per the real-site probe, engram
@@ -492,9 +560,27 @@
     const e = env && typeof env === "object" ? env : {};
     if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
     const urlLower = typeof e.frameUrl === "string" ? e.frameUrl.toLowerCase() : "";
-    return urlLower.includes("hascsp=true") && urlLower.includes("consent/tcfv2");
+    // FIX 1 (engram id 1339/1341): on real deployments the `consent/tcfv2` marker
+    // appears ONLY PERCENT-ENCODED (`consent%2Ftcfv2`) nested inside the
+    // `consent_origin=` query param — the literal slash never survives in
+    // location.href (e.g. zeit: consent_origin=https%3A%2F%2Fconsent-cdn.zeit.de
+    // %2Fconsent%2Ftcfv2). The original literal-only match therefore never fired
+    // on any real wall. Decode %2F back to `/` before matching so BOTH the real
+    // encoded form and a literal path satisfy the gate.
+    const decoded = urlLower.replace(/%2f/g, "/");
+    return decoded.includes("hascsp=true") && decoded.includes("consent/tcfv2");
   }
   // @sync:cmp-accept-veto:end
+
+  // Retained-API reference (isolated-world only): findFreeAcceptTarget and
+  // hasPayOption are part of the pure discrimination API mirrored byte-for-byte
+  // from src/lib/cmp-accept-adapters.js (where they are exported and unit-tested).
+  // The dispatcher below now targets via findSpFreeAcceptTarget (SP-structural),
+  // so these two are not called here — this `void` keeps them referenced so the
+  // hand-copied @sync block stays byte-identical to the lib without tripping
+  // no-unused-vars. Behaviourally inert.
+  void findFreeAcceptTarget;
+  void hasPayOption;
 
   // Pure double-gate for the accept-click path (mirrors computeCookieGate's
   // @sync:cookie-gate shape). Hand-maintained COPY of the sibling lib
@@ -1412,6 +1498,17 @@
   let _acceptGiveUpArmed = false;
   let _acceptGiveUpTimer = null;
   let _acceptGiveUpFallbackTimer = null;
+  // Bounded re-sweep: a Sourcepoint consent-or-pay wall animates its buttons in
+  // via CSS (opacity/transform) and flips them from non-actionable to actionable
+  // through pure LAYOUT, with no accompanying DOM mutation — so the childList/
+  // subtree MutationObserver alone can miss the moment the free-accept button
+  // becomes clickable (observed on faz.net: fired on one load, missed on the
+  // next). A low-frequency re-sweep re-runs the SAME fully-gated dispatcher until
+  // it acts or the give-up window closes. This changes RELIABILITY only — every
+  // sweep applies the identical isPaywallFrame + reject/settings veto + exactly-
+  // one-accept checks, so it can never make the decision less safe.
+  const ACCEPT_RESWEEP_INTERVAL_MS = 1000;
+  let _acceptResweepTimer = null;
 
   // `a[href]` is included so a FREE-reject rendered as a plain anchor (not a
   // <button> or role=button) is still collected and can block the accept-click
@@ -1470,6 +1567,25 @@
     }
   }
 
+  // The Sourcepoint decision-button marker: the "<N>" suffix of the element's
+  // `sp_choice_type_<N>` class ("11"/"12"/"13"/"9"/"link"/…), or "" when the
+  // element carries no such class (an incidental link, NOT a decision control).
+  // findSpFreeAcceptTarget scopes the whole decision to elements where this is
+  // non-empty, so incidental privacy/imprint/FAQ/login links never enter the
+  // veto. Never throws.
+  function acceptSpChoice(el) {
+    try {
+      const cls = typeof el.getAttribute === "function" ? el.getAttribute("class") : null;
+      if (typeof cls !== "string" || cls.length === 0) return "";
+      for (const token of cls.split(/\s+/)) {
+        if (token.indexOf("sp_choice_type_") === 0) return token.slice("sp_choice_type_".length);
+      }
+      return "";
+    } catch {
+      return "";
+    }
+  }
+
   function collectAcceptCandidates() {
     const candidates = [];
     try {
@@ -1478,6 +1594,7 @@
         candidates.push({
           text: acceptAccessibleName(el),
           fullText: acceptFullText(el),
+          spChoice: acceptSpChoice(el),
           actionable: isAcceptCandidateActionable(el),
           ref: el,
         });
@@ -1493,16 +1610,19 @@
   // +enabled+onboarded+not-exempt, computed above); this is NOT the top
   // frame (a consent-or-pay dialog never renders there); the frame's own
   // shape matches the Sourcepoint consent-or-pay message-iframe URL shape
-  // (isPaywallFrame — MANDATORY now, a bare cross-origin iframe is not
-  // enough, C1/F1); NO free reject/settings control exists anywhere on the
-  // wall (hasFreeRejectControl — a free reject always wins, this NEVER
-  // double-guesses against the reject engine); the wall actually offers a
-  // PAY/SUBSCRIBE path (hasPayOption — the POSITIVE consent-or-pay signal,
-  // C1/F1: a lone "Continue" with no pay option is NOT a consent-or-pay wall);
-  // and EXACTLY ONE actionable free-accept candidate survives with no
-  // unclassifiable control present (findFreeAcceptTarget). Any ambiguity, any
-  // pay/settings-only match, any unknown control, or any missing signal
-  // resolves to a NOOP — this function never guesses.
+  // (isPaywallFrame — MANDATORY, a bare cross-origin iframe is not enough,
+  // C1/F1; FIX 1 now matches the real percent-encoded consent_origin marker);
+  // NO free reject/settings control exists in the SP DECISION set
+  // (hasFreeRejectControl over the sp_choice_type_* buttons only — a free
+  // reject always wins, this NEVER double-guesses against the reject engine);
+  // and the SP-STRUCTURAL resolver returns EXACTLY ONE free-accept (the
+  // sp_choice_type_11 button) with a pay/subscribe alternative present and no
+  // settings/reject choice anywhere in the decision set (findSpFreeAcceptTarget).
+  // Incidental privacy/imprint/FAQ/login links are OUTSIDE the decision set and
+  // never trigger the ambiguity veto (FIX 2 — the recalibration that lets a
+  // real hard wall fire). Any ambiguity, any pay-classified type-11, any
+  // reachable free reject, or any missing signal resolves to a NOOP — this
+  // function never guesses.
   function runAcceptClickDispatcher() {
     if (_acceptActed || !_acceptGateOpen) return;
     const { isTopFrame, topHostname } = resolveFrameIdentity();
@@ -1515,9 +1635,14 @@
     };
     if (!isPaywallFrame(env)) return;
     const candidates = collectAcceptCandidates();
-    if (hasFreeRejectControl(candidates)) return;
-    if (!hasPayOption(candidates)) return;
-    const result = findFreeAcceptTarget(candidates);
+    // Scope the reject/settings safety net to the SP DECISION buttons only
+    // (elements carrying an sp_choice_type_* class). Incidental links are
+    // excluded here for the SAME reason findSpFreeAcceptTarget excludes them.
+    const decisionCandidates = candidates.filter(
+      (candidate) => candidate && typeof candidate.spChoice === "string" && candidate.spChoice.length > 0
+    );
+    if (hasFreeRejectControl(decisionCandidates)) return;
+    const result = findSpFreeAcceptTarget(candidates);
     if (result.status !== "single") return;
     _acceptActed = true;
     try {
@@ -1561,6 +1686,18 @@
     } catch {
       _acceptObserver = null;
     }
+    // Layout-driven actionability re-sweep (see ACCEPT_RESWEEP_INTERVAL_MS). The
+    // give-up window (acceptStopObserver) clears this too, so it is bounded.
+    if (_acceptResweepTimer === null) {
+      try {
+        _acceptResweepTimer = setInterval(() => {
+          if (_acceptActed) return;
+          runAcceptClickDispatcher();
+        }, ACCEPT_RESWEEP_INTERVAL_MS);
+      } catch {
+        _acceptResweepTimer = null;
+      }
+    }
     acceptArmGiveUp();
   }
 
@@ -1572,6 +1709,10 @@
     if (_acceptGiveUpFallbackTimer !== null) {
       clearTimeout(_acceptGiveUpFallbackTimer);
       _acceptGiveUpFallbackTimer = null;
+    }
+    if (_acceptResweepTimer !== null) {
+      clearInterval(_acceptResweepTimer);
+      _acceptResweepTimer = null;
     }
     _acceptGiveUpArmed = false;
     if (!_acceptObserver) return;

@@ -36,6 +36,7 @@ import {
   classifyConsentButton,
   ACCEPT_TARGET_STATUS,
   findFreeAcceptTarget,
+  findSpFreeAcceptTarget,
   hasFreeRejectControl,
   hasPayOption,
   isPaywallFrame,
@@ -60,6 +61,14 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
       "Akzeptieren",
       "Annehmen",
     ]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.ACCEPT, text);
+    }
+  });
+
+  test("real-wall DE free-accept labels classify as ACCEPT (faz/sueddeutsche: 'einverstanden')", () => {
+    // Captured on real Sourcepoint consent-or-pay walls (engram id 1339/1341):
+    // faz.net "Einverstanden", sueddeutsche.de "Ich bin einverstanden".
+    for (const text of ["Einverstanden", "Ich bin einverstanden", "Alle akzeptieren und weiter"]) {
       assert.equal(classifyConsentButton(text), BUTTON_KIND.ACCEPT, text);
     }
   });
@@ -111,8 +120,31 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
     assert.equal(classifyConsentButton("Some unrelated label"), BUTTON_KIND.UNKNOWN);
   });
 
-  test("KNOWN LIMITATION (documented, out of scope this slice): a French word that happens to contain the English substring \"continue\" (e.g. \"continuer\") still classifies as ACCEPT — French tokens are a later-slice addition, reviewed then", () => {
-    assert.equal(classifyConsentButton("D'accord et continuer"), BUTTON_KIND.ACCEPT);
+  test("FIX 3: accept tokens are WORD-BOUNDARY-safe — 'und weiter' does NOT match inside 'Verwendung und Weitergabe' (real welt.de collision)", () => {
+    // The ad-partner data-sharing toggle "Verwendung und Weitergabe von
+    // Nutzerkennungen zu Werbezwecken" (welt.de) is NOT a free-accept control;
+    // the bare substring "und weiter" used to misclassify it as ACCEPT.
+    assert.equal(
+      classifyConsentButton("Verwendung und Weitergabe von Nutzerkennungen zu Werbezwecken"),
+      BUTTON_KIND.UNKNOWN,
+    );
+  });
+
+  test("FIX 3: 'consent' does NOT match inside 'Consenthub' (real Utiq partner-link collision)", () => {
+    assert.equal(classifyConsentButton("Utiq Consenthub"), BUTTON_KIND.UNKNOWN);
+  });
+
+  test("FIX 3: the French 'continuer' substring collision is now fixed — it no longer false-matches 'continue' → UNKNOWN", () => {
+    // Previously documented as a KNOWN LIMITATION (bare-substring match); the
+    // word-boundary tightening resolves it. A real French accept token would be
+    // added explicitly in a later, reviewed slice.
+    assert.equal(classifyConsentButton("D'accord et continuer"), BUTTON_KIND.UNKNOWN);
+  });
+
+  test("FIX 3: word-boundary matching still accepts a legitimate free-accept label ('Continue to Europe', 'Accept & continue')", () => {
+    assert.equal(classifyConsentButton("Continue to Europe"), BUTTON_KIND.ACCEPT);
+    assert.equal(classifyConsentButton("Accept & continue"), BUTTON_KIND.ACCEPT);
+    assert.equal(classifyConsentButton("Zustimmen und weiter"), BUTTON_KIND.ACCEPT);
   });
 
   test("empty / whitespace-only / malformed input never throws, resolves to UNKNOWN", () => {
@@ -385,6 +417,141 @@ describe("findFreeAcceptTarget", () => {
   });
 });
 
+// ── findSpFreeAcceptTarget — SP-STRUCTURAL decision-button targeting (FIX 2) ─
+//
+// Candidate sets below mirror the REAL SP decision buttons captured on live EU
+// consent-or-pay walls (engram id 1339/1341). Decision buttons carry an
+// `spChoice` (the sp_choice_type_<N> suffix); incidental links carry spChoice:""
+// (Datenschutz / Impressum / FAQ / Privacy Center / login) and must be ignored.
+
+describe("findSpFreeAcceptTarget — real hard walls FIRE on the sp_choice_type_11 accept", () => {
+  test("faz.net shape: [11 'Einverstanden'][link 'Kostenfrei testen'] + incidental links -> single, target is the type-11 accept", () => {
+    const candidates = [
+      { text: "Einverstanden", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "Kostenfrei testen", spChoice: "link", actionable: true, ref: "trial" },
+      // incidental links (NO spChoice) — the exact class that used to veto every real wall:
+      { text: "Datenschutzerklärung", spChoice: "", actionable: true, ref: "privacy" },
+      { text: "Impressum", spChoice: "", actionable: true, ref: "imprint" },
+      { text: "FAQ", spChoice: "", actionable: true, ref: "faq" },
+      { text: "Privacy Center", spChoice: "", actionable: true, ref: "pc" },
+    ];
+    const r = findSpFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "accept");
+  });
+
+  test("sueddeutsche.de shape: [11 'Ich bin einverstanden'][9 'Jetzt testen'][9 'Login'] -> single, target is the type-11 accept", () => {
+    const candidates = [
+      { text: "Ich bin einverstanden", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "Jetzt testen", spChoice: "9", actionable: true, ref: "trial" },
+      { text: "Login", spChoice: "9", actionable: true, ref: "login" },
+      { text: "Jetzt kostenlos testen", spChoice: "5", actionable: false, ref: "hidden" },
+    ];
+    const r = findSpFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "accept");
+  });
+
+  test("FIX 2: incidental privacy/imprint/FAQ links NEVER trigger the ambiguity veto (the whole recalibration)", () => {
+    const candidates = [
+      { text: "Einwilligen und weiter", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "Jetzt abonnieren", spChoice: "9", actionable: true, ref: "pay" },
+      { text: "unserer Datenschutzerklärung", spChoice: "", actionable: true },
+      { text: "Некоторая ссылка", spChoice: "", actionable: true },
+      { text: "", spChoice: "", actionable: true }, // an icon-only incidental control
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.SINGLE);
+  });
+});
+
+describe("findSpFreeAcceptTarget — safe VETOES (fail-closed within the SP decision set)", () => {
+  test("zeit/spiegel/welt shape: a Settings (type 12) choice in the decision set -> ambiguous VETO (a free reject is reachable)", () => {
+    const candidates = [
+      { text: "Zustimmen und weiter", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "zeit.de werbefrei abonnieren", spChoice: "9", actionable: true, ref: "pay" },
+      { text: "Einstellungen", spChoice: "12", actionable: true, ref: "settings" },
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("a Reject-all (type 13) choice in the decision set -> ambiguous VETO", () => {
+    const candidates = [
+      { text: "Alle akzeptieren", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "Abonnieren", spChoice: "9", actionable: true, ref: "pay" },
+      { text: "Alle ablehnen", spChoice: "13", actionable: true, ref: "reject" },
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("a reject/settings TOKEN inside the decision set vetoes even if the choice-type is unusual", () => {
+    const candidates = [
+      { text: "Akzeptieren", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "Nur notwendige", spChoice: "7", actionable: true, ref: "reject" },
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("DENY-PRECEDENCE: a type-11 button whose text carries a price/pay token -> ambiguous VETO (never clicks a paid tier)", () => {
+    const candidates = [
+      { text: "Zustimmen für 9,99 EUR pro Monat", spChoice: "11", actionable: true, ref: "trap" },
+      { text: "Weiter", spChoice: "9", actionable: true, ref: "other" },
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("no alternative decision button (a lone accept-all, no pay/login path) -> noop (not a consent-or-pay wall)", () => {
+    const candidates = [{ text: "Akzeptieren", spChoice: "11", actionable: true, ref: "accept" }];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+
+  test("two VISIBLE type-11 accept buttons -> ambiguous, never guesses", () => {
+    const candidates = [
+      { text: "Akzeptieren", spChoice: "11", actionable: true, ref: "a" },
+      { text: "Einverstanden", spChoice: "11", actionable: true, ref: "b" },
+      { text: "Abonnieren", spChoice: "9", actionable: true, ref: "pay" },
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("a hidden desktop/mobile duplicate type-11 is excluded; only the actionable one counts -> single", () => {
+    const candidates = [
+      { text: "Zustimmen und weiter", spChoice: "11", actionable: false, ref: "mobile-hidden" },
+      { text: "Zustimmen und weiter", spChoice: "11", actionable: true, ref: "desktop-visible" },
+      { text: "Abonnieren", spChoice: "9", actionable: true, ref: "pay" },
+    ];
+    const r = findSpFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "desktop-visible");
+  });
+
+  test("a wall with NO sp_choice_type_* decision buttons (generic frame) -> noop", () => {
+    const candidates = [
+      { text: "Continue", spChoice: "", actionable: true },
+      { text: "Accept", spChoice: "", actionable: true },
+    ];
+    assert.equal(findSpFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+
+  test("the click target is ALWAYS the type-11 accept — a pay/link choice is never returned", () => {
+    const candidates = [
+      { text: "Einverstanden", spChoice: "11", actionable: true, ref: "accept" },
+      { text: "Kostenfrei testen", spChoice: "link", actionable: true, ref: "trial" },
+    ];
+    const r = findSpFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.notEqual(r.target.ref, "trial");
+    assert.equal(r.target.ref, "accept");
+  });
+
+  test("malformed/missing input never throws, resolves to noop", () => {
+    assert.doesNotThrow(() => findSpFreeAcceptTarget(null));
+    assert.doesNotThrow(() => findSpFreeAcceptTarget(undefined));
+    assert.doesNotThrow(() => findSpFreeAcceptTarget([null, 42, "x", {}]));
+    assert.equal(findSpFreeAcceptTarget(null).status, ACCEPT_TARGET_STATUS.NOOP);
+    assert.equal(findSpFreeAcceptTarget([null, 42, "x", {}]).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+});
+
 // ── hasFreeRejectControl — the last-resort gate ─────────────────────────────
 
 describe("hasFreeRejectControl", () => {
@@ -467,6 +634,30 @@ describe("isPaywallFrame", () => {
     assert.equal(
       isPaywallFrame({ isTopFrame: false, frameUrl: "https://consent-cdn.zeit.de/index.html?hasCsp=true&x=consent/tcfv2", frameHost: "consent-cdn.zeit.de", topHost: "consent-cdn.zeit.de" }),
       true,
+    );
+  });
+
+  // ── FIX 1 — the REAL percent-encoded consent_origin marker ────────────────
+  // Captured verbatim from real EU Sourcepoint walls (engram id 1339/1341):
+  // `consent/tcfv2` appears ONLY as `consent%2Ftcfv2` nested in consent_origin=.
+  // The old literal-only match returned false on ALL of these (the empirical
+  // reason the mode never fired). isPaywallFrame must now match them.
+  const REAL_SP_FRAME_URLS = [
+    "https://sp-spiegel-de.spiegel.de/index.html?hasCsp=true&message_id=1426772&consentUUID=null&consent_origin=https%3A%2F%2Fsp-spiegel-de.spiegel.de%2Fconsent%2Ftcfv2&preload_message=true&version=v1&consentLanguage=de",
+    "https://consent.up.welt.de/index.html?hasCsp=true&message_id=1490207&consentUUID=null&consent_origin=https%3A%2F%2Fconsent.up.welt.de%2Fconsent%2Ftcfv2&version=v1",
+    "https://consent-cdn.sueddeutsche.de/index.html?hasCsp=true&message_id=1495788&consentUUID=null&consent_origin=https%3A%2F%2Fconsent-cdn.sueddeutsche.de%2Fconsent%2Ftcfv2",
+  ];
+
+  for (const url of REAL_SP_FRAME_URLS) {
+    test(`FIX 1: a real SP frame URL with the percent-encoded consent%2Ftcfv2 marker -> true (${url.split("/")[2]})`, () => {
+      assert.equal(isPaywallFrame({ isTopFrame: false, frameUrl: url }), true);
+    });
+  }
+
+  test("FIX 1: still false when hasCsp is present but there is no consent/tcfv2 marker in any form", () => {
+    assert.equal(
+      isPaywallFrame({ isTopFrame: false, frameUrl: "https://x.example.com/f.html?hasCsp=true&consent_origin=https%3A%2F%2Fx.example.com%2Fother" }),
+      false,
     );
   });
 

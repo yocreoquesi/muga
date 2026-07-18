@@ -118,12 +118,13 @@
 // source text carries no enum-object dependency to copy along.
 //
 // ACCEPT_TOKENS: the FREE accept-and-continue control on a consent-or-pay
-// wall. DE + EN only this slice (see file docblock). KNOWN LIMITATION
-// (documented, out of scope this slice): matching is plain case-insensitive
-// substring — a future locale token that happens to embed one of these
-// strings (e.g. French "continuer" embeds "continue") would false-positive
-// as ACCEPT; widening past DE+EN requires checking new tokens against this
-// list for substring collisions first.
+// wall. DE + EN only this slice (see file docblock). Matched WORD-BOUNDARY-SAFE
+// (see classifyConsentButton / containsWordBoundaryToken): a token counts only
+// when not embedded in a larger alphanumeric run, so "und weiter" no longer
+// false-matches inside "…und Weitergabe", "consent" no longer matches
+// "Consenthub", and "continue" no longer matches French "continuer" (all
+// observed on real SP walls — engram id 1339/1341). "einverstanden" is the DE
+// free-accept label used by faz / sueddeutsche.
 // PAY_DENY_TOKENS: the PAY/SUBSCRIBE control DENYLIST. Precedence: this
 // wins over every other classification — a button whose accessible name
 // contains any of these (or a CURRENCY_TOKENS/PERIOD_TOKENS symbol) is
@@ -142,6 +143,7 @@ export const ACCEPT_TOKENS = Object.freeze([
   "continue",
   "zustimmen",
   "einwilligen",
+  "einverstanden",
   "akzeptieren",
   "und weiter",
   "annehmen",
@@ -266,7 +268,14 @@ function classifyConsentButton(rawText, rawFull) {
   if (!text) return "unknown";
   if (containsAnyToken(text, SETTINGS_TOKENS)) return "settings";
   if (containsAnyToken(text, REJECT_TOKENS)) return "reject";
-  if (containsAnyToken(text, ACCEPT_TOKENS)) return "accept";
+  // ACCEPT is matched WORD-BOUNDARY-SAFE (not bare substring): a bare
+  // `.includes("und weiter")` false-matches inside "Verwendung und Weitergabe"
+  // and `.includes("consent")` inside "Consenthub" (both observed on real SP
+  // walls — engram id 1339/1341). Boundaries keep "und weiter" from matching
+  // "…und Weitergabe" and "consent" from "Consenthub", while still matching a
+  // real free-accept label. PAY/SETTINGS/REJECT stay bare substring on purpose:
+  // over-matching those only ever produces MORE vetoes (the safe direction).
+  if (containsWordBoundaryToken(text, ACCEPT_TOKENS)) return "accept";
   return "unknown";
 }
 
@@ -324,6 +333,66 @@ function hasPayOption(candidates) {
   return false;
 }
 
+// ── SP-STRUCTURAL decision-button targeting (PART A, real-wall recalibration) ─
+//
+// Sourcepoint renders its consent-or-pay message with a STABLE structure:
+// every DECISION control carries a `sp_choice_type_<N>` class (surfaced on each
+// candidate as `spChoice`, the "<N>" suffix), while incidental links
+// (Datenschutz / Impressum / FAQ / Privacy Center / login) are plain
+// `text-link` anchors with NO such class (engram id 1339/1341 real-EU capture:
+// zeit / spiegel / faz / welt / sueddeutsche). Canonical choice types:
+//   11 = "Accept all / consent" — the FREE-accept button, the ONLY click target
+//   12 = "Show options / manage / settings"  → a free reject is reachable
+//   13 = "Reject all"                          → a free reject is present
+//   9 / link / 5 / … = the pay / subscribe / login alternative
+// Scoping the decision to ONLY the `sp_choice_type_*` set removes the
+// incidental-link false-veto (id 1339: every real wall carries privacy links
+// that classify "unknown" → the generic ambiguity veto killed every firing)
+// WITHOUT weakening reject detection: a real free reject on an SP wall is ALWAYS
+// an sp_choice button (12/13), never an incidental link.
+//
+// Fail-closed inside the decision set (each condition alone VETOES → ambiguous):
+//   - any settings/reject choice type (12/13) present   → reject reachable
+//   - any control classifying reject/settings by token  → reject reachable
+//   - the accept-all (type 11) button classifying PAY   → deny-precedence
+//   - not EXACTLY ONE actionable free-accept (type 11)   → ambiguity / none
+//   - no non-accept alternative decision button present  → not a consent-or-pay
+// Only the type-11 button is ever the click target; the pay/login/link choices
+// are never clicked, so an unreadable ("unknown") NON-accept SP choice does NOT
+// veto — its choice type already proves it is not the accept button. That
+// structural fact is what lets a genuine hard wall fire while zeit/spiegel/welt
+// (which additionally expose a Settings choice) correctly stay vetoed.
+const SP_ACCEPT_ALL_CHOICE = "11";
+const SP_REJECT_REACHABLE_CHOICES = Object.freeze(["12", "13"]);
+
+function findSpFreeAcceptTarget(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const decisions = [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (typeof candidate.spChoice !== "string" || candidate.spChoice.length === 0) continue;
+    decisions.push(candidate);
+  }
+  if (decisions.length === 0) return { status: "noop", target: null };
+  const accepts = [];
+  let hasAlternative = false;
+  for (const candidate of decisions) {
+    if (SP_REJECT_REACHABLE_CHOICES.includes(candidate.spChoice)) return { status: "ambiguous", target: null };
+    const kind = classifyConsentButton(candidate.text, candidate.fullText);
+    if (kind === "reject" || kind === "settings") return { status: "ambiguous", target: null };
+    if (candidate.spChoice === SP_ACCEPT_ALL_CHOICE) {
+      if (kind === "pay") return { status: "ambiguous", target: null };
+      if (kind === "accept" && candidate.actionable === true) accepts.push(candidate);
+    } else if (candidate.actionable === true) {
+      hasAlternative = true;
+    }
+  }
+  if (accepts.length === 0) return { status: "noop", target: null };
+  if (accepts.length > 1) return { status: "ambiguous", target: null };
+  if (!hasAlternative) return { status: "noop", target: null };
+  return { status: "single", target: accepts[0] };
+}
+
 // isPaywallFrame (PART B of the design): a POSITIVE, CONJUNCTIVE pre-filter.
 // True ONLY when the frame is a SUBFRAME (never the top frame — a consent-or-
 // pay dialog always renders in a child iframe per the real-site probe, engram
@@ -344,7 +413,15 @@ function isPaywallFrame(env) {
   const e = env && typeof env === "object" ? env : {};
   if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
   const urlLower = typeof e.frameUrl === "string" ? e.frameUrl.toLowerCase() : "";
-  return urlLower.includes("hascsp=true") && urlLower.includes("consent/tcfv2");
+  // FIX 1 (engram id 1339/1341): on real deployments the `consent/tcfv2` marker
+  // appears ONLY PERCENT-ENCODED (`consent%2Ftcfv2`) nested inside the
+  // `consent_origin=` query param — the literal slash never survives in
+  // location.href (e.g. zeit: consent_origin=https%3A%2F%2Fconsent-cdn.zeit.de
+  // %2Fconsent%2Ftcfv2). The original literal-only match therefore never fired
+  // on any real wall. Decode %2F back to `/` before matching so BOTH the real
+  // encoded form and a literal path satisfy the gate.
+  const decoded = urlLower.replace(/%2f/g, "/");
+  return decoded.includes("hascsp=true") && decoded.includes("consent/tcfv2");
 }
 // @sync:cmp-accept-veto:end
 
@@ -375,7 +452,14 @@ export const ACCEPT_TARGET_STATUS = Object.freeze({
   AMBIGUOUS: "ambiguous",
 });
 
-export { classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, hasPayOption, isPaywallFrame };
+export {
+  classifyConsentButton,
+  findFreeAcceptTarget,
+  findSpFreeAcceptTarget,
+  hasFreeRejectControl,
+  hasPayOption,
+  isPaywallFrame,
+};
 
 /**
  * Pure double-gate (L2). Mirrors src/lib/cmp-adapters.js's

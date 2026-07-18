@@ -259,6 +259,7 @@ describe("cookie-noise-sync — @sync:cmp-accept-veto block is byte-identical (m
     const joined = libBlock.join("\n");
     assert.ok(/function classifyConsentButton/.test(joined));
     assert.ok(/function findFreeAcceptTarget/.test(joined));
+    assert.ok(/function findSpFreeAcceptTarget/.test(joined));
     assert.ok(/function hasFreeRejectControl/.test(joined));
     assert.ok(/function isPaywallFrame/.test(joined));
   });
@@ -840,23 +841,36 @@ describe("cookie-noise.js — accept-click dispatch structural guards", () => {
       "cookie-noise.js must click the resolved DOM candidate via `.ref.click()`");
   });
 
-  test("runAcceptClickDispatcher gates on isPaywallFrame, hasFreeRejectControl, and findFreeAcceptTarget's single status, in that order, before ever clicking", () => {
+  test("runAcceptClickDispatcher gates on isPaywallFrame, hasFreeRejectControl (SP decision set), and findSpFreeAcceptTarget's single status, in that order, before ever clicking", () => {
     const src = sources.isolated;
     const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
     assert.ok(fnMatch, "cookie-noise.js must define runAcceptClickDispatcher()");
     const body = fnMatch[1];
     const paywallIdx = body.indexOf("isPaywallFrame(");
     const rejectIdx = body.indexOf("hasFreeRejectControl(");
-    const targetIdx = body.indexOf("findFreeAcceptTarget(");
+    const targetIdx = body.indexOf("findSpFreeAcceptTarget(");
     const clickIdx = body.indexOf(".ref.click(");
     assert.ok(paywallIdx !== -1, "must call isPaywallFrame");
     assert.ok(rejectIdx !== -1, "must call hasFreeRejectControl");
-    assert.ok(targetIdx !== -1, "must call findFreeAcceptTarget");
+    assert.ok(targetIdx !== -1, "must call findSpFreeAcceptTarget");
     assert.ok(clickIdx !== -1, "must call .ref.click()");
     assert.ok(
       paywallIdx < rejectIdx && rejectIdx < targetIdx && targetIdx < clickIdx,
-      "runAcceptClickDispatcher must check isPaywallFrame, then hasFreeRejectControl, then findFreeAcceptTarget, before ever clicking",
+      "runAcceptClickDispatcher must check isPaywallFrame, then hasFreeRejectControl, then findSpFreeAcceptTarget, before ever clicking",
     );
+  });
+
+  test("the reject/settings safety net is scoped to the SP DECISION set (sp_choice_type_* buttons), not every actionable node", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    // hasFreeRejectControl must receive the SP-decision-scoped list, so an
+    // incidental privacy/imprint/FAQ link never triggers the reject veto.
+    assert.ok(/hasFreeRejectControl\(\s*decisionCandidates\s*\)/.test(body),
+      "hasFreeRejectControl must be called over the SP decision-scoped candidates");
+    assert.ok(/\.spChoice\b/.test(body) && /\.filter\(/.test(body),
+      "the dispatcher must derive the decision set by filtering on spChoice");
   });
 
   test("the dispatch never fires in the top frame — bails on isTopFrame before any DOM scan", () => {
@@ -873,7 +887,7 @@ describe("cookie-noise.js — accept-click dispatch structural guards", () => {
   });
 
   test("cookie-noise-mainworld.js has no accept-click dispatch of any kind (mechanism is isolated-world only)", () => {
-    for (const forbidden of ["runAcceptClickDispatcher", "isPaywallFrame", "findFreeAcceptTarget", "hasFreeRejectControl", "classifyConsentButton"]) {
+    for (const forbidden of ["runAcceptClickDispatcher", "isPaywallFrame", "findFreeAcceptTarget", "findSpFreeAcceptTarget", "hasFreeRejectControl", "classifyConsentButton"]) {
       assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
     }
   });
