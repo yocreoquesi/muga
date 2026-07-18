@@ -29,14 +29,29 @@
  * Constraints for this file (main-world scripts):
  *   - No chrome.* APIs — no extension messaging in the page world.
  *   - No ES module imports. Runs as a classic script in the page world.
+ *
+ * Cross-origin-iframe scope (deliberate, scoped change): this script is
+ * registered `all_frames: true` in the manifest, IN ITS OWN dedicated
+ * content_scripts entry — every other content script stays top-frame-only.
+ * A real-site frame-location probe found that consent-or-pay wall dialogs
+ * (Sourcepoint's `sp_message_container` message iframe, hosted on a
+ * dedicated cross-origin subdomain) render in a CROSS-ORIGIN CHILD FRAME,
+ * not the top frame — so a top-frame-only script can never reach the
+ * dialog's own buttons. The previous same-frame-only guard below (an early
+ * return keyed on frame identity) was REMOVED for this reason. `all_frames`
+ * is not a new permission — MUGA already holds `<all_urls>` host
+ * permission, which already covers every frame; no new user-facing
+ * permission prompt results from this change. The module now runs once
+ * per frame (ads, embeds, same-origin iframes, cross-origin consent
+ * iframes) — see the bounded give-up window
+ * below and the defensive try/catch wrapper immediately below, both of
+ * which keep this cheap and safe when a frame has no matching CMP.
  */
 
 (function () {
   "use strict";
 
-  // Skip iframes — the OneTrust reject global lives in the top frame for
-  // this feature's scope (MVP; see design doc "Deferred" section).
-  if (window.self !== window.top) return;
+  try {
   if (window.__mugaCookieNoise) return;
   window.__mugaCookieNoise = true;
 
@@ -997,5 +1012,14 @@
       // already disconnected
     }
     _observer = null;
+  }
+  } catch {
+    // Frame-safety (all_frames:true): this module must never throw an
+    // uncaught exception into the page's own MAIN-world execution context,
+    // in ANY frame (top, same-origin iframe, cross-origin consent iframe,
+    // ad/embed iframe). A restricted/opaque frame (about:blank, sandboxed)
+    // or an unexpected page-global shape hitting an uncovered code path
+    // resolves to a silent no-op here — the individual dispatch branches
+    // above already fail-closed per-adapter; this is the outer backstop.
   }
 })();

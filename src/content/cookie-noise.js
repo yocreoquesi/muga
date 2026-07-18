@@ -23,17 +23,36 @@
  * introduce it. See src/lib/cmp-adapters.js's docblock for the full
  * rationale and the structural guard that enforces it.
  *
- * Runs in the isolated world (Chrome + Firefox), listed after
- * content/cleaner-bundle.js in the manifest so `window.__mugaCleaner` is
- * already attached when the gate first opens (needed for the
- * `isSiteFullyExempt` per-site exemption check).
+ * Runs in the isolated world (Chrome + Firefox). In the TOP frame, listed
+ * after content/cleaner-bundle.js in the manifest so `window.__mugaCleaner`
+ * is already attached when the gate first opens (needed for the
+ * `isSiteFullyExempt` per-site exemption check); `window.__mugaCleaner` is
+ * NOT attached in child frames (cleaner-bundle.js stays top-frame-only), so
+ * `isSiteFullyExempt` safely no-ops there (see computeGate() below) — this
+ * is expected, not a bug.
+ *
+ * Cross-origin-iframe scope (deliberate, scoped change): this script is
+ * registered `all_frames: true` in the manifest, IN ITS OWN dedicated
+ * content_scripts entry — every other content script stays top-frame-only.
+ * A real-site frame-location probe found that consent-or-pay wall dialogs
+ * (Sourcepoint's `sp_message_container` message iframe, hosted on a
+ * dedicated cross-origin subdomain) render in a CROSS-ORIGIN CHILD FRAME,
+ * not the top frame — so a top-frame-only script can never reach the
+ * dialog's own buttons. The previous same-frame-only guard below (an early
+ * return keyed on frame identity) was REMOVED for this reason. `all_frames`
+ * is not a new permission — MUGA already holds `<all_urls>` host
+ * permission, which already covers every frame; no new user-facing
+ * permission prompt results from this change. The module now runs once
+ * per frame (ads, embeds, same-origin iframes, cross-origin consent
+ * iframes) — see the bounded give-up window
+ * below and the defensive try/catch wrapper immediately below, both of
+ * which keep this cheap and safe when a frame has no matching CMP.
  */
 
 (function () {
   "use strict";
 
-  // Skip iframes — same guard as the rest of MUGA's content scripts.
-  if (window.self !== window.top) return;
+  try {
   if (window.__mugaCookieNoiseGate) return;
   window.__mugaCookieNoiseGate = true;
 
@@ -1097,5 +1116,14 @@
         if (area === "sync") readPrefsAndGate();
       });
     }
+  }
+  } catch {
+    // Frame-safety (all_frames:true): this module must never throw an
+    // uncaught exception in ANY frame (top, same-origin iframe,
+    // cross-origin consent iframe, ad/embed iframe, restricted/opaque
+    // frame). Every individual signal read and dispatch call is already
+    // wrapped fail-closed above; this is the outer backstop for anything
+    // unexpected during setup (e.g. `document`/`chrome.*` being
+    // unavailable in a sandboxed frame).
   }
 })();

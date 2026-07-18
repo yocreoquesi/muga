@@ -24,6 +24,9 @@ import { join, dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const mv3Manifest = JSON.parse(readFileSync(join(__dirname, "../../src/manifest.json"), "utf8"));
+const mv2Manifest = JSON.parse(readFileSync(join(__dirname, "../../src/manifest.v2.json"), "utf8"));
+
 const FILES = {
   lib: join(__dirname, "../../src/lib/cmp-adapters.js"),
   mainworld: join(__dirname, "../../src/content/cookie-noise-mainworld.js"),
@@ -341,12 +344,35 @@ describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
       assert.equal(/^\s*import\s+/m.test(src), false, `${label} must not contain ES module imports`);
     });
 
-    test(`${label} has a top-frame guard`, () => {
-      assert.ok(/window\.self\s*!==\s*window\.top/.test(src), `${label} must guard against iframes`);
+    // DELIBERATE, SCOPED CHANGE (feat/cookie-consent-all-frames): the
+    // top-frame guard (`window.self !== window.top`) was REMOVED from both
+    // consent content scripts. Real-site verification (engram
+    // sdd/cookie-consent-accept/paywall-domclick-probe) found consent-or-pay
+    // wall accept/reject UIs (Sourcepoint's sp_message_container iframe)
+    // render in a CROSS-ORIGIN CHILD FRAME, unreachable by a top-frame-only
+    // script. Both consent scripts are now registered `all_frames: true` in
+    // their OWN dedicated manifest entries (asserted below) — every OTHER
+    // content script keeps the old top-frame-only behavior. This is an
+    // intentional, product-owner-approved footprint expansion, NOT a
+    // regression: do not reintroduce the guard without re-litigating this
+    // decision.
+    test(`${label} does NOT have a top-frame guard (removed on purpose — runs in all frames)`, () => {
+      assert.equal(
+        /window\.self\s*!==\s*window\.top/.test(src),
+        false,
+        `${label} must NOT guard against iframes — this script is intentionally all_frames:true`,
+      );
     });
 
     test(`${label} has a once-guard`, () => {
       assert.ok(/window\.__muga\w+\s*\)\s*return;/.test(src), `${label} must guard against double-injection`);
+    });
+
+    test(`${label} wraps its module body in a frame-safety try/catch (never throws into the frame)`, () => {
+      assert.ok(
+        /\btry\s*\{/.test(src) && /\}\s*catch\s*\{/.test(src),
+        `${label} must wrap its body in try/catch so an uncaught error never escapes into a shared frame (all_frames:true)`,
+      );
     });
   }
 
@@ -362,6 +388,65 @@ describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
   test("cookie-noise.js uses chrome.runtime.sendMessage to read prefs", () => {
     assert.ok(/chrome\.runtime\.sendMessage/.test(sources.isolated));
     assert.ok(/getPrefs/.test(sources.isolated));
+  });
+});
+
+// ── Manifest scoping: only the two consent scripts are all_frames:true ─────
+//
+// (feat/cookie-consent-all-frames) Both consent content scripts must be
+// registered all_frames:true, EACH IN ITS OWN dedicated content_scripts
+// entry, in BOTH manifests. Every other content script must keep the
+// default top-frame-only behavior (all_frames absent or false). This test
+// is the manifest-side half of the "deliberate, scoped change" guard above
+// — it fails if a future edit widens (or narrows) the all_frames scope.
+
+describe("cookie-noise manifest scoping — all_frames:true is scoped to ONLY the consent scripts", () => {
+  const CONSENT_SCRIPTS = ["content/cookie-noise.js", "content/cookie-noise-mainworld.js"];
+
+  function collectAllFramesTrueScripts(manifest) {
+    const scripts = [];
+    for (const group of manifest.content_scripts || []) {
+      if (group.all_frames === true) scripts.push(...(group.js || []));
+    }
+    return scripts;
+  }
+
+  test("src/manifest.json (MV3): exactly the two consent scripts are all_frames:true", () => {
+    const allFramesTrue = collectAllFramesTrueScripts(mv3Manifest).sort();
+    assert.deepStrictEqual(
+      allFramesTrue,
+      [...CONSENT_SCRIPTS].sort(),
+      "MV3 must scope all_frames:true to ONLY content/cookie-noise.js and " +
+      "content/cookie-noise-mainworld.js — no other content script's injection " +
+      `scope may change. Found: ${JSON.stringify(allFramesTrue)}`,
+    );
+  });
+
+  test("src/manifest.v2.json (Firefox MV2): exactly cookie-noise.js is all_frames:true", () => {
+    // MV2 has no world:MAIN, so cookie-noise-mainworld.js is not loaded at all
+    // (see firefox-mv2-mainworld-injection.test.mjs) — only cookie-noise.js
+    // is a candidate here.
+    const allFramesTrue = collectAllFramesTrueScripts(mv2Manifest).sort();
+    assert.deepStrictEqual(
+      allFramesTrue,
+      ["content/cookie-noise.js"],
+      "MV2 must scope all_frames:true to ONLY content/cookie-noise.js — no other " +
+      `content script's injection scope may change. Found: ${JSON.stringify(allFramesTrue)}`,
+    );
+  });
+
+  test("each all_frames:true consent script sits in its OWN dedicated content_scripts entry (not mixed with other scripts)", () => {
+    for (const manifest of [mv3Manifest, mv2Manifest]) {
+      for (const group of manifest.content_scripts || []) {
+        if (group.all_frames !== true) continue;
+        assert.equal(
+          (group.js || []).length,
+          1,
+          `an all_frames:true content_scripts group must contain exactly one script (found: ${JSON.stringify(group.js)}) — ` +
+          "consent scripts must not share an all_frames:true entry with a top-frame-only script",
+        );
+      }
+    }
   });
 });
 
