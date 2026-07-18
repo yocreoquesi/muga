@@ -28,6 +28,7 @@ import {
   ACCEPT_TOKENS,
   PAY_DENY_TOKENS,
   CURRENCY_TOKENS,
+  CURRENCY_CODE_TOKENS,
   PERIOD_TOKENS,
   SETTINGS_TOKENS,
   REJECT_TOKENS,
@@ -36,6 +37,7 @@ import {
   ACCEPT_TARGET_STATUS,
   findFreeAcceptTarget,
   hasFreeRejectControl,
+  hasPayOption,
   isPaywallFrame,
   computeAcceptGate,
 } from "../../src/lib/cmp-accept-adapters.js";
@@ -133,6 +135,192 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
   test("ACCEPT_TOKENS is non-empty DATA, not embedded in the matching logic", () => {
     assert.ok(Array.isArray(ACCEPT_TOKENS) && ACCEPT_TOKENS.length > 0);
     assert.ok(Object.isFrozen(ACCEPT_TOKENS));
+  });
+});
+
+// ── FIX 3 — price/pay backstop coverage (H1/F4) ─────────────────────────────
+
+describe("classifyConsentButton — FIX 3: price/pay backstop coverage", () => {
+  test("German spelled price tier 'Zustimmen für 9,99 EUR pro Monat' classifies as PAY (not ACCEPT)", () => {
+    assert.equal(classifyConsentButton("Zustimmen für 9,99 EUR pro Monat"), BUTTON_KIND.PAY);
+  });
+
+  test("'werbefrei' (ad-free subscription cue) classifies as PAY", () => {
+    assert.equal(classifyConsentButton("Werbefrei weiterlesen"), BUTTON_KIND.PAY);
+  });
+
+  test("spelled billing-period labels (no slash) classify as PAY", () => {
+    for (const text of [
+      "Continue for 5 per month",
+      "Weiter für 5 im Monat",
+      "5 monatlich",
+      "Continue 20 per year",
+      "20 jährlich",
+      "Weiter 20 pro Jahr",
+    ]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.PAY, text);
+    }
+  });
+
+  test("ISO currency codes classify as PAY when word-boundary-flanked", () => {
+    for (const text of ["Pay 9,99 EUR", "Continue for 9.99 USD", "2 GBP", "5 CHF"]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.PAY, text);
+    }
+  });
+
+  test("ADVERSARIAL: a currency code embedded in a larger word does NOT trigger PAY (word-boundary-safe)", () => {
+    // "europe" embeds "eur", "neural" embeds "eur", "usda"/"gbps"/"chft" embed
+    // the other codes — none may be read as a price.
+    assert.equal(classifyConsentButton("Continue to Europe"), BUTTON_KIND.ACCEPT);
+    assert.equal(classifyConsentButton("Neural settings"), BUTTON_KIND.SETTINGS);
+  });
+
+  test("CURRENCY_CODE_TOKENS is non-empty frozen DATA", () => {
+    assert.ok(Array.isArray(CURRENCY_CODE_TOKENS) && CURRENCY_CODE_TOKENS.length > 0);
+    assert.ok(Object.isFrozen(CURRENCY_CODE_TOKENS));
+  });
+});
+
+// ── FIX 3 (M1) — aria-label must not hide a paid tier ───────────────────────
+
+describe("classifyConsentButton — FIX 3/M1: PAY/price/deny scanned over FULL text, not just the accessible name", () => {
+  test("an aria-label of 'Continue' cannot hide a price carried in the visible text — classifies PAY", () => {
+    // rawText = accessible name (aria-label), rawFull = aria + visible text.
+    assert.equal(
+      classifyConsentButton("Continue", "Continue Subscribe for 9,99 EUR pro Monat"),
+      BUTTON_KIND.PAY,
+    );
+  });
+
+  test("a plain accept control (no price anywhere in full text) still classifies ACCEPT", () => {
+    assert.equal(classifyConsentButton("Accept all", "Accept all & continue"), BUTTON_KIND.ACCEPT);
+  });
+
+  test("full text defaults to accessible name when omitted (backward-compatible one-arg form)", () => {
+    assert.equal(classifyConsentButton("Subscribe 9,99 EUR"), BUTTON_KIND.PAY);
+  });
+});
+
+// ── FIX 2 — expanded reject-label coverage (fail-closed) ────────────────────
+
+describe("hasFreeRejectControl — FIX 2: expanded DE+EN reject labels all veto", () => {
+  const REJECT_LABELS = [
+    "Nur notwendige",
+    "Nur erforderliche",
+    "Nur essenzielle Cookies",
+    "Nur essentielle Cookies",
+    "Ohne Einwilligung fortfahren",
+    "Weiterlesen ohne Zustimmung",
+    "Ablehnen",
+    "Alle ablehnen",
+    "Reject",
+    "Reject all",
+    "Decline",
+    "Refuse",
+    "Disagree",
+    "Do not consent",
+    "Continue without agreeing",
+    "Continue without accepting",
+    "Only necessary",
+    "Necessary only",
+    "Essential only",
+  ];
+
+  for (const label of REJECT_LABELS) {
+    test(`a free reject labelled "${label}" is detected -> veto`, () => {
+      assert.equal(hasFreeRejectControl([{ text: label, actionable: true }]), true, label);
+    });
+  }
+});
+
+describe("hasFreeRejectControl — FIX 2: SETTINGS-implies-reachable-reject veto", () => {
+  test("a [Accept all][Settings] layer-1 banner must NOT be accepted — settings implies a reachable free reject one layer deeper", () => {
+    const candidates = [
+      { text: "Accept all", actionable: true },
+      { text: "Settings", actionable: true },
+    ];
+    assert.equal(hasFreeRejectControl(candidates), true);
+  });
+
+  test("[Accept all][Cookie-Einstellungen] (DE manage pane) also vetoes", () => {
+    assert.equal(
+      hasFreeRejectControl([
+        { text: "Alle akzeptieren", actionable: true },
+        { text: "Cookie-Einstellungen", actionable: true },
+      ]),
+      true,
+    );
+  });
+});
+
+describe("hasFreeRejectControl — FIX 2: <a>-based reject candidates block", () => {
+  test("a reject rendered as an anchor (collected by the caller as a candidate) still vetoes", () => {
+    // The caller collects <a href> elements into the candidate list; a reject
+    // anchor must block exactly like a <button>.
+    assert.equal(
+      hasFreeRejectControl([
+        { text: "Accept & continue", actionable: true },
+        { text: "Ablehnen", actionable: true, ref: "anchor" },
+      ]),
+      true,
+    );
+  });
+});
+
+// ── FIX 2 — fail-closed on any unknown/unrecognized actionable control ──────
+
+describe("findFreeAcceptTarget — FIX 2: an unknown actionable control VETOES the accept (bias hard toward not-accepting)", () => {
+  test("an accept button alongside an icon-only / empty-text actionable control -> ambiguous (never accept)", () => {
+    const candidates = [
+      { text: "Accept & continue", actionable: true, ref: "accept" },
+      { text: "", actionable: true, ref: "icon-x" },
+    ];
+    assert.equal(findFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("an accept button alongside an unrecognized-locale actionable control -> ambiguous (might be a free reject we cannot read)", () => {
+    const candidates = [
+      { text: "Accept & continue", actionable: true, ref: "accept" },
+      { text: "Некоторая кнопка", actionable: true, ref: "unknown" },
+    ];
+    assert.equal(findFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("a NON-actionable unknown control does NOT veto (only prominent/actionable controls count)", () => {
+    const candidates = [
+      { text: "Accept & continue", actionable: true, ref: "accept" },
+      { text: "", actionable: false, ref: "hidden-icon" },
+    ];
+    assert.equal(findFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.SINGLE);
+  });
+});
+
+// ── FIX 1 — positive consent-or-pay signal (hasPayOption) ───────────────────
+
+describe("hasPayOption — FIX 1: a genuine consent-or-pay wall must present a PAY path", () => {
+  test("a wall with a subscribe/pay control -> true", () => {
+    assert.equal(hasPayOption([{ text: "Accept all", actionable: true }, { text: "Subscribe", actionable: true }]), true);
+  });
+
+  test("a wall with a spelled price tier -> true", () => {
+    assert.equal(hasPayOption([{ text: "Zustimmen für 9,99 EUR pro Monat", actionable: true }]), true);
+  });
+
+  test("a pay control hidden behind an aria-label (price only in full text) still counts", () => {
+    assert.equal(
+      hasPayOption([{ text: "Continue", fullText: "Continue Subscribe 9,99 EUR pro Monat", actionable: true }]),
+      true,
+    );
+  });
+
+  test("a generic iframe with a lone Continue/Accept and NO pay control -> false (not a consent-or-pay wall)", () => {
+    assert.equal(hasPayOption([{ text: "Continue", actionable: true }, { text: "Accept", actionable: true }]), false);
+  });
+
+  test("malformed/missing input never throws, resolves to false", () => {
+    assert.doesNotThrow(() => hasPayOption(null));
+    assert.equal(hasPayOption(null), false);
+    assert.equal(hasPayOption(undefined), false);
   });
 });
 
@@ -245,10 +433,17 @@ describe("isPaywallFrame", () => {
     );
   });
 
-  test("a subframe with a cross-origin host mismatch (no URL shape match) -> true", () => {
+  test("FIX 1: a bare cross-origin host mismatch WITHOUT the SP URL shape -> false (an ad/embed/social/checkout iframe is not a consent-or-pay wall)", () => {
     assert.equal(
       isPaywallFrame({ isTopFrame: false, frameUrl: "https://ads.example.com/frame.html", frameHost: "ads.example.com", topHost: "news.example.com" }),
-      true,
+      false,
+    );
+  });
+
+  test("FIX 1: the SP URL shape is MANDATORY — a partial match (hasCsp but no consent/tcfv2) -> false", () => {
+    assert.equal(
+      isPaywallFrame({ isTopFrame: false, frameUrl: "https://x.example.com/f.html?hasCsp=true", frameHost: "x.example.com", topHost: "news.example.com" }),
+      false,
     );
   });
 
@@ -441,8 +636,10 @@ describe("cmp-accept-adapters — ADVERSARIAL: impossible-by-construction scenar
     assert.equal(findFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
   });
 
-  test("an unknown-locale label never resolves to a click (fails closed, not a guess)", () => {
+  test("an unknown-locale label never resolves to a click — FIX 2: a lone unrecognized actionable control VETOES as ambiguous (might be a free reject we cannot read)", () => {
     const r = findFreeAcceptTarget([{ text: "Non merci", actionable: true }]);
-    assert.equal(r.status, ACCEPT_TARGET_STATUS.NOOP);
+    assert.notEqual(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+    assert.equal(r.target, null);
   });
 });

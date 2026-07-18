@@ -152,6 +152,7 @@ export const PAY_DENY_TOKENS = Object.freeze([
   "abonnieren",
   "abonnement",
   "pur",
+  "werbefrei",
   "subscribe",
   "subscription",
   "pay",
@@ -161,7 +162,28 @@ export const PAY_DENY_TOKENS = Object.freeze([
 ]);
 
 export const CURRENCY_TOKENS = Object.freeze(["€", "$", "£"]);
-export const PERIOD_TOKENS = Object.freeze(["/monat", "/month", "/mo", "/jahr"]);
+
+// ISO currency codes matched WORD-BOUNDARY-SAFE (not bare substring): a plain
+// `.includes("eur")` would false-positive "europe"/"neural", so these count
+// only when flanked by non-alphanumeric boundaries (see
+// containsWordBoundaryToken). Lowercase — text is normalized before matching.
+export const CURRENCY_CODE_TOKENS = Object.freeze(["eur", "usd", "gbp", "chf"]);
+
+export const PERIOD_TOKENS = Object.freeze([
+  "/monat",
+  "/month",
+  "/mo",
+  "/jahr",
+  "pro monat",
+  "im monat",
+  "monatlich",
+  "pro jahr",
+  "jährlich",
+  "per month",
+  "a month",
+  "per year",
+  "a year",
+]);
 
 export const SETTINGS_TOKENS = Object.freeze([
   "einstellungen",
@@ -175,9 +197,21 @@ export const SETTINGS_TOKENS = Object.freeze([
 export const REJECT_TOKENS = Object.freeze([
   "ablehnen",
   "nur notwendige",
+  "nur erforderliche",
+  "nur essenzielle",
+  "nur essentielle",
+  "ohne einwilligung fortfahren",
+  "weiterlesen ohne zustimmung",
   "reject",
   "decline",
+  "refuse",
+  "disagree",
+  "do not consent",
+  "continue without agreeing",
+  "continue without accepting",
   "necessary only",
+  "only necessary",
+  "essential only",
 ]);
 
 function normalizeButtonText(rawText) {
@@ -191,27 +225,67 @@ function containsAnyToken(text, tokens) {
   return false;
 }
 
-function hasPriceIndicator(text) {
-  return containsAnyToken(text, CURRENCY_TOKENS) || containsAnyToken(text, PERIOD_TOKENS);
+// Word-boundary token match: a token counts only when it is NOT embedded in a
+// larger alphanumeric run, so "eur" matches "9,99 eur" but never "europe".
+function containsWordBoundaryToken(text, tokens) {
+  for (const token of tokens) {
+    let from = 0;
+    let idx = text.indexOf(token, from);
+    while (idx !== -1) {
+      const before = idx === 0 ? "" : text.charAt(idx - 1);
+      const after = text.charAt(idx + token.length);
+      const boundedBefore = before === "" || !/[a-z0-9]/.test(before);
+      const boundedAfter = after === "" || !/[a-z0-9]/.test(after);
+      if (boundedBefore && boundedAfter) return true;
+      from = idx + 1;
+      idx = text.indexOf(token, from);
+    }
+  }
+  return false;
 }
 
-function classifyConsentButton(rawText) {
+function hasPriceIndicator(text) {
+  return (
+    containsAnyToken(text, CURRENCY_TOKENS) ||
+    containsAnyToken(text, PERIOD_TOKENS) ||
+    containsWordBoundaryToken(text, CURRENCY_CODE_TOKENS)
+  );
+}
+
+// classifyConsentButton takes BOTH the control's accessible name (rawText —
+// what identifies accept/reject/settings intent) AND its full text (rawFull —
+// accessible name + visible textContent + value). The PAY/price/deny scan runs
+// over the FULL text so an aria-label that omits the price cannot hide a paid
+// tier (M1); the accept/reject/settings intent still keys off the accessible
+// name. rawFull defaults to rawText when omitted (plain-data callers/tests).
+function classifyConsentButton(rawText, rawFull) {
   const text = normalizeButtonText(rawText);
+  const full = normalizeButtonText(rawFull === undefined || rawFull === null ? rawText : rawFull);
+  const payScan = full.length > 0 ? full : text;
+  if (containsAnyToken(payScan, PAY_DENY_TOKENS) || hasPriceIndicator(payScan)) return "pay";
   if (!text) return "unknown";
-  if (containsAnyToken(text, PAY_DENY_TOKENS) || hasPriceIndicator(text)) return "pay";
   if (containsAnyToken(text, SETTINGS_TOKENS)) return "settings";
   if (containsAnyToken(text, REJECT_TOKENS)) return "reject";
   if (containsAnyToken(text, ACCEPT_TOKENS)) return "accept";
   return "unknown";
 }
 
+// findFreeAcceptTarget clicks a button ONLY when EXACTLY ONE actionable
+// candidate classifies as a free-accept control AND every other actionable
+// candidate is classifiable. FAIL-CLOSED: an actionable control we cannot
+// classify (icon-only, empty text, unrecognized locale) might itself be a free
+// reject/settings path we simply failed to read — its mere presence VETOES the
+// whole accept (returns ambiguous), never a guess. Zero or more than one
+// surviving accept candidate also vetoes.
 function findFreeAcceptTarget(candidates) {
   const list = Array.isArray(candidates) ? candidates : [];
   const survivors = [];
   for (const candidate of list) {
     if (!candidate || typeof candidate !== "object") continue;
     if (candidate.actionable !== true) continue;
-    if (classifyConsentButton(candidate.text) !== "accept") continue;
+    const kind = classifyConsentButton(candidate.text, candidate.fullText);
+    if (kind === "unknown") return { status: "ambiguous", target: null };
+    if (kind !== "accept") continue;
     survivors.push(candidate);
   }
   if (survivors.length === 0) return { status: "noop", target: null };
@@ -219,45 +293,58 @@ function findFreeAcceptTarget(candidates) {
   return { status: "single", target: survivors[0] };
 }
 
+// hasFreeRejectControl — L3 last-resort gate. Returns true when the wall
+// offers ANY free path that is not accept-all: a reject/necessary-only control
+// OR a settings/manage control (SETTINGS-IMPLIES-REACHABLE-REJECT — a free
+// reject is always one layer deeper behind a settings pane, so a
+// [Accept all][Settings] banner must never be accepted at layer 1). The caller
+// also collects <a> links as candidates, so an anchor-based reject blocks too.
 function hasFreeRejectControl(candidates) {
   const list = Array.isArray(candidates) ? candidates : [];
   for (const candidate of list) {
     if (!candidate || typeof candidate !== "object") continue;
     if (candidate.actionable !== true) continue;
-    if (classifyConsentButton(candidate.text) === "reject") return true;
+    const kind = classifyConsentButton(candidate.text, candidate.fullText);
+    if (kind === "reject" || kind === "settings") return true;
   }
   return false;
 }
 
-// isPaywallFrame (PART B of the design): a cheap PRE-FILTER, not the safety
-// net by itself — the real safety net is hasFreeRejectControl +
-// findFreeAcceptTarget's exactly-one requirement above, both of which still
-// gate the actual click. This only decides whether the current frame LOOKS
-// LIKE a Sourcepoint-style consent-or-pay message iframe worth scanning at
-// all: true only when the frame is a SUBFRAME (never the top frame — a
-// consent-or-pay dialog always renders in a child iframe per the real-site
-// probe, engram id 1333/1335) AND at least one of: the frame's own URL
-// matches the Sourcepoint message-iframe shape (hasCsp=true AND
-// consent/tcfv2 present, case-insensitively — query-string markers, not
-// host-based, so they still match first-party CMP subdomains like
+// hasPayOption — the required POSITIVE consent-or-pay signal (C1/F1). A genuine
+// consent-or-pay wall presents a PAY/SUBSCRIBE path; a generic cross-origin
+// iframe with a lone "Continue"/"Accept" does NOT. If no candidate classifies
+// as pay (a pay/subscribe token or a price/period indicator anywhere in its
+// full text), this is NOT a consent-or-pay wall and the accept-click must NOOP.
+function hasPayOption(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (classifyConsentButton(candidate.text, candidate.fullText) === "pay") return true;
+  }
+  return false;
+}
+
+// isPaywallFrame (PART B of the design): a POSITIVE, CONJUNCTIVE pre-filter.
+// True ONLY when the frame is a SUBFRAME (never the top frame — a consent-or-
+// pay dialog always renders in a child iframe per the real-site probe, engram
+// id 1333/1335) AND the frame's own URL matches the Sourcepoint message-iframe
+// shape (hasCsp=true AND consent/tcfv2 present, case-insensitively — query/path
+// markers, not host-based, so they still match first-party CMP subdomains like
 // sp-spiegel-de.spiegel.de or consent-cdn.zeit.de; do NOT filter on
-// sp-prod.net/sourcepoint.com, that misses real deployments, engram id
-// 1335's gotcha); or the frame's own hostname differs from the relayed
-// top-frame hostname (a cross-origin child frame). env.isTopFrame must be
-// exactly true or exactly false — an undeterminable frame identity fails
-// closed to false (never scanned). Pure; never throws.
+// sp-prod.net/sourcepoint.com, that misses real deployments, engram id 1335's
+// gotcha). A bare cross-origin host mismatch is NO LONGER sufficient (C1/F1):
+// EVERY ad/embed/social/checkout iframe is cross-origin, so requiring only
+// that over-fired far beyond real consent-or-pay walls. The SP URL shape is now
+// MANDATORY. env.isTopFrame must be exactly false — an undeterminable frame
+// identity fails closed to false (never scanned). Pure; never throws. The
+// caller pairs this with hasPayOption (a real pay/subscribe path must exist),
+// hasFreeRejectControl (no free reject anywhere), and findFreeAcceptTarget's
+// exactly-one requirement before ever clicking.
 function isPaywallFrame(env) {
   const e = env && typeof env === "object" ? env : {};
   if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
   const urlLower = typeof e.frameUrl === "string" ? e.frameUrl.toLowerCase() : "";
-  const urlMatch = urlLower.includes("hascsp=true") && urlLower.includes("consent/tcfv2");
-  const hostMismatch =
-    typeof e.frameHost === "string" &&
-    e.frameHost.length > 0 &&
-    typeof e.topHost === "string" &&
-    e.topHost.length > 0 &&
-    e.frameHost !== e.topHost;
-  return urlMatch || hostMismatch;
+  return urlLower.includes("hascsp=true") && urlLower.includes("consent/tcfv2");
 }
 // @sync:cmp-accept-veto:end
 
@@ -288,7 +375,7 @@ export const ACCEPT_TARGET_STATUS = Object.freeze({
   AMBIGUOUS: "ambiguous",
 });
 
-export { classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, isPaywallFrame };
+export { classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, hasPayOption, isPaywallFrame };
 
 /**
  * Pure double-gate (L2). Mirrors src/lib/cmp-adapters.js's
