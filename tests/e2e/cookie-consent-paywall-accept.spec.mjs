@@ -231,6 +231,7 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     // MAIN-world script).
     const iframe = await waitForIframe(page);
 
+    // REASON: negative assertion — no positive signal to wait on.
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
@@ -261,6 +262,7 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     // MAIN-world script).
     const iframe = await waitForIframe(page);
 
+    // REASON: negative assertion — no positive signal to wait on.
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
@@ -288,6 +290,7 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     // MAIN-world script).
     const iframe = await waitForIframe(page);
 
+    // REASON: negative assertion — no positive signal to wait on.
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
