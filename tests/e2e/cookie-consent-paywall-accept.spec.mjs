@@ -1,0 +1,298 @@
+/**
+ * E2E: Cookie Consent Minimizer — consent-or-pay-wall accept-click
+ * (cookie-consent-paywall-accept)
+ *
+ * Verifies the isolated-world accept-click dispatch (content/cookie-noise.js
+ * — runAcceptClickDispatcher / isPaywallFrame / hasFreeRejectControl /
+ * findFreeAcceptTarget) against a synthetic fixture modeling a real-site
+ * shape found by the design's real-site probes (engram id 1333/1335): a
+ * Sourcepoint-style message iframe, on a DIFFERENT (cross-origin-shaped)
+ * host from the top frame, whose URL carries the `hasCsp=true` +
+ * `consent/tcfv2` markers, containing a FREE-accept button AND a PAY
+ * button — plus a second variant that ALSO has a free-reject button.
+ *
+ * HONEST LIMIT (same convention as every other cookie-consent-minimizer e2e
+ * spec in this suite): this is a REGRESSION oracle only — it proves the
+ * MECHANICS (correct veto precedence, correct gating, correct no-action in
+ * every unsafe state) against a synthetic fixture. It does NOT prove a real
+ * Sourcepoint wall's button markup matches these exact selectors/labels, or
+ * that the click actually dismisses a real production wall — see
+ * docs/qa/cookie-consent-release-smoke.md's HARD real-EU pre-enable gate.
+ */
+
+import { test, expect } from "./fixtures.mjs";
+import { waitForDnrPropagation } from "./helpers/index.mjs";
+
+const TOP_HOST = "muga-test-cookie-consent-paywall-accept.invalid";
+const IFRAME_HOST = "sp-muga-test-cookie-consent-paywall-accept.invalid";
+
+async function completeOnboarding(
+  context,
+  extensionId,
+  { cookieConsentMode = "accept-when-necessary", cookieConsentAcceptConsented = true } = {}
+) {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+  await page.evaluate(
+    ({ cookieConsentMode, cookieConsentAcceptConsented }) =>
+      new Promise((resolve) => {
+        chrome.storage.sync.set(
+          { enabled: true, cookieConsentMode, cookieConsentAcceptConsented },
+          () => {
+            chrome.storage.local.set(
+              {
+                mugaConsent: { onboardingDone: true, consentVersion: "1.4", consentDate: Date.now() },
+              },
+              () => {
+                chrome.storage.sync.set({ onboardingDone: true }, resolve);
+              }
+            );
+          }
+        );
+      }),
+    { cookieConsentMode, cookieConsentAcceptConsented }
+  );
+  await page.close();
+  await waitForDnrPropagation(page);
+}
+
+/**
+ * Top-frame fixture: a plain page hosting the consent-or-pay wall in a
+ * cross-origin-shaped child iframe (the real-site shape — the dialog never
+ * renders in the top frame). `withFreeReject` adds a third, free reject
+ * button to the SAME wall (Variant A); omitted, the wall is a true hard
+ * wall with no free path except accept (Variant B).
+ */
+async function stubPaywallPages(page, { withFreeReject = false, includeAcceptButton = true } = {}) {
+  await page.route(`**://${TOP_HOST}/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><html><body>
+        <p id="page-content">Real page content</p>
+        <iframe id="sp-frame" src="https://${IFRAME_HOST}/index.html?hasCsp=true&consent_origin=x&message_id=1&x=consent%2Ftcfv2" title="consent"></iframe>
+      </body></html>`,
+    })
+  );
+
+  const acceptButton = includeAcceptButton
+    ? `<button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>`
+    : "";
+  const rejectButton = withFreeReject
+    ? `<button id="reject-btn" onclick="window.__mugaTestClicked='reject'">Reject</button>`
+    : "";
+
+  await page.route(`**://${IFRAME_HOST}/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><html><body>
+        <div id="wall">
+          ${acceptButton}
+          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>
+          ${rejectButton}
+        </div>
+      </body></html>`,
+    })
+  );
+}
+
+/**
+ * Polls `page.frames()` for the consent iframe (Playwright has no built-in
+ * waitForFrame). A short poll interval is fine — the iframe attaches
+ * synchronously with the top-frame's own load in this fixture.
+ */
+async function waitForIframe(page, timeoutMs = 10000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const frame = page.frames().find((f) => f.url().includes(IFRAME_HOST));
+    if (frame) return frame;
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`iframe on ${IFRAME_HOST} did not attach within ${timeoutMs}ms`);
+}
+
+test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", () => {
+  test("clicks ONLY the free-accept button when mode=accept-when-necessary + gesture, and no free reject exists (Variant B, hard wall)", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (err) => pageErrors.push(err));
+    await stubPaywallPages(page, { withFreeReject: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's frame.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which
+    // IS observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script).
+    const iframe = await waitForIframe(page);
+
+    await iframe.waitForFunction(() => window.__mugaTestClicked === "accept", { timeout: 10000 });
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBe("accept");
+
+    // The pay button was NEVER clicked.
+    expect(clicked).not.toBe("pay");
+
+    // Top-frame content untouched, no page errors from either frame.
+    const pageContent = await page.evaluate(() => document.getElementById("page-content")?.textContent);
+    expect(pageContent).toBe("Real page content");
+    expect(pageErrors).toHaveLength(0);
+
+    await page.close();
+  });
+
+  test("ADVERSARIAL: NEVER clicks the pay button, even alone on the wall with no reject and no ambiguity", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, { withFreeReject: false, includeAcceptButton: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's frame.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which
+    // IS observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script).
+    const iframe = await waitForIframe(page);
+
+    // REASON: negative assertion (no misfire) has no positive signal to
+    // wait on — fixed settle window, matches this suite's standard pattern.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER acts when a free reject exists on the wall (Variant A)", async ({ context, extensionId }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, { withFreeReject: true });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's frame.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which
+    // IS observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script).
+    const iframe = await waitForIframe(page);
+
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER fires in reject-only mode, even on the exact same hard wall", async ({ context, extensionId }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "reject-only",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, { withFreeReject: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's frame.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which
+    // IS observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script).
+    const iframe = await waitForIframe(page);
+
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER fires in accept-when-necessary mode without the explicit consent gesture", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: false,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, { withFreeReject: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's frame.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which
+    // IS observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script).
+    const iframe = await waitForIframe(page);
+
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER fires when the feature is off entirely", async ({ context, extensionId }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "off",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubPaywallPages(page, { withFreeReject: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's frame.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which
+    // IS observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script).
+    const iframe = await waitForIframe(page);
+
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+});
