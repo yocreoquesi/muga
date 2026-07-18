@@ -410,9 +410,11 @@ function findSpFreeAcceptTarget(candidates) {
 // that over-fired far beyond real consent-or-pay walls. The SP URL shape is now
 // MANDATORY. env.isTopFrame must be exactly false — an undeterminable frame
 // identity fails closed to false (never scanned). Pure; never throws. The
-// caller pairs this with hasPayOption (a real pay/subscribe path must exist),
-// hasFreeRejectControl (no free reject anywhere), and findFreeAcceptTarget's
-// exactly-one requirement before ever clicking.
+// caller pairs this with hasFreeRejectControl over ALL collected candidates —
+// including <a href> anchors, so a free reject rendered as a plain link still
+// vetoes (F1) — and findSpFreeAcceptTarget's exactly-one requirement (a single
+// sp_choice_type_11 accept plus a non-accept alternative decision button)
+// before ever clicking.
 function isPaywallFrame(env) {
   const e = env && typeof env === "object" ? env : {};
   if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity

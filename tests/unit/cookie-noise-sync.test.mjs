@@ -841,7 +841,7 @@ describe("cookie-noise.js — accept-click dispatch structural guards", () => {
       "cookie-noise.js must click the resolved DOM candidate via `.ref.click()`");
   });
 
-  test("runAcceptClickDispatcher gates on isPaywallFrame, hasFreeRejectControl (SP decision set), and findSpFreeAcceptTarget's single status, in that order, before ever clicking", () => {
+  test("runAcceptClickDispatcher gates on isPaywallFrame, hasFreeRejectControl, and findSpFreeAcceptTarget's single status, in that order, before ever clicking", () => {
     const src = sources.isolated;
     const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
     assert.ok(fnMatch, "cookie-noise.js must define runAcceptClickDispatcher()");
@@ -860,17 +860,18 @@ describe("cookie-noise.js — accept-click dispatch structural guards", () => {
     );
   });
 
-  test("the reject/settings safety net is scoped to the SP DECISION set (sp_choice_type_* buttons), not every actionable node", () => {
+  test("FIX F1: the reject/settings safety net runs over ALL collected candidates (so an anchor-rendered free reject blocks), not a spChoice-scoped subset", () => {
     const src = sources.isolated;
     const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
     assert.ok(fnMatch);
     const body = fnMatch[1];
-    // hasFreeRejectControl must receive the SP-decision-scoped list, so an
-    // incidental privacy/imprint/FAQ link never triggers the reject veto.
-    assert.ok(/hasFreeRejectControl\(\s*decisionCandidates\s*\)/.test(body),
-      "hasFreeRejectControl must be called over the SP decision-scoped candidates");
-    assert.ok(/\.spChoice\b/.test(body) && /\.filter\(/.test(body),
-      "the dispatcher must derive the decision set by filtering on spChoice");
+    // hasFreeRejectControl must receive the FULL candidate list, so a free reject
+    // rendered as a plain <a href> link (collected but carrying no sp_choice
+    // class) still vetoes the accept-click.
+    assert.ok(/hasFreeRejectControl\(\s*candidates\s*\)/.test(body),
+      "hasFreeRejectControl must be called over the full `candidates` list");
+    assert.ok(!/hasFreeRejectControl\(\s*decisionCandidates\s*\)/.test(body),
+      "hasFreeRejectControl must NOT be scoped to a decision-only subset (that dropped anchor rejects)");
   });
 
   test("the dispatch never fires in the top frame — bails on isTopFrame before any DOM scan", () => {

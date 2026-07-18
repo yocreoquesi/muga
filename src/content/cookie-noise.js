@@ -557,9 +557,11 @@
   // that over-fired far beyond real consent-or-pay walls. The SP URL shape is now
   // MANDATORY. env.isTopFrame must be exactly false — an undeterminable frame
   // identity fails closed to false (never scanned). Pure; never throws. The
-  // caller pairs this with hasPayOption (a real pay/subscribe path must exist),
-  // hasFreeRejectControl (no free reject anywhere), and findFreeAcceptTarget's
-  // exactly-one requirement before ever clicking.
+  // caller pairs this with hasFreeRejectControl over ALL collected candidates —
+  // including <a href> anchors, so a free reject rendered as a plain link still
+  // vetoes (F1) — and findSpFreeAcceptTarget's exactly-one requirement (a single
+  // sp_choice_type_11 accept plus a non-accept alternative decision button)
+  // before ever clicking.
   function isPaywallFrame(env) {
     const e = env && typeof env === "object" ? env : {};
     if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
@@ -1516,9 +1518,12 @@
 
   // `a[href]` is included so a FREE-reject rendered as a plain anchor (not a
   // <button> or role=button) is still collected and can block the accept-click
-  // via hasFreeRejectControl (FIX 2). Widening the pool also biases
-  // findFreeAcceptTarget toward its ambiguity/unknown veto — the safe
-  // direction. NOTE: this scan sees only this document's OWN (light-DOM) nodes;
+  // via hasFreeRejectControl, which runs over ALL collected candidates (F1). An
+  // anchor only vetoes when it carries a REJECT/SETTINGS token; a privacy/
+  // imprint/FAQ link classifies "unknown" and never false-vetoes. The accept
+  // TARGET stays SP-scoped (findSpFreeAcceptTarget only considers sp_choice
+  // decision buttons), so widening the pool cannot bias the target resolver.
+  // NOTE: this scan sees only this document's OWN (light-DOM) nodes;
   // controls inside a closed shadow root are NOT reachable from a content
   // script and are therefore invisible to this collector — a documented limit,
   // acceptable because an unreadable/ambiguous wall fails closed (no click).
@@ -1616,17 +1621,18 @@
   // shape matches the Sourcepoint consent-or-pay message-iframe URL shape
   // (isPaywallFrame — MANDATORY, a bare cross-origin iframe is not enough,
   // C1/F1; FIX 1 now matches the real percent-encoded consent_origin marker);
-  // NO free reject/settings control exists in the SP DECISION set
-  // (hasFreeRejectControl over the sp_choice_type_* buttons only — a free
-  // reject always wins, this NEVER double-guesses against the reject engine);
-  // and the SP-STRUCTURAL resolver returns EXACTLY ONE free-accept (the
-  // sp_choice_type_11 button) with a pay/subscribe alternative present and no
-  // settings/reject choice anywhere in the decision set (findSpFreeAcceptTarget).
-  // Incidental privacy/imprint/FAQ/login links are OUTSIDE the decision set and
-  // never trigger the ambiguity veto (FIX 2 — the recalibration that lets a
-  // real hard wall fire). Any ambiguity, any pay-classified type-11, any
-  // reachable free reject, or any missing signal resolves to a NOOP — this
-  // function never guesses.
+  // NO free reject/settings control exists ANYWHERE on the wall
+  // (hasFreeRejectControl over ALL collected candidates — including <a href>
+  // anchors, so a free reject rendered as a plain link still blocks the click,
+  // F1 — a free reject always wins, this NEVER double-guesses against the reject
+  // engine); and the SP-STRUCTURAL resolver returns EXACTLY ONE free-accept (the
+  // sp_choice_type_11 button) with a non-accept alternative decision button
+  // present and no settings/reject choice anywhere in the decision set
+  // (findSpFreeAcceptTarget). Incidental privacy/imprint/FAQ links carry no
+  // sp_choice class and no reject token, so they never trigger a veto (the
+  // recalibration that lets a real hard wall fire). Any ambiguity, any
+  // pay-classified type-11, any reachable free reject, or any missing signal
+  // resolves to a NOOP — this function never guesses.
   function runAcceptClickDispatcher() {
     if (_acceptActed || !_acceptGateOpen) return;
     const { isTopFrame, topHostname } = resolveFrameIdentity();
@@ -1639,13 +1645,13 @@
     };
     if (!isPaywallFrame(env)) return;
     const candidates = collectAcceptCandidates();
-    // Scope the reject/settings safety net to the SP DECISION buttons only
-    // (elements carrying an sp_choice_type_* class). Incidental links are
-    // excluded here for the SAME reason findSpFreeAcceptTarget excludes them.
-    const decisionCandidates = candidates.filter(
-      (candidate) => candidate && typeof candidate.spChoice === "string" && candidate.spChoice.length > 0
-    );
-    if (hasFreeRejectControl(decisionCandidates)) return;
+    // FIX F1: run the reject/settings safety net over ALL collected candidates
+    // (including <a href> anchors). A free reject rendered as a plain link (e.g.
+    // "Weiterlesen ohne Zustimmung") must block the accept-click. An anchor only
+    // vetoes when it carries a REJECT/SETTINGS token — an incidental privacy/
+    // imprint/FAQ link classifies "unknown" and never false-vetoes here. The
+    // accept TARGET stays SP-scoped (findSpFreeAcceptTarget below).
+    if (hasFreeRejectControl(candidates)) return;
     const result = findSpFreeAcceptTarget(candidates);
     if (result.status !== "single") return;
     _acceptActed = true;

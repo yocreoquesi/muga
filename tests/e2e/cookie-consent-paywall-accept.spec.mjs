@@ -474,6 +474,38 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     await page.close();
   });
 
+  test("FIX F1: a free reject rendered as a plain <a> link (reject token, no sp_choice) blocks the accept-click", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    // A real free reject can render as a plain text-link anchor with NO
+    // sp_choice_type class (e.g. "Weiterlesen ohne Zustimmung"). It is collected
+    // as a candidate (a[href]) and MUST veto the accept-click. The prior
+    // regression scoped the reject net to sp_choice-only buttons and let it slip.
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="accept-btn" class="message-button sp_choice_type_11" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>
+          <button id="pay-btn" class="message-button sp_choice_type_9" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>
+          <a id="reject-link" class="text-link" href="https://example.invalid/weiter" onclick="window.__mugaTestClicked='reject'">Weiterlesen ohne Zustimmung</a>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
   test("FIX 3/M1: NEVER clicks a pay button hidden behind an aria-label of 'Continue' (price only in the visible text)", async ({
     context,
     extensionId,
