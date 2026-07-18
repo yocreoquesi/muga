@@ -34,8 +34,11 @@
  * 9 inconclusive from this repo's US CI vantage; both "fail" results were
  * independently confirmed (via a Playwright probe) to be a flaky vendor
  * site and a documented fail-closed gap, not adapter drift — see the `note`
- * fields on the cookiebot.com and heraldscotland.com entries in
- * cmp-sites.json. Because of this geo skew, this canary is a COARSE drift
+ * field on the heraldscotland.com entry in cmp-sites.json (the other
+ * original "fail", a Cookiebot dogfood placeholder, was replaced by
+ * independently-confirmed customer deployments in a later EU-geo
+ * verification round — see the cookiebot entries' notes). Because of this
+ * geo skew, this canary is a COARSE drift
  * alarm only — it is NOT a substitute for the manual release smoke checklist
  * (docs/qa/cookie-consent-release-smoke.md), which a human runs from a
  * correct (EU) geo vantage. Treat a single flaky/low-confidence "fail" as

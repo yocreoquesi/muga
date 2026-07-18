@@ -15,13 +15,19 @@
     "cmp": "cookiebot",
     "url": "https://www.clece.es",
     "bannerSelector": "#CybotCookiebotDialog",
-    "note": "Clece is named in Usercentrics' \"All Around\" Cookiebot case study (https://usercentrics.com/resources/all-around-cookiebot-case-study/) as a company whose ~34 domains are governed under Cookiebot CMP via reseller partner All Around."
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): banner rendered and was fully dismissed after reject, screenshot-confirmed, re-tested twice with two independent methods (reload and direct). Clece is also named in Usercentrics' \"All Around\" Cookiebot case study (https://usercentrics.com/resources/all-around-cookiebot-case-study/) as a company whose ~34 domains are governed under Cookiebot CMP via reseller partner All Around."
   },
   {
     "cmp": "cookiebot",
-    "url": "https://www.cookiebot.com",
+    "url": "https://www.equinor.com",
     "bannerSelector": "#CybotCookiebotDialog",
-    "note": "LOWER CONFIDENCE: Cookiebot's own marketing site — inferred from the industry-standard practice of CMP vendors running their own product on their own site (\"dogfooding\"), not from an independent citation. A Playwright probe (2026-07 calibration) confirmed the adapter's top-frame preconditions ARE present on this site (window.Cookiebot.submitCustomConsent function, window.Cookiebot.consent object, window.Cookiebot.hasResponse boolean) — the calibration run's 'fail' here was vendor-site flakiness (the probe observed the dialog as dialogVisible:false on a fresh load), not adapter drift. Replacement with a representative Cookiebot customer deployment is tracked in #1135."
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): real Cookiebot customer deployment, banner rendered and was fully dismissed after reject, screenshot-confirmed."
+  },
+  {
+    "cmp": "cookiebot",
+    "url": "https://www.leoni.com",
+    "bannerSelector": "#CybotCookiebotDialog",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): real Cookiebot customer deployment, banner rendered and was fully dismissed after reject, screenshot-confirmed."
   },
   {
     "cmp": "didomi",
@@ -60,6 +66,12 @@
     "note": "LOWER CONFIDENCE: heraldscotland.com is a masthead of Newsquest, and Sourcepoint's own case-studies page (https://sourcepoint.com/case-studies/) names Newsquest as running Sourcepoint's \"Consent or Pay\" across 200+ Newsquest sites — the specific masthead itself is not individually named in the case study. A Playwright probe (2026-07 calibration) confirmed the calibration run's 'fail' here is the documented self-hosted/proxied Sourcepoint fail-closed case: the consent message renders in an iframe on the publisher's own domain (a02342.heraldscotland.com) with no sp-prod.net/privacy-mgmt.com secondary signals, so confidence lands at 0.4, below the adapter's threshold of 1 — a deliberate NOOP, not drift. Replacement with a representative Sourcepoint deployment is tracked in #1135."
   },
   {
+    "cmp": "sourcepoint",
+    "url": "https://www.pinknews.co.uk",
+    "bannerSelector": "div[id^=\"sp_message_container\"]",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): a real, independent, non-paywall Sourcepoint wall. window.__tcfapi(\"postRejectAll\", ...) fires without throwing but does NOT dismiss the banner on its own. The sp-reject-click DOM fallback (clicking the wall's own sp_choice_type_13 \"Reject all\" control, which lives in a separate cdn.privacy-mgmt.com iframe, not the top frame) DOES dismiss it, confirmed via Sourcepoint's own onMessageChoiceSelect event log reporting choice type 13 and a clean before/after screenshot."
+  },
+  {
     "cmp": "usercentrics",
     "url": "https://www.dish.com",
     "bannerSelector": "#usercentrics-root",
@@ -73,9 +85,9 @@
   },
   {
     "cmp": "cookieinformation",
-    "url": "https://cookieinformation.com",
+    "url": "https://www.matas.dk",
     "bannerSelector": "#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper, .coi-consent-summary",
-    "note": "PLACEHOLDER — UNVERIFIED, needs curation. Cookie Information's own marketing site, following the same dogfooding-inference pattern used for the Cookiebot entry above (CMP vendors commonly run their own product on their own site). Not independently confirmed via script inspection. Replace with a representative, independently-confirmed Cookie Information customer deployment before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): Matas is Denmark's largest pharmacy/cosmetics retail chain, a genuine independent Cookie Information customer (not a MUGA-controlled fixture). window.CookieInformation + declineAllCategories present, a real visible banner rendered, and clean dismissal after reject, screenshot-confirmed."
   },
   {
     "cmp": "cookiescript",
@@ -85,9 +97,21 @@
   },
   {
     "cmp": "tarteaucitron",
-    "url": "https://tarteaucitron.io",
+    "url": "https://www.bordeaux.fr",
     "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
-    "note": "PLACEHOLDER — UNVERIFIED, needs curation. tarteaucitron.js's own project/marketing site, following the same dogfooding-inference pattern used for the Cookiebot/Cookie Information/CookieScript entries above. Not independently confirmed via script inspection. Replace with a representative, independently-confirmed tarteaucitron customer deployment (strong France/gov-sector presence per the CMP triage in engram) before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): French municipal (city-hall) sector deployment, a real independent tarteaucitron customer. Bottom cookie bar rendered and was fully dismissed after reject, screenshot-confirmed."
+  },
+  {
+    "cmp": "tarteaucitron",
+    "url": "https://www.strasbourg.eu",
+    "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): French municipal sector deployment, real independent tarteaucitron customer, cookie bar rendered and dismissed after reject."
+  },
+  {
+    "cmp": "tarteaucitron",
+    "url": "https://www.grandlyon.com",
+    "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): French municipal sector deployment, real independent tarteaucitron customer, cookie bar rendered and dismissed after reject."
   },
   {
     "cmp": "consentmanager",
