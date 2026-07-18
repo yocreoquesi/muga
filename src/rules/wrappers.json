@@ -119,6 +119,15 @@
     "addedIn": "2.4.0"
   },
   {
+    "id": "linkedin-safety",
+    "label": "LinkedIn Outbound (safety redirect)",
+    "hostPatterns": ["linkedin.com", "www.linkedin.com"],
+    "pathPrefix": "/safety/go",
+    "extractor": { "kind": "fromParam", "paramName": "url" },
+    "notes": "LinkedIn routes every external link through /safety/go?url=<dest>, appending its own tracking (mt, urlhash, isSdui). A pure link-safety interstitial, NOT an affiliate network — safe to unwrap. Scoped to the /safety/go path so profile/feed URLs carrying a `url` param are never touched.",
+    "addedIn": "2.6.1"
+  },
+  {
     "id": "medium-link",
     "label": "Medium Short Link",
     "hostPatterns": ["link.medium.com"],
