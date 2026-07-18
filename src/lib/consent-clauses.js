@@ -39,13 +39,25 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // function). The feature itself stays OFF until the user opts in from
   // Settings; this clause is disclosure, not an activation.
   "1.2": Object.freeze(["ob_clause_cookie_consent_minimizer"]),
-  // 1.3 (cookie-consent-accept Slice 2a): the accept-when-necessary mode's
-  // Didomi-only pilot. Single additive clause disclosing that, on a
-  // genuine hard wall with no reject option, MUGA can submit the MINIMUM
-  // consent choice on the user's behalf. This mode stays off by default
-  // and requires BOTH selecting it in Settings AND completing a separate,
-  // explicit consent gesture — this clause is disclosure, not activation.
-  "1.3": Object.freeze(["ob_clause_cookie_consent_accept_pilot"]),
+  // 1.3 (cookie-consent-accept Slice 2a): originally staged for the
+  // accept-when-necessary mode's Didomi-only "minimum consent" pilot. That
+  // delivery mechanism was proven non-viable before ever shipping to real
+  // users (engram id 1331, "DIDOMI-ACCEPT-NOT-VIABLE") and retired —
+  // RETIRED-BEFORE-SHIP, so this version's clause list is empty (no
+  // disclosure was ever accurate to surface). See "1.4" below for the
+  // clause covering the real, shipped mechanism.
+  "1.3": Object.freeze([]),
+  // 1.4 (cookie-consent-paywall-accept): the accept-when-necessary mode's
+  // real mechanism — a DOM click on a consent-or-pay wall's own free
+  // "Accept all" button when the wall offers no free reject option. Single
+  // additive clause disclosing that this GRANTS the site's advertising and
+  // tracking cookies (the honest tradeoff of the only free path through
+  // such a wall) — a materially different disclosure than the retired 1.3
+  // "minimum, never grants tracking" framing. This mode stays off by
+  // default and requires BOTH selecting it in Settings AND completing a
+  // separate, explicit consent gesture — this clause is disclosure, not
+  // activation.
+  "1.4": Object.freeze(["ob_clause_cookie_consent_accept_paywall"]),
 });
 
 /**

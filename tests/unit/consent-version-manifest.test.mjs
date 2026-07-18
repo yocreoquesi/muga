@@ -70,30 +70,46 @@ describe("consent-version-manifest — #1027 cookie-consent-minimizer additive b
   });
 });
 
-// cookie-consent-accept Slice 2a: the 1.3 entry (originally staged inert by
-// the cookie-consent-modes redesign Slice 1) is now ACTIVE —
-// REQUIRED_CONSENT_VERSION points at it. This is the genuinely-new
-// capability class the module docblock's "Staged entries" note anticipated:
-// the accept-when-necessary pilot lets MUGA submit a minimum-consent
-// payload on a genuine hard wall, which is disclosure-worthy even though
-// the feature itself stays off until the user opts in AND completes the
-// explicit consent gesture (see src/lib/cmp-accept-adapters.js's L2).
-// Existing users who accepted 1.2 get a SOFT re-onboard (delta review)
-// surfacing this one new clause, not a hard gate.
-describe("consent-version-manifest — cookie-consent-accept Slice 2a activates the 1.3 entry", () => {
-  test("manifest contains a 1.3 entry marked additive: true", () => {
+// cookie-consent-accept Slice 2a's 1.3 entry never activated a real
+// disclosure — its Didomi-only "minimum consent" pilot was proven
+// non-viable before shipping (engram id 1331) and retired. It remains in
+// the manifest (append-only) but REQUIRED_CONSENT_VERSION never pointed at
+// it and its clause list is empty (see consent-clauses.test.mjs).
+describe("consent-version-manifest — the retired 1.3 entry stays in the manifest but was never activated", () => {
+  test("manifest still contains a 1.3 entry marked additive: true (append-only — never delete a published entry)", () => {
     const entry = CONSENT_VERSION_MANIFEST.find(m => m.version === "1.3");
     assert.ok(entry, "manifest must contain the 1.3 entry");
     assert.equal(entry.additive, true, "1.3 must be additive (soft re-onboard), not material");
   });
 
-  test("REQUIRED_CONSENT_VERSION is 1.3", () => {
-    assert.equal(REQUIRED_CONSENT_VERSION, "1.3");
+  test("REQUIRED_CONSENT_VERSION never pointed at 1.3", () => {
+    assert.notEqual(REQUIRED_CONSENT_VERSION, "1.3");
+  });
+});
+
+// cookie-consent-paywall-accept: the 1.4 entry activates the REAL
+// accept-when-necessary mechanism — a DOM click on a consent-or-pay wall's
+// free "Accept all" button when the wall offers no free reject option. This
+// GRANTS the site's advertising/tracking cookies, which is disclosure-worthy
+// even though the feature itself stays off until the user opts in AND
+// completes the explicit consent gesture (see
+// src/lib/cmp-accept-adapters.js's L2). Existing users who accepted 1.2 or
+// 1.3 get a SOFT re-onboard (delta review) surfacing this one new clause,
+// not a hard gate.
+describe("consent-version-manifest — cookie-consent-paywall-accept activates the 1.4 entry", () => {
+  test("manifest contains a 1.4 entry marked additive: true", () => {
+    const entry = CONSENT_VERSION_MANIFEST.find(m => m.version === "1.4");
+    assert.ok(entry, "manifest must contain the 1.4 entry");
+    assert.equal(entry.additive, true, "1.4 must be additive (soft re-onboard), not material");
   });
 
-  test("1.3 is the latest manifest entry", () => {
+  test("REQUIRED_CONSENT_VERSION is 1.4", () => {
+    assert.equal(REQUIRED_CONSENT_VERSION, "1.4");
+  });
+
+  test("1.4 is the latest manifest entry", () => {
     const latest = CONSENT_VERSION_MANIFEST[CONSENT_VERSION_MANIFEST.length - 1];
-    assert.equal(latest.version, "1.3");
+    assert.equal(latest.version, "1.4");
   });
 });
 

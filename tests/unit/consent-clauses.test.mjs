@@ -207,47 +207,79 @@ describe("consent-clauses — #1027 cookie-consent-minimizer clause (live map)",
 });
 
 // ---------------------------------------------------------------------------
-// cookie-consent-accept Slice 2a — the 1.3 additive bump surfaces the
-// accept-when-necessary pilot clause in the delta list. Mirrors the #888 /
-// #1027 sections above against the LIVE map.
+// Retired: cookie-consent-accept Slice 2a's Didomi-only "minimum consent"
+// pilot never shipped to real users (proven non-viable, engram id 1331) —
+// version "1.3"'s clause list is now empty, RETIRED-BEFORE-SHIP.
 // ---------------------------------------------------------------------------
-describe("consent-clauses — cookie-consent-accept Slice 2a clause (live map)", () => {
-  test("CONSENT_CLAUSES_BY_VERSION['1.3'] discloses the minimum-consent pilot clause", () => {
-    assert.deepEqual(
-      [...(CONSENT_CLAUSES_BY_VERSION["1.3"] || [])],
-      ["ob_clause_cookie_consent_accept_pilot"]
-    );
+describe("consent-clauses — retired Slice 2a clause (version 1.3 is now empty)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.3'] is empty — the retired pilot never shipped a real disclosure", () => {
+    assert.deepEqual([...(CONSENT_CLAUSES_BY_VERSION["1.3"] || [])], []);
   });
 
-  test("user at 1.2, required 1.3 -> delta surfaces the minimum-consent pilot clause", () => {
+  test("user at 1.2, required 1.3 -> delta surfaces nothing (no soft re-onboard for the retired pilot)", () => {
     const r = clausesForDelta({
       acceptedVersion: "1.2",
       requiredVersion: "1.3",
       manifest: CONSENT_VERSION_MANIFEST,
       // default clausesByVersion (live map)
     });
-    assert.deepEqual(r, ["ob_clause_cookie_consent_accept_pilot"]);
+    assert.deepEqual(r, []);
+  });
+
+  test("the retired pilot's old i18n key no longer exists", () => {
+    assert.equal(TRANSLATIONS.ob_clause_cookie_consent_accept_pilot, undefined);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// cookie-consent-paywall-accept — the 1.4 additive bump surfaces the REAL
+// accept-when-necessary mechanism's clause in the delta list. Mirrors the
+// #888 / #1027 sections above against the LIVE map.
+// ---------------------------------------------------------------------------
+describe("consent-clauses — cookie-consent-paywall-accept clause (live map)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.4'] discloses the paywall accept-click clause", () => {
+    assert.deepEqual(
+      [...(CONSENT_CLAUSES_BY_VERSION["1.4"] || [])],
+      ["ob_clause_cookie_consent_accept_paywall"]
+    );
+  });
+
+  test("user at 1.2, required 1.4 -> delta surfaces the paywall accept-click clause (1.3 contributes nothing)", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.2",
+      requiredVersion: "1.4",
+      manifest: CONSENT_VERSION_MANIFEST,
+      // default clausesByVersion (live map)
+    });
+    assert.deepEqual(r, ["ob_clause_cookie_consent_accept_paywall"]);
   });
 
   test("the clause i18n key resolves to non-empty text in EN and ES (official locales)", () => {
     assert.ok(
-      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_pilot?.en === "string" &&
-        TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.en.trim().length > 0,
+      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_paywall?.en === "string" &&
+        TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.trim().length > 0,
       "EN clause text must exist"
     );
     assert.ok(
-      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_pilot?.es === "string" &&
-        TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.es.trim().length > 0,
+      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_paywall?.es === "string" &&
+        TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.es.trim().length > 0,
       "ES clause text must exist"
     );
   });
 
-  test("the clause text discloses the MINIMUM (necessary-only) framing, never a blanket accept-all promise", () => {
-    const en = TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.en.toLowerCase();
-    assert.ok(en.includes("minimum") || en.includes("necessary"), "EN clause must name the minimum/necessary-only framing");
+  test("the clause text HONESTLY discloses that accepting GRANTS advertising/tracking cookies (the old minimum-only framing is retired)", () => {
+    const en = TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.toLowerCase();
+    assert.ok(en.includes("grants"), "EN clause must plainly disclose that accepting grants cookies");
+    assert.ok(en.includes("tracking"), "EN clause must name tracking cookies specifically");
+  });
+
+  test("the clause text states MUGA never clicks Subscribe/Pay and never acts when a free reject exists", () => {
+    const en = TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.toLowerCase();
+    assert.ok(en.includes("never"), "EN clause must state a never-does invariant");
+    assert.ok(en.includes("pay") || en.includes("subscribe"), "EN clause must name the pay/subscribe control it never clicks");
   });
 
   test("no em-dash in the EN clause copy (project copy convention)", () => {
-    assert.ok(!TRANSLATIONS.ob_clause_cookie_consent_accept_pilot.en.includes("—"));
+    assert.ok(!TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.includes("—"));
   });
 });

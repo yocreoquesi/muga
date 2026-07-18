@@ -211,18 +211,18 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_cookie_consent_mode_label">Cookie Consent Minimizer</strong>
-            <small data-i18n="row_cookie_consent_mode_hint">On supported cookie-consent banners, MUGA automatically rejects tracking cookies or picks necessary-only for you, the same way it already cleans your URLs. It never accepts or grants broader tracking on your behalf.</small>
+            <small data-i18n="row_cookie_consent_mode_hint">On supported cookie-consent banners, MUGA automatically rejects tracking cookies for you, the same way it already cleans your URLs. On sites that only offer Accept-all-or-pay, an optional mode below lets MUGA accept instead so you can read for free.</small>
           </div>
           <select class="lang-select" id="cookie-consent-mode-select" data-i18n-aria-label="aria_cookie_consent_mode">
             <option value="reject-only" data-i18n="cookie_consent_mode_opt_reject_only">Reject only (recommended)</option>
             <option value="off" data-i18n="cookie_consent_mode_opt_off">Off</option>
-            <option value="accept-when-necessary" data-i18n="cookie_consent_mode_opt_accept">Accept minimum when necessary</option>
+            <option value="accept-when-necessary" data-i18n="cookie_consent_mode_opt_accept">Accept cookies to read for free</option>
           </select>
         </div>
         <div class="row" id="cookie-consent-accept-gesture-row" hidden>
           <div class="row-label">
-            <strong data-i18n="row_cookie_consent_accept_gesture_label">Allow the minimum choice on hard walls</strong>
-            <small data-i18n="row_cookie_consent_accept_gesture_hint">On sites that block content until you answer a cookie banner and offer no reject option, MUGA will submit the minimum choice, granting only strictly necessary cookies, so you can proceed. MUGA never grants tracking cookies. This only applies while the mode above is set to "Accept minimum when necessary".</small>
+            <strong data-i18n="row_cookie_consent_accept_gesture_label">Allow MUGA to accept cookies on paywalls</strong>
+            <small data-i18n="row_cookie_consent_accept_gesture_hint">On sites that block content unless you accept cookies or pay, MUGA will click Accept all so you can read for free. This grants the site's advertising and tracking cookies, the only free way through such a wall. MUGA never clicks Subscribe or Pay, and never does this if the site offers a free reject option. This only applies while the mode above is set to "Accept cookies to read for free".</small>
           </div>
           <label class="toggle"><input type="checkbox" id="cookie-consent-accept-gesture-checkbox" data-i18n-aria-label="aria_cookie_consent_accept_gesture"><span class="slider"></span></label>
         </div>

@@ -83,17 +83,28 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
     // That part alone changed no existing user's capability (migrated to
     // "off"), so it did not warrant a forced re-consent on its own.
     //
-    // cookie-consent-accept Slice 2a ACTIVATES this entry: the
-    // accept-when-necessary mode now has a real, working pilot (Didomi
-    // only) that lets MUGA submit a minimum-consent payload on a genuine
-    // hard wall — a new capability class worth disclosing, even though it
-    // stays off until the user opts in from Settings AND completes a
-    // dedicated, explicit consent gesture (see
+    // cookie-consent-accept Slice 2a staged this entry for the
+    // accept-when-necessary mode's Didomi-only "minimum consent" pilot —
+    // that delivery mechanism was proven non-viable before it ever shipped
+    // to real users (engram id 1331) and was retired. This entry never
+    // activated a real disclosure (see consent-clauses.js: "1.3" has an
+    // empty clause list) and REQUIRED_CONSENT_VERSION never pointed at it.
+    version: "1.3",
+    additive: true,
+  }),
+  Object.freeze({
+    // cookie-consent-paywall-accept ACTIVATES the accept-when-necessary
+    // mode with its REAL mechanism: a DOM click on a consent-or-pay wall's
+    // own free "Accept all" button when the wall offers no free reject
+    // option (currently Sourcepoint). This GRANTS the site's advertising
+    // and tracking cookies — a new capability class worth disclosing, even
+    // though it stays off until the user opts in from Settings AND
+    // completes a dedicated, explicit consent gesture (see
     // src/lib/cmp-accept-adapters.js's L2 double-gate). Purely ADDITIVE —
     // no existing term is modified or removed — so users who accepted an
     // earlier version get a SOFT re-onboard (delta review) surfacing this
     // one new clause, not a hard gate.
-    version: "1.3",
+    version: "1.4",
     additive: true,
   }),
 ]);
@@ -103,4 +114,4 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
  * to the latest entry in CONSENT_VERSION_MANIFEST. ConsentPolicy uses
  * this to decide whether a stored consent record is still current.
  */
-export const REQUIRED_CONSENT_VERSION = "1.3";
+export const REQUIRED_CONSENT_VERSION = "1.4";

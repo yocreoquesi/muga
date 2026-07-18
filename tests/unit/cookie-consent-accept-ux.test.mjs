@@ -184,10 +184,16 @@ describe("cookie-consent-accept Slice 2a — i18n copy", () => {
     }
   }
 
-  test("the EN gesture hint discloses the minimum/necessary-only framing, never a broad-accept promise", () => {
+  test("the EN gesture hint honestly discloses that accepting GRANTS tracking cookies, and states what MUGA never does", () => {
+    // cookie-consent-paywall-accept: the OLD "minimum, never grants
+    // tracking" framing is retired — the real mechanism grants broad
+    // advertising/tracking consent, the only free path through a
+    // consent-or-pay wall. The copy must say so plainly, and must still
+    // state the things MUGA never does (never Subscribe/Pay, never without
+    // a free-reject check).
     const en = TRANSLATIONS.row_cookie_consent_accept_gesture_hint.en.toLowerCase();
-    assert.ok(en.includes("minimum") || en.includes("necessary"));
-    assert.ok(en.includes("never"), "must explicitly state MUGA never grants tracking");
+    assert.ok(en.includes("grants"), "must plainly disclose that accepting grants cookies");
+    assert.ok(en.includes("never"), "must explicitly state what MUGA never does");
   });
 
   test("no em-dash in any EN or ES copy for this feature (project copy convention)", () => {
