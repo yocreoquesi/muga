@@ -93,16 +93,24 @@ async function stubPaywallPages(
   if (wallButtonsHtml !== null) {
     wallHtml = wallButtonsHtml;
   } else {
+    // Real Sourcepoint structure (engram id 1339/1341): every DECISION control
+    // carries an sp_choice_type_<N> class (11 = accept-all, 9 = pay/subscribe,
+    // 13 = reject-all), while incidental links are plain anchors with NO such
+    // class. The incidental links below reproduce the exact shape that used to
+    // false-veto every real wall — they must NOT block the accept-click now.
     const acceptButton = includeAcceptButton
-      ? `<button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>`
+      ? `<button id="accept-btn" class="message-button sp_choice_type_11" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>`
       : "";
     const rejectButton = withFreeReject
-      ? `<button id="reject-btn" onclick="window.__mugaTestClicked='reject'">Reject</button>`
+      ? `<button id="reject-btn" class="message-button sp_choice_type_13" onclick="window.__mugaTestClicked='reject'">Reject</button>`
       : "";
     wallHtml = `
           ${acceptButton}
-          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>
-          ${rejectButton}`;
+          <button id="pay-btn" class="message-button sp_choice_type_9" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>
+          ${rejectButton}
+          <a class="text-link" href="https://example.invalid/datenschutz">Datenschutzerkl&auml;rung</a>
+          <a class="text-link" href="https://example.invalid/impressum">Impressum</a>
+          <a class="text-link" href="https://example.invalid/faq">FAQ</a>`;
   }
 
   await page.route(`**://${IFRAME_HOST}/**`, (route) =>
@@ -167,6 +175,42 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     // Top-frame content untouched, no page errors from either frame.
     const pageContent = await page.evaluate(() => document.getElementById("page-content")?.textContent);
     expect(pageContent).toBe("Real page content");
+    expect(pageErrors).toHaveLength(0);
+
+    await page.close();
+  });
+
+  test("REAL faz.net shape: fires on the type-11 accept even when the pay alternative is an unknown-token trial link AND incidental privacy links are present", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (err) => pageErrors.push(err));
+    // faz.net's real structure (engram id 1341): a type-11 accept + a
+    // sp_choice_type_link "Kostenfrei testen" trial (no pay token / no price),
+    // surrounded by incidental Datenschutz/Impressum/FAQ links. The old generic
+    // classifier vetoed on those unknown controls; SP-structural targeting fires.
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="accept-btn" class="message-button sp_choice_type_11" onclick="window.__mugaTestClicked='accept'">Einverstanden</button>
+          <a id="trial-link" class="message-button sp_choice_type_link" href="https://example.invalid/pur" onclick="window.__mugaTestClicked='trial'">Kostenfrei testen</a>
+          <a class="text-link" href="https://example.invalid/datenschutz">Datenschutzerkl&auml;rung</a>
+          <a class="text-link" href="https://example.invalid/impressum">Impressum</a>
+          <a class="text-link" href="https://example.invalid/faq">FAQ</a>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    await iframe.waitForFunction(() => window.__mugaTestClicked === "accept", { timeout: 10000 });
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBe("accept");
+    expect(clicked).not.toBe("trial");
     expect(pageErrors).toHaveLength(0);
 
     await page.close();
@@ -360,8 +404,8 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     const page = await context.newPage();
     await stubPaywallPages(page, {
       wallButtonsHtml: `
-          <button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Alle akzeptieren und weiter</button>
-          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Zustimmen f&uuml;r 9,99 EUR pro Monat</button>`,
+          <button id="accept-btn" class="message-button sp_choice_type_11" onclick="window.__mugaTestClicked='accept'">Alle akzeptieren und weiter</button>
+          <button id="pay-btn" class="message-button sp_choice_type_9" onclick="window.__mugaTestClicked='pay'">Zustimmen f&uuml;r 9,99 EUR pro Monat</button>`,
     });
     await page.goto(`https://${TOP_HOST}/index.html`);
 
@@ -386,9 +430,9 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     const page = await context.newPage();
     await stubPaywallPages(page, {
       wallButtonsHtml: `
-          <button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>
-          <button id="reject-btn" onclick="window.__mugaTestClicked='reject'">Ohne Einwilligung fortfahren</button>
-          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>`,
+          <button id="accept-btn" class="message-button sp_choice_type_11" onclick="window.__mugaTestClicked='accept'">Accept all &amp; continue</button>
+          <button id="reject-btn" class="message-button sp_choice_type_13" onclick="window.__mugaTestClicked='reject'">Ohne Einwilligung fortfahren</button>
+          <button id="pay-btn" class="message-button sp_choice_type_9" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>`,
     });
     await page.goto(`https://${TOP_HOST}/index.html`);
 
@@ -414,9 +458,9 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     const page = await context.newPage();
     await stubPaywallPages(page, {
       wallButtonsHtml: `
-          <button id="accept-btn" onclick="window.__mugaTestClicked='accept'">Accept all</button>
-          <button id="settings-btn" onclick="window.__mugaTestClicked='settings'">Settings</button>
-          <button id="pay-btn" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>`,
+          <button id="accept-btn" class="message-button sp_choice_type_11" onclick="window.__mugaTestClicked='accept'">Accept all</button>
+          <button id="settings-btn" class="message-button sp_choice_type_12" onclick="window.__mugaTestClicked='settings'">Settings</button>
+          <button id="pay-btn" class="message-button sp_choice_type_9" onclick="window.__mugaTestClicked='pay'">Subscribe for 4,99&euro;/month</button>`,
     });
     await page.goto(`https://${TOP_HOST}/index.html`);
 
@@ -442,7 +486,7 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     const page = await context.newPage();
     await stubPaywallPages(page, {
       wallButtonsHtml: `
-          <button id="aria-pay-btn" aria-label="Continue" onclick="window.__mugaTestClicked='pay'">Subscribe for 9,99&euro; pro Monat</button>`,
+          <button id="aria-pay-btn" class="message-button sp_choice_type_11" aria-label="Continue" onclick="window.__mugaTestClicked='pay'">Subscribe for 9,99&euro; pro Monat</button>`,
     });
     await page.goto(`https://${TOP_HOST}/index.html`);
 
