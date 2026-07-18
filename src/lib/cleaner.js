@@ -107,6 +107,17 @@ function isTrackingParam(lower, customParams, domainStrip, remoteParams, userCus
   return false;
 }
 
+// The four functions between the `@sync:site-exempt` markers below
+// (parseListEntry, stripTrailingDot, domainMatches, isSiteFullyExempt) are
+// hand-copied, byte-identical (modulo indentation), into
+// content/cookie-noise.js for the cross-origin-child-frame per-site
+// exemption check (cookie-consent-all-frames FIX A) — content scripts
+// cannot use ES module imports (AGENTS.md). Kept pure and PREFS-ONLY (no
+// `window`/`document` access) so the copy is safe to run in ANY frame,
+// including one where `window.__mugaCleaner` was never attached. Do not
+// edit one copy without the other — tests/unit/cookie-noise-sync.test.mjs
+// fails the build if they drift.
+// @sync:site-exempt:start
 /**
  * Parses a blacklist/whitelist entry string into a structured object.
  * Supported formats:
@@ -207,6 +218,7 @@ export function isSiteFullyExempt(hostname, prefs) {
 
   return false;
 }
+// @sync:site-exempt:end
 
 /**
  * Returns the deduped list of bare domains (www-stripped, lowercased) that

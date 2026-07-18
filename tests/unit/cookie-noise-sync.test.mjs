@@ -888,3 +888,126 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
     });
   }
 });
+
+// ── @sync:frame-host block (TOP-frame hostname resolution) ─────────────────
+//
+// cookie-consent-all-frames FIX A: resolveTopFrameHostname() is a pure
+// helper in src/lib/frame-host.js (unit-tested there) whose body is
+// hand-inlined ONLY into content/cookie-noise.js (isolated world) — the
+// main-world caller never resolves the exemption itself, it only relays
+// the already-computed gate boolean over the nonce-gated event, so it does
+// NOT carry this block either (mirrors the @sync:cookie-gate precedent).
+
+const FRAME_HOST_FILES = {
+  lib: join(__dirname, "../../src/lib/frame-host.js"),
+  isolated: FILES.isolated,
+};
+
+const frameHostSources = {
+  lib: readFileSync(FRAME_HOST_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const FRAME_HOST_START = "@sync:frame-host:start";
+const FRAME_HOST_END = "@sync:frame-host:end";
+
+describe("cookie-noise-sync — @sync:frame-host block matches src/lib/frame-host.js", () => {
+  const libBlock = extractMarkedBlock(frameHostSources.lib, FRAME_HOST_START, FRAME_HOST_END, "frame-host.js");
+  const isolatedBlock = extractMarkedBlock(frameHostSources.isolated, FRAME_HOST_START, FRAME_HOST_END, "cookie-noise.js");
+
+  test("frame-host sync block is non-empty and defines resolveTopFrameHostname", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:frame-host block must not be empty — check the markers");
+    assert.ok(/function resolveTopFrameHostname/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js @sync:frame-host block matches src/lib/frame-host.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:frame-host block has drifted from src/lib/frame-host.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:frame-host block (it never resolves the exemption itself)", () => {
+    assert.equal(sources.mainworld.includes(FRAME_HOST_START), false,
+      "cookie-noise-mainworld.js must not inline the top-frame resolver — it only relays the gate boolean");
+  });
+});
+
+// ── @sync:site-exempt block (per-site exemption predicate) ─────────────────
+//
+// cookie-consent-all-frames FIX A: parseListEntry/stripTrailingDot/
+// domainMatches/isSiteFullyExempt are hand-copied, byte-identical (modulo
+// indentation AND the `export` keyword — content scripts cannot use ES
+// module `export` syntax, so the normalizer below strips a leading
+// `export ` token from each line before comparing), from src/lib/cleaner.js
+// into content/cookie-noise.js ONLY (the main-world caller never resolves
+// the exemption itself — same rationale as @sync:frame-host above).
+
+const SITE_EXEMPT_FILES = {
+  lib: join(__dirname, "../../src/lib/cleaner.js"),
+  isolated: FILES.isolated,
+};
+
+const siteExemptSources = {
+  lib: readFileSync(SITE_EXEMPT_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const SITE_EXEMPT_START = "@sync:site-exempt:start";
+const SITE_EXEMPT_END = "@sync:site-exempt:end";
+
+function extractSiteExemptBlock(source, label) {
+  return extractMarkedBlock(source, SITE_EXEMPT_START, SITE_EXEMPT_END, label)
+    .map((l) => l.replace(/^export\s+/, ""));
+}
+
+describe("cookie-noise-sync — @sync:site-exempt block matches src/lib/cleaner.js", () => {
+  const libBlock = extractSiteExemptBlock(siteExemptSources.lib, "cleaner.js");
+  const isolatedBlock = extractSiteExemptBlock(siteExemptSources.isolated, "cookie-noise.js");
+
+  test("site-exempt sync block is non-empty and defines isSiteFullyExempt", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:site-exempt block must not be empty — check the markers");
+    const joined = libBlock.join("\n");
+    assert.ok(/function parseListEntry/.test(joined));
+    assert.ok(/function stripTrailingDot/.test(joined));
+    assert.ok(/function domainMatches/.test(joined));
+    assert.ok(/function isSiteFullyExempt/.test(joined));
+  });
+
+  test("cookie-noise.js @sync:site-exempt block matches src/lib/cleaner.js (modulo the export keyword)", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:site-exempt block has drifted from src/lib/cleaner.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:site-exempt block (it never resolves the exemption itself)", () => {
+    assert.equal(sources.mainworld.includes(SITE_EXEMPT_START), false,
+      "cookie-noise-mainworld.js must not inline the exemption predicate — it only relays the gate boolean");
+  });
+});
+
+// ── computeGate() frame-branch shape ────────────────────────────────────────
+//
+// cookie-consent-all-frames FIX A: computeGate() must branch on frame
+// identity (window.top === window.self) and use the hand-copied
+// resolveTopFrameHostname()/isSiteFullyExempt() in the child-frame branch
+// instead of window.__mugaCleaner. Behavioral coverage of both branches
+// lives in tests/unit/cookie-noise-frame-exemption.test.mjs (a vm-execution
+// harness) — this is a lightweight structural companion.
+
+describe("cookie-noise.js computeGate() — frame-identity branch (FIX A)", () => {
+  test("computeGate branches on window.top === window.self", () => {
+    assert.ok(
+      /window\.top\s*===\s*window\.self/.test(sources.isolated),
+      "computeGate() must branch on frame identity to resolve the correct hostname",
+    );
+  });
+
+  test("computeGate's child-frame branch calls resolveTopFrameHostname and isSiteFullyExempt", () => {
+    assert.ok(/resolveTopFrameHostname\(/.test(sources.isolated));
+    assert.ok(/isSiteFullyExempt\(hostname, prefsArg\)/.test(sources.isolated));
+  });
+});

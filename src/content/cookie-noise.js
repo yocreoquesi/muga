@@ -26,10 +26,16 @@
  * Runs in the isolated world (Chrome + Firefox). In the TOP frame, listed
  * after content/cleaner-bundle.js in the manifest so `window.__mugaCleaner`
  * is already attached when the gate first opens (needed for the
- * `isSiteFullyExempt` per-site exemption check); `window.__mugaCleaner` is
- * NOT attached in child frames (cleaner-bundle.js stays top-frame-only), so
- * `isSiteFullyExempt` safely no-ops there (see computeGate() below) — this
- * is expected, not a bug.
+ * `isSiteFullyExempt` per-site exemption check). `window.__mugaCleaner` is
+ * NOT attached in child frames (cleaner-bundle.js stays top-frame-only) —
+ * computeGate() below resolves the TOP frame's real hostname instead (see
+ * the `@sync:frame-host` block) and checks the exemption with a
+ * per-frame-safe, prefs-only copy of the real predicate (see the
+ * `@sync:site-exempt` block), so a user's per-site pause is still honored
+ * inside a cross-origin consent-or-pay dialog iframe
+ * (cookie-consent-all-frames FIX A). Fail-closed: an undeterminable
+ * top-frame hostname is treated as exempt rather than risk opening the
+ * gate against the user's pause.
  *
  * Cross-origin-iframe scope (deliberate, scoped change): this script is
  * registered `all_frames: true` in the manifest, IN ITS OWN dedicated
@@ -1045,18 +1051,205 @@
   }
   // @sync:cookie-gate:end
 
+  // Content scripts cannot import ES modules (AGENTS.md), so this pure
+  // helper is hand-copied, byte-identical (modulo indentation), from
+  // src/lib/frame-host.js. Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. Resolves the TOP frame's real
+  // hostname (cookie-consent-all-frames FIX A) — needed because
+  // `location.hostname` inside a cross-origin consent-or-pay dialog iframe
+  // is the CMP vendor's OWN host, not the paused site's.
+  // @sync:frame-host:start
+  function resolveTopFrameHostname(env) {
+    const e = env && typeof env === "object" ? env : {};
+
+    if (e.isTopFrame === true) {
+      return typeof e.hostname === "string" && e.hostname.length > 0 ? e.hostname : null;
+    }
+
+    // Child frame: only Chrome/Edge expose `location.ancestorOrigins` (a
+    // DOMStringList of ancestor frame origins, outermost-last — the LAST
+    // entry is always the top frame's origin, regardless of nesting depth).
+    // Firefox has no equivalent API — an absent or empty list is
+    // UNDETERMINABLE, not "no ancestors", and must fail closed to `null`.
+    const ancestorOrigins = e.ancestorOrigins;
+    const length =
+      ancestorOrigins && typeof ancestorOrigins.length === "number" ? ancestorOrigins.length : 0;
+    if (length === 0) return null;
+
+    const topOrigin = ancestorOrigins[length - 1];
+    if (typeof topOrigin !== "string" || topOrigin.length === 0) return null;
+
+    try {
+      const hostname = new URL(topOrigin).hostname;
+      return hostname.length > 0 ? hostname : null;
+    } catch {
+      // Malformed origin string — never throw, fail closed instead.
+      return null;
+    }
+  }
+  // @sync:frame-host:end
+
+  // Content scripts cannot import ES modules (AGENTS.md), so these four
+  // functions are hand-copied, byte-identical (modulo indentation and the
+  // `export` keyword, which content scripts cannot use), from
+  // src/lib/cleaner.js. Kept in sync by tests/unit/cookie-noise-sync.test.mjs.
+  // Deliberately PREFS-ONLY (no `window`/`document` access) so this copy is
+  // safe to run in a child frame, unlike `window.__mugaCleaner.isSiteFullyExempt`
+  // (never attached outside the top frame — see computeGate() below).
+  // @sync:site-exempt:start
+  /**
+   * Parses a blacklist/whitelist entry string into a structured object.
+   * Supported formats:
+   *   "amazon.es"                      → { domain: "amazon.es", param: null, value: null }
+   *   "amazon.es::tag::youtuber-21"    → { domain: "amazon.es", param: "tag", value: "youtuber-21" }
+   *
+   * @param {string} entry
+   * @returns {{ domain: string, param: string|null, value: string|null }}
+   */
+  function parseListEntry(entry) {
+    const parts = entry.split("::");
+    return {
+      domain: parts[0]?.trim().replace(/^www\./, "").toLowerCase() || "",
+      // Lowercase the param KEY: tracker param names are lowercase in practice and
+      // the match sites compare it directly, so a mixed-case entry (e.g. "Tag")
+      // otherwise silently never matched a real "tag" query param (audit #1048).
+      // The VALUE stays case-sensitive (affiliate tag values are matched verbatim).
+      param:  parts[1]?.trim().toLowerCase() || null,
+      value:  parts[2]?.trim() || null,
+    };
+  }
+
+  /**
+   * Strips a single trailing dot from a hostname (#1095).
+   *
+   * `amazon.com.` is a valid FQDN — the trailing dot denotes the DNS root —
+   * and browsers/resolvers treat it as IDENTICAL to `amazon.com`. Every
+   * host-matching helper in this module already strips a leading `www.`
+   * before comparing; without the same treatment for a trailing dot, a page
+   * on `www.amazon.com.` bypassed affiliate-pattern lookup entirely
+   * (`getPatternsForHost` found zero patterns, so stripAllAffiliates left a
+   * foreign tag completely untouched) and slipped past domain-only
+   * whitelist/blacklist/pause-by-site entries for `amazon.com`.
+   *
+   * @param {string} hostname
+   * @returns {string}
+   */
+  function stripTrailingDot(hostname) {
+    return hostname.endsWith(".") ? hostname.slice(0, -1) : hostname;
+  }
+
+  /**
+   * Returns true if a host matches a parsed list entry's domain.
+   */
+  function domainMatches(hostname, entryDomain) {
+    const host = stripTrailingDot(hostname).replace(/^www\./, "");
+    return host === entryDomain || host.endsWith("." + entryDomain);
+  }
+
+  /**
+   * Returns true if a hostname is FULLY EXEMPT from MUGA - the single
+   * choke-point predicate that governs every cleaning mechanism, present and
+   * future (#allowlist-full-inert). Originally added as
+   * isSiteExemptFromActiveDefense (#1006) to cover only the four active-defense
+   * content scripts (window.name defuser, history defuser, DOM link rewriter,
+   * click rewriter), all of which gate on a single muga:history-gate event.
+   * Renamed and promoted to the general-purpose exemption check consulted by
+   * processUrl (JS cleaning, #allowlist-full-inert) and by the service worker's
+   * DNR allow-rule sync (network-layer cleaning) - so "domain is allowlisted"
+   * now means MUGA has literally no effect on that domain through ANY path,
+   * not a per-mechanism opt-out that has to be re-added every time a new
+   * mechanism ships.
+   *
+   * A site counts as exempt when a DOMAIN-ONLY whitelist entry matches the
+   * host (bare "example.com"). A param-scoped entry ("example.com::tag::x")
+   * does NOT count - that only protects one affiliate value, it is not a
+   * "leave this site alone" signal. (The legacy `example.com::disabled`
+   * per-site-pause blacklist syntax was removed entirely - a domain is
+   * exempted ONLY via a domain-only whitelist entry now.)
+   *
+   * Reuses parseListEntry/domainMatches rather than reimplementing domain
+   * matching (a separate cleanup is tracked in #1005).
+   *
+   * Defensive: returns false for any falsy or malformed input so a missing or
+   * corrupt prefs object never accidentally grants an exemption. Fail-safe
+   * direction matters here: MUGA must stay ACTIVE unless we are sure the user
+   * opted the site out - a bug in this predicate must never globally disable
+   * cleaning.
+   *
+   * @param {string} hostname - the current page's hostname.
+   * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+   * @returns {boolean}
+   */
+  function isSiteFullyExempt(hostname, prefs) {
+    if (!hostname || typeof hostname !== "string" || !prefs || typeof prefs !== "object") return false;
+
+    const whitelist = Array.isArray(prefs.whitelist) ? prefs.whitelist : [];
+    for (const raw of whitelist) {
+      let entry;
+      try {
+        entry = parseListEntry(raw);
+      } catch {
+        continue;
+      }
+      if (!entry.domain || entry.param) continue;
+      if (domainMatches(hostname, entry.domain)) return true;
+    }
+
+    return false;
+  }
+  // @sync:site-exempt:end
+
   function computeGate(prefs) {
     // isSiteFullyExempt is a standalone function on __mugaCleaner (no `this`
     // dependency — see src/lib/cleaner.js), so passing the reference detached
     // is safe. modeActive is precomputed by the service worker's getPrefs
     // response (see the @sync:cookie-gate comment above) — read verbatim,
     // never recomputed here.
-    const cleaner = window.__mugaCleaner;
+    let isTopFrame = true;
+    try {
+      isTopFrame = window.top === window.self;
+    } catch {
+      // An unexpected/sandboxed frame shape that cannot even report its own
+      // top-frame identity — treat as a child frame so the fail-closed path
+      // below runs instead of trusting this frame's own (possibly
+      // CMP-vendor) hostname.
+      isTopFrame = false;
+    }
+
+    if (isTopFrame) {
+      const cleaner = window.__mugaCleaner;
+      return computeCookieGate(prefs, {
+        modeActive: !!(prefs && prefs.modeActive === true),
+        hostname: location.hostname,
+        isSiteFullyExempt:
+          cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
+      });
+    }
+
+    // Child frame (e.g. a cross-origin consent-or-pay dialog iframe):
+    // `window.__mugaCleaner` is never attached here (cleaner-bundle.js
+    // stays top-frame-only) and `location.hostname` is the CMP vendor's OWN
+    // host, not the paused site's — so the top-frame branch above cannot be
+    // reused as-is. Resolve the REAL top-frame hostname instead (see the
+    // @sync:frame-host block above) and check the per-site exemption with a
+    // per-frame-safe, prefs-only copy of the real predicate (see the
+    // @sync:site-exempt block above) instead of window.__mugaCleaner.
+    let ancestorOrigins = null;
+    try {
+      ancestorOrigins = location.ancestorOrigins;
+    } catch {
+      ancestorOrigins = null;
+    }
+    const topHostname = resolveTopFrameHostname({ isTopFrame: false, ancestorOrigins });
     return computeCookieGate(prefs, {
       modeActive: !!(prefs && prefs.modeActive === true),
-      hostname: location.hostname,
-      isSiteFullyExempt:
-        cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
+      hostname: topHostname,
+      // FAIL-CLOSED: an undeterminable top host (topHostname === null — no
+      // location.ancestorOrigins support, e.g. Firefox, or an empty list)
+      // is treated as EXEMPT — the gate stays shut rather than risk opening
+      // it against the user's own per-site pause.
+      isSiteFullyExempt: (hostname, prefsArg) =>
+        hostname === null ? true : isSiteFullyExempt(hostname, prefsArg),
     });
   }
 
