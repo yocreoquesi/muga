@@ -349,6 +349,46 @@ describe("cookie-noise-sync — @sync:cmp-accept-gate block matches src/lib/cmp-
   });
 });
 
+// ── @sync:cmp-sp-reject-click block (Sourcepoint reject-click DOM fallback) ─
+//
+// findSpRejectTarget is a pure helper in src/lib/cmp-adapters.js (unit-tested
+// there) whose body is hand-inlined ONLY into content/cookie-noise.js
+// (isolated world) — mirrors the @sync:cookie-gate precedent: a DOM click
+// needs neither a page-authored global nor the MAIN world, so this has no
+// main-world copy either.
+
+const SP_REJECT_CLICK_START = "@sync:cmp-sp-reject-click:start";
+const SP_REJECT_CLICK_END = "@sync:cmp-sp-reject-click:end";
+
+describe("cookie-noise-sync — @sync:cmp-sp-reject-click block matches src/lib/cmp-adapters.js", () => {
+  const libBlock = extractMarkedBlock(sources.lib, SP_REJECT_CLICK_START, SP_REJECT_CLICK_END, "cmp-adapters.js");
+  const isolatedBlock = extractMarkedBlock(sources.isolated, SP_REJECT_CLICK_START, SP_REJECT_CLICK_END, "cookie-noise.js");
+
+  test("sp-reject-click sync block is non-empty and defines findSpRejectTarget", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:cmp-sp-reject-click block must not be empty — check the markers");
+    assert.ok(/function findSpRejectTarget/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js @sync:cmp-sp-reject-click block matches src/lib/cmp-adapters.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cmp-sp-reject-click block has drifted from src/lib/cmp-adapters.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:cmp-sp-reject-click block (a DOM click needs no MAIN world)", () => {
+    assert.equal(sources.mainworld.includes(SP_REJECT_CLICK_START), false,
+      "cookie-noise-mainworld.js must not inline the SP reject-click resolver — this mechanism is isolated-world only");
+  });
+
+  test("findSpRejectTarget only ever targets choice type 13, never 11 (the action this project's structural guard forbids naming)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/SP_REJECT_ALL_CHOICE\s*=\s*"13"/.test(joined));
+    assert.equal(/spChoice\s*!==\s*"11"/.test(joined), false, "must not reference choice type 11 at all");
+  });
+});
+
 // ── Content-script structural shape ─────────────────────────────────────────
 
 describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
@@ -889,6 +929,59 @@ describe("cookie-noise.js — accept-click dispatch structural guards", () => {
 
   test("cookie-noise-mainworld.js has no accept-click dispatch of any kind (mechanism is isolated-world only)", () => {
     for (const forbidden of ["runAcceptClickDispatcher", "isPaywallFrame", "findFreeAcceptTarget", "findSpFreeAcceptTarget", "hasFreeRejectControl", "classifyConsentButton"]) {
+      assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
+    }
+  });
+});
+
+// ── Sourcepoint reject-click dispatch — structural guards ──────────────────
+//
+// The reject-click mechanism (DOM fallback for the postRejectAll gap) lives
+// only in content/cookie-noise.js — see the @sync:cmp-sp-reject-click
+// section above for the pure resolver. Mirrors the accept-click dispatch
+// structural guards above: prove the click call site exists, is gated on
+// every required signal, marks itself acted only after a real click (never
+// on mere detection), and never touches a page-authored global.
+
+describe("cookie-noise.js — Sourcepoint reject-click dispatch structural guards", () => {
+  test("runSpRejectClickDispatcher gates on findSpRejectTarget's single status before ever clicking (no same-frame DOM anchor pre-check — see real-site probe note)", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runSpRejectClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define runSpRejectClickDispatcher()");
+    const body = fnMatch[1];
+    const targetIdx = body.indexOf("findSpRejectTarget(");
+    const clickIdx = body.indexOf(".ref.click(");
+    assert.ok(targetIdx !== -1, "must call findSpRejectTarget");
+    assert.ok(clickIdx !== -1, "must call .ref.click()");
+    assert.ok(targetIdx < clickIdx, "runSpRejectClickDispatcher must resolve findSpRejectTarget before ever clicking");
+    // A same-frame `sp_message_container` pre-check was tried and REMOVED: a
+    // real-site probe found the container div and the sp_choice_type_*
+    // buttons do not share a frame on real deployments (pinknews.co.uk), so
+    // that pre-check silently blocked the dispatcher in the exact frame
+    // where the buttons live. Must never be reintroduced without
+    // re-litigating that finding.
+    assert.equal(src.includes("hasSpMessageContainer("), false,
+      "must not reintroduce the same-frame sp_message_container pre-check gate (hasSpMessageContainerDom, the unrelated pure Sourcepoint detection signal, is fine)");
+  });
+
+  test("the dispatcher marks _spRejectActed = true only INSIDE the single-status branch, never on mere detection (no false success)", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runSpRejectClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    const bailIdx = body.indexOf('if (result.status !== "single") return;');
+    const actedIdx = body.indexOf("_spRejectActed = true;");
+    assert.ok(bailIdx !== -1, "must bail out unless the resolver returns status \"single\"");
+    assert.ok(actedIdx !== -1, "must set _spRejectActed = true");
+    assert.ok(bailIdx < actedIdx, "_spRejectActed must only be set AFTER confirming a single target, never before");
+  });
+
+  test("the reject-click gate (_spRejectGateOpen, from the same reject master gate as the Tier-1 API ladder) is checked before the dispatch runs", () => {
+    assert.ok(/_spRejectGateOpen/.test(sources.isolated));
+  });
+
+  test("cookie-noise-mainworld.js has no Sourcepoint reject-click dispatch of any kind (mechanism is isolated-world only)", () => {
+    for (const forbidden of ["runSpRejectClickDispatcher", "findSpRejectTarget", "spRejectStartObserver"]) {
       assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
     }
   });

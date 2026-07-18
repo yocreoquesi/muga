@@ -1734,6 +1734,133 @@
     _acceptObserver = null;
   }
 
+  // ── Sourcepoint reject-click dispatch (DOM fallback for postRejectAll) ────
+  //
+  // Real-site verification found the __tcfapi postRejectAll call above does
+  // not dismiss Sourcepoint's own UI on real deployments even when the call
+  // fires without throwing — a gap the Tier-1 API adapter's confidence gate
+  // alone cannot close (see findSpRejectTarget's rationale, hand-copied from
+  // src/lib/cmp-adapters.js below). This is a SEPARATE, additive action: a
+  // DOM `element.click()` on the wall's own "Reject all" control, reusing
+  // the SAME neutral DOM candidate scanner the consent-or-pay accept-click
+  // feature already collects (collectAcceptCandidates — it only enumerates
+  // buttons/links and their sp_choice_type_<N> class; it does not decide
+  // what to click, findSpRejectTarget does, and that resolver only ever
+  // recognizes "13"). Runs for BOTH browsers, in every frame
+  // (all_frames:true already covers this file) — a DOM click needs neither
+  // a page-authored global nor the MAIN world. Gated by the SAME reject
+  // master gate (computeGate) as the Tier-1 API ladder above, so it never
+  // runs outside the reject-only feature's own enabled/onboarded/not-exempt
+  // gate. Marks itself acted ONLY after a real click on a confirmed single
+  // target — never on mere detection, so a no-op is never reported as a
+  // success.
+
+  // @sync:cmp-sp-reject-click:start
+  const SP_REJECT_ALL_CHOICE = "13";
+
+  function findSpRejectTarget(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [];
+    const matches = [];
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (candidate.spChoice !== SP_REJECT_ALL_CHOICE) continue;
+      if (candidate.actionable !== true) continue;
+      matches.push(candidate);
+    }
+    if (matches.length === 0) return { status: "noop", target: null };
+    if (matches.length > 1) return { status: "ambiguous", target: null };
+    return { status: "single", target: matches[0] };
+  }
+  // @sync:cmp-sp-reject-click:end
+
+  let _spRejectActed = false;
+  let _spRejectGateOpen = false;
+  let _spRejectObserver = null;
+  const SP_REJECT_GIVE_UP_AFTER_DOM_READY_MS = 10000;
+  let _spRejectGiveUpArmed = false;
+  let _spRejectGiveUpTimer = null;
+  let _spRejectGiveUpFallbackTimer = null;
+
+  // NOTE (real-site probe finding): the `sp_message_container` DOM anchor
+  // (the pure detectSourcepoint signal's DOM anchor above) and the actual
+  // `sp_choice_type_*` decision buttons do NOT necessarily share a frame —
+  // on real deployments (e.g. pinknews.co.uk) the container div renders in
+  // the TOP frame while the buttons render inside a separate cross-origin
+  // `cdn.privacy-mgmt.com` iframe. A same-frame container pre-check would
+  // silently block the dispatcher in the exact frame where the buttons
+  // live. This dispatcher therefore does NOT gate on that DOM anchor at
+  // all — it relies entirely on findSpRejectTarget's own specificity
+  // (exactly one actionable "13" candidate) as the safety/precision
+  // filter, mirroring how the consent-or-pay accept-click dispatcher above
+  // has no DOM pre-check of its own either (all_frames:true already means
+  // every frame pays this same, cheap, per-frame query cost).
+  function runSpRejectClickDispatcher() {
+    if (_spRejectActed || !_spRejectGateOpen) return;
+    const candidates = collectAcceptCandidates();
+    const result = findSpRejectTarget(candidates);
+    if (result.status !== "single") return;
+    _spRejectActed = true;
+    try {
+      result.target.ref.click();
+    } catch {
+      // A throwing/hostile page element must never break the page.
+    }
+    spRejectStopObserver();
+  }
+
+  // Bounded give-up window — same rationale and shape as the reject/accept
+  // dispatchers' own give-up windows above.
+  function spRejectArmGiveUp() {
+    if (_spRejectGiveUpArmed) return;
+    _spRejectGiveUpArmed = true;
+    const schedule = () => {
+      _spRejectGiveUpTimer = setTimeout(() => {
+        _spRejectGiveUpTimer = null;
+        if (!_spRejectActed) spRejectStopObserver();
+      }, SP_REJECT_GIVE_UP_AFTER_DOM_READY_MS);
+    };
+    if (document.readyState === "loading") {
+      _spRejectGiveUpFallbackTimer = setTimeout(() => {
+        _spRejectGiveUpFallbackTimer = null;
+        if (!_spRejectActed) spRejectStopObserver();
+      }, SP_REJECT_GIVE_UP_AFTER_DOM_READY_MS);
+      document.addEventListener("DOMContentLoaded", schedule, { once: true });
+    } else {
+      schedule();
+    }
+  }
+
+  function spRejectStartObserver() {
+    if (_spRejectObserver || _spRejectActed) return;
+    if (!document || !document.documentElement) return;
+    try {
+      _spRejectObserver = new MutationObserver(() => runSpRejectClickDispatcher());
+      _spRejectObserver.observe(document.documentElement, { childList: true, subtree: true });
+    } catch {
+      _spRejectObserver = null;
+    }
+    spRejectArmGiveUp();
+  }
+
+  function spRejectStopObserver() {
+    if (_spRejectGiveUpTimer !== null) {
+      clearTimeout(_spRejectGiveUpTimer);
+      _spRejectGiveUpTimer = null;
+    }
+    if (_spRejectGiveUpFallbackTimer !== null) {
+      clearTimeout(_spRejectGiveUpFallbackTimer);
+      _spRejectGiveUpFallbackTimer = null;
+    }
+    _spRejectGiveUpArmed = false;
+    if (!_spRejectObserver) return;
+    try {
+      _spRejectObserver.disconnect();
+    } catch {
+      // already disconnected
+    }
+    _spRejectObserver = null;
+  }
+
   function readPrefsAndGate() {
     try {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
@@ -1759,6 +1886,16 @@
           acceptStartObserver();
         } else {
           acceptStopObserver();
+        }
+        // Sourcepoint reject-click DOM fallback — runs directly in THIS
+        // world for BOTH browsers, gated by the SAME reject master gate
+        // (`open`) as the Tier-1 API ladder above, independent of `_isFirefox`.
+        _spRejectGateOpen = open;
+        if (_spRejectGateOpen) {
+          runSpRejectClickDispatcher(); // initial sweep — the wall may already exist
+          spRejectStartObserver();
+        } else {
+          spRejectStopObserver();
         }
       });
     } catch {

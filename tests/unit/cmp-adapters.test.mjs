@@ -35,6 +35,7 @@ import {
   consentmanagerAdapter,
   decideAction,
   computeCookieGate,
+  findSpRejectTarget,
 } from "../../src/lib/cmp-adapters.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1018,6 +1019,92 @@ describe("sourcepointAdapter.detect — dual-mandatory TCF-generic-signal discri
     assert.doesNotThrow(() => sourcepointAdapter.detect(null));
     assert.doesNotThrow(() => sourcepointAdapter.detect(undefined));
     assert.equal(sourcepointAdapter.detect(null), 0);
+  });
+});
+
+// ── findSpRejectTarget — SP-structural DOM reject-click target resolution ──
+//
+// Sourcepoint's postRejectAll __tcfapi call does not dismiss the vendor's own
+// UI on real deployments even when it fires without throwing (round-2 EU
+// verification). findSpRejectTarget resolves the wall's own "Reject all"
+// decision control (the "13" sp_choice_type_<N> class) as a DOM click
+// fallback. Only a SINGLE actionable "13" candidate is ever a target — any
+// ambiguity (zero, or more than one) is a NOOP. A wall exposing only a "12"
+// ("Show options") choice with no "13" present NOOPs too (deferred
+// second-layer flow, not this slice's scope).
+describe("findSpRejectTarget — SP-structural reject-click target resolution", () => {
+  test("exactly one actionable '13' candidate -> single, that candidate is the target", () => {
+    const candidates = [
+      { text: "Reject all", spChoice: "13", actionable: true, ref: "reject-ref" },
+      { text: "Accept all", spChoice: "11", actionable: true, ref: "accept-ref" },
+    ];
+    const result = findSpRejectTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "reject-ref");
+  });
+
+  test("no '13' candidate at all -> noop", () => {
+    const candidates = [{ text: "Accept all", spChoice: "11", actionable: true, ref: "accept-ref" }];
+    assert.equal(findSpRejectTarget(candidates).status, "noop");
+    assert.equal(findSpRejectTarget(candidates).target, null);
+  });
+
+  test("only a '12' (Show options) choice present, no '13' -> noop (second-layer flow deferred, not this slice)", () => {
+    const candidates = [{ text: "Options", spChoice: "12", actionable: true, ref: "options-ref" }];
+    assert.equal(findSpRejectTarget(candidates).status, "noop");
+  });
+
+  test("a '13' candidate present but NOT actionable (hidden/disabled) -> noop", () => {
+    const candidates = [{ text: "Reject all", spChoice: "13", actionable: false, ref: "reject-ref" }];
+    assert.equal(findSpRejectTarget(candidates).status, "noop");
+  });
+
+  test("more than one actionable '13' candidate -> ambiguous, never guesses", () => {
+    const candidates = [
+      { text: "Reject all", spChoice: "13", actionable: true, ref: "reject-ref-1" },
+      { text: "Reject all", spChoice: "13", actionable: true, ref: "reject-ref-2" },
+    ];
+    const result = findSpRejectTarget(candidates);
+    assert.equal(result.status, "ambiguous");
+    assert.equal(result.target, null);
+  });
+
+  test("a '13' candidate co-existing with a '12' choice still resolves to single (13 wins directly, no veto from 12's presence)", () => {
+    const candidates = [
+      { text: "Options", spChoice: "12", actionable: true, ref: "options-ref" },
+      { text: "Reject all", spChoice: "13", actionable: true, ref: "reject-ref" },
+    ];
+    const result = findSpRejectTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "reject-ref");
+  });
+
+  test("incidental non-decision candidates (no spChoice, e.g. privacy/imprint links) never veto or interfere", () => {
+    const candidates = [
+      { text: "Privacy Policy", spChoice: "", actionable: true, ref: "privacy-ref" },
+      { text: "Reject all", spChoice: "13", actionable: true, ref: "reject-ref" },
+    ];
+    const result = findSpRejectTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "reject-ref");
+  });
+
+  test("never clicks type-11 (accept) or type-9/link (pay/subscribe) even if present alongside an ambiguous set", () => {
+    const candidates = [
+      { text: "Accept all", spChoice: "11", actionable: true, ref: "accept-ref" },
+      { text: "Subscribe", spChoice: "9", actionable: true, ref: "pay-ref" },
+    ];
+    const result = findSpRejectTarget(candidates);
+    assert.notEqual(result.status, "single");
+    assert.equal(result.target, null);
+  });
+
+  test("malformed/missing input never throws and always fails closed to noop", () => {
+    assert.doesNotThrow(() => findSpRejectTarget(null));
+    assert.doesNotThrow(() => findSpRejectTarget(undefined));
+    assert.equal(findSpRejectTarget(null).status, "noop");
+    assert.equal(findSpRejectTarget(undefined).status, "noop");
+    assert.equal(findSpRejectTarget([null, 42, "x", { spChoice: "13" }]).status, "noop");
   });
 });
 

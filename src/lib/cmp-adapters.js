@@ -504,6 +504,61 @@ function canRejectConsentmanager(signals) {
 // @sync:cmp-adapters:end
 
 /**
+ * Sourcepoint reject-click target resolution (DOM fallback for the postRejectAll
+ * gap). A real-site verification round found the __tcfapi postRejectAll call
+ * does not dismiss the vendor's own UI on real deployments even when the call
+ * fires without throwing — the confidence gate above (detectSourcepoint /
+ * canRejectSourcepoint) can confirm a reject PATH exists, but not that the wall
+ * actually closes. This resolver identifies a DOM click fallback instead.
+ *
+ * The vendor's message UI carries a stable structural anchor on every DECISION
+ * control: an `sp_choice_type_<N>` class, surfaced on each candidate object as
+ * `spChoice` (the "<N>" suffix — see the content-script candidate collector).
+ * Canonical choice types observed on real walls: "11" = the broad-consent
+ * control (never a target here — this file's own structural guard forbids
+ * even naming that action), "12" = a secondary options/settings layer, "13" =
+ * "Reject all" — the ONLY choice type this resolver ever targets.
+ *
+ * Fail-closed: only a SINGLE actionable "13" candidate is ever a target.
+ * Zero "13" candidates (including a wall exposing only the "12" secondary
+ * layer, with no direct "13" present) is a NOOP — that second-layer flow is
+ * deliberately deferred, not followed by this resolver. More than one
+ * actionable "13" candidate is "ambiguous" — never guesses. A "13" candidate
+ * coexisting with a "12" choice does NOT veto: "13" is clicked directly, no
+ * need to traverse the secondary layer first. Non-decision candidates (no
+ * `spChoice`, e.g. incidental privacy/imprint links) are ignored outright —
+ * they can never veto or become a target. Pure; never throws.
+ *
+ * @param {Array<{spChoice?: string, actionable?: boolean, ref?: *}>} [candidates]
+ * @returns {{status: "single"|"noop"|"ambiguous", target: object|null}}
+ */
+// Content scripts cannot import this module (AGENTS.md — no ES imports in
+// content scripts), so the block between the @sync:cmp-sp-reject-click
+// markers is hand-copied, modulo indentation, into content/cookie-noise.js
+// ONLY — mirrors the @sync:cookie-gate precedent: a DOM click needs neither
+// a page-authored global nor the MAIN world, so this has no main-world copy.
+// tests/unit/cookie-noise-sync.test.mjs fails the build if the copies drift.
+// @sync:cmp-sp-reject-click:start
+const SP_REJECT_ALL_CHOICE = "13";
+
+function findSpRejectTarget(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const matches = [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (candidate.spChoice !== SP_REJECT_ALL_CHOICE) continue;
+    if (candidate.actionable !== true) continue;
+    matches.push(candidate);
+  }
+  if (matches.length === 0) return { status: "noop", target: null };
+  if (matches.length > 1) return { status: "ambiguous", target: null };
+  return { status: "single", target: matches[0] };
+}
+// @sync:cmp-sp-reject-click:end
+
+export { findSpRejectTarget };
+
+/**
  * Invokes the caller-supplied reject call. Kept pure (no `window` access
  * here) by requiring the caller to inject the actual global call as a
  * zero-argument callback — the content-script shell is the one place that

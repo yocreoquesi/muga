@@ -151,9 +151,15 @@ describe("cookie-noise.js fxArmGiveUp() — bounded fallback (FIX C, Firefox pat
     vm.createContext(sandbox);
     vm.runInContext(isolatedSource, sandbox, { filename: "content/cookie-noise.js" });
 
-    assert.equal(FakeMutationObserver.instances.length, 1, "an active gate on Firefox must start the observer");
-    const observer = FakeMutationObserver.instances[0];
+    // TWO observers start on an open reject gate: the Firefox fxRunDispatcher
+    // observer (index 0, started first in readPrefsAndGate) AND the
+    // Sourcepoint reject-click DOM-fallback observer (index 1, gated by the
+    // SAME reject master gate, independent of _isFirefox — see
+    // content/cookie-noise.js's runSpRejectClickDispatcher()).
+    assert.equal(FakeMutationObserver.instances.length, 2, "an active gate on Firefox must start both the fx reject observer and the SP reject-click observer");
+    const [observer, spRejectObserver] = FakeMutationObserver.instances;
     assert.equal(observer.disconnected, false, "must not be disconnected immediately after arming");
+    assert.equal(spRejectObserver.disconnected, false, "the SP reject-click observer must not be disconnected immediately after arming either");
 
     t.mock.timers.tick(GIVE_UP_AFTER_DOM_READY_MS);
 
@@ -161,6 +167,11 @@ describe("cookie-noise.js fxArmGiveUp() — bounded fallback (FIX C, Firefox pat
       observer.disconnected,
       true,
       "the Firefox observer must disconnect within the give-up window even though DOMContentLoaded never fired",
+    );
+    assert.equal(
+      spRejectObserver.disconnected,
+      true,
+      "the SP reject-click observer must ALSO disconnect within its own give-up window",
     );
   });
 });
