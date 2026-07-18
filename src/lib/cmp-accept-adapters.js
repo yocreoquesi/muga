@@ -46,9 +46,10 @@
  *   brain) and the reject regions of the two content scripts stay FOREVER
  *   free of any accept-family identifier — enforced by an absolute
  *   structural scan there. ALL accept logic lives here instead, plus the
- *   `@sync:cmp-accept-veto` / `@sync:cmp-accept-dispatch` content-script
- *   regions that hand-copy this module's pure functions (mirroring how
- *   `computeCookieGate` is mirrored into `@sync:cookie-gate`).
+ *   `@sync:cmp-accept-veto` content-script region (content/cookie-noise.js
+ *   only — this mechanism has no MAIN-world copy) that hand-copies this
+ *   module's pure functions (mirroring how `computeCookieGate` is mirrored
+ *   into `@sync:cookie-gate`).
  *
  * L2 — Double-gate as a DATA invariant: `computeAcceptGate` below opens
  *   ONLY when BOTH `cookieConsentMode === "accept-when-necessary"` AND
@@ -96,16 +97,44 @@
 // the matching functions.
 
 /**
- * Tokens that mark a button as the FREE accept-and-continue control on a
- * consent-or-pay wall. DE + EN only this slice (see file docblock).
- *
- * KNOWN LIMITATION (documented, out of scope this slice): matching is plain
- * case-insensitive substring — a future locale token that happens to embed
- * one of these strings (e.g. French "continuer" embeds "continue") would
- * false-positive as ACCEPT. Widening past DE+EN requires checking new
- * tokens against this list for substring collisions before adding them.
- * @type {ReadonlyArray<string>}
+ * A candidate button as the caller (the content-script DOM scan) resolves
+ * it — deliberately plain data, no DOM element, so this stays a pure,
+ * exhaustively-unit-testable function (plain-data-in/plain-data-out).
+ * @typedef {{text: string, actionable: boolean, ref?: *}} ConsentButtonCandidate
  */
+
+// Everything in this fenced block — the word-list DATA and the four
+// discrimination functions — is a hand-maintained COPY, byte-identical
+// (modulo indentation and the `export` keyword, which content scripts
+// cannot use — stripped by the comparison test), of the same block in
+// content/cookie-noise.js (content scripts cannot use ES module imports —
+// AGENTS.md). Kept in sync by tests/unit/cookie-noise-sync.test.mjs.
+//
+// classifyConsentButton's internal branches return PLAIN STRING LITERALS
+// ("pay"/"settings"/"reject"/"accept"/"unknown") rather than referencing
+// the BUTTON_KIND enum declared further below (same for
+// findFreeAcceptTarget's "single"/"noop"/"ambiguous" vs ACCEPT_TARGET_STATUS)
+// — those enums exist for external callers/tests only, so this block's own
+// source text carries no enum-object dependency to copy along.
+//
+// ACCEPT_TOKENS: the FREE accept-and-continue control on a consent-or-pay
+// wall. DE + EN only this slice (see file docblock). KNOWN LIMITATION
+// (documented, out of scope this slice): matching is plain case-insensitive
+// substring — a future locale token that happens to embed one of these
+// strings (e.g. French "continuer" embeds "continue") would false-positive
+// as ACCEPT; widening past DE+EN requires checking new tokens against this
+// list for substring collisions first.
+// PAY_DENY_TOKENS: the PAY/SUBSCRIBE control DENYLIST. Precedence: this
+// wins over every other classification — a button whose accessible name
+// contains any of these (or a CURRENCY_TOKENS/PERIOD_TOKENS symbol) is
+// NEVER clicked, even if it also contains an accept token (e.g. "Accept
+// subscription"). CURRENCY_TOKENS/PERIOD_TOKENS: a locale-agnostic price
+// backstop covering labels the literal word lists do not otherwise
+// recognize. SETTINGS_TOKENS: excluded from BOTH the accept and reject
+// pools — a settings link does not dismiss the wall. REJECT_TOKENS: a FREE
+// reject/necessary-only control; presence anywhere on the wall means the
+// accept-click must never fire (see hasFreeRejectControl, L3).
+// @sync:cmp-accept-veto:start
 export const ACCEPT_TOKENS = Object.freeze([
   "accept",
   "agree",
@@ -118,14 +147,6 @@ export const ACCEPT_TOKENS = Object.freeze([
   "annehmen",
 ]);
 
-/**
- * Tokens that mark a button as a PAY/SUBSCRIBE control. Precedence: this
- * DENYLIST wins over every other classification — a button whose
- * accessible name contains any of these (or a currency/period symbol, see
- * CURRENCY_TOKENS / PERIOD_TOKENS below) is NEVER clicked, regardless of
- * whether it also contains an accept token (e.g. "Accept subscription").
- * @type {ReadonlyArray<string>}
- */
 export const PAY_DENY_TOKENS = Object.freeze([
   "abo",
   "abonnieren",
@@ -139,30 +160,9 @@ export const PAY_DENY_TOKENS = Object.freeze([
   "zahlungspflichtig",
 ]);
 
-/**
- * Currency symbols. A locale-agnostic backstop: any button whose
- * accessible name contains one of these is treated as a pay control even
- * if no PAY_DENY_TOKENS literal matches (covers labels this slice's word
- * lists do not otherwise recognize).
- * @type {ReadonlyArray<string>}
- */
 export const CURRENCY_TOKENS = Object.freeze(["€", "$", "£"]);
-
-/**
- * Billing-period tokens. Same locale-agnostic backstop rationale as
- * CURRENCY_TOKENS — "/Monat", "/month", "/mo", "/Jahr" mark a price string
- * even without an explicit currency symbol next to them.
- * @type {ReadonlyArray<string>}
- */
 export const PERIOD_TOKENS = Object.freeze(["/monat", "/month", "/mo", "/jahr"]);
 
-/**
- * Tokens that mark a button as a settings/manage/preferences link rather
- * than a direct accept or reject action. Excluded from BOTH the accept and
- * reject candidate pools — clicking a settings link does not dismiss the
- * wall and is never the intended action here.
- * @type {ReadonlyArray<string>}
- */
 export const SETTINGS_TOKENS = Object.freeze([
   "einstellungen",
   "settings",
@@ -172,13 +172,6 @@ export const SETTINGS_TOKENS = Object.freeze([
   "customize",
 ]);
 
-/**
- * Tokens that mark a button as a FREE reject / necessary-only control.
- * DE + EN only this slice, matching ACCEPT_TOKENS' scope. Presence of any
- * matching control anywhere on the wall means a free reject exists, so the
- * accept-click must never fire — see `hasFreeRejectControl` and L3 above.
- * @type {ReadonlyArray<string>}
- */
 export const REJECT_TOKENS = Object.freeze([
   "ablehnen",
   "nur notwendige",
@@ -198,170 +191,62 @@ function containsAnyToken(text, tokens) {
   return false;
 }
 
-/**
- * True if `text` contains a currency symbol or billing-period token — the
- * locale-agnostic price backstop described in PAY_DENY_TOKENS' docblock.
- * @param {string} text - already-normalized (lowercased, trimmed) text.
- * @returns {boolean}
- */
 function hasPriceIndicator(text) {
   return containsAnyToken(text, CURRENCY_TOKENS) || containsAnyToken(text, PERIOD_TOKENS);
 }
 
-/**
- * Closed classification enum for `classifyConsentButton`'s return value.
- * @type {Readonly<{PAY: "pay", SETTINGS: "settings", REJECT: "reject", ACCEPT: "accept", UNKNOWN: "unknown"}>}
- */
-export const BUTTON_KIND = Object.freeze({
-  PAY: "pay",
-  SETTINGS: "settings",
-  REJECT: "reject",
-  ACCEPT: "accept",
-  UNKNOWN: "unknown",
-});
-
-/**
- * Pure button-text classifier (L4, PART A of the design — the crux of this
- * feature's safety model). Given a button's accessible name (accessible
- * name = aria-label, falling back to visible text — the caller supplies
- * whichever it already resolved), returns exactly one of BUTTON_KIND.
- *
- * PRECEDENCE (checked in this exact order, first match wins):
- *   1. PAY  — any PAY_DENY_TOKENS literal OR a price indicator
- *      (hasPriceIndicator) anywhere in the text. DENY WINS: this check
- *      runs BEFORE the accept check, so "Accept subscription — 4,99€/Monat"
- *      classifies as PAY, never ACCEPT, no matter how strong the accept
- *      wording also present.
- *   2. SETTINGS — any SETTINGS_TOKENS literal. Checked before REJECT/ACCEPT
- *      so "Cookie settings" or "Accept cookie settings" never fires either
- *      one — a settings link does not dismiss the wall.
- *   3. REJECT — any REJECT_TOKENS literal.
- *   4. ACCEPT — any ACCEPT_TOKENS literal.
- *   5. UNKNOWN — none of the above matched (an empty/blank text also lands
- *      here).
- *
- * Pure; never throws; a non-string input normalizes to "" and returns
- * UNKNOWN.
- *
- * @param {string} rawText
- * @returns {"pay"|"settings"|"reject"|"accept"|"unknown"}
- */
-export function classifyConsentButton(rawText) {
+function classifyConsentButton(rawText) {
   const text = normalizeButtonText(rawText);
-  if (!text) return BUTTON_KIND.UNKNOWN;
-  if (containsAnyToken(text, PAY_DENY_TOKENS) || hasPriceIndicator(text)) return BUTTON_KIND.PAY;
-  if (containsAnyToken(text, SETTINGS_TOKENS)) return BUTTON_KIND.SETTINGS;
-  if (containsAnyToken(text, REJECT_TOKENS)) return BUTTON_KIND.REJECT;
-  if (containsAnyToken(text, ACCEPT_TOKENS)) return BUTTON_KIND.ACCEPT;
-  return BUTTON_KIND.UNKNOWN;
+  if (!text) return "unknown";
+  if (containsAnyToken(text, PAY_DENY_TOKENS) || hasPriceIndicator(text)) return "pay";
+  if (containsAnyToken(text, SETTINGS_TOKENS)) return "settings";
+  if (containsAnyToken(text, REJECT_TOKENS)) return "reject";
+  if (containsAnyToken(text, ACCEPT_TOKENS)) return "accept";
+  return "unknown";
 }
 
-/**
- * Closed result-status enum for `findFreeAcceptTarget`.
- * @type {Readonly<{SINGLE: "single", NOOP: "noop", AMBIGUOUS: "ambiguous"}>}
- */
-export const ACCEPT_TARGET_STATUS = Object.freeze({
-  SINGLE: "single",
-  NOOP: "noop",
-  AMBIGUOUS: "ambiguous",
-});
-
-/**
- * A candidate button as the caller (the content-script DOM scan) resolves
- * it — deliberately plain data, no DOM element, so this stays a pure,
- * exhaustively-unit-testable function (plain-data-in/plain-data-out).
- * @typedef {{text: string, actionable: boolean, ref?: *}} ConsentButtonCandidate
- */
-
-/**
- * Pure button-discrimination decision (L4). Scans `candidates` for buttons
- * that classify as BUTTON_KIND.ACCEPT and are `actionable === true` (the
- * caller is responsible for resolving actionability — visible, not
- * disabled, in the layout — before calling this; a candidate that is not
- * exactly `actionable === true` is excluded outright, covering the "hidden
- * accept decoy" adversarial case).
- *
- * Returns:
- *   - `{status: "single", target}` — EXACTLY ONE actionable accept
- *     candidate survived. `target` is that candidate, unmodified.
- *   - `{status: "noop", target: null}` — ZERO candidates survived.
- *   - `{status: "ambiguous", target: null}` — MORE THAN ONE candidate
- *     survived. Ambiguity is a VETO, never a guess — the caller must NOOP.
- *
- * Pure; never throws; malformed/missing input resolves to NOOP.
- *
- * @param {ReadonlyArray<ConsentButtonCandidate>} [candidates]
- * @returns {{status: "single"|"noop"|"ambiguous", target: ConsentButtonCandidate|null}}
- */
-export function findFreeAcceptTarget(candidates) {
+function findFreeAcceptTarget(candidates) {
   const list = Array.isArray(candidates) ? candidates : [];
   const survivors = [];
   for (const candidate of list) {
     if (!candidate || typeof candidate !== "object") continue;
     if (candidate.actionable !== true) continue;
-    if (classifyConsentButton(candidate.text) !== BUTTON_KIND.ACCEPT) continue;
+    if (classifyConsentButton(candidate.text) !== "accept") continue;
     survivors.push(candidate);
   }
-  if (survivors.length === 0) return { status: ACCEPT_TARGET_STATUS.NOOP, target: null };
-  if (survivors.length > 1) return { status: ACCEPT_TARGET_STATUS.AMBIGUOUS, target: null };
-  return { status: ACCEPT_TARGET_STATUS.SINGLE, target: survivors[0] };
+  if (survivors.length === 0) return { status: "noop", target: null };
+  if (survivors.length > 1) return { status: "ambiguous", target: null };
+  return { status: "single", target: survivors[0] };
 }
 
-/**
- * Pure last-resort gate (L3). True if any ACTIONABLE candidate on the wall
- * classifies as a free reject/necessary-only control. When true, the
- * accept-click must NEVER fire — a free reject always wins; it is the
- * reject engine's job, not this module's.
- *
- * Pure; never throws; malformed/missing input resolves to false
- * (conservative in the SAFE direction here: a caller that cannot determine
- * candidates at all has no evidence of a free reject, so this returns
- * false — but the caller's overall dispatch must independently require a
- * CONFIRMED consent-or-pay wall shape before ever reaching the click, see
- * `isPaywallFrame`).
- *
- * @param {ReadonlyArray<ConsentButtonCandidate>} [candidates]
- * @returns {boolean}
- */
-export function hasFreeRejectControl(candidates) {
+function hasFreeRejectControl(candidates) {
   const list = Array.isArray(candidates) ? candidates : [];
   for (const candidate of list) {
     if (!candidate || typeof candidate !== "object") continue;
     if (candidate.actionable !== true) continue;
-    if (classifyConsentButton(candidate.text) === BUTTON_KIND.REJECT) return true;
+    if (classifyConsentButton(candidate.text) === "reject") return true;
   }
   return false;
 }
 
-/**
- * Pure consent-or-pay-wall frame-shape detection (PART B of the design).
- * This is a cheap PRE-FILTER, not the safety net by itself — the real
- * safety net is `hasFreeRejectControl` + `findFreeAcceptTarget`'s
- * exactly-one requirement, both of which still gate the actual click. This
- * function only decides whether the current frame LOOKS LIKE a
- * Sourcepoint-style consent-or-pay message iframe worth scanning at all.
- *
- * True only when the frame is a SUBFRAME (never the top frame — a
- * consent-or-pay dialog always renders in a child iframe per the real-site
- * probe, engram id 1333/1335) AND at least one of:
- *   - the frame's own URL matches the Sourcepoint message-iframe shape
- *     (`hasCsp=true` AND `consent/tcfv2` present, case-insensitively —
- *     these are query-string markers, not host-based, so they still match
- *     first-party CMP subdomains like sp-spiegel-de.spiegel.de or
- *     consent-cdn.zeit.de; do NOT filter on sp-prod.net/sourcepoint.com,
- *     that misses real deployments, engram id 1335's gotcha);
- *   - the frame's own hostname differs from the relayed top-frame
- *     hostname (a cross-origin child frame).
- *
- * `env.isTopFrame` must be exactly `true` or exactly `false` — an
- * undeterminable frame identity fails closed to false (never scanned).
- *
- * Pure; never throws.
- *
- * @param {{isTopFrame?: boolean, frameUrl?: string, frameHost?: string|null, topHost?: string|null}} [env]
- * @returns {boolean}
- */
-export function isPaywallFrame(env) {
+// isPaywallFrame (PART B of the design): a cheap PRE-FILTER, not the safety
+// net by itself — the real safety net is hasFreeRejectControl +
+// findFreeAcceptTarget's exactly-one requirement above, both of which still
+// gate the actual click. This only decides whether the current frame LOOKS
+// LIKE a Sourcepoint-style consent-or-pay message iframe worth scanning at
+// all: true only when the frame is a SUBFRAME (never the top frame — a
+// consent-or-pay dialog always renders in a child iframe per the real-site
+// probe, engram id 1333/1335) AND at least one of: the frame's own URL
+// matches the Sourcepoint message-iframe shape (hasCsp=true AND
+// consent/tcfv2 present, case-insensitively — query-string markers, not
+// host-based, so they still match first-party CMP subdomains like
+// sp-spiegel-de.spiegel.de or consent-cdn.zeit.de; do NOT filter on
+// sp-prod.net/sourcepoint.com, that misses real deployments, engram id
+// 1335's gotcha); or the frame's own hostname differs from the relayed
+// top-frame hostname (a cross-origin child frame). env.isTopFrame must be
+// exactly true or exactly false — an undeterminable frame identity fails
+// closed to false (never scanned). Pure; never throws.
+function isPaywallFrame(env) {
   const e = env && typeof env === "object" ? env : {};
   if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
   const urlLower = typeof e.frameUrl === "string" ? e.frameUrl.toLowerCase() : "";
@@ -374,6 +259,36 @@ export function isPaywallFrame(env) {
     e.frameHost !== e.topHost;
   return urlMatch || hostMismatch;
 }
+// @sync:cmp-accept-veto:end
+
+/**
+ * Closed classification enum for `classifyConsentButton`'s return value
+ * ("pay"/"settings"/"reject"/"accept"/"unknown" — see the fenced block
+ * above; this enum is metadata for external callers/tests, not referenced
+ * internally by that block, see its own leading comment for why).
+ * @type {Readonly<{PAY: "pay", SETTINGS: "settings", REJECT: "reject", ACCEPT: "accept", UNKNOWN: "unknown"}>}
+ */
+export const BUTTON_KIND = Object.freeze({
+  PAY: "pay",
+  SETTINGS: "settings",
+  REJECT: "reject",
+  ACCEPT: "accept",
+  UNKNOWN: "unknown",
+});
+
+/**
+ * Closed result-status enum for `findFreeAcceptTarget` ("single"/"noop"/
+ * "ambiguous" — same metadata-only relationship to the fenced block above
+ * as BUTTON_KIND).
+ * @type {Readonly<{SINGLE: "single", NOOP: "noop", AMBIGUOUS: "ambiguous"}>}
+ */
+export const ACCEPT_TARGET_STATUS = Object.freeze({
+  SINGLE: "single",
+  NOOP: "noop",
+  AMBIGUOUS: "ambiguous",
+});
+
+export { classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, isPaywallFrame };
 
 /**
  * Pure double-gate (L2). Mirrors src/lib/cmp-adapters.js's

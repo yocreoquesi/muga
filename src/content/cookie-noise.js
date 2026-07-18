@@ -268,124 +268,153 @@
   }
   // @sync:cmp-adapters:end
 
-  // Cookie Consent Minimizer — Didomi minimum-grant pilot (see the design
-  // docs for the full mode name; this file's own structural guard forbids
-  // spelling it outside the fenced regions below). The two pure functions
-  // in the fenced block directly below are a hand-maintained COPY of the
-  // sibling lib module's own same-named block (content scripts cannot use
-  // ES module imports — AGENTS.md). Kept in sync by
-  // tests/unit/cookie-noise-sync.test.mjs. World-agnostic and pure — never
-  // touches `window` itself; the dispatch regions further below supply
-  // the real page-global reads.
-  // @sync:cmp-accept:start
-  function canAttemptDidomiMinimumAccept(signals) {
-    const s = signals && typeof signals === "object" ? signals : {};
-    if (s.hasDidomiGlobal !== true) return false;
-    if (s.hasSetUserDisagreeToAllFn === true) return false;
-    if (s.hasSetCurrentUserStatusFn !== true) return false;
-    if (s.hasGetRequiredPurposeIdsFn !== true) return false;
-    if (s.hasGetRequiredVendorIdsFn !== true) return false;
-    if (s.hasGetPurposesFn !== true) return false;
-    if (s.hasGetVendorsFn !== true) return false;
-    return true;
+  // Cookie Consent Minimizer — consent-or-pay-wall accept-click
+  // (cookie-consent-paywall-accept). ALL accept logic lives in the pure
+  // sibling lib module (src/lib/cmp-accept-adapters.js); the fenced block
+  // directly below is a hand-maintained COPY of its button-discrimination
+  // primitives (content scripts cannot use ES module imports — AGENTS.md).
+  // Kept in sync by tests/unit/cookie-noise-sync.test.mjs. World-agnostic
+  // and pure — never touches `window`/`document` itself; the dispatch
+  // region further below supplies the real DOM reads and the click.
+  //
+  // This is the ONE and ONLY place this mechanism runs (isolated world,
+  // both Chrome and Firefox — all_frames:true already covers both via this
+  // file). A DOM `element.click()` needs neither a page-authored global nor
+  // the MAIN world, unlike the retired Didomi JS-API accept path, so there
+  // is no cross-world fork here at all.
+  // @sync:cmp-accept-veto:start
+  const ACCEPT_TOKENS = Object.freeze([
+    "accept",
+    "agree",
+    "consent",
+    "continue",
+    "zustimmen",
+    "einwilligen",
+    "akzeptieren",
+    "und weiter",
+    "annehmen",
+  ]);
+
+  const PAY_DENY_TOKENS = Object.freeze([
+    "abo",
+    "abonnieren",
+    "abonnement",
+    "pur",
+    "subscribe",
+    "subscription",
+    "pay",
+    "bezahlen",
+    "kaufen",
+    "zahlungspflichtig",
+  ]);
+
+  const CURRENCY_TOKENS = Object.freeze(["€", "$", "£"]);
+  const PERIOD_TOKENS = Object.freeze(["/monat", "/month", "/mo", "/jahr"]);
+
+  const SETTINGS_TOKENS = Object.freeze([
+    "einstellungen",
+    "settings",
+    "manage",
+    "options",
+    "preferences",
+    "customize",
+  ]);
+
+  const REJECT_TOKENS = Object.freeze([
+    "ablehnen",
+    "nur notwendige",
+    "reject",
+    "decline",
+    "necessary only",
+  ]);
+
+  function normalizeButtonText(rawText) {
+    return typeof rawText === "string" ? rawText.trim().toLowerCase() : "";
   }
 
-  // Broad, permissive normalizer for the vendor's FULL registry getters
-  // (getPurposes()/getVendors()): an array of id strings, an array of {id}
-  // objects, or an id-keyed object map all normalize to a plain array of id
-  // strings. This breadth is SAFE here because the "all" lists are only ever
-  // intersected against the strictly-parsed required set below — a broad read
-  // of the registry can never, by itself, widen consent. Never throws;
-  // unrecognized shapes resolve to an empty array (fail-closed).
-  function extractDidomiIds(value) {
-    try {
-      if (Array.isArray(value)) {
-        const ids = [];
-        for (const item of value) {
-          if (typeof item === "string") ids.push(item);
-          else if (item && typeof item.id === "string") ids.push(item.id);
-        }
-        return ids;
-      }
-      if (value && typeof value === "object") {
-        return Object.keys(value);
-      }
-    } catch {
-      // Fall through to the fail-closed empty array below.
+  function containsAnyToken(text, tokens) {
+    for (const token of tokens) {
+      if (text.includes(token)) return true;
     }
-    return [];
+    return false;
   }
 
-  // STRICT, fail-closed parser for the REQUIRED getters
-  // (getRequiredPurposeIds()/getRequiredVendorIds()). Didomi's real getters
-  // return a plain array of id strings (engram sdd/cookie-consent-accept
-  // probe, id 1324); this accepts ONLY that exact shape. Anything else — a
-  // flag-map object, an array of registry objects, an array with a non-string
-  // or empty-string member, null, a non-array — is UNRESOLVABLE and returns
-  // null so the caller abandons the entire accept rather than guessing a
-  // payload that could widen consent. Never throws.
-  function extractRequiredIds(value) {
-    if (!Array.isArray(value)) return null;
-    const ids = [];
-    for (const item of value) {
-      if (typeof item !== "string" || item.length === 0) return null;
-      ids.push(item);
+  function hasPriceIndicator(text) {
+    return containsAnyToken(text, CURRENCY_TOKENS) || containsAnyToken(text, PERIOD_TOKENS);
+  }
+
+  function classifyConsentButton(rawText) {
+    const text = normalizeButtonText(rawText);
+    if (!text) return "unknown";
+    if (containsAnyToken(text, PAY_DENY_TOKENS) || hasPriceIndicator(text)) return "pay";
+    if (containsAnyToken(text, SETTINGS_TOKENS)) return "settings";
+    if (containsAnyToken(text, REJECT_TOKENS)) return "reject";
+    if (containsAnyToken(text, ACCEPT_TOKENS)) return "accept";
+    return "unknown";
+  }
+
+  function findFreeAcceptTarget(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [];
+    const survivors = [];
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (candidate.actionable !== true) continue;
+      if (classifyConsentButton(candidate.text) !== "accept") continue;
+      survivors.push(candidate);
     }
-    return ids;
+    if (survivors.length === 0) return { status: "noop", target: null };
+    if (survivors.length > 1) return { status: "ambiguous", target: null };
+    return { status: "single", target: survivors[0] };
   }
 
-  function buildMinimumPayload(input) {
-    const i = input && typeof input === "object" ? input : {};
-    const allPurposeIds = Array.isArray(i.allPurposeIds) ? i.allPurposeIds : [];
-    const allVendorIds = Array.isArray(i.allVendorIds) ? i.allVendorIds : [];
-    const requiredPurposeIds = Array.isArray(i.requiredPurposeIds) ? i.requiredPurposeIds : [];
-    const requiredVendorIds = Array.isArray(i.requiredVendorIds) ? i.requiredVendorIds : [];
-
-    const enabledPurposes = allPurposeIds.filter((id) => requiredPurposeIds.includes(id));
-    const enabledVendors = allVendorIds.filter((id) => requiredVendorIds.includes(id));
-    const enabledPurposeSet = new Set(enabledPurposes);
-    const enabledVendorSet = new Set(enabledVendors);
-
-    return {
-      purposes: {
-        enabled: enabledPurposes,
-        disabled: allPurposeIds.filter((id) => !enabledPurposeSet.has(id)),
-      },
-      vendors: {
-        enabled: enabledVendors,
-        disabled: allVendorIds.filter((id) => !enabledVendorSet.has(id)),
-      },
-    };
+  function hasFreeRejectControl(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [];
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (candidate.actionable !== true) continue;
+      if (classifyConsentButton(candidate.text) === "reject") return true;
+    }
+    return false;
   }
 
-  // Runtime seam the content-script dispatch regions call with the RAW return
-  // values of Didomi's four getters. Owns the fail-closed contract: the
-  // REQUIRED lists are parsed STRICTLY (extractRequiredIds); if EITHER is
-  // unresolvable the whole accept is abandoned (returns null → the caller must
-  // NOT call setCurrentUserStatus, leaving the banner as the safe outcome).
-  // A DEGENERATE full registry (both getPurposes() and getVendors() collapse
-  // to empty) also NOOPs — there is no valid minimum to construct, so the
-  // call must never fire with an all-empty payload. Returns a validly-
-  // constructed minimum payload otherwise. Pure; never throws (the getter
-  // calls themselves stay in the world-specific dispatch region, wrapped
-  // there).
-  function resolveDidomiMinimumStatus(raw) {
-    const r = raw && typeof raw === "object" ? raw : {};
-    const requiredPurposeIds = extractRequiredIds(r.requiredPurposeIds);
-    const requiredVendorIds = extractRequiredIds(r.requiredVendorIds);
-    if (requiredPurposeIds === null || requiredVendorIds === null) return null;
-    const allPurposeIds = extractDidomiIds(r.allPurposeIds);
-    const allVendorIds = extractDidomiIds(r.allVendorIds);
-    if (allPurposeIds.length === 0 && allVendorIds.length === 0) return null;
-    return buildMinimumPayload({ requiredPurposeIds, requiredVendorIds, allPurposeIds, allVendorIds });
+  // isPaywallFrame (PART B of the design): a cheap PRE-FILTER, not the safety
+  // net by itself — the real safety net is hasFreeRejectControl +
+  // findFreeAcceptTarget's exactly-one requirement above, both of which still
+  // gate the actual click. This only decides whether the current frame LOOKS
+  // LIKE a Sourcepoint-style consent-or-pay message iframe worth scanning at
+  // all: true only when the frame is a SUBFRAME (never the top frame — a
+  // consent-or-pay dialog always renders in a child iframe per the real-site
+  // probe, engram id 1333/1335) AND at least one of: the frame's own URL
+  // matches the Sourcepoint message-iframe shape (hasCsp=true AND
+  // consent/tcfv2 present, case-insensitively — query-string markers, not
+  // host-based, so they still match first-party CMP subdomains like
+  // sp-spiegel-de.spiegel.de or consent-cdn.zeit.de; do NOT filter on
+  // sp-prod.net/sourcepoint.com, that misses real deployments, engram id
+  // 1335's gotcha); or the frame's own hostname differs from the relayed
+  // top-frame hostname (a cross-origin child frame). env.isTopFrame must be
+  // exactly true or exactly false — an undeterminable frame identity fails
+  // closed to false (never scanned). Pure; never throws.
+  function isPaywallFrame(env) {
+    const e = env && typeof env === "object" ? env : {};
+    if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
+    const urlLower = typeof e.frameUrl === "string" ? e.frameUrl.toLowerCase() : "";
+    const urlMatch = urlLower.includes("hascsp=true") && urlLower.includes("consent/tcfv2");
+    const hostMismatch =
+      typeof e.frameHost === "string" &&
+      e.frameHost.length > 0 &&
+      typeof e.topHost === "string" &&
+      e.topHost.length > 0 &&
+      e.frameHost !== e.topHost;
+    return urlMatch || hostMismatch;
   }
-  // @sync:cmp-accept:end
+  // @sync:cmp-accept-veto:end
 
-  // Pure double-gate for the minimum-grant path (mirrors
-  // computeCookieGate's @sync:cookie-gate shape). Hand-maintained COPY of
-  // the sibling lib module's own same-named block. Kept in sync by
+  // Pure double-gate for the accept-click path (mirrors computeCookieGate's
+  // @sync:cookie-gate shape). Hand-maintained COPY of the sibling lib
+  // module's own same-named block. Kept in sync by
   // tests/unit/cookie-noise-sync.test.mjs. The main-world caller does NOT
-  // carry this block — it never reads prefs.
+  // carry this block — it never reads prefs, and the accept-click mechanism
+  // does not run there at all.
   // @sync:cmp-accept-gate:start
   function computeAcceptGate(prefs, deps) {
     if (!prefs) return false;
@@ -423,10 +452,10 @@
   }
   dispatchNonceOnce();
 
-  function dispatchGate(enabled, didomiMinimumGateOpen) {
+  function dispatchGate(enabled) {
     try {
       document.dispatchEvent(new CustomEvent("muga:cookie-gate", {
-        detail: { enabled: !!enabled, didomiMinimumGateOpen: !!didomiMinimumGateOpen, nonce: _nonce },
+        detail: { enabled: !!enabled, nonce: _nonce },
       }));
     } catch {
       // document detached or CustomEvent unavailable — silent. Harmless
@@ -442,10 +471,6 @@
   // needed here — we only READ `wrappedJSObject.OneTrust` and CALL its
   // `RejectAll` method, we don't install anything onto the page.
   let _fxGateOpen = false;
-  // Firefox-local mirror of the minimum-grant double-gate — computed
-  // directly from prefs in this same world (Firefox has no MAIN-world
-  // relay to receive), via computeDidomiMinimumGate() further below.
-  let _fxDidomiMinimumGateOpen = false;
   let _fxActed = false;
   let _fxObserver = null;
 
@@ -526,25 +551,6 @@
       hasGetCurrentUserStatusFn = hasDidomiGlobal && typeof di.getCurrentUserStatus === "function";
     } catch {
       // ignore
-    }
-    // Didomi minimum-grant pilot signals (Firefox wrappedJSObject path) —
-    // same five signals as the Chrome MAIN-world caller, see
-    // cookie-noise-mainworld.js for the full rationale.
-    let hasSetCurrentUserStatusFn = false;
-    let hasGetRequiredPurposeIdsFn = false;
-    let hasGetRequiredVendorIdsFn = false;
-    let hasGetPurposesFn = false;
-    let hasGetVendorsFn = false;
-    try {
-      const wrapped = window.wrappedJSObject;
-      const di = wrapped && wrapped.Didomi;
-      hasSetCurrentUserStatusFn = hasDidomiGlobal && typeof di.setCurrentUserStatus === "function";
-      hasGetRequiredPurposeIdsFn = hasDidomiGlobal && typeof di.getRequiredPurposeIds === "function";
-      hasGetRequiredVendorIdsFn = hasDidomiGlobal && typeof di.getRequiredVendorIds === "function";
-      hasGetPurposesFn = hasDidomiGlobal && typeof di.getPurposes === "function";
-      hasGetVendorsFn = hasDidomiGlobal && typeof di.getVendors === "function";
-    } catch {
-      // Xray wrapper / permission failure — fail closed.
     }
     // CookieYes (#1120): unlike the three adapters above, the reject call
     // is a BARE global (`wrappedJSObject.performBannerAction`), not a
@@ -754,11 +760,6 @@
       hasSetUserDisagreeToAllFn,
       hasDidomiHostDom,
       hasGetCurrentUserStatusFn,
-      hasSetCurrentUserStatusFn,
-      hasGetRequiredPurposeIdsFn,
-      hasGetRequiredVendorIdsFn,
-      hasGetPurposesFn,
-      hasGetVendorsFn,
       hasGetCkyConsentFn,
       hasPerformBannerActionFn,
       hasCkyConsentContainerDom,
@@ -935,31 +936,12 @@
       fxStopObserver();
       return;
     }
-    // Cookie Consent Minimizer — Didomi minimum-grant pilot, own fenced
-    // region below (this file's structural guard forbids spelling the
-    // mode name outside it). Same shape as the Chrome MAIN-world caller's
-    // dispatch — see cookie-noise-mainworld.js — reached ONLY after every
-    // Tier 1 reject adapter above returned false for this page (a genuine
-    // hard wall), double-gated by a boolean computed directly from prefs
-    // in this world, AND the region's own signal check.
-    // @sync:cmp-accept-dispatch:start
-    if (_fxDidomiMinimumGateOpen && canAttemptDidomiMinimumAccept(signals)) {
-      _fxActed = true;
-      try {
-        const payload = resolveDidomiMinimumStatus({
-          requiredPurposeIds: window.wrappedJSObject.Didomi.getRequiredPurposeIds(),
-          requiredVendorIds: window.wrappedJSObject.Didomi.getRequiredVendorIds(),
-          allPurposeIds: window.wrappedJSObject.Didomi.getPurposes(),
-          allVendorIds: window.wrappedJSObject.Didomi.getVendors(),
-        });
-        if (payload) window.wrappedJSObject.Didomi.setCurrentUserStatus(payload);
-      } catch {
-        // A throwing page global must never break the page.
-      }
-      fxStopObserver();
-      return;
-    }
-    // @sync:cmp-accept-dispatch:end
+    // The consent-or-pay-wall accept-click (cookie-consent-paywall-accept)
+    // deliberately does NOT live in this Tier-1 vendor-API dispatcher — it
+    // is a generic DOM-button click, independent of any vendor adapter. See
+    // runAcceptClickDispatcher() further below, which runs for BOTH
+    // browsers (Chrome and Firefox alike) since this whole file is the
+    // isolated world already.
   }
 
   // Bounded give-up window (#1027) — Firefox mirror of the MAIN-world
@@ -1272,43 +1254,236 @@
     });
   }
 
-  // Computes the minimum-grant double-gate from the real prefs in this
-  // world — this world is the only one with prefs access; the Chrome
-  // MAIN-world caller receives the already-computed boolean via the
-  // nonce-gated event (see dispatchGate above), and Firefox reads this
-  // function's result directly (no cross-world relay needed, same world).
-  // This thin wrapper is itself fenced (this file's structural guard
-  // forbids spelling the wrapped function's name outside a fenced
-  // region — see the fenced block directly below).
+  // Resolves this frame's own identity + the relayed TOP frame's hostname,
+  // exactly the same ancestorOrigins-based mechanism computeGate() uses for
+  // the reject gate's per-site exemption (cookie-consent-all-frames FIX A) —
+  // reused here so the accept-click's own exemption check (below) honors a
+  // per-site pause even from inside a cross-origin consent iframe.
+  function resolveFrameIdentity() {
+    let isTopFrame = true;
+    try {
+      isTopFrame = window.top === window.self;
+    } catch {
+      isTopFrame = false;
+    }
+    if (isTopFrame) {
+      return { isTopFrame: true, topHostname: location.hostname };
+    }
+    let ancestorOrigins = null;
+    try {
+      ancestorOrigins = location.ancestorOrigins;
+    } catch {
+      ancestorOrigins = null;
+    }
+    return { isTopFrame: false, topHostname: resolveTopFrameHostname({ isTopFrame: false, ancestorOrigins }) };
+  }
+
+  // Computes the accept-click double-gate from the real prefs in this
+  // world — this world is the only one with prefs access. Unlike the
+  // reject gate (relayed to MAIN world via dispatchGate), the accept-click
+  // mechanism never runs outside this world at all, so nothing is relayed
+  // here — this result is consumed directly, below. This thin wrapper is
+  // itself fenced (this file's structural guard forbids spelling the
+  // wrapped function's name outside a fenced region).
   // @sync:cmp-accept-gate-call:start
-  function computeDidomiMinimumGate(prefs) {
-    const cleaner = window.__mugaCleaner;
+  function computeAcceptGateForFrame(prefs) {
+    const { isTopFrame, topHostname } = resolveFrameIdentity();
+    if (isTopFrame) {
+      const cleaner = window.__mugaCleaner;
+      return computeAcceptGate(prefs, {
+        hostname: topHostname,
+        isSiteFullyExempt:
+          cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
+      });
+    }
     return computeAcceptGate(prefs, {
-      hostname: location.hostname,
-      isSiteFullyExempt:
-        cleaner && typeof cleaner.isSiteFullyExempt === "function" ? cleaner.isSiteFullyExempt : null,
+      hostname: topHostname,
+      // FAIL-CLOSED: an undeterminable top host is treated as EXEMPT — see
+      // computeGate()'s child-frame branch for the identical rationale.
+      isSiteFullyExempt: (hostname, prefsArg) =>
+        hostname === null ? true : isSiteFullyExempt(hostname, prefsArg),
     });
   }
   // @sync:cmp-accept-gate-call:end
+
+  // ── Consent-or-pay-wall accept-click dispatch ────────────────────────────
+  //
+  // Runs for BOTH browsers (this whole file is the isolated world already;
+  // all_frames:true covers every frame on both). Independent of the Tier-1
+  // reject dispatchers above — a DOM `element.click()` needs no vendor API,
+  // no page-authored global, and no MAIN world, so there is no per-browser
+  // fork here at all, unlike the retired Didomi JS-API accept path.
+  let _acceptActed = false;
+  let _acceptGateOpen = false;
+  let _acceptObserver = null;
+  const ACCEPT_GIVE_UP_AFTER_DOM_READY_MS = 10000;
+  let _acceptGiveUpArmed = false;
+  let _acceptGiveUpTimer = null;
+  let _acceptGiveUpFallbackTimer = null;
+
+  const ACCEPT_CANDIDATE_SELECTOR =
+    'button, a[role="button"], [role="button"], input[type="button"], input[type="submit"]';
+
+  function acceptAccessibleName(el) {
+    try {
+      const aria = typeof el.getAttribute === "function" ? el.getAttribute("aria-label") : null;
+      if (typeof aria === "string" && aria.trim().length > 0) return aria;
+      if (typeof el.value === "string" && el.value.trim().length > 0) return el.value;
+      return typeof el.textContent === "string" ? el.textContent : "";
+    } catch {
+      return "";
+    }
+  }
+
+  // Actionability = connected to the layout (getClientRects non-empty —
+  // false for display:none/detached) and not disabled. A CSS-hidden decoy
+  // (visibility:hidden or opacity:0 with layout box) can still have
+  // non-empty client rects; getClientRects().length===0 catches the common
+  // display:none / detached-node case, which is the shape a hostile page
+  // would use to hide a decoy button from view without removing it. This
+  // mirrors the same conservative bar every other DOM-driven signal in this
+  // file uses — never throws.
+  function isAcceptCandidateActionable(el) {
+    try {
+      if (el.disabled === true) return false;
+      if (typeof el.getClientRects === "function" && el.getClientRects().length === 0) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function collectAcceptCandidates() {
+    const candidates = [];
+    try {
+      const nodes = document.querySelectorAll(ACCEPT_CANDIDATE_SELECTOR);
+      for (const el of nodes) {
+        candidates.push({
+          text: acceptAccessibleName(el),
+          actionable: isAcceptCandidateActionable(el),
+          ref: el,
+        });
+      }
+    } catch {
+      // document not ready / detached — leave candidates empty (NOOP).
+    }
+    return candidates;
+  }
+
+  // The dispatch itself. Fires ONLY when every one of these holds, checked
+  // in this exact order: the accept-click double-gate is open (mode+gesture
+  // +enabled+onboarded+not-exempt, computed above); this is NOT the top
+  // frame (a consent-or-pay dialog never renders there); the frame's own
+  // shape matches a consent-or-pay wall (isPaywallFrame); NO free reject
+  // control exists anywhere on the wall (hasFreeRejectControl — a free
+  // reject always wins, this NEVER double-guesses against the reject
+  // engine); and EXACTLY ONE actionable free-accept candidate survives
+  // (findFreeAcceptTarget). Any ambiguity, any pay/settings-only match, or
+  // any missing signal resolves to a NOOP — this function never guesses.
+  function runAcceptClickDispatcher() {
+    if (_acceptActed || !_acceptGateOpen) return;
+    const { isTopFrame, topHostname } = resolveFrameIdentity();
+    if (isTopFrame) return;
+    const env = {
+      isTopFrame: false,
+      frameUrl: location.href,
+      frameHost: location.hostname,
+      topHost: topHostname,
+    };
+    if (!isPaywallFrame(env)) return;
+    const candidates = collectAcceptCandidates();
+    if (hasFreeRejectControl(candidates)) return;
+    const result = findFreeAcceptTarget(candidates);
+    if (result.status !== "single") return;
+    _acceptActed = true;
+    try {
+      result.target.ref.click();
+    } catch {
+      // A throwing/hostile page element must never break the page.
+    }
+    acceptStopObserver();
+  }
+
+  // Bounded give-up window — same rationale and shape as the reject
+  // dispatchers' own give-up windows above (a consent-or-pay wall that is
+  // going to appear does so within a few seconds of a settled DOM).
+  // Fail-closed: giving up just disconnects the observer, never clicks.
+  function acceptArmGiveUp() {
+    if (_acceptGiveUpArmed) return;
+    _acceptGiveUpArmed = true;
+    const schedule = () => {
+      _acceptGiveUpTimer = setTimeout(() => {
+        _acceptGiveUpTimer = null;
+        if (!_acceptActed) acceptStopObserver();
+      }, ACCEPT_GIVE_UP_AFTER_DOM_READY_MS);
+    };
+    if (document.readyState === "loading") {
+      _acceptGiveUpFallbackTimer = setTimeout(() => {
+        _acceptGiveUpFallbackTimer = null;
+        if (!_acceptActed) acceptStopObserver();
+      }, ACCEPT_GIVE_UP_AFTER_DOM_READY_MS);
+      document.addEventListener("DOMContentLoaded", schedule, { once: true });
+    } else {
+      schedule();
+    }
+  }
+
+  function acceptStartObserver() {
+    if (_acceptObserver || _acceptActed) return;
+    if (!document || !document.documentElement) return;
+    try {
+      _acceptObserver = new MutationObserver(() => runAcceptClickDispatcher());
+      _acceptObserver.observe(document.documentElement, { childList: true, subtree: true });
+    } catch {
+      _acceptObserver = null;
+    }
+    acceptArmGiveUp();
+  }
+
+  function acceptStopObserver() {
+    if (_acceptGiveUpTimer !== null) {
+      clearTimeout(_acceptGiveUpTimer);
+      _acceptGiveUpTimer = null;
+    }
+    if (_acceptGiveUpFallbackTimer !== null) {
+      clearTimeout(_acceptGiveUpFallbackTimer);
+      _acceptGiveUpFallbackTimer = null;
+    }
+    _acceptGiveUpArmed = false;
+    if (!_acceptObserver) return;
+    try {
+      _acceptObserver.disconnect();
+    } catch {
+      // already disconnected
+    }
+    _acceptObserver = null;
+  }
 
   function readPrefsAndGate() {
     try {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
         void chrome.runtime.lastError;
         const open = computeGate(prefs);
-        const minimumGateOpen = computeDidomiMinimumGate(prefs);
         // Always dispatch — harmless no-op on Firefox, where no MAIN-world
         // listener is ever loaded (no world:"MAIN" content script there).
-        dispatchGate(open, minimumGateOpen);
+        dispatchGate(open);
         if (_isFirefox) {
           _fxGateOpen = open;
-          _fxDidomiMinimumGateOpen = minimumGateOpen;
           if (open) {
             fxRunDispatcher(); // initial sweep — the banner may already exist
             fxStartObserver();
           } else {
             fxStopObserver();
           }
+        }
+        // Accept-click gate + dispatch — runs directly in THIS world for
+        // both browsers, independent of the reject gate/dispatch above.
+        _acceptGateOpen = computeAcceptGateForFrame(prefs);
+        if (_acceptGateOpen) {
+          runAcceptClickDispatcher(); // initial sweep — the wall may already exist
+          acceptStartObserver();
+        } else {
+          acceptStopObserver();
         }
       });
     } catch {
