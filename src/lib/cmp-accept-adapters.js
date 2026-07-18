@@ -1,15 +1,44 @@
 /**
  * MUGA: Cookie Consent Minimizer — accept-when-necessary module
- * (cookie-consent-accept Slice 2a — Didomi-only pilot)
+ * (cookie-consent-paywall-accept)
  *
  * Pure ES module. This is the ONLY file in the project where MUGA is
- * allowed to construct a consent-GRANTING call. It exists because the
+ * allowed to construct a consent-GRANTING action. It exists because the
  * project's 3-state `cookieConsentMode` pref includes an agreed opt-in
- * mode, "accept-when-necessary", that lets MUGA submit the strictly-
- * necessary-only minimum on a genuine hard wall — a page where NO reject
- * path exists at all, only some form of "accept" — so the user is not
- * stuck. This is NOT the default; the default mode ("reject-only") never
- * reaches this file's logic at all (see the double-gate below).
+ * mode, "accept-when-necessary", that lets MUGA click through a genuine
+ * consent-or-pay wall's free "Accept all" button when the ONLY free path
+ * through the wall is to accept — so the user is not forced to either pay
+ * or lose the content. This is NOT the default; the default mode
+ * ("reject-only") never reaches this file's logic at all (see the
+ * double-gate below).
+ *
+ * ── HONEST FRAMING (read this before touching anything here) ───────────
+ *
+ * A prior design (cookie-consent-accept Slice 2a) attempted a
+ * "necessary-only minimum" construction via a vendor JS API. A research
+ * spike (engram id 1331, "DIDOMI-ACCEPT-NOT-VIABLE") proved that path dead
+ * on three independent, compounding grounds: no real hard wall for that
+ * vendor ever lacks a reject function; the vendor's "required" getters mean
+ * "consent-gated", not "necessary/exempt"; and the grant call silently
+ * no-ops on real deployments. That whole code path — the vendor-specific
+ * minimum-payload decision, capability detection, payload construction, the
+ * vendor getters, and the MAIN-world accept dispatch fork — is RETIRED and
+ * deleted.
+ *
+ * The replacement mechanism is a DOM `element.click()` on a consent-or-pay
+ * wall's own free "Accept all & continue" button (proven viable + reachable
+ * — engram id 1333, id 1335). This is a DIFFERENT safety shape, not a
+ * smaller version of the old one:
+ *
+ *   - On a true consent-or-pay wall, the ONLY free path is "Accept ALL &
+ *     continue" — there is no necessary-only option to submit. When this
+ *     feature fires, it GRANTS BROAD ADVERTISING/TRACKING CONSENT. That is
+ *     the honest tradeoff of the feature, not a bug: the alternative is the
+ *     user pays or is denied the content entirely.
+ *   - The DENYLIST inverts: it no longer forbids "accept-all" (accept-all
+ *     IS the action) — it forbids the PAY/SUBSCRIBE button. Safety is now
+ *     "positively identify the FREE-accept button, and NEVER the button
+ *     that commits the user to a subscription."
  *
  * ── Five independent safety layers (each sufficient alone) ─────────────
  *
@@ -17,9 +46,9 @@
  *   brain) and the reject regions of the two content scripts stay FOREVER
  *   free of any accept-family identifier — enforced by an absolute
  *   structural scan there. ALL accept logic lives here instead, plus the
- *   `@sync:cmp-accept` content-script region that hand-copies this
- *   module's pure functions (mirroring how `computeCookieGate` is mirrored
- *   into `@sync:cookie-gate`).
+ *   `@sync:cmp-accept-veto` / `@sync:cmp-accept-dispatch` content-script
+ *   regions that hand-copy this module's pure functions (mirroring how
+ *   `computeCookieGate` is mirrored into `@sync:cookie-gate`).
  *
  * L2 — Double-gate as a DATA invariant: `computeAcceptGate` below opens
  *   ONLY when BOTH `cookieConsentMode === "accept-when-necessary"` AND
@@ -29,107 +58,321 @@
  *   settings-schema.js's `clampImportedCookieConsentMode` /
  *   `exportOnlyBoolean` for the import-time half of this guarantee.
  *
- * L3 — Reject-first ladder: `decideMinimumAccept` below only ever returns
- *   ACCEPT_MINIMUM when the caller's `decision.reason` is exactly
- *   `"no-reject-path"` — i.e. the reject ladder in cmp-adapters.js already
- *   ran FIRST, for this exact page, and confirmed there is truly no reject
- *   path. A successful reject, or plain uncertainty, never reaches this
- *   module's ACCEPT_MINIMUM branch.
+ * L3 — Last-resort-only: `hasFreeRejectControl` scans the SAME wall for any
+ *   free reject/necessary-only control before the accept-click is ever
+ *   attempted. If one exists, the accept-click NEVER fires — a free reject
+ *   is always preferred and is the reject engine's job, not this module's.
  *
- * L4 — Minimum enforcement + broad-accept DENYLIST: `didomiAcceptAdapter`
- *   only ever constructs a payload that enables the vendor's OWN declared
- *   "required" ids and disables everything else the vendor's OWN registry
- *   reports — never a hardcoded id, never "everything enabled". A
- *   structural test (tests/unit/cmp-accept-adapters.test.mjs) scans this
- *   file for every broad-accept method identified across all 10 vendors
- *   this project has adapters for (see that test's own DENYLIST list for
- *   the exact literals — deliberately not repeated verbatim here so this
- *   docblock cannot itself trip that same scan) and fails the build if any
- *   appear.
+ * L4 — Button-discrimination DENYLIST (the crux, see PART A below):
+ *   `findFreeAcceptTarget` clicks a button ONLY when exactly one candidate
+ *   classifies as a free-accept control and ZERO candidates that could be
+ *   confused for it survive. A pay/subscribe token anywhere in the button's
+ *   accessible name VETOES that candidate outright — deny-wins precedence,
+ *   checked before any accept token. Ambiguity (zero or more than one
+ *   surviving candidate) also VETOES — never guesses.
  *
- * L5 — Fail-toward-NOOP everywhere: every function below returns a NOOP
- *   shape on any missing/malformed input, any thrown exemption predicate,
- *   or any thrown page-global call — never an accept.
+ * L5 — Fail-toward-NOOP everywhere: every function below returns a NOOP/
+ *   veto shape on any missing/malformed input or any thrown predicate —
+ *   never a click.
  *
- * Slice 2a scope: Didomi is the ONLY accept-capable adapter today (see
- * ACCEPT_CAPABLE_ADAPTER_IDS below) — it is the only vendor with BOTH a
- * real hard-wall scenario and a generalizable, granular, necessary-only
- * construction (its own `getRequiredPurposeIds()` / `getRequiredVendorIds()`
- * getters). A last-resort accept-all path for vendors that expose no
- * granular control at all (OneTrust, CookieScript) is explicitly deferred
- * to a later slice, behind its own explicit per-decision safety review —
- * do not add it here without that review.
+ * Slice scope: DE + EN button-text tokens only (the real-site probes that
+ * proved this mechanism viable — zeit.de, spiegel.de — are German-language
+ * Sourcepoint consent-or-pay walls). Widening locale coverage is a later
+ * slice, each addition reviewed the same way the DE/EN tokens were.
  *
- * Residual risk (stated honestly): this module's live behavior — does
- * Didomi's `setCurrentUserStatus` call actually dismiss a real hard wall
- * and grant zero non-essential — is NOT verifiable by unit tests or a
- * synthetic fixture; it is a real-EU-geo behavioral question. See the
- * prominent comment on didomiAcceptAdapter below and
+ * Residual risk (stated honestly): this module's live in-extension
+ * behavior — does the DOM click actually dismiss a real hard wall from
+ * inside the extension's content script — is proven only by a throwaway
+ * Playwright probe (id 1333), not by an in-extension run. See
  * docs/qa/cookie-consent-release-smoke.md — this mode must not be enabled
- * for real users before that smoke passes from a real EU vantage.
+ * for real users before a real-EU headed smoke test passes.
  */
 
+// ── PART A — word lists (DATA, not code) ────────────────────────────────
+//
+// Kept as flat, frozen arrays of lowercase substrings so the matching logic
+// below never needs its own vendor-specific branching. Widening locale
+// coverage in a later slice means appending to these arrays, not editing
+// the matching functions.
+
 /**
- * Closed action enum. Every member is a minimum-accept action. There is
- * intentionally no broad/all-consent member in this set, and there must
- * never be one — see the file docblock's L4 and the DENYLIST structural
- * test.
- * @type {Readonly<{ACCEPT_MINIMUM: "accept-minimum"}>}
+ * Tokens that mark a button as the FREE accept-and-continue control on a
+ * consent-or-pay wall. DE + EN only this slice (see file docblock).
+ *
+ * KNOWN LIMITATION (documented, out of scope this slice): matching is plain
+ * case-insensitive substring — a future locale token that happens to embed
+ * one of these strings (e.g. French "continuer" embeds "continue") would
+ * false-positive as ACCEPT. Widening past DE+EN requires checking new
+ * tokens against this list for substring collisions before adding them.
+ * @type {ReadonlyArray<string>}
  */
-export const ACTIONS_ACCEPT = Object.freeze({
-  ACCEPT_MINIMUM: "accept-minimum",
+export const ACCEPT_TOKENS = Object.freeze([
+  "accept",
+  "agree",
+  "consent",
+  "continue",
+  "zustimmen",
+  "einwilligen",
+  "akzeptieren",
+  "und weiter",
+  "annehmen",
+]);
+
+/**
+ * Tokens that mark a button as a PAY/SUBSCRIBE control. Precedence: this
+ * DENYLIST wins over every other classification — a button whose
+ * accessible name contains any of these (or a currency/period symbol, see
+ * CURRENCY_TOKENS / PERIOD_TOKENS below) is NEVER clicked, regardless of
+ * whether it also contains an accept token (e.g. "Accept subscription").
+ * @type {ReadonlyArray<string>}
+ */
+export const PAY_DENY_TOKENS = Object.freeze([
+  "abo",
+  "abonnieren",
+  "abonnement",
+  "pur",
+  "subscribe",
+  "subscription",
+  "pay",
+  "bezahlen",
+  "kaufen",
+  "zahlungspflichtig",
+]);
+
+/**
+ * Currency symbols. A locale-agnostic backstop: any button whose
+ * accessible name contains one of these is treated as a pay control even
+ * if no PAY_DENY_TOKENS literal matches (covers labels this slice's word
+ * lists do not otherwise recognize).
+ * @type {ReadonlyArray<string>}
+ */
+export const CURRENCY_TOKENS = Object.freeze(["€", "$", "£"]);
+
+/**
+ * Billing-period tokens. Same locale-agnostic backstop rationale as
+ * CURRENCY_TOKENS — "/Monat", "/month", "/mo", "/Jahr" mark a price string
+ * even without an explicit currency symbol next to them.
+ * @type {ReadonlyArray<string>}
+ */
+export const PERIOD_TOKENS = Object.freeze(["/monat", "/month", "/mo", "/jahr"]);
+
+/**
+ * Tokens that mark a button as a settings/manage/preferences link rather
+ * than a direct accept or reject action. Excluded from BOTH the accept and
+ * reject candidate pools — clicking a settings link does not dismiss the
+ * wall and is never the intended action here.
+ * @type {ReadonlyArray<string>}
+ */
+export const SETTINGS_TOKENS = Object.freeze([
+  "einstellungen",
+  "settings",
+  "manage",
+  "options",
+  "preferences",
+  "customize",
+]);
+
+/**
+ * Tokens that mark a button as a FREE reject / necessary-only control.
+ * DE + EN only this slice, matching ACCEPT_TOKENS' scope. Presence of any
+ * matching control anywhere on the wall means a free reject exists, so the
+ * accept-click must never fire — see `hasFreeRejectControl` and L3 above.
+ * @type {ReadonlyArray<string>}
+ */
+export const REJECT_TOKENS = Object.freeze([
+  "ablehnen",
+  "nur notwendige",
+  "reject",
+  "decline",
+  "necessary only",
+]);
+
+function normalizeButtonText(rawText) {
+  return typeof rawText === "string" ? rawText.trim().toLowerCase() : "";
+}
+
+function containsAnyToken(text, tokens) {
+  for (const token of tokens) {
+    if (text.includes(token)) return true;
+  }
+  return false;
+}
+
+/**
+ * True if `text` contains a currency symbol or billing-period token — the
+ * locale-agnostic price backstop described in PAY_DENY_TOKENS' docblock.
+ * @param {string} text - already-normalized (lowercased, trimmed) text.
+ * @returns {boolean}
+ */
+function hasPriceIndicator(text) {
+  return containsAnyToken(text, CURRENCY_TOKENS) || containsAnyToken(text, PERIOD_TOKENS);
+}
+
+/**
+ * Closed classification enum for `classifyConsentButton`'s return value.
+ * @type {Readonly<{PAY: "pay", SETTINGS: "settings", REJECT: "reject", ACCEPT: "accept", UNKNOWN: "unknown"}>}
+ */
+export const BUTTON_KIND = Object.freeze({
+  PAY: "pay",
+  SETTINGS: "settings",
+  REJECT: "reject",
+  ACCEPT: "accept",
+  UNKNOWN: "unknown",
 });
 
 /**
- * Slice 2a scope: the only vendor id whose hard wall can ever resolve to
- * ACCEPT_MINIMUM. See the file docblock for why every other vendor is
- * either dead-code (reject and accept share one page global, so a hard
- * wall for reject is a hard wall for accept too) or deferred behind a
- * last-resort-only safety review.
- * @type {ReadonlySet<string>}
+ * Pure button-text classifier (L4, PART A of the design — the crux of this
+ * feature's safety model). Given a button's accessible name (accessible
+ * name = aria-label, falling back to visible text — the caller supplies
+ * whichever it already resolved), returns exactly one of BUTTON_KIND.
+ *
+ * PRECEDENCE (checked in this exact order, first match wins):
+ *   1. PAY  — any PAY_DENY_TOKENS literal OR a price indicator
+ *      (hasPriceIndicator) anywhere in the text. DENY WINS: this check
+ *      runs BEFORE the accept check, so "Accept subscription — 4,99€/Monat"
+ *      classifies as PAY, never ACCEPT, no matter how strong the accept
+ *      wording also present.
+ *   2. SETTINGS — any SETTINGS_TOKENS literal. Checked before REJECT/ACCEPT
+ *      so "Cookie settings" or "Accept cookie settings" never fires either
+ *      one — a settings link does not dismiss the wall.
+ *   3. REJECT — any REJECT_TOKENS literal.
+ *   4. ACCEPT — any ACCEPT_TOKENS literal.
+ *   5. UNKNOWN — none of the above matched (an empty/blank text also lands
+ *      here).
+ *
+ * Pure; never throws; a non-string input normalizes to "" and returns
+ * UNKNOWN.
+ *
+ * @param {string} rawText
+ * @returns {"pay"|"settings"|"reject"|"accept"|"unknown"}
  */
-const ACCEPT_CAPABLE_ADAPTER_IDS = new Set(["didomi"]);
+export function classifyConsentButton(rawText) {
+  const text = normalizeButtonText(rawText);
+  if (!text) return BUTTON_KIND.UNKNOWN;
+  if (containsAnyToken(text, PAY_DENY_TOKENS) || hasPriceIndicator(text)) return BUTTON_KIND.PAY;
+  if (containsAnyToken(text, SETTINGS_TOKENS)) return BUTTON_KIND.SETTINGS;
+  if (containsAnyToken(text, REJECT_TOKENS)) return BUTTON_KIND.REJECT;
+  if (containsAnyToken(text, ACCEPT_TOKENS)) return BUTTON_KIND.ACCEPT;
+  return BUTTON_KIND.UNKNOWN;
+}
 
 /**
- * Pure decision function (L3). Given the reject ladder's decision for
- * this page (from `cmp-adapters.js`'s `decideAction`), the user's raw
- * mode pref, and the user's raw consent-gesture pref, decides whether a
- * minimum-accept action should be attempted.
- *
- * Returns ACCEPT_MINIMUM ONLY when every one of these holds:
- *   - `mode === "accept-when-necessary"` (not "reject-only", not "off",
- *     not any corrupted/unrecognized string);
- *   - `consented === true` (not truthy — exactly `true`);
- *   - `decision.reason === "no-reject-path"` (a genuine hard wall for
- *     THIS page — not "reject" (something already succeeded) and not
- *     "uncertain" (no confident detection at all));
- *   - `decision.adapterId` is in the accept-capable set (today: only
- *     `"didomi"`).
- *
- * Any other combination — including malformed input — resolves to NOOP.
- * Pure and never throws.
- *
- * SPEC-MIRROR counterpart: this is the exhaustively-tested pure decision,
- * but the content scripts do NOT call it — they gate on the inlined runtime
- * pair `computeAcceptGate(prefs) && canAttemptDidomiMinimumAccept(signals)`
- * (the same pure-lib-fn ↔ inlined-runtime split as `decideAction` ↔ the
- * inlined canReject ladder in cmp-adapters.js / the content scripts). A
- * PARITY test (tests/unit/cmp-accept-adapters.test.mjs) proves the two
- * agree across the signal/mode/consent matrix so they cannot drift.
- *
- * @param {{reason?: string, adapterId?: string|null}|null|undefined} decision
- *   The result of cmp-adapters.js's decideAction() for this page.
- * @param {*} mode - The raw `cookieConsentMode` pref value.
- * @param {*} consented - The raw `cookieConsentAcceptConsented` pref value.
- * @returns {{action: "accept-minimum"|null, adapterId: string|null}}
+ * Closed result-status enum for `findFreeAcceptTarget`.
+ * @type {Readonly<{SINGLE: "single", NOOP: "noop", AMBIGUOUS: "ambiguous"}>}
  */
-export function decideMinimumAccept(decision, mode, consented) {
-  const d = decision && typeof decision === "object" ? decision : {};
-  if (mode !== "accept-when-necessary") return { action: null, adapterId: null };
-  if (consented !== true) return { action: null, adapterId: null };
-  if (d.reason !== "no-reject-path") return { action: null, adapterId: null };
-  if (!ACCEPT_CAPABLE_ADAPTER_IDS.has(d.adapterId)) return { action: null, adapterId: null };
-  return { action: ACTIONS_ACCEPT.ACCEPT_MINIMUM, adapterId: d.adapterId };
+export const ACCEPT_TARGET_STATUS = Object.freeze({
+  SINGLE: "single",
+  NOOP: "noop",
+  AMBIGUOUS: "ambiguous",
+});
+
+/**
+ * A candidate button as the caller (the content-script DOM scan) resolves
+ * it — deliberately plain data, no DOM element, so this stays a pure,
+ * exhaustively-unit-testable function (plain-data-in/plain-data-out).
+ * @typedef {{text: string, actionable: boolean, ref?: *}} ConsentButtonCandidate
+ */
+
+/**
+ * Pure button-discrimination decision (L4). Scans `candidates` for buttons
+ * that classify as BUTTON_KIND.ACCEPT and are `actionable === true` (the
+ * caller is responsible for resolving actionability — visible, not
+ * disabled, in the layout — before calling this; a candidate that is not
+ * exactly `actionable === true` is excluded outright, covering the "hidden
+ * accept decoy" adversarial case).
+ *
+ * Returns:
+ *   - `{status: "single", target}` — EXACTLY ONE actionable accept
+ *     candidate survived. `target` is that candidate, unmodified.
+ *   - `{status: "noop", target: null}` — ZERO candidates survived.
+ *   - `{status: "ambiguous", target: null}` — MORE THAN ONE candidate
+ *     survived. Ambiguity is a VETO, never a guess — the caller must NOOP.
+ *
+ * Pure; never throws; malformed/missing input resolves to NOOP.
+ *
+ * @param {ReadonlyArray<ConsentButtonCandidate>} [candidates]
+ * @returns {{status: "single"|"noop"|"ambiguous", target: ConsentButtonCandidate|null}}
+ */
+export function findFreeAcceptTarget(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const survivors = [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (candidate.actionable !== true) continue;
+    if (classifyConsentButton(candidate.text) !== BUTTON_KIND.ACCEPT) continue;
+    survivors.push(candidate);
+  }
+  if (survivors.length === 0) return { status: ACCEPT_TARGET_STATUS.NOOP, target: null };
+  if (survivors.length > 1) return { status: ACCEPT_TARGET_STATUS.AMBIGUOUS, target: null };
+  return { status: ACCEPT_TARGET_STATUS.SINGLE, target: survivors[0] };
+}
+
+/**
+ * Pure last-resort gate (L3). True if any ACTIONABLE candidate on the wall
+ * classifies as a free reject/necessary-only control. When true, the
+ * accept-click must NEVER fire — a free reject always wins; it is the
+ * reject engine's job, not this module's.
+ *
+ * Pure; never throws; malformed/missing input resolves to false
+ * (conservative in the SAFE direction here: a caller that cannot determine
+ * candidates at all has no evidence of a free reject, so this returns
+ * false — but the caller's overall dispatch must independently require a
+ * CONFIRMED consent-or-pay wall shape before ever reaching the click, see
+ * `isPaywallFrame`).
+ *
+ * @param {ReadonlyArray<ConsentButtonCandidate>} [candidates]
+ * @returns {boolean}
+ */
+export function hasFreeRejectControl(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (candidate.actionable !== true) continue;
+    if (classifyConsentButton(candidate.text) === BUTTON_KIND.REJECT) return true;
+  }
+  return false;
+}
+
+/**
+ * Pure consent-or-pay-wall frame-shape detection (PART B of the design).
+ * This is a cheap PRE-FILTER, not the safety net by itself — the real
+ * safety net is `hasFreeRejectControl` + `findFreeAcceptTarget`'s
+ * exactly-one requirement, both of which still gate the actual click. This
+ * function only decides whether the current frame LOOKS LIKE a
+ * Sourcepoint-style consent-or-pay message iframe worth scanning at all.
+ *
+ * True only when the frame is a SUBFRAME (never the top frame — a
+ * consent-or-pay dialog always renders in a child iframe per the real-site
+ * probe, engram id 1333/1335) AND at least one of:
+ *   - the frame's own URL matches the Sourcepoint message-iframe shape
+ *     (`hasCsp=true` AND `consent/tcfv2` present, case-insensitively —
+ *     these are query-string markers, not host-based, so they still match
+ *     first-party CMP subdomains like sp-spiegel-de.spiegel.de or
+ *     consent-cdn.zeit.de; do NOT filter on sp-prod.net/sourcepoint.com,
+ *     that misses real deployments, engram id 1335's gotcha);
+ *   - the frame's own hostname differs from the relayed top-frame
+ *     hostname (a cross-origin child frame).
+ *
+ * `env.isTopFrame` must be exactly `true` or exactly `false` — an
+ * undeterminable frame identity fails closed to false (never scanned).
+ *
+ * Pure; never throws.
+ *
+ * @param {{isTopFrame?: boolean, frameUrl?: string, frameHost?: string|null, topHost?: string|null}} [env]
+ * @returns {boolean}
+ */
+export function isPaywallFrame(env) {
+  const e = env && typeof env === "object" ? env : {};
+  if (e.isTopFrame !== false) return false; // never the top frame; fail-closed on unknown identity
+  const urlLower = typeof e.frameUrl === "string" ? e.frameUrl.toLowerCase() : "";
+  const urlMatch = urlLower.includes("hascsp=true") && urlLower.includes("consent/tcfv2");
+  const hostMismatch =
+    typeof e.frameHost === "string" &&
+    e.frameHost.length > 0 &&
+    typeof e.topHost === "string" &&
+    e.topHost.length > 0 &&
+    e.frameHost !== e.topHost;
+  return urlMatch || hostMismatch;
 }
 
 /**
@@ -143,10 +386,9 @@ export function decideMinimumAccept(decision, mode, consented) {
  * usual enabled/onboarded/exemption checks every feature in this project
  * respects.
  *
- * This function's logic is hand-copied into the `@sync:cmp-accept`
- * regions of both content scripts (content/cookie-noise.js and
- * content/cookie-noise-mainworld.js), the same pattern
- * `computeCookieGate` uses for `@sync:cookie-gate` — kept in sync by
+ * This function's logic is hand-copied into the `@sync:cmp-accept-gate`
+ * region of content/cookie-noise.js, the same pattern `computeCookieGate`
+ * uses for `@sync:cookie-gate` — kept in sync by
  * tests/unit/cookie-noise-sync.test.mjs.
  *
  * Fail-closed: a missing/false signal, or an unexpected throw from the
@@ -176,212 +418,3 @@ function computeAcceptGate(prefs, deps) {
 // @sync:cmp-accept-gate:end
 
 export { computeAcceptGate };
-
-/**
- * Builds the Didomi minimum-consent payload (L4). Pure — never touches
- * `window`. Enables ONLY the ids the vendor's OWN page state reports as
- * required (`getRequiredPurposeIds()` / `getRequiredVendorIds()` in the
- * real call site), disables every other id the vendor's OWN registry
- * reports (`getPurposes()` / `getVendors()`) — NEVER a hardcoded id list,
- * NEVER "everything enabled".
- *
- * Widening is prevented by a defense-in-depth chain, NOT by this function
- * alone: the runtime seam `resolveDidomiMinimumStatus` parses the vendor's
- * REQUIRED getters STRICTLY (array-of-non-empty-strings-or-NOOP — see
- * `extractRequiredIds`) before this function ever runs, so a hostile
- * "required" shape (a flag-map, an array of registry objects, anything that
- * is not a clean id array) abandons the whole accept instead of reaching
- * here. On top of that, this function only ever enables ids it can also see
- * in the full registry (`allPurposeIds`/`allVendorIds`), so an id present
- * in `requiredPurposeIds`/`requiredVendorIds` but ABSENT from the registry
- * is never enabled. Strict required-parse + registry intersection +
- * NOOP-on-unexpected-shape is the actual guarantee.
- *
- * @param {{requiredPurposeIds?: string[], requiredVendorIds?: string[], allPurposeIds?: string[], allVendorIds?: string[]}} [input]
- * @returns {{purposes: {enabled: string[], disabled: string[]}, vendors: {enabled: string[], disabled: string[]}}}
- */
-/**
- * Pure hard-wall + accept-capability detection (mirrors the reject
- * ladder's per-vendor detect() shape in cmp-adapters.js). Confirms BOTH:
- *   - a genuine Didomi hard wall for this page (global present, the
- *     reject function absent — the exact "no-reject-path" condition), and
- *   - every accept-specific signal this Slice's minimum-payload
- *     construction needs (`setCurrentUserStatus` plus both the required-
- *     ids getters and both the full-registry getters).
- *
- * Content scripts cannot import this module (AGENTS.md — no ES imports in
- * content scripts), so the block between the `@sync:cmp-accept` markers
- * below (this function AND `buildMinimumPayload` above it) is hand-copied,
- * modulo indentation, into content/cookie-noise-mainworld.js (Chrome MAIN
- * world) and content/cookie-noise.js (Firefox `wrappedJSObject` path).
- * Kept in sync by tests/unit/cookie-noise-sync.test.mjs.
- *
- * Pure: given the same signals it always returns the same result. Never
- * throws.
- *
- * RUNTIME-INLINE counterpart: this is the predicate the content scripts
- * actually gate on (hand-copied into the @sync:cmp-accept region of both),
- * the runtime half of the SPEC-MIRROR `decideMinimumAccept` above — mirrors
- * `decideAction` ↔ the inlined canReject ladder. A PARITY test
- * (tests/unit/cmp-accept-adapters.test.mjs) proves the two agree across the
- * signal/mode/consent matrix. It is deliberately STRICTER than the spec
- * decision alone: it also re-confirms the accept-capability surface the
- * spec decision cannot see, so a hard wall lacking a getter never acts.
- *
- * @param {object|null|undefined} signals
- * @returns {boolean}
- */
-// @sync:cmp-accept:start
-function canAttemptDidomiMinimumAccept(signals) {
-  const s = signals && typeof signals === "object" ? signals : {};
-  if (s.hasDidomiGlobal !== true) return false;
-  if (s.hasSetUserDisagreeToAllFn === true) return false;
-  if (s.hasSetCurrentUserStatusFn !== true) return false;
-  if (s.hasGetRequiredPurposeIdsFn !== true) return false;
-  if (s.hasGetRequiredVendorIdsFn !== true) return false;
-  if (s.hasGetPurposesFn !== true) return false;
-  if (s.hasGetVendorsFn !== true) return false;
-  return true;
-}
-
-// Broad, permissive normalizer for the vendor's FULL registry getters
-// (getPurposes()/getVendors()): an array of id strings, an array of {id}
-// objects, or an id-keyed object map all normalize to a plain array of id
-// strings. This breadth is SAFE here because the "all" lists are only ever
-// intersected against the strictly-parsed required set below — a broad read
-// of the registry can never, by itself, widen consent. Never throws;
-// unrecognized shapes resolve to an empty array (fail-closed).
-function extractDidomiIds(value) {
-  try {
-    if (Array.isArray(value)) {
-      const ids = [];
-      for (const item of value) {
-        if (typeof item === "string") ids.push(item);
-        else if (item && typeof item.id === "string") ids.push(item.id);
-      }
-      return ids;
-    }
-    if (value && typeof value === "object") {
-      return Object.keys(value);
-    }
-  } catch {
-    // Fall through to the fail-closed empty array below.
-  }
-  return [];
-}
-
-// STRICT, fail-closed parser for the REQUIRED getters
-// (getRequiredPurposeIds()/getRequiredVendorIds()). Didomi's real getters
-// return a plain array of id strings (engram sdd/cookie-consent-accept
-// probe, id 1324); this accepts ONLY that exact shape. Anything else — a
-// flag-map object, an array of registry objects, an array with a non-string
-// or empty-string member, null, a non-array — is UNRESOLVABLE and returns
-// null so the caller abandons the entire accept rather than guessing a
-// payload that could widen consent. Never throws.
-function extractRequiredIds(value) {
-  if (!Array.isArray(value)) return null;
-  const ids = [];
-  for (const item of value) {
-    if (typeof item !== "string" || item.length === 0) return null;
-    ids.push(item);
-  }
-  return ids;
-}
-
-function buildMinimumPayload(input) {
-  const i = input && typeof input === "object" ? input : {};
-  const allPurposeIds = Array.isArray(i.allPurposeIds) ? i.allPurposeIds : [];
-  const allVendorIds = Array.isArray(i.allVendorIds) ? i.allVendorIds : [];
-  const requiredPurposeIds = Array.isArray(i.requiredPurposeIds) ? i.requiredPurposeIds : [];
-  const requiredVendorIds = Array.isArray(i.requiredVendorIds) ? i.requiredVendorIds : [];
-
-  const enabledPurposes = allPurposeIds.filter((id) => requiredPurposeIds.includes(id));
-  const enabledVendors = allVendorIds.filter((id) => requiredVendorIds.includes(id));
-  const enabledPurposeSet = new Set(enabledPurposes);
-  const enabledVendorSet = new Set(enabledVendors);
-
-  return {
-    purposes: {
-      enabled: enabledPurposes,
-      disabled: allPurposeIds.filter((id) => !enabledPurposeSet.has(id)),
-    },
-    vendors: {
-      enabled: enabledVendors,
-      disabled: allVendorIds.filter((id) => !enabledVendorSet.has(id)),
-    },
-  };
-}
-
-// Runtime seam the content-script dispatch regions call with the RAW return
-// values of Didomi's four getters. Owns the fail-closed contract: the
-// REQUIRED lists are parsed STRICTLY (extractRequiredIds); if EITHER is
-// unresolvable the whole accept is abandoned (returns null → the caller must
-// NOT call setCurrentUserStatus, leaving the banner as the safe outcome).
-// A DEGENERATE full registry (both getPurposes() and getVendors() collapse
-// to empty) also NOOPs — there is no valid minimum to construct, so the
-// call must never fire with an all-empty payload. Returns a validly-
-// constructed minimum payload otherwise. Pure; never throws (the getter
-// calls themselves stay in the world-specific dispatch region, wrapped
-// there).
-function resolveDidomiMinimumStatus(raw) {
-  const r = raw && typeof raw === "object" ? raw : {};
-  const requiredPurposeIds = extractRequiredIds(r.requiredPurposeIds);
-  const requiredVendorIds = extractRequiredIds(r.requiredVendorIds);
-  if (requiredPurposeIds === null || requiredVendorIds === null) return null;
-  const allPurposeIds = extractDidomiIds(r.allPurposeIds);
-  const allVendorIds = extractDidomiIds(r.allVendorIds);
-  if (allPurposeIds.length === 0 && allVendorIds.length === 0) return null;
-  return buildMinimumPayload({ requiredPurposeIds, requiredVendorIds, allPurposeIds, allVendorIds });
-}
-// @sync:cmp-accept:end
-
-/**
- * Invokes the caller-supplied accept call. Kept pure (no `window` access
- * here) by requiring the caller to inject the actual global call as a
- * zero-argument callback — mirrors `cmp-adapters.js`'s `reject()` helper
- * exactly. Never throws.
- *
- * @param {() => void} [callAccept]
- * @returns {{status: "accepted"|"noop"}}
- */
-function accept(callAccept) {
-  if (typeof callAccept !== "function") return { status: "noop" };
-  try {
-    callAccept();
-    return { status: "accepted" };
-  } catch {
-    return { status: "noop" };
-  }
-}
-
-/**
- * Didomi accept-when-necessary adapter (Slice 2a pilot — the only
- * accept-capable adapter today). The real call site (content scripts)
- * builds the payload from `window.Didomi.getRequiredPurposeIds()` /
- * `getRequiredVendorIds()` / `getPurposes()` / `getVendors()` and invokes
- * `window.Didomi.setCurrentUserStatus(payload)` through `accept()` above.
- *
- * ── HARD PRE-ENABLE GATE — DO NOT REMOVE THIS COMMENT ───────────────────
- * Didomi's live banner behavior is geo-gated and could NOT be verified
- * from a non-EU vantage (engram sdd/cookie-consent-accept/didomi-probe):
- * `setCurrentUserStatus` returned a stable, sync boolean and the exact
- * getter names were confirmed on 3 real production Didomi sites, but the
- * crux question — does calling it with the minimum payload actually
- * DISMISS a real hard wall AND grant ZERO non-essential purposes/vendors —
- * remains unverified because no real hard-wall session was observed from
- * that vantage. This adapter, and the "accept-when-necessary" mode as a
- * whole, MUST pass a real-EU-geo behavioral smoke test (a human, or a
- * CI runner with an EU vantage point, confirming a live Didomi hard wall
- * actually dismisses on the minimum payload and grants zero tracking)
- * BEFORE this mode is enabled for real users in a release. See
- * docs/qa/cookie-consent-release-smoke.md's "accept-when-necessary" item.
- *
- * @type {Readonly<{id: "didomi", buildMinimumPayload: typeof buildMinimumPayload, accept: typeof accept}>}
- */
-export const didomiAcceptAdapter = Object.freeze({
-  id: "didomi",
-  buildMinimumPayload,
-  accept,
-});
-
-export { canAttemptDidomiMinimumAccept, extractDidomiIds, extractRequiredIds, resolveDidomiMinimumStatus };
