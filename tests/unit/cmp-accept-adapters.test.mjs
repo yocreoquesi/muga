@@ -147,6 +147,27 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
     assert.equal(classifyConsentButton("Zustimmen und weiter"), BUTTON_KIND.ACCEPT);
   });
 
+  test("FIX F4: the word boundary is Unicode-letter-aware — an accept token followed by an umlaut/accent is NOT a match", () => {
+    // ASCII-only boundaries treated ä/ö/ü/ß as word boundaries, so "consent"
+    // false-matched inside "Consentüberprüfung" (an SP compound label). Letters
+    // (incl. umlauts/accents) must count as word chars, not boundaries.
+    assert.equal(classifyConsentButton("Consentüberprüfung"), BUTTON_KIND.UNKNOWN);
+    assert.equal(classifyConsentButton("Zustimmenüberprüfung erforderlich"), BUTTON_KIND.UNKNOWN);
+    assert.equal(classifyConsentButton("Akzeptierenüberprüfung"), BUTTON_KIND.UNKNOWN);
+  });
+
+  test("FIX F4: real accented/umlaut-adjacent free-accept positives still classify ACCEPT", () => {
+    for (const text of [
+      "Accept & continue",
+      "Zustimmen und weiter",
+      "einverstanden",
+      "Ich bin einverstanden",
+      "Continue to Europe",
+    ]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.ACCEPT, text);
+    }
+  });
+
   test("empty / whitespace-only / malformed input never throws, resolves to UNKNOWN", () => {
     assert.doesNotThrow(() => classifyConsentButton(""));
     assert.doesNotThrow(() => classifyConsentButton(null));

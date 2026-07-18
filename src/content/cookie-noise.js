@@ -375,7 +375,11 @@
   }
 
   // Word-boundary token match: a token counts only when it is NOT embedded in a
-  // larger alphanumeric run, so "eur" matches "9,99 eur" but never "europe".
+  // larger word run. "Word" chars are Unicode LETTERS (incl. umlauts/accents such
+  // as ä/ö/ü/ß) and digits — an ASCII-only [a-z0-9] boundary wrongly treated an
+  // umlaut as a boundary, so "consent" false-matched inside "consentüberprüfung"
+  // (F4). So "eur" matches "9,99 eur" but never "europe", and "consent" never
+  // matches inside "consentüberprüfung".
   function containsWordBoundaryToken(text, tokens) {
     for (const token of tokens) {
       let from = 0;
@@ -383,8 +387,8 @@
       while (idx !== -1) {
         const before = idx === 0 ? "" : text.charAt(idx - 1);
         const after = text.charAt(idx + token.length);
-        const boundedBefore = before === "" || !/[a-z0-9]/.test(before);
-        const boundedAfter = after === "" || !/[a-z0-9]/.test(after);
+        const boundedBefore = before === "" || !/[\p{L}\p{N}]/u.test(before);
+        const boundedAfter = after === "" || !/[\p{L}\p{N}]/u.test(after);
         if (boundedBefore && boundedAfter) return true;
         from = idx + 1;
         idx = text.indexOf(token, from);
