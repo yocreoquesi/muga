@@ -325,7 +325,12 @@ function computeAcceptGate(prefs, deps) {
     try {
       if (isSiteFullyExempt(deps.hostname, prefs)) return false;
     } catch {
-      // Fail-safe: treat as not exempt on any unexpected throw.
+      // FAIL-CLOSED: an exemption predicate that throws leaves the site's
+      // exempt/not-exempt status UNRESOLVED. A consent-GRANTING gate must
+      // never open on an unresolved signal, so an unexpected throw keeps the
+      // gate shut (returns false) — the safe direction for the highest-stakes
+      // action in the project.
+      return false;
     }
   }
   return true;

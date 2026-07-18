@@ -353,10 +353,10 @@ describe("computeAcceptGate — double-gate as a DATA invariant", () => {
     assert.strictEqual(seen.prefs, ACCEPT_GATE_ON_PREFS);
   });
 
-  test("a throwing isSiteFullyExempt is swallowed and treated as not exempt (fail-safe -> open)", () => {
+  test("a throwing isSiteFullyExempt FAILS CLOSED — the gate stays shut (never grants consent on an unresolved exemption)", () => {
     const deps = { hostname: "example.com", isSiteFullyExempt: () => { throw new Error("boom"); } };
     assert.doesNotThrow(() => computeAcceptGate(ACCEPT_GATE_ON_PREFS, deps));
-    assert.equal(computeAcceptGate(ACCEPT_GATE_ON_PREFS, deps), true);
+    assert.equal(computeAcceptGate(ACCEPT_GATE_ON_PREFS, deps), false);
   });
 });
 
