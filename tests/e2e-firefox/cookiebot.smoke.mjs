@@ -25,10 +25,12 @@ const COOKIEBOT_FIXTURE_HTML = `<!doctype html><html><body>
   </div>
   <p id="page-content">Real page content</p>
   <script>
+    window.__cbCalls = [];
     window.Cookiebot = {
       consent: { necessary: true, preferences: false, statistics: false, marketing: false },
       hasResponse: false,
       submitCustomConsent(preferences, statistics, marketing) {
+        window.__cbCalls.push("submitCustomConsent");
         window.__consentState =
           preferences === false && statistics === false && marketing === false
             ? "necessary-only"
@@ -79,6 +81,9 @@ test("Firefox smoke: Cookiebot submitCustomConsent(false, false, false) fires vi
       "return document.getElementById('page-content') ? document.getElementById('page-content').textContent : null"
     );
     assert.equal(pageContent, "Real page content");
+
+    const cbCalls = await driver.executeScript("return window.__cbCalls");
+    assert.deepEqual(cbCalls, ["submitCustomConsent"]);
   } finally {
     if (server) await server.close();
     await teardown(driver, extDir);
@@ -99,19 +104,29 @@ test("Firefox smoke: Cookiebot submitCustomConsent does NOT fire when the featur
     server = await serveFixturePage(COOKIEBOT_FIXTURE_HTML);
     await driver.get(server.url);
 
-    // Negative assertion — no positive signal to poll on, so use a fixed
-    // settle window (mirrors the Chromium spec's disabled-state test).
-    await new Promise((r) => setTimeout(r, 1500));
-
-    // WebDriver's executeScript serializes a JS `undefined` return value as
-    // `null` over the wire — assert against `null`, not `undefined`.
-    const consentState = await driver.executeScript("return window.__consentState");
-    assert.equal(consentState, null);
+    // LOW-2 (#1134): a wrongly-open gate could fire the reject slowly; a
+    // single sample after a fixed sleep would miss a fire that lands after
+    // the sample. Poll the whole window and fail fast if the reject ever
+    // fires. (A fire slower than this window is the acknowledged residual
+    // limit — a closed gate leaves no page-world readiness signal to key on.)
+    let firedWhileOff = false;
+    try {
+      await pollUntil(driver, "return window.__consentState === 'necessary-only'", { timeoutMs: 3000, intervalMs: 200 });
+      firedWhileOff = true;
+    } catch {
+      // timed out without firing — the expected feature-OFF behavior
+    }
+    assert.equal(firedWhileOff, false, "reject fired while the feature was OFF");
 
     const bannerStillThere = await driver.executeScript(
       "return document.getElementById('CybotCookiebotDialog') !== null"
     );
     assert.equal(bannerStillThere, true);
+
+    // LOW-1 (#1134): prove the reject method was never invoked — distinguishes
+    // "gate correctly closed" from "extension never loaded".
+    const cbCalls = await driver.executeScript("return window.__cbCalls");
+    assert.deepEqual(cbCalls, []);
   } finally {
     if (server) await server.close();
     await teardown(driver, extDir);

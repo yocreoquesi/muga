@@ -88,24 +88,41 @@ export async function launchFirefoxWithExtension() {
   const geckoId = readGeckoId();
   const extDir = await buildFirefoxExtensionDir();
 
-  const options = new firefox.Options();
-  options.addArguments("-headless");
-  options.setPreference("extensions.webextensions.uuids", JSON.stringify({ [geckoId]: FIXED_EXTENSION_UUID }));
-  // Allow the temporary install to run without additional prompts.
-  options.setPreference("xpinstall.signatures.required", false);
+  let driver;
+  try {
+    const options = new firefox.Options();
+    options.addArguments("-headless");
+    options.setPreference("extensions.webextensions.uuids", JSON.stringify({ [geckoId]: FIXED_EXTENSION_UUID }));
+    // Allow the temporary install to run without additional prompts.
+    options.setPreference("xpinstall.signatures.required", false);
 
-  const firefoxBinary = process.env.MUGA_FIREFOX_BINARY;
-  if (firefoxBinary) {
-    options.setBinary(firefoxBinary);
+    const firefoxBinary = process.env.MUGA_FIREFOX_BINARY;
+    if (firefoxBinary) {
+      options.setBinary(firefoxBinary);
+    }
+
+    driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
+
+    await driver.installAddon(extDir, /* temporary */ true);
+
+    const extensionOrigin = `moz-extension://${FIXED_EXTENSION_UUID}`;
+
+    return { driver, extDir, geckoId, extensionOrigin };
+  } catch (err) {
+    // The temp extension dir is created BEFORE the browser build/install; if
+    // either throws, the caller never receives extDir and its
+    // finally{ teardown } gets `undefined`, orphaning muga-ff-ext-* under
+    // tmpdir. Clean up here so a failed launch leaves nothing behind.
+    if (driver) {
+      try {
+        await driver.quit();
+      } catch {
+        // ignore — the driver may be only half-built
+      }
+    }
+    await removeDirSafe(extDir);
+    throw err;
   }
-
-  const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
-
-  await driver.installAddon(extDir, /* temporary */ true);
-
-  const extensionOrigin = `moz-extension://${FIXED_EXTENSION_UUID}`;
-
-  return { driver, extDir, geckoId, extensionOrigin };
 }
 
 /**

@@ -15,6 +15,9 @@ permissions:
 jobs:
   firefox-smoke:
     runs-on: ubuntu-latest
+    # Cap the job so a hung geckodriver provision or a stuck browser launch
+    # fails fast instead of riding the 6h GitHub default.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
