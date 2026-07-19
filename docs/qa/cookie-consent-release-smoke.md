@@ -296,6 +296,46 @@ this as its own line in the sign-off table below.
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
+### 5b. Sourcepoint - multi-layer reject (Options panel -> Reject all) (#1123)
+
+Covers the multi-layer follow-up (`findSpOpenSettingsTarget` +
+`runSpRejectClickDispatcher` in `src/content/cookie-noise.js`). Some
+Sourcepoint walls expose ONLY a "12" ("Options"/"Manage") control at the top
+layer, with the real "Reject all" ("13") one layer deeper inside the
+privacy-manager panel that "12" opens.
+
+- **Reject flow:** with no directly actionable "13" present, MUGA clicks the
+  single actionable `sp_choice_type_12` control ONCE to open the panel, then
+  the MutationObserver re-enters and clicks the panel's revealed single
+  `sp_choice_type_13` ("Reject all"). Both are plain isolated-world
+  `element.click()` calls, so Chrome and Firefox use the SAME path here (no
+  MAIN-world / `wrappedJSObject` fork, unlike the `postRejectAll` API call).
+- **Options-only scope (the key guard to verify):** the "12" is opened ONLY
+  when NO other actionable `sp_choice` decision control (a broad-consent "11",
+  a pay "9", a direct "13", ...) is present at the top layer. On a wall that
+  also shows accept/pay, MUGA must NOT open the Options panel.
+- **Candidate live site(s):** needs a real Sourcepoint deployment whose FIRST
+  layer offers only "Options"/"Manage" (no direct "Reject all") - curation
+  tracked with the other canary-site work in #1135. The single-click SP
+  candidates in section 5 (9gag, pinknews) expose a direct "13" and exercise
+  the non-multi-layer path, not this one.
+- **Specific risk to verify (#1123):**
+  1. On a real "12-only" SP wall: MUGA opens the Options panel and the
+     revealed "Reject all" is clicked and the wall is dismissed (before/after
+     screenshot; confirm via Sourcepoint's `onMessageChoiceSelect` log
+     reporting choice type 12 then 13, if available).
+  2. NEVER-ACCEPT: if the opened panel does not surface a reachable "Reject
+     all", MUGA clicks nothing further and the wall is left intact (no consent
+     granted) - a fail-closed NOOP, never an accept.
+  3. OPTIONS-ONLY SCOPE: on a consent-or-pay wall showing [Accept][Options]
+     [Pay], MUGA does NOT auto-open the Options panel (the reject engine
+     leaves it to the direct-"13" path and the separate accept feature).
+  4. Verify the Firefox path (same isolated-world DOM clicks; no Firefox-
+     specific fork, but confirm the panel-open + revealed-"13" click fire in
+     Gecko).
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
 ### 6. Usercentrics
 
 - **Reject call:** `window.UC_UI.denyAllConsents()` (Chrome MAIN world);
@@ -499,8 +539,8 @@ following before marking this adapter PASS:
 ## Sign-off table
 
 All 20 reject-adapter cells (10 adapters x Chrome/Firefox), PLUS the
-consent-or-pay-wall accept-click row below, must be green before the
-`develop -> main` release PR opens. The accept-click row is a HARD
+Sourcepoint multi-layer row and the consent-or-pay-wall accept-click row
+below, must be green before the `develop -> main` release PR opens. The accept-click row is a HARD
 PRE-ENABLE GATE (see the "Consent-or-pay-wall accept-click" subsection
 above) — a release may ship with the mode dormant (unchecked) but must NOT
 enable it for real users while that row is unchecked.
@@ -512,6 +552,7 @@ enable it for real users while that row is unchecked.
 | Didomi (reject) | ____ | ____ |
 | CookieYes | ____ | ____ |
 | Sourcepoint | ____ | ____ |
+| Sourcepoint multi-layer (Options -> Reject, "12"-only wall) - real-EU vantage | ____ | ____ |
 | Usercentrics | ____ | ____ |
 | Cookie Information | ____ | ____ |
 | CookieScript | ____ | ____ |
