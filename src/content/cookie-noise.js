@@ -1871,6 +1871,14 @@
   // filter, mirroring how the consent-or-pay accept-click dispatcher above
   // has no DOM pre-check of its own either (all_frames:true already means
   // every frame pays this same, cheap, per-frame query cost).
+  //
+  // KNOWN LIMITATION (deferred, not changed here): this dispatcher (via
+  // findSpRejectTarget above) only ever handles the single-click "13"
+  // ("Reject all") case. A wall that exposes ONLY choice type "12"
+  // ("Options"/"Manage"/settings) — where the real reject control sits one
+  // layer deeper, behind that secondary panel — resolves to NOOP here
+  // rather than opening the panel and clicking through. Following that
+  // second layer is a deferred multi-layer follow-up.
   function runSpRejectClickDispatcher() {
     if (_spRejectActed || !_spRejectGateOpen) return;
     const candidates = collectAcceptCandidates();

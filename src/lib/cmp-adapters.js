@@ -529,6 +529,14 @@ function canRejectConsentmanager(signals) {
  * `spChoice`, e.g. incidental privacy/imprint links) are ignored outright —
  * they can never veto or become a target. Pure; never throws.
  *
+ * KNOWN LIMITATION (deferred, not changed here): the current slice only
+ * ever handles the single-click "13" ("Reject all") case. A wall that
+ * exposes ONLY choice type "12" ("Options"/"Manage"/settings) — where the
+ * real reject control sits one layer deeper, behind that secondary panel —
+ * resolves to NOOP here rather than opening the panel and clicking through.
+ * Following that second layer is a deferred multi-layer follow-up, not
+ * attempted by this resolver or its dispatcher.
+ *
  * @param {Array<{spChoice?: string, actionable?: boolean, ref?: *}>} [candidates]
  * @returns {{status: "single"|"noop"|"ambiguous", target: object|null}}
  */
@@ -564,6 +572,20 @@ export { findSpRejectTarget };
  * zero-argument callback — the content-script shell is the one place that
  * touches the vendor CMP global directly (e.g. `window.OneTrust.RejectAll`,
  * `window.Cookiebot.submitCustomConsent`). Never throws.
+ *
+ * KNOWN HONESTY LIMITATION: this helper reports `{status: "rejected"}`
+ * whenever the injected callback runs without throwing — it does NOT verify
+ * the banner/wall actually cleared from the DOM afterward. In practice the
+ * 9 API adapters sharing this helper (every Tier-1 registry entry below
+ * except Sourcepoint) are round-2 real-EU verified to genuinely dismiss
+ * their banner on real sites, so this gap has not been observed to produce
+ * a silent no-op for them. The Sourcepoint case is handled by a separate,
+ * stronger mechanism (the sp_choice_type_13 DOM-click path, see
+ * `findSpRejectTarget` below) that verifies a real click on a resolved
+ * target rather than trusting a non-throwing callback alone. Adding a
+ * general post-action DOM-dismissal check to this shared helper is a
+ * deferred follow-up — deliberately not done here, to avoid touching the
+ * call sites of the other adapters that already work on real sites.
  *
  * @param {() => void} [callRejectAll]
  * @returns {{status: "rejected"|"noop"}}
