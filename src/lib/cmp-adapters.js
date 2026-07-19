@@ -609,17 +609,21 @@ export { findSpRejectTarget, findSpOpenSettingsTarget };
  *
  * KNOWN HONESTY LIMITATION: this helper reports `{status: "rejected"}`
  * whenever the injected callback runs without throwing — it does NOT verify
- * the banner/wall actually cleared from the DOM afterward. In practice the
- * 9 API adapters sharing this helper (every Tier-1 registry entry below
- * except Sourcepoint) are round-2 real-EU verified to genuinely dismiss
- * their banner on real sites, so this gap has not been observed to produce
- * a silent no-op for them. The Sourcepoint case is handled by a separate,
- * stronger mechanism (the sp_choice_type_13 DOM-click path, see
- * `findSpRejectTarget` below) that verifies a real click on a resolved
- * target rather than trusting a non-throwing callback alone. Adding a
- * general post-action DOM-dismissal check to this shared helper is a
- * deferred follow-up — deliberately not done here, to avoid touching the
- * call sites of the other adapters that already work on real sites.
+ * the banner/wall actually cleared from the DOM afterward. That status
+ * string is a lib/unit-test-level value only; it is not consumed by the
+ * content-script dispatch, and gating the act decision on real dismissal is
+ * impossible synchronously here anyway, since vendor banners clear
+ * ASYNCHRONOUSLY relative to the reject call. Instead, the content scripts
+ * (content/cookie-noise-mainworld.js and content/cookie-noise.js) run a
+ * bounded, OBSERVATIONAL async post-reject DOM-dismissal check
+ * (`confirmRejectDismissal`) for every Tier-1 adapter below except
+ * Sourcepoint: it polls a short window after the reject call and warns to
+ * the console once if the banner never disappears, surfacing silent
+ * vendor-API drift without altering `_acted`/`stopObserver()` in any way.
+ * The Sourcepoint case is handled by a separate, stronger mechanism (the
+ * sp_choice_type_13 DOM-click path, see `findSpRejectTarget` below) that
+ * verifies a real click on a resolved target rather than trusting a
+ * non-throwing callback alone.
  *
  * @param {() => void} [callRejectAll]
  * @returns {{status: "rejected"|"noop"}}

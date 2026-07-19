@@ -1063,6 +1063,63 @@
     };
   }
 
+  // Post-reject dismissal confirmation (#1123 / reject() honesty follow-up).
+  // PURELY OBSERVATIONAL: the reject has already fired and _fxActed/
+  // fxStopObserver have already run — this never changes that. Vendor
+  // banners clear ASYNCHRONOUSLY (the SDK reacts to the reject call on a
+  // later task), so this polls a bounded window for the banner to disappear
+  // and warns ONCE if it never does — surfacing a silent "API fired but did
+  // not dismiss" drift (the exact gap the Sourcepoint DOM-click fallback
+  // exists for). Fail-safe: any error in the banner check is treated as
+  // "gone" (no spurious warning).
+  const REJECT_CONFIRM_WINDOW_MS = 3000;
+  const REJECT_CONFIRM_INTERVAL_MS = 250;
+  function confirmRejectDismissal(adapterId, isBannerGone) {
+    const deadline = Date.now() + REJECT_CONFIRM_WINDOW_MS;
+    const tick = () => {
+      let gone = true;
+      try {
+        gone = !!isBannerGone();
+      } catch {
+        gone = true;
+      }
+      if (gone) return; // confirmed dismissal — stay silent
+      if (Date.now() >= deadline) {
+        try {
+          console.warn(
+            "[MUGA] cookie-consent: " + adapterId +
+            " reject fired but its banner did not clear within " +
+            REJECT_CONFIRM_WINDOW_MS + "ms (possible vendor-API drift)"
+          );
+        } catch {
+          // console unavailable — nothing else to do.
+        }
+        return;
+      }
+      setTimeout(tick, REJECT_CONFIRM_INTERVAL_MS);
+    };
+    tick();
+  }
+
+  // Selector-driven "is the banner gone" predicate shared by every Tier-1
+  // adapter's confirmRejectDismissal() call below. "Gone" = no element
+  // matching `selector` has a layout box (removed from the DOM counts as
+  // gone; hidden via display:none/visibility etc. also collapses
+  // getClientRects() to empty, so that counts as gone too).
+  function bannerGoneBy(selector) {
+    return () => {
+      const nodes = document.querySelectorAll(selector);
+      for (const el of nodes) {
+        try {
+          if (!el.getClientRects || el.getClientRects().length > 0) return false;
+        } catch {
+          return false;
+        }
+      }
+      return true; // no element, or all matched elements have no layout box
+    };
+  }
+
   function fxRunDispatcher() {
     if (_fxActed || !_fxGateOpen) return;
     const signals = fxCollectSignals();
@@ -1073,6 +1130,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("onetrust", bannerGoneBy("#onetrust-banner-sdk"));
       fxStopObserver();
       return;
     }
@@ -1085,6 +1143,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("cookiebot", bannerGoneBy("#CybotCookiebotDialog"));
       fxStopObserver();
       return;
     }
@@ -1097,6 +1156,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("didomi", bannerGoneBy("#didomi-host"));
       fxStopObserver();
       return;
     }
@@ -1110,6 +1170,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("cookieyes", bannerGoneBy(".cky-consent-container, .cky-consent-bar"));
       fxStopObserver();
       return;
     }
@@ -1141,6 +1202,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("usercentrics", bannerGoneBy("#usercentrics-root"));
       fxStopObserver();
       return;
     }
@@ -1154,6 +1216,10 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal(
+        "cookieinformation",
+        bannerGoneBy("#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper")
+      );
       fxStopObserver();
       return;
     }
@@ -1166,6 +1232,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("cookiescript", bannerGoneBy("#cookiescript_injected"));
       fxStopObserver();
       return;
     }
@@ -1180,6 +1247,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("tarteaucitron", bannerGoneBy("#tarteaucitronRoot, #tarteaucitronAlertBig"));
       fxStopObserver();
       return;
     }
@@ -1194,6 +1262,7 @@
       } catch {
         // A throwing page global must never break the page.
       }
+      confirmRejectDismissal("consentmanager", bannerGoneBy("#cmpbox"));
       fxStopObserver();
       return;
     }
