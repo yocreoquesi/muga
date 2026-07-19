@@ -267,11 +267,18 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     // MAIN-world script).
     const iframe = await waitForIframe(page);
 
-    // REASON: negative assertion — no positive signal to wait on.
+    // The wall carries a free reject ("13"), so the reject engine dismisses it
+    // by clicking that control — "that is the reject engine's job" per the
+    // accept-click last-resort gating design. The accept-click itself MUST
+    // abstain: the oracle is that the reject fired and neither accept nor pay
+    // was ever clicked.
+    await iframe.waitForFunction(() => window.__mugaTestClicked === "reject", { timeout: 10000 });
+    // REASON: after the reject fires, give any (wrong) accept/pay click time to
+    // surface before asserting the accept-click never took over.
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
-    expect(clicked).toBeUndefined();
+    expect(clicked).toBe("reject");
 
     await page.close();
   });
@@ -437,11 +444,17 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     await page.goto(`https://${TOP_HOST}/index.html`);
 
     const iframe = await waitForIframe(page);
-    // REASON: negative assertion — no positive signal to wait on.
+    // The wall carries a free reject ("13", non-basic label), so the reject
+    // engine dismisses it by clicking that control (its sp_choice_type_13 class
+    // is what the reject engine keys on, independent of the label wording). The
+    // accept-click itself MUST abstain.
+    await iframe.waitForFunction(() => window.__mugaTestClicked === "reject", { timeout: 10000 });
+    // REASON: after the reject fires, give any (wrong) accept/pay click time to
+    // surface before asserting the accept-click never took over.
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
-    expect(clicked).toBeUndefined();
+    expect(clicked).toBe("reject");
 
     await page.close();
   });
