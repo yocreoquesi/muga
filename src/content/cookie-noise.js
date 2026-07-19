@@ -1848,9 +1848,47 @@
     if (matches.length > 1) return { status: "ambiguous", target: null };
     return { status: "single", target: matches[0] };
   }
+
+  // SP multi-layer: some walls expose ONLY a "12" ("Options"/"Manage") control,
+  // with the real "Reject all" one layer deeper inside the panel it opens.
+  // Resolves the SINGLE actionable "12" to click, but ONLY on an options-ONLY
+  // wall — i.e. when NO other actionable decision control (a broad-consent "11",
+  // a pay "9", a direct reject "13", or any other sp_choice button) is present. A
+  // wall that also shows broad-consent/pay/reject is a consent-or-pay wall, not
+  // the options-only shape this deep-reject traversal targets, so it is left
+  // alone (the reject engine's direct "13" path and the separate consent-or-pay
+  // feature own those). Opening a settings panel never grants consent
+  // (monotone-safe); the deeper "13" is clicked by findSpRejectTarget on the next
+  // observer pass. Incidental non-decision candidates (no sp_choice class, e.g.
+  // privacy/imprint links) are ignored. Any ambiguity (zero, or more than one
+  // actionable "12") is a NOOP. Pure; never throws.
+  const SP_OPEN_SETTINGS_CHOICE = "12";
+
+  function findSpOpenSettingsTarget(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [];
+    const options = [];
+    let otherActionableDecision = false;
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (candidate.actionable !== true) continue;
+      if (typeof candidate.spChoice !== "string" || candidate.spChoice.length === 0) continue;
+      if (candidate.spChoice === SP_OPEN_SETTINGS_CHOICE) {
+        options.push(candidate);
+      } else {
+        // Any OTHER actionable sp_choice decision control (broad-consent "11",
+        // pay "9", direct reject "13", …) means this is NOT an options-only wall.
+        otherActionableDecision = true;
+      }
+    }
+    if (otherActionableDecision) return { status: "noop", target: null };
+    if (options.length === 0) return { status: "noop", target: null };
+    if (options.length > 1) return { status: "ambiguous", target: null };
+    return { status: "single", target: options[0] };
+  }
   // @sync:cmp-sp-reject-click:end
 
   let _spRejectActed = false;
+  let _spPmOpened = false;
   let _spRejectGateOpen = false;
   let _spRejectObserver = null;
   const SP_REJECT_GIVE_UP_AFTER_DOM_READY_MS = 10000;
@@ -1872,25 +1910,47 @@
   // has no DOM pre-check of its own either (all_frames:true already means
   // every frame pays this same, cheap, per-frame query cost).
   //
-  // KNOWN LIMITATION (deferred, not changed here): this dispatcher (via
-  // findSpRejectTarget above) only ever handles the single-click "13"
-  // ("Reject all") case. A wall that exposes ONLY choice type "12"
+  // MULTI-LAYER (#1123 follow-up): a wall exposing ONLY choice type "12"
   // ("Options"/"Manage"/settings) — where the real reject control sits one
-  // layer deeper, behind that secondary panel — resolves to NOOP here
-  // rather than opening the panel and clicking through. Following that
-  // second layer is a deferred multi-layer follow-up.
+  // layer deeper, behind that secondary panel — is handled below via
+  // findSpOpenSettingsTarget: the dispatcher clicks the single actionable "12"
+  // ONCE (guarded by _spPmOpened) to reveal the deeper panel, then the observer
+  // re-enters and clicks the revealed single "13" through findSpRejectTarget.
+  // Opening the panel is monotone-safe (never grants consent) and success is
+  // still only marked after a real "13" click, so a panel that never surfaces
+  // a reachable "13" stays a fail-closed NOOP.
   function runSpRejectClickDispatcher() {
     if (_spRejectActed || !_spRejectGateOpen) return;
     const candidates = collectAcceptCandidates();
     const result = findSpRejectTarget(candidates);
-    if (result.status !== "single") return;
-    _spRejectActed = true;
+    if (result.status === "single") {
+      _spRejectActed = true;
+      try {
+        result.target.ref.click();
+      } catch {
+        // A throwing/hostile page element must never break the page.
+      }
+      spRejectStopObserver();
+      return;
+    }
+    // Multi-layer (#1123 follow-up): no directly-reachable "13". If the wall
+    // exposes exactly one actionable "12" ("Options"/"Manage") and we have not
+    // opened the privacy-manager panel yet, click it ONCE to reveal the deeper
+    // "Reject all". Opening a settings panel never grants consent
+    // (monotone-safe), so this is NOT marked as success and the observer stays
+    // live: the panel's render re-enters this dispatcher, which then clicks the
+    // revealed single "13" via the branch above. A panel that never surfaces a
+    // "13" resolves to a fail-closed NOOP when the bounded give-up window tears
+    // the observer down.
+    if (_spPmOpened) return;
+    const settings = findSpOpenSettingsTarget(candidates);
+    if (settings.status !== "single") return;
+    _spPmOpened = true;
     try {
-      result.target.ref.click();
+      settings.target.ref.click();
     } catch {
       // A throwing/hostile page element must never break the page.
     }
-    spRejectStopObserver();
   }
 
   // Bounded give-up window — same rationale and shape as the reject/accept

@@ -520,22 +520,19 @@ function canRejectConsentmanager(signals) {
  * "Reject all" — the ONLY choice type this resolver ever targets.
  *
  * Fail-closed: only a SINGLE actionable "13" candidate is ever a target.
- * Zero "13" candidates (including a wall exposing only the "12" secondary
- * layer, with no direct "13" present) is a NOOP — that second-layer flow is
- * deliberately deferred, not followed by this resolver. More than one
- * actionable "13" candidate is "ambiguous" — never guesses. A "13" candidate
- * coexisting with a "12" choice does NOT veto: "13" is clicked directly, no
- * need to traverse the secondary layer first. Non-decision candidates (no
- * `spChoice`, e.g. incidental privacy/imprint links) are ignored outright —
- * they can never veto or become a target. Pure; never throws.
+ * Zero "13" candidates is a NOOP for THIS resolver. More than one actionable
+ * "13" candidate is "ambiguous" — never guesses. A "13" candidate coexisting
+ * with a "12" choice does NOT veto: "13" is clicked directly, no need to
+ * traverse the secondary layer first. Non-decision candidates (no `spChoice`,
+ * e.g. incidental privacy/imprint links) are ignored outright — they can never
+ * veto or become a target. Pure; never throws.
  *
- * KNOWN LIMITATION (deferred, not changed here): the current slice only
- * ever handles the single-click "13" ("Reject all") case. A wall that
- * exposes ONLY choice type "12" ("Options"/"Manage"/settings) — where the
- * real reject control sits one layer deeper, behind that secondary panel —
- * resolves to NOOP here rather than opening the panel and clicking through.
- * Following that second layer is a deferred multi-layer follow-up, not
- * attempted by this resolver or its dispatcher.
+ * MULTI-LAYER: a wall exposing ONLY choice type "12" ("Options"/"Manage") with
+ * no direct "13" is handled by the sibling `findSpOpenSettingsTarget` below and
+ * the content-script dispatcher, which clicks the "12" to reveal the deeper
+ * "Reject all" and then re-enters this resolver for the revealed "13". This
+ * resolver itself deliberately targets ONLY the single-click "13" — opening the
+ * panel is a separate, monotone-safe step that never grants consent.
  *
  * @param {Array<{spChoice?: string, actionable?: boolean, ref?: *}>} [candidates]
  * @returns {{status: "single"|"noop"|"ambiguous", target: object|null}}
@@ -562,9 +559,46 @@ function findSpRejectTarget(candidates) {
   if (matches.length > 1) return { status: "ambiguous", target: null };
   return { status: "single", target: matches[0] };
 }
+
+// SP multi-layer: some walls expose ONLY a "12" ("Options"/"Manage") control,
+// with the real "Reject all" one layer deeper inside the panel it opens.
+// Resolves the SINGLE actionable "12" to click, but ONLY on an options-ONLY
+// wall — i.e. when NO other actionable decision control (a broad-consent "11",
+// a pay "9", a direct reject "13", or any other sp_choice button) is present. A
+// wall that also shows broad-consent/pay/reject is a consent-or-pay wall, not
+// the options-only shape this deep-reject traversal targets, so it is left
+// alone (the reject engine's direct "13" path and the separate consent-or-pay
+// feature own those). Opening a settings panel never grants consent
+// (monotone-safe); the deeper "13" is clicked by findSpRejectTarget on the next
+// observer pass. Incidental non-decision candidates (no sp_choice class, e.g.
+// privacy/imprint links) are ignored. Any ambiguity (zero, or more than one
+// actionable "12") is a NOOP. Pure; never throws.
+const SP_OPEN_SETTINGS_CHOICE = "12";
+
+function findSpOpenSettingsTarget(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const options = [];
+  let otherActionableDecision = false;
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (candidate.actionable !== true) continue;
+    if (typeof candidate.spChoice !== "string" || candidate.spChoice.length === 0) continue;
+    if (candidate.spChoice === SP_OPEN_SETTINGS_CHOICE) {
+      options.push(candidate);
+    } else {
+      // Any OTHER actionable sp_choice decision control (broad-consent "11",
+      // pay "9", direct reject "13", …) means this is NOT an options-only wall.
+      otherActionableDecision = true;
+    }
+  }
+  if (otherActionableDecision) return { status: "noop", target: null };
+  if (options.length === 0) return { status: "noop", target: null };
+  if (options.length > 1) return { status: "ambiguous", target: null };
+  return { status: "single", target: options[0] };
+}
 // @sync:cmp-sp-reject-click:end
 
-export { findSpRejectTarget };
+export { findSpRejectTarget, findSpOpenSettingsTarget };
 
 /**
  * Invokes the caller-supplied reject call. Kept pure (no `window` access

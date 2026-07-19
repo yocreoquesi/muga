@@ -964,16 +964,24 @@ describe("cookie-noise.js — Sourcepoint reject-click dispatch structural guard
       "must not reintroduce the same-frame sp_message_container pre-check gate (hasSpMessageContainerDom, the unrelated pure Sourcepoint detection signal, is fine)");
   });
 
-  test("the dispatcher marks _spRejectActed = true only INSIDE the single-status branch, never on mere detection (no false success)", () => {
+  test("the dispatcher marks _spRejectActed = true only INSIDE the confirmed-single reject branch, never on mere detection or on opening the '12' panel (no false success)", () => {
     const src = sources.isolated;
     const fnMatch = /function runSpRejectClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
     assert.ok(fnMatch);
     const body = fnMatch[1];
-    const bailIdx = body.indexOf('if (result.status !== "single") return;');
+    const singleBranchIdx = body.indexOf('if (result.status === "single") {');
     const actedIdx = body.indexOf("_spRejectActed = true;");
-    assert.ok(bailIdx !== -1, "must bail out unless the resolver returns status \"single\"");
+    const pmOpenedIdx = body.indexOf("_spPmOpened = true;");
+    assert.ok(singleBranchIdx !== -1, "the reject click must be gated on a confirmed single '13' target");
     assert.ok(actedIdx !== -1, "must set _spRejectActed = true");
-    assert.ok(bailIdx < actedIdx, "_spRejectActed must only be set AFTER confirming a single target, never before");
+    // Success is marked in EXACTLY ONE place, and it is inside the
+    // confirmed-single reject branch — never before target confirmation.
+    assert.equal(body.split("_spRejectActed = true;").length - 1, 1, "_spRejectActed must be set in exactly one place");
+    assert.ok(singleBranchIdx < actedIdx, "_spRejectActed must only be set AFTER confirming a single reject target");
+    // The multi-layer panel-open is a SEPARATE, later branch that marks only
+    // _spPmOpened (monotone-safe reveal) — it must NEVER mark reject success.
+    assert.ok(pmOpenedIdx !== -1, "the multi-layer '12' panel-open must be guarded by _spPmOpened");
+    assert.ok(actedIdx < pmOpenedIdx, "the open-'12' branch comes after the reject branch and must not set _spRejectActed");
   });
 
   test("the reject-click gate (_spRejectGateOpen, from the same reject master gate as the Tier-1 API ladder) is checked before the dispatch runs", () => {

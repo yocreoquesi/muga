@@ -36,6 +36,7 @@ import {
   decideAction,
   computeCookieGate,
   findSpRejectTarget,
+  findSpOpenSettingsTarget,
 } from "../../src/lib/cmp-adapters.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1105,6 +1106,111 @@ describe("findSpRejectTarget — SP-structural reject-click target resolution", 
     assert.equal(findSpRejectTarget(null).status, "noop");
     assert.equal(findSpRejectTarget(undefined).status, "noop");
     assert.equal(findSpRejectTarget([null, 42, "x", { spChoice: "13" }]).status, "noop");
+  });
+});
+
+// ── findSpOpenSettingsTarget — SP multi-layer "open the panel" resolution ──
+//
+// Some Sourcepoint walls expose ONLY a "12" ("Options"/"Manage") control, with
+// the real "Reject all" one layer deeper behind the privacy-manager panel that
+// "12" opens. findSpOpenSettingsTarget resolves the SINGLE actionable "12" to
+// click when — and ONLY when — no directly actionable "13" is present (a
+// one-click reject always wins). Opening a settings panel never grants consent
+// (monotone-safe); the deeper "13" is handled by findSpRejectTarget on the next
+// observer pass. Any ambiguity (zero, or more than one "12") is a NOOP.
+describe("findSpOpenSettingsTarget — SP multi-layer open-settings target resolution", () => {
+  test("exactly one actionable '12', no '13' -> single, that candidate is the target", () => {
+    const candidates = [{ text: "Options", spChoice: "12", actionable: true, ref: "options-ref" }];
+    const result = findSpOpenSettingsTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "options-ref");
+  });
+
+  test("a directly actionable '13' present -> noop (the one-click reject wins, never take the panel detour)", () => {
+    const candidates = [
+      { text: "Options", spChoice: "12", actionable: true, ref: "options-ref" },
+      { text: "Reject all", spChoice: "13", actionable: true, ref: "reject-ref" },
+    ];
+    assert.equal(findSpOpenSettingsTarget(candidates).status, "noop");
+    assert.equal(findSpOpenSettingsTarget(candidates).target, null);
+  });
+
+  test("no '12' candidate at all -> noop", () => {
+    const candidates = [{ text: "Accept all", spChoice: "11", actionable: true, ref: "accept-ref" }];
+    assert.equal(findSpOpenSettingsTarget(candidates).status, "noop");
+  });
+
+  test("a '12' candidate present but NOT actionable (hidden/disabled) -> noop", () => {
+    const candidates = [{ text: "Options", spChoice: "12", actionable: false, ref: "options-ref" }];
+    assert.equal(findSpOpenSettingsTarget(candidates).status, "noop");
+  });
+
+  test("more than one actionable '12' candidate -> ambiguous, never guesses which panel to open", () => {
+    const candidates = [
+      { text: "Options", spChoice: "12", actionable: true, ref: "options-ref-1" },
+      { text: "Manage", spChoice: "12", actionable: true, ref: "options-ref-2" },
+    ];
+    const result = findSpOpenSettingsTarget(candidates);
+    assert.equal(result.status, "ambiguous");
+    assert.equal(result.target, null);
+  });
+
+  test("a non-actionable '13' does NOT block opening a single actionable '12' (only a *reachable* one-click reject wins)", () => {
+    const candidates = [
+      { text: "Reject all", spChoice: "13", actionable: false, ref: "reject-ref" },
+      { text: "Options", spChoice: "12", actionable: true, ref: "options-ref" },
+    ];
+    const result = findSpOpenSettingsTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "options-ref");
+  });
+
+  test("never targets type-11 (accept) or type-9/link (pay/subscribe)", () => {
+    const candidates = [
+      { text: "Accept all", spChoice: "11", actionable: true, ref: "accept-ref" },
+      { text: "Subscribe", spChoice: "9", actionable: true, ref: "pay-ref" },
+    ];
+    const result = findSpOpenSettingsTarget(candidates);
+    assert.equal(result.status, "noop");
+    assert.equal(result.target, null);
+  });
+
+  test("options-ONLY scope: a '12' alongside an actionable accept '11' (a consent-or-pay wall shape) -> noop, never opens the panel", () => {
+    const candidates = [
+      { text: "Accept all", spChoice: "11", actionable: true, ref: "accept-ref" },
+      { text: "Settings", spChoice: "12", actionable: true, ref: "settings-ref" },
+      { text: "Subscribe", spChoice: "9", actionable: true, ref: "pay-ref" },
+    ];
+    assert.equal(findSpOpenSettingsTarget(candidates).status, "noop");
+    assert.equal(findSpOpenSettingsTarget(candidates).target, null);
+  });
+
+  test("options-ONLY scope: a non-actionable accept '11' does NOT disqualify a single actionable '12' (only ACTIONABLE decisions count)", () => {
+    const candidates = [
+      { text: "Accept all", spChoice: "11", actionable: false, ref: "accept-ref" },
+      { text: "Options", spChoice: "12", actionable: true, ref: "settings-ref" },
+    ];
+    const result = findSpOpenSettingsTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "settings-ref");
+  });
+
+  test("incidental non-decision candidates (no spChoice) never interfere with a single '12' target", () => {
+    const candidates = [
+      { text: "Privacy Policy", spChoice: "", actionable: true, ref: "privacy-ref" },
+      { text: "Options", spChoice: "12", actionable: true, ref: "options-ref" },
+    ];
+    const result = findSpOpenSettingsTarget(candidates);
+    assert.equal(result.status, "single");
+    assert.equal(result.target.ref, "options-ref");
+  });
+
+  test("malformed/missing input never throws and always fails closed to noop", () => {
+    assert.doesNotThrow(() => findSpOpenSettingsTarget(null));
+    assert.doesNotThrow(() => findSpOpenSettingsTarget(undefined));
+    assert.equal(findSpOpenSettingsTarget(null).status, "noop");
+    assert.equal(findSpOpenSettingsTarget(undefined).status, "noop");
+    assert.equal(findSpOpenSettingsTarget([null, 42, "x", { spChoice: "12" }]).status, "noop");
   });
 });
 
