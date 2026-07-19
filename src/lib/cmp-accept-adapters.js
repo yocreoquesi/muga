@@ -76,10 +76,22 @@
  *   veto shape on any missing/malformed input or any thrown predicate —
  *   never a click.
  *
- * Slice scope: DE + EN button-text tokens only (the real-site probes that
- * proved this mechanism viable — zeit.de, spiegel.de — are German-language
- * Sourcepoint consent-or-pay walls). Widening locale coverage is a later
- * slice, each addition reviewed the same way the DE/EN tokens were.
+ * Slice scope: DE + EN button-text tokens were the original slice (the
+ * real-site probes that proved this mechanism viable — zeit.de, spiegel.de —
+ * are German-language Sourcepoint consent-or-pay walls). A later,
+ * comments-and-DATA-only slice widened the word-list DATA to also cover
+ * FR/ES/IT tokens (see PART A below), reviewed the same way the DE/EN tokens
+ * were for classification correctness and collision-safety. Widening locale
+ * coverage further is still a later slice, each addition reviewed the same
+ * way.
+ *
+ * HONEST NOTE — FR/ES/IT are NOT yet real-site-verified: only the DE tokens
+ * have passed a real-EU headed smoke test (faz.net, sueddeutsche.de — the
+ * "einverstanden" free-accept label). The FR/ES/IT word-list additions are
+ * classification-DATA only; before this mode is enabled on FR/ES/IT-language
+ * walls, each of those locales needs its own real-EU headed smoke test
+ * against a real hard wall, the same gate DE already passed (see
+ * docs/qa/cookie-consent-release-smoke.md).
  *
  * Residual risk (stated honestly): this module's live in-extension
  * behavior — does the DOM click actually dismiss a real hard wall from
@@ -147,6 +159,21 @@ export const ACCEPT_TOKENS = Object.freeze([
   "akzeptieren",
   "und weiter",
   "annehmen",
+  // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+  "accepter",
+  "tout accepter",
+  "j'accepte",
+  "continuer",
+  "consentir", // shared FR/ES spelling
+  "aceptar",
+  "aceptar todo",
+  "acepto",
+  "continuar",
+  "estoy de acuerdo",
+  "accetta",
+  "accetta tutto",
+  "acconsento",
+  "continua",
 ]);
 
 export const PAY_DENY_TOKENS = Object.freeze([
@@ -161,6 +188,18 @@ export const PAY_DENY_TOKENS = Object.freeze([
   "bezahlen",
   "kaufen",
   "zahlungspflichtig",
+  // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+  "s'abonner",
+  "payer",
+  "sans publicité",
+  "suscribir",
+  "suscripción",
+  "pagar",
+  "sin publicidad",
+  "abbonamento",
+  "abbonati",
+  "paga",
+  "senza pubblicità",
 ]);
 
 export const CURRENCY_TOKENS = Object.freeze(["€", "$", "£"]);
@@ -185,6 +224,17 @@ export const PERIOD_TOKENS = Object.freeze([
   "a month",
   "per year",
   "a year",
+  // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+  "par mois",
+  "par an",
+  "al mes",
+  "al año",
+  "mensual",
+  "anual",
+  "al mese",
+  "all'anno",
+  "mensile",
+  "annuale",
 ]);
 
 export const SETTINGS_TOKENS = Object.freeze([
@@ -194,6 +244,18 @@ export const SETTINGS_TOKENS = Object.freeze([
   "options",
   "preferences",
   "customize",
+  // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+  "paramétrer",
+  "gérer",
+  "personnaliser",
+  "configurar",
+  "gestionar",
+  "preferencias",
+  "ajustes",
+  "personalizar",
+  "impostazioni",
+  "gestisci",
+  "personalizza",
 ]);
 
 export const REJECT_TOKENS = Object.freeze([
@@ -214,6 +276,27 @@ export const REJECT_TOKENS = Object.freeze([
   "necessary only",
   "only necessary",
   "essential only",
+  // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+  // NOTE: "continuer sans accepter" / "continuar sin aceptar" / "continua
+  // senza accettare" deliberately embed an ACCEPT_TOKENS substring
+  // ("continuer"/"continuar"/"continua", plus "accepter"/"aceptar" in the FR/
+  // ES phrasing) — REJECT_TOKENS is checked BEFORE ACCEPT_TOKENS in
+  // classifyConsentButton, so the literal reject phrase always wins
+  // (deny-wins precedence). See tests/unit/cmp-accept-adapters.test.mjs's
+  // "ADVERSARIAL collision negatives" group for the explicit proof.
+  "refuser",
+  "tout refuser",
+  "continuer sans accepter",
+  "poursuivre sans accepter",
+  "rechazar",
+  "rechazar todo",
+  "solo necesarias",
+  "solo esenciales",
+  "continuar sin aceptar",
+  "rifiuta",
+  "rifiuta tutto",
+  "solo necessari",
+  "continua senza accettare",
 ]);
 
 function normalizeButtonText(rawText) {

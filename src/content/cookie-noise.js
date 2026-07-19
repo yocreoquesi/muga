@@ -282,6 +282,12 @@
   // file). A DOM `element.click()` needs neither a page-authored global nor
   // the MAIN world, unlike the retired Didomi JS-API accept path, so there
   // is no cross-world fork here at all.
+  //
+  // HONEST NOTE: the word-list DATA below now also covers FR/ES/IT tokens
+  // (locale widening), NOT yet real-site-verified — see the "Slice scope" /
+  // "HONEST NOTE" paragraphs in src/lib/cmp-accept-adapters.js's own
+  // docblock for the full statement; only DE has passed a real-EU headed
+  // smoke test so far.
   // @sync:cmp-accept-veto:start
   const ACCEPT_TOKENS = Object.freeze([
     "accept",
@@ -294,6 +300,21 @@
     "akzeptieren",
     "und weiter",
     "annehmen",
+    // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+    "accepter",
+    "tout accepter",
+    "j'accepte",
+    "continuer",
+    "consentir", // shared FR/ES spelling
+    "aceptar",
+    "aceptar todo",
+    "acepto",
+    "continuar",
+    "estoy de acuerdo",
+    "accetta",
+    "accetta tutto",
+    "acconsento",
+    "continua",
   ]);
 
   const PAY_DENY_TOKENS = Object.freeze([
@@ -308,6 +329,18 @@
     "bezahlen",
     "kaufen",
     "zahlungspflichtig",
+    // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+    "s'abonner",
+    "payer",
+    "sans publicité",
+    "suscribir",
+    "suscripción",
+    "pagar",
+    "sin publicidad",
+    "abbonamento",
+    "abbonati",
+    "paga",
+    "senza pubblicità",
   ]);
 
   const CURRENCY_TOKENS = Object.freeze(["€", "$", "£"]);
@@ -332,6 +365,17 @@
     "a month",
     "per year",
     "a year",
+    // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+    "par mois",
+    "par an",
+    "al mes",
+    "al año",
+    "mensual",
+    "anual",
+    "al mese",
+    "all'anno",
+    "mensile",
+    "annuale",
   ]);
 
   const SETTINGS_TOKENS = Object.freeze([
@@ -341,6 +385,18 @@
     "options",
     "preferences",
     "customize",
+    // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+    "paramétrer",
+    "gérer",
+    "personnaliser",
+    "configurar",
+    "gestionar",
+    "preferencias",
+    "ajustes",
+    "personalizar",
+    "impostazioni",
+    "gestisci",
+    "personalizza",
   ]);
 
   const REJECT_TOKENS = Object.freeze([
@@ -361,6 +417,27 @@
     "necessary only",
     "only necessary",
     "essential only",
+    // FR/ES/IT locale widening (NOT yet real-site-verified — see file docblock).
+    // NOTE: "continuer sans accepter" / "continuar sin aceptar" / "continua
+    // senza accettare" deliberately embed an ACCEPT_TOKENS substring
+    // ("continuer"/"continuar"/"continua", plus "accepter"/"aceptar" in the FR/
+    // ES phrasing) — REJECT_TOKENS is checked BEFORE ACCEPT_TOKENS in
+    // classifyConsentButton, so the literal reject phrase always wins
+    // (deny-wins precedence). See tests/unit/cmp-accept-adapters.test.mjs's
+    // "ADVERSARIAL collision negatives" group for the explicit proof.
+    "refuser",
+    "tout refuser",
+    "continuer sans accepter",
+    "poursuivre sans accepter",
+    "rechazar",
+    "rechazar todo",
+    "solo necesarias",
+    "solo esenciales",
+    "continuar sin aceptar",
+    "rifiuta",
+    "rifiuta tutto",
+    "solo necessari",
+    "continua senza accettare",
   ]);
 
   function normalizeButtonText(rawText) {

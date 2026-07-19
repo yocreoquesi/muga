@@ -116,7 +116,13 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
 
   test("unrecognized / unknown-locale text classifies as UNKNOWN, never ACCEPT", () => {
     assert.equal(classifyConsentButton("Non merci"), BUTTON_KIND.UNKNOWN);
-    assert.equal(classifyConsentButton("Continuar de todos modos"), BUTTON_KIND.UNKNOWN);
+    // NOTE: "Continuar de todos modos" (ES) used to live here as an
+    // unknown-locale example; the FR/ES/IT locale-widening slice (see file
+    // docblock) now legitimately recognizes ES "continuar" as an accept
+    // token, so that phrase is no longer an unrecognized-locale example —
+    // moved to a Dutch phrase instead, still outside this module's covered
+    // locales.
+    assert.equal(classifyConsentButton("Toch doorgaan"), BUTTON_KIND.UNKNOWN);
     assert.equal(classifyConsentButton("Some unrelated label"), BUTTON_KIND.UNKNOWN);
   });
 
@@ -134,11 +140,16 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
     assert.equal(classifyConsentButton("Utiq Consenthub"), BUTTON_KIND.UNKNOWN);
   });
 
-  test("FIX 3: the French 'continuer' substring collision is now fixed — it no longer false-matches 'continue' → UNKNOWN", () => {
-    // Previously documented as a KNOWN LIMITATION (bare-substring match); the
-    // word-boundary tightening resolves it. A real French accept token would be
-    // added explicitly in a later, reviewed slice.
-    assert.equal(classifyConsentButton("D'accord et continuer"), BUTTON_KIND.UNKNOWN);
+  test("FIX 3: the word-boundary tightening fixed the bare-substring 'continue'-inside-'continuer' false-match; the FR/ES/IT locale-widening slice later added 'continuer' itself as a genuine FR accept token", () => {
+    // Previously documented as a KNOWN LIMITATION (bare-substring match) and
+    // resolved by the word-boundary tightening (proven below:
+    // "continuellement" still resolves UNKNOWN — "continue" does not
+    // boundary-match inside it). Separately, the FR/ES/IT locale-widening
+    // slice (see file docblock) added "continuer" as its own recognized FR
+    // accept token, so "D'accord et continuer" now legitimately classifies
+    // ACCEPT via that token — not via the old EN-token boundary bug.
+    assert.equal(classifyConsentButton("D'accord et continuer"), BUTTON_KIND.ACCEPT);
+    assert.equal(classifyConsentButton("Poursuite continuellement"), BUTTON_KIND.UNKNOWN);
   });
 
   test("FIX 3: word-boundary matching still accepts a legitimate free-accept label ('Continue to Europe', 'Accept & continue')", () => {
@@ -188,6 +199,159 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
   test("ACCEPT_TOKENS is non-empty DATA, not embedded in the matching logic", () => {
     assert.ok(Array.isArray(ACCEPT_TOKENS) && ACCEPT_TOKENS.length > 0);
     assert.ok(Object.isFrozen(ACCEPT_TOKENS));
+  });
+});
+
+// ── Locale widening: FR/ES/IT word-list DATA (comments-and-DATA-only slice) ─
+//
+// NOT yet real-site-verified (see the file's docblock honest note) — only
+// the DE tokens have passed a real-EU headed smoke (faz.net, sueddeutsche.de).
+// These tests prove the DATA classifies correctly in isolation; they do not
+// claim real-wall verification for FR/ES/IT.
+
+describe("classifyConsentButton — locale widening: FR accept tokens", () => {
+  test("plain FR accept tokens classify ACCEPT", () => {
+    for (const text of [
+      "Accepter",
+      "Tout accepter",
+      "J'accepte",
+      "Continuer",
+      "Consentir",
+    ]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.ACCEPT, text);
+    }
+  });
+});
+
+describe("classifyConsentButton — locale widening: ES accept tokens", () => {
+  test("plain ES accept tokens classify ACCEPT", () => {
+    for (const text of [
+      "Aceptar",
+      "Aceptar todo",
+      "Acepto",
+      "Continuar",
+      "Consentir",
+      "Estoy de acuerdo",
+    ]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.ACCEPT, text);
+    }
+  });
+});
+
+describe("classifyConsentButton — locale widening: IT accept tokens", () => {
+  test("plain IT accept tokens classify ACCEPT", () => {
+    for (const text of ["Accetta", "Accetta tutto", "Acconsento", "Continua"]) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.ACCEPT, text);
+    }
+  });
+});
+
+describe("classifyConsentButton — locale widening: FR/ES/IT reject tokens veto (checked before accept, deny-wins)", () => {
+  test("every new FR/ES/IT REJECT_TOKENS literal alone classifies as REJECT", () => {
+    const NEW_REJECT_LOCALE_LABELS = [
+      "Refuser",
+      "Tout refuser",
+      "Continuer sans accepter",
+      "Poursuivre sans accepter",
+      "Rechazar",
+      "Rechazar todo",
+      "Solo necesarias",
+      "Solo esenciales",
+      "Continuar sin aceptar",
+      "Rifiuta",
+      "Rifiuta tutto",
+      "Solo necessari",
+      "Continua senza accettare",
+    ];
+    for (const text of NEW_REJECT_LOCALE_LABELS) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.REJECT, text);
+    }
+  });
+});
+
+describe("classifyConsentButton — locale widening: FR/ES/IT settings tokens excluded before accept", () => {
+  test("every new FR/ES/IT SETTINGS_TOKENS literal alone classifies as SETTINGS", () => {
+    const NEW_SETTINGS_LOCALE_LABELS = [
+      "Paramétrer",
+      "Gérer",
+      "Personnaliser",
+      "Configurar",
+      "Gestionar",
+      "Preferencias",
+      "Ajustes",
+      "Personalizar",
+      "Impostazioni",
+      "Gestisci",
+      "Personalizza",
+    ];
+    for (const text of NEW_SETTINGS_LOCALE_LABELS) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.SETTINGS, text);
+    }
+  });
+});
+
+describe("classifyConsentButton — locale widening: FR/ES/IT pay/deny tokens win over accept (deny-precedence unchanged)", () => {
+  test("every new FR/ES/IT PAY_DENY_TOKENS literal alone classifies as PAY", () => {
+    const NEW_PAY_LOCALE_LABELS = [
+      "Abonnement",
+      "S'abonner",
+      "Payer",
+      "Sans publicité",
+      "Suscribir",
+      "Suscripción",
+      "Pagar",
+      "Sin publicidad",
+      "Abbonamento",
+      "Abbonati",
+      "Paga",
+      "Senza pubblicità",
+    ];
+    for (const text of NEW_PAY_LOCALE_LABELS) {
+      assert.equal(classifyConsentButton(text), BUTTON_KIND.PAY, text);
+    }
+  });
+
+  test("ADVERSARIAL: an FR/ES/IT accept token co-occurring with a new pay token classifies as PAY (deny wins)", () => {
+    assert.equal(classifyConsentButton("Accepter l'abonnement"), BUTTON_KIND.PAY);
+    assert.equal(classifyConsentButton("Aceptar la suscripción"), BUTTON_KIND.PAY);
+    assert.equal(classifyConsentButton("Accetta l'abbonamento"), BUTTON_KIND.PAY);
+  });
+
+  test("every new FR/ES/IT PERIOD_TOKENS literal alone classifies as PAY", () => {
+    const NEW_PERIOD_LOCALE_LABELS = [
+      "par mois",
+      "par an",
+      "al mes",
+      "al año",
+      "mensual",
+      "anual",
+      "al mese",
+      "all'anno",
+      "mensile",
+      "annuale",
+    ];
+    for (const period of NEW_PERIOD_LOCALE_LABELS) {
+      assert.equal(classifyConsentButton(`Continuer ${period}`), BUTTON_KIND.PAY, period);
+    }
+  });
+});
+
+describe("classifyConsentButton — locale widening: ADVERSARIAL collision negatives (a word CONTAINING an accept token substring must not classify accept)", () => {
+  test("FR: 'Continuer sans accepter' / 'Poursuivre sans accepter' embed the accept tokens 'continuer'/'accepter' but classify REJECT (reject-literal precedence)", () => {
+    assert.equal(classifyConsentButton("Continuer sans accepter"), BUTTON_KIND.REJECT);
+    assert.equal(classifyConsentButton("Poursuivre sans accepter"), BUTTON_KIND.REJECT);
+  });
+
+  test("ES: 'Continuar sin aceptar' embeds the accept tokens 'continuar'/'aceptar' but classifies REJECT", () => {
+    assert.equal(classifyConsentButton("Continuar sin aceptar"), BUTTON_KIND.REJECT);
+  });
+
+  test("IT: 'Continua senza accettare' embeds the accept token 'continua' (word-boundary-safe: 'accetta' does NOT match inside 'accettare') but classifies REJECT", () => {
+    assert.equal(classifyConsentButton("Continua senza accettare"), BUTTON_KIND.REJECT);
+  });
+
+  test("'accetta' does not word-boundary-match inside 'accettare' on its own (no trailing reject context) — resolves UNKNOWN, never a false ACCEPT", () => {
+    assert.equal(classifyConsentButton("Accettare"), BUTTON_KIND.UNKNOWN);
   });
 });
 
