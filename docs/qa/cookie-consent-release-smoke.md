@@ -68,6 +68,31 @@ visual confirmation that no cookie was actually set after reject, or any
 geography-gated banner variant the canary's candidate site didn't happen
 to show that run. Those require the manual Chrome + Firefox steps below.
 
+## Automated reject-API surface drift check (any vantage)
+
+`tools/probe-cmp-surface.mjs` covers the drift the geo-gated canary can't
+reach: a vendor RENAMING or REMOVING the reject method our adapter calls
+(e.g. Cookiebot dropping `submitCustomConsent`). Unlike the banner, the vendor
+SDK loads and exposes its globals regardless of the consent-banner geo gate,
+so this yields a real signal from ANY vantage (including non-EU CI):
+
+    node tools/probe-cmp-surface.mjs          # table + per-adapter verdict
+    node tools/probe-cmp-surface.mjs --json    # machine-readable
+
+It navigates each adapter's real customer sites (from `tests/canary/cmp-sites.json`)
+and reports CONFIRMED (reject method present as a function), GLOBAL_ONLY
+(possible partial drift), or UNCONFIRMED (SDK never loaded — site down /
+bot-protected / not on that CMP). A 2026-07 run confirmed 9 of 10 adapters'
+reject-API surface live from a non-EU vantage; only `usercentrics` was
+UNCONFIRMED (its curated sites did not expose `UC_UI` from that vantage — a
+better Usercentrics customer site is worth curating, tracked with #1135).
+
+This does NOT replace the banner-dismiss smoke below — it proves the method
+still EXISTS to call, not that calling it dismisses the live banner. It is a
+maintainer probe, not a CI gate (real sites are flaky). Gap A's runtime
+`confirmRejectDismissal` console warning is the complementary live safety net:
+if a reject fires but its banner never clears on a real user's page, it warns.
+
 ## Per-adapter checklist
 
 Each section lists the exact reject call and detection signals as
