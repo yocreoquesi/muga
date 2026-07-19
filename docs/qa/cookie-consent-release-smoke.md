@@ -82,10 +82,11 @@ so this yields a real signal from ANY vantage (including non-EU CI):
 It navigates each adapter's real customer sites (from `tests/canary/cmp-sites.json`)
 and reports CONFIRMED (reject method present as a function), GLOBAL_ONLY
 (possible partial drift), or UNCONFIRMED (SDK never loaded — site down /
-bot-protected / not on that CMP). A 2026-07 run confirmed 9 of 10 adapters'
-reject-API surface live from a non-EU vantage; only `usercentrics` was
-UNCONFIRMED (its curated sites did not expose `UC_UI` from that vantage — a
-better Usercentrics customer site is worth curating, tracked with #1135).
+bot-protected / not on that CMP). A 2026-07 run confirmed ALL 10 adapters'
+reject-API surface live from a non-EU vantage, after curating a better
+Usercentrics site (paulandshark.com; dish.com/conrad.de did not expose `UC_UI`
+from that vantage — the UC_UI surface is scarcer in the wild than assumed, see
+#1121). Only the banner-dismiss step below still needs an EU vantage.
 
 This does NOT replace the banner-dismiss smoke below — it proves the method
 still EXISTS to call, not that calling it dismisses the live banner. It is a

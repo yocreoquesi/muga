@@ -73,15 +73,27 @@
   },
   {
     "cmp": "usercentrics",
+    "url": "https://www.paulandshark.com",
+    "bannerSelector": "#usercentrics-root",
+    "note": "Reject-API surface live-verified (2026-07, tools/probe-cmp-surface.mjs): window.UC_UI.denyAllConsents is a function AND #usercentrics-root is present. Paul & Shark is a named Usercentrics case-study customer (https://usercentrics.com/case-studies/). Preferred over dish.com/conrad.de below, which did NOT expose UC_UI from a non-EU vantage on that run (dish appears migrated; conrad.de bot-blocks headless) — the UC_UI surface itself is scarcer in the wild than assumed (newer deployments use the __ucCmp SDK our adapter does not key on; see #1121's coverage caveat)."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.einhell.com",
+    "bannerSelector": "#usercentrics-root",
+    "note": "Reject-API surface live-verified (2026-07, tools/probe-cmp-surface.mjs): window.UC_UI.denyAllConsents is a function (window.__ucCmp also present). Einhell is a named Usercentrics case-study customer (https://usercentrics.com/case-studies/). Secondary UC_UI candidate alongside paulandshark.com."
+  },
+  {
+    "cmp": "usercentrics",
     "url": "https://www.dish.com",
     "bannerSelector": "#usercentrics-root",
-    "note": "DISH is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"DISH — Consent experience streamlining\")."
+    "note": "DISH is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"DISH — Consent experience streamlining\"). NOTE: did NOT expose window.UC_UI from a non-EU vantage on the 2026-07 probe (appears migrated to a newer SDK) — kept as a lower-confidence fallback behind paulandshark.com/einhell.com above."
   },
   {
     "cmp": "usercentrics",
     "url": "https://www.conrad.de",
     "bannerSelector": "#usercentrics-root",
-    "note": "Conrad Electronic is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"Conrad Electronic — Privacy compliance at scale\")."
+    "note": "Conrad Electronic is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"Conrad Electronic — Privacy compliance at scale\"). NOTE: bot-blocks headless Chromium (2026-07 probe saw a challenge interstitial, no UC_UI) — poor automated-probe candidate; kept for manual/citation reference only."
   },
   {
     "cmp": "cookieinformation",
