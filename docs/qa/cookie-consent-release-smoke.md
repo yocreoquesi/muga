@@ -240,13 +240,38 @@ this slice ships, or that clicking a real wall's button actually dismisses
 it in-extension (the throwaway probe that proved the mechanism viable, id
 1333, ran outside the extension).
 
-- [ ] **BLOCKING:** run a real headed-Chromium smoke from a genuine EU
-  vantage point (VPN/proxy or an EU-hosted CI runner) against `zeit.de`
-  and `spiegel.de` — both confirmed real Sourcepoint consent-or-pay walls
-  with a German-language free-accept button ("Zustimmen und weiter" /
-  "Einwilligen und weiter") in a cross-origin message iframe (engram id
-  1333). Load MUGA from `src/`, onboarded, mode = accept-when-necessary,
-  gesture confirmed.
+**PARTIAL VALIDATION DONE (2026-07-20, non-EU-vantage probe + hardening):**
+- The DISCRIMINATION was run against LIVE DE production markup captured from
+  real walls (`tools`-style Playwright probe, no accept-click): on `zeit.de`
+  and `spiegel.de` the buttons classified correctly — `[11] "Zustimmen/Einwilligen und weiter"` -> accept, `[9] "...abonnieren"` -> pay, `[12] "Einstellungen"` -> settings.
+- IMPORTANT correction: `zeit.de`/`spiegel.de` expose a Settings choice
+  (`sp_choice_type_12`), so the accept-click CORRECTLY VETOES on them (a free
+  reject is reachable). They are the VETO cross-check, NOT the firing case. The
+  wall that actually FIRES (a true hard wall: accept + pay only, no
+  settings/reject) is `faz.net` / `sueddeutsche.de` (the "einverstanden"
+  free-accept walls the DE smoke originally passed).
+- A final visibility guard was added (`isAcceptTargetVisible`): the click now
+  never targets an accept hidden via `visibility:hidden`/`opacity:0`. Confirm
+  the real firing wall's accept button is normally visible so the guard does
+  not suppress a legitimate fire.
+- FR/ES/IT walls could NOT be probed: they are geo-gated and did not render at
+  all from a non-EU vantage (0 sp_choice controls on lemonde/lefigaro/elpais/
+  elmundo/corriere/repubblica). The FR/ES/IT tokens therefore remain unverified
+  against real markup — each locale needs its own EU-vantage capture below.
+
+- [ ] **BLOCKING (firing + dismissal):** run a real headed-Chromium smoke from
+  a genuine EU vantage point (VPN/proxy or an EU-hosted CI runner) against a
+  TRUE HARD wall — `faz.net` / `sueddeutsche.de` (German "einverstanden"
+  free-accept, accept + pay only, no Settings). Load MUGA from `src/`,
+  onboarded, mode = accept-when-necessary, gesture confirmed. This is the case
+  that GRANTS consent, so it is the one that must actually dismiss.
+- [ ] **BLOCKING (veto cross-check):** against `zeit.de` / `spiegel.de` (which
+  DO expose a Settings choice) confirm the accept-click CORRECTLY ABSTAINS —
+  the wall is left for the user, nothing is clicked.
+- [ ] **BLOCKING per locale (FR/ES/IT):** before enabling on any FR/ES/IT wall,
+  capture a real EU-vantage hard wall in that locale and confirm the shipped
+  FR/ES/IT tokens classify its accept as accept and its pay as pay (they are
+  currently DATA-only, unverified — see cmp-accept-adapters.js docblock).
 - [ ] Confirm the click actually DISMISSES the wall — **verify by
   screenshot, not by an overlay/overflow-CSS heuristic** (id 1333's own
   false-positive lesson: a residual bottom banner + normal
