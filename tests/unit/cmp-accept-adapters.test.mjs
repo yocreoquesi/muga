@@ -1019,3 +1019,29 @@ describe("cmp-accept-adapters — ADVERSARIAL: impossible-by-construction scenar
     assert.equal(r.target, null);
   });
 });
+
+// PROPERTY: deny-precedence must hold across the ENTIRE ACCEPT_TOKENS ×
+// PAY_DENY_TOKENS cross-product, not just the sampled adversarial cases above.
+// A label carrying BOTH an accept word and a pay/subscribe word (in either
+// order) is a pay control and must NEVER classify "accept" — otherwise a pay
+// button labelled with an accept word (e.g. "Accept subscription") could be
+// clicked, committing the user. This exhaustively proves the pay check runs
+// before, and wins over, the accept check for every token pair.
+describe("PROPERTY: deny-precedence over the full ACCEPT x PAY_DENY cross-product", () => {
+  test("every accept-token + pay-token label classifies as pay (both orderings), never accept", () => {
+    const failures = [];
+    for (const accept of ACCEPT_TOKENS) {
+      for (const pay of PAY_DENY_TOKENS) {
+        for (const label of [`${accept} ${pay}`, `${pay} ${accept}`]) {
+          const kind = classifyConsentButton(label);
+          if (kind !== "pay") failures.push(`"${label}" -> ${kind}`);
+        }
+      }
+    }
+    assert.deepEqual(
+      failures,
+      [],
+      `deny-precedence must make every accept+pay label classify "pay":\n${failures.slice(0, 20).join("\n")}`
+    );
+  });
+});

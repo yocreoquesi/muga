@@ -425,6 +425,39 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     await page.close();
   });
 
+  test("VISIBILITY GUARD: NEVER clicks an accept hidden via opacity:0 (decoy with a live layout box)", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    // A hard wall that WOULD fire (a single actionable sp_choice_type_11 accept
+    // plus a pay alternative, no free reject) — except the accept button is
+    // rendered opacity:0. It keeps a live layout box (so it passes the loose
+    // actionability bar used for reject detection), but the user cannot see it,
+    // so the final visibility guard must make the accept-click NOOP.
+    await stubPaywallPages(page, {
+      wallButtonsHtml: `
+          <button id="accept-btn" class="message-button sp_choice_type_11" style="opacity: 0" onclick="window.__mugaTestClicked='accept'">Alle akzeptieren und weiter</button>
+          <button id="pay-btn" class="message-button sp_choice_type_9" onclick="window.__mugaTestClicked='pay'">Jetzt abonnieren</button>`,
+    });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    const iframe = await waitForIframe(page);
+    // REASON: negative assertion — a correct abstain leaves no positive signal;
+    // settle past the dispatcher's re-sweep/give-up window to prove neither the
+    // invisible accept nor the pay button was ever clicked.
+    await page.waitForTimeout(2500);
+    const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
   test("FIX 2: NEVER acts when a free reject uses a non-basic label ('Ohne Einwilligung fortfahren')", async ({
     context,
     extensionId,

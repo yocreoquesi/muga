@@ -1722,6 +1722,33 @@
     }
   }
 
+  // Final visibility gate applied ONLY to the resolved accept-click TARGET,
+  // right before the click. isAcceptCandidateActionable (the layout-box bar
+  // above) deliberately stays loose so a `visibility:hidden`/`opacity:0` reject
+  // still counts toward hasFreeRejectControl (more vetoes = safer). But the one
+  // button MUGA actually CLICKS is the highest-stakes action in the project, so
+  // it must be a control the user can genuinely see: never grant consent by
+  // clicking an accept decoy hidden via visibility:hidden or opacity:0. Uses
+  // getComputedStyle (available in every real content-script world); when the
+  // CSSOM is unavailable (some non-DOM test envs) it falls back to the
+  // already-applied layout-box bar. Fail-closed: a throw means "cannot confirm
+  // visible" -> do not click.
+  function isAcceptTargetVisible(el) {
+    try {
+      if (!el) return false; // fail-closed: no target to confirm
+      if (typeof getComputedStyle !== "function") return true; // no CSSOM: fall back to the layout-box bar already applied
+      const cs = getComputedStyle(el);
+      if (!cs) return true;
+      if (cs.visibility === "hidden" || cs.visibility === "collapse") return false;
+      if (cs.display === "none") return false;
+      const opacity = parseFloat(cs.opacity);
+      if (!Number.isNaN(opacity) && opacity === 0) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // The Sourcepoint decision-button marker: the "<N>" suffix of the element's
   // `sp_choice_type_<N>` class ("11"/"12"/"13"/"9"/"link"/…), or "" when the
   // element carries no such class (an incidental link, NOT a decision control).
@@ -1800,6 +1827,12 @@
     if (hasFreeRejectControl(candidates)) return;
     const result = findSpFreeAcceptTarget(candidates);
     if (result.status !== "single") return;
+    // Final visibility guard on the resolved target (highest-stakes action):
+    // never click an accept the user cannot actually see (visibility:hidden /
+    // opacity:0 decoy with a live layout box). NOOP if it is not truly visible;
+    // do NOT mark acted, so the observer keeps watching within the give-up
+    // window in case the real accept later becomes visible.
+    if (!isAcceptTargetVisible(result.target.ref)) return;
     _acceptActed = true;
     try {
       result.target.ref.click();
