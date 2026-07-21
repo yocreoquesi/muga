@@ -1791,16 +1791,11 @@ describe("consentmanagerAdapter.reject — pure callback invocation", () => {
 // coverage (only a structural regex). Extracting it as a pure helper lets
 // every branch run here.
 //
-// cookie-consent-accept Slice 2a: this gate no longer compares
-// `prefs.cookieConsentMode` against a literal mode string itself — that
-// string comparison (which would need to name every active enum member,
-// including the newer one this file must never spell — see the STRUCTURAL
-// guard below) moved to the settings-schema.js boundary
-// (isCookieConsentModeActive), which is lexically unrestricted. The caller
+// This gate does not compare `prefs.cookieConsentMode` against a literal
+// mode string itself — that string comparison moved to the
+// settings-schema.js boundary (isCookieConsentModeActive). The caller
 // resolves the raw pref there and hands this gate a pre-validated boolean
-// via `deps.modeActive`. This lets the reject ladder run first in every
-// active mode (design's L3) without this file ever knowing a second mode
-// exists.
+// via `deps.modeActive`.
 
 const GATE_ON_PREFS = Object.freeze({
   enabled: true,
@@ -1815,10 +1810,9 @@ describe("computeCookieGate — disabled-state gate", () => {
   });
 
   // modeActive is computed upstream (settings-schema.js's
-  // isCookieConsentModeActive) for BOTH "reject-only" and
-  // "accept-when-necessary" — this gate treats them identically: it only
-  // ever sees the pre-validated boolean, never the mode string.
-  test("modeActive true opens the gate the same way regardless of which active mode produced it", () => {
+  // isCookieConsentModeActive) — this gate only ever sees the
+  // pre-validated boolean, never the mode string.
+  test("modeActive true opens the gate", () => {
     assert.equal(computeCookieGate(GATE_ON_PREFS, { modeActive: true }), true);
   });
 

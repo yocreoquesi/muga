@@ -33,18 +33,6 @@ const FILES = {
   isolated: join(__dirname, "../../src/content/cookie-noise.js"),
 };
 
-// cookie-consent-paywall-accept: the accept module's own lib file plus its
-// ONE content-script copy. Separate FILES map because the pure accept logic
-// is hand-copied FROM a different lib file (src/lib/cmp-accept-adapters.js),
-// not cmp-adapters.js. Unlike the reject ladder, this mechanism has NO
-// main-world copy at all — a DOM `element.click()` needs neither a
-// page-authored global nor the MAIN world, so it lives ONLY in the isolated
-// world (content/cookie-noise.js), for both browsers.
-const ACCEPT_FILES = {
-  lib: join(__dirname, "../../src/lib/cmp-accept-adapters.js"),
-  isolated: join(__dirname, "../../src/content/cookie-noise.js"),
-};
-
 const START = "@sync:cmp-adapters:start";
 const END = "@sync:cmp-adapters:end";
 
@@ -72,11 +60,6 @@ const sources = {
   lib: readFileSync(FILES.lib, "utf8"),
   mainworld: readFileSync(FILES.mainworld, "utf8"),
   isolated: readFileSync(FILES.isolated, "utf8"),
-};
-
-const acceptSources = {
-  lib: readFileSync(ACCEPT_FILES.lib, "utf8"),
-  isolated: sources.isolated,
 };
 
 describe("cookie-noise-sync — @sync:cmp-adapters block is present in all three files", () => {
@@ -223,63 +206,6 @@ describe("cookie-noise-sync — @sync:cookie-gate block matches src/lib/cmp-adap
   });
 });
 
-// ── @sync:cmp-accept-veto block (button-discrimination primitives) ────────
-//
-// cookie-consent-paywall-accept: classifyConsentButton, findFreeAcceptTarget,
-// hasFreeRejectControl, and isPaywallFrame (plus their word-list DATA) are
-// pure, world-agnostic functions defined in src/lib/cmp-accept-adapters.js
-// and hand-copied, byte-identical (modulo indentation), into
-// content/cookie-noise.js ONLY — this mechanism has no main-world copy at
-// all (a DOM click needs neither a page global nor the MAIN world), unlike
-// the reject ladder's three-way mirror above.
-
-const ACCEPT_START = "@sync:cmp-accept-veto:start";
-const ACCEPT_END = "@sync:cmp-accept-veto:end";
-
-describe("cookie-noise-sync — @sync:cmp-accept-veto block is present in both files", () => {
-  for (const [label, path] of Object.entries(ACCEPT_FILES)) {
-    test(`${label} (${path.split(/[\\/]/).pop()}) contains both @sync:cmp-accept-veto markers`, () => {
-      const src = acceptSources[label];
-      assert.ok(src.includes(ACCEPT_START), `${label} missing ${ACCEPT_START}`);
-      assert.ok(src.includes(ACCEPT_END), `${label} missing ${ACCEPT_END}`);
-    });
-  }
-});
-
-describe("cookie-noise-sync — @sync:cmp-accept-veto block is byte-identical (modulo indentation and the export keyword) across both copies", () => {
-  // The word-list constants are `export const X` in the lib module (content
-  // scripts cannot use ES module `export` syntax) — same normalizer the
-  // @sync:site-exempt block below uses for the identical reason.
-  const libBlock = extractMarkedBlock(acceptSources.lib, ACCEPT_START, ACCEPT_END, "cmp-accept-adapters.js")
-    .map((l) => l.replace(/^export\s+/, ""));
-  const isolatedBlock = extractMarkedBlock(acceptSources.isolated, ACCEPT_START, ACCEPT_END, "cookie-noise.js");
-
-  test("sync block is non-empty and defines classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, isPaywallFrame, findDidomiFreeAcceptTarget, isDidomiPaywallContext", () => {
-    assert.ok(libBlock.length > 0, "extracted @sync:cmp-accept-veto block must not be empty — check the markers");
-    const joined = libBlock.join("\n");
-    assert.ok(/function classifyConsentButton/.test(joined));
-    assert.ok(/function findFreeAcceptTarget/.test(joined));
-    assert.ok(/function findSpFreeAcceptTarget/.test(joined));
-    assert.ok(/function hasFreeRejectControl/.test(joined));
-    assert.ok(/function isPaywallFrame/.test(joined));
-    assert.ok(/function findDidomiFreeAcceptTarget/.test(joined));
-    assert.ok(/function isDidomiPaywallContext/.test(joined));
-  });
-
-  test("cookie-noise.js @sync:cmp-accept-veto block matches src/lib/cmp-accept-adapters.js", () => {
-    assert.deepEqual(
-      isolatedBlock,
-      libBlock,
-      "content/cookie-noise.js's @sync:cmp-accept-veto block has drifted from src/lib/cmp-accept-adapters.js",
-    );
-  });
-
-  test("the main-world caller does NOT carry the @sync:cmp-accept-veto block (the accept-click mechanism has no MAIN-world copy)", () => {
-    assert.equal(sources.mainworld.includes(ACCEPT_START), false,
-      "cookie-noise-mainworld.js must not inline the accept-click veto — this mechanism is isolated-world only");
-  });
-});
-
 // ── Retired Didomi minimum-accept path — full removal proof ────────────────
 //
 // The prior design (cookie-consent-accept Slice 2a) attempted a Didomi
@@ -317,38 +243,54 @@ describe("cookie-noise content scripts — the retired Didomi minimum-accept pat
   }
 });
 
-// ── @sync:cmp-accept-gate block (the accept double-gate) ────────────────────
+// ── Retired consent-or-pay-wall accept-click mechanism — full removal proof ─
 //
-// computeAcceptGate is a pure helper in src/lib/cmp-accept-adapters.js
-// (unit-tested there) whose body is hand-inlined ONLY into
-// content/cookie-noise.js (isolated world) — mirrors the @sync:cookie-gate
-// precedent exactly: the main-world caller never reads prefs, so it does
-// NOT carry this block either.
+// cookie-consent-paywall-accept (and its Didomi-market extension) has been
+// REMOVED entirely — MUGA never ships a capability that clicks a
+// consent-granting control on the user's behalf. This must be fully gone
+// from BOTH content scripts — not just unused, but structurally absent —
+// including the button-discrimination primitives, the accept double-gate,
+// and both dispatch functions. The DOM candidate-collection helpers
+// (collectAcceptCandidates and friends) are DELIBERATELY NOT listed here —
+// they are still used, unmodified, by the Sourcepoint reject-click DOM
+// fallback (see the @sync:cmp-sp-reject-click section below).
 
-const ACCEPT_GATE_START = "@sync:cmp-accept-gate:start";
-const ACCEPT_GATE_END = "@sync:cmp-accept-gate:end";
+describe("cookie-noise content scripts — the retired consent-or-pay-wall accept-click mechanism is fully gone", () => {
+  const RETIRED_ACCEPT_IDENTIFIERS = [
+    "accept-when-necessary",
+    "cookieConsentAcceptConsented",
+    "cmp-accept-adapters",
+    "classifyConsentButton",
+    "findFreeAcceptTarget",
+    "hasFreeRejectControl",
+    "hasPayOption",
+    "findSpFreeAcceptTarget",
+    "isPaywallFrame",
+    "findDidomiFreeAcceptTarget",
+    "isDidomiPaywallContext",
+    "computeAcceptGate",
+    "computeAcceptGateForFrame",
+    "resolveFrameIdentity",
+    "runAcceptClickDispatcher",
+    "runDidomiAcceptClickDispatcher",
+    "hasDidomiHostMount",
+    "isAcceptTargetVisible",
+    "acceptStartObserver",
+    "acceptStopObserver",
+    "acceptArmGiveUp",
+    "_acceptActed",
+    "_didomiAcceptActed",
+    "_acceptGateOpen",
+    "_acceptObserver",
+  ];
 
-describe("cookie-noise-sync — @sync:cmp-accept-gate block matches src/lib/cmp-accept-adapters.js", () => {
-  const libBlock = extractMarkedBlock(acceptSources.lib, ACCEPT_GATE_START, ACCEPT_GATE_END, "cmp-accept-adapters.js");
-  const isolatedBlock = extractMarkedBlock(acceptSources.isolated, ACCEPT_GATE_START, ACCEPT_GATE_END, "cookie-noise.js");
-
-  test("accept-gate sync block is non-empty and defines computeAcceptGate", () => {
-    assert.ok(libBlock.length > 0, "extracted @sync:cmp-accept-gate block must not be empty — check the markers");
-    assert.ok(/function computeAcceptGate/.test(libBlock.join("\n")));
-  });
-
-  test("cookie-noise.js @sync:cmp-accept-gate block matches src/lib/cmp-accept-adapters.js", () => {
-    assert.deepEqual(
-      isolatedBlock,
-      libBlock,
-      "content/cookie-noise.js's @sync:cmp-accept-gate block has drifted from src/lib/cmp-accept-adapters.js",
-    );
-  });
-
-  test("the main-world caller does NOT carry the @sync:cmp-accept-gate block (it never reads prefs)", () => {
-    assert.equal(sources.mainworld.includes(ACCEPT_GATE_START), false,
-      "cookie-noise-mainworld.js must not inline the accept double-gate — it has no prefs access");
-  });
+  for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+    for (const identifier of RETIRED_ACCEPT_IDENTIFIERS) {
+      test(`${label} no longer contains retired identifier "${identifier}"`, () => {
+        assert.equal(sources[key].includes(identifier), false, `${label} must not contain "${identifier}"`);
+      });
+    }
+  }
 });
 
 // ── @sync:cmp-sp-reject-click block (Sourcepoint reject-click DOM fallback) ─
@@ -865,135 +807,6 @@ describe("cookie-noise content scripts — REJECT-ladder call-shape guards (per-
       assert.equal(sources.isolated.includes(forbidden), false, `cookie-noise.js contains "${forbidden}"`);
     });
   }
-});
-
-// ── Consent-or-pay-wall accept-click dispatch — structural guards ──────────
-//
-// cookie-consent-paywall-accept: the accept-click mechanism itself (only in
-// content/cookie-noise.js — see the @sync:cmp-accept-veto section above for
-// the pure discrimination primitives). This is NOT a vendor API adapter —
-// it is a generic DOM `element.click()` — so its guards are shaped
-// differently from the per-vendor call-shape tests above: prove the click
-// call site exists, is gated on every required signal in the right order,
-// and never touches a page-authored global.
-
-describe("cookie-noise.js — accept-click dispatch structural guards", () => {
-  test("the click call site is `.ref.click()` — never a page-authored global method call", () => {
-    assert.ok(/\.ref\.click\s*\(\s*\)/.test(sources.isolated),
-      "cookie-noise.js must click the resolved DOM candidate via `.ref.click()`");
-  });
-
-  test("runAcceptClickDispatcher gates on isPaywallFrame, hasFreeRejectControl, and findSpFreeAcceptTarget's single status, in that order, before ever clicking", () => {
-    const src = sources.isolated;
-    const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(fnMatch, "cookie-noise.js must define runAcceptClickDispatcher()");
-    const body = fnMatch[1];
-    const paywallIdx = body.indexOf("isPaywallFrame(");
-    const rejectIdx = body.indexOf("hasFreeRejectControl(");
-    const targetIdx = body.indexOf("findSpFreeAcceptTarget(");
-    const clickIdx = body.indexOf(".ref.click(");
-    assert.ok(paywallIdx !== -1, "must call isPaywallFrame");
-    assert.ok(rejectIdx !== -1, "must call hasFreeRejectControl");
-    assert.ok(targetIdx !== -1, "must call findSpFreeAcceptTarget");
-    assert.ok(clickIdx !== -1, "must call .ref.click()");
-    assert.ok(
-      paywallIdx < rejectIdx && rejectIdx < targetIdx && targetIdx < clickIdx,
-      "runAcceptClickDispatcher must check isPaywallFrame, then hasFreeRejectControl, then findSpFreeAcceptTarget, before ever clicking",
-    );
-  });
-
-  test("FIX F1: the reject/settings safety net runs over ALL collected candidates (so an anchor-rendered free reject blocks), not a spChoice-scoped subset", () => {
-    const src = sources.isolated;
-    const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(fnMatch);
-    const body = fnMatch[1];
-    // hasFreeRejectControl must receive the FULL candidate list, so a free reject
-    // rendered as a plain <a href> link (collected but carrying no sp_choice
-    // class) still vetoes the accept-click.
-    assert.ok(/hasFreeRejectControl\(\s*candidates\s*\)/.test(body),
-      "hasFreeRejectControl must be called over the full `candidates` list");
-    assert.ok(!/hasFreeRejectControl\(\s*decisionCandidates\s*\)/.test(body),
-      "hasFreeRejectControl must NOT be scoped to a decision-only subset (that dropped anchor rejects)");
-  });
-
-  test("the dispatch never fires in the top frame — bails on isTopFrame before any DOM scan", () => {
-    const src = sources.isolated;
-    const fnMatch = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(fnMatch);
-    assert.ok(/if\s*\(\s*isTopFrame\s*\)\s*return;/.test(fnMatch[1]),
-      "runAcceptClickDispatcher must bail immediately when isTopFrame is true");
-  });
-
-  test("the accept-click gate (computeAcceptGateForFrame) is checked before the dispatch runs", () => {
-    assert.ok(/_acceptGateOpen/.test(sources.isolated));
-    assert.ok(/computeAcceptGateForFrame/.test(sources.isolated));
-  });
-
-  test("cookie-noise-mainworld.js has no accept-click dispatch of any kind (mechanism is isolated-world only)", () => {
-    for (const forbidden of ["runAcceptClickDispatcher", "isPaywallFrame", "findFreeAcceptTarget", "findSpFreeAcceptTarget", "hasFreeRejectControl", "classifyConsentButton"]) {
-      assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
-    }
-  });
-});
-
-// ── Didomi consent-or-pay-wall accept-click dispatch — structural guards ───
-//
-// Analog of the SP structural guard above, for the SEPARATE
-// runDidomiAcceptClickDispatcher (cookie-consent-didomi-paywall-accept). Must
-// NOT be merged into runAcceptClickDispatcher itself — that function's own
-// structural guard above asserts a FIXED SP call order and stays untouched.
-
-describe("cookie-noise.js — Didomi accept-click dispatch structural guards", () => {
-  test("runDidomiAcceptClickDispatcher gates on isDidomiPaywallContext, hasFreeRejectControl, and findDidomiFreeAcceptTarget's single status, in that order, before ever clicking", () => {
-    const src = sources.isolated;
-    const fnMatch = /function runDidomiAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(fnMatch, "cookie-noise.js must define runDidomiAcceptClickDispatcher()");
-    const body = fnMatch[1];
-    const contextIdx = body.indexOf("isDidomiPaywallContext(");
-    const rejectIdx = body.indexOf("hasFreeRejectControl(");
-    const targetIdx = body.indexOf("findDidomiFreeAcceptTarget(");
-    const clickIdx = body.indexOf(".ref.click(");
-    assert.ok(contextIdx !== -1, "must call isDidomiPaywallContext");
-    assert.ok(rejectIdx !== -1, "must call hasFreeRejectControl");
-    assert.ok(targetIdx !== -1, "must call findDidomiFreeAcceptTarget");
-    assert.ok(clickIdx !== -1, "must call .ref.click()");
-    assert.ok(
-      contextIdx < rejectIdx && rejectIdx < targetIdx && targetIdx < clickIdx,
-      "runDidomiAcceptClickDispatcher must check isDidomiPaywallContext, then hasFreeRejectControl, then findDidomiFreeAcceptTarget, before ever clicking",
-    );
-  });
-
-  test("runDidomiAcceptClickDispatcher is a SEPARATE function from runAcceptClickDispatcher (the SP dispatcher's structural guard stays untouched)", () => {
-    const src = sources.isolated;
-    assert.ok(/function runAcceptClickDispatcher\(\)/.test(src));
-    assert.ok(/function runDidomiAcceptClickDispatcher\(\)/.test(src));
-    const spBody = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src)[1];
-    assert.equal(spBody.includes("isDidomiPaywallContext"), false,
-      "runAcceptClickDispatcher must not reference the Didomi context predicate — keep the two dispatchers separate");
-    assert.equal(spBody.includes("findDidomiFreeAcceptTarget"), false,
-      "runAcceptClickDispatcher must not reference the Didomi target resolver — keep the two dispatchers separate");
-  });
-
-  test("the dispatch never fires outside the top frame — bails when NOT the top frame, before any DOM scan", () => {
-    const src = sources.isolated;
-    const fnMatch = /function runDidomiAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(fnMatch);
-    assert.ok(/if\s*\(\s*!isTopFrame\s*\)\s*return;/.test(fnMatch[1]),
-      "runDidomiAcceptClickDispatcher must bail immediately when isTopFrame is false");
-  });
-
-  test("both dispatchers are wired into the same observer/initial-sweep call sites (called together)", () => {
-    const src = sources.isolated;
-    assert.ok(/runAcceptClickDispatcher\(\)[^;]*;[\s\S]{0,80}runDidomiAcceptClickDispatcher\(\)/.test(src) ||
-      /runDidomiAcceptClickDispatcher\(\);[\s\S]{0,200}runAcceptClickDispatcher\(\)/.test(src),
-      "both dispatchers must be invoked near each other at the shared trigger points");
-  });
-
-  test("cookie-noise-mainworld.js has no Didomi accept-click dispatch of any kind (mechanism is isolated-world only)", () => {
-    for (const forbidden of ["runDidomiAcceptClickDispatcher", "isDidomiPaywallContext", "findDidomiFreeAcceptTarget"]) {
-      assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
-    }
-  });
 });
 
 // ── Sourcepoint reject-click dispatch — structural guards ──────────────────

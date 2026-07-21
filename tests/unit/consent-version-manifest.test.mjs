@@ -87,29 +87,32 @@ describe("consent-version-manifest — the retired 1.3 entry stays in the manife
   });
 });
 
-// cookie-consent-paywall-accept: the 1.4 entry activates the REAL
-// accept-when-necessary mechanism — a DOM click on a consent-or-pay wall's
-// free "Accept all" button when the wall offers no free reject option. This
-// GRANTS the site's advertising/tracking cookies, which is disclosure-worthy
-// even though the feature itself stays off until the user opts in AND
-// completes the explicit consent gesture (see
-// src/lib/cmp-accept-adapters.js's L2). Existing users who accepted 1.2 or
-// 1.3 get a SOFT re-onboard (delta review) surfacing this one new clause,
-// not a hard gate.
-describe("consent-version-manifest — cookie-consent-paywall-accept activates the 1.4 entry", () => {
-  test("manifest contains a 1.4 entry marked additive: true", () => {
+// cookie-consent-paywall-accept originally staged the 1.4 entry to activate
+// a DOM click on a consent-or-pay wall's own free "Accept all" button when
+// the wall offered no free reject option. That mechanism was a product
+// decision to NOT ship — MUGA never ships a capability that accepts cookies
+// on the user's behalf — and was deleted entirely before it ever reached
+// real users. It remains in the manifest (append-only) but
+// REQUIRED_CONSENT_VERSION never pointed at it and its clause list is empty
+// (see consent-clauses.test.mjs), mirroring the retired 1.3 entry above.
+describe("consent-version-manifest — the retired 1.4 entry stays in the manifest but was never activated", () => {
+  test("manifest still contains a 1.4 entry marked additive: true (append-only — never delete a published entry)", () => {
     const entry = CONSENT_VERSION_MANIFEST.find(m => m.version === "1.4");
     assert.ok(entry, "manifest must contain the 1.4 entry");
     assert.equal(entry.additive, true, "1.4 must be additive (soft re-onboard), not material");
   });
 
-  test("REQUIRED_CONSENT_VERSION is 1.4", () => {
-    assert.equal(REQUIRED_CONSENT_VERSION, "1.4");
+  test("REQUIRED_CONSENT_VERSION never pointed at 1.4", () => {
+    assert.notEqual(REQUIRED_CONSENT_VERSION, "1.4");
   });
 
   test("1.4 is the latest manifest entry", () => {
     const latest = CONSENT_VERSION_MANIFEST[CONSENT_VERSION_MANIFEST.length - 1];
     assert.equal(latest.version, "1.4");
+  });
+
+  test("REQUIRED_CONSENT_VERSION is 1.2 (the last version to actually activate a disclosure)", () => {
+    assert.equal(REQUIRED_CONSENT_VERSION, "1.2");
   });
 });
 

@@ -1,12 +1,18 @@
 /**
- * MUGA — migrateCookieConsentMode (cookie-consent 3-state modes, Slice 1)
+ * MUGA — migrateCookieConsentMode (cookie-consent 2-state mode)
  *
  * Converts the legacy `cookieConsentMinimizerEnabled` boolean into the new
- * `cookieConsentMode` enum ("off" | "reject-only" | "accept-when-necessary")
- * + the separate `cookieConsentAcceptConsented` hard-gate flag. Idempotent,
- * safe every startup, keyed off the onboarding-completed signal
+ * `cookieConsentMode` enum ("off" | "reject-only"). Idempotent, safe every
+ * startup, keyed off the onboarding-completed signal
  * (chrome.storage.local["mugaConsent"].onboardingDone via consent-storage.js)
  * to distinguish existing users from fresh installs.
+ *
+ * Also runs a defensive cleanup, unconditionally, on every call: a
+ * persisted `cookieConsentMode === "accept-when-necessary"` (the removed
+ * accept-click mode, which never shipped enabled to real users but may
+ * exist in a pre-release/dev profile) collapses to `"reject-only"`, and a
+ * stale `cookieConsentAcceptConsented` key (the retired accept-gesture
+ * flag) is dropped.
  *
  * Uses a stateful in-memory chrome.storage stub (mirrors the pattern in
  * tests/unit/per-site-disable-migration.test.mjs) covering BOTH sync
@@ -62,7 +68,7 @@ async function loadMigration() {
 describe("migrateCookieConsentMode", () => {
   let stores;
 
-  test("legacy true -> reject-only, acceptConsented false, legacy key removed", async () => {
+  test("legacy true -> reject-only, legacy key removed", async () => {
     stores = installChromeStub({
       sync: { cookieConsentMinimizerEnabled: true },
       local: { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: 1 } },
@@ -71,7 +77,6 @@ describe("migrateCookieConsentMode", () => {
     await migrateCookieConsentMode();
 
     assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
-    assert.equal(stores.syncStore.get("cookieConsentAcceptConsented"), false);
     assert.equal(stores.syncStore.has("cookieConsentMinimizerEnabled"), false);
   });
 
@@ -109,7 +114,6 @@ describe("migrateCookieConsentMode", () => {
     await migrateCookieConsentMode({ reason: "update" });
 
     assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
-    assert.equal(stores.syncStore.get("cookieConsentAcceptConsented"), false);
     assert.equal(stores.syncStore.has("cookieConsentMinimizerEnabled"), false);
   });
 
@@ -126,13 +130,12 @@ describe("migrateCookieConsentMode", () => {
     assert.equal(stores.syncStore.get("cookieConsentMode"), "off");
   });
 
-  test("install seed: reason install -> reject-only + acceptConsented false", async () => {
+  test("install seed: reason install -> reject-only", async () => {
     stores = installChromeStub({ sync: {}, local: {} });
     const { migrateCookieConsentMode } = await loadMigration();
     await migrateCookieConsentMode({ reason: "install" });
 
     assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
-    assert.equal(stores.syncStore.get("cookieConsentAcceptConsented"), false);
   });
 
   test("REGRESSION: fresh-install lifecycle never silently flips to off after onboarding", async () => {
@@ -201,6 +204,44 @@ describe("migrateCookieConsentMode", () => {
       await migrateCookieConsentMode();
       assert.notEqual(s.syncStore.get("cookieConsentMode"), "accept-when-necessary");
     }
+  });
+
+  test("DEFENSIVE CLEANUP: a persisted accept-when-necessary mode is collapsed to reject-only", async () => {
+    stores = installChromeStub({
+      sync: { cookieConsentMode: "accept-when-necessary" },
+      local: { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: 1 } },
+    });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode();
+
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+  });
+
+  test("DEFENSIVE CLEANUP: a stale cookieConsentAcceptConsented key is dropped, regardless of its value", async () => {
+    for (const staleValue of [true, false]) {
+      const s = installChromeStub({
+        sync: { cookieConsentMode: "reject-only", cookieConsentAcceptConsented: staleValue },
+        local: { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: 1 } },
+      });
+      const { migrateCookieConsentMode } = await loadMigration();
+      await migrateCookieConsentMode();
+
+      assert.equal(s.syncStore.has("cookieConsentAcceptConsented"), false);
+      // Cleanup must not disturb an already-valid mode.
+      assert.equal(s.syncStore.get("cookieConsentMode"), "reject-only");
+    }
+  });
+
+  test("DEFENSIVE CLEANUP: runs even when cookieConsentMode is absent (legacy-key path)", async () => {
+    stores = installChromeStub({
+      sync: { cookieConsentMinimizerEnabled: true, cookieConsentAcceptConsented: true },
+      local: { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: 1 } },
+    });
+    const { migrateCookieConsentMode } = await loadMigration();
+    await migrateCookieConsentMode({ reason: "update" });
+
+    assert.equal(stores.syncStore.get("cookieConsentMode"), "reject-only");
+    assert.equal(stores.syncStore.has("cookieConsentAcceptConsented"), false);
   });
 
   test("a storage error never throws out to the caller (best-effort)", async () => {

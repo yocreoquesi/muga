@@ -67,7 +67,6 @@ const SAMPLE_PREFS = {
   honorCreatorMode: true,
   creatorAllowlist: ["youtube.com/@example"],
   cookieConsentMode: "reject-only",
-  cookieConsentAcceptConsented: false,
 };
 
 describe("SETTINGS_SCHEMA_VERSION", () => {
@@ -79,10 +78,6 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
   test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
-    // cookieConsentAcceptConsented is deliberately NOT here: it is the reserved
-    // accept-gate flag for Slice 2 and must never be imported until then, so it
-    // is kept out of the importable BOOLEAN_KEYS set (export still round-trips
-    // it via SETTINGS_FIELDS).
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
@@ -259,9 +254,7 @@ describe("planImport — full round-trip of every field", () => {
     }
   });
 
-  test("cookieConsentMode import collapses accept-when-necessary to reject-only (not pre-seedable until Slice 2)", () => {
-    // Importing must never pre-seed the reserved accept state without a consent
-    // gesture; only the import path is clamped this hard.
+  test("cookieConsentMode import collapses a retired/unrecognized value (e.g. the removed accept-when-necessary mode) to reject-only", () => {
     const plan = planImport(validImportData({ cookieConsentMode: "accept-when-necessary" }));
     assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
   });
@@ -269,13 +262,6 @@ describe("planImport — full round-trip of every field", () => {
   test("cookieConsentMode clamps an unrecognized value to the safe default (reject-only)", () => {
     const plan = planImport(validImportData({ cookieConsentMode: "bogus-mode" }));
     assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
-  });
-
-  test("cookieConsentAcceptConsented is NOT importable (reserved accept-gate for Slice 2)", () => {
-    const plan = planImport(validImportData({ cookieConsentAcceptConsented: true }));
-    assert.strictEqual(plan.toSave.cookieConsentAcceptConsented, undefined);
-    const planFalse = planImport(validImportData({ cookieConsentAcceptConsented: false }));
-    assert.strictEqual(planFalse.toSave.cookieConsentAcceptConsented, undefined);
   });
 
   test("language round-trips for every SUPPORTED_LANGS code, rejects unknown codes", () => {
@@ -475,8 +461,8 @@ describe("TOAST_DURATION_OPTIONS / snapToastDuration", () => {
 });
 
 describe("COOKIE_CONSENT_MODE_OPTIONS / clampCookieConsentMode", () => {
-  test("the enum has exactly the three documented members, reject-only first", () => {
-    assert.deepStrictEqual([...COOKIE_CONSENT_MODE_OPTIONS], ["off", "reject-only", "accept-when-necessary"]);
+  test("the enum has exactly the two documented members, reject-only first", () => {
+    assert.deepStrictEqual([...COOKIE_CONSENT_MODE_OPTIONS], ["off", "reject-only"]);
   });
 
   test("clamps every valid member to itself", () => {
@@ -485,33 +471,32 @@ describe("COOKIE_CONSENT_MODE_OPTIONS / clampCookieConsentMode", () => {
     }
   });
 
-  test("clamps an unrecognized value, or a non-string, to the safe default (reject-only)", () => {
+  test("clamps an unrecognized value (including the removed accept-when-necessary mode), or a non-string, to the safe default (reject-only)", () => {
     assert.equal(clampCookieConsentMode("bogus"), "reject-only");
+    assert.equal(clampCookieConsentMode("accept-when-necessary"), "reject-only");
     assert.equal(clampCookieConsentMode(undefined), "reject-only");
     assert.equal(clampCookieConsentMode(null), "reject-only");
     assert.equal(clampCookieConsentMode(123), "reject-only");
   });
 });
 
-// isCookieConsentModeActive (cookie-consent-accept Slice 2a): the
-// modeActive gate-wiring boundary — src/lib/cmp-adapters.js's
-// computeCookieGate no longer compares the mode string itself (that file
-// stays lexically restricted, see its structural guard); instead the
-// caller (background/service-worker.js) validates the mode against this
-// closed-enum boundary here and hands a pre-validated boolean down. This
-// module has no lexical restriction, so it is the one safe place to name
-// every active enum member explicitly.
+// isCookieConsentModeActive: the modeActive gate-wiring boundary —
+// src/lib/cmp-adapters.js's computeCookieGate no longer compares the mode
+// string itself (that file stays lexically restricted, see its structural
+// guard); instead the caller (background/service-worker.js) validates the
+// mode against this closed-enum boundary here and hands a pre-validated
+// boolean down.
 describe("isCookieConsentModeActive", () => {
   test("reject-only is active", () => {
     assert.equal(isCookieConsentModeActive("reject-only"), true);
   });
 
-  test("accept-when-necessary is active", () => {
-    assert.equal(isCookieConsentModeActive("accept-when-necessary"), true);
-  });
-
   test("off is not active", () => {
     assert.equal(isCookieConsentModeActive("off"), false);
+  });
+
+  test("the removed accept-when-necessary mode is not active", () => {
+    assert.equal(isCookieConsentModeActive("accept-when-necessary"), false);
   });
 
   test("an unrecognized string, or a non-string, is not active (fail-closed)", () => {

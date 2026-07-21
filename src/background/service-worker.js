@@ -200,12 +200,12 @@ const toolbarPresenter = createToolbarPresenter({
 migrateStatsToLocal();
 migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
-// Cookie-consent 3-state modes (Slice 1): converts the legacy
-// cookieConsentMinimizerEnabled boolean into cookieConsentMode + the
-// cookieConsentAcceptConsented gate. This top-level call passes no reason, so
-// it runs the SAFE idempotent pass only (maps a present legacy key; never
-// infers "off" from an absent mode). Genuine installs are seeded by the
-// onInstalled call site, which passes details.reason.
+// Cookie-consent 2-state mode: converts the legacy
+// cookieConsentMinimizerEnabled boolean into cookieConsentMode. This
+// top-level call passes no reason, so it runs the SAFE idempotent pass only
+// (maps a present legacy key; never infers "off" from an absent mode).
+// Genuine installs are seeded by the onInstalled call site, which passes
+// details.reason.
 migrateCookieConsentMode().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---

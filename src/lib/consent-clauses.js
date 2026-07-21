@@ -47,17 +47,14 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // disclosure was ever accurate to surface). See "1.4" below for the
   // clause covering the real, shipped mechanism.
   "1.3": Object.freeze([]),
-  // 1.4 (cookie-consent-paywall-accept): the accept-when-necessary mode's
-  // real mechanism — a DOM click on a consent-or-pay wall's own free
-  // "Accept all" button when the wall offers no free reject option. Single
-  // additive clause disclosing that this GRANTS the site's advertising and
-  // tracking cookies (the honest tradeoff of the only free path through
-  // such a wall) — a materially different disclosure than the retired 1.3
-  // "minimum, never grants tracking" framing. This mode stays off by
-  // default and requires BOTH selecting it in Settings AND completing a
-  // separate, explicit consent gesture — this clause is disclosure, not
-  // activation.
-  "1.4": Object.freeze(["ob_clause_cookie_consent_accept_paywall"]),
+  // 1.4 (cookie-consent-paywall-accept): originally staged to disclose the
+  // accept-when-necessary mode's real mechanism (a DOM click on a
+  // consent-or-pay wall's own free "Accept all" button). That mechanism was
+  // deleted entirely before it ever shipped to real users — MUGA never
+  // ships a capability that accepts cookies on the user's behalf — so, like
+  // "1.3" above, this version's clause list is empty (no disclosure was
+  // ever accurate to surface).
+  "1.4": Object.freeze([]),
 });
 
 /**

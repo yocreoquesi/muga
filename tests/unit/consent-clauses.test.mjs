@@ -232,54 +232,29 @@ describe("consent-clauses — retired Slice 2a clause (version 1.3 is now empty)
 });
 
 // ---------------------------------------------------------------------------
-// cookie-consent-paywall-accept — the 1.4 additive bump surfaces the REAL
-// accept-when-necessary mechanism's clause in the delta list. Mirrors the
-// #888 / #1027 sections above against the LIVE map.
+// Retired: cookie-consent-paywall-accept originally staged the 1.4 additive
+// bump to disclose the real accept-when-necessary mechanism (a DOM click on
+// a consent-or-pay wall's own free "Accept all" button). That mechanism was
+// deleted entirely before it ever shipped to real users — MUGA never ships
+// a capability that accepts cookies on the user's behalf — so, like "1.3"
+// above, version "1.4"'s clause list is now empty, RETIRED-BEFORE-SHIP.
 // ---------------------------------------------------------------------------
-describe("consent-clauses — cookie-consent-paywall-accept clause (live map)", () => {
-  test("CONSENT_CLAUSES_BY_VERSION['1.4'] discloses the paywall accept-click clause", () => {
-    assert.deepEqual(
-      [...(CONSENT_CLAUSES_BY_VERSION["1.4"] || [])],
-      ["ob_clause_cookie_consent_accept_paywall"]
-    );
+describe("consent-clauses — retired cookie-consent-paywall-accept clause (version 1.4 is now empty)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.4'] is empty — the retired mechanism never shipped a real disclosure", () => {
+    assert.deepEqual([...(CONSENT_CLAUSES_BY_VERSION["1.4"] || [])], []);
   });
 
-  test("user at 1.2, required 1.4 -> delta surfaces the paywall accept-click clause (1.3 contributes nothing)", () => {
+  test("user at 1.2, required 1.4 -> delta surfaces nothing (no soft re-onboard for the retired mechanism)", () => {
     const r = clausesForDelta({
       acceptedVersion: "1.2",
       requiredVersion: "1.4",
       manifest: CONSENT_VERSION_MANIFEST,
       // default clausesByVersion (live map)
     });
-    assert.deepEqual(r, ["ob_clause_cookie_consent_accept_paywall"]);
+    assert.deepEqual(r, []);
   });
 
-  test("the clause i18n key resolves to non-empty text in EN and ES (official locales)", () => {
-    assert.ok(
-      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_paywall?.en === "string" &&
-        TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.trim().length > 0,
-      "EN clause text must exist"
-    );
-    assert.ok(
-      typeof TRANSLATIONS.ob_clause_cookie_consent_accept_paywall?.es === "string" &&
-        TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.es.trim().length > 0,
-      "ES clause text must exist"
-    );
-  });
-
-  test("the clause text HONESTLY discloses that accepting GRANTS advertising/tracking cookies (the old minimum-only framing is retired)", () => {
-    const en = TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.toLowerCase();
-    assert.ok(en.includes("grants"), "EN clause must plainly disclose that accepting grants cookies");
-    assert.ok(en.includes("tracking"), "EN clause must name tracking cookies specifically");
-  });
-
-  test("the clause text states MUGA never clicks Subscribe/Pay and never acts when a free reject exists", () => {
-    const en = TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.toLowerCase();
-    assert.ok(en.includes("never"), "EN clause must state a never-does invariant");
-    assert.ok(en.includes("pay") || en.includes("subscribe"), "EN clause must name the pay/subscribe control it never clicks");
-  });
-
-  test("no em-dash in the EN clause copy (project copy convention)", () => {
-    assert.ok(!TRANSLATIONS.ob_clause_cookie_consent_accept_paywall.en.includes("—"));
+  test("the retired mechanism's old i18n key no longer exists", () => {
+    assert.equal(TRANSLATIONS.ob_clause_cookie_consent_accept_paywall, undefined);
   });
 });
