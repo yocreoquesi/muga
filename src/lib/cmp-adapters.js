@@ -1009,12 +1009,9 @@ export function decideAction(signals) {
  * all-pass — is unit-tested directly here instead of only structurally in
  * a content script that Node cannot import.
  *
- * Mode scope (3-state `cookieConsentMode` pref): the reject ladder must run
- * first in EVERY active mode, not only `"reject-only"` (see this project's
- * design docs, Part B "L3" + "Gate wiring reconciliation") — but
- * this file's own STRUCTURAL guard (see the describe block in
- * tests/unit/cmp-adapters.test.mjs) forbids naming the newer mode anywhere
- * in this source. So this gate no longer reads `prefs.cookieConsentMode`
+ * Mode scope: `cookieConsentMode` is a 2-state enum (`"off"` |
+ * `"reject-only"`, default `"reject-only"`; the opt-in paywall mode was
+ * removed pre-ship). This gate does not read `prefs.cookieConsentMode`
  * at all: the caller validates the raw pref against the closed enum at the
  * settings-schema.js boundary (which has no such lexical restriction) and
  * passes a pre-validated `deps.modeActive` boolean instead. Fail-closed:

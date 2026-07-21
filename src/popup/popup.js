@@ -647,6 +647,14 @@ function _resetPreviewDom() {
   }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
+  // The opt-in full-URL consent is per-URL and per-render: reset the row +
+  // checkbox every render (like report-broken above) so a prior navigation's
+  // ticked "no sensitive data" attestation never bleeds into a different
+  // URL's report or lingers when the result flips back to untouched.
+  const reportIncludeUrlRow = el("report-include-url-row");
+  if (reportIncludeUrlRow) reportIncludeUrlRow.hidden = true;
+  const reportIncludeUrlCheckbox = el("report-include-url");
+  if (reportIncludeUrlCheckbox) reportIncludeUrlCheckbox.checked = false;
   // #705 fix: remove any `.preview-breakdown` <details> appended by a
   // prior render. The breakdown is dynamic (paramBreakdown pref), so the
   // reset path must clear it the same way it clears the static slots

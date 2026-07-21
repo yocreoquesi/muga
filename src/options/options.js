@@ -1469,6 +1469,15 @@ async function testUrl() {
   const reportBtn = document.getElementById("dev-url-report-btn");
   // #858: use hidden attribute instead of inline style (CSP style-src without 'unsafe-inline')
   if (reportBtn) reportBtn.hidden = true;
+  // The opt-in full-URL consent is PER-URL: the "I confirm no personal or
+  // sensitive data" attestation applies to the URL the user just attested to,
+  // not the next one. Reset the row + checkbox on every test so a box left
+  // ticked for a previous URL can never silently carry its consent over to a
+  // different URL's report.
+  const includeUrlRow = document.getElementById("url-report-include-url-row");
+  if (includeUrlRow) includeUrlRow.hidden = true;
+  const includeUrlCheckbox = document.getElementById("url-report-include-url");
+  if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
   if (!input) return;
   try {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);

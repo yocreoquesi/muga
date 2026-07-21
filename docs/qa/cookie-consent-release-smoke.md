@@ -202,97 +202,19 @@ manual only, automation is tracked separately in #1128.
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
-#### RETIRED: Didomi accept-when-necessary pilot (minimum-grant)
+#### RETIRED before ship: cookie-accept capability (not in this release)
 
-The Didomi `setCurrentUserStatus` minimum-consent construction described
-in this subsection (cookie-consent-accept Slice 2a) was proven non-viable
-before ever shipping to real users (engram id 1331,
-"DIDOMI-ACCEPT-NOT-VIABLE"): no real Didomi hard wall ever lacks
-`setUserDisagreeToAll`, the vendor's "required" getters mean
-"consent-gated" not "necessary/exempt", and the `setCurrentUserStatus`
-call silently no-ops on real deployments. This entire code path
-(`decideMinimumAccept`, `canAttemptDidomiMinimumAccept`,
-`buildMinimumPayload`, `resolveDidomiMinimumStatus`, the Didomi getters,
-and the Chrome MAIN-world accept dispatch fork) is deleted. See the
-"consent-or-pay-wall accept-click" gate below for the real,
-cookie-consent-paywall-accept mechanism that replaced it.
+MUGA ships nothing that accepts cookies on the user's behalf, so there is NO
+accept QA gate for this release. Two accept constructions were explored and
+cut before shipping:
+- The Didomi `setCurrentUserStatus` minimum-consent pilot (proven non-viable,
+  engram id 1331) - deleted.
+- The consent-or-pay-wall accept-click (opt-in `accept-when-necessary` mode) -
+  removed from the 2.7.0 build (commit ea7f557), preserved for demand-driven
+  revival at git ref `parked/cookie-paywall-accept`.
 
-#### Consent-or-pay-wall accept-click (cookie-consent-paywall-accept) — BLOCKING real-EU item
-
-The "Accept cookies to read for free" mode's real mechanism: when the user
-selects it in Settings AND completes the dedicated informed-consent
-gesture, MUGA can click a consent-or-pay wall's own free "Accept all &
-continue" button (a plain DOM `element.click()`, isolated world, no page
-global) — but ONLY when the wall offers NO free reject option. On a true
-consent-or-pay wall this GRANTS the site's advertising/tracking cookies —
-the honest tradeoff of the only free path through such a wall, not a
-"minimum" construction.
-
-**This item is a HARD PRE-ENABLE GATE, not an optional nice-to-have.** The
-synthetic e2e fixture (`tests/e2e/cookie-consent-paywall-accept.spec.mjs`)
-only proves the MECHANICS against a fixture built from the real-site
-probes' documented shape (engram id 1333, id 1335): it clicks ONLY the
-free-accept button, never the pay button (even alone, with no ambiguity),
-never when a free reject exists, and never outside the mode+gesture double
--gate. A synthetic fixture CANNOT prove that a real Sourcepoint (or other
-CMP) deployment's button markup/labels actually match the DE+EN word lists
-this slice ships, or that clicking a real wall's button actually dismisses
-it in-extension (the throwaway probe that proved the mechanism viable, id
-1333, ran outside the extension).
-
-**PARTIAL VALIDATION DONE (2026-07-20, non-EU-vantage probe + hardening):**
-- The DISCRIMINATION was run against LIVE DE production markup captured from
-  real walls (`tools`-style Playwright probe, no accept-click): on `zeit.de`
-  and `spiegel.de` the buttons classified correctly — `[11] "Zustimmen/Einwilligen und weiter"` -> accept, `[9] "...abonnieren"` -> pay, `[12] "Einstellungen"` -> settings.
-- IMPORTANT correction: `zeit.de`/`spiegel.de` expose a Settings choice
-  (`sp_choice_type_12`), so the accept-click CORRECTLY VETOES on them (a free
-  reject is reachable). They are the VETO cross-check, NOT the firing case. The
-  wall that actually FIRES (a true hard wall: accept + pay only, no
-  settings/reject) is `faz.net` / `sueddeutsche.de` (the "einverstanden"
-  free-accept walls the DE smoke originally passed).
-- A final visibility guard was added (`isAcceptTargetVisible`): the click now
-  never targets an accept hidden via `visibility:hidden`/`opacity:0`. Confirm
-  the real firing wall's accept button is normally visible so the guard does
-  not suppress a legitimate fire.
-- FR/ES/IT walls could NOT be probed: they are geo-gated and did not render at
-  all from a non-EU vantage (0 sp_choice controls on lemonde/lefigaro/elpais/
-  elmundo/corriere/repubblica). The FR/ES/IT tokens therefore remain unverified
-  against real markup — each locale needs its own EU-vantage capture below.
-
-- [ ] **BLOCKING (firing + dismissal):** run a real headed-Chromium smoke from
-  a genuine EU vantage point (VPN/proxy or an EU-hosted CI runner) against a
-  TRUE HARD wall — `faz.net` / `sueddeutsche.de` (German "einverstanden"
-  free-accept, accept + pay only, no Settings). Load MUGA from `src/`,
-  onboarded, mode = accept-when-necessary, gesture confirmed. This is the case
-  that GRANTS consent, so it is the one that must actually dismiss.
-- [ ] **BLOCKING (veto cross-check):** against `zeit.de` / `spiegel.de` (which
-  DO expose a Settings choice) confirm the accept-click CORRECTLY ABSTAINS —
-  the wall is left for the user, nothing is clicked.
-- [ ] **BLOCKING per locale (FR/ES/IT):** before enabling on any FR/ES/IT wall,
-  capture a real EU-vantage hard wall in that locale and confirm the shipped
-  FR/ES/IT tokens classify its accept as accept and its pay as pay (they are
-  currently DATA-only, unverified — see cmp-accept-adapters.js docblock).
-- [ ] Confirm the click actually DISMISSES the wall — **verify by
-  screenshot, not by an overlay/overflow-CSS heuristic** (id 1333's own
-  false-positive lesson: a residual bottom banner + normal
-  `overflow-y:auto` can look like "still blocked" to a naive DOM check
-  even after the wall is genuinely gone).
-- [ ] Confirm the PAY/subscribe button ("...abonnieren" / "Jetzt
-  abonnieren" / "Werbefrei-Abo") is NEVER clicked, on either site.
-- [ ] Confirm the checkbox gesture in Settings actually gates this: with
-  the mode selected but the gesture NOT confirmed, the wall must stay
-  untouched (same manual check as the automated adversarial suite,
-  repeated against the real vendor as a sanity cross-check).
-- [ ] Confirm a paused top-frame site (per-site exemption) is honored even
-  though the click fires from inside the cross-origin consent iframe —
-  pause one of the two candidate sites in Settings and confirm the wall
-  is left alone.
-
-**Until every box above is checked, "Accept cookies to read for free" must
-NOT be enabled/released to real users** — ship it dormant (the mode
-selectable in Settings is fine; the underlying capability working
-correctly on real consent-or-pay infrastructure is not yet proven). Track
-this as its own line in the sign-off table below.
+`cookieConsentMode` is now a 2-state enum (`off` | `reject-only`). Only the
+reject / necessary-only behaviour documented below is in scope for this release.
 
 ### 4. CookieYes
 
@@ -592,11 +514,7 @@ following before marking this adapter PASS:
 ## Sign-off table
 
 All 20 reject-adapter cells (10 adapters x Chrome/Firefox), PLUS the
-Sourcepoint multi-layer row and the consent-or-pay-wall accept-click row
-below, must be green before the `develop -> main` release PR opens. The accept-click row is a HARD
-PRE-ENABLE GATE (see the "Consent-or-pay-wall accept-click" subsection
-above) — a release may ship with the mode dormant (unchecked) but must NOT
-enable it for real users while that row is unchecked.
+Sourcepoint multi-layer row below, must be green before the `develop -> main` release PR opens.
 
 | Adapter | Chrome | Firefox |
 | --- | --- | --- |
@@ -611,6 +529,5 @@ enable it for real users while that row is unchecked.
 | CookieScript | ____ | ____ |
 | tarteaucitron | ____ | ____ |
 | consentmanager.net | ____ | ____ |
-| **Consent-or-pay-wall accept-click (zeit.de / spiegel.de) - real-EU vantage required** | ____ | N/A (isolated-world only, no Firefox/Chrome fork) |
 
 Reviewer: ______________________  Date: ______________________
