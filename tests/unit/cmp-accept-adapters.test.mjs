@@ -37,9 +37,11 @@ import {
   ACCEPT_TARGET_STATUS,
   findFreeAcceptTarget,
   findSpFreeAcceptTarget,
+  findDidomiFreeAcceptTarget,
   hasFreeRejectControl,
   hasPayOption,
   isPaywallFrame,
+  isDidomiPaywallContext,
   computeAcceptGate,
 } from "../../src/lib/cmp-accept-adapters.js";
 
@@ -115,13 +117,12 @@ describe("classifyConsentButton — precedence: PAY > SETTINGS > REJECT > ACCEPT
   });
 
   test("unrecognized / unknown-locale text classifies as UNKNOWN, never ACCEPT", () => {
-    assert.equal(classifyConsentButton("Non merci"), BUTTON_KIND.UNKNOWN);
-    // NOTE: "Continuar de todos modos" (ES) used to live here as an
-    // unknown-locale example; the FR/ES/IT locale-widening slice (see file
-    // docblock) now legitimately recognizes ES "continuar" as an accept
-    // token, so that phrase is no longer an unrecognized-locale example —
-    // moved to a Dutch phrase instead, still outside this module's covered
-    // locales.
+    // NOTE: two phrases were retired from this unknown-locale list as the
+    // module's coverage grew — "Continuar de todos modos" (ES "continuar" is
+    // now an accept token) and "Non merci" (FR soft-decline, now a REJECT token
+    // per the F1 negated-accept/soft-decline fix). Both are recognized labels
+    // now, so neither is an unrecognized-locale example any longer. Dutch stays
+    // outside this module's covered locales.
     assert.equal(classifyConsentButton("Toch doorgaan"), BUTTON_KIND.UNKNOWN);
     assert.equal(classifyConsentButton("Some unrelated label"), BUTTON_KIND.UNKNOWN);
   });
@@ -352,6 +353,55 @@ describe("classifyConsentButton — locale widening: ADVERSARIAL collision negat
 
   test("'accetta' does not word-boundary-match inside 'accettare' on its own (no trailing reject context) — resolves UNKNOWN, never a false ACCEPT", () => {
     assert.equal(classifyConsentButton("Accettare"), BUTTON_KIND.UNKNOWN);
+  });
+});
+
+// ── F1 (2026-07 adversarial review) — negated-accept / soft-decline labels ───
+//
+// A NEGATED accept ("No acepto", "Nicht akzeptieren", "Non acconsento") embeds
+// an ACCEPT_TOKENS substring, and a bare decline ("No, gracias", "Non merci")
+// matched nothing at all — so without an explicit reject token these classified
+// ACCEPT or UNKNOWN and slipped past hasFreeRejectControl, silently defeating
+// the L3 last-resort reject veto on a multi-control wall. They must classify
+// REJECT.
+describe("classifyConsentButton — F1: negated-accept / soft-decline labels classify REJECT (must never read as accept)", () => {
+  const rejectLabels = [
+    // ES
+    "No acepto", "no acepto", "Seguir sin aceptar", "Navegar sin aceptar", "No, gracias", "No gracias",
+    // DE
+    "Nicht akzeptieren", "Nicht zustimmen", "Ohne zu akzeptieren", "Nein danke", "Nein, danke",
+    // FR
+    "Sans accepter", "Non merci", "Non, merci",
+    // IT
+    "Non acconsento", "Non accetto", "No accetto", "No grazie", "No, grazie",
+    // EN
+    "Do not accept", "Don't accept", "Without accepting", "No thanks", "No, thanks",
+  ];
+  for (const label of rejectLabels) {
+    test(`"${label}" classifies REJECT, not ACCEPT/UNKNOWN`, () => {
+      assert.equal(classifyConsentButton(label), BUTTON_KIND.REJECT);
+    });
+  }
+});
+
+// The concrete F1 fail-open this closes: a >=3-control Didomi wall whose free
+// decline is a low-prominence "No acepto" anchor (no didomi-notice- id). Before
+// the fix it classified accept, so hasFreeRejectControl returned false and the
+// L3 last-resort veto was silently defeated even though a free reject existed.
+describe("hasFreeRejectControl — F1: a negated-accept free-decline control still vetoes (L3 last-resort holds on dark-pattern layouts)", () => {
+  test("agree + reject-and-pay + a free 'No acepto' anchor -> a free reject IS detected (veto)", () => {
+    assert.equal(
+      hasFreeRejectControl([
+        { text: "Aceptar", actionable: true },
+        { text: "Rechazar y suscribirse", actionable: true },
+        { text: "No acepto", actionable: true },
+      ]),
+      true,
+    );
+  });
+
+  test("DE dark-pattern: a free 'Nicht akzeptieren' link vetoes", () => {
+    assert.equal(hasFreeRejectControl([{ text: "Nicht akzeptieren", actionable: true }]), true);
   });
 });
 
@@ -737,6 +787,191 @@ describe("findSpFreeAcceptTarget — safe VETOES (fail-closed within the SP deci
   });
 });
 
+// ── findDidomiFreeAcceptTarget — Didomi TOP-frame decision-button targeting ─
+//
+// Candidate sets below mirror the REAL Didomi decision buttons captured on a
+// 2026-07 live headed EU probe of Spanish newspapers (docs/DESIGN-cookie-
+// consent-didomi-paywall-accept.md — lavanguardia/abc/elmundo). Decision
+// buttons carry a stable `id` starting with `didomi-notice-`; incidental
+// links (login, cookie policy, "our N partners") carry NO such id and must
+// never veto.
+
+describe("findDidomiFreeAcceptTarget — real hard walls FIRE on the didomi-notice-agree-button", () => {
+  test("abc shape: agree + disagree-as-pay ('Rechazar y pagar'), NO learn-more -> single, target is the agree button", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar y continuar", actionable: true, ref: "accept" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y pagar", actionable: true, ref: "pay" },
+    ];
+    const r = findDidomiFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "accept");
+  });
+
+  test("incidental links (no didomi-notice- id, e.g. 'Iniciar sesión'/'Política de cookies') never veto", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: true, ref: "accept" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+      { id: "", text: "Iniciar sesión", actionable: true },
+      { id: "some-other-widget-login", text: "Ver nuestros 764 socios", actionable: true },
+      { id: "", text: "Política de cookies", actionable: true },
+    ];
+    const r = findDidomiFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "accept");
+  });
+
+  test("elmundo shape: a duplicate custom ue-accept-notice-button (no didomi-notice- id) does not create a second accept in scope -> single", () => {
+    const candidates = [
+      { id: "ue-accept-notice-button", text: "Aceptar y continuar", actionable: true, ref: "ue-accept" },
+      { id: "didomi-notice-agree-button", text: "Aceptar y continuar", actionable: true, ref: "accept" },
+      { id: "ue-disagree-notice-button", text: "Rechazar y suscribirse", actionable: true, ref: "ue-disagree" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+    ];
+    const r = findDidomiFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "accept");
+  });
+});
+
+describe("findDidomiFreeAcceptTarget — safe VETOES (fail-closed within the didomi-notice- scope)", () => {
+  test("ABSTAIN-on-learn-more BY ID: lavanguardia shape with a learn-more button whose label ('Más información') does NOT match SETTINGS_TOKENS still vetoes", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar y continuar", actionable: true, ref: "accept" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+      { id: "didomi-notice-learn-more-button", text: "Más información", actionable: true, ref: "settings" },
+    ];
+    // Prove the label alone does not classify as settings (the key finding) —
+    // the veto below must therefore come from the ID guard, not the token one.
+    assert.equal(classifyConsentButton("Más información"), BUTTON_KIND.UNKNOWN);
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("a non-actionable (hidden) learn-more button does not veto", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: true, ref: "accept" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+      { id: "didomi-notice-learn-more-button", text: "Más información", actionable: false, ref: "hidden-settings" },
+    ];
+    const r = findDidomiFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "accept");
+  });
+
+  test("FREE-REJECT-DISAGREE: a bare 'Rechazar' (no pay/subscribe token) on the disagree button -> ambiguous (a free reject is reachable)", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar y continuar", actionable: true, ref: "accept" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar", actionable: true, ref: "reject" },
+    ];
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("DENY-PRECEDENCE: the agree button itself carrying a pay/price token -> ambiguous VETO (never clicks a paid tier)", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar por 9,99 EUR al mes", actionable: true, ref: "trap" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+    ];
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("two VISIBLE didomi-notice-agree-button candidates -> ambiguous, never guesses", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: true, ref: "a" },
+      { id: "didomi-notice-agree-button", text: "Aceptar y continuar", actionable: true, ref: "b" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+    ];
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
+  });
+
+  test("a hidden responsive duplicate agree button is excluded; only the actionable one counts -> single", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: false, ref: "mobile-hidden" },
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: true, ref: "desktop-visible" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+    ];
+    const r = findDidomiFreeAcceptTarget(candidates);
+    assert.equal(r.status, ACCEPT_TARGET_STATUS.SINGLE);
+    assert.equal(r.target.ref, "desktop-visible");
+  });
+
+  test("ZERO decision: no didomi-notice-* candidates at all -> noop", () => {
+    const candidates = [
+      { id: "", text: "Iniciar sesión", actionable: true },
+      { id: "some-widget", text: "Aceptar", actionable: true },
+    ];
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+
+  test("NO-ALTERNATIVE: a lone agree button with no other didomi-notice-* decision control -> noop (not a consent-or-pay wall)", () => {
+    const candidates = [{ id: "didomi-notice-agree-button", text: "Aceptar", actionable: true, ref: "accept" }];
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+
+  test("zero actionable agree candidates (disagree present) -> noop", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: false, ref: "hidden" },
+      { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true, ref: "pay" },
+    ];
+    assert.equal(findDidomiFreeAcceptTarget(candidates).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+
+  test("malformed/missing input never throws, resolves to noop", () => {
+    assert.doesNotThrow(() => findDidomiFreeAcceptTarget(null));
+    assert.doesNotThrow(() => findDidomiFreeAcceptTarget(undefined));
+    assert.doesNotThrow(() => findDidomiFreeAcceptTarget([null, 42, "x", {}]));
+    assert.equal(findDidomiFreeAcceptTarget(null).status, ACCEPT_TARGET_STATUS.NOOP);
+    assert.equal(findDidomiFreeAcceptTarget([null, 42, "x", {}]).status, ACCEPT_TARGET_STATUS.NOOP);
+  });
+});
+
+// ── isDidomiPaywallContext — Didomi TOP-frame consent-or-pay context match ──
+
+describe("isDidomiPaywallContext", () => {
+  const PAY_CANDIDATES = [
+    { id: "didomi-notice-agree-button", text: "Aceptar y continuar", actionable: true },
+    { id: "didomi-notice-disagree-button", text: "Rechazar y suscribirse", actionable: true },
+  ];
+
+  test("top-frame + #didomi-host confirmed + a scoped pay-classified candidate -> true", () => {
+    assert.equal(
+      isDidomiPaywallContext({ isTopFrame: true, hasDidomiHost: true, candidates: PAY_CANDIDATES }),
+      true,
+    );
+  });
+
+  test("missing #didomi-host -> false, even with top-frame + pay signal", () => {
+    assert.equal(
+      isDidomiPaywallContext({ isTopFrame: true, hasDidomiHost: false, candidates: PAY_CANDIDATES }),
+      false,
+    );
+  });
+
+  test("NOT the top frame -> false (Didomi's banner never renders in a subframe)", () => {
+    assert.equal(
+      isDidomiPaywallContext({ isTopFrame: false, hasDidomiHost: true, candidates: PAY_CANDIDATES }),
+      false,
+    );
+  });
+
+  test("no pay signal (a plain accept/reject banner, no pay path) -> false — the reject engine owns this case", () => {
+    const candidates = [
+      { id: "didomi-notice-agree-button", text: "Aceptar", actionable: true },
+      { id: "didomi-notice-disagree-button", text: "Rechazar", actionable: true },
+    ];
+    assert.equal(isDidomiPaywallContext({ isTopFrame: true, hasDidomiHost: true, candidates }), false);
+  });
+
+  test("an undeterminable frame identity (isTopFrame neither true nor false) fails closed to false", () => {
+    assert.equal(isDidomiPaywallContext({ isTopFrame: undefined, hasDidomiHost: true, candidates: PAY_CANDIDATES }), false);
+    assert.equal(isDidomiPaywallContext({}), false);
+  });
+
+  test("malformed/missing input never throws, resolves to false", () => {
+    assert.doesNotThrow(() => isDidomiPaywallContext(null));
+    assert.equal(isDidomiPaywallContext(null), false);
+    assert.equal(isDidomiPaywallContext(undefined), false);
+  });
+});
+
 // ── hasFreeRejectControl — the last-resort gate ─────────────────────────────
 
 describe("hasFreeRejectControl", () => {
@@ -1013,7 +1248,9 @@ describe("cmp-accept-adapters — ADVERSARIAL: impossible-by-construction scenar
   });
 
   test("an unknown-locale label never resolves to a click — FIX 2: a lone unrecognized actionable control VETOES as ambiguous (might be a free reject we cannot read)", () => {
-    const r = findFreeAcceptTarget([{ text: "Non merci", actionable: true }]);
+    // Dutch "Toch doorgaan" — outside this module's covered locales, so it
+    // classifies UNKNOWN (unlike "Non merci", now a recognized REJECT token).
+    const r = findFreeAcceptTarget([{ text: "Toch doorgaan", actionable: true }]);
     assert.notEqual(r.status, ACCEPT_TARGET_STATUS.SINGLE);
     assert.equal(r.status, ACCEPT_TARGET_STATUS.AMBIGUOUS);
     assert.equal(r.target, null);

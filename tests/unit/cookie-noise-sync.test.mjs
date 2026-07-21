@@ -254,7 +254,7 @@ describe("cookie-noise-sync — @sync:cmp-accept-veto block is byte-identical (m
     .map((l) => l.replace(/^export\s+/, ""));
   const isolatedBlock = extractMarkedBlock(acceptSources.isolated, ACCEPT_START, ACCEPT_END, "cookie-noise.js");
 
-  test("sync block is non-empty and defines classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, isPaywallFrame", () => {
+  test("sync block is non-empty and defines classifyConsentButton, findFreeAcceptTarget, hasFreeRejectControl, isPaywallFrame, findDidomiFreeAcceptTarget, isDidomiPaywallContext", () => {
     assert.ok(libBlock.length > 0, "extracted @sync:cmp-accept-veto block must not be empty — check the markers");
     const joined = libBlock.join("\n");
     assert.ok(/function classifyConsentButton/.test(joined));
@@ -262,6 +262,8 @@ describe("cookie-noise-sync — @sync:cmp-accept-veto block is byte-identical (m
     assert.ok(/function findSpFreeAcceptTarget/.test(joined));
     assert.ok(/function hasFreeRejectControl/.test(joined));
     assert.ok(/function isPaywallFrame/.test(joined));
+    assert.ok(/function findDidomiFreeAcceptTarget/.test(joined));
+    assert.ok(/function isDidomiPaywallContext/.test(joined));
   });
 
   test("cookie-noise.js @sync:cmp-accept-veto block matches src/lib/cmp-accept-adapters.js", () => {
@@ -929,6 +931,66 @@ describe("cookie-noise.js — accept-click dispatch structural guards", () => {
 
   test("cookie-noise-mainworld.js has no accept-click dispatch of any kind (mechanism is isolated-world only)", () => {
     for (const forbidden of ["runAcceptClickDispatcher", "isPaywallFrame", "findFreeAcceptTarget", "findSpFreeAcceptTarget", "hasFreeRejectControl", "classifyConsentButton"]) {
+      assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
+    }
+  });
+});
+
+// ── Didomi consent-or-pay-wall accept-click dispatch — structural guards ───
+//
+// Analog of the SP structural guard above, for the SEPARATE
+// runDidomiAcceptClickDispatcher (cookie-consent-didomi-paywall-accept). Must
+// NOT be merged into runAcceptClickDispatcher itself — that function's own
+// structural guard above asserts a FIXED SP call order and stays untouched.
+
+describe("cookie-noise.js — Didomi accept-click dispatch structural guards", () => {
+  test("runDidomiAcceptClickDispatcher gates on isDidomiPaywallContext, hasFreeRejectControl, and findDidomiFreeAcceptTarget's single status, in that order, before ever clicking", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runDidomiAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define runDidomiAcceptClickDispatcher()");
+    const body = fnMatch[1];
+    const contextIdx = body.indexOf("isDidomiPaywallContext(");
+    const rejectIdx = body.indexOf("hasFreeRejectControl(");
+    const targetIdx = body.indexOf("findDidomiFreeAcceptTarget(");
+    const clickIdx = body.indexOf(".ref.click(");
+    assert.ok(contextIdx !== -1, "must call isDidomiPaywallContext");
+    assert.ok(rejectIdx !== -1, "must call hasFreeRejectControl");
+    assert.ok(targetIdx !== -1, "must call findDidomiFreeAcceptTarget");
+    assert.ok(clickIdx !== -1, "must call .ref.click()");
+    assert.ok(
+      contextIdx < rejectIdx && rejectIdx < targetIdx && targetIdx < clickIdx,
+      "runDidomiAcceptClickDispatcher must check isDidomiPaywallContext, then hasFreeRejectControl, then findDidomiFreeAcceptTarget, before ever clicking",
+    );
+  });
+
+  test("runDidomiAcceptClickDispatcher is a SEPARATE function from runAcceptClickDispatcher (the SP dispatcher's structural guard stays untouched)", () => {
+    const src = sources.isolated;
+    assert.ok(/function runAcceptClickDispatcher\(\)/.test(src));
+    assert.ok(/function runDidomiAcceptClickDispatcher\(\)/.test(src));
+    const spBody = /function runAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src)[1];
+    assert.equal(spBody.includes("isDidomiPaywallContext"), false,
+      "runAcceptClickDispatcher must not reference the Didomi context predicate — keep the two dispatchers separate");
+    assert.equal(spBody.includes("findDidomiFreeAcceptTarget"), false,
+      "runAcceptClickDispatcher must not reference the Didomi target resolver — keep the two dispatchers separate");
+  });
+
+  test("the dispatch never fires outside the top frame — bails when NOT the top frame, before any DOM scan", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runDidomiAcceptClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    assert.ok(/if\s*\(\s*!isTopFrame\s*\)\s*return;/.test(fnMatch[1]),
+      "runDidomiAcceptClickDispatcher must bail immediately when isTopFrame is false");
+  });
+
+  test("both dispatchers are wired into the same observer/initial-sweep call sites (called together)", () => {
+    const src = sources.isolated;
+    assert.ok(/runAcceptClickDispatcher\(\)[^;]*;[\s\S]{0,80}runDidomiAcceptClickDispatcher\(\)/.test(src) ||
+      /runDidomiAcceptClickDispatcher\(\);[\s\S]{0,200}runAcceptClickDispatcher\(\)/.test(src),
+      "both dispatchers must be invoked near each other at the shared trigger points");
+  });
+
+  test("cookie-noise-mainworld.js has no Didomi accept-click dispatch of any kind (mechanism is isolated-world only)", () => {
+    for (const forbidden of ["runDidomiAcceptClickDispatcher", "isDidomiPaywallContext", "findDidomiFreeAcceptTarget"]) {
       assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
     }
   });

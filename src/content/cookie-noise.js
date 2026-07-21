@@ -438,6 +438,37 @@
     "rifiuta tutto",
     "solo necessari",
     "continua senza accettare",
+    // Negated-accept and soft-decline labels (F1, 2026-07 adversarial review):
+    // these embed an ACCEPT_TOKENS substring ("acepto"/"aceptar"/"akzeptieren"/
+    // "acconsento") or are a bare decline ("no thanks"/"no, gracias"), so absent
+    // an explicit reject token they classify accept/unknown and slip past
+    // hasFreeRejectControl — silently defeating the L3 last-resort reject veto on
+    // a multi-control wall. REJECT is checked BEFORE ACCEPT (deny-precedence), so
+    // listing them here forces the safe classification; over-matching reject is
+    // the safe direction (more abstain, never a wrong accept-click).
+    "do not accept",
+    "don't accept",
+    "without accepting",
+    "no thanks",
+    "no, thanks",
+    "nicht akzeptieren",
+    "nicht zustimmen",
+    "ohne zu akzeptieren",
+    "nein danke",
+    "nein, danke",
+    "sans accepter",
+    "non merci",
+    "non, merci",
+    "no acepto",
+    "sin aceptar",
+    "no gracias",
+    "no, gracias",
+    "non acconsento",
+    "non accetto",
+    "no accetto",
+    "senza accettare",
+    "no grazie",
+    "no, grazie",
   ]);
 
   function normalizeButtonText(rawText) {
@@ -652,6 +683,120 @@
     // encoded form and a literal path satisfy the gate.
     const decoded = urlLower.replace(/%2f/g, "/");
     return decoded.includes("hascsp=true") && decoded.includes("consent/tcfv2");
+  }
+
+  // ── Didomi TOP-frame decision-button targeting (net-new, ES/FR/IT market) ────
+  //
+  // docs/DESIGN-cookie-consent-didomi-paywall-accept.md: a 2026-07 live headed
+  // probe found 9/10 ES newspapers on Didomi and 0 on Sourcepoint. Didomi
+  // renders its consent-or-pay message in the TOP frame under a stable
+  // `#didomi-host` mount (never a cross-origin child iframe like Sourcepoint),
+  // so isPaywallFrame's subframe-only shape does not apply here — a parallel,
+  // TOP-frame-only context predicate + decision-button resolver is needed
+  // instead. Standard Didomi decision buttons carry STABLE ids across
+  // publishers (lavanguardia/abc/elmundo real capture):
+  //   didomi-notice-agree-button        = the FREE-accept, the ONLY click target
+  //   didomi-notice-disagree-button     = "reject and pay" on a consent-or-pay
+  //                                        wall, OR a free reject on a normal
+  //                                        banner — its MEANING flips, so it is
+  //                                        classified BY TOKEN, not by id alone
+  //   didomi-notice-learn-more-button   = opens settings/manage — a reachable
+  //                                        free reject sits behind it — vetoed
+  //                                        BY ID (its label, e.g. "Más
+  //                                        información", does NOT match
+  //                                        SETTINGS_TOKENS, so token
+  //                                        classification alone would fail-open)
+  // Incidental links ("Iniciar sesión", "Política de cookies") carry no
+  // `didomi-notice-` id at all, so they are never scoped in and never false-veto
+  // (the exact incidental-link problem the SP `sp_choice_type_*` scoping above
+  // also solves).
+  const DIDOMI_NOTICE_ID_PREFIX = "didomi-notice-";
+  const DIDOMI_AGREE_BUTTON_ID = "didomi-notice-agree-button";
+  const DIDOMI_DISAGREE_BUTTON_ID = "didomi-notice-disagree-button";
+  const DIDOMI_LEARN_MORE_BUTTON_ID = "didomi-notice-learn-more-button";
+
+  // isDidomiPaywallContext: the POSITIVE, CONJUNCTIVE pre-filter for the Didomi
+  // path (analog of isPaywallFrame). True ONLY when the frame IS the top frame
+  // (Didomi's banner always renders there, unlike SP's subframe-only shape —
+  // env.isTopFrame must be exactly true; fail-closed on unknown/false identity),
+  // the caller has confirmed a `#didomi-host` mount exists in the document
+  // (env.hasDidomiHost === true — the Didomi SDK's own mount point, surfaced by
+  // the caller so this stays plain-data/pure), AND at least one `didomi-notice-`
+  // scoped candidate classifies `pay` (the required POSITIVE consent-or-pay
+  // signal, same rationale as hasPayOption above — a plain Didomi banner with
+  // only accept/reject and no pay path is NOT a consent-or-pay wall; the reject
+  // engine already owns that case, engram #1119). env.candidates carries the
+  // SAME candidate list the caller collects for findDidomiFreeAcceptTarget
+  // below (plain data, no DOM). Pure; never throws; fails closed on any
+  // missing/malformed field.
+  function isDidomiPaywallContext(env) {
+    const e = env && typeof env === "object" ? env : {};
+    if (e.isTopFrame !== true) return false; // never scans a subframe; fail-closed on unknown identity
+    if (e.hasDidomiHost !== true) return false; // fail-closed: no confirmed Didomi SDK mount
+    const candidates = Array.isArray(e.candidates) ? e.candidates : [];
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (typeof candidate.id !== "string" || candidate.id.indexOf(DIDOMI_NOTICE_ID_PREFIX) !== 0) continue;
+      if (classifyConsentButton(candidate.text, candidate.fullText) === "pay") return true;
+    }
+    return false; // no scoped pay signal -> not a consent-or-pay wall
+  }
+
+  // findDidomiFreeAcceptTarget: the Didomi analog of findSpFreeAcceptTarget,
+  // scoped by ELEMENT ID PREFIX (`didomi-notice-`) instead of an
+  // `sp_choice_type_*` class. Fail-closed inside the scoped set (each condition
+  // alone VETOES -> ambiguous/noop), evaluated per candidate:
+  //   - didomi-notice-learn-more-button present + actionable -> ABSTAIN, BY ID
+  //     (see the block comment above for why token classification alone is
+  //     insufficient here)
+  //   - didomi-notice-disagree-button classifying `reject` (a bare "Rechazar" /
+  //     "No acepto" free reject, NOT a pay path) -> ABSTAIN, a free reject is
+  //     reachable; classifying anything else (typically `pay`, e.g. "Rechazar y
+  //     suscribirse") counts as the required non-accept decision ALTERNATIVE
+  //     (the pay path), same role SP's non-11 decision buttons play
+  //   - didomi-notice-agree-button classifying `pay` (deny-precedence) ->
+  //     ABSTAIN; classifying `accept` + actionable -> collect as the accept
+  //     candidate
+  //   - any OTHER `didomi-notice-*` id (publisher-specific, unrecognized) that
+  //     is actionable also counts as a decision alternative -> fail-closed
+  //     conservatism, never a click target (mirrors SP's non-11 fallback)
+  // EXACTLY ONE actionable accept candidate is required (zero -> noop, more
+  // than one -> ambiguous), AND at least one non-accept decision alternative
+  // must be present in scope (else this is not a consent-or-pay wall -> noop).
+  function findDidomiFreeAcceptTarget(candidates) {
+    const list = Array.isArray(candidates) ? candidates : [];
+    const scoped = [];
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      if (typeof candidate.id !== "string" || candidate.id.indexOf(DIDOMI_NOTICE_ID_PREFIX) !== 0) continue;
+      scoped.push(candidate);
+    }
+    if (scoped.length === 0) return { status: "noop", target: null };
+    const accepts = [];
+    let hasAlternative = false;
+    for (const candidate of scoped) {
+      if (candidate.id === DIDOMI_LEARN_MORE_BUTTON_ID) {
+        if (candidate.actionable === true) return { status: "ambiguous", target: null };
+        continue;
+      }
+      if (candidate.id === DIDOMI_DISAGREE_BUTTON_ID) {
+        const kind = classifyConsentButton(candidate.text, candidate.fullText);
+        if (kind === "reject") return { status: "ambiguous", target: null };
+        if (candidate.actionable === true) hasAlternative = true;
+        continue;
+      }
+      if (candidate.id === DIDOMI_AGREE_BUTTON_ID) {
+        const kind = classifyConsentButton(candidate.text, candidate.fullText);
+        if (kind === "pay") return { status: "ambiguous", target: null };
+        if (kind === "accept" && candidate.actionable === true) accepts.push(candidate);
+        continue;
+      }
+      if (candidate.actionable === true) hasAlternative = true;
+    }
+    if (accepts.length === 0) return { status: "noop", target: null };
+    if (accepts.length > 1) return { status: "ambiguous", target: null };
+    if (!hasAlternative) return { status: "noop", target: null };
+    return { status: "single", target: accepts[0] };
   }
   // @sync:cmp-accept-veto:end
 
@@ -1644,6 +1789,15 @@
   // no page-authored global, and no MAIN world, so there is no per-browser
   // fork here at all, unlike the retired Didomi JS-API accept path.
   let _acceptActed = false;
+  // Didomi's OWN acted flag (separate dispatcher, see runDidomiAcceptClickDispatcher
+  // below). Kept distinct from _acceptActed rather than reused: the two
+  // dispatchers are mutually exclusive per frame (SP only ever matches a
+  // subframe, Didomi only ever matches the top frame — isPaywallFrame and
+  // isDidomiPaywallContext each fail-close on the other frame kind), but a
+  // shared flag would still mix two independently-gated decisions into one
+  // bit, which is exactly the kind of ambiguity this feature never allows
+  // itself elsewhere.
+  let _didomiAcceptActed = false;
   let _acceptGateOpen = false;
   let _acceptObserver = null;
   const ACCEPT_GIVE_UP_AFTER_DOM_READY_MS = 10000;
@@ -1768,6 +1922,20 @@
     }
   }
 
+  // The candidate's raw `id` attribute, or "" when absent/unreadable. Surfaced
+  // alongside `spChoice` so the SAME collection feeds BOTH the SP structural
+  // resolver (findSpFreeAcceptTarget, keyed on the sp_choice_type_* class) and
+  // the Didomi one (findDidomiFreeAcceptTarget, keyed on the didomi-notice-*
+  // id prefix) without a second DOM scan. Never throws.
+  function acceptElementId(el) {
+    try {
+      const id = typeof el.getAttribute === "function" ? el.getAttribute("id") : el.id;
+      return typeof id === "string" ? id : "";
+    } catch {
+      return "";
+    }
+  }
+
   function collectAcceptCandidates() {
     const candidates = [];
     try {
@@ -1777,6 +1945,7 @@
           text: acceptAccessibleName(el),
           fullText: acceptFullText(el),
           spChoice: acceptSpChoice(el),
+          id: acceptElementId(el),
           actionable: isAcceptCandidateActionable(el),
           ref: el,
         });
@@ -1842,6 +2011,64 @@
     acceptStopObserver();
   }
 
+  // Confirms the Didomi SDK's own mount point exists in this document — the
+  // detection half of isDidomiPaywallContext (env.hasDidomiHost). Surfaced as
+  // a plain boolean so the predicate itself stays pure/DOM-free. Fail-closed:
+  // any throw (detached document, hostile getter) means "cannot confirm" ->
+  // false, never assumed present.
+  function hasDidomiHostMount() {
+    try {
+      return !!(document && typeof document.getElementById === "function" && document.getElementById("didomi-host"));
+    } catch {
+      return false;
+    }
+  }
+
+  // A SEPARATE dispatcher for the Didomi consent-or-pay wall (net-new, ES/FR/
+  // IT market — see the @sync:cmp-accept-veto block above for
+  // isDidomiPaywallContext / findDidomiFreeAcceptTarget). Deliberately its OWN
+  // function rather than a branch inside runAcceptClickDispatcher: that
+  // dispatcher's structural guard (tests/unit/cookie-noise-sync.test.mjs)
+  // asserts a FIXED SP call order and must stay untouched. Same double-gate
+  // (_acceptGateOpen, computed once above for both dispatchers — one pref
+  // pair governs the whole accept-when-necessary feature regardless of which
+  // CMP fires), same fail-closed ordering: gate open -> IS the top frame
+  // (Didomi renders there, never in a subframe) -> #didomi-host confirmed +
+  // scoped pay signal present (isDidomiPaywallContext) -> NO free reject/
+  // settings control anywhere on the wall (hasFreeRejectControl over ALL
+  // collected candidates, same L3 last-resort gate the SP path uses) ->
+  // EXACTLY ONE free-accept resolved (findDidomiFreeAcceptTarget) ->
+  // visibility guard (isAcceptTargetVisible) -> click -> mark acted. Any
+  // ambiguity, any missing signal, or any veto resolves to a NOOP.
+  function runDidomiAcceptClickDispatcher() {
+    if (_didomiAcceptActed || !_acceptGateOpen) return;
+    const { isTopFrame } = resolveFrameIdentity();
+    if (!isTopFrame) return; // Didomi's banner never renders in a subframe; fail-closed on unknown identity
+    const candidates = collectAcceptCandidates();
+    const env = {
+      isTopFrame: true,
+      hasDidomiHost: hasDidomiHostMount(),
+      candidates,
+    };
+    if (!isDidomiPaywallContext(env)) return;
+    // Same L3 last-resort gate as the SP path: a free reject/settings control
+    // ANYWHERE on the wall (including a plain <a href> link) blocks the
+    // accept-click outright — a free reject always wins.
+    if (hasFreeRejectControl(candidates)) return;
+    const result = findDidomiFreeAcceptTarget(candidates);
+    if (result.status !== "single") return;
+    // Final visibility guard on the resolved target — never click an accept
+    // the user cannot actually see (visibility:hidden / opacity:0 decoy).
+    if (!isAcceptTargetVisible(result.target.ref)) return;
+    _didomiAcceptActed = true;
+    try {
+      result.target.ref.click();
+    } catch {
+      // A throwing/hostile page element must never break the page.
+    }
+    acceptStopObserver();
+  }
+
   // Bounded give-up window — same rationale and shape as the reject
   // dispatchers' own give-up windows above (a consent-or-pay wall that is
   // going to appear does so within a few seconds of a settled DOM).
@@ -1852,13 +2079,13 @@
     const schedule = () => {
       _acceptGiveUpTimer = setTimeout(() => {
         _acceptGiveUpTimer = null;
-        if (!_acceptActed) acceptStopObserver();
+        if (!_acceptActed && !_didomiAcceptActed) acceptStopObserver();
       }, ACCEPT_GIVE_UP_AFTER_DOM_READY_MS);
     };
     if (document.readyState === "loading") {
       _acceptGiveUpFallbackTimer = setTimeout(() => {
         _acceptGiveUpFallbackTimer = null;
-        if (!_acceptActed) acceptStopObserver();
+        if (!_acceptActed && !_didomiAcceptActed) acceptStopObserver();
       }, ACCEPT_GIVE_UP_AFTER_DOM_READY_MS);
       document.addEventListener("DOMContentLoaded", schedule, { once: true });
     } else {
@@ -1867,10 +2094,17 @@
   }
 
   function acceptStartObserver() {
-    if (_acceptObserver || _acceptActed) return;
+    if (_acceptObserver || _acceptActed || _didomiAcceptActed) return;
     if (!document || !document.documentElement) return;
     try {
-      _acceptObserver = new MutationObserver(() => runAcceptClickDispatcher());
+      // Both dispatchers share this ONE observer/give-up/resweep
+      // infrastructure — they are mutually exclusive per frame (SP only
+      // matches a subframe, Didomi only matches the top frame), so a single
+      // shared watch loop covers whichever one is applicable in this frame.
+      _acceptObserver = new MutationObserver(() => {
+        runAcceptClickDispatcher();
+        runDidomiAcceptClickDispatcher();
+      });
       _acceptObserver.observe(document.documentElement, { childList: true, subtree: true });
     } catch {
       _acceptObserver = null;
@@ -1880,8 +2114,9 @@
     if (_acceptResweepTimer === null) {
       try {
         _acceptResweepTimer = setInterval(() => {
-          if (_acceptActed) return;
+          if (_acceptActed && _didomiAcceptActed) return;
           runAcceptClickDispatcher();
+          runDidomiAcceptClickDispatcher();
         }, ACCEPT_RESWEEP_INTERVAL_MS);
       } catch {
         _acceptResweepTimer = null;
@@ -2130,6 +2365,7 @@
         _acceptGateOpen = computeAcceptGateForFrame(prefs);
         if (_acceptGateOpen) {
           runAcceptClickDispatcher(); // initial sweep — the wall may already exist
+          runDidomiAcceptClickDispatcher(); // initial sweep — same gate, separate CMP
           acceptStartObserver();
         } else {
           acceptStopObserver();

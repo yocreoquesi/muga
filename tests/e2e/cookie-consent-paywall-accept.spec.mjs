@@ -126,6 +126,45 @@ async function stubPaywallPages(
 }
 
 /**
+ * TOP-frame fixture for the Didomi consent-or-pay wall
+ * (cookie-consent-didomi-paywall-accept). Unlike Sourcepoint, Didomi renders
+ * its banner directly in the TOP frame under a stable `#didomi-host` mount —
+ * NOT a cross-origin child iframe — so this fixture serves the wall's own
+ * markup on TOP_HOST itself, no iframe involved. Built from the real captured
+ * structure (docs/DESIGN-cookie-consent-didomi-paywall-accept.md): a
+ * `didomi-notice-agree-button` (the free accept) + a
+ * `didomi-notice-disagree-button` classifying as PAY ("Rechazar y
+ * suscribirse" — a consent-or-pay wall, not a plain reject banner).
+ * `withLearnMore` adds the settings/manage button that must ABSTAIN the
+ * accept-click (a reachable free reject sits behind it, engram/design finding
+ * that the label alone does not match SETTINGS_TOKENS — the veto must come
+ * from the ID guard). `agreeOpacityZero` renders the agree button invisible
+ * (a live layout box but opacity:0) to exercise the shared visibility guard.
+ */
+async function stubDidomiTopFramePage(page, { withLearnMore = false, agreeOpacityZero = false } = {}) {
+  const agreeStyle = agreeOpacityZero ? ' style="opacity: 0"' : "";
+  const learnMoreButton = withLearnMore
+    ? `<button id="didomi-notice-learn-more-button" onclick="window.__mugaTestClicked='learn-more'">M&aacute;s informaci&oacute;n</button>`
+    : "";
+  await page.route(`**://${TOP_HOST}/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><html><body>
+        <p id="page-content">Real page content</p>
+        <div id="didomi-host">
+          <div id="didomi-notice">
+            <button id="didomi-notice-agree-button"${agreeStyle} onclick="window.__mugaTestClicked='accept'">Aceptar y continuar</button>
+            <button id="didomi-notice-disagree-button" onclick="window.__mugaTestClicked='pay'">Rechazar y suscribirse</button>
+            ${learnMoreButton}
+          </div>
+        </div>
+      </body></html>`,
+    })
+  );
+}
+
+/**
  * Polls `page.frames()` for the consent iframe (Playwright has no built-in
  * waitForFrame). A short poll interval is fine — the iframe attaches
  * synchronously with the top-frame's own load in this fixture.
@@ -574,6 +613,168 @@ test.describe("Cookie Consent Minimizer — consent-or-pay-wall accept-click", (
     await page.waitForTimeout(1500);
 
     const clicked = await iframe.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+});
+
+// ── Didomi consent-or-pay-wall accept-click (cookie-consent-didomi-paywall-accept) ──
+//
+// Verifies the isolated-world Didomi dispatch (content/cookie-noise.js —
+// runDidomiAcceptClickDispatcher / isDidomiPaywallContext / findDidomiFreeAcceptTarget)
+// against a synthetic TOP-frame fixture built from the real captured structure
+// (docs/DESIGN-cookie-consent-didomi-paywall-accept.md — lavanguardia/abc). Same
+// HONEST LIMIT as the Sourcepoint suite above: a regression oracle over a
+// synthetic fixture, not proof a real Didomi deployment's markup matches
+// exactly — see the design's "HARD PRE-ENABLE GATE" (a real headed EU smoke
+// test is required before this mode is enabled for real users).
+
+test.describe("Cookie Consent Minimizer — Didomi consent-or-pay-wall accept-click", () => {
+  test("FIRES on the hard wall: clicks ONLY didomi-notice-agree-button when mode=accept-when-necessary + gesture, no learn-more", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (err) => pageErrors.push(err));
+    await stubDidomiTopFramePage(page, { withLearnMore: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // NOTE: window.__mugaCookieNoiseGate is an ISOLATED-WORLD marker set by
+    // content/cookie-noise.js — Playwright's page.evaluate/waitForFunction
+    // always runs in the MAIN world, so that marker is NEVER observable this
+    // way (engram id 1335's documented gotcha). Do not wait on it here; the
+    // real oracle is the page-world __mugaTestClicked marker below, which IS
+    // observable (set by a plain onclick handler in the fixture's own
+    // MAIN-world script). Unlike the Sourcepoint fixtures above, this wall
+    // renders in the TOP frame itself — no iframe to wait for.
+    await page.waitForFunction(() => window.__mugaTestClicked === "accept", { timeout: 10000 });
+    const clicked = await page.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBe("accept");
+
+    // The pay/disagree button was NEVER clicked.
+    expect(clicked).not.toBe("pay");
+
+    const pageContent = await page.evaluate(() => document.getElementById("page-content")?.textContent);
+    expect(pageContent).toBe("Real page content");
+    expect(pageErrors).toHaveLength(0);
+
+    await page.close();
+  });
+
+  test("ABSTAINS when a didomi-notice-learn-more-button is present (a reachable free reject sits behind it)", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubDidomiTopFramePage(page, { withLearnMore: true });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // REASON: negative assertion (no misfire) has no positive signal to wait
+    // on — fixed settle window, matches this suite's standard pattern.
+    await page.waitForTimeout(1500);
+
+    const clicked = await page.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER clicks the disagree/pay button ('Rechazar y suscribirse'), even alone on the wall with no learn-more", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubDidomiTopFramePage(page, { withLearnMore: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    await page.waitForFunction(() => window.__mugaTestClicked === "accept", { timeout: 10000 });
+    // REASON: after the (correct) accept fires, give a wrong pay click time to
+    // surface before asserting it never took over.
+    await page.waitForTimeout(1000);
+
+    const clicked = await page.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBe("accept");
+    expect(clicked).not.toBe("pay");
+
+    await page.close();
+  });
+
+  test("VISIBILITY GUARD: NEVER clicks an agree button hidden via opacity:0 (decoy with a live layout box)", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubDidomiTopFramePage(page, { withLearnMore: false, agreeOpacityZero: true });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // REASON: negative assertion — a correct abstain leaves no positive
+    // signal; settle past the dispatcher's re-sweep/give-up window to prove
+    // neither the invisible agree nor the pay button was ever clicked.
+    await page.waitForTimeout(2500);
+    const clicked = await page.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER fires in reject-only mode, even on the exact same hard wall", async ({ context, extensionId }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "reject-only",
+      cookieConsentAcceptConsented: true,
+    });
+
+    const page = await context.newPage();
+    await stubDidomiTopFramePage(page, { withLearnMore: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await page.evaluate(() => window.__mugaTestClicked);
+    expect(clicked).toBeUndefined();
+
+    await page.close();
+  });
+
+  test("NEVER fires in accept-when-necessary mode without the explicit consent gesture", async ({
+    context,
+    extensionId,
+  }) => {
+    await completeOnboarding(context, extensionId, {
+      cookieConsentMode: "accept-when-necessary",
+      cookieConsentAcceptConsented: false,
+    });
+
+    const page = await context.newPage();
+    await stubDidomiTopFramePage(page, { withLearnMore: false });
+    await page.goto(`https://${TOP_HOST}/index.html`);
+
+    // REASON: negative assertion — no positive signal to wait on.
+    await page.waitForTimeout(1500);
+
+    const clicked = await page.evaluate(() => window.__mugaTestClicked);
     expect(clicked).toBeUndefined();
 
     await page.close();
