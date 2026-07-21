@@ -61,9 +61,9 @@
   },
   {
     "cmp": "sourcepoint",
-    "url": "https://www.heraldscotland.com",
+    "url": "https://www.techradar.com",
     "bannerSelector": "div[id^=\"sp_message_container\"]",
-    "note": "LOWER CONFIDENCE: heraldscotland.com is a masthead of Newsquest, and Sourcepoint's own case-studies page (https://sourcepoint.com/case-studies/) names Newsquest as running Sourcepoint's \"Consent or Pay\" across 200+ Newsquest sites — the specific masthead itself is not individually named in the case study. A Playwright probe (2026-07 calibration) confirmed the calibration run's 'fail' here is the documented self-hosted/proxied Sourcepoint fail-closed case: the consent message renders in an iframe on the publisher's own domain (a02342.heraldscotland.com) with no sp-prod.net/privacy-mgmt.com secondary signals, so confidence lands at 0.4, below the adapter's threshold of 1 — a deliberate NOOP, not drift. Replacement with a representative Sourcepoint deployment is tracked in #1135."
+    "note": "REPLACES heraldscotland.com (#1135): heraldscotland was a self-hosted/proxied Sourcepoint deployment with NO sp-prod.net/privacy-mgmt.com secondary signal, so MUGA's adapter deliberately fail-closes there (confidence 0.4 < threshold 1) — it always read as a canary 'fail' that is a documented NOOP, not drift, making it a bad canary site. techradar.com (Future plc) is a representative Sourcepoint deployment: a 2026-07 EU headed probe confirmed the top-frame div[id^=sp_message_container] wrapper, the cdn.privacy-mgmt.com secondary signal (so the adapter clears its confidence threshold and fires), and a normal necessary-only reject — sp_choice_type_13 labelled \"Essential Cookies Only\", NOT a consent-or-pay wall — so MUGA's reject dismisses the banner cleanly. pcgamer.com and gamesradar.com are equivalent Future plc fallbacks if techradar drifts."
   },
   {
     "cmp": "sourcepoint",

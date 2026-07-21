@@ -33,11 +33,12 @@
  * real-site calibration run (12 candidate sites) produced 1 pass / 2 fail /
  * 9 inconclusive from this repo's US CI vantage; both "fail" results were
  * independently confirmed (via a Playwright probe) to be a flaky vendor
- * site and a documented fail-closed gap, not adapter drift — see the `note`
- * field on the heraldscotland.com entry in cmp-sites.json (the other
- * original "fail", a Cookiebot dogfood placeholder, was replaced by
- * independently-confirmed customer deployments in a later EU-geo
- * verification round — see the cookiebot entries' notes). Because of this
+ * site and a documented fail-closed gap, not adapter drift. Both original
+ * "fail" sites have since been curated out (#1135): heraldscotland.com (a
+ * self-hosted/proxied Sourcepoint deployment MUGA deliberately fail-closes
+ * on, so it always read as "fail") was replaced by techradar.com, and the
+ * Cookiebot dogfood placeholder by real Cookiebot customer deployments —
+ * see the replacement notes in cmp-sites.json. Because of this
  * geo skew, this canary is a COARSE drift
  * alarm only — it is NOT a substitute for the manual release smoke checklist
  * (docs/qa/cookie-consent-release-smoke.md), which a human runs from a

@@ -333,8 +333,10 @@ this as its own line in the sign-off table below.
   (`iframe[src*="sp-prod.net"]`), `hasSpProdScriptDom`
   (`script[src*="sp-prod.net"]`).
 - **Candidate live site(s):** `https://9gag.com`,
-  `https://www.heraldscotland.com` (lower confidence - masthead-level
-  citation only; banner selector `div[id^="sp_message_container"]`).
+  `https://www.techradar.com` (Future plc; `div[id^="sp_message_container"]`
+  + `cdn.privacy-mgmt.com` signal + a necessary-only "Essential Cookies Only"
+  reject, EU-probe validated 2026-07, replacing heraldscotland.com per #1135),
+  `https://www.pinknews.co.uk`.
 - **Specific risk to verify (PR #1126):** TCF-vs-Didomi discrimination -
   confirm on a real Sourcepoint page that `postRejectAll` fires (not a
   Didomi-shaped misfire), and separately confirm on a real Didomi-only
