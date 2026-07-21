@@ -36,6 +36,10 @@ function readWorkflow(name) {
 // ---------------------------------------------------------------------------
 // G1 — SHA pinning for all four target workflows
 // ---------------------------------------------------------------------------
+// Shape check only: this verifies every `uses:` reference LOOKS like a
+// 40-char commit SHA, not that the SHA actually resolves to a real,
+// existing commit on the referenced action's repo. A syntactically valid
+// but bogus/stale SHA would still pass here (#1134).
 describe("G1 — SHA pinning across all hardened workflows", () => {
   const FILES = [
     "import-upstream.yml",
