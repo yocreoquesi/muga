@@ -19,6 +19,7 @@ import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode } from "../lib/settings-schema.js";
+import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
 
 let _currentLang = "en";
 
@@ -1492,26 +1493,27 @@ async function testUrl() {
       const newBtn = reportBtn.cloneNode(true);
       reportBtn.parentNode.replaceChild(newBtn, reportBtn);
       newBtn.hidden = false;
+
+      // Opt-in full-URL checkbox row (unchecked by default — hostname-only
+      // stays the default report contract).
+      const includeUrlRow = document.getElementById("url-report-include-url-row");
+      if (includeUrlRow) includeUrlRow.hidden = false;
+
       newBtn.addEventListener("click", () => {
         try {
           const hostname = new URL(input).hostname;
-          const version = chrome.runtime.getManifest().version;
-          const removed = result.removedTracking?.join(", ") || "none";
-          const action = result.action || "none";
+          const includeCheckbox = document.getElementById("url-report-include-url");
+          const body = buildBrokenSiteReportBody({
+            url: input,
+            includeFullUrl: includeCheckbox?.checked === true,
+            hostname,
+            version: chrome.runtime.getManifest().version,
+            browser: navigator.userAgent,
+            action: result.action,
+            removedParams: result.removedTracking,
+          });
           const title = encodeURIComponent(`[URL Report] ${hostname}`);
-          const body = encodeURIComponent(
-            `## URL Report\n\n` +
-            `**Domain:** ${hostname}\n` +
-            `**MUGA version:** ${version}\n` +
-            `**Browser:** ${navigator.userAgent}\n` +
-            `**Action taken:** ${action}\n` +
-            `**Params removed:** ${removed}\n\n` +
-            `## Problem\n\n` +
-            `<!-- Describe what went wrong: params that should have been removed but weren't, or params that were removed but shouldn't have been -->\n\n` +
-            `## Expected behavior\n\n` +
-            `<!-- What should MUGA do with this URL? -->\n`
-          );
-          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}`, "_blank", "noopener,noreferrer");
+          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
         } catch {
           // Invalid URL, ignore
         }

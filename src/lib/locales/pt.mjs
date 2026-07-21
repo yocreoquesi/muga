@@ -220,6 +220,8 @@ export default Object.freeze({
   dev_url_action: "Ação: %s",
   dev_url_report_btn: "Reportar um problema com esta URL",
   report_dirty_url: "Reportar um problema com esta URL",
+  report_include_full_url_label: "Incluir a URL completa",
+  report_include_full_url_hint: "Confirmo que não contém dados pessoais ou sensíveis",
   preview_count_one: "MUGA removeu 1 bit de ruído desta URL",
   preview_count_other: "MUGA removeu {n} bits de ruído desta URL",
   preview_count_clean: "Esta página está limpa. O MUGA limpa os links automaticamente enquanto navegas.",

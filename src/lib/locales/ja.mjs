@@ -220,6 +220,8 @@ export default Object.freeze({
   dev_url_action: "アクション: %s",
   dev_url_report_btn: "このURLの問題を報告",
   report_dirty_url: "このURLの問題を報告",
+  report_include_full_url_label: "完全なURLを含める",
+  report_include_full_url_hint: "個人情報や機密情報が含まれていないことを確認しました",
   preview_count_one: "MUGAはこのURLから1つのノイズを除去しました",
   preview_count_other: "MUGAはこのURLから{n}個のノイズを除去しました",
   preview_count_clean: "このページはクリーンです。MUGA は閲覧中に自動でリンクを整理します。",

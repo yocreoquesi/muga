@@ -6,9 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. **Please do not paste full URLs** — domain + symptom is enough.
-        If you arrived here from the popup's "Report broken site" button, the prefilled body
-        already follows this contract.
+        Thanks for reporting. You may include the full page URL below if it helps reproduce
+        the problem, but first confirm it has no personal or sensitive data (tokens, emails,
+        account IDs). Hostname alone is also fine and is the default from the popup / options
+        report buttons unless you explicitly opt in to sharing the full URL.
   - type: input
     id: hostname
     attributes:
@@ -43,10 +44,18 @@ body:
       label: Params MUGA removed (if known)
       description: Comma-separated list. Leave blank if unknown.
       placeholder: utm_source, fbclid
+  - type: input
+    id: url
+    attributes:
+      label: Full page URL (optional)
+      description: Only if it helps reproduce the problem. Omit any personal or sensitive data (tokens, emails, account IDs) before pasting.
+      placeholder: https://example.com/path?query=...
+    validations:
+      required: false
   - type: checkboxes
     id: privacy-ack
     attributes:
       label: Privacy acknowledgement
       options:
-        - label: I have NOT pasted the full URL or any user-identifying values.
+        - label: I confirm any URL or details I've included contain no personal or sensitive data (no tokens, emails, or account IDs).
           required: true
