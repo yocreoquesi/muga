@@ -1361,7 +1361,7 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
  * @param {string|URL} rawUrlOrUrl  String → used as cleanUrl directly; URL → .toString()
  * @param {string[]} removedTracking
  * @param {object|null} detectedAffiliate
- * @param {{ junkRemoved?: number, creatorReferralPreserved?: boolean, preservedAffiliate?: object|null, network?: string, creator?: string }} [extras]
+ * @param {{ junkRemoved?: number, creatorReferralPreserved?: boolean, preservedAffiliate?: object|null, autoInjected?: object, network?: string, creator?: string }} [extras]
  * @returns {object}
  */
 function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffiliate, extras = {}) {
