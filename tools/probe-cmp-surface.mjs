@@ -105,6 +105,7 @@ async function main() {
           await page.waitForTimeout(6000);
           const r = await page.evaluate(
             ({ g, m }) => {
+              // eslint-disable-next-line no-undef -- runs in the page (browser) context via page.evaluate, where `window` is defined
               const gp = (p) => p.split(".").reduce((o, k) => (o == null ? o : o[k]), window);
               return { globalType: typeof gp(g), methodType: typeof gp(m) };
             },

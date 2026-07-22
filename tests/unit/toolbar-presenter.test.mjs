@@ -516,7 +516,7 @@ describe("toolbar-presenter — inactive badge precedence", () => {
   });
 
   test("tabClosed evicts the active-state flag; a reused tabId starts fresh (active by default)", () => {
-    const { bus, actionApi, presenter } = setup();
+    const { bus, presenter } = setup();
     bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
     assert.equal(presenter._isTabActive(7), false);
     bus.emit({ type: "tabClosed", tabId: 7 });
