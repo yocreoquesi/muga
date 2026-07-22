@@ -272,6 +272,218 @@ export function getRedirectNetworkForRedirectHost(hostname) {
   return null;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// AUTOINJECTOR_PATTERNS — platform-auto-injected affiliate tags
+// (affiliate-autoinject-notice). Categorically distinct from
+// REDIRECT_NETWORK_PATTERNS: a redirect network's landing params carry the
+// CREATOR's own commission and must be preserved. An auto-injector instead
+// stamps its OWN tag onto every outbound link server-side, regardless of who
+// posted it. Concrete seed: forocoches.com/link.php?url=amazon.es -> 302 ->
+// amazon.es/?tag=eleinst-21.
+//
+// Shape deliberately isomorphic to REDIRECT_NETWORK_PATTERNS (ADR-a in
+// docs/design) so a future signed-remote lift needs no predicate change:
+//   - injectorHosts[] — document.referrer host(s) that identify the click as
+//     coming through this platform.
+//   - merchantDomain  — the landing host the tag appears on.
+//   - param           — the affiliate query-param key the platform stamps.
+//   - knownTags[]     — the platform's OWN auto-injected value(s). This is
+//     the second key of the dual-key match (ADR-d): a genuine creator's tag
+//     value is never in this list, so it is never flagged.
+//   - mode            — informational only in slice 1 ("replace" | "append").
+//
+// Source of truth: docs/affiliate-networks-matrix.md#auto-injectors.
+// ────────────────────────────────────────────────────────────────────────
+
+export const AUTOINJECTOR_PATTERNS = deepFreeze([
+  {
+    id: "forocoches",
+    platform: "Forocoches",
+    injectorHosts: ["forocoches.com"],
+    merchantDomain: "amazon.es",
+    param: "tag",
+    knownTags: ["eleinst-21"],
+    mode: "replace",
+    references: ["docs/affiliate-networks-matrix.md#auto-injectors"],
+    notes:
+      "forocoches.com/link.php?url=amazon.es -> 302 -> amazon.es/?tag=eleinst-21. " +
+      "The platform stamps its own Amazon Associates tag on every outbound link, " +
+      "regardless of which member posted it.",
+  },
+]);
+
+/**
+ * Look up the auto-injector entry whose injectorHosts contains the given
+ * referrer hostname. Mirrors getRedirectNetworkForRedirectHost's shape (no
+ * wildcard support needed yet — every seed entry uses exact hostnames).
+ *
+ * @param {string|null|undefined} refHost
+ * @returns {object|null}
+ */
+export function getAutoInjectorForReferrer(refHost) {
+  if (!refHost) return null;
+  const h = String(refHost).replace(/^www\./, "").toLowerCase();
+  for (const entry of AUTOINJECTOR_PATTERNS) {
+    if (entry.injectorHosts.includes(h)) return entry;
+  }
+  return null;
+}
+
+/**
+ * Pure dual-key predicate distinguishing a platform-auto-injected affiliate
+ * tag from a genuine creator referral (affiliate-autoinject-notice, ADR-d).
+ *
+ * Fires ONLY when BOTH hold:
+ *   1. `referrer`'s host matches a known auto-injector's `injectorHosts`, AND
+ *   2. `searchParams`'s value for that entry's `param` EXACTLY equals one of
+ *      its `knownTags`.
+ *
+ * A genuine creator's own tag on the very same referrer (e.g. `tag=youtuber-21`
+ * posted through forocoches.com) is NEVER flagged — its value is not a known
+ * platform tag. This is the entire point of the dual-key design: a
+ * referrer-only match would flag every creator who posts an affiliate link
+ * through the platform, which is the opposite of MUGA's creator-friendly
+ * posture.
+ *
+ * Pure: no `window`/`document` access, does not mutate `searchParams`, does
+ * not influence cleaning `action`/`cleanUrl` — this is a read-only side
+ * channel. Fails closed (returns `null`) on any malformed/missing input;
+ * never throws.
+ *
+ * @param {string|null|undefined} hostname - Landing URL hostname.
+ * @param {string|null|undefined} referrer - `document.referrer` (full URL,
+ *   bare hostname, empty string, or nullish).
+ * @param {URLSearchParams|{get: Function}|null|undefined} searchParams -
+ *   Landing URL's search params (or any object exposing a `.get(name)`).
+ * @returns {{ platform: string, param: string, value: string, merchantDomain: string, scopedBlacklistEntry: string }|null}
+ */
+export function detectAutoInjectedTag(hostname, referrer, searchParams) {
+  try {
+    if (!hostname) return null;
+    if (!referrer) return null;
+    if (!searchParams || typeof searchParams.get !== "function") return null;
+
+    let refHost;
+    try {
+      refHost = new URL(referrer).hostname;
+    } catch {
+      refHost = String(referrer);
+    }
+    if (!refHost) return null;
+
+    const entry = getAutoInjectorForReferrer(refHost);
+    if (!entry) return null;
+
+    // Third guard: the landing hostname must actually be the entry's
+    // merchantDomain (or a subdomain of it). Without this, a coincidental
+    // match of `knownTags` on an unrelated merchant reached via the same
+    // referrer would false-positive.
+    const h = String(hostname).replace(/^www\./, "").toLowerCase();
+    const merchant = entry.merchantDomain.toLowerCase();
+    if (h !== merchant && !h.endsWith(`.${merchant}`)) return null;
+
+    const value = searchParams.get(entry.param);
+    if (!value || !entry.knownTags.includes(value)) return null;
+
+    return {
+      platform: entry.platform,
+      param: entry.param,
+      value,
+      merchantDomain: entry.merchantDomain,
+      scopedBlacklistEntry: `${entry.merchantDomain}::${entry.param}::${value}`,
+    };
+  } catch {
+    // Fail closed: any unexpected parse error means "no match", never a throw.
+    return null;
+  }
+}
+
+/**
+ * Returns `cleanUrl` with EXACTLY the auto-injected `param`=`value` pair
+ * removed (affiliate-autoinject-notice, LOW-1). Lets the notice's Remove
+ * action strip the platform tag on the CURRENT navigation instead of only on
+ * the NEXT one via the scoped-blacklist write.
+ *
+ * PRECISION invariant (highest-stakes affiliate handling): only the exact
+ * param=value pair is dropped. A genuine creator's tag that co-exists on the
+ * SAME param key but a DIFFERENT value (e.g. `tag=creator-21` alongside the
+ * platform's `tag=eleinst-21`) MUST survive untouched. Only the FIRST matching
+ * pair is removed so a co-present creator value is never collateral.
+ *
+ * Read-only: computes a NEW string, never mutates its inputs, and never
+ * influences the cleaner's `action`/`cleanUrl`/`removedTracking`. On any
+ * malformed input or parse failure it returns the original `cleanUrl`
+ * unchanged (fail-safe: a Remove that can't compute a stripped URL must fall
+ * back to the KEEP url, never throw).
+ *
+ * Firefox Xray safe: iterates via `forEach` (URLSearchParams key/value
+ * iterators are not iterable in content-script sandboxes; forEach is a plain
+ * callback, unaffected — see stripTrackingParams in cleaner.js, #1009).
+ *
+ * @param {string} cleanUrl - The cleaned landing URL (still carrying the tag).
+ * @param {string} param    - The auto-injected param key (e.g. "tag").
+ * @param {string} value    - The auto-injected param value (e.g. "eleinst-21").
+ * @returns {string} A new URL string with the exact pair removed, or the
+ *   original `cleanUrl` on any failure / no match.
+ */
+export function stripAutoInjectedTag(cleanUrl, param, value) {
+  if (typeof cleanUrl !== "string" || typeof param !== "string" || typeof value !== "string") {
+    return typeof cleanUrl === "string" ? cleanUrl : "";
+  }
+  try {
+    const url = new URL(cleanUrl);
+    const kept = [];
+    let removed = false;
+    url.searchParams.forEach((v, k) => {
+      if (!removed && k === param && v === value) {
+        removed = true;
+        return;
+      }
+      kept.push([k, v]);
+    });
+    if (!removed) return cleanUrl;
+    const next = new URLSearchParams();
+    for (const [k, v] of kept) next.append(k, v);
+    url.search = next.toString();
+    return url.toString();
+  } catch {
+    return cleanUrl;
+  }
+}
+
+/**
+ * Returns true when the auto-injected `param`=`value` pair is STILL present in
+ * `cleanUrl` (affiliate-autoinject-notice, LOW-2). Gates the passive popup
+ * badge so it never surfaces a stale signal: `result.autoInjected` is computed
+ * on the INCOMING landing params (before stripping), so it can outlive the tag
+ * when the tag was actually removed from the cleaned URL — e.g. under
+ * `stripAllAffiliates` (action `"cleaned"`) or on a post-Remove re-navigation
+ * where the scoped blacklist already stripped it.
+ *
+ * Read-only; fails closed (returns false) on any malformed input or parse
+ * failure. Firefox Xray safe (forEach, see stripAutoInjectedTag).
+ *
+ * @param {string} cleanUrl
+ * @param {string} param
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isAutoInjectedTagPresent(cleanUrl, param, value) {
+  if (typeof cleanUrl !== "string" || typeof param !== "string" || typeof value !== "string") {
+    return false;
+  }
+  try {
+    const url = new URL(cleanUrl);
+    let present = false;
+    url.searchParams.forEach((v, k) => {
+      if (!present && k === param && v === value) present = true;
+    });
+    return present;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Convenience: returns the Set of landingParams to preserve when the
  * given referrer hostname identifies a known redirect network. Returns

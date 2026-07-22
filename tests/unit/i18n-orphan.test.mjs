@@ -111,6 +111,17 @@ describe("All TRANSLATIONS keys are referenced in HTML or JS", () => {
     "param_category_affiliate",
     "param_category_marketplace",
     "param_category_ecommerce",
+    // affiliate-autoinject-notice: these four are consumed via content/
+    // cleaner.js's hand-mirrored STRINGS table (content scripts cannot
+    // import src/lib/i18n.js — same reason as the pre-existing toast_*
+    // keys' STRINGS mirror). The mirror is drift-guarded by
+    // content-cleaner-toast-sync.test.mjs, not by a t()/data-i18n reference.
+    // autoinject_badge is NOT in this set — popup.js consumes it via a real
+    // t() call, since popup.js is an ES module.
+    "autoinject_toast_title",
+    "autoinject_toast_msg",
+    "autoinject_keep",
+    "autoinject_remove",
   ]);
 
   for (const key of Object.keys(TRANSLATIONS)) {

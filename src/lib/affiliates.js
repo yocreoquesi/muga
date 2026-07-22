@@ -56,6 +56,14 @@ export {
   getRedirectNetworkForRedirectHost,
   getLandingParamsForReferrer,
   getLandingParamsForHost,
+  // affiliate-autoinject-notice: platform-auto-injected tag detection.
+  AUTOINJECTOR_PATTERNS,
+  getAutoInjectorForReferrer,
+  detectAutoInjectedTag,
+  // affiliate-autoinject-notice LOW-1/LOW-2: precise same-nav tag removal +
+  // stale-signal gate for the passive popup badge.
+  stripAutoInjectedTag,
+  isAutoInjectedTagPresent,
 } from "./redirect-networks.js";
 
 // ────────────────────────────────────────────────────────────────────────

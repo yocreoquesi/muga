@@ -11,6 +11,8 @@ import {
   getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForHost,
+  detectAutoInjectedTag,
+  stripAutoInjectedTag,
 } from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
 import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
@@ -633,7 +635,11 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   Affiliate-injection rules loaded from `src/rules/path-affiliate-rules.json`
  *   via `src/lib/path-rules.js`. Injected by the service worker at call time.
  *   Defaults to `[]` (no-op) for the same reason as `pathStripRules`.
- * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, network?: string, creator?: string }}
+ * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, autoInjected?: object, network?: string, creator?: string }}
+ *   `autoInjected` (affiliate-autoinject-notice): read-only side channel,
+ *   `undefined` unless `detectAutoInjectedTag` matched a known platform
+ *   auto-injector. Never influences `action`/`cleanUrl` — default KEEP holds
+ *   regardless of this field.
  *   `action` is one of:
  *     `"untouched"`         — URL unchanged
  *     `"cleaned"`           — tracking params and/or path tokens stripped
@@ -701,6 +707,15 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // threaded through every strip call site below; empty when the referrer
   // is not a known redirect-network host.
   const landingPolicy = getLandingPolicy(hostname, referrer);
+
+  // affiliate-autoinject-notice: pure, read-only side channel. Computed on
+  // the incoming landing params (before any stripping below runs) so it sees
+  // exactly what the browser navigated to. This value is NEVER read by the
+  // strip/inject decision below — it only rides along on the final payload
+  // as `result.autoInjected` for the UI layer to optionally surface. Default
+  // KEEP (Scenario C) is guaranteed precisely because nothing downstream
+  // branches on it.
+  const autoInjected = detectAutoInjectedTag(hostname, referrer, url.searchParams) || undefined;
   // Use pre-parsed lists from the caller (service worker cache) when available
   const parsedBlacklist = prefs._parsedBlacklist || (prefs.blacklist || []).map(parseListEntry);
   const parsedWhitelist = prefs._parsedWhitelist || (prefs.whitelist || []).map(parseListEntry);
@@ -790,10 +805,23 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
 
+  // affiliate-autoinject-notice LOW-1: attach `removeUrl` — the cleaned URL
+  // with EXACTLY the auto-injected param=value pair removed — so the notice's
+  // Remove action can strip the platform tag on the CURRENT navigation, not
+  // only on the next one via the scoped-blacklist write. This is still a pure
+  // read-only side channel: it rides on `autoInjected` and never alters
+  // `action`/`cleanUrl`/`removedTracking`. A co-present genuine creator tag on
+  // the same param survives (stripAutoInjectedTag drops only the exact pair);
+  // any parse failure falls back to `cleanUrl` inside the helper.
+  const autoInjectedPayload = autoInjected
+    ? { ...autoInjected, removeUrl: stripAutoInjectedTag(url.toString(), autoInjected.param, autoInjected.value) }
+    : autoInjected;
+
   return buildReturnPayload(action, url, removedTracking, detectedAffiliate, {
     junkRemoved: removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0),
     preservedAffiliate: detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
+    autoInjected: autoInjectedPayload,
   });
 }
 
@@ -1346,6 +1374,9 @@ function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffili
     detectedAffiliate,
     preservedAffiliate: extras.preservedAffiliate ?? null,
     creatorReferralPreserved: extras.creatorReferralPreserved ?? false,
+    // affiliate-autoinject-notice: side-channel signal, undefined when no
+    // known auto-injector matched (or when not computed at this return site).
+    autoInjected: extras.autoInjected,
   };
   // network and creator are present ONLY on the honored-creator shape (S3).
   // Omitting them entirely (not undefined-keyed) matches today's literal returns.

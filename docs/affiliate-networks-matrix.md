@@ -648,6 +648,44 @@ hostname is any merchant domain
 
 ---
 
+## Auto-Injectors
+
+Categorically distinct from every network above: a redirect network's landing
+params carry the CREATOR's own commission and MUST be preserved. An
+**auto-injector**, instead, is an intermediary platform that stamps its OWN
+affiliate tag onto every outbound link server-side, regardless of who posted
+it — a genuine creator's own tag is silently replaced or appended to before
+the click ever reaches the merchant.
+
+MUGA does not strip or replace auto-injected tags by default (Scenario C:
+default action stays KEEP, no distinct auto-injector strip behavior — see
+`docs/DESIGN-affiliate-autoinject-notice` ADR-b). It only detects and, when
+the user opts in (`notifyForeignAffiliate`), informs — the class exists here
+purely as documentation of the detection data, not a license to act
+unilaterally.
+
+**Detection contract**: `src/lib/redirect-networks.js` → `AUTOINJECTOR_PATTERNS`
++ `detectAutoInjectedTag()`. Dual-key match: (1) `document.referrer` host is a
+known injector, AND (2) the landing param's value exactly equals a known
+platform tag value. A genuine creator's own tag on the same referrer is never
+matched — see ADR-d in the design doc for the false-positive rationale.
+
+**Forocoches** *(seed entry)*
+- Referrer host: `forocoches.com` (Spanish general-interest forum).
+- Merchant: `amazon.es`.
+- Mechanism: `forocoches.com/link.php?url=<amazon.es URL>` issues a redirect
+  that lands on `amazon.es/?tag=eleinst-21` — the platform's own Amazon
+  Associates tag, appended/replaced regardless of which forum member posted
+  the original link.
+- Param: `tag` — verdict **platform-auto-injected**, value `eleinst-21`.
+- Verification status: ✅ referrer + landing pair observed directly (codebase
+  seed, `AUTOINJECTOR_PATTERNS.forocoches`). ⚠️ append-vs-replace behavior for
+  *unknown* poster tags — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**, out of
+  scope for the first detection slice (only the known `eleinst-21` value is
+  ever recognized).
+
+---
+
 ## Known-unknowns flagged for follow-up
 
 These networks are referenced in MUGA's codebase but do not have full matrix sections in v1.0. They become follow-up issues if observed in the wild:

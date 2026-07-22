@@ -171,6 +171,10 @@
       toast_allow:   "Keep it",
       toast_block:   "Remove it",
       toast_dismiss: "Dismiss",
+      autoinject_toast_title: "Automatic referral tag detected",
+      autoinject_toast_msg: "This link's referral tag ({tag}) was added automatically by {platform}, not by the person who shared it.",
+      autoinject_keep: "Keep it",
+      autoinject_remove: "Remove it",
     },
     es: {
       toast_title:   "MUGA encontró el tag de afiliado de otro",
@@ -178,6 +182,10 @@
       toast_allow:   "Mantenerlo",
       toast_block:   "Eliminarlo",
       toast_dismiss: "Descartar",
+      autoinject_toast_title: "Etiqueta de referido automática detectada",
+      autoinject_toast_msg: "Esta etiqueta de referido ({tag}) fue añadida automáticamente por {platform}, no por la persona que compartió el enlace.",
+      autoinject_keep: "Mantenerla",
+      autoinject_remove: "Eliminarla",
     },
     pt: {
       toast_title:   "MUGA encontrou a tag de afiliado de outra pessoa",
@@ -185,6 +193,10 @@
       toast_allow:   "Manter",
       toast_block:   "Remover",
       toast_dismiss: "Ignorar",
+      autoinject_toast_title: "Tag de indicação automática detectada",
+      autoinject_toast_msg: "Esta tag de indicação ({tag}) foi adicionada automaticamente por {platform}, não pela pessoa que compartilhou o link.",
+      autoinject_keep: "Manter",
+      autoinject_remove: "Remover",
     },
     de: {
       toast_title:   "MUGA hat ein fremdes Affiliate-Tag gefunden",
@@ -192,6 +204,10 @@
       toast_allow:   "Behalten",
       toast_block:   "Entfernen",
       toast_dismiss: "Schließen",
+      autoinject_toast_title: "Automatisches Empfehlungs-Tag erkannt",
+      autoinject_toast_msg: "Dieses Empfehlungs-Tag ({tag}) wurde automatisch von {platform} hinzugefügt, nicht von der Person, die den Link geteilt hat.",
+      autoinject_keep: "Behalten",
+      autoinject_remove: "Entfernen",
     },
     fr: {
       toast_title:   "MUGA a trouvé un tag d'affiliation de quelqu'un d'autre",
@@ -199,6 +215,10 @@
       toast_allow:   "Conserver",
       toast_block:   "Supprimer",
       toast_dismiss: "Ignorer",
+      autoinject_toast_title: "Tag de parrainage automatique détecté",
+      autoinject_toast_msg: "Ce tag de parrainage ({tag}) a été ajouté automatiquement par {platform}, et non par la personne qui a partagé le lien.",
+      autoinject_keep: "Conserver",
+      autoinject_remove: "Supprimer",
     },
     it: {
       toast_title:   "MUGA ha trovato il tag di affiliazione di qualcun altro",
@@ -206,6 +226,10 @@
       toast_allow:   "Mantieni",
       toast_block:   "Rimuovi",
       toast_dismiss: "Ignora",
+      autoinject_toast_title: "Tag di affiliazione automatico rilevato",
+      autoinject_toast_msg: "Questo tag di affiliazione ({tag}) è stato aggiunto automaticamente da {platform}, non dalla persona che ha condiviso il link.",
+      autoinject_keep: "Mantieni",
+      autoinject_remove: "Rimuovi",
     },
     ja: {
       toast_title:   "MUGAは他者のアフィリエイトタグを検出しました",
@@ -213,6 +237,10 @@
       toast_allow:   "保持",
       toast_block:   "削除",
       toast_dismiss: "閉じる",
+      autoinject_toast_title: "自動付与された紹介タグを検出しました",
+      autoinject_toast_msg: "このリンクの紹介タグ（{tag}）は、リンクを共有した人ではなく{platform}によって自動的に追加されました。",
+      autoinject_keep: "保持",
+      autoinject_remove: "削除",
     },
   };
 
@@ -733,7 +761,7 @@
       return;
     }
 
-    const { cleanUrl, action, detectedAffiliate } = result;
+    const { cleanUrl, action, detectedAffiliate, autoInjected } = result;
 
     // Compute withOurAffiliate locally (was previously added by the SW
     // in handleProcessUrl). Mirrors the SW logic exactly: if injection
@@ -772,12 +800,33 @@
 
     if (action === "detected_foreign" && detectedAffiliate
         && _contentPrefs?.notifyForeignAffiliate) {
-      showAffiliateNotice(detectedAffiliate, href, cleanUrl, withOurAffiliate, (choice) => {
-        if (choice === "original") navigate(href, opensNewTab);
-        else if (choice === "clean") {
-          navigate(withOurAffiliate || cleanUrl, opensNewTab);
-        }
-      });
+      // affiliate-autoinject-notice: when the dual-key predicate also
+      // identified this exact tag as platform-auto-injected (as opposed to a
+      // genuine creator referral), show the dedicated neutral variant instead
+      // of the generic "someone else's affiliate tag" toast. Same gating
+      // (notifyForeignAffiliate) and same trigger (detected_foreign) — this
+      // is strictly a copy/behavior refinement layered on the existing path,
+      // never a second independent notice.
+      if (autoInjected) {
+        showAutoInjectNotice(autoInjected, (choice) => {
+          // Keep: navigate to the original href, platform tag KEPT (Scenario C
+          // default-KEEP). Remove: navigate to autoInjected.removeUrl — the
+          // cleaned URL with EXACTLY the auto-injected pair stripped on THIS
+          // navigation (LOW-1), so the platform isn't credited for this visit.
+          // A co-present genuine creator tag survives (removeUrl drops only the
+          // exact pair). Fall back to cleanUrl if removeUrl is absent/empty (the
+          // lib helper already falls back to cleanUrl on a malformed URL).
+          if (choice === "original") navigate(href, opensNewTab);
+          else if (choice === "clean") navigate(autoInjected.removeUrl || cleanUrl, opensNewTab);
+        });
+      } else {
+        showAffiliateNotice(detectedAffiliate, href, cleanUrl, withOurAffiliate, (choice) => {
+          if (choice === "original") navigate(href, opensNewTab);
+          else if (choice === "clean") {
+            navigate(withOurAffiliate || cleanUrl, opensNewTab);
+          }
+        });
+      }
     } else {
       // ADR-0004 phase 5 (#701): Privacy Proxy decommissioned. Opaque affiliate
       // redirect networks (awin, CJ, etc.) and generic shorteners (bit.ly, t.co,
@@ -956,6 +1005,126 @@
           const hostname = safeHostname(originalUrl);
           const tag = `${hostname}::${affiliate.param}::${affiliate.value}`;
           chrome.runtime.sendMessage({ type: "ADD_TO_BLACKLIST", tag }).catch(() => { /* expected: channel may close */ });
+        }
+        callback(choice);
+      });
+    });
+
+    document.getElementById("muga-dismiss")?.addEventListener("click", () => {
+      clearTimeout(_toastTimer);
+      _toastTimer = null;
+      notice.remove();
+      callback("original");
+    });
+  }
+
+  /**
+   * Shows the NEUTRAL variant of the affiliate-tag toast for a tag the
+   * dual-key predicate identified as platform-auto-injected (as opposed to a
+   * genuine creator referral) — affiliate-autoinject-notice, ADR-c/ADR-e.
+   *
+   * Deliberately NOT a thin wrapper around showAffiliateNotice: that
+   * function's "original" (Keep) choice writes a whitelist entry, but this
+   * spec requires Keep to be a TRUE no-op (no rule written at all — Scenario
+   * C default-KEEP semantics). Remove reuses the exact scoped
+   * `merchantDomain::param::value` string the predicate already computed
+   * (never hand-built from the DOM), so only that platform's exact tag value
+   * is scoped out; every other creator's tag on the same domain/param stays
+   * untouched.
+   *
+   * Copy is neutral/factual — names the mechanic ("added automatically by
+   * {platform}"), never a motive (ADR-e; forbidden-token guard in
+   * autoinjector-copy.test.mjs).
+   *
+   * @param {{platform: string, param: string, value: string, merchantDomain: string, scopedBlacklistEntry: string}} autoInjected
+   * @param {function} callback
+   */
+  function showAutoInjectNotice(autoInjected, callback) {
+    if (_toastTimer) clearTimeout(_toastTimer);
+    document.getElementById("muga-notice")?.remove();
+
+    const notice = document.createElement("div");
+    notice.id = "muga-notice";
+    notice.setAttribute("role", "alert");
+    notice.setAttribute("aria-live", "assertive");
+    notice.style.cssText = [
+      "position:fixed", "bottom:20px", "right:20px",
+      "background:#1c1c1e", "color:#f0f0f0", "border-radius:10px",
+      "padding:12px 16px",
+      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+      "font-size:13px", "line-height:1.5", "max-width:300px",
+      "z-index:2147483647", "box-shadow:0 4px 20px rgba(0,0,0,0.3)",
+      "border:0.5px solid rgba(255,255,255,0.1)",
+    ].join(";");
+
+    const btnStyle = "flex:1;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:#f0f0f0;font-size:11px;cursor:pointer";
+
+    const titleDiv = document.createElement("div");
+    titleDiv.style.cssText = "font-weight:500;margin-bottom:6px;font-size:12px;color:#aaa";
+    titleDiv.textContent = s.autoinject_toast_title;
+
+    const msgDiv = document.createElement("div");
+    msgDiv.style.cssText = "margin-bottom:10px;font-size:12px;color:#ddd";
+    const tagText = `${autoInjected.param}=${autoInjected.value}`;
+    msgDiv.textContent = s.autoinject_toast_msg
+      .replace("{tag}", tagText)
+      .replace("{platform}", autoInjected.platform);
+
+    const btnDiv = document.createElement("div");
+    btnDiv.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
+
+    const keepBtn = document.createElement("button");
+    keepBtn.dataset.choice = "original";
+    keepBtn.style.cssText = btnStyle;
+    keepBtn.textContent = s.autoinject_keep;
+    keepBtn.setAttribute("aria-label", s.autoinject_keep);
+    btnDiv.appendChild(keepBtn);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.dataset.choice = "clean";
+    removeBtn.style.cssText = btnStyle;
+    removeBtn.textContent = s.autoinject_remove;
+    removeBtn.setAttribute("aria-label", s.autoinject_remove);
+    btnDiv.appendChild(removeBtn);
+
+    const dismissDiv = document.createElement("button");
+    dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
+    dismissDiv.id = "muga-dismiss";
+    dismissDiv.textContent = s.toast_dismiss;
+    dismissDiv.setAttribute("aria-label", s.toast_dismiss);
+
+    notice.appendChild(titleDiv);
+    notice.appendChild(msgDiv);
+    notice.appendChild(btnDiv);
+    notice.appendChild(dismissDiv);
+
+    document.body.appendChild(notice);
+    notice.tabIndex = -1;
+    notice.focus();
+
+    const rawDuration = _contentPrefs?.toastDuration || 15;
+    const duration = Math.max(5, Math.min(60, rawDuration)) * 1000;
+    _toastTimer = setTimeout(() => {
+      _toastTimer = null;
+      notice.remove();
+      callback("original");
+    }, duration);
+
+    notice.querySelectorAll("button[data-choice]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        clearTimeout(_toastTimer);
+        _toastTimer = null;
+        notice.remove();
+        const choice = btn.dataset.choice;
+        // "Keep" is a TRUE no-op (Scenario C default-KEEP): unlike the
+        // generic toast's "Allow", nothing is written to any list.
+        if (choice === "clean") {
+          // "Remove": scoped blacklist entry, exactly as computed by the
+          // dual-key predicate — never a global `param::*` rule (ADR-c).
+          chrome.runtime.sendMessage({
+            type: "ADD_TO_BLACKLIST",
+            tag: autoInjected.scopedBlacklistEntry,
+          }).catch(() => { /* expected: channel may close */ });
         }
         callback(choice);
       });

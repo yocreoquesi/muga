@@ -37,6 +37,15 @@ const TOAST_KEYS = [
   "toast_allow",
   "toast_block",
   "toast_dismiss",
+  // affiliate-autoinject-notice: the neutral auto-inject toast variant needs
+  // its own synchronous copy for the same reason as the five keys above
+  // (content scripts cannot import src/lib/i18n.js). autoinject_badge is
+  // popup-only (popup.js is a real ES module) and is intentionally NOT
+  // mirrored here.
+  "autoinject_toast_title",
+  "autoinject_toast_msg",
+  "autoinject_keep",
+  "autoinject_remove",
 ];
 
 // ── Parse the inline STRINGS table from cleaner.js ──────────────────────────
