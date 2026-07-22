@@ -246,6 +246,7 @@ export default Object.freeze({
   tooltip_cleaned: "MUGA: Rauschen entfernt",
   tooltip_preserved: "MUGA: Creator-Empfehlung erhalten",
   tooltip_cleaned_and_preserved: "MUGA: Tracking entfernt, Creator-Empfehlung erhalten",
+  tooltip_inactive: "MUGA: auf dieser Website deaktiviert",
   toast_title: "MUGA hat ein fremdes Affiliate-Tag gefunden",
   toast_tag_msg: "hat ein Affiliate-Tag, das nicht unseres ist:",
   toast_allow: "Behalten",

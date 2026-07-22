@@ -246,6 +246,7 @@ export default Object.freeze({
   tooltip_cleaned: "MUGA: noise removed",
   tooltip_preserved: "MUGA: creator referral preserved",
   tooltip_cleaned_and_preserved: "MUGA: tracking removed, creator referral preserved",
+  tooltip_inactive: "MUGA: off on this site",
   toast_title: "MUGA found someone else's affiliate tag",
   toast_tag_msg: "has an affiliate tag that isn't ours:",
   toast_allow: "Keep it",

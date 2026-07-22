@@ -4,7 +4,7 @@
  * and maintains extension state.
  */
 
-import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
+import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
@@ -980,6 +980,60 @@ async function collectBadgeTotals() {
   }
 }
 
+// --- Tab active-state (toolbar-inactive-badge) ---
+//
+// "Active-on-tab" mirrors isSiteFullyExempt/getFullyExemptDomains (#allowlist
+// -full-inert) exactly the same way syncAllowlistDNR does for the network
+// layer above: a tab is ACTIVE only when the extension is globally on,
+// onboarding/consent is complete, AND the tab's hostname is not a fully
+// exempt (allowlisted / per-site-paused — migratePerSiteDisableToAllowlist
+// folded the legacy per-site pause into the same whitelist mechanism) site.
+// Defensive by construction: any falsy/missing prefs resolves through
+// isSiteFullyExempt's own fail-safe (false), so a malformed prefs object
+// can only ever make computeTabActiveState MORE cautious about calling a
+// tab "inactive", never less.
+function computeTabActiveState(prefs, hostname) {
+  return prefs?.enabled === true && prefs?.onboardingDone === true && !isSiteFullyExempt(hostname, prefs);
+}
+
+// Repaints EVERY open tab's active-state on the toolbar (#toolbar-inactive
+// -badge). Called whenever a pref that can flip Active-on-tab changes:
+// prefs.enabled, whitelist/blacklist (allowlist + per-site pause), or
+// onboarding/consent state.
+//
+// Cold-SW-safe by construction, unlike collectBadgeTotals() above: there is
+// no durable/session-storage record of "is this tab active" to rehydrate —
+// the value is always recomputed fresh from the tab's LIVE url (via
+// chrome.tabs.query, which reflects the real open-tab list regardless of
+// service-worker restarts) plus the current prefs. So a restart loses
+// nothing this function needs; there is nothing to lose.
+async function repaintAllTabsActiveState(prefs) {
+  if (!prefs?.onboardingDone) return; // the global "!" badge owns the surface; nothing to repaint per-tab
+  let tabs;
+  try {
+    tabs = await new Promise((resolve) => {
+      chrome.tabs.query({}, (r) => { void chrome.runtime.lastError; resolve(r || []); });
+    });
+  } catch {
+    return;
+  }
+  for (const tab of tabs) {
+    if (typeof tab.id !== "number" || tab.id < 0) continue;
+    if (!tab.url || !/^https?:\/\//i.test(tab.url)) continue; // skip non-http(s) tabs (chrome://, extension pages, etc.)
+    let hostname;
+    try {
+      hostname = new URL(tab.url).hostname;
+    } catch {
+      continue; // malformed URL — never throw, just skip this tab (see AGENTS.md new URL() guard)
+    }
+    toolbarBus.emit({
+      type: "tabActiveStateChanged",
+      tabId: tab.id,
+      active: computeTabActiveState(prefs, hostname),
+    });
+  }
+}
+
 // Reset the per-PAGE popup preview count and the tooltip on every
 // navigation start. Deliberately does NOT touch `tab_badge_{tabId}` or
 // emit anything badge-related — the toolbar badge is a per-TAB running
@@ -990,11 +1044,12 @@ async function collectBadgeTotals() {
 // reset in this state, and emitting would still update the tooltip for a
 // tab the user has not consented on. Skipping is safe and matches the
 // pre-#910 behavior.
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== "loading") return;
   sessionStorage.remove(`tab_${tabId}`);
+  let prefs = null;
   try {
-    const prefs = await getPrefsWithCache();
+    prefs = await getPrefsWithCache();
     if (!prefs.onboardingDone) return;
   } catch { /* fall through and emit — toolbar reset is the safer default */ }
   // The browser CLEARS the per-tab badge TEXT on every navigation (MDN
@@ -1012,6 +1067,25 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     total = Math.max(0, Number(badgeData[badgeKey]) || 0);
   } catch { /* best-effort; presenter falls back to its in-memory total */ }
   toolbarBus.emit({ type: "navigationStarted", tabId, total });
+
+  // Recompute the tab's active-state for the NEW page (toolbar-inactive
+  // -badge). Emitted AFTER navigationStarted above so the presenter's
+  // per-page reset (which repaints the tooltip/badge from the tab's
+  // PREVIOUS active flag — see toolbar-presenter.js module doc) is
+  // immediately corrected for the new hostname; the gap is at most one JS
+  // macrotask within this same handler invocation, not user-observable.
+  // Skipped when the prefs fetch above failed (prefs stays null) — best
+  // effort, mirrors the fall-through above.
+  if (prefs) {
+    try {
+      if (tab?.url && /^https?:\/\//i.test(tab.url)) {
+        const hostname = new URL(tab.url).hostname;
+        toolbarBus.emit({ type: "tabActiveStateChanged", tabId, active: computeTabActiveState(prefs, hostname) });
+      }
+      // Non-http(s) tab (chrome://, extension pages, new-tab, etc.): leave
+      // the tab's active flag untouched — MUGA never runs there anyway.
+    } catch { /* malformed tab.url (new URL() guard) — skip this navigation's recompute */ }
+  }
 });
 
 // Clean up session data when a tab closes. Both the per-page popup
@@ -1062,6 +1136,10 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       const prefs = await getPrefsWithCache();
       await applyDnrState(prefs);
       await applyOnboardingBadge(prefs);
+      // Onboarding/consent state is one of the three Active-on-tab factors
+      // (toolbar-inactive-badge) — a fresh accept/hard-reonboard flips it
+      // for every open tab, not just the global "!" badge.
+      await repaintAllTabsActiveState(prefs);
     }
     // Per-device overrides changed (per-device-prefs.setOverrides /
     // clearOverrides). getPrefs() overlays these last, so a change flips the
@@ -1073,6 +1151,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       const prefs = await getPrefsWithCache();
       await applyDnrState(prefs);
       await applyOnboardingBadge(prefs);
+      await repaintAllTabsActiveState(prefs);
     }
     return;
   }
@@ -1088,6 +1167,15 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
     // requiring the user to also flip an unrelated pref.
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
+  }
+  if (changes.enabled || changes.whitelist || changes.blacklist) {
+    // toolbar-inactive-badge: prefs.enabled and whitelist/blacklist
+    // (allowlist + per-site pause) are Active-on-tab factors — repaint every
+    // open tab's badge/tooltip immediately rather than waiting for its next
+    // navigation. getPrefsWithCache() is already warm from the block above
+    // when both conditions overlap (e.g. changes.enabled).
+    const prefs = await getPrefsWithCache();
+    await repaintAllTabsActiveState(prefs);
   }
   if (changes.contextMenuEnabled || changes.language || changes.enabled) {
     const enabled = changes.contextMenuEnabled
@@ -1204,6 +1292,9 @@ async function handleTestMessage(message, _sender) {
       if (inner.type === "urlCleaned") {
         event.paramsRemoved = Number(inner.paramsRemoved) || 0;
         if (Number.isFinite(inner.total)) event.total = Number(inner.total);
+      }
+      if (inner.type === "tabActiveStateChanged") {
+        event.active = inner.active === true;
       }
       toolbarBus.emit(event);
       return { ok: true };

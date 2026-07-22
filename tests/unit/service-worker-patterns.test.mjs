@@ -246,12 +246,15 @@ describe("Cache invalidation — version counter", () => {
     // Previously the local-area branch returned without handling it, leaving
     // cachedPrefs stale. Single source-string match (no brittle slice chains)
     // captures the whole handling block and asserts its contents at once.
+    // toolbar-inactive-badge: the block grew a trailing repaintAllTabsActiveState()
+    // call — onboarding/consent is one of the Active-on-tab factors, so a
+    // per-device override change must also repaint every open tab's badge.
     const m = swSource.match(
-      /if \(changes\.mugaPerDevicePrefs\)\s*\{\s*_invalidatePrefsCache\(\);\s*const prefs = await getPrefsWithCache\(\);\s*await applyDnrState\(prefs\);\s*await applyOnboardingBadge\(prefs\);\s*\}/
+      /if \(changes\.mugaPerDevicePrefs\)\s*\{\s*_invalidatePrefsCache\(\);\s*const prefs = await getPrefsWithCache\(\);\s*await applyDnrState\(prefs\);\s*await applyOnboardingBadge\(prefs\);\s*await repaintAllTabsActiveState\(prefs\);\s*\}/
     );
     assert.ok(
       m,
-      "local-area listener must handle changes.mugaPerDevicePrefs by invalidating the cache and re-applying DNR + onboarding badge"
+      "local-area listener must handle changes.mugaPerDevicePrefs by invalidating the cache and re-applying DNR + onboarding badge + tab active-state repaint"
     );
   });
 

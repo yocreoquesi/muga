@@ -246,6 +246,7 @@ export default Object.freeze({
   tooltip_cleaned: "MUGA : bruit supprimé",
   tooltip_preserved: "MUGA : affiliation du créateur préservée",
   tooltip_cleaned_and_preserved: "MUGA : pistage supprimé, affiliation du créateur préservée",
+  tooltip_inactive: "MUGA : désactivé sur ce site",
   toast_title: "MUGA a trouvé un tag d'affiliation de quelqu'un d'autre",
   toast_tag_msg: "a un tag d'affiliation qui n'est pas le nôtre :",
   toast_allow: "Conserver",

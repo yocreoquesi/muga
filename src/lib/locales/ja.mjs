@@ -246,6 +246,7 @@ export default Object.freeze({
   tooltip_cleaned: "MUGA: ノイズを除去",
   tooltip_preserved: "MUGA: クリエイターのリファラルを保持",
   tooltip_cleaned_and_preserved: "MUGA: トラッキングを削除、クリエイターのリファラルを保持",
+  tooltip_inactive: "MUGA: このサイトでは無効です",
   toast_title: "MUGAは他者のアフィリエイトタグを検出しました",
   toast_tag_msg: "には当方のものではないアフィリエイトタグがあります:",
   toast_allow: "保持",
