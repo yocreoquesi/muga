@@ -6,7 +6,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl, isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
-import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
+import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
@@ -636,6 +636,13 @@ function _resetPreviewDom() {
     previewHonored.hidden = true;
     previewHonored.textContent = "";
   }
+  // affiliate-autoinject-notice: passive badge slot. Reset every render so a
+  // prior navigation's badge never bleeds into a landing with no detection.
+  const previewAutoinject = el("preview-autoinject");
+  if (previewAutoinject) {
+    previewAutoinject.hidden = true;
+    previewAutoinject.textContent = "";
+  }
   // #728 item 26: reset the per-tab badge (#89) too. It is only re-shown when
   // the new render has count > 0, so without this a prior tab's badge would
   // bleed into a later render with no count — breaking the idempotent-render
@@ -750,6 +757,31 @@ async function showUrlPreview(prefs, lang) {
         .replace("{network}", String(result.network ?? ""))
         .replace("{creator}", String(result.creator ?? ""));
       honoredEl.hidden = false;
+    }
+  }
+
+  // affiliate-autoinject-notice: passive popup badge (ADR-c). Renders
+  // whenever the dual-key predicate flagged this landing, REGARDLESS of
+  // notifyForeignAffiliate — the badge only appears when the user opens the
+  // popup themselves, so it carries none of the toast's interruption cost
+  // and is safe to show unconditionally. textContent only (no innerHTML);
+  // {platform} is the only placeholder and it's sourced from MUGA's own
+  // curated AUTOINJECTOR_PATTERNS table, never user input.
+  //
+  // LOW-2: also require the flagged param=value to STILL be present in the
+  // cleaned URL. `result.autoInjected` is computed on the incoming landing
+  // params (before stripping), so it outlives the tag when the tag was
+  // actually removed — e.g. under stripAllAffiliates (action "cleaned") or on
+  // a post-Remove re-navigation where the scoped blacklist already stripped
+  // it. Gating on presence keeps the badge honest: it only shows when the tag
+  // survived in cleanUrl.
+  if (result.autoInjected &&
+      isAutoInjectedTagPresent(result.cleanUrl, result.autoInjected.param, result.autoInjected.value)) {
+    const autoinjectEl = document.getElementById("preview-autoinject");
+    if (autoinjectEl) {
+      const template = t("autoinject_badge", lang);
+      autoinjectEl.textContent = template.replace("{platform}", String(result.autoInjected.platform ?? ""));
+      autoinjectEl.hidden = false;
     }
   }
 
