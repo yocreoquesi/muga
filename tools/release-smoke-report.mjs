@@ -64,6 +64,9 @@ export const RELEASE_CMPS = Object.freeze([
   "consentmanager",
 ]);
 
+/**
+ * @returns {{ verdict: "READY"|"BLOCKED"|"UNVERIFIED", passCount: number, failCount: number, inconclusiveCount: number, sites: Array<{url: string, status: string, detail: string}> }}
+ */
 function emptyBucket() {
   return { verdict: "UNVERIFIED", passCount: 0, failCount: 0, inconclusiveCount: 0, sites: [] };
 }

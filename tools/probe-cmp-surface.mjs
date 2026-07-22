@@ -69,6 +69,7 @@ export function summarizeSurfaceResults(records) {
     if (typeof r.globalType === "string" && r.globalType !== "undefined") cur.global = true;
     byAdapter.set(r.adapterId, cur);
   }
+  /** @type {Array<{adapterId: string, verdict: "CONFIRMED"|"GLOBAL_ONLY"|"UNCONFIRMED"}>} */
   const out = [];
   for (const [adapterId, s] of byAdapter) {
     out.push({
