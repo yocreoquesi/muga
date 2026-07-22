@@ -88,6 +88,18 @@ export async function launchFirefoxWithExtension() {
   const geckoId = readGeckoId();
   const extDir = await buildFirefoxExtensionDir();
 
+  // Firefox 126+ gates WebDriver access to PRIVILEGED contexts (navigating to
+  // moz-extension:// pages, which completeOnboarding() does to seed the
+  // extension's chrome.storage) behind an explicit opt-in ENV VAR on the
+  // Firefox process: MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1. Without it, FF 152+
+  // rejects the navigation with UnsupportedOperationError ("Navigation ... is
+  // not allowed in this context"). This supersedes the older
+  // remote.system-access-check.enabled pref, which FF 152 no longer honors for
+  // this. geckodriver passes the inherited process env to the Firefox it
+  // launches, so setting it here (before Builder().build() spawns geckodriver)
+  // reaches Firefox. A no-op on older Firefox that never gated on it.
+  process.env.MOZ_REMOTE_ALLOW_SYSTEM_ACCESS = "1";
+
   let driver;
   try {
     const options = new firefox.Options();
