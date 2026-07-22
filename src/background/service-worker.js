@@ -1336,7 +1336,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "PROCESS_URL") {
     if (typeof message.url !== "string" || message.url.length > MAX_URL_LENGTH) {
-      try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
+      try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null }); } catch { /* channel closed */ }
       return true;
     }
     // Opportunistic remote-rules refresh — cheap no-op after the first call
@@ -1354,7 +1354,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .catch(err => {
         console.error("[MUGA] PROCESS_URL handler failed:", err);
-        try { sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
+        try { sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null }); } catch { /* channel closed */ }
       });
     return true; // keep the channel open for the async response
   }
@@ -1640,7 +1640,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, skipSideEffects = false, referrer = "" } = {}) {
-  if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
   // retry on the next call. Both loaders run in a single outer Promise.all so
   // all three JSON files (domain + 2× path) are in flight at once.
@@ -1661,7 +1661,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled || !prefs.onboardingDone) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   }
 
   // On copy: suppress the toast and affiliate injection. User didn't navigate,
@@ -1683,7 +1683,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker, referrer, pathStripRules, pathAffiliateRules);
   } catch (err) {
     console.error("[MUGA] processUrl failed:", err, rawUrl);
-    return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   }
 
   // firstUsed is initialized in onInstalled/onStartup (idempotent); the flag
