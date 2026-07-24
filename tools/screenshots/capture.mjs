@@ -50,6 +50,16 @@ const distPath    = path.resolve(projectRoot, 'src');
 const assetsPath  = path.resolve(projectRoot, 'docs/assets');
 const mockDir     = __dirname; // HTML mock-ups live alongside this script
 
+// Real extension icon (purple "M"-with-arrow mark, src/icons/128.png).
+// Encoded once as a data URI so it can be injected directly into the
+// page.evaluate() overlays below (cws-ss4 toast, cws-ss5 context menu)
+// without depending on file:// relative-path resolution inside injected
+// markup. The static mock-up HTML files (ss1-before-after.html,
+// ss2-popup.html) reference the same file via a plain relative <img src>
+// instead, since those load the icon as part of the document itself.
+const iconPngPath = path.resolve(projectRoot, 'src/icons/128.png');
+const ICON_DATA_URI = `data:image/png;base64,${fs.readFileSync(iconPngPath).toString('base64')}`;
+
 // ---------------------------------------------------------------------------
 // Pre-flight checks
 // ---------------------------------------------------------------------------
@@ -125,6 +135,33 @@ async function capture(context, url, destFilename, label) {
 async function captureFile(context, htmlFile, destFilename, label) {
   const fileUrl = `file://${path.join(mockDir, htmlFile)}`;
   await capture(context, fileUrl, destFilename, label);
+}
+
+/**
+ * Open a new page, navigate to the given URL, then screenshot ONLY the
+ * <body> element instead of the full 1280x800 viewport.
+ *
+ * Used for the real popup.html captures: popup.css fixes `body { width:
+ * 380px }` and lets height grow with content, so the full-viewport capture()
+ * helper above left ~70% of the image as empty white canvas around a small
+ * popup in the corner. Screenshotting the body element crops tight to the
+ * actual rendered popup, no matter how tall its content grows.
+ */
+async function captureCropped(context, url, destFilename, label) {
+  const page = await context.newPage();
+  // Viewport just needs to be wide/tall enough to lay out the popup without
+  // squeezing it; Playwright's element screenshot captures the full element
+  // bounding box even if it extends beyond the viewport.
+  await page.setViewportSize({ width: 480, height: 900 });
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 20_000 });
+    await page.waitForTimeout(600);
+    const dest = path.join(assetsPath, destFilename);
+    await page.locator('body').screenshot({ path: dest });
+    console.log(`  captured  ${destFilename}  (${label}, cropped to popup body)`);
+  } finally {
+    await page.close();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -292,7 +329,7 @@ try {
   // old ss2-popup.html mock-up (stale stat labels/footer, no preview/ledger
   // markup) is no longer used for this capture — kept on disk only as a
   // still-referenced static background for the cws-ss4 toast composite.
-  await capture(
+  await captureCropped(
     context,
     popupUrl,
     'screenshot-ss2-popup.png',
@@ -327,7 +364,7 @@ try {
   console.log('-- Chrome Web Store screenshots --');
 
   // cws-ss1: Popup on Amazon — same live popup URL
-  await capture(
+  await captureCropped(
     context,
     popupUrl,
     'cws-ss1-popup-amazon.png',
@@ -370,10 +407,9 @@ try {
     // through Playwright against a real page in this harness, so this stays a
     // composed overlay, but the text is byte-for-byte the shipped English
     // copy (src/lib/locales/en.mjs) rather than invented placeholder copy.
-    // The only invented visual is the brand mark, recolored to MUGA's actual
-    // purple accent (--accent #6A2BCF / --accent-strong #5318B5) instead of
-    // the previous off-brand navy/blue.
-    await page.evaluate(() => {
+    // The brand mark is the real extension icon (src/icons/128.png, injected
+    // via ICON_DATA_URI) so the toast matches what users actually see.
+    await page.evaluate((iconUri) => {
       const toast = document.createElement('div');
       toast.id = 'muga-toast-preview';
       toast.innerHTML = `
@@ -397,11 +433,11 @@ try {
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
             <div style="
               width:28px; height:28px;
-              background: linear-gradient(160deg,#6A2BCF,#5318B5);
+              background:#fff;
               border-radius:7px;
               display:flex; align-items:center; justify-content:center;
-              font-size:13px; font-weight:800; color:#fff; flex-shrink:0;
-            ">M</div>
+              flex-shrink:0; overflow:hidden;
+            "><img src="${iconUri}" alt="MUGA" style="width:22px; height:22px; display:block;"></div>
             <div style="font-weight:500; font-size:12px; color:#aaa;">
               MUGA found someone else's affiliate tag
             </div>
@@ -425,7 +461,7 @@ try {
         </div>
       `;
       document.body.appendChild(toast);
-    });
+    }, ICON_DATA_URI);
     await page.waitForTimeout(300);
     const dest = path.join(assetsPath, 'cws-ss4-toast.png');
     await page.screenshot({ path: dest, fullPage: false });
@@ -451,7 +487,10 @@ try {
     // time (link vs. text-selection right-click are mutually exclusive), so
     // this composite intentionally shows both to document both capabilities
     // in a single asset — native menus can't be Playwright-captured at all.
-    await page.evaluate(() => {
+    // Each item's leading icon is the real extension icon (src/icons/128.png,
+    // injected as a data URI via ICON_DATA_URI below) rather than a
+    // hand-drawn placeholder mark.
+    await page.evaluate((iconDataUri) => {
       const menu = document.createElement('div');
       menu.innerHTML = `
         <div style="
@@ -486,13 +525,10 @@ try {
               align-items: center;
               gap: 10px;
             ">
-              <span style="
-                display:inline-flex; align-items:center; justify-content:center;
+              <img src="${iconDataUri}" alt="MUGA" style="
                 width:18px; height:18px;
-                background: linear-gradient(160deg,#6A2BCF,#5318B5);
-                border-radius:3px; font-size:9px; font-weight:800; color:#fff;
-                flex-shrink:0;
-              ">M</span>
+                border-radius:3px; flex-shrink:0; display:block;
+              ">
               Copy clean link
             </div>
             <div style="
@@ -504,13 +540,10 @@ try {
               align-items: center;
               gap: 10px;
             ">
-              <span style="
-                display:inline-flex; align-items:center; justify-content:center;
+              <img src="${iconDataUri}" alt="MUGA" style="
                 width:18px; height:18px;
-                background: linear-gradient(160deg,#6A2BCF,#5318B5);
-                border-radius:3px; font-size:9px; font-weight:800; color:#fff;
-                flex-shrink:0;
-              ">M</span>
+                border-radius:3px; flex-shrink:0; display:block;
+              ">
               Copy clean links in selection
             </div>
             <div style="border-top: 1px solid #e8eaed; margin: 4px 0;"></div>
@@ -519,7 +552,7 @@ try {
         </div>
       `;
       document.body.appendChild(menu);
-    });
+    }, ICON_DATA_URI);
     await page.waitForTimeout(300);
     const dest = path.join(assetsPath, 'cws-ss5-context-menu.png');
     await page.screenshot({ path: dest, fullPage: false });
