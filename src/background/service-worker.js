@@ -4,7 +4,7 @@
  * and maintains extension state.
  */
 
-import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains } from "../lib/cleaner.js";
+import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
@@ -495,6 +495,87 @@ function onBeforeNavigateStrip(details) {
   return { redirectUrl: decision.cleanUrl };
 }
 
+/**
+ * Blocking onBeforeSendHeaders handler (Firefox MV2 only, referer-beacon-privacy
+ * PR 3). Removes the `referer` request header when the destination host is NOT
+ * fully exempt (allowlist) AND either the global `suppressReferer` pref is ON
+ * or the host is fully blacklisted (force-suppress regardless of the global
+ * pref, per design D2). Encodes the SAME precedence as the Chrome DNR rule
+ * priorities from PR 2: allowlist allow (1000) always wins; blocklist
+ * force-suppress (2) fires even with the global toggle OFF; the global rule
+ * (1) only fires when its own pref is ON.
+ *
+ * MUST return synchronously (a BlockingResponse or undefined), like
+ * onBeforeNavigateStrip above. Reads the warm `cachedPrefs` directly — unlike
+ * the param stripper, this listener needs no domain/path rules, so
+ * `cachedPrefs` itself is the readiness signal. Fails OPEN (returns
+ * undefined, leaving `requestHeaders` untouched) on a cold cache, a malformed
+ * URL, or an exempt/blacklist-check throw — an internal error must never
+ * strip a header a real user relies on.
+ *
+ * @param {{url:string, requestHeaders?:Array<{name:string,value?:string}>}} details
+ * @returns {{requestHeaders: Array}|undefined}
+ */
+function onBeforeSendHeadersSuppressReferer(details) {
+  if (!cachedPrefs) { getPrefsWithCache(); return; }
+
+  let host;
+  try {
+    host = new URL(details.url).hostname;
+  } catch {
+    return; // malformed URL -> pass through unchanged
+  }
+
+  try {
+    if (isSiteFullyExempt(host, cachedPrefs)) return; // allowlist always wins
+    if (cachedPrefs.suppressReferer !== true && !isSiteFullyBlacklisted(host, cachedPrefs)) return;
+  } catch {
+    return; // exempt/blacklist check threw -> pass through unchanged
+  }
+
+  const requestHeaders = (details.requestHeaders || []).filter(
+    (header) => header.name.toLowerCase() !== "referer",
+  );
+  return { requestHeaders };
+}
+
+/**
+ * Blocking onBeforeRequest handler for beacon traffic (Firefox MV2 only,
+ * referer-beacon-privacy PR 3). Registered filtered to `types:["ping","beacon"]`
+ * below: unlike Chrome (which folds both into "ping"), Firefox emits a distinct
+ * "beacon" resourceType for `navigator.sendBeacon()` and reserves "ping" for
+ * `<a ping>`, so BOTH types must be listed or real sendBeacon() calls slip
+ * through (caught by beacon-block.smoke.mjs). Cancels the request under the
+ * IDENTICAL precedence as the Referer listener above:
+ * allowlist always wins; blocklist force-blocks even with the global
+ * `blockBeacons` toggle OFF.
+ *
+ * Fails OPEN (returns undefined, letting the beacon through) on a cold cache,
+ * malformed URL, or exempt/blacklist-check throw.
+ *
+ * @param {{url:string}} details
+ * @returns {{cancel:true}|undefined}
+ */
+function onBeforeRequestBlockBeacons(details) {
+  if (!cachedPrefs) { getPrefsWithCache(); return; }
+
+  let host;
+  try {
+    host = new URL(details.url).hostname;
+  } catch {
+    return;
+  }
+
+  try {
+    if (isSiteFullyExempt(host, cachedPrefs)) return;
+    if (cachedPrefs.blockBeacons !== true && !isSiteFullyBlacklisted(host, cachedPrefs)) return;
+  } catch {
+    return;
+  }
+
+  return { cancel: true };
+}
+
 if (isFirefoxMV2) {
   // Warm the caches the blocking listener reads synchronously, then arm it. Only
   // strip once domain/path rules have settled so a startup navigation can never
@@ -508,6 +589,27 @@ if (isFirefoxMV2) {
   chrome.webRequest.onBeforeRequest.addListener(
     onBeforeNavigateStrip,
     { urls: ["<all_urls>"], types: ["main_frame"] },
+    ["blocking"],
+  );
+  // referer-beacon-privacy PR 3: Referer suppression, no resource-type filter
+  // (Referer matters across every request type, not just navigations).
+  chrome.webRequest.onBeforeSendHeaders.addListener(
+    onBeforeSendHeadersSuppressReferer,
+    { urls: ["<all_urls>"] },
+    ["blocking", "requestHeaders"],
+  );
+  // referer-beacon-privacy PR 3: beacon block. Unlike Chrome (which folds
+  // BOTH `<a ping>` navigations and navigator.sendBeacon() into a single
+  // "ping" resourceType), Firefox's webRequest classifies sendBeacon() under
+  // its OWN "beacon" resourceType and reserves "ping" for `<a ping>` only
+  // (verified empirically via tests/e2e-firefox/beacon-block.smoke.mjs — the
+  // design.md D4 claim that both surface as "ping" in FF holds for Chrome's
+  // vocabulary, not Firefox's; a "ping"-only filter silently let every real
+  // sendBeacon() call through). Both types must be listed so this listener
+  // covers the full beacon surface on Firefox.
+  chrome.webRequest.onBeforeRequest.addListener(
+    onBeforeRequestBlockBeacons,
+    { urls: ["<all_urls>"], types: ["ping", "beacon"] },
     ["blocking"],
   );
 }

@@ -138,6 +138,7 @@ const BASELINE = {
   "docs-prefs-table.test.mjs": 1,          // reads storage source to verify docs table (#824)
   "options-write-path-override.test.mjs": 2, // SW ENABLE/DISABLE_REMOTE_RULES handlers not importable in Node; 2 guards pin the reconcile wiring (#888 write-path follow-up, #824)
   "referer-beacon-privacy-dnr.test.mjs": 9, // SW not importable; syncSuppressRefererDNR/syncBlockBeaconsDNR/syncBlocklistRefererDNR/syncBlocklistBeaconsDNR existence + applyDnrState gate-open/gate-closed wiring + storage.onChanged guards, mirroring allowlist-dnr.test.mjs's pattern (referer-beacon-privacy PR 2, #824)
+  "referer-beacon-privacy-ff.test.mjs": 7,  // SW not importable; onBeforeSendHeadersSuppressReferer/onBeforeRequestBlockBeacons existence + fail-open + isFirefoxMV2 listener-registration wiring guards, mirroring referer-beacon-privacy-dnr.test.mjs's pattern (referer-beacon-privacy PR 3, #824)
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

@@ -186,6 +186,33 @@ export async function completeOnboarding(driver, extensionOrigin, { enableFeatur
 }
 
 /**
+ * Writes arbitrary keys directly into chrome.storage.sync (referer-beacon-privacy
+ * PR 3). Separate from completeOnboarding (which only seeds the fixed set of
+ * onboarding/consent keys shared with the cookie-consent smoke suite) so new
+ * prefs (suppressReferer, blockBeacons, whitelist, blacklist) can be layered on
+ * top without touching that shared fixture's contract.
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver
+ * @param {string} extensionOrigin - e.g. "moz-extension://<uuid>"
+ * @param {object} values - plain object merged into chrome.storage.sync
+ */
+export async function setStorageSync(driver, extensionOrigin, values) {
+  await driver.get(`${extensionOrigin}/popup/popup.html`);
+
+  await driver.executeAsyncScript(
+    (valuesArg, callback) => {
+      chrome.storage.sync.set(valuesArg, () => callback());
+    },
+    values
+  );
+
+  // Mirrors completeOnboarding's settle-window comment: no observable signal
+  // exists for prefs-cache invalidation / FF listener re-read after a
+  // storage.set call, so a short fixed settle window is used (#824 debt).
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+/**
  * Tears down the driver and removes the temp extension directory.
  */
 export async function teardown(driver, extDir) {
