@@ -67,6 +67,8 @@ const SAMPLE_PREFS = {
   honorCreatorMode: true,
   creatorAllowlist: ["youtube.com/@example"],
   cookieConsentMode: "reject-only",
+  suppressReferer: false,
+  blockBeacons: false,
 };
 
 describe("SETTINGS_SCHEMA_VERSION", () => {
@@ -77,16 +79,18 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 22 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
       "attributionLedgerEnabled", "hoverPreviewEnabled",
+      // referer-beacon-privacy (PR 1, opt-in, default false):
+      "suppressReferer", "blockBeacons",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 20);
+    assert.strictEqual(BOOLEAN_KEYS.length, 22);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {

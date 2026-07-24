@@ -21,6 +21,8 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `activeDefenseEnabled` | boolean | `true` | Enable active-defense content scripts (history pushState/replaceState cleaning, window.name defusing, DOM link/click rewriting). Disable if these break a site (#1006) |
 | `contextMenuEnabled` | boolean | `true` | Show "Copy clean link" in the right-click context menu |
 | `blockPings` | boolean | `true` | Block `<a ping>` and `navigator.sendBeacon` calls |
+| `suppressReferer` | boolean | `false` | (referer-beacon-privacy, PR 1: config only, no behavior change yet) Opt-in: when ON, removes the `Referer` header on non-allowlisted domains at the network layer. Independent from `blockPings`. |
+| `blockBeacons` | boolean | `false` | (referer-beacon-privacy, PR 1: config only, no behavior change yet) Opt-in: when ON, blocks network-layer `"ping"`-resourceType requests (`sendBeacon`/`<a ping>`) on non-allowlisted domains. Distinct from `blockPings` (DOM-layer, unchanged). |
 | `ampRedirect` | boolean | `true` | Redirect AMP pages to canonical URL |
 | `unwrapRedirects` | boolean | `true` | Unwrap tracking redirect URLs (e.g. ?url=, ?redirect=) |
 | `language` | string | `"en"` | UI language. Supported: `"en"`, `"es"`, `"pt"`, `"de"` |

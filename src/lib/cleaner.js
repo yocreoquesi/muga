@@ -345,6 +345,90 @@ export function setDomainAllowlisted(whitelist, hostname, allowed) {
 }
 
 /**
+ * Returns true if a hostname matches a DOMAIN-ONLY blacklist entry (bare
+ * "example.com", no ::param suffix) - i.e. the user has fully blacklisted
+ * this site (referer-beacon-privacy, D2). Structural clone of
+ * isSiteFullyExempt() but reads prefs.blacklist instead of prefs.whitelist.
+ *
+ * This predicate does NOT itself resolve allowlist-vs-blacklist precedence -
+ * it only answers "is this domain on the bare-domain blacklist". Callers
+ * that must honor "allowlist always wins" (D2) check isSiteFullyExempt()
+ * first and short-circuit before consulting this predicate (wired in a
+ * later PR - this slice adds the pure predicate only, no behavior change).
+ *
+ * A param-scoped entry ("example.com::tag::x") does NOT count - that only
+ * protects one affiliate value being replaced, it is not a "treat this
+ * domain aggressively" signal.
+ *
+ * Defensive: returns false for any falsy or malformed input so a missing or
+ * corrupt prefs object never accidentally triggers force-suppression - the
+ * fail-safe direction here is "do NOT force-suppress" (matches
+ * isSiteFullyExempt's precedent of failing toward the less-surprising
+ * outcome).
+ *
+ * @param {string} hostname - the current page's hostname.
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {boolean}
+ */
+export function isSiteFullyBlacklisted(hostname, prefs) {
+  if (!hostname || typeof hostname !== "string" || !prefs || typeof prefs !== "object") return false;
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns the deduped list of bare domains (www-stripped, lowercased) that
+ * are fully blacklisted (referer-beacon-privacy, D2) - i.e. the same
+ * domain-only-blacklist signal isSiteFullyBlacklisted() tests against a
+ * single hostname, but exposed here as the raw domain list. Structural clone
+ * of getFullyExemptDomains() but over prefs.blacklist.
+ *
+ * Used by the service worker to build one DNR dynamic per-domain Referer
+ * force-suppress rule and one per-domain beacon-block rule per blacklisted
+ * domain (src/background/service-worker.js#syncBlocklistRefererDNR /
+ * #syncBlocklistBeaconsDNR, wired in a later PR): DNR conditions match a
+ * `requestDomains` list, not a predicate function.
+ *
+ * Defensive: returns [] for any falsy or malformed prefs, matching
+ * isSiteFullyBlacklisted's fail-safe direction (no domains -> no
+ * force-suppress rules).
+ *
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {string[]}
+ */
+export function getFullyBlacklistedDomains(prefs) {
+  if (!prefs || typeof prefs !== "object") return [];
+
+  const domains = new Set();
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    domains.add(entry.domain);
+  }
+
+  return [...domains];
+}
+
+/**
  * Per-array index of `domainRules` keyed by `rule.domain`. The cleaner is
  * called once per page navigation but `domainRules` is loaded ONCE in the
  * service worker and reused across every call — so we build a `Map(domain →

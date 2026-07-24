@@ -67,6 +67,18 @@ export const PREF_DEFAULTS = {
   activeDefenseEnabled: true,
   contextMenuEnabled: true,
   blockPings: true,
+  // Referer suppression toggle (referer-beacon-privacy, PR 1). Opt-in,
+  // default OFF: removes the Referer header on non-allowlisted domains when
+  // ON (see src/background/service-worker.js's syncSuppressRefererDNR, wired
+  // in a later PR). Independent from blockPings — that pref governs the
+  // DOM-layer navigator.sendBeacon()/<a ping> defuser and is left untouched
+  // by this feature.
+  suppressReferer: false,
+  // Beacon block toggle (referer-beacon-privacy, PR 1). Opt-in, default OFF:
+  // blocks network-layer "ping" resource-type requests (sendBeacon/<a ping>)
+  // on non-allowlisted domains when ON (see syncBlockBeaconsDNR, wired in a
+  // later PR). Distinct from blockPings (DOM-layer, default true, unchanged).
+  blockBeacons: false,
   ampRedirect: true,
   unwrapRedirects: true,
   language: "en",

@@ -29,10 +29,30 @@
  *              dedicated 500-ID range so it can never
  *              collide with 1000/1001 or any future single-purpose dynamic
  *              rule below 2000.
+ *   2500      — dynamic GLOBAL Referer-suppression rule (referer-beacon-
+ *              privacy). Removes the Referer header on every non-allowlisted
+ *              request when prefs.suppressReferer is true. Managed by
+ *              syncSuppressRefererDNR() in service-worker.js.
+ *   2600      — dynamic GLOBAL beacon-block rule (referer-beacon-privacy).
+ *              Blocks "ping"-resourceType requests (sendBeacon/<a ping>) on
+ *              every non-allowlisted request when prefs.blockBeacons is
+ *              true. Managed by syncBlockBeaconsDNR() in service-worker.js.
+ *   2700-2899 — dynamic per-domain BLOCKLIST Referer force-suppress rules
+ *              (referer-beacon-privacy), one per bare-domain blacklist entry
+ *              (see cleaner.js#getFullyBlacklistedDomains). ACTIVE
+ *              REGARDLESS of prefs.suppressReferer (D2: the blocklist
+ *              governs independently of the global toggle). Managed by
+ *              syncBlocklistRefererDNR(). Capped at DNR_BLOCKLIST_MAX_RULES.
+ *   2900-3099 — dynamic per-domain BLOCKLIST beacon-block rules (referer-
+ *              beacon-privacy), one per bare-domain blacklist entry. ACTIVE
+ *              REGARDLESS of prefs.blockBeacons (same D2 rationale as
+ *              2700-2899). Managed by syncBlocklistBeaconsDNR(). Capped at
+ *              DNR_BLOCKLIST_MAX_RULES.
  *
- * When adding a new dynamic rule, pick an ID > 1001 (and outside 2000-2499
- * unless it belongs to the allowlist range), document it here, and verify it
- * does not overlap with any existing entry in this file.
+ * When adding a new dynamic rule, pick an ID > 1001 (and outside 2000-2499,
+ * 2500, 2600, 2700-2899, 2900-3099 unless it belongs to one of those existing
+ * ranges), document it here, and verify it does not overlap with any
+ * existing entry in this file.
  */
 
 /** ID of the static tracking-params ruleset (tracking-params.json). */
@@ -89,3 +109,54 @@ export const DNR_ALLOWLIST_RULE_ID_BASE = 2000;
  * silently.
  */
 export const DNR_ALLOWLIST_MAX_RULES = 500;
+
+/**
+ * ID of the dynamic GLOBAL Referer-suppression rule (referer-beacon-privacy,
+ * PR 1: foundation only — wired to DNR in a later PR). Managed by
+ * syncSuppressRefererDNR() in service-worker.js: registered (modifyHeaders,
+ * remove referer) when prefs.suppressReferer is true, removed when false.
+ * Does not collide with DNR_ALLOWLIST_RULE_ID_BASE's range (2000-2499).
+ */
+export const DNR_SUPPRESS_REFERER_RULE_ID = 2500;
+
+/**
+ * ID of the dynamic GLOBAL beacon-block rule (referer-beacon-privacy, PR 1:
+ * foundation only). Managed by syncBlockBeaconsDNR() in service-worker.js:
+ * registered (action: "block", resourceTypes: ["ping"]) when
+ * prefs.blockBeacons is true, removed when false.
+ */
+export const DNR_BLOCK_BEACONS_RULE_ID = 2600;
+
+/**
+ * Base ID for the dynamic per-domain BLOCKLIST Referer force-suppress rules
+ * (referer-beacon-privacy). One rule per bare-domain blacklist entry (see
+ * cleaner.js#getFullyBlacklistedDomains), at id =
+ * DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i. Managed by
+ * syncBlocklistRefererDNR() in service-worker.js (a later PR). ACTIVE
+ * REGARDLESS of prefs.suppressReferer — a blacklisted domain forces Referer
+ * suppression even with the global toggle off (D2 override). Range:
+ * 2700-2899 (see DNR_BLOCKLIST_MAX_RULES).
+ */
+export const DNR_BLOCKLIST_REFERER_RULE_ID_BASE = 2700;
+
+/**
+ * Base ID for the dynamic per-domain BLOCKLIST beacon-block rules
+ * (referer-beacon-privacy). One rule per bare-domain blacklist entry, at id =
+ * DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i. Managed by
+ * syncBlocklistBeaconsDNR() in service-worker.js (a later PR). ACTIVE
+ * REGARDLESS of prefs.blockBeacons (same D2 rationale as the Referer force
+ * range above). Range: 2900-3099 (see DNR_BLOCKLIST_MAX_RULES). Deliberately
+ * starts immediately after the 2700-2899 referer-force range so the two
+ * blocklist ranges never overlap.
+ */
+export const DNR_BLOCKLIST_BEACON_RULE_ID_BASE = 2900;
+
+/**
+ * Maximum number of dynamic per-domain blocklist rules
+ * syncBlocklistRefererDNR()/syncBlocklistBeaconsDNR() will each register
+ * (ids BASE .. + DNR_BLOCKLIST_MAX_RULES - 1). Mirrors the
+ * DNR_ALLOWLIST_MAX_RULES precedent: if the user's blacklisted-domain count
+ * exceeds this, the sync functions cap the list and log which domains were
+ * dropped rather than truncating silently.
+ */
+export const DNR_BLOCKLIST_MAX_RULES = 200;

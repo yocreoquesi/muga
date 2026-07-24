@@ -145,6 +145,11 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "dnrEnabled", kind: "boolean", label: "row_dnr_label" },
   { key: "activeDefenseEnabled", kind: "boolean", label: "row_active_defense_label" },
   { key: "blockPings", kind: "boolean", label: "row_pings_label" },
+  // referer-beacon-privacy (PR 1): opt-in, default false. Labels are placeholder
+  // i18n keys wired to real TRANSLATIONS entries + the options UI in PR 4 —
+  // this slice adds config/schema only, no UI, no behavior change.
+  { key: "suppressReferer", kind: "boolean", label: "row_suppress_referer_label" },
+  { key: "blockBeacons", kind: "boolean", label: "row_block_beacons_label" },
   { key: "ampRedirect", kind: "boolean", label: "row_amp_label" },
   { key: "unwrapRedirects", kind: "boolean", label: "row_unwrap_label" },
   { key: "blacklist", kind: "list", label: "section_blacklist" },
