@@ -36,12 +36,20 @@ function readWorkflow(name) {
 // ---------------------------------------------------------------------------
 // G1 — SHA pinning for all four target workflows
 // ---------------------------------------------------------------------------
+// Shape check only: this verifies every `uses:` reference LOOKS like a
+// 40-char commit SHA, not that the SHA actually resolves to a real,
+// existing commit on the referenced action's repo. A syntactically valid
+// but bogus/stale SHA would still pass here (#1134).
 describe("G1 — SHA pinning across all hardened workflows", () => {
   const FILES = [
     "import-upstream.yml",
     "publish-rules.yml",
     "auto-ingest-rules.yml",
     "validate-rules.yml",
+    "cmp-canary.yml",
+    // firefox-smoke.yml added with the Firefox WebExtension smoke harness CI
+    // gate (#1128) — a new workflow must never escape this hardening net.
+    "firefox-smoke.yml",
   ];
 
   for (const file of FILES) {

@@ -44,7 +44,12 @@ const PATTERNS_TEST_PATH = join(
 // guard confirming the SW defines the new message handler. The (a)/(b)/(c)
 // gate coverage itself is a behavioral test against a pure
 // forceFetchRemoteRules() mirror function, not a source-string assertion.
-const MAX_SOURCE_STRING_ASSERTIONS = 72;
+// 72 → 74 (cookie-consent-accept Slice 2a): added TWO source-string guards
+// confirming the getPrefs handler imports settings-schema.js's
+// isCookieConsentModeActive and computes the modeActive gate-wiring field
+// from it. service-worker.js still cannot be imported in Node, so this
+// stays source-text until a future SW behavioral-harness migration.
+const MAX_SOURCE_STRING_ASSERTIONS = 74;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 

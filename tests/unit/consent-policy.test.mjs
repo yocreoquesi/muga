@@ -171,8 +171,13 @@ describe("consent-policy — defaults from CONSENT_VERSION_MANIFEST", () => {
 // forgets `additive: true` is caught.
 // ---------------------------------------------------------------------------
 describe("consent-policy — #888 remote-rules additive bump (live manifest)", () => {
-  test("REQUIRED_CONSENT_VERSION is 1.1 (the #888 additive bump)", () => {
-    assert.equal(REQUIRED_CONSENT_VERSION, "1.1");
+  test("REQUIRED_CONSENT_VERSION is at least 1.1 (the #888 additive bump shipped)", () => {
+    // Uses a manifest lookup rather than a hardcoded literal so this test
+    // does not go stale every time a later additive bump ships (e.g. #1027).
+    const idx = CONSENT_VERSION_MANIFEST.findIndex((m) => m.version === REQUIRED_CONSENT_VERSION);
+    const idx11 = CONSENT_VERSION_MANIFEST.findIndex((m) => m.version === "1.1");
+    assert.ok(idx11 !== -1, "manifest must still contain the 1.1 entry");
+    assert.ok(idx >= idx11, "REQUIRED_CONSENT_VERSION must be at or after 1.1");
   });
 
   test("user who accepted 1.0 gets soft-reonboard against live defaults", () => {
@@ -181,7 +186,7 @@ describe("consent-policy — #888 remote-rules additive bump (live manifest)", (
     });
     assert.equal(r.status, "soft-reonboard");
     assert.equal(r.acceptedVersion, "1.0");
-    assert.equal(r.requiredVersion, "1.1");
+    assert.equal(r.requiredVersion, REQUIRED_CONSENT_VERSION);
   });
 
   test("the 1.0 → required path contains no material version (stays soft)", () => {

@@ -42,10 +42,13 @@
     "build:dnr": "node scripts/generate-dnr-rules.mjs",
     "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test",
+    "test:firefox-smoke": "node --test tests/e2e-firefox/*.smoke.mjs",
+    "test:canary": "playwright test --config playwright.canary.config.mjs",
     "typecheck": "tsc -p jsconfig.json",
     "lint:js": "eslint .",
     "moat:report": "node tools/moat-expansion/cli.mjs",
-    "fpfn": "node tools/fpfn-harness/run.mjs"
+    "fpfn": "node tools/fpfn-harness/run.mjs",
+    "smoke:release": "node tools/release-smoke-report.mjs"
   },
   "engines": {
     "node": ">=20.11"
@@ -56,6 +59,7 @@
     "esbuild": "^0.28.0",
     "eslint": "^9.39.4",
     "playwright": "^1.58.2",
+    "selenium-webdriver": "^4.46.0",
     "typescript": "^6.0.3",
     "web-ext": "^8.0.0"
   },

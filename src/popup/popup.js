@@ -23,6 +23,7 @@ import { computeLengthReduction, computeLengthBar } from "../lib/length-reductio
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
+import { buildBrokenSiteReportFields } from "../lib/broken-site-report.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -653,6 +654,14 @@ function _resetPreviewDom() {
   }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
+  // The opt-in full-URL consent is per-URL and per-render: reset the row +
+  // checkbox every render (like report-broken above) so a prior navigation's
+  // ticked "no sensitive data" attestation never bleeds into a different
+  // URL's report or lingers when the result flips back to untouched.
+  const reportIncludeUrlRow = el("report-include-url-row");
+  if (reportIncludeUrlRow) reportIncludeUrlRow.hidden = true;
+  const reportIncludeUrlCheckbox = el("report-include-url");
+  if (reportIncludeUrlCheckbox) reportIncludeUrlCheckbox.checked = false;
   // #705 fix: remove any `.preview-breakdown` <details> appended by a
   // prior render. The breakdown is dynamic (paramBreakdown pref), so the
   // reset path must clear it the same way it clears the static slots
@@ -864,30 +873,28 @@ async function showUrlPreview(prefs, lang) {
       reportLink.hidden = false;
       reportLink.addEventListener("click", (e) => {
         e.preventDefault();
-        try {
-          const hostname = new URL(url).hostname;
-          const version = chrome.runtime.getManifest().version;
-          const removed = result.removedTracking?.join(", ") || "none";
-          // Form-based template (#333). Field IDs in
-          // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params.
-          // GitHub forms ignore ?body= when ?template= is set, so we prefill
-          // each field individually. Free-text "symptom" stays empty for the user.
-          const params = new URLSearchParams({
-            template: "broken-site.yml",
-            title: `[Broken] ${hostname}`,
-            hostname,
-            browser: navigator.userAgent,
-            version,
-            // Defensive: the YAML template applies labels=broken-site,bug
-            // automatically, but pass it explicitly so the label is applied
-            // even if the template file ever fails to load on GitHub's side.
-            labels: "broken-site",
-          });
-          if (removed && removed !== "none") params.set("params", removed);
-          chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
-        } catch { /* invalid URL */ }
+        // Form-based template (#333). Field IDs in
+        // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params, url.
+        // GitHub forms ignore ?body= when ?template= is set, so we prefill
+        // each field individually. Free-text "symptom" stays empty for the user.
+        const includeCheckbox = document.getElementById("report-include-url");
+        const fields = buildBrokenSiteReportFields({
+          url,
+          includeFullUrl: includeCheckbox?.checked === true,
+          removedParams: result.removedTracking,
+          version: chrome.runtime.getManifest().version,
+          browser: navigator.userAgent,
+        });
+        const params = new URLSearchParams(fields);
+        chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
       });
 
+      // Opt-in full-URL checkbox row (unchecked by default — hostname-only
+      // stays the default report contract). Reveal it alongside the report
+      // link; the checkbox itself is never cloned so its checked state
+      // survives re-renders within the same popup session.
+      const includeUrlRow = document.getElementById("report-include-url-row");
+      if (includeUrlRow) includeUrlRow.hidden = false;
     }
 
     // Param breakdown: show removed params grouped by category when feature is on

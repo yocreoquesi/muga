@@ -207,3 +207,144 @@ export async function migratePerSiteDisableToAllowlist() {
     // Migration is best-effort — a failure here must never break startup.
   }
 }
+
+/**
+ * One-time migration (cookie-consent 2-state mode): converts the legacy
+ * `cookieConsentMinimizerEnabled` boolean into the `cookieConsentMode` enum
+ * ("off" | "reject-only"). Safe to call on every startup; idempotent once
+ * `cookieConsentMode` is present (modulo the defensive cleanup below).
+ *
+ * The install/update discriminator is `chrome.runtime.onInstalled`'s
+ * `details.reason`, passed in by the caller — NOT any storage signal. Storage
+ * alone cannot tell a freshly-onboarded new user from a pre-existing user:
+ * both have `cookieConsentMode` absent, no legacy key, and `onboardingDone`
+ * true (the `reject-only` default lives only in PREF_DEFAULTS and is overlaid
+ * at read time, never persisted). Inferring "off" from that shared state
+ * silently downgraded every new install from the disclosed `reject-only`
+ * default. `reason` is the only ground truth.
+ *
+ *   - `reason === "install"` (genuine fresh install) -> PERSIST the disclosed
+ *     default `cookieConsentMode: "reject-only"` so it latches; every later
+ *     idempotent pass is then a no-op.
+ *   - `reason === "update"` (existing user upgrading) -> legacy
+ *     `cookieConsentMinimizerEnabled === true` preserves the prior opt-in as
+ *     `reject-only`; legacy `=== false` or ABSENT stays `off` (no forced
+ *     enable). Legacy key deleted.
+ *   - no `reason` (top-level module load / onStartup) -> a SAFE idempotent
+ *     pass ONLY: if `cookieConsentMode` is present, no-op (aside from the
+ *     defensive cleanup below); else if the legacy key is present, map it
+ *     (`true` -> `reject-only`, `false` -> `off`) and delete it; else DO
+ *     NOTHING (leave the mode absent so the PREF_DEFAULTS overlay applies
+ *     and `onInstalled` seeds genuine installs). This pass NEVER infers
+ *     "off" from an absent mode.
+ *
+ * Defensive cleanup (the accept-when-necessary mode never shipped enabled to
+ * real users, but may exist in a pre-release/dev profile from this codebase's
+ * own history): a persisted `cookieConsentMode === "accept-when-necessary"`
+ * is collapsed to `"reject-only"`, and a stale `cookieConsentAcceptConsented`
+ * key (the retired accept-gesture flag) is dropped. Both run unconditionally,
+ * even when `cookieConsentMode` is already a valid 2-state value, so this
+ * cleanup is not gated behind the "already migrated" no-op above.
+ *
+ * @param {{ reason?: string }} [details] - The onInstalled `details` object.
+ *   Omit (or omit `reason`) for the top-level/onStartup safe idempotent pass.
+ *
+ * Fail-safe: wrapped in try/catch — a storage error must never throw out to
+ * the caller or break startup.
+ */
+export async function migrateCookieConsentMode({ reason } = {}) {
+  try {
+    const syncData = await new Promise((resolve, reject) =>
+      chrome.storage.sync.get(
+        {
+          cookieConsentMinimizerEnabled: null,
+          cookieConsentMode: null,
+          cookieConsentAcceptConsented: null,
+        },
+        (result) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(result);
+        }
+      )
+    ).catch(() => ({
+      cookieConsentMinimizerEnabled: null,
+      cookieConsentMode: null,
+      cookieConsentAcceptConsented: null,
+    }));
+
+    // Defensive cleanup — runs regardless of whether cookieConsentMode was
+    // already migrated. Best-effort; never required for correctness since
+    // this mode never shipped enabled to real users.
+    const cleanup = {};
+    if (syncData.cookieConsentMode === "accept-when-necessary") {
+      cleanup.cookieConsentMode = "reject-only";
+    }
+    if (Object.keys(cleanup).length > 0) {
+      await new Promise((resolve) =>
+        chrome.storage.sync.set(cleanup, () => {
+          void chrome.runtime.lastError; // non-critical
+          resolve();
+        })
+      );
+    }
+    if (syncData.cookieConsentAcceptConsented !== null) {
+      await new Promise((resolve) =>
+        chrome.storage.sync.remove("cookieConsentAcceptConsented", () => {
+          void chrome.runtime.lastError; // non-critical
+          resolve();
+        })
+      );
+    }
+
+    if (syncData.cookieConsentMode !== null) return; // already migrated — no-op
+
+    const legacy = syncData.cookieConsentMinimizerEnabled;
+
+    let updates = null;
+    let removeLegacy = false;
+
+    if (reason === "install") {
+      // Genuine fresh install: latch the disclosed default so no later pass can
+      // re-derive it. There is no legacy key on a fresh install, so nothing to
+      // delete.
+      updates = { cookieConsentMode: "reject-only" };
+    } else if (reason === "update") {
+      // Existing user upgrading. Preserve a prior opt-in as the safe mode; a
+      // false or absent legacy value stays off.
+      updates = { cookieConsentMode: legacy === true ? "reject-only" : "off" };
+      removeLegacy = true;
+    } else {
+      // Top-level module load / onStartup: SAFE idempotent pass only. Map a
+      // legacy key when present; otherwise DO NOTHING. Never infer "off" from
+      // an absent mode — that was the downgrade bug.
+      if (legacy === true) {
+        updates = { cookieConsentMode: "reject-only" };
+        removeLegacy = true;
+      } else if (legacy === false) {
+        updates = { cookieConsentMode: "off" };
+        removeLegacy = true;
+      }
+      // else: legacy absent — leave the mode absent, let PREF_DEFAULTS stand.
+    }
+
+    if (!updates) return;
+
+    await new Promise((resolve, reject) =>
+      chrome.storage.sync.set(updates, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
+      })
+    );
+
+    if (removeLegacy) {
+      await new Promise((resolve) =>
+        chrome.storage.sync.remove("cookieConsentMinimizerEnabled", () => {
+          void chrome.runtime.lastError; // non-critical
+          resolve();
+        })
+      );
+    }
+  } catch {
+    // Migration is best-effort — a failure here must never break startup.
+  }
+}

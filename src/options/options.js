@@ -18,7 +18,8 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
-import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS } from "../lib/settings-schema.js";
+import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode } from "../lib/settings-schema.js";
+import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
 
 let _currentLang = "en";
 
@@ -323,6 +324,19 @@ async function init() {
   // Hover destination preview (#1028). Plain boolean toggle; not
   // guarded (no per-device override reconciliation needed).
   bindToggle("hover-preview-toggle", "hoverPreviewEnabled", prefs);
+  // Cookie Consent Minimizer — 2-state mode. Not guarded (no per-device
+  // override reconciliation needed). MUGA never ships a mode that accepts
+  // cookies on the user's behalf.
+  const cookieConsentModeSelect = document.getElementById("cookie-consent-mode-select");
+
+  if (cookieConsentModeSelect) {
+    cookieConsentModeSelect.value = clampCookieConsentMode(prefs.cookieConsentMode);
+    cookieConsentModeSelect.addEventListener("change", () => {
+      const nextMode = cookieConsentModeSelect.value;
+      try { setPrefs({ cookieConsentMode: nextMode }); }
+      catch (err) { console.error("[MUGA] save cookie consent mode:", err); }
+    });
+  }
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
@@ -1148,6 +1162,11 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("hover-preview-toggle").checked = newPrefs.hoverPreviewEnabled;
+      // clampImportedCookieConsentMode already clamped any unrecognized value
+      // to "reject-only" before this point; clampCookieConsentMode here is
+      // just the display clamp.
+      document.getElementById("cookie-consent-mode-select").value =
+        clampCookieConsentMode(newPrefs.cookieConsentMode);
       // #925: refresh the newly-surfaced privacy + display toggles after import
       document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
       document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;
@@ -1450,6 +1469,15 @@ async function testUrl() {
   const reportBtn = document.getElementById("dev-url-report-btn");
   // #858: use hidden attribute instead of inline style (CSP style-src without 'unsafe-inline')
   if (reportBtn) reportBtn.hidden = true;
+  // The opt-in full-URL consent is PER-URL: the "I confirm no personal or
+  // sensitive data" attestation applies to the URL the user just attested to,
+  // not the next one. Reset the row + checkbox on every test so a box left
+  // ticked for a previous URL can never silently carry its consent over to a
+  // different URL's report.
+  const includeUrlRow = document.getElementById("url-report-include-url-row");
+  if (includeUrlRow) includeUrlRow.hidden = true;
+  const includeUrlCheckbox = document.getElementById("url-report-include-url");
+  if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
   if (!input) return;
   try {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
@@ -1474,26 +1502,27 @@ async function testUrl() {
       const newBtn = reportBtn.cloneNode(true);
       reportBtn.parentNode.replaceChild(newBtn, reportBtn);
       newBtn.hidden = false;
+
+      // Opt-in full-URL checkbox row (unchecked by default — hostname-only
+      // stays the default report contract).
+      const includeUrlRow = document.getElementById("url-report-include-url-row");
+      if (includeUrlRow) includeUrlRow.hidden = false;
+
       newBtn.addEventListener("click", () => {
         try {
           const hostname = new URL(input).hostname;
-          const version = chrome.runtime.getManifest().version;
-          const removed = result.removedTracking?.join(", ") || "none";
-          const action = result.action || "none";
+          const includeCheckbox = document.getElementById("url-report-include-url");
+          const body = buildBrokenSiteReportBody({
+            url: input,
+            includeFullUrl: includeCheckbox?.checked === true,
+            hostname,
+            version: chrome.runtime.getManifest().version,
+            browser: navigator.userAgent,
+            action: result.action,
+            removedParams: result.removedTracking,
+          });
           const title = encodeURIComponent(`[URL Report] ${hostname}`);
-          const body = encodeURIComponent(
-            `## URL Report\n\n` +
-            `**Domain:** ${hostname}\n` +
-            `**MUGA version:** ${version}\n` +
-            `**Browser:** ${navigator.userAgent}\n` +
-            `**Action taken:** ${action}\n` +
-            `**Params removed:** ${removed}\n\n` +
-            `## Problem\n\n` +
-            `<!-- Describe what went wrong: params that should have been removed but weren't, or params that were removed but shouldn't have been -->\n\n` +
-            `## Expected behavior\n\n` +
-            `<!-- What should MUGA do with this URL? -->\n`
-          );
-          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${body}`, "_blank", "noopener,noreferrer");
+          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
         } catch {
           // Invalid URL, ignore
         }

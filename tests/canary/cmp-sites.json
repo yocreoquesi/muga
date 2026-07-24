@@ -1,0 +1,134 @@
+[
+  {
+    "cmp": "onetrust",
+    "url": "https://www.aircanada.com",
+    "bannerSelector": "#onetrust-banner-sdk",
+    "note": "Air Canada is named as a OneTrust customer on OneTrust's own customers page (https://www.onetrust.com/customers/). Not independently confirmed via script inspection (see limitations note in cmp-canary.spec.mjs) — the canary self-validates on first real run."
+  },
+  {
+    "cmp": "onetrust",
+    "url": "https://www.bertelsmann.com",
+    "bannerSelector": "#onetrust-banner-sdk",
+    "note": "Bertelsmann is named as a OneTrust customer on OneTrust's own customers page (https://www.onetrust.com/customers/). Same confidence caveat as the Air Canada entry above."
+  },
+  {
+    "cmp": "cookiebot",
+    "url": "https://www.clece.es",
+    "bannerSelector": "#CybotCookiebotDialog",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): banner rendered and was fully dismissed after reject, screenshot-confirmed, re-tested twice with two independent methods (reload and direct). Clece is also named in Usercentrics' \"All Around\" Cookiebot case study (https://usercentrics.com/resources/all-around-cookiebot-case-study/) as a company whose ~34 domains are governed under Cookiebot CMP via reseller partner All Around."
+  },
+  {
+    "cmp": "cookiebot",
+    "url": "https://www.equinor.com",
+    "bannerSelector": "#CybotCookiebotDialog",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): real Cookiebot customer deployment, banner rendered and was fully dismissed after reject, screenshot-confirmed."
+  },
+  {
+    "cmp": "cookiebot",
+    "url": "https://www.leoni.com",
+    "bannerSelector": "#CybotCookiebotDialog",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): real Cookiebot customer deployment, banner rendered and was fully dismissed after reject, screenshot-confirmed."
+  },
+  {
+    "cmp": "didomi",
+    "url": "https://www.orange.fr",
+    "bannerSelector": "#didomi-host",
+    "note": "Orange is a long-standing named Didomi customer per Didomi's own case studies (https://www.didomi.io/blog/didomi-x-orange and https://www.didomi.io/blog/client-testimonial-orange-cookie-compliance), using Didomi across web, app, and TV."
+  },
+  {
+    "cmp": "didomi",
+    "url": "https://www.europcar.com",
+    "bannerSelector": "#didomi-host",
+    "note": "Europcar is named in Didomi's own case study (https://www.didomi.io/blog/europcar-case-study) covering ~20 Europcar-brand websites using Didomi."
+  },
+  {
+    "cmp": "cookieyes",
+    "url": "https://ahrefs.com",
+    "bannerSelector": ".cky-consent-container, .cky-consent-bar",
+    "note": "Ahrefs is named explicitly as a CookieYes example in CookieYes's own blog post (https://www.cookieyes.com/blog/cookieyes-cookie-banner-examples/)."
+  },
+  {
+    "cmp": "cookieyes",
+    "url": "https://www.dominos.gr",
+    "bannerSelector": ".cky-consent-container, .cky-consent-bar",
+    "note": "Domino's (Greece) is named in the same CookieYes blog post (https://www.cookieyes.com/blog/cookieyes-cookie-banner-examples/) as a CookieYes example."
+  },
+  {
+    "cmp": "sourcepoint",
+    "url": "https://9gag.com",
+    "bannerSelector": "div[id^=\"sp_message_container\"]",
+    "note": "Sourcepoint's own case study (https://sourcepoint.com/case-studies/how-9gag-successfully-migrated-consent-management-platforms/) explicitly states Sourcepoint is live on 9gag.com."
+  },
+  {
+    "cmp": "sourcepoint",
+    "url": "https://www.techradar.com",
+    "bannerSelector": "div[id^=\"sp_message_container\"]",
+    "note": "REPLACES heraldscotland.com (#1135): heraldscotland was a self-hosted/proxied Sourcepoint deployment with NO sp-prod.net/privacy-mgmt.com secondary signal, so MUGA's adapter deliberately fail-closes there (confidence 0.4 < threshold 1) — it always read as a canary 'fail' that is a documented NOOP, not drift, making it a bad canary site. techradar.com (Future plc) is a representative Sourcepoint deployment: a 2026-07 EU headed probe confirmed the top-frame div[id^=sp_message_container] wrapper, the cdn.privacy-mgmt.com secondary signal (so the adapter clears its confidence threshold and fires), and a normal necessary-only reject — sp_choice_type_13 labelled \"Essential Cookies Only\", NOT a consent-or-pay wall — so MUGA's reject dismisses the banner cleanly. pcgamer.com and gamesradar.com are equivalent Future plc fallbacks if techradar drifts."
+  },
+  {
+    "cmp": "sourcepoint",
+    "url": "https://www.pinknews.co.uk",
+    "bannerSelector": "div[id^=\"sp_message_container\"]",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): a real, independent, non-paywall Sourcepoint wall. window.__tcfapi(\"postRejectAll\", ...) fires without throwing but does NOT dismiss the banner on its own. The sp-reject-click DOM fallback (clicking the wall's own sp_choice_type_13 \"Reject all\" control, which lives in a separate cdn.privacy-mgmt.com iframe, not the top frame) DOES dismiss it, confirmed via Sourcepoint's own onMessageChoiceSelect event log reporting choice type 13 and a clean before/after screenshot."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.paulandshark.com",
+    "bannerSelector": "#usercentrics-root",
+    "note": "Reject-API surface live-verified (2026-07, tools/probe-cmp-surface.mjs): window.UC_UI.denyAllConsents is a function AND #usercentrics-root is present. Paul & Shark is a named Usercentrics case-study customer (https://usercentrics.com/case-studies/). Preferred over dish.com/conrad.de below, which did NOT expose UC_UI from a non-EU vantage on that run (dish appears migrated; conrad.de bot-blocks headless) — the UC_UI surface itself is scarcer in the wild than assumed (newer deployments use the __ucCmp SDK our adapter does not key on; see #1121's coverage caveat)."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.einhell.com",
+    "bannerSelector": "#usercentrics-root",
+    "note": "Reject-API surface live-verified (2026-07, tools/probe-cmp-surface.mjs): window.UC_UI.denyAllConsents is a function (window.__ucCmp also present). Einhell is a named Usercentrics case-study customer (https://usercentrics.com/case-studies/). Secondary UC_UI candidate alongside paulandshark.com."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.dish.com",
+    "bannerSelector": "#usercentrics-root",
+    "note": "DISH is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"DISH — Consent experience streamlining\"). NOTE: did NOT expose window.UC_UI from a non-EU vantage on the 2026-07 probe (appears migrated to a newer SDK) — kept as a lower-confidence fallback behind paulandshark.com/einhell.com above."
+  },
+  {
+    "cmp": "usercentrics",
+    "url": "https://www.conrad.de",
+    "bannerSelector": "#usercentrics-root",
+    "note": "Conrad Electronic is named as a Usercentrics case study customer (https://usercentrics.com/case-studies/, \"Conrad Electronic — Privacy compliance at scale\"). NOTE: bot-blocks headless Chromium (2026-07 probe saw a challenge interstitial, no UC_UI) — poor automated-probe candidate; kept for manual/citation reference only."
+  },
+  {
+    "cmp": "cookieinformation",
+    "url": "https://www.matas.dk",
+    "bannerSelector": "#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper, .coi-consent-summary",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): Matas is Denmark's largest pharmacy/cosmetics retail chain, a genuine independent Cookie Information customer (not a MUGA-controlled fixture). window.CookieInformation + declineAllCategories present, a real visible banner rendered, and clean dismissal after reject, screenshot-confirmed."
+  },
+  {
+    "cmp": "cookiescript",
+    "url": "https://cookie-script.com",
+    "bannerSelector": "#cookiescript_injected, #cookiescript_description",
+    "note": "PLACEHOLDER — UNVERIFIED, needs curation. CookieScript's own marketing site, following the same dogfooding-inference pattern used for the Cookiebot entry above. Not independently confirmed via script inspection. Replace with a representative, independently-confirmed CookieScript customer deployment before relying on this entry for release gating — curation is tracked as a follow-up, separate from adapter correctness."
+  },
+  {
+    "cmp": "tarteaucitron",
+    "url": "https://www.bordeaux.fr",
+    "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): French municipal (city-hall) sector deployment, a real independent tarteaucitron customer. Bottom cookie bar rendered and was fully dismissed after reject, screenshot-confirmed."
+  },
+  {
+    "cmp": "tarteaucitron",
+    "url": "https://www.strasbourg.eu",
+    "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): French municipal sector deployment, real independent tarteaucitron customer, cookie bar rendered and dismissed after reject."
+  },
+  {
+    "cmp": "tarteaucitron",
+    "url": "https://www.grandlyon.com",
+    "bannerSelector": "#tarteaucitronRoot, #tarteaucitronAlertBig",
+    "note": "EU-geo verification (2026-07, real headed Chromium run from an ES/EU vantage): French municipal sector deployment, real independent tarteaucitron customer, cookie bar rendered and dismissed after reject."
+  },
+  {
+    "cmp": "consentmanager",
+    "url": "https://www.hoerzu.de",
+    "bannerSelector": "#cmpbox",
+    "note": "PLACEHOLDER — flagged as needing independent curation like the other placeholder entries above, but with STRONGER evidence than a dogfooding inference: a live headless-Chromium behavioral probe (2026-07, engram sdd/cookie-consent-coverage/tier1-live-probe) confirmed window.cmpmngr/window.__cmp present, #cmpbox visible, and __cmp('setConsent', 0, callback, true) dismissing the banner with parity to the native reject button on this real customer deployment (one of adac.de/hoerzu.de/blic.rs/hrt.hr tested in that probe). Geo-gated per-deployment — the same probe found 2 of 5 real customer sites did not render the banner from a non-EU vantage, so a single inconclusive canary run here is expected noise, not drift."
+  }
+]

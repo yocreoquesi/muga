@@ -34,6 +34,27 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // clause disclosing the new weekly signed network egress. The i18n key
   // resolves to the localized clause text rendered in the delta list.
   "1.1": Object.freeze(["ob_clause_remote_rules_default"]),
+  // 1.2 (#1027): the opt-in Cookie Consent Minimizer. Single additive
+  // clause disclosing the new capability (calling a page's own reject
+  // function). The feature itself stays OFF until the user opts in from
+  // Settings; this clause is disclosure, not an activation.
+  "1.2": Object.freeze(["ob_clause_cookie_consent_minimizer"]),
+  // 1.3 (cookie-consent-accept Slice 2a): originally staged for the
+  // accept-when-necessary mode's Didomi-only "minimum consent" pilot. That
+  // delivery mechanism was proven non-viable before ever shipping to real
+  // users (engram id 1331, "DIDOMI-ACCEPT-NOT-VIABLE") and retired —
+  // RETIRED-BEFORE-SHIP, so this version's clause list is empty (no
+  // disclosure was ever accurate to surface). See "1.4" below for the
+  // clause covering the real, shipped mechanism.
+  "1.3": Object.freeze([]),
+  // 1.4 (cookie-consent-paywall-accept): originally staged to disclose the
+  // accept-when-necessary mode's real mechanism (a DOM click on a
+  // consent-or-pay wall's own free "Accept all" button). That mechanism was
+  // deleted entirely before it ever shipped to real users — MUGA never
+  // ships a capability that accepts cookies on the user's behalf — so, like
+  // "1.3" above, this version's clause list is empty (no disclosure was
+  // ever accurate to surface).
+  "1.4": Object.freeze([]),
 });
 
 /**
