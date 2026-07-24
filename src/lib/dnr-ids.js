@@ -160,3 +160,41 @@ export const DNR_BLOCKLIST_BEACON_RULE_ID_BASE = 2900;
  * dropped rather than truncating silently.
  */
 export const DNR_BLOCKLIST_MAX_RULES = 200;
+
+/**
+ * Shared `resourceTypes` list for every dynamic DNR rule that must cover the
+ * same surface as the allowlist "allow" rule (#allowlist-full-inert) — the
+ * global/blocklist Referer-suppression rules (referer-beacon-privacy, PR 2)
+ * AND `syncAllowlistDNR()`'s allow rule itself. Promoted here (task 1.5) as
+ * the single source of truth so the two can never drift: if they did, a
+ * domain could be allowlisted for one resource type but still have its
+ * Referer stripped for another, silently breaking the "allowlist always
+ * wins" guarantee (D2/D3 in design.md).
+ *
+ * IMPORTANT Chrome DNR gotcha: a rule condition that omits `resourceTypes`
+ * (and `excludedResourceTypes`) matches every resource type EXCEPT
+ * `main_frame` - main_frame is excluded from the "match everything" default.
+ * Every real strip/redirect rule MUGA registers explicitly lists
+ * `main_frame` (tracking-params.json, amp-redirect.json,
+ * amazon-path-canonical.json, DNR_CUSTOM_PARAMS_RULE_ID in
+ * syncCustomParamsDNR(), wrapper-dnr-rules.json, remote-rules.js), so an
+ * allow/suppress rule WITHOUT an explicit main_frame entry would never even
+ * be considered for the single most common case - a top-level navigation to
+ * an allowlisted or Referer-suppressed domain - leaving the exact
+ * network-layer bug this feature exists to fix.
+ *
+ * This list is therefore explicit rather than omitted, at the cost of some
+ * future-proofing: a resource type Chrome adds after this list is written
+ * would not automatically be covered by rules that reference it (it would
+ * need to be appended here). That tradeoff is accepted because the
+ * alternative - omitting resourceTypes - silently fails on main_frame today,
+ * not just in some hypothetical future. Limited to the resource types stable
+ * since MV3's initial DNR API to avoid rejecting the whole
+ * updateDynamicRules() call on a browser/version that does not recognize a
+ * newer enum value (e.g. Firefox MV2's DNR support).
+ */
+export const ALLOWLIST_RESOURCE_TYPES = [
+  "main_frame", "sub_frame", "stylesheet", "script", "image", "font",
+  "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket",
+  "other",
+];

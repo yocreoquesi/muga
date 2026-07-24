@@ -19,7 +19,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { getFullyExemptDomains } from "../../src/lib/cleaner.js";
-import { DNR_ALLOWLIST_RULE_ID_BASE, DNR_ALLOWLIST_MAX_RULES, DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID } from "../../src/lib/dnr-ids.js";
+import {
+  DNR_ALLOWLIST_RULE_ID_BASE,
+  DNR_ALLOWLIST_MAX_RULES,
+  DNR_CUSTOM_PARAMS_RULE_ID,
+  DNR_REMOTE_PARAMS_RULE_ID,
+  ALLOWLIST_RESOURCE_TYPES as IMPORTED_ALLOWLIST_RESOURCE_TYPES,
+} from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const swSource = readFileSync(
@@ -223,9 +229,12 @@ describe("syncAllowlistDNR — cap and warn, no silent truncation", () => {
 // regions are extracted ONCE each and every subsequent check runs against
 // the extracted (non-"...Source"-named) local, keeping this file's
 // source-grep footprint minimal per the #824 ratchet.
-
-const resourceTypesStart = swSource.indexOf("const ALLOWLIST_RESOURCE_TYPES = [");
-const resourceTypesBlock = swSource.slice(resourceTypesStart, resourceTypesStart + 300);
+//
+// ALLOWLIST_RESOURCE_TYPES was promoted to a shared export in dnr-ids.js
+// (referer-beacon-privacy task 1.5), so its main_frame-inclusion check is now
+// a BEHAVIORAL assertion against the real import (IMPORTED_ALLOWLIST_RESOURCE_TYPES
+// above) instead of a source-string scrape — this LOWERS this file's
+// source-grep footprint by one, per the #824 ratchet's stated goal.
 
 const syncFnStart = swSource.indexOf("async function syncAllowlistDNR(");
 const syncFnBlock = swSource.slice(syncFnStart, syncFnStart + 1800);
@@ -251,7 +260,7 @@ describe("service-worker.js source guards — syncAllowlistDNR present and wired
     assert.ok(syncFnBlock.includes("priority: 1000"));
     assert.ok(syncFnBlock.includes("requestDomains: [domain]"));
     assert.ok(syncFnBlock.includes("resourceTypes: ALLOWLIST_RESOURCE_TYPES"), "the allow rule must use the explicit resourceTypes list (Chrome excludes main_frame by default otherwise)");
-    assert.ok(resourceTypesBlock.includes('"main_frame"'), "ALLOWLIST_RESOURCE_TYPES must explicitly include main_frame");
+    assert.ok(IMPORTED_ALLOWLIST_RESOURCE_TYPES.includes("main_frame"), "ALLOWLIST_RESOURCE_TYPES must explicitly include main_frame");
   });
 
   test("applyDnrState calls syncAllowlistDNR after syncCustomParamsDNR in the gate-open branch, and clears it in the gate-closed branch", () => {

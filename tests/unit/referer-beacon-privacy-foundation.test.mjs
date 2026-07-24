@@ -34,6 +34,8 @@ import {
   DNR_REMOTE_PARAMS_RULE_ID,
   DNR_ALLOWLIST_RULE_ID_BASE,
   DNR_ALLOWLIST_MAX_RULES,
+  DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
+  DNR_DOMAIN_PRESERVE_MAX_RULES,
 } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -147,8 +149,17 @@ describe("dnr-ids.js — referer/beacon rule ID allocation", () => {
   });
 
   test("all new/pre-existing dynamic IDs and ranges are mutually distinct (no collision)", () => {
+    // Includes the pre-existing static-ruleset IDs (100-102: AMP unwrap
+    // redirects; 200: Amazon /dp/ SEO-slug strip) even though they have no
+    // exported JS constant (they live only in JSON ruleset files) — this
+    // guard is the ONLY place that would catch a future low-ID dynamic rule
+    // colliding with them, per the DNR collision-test hardening item.
     const singleIds = [
       DNR_STATIC_RULE_ID,
+      100,
+      101,
+      102,
+      200,
       DNR_CUSTOM_PARAMS_RULE_ID,
       DNR_REMOTE_PARAMS_RULE_ID,
       DNR_SUPPRESS_REFERER_RULE_ID,
@@ -157,6 +168,7 @@ describe("dnr-ids.js — referer/beacon rule ID allocation", () => {
     assert.strictEqual(new Set(singleIds).size, singleIds.length, "single rule IDs must be unique");
 
     const ranges = [
+      { name: "domain-preserve", start: DNR_DOMAIN_PRESERVE_RULE_ID_BASE, len: DNR_DOMAIN_PRESERVE_MAX_RULES },
       { name: "allowlist", start: DNR_ALLOWLIST_RULE_ID_BASE, len: DNR_ALLOWLIST_MAX_RULES },
       { name: "blocklist-referer", start: DNR_BLOCKLIST_REFERER_RULE_ID_BASE, len: DNR_BLOCKLIST_MAX_RULES },
       { name: "blocklist-beacon", start: DNR_BLOCKLIST_BEACON_RULE_ID_BASE, len: DNR_BLOCKLIST_MAX_RULES },
