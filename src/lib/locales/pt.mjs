@@ -370,7 +370,7 @@ export default Object.freeze({
   nudge_aggressive_privacy_text: "Quer ir além? A seção Privacidade agressiva abaixo também pode remover o cabeçalho referrer e bloquear beacons de rastreamento. Ambos estão desativados por padrão: nada muda a menos que você os ative lá.",
   aggressive_privacy_view_link: "Ver configurações de privacidade agressiva",
   disclosure_blocklist_referer_beacon: "Nos domínios bloqueados agora também são removidos o referrer e bloqueados os beacons de rastreamento, além dos parâmetros de rastreamento que o MUGA já remove ali.",
-  notice_blocklist_referer_beacon_text: "O MUGA agora também remove o cabeçalho referrer e bloqueia beacons de rastreamento nos domínios que você já bloqueou, além dos parâmetros de rastreamento já removidos ali. Isso se aplica independentemente de os interruptores de Privacidade agressiva abaixo estarem ativados.",
+  notice_blocklist_referer_beacon_text: "Atenção: nos domínios da sua lista de bloqueio também são removidos o cabeçalho referrer e bloqueados os beacons de rastreamento, além dos parâmetros de rastreamento que o MUGA remove ali. Adicione um site a Tags e domínios protegidos para desativar isso ali.",
   ob_aggressive_privacy_title: "Controles de privacidade agressiva, desativados por padrão",
   ob_aggressive_privacy_desc: "Em Configurações, em Avançado, você também pode remover o cabeçalho referrer e bloquear beacons de rastreamento em todos os sites que visitar. Ambas são opções avançadas e desativadas por padrão: nada muda a menos que você as ative lá.",
 });

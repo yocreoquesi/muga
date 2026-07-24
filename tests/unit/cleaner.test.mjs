@@ -22,8 +22,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { createRequire } from "node:module";
-import { processUrl, parseListEntry } from "../../src/lib/cleaner.js";
-import { AFFILIATE_PATTERNS } from "../../src/lib/affiliates.js";
+import { processUrl, parseListEntry, __test__ } from "../../src/lib/cleaner.js";
+import { AFFILIATE_PATTERNS, getPatternsForHost } from "../../src/lib/affiliates.js";
 import {
   createInMemoryAdapter,
   createTracker,
@@ -968,6 +968,44 @@ describe("preservedAffiliate — UI feedback signal", () => {
     );
     assert.ok(preservedAffiliate, "preservedAffiliate must still be populated when stripAllAffiliates is off");
     assert.equal(preservedAffiliate.value, "youtuber-21");
+  });
+
+  // #1157 follow-up: the sibling call site at handleWhitelistedDomain()
+  // (the DOMAIN-only whitelist early-return path, cleaner.js:1361) needs the
+  // exact same stripAllAffiliates gate as the param-scoped path above, but
+  // has no direct regression test. Exercised via __test__.handleWhitelistedDomain
+  // rather than processUrl(): a bare domain-only whitelist entry (no `::param::value`)
+  // is caught by the Step 0 full-site-exemption choke point (#allowlist-full-inert,
+  // isSiteFullyExempt) BEFORE processUrl ever reaches handleWhitelistedDomain, so a
+  // processUrl()-level call can never actually drive execution through the :1361
+  // line - it would pass trivially regardless of whether the gate exists. Calling
+  // the exported helper directly is the only way to pin the real behavior of that
+  // line and catch a regression if it is ever reverted.
+  describe("domain-only whitelist path (handleWhitelistedDomain, #1157 follow-up)", () => {
+    const domainOnlyPrefs = { stripAllAffiliates: true, whitelist: ["amazon.es"] };
+    const hostname = "www.amazon.es";
+    const patterns = getPatternsForHost(hostname);
+
+    test("stripAllAffiliates ON → preservedAffiliate null even on the domain-only whitelist path", () => {
+      const url = new URL("https://www.amazon.es/dp/X?tag=youtuber-21");
+      const { payload } = __test__.handleWhitelistedDomain(
+        url, domainOnlyPrefs, [], patterns, hostname, false, false,
+      );
+      assert.equal(
+        payload.preservedAffiliate,
+        null,
+        "stripAllAffiliates ON must never surface a 'preserved creator referral' badge on the domain-only whitelist path either"
+      );
+    });
+
+    test("control: same domain-only whitelist with stripAllAffiliates OFF → preservedAffiliate still populated (wedge intact)", () => {
+      const url = new URL("https://www.amazon.es/dp/X?tag=youtuber-21");
+      const { payload } = __test__.handleWhitelistedDomain(
+        url, { ...domainOnlyPrefs, stripAllAffiliates: false }, [], patterns, hostname, false, false,
+      );
+      assert.ok(payload.preservedAffiliate, "preservedAffiliate must still be populated when stripAllAffiliates is off");
+      assert.equal(payload.preservedAffiliate.value, "youtuber-21");
+    });
   });
 
   test("URL without any affiliate param → preservedAffiliate null", () => {

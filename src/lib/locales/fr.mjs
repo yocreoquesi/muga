@@ -370,7 +370,7 @@ export default Object.freeze({
   nudge_aggressive_privacy_text: "Vous voulez aller plus loin ? La section Confidentialité renforcée ci-dessous peut aussi supprimer l'en-tête referrer et bloquer les balises de suivi. Les deux sont désactivées par défaut : rien ne change tant que vous ne les activez pas là-bas.",
   aggressive_privacy_view_link: "Voir les réglages de confidentialité renforcée",
   disclosure_blocklist_referer_beacon: "Les domaines bloqués ont désormais aussi leur referrer supprimé et leurs balises de suivi bloquées, en plus des paramètres de suivi que MUGA y retire déjà.",
-  notice_blocklist_referer_beacon_text: "MUGA supprime désormais aussi l'en-tête referrer et bloque les balises de suivi sur les domaines que vous avez déjà bloqués, en plus des paramètres de suivi déjà retirés là-bas. Cela s'applique que les interrupteurs de Confidentialité renforcée ci-dessous soient activés ou non.",
+  notice_blocklist_referer_beacon_text: "À noter : les domaines de votre liste de blocage ont aussi leur en-tête referrer supprimé et leurs balises de suivi bloquées, en plus des paramètres de suivi que MUGA y retire. Ajoutez un site aux Tags et domaines protégés pour désactiver cela là-bas.",
   ob_aggressive_privacy_title: "Contrôles de confidentialité renforcée, désactivés par défaut",
   ob_aggressive_privacy_desc: "Dans les Réglages, sous Avancé, vous pouvez aussi supprimer l'en-tête referrer et bloquer les balises de suivi sur chaque site que vous visitez. Les deux sont des options avancées, désactivées par défaut : rien ne change tant que vous ne les activez pas là-bas.",
 });
