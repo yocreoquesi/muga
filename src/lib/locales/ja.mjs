@@ -228,7 +228,7 @@ export default Object.freeze({
   preview_shorter: "このリンクは{n}%短くなりました",
   preview_unwrapped: "本当のリンク先: {host}",
   preview_preserved_creator: "クリエイターのリファラルを保持",
-  preview_preserved_creator_hint: "MUGAは当方のものではないアフィリエイトタグにはできる限り触れないようにしています。そのため、これを推薦してくれたクリエイターはクレジットを保持できます。万が一間違えた場合は、下のリンクから報告してください。",
+  preview_preserved_creator_hint: "これが間違っていると思われる場合は、下のリンクから報告してください。",
   rate_muga_short: "MUGAを評価",
   ob_save_error: "エラー。もう一度お試しください",
   ob_success_title: "準備完了。ノイズは消えました。",

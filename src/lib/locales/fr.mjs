@@ -228,7 +228,7 @@ export default Object.freeze({
   preview_shorter: "Ce lien est {n}% plus court",
   preview_unwrapped: "Destination réelle révélée : {host}",
   preview_preserved_creator: "Affiliation du créateur préservée",
-  preview_preserved_creator_hint: "MUGA s'efforce de ne toucher aucun tag d'affiliation qui n'est pas le nôtre, afin que le créateur qui a recommandé ceci conserve son crédit. S'il nous arrive de nous tromper, signalez-le avec le lien ci-dessous.",
+  preview_preserved_creator_hint: "Si vous pensez que nous nous sommes trompés sur ce point, vous pouvez le signaler avec le lien ci-dessous.",
   rate_muga_short: "Évaluer MUGA",
   ob_save_error: "Erreur. Veuillez réessayer",
   ob_success_title: "C'est fait. Le bruit est coupé.",

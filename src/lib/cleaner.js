@@ -915,7 +915,13 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   return buildReturnPayload(action, url, removedTracking, detectedAffiliate, {
     junkRemoved: removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0),
-    preservedAffiliate: detectPreservedAffiliate(url, patterns),
+    // #1157: preservedAffiliate must never surface while stripAllAffiliates
+    // is on. A whitelisted value can still survive Step 4b (whitelist is
+    // sacred, even under strip-all), but reporting it as a "preserved
+    // creator referral" contradicts the user's "remove all third-party
+    // affiliate tags" choice - that badge is only meaningful when MUGA is
+    // NOT stripping third-party tags in the first place.
+    preservedAffiliate: prefs.stripAllAffiliates ? null : detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
     autoInjected: autoInjectedPayload,
   });
@@ -1350,7 +1356,9 @@ function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pa
   const actionForSkip = (removed.length > 0 || pathCleaned) ? "cleaned" : "untouched";
   const payload = buildReturnPayload(actionForSkip, url, removed, null, {
     junkRemoved: removed.length + (pathCleaned ? 1 : 0),
-    preservedAffiliate: detectPreservedAffiliate(url, patterns),
+    // #1157: see the matching comment in processUrl - stripAllAffiliates ON
+    // must never surface a "preserved creator referral" badge.
+    preservedAffiliate: prefs.stripAllAffiliates ? null : detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
   });
   return { payload, removed, removedValues };

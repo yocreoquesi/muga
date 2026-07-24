@@ -40,12 +40,18 @@ test("preview_preserved_creator_hint: i18n key explains the why", () => {
   );
   const hint = TRANSLATIONS.preview_preserved_creator_hint;
   assert.ok(typeof hint.en === "string" && hint.en.length > 20, "hint must be a sentence, not a label");
-  // The hint must mention 'creator' (or its localized equivalent) so future
-  // refactors that drop the message do not silently strip the brand wedge.
+});
+
+test("preview_preserved_creator: the LABEL carries the creator/referral wedge, not the hint", () => {
+  // #1157: the hint was softened into a generic "report it" nudge (it no
+  // longer promises MUGA never touches non-MUGA tags - that promise broke
+  // under stripAllAffiliates). The brand wedge - this is a creator referral
+  // MUGA chose to preserve - now lives in the LABEL only.
+  const label = TRANSLATIONS.preview_preserved_creator;
   assert.match(
-    hint.en.toLowerCase(),
-    /creator|recommend/,
-    "hint must reference the creator/recommendation concept"
+    label.en.toLowerCase(),
+    /creator|referral/,
+    "label must reference the creator/referral concept"
   );
 });
 
