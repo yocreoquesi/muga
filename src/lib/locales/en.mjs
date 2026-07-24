@@ -358,4 +358,20 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Cookie consent minimizer mode",
   cookie_consent_mode_opt_reject_only: "Reject only (recommended)",
   cookie_consent_mode_opt_off: "Off",
+
+  // referer-beacon-privacy PR 4: Options UI, disclosure, i18n (opt-in, off
+  // by default; see design.md D5/D6 for the honest-copy constraints).
+  section_aggressive_privacy: "Aggressive privacy",
+  row_suppress_referer_label: "Remove the referrer header on requests",
+  row_suppress_referer_hint: "Browsers already shorten the referrer to just the origin on cross-site requests. This removes it completely, including on same-origin requests and on sites that still request the full URL. Some sites use the referrer for anti-hotlink images, CSRF checks, or login redirects, so this can break them; add the site (and any separate domain its images load from) to Protected tags & domains to keep it working there.",
+  aria_suppress_referer: "Remove the referrer header on requests",
+  row_block_beacons_label: "Block tracking beacons and pings",
+  row_block_beacons_hint: "Blocks the sendBeacon() and <a ping> network requests some sites use to log clicks and page-leave events, closing a gap the Block <a ping> beacons option above cannot reach on its own. Sites that rely on beacons for analytics may undercount visits while this is on. Add a site to Protected tags & domains to keep beacons working there.",
+  aria_block_beacons: "Block tracking beacons and pings",
+  nudge_aggressive_privacy_text: "Looking to go further? The Aggressive privacy section below can also remove the referrer header and block tracking beacons. Both are off by default; nothing changes unless you turn them on there.",
+  aggressive_privacy_view_link: "View Aggressive privacy settings",
+  disclosure_blocklist_referer_beacon: "Blocked domains also have their referrer removed and tracking beacons blocked, on top of the tracking parameters MUGA already strips there.",
+  notice_blocklist_referer_beacon_text: "MUGA now also removes the referrer header and blocks tracking beacons on domains you've already blocked, in addition to the tracking parameters already stripped there. This applies whether or not the Aggressive privacy toggles below are turned on.",
+  ob_aggressive_privacy_title: "Aggressive privacy controls, off by default",
+  ob_aggressive_privacy_desc: "In Settings, under Advanced, you can also remove the referrer header and block tracking beacons on every site you visit. Both are advanced, off-by-default options: nothing changes unless you turn them on there.",
 });

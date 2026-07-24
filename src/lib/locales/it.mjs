@@ -358,4 +358,19 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Modalità del minimizzatore di banner sui cookie",
   cookie_consent_mode_opt_reject_only: "Solo rifiuta (consigliato)",
   cookie_consent_mode_opt_off: "Disattivato",
+
+  // referer-beacon-privacy PR 4: interfaccia impostazioni, avviso e i18n.
+  section_aggressive_privacy: "Privacy aggressiva",
+  row_suppress_referer_label: "Rimuovi l'intestazione referrer nelle richieste",
+  row_suppress_referer_hint: "I browser già riducono il referrer alla sola origine nelle richieste cross-site. Questa opzione va oltre: lo rimuove completamente, anche nelle richieste same-origin e sui siti che richiedono ancora l'URL completo. Alcuni siti usano il referrer per immagini anti hotlink, controlli CSRF o reindirizzamenti di accesso, quindi questo può romperli; aggiungi il sito (e qualsiasi dominio diverso da cui provengono le sue immagini) a Tag e domini protetti perché continui a funzionare lì.",
+  aria_suppress_referer: "Rimuovi l'intestazione referrer nelle richieste",
+  row_block_beacons_label: "Blocca beacon e ping di tracciamento",
+  row_block_beacons_hint: "Blocca le richieste di rete sendBeacon() e <a ping> che alcuni siti usano per registrare clic e abbandoni pagina, colmando un vuoto che l'opzione «Blocca beacon <a ping>» sopra non può coprire da sola. I siti che si affidano ai beacon per le statistiche possono sottostimare le visite mentre questa opzione è attiva. Aggiungi un sito a Tag e domini protetti perché i beacon continuino a funzionare lì.",
+  aria_block_beacons: "Blocca beacon e ping di tracciamento",
+  nudge_aggressive_privacy_text: "Vuoi andare oltre? La sezione Privacy aggressiva qui sotto può anche rimuovere l'intestazione referrer e bloccare i beacon di tracciamento. Entrambe sono disattivate per impostazione predefinita: nulla cambia finché non le attivi lì.",
+  aggressive_privacy_view_link: "Vedi le impostazioni di privacy aggressiva",
+  disclosure_blocklist_referer_beacon: "Nei domini bloccati ora vengono anche rimossi il referrer e bloccati i beacon di tracciamento, oltre ai parametri di tracciamento che MUGA già rimuove lì.",
+  notice_blocklist_referer_beacon_text: "MUGA ora rimuove anche l'intestazione referrer e blocca i beacon di tracciamento sui domini che hai già bloccato, oltre ai parametri di tracciamento già rimossi lì. Questo vale indipendentemente dal fatto che gli interruttori di Privacy aggressiva qui sotto siano attivi o meno.",
+  ob_aggressive_privacy_title: "Controlli di privacy aggressiva, disattivati per impostazione predefinita",
+  ob_aggressive_privacy_desc: "Nelle Impostazioni, sotto Avanzate, puoi anche rimuovere l'intestazione referrer e bloccare i beacon di tracciamento su ogni sito che visiti. Sono entrambe opzioni avanzate e disattivate per impostazione predefinita: nulla cambia finché non le attivi lì.",
 });

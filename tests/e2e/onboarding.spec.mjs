@@ -25,10 +25,11 @@ test.describe("Onboarding", () => {
     // Logo
     await expect(page.locator(".logo")).toHaveText("MUGA");
 
-    // Feature rows (4 features: the 3 URL-cleaning rows + the cookie-consent
-    // disclosure row added in #1137's onboarding Slice 1).
+    // Feature rows (5 features: the 3 URL-cleaning rows + the cookie-consent
+    // disclosure row added in #1137's onboarding Slice 1 + the Aggressive
+    // privacy OFF-by-default row added in the referer-beacon-privacy PR 4).
     const features = page.locator(".feature-row");
-    await expect(features).toHaveCount(4);
+    await expect(features).toHaveCount(5);
 
     // ToS checkbox exists
     await expect(page.locator("#tos-check")).toBeVisible();

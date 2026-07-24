@@ -358,4 +358,19 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Modus des Cookie-Consent-Minimierers",
   cookie_consent_mode_opt_reject_only: "Nur ablehnen (empfohlen)",
   cookie_consent_mode_opt_off: "Aus",
+
+  // referer-beacon-privacy PR 4: Optionen-UI, Hinweis und i18n.
+  section_aggressive_privacy: "Aggressiver Datenschutz",
+  row_suppress_referer_label: "Referrer-Header bei Anfragen entfernen",
+  row_suppress_referer_hint: "Browser kürzen den Referrer bei website-übergreifenden Anfragen bereits auf den Ursprung. Diese Option geht weiter: Sie entfernt ihn vollständig, auch bei Anfragen vom selben Ursprung und auf Seiten, die noch die vollständige URL anfordern. Manche Seiten nutzen den Referrer für Anti-Hotlink-Bilder, CSRF-Prüfungen oder Anmelde-Weiterleitungen, was dadurch kaputtgehen kann; füge die Seite (und jede andere Domain, von der ihre Bilder geladen werden) zu Geschützte Tags und Domains hinzu, damit es dort weiter funktioniert.",
+  aria_suppress_referer: "Referrer-Header bei Anfragen entfernen",
+  row_block_beacons_label: "Tracking-Beacons und Pings blockieren",
+  row_block_beacons_hint: "Blockiert die Netzwerkanfragen sendBeacon() und <a ping>, die manche Seiten zum Protokollieren von Klicks und Seitenverlassen nutzen, und schließt damit eine Lücke, die die Option „<a ping>-Beacons blockieren\" oben allein nicht schließen kann. Seiten, die für ihre Statistik auf Beacons angewiesen sind, können dabei weniger Besuche zählen. Füge eine Seite zu Geschützte Tags und Domains hinzu, damit Beacons dort weiter funktionieren.",
+  aria_block_beacons: "Tracking-Beacons und Pings blockieren",
+  nudge_aggressive_privacy_text: "Möchtest du noch weiter gehen? Der Abschnitt Aggressiver Datenschutz unten kann außerdem den Referrer-Header entfernen und Tracking-Beacons blockieren. Beide sind standardmäßig deaktiviert: Nichts ändert sich, bis du sie dort aktivierst.",
+  aggressive_privacy_view_link: "Einstellungen für aggressiven Datenschutz ansehen",
+  disclosure_blocklist_referer_beacon: "Bei blockierten Domains werden jetzt zusätzlich der Referrer entfernt und Tracking-Beacons blockiert, zusätzlich zu den Tracking-Parametern, die MUGA dort bereits entfernt.",
+  notice_blocklist_referer_beacon_text: "MUGA entfernt jetzt auch den Referrer-Header und blockiert Tracking-Beacons bei Domains, die du bereits blockiert hast, zusätzlich zu den dort bereits entfernten Tracking-Parametern. Das gilt unabhängig davon, ob die Schalter für Aggressiven Datenschutz unten aktiviert sind.",
+  ob_aggressive_privacy_title: "Aggressive Datenschutzeinstellungen, standardmäßig deaktiviert",
+  ob_aggressive_privacy_desc: "In den Einstellungen unter Erweitert kannst du außerdem den Referrer-Header entfernen und Tracking-Beacons auf jeder besuchten Seite blockieren. Beides sind erweiterte, standardmäßig deaktivierte Optionen: Nichts ändert sich, bis du sie dort aktivierst.",
 });

@@ -358,4 +358,21 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Modo del minimizador de avisos de cookies",
   cookie_consent_mode_opt_reject_only: "Solo rechazar (recomendado)",
   cookie_consent_mode_opt_off: "Desactivado",
+
+  // referer-beacon-privacy PR 4: interfaz de ajustes, aviso e i18n (opt-in,
+  // desactivado por defecto; ver design.md D5/D6 para las restricciones de
+  // copy honesto).
+  section_aggressive_privacy: "Privacidad agresiva",
+  row_suppress_referer_label: "Eliminar la cabecera del referente en las peticiones",
+  row_suppress_referer_hint: "Los navegadores ya recortan el referente al origen en las peticiones entre sitios. Esto va más allá: lo elimina por completo, incluso en peticiones del mismo origen y en sitios que aún piden la URL completa. Algunos sitios usan el referente para imágenes anti hotlink, comprobaciones CSRF o redirecciones de inicio de sesión, así que esto puede romperlos; añade el sitio (y cualquier dominio distinto del que carguen sus imágenes) a Etiquetas y dominios protegidos para que siga funcionando ahí.",
+  aria_suppress_referer: "Eliminar la cabecera del referente en las peticiones",
+  row_block_beacons_label: "Bloquear balizas y pings de seguimiento",
+  row_block_beacons_hint: "Bloquea las peticiones de red sendBeacon() y <a ping> que algunos sitios usan para registrar clics y abandonos de página, cerrando un hueco que la opción «Bloquear balizas <a ping>» de arriba no puede cubrir por sí sola. Los sitios que dependen de las balizas para sus estadísticas pueden contar menos visitas mientras esto está activado. Añade un sitio a Etiquetas y dominios protegidos para que las balizas sigan funcionando ahí.",
+  aria_block_beacons: "Bloquear balizas y pings de seguimiento",
+  nudge_aggressive_privacy_text: "¿Quieres ir más allá? La sección Privacidad agresiva de abajo también puede eliminar la cabecera del referente y bloquear las balizas de seguimiento. Ambas están desactivadas por defecto: nada cambia a menos que las actives ahí.",
+  aggressive_privacy_view_link: "Ver los ajustes de Privacidad agresiva",
+  disclosure_blocklist_referer_beacon: "En los dominios bloqueados también se elimina el referente y se bloquean las balizas de seguimiento, además de los parámetros de rastreo que MUGA ya elimina ahí.",
+  notice_blocklist_referer_beacon_text: "MUGA ahora también elimina la cabecera del referente y bloquea las balizas de seguimiento en los dominios que ya tenías bloqueados, además de los parámetros de rastreo que ya se eliminaban ahí. Esto se aplica actives o no los interruptores de Privacidad agresiva de abajo.",
+  ob_aggressive_privacy_title: "Controles de privacidad agresiva, desactivados por defecto",
+  ob_aggressive_privacy_desc: "En Ajustes, dentro de Avanzado, también puedes eliminar la cabecera del referente y bloquear las balizas de seguimiento en cada sitio que visites. Ambas son opciones avanzadas y desactivadas por defecto: nada cambia a menos que las actives ahí.",
 });
