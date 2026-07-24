@@ -137,6 +137,7 @@ const BASELINE = {
   "url-regex-sync.test.mjs": 2,            // verifies SW + cleaner regex are byte-identical (#824)
   "docs-prefs-table.test.mjs": 1,          // reads storage source to verify docs table (#824)
   "options-write-path-override.test.mjs": 2, // SW ENABLE/DISABLE_REMOTE_RULES handlers not importable in Node; 2 guards pin the reconcile wiring (#888 write-path follow-up, #824)
+  "referer-beacon-privacy-dnr.test.mjs": 9, // SW not importable; syncSuppressRefererDNR/syncBlockBeaconsDNR/syncBlocklistRefererDNR/syncBlocklistBeaconsDNR existence + applyDnrState gate-open/gate-closed wiring + storage.onChanged guards, mirroring allowlist-dnr.test.mjs's pattern (referer-beacon-privacy PR 2, #824)
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

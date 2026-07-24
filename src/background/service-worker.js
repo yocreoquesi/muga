@@ -4,14 +4,25 @@
  * and maintains extension state.
  */
 
-import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt } from "../lib/cleaner.js";
+import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isCookieConsentModeActive } from "../lib/settings-schema.js";
 import { isValidListEntry } from "../lib/validation.js";
-import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID, DNR_ALLOWLIST_RULE_ID_BASE, DNR_ALLOWLIST_MAX_RULES } from "../lib/dnr-ids.js";
+import {
+  DNR_CUSTOM_PARAMS_RULE_ID,
+  DNR_REMOTE_PARAMS_RULE_ID,
+  DNR_ALLOWLIST_RULE_ID_BASE,
+  DNR_ALLOWLIST_MAX_RULES,
+  DNR_SUPPRESS_REFERER_RULE_ID,
+  DNR_BLOCK_BEACONS_RULE_ID,
+  DNR_BLOCKLIST_REFERER_RULE_ID_BASE,
+  DNR_BLOCKLIST_BEACON_RULE_ID_BASE,
+  DNR_BLOCKLIST_MAX_RULES,
+  ALLOWLIST_RESOURCE_TYPES,
+} from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -621,36 +632,12 @@ const ALLOWLIST_RULE_ID_RANGE = Array.from(
   (_, i) => DNR_ALLOWLIST_RULE_ID_BASE + i,
 );
 
-/**
- * Explicit resourceTypes list for the allowlist "allow" rule.
- *
- * IMPORTANT Chrome DNR gotcha: a rule condition that omits `resourceTypes`
- * (and `excludedResourceTypes`) matches every resource type EXCEPT
- * `main_frame` - main_frame is excluded from the "match everything" default.
- * Every real strip/redirect rule MUGA registers explicitly lists
- * `main_frame` (tracking-params.json, amp-redirect.json,
- * amazon-path-canonical.json, DNR_CUSTOM_PARAMS_RULE_ID in
- * syncCustomParamsDNR() above, wrapper-dnr-rules.json, remote-rules.js), so
- * an allow rule WITHOUT an explicit main_frame entry would never even be
- * considered for the single most common case - a top-level navigation to an
- * allowlisted domain with tracking params in the URL - leaving the exact
- * network-layer bug this feature exists to fix.
- *
- * This list is therefore explicit rather than omitted, at the cost of some
- * future-proofing: a resource type Chrome adds after this list is written
- * would not automatically be covered by the allow rule (it would need to be
- * appended here). That tradeoff is accepted because the alternative -
- * omitting resourceTypes - silently fails on main_frame today, not just in
- * some hypothetical future. Limited to the resource types stable since MV3's
- * initial DNR API to avoid rejecting the whole updateDynamicRules() call on
- * a browser/version that does not recognize a newer enum value (e.g.
- * Firefox MV2's DNR support).
- */
-const ALLOWLIST_RESOURCE_TYPES = [
-  "main_frame", "sub_frame", "stylesheet", "script", "image", "font",
-  "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket",
-  "other",
-];
+// ALLOWLIST_RESOURCE_TYPES is imported from ../lib/dnr-ids.js (task 1.5,
+// referer-beacon-privacy): promoted to a shared constant so the allow rule
+// below and the global/blocklist Referer-suppression rules
+// (syncSuppressRefererDNR / syncBlocklistRefererDNR, PR 2) reference the
+// exact same list and cannot drift apart. See its JSDoc in dnr-ids.js for the
+// main_frame gotcha this list exists to guard against.
 
 /**
  * Syncs one dynamic DNR "allow" rule per fully-exempt domain
@@ -719,6 +706,202 @@ async function syncAllowlistDNR(prefs) {
   }
 }
 
+/**
+ * Syncs the dynamic GLOBAL Referer-suppression rule (referer-beacon-privacy,
+ * PR 2). Removes the `referer` request header on every http(s) request when
+ * `prefs.suppressReferer` is true; removes rule 2500 when false. Modeled on
+ * syncCustomParamsDNR() above: same hasDNR guard, try/catch, and
+ * updateDynamicRules() usage.
+ *
+ * Uses the shared ALLOWLIST_RESOURCE_TYPES list (same list syncAllowlistDNR's
+ * allow rule uses) so that rule, registered at priority 1000, deterministically
+ * shadows this one (priority 1) on allowlisted domains — see D3 in design.md.
+ * On a domain that is also on the blacklist, syncBlocklistRefererDNR's
+ * priority-2 rule fires the same action regardless of this rule/pref.
+ *
+ * @param {{ suppressReferer?: boolean }} prefs
+ */
+async function syncSuppressRefererDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    if (!prefs.suppressReferer) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
+      addRules: [{
+        id: DNR_SUPPRESS_REFERER_RULE_ID,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders: [{ header: "referer", operation: "remove" }],
+        },
+        condition: { urlFilter: "*", resourceTypes: ALLOWLIST_RESOURCE_TYPES },
+      }],
+    });
+  } catch (err) {
+    console.error("[MUGA] syncSuppressRefererDNR failed:", err);
+  }
+}
+
+/**
+ * Syncs the dynamic GLOBAL beacon-block rule (referer-beacon-privacy, PR 2).
+ * Blocks every "ping"-resourceType request (covers both `<a ping>` hyperlink
+ * auditing and `sendBeacon()`, the network-layer gap the DOM-layer
+ * `blockPings` pref cannot reach) when `prefs.blockBeacons` is true; removes
+ * rule 2600 when false. Modeled on syncCustomParamsDNR() above.
+ *
+ * @param {{ blockBeacons?: boolean }} prefs
+ */
+async function syncBlockBeaconsDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    if (!prefs.blockBeacons) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
+      addRules: [{
+        id: DNR_BLOCK_BEACONS_RULE_ID,
+        priority: 1,
+        action: { type: "block" },
+        condition: { resourceTypes: ["ping"] },
+      }],
+    });
+  } catch (err) {
+    console.error("[MUGA] syncBlockBeaconsDNR failed:", err);
+  }
+}
+
+// Full range of blocklist Referer-force rule IDs ever handed out (referer-
+// beacon-privacy, PR 2), mirroring ALLOWLIST_RULE_ID_RANGE above: a resync
+// always clears every previously-added rule so no stale force rule survives
+// a domain being removed from the blacklist.
+const BLOCKLIST_REFERER_RULE_ID_RANGE = Array.from(
+  { length: DNR_BLOCKLIST_MAX_RULES },
+  (_, i) => DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
+);
+
+// Same as above, for the beacon-block force rule range.
+const BLOCKLIST_BEACON_RULE_ID_RANGE = Array.from(
+  { length: DNR_BLOCKLIST_MAX_RULES },
+  (_, i) => DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
+);
+
+/**
+ * Syncs one dynamic DNR Referer force-suppress rule per bare-domain
+ * blacklist entry (referer-beacon-privacy, PR 2; D2 in design.md: the
+ * blocklist ALSO governs this feature). ACTIVE REGARDLESS of
+ * `prefs.suppressReferer` — a blacklisted domain forces Referer removal even
+ * when the global toggle is off, matching the blocklist's existing "be
+ * aggressive on this domain" meaning (Scenario D). Shadowed on a domain that
+ * is ALSO allowlisted by syncAllowlistDNR's priority-1000 allow rule
+ * (allowlist always wins).
+ *
+ * Structural clone of syncAllowlistDNR()'s clear-then-register pattern:
+ * clears the full BLOCKLIST_REFERER_RULE_ID_RANGE on every resync, caps at
+ * DNR_BLOCKLIST_MAX_RULES, and logs dropped domains rather than silently
+ * truncating.
+ *
+ * @param {{ blacklist?: string[] }} prefs
+ */
+async function syncBlocklistRefererDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    const domains = getFullyBlacklistedDomains(prefs);
+
+    if (domains.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
+        addRules: [],
+      });
+      return;
+    }
+
+    let syncedDomains = domains;
+    if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
+      const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
+      syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
+      console.warn(
+        `[MUGA] syncBlocklistRefererDNR: ${domains.length} blacklisted domains exceed the ` +
+        `${DNR_BLOCKLIST_MAX_RULES}-rule cap; dropped from Referer force-suppress rules:`,
+        dropped,
+      );
+    }
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
+      addRules: syncedDomains.map((domain, i) => ({
+        id: DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
+        priority: 2,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders: [{ header: "referer", operation: "remove" }],
+        },
+        condition: { requestDomains: [domain], resourceTypes: ALLOWLIST_RESOURCE_TYPES },
+      })),
+    });
+  } catch (err) {
+    console.error("[MUGA] syncBlocklistRefererDNR failed:", err);
+  }
+}
+
+/**
+ * Syncs one dynamic DNR beacon-block force rule per bare-domain blacklist
+ * entry (referer-beacon-privacy, PR 2; same D2 rationale as
+ * syncBlocklistRefererDNR above). ACTIVE REGARDLESS of `prefs.blockBeacons`.
+ * Referer removal and beacon blocking are distinct DNR action types, so a
+ * blacklisted domain needs a rule from both this function and
+ * syncBlocklistRefererDNR — they cannot be merged into one rule.
+ *
+ * @param {{ blacklist?: string[] }} prefs
+ */
+async function syncBlocklistBeaconsDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    const domains = getFullyBlacklistedDomains(prefs);
+
+    if (domains.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
+        addRules: [],
+      });
+      return;
+    }
+
+    let syncedDomains = domains;
+    if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
+      const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
+      syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
+      console.warn(
+        `[MUGA] syncBlocklistBeaconsDNR: ${domains.length} blacklisted domains exceed the ` +
+        `${DNR_BLOCKLIST_MAX_RULES}-rule cap; dropped from beacon-block force rules:`,
+        dropped,
+      );
+    }
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
+      addRules: syncedDomains.map((domain, i) => ({
+        id: DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
+        priority: 2,
+        action: { type: "block" },
+        condition: { requestDomains: [domain], resourceTypes: ["ping"] },
+      })),
+    });
+  } catch (err) {
+    console.error("[MUGA] syncBlocklistBeaconsDNR failed:", err);
+  }
+}
+
 async function applyDnrState(prefs) {
   if (!hasDNR) return;
   // Gate DNR on onboardingDone too (#consent-gate). Content scripts
@@ -759,6 +942,16 @@ async function applyDnrState(prefs) {
     // live (see the storage.onChanged handler below and the mugaConsent /
     // mugaPerDevicePrefs branches, all of which call applyDnrState).
     await syncAllowlistDNR(prefs);
+    // Referer/beacon privacy layer (referer-beacon-privacy, PR 2): two
+    // global rules gated on their own pref (suppressReferer/blockBeacons)
+    // plus two per-domain blocklist-force rule families that are ACTIVE
+    // REGARDLESS of those prefs (D2 in design.md). Order here matches the
+    // priority scheme documented in dnr-ids.js and design.md: allowlist
+    // allow (1000, synced above) > blocklist force (2) > global suppress (1).
+    await syncSuppressRefererDNR(prefs);
+    await syncBlockBeaconsDNR(prefs);
+    await syncBlocklistRefererDNR(prefs);
+    await syncBlocklistBeaconsDNR(prefs);
     // Re-arm the dynamic remote-params rule (id 1001). The gate-closed branch
     // removes it (#921), so a close→open cycle — or a wake where the weekly
     // signed fetch is time-gated and skips re-adding it — would otherwise leave
@@ -780,6 +973,16 @@ async function applyDnrState(prefs) {
     // out-prioritize - leaving them registered would just be a stale,
     // unnecessary MUGA network footprint while the extension is off.
     await syncAllowlistDNR({ whitelist: [], blacklist: [] });
+    // Clear the referer/beacon privacy rules too (referer-beacon-privacy,
+    // PR 2): the two global rules (2500/2600) AND the full per-domain
+    // blocklist-force ranges (2700-2899/2900-3099). "Always aggressive on
+    // this domain" (blocklist-force) still yields to "extension not yet
+    // accepted / disabled" — no Referer removal or beacon block, global or
+    // blocklist-forced, may run before onboardingDone or while disabled.
+    await syncSuppressRefererDNR({ suppressReferer: false });
+    await syncBlockBeaconsDNR({ blockBeacons: false });
+    await syncBlocklistRefererDNR({ blacklist: [] });
+    await syncBlocklistBeaconsDNR({ blacklist: [] });
     // Disabling the static rulesets and clearing rule 1000 is NOT enough: the
     // remote-params rule (dynamic id 1001) is a DNR redirect that keeps
     // stripping params for a disabled or non-consented extension. Remove it so
@@ -1161,10 +1364,13 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   _invalidatePrefsCache();
   if (changes.customParams || changes.dnrEnabled || changes.enabled ||
       changes.ampRedirect || changes.unwrapRedirects ||
-      changes.whitelist || changes.blacklist) {
+      changes.whitelist || changes.blacklist ||
+      changes.suppressReferer || changes.blockBeacons) {
     // whitelist/blacklist (#allowlist-full-inert): toggling the allowlist or
     // the per-site pause must re-sync the DNR allow rules live, without
-    // requiring the user to also flip an unrelated pref.
+    // requiring the user to also flip an unrelated pref. suppressReferer /
+    // blockBeacons (referer-beacon-privacy, PR 2) need the same live re-sync
+    // once a future UI (PR 4) lets a user flip them.
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
   }
