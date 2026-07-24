@@ -16,6 +16,7 @@
  *   docs/assets/screenshot-ss1-before-after.png   (README)
  *   docs/assets/screenshot-ss2-popup.png           (README)
  *   docs/assets/screenshot-ss3-options.png         (README)
+ *   docs/assets/screenshot-ss4-onboarding.png      (README)
  *   docs/assets/cws-ss1-popup-amazon.png           (Chrome Web Store)
  *   docs/assets/cws-ss2-before-after.png           (Chrome Web Store)
  *   docs/assets/cws-ss3-options.png                (Chrome Web Store)
@@ -33,6 +34,11 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
+// Single source of truth for the ToS version the running code requires
+// (src/lib/consent-version-manifest.js). Keeping this in sync with the seeded
+// mugaConsent.consentVersion avoids a soft/hard re-onboard gate kicking in
+// during capture (see getPrefs()'s ConsentPolicy check in src/lib/prefs.js).
+import { REQUIRED_CONSENT_VERSION } from '../../src/lib/consent-version-manifest.js';
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -184,30 +190,82 @@ try {
 
   const popupUrl  = `chrome-extension://${extId}/popup/popup.html`;
   const optionsUrl = `chrome-extension://${extId}/options/options.html`;
+  const onboardingUrl = `chrome-extension://${extId}/onboarding/onboarding.html`;
 
   // Complete onboarding to prevent redirect from options/popup to onboarding page.
   // Reuse existing extension page (auto-opened onboarding) if available.
+  //
+  // IMPORTANT (ADR-0001, #355): consent (onboardingDone/consentVersion/
+  // consentDate) moved OUT of chrome.storage.sync into a single
+  // chrome.storage.local["mugaConsent"] record (see src/lib/consent-storage.js).
+  // options.js / popup.js read that record via getConsent(), not the legacy
+  // sync fields. Seeding the OLD flat sync keys here (as this script used to)
+  // no longer satisfies the consent gate, so every capture silently rendered
+  // the onboarding redirect instead of the real options/popup page. Seed the
+  // new shape instead. We deliberately do NOT also write the legacy sync
+  // keys: sync-migration.js only copies sync -> local when local is empty,
+  // and touching the legacy keys risks migration racing this seed.
   const extOrigin = `chrome-extension://${extId}`;
   let extPage = context.pages().find((p) => p.url().startsWith(extOrigin));
   if (!extPage) {
     extPage = await context.newPage();
     await extPage.goto(`${extOrigin}/onboarding/onboarding.html`);
   }
-  await extPage.evaluate(() => {
-    return new Promise((resolve) => {
-      chrome.storage.sync.set(
-        {
-          onboardingDone: true,
-          consentVersion: '1.0',
-          consentDate: Date.now(),
-          injectOwnAffiliate: false,
-          notifyForeignAffiliate: false,
-          language: 'en',
-        },
-        resolve,
-      );
-    });
-  });
+  await extPage.evaluate((requiredConsentVersion) => {
+    return Promise.all([
+      // Per-device consent record (chrome.storage.local, ADR-0001).
+      new Promise((resolve) => {
+        chrome.storage.local.set(
+          {
+            mugaConsent: {
+              onboardingDone: true,
+              consentVersion: requiredConsentVersion,
+              consentDate: Date.now(),
+            },
+            // devMode unlocks the Advanced (Tier 2/3) card in options.html,
+            // including the Cookie Consent Minimizer select.
+            devMode: true,
+            // Lifetime stats (popup.js reads chrome.storage.local["stats"]).
+            // Populated so the popup shows real numbers instead of 0/0/0.
+            stats: { urlsCleaned: 3482, junkRemoved: 12894, referralsSpotted: 231 },
+            // Per-domain noise stats (src/lib/storage.js getDomainStats()).
+            domainStats: {
+              'amazon.es': { params: 4210, urls: 812 },
+              'youtube.com': { params: 3190, urls: 640 },
+              'booking.com': { params: 1780, urls: 210 },
+            },
+            // Attribution Ledger ring buffer (src/lib/attribution-ledger.js)
+            // so the popup's "Recent activity" section is populated.
+            attributionLedger: {
+              capacity: 10,
+              events: [
+                { type: 'clean', url: 'https://www.amazon.es/dp/B09B8YWXDF' },
+                { type: 'preserve-affiliate', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', network: 'youtube' },
+                { type: 'inject-affiliate', url: 'https://www.booking.com/hotel/es/my-hotel.html', network: 'booking' },
+              ],
+            },
+          },
+          resolve,
+        );
+      }),
+      // Behavioural prefs (chrome.storage.sync). Values already match
+      // PREF_DEFAULTS except where noted; set explicitly so the capture is
+      // stable even if a default changes later.
+      new Promise((resolve) => {
+        chrome.storage.sync.set(
+          {
+            injectOwnAffiliate: true,
+            notifyForeignAffiliate: false,
+            language: 'en',
+            blacklist: ['facebook.com', 'twitter.com'],
+            whitelist: ['amazon.es::tag::mkbhd-21'],
+            userCustomRules: ['ref_src'],
+          },
+          resolve,
+        );
+      }),
+    ]);
+  }, REQUIRED_CONSENT_VERSION);
   // Close auto-opened onboarding tabs
   for (const p of context.pages()) {
     if (p.url().includes('/onboarding/')) {
@@ -229,14 +287,16 @@ try {
     'README: before/after URL cleaning',
   );
 
-  // ss2: Popup on an Amazon product page (static mock-up with live popup overlay)
-  // We navigate to the popup page directly for a clean, reliable capture.
-  // The popup mock-up HTML (ss2-popup.html) already shows the popup + page context.
-  await captureFile(
+  // ss2: Extension popup — live capture of the real popup.html, seeded with
+  // populated stats/ledger above (mirrors cws-ss1-popup-amazon below). The
+  // old ss2-popup.html mock-up (stale stat labels/footer, no preview/ledger
+  // markup) is no longer used for this capture — kept on disk only as a
+  // still-referenced static background for the cws-ss4 toast composite.
+  await capture(
     context,
-    'ss2-popup.html',
+    popupUrl,
     'screenshot-ss2-popup.png',
-    'README: extension popup on Amazon',
+    'README: extension popup (live)',
   );
 
   // ss3: Options / Settings page — navigate to the real extension options page
@@ -245,6 +305,18 @@ try {
     optionsUrl,
     'screenshot-ss3-options.png',
     'README: options/settings page',
+  );
+
+  // ss4: Onboarding / welcome page — live capture of the real onboarding page.
+  // onboarding.html has no "already consented, redirect away" guard (it's the
+  // page onboarding.js writes consent FROM, and re-onboard banners are its
+  // own in-page state, not a redirect target), so it stays directly
+  // navigable and capturable regardless of the consent seed above.
+  await capture(
+    context,
+    onboardingUrl,
+    'screenshot-ss4-onboarding.png',
+    'README: onboarding/welcome page',
   );
 
   // -------------------------------------------------------------------------
@@ -291,7 +363,16 @@ try {
       waitUntil: 'domcontentloaded',
       timeout: 10_000,
     });
-    // Inject a representative toast notification matching MUGA's real toast UI.
+    // Inject a toast notification mirroring the REAL one built by
+    // showAffiliateNotice() in src/content/cleaner.js: same copy (toast_title
+    // / toast_tag_msg / toast_allow / toast_block / toast_dismiss strings),
+    // same dark-toast layout. Native context menus/toasts can't be triggered
+    // through Playwright against a real page in this harness, so this stays a
+    // composed overlay, but the text is byte-for-byte the shipped English
+    // copy (src/lib/locales/en.mjs) rather than invented placeholder copy.
+    // The only invented visual is the brand mark, recolored to MUGA's actual
+    // purple accent (--accent #6A2BCF / --accent-strong #5318B5) instead of
+    // the previous off-brand navy/blue.
     await page.evaluate(() => {
       const toast = document.createElement('div');
       toast.id = 'muga-toast-preview';
@@ -300,60 +381,47 @@ try {
           position: fixed;
           bottom: 28px;
           right: 28px;
-          width: 360px;
+          width: 320px;
           background: #1c1c1e;
-          border: 0.5px solid rgba(255,255,255,0.12);
-          border-radius: 14px;
+          border: 0.5px solid rgba(255,255,255,0.1);
+          border-radius: 10px;
           box-shadow: 0 16px 48px rgba(0,0,0,0.7);
-          padding: 16px 18px;
+          padding: 14px 16px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           color: #f0f0f0;
           z-index: 9999;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 4px;
         ">
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
             <div style="
-              width:32px; height:32px;
-              background: linear-gradient(160deg,#0d1b4b,#1a3a6b);
-              border-radius:8px;
+              width:28px; height:28px;
+              background: linear-gradient(160deg,#6A2BCF,#5318B5);
+              border-radius:7px;
               display:flex; align-items:center; justify-content:center;
-              font-size:14px; font-weight:800; color:#fff; flex-shrink:0;
-              position:relative; overflow:hidden;
-            ">
-              <span>M</span>
-              <span style="
-                position:absolute; bottom:0; left:0; right:0; height:4px;
-                background: linear-gradient(90deg,#d97706,#f59e0b);
-              "></span>
-            </div>
-            <div>
-              <div style="font-size:13px; font-weight:600; line-height:1.3;">
-                Affiliate link detected
-              </div>
-              <div style="font-size:11px; color:#888; margin-top:2px;">
-                amazon.es — tag: <span style="color:#f59e0b; font-family:monospace;">youtuber-21</span>
-              </div>
+              font-size:13px; font-weight:800; color:#fff; flex-shrink:0;
+            ">M</div>
+            <div style="font-weight:500; font-size:12px; color:#aaa;">
+              MUGA found someone else's affiliate tag
             </div>
           </div>
-          <div style="font-size:12px; color:#aaa; line-height:1.5;">
-            A third-party affiliate tag is present. MUGA kept the original — we never
-            replace someone else's tag without your explicit permission.
+          <div style="font-size:12px; color:#ddd; margin-bottom:10px;">
+            amazon.es has an affiliate tag that isn't ours: <code style="background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px;">tag=youtuber-21</code>
           </div>
-          <div style="display:flex; gap:8px; margin-top:2px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button style="
-              flex:1; padding:8px; border-radius:8px; border:none;
-              background:#2563eb; color:#fff; font-size:12px; font-weight:600; cursor:pointer;
-            ">Keep original</button>
+              flex:1; padding:5px 8px; border-radius:6px;
+              border:0.5px solid rgba(255,255,255,0.2);
+              background:transparent; color:#f0f0f0; font-size:11px; cursor:pointer;
+            ">Keep it</button>
             <button style="
-              flex:1; padding:8px; border-radius:8px; border:none;
-              background:#3a3a3c; color:#ccc; font-size:12px; cursor:pointer;
-            ">Replace with ours</button>
+              flex:1; padding:5px 8px; border-radius:6px;
+              border:0.5px solid rgba(255,255,255,0.2);
+              background:transparent; color:#f0f0f0; font-size:11px; cursor:pointer;
+            ">Remove it</button>
           </div>
-          <div style="font-size:10px; color:#555; text-align:center;">
-            "Replace with ours" requires opt-in in Settings — disabled by default
-          </div>
+          <div style="margin-top:6px; font-size:10px; color:#666; text-align:right;">Dismiss</div>
         </div>
       `;
       document.body.appendChild(toast);
@@ -374,8 +442,15 @@ try {
       waitUntil: 'domcontentloaded',
       timeout: 10_000,
     });
-    // Inject a context menu overlay that mirrors Chrome's real context menu style
-    // with MUGA's "Copy clean link" item highlighted.
+    // Inject a context menu overlay that mirrors Chrome's real context menu
+    // style with MUGA's two registered items highlighted — both
+    // "muga-copy-clean" (contexts:["link"]) and "muga-copy-clean-selection"
+    // (contexts:["selection"]), titles from src/background/service-worker.js
+    // syncContextMenus()/src/lib/locales/en.mjs (ctx_copy_clean_link /
+    // ctx_copy_clean_selection). Chrome only ever shows ONE of these at a
+    // time (link vs. text-selection right-click are mutually exclusive), so
+    // this composite intentionally shows both to document both capabilities
+    // in a single asset — native menus can't be Playwright-captured at all.
     await page.evaluate(() => {
       const menu = document.createElement('div');
       menu.innerHTML = `
@@ -383,7 +458,7 @@ try {
           position: fixed;
           top: 180px;
           left: 380px;
-          width: 260px;
+          width: 280px;
           background: #fff;
           border: 1px solid rgba(0,0,0,0.15);
           border-radius: 4px;
@@ -404,8 +479,8 @@ try {
             <div style="border-top: 1px solid #e8eaed; margin: 4px 0;"></div>
             <div style="
               padding: 7px 18px;
-              background: #e8f0fe;
-              color: #1a73e8;
+              background: #EFE6FB;
+              color: #5318B5;
               font-weight: 600;
               display: flex;
               align-items: center;
@@ -414,14 +489,29 @@ try {
               <span style="
                 display:inline-flex; align-items:center; justify-content:center;
                 width:18px; height:18px;
-                background: linear-gradient(160deg,#0d1b4b,#1a3a6b);
+                background: linear-gradient(160deg,#6A2BCF,#5318B5);
                 border-radius:3px; font-size:9px; font-weight:800; color:#fff;
-                position:relative; overflow:hidden; flex-shrink:0;
-              ">M<span style="
-                position:absolute; bottom:0; left:0; right:0; height:3px;
-                background: linear-gradient(90deg,#d97706,#f59e0b);
-              "></span></span>
+                flex-shrink:0;
+              ">M</span>
               Copy clean link
+            </div>
+            <div style="
+              padding: 7px 18px;
+              background: #EFE6FB;
+              color: #5318B5;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            ">
+              <span style="
+                display:inline-flex; align-items:center; justify-content:center;
+                width:18px; height:18px;
+                background: linear-gradient(160deg,#6A2BCF,#5318B5);
+                border-radius:3px; font-size:9px; font-weight:800; color:#fff;
+                flex-shrink:0;
+              ">M</span>
+              Copy clean links in selection
             </div>
             <div style="border-top: 1px solid #e8eaed; margin: 4px 0;"></div>
             <div style="padding: 6px 18px; color:#888;">Inspect</div>
