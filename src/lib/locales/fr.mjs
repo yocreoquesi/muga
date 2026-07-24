@@ -358,4 +358,19 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Mode du minimiseur de bandeaux de cookies",
   cookie_consent_mode_opt_reject_only: "Refuser uniquement (recommandé)",
   cookie_consent_mode_opt_off: "Désactivé",
+
+  // referer-beacon-privacy PR 4 : interface des réglages, avis et i18n.
+  section_aggressive_privacy: "Confidentialité renforcée",
+  row_suppress_referer_label: "Supprimer l'en-tête referrer sur les requêtes",
+  row_suppress_referer_hint: "Les navigateurs réduisent déjà le referrer à l'origine sur les requêtes intersites. Cette option va plus loin : elle le supprime entièrement, y compris sur les requêtes de même origine et sur les sites qui demandent encore l'URL complète. Certains sites utilisent le referrer pour les images anti hotlink, les vérifications CSRF ou les redirections de connexion, ce qui peut donc les casser ; ajoutez le site (et tout domaine distinct d'où proviennent ses images) aux Tags et domaines protégés pour que cela continue de fonctionner là-bas.",
+  aria_suppress_referer: "Supprimer l'en-tête referrer sur les requêtes",
+  row_block_beacons_label: "Bloquer les balises et pings de suivi",
+  row_block_beacons_hint: "Bloque les requêtes réseau sendBeacon() et <a ping> que certains sites utilisent pour enregistrer les clics et les départs de page, comblant une lacune que l'option « Bloquer les balises <a ping> » ci-dessus ne peut pas combler seule. Les sites qui dépendent des balises pour leurs statistiques peuvent sous-compter les visites tant que c'est activé. Ajoutez un site aux Tags et domaines protégés pour que les balises continuent de fonctionner là-bas.",
+  aria_block_beacons: "Bloquer les balises et pings de suivi",
+  nudge_aggressive_privacy_text: "Vous voulez aller plus loin ? La section Confidentialité renforcée ci-dessous peut aussi supprimer l'en-tête referrer et bloquer les balises de suivi. Les deux sont désactivées par défaut : rien ne change tant que vous ne les activez pas là-bas.",
+  aggressive_privacy_view_link: "Voir les réglages de confidentialité renforcée",
+  disclosure_blocklist_referer_beacon: "Les domaines bloqués ont désormais aussi leur referrer supprimé et leurs balises de suivi bloquées, en plus des paramètres de suivi que MUGA y retire déjà.",
+  notice_blocklist_referer_beacon_text: "MUGA supprime désormais aussi l'en-tête referrer et bloque les balises de suivi sur les domaines que vous avez déjà bloqués, en plus des paramètres de suivi déjà retirés là-bas. Cela s'applique que les interrupteurs de Confidentialité renforcée ci-dessous soient activés ou non.",
+  ob_aggressive_privacy_title: "Contrôles de confidentialité renforcée, désactivés par défaut",
+  ob_aggressive_privacy_desc: "Dans les Réglages, sous Avancé, vous pouvez aussi supprimer l'en-tête referrer et bloquer les balises de suivi sur chaque site que vous visitez. Les deux sont des options avancées, désactivées par défaut : rien ne change tant que vous ne les activez pas là-bas.",
 });

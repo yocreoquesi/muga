@@ -20,6 +20,7 @@ import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode } from "../lib/settings-schema.js";
 import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
+import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice } from "../lib/aggressive-privacy-ui.js";
 
 let _currentLang = "en";
 
@@ -314,6 +315,9 @@ async function init() {
   bindToggle("inject", "injectOwnAffiliate", prefs);
   bindToggle("notify", "notifyForeignAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
+  // D5 linked-suggestion nudge: reveals when strip-affiliates transitions to
+  // checked. Never auto-enables suppressReferer/blockBeacons (nudge only).
+  await initAffiliateNudge(prefs);
 
   bindToggle("dnr-enabled", "dnrEnabled", prefs);
   bindToggle("active-defense-enabled", "activeDefenseEnabled", prefs);
@@ -355,6 +359,13 @@ async function init() {
   bindToggle("canonical-extractor", "canonicalExtractorEnabled", prefs);
   bindToggle("cross-site-frequency", "crossSiteFrequencyEnabled", prefs);
   bindToggle("attribution-ledger", "attributionLedgerEnabled", prefs);
+  // Aggressive privacy (referer-beacon-privacy PR 4): opt-in, off by default.
+  // Both toggles are plain booleans — no per-device override reconciliation.
+  bindToggle("suppress-referer", "suppressReferer", prefs);
+  bindToggle("block-beacons", "blockBeacons", prefs);
+  // D2/D6: one-time disclosure for existing users whose blocklist already
+  // gains this header-layer behavior. Gated to fire exactly once.
+  await initBlocklistMigrationNotice(prefs);
   // Display group:
   bindToggle("param-breakdown", "paramBreakdown", prefs);
   bindToggle("show-report-button", "showReportButton", prefs);
@@ -447,6 +458,92 @@ function bindToggle(id, key, prefs) {
           .catch(err => console.error("[MUGA] reconcile override:", err));
       }
     } catch (err) { console.error("[MUGA] save toggle:", err); }
+  });
+}
+
+// ── Aggressive privacy: nudge + one-time migration notice (PR 4, D5/D6) ─────
+//
+// Both functions are thin DOM/storage applicators. The actual show/hide
+// DECISIONS live in the pure aggressive-privacy-ui.js helpers so they can be
+// unit-tested with zero mocks (Extract-Before-Mock).
+
+/**
+ * Wires the affiliate-stripping nudge (D5): reveals a dismissible,
+ * aria-live="polite" hint under strip-affiliates the moment it transitions
+ * to checked, linking to the "Aggressive privacy" section. Never checks
+ * suppressReferer/blockBeacons itself. Dismissal persists in
+ * chrome.storage.local so it does not reappear across reloads.
+ * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
+ */
+async function initAffiliateNudge(prefs) {
+  const nudge = document.getElementById("strip-affiliates-nudge");
+  const checkbox = document.getElementById("strip-affiliates");
+  if (!nudge || !checkbox) return;
+
+  let wasChecked = !!prefs.stripAllAffiliates;
+  let dismissed = false;
+  try {
+    ({ aggressivePrivacyNudgeDismissed: dismissed } =
+      await chrome.storage.local.get({ aggressivePrivacyNudgeDismissed: false }));
+  } catch (err) { console.error("[MUGA] read nudge dismissal:", err); }
+
+  checkbox.addEventListener("change", () => {
+    const isChecked = checkbox.checked;
+    if (shouldRevealAffiliateNudge({ wasChecked, isChecked, dismissed })) {
+      nudge.hidden = false;
+    }
+    wasChecked = isChecked;
+  });
+
+  const dismissBtn = document.getElementById("nudge-aggressive-privacy-dismiss");
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", async () => {
+      dismissed = true;
+      nudge.hidden = true;
+      try { await chrome.storage.local.set({ aggressivePrivacyNudgeDismissed: true }); }
+      catch (err) { console.error("[MUGA] save nudge dismissal:", err); }
+    });
+  }
+
+  const linkBtn = document.getElementById("nudge-aggressive-privacy-link");
+  if (linkBtn) {
+    linkBtn.addEventListener("click", () => {
+      document.getElementById("section-aggressive-privacy")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
+/**
+ * Wires the one-time blocklist Referer/beacon migration notice (D2/D6
+ * accepted condition: existing blocklist entries gain header-layer behavior,
+ * disclosure is mandatory but shown exactly once). Gated by a stored flag in
+ * chrome.storage.local so it never reappears once shown, regardless of
+ * whether the user explicitly dismisses it.
+ * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
+ */
+async function initBlocklistMigrationNotice(prefs) {
+  const notice = document.getElementById("blocklist-migration-notice");
+  if (!notice) return;
+
+  let alreadyShown = false;
+  try {
+    ({ referrerBeaconNoticeShown: alreadyShown } =
+      await chrome.storage.local.get({ referrerBeaconNoticeShown: false }));
+  } catch (err) { console.error("[MUGA] read migration notice flag:", err); return; }
+
+  if (!shouldShowBlocklistMigrationNotice({ blacklist: prefs.blacklist, alreadyShown })) return;
+
+  notice.hidden = false;
+  // Marked "seen" immediately on display (not on dismiss-click) so the
+  // one-time gate cannot be bypassed by closing the tab before dismissing.
+  try { await chrome.storage.local.set({ referrerBeaconNoticeShown: true }); }
+  catch (err) { console.error("[MUGA] save migration notice flag:", err); }
+
+  document.getElementById("blocklist-migration-notice-dismiss")?.addEventListener("click", () => {
+    notice.hidden = true;
+  });
+  document.getElementById("blocklist-migration-notice-link")?.addEventListener("click", () => {
+    document.getElementById("section-aggressive-privacy")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
@@ -1171,6 +1268,9 @@ function initExportImport() {
       document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
       document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;
       document.getElementById("attribution-ledger").checked = newPrefs.attributionLedgerEnabled;
+      // referer-beacon-privacy PR 4: reflect the imported Aggressive privacy toggles.
+      document.getElementById("suppress-referer").checked = newPrefs.suppressReferer;
+      document.getElementById("block-beacons").checked = newPrefs.blockBeacons;
       document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;

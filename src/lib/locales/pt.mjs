@@ -358,4 +358,19 @@ export default Object.freeze({
   aria_cookie_consent_mode: "Modo do minimizador de avisos de cookies",
   cookie_consent_mode_opt_reject_only: "Rejeitar apenas (recomendado)",
   cookie_consent_mode_opt_off: "Desativado",
+
+  // referer-beacon-privacy PR 4: interface de configurações, aviso e i18n.
+  section_aggressive_privacy: "Privacidade agressiva",
+  row_suppress_referer_label: "Remover o cabeçalho referrer nas solicitações",
+  row_suppress_referer_hint: "Os navegadores já reduzem o referrer apenas à origem em solicitações entre sites. Esta opção vai mais além: remove-o por completo, inclusive em solicitações da mesma origem e em sites que ainda pedem a URL completa. Alguns sites usam o referrer para imagens anti-hotlink, verificações CSRF ou redirecionamentos de login, então isso pode quebrá-los; adicione o site (e qualquer domínio diferente de onde vêm suas imagens) a Tags e domínios protegidos para continuar funcionando lá.",
+  aria_suppress_referer: "Remover o cabeçalho referrer nas solicitações",
+  row_block_beacons_label: "Bloquear beacons e pings de rastreamento",
+  row_block_beacons_hint: "Bloqueia as solicitações de rede sendBeacon() e <a ping> que alguns sites usam para registrar cliques e saídas de página, fechando uma lacuna que a opção «Bloquear beacons <a ping>» acima não consegue fechar sozinha. Sites que dependem de beacons para suas estatísticas podem subestimar visitas enquanto isso estiver ativado. Adicione um site a Tags e domínios protegidos para que os beacons continuem funcionando lá.",
+  aria_block_beacons: "Bloquear beacons e pings de rastreamento",
+  nudge_aggressive_privacy_text: "Quer ir além? A seção Privacidade agressiva abaixo também pode remover o cabeçalho referrer e bloquear beacons de rastreamento. Ambos estão desativados por padrão: nada muda a menos que você os ative lá.",
+  aggressive_privacy_view_link: "Ver configurações de privacidade agressiva",
+  disclosure_blocklist_referer_beacon: "Nos domínios bloqueados agora também são removidos o referrer e bloqueados os beacons de rastreamento, além dos parâmetros de rastreamento que o MUGA já remove ali.",
+  notice_blocklist_referer_beacon_text: "O MUGA agora também remove o cabeçalho referrer e bloqueia beacons de rastreamento nos domínios que você já bloqueou, além dos parâmetros de rastreamento já removidos ali. Isso se aplica independentemente de os interruptores de Privacidade agressiva abaixo estarem ativados.",
+  ob_aggressive_privacy_title: "Controles de privacidade agressiva, desativados por padrão",
+  ob_aggressive_privacy_desc: "Em Configurações, em Avançado, você também pode remover o cabeçalho referrer e bloquear beacons de rastreamento em todos os sites que visitar. Ambas são opções avançadas e desativadas por padrão: nada muda a menos que você as ative lá.",
 });

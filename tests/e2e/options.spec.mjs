@@ -11,6 +11,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { seedStorage } from "./helpers/storage.mjs";
 
 /** Helper: toggle a checkbox by evaluating in page context. */
 async function setCheckbox(page, id, checked) {
@@ -211,6 +212,92 @@ test.describe("Options — advanced settings", () => {
     expect(text).toMatch(/^https:\/\/example\.com\/?$/);
 
     await setCheckbox(page, "dev-mode", false);
+  });
+});
+
+test.describe("Options — Aggressive privacy nudge (referer-beacon-privacy PR 4, D5, task 4.9)", () => {
+  test("checking strip-affiliates reveals the nudge and does NOT flip suppressReferer/blockBeacons", async ({ optionsPage: page }) => {
+    const nudge = page.locator("#strip-affiliates-nudge");
+    await expect(nudge).toBeHidden();
+
+    await setCheckbox(page, "strip-affiliates", true);
+    await expect(nudge).toBeVisible();
+
+    // D5: the nudge NEVER auto-enables the two new prefs — checkbox state
+    // AND the persisted storage value must both remain false.
+    await expect(page.locator("#suppress-referer")).not.toBeChecked();
+    await expect(page.locator("#block-beacons")).not.toBeChecked();
+    const stored = await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          chrome.storage.sync.get({ suppressReferer: false, blockBeacons: false }, resolve)
+        )
+    );
+    expect(stored.suppressReferer).toBe(false);
+    expect(stored.blockBeacons).toBe(false);
+  });
+
+  test("unchecking strip-affiliates does not reveal the nudge (only the checked transition does)", async ({ optionsPage: page }) => {
+    const nudge = page.locator("#strip-affiliates-nudge");
+    await setCheckbox(page, "strip-affiliates", true);
+    await expect(nudge).toBeVisible();
+
+    await setCheckbox(page, "strip-affiliates", false);
+    // The nudge stays as last revealed (no auto-hide on uncheck) — assert the
+    // regression this guards against: unchecking must never THROW or flip
+    // suppressReferer/blockBeacons either.
+    await expect(page.locator("#suppress-referer")).not.toBeChecked();
+    await expect(page.locator("#block-beacons")).not.toBeChecked();
+  });
+
+  test("dismissing the nudge persists the dismissal across a reload", async ({ optionsPage: page }) => {
+    await setCheckbox(page, "strip-affiliates", true);
+    const nudge = page.locator("#strip-affiliates-nudge");
+    await expect(nudge).toBeVisible();
+
+    await page.locator("#nudge-aggressive-privacy-dismiss").click();
+    await expect(nudge).toBeHidden();
+
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    // Re-trigger the checked TRANSITION (off then on) after reload — the
+    // persisted dismissal must suppress the nudge even for a fresh transition.
+    await setCheckbox(page, "strip-affiliates", false);
+    await setCheckbox(page, "strip-affiliates", true);
+    await expect(page.locator("#strip-affiliates-nudge")).toBeHidden();
+  });
+});
+
+test.describe("Options — blocklist migration notice (referer-beacon-privacy PR 4, D2/D6, task 4.10)", () => {
+  test("does NOT appear for a user with an empty blocklist", async ({ optionsPage: page }) => {
+    await expect(page.locator("#blocklist-migration-notice")).toBeHidden();
+  });
+
+  test("appears for a pre-existing non-empty blocklist, exactly once across reloads", async ({ optionsPage: page, context, extensionId }) => {
+    await seedStorage(context, extensionId, { sync: { blacklist: ["example.com"] } });
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    const notice = page.locator("#blocklist-migration-notice");
+    await expect(notice).toBeVisible();
+
+    // Fires EXACTLY once: a second reload with the same non-empty blocklist
+    // must NOT show it again (the stored flag was set the moment it was shown).
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+    await expect(page.locator("#blocklist-migration-notice")).toBeHidden();
+  });
+
+  test("dismiss button hides the notice immediately", async ({ optionsPage: page, context, extensionId }) => {
+    await seedStorage(context, extensionId, { sync: { blacklist: ["example.com"] } });
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    const notice = page.locator("#blocklist-migration-notice");
+    await expect(notice).toBeVisible();
+    await page.locator("#blocklist-migration-notice-dismiss").click();
+    await expect(notice).toBeHidden();
   });
 });
 
