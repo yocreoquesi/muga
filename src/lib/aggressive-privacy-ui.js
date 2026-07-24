@@ -38,3 +38,20 @@ export function shouldRevealAffiliateNudge({ wasChecked, isChecked, dismissed })
 export function shouldShowBlocklistMigrationNotice({ blacklist, alreadyShown }) {
   return Array.isArray(blacklist) && blacklist.length > 0 && alreadyShown !== true;
 }
+
+/**
+ * Whether a chrome.storage.onChanged event should hide the one-time
+ * blocklist migration notice in THIS tab (TOCTOU guard/follow-up: two
+ * Options tabs opened at the same time can both read
+ * referrerBeaconNoticeShown:false before either tab's write lands, so both
+ * would otherwise keep showing the notice indefinitely). Fires only for a
+ * genuine local-storage transition to `true` while this tab's notice is
+ * currently visible - a change in another storage area, an unrelated key,
+ * a flip back to `false`, or a notice that is already hidden are all no-ops.
+ *
+ * @param {{area: string, change: {oldValue?: boolean, newValue?: boolean}|undefined, noticeVisible: boolean}} state
+ * @returns {boolean}
+ */
+export function shouldHideMigrationNoticeOnStorageChange({ area, change, noticeVisible }) {
+  return area === "local" && !!change && change.newValue === true && noticeVisible === true;
+}

@@ -20,7 +20,7 @@ import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode } from "../lib/settings-schema.js";
 import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
-import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice } from "../lib/aggressive-privacy-ui.js";
+import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
 let _currentLang = "en";
 
@@ -538,6 +538,21 @@ async function initBlocklistMigrationNotice(prefs) {
   // one-time gate cannot be bypassed by closing the tab before dismissing.
   try { await chrome.storage.local.set({ referrerBeaconNoticeShown: true }); }
   catch (err) { console.error("[MUGA] save migration notice flag:", err); }
+
+  // TOCTOU guard (follow-up): two Options tabs opened at the same time can
+  // both read referrerBeaconNoticeShown:false above before either tab's
+  // write lands, so both would otherwise keep showing the notice. Added
+  // AFTER this tab's own write above resolves, so it only reacts to the
+  // flag being flipped to true by ANOTHER tab/context - never to its own.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (shouldHideMigrationNoticeOnStorageChange({
+      area,
+      change: changes.referrerBeaconNoticeShown,
+      noticeVisible: !notice.hidden,
+    })) {
+      notice.hidden = true;
+    }
+  });
 
   document.getElementById("blocklist-migration-notice-dismiss")?.addEventListener("click", () => {
     notice.hidden = true;

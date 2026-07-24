@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
   shouldRevealAffiliateNudge,
   shouldShowBlocklistMigrationNotice,
+  shouldHideMigrationNoticeOnStorageChange,
 } from "../../src/lib/aggressive-privacy-ui.js";
 
 test("shouldRevealAffiliateNudge: reveals on transition from unchecked to checked", () => {
@@ -64,6 +65,66 @@ test("shouldShowBlocklistMigrationNotice: does NOT show when already shown", () 
 test("shouldShowBlocklistMigrationNotice: fail-safe false on malformed/absent blacklist", () => {
   assert.equal(
     shouldShowBlocklistMigrationNotice({ blacklist: undefined, alreadyShown: false }),
+    false,
+  );
+});
+
+// TOCTOU follow-up: two Options tabs opened at the same time can both read
+// referrerBeaconNoticeShown:false before either tab's write lands, so both
+// would otherwise keep showing the notice. A chrome.storage.onChanged
+// listener hides it in any tab where it is still visible once the flag
+// flips to true (from another tab/context).
+test("shouldHideMigrationNoticeOnStorageChange: hides when the flag flips to true in local storage while visible", () => {
+  assert.equal(
+    shouldHideMigrationNoticeOnStorageChange({
+      area: "local",
+      change: { oldValue: false, newValue: true },
+      noticeVisible: true,
+    }),
+    true,
+  );
+});
+
+test("shouldHideMigrationNoticeOnStorageChange: does NOT hide when the notice is not currently visible", () => {
+  assert.equal(
+    shouldHideMigrationNoticeOnStorageChange({
+      area: "local",
+      change: { oldValue: false, newValue: true },
+      noticeVisible: false,
+    }),
+    false,
+  );
+});
+
+test("shouldHideMigrationNoticeOnStorageChange: does NOT hide for an unrelated storage area", () => {
+  assert.equal(
+    shouldHideMigrationNoticeOnStorageChange({
+      area: "sync",
+      change: { oldValue: false, newValue: true },
+      noticeVisible: true,
+    }),
+    false,
+  );
+});
+
+test("shouldHideMigrationNoticeOnStorageChange: does NOT hide when the changed key is unrelated (no change object)", () => {
+  assert.equal(
+    shouldHideMigrationNoticeOnStorageChange({
+      area: "local",
+      change: undefined,
+      noticeVisible: true,
+    }),
+    false,
+  );
+});
+
+test("shouldHideMigrationNoticeOnStorageChange: does NOT hide when the flag flips back to false", () => {
+  assert.equal(
+    shouldHideMigrationNoticeOnStorageChange({
+      area: "local",
+      change: { oldValue: true, newValue: false },
+      noticeVisible: true,
+    }),
     false,
   );
 });

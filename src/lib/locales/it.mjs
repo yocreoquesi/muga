@@ -370,7 +370,7 @@ export default Object.freeze({
   nudge_aggressive_privacy_text: "Vuoi andare oltre? La sezione Privacy aggressiva qui sotto può anche rimuovere l'intestazione referrer e bloccare i beacon di tracciamento. Entrambe sono disattivate per impostazione predefinita: nulla cambia finché non le attivi lì.",
   aggressive_privacy_view_link: "Vedi le impostazioni di privacy aggressiva",
   disclosure_blocklist_referer_beacon: "Nei domini bloccati ora vengono anche rimossi il referrer e bloccati i beacon di tracciamento, oltre ai parametri di tracciamento che MUGA già rimuove lì.",
-  notice_blocklist_referer_beacon_text: "MUGA ora rimuove anche l'intestazione referrer e blocca i beacon di tracciamento sui domini che hai già bloccato, oltre ai parametri di tracciamento già rimossi lì. Questo vale indipendentemente dal fatto che gli interruttori di Privacy aggressiva qui sotto siano attivi o meno.",
+  notice_blocklist_referer_beacon_text: "Attenzione: nei domini della tua lista di blocco vengono anche rimossi l'intestazione referrer e bloccati i beacon di tracciamento, oltre ai parametri di tracciamento che MUGA rimuove lì. Aggiungi un sito a Tag e domini protetti per disattivarlo lì.",
   ob_aggressive_privacy_title: "Controlli di privacy aggressiva, disattivati per impostazione predefinita",
   ob_aggressive_privacy_desc: "Nelle Impostazioni, sotto Avanzate, puoi anche rimuovere l'intestazione referrer e bloccare i beacon di tracciamento su ogni sito che visiti. Sono entrambe opzioni avanzate e disattivate per impostazione predefinita: nulla cambia finché non le attivi lì.",
 });

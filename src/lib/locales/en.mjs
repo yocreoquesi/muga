@@ -371,7 +371,7 @@ export default Object.freeze({
   nudge_aggressive_privacy_text: "Looking to go further? The Aggressive privacy section below can also remove the referrer header and block tracking beacons. Both are off by default; nothing changes unless you turn them on there.",
   aggressive_privacy_view_link: "View Aggressive privacy settings",
   disclosure_blocklist_referer_beacon: "Blocked domains also have their referrer removed and tracking beacons blocked, on top of the tracking parameters MUGA already strips there.",
-  notice_blocklist_referer_beacon_text: "MUGA now also removes the referrer header and blocks tracking beacons on domains you've already blocked, in addition to the tracking parameters already stripped there. This applies whether or not the Aggressive privacy toggles below are turned on.",
+  notice_blocklist_referer_beacon_text: "Heads up: domains on your blocklist also have their Referer header removed and tracking beacons blocked, on top of the tracking parameters MUGA strips there. Add a site to Protected tags & domains to turn this off there.",
   ob_aggressive_privacy_title: "Aggressive privacy controls, off by default",
   ob_aggressive_privacy_desc: "In Settings, under Advanced, you can also remove the referrer header and block tracking beacons on every site you visit. Both are advanced, off-by-default options: nothing changes unless you turn them on there.",
 });

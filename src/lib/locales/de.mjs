@@ -370,7 +370,7 @@ export default Object.freeze({
   nudge_aggressive_privacy_text: "Möchtest du noch weiter gehen? Der Abschnitt Aggressiver Datenschutz unten kann außerdem den Referrer-Header entfernen und Tracking-Beacons blockieren. Beide sind standardmäßig deaktiviert: Nichts ändert sich, bis du sie dort aktivierst.",
   aggressive_privacy_view_link: "Einstellungen für aggressiven Datenschutz ansehen",
   disclosure_blocklist_referer_beacon: "Bei blockierten Domains werden jetzt zusätzlich der Referrer entfernt und Tracking-Beacons blockiert, zusätzlich zu den Tracking-Parametern, die MUGA dort bereits entfernt.",
-  notice_blocklist_referer_beacon_text: "MUGA entfernt jetzt auch den Referrer-Header und blockiert Tracking-Beacons bei Domains, die du bereits blockiert hast, zusätzlich zu den dort bereits entfernten Tracking-Parametern. Das gilt unabhängig davon, ob die Schalter für Aggressiven Datenschutz unten aktiviert sind.",
+  notice_blocklist_referer_beacon_text: "Hinweis: Bei Domains auf deiner Sperrliste werden zusätzlich der Referrer-Header entfernt und Tracking-Beacons blockiert, zusätzlich zu den Tracking-Parametern, die MUGA dort entfernt. Füge eine Seite zu Geschützte Tags und Domains hinzu, um das dort zu deaktivieren.",
   ob_aggressive_privacy_title: "Aggressive Datenschutzeinstellungen, standardmäßig deaktiviert",
   ob_aggressive_privacy_desc: "In den Einstellungen unter Erweitert kannst du außerdem den Referrer-Header entfernen und Tracking-Beacons auf jeder besuchten Seite blockieren. Beides sind erweiterte, standardmäßig deaktivierte Optionen: Nichts ändert sich, bis du sie dort aktivierst.",
 });
