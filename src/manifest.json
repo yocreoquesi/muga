@@ -4,7 +4,7 @@
   "short_name": "MUGA",
   "version": "2.6.0",
   "version_name": "2.6.0",
-  "description": "Clean the tracking noise from your URLs without breaking them. No analytics, no telemetry. Open source.",
+  "description": "Clean the tracking noise from your URLs and quietly reject cookie-consent banners. No analytics, no telemetry. Open source.",
 
   "permissions": [
     "storage",
