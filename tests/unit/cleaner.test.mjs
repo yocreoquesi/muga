@@ -930,6 +930,46 @@ describe("preservedAffiliate — UI feedback signal", () => {
     assert.equal(preservedAffiliate, null);
   });
 
+  // #1157: a whitelisted value survives Step 4b (stripAllAffiliates keeps
+  // whitelisted values by design, per the "whitelist is sacred" rule), but
+  // detectPreservedAffiliate() had no knowledge of stripAllAffiliates and
+  // still reported the surviving value as a "preserved creator referral" -
+  // directly contradicting the user's "remove all third-party affiliate
+  // tags from other sources" choice. preservedAffiliate must be null
+  // whenever stripAllAffiliates is on, whitelist or not.
+  test("whitelisted tag survives stripAllAffiliates but preservedAffiliate must still be null (#1157)", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://www.amazon.es/dp/X?tag=youtuber-21",
+      {
+        ...PREFS,
+        stripAllAffiliates: true,
+        injectOwnAffiliate: true,
+        notifyForeignAffiliate: false,
+        whitelist: ["amazon.es::tag::youtuber-21"],
+      },
+      domainRules
+    );
+    assert.equal(
+      preservedAffiliate,
+      null,
+      "stripAllAffiliates ON must never surface a 'preserved creator referral' badge"
+    );
+  });
+
+  test("control: same whitelisted tag with stripAllAffiliates OFF → preservedAffiliate still populated (wedge intact, #1157)", () => {
+    const { preservedAffiliate } = processUrl(
+      "https://www.amazon.es/dp/X?tag=youtuber-21",
+      {
+        ...PREFS,
+        stripAllAffiliates: false,
+        whitelist: ["amazon.es::tag::youtuber-21"],
+      },
+      domainRules
+    );
+    assert.ok(preservedAffiliate, "preservedAffiliate must still be populated when stripAllAffiliates is off");
+    assert.equal(preservedAffiliate.value, "youtuber-21");
+  });
+
   test("URL without any affiliate param → preservedAffiliate null", () => {
     const { preservedAffiliate } = processUrl(
       "https://shop.test.muga/product?utm_source=newsletter",
