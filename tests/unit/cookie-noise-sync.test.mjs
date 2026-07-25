@@ -420,6 +420,61 @@ describe("cookie-noise-sync — @sync:cmp-tier2 block matches src/lib/cmp-adapte
   });
 });
 
+// ── @sync:cmp-tier2-veto block (Tier 2 runtime semantic click-veto) ───────
+//
+// normalizeAccessibleName / computeClickVeto / VETO_WORDS are pure exports
+// in src/lib/cmp-tier2-veto.js (unit-tested there, including the load-bearing
+// teeth test) whose body is hand-inlined ONLY into content/cookie-noise.js
+// (isolated world) — mirrors the @sync:cmp-tier2 precedent immediately
+// above: a DOM click needs neither a page-authored global nor the MAIN
+// world.
+
+const TIER2_VETO_FILES = {
+  lib: join(__dirname, "../../src/lib/cmp-tier2-veto.js"),
+  isolated: FILES.isolated,
+};
+
+const tier2VetoSources = {
+  lib: readFileSync(TIER2_VETO_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const TIER2_VETO_START = "@sync:cmp-tier2-veto:start";
+const TIER2_VETO_END = "@sync:cmp-tier2-veto:end";
+
+describe("cookie-noise-sync — @sync:cmp-tier2-veto block matches src/lib/cmp-tier2-veto.js", () => {
+  const libBlock = extractMarkedBlock(tier2VetoSources.lib, TIER2_VETO_START, TIER2_VETO_END, "cmp-tier2-veto.js");
+  const isolatedBlock = extractMarkedBlock(tier2VetoSources.isolated, TIER2_VETO_START, TIER2_VETO_END, "cookie-noise.js");
+
+  test("tier2-veto sync block is non-empty and defines normalizeAccessibleName, computeClickVeto, and VETO_WORDS", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:cmp-tier2-veto block must not be empty — check the markers");
+    const joined = libBlock.join("\n");
+    assert.ok(/function normalizeAccessibleName/.test(joined));
+    assert.ok(/function computeClickVeto/.test(joined));
+    assert.ok(/const VETO_WORDS\s*=\s*Object\.freeze/.test(joined));
+  });
+
+  test("cookie-noise.js @sync:cmp-tier2-veto block matches src/lib/cmp-tier2-veto.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cmp-tier2-veto block has drifted from src/lib/cmp-tier2-veto.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:cmp-tier2-veto block (Tier 2 is isolated-world only)", () => {
+    assert.equal(sources.mainworld.includes(TIER2_VETO_START), false,
+      "cookie-noise-mainworld.js must not inline the Tier 2 veto — this mechanism is isolated-world only");
+  });
+
+  test("the veto's deny word list contains known accept words (its teeth), mirroring the lib teeth test", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/"accept"/.test(joined));
+    assert.ok(/"aceptar"/.test(joined));
+    assert.ok(/"akzeptieren"/.test(joined));
+  });
+});
+
 // ── Tier 2 dispatch — main-world exclusion (task 3.3) ───────────────────────
 //
 // Tier 2's DOM query-and-click capability must live ONLY in the isolated
@@ -512,6 +567,89 @@ describe("cookie-noise.js — Tier 2 reject-click dispatch structural guards", (
 
   test("tier2WarnDrift only ever warns once per rule id (guarded by _tier2Warned)", () => {
     assert.ok(/_tier2Warned\[ruleId\]/.test(sources.isolated));
+  });
+});
+
+// ── Tier 2 semantic click-veto wiring (#1027, Slice 2 / PR A) ──────────────
+//
+// LOAD-BEARING. computeClickVeto must run BEFORE both the reject and the
+// openSettings `.click()` calls, and a veto must fail closed exactly like
+// the pre-existing "single" resolution guards above: no `_tier2Acted` /
+// `_tier2PmOpened` write on a vetoed target, console-only warn-once, and a
+// `continue` back to the observer loop (a later pass may find a correctly
+// labelled target once the DOM settles).
+
+describe("cookie-noise.js — Tier 2 semantic click-veto wiring", () => {
+  function tier2DispatcherBody() {
+    const fnMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(sources.isolated);
+    assert.ok(fnMatch, "cookie-noise.js must define runTier2RejectDispatcher()");
+    return fnMatch[1];
+  }
+
+  test('computeClickVeto is called with role "reject" BEFORE the reject .ref.click()', () => {
+    const body = tier2DispatcherBody();
+    const vetoIdx = body.indexOf('computeClickVeto(result.target.fullText, "reject", VETO_WORDS)');
+    const clickIdx = body.indexOf("result.target.ref.click()");
+    assert.ok(vetoIdx !== -1, 'must call computeClickVeto(..., "reject", VETO_WORDS) before the reject click');
+    assert.ok(clickIdx !== -1);
+    assert.ok(vetoIdx < clickIdx, "the reject veto must be evaluated before ref.click()");
+  });
+
+  test('computeClickVeto is called with role "openSettings" BEFORE the openSettings .ref.click()', () => {
+    const body = tier2DispatcherBody();
+    const vetoIdx = body.indexOf('computeClickVeto(openCandidates[0].fullText, "openSettings", VETO_WORDS)');
+    const clickIdx = body.indexOf("openCandidates[0].ref.click()");
+    assert.ok(vetoIdx !== -1, 'must call computeClickVeto(..., "openSettings", VETO_WORDS) before the openSettings click');
+    assert.ok(clickIdx !== -1);
+    assert.ok(vetoIdx < clickIdx, "the openSettings veto must be evaluated before ref.click()");
+  });
+
+  test("on reject veto, _tier2Acted is NOT set — the veto check happens before the acted-assignment and continues", () => {
+    const body = tier2DispatcherBody();
+    const vetoIdx = body.indexOf('const veto = computeClickVeto(result.target.fullText, "reject", VETO_WORDS);');
+    const actedIdx = body.indexOf("_tier2Acted[rule.id] = true;");
+    assert.ok(vetoIdx !== -1 && actedIdx !== -1);
+    assert.ok(vetoIdx < actedIdx, "the reject veto must be checked before _tier2Acted is ever set");
+    assert.ok(
+      /if\s*\(!veto\.allow\)\s*\{[\s\S]*?continue;[\s\S]*?\}/.test(body),
+      "a reject veto must continue without falling through to the click/acted branch",
+    );
+  });
+
+  test("on openSettings veto, _tier2PmOpened is NOT set — the veto check happens before the pmOpened-assignment and continues", () => {
+    const body = tier2DispatcherBody();
+    const vetoIdx = body.indexOf('const openVeto = computeClickVeto(openCandidates[0].fullText, "openSettings", VETO_WORDS);');
+    const pmOpenedIdx = body.indexOf("_tier2PmOpened[rule.id] = true;");
+    assert.ok(vetoIdx !== -1 && pmOpenedIdx !== -1);
+    assert.ok(vetoIdx < pmOpenedIdx, "the openSettings veto must be checked before _tier2PmOpened is ever set");
+    assert.ok(
+      /if\s*\(!openVeto\.allow\)\s*\{[\s\S]*?continue;[\s\S]*?\}/.test(body),
+      "an openSettings veto must continue without falling through to the click/pmOpened branch",
+    );
+  });
+
+  test("a vetoed reject/openSettings target warns via tier2WarnVeto, which makes no network/telemetry call", () => {
+    const src = sources.isolated;
+    const fnMatch = /function tier2WarnVeto\([^)]*\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define tier2WarnVeto()");
+    const NETWORK_PATTERN = /sendMessage|fetch\s*\(|XMLHttpRequest|sendBeacon/;
+    assert.doesNotMatch(fnMatch[1], NETWORK_PATTERN, "tier2WarnVeto must not make any network/telemetry call");
+  });
+
+  test("tier2WarnVeto warns at most once per rule id + role (guarded by _tier2VetoWarned)", () => {
+    assert.ok(/_tier2VetoWarned\[key\]/.test(sources.isolated));
+  });
+
+  test("the veto applies identically regardless of rule origin — exactly one veto call site per role, no conditional skip", () => {
+    // Spec scenario 5 / design ADR-1: the veto call sites take no
+    // origin/source parameter and there is no per-rule conditional that
+    // skips computeClickVeto for any subset of TIER2_RULES — every rule in
+    // the single shared TIER2_RULES loop goes through the same two calls.
+    const body = tier2DispatcherBody();
+    const rejectVetoCalls = body.split('computeClickVeto(result.target.fullText, "reject", VETO_WORDS)').length - 1;
+    const openVetoCalls = body.split('computeClickVeto(openCandidates[0].fullText, "openSettings", VETO_WORDS)').length - 1;
+    assert.equal(rejectVetoCalls, 1, "exactly one unconditional reject veto call site, shared by every rule");
+    assert.equal(openVetoCalls, 1, "exactly one unconditional openSettings veto call site, shared by every rule");
   });
 });
 

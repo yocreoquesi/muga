@@ -1430,6 +1430,229 @@
   }
   // @sync:cmp-tier2:end
 
+  // ── Tier 2 runtime semantic click-veto (#1027, Slice 2 / PR A) ────────────
+  //
+  // Hand-copied, byte-for-byte modulo indentation, from
+  // src/lib/cmp-tier2-veto.js. Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. See that file's docblock for the
+  // full load-bearing-safety-piece rationale, the BUNDLED-never-remote
+  // word-list distribution decision, and the guard-exemption note — not
+  // repeated here to avoid a second place that can drift out of prose sync
+  // with the data itself. Pure; never throws. Wired into
+  // runTier2RejectDispatcher below, immediately before both the reject and
+  // openSettings `.click()` calls.
+  // @sync:cmp-tier2-veto:start
+
+  /**
+   * NFC-normalizes, lowercases, and whitespace-collapses `raw` into `name`;
+   * `folded` additionally strips Unicode combining diacritical marks (NFD +
+   * `/\p{Diacritic}/gu` removal) so accented and de-accented variants of the
+   * same word both match. Never throws — a non-string or unnormalizable input
+   * degrades to `{ name: "", folded: "" }`, which the empty-name veto branch
+   * in computeClickVeto below already treats as VETO.
+   * @param {*} raw
+   * @returns {{ name: string, folded: string }}
+   */
+  function normalizeAccessibleName(raw) {
+    const input = typeof raw === "string" ? raw : "";
+    let name = "";
+    try {
+      name = input.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
+    } catch {
+      name = "";
+    }
+    let folded = name;
+    try {
+      folded = name.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim();
+    } catch {
+      folded = name;
+    }
+    return { name, folded };
+  }
+
+  // Accept/agree words across every covered locale (en/es/de/fr/it/ja/pt).
+  // THIS IS THE VETO'S TEETH — see the file docblock's guard-exemption note
+  // above and the teeth test in tests/unit/cmp-tier2-veto.test.mjs. Any word
+  // here matching a candidate's accessible name is an ABSOLUTE veto,
+  // role-independent — it wins over every allowlist match below. Every entry
+  // is already lowercase and diacritic-normalized (no combining marks), the
+  // same shape normalizeAccessibleName produces, so a bare `folded` substring
+  // check is always sufficient regardless of the source text's own accents.
+  const DENY_WORDS = Object.freeze([
+    // en
+    "accept",
+    "accept all",
+    "allow",
+    "allow all",
+    "agree",
+    "i agree",
+    // es
+    "aceptar",
+    "aceptar todo",
+    "aceptar todas",
+    // de
+    "akzeptieren",
+    "alle akzeptieren",
+    "zustimmen",
+    // fr
+    "accepter",
+    "tout accepter",
+    // it
+    "accetta",
+    "accetta tutti",
+    // pt
+    "aceitar",
+    "aceitar tudo",
+    // ja
+    "同意",
+    "同意する",
+    "すべてに同意",
+  ]);
+
+  // Reject/decline/necessary-only words — REQUIRED positive match for a
+  // `role: "reject"` candidate (see computeClickVeto's precedence below).
+  // DISJOINT from DENY_WORDS by construction (asserted by the teeth test).
+  const REJECT_WORDS = Object.freeze([
+    // en
+    "reject",
+    "reject all",
+    "decline",
+    "decline all",
+    "refuse",
+    "necessary only",
+    "only necessary",
+    // es
+    "rechazar",
+    "rechazar todo",
+    "solo necesarias",
+    // de
+    "ablehnen",
+    "alle ablehnen",
+    "nur notwendige",
+    // fr
+    "refuser",
+    "tout refuser",
+    // it
+    "rifiuta",
+    "solo necessari",
+    // pt
+    "recusar",
+    "somente necessarios",
+    // ja
+    "拒否",
+    "すべて拒否",
+  ]);
+
+  // Settings/preferences/manage words — REQUIRED positive match for a
+  // `role: "openSettings"` candidate. DISJOINT from DENY_WORDS by
+  // construction (asserted by the teeth test).
+  const SETTINGS_WORDS = Object.freeze([
+    // en
+    "settings",
+    "preferences",
+    "manage",
+    "manage options",
+    "customize",
+    "more options",
+    // es
+    "ajustes",
+    "preferencias",
+    "gestionar",
+    // de
+    "einstellungen",
+    "verwalten",
+    // fr
+    "gerer",
+    "personnaliser",
+    // it
+    "impostazioni",
+    "personalizza",
+    // pt
+    "gerenciar",
+    // ja
+    "設定",
+    "環境設定",
+  ]);
+
+  /**
+   * The veto's bundled word lists (see the file docblock's "Word-list
+   * distribution" section — BUNDLED, never remote). Passed explicitly into
+   * computeClickVeto (dependency-injected, not read as a module-level
+   * implicit global) so the pure function stays trivially testable with
+   * adversarial fixtures.
+   */
+  const VETO_WORDS = Object.freeze({
+    deny: DENY_WORDS,
+    reject: REJECT_WORDS,
+    settings: SETTINGS_WORDS,
+  });
+
+  /**
+   * True when the normalized `w` occurs as a substring of either `name` or
+   * `folded` — substring (not word-boundary/token) matching is deliberate: it
+   * is the safe/greedy direction for the absolute DENY set ("Accept only
+   * necessary" must veto on the substring "accept" even though "necessary" is
+   * a reject hint) and is the only workable form for CJK scripts, which have
+   * no word boundaries. Never throws.
+   * @param {string} name
+   * @param {string} folded
+   * @param {ReadonlyArray<string>} words
+   * @returns {boolean}
+   */
+  function matchesAny(name, folded, words) {
+    const list = Array.isArray(words) ? words : [];
+    for (const w of list) {
+      if (typeof w !== "string" || w.length === 0) continue;
+      if (name.indexOf(w) !== -1 || folded.indexOf(w) !== -1) return true;
+    }
+    return false;
+  }
+
+  /**
+   * The semantic click-veto (LOAD-BEARING — see the file docblock). Decides
+   * whether a candidate control is safe to click, given its full accessible
+   * name and the ROLE the dispatcher intends to use it for.
+   *
+   * Precedence, evaluated strictly in order — first hit returns:
+   *   1. Empty/whitespace-only `accessibleName` -> VETO ("empty-name").
+   *      Covers icon-only / no-text controls and detached/hostile elements.
+   *   2. Any `wordLists.deny` entry matches -> VETO ("accept-word"). Absolute
+   *      and role-independent — wins over every allowlist match below.
+   *   3. Role-specific positive gate (the required word must be PRESENT):
+   *      - `role === "reject"` requires a `wordLists.reject` match, else
+   *        VETO ("no-reject-word").
+   *      - `role === "openSettings"` requires a `wordLists.settings` match,
+   *        else VETO ("no-settings-word").
+   *      - any other role -> VETO ("unknown-role").
+   *   4. Otherwise -> ALLOW ("ok").
+   *
+   * The only allow path is: non-empty name AND no accept word AND the role's
+   * required positive word present. Absence of signal always resolves to "do
+   * not click" — fail-closed by construction. Pure; never throws.
+   * @param {*} accessibleName
+   * @param {"reject"|"openSettings"} role
+   * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string> }} wordLists
+   * @returns {ClickVetoResult}
+   */
+  function computeClickVeto(accessibleName, role, wordLists) {
+    const { name, folded } = normalizeAccessibleName(accessibleName);
+    if (name.length === 0) return { allow: false, reason: "empty-name" };
+
+    const lists = wordLists && typeof wordLists === "object" ? wordLists : {};
+    if (matchesAny(name, folded, lists.deny)) return { allow: false, reason: "accept-word" };
+
+    if (role === "reject") {
+      if (!matchesAny(name, folded, lists.reject)) return { allow: false, reason: "no-reject-word" };
+      return { allow: true, reason: "ok" };
+    }
+    if (role === "openSettings") {
+      if (!matchesAny(name, folded, lists.settings)) return { allow: false, reason: "no-settings-word" };
+      return { allow: true, reason: "ok" };
+    }
+    return { allow: false, reason: "unknown-role" };
+  }
+  // @sync:cmp-tier2-veto:end
+
   let _spRejectActed = false;
   let _spPmOpened = false;
   let _spRejectGateOpen = false;
@@ -1615,6 +1838,28 @@
     }
   }
 
+  // Semantic click-veto drift signal (#1027, Slice 2 / PR A): console-only,
+  // warned at most ONCE per rule id + role — no network call, no telemetry
+  // (mirrors tier2WarnDrift's contract above). Fires when computeClickVeto
+  // rejects a resolved single target (bundled OR remote-origin selector
+  // resolved to an element whose accessible name did not clear the veto) so
+  // a maintainer can investigate selector drift without MUGA ever clicking
+  // the ambiguous/mislabeled control.
+  const _tier2VetoWarned = {};
+  function tier2WarnVeto(ruleId, role, reason) {
+    const key = ruleId + ":" + role;
+    if (_tier2VetoWarned[key]) return;
+    _tier2VetoWarned[key] = true;
+    try {
+      console.warn(
+        "[MUGA] cookie-consent: tier2:" + ruleId + " " + role +
+        " click vetoed (" + reason + ") — target not clicked"
+      );
+    } catch {
+      // console unavailable — nothing else to do.
+    }
+  }
+
   // Reuses the SAME bounded-poll mechanics as confirmRejectDismissal above
   // (REJECT_CONFIRM_WINDOW_MS / REJECT_CONFIRM_INTERVAL_MS, deadline +
   // interval, fail-safe-gone-on-error) — confirmRejectDismissal's own
@@ -1684,6 +1929,19 @@
       const rejectCandidates = tier2FilterCandidates(candidates, rule.reject);
       const result = resolveTier2Reject(present, rejectCandidates);
       if (result.status === "single") {
+        // Semantic click-veto (#1027, Slice 2 / PR A — LOAD-BEARING): a
+        // confirmed single target is STILL not clicked unless its real
+        // accessible name clears the veto. This is what makes a
+        // wrongly-matched selector (bundled OR remote) safe — see
+        // computeClickVeto's docblock above. Fail-closed: on veto, do NOT
+        // set _tier2Acted (a later observer pass may find a correctly
+        // labelled target once the DOM settles), warn once, and continue —
+        // the existing bounded give-up window already stops churn.
+        const veto = computeClickVeto(result.target.fullText, "reject", VETO_WORDS);
+        if (!veto.allow) {
+          tier2WarnVeto(rule.id, "reject", veto.reason);
+          continue;
+        }
         _tier2Acted[rule.id] = true;
         try {
           result.target.ref.click();
@@ -1700,6 +1958,16 @@
       if (_tier2PmOpened[rule.id]) continue;
       const openCandidates = tier2FilterCandidates(candidates, rule.openSettings);
       if (openCandidates.length !== 1) continue;
+      // Same semantic click-veto, role "openSettings" — its OWN positive
+      // settings-word set, stricter than Slice 1's "monotone-safe, click
+      // freely" stance because Slice 2 adds untrusted remote selectors to
+      // this same code path. Fail-closed: on veto, do NOT set
+      // _tier2PmOpened, warn once, continue.
+      const openVeto = computeClickVeto(openCandidates[0].fullText, "openSettings", VETO_WORDS);
+      if (!openVeto.allow) {
+        tier2WarnVeto(rule.id, "openSettings", openVeto.reason);
+        continue;
+      }
       _tier2PmOpened[rule.id] = true;
       try {
         openCandidates[0].ref.click();
