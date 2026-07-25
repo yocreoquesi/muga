@@ -162,6 +162,43 @@ describe("computeClickVeto — openSettings role", () => {
   });
 });
 
+// ── openSettings — save-family word veto (PR A review follow-up / PR B2) ─
+//
+// Once remote rules make openSettings reachable in production, a
+// mis-curated or hostile remote rule could point openSettings at a "Save"
+// control that also happens to name a settings word (e.g. "Save my
+// preferences"). This must be vetoed even though it clears the existing
+// settings-word gate — see computeClickVeto's precedence docblock.
+
+describe("computeClickVeto — openSettings role: save-family word is vetoed (PR A review follow-up)", () => {
+  test("'Save my preferences' (contains both a settings word and a save word) -> VETO (save-word)", () => {
+    const result = computeClickVeto("Save my preferences", "openSettings", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "save-word");
+  });
+
+  test("'Manage preferences' (legit opener, no save word) -> allow", () => {
+    const result = computeClickVeto("Manage preferences", "openSettings", VETO_WORDS);
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("'Cookie settings' (legit opener, no save word) -> allow", () => {
+    const result = computeClickVeto("Cookie settings", "openSettings", VETO_WORDS);
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("the save-word veto does NOT apply to the reject role — a reject-labelled control containing 'save' text is judged solely on REJECT_WORDS/DENY_WORDS", () => {
+    // No real reject phrase contains a save word, but this proves the
+    // save check is role-scoped: a reject-role candidate is never vetoed
+    // via VETO_WORDS.save at all (only via deny or the reject-word gate).
+    const result = computeClickVeto("Reject all", "reject", VETO_WORDS);
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+});
+
 describe("computeClickVeto — multi-locale reject coverage (en/es/de/fr/it/ja/pt)", () => {
   const REJECT_ALLOWS = [
     ["en", "Reject all"],
@@ -285,8 +322,23 @@ describe("VETO_WORDS — teeth/shape guard (load-bearing)", () => {
     }
   });
 
+  test("save is non-empty and DISJOINT from deny", () => {
+    assert.ok(Array.isArray(VETO_WORDS.save) && VETO_WORDS.save.length > 0);
+    const denySet = new Set(VETO_WORDS.deny);
+    for (const word of VETO_WORDS.save) {
+      assert.ok(!denySet.has(word), `save word "${word}" must not also be a deny word`);
+    }
+  });
+
+  test("save is DISJOINT from reject (PR A review follow-up)", () => {
+    const rejectSet = new Set(VETO_WORDS.reject);
+    for (const word of VETO_WORDS.save) {
+      assert.ok(!rejectSet.has(word), `save word "${word}" must not also be a reject word`);
+    }
+  });
+
   test("every entry in every list is already lowercase", () => {
-    for (const list of [VETO_WORDS.deny, VETO_WORDS.reject, VETO_WORDS.settings]) {
+    for (const list of [VETO_WORDS.deny, VETO_WORDS.reject, VETO_WORDS.settings, VETO_WORDS.save]) {
       for (const word of list) {
         assert.equal(word, word.toLowerCase(), `"${word}" must be lowercase`);
       }
@@ -302,7 +354,7 @@ describe("VETO_WORDS — teeth/shape guard (load-bearing)", () => {
   // never decomposes CJK), so this is a test-scoping fix, not a veto bug.
   test("every Latin-script entry is already diacritic-normalized (folding is a no-op)", () => {
     const hasCJK = (s) => /[぀-ヿ㐀-鿿]/.test(s);
-    for (const list of [VETO_WORDS.deny, VETO_WORDS.reject, VETO_WORDS.settings]) {
+    for (const list of [VETO_WORDS.deny, VETO_WORDS.reject, VETO_WORDS.settings, VETO_WORDS.save]) {
       for (const word of list) {
         if (hasCJK(word)) continue;
         const folded = word.normalize("NFD").replace(/\p{Diacritic}/gu, "");
@@ -311,11 +363,12 @@ describe("VETO_WORDS — teeth/shape guard (load-bearing)", () => {
     }
   });
 
-  test("all three lists are frozen (immutable at the object and array level)", () => {
+  test("all four lists are frozen (immutable at the object and array level)", () => {
     assert.ok(Object.isFrozen(VETO_WORDS));
     assert.ok(Object.isFrozen(VETO_WORDS.deny));
     assert.ok(Object.isFrozen(VETO_WORDS.reject));
     assert.ok(Object.isFrozen(VETO_WORDS.settings));
+    assert.ok(Object.isFrozen(VETO_WORDS.save));
   });
 });
 

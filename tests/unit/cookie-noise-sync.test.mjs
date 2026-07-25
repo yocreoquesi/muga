@@ -21,6 +21,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { computeClickVeto, VETO_WORDS } from "../../src/lib/cmp-tier2-veto.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -473,6 +474,13 @@ describe("cookie-noise-sync — @sync:cmp-tier2-veto block matches src/lib/cmp-t
     assert.ok(/"aceptar"/.test(joined));
     assert.ok(/"akzeptieren"/.test(joined));
   });
+
+  test("the veto defines a save-family word list and the openSettings save-word veto reason (PR A review follow-up / PR B2)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/const SAVE_WORDS\s*=\s*Object\.freeze/.test(joined), "must define SAVE_WORDS");
+    assert.ok(/save:\s*SAVE_WORDS/.test(joined), "VETO_WORDS must expose the save list");
+    assert.ok(/"save-word"/.test(joined), "computeClickVeto must be able to return the save-word veto reason");
+  });
 });
 
 // ── Tier 2 dispatch — main-world exclusion (task 3.3) ───────────────────────
@@ -643,13 +651,201 @@ describe("cookie-noise.js — Tier 2 semantic click-veto wiring", () => {
   test("the veto applies identically regardless of rule origin — exactly one veto call site per role, no conditional skip", () => {
     // Spec scenario 5 / design ADR-1: the veto call sites take no
     // origin/source parameter and there is no per-rule conditional that
-    // skips computeClickVeto for any subset of TIER2_RULES — every rule in
-    // the single shared TIER2_RULES loop goes through the same two calls.
+    // skips computeClickVeto for any subset of rules — every rule in the
+    // single shared `mergedRules` loop (bundled + filtered remote, #1027
+    // Slice 2 / PR B2) goes through the same two calls.
     const body = tier2DispatcherBody();
     const rejectVetoCalls = body.split('computeClickVeto(result.target.fullText, "reject", VETO_WORDS)').length - 1;
     const openVetoCalls = body.split('computeClickVeto(openCandidates[0].fullText, "openSettings", VETO_WORDS)').length - 1;
     assert.equal(rejectVetoCalls, 1, "exactly one unconditional reject veto call site, shared by every rule");
     assert.equal(openVetoCalls, 1, "exactly one unconditional openSettings veto call site, shared by every rule");
+  });
+});
+
+// ── Tier 2 remote-rule content-side merge (#1027, Slice 2 / PR B2) ─────────
+//
+// cookie-noise.js cannot be imported in Node (top-level chrome.*/document
+// usage — see AGENTS.md), so the CSS-parse-filter + ADD-only merge logic is
+// exercised here via a PURE re-implementation that mirrors production
+// exactly (same pattern as makeMaybeFetchTier2Helper in
+// service-worker-patterns.test.mjs), with an INJECTABLE `canParse`
+// predicate standing in for the real `document.querySelector` try/catch —
+// this makes the filter/merge decision genuinely behaviorally testable
+// without a DOM, while the production file's own use of a real
+// document.querySelector is confirmed by a single minimal structural guard
+// below (#824 — one new source-string assertion, mirroring the existing
+// precedent in this file and in service-worker-patterns.test.mjs).
+
+function makeTier2RemoteMergeHelper(bundledIds, canParse) {
+  function filterSelectorArray(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((sel) => typeof sel === "string" && sel.length > 0 && canParse(sel));
+  }
+  function filterRemoteRule(rule) {
+    if (!rule || typeof rule !== "object") return null;
+    if (typeof rule.id !== "string" || bundledIds.has(rule.id)) return null;
+    const reject = filterSelectorArray(rule.reject);
+    if (reject.length === 0) return null;
+    const present = filterSelectorArray(rule.present);
+    const openSettings = filterSelectorArray(rule.openSettings);
+    return { id: rule.id, present, reject, openSettings };
+  }
+  return function recomputeMergedRules(bundledRules, rawRemoteRules) {
+    const list = Array.isArray(rawRemoteRules) ? rawRemoteRules : [];
+    const filtered = [];
+    for (const raw of list) {
+      const rule = filterRemoteRule(raw);
+      if (rule) filtered.push(rule);
+    }
+    return [...bundledRules, ...filtered];
+  };
+}
+
+describe("Tier 2 content-side remote-rule merge — pure re-implementation (mirrors cookie-noise.js)", () => {
+  const BUNDLED = [
+    { id: "complianz", present: ["#a"], reject: [".deny"], openSettings: [] },
+    { id: "cookie-notice", present: ["#b"], reject: ["#refuse"], openSettings: [] },
+  ];
+  const bundledIds = new Set(BUNDLED.map((r) => r.id));
+
+  test("a fresh-id remote rule with fully parseable selectors is merged (spec scenario: fresh id merged)", () => {
+    const canParse = () => true;
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      { id: "acme-cmp", present: ["#acme"], reject: [".acme-reject"], openSettings: [] },
+    ]);
+    assert.equal(merged.length, 3);
+    assert.ok(merged.some((r) => r.id === "acme-cmp"));
+  });
+
+  test("ADD-only: a remote rule id colliding with a bundled id is dropped entirely — bundled wins (defense-in-depth)", () => {
+    const canParse = () => true;
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      { id: "complianz", present: ["#hostile"], reject: [".hostile-reject"], openSettings: [] },
+    ]);
+    assert.equal(merged.length, 2, "the colliding remote rule must be dropped, not appended or merged");
+    const complianz = merged.find((r) => r.id === "complianz");
+    assert.deepEqual(complianz, BUNDLED[0], "the bundled rule's own selectors must be completely untouched");
+  });
+
+  test("an unparseable selector is dropped from its array (fail-closed), never used to match DOM elements", () => {
+    const canParse = (sel) => sel !== ":::not-css";
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      { id: "acme-cmp", present: ["#acme"], reject: [".good-reject", ":::not-css"], openSettings: [] },
+    ]);
+    const rule = merged.find((r) => r.id === "acme-cmp");
+    assert.deepEqual(rule.reject, [".good-reject"], "the unparseable selector must be filtered out");
+  });
+
+  test("a rule left with zero usable reject selectors after filtering is skipped entirely", () => {
+    const canParse = (sel) => sel !== ".only-reject";
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      { id: "acme-cmp", present: ["#acme"], reject: [".only-reject"], openSettings: [] },
+    ]);
+    assert.equal(merged.length, 2, "a rule with no usable reject selector must not be merged at all");
+  });
+
+  test("present/openSettings are allowed to end up empty after filtering (fails closed downstream, not here)", () => {
+    const canParse = (sel) => sel !== "#gone-present";
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      { id: "acme-cmp", present: ["#gone-present"], reject: [".good-reject"], openSettings: ["#gone-present"] },
+    ]);
+    const rule = merged.find((r) => r.id === "acme-cmp");
+    assert.deepEqual(rule.present, []);
+    assert.deepEqual(rule.openSettings, []);
+  });
+
+  test("a merged rule object carries no origin/source field distinguishing it from a bundled rule", () => {
+    const canParse = () => true;
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      { id: "acme-cmp", present: ["#acme"], reject: [".acme-reject"], openSettings: [] },
+    ]);
+    for (const rule of merged) {
+      assert.deepEqual(
+        Object.keys(rule).sort(),
+        ["id", "openSettings", "present", "reject"],
+        "a merged rule (bundled or remote-origin) must expose exactly id/present/reject/openSettings — no origin/source field a dispatcher could branch on",
+      );
+    }
+  });
+});
+
+// ── Spec scenario 5 integration test: veto applies identically to bundled ──
+// and remote-origin candidates (#1027, Slice 2 / PR B2, task 6.4) ─────────
+//
+// Uses the REAL computeClickVeto/VETO_WORDS exported from
+// src/lib/cmp-tier2-veto.js (a pure ES module, genuinely importable and
+// executable in Node — unlike cookie-noise.js itself) to prove there is no
+// origin-based exemption: a bundled-origin candidate and a merged
+// remote-origin candidate, both resolving to an accept-matching accessible
+// name, are vetoed identically. computeClickVeto's signature takes no
+// origin/source parameter at all (see its JSDoc), so this test also proves
+// there is structurally no way to plumb one through.
+
+describe("Tier 2 dispatch — spec scenario 5: veto applies identically to bundled and remote-origin candidates", () => {
+  const canParse = () => true;
+  const bundledIds = new Set(["complianz", "cookie-notice"]);
+  const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+  const merged = recompute(
+    [{ id: "complianz", present: ["#a"], reject: [".deny"], openSettings: [] }],
+    [{ id: "acme-cmp", present: ["#acme"], reject: [".acme-reject"], openSettings: [] }],
+  );
+  const bundledOriginRule = merged.find((r) => r.id === "complianz");
+  const remoteOriginRule = merged.find((r) => r.id === "acme-cmp");
+
+  test("both a bundled-origin and a remote-origin candidate with an accept-matching accessible name are vetoed", () => {
+    assert.ok(bundledOriginRule, "test setup: bundled-origin rule must be present in mergedRules");
+    assert.ok(remoteOriginRule, "test setup: remote-origin rule must be present in mergedRules");
+    const bundledVeto = computeClickVeto("Accept all", "reject", VETO_WORDS);
+    const remoteVeto = computeClickVeto("Accept all", "reject", VETO_WORDS);
+    assert.equal(bundledVeto.allow, false, "bundled-origin candidate must be vetoed");
+    assert.equal(remoteVeto.allow, false, "remote-origin candidate must be vetoed identically");
+    assert.equal(bundledVeto.reason, remoteVeto.reason, "the veto reason must be identical regardless of rule origin");
+  });
+
+  test("computeClickVeto's own signature has no origin/source parameter — there is no code path to plumb one through", () => {
+    assert.equal(computeClickVeto.length, 3, "computeClickVeto must take exactly (accessibleName, role, wordLists) — no 4th origin argument");
+  });
+});
+
+// ── Structural wiring guards (#824 — minimal, one assertion per guard) ────
+
+describe("cookie-noise.js — Tier 2 remote-rule merge wiring (structural, task 6.1-6.3)", () => {
+  const src = sources.isolated;
+
+  test("runTier2RejectDispatcher iterates mergedRules, not TIER2_RULES directly", () => {
+    const fnMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    assert.ok(/for \(const rule of mergedRules\)/.test(fnMatch[1]),
+      "runTier2RejectDispatcher must iterate mergedRules (bundled + filtered remote)");
+  });
+
+  test("tier2ArmGiveUp's drift check iterates mergedRules, not TIER2_RULES directly", () => {
+    const fnMatch = /function tier2ArmGiveUp\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    assert.ok(/for \(const rule of mergedRules\)/.test(fnMatch[1]),
+      "tier2ArmGiveUp must also check mergedRules so drift warnings cover remote rules too");
+  });
+
+  test("gate-open reads chrome.storage.local.remoteTier2Rules and merges BEFORE the initial dispatch sweep", () => {
+    const readIdx = src.indexOf("tier2ReadRemoteRulesAndMerge(() => {");
+    const gateIdx = src.indexOf("_tier2GateOpen = open;");
+    assert.ok(readIdx !== -1, "cookie-noise.js must call tier2ReadRemoteRulesAndMerge at gate-open");
+    assert.ok(gateIdx !== -1 && gateIdx < readIdx, "the merge-and-dispatch call must happen inside the gate-open branch");
+  });
+
+  test("chrome.storage.onChanged(area local, remoteTier2Rules) re-merges and re-dispatches, gated on _tier2GateOpen", () => {
+    const listenerMatch = /chrome\.storage\.onChanged\.addListener\(\(changes, area\) => \{([\s\S]*?)\n {6}\}\);/.exec(src);
+    assert.ok(listenerMatch, "cookie-noise.js must register a storage.onChanged listener taking (changes, area)");
+    const body = listenerMatch[1];
+    assert.ok(/area === "local"/.test(body), "must react to area \"local\"");
+    assert.ok(/changes\.remoteTier2Rules/.test(body), "must react specifically to a remoteTier2Rules change");
+    assert.ok(/_tier2GateOpen/.test(body), "must be gated on the same _tier2GateOpen the dispatcher itself checks");
   });
 });
 

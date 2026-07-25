@@ -52,12 +52,30 @@
  * "require a role word" gate degrades an uncovered locale to a coverage
  * gap (fail-closed no-op), never a wrong click.
  *
+ * ── openSettings ALSO vetoes on a save-family word (PR A review follow-up,
+ * folded into PR B2) ────────────────────────────────────────────────────
+ *
+ * Once remote rules make `openSettings` reachable in production (PR B2), a
+ * mis-curated or hostile remote rule could point `openSettings` at a
+ * control whose accessible name is something like "Save my preferences" —
+ * a settings-word match ("preferences") would otherwise let it pass the
+ * positive gate below, but clicking it PERSISTS whatever consent state is
+ * currently selected, which is not a neutral settings-opening action (the
+ * two-step hop is only safe because opening a panel grants nothing by
+ * itself — see the openSettings role's docblock in computeClickVeto).
+ * `VETO_WORDS.save` is therefore checked, role-scoped to `openSettings`
+ * only (it does not apply to `reject`), IN ADDITION TO the existing
+ * require-a-settings-word gate: a target must match a settings word AND
+ * must NOT match a save word to be clicked. Legit settings-openers like
+ * "Manage preferences" or "Cookie settings" contain no save word and are
+ * unaffected.
+ *
  * @typedef {object} ClickVetoResult
  * @property {boolean} allow - true only when the accessible name is
  *   non-empty, matches no accept/agree word, AND matches the role's
- *   required positive word.
+ *   required positive word (and, for openSettings, matches no save word).
  * @property {string} reason - one of "empty-name", "accept-word",
- *   "no-reject-word", "no-settings-word", "unknown-role", "ok".
+ *   "no-reject-word", "no-settings-word", "save-word", "unknown-role", "ok".
  */
 
 // @sync:cmp-tier2-veto:start
@@ -193,6 +211,43 @@ const SETTINGS_WORDS = Object.freeze([
   "環境設定",
 ]);
 
+// Save/persist words — checked ONLY for a `role: "openSettings"` candidate,
+// IN ADDITION TO the SETTINGS_WORDS positive gate (see the file docblock's
+// "openSettings ALSO vetoes on a save-family word" section). A
+// settings-OPENER must not double as a consent-committing "Save" action.
+// DISJOINT from DENY_WORDS and REJECT_WORDS by construction (asserted by
+// the teeth test) — it deliberately overlaps with SETTINGS_WORDS in
+// spirit (a "save preferences" phrase legitimately contains a settings
+// word too), which is expected: the save check runs as an ADDITIONAL veto
+// step, not a replacement for the settings gate.
+const SAVE_WORDS = Object.freeze([
+  // en
+  "save",
+  "save preferences",
+  "save settings",
+  "save my preferences",
+  "save choices",
+  // es
+  "guardar",
+  "guardar preferencias",
+  "guardar mis preferencias",
+  // de
+  "speichern",
+  "einstellungen speichern",
+  // fr
+  "enregistrer",
+  "enregistrer mes preferences",
+  // it
+  "salva",
+  "salva le preferenze",
+  // pt
+  "salvar",
+  "salvar preferencias",
+  // ja
+  "保存",
+  "保存する",
+]);
+
 /**
  * The veto's bundled word lists (see the file docblock's "Word-list
  * distribution" section — BUNDLED, never remote). Passed explicitly into
@@ -204,6 +259,7 @@ const VETO_WORDS = Object.freeze({
   deny: DENY_WORDS,
   reject: REJECT_WORDS,
   settings: SETTINGS_WORDS,
+  save: SAVE_WORDS,
 });
 
 /**
@@ -241,16 +297,23 @@ function matchesAny(name, folded, words) {
  *      - `role === "reject"` requires a `wordLists.reject` match, else
  *        VETO ("no-reject-word").
  *      - `role === "openSettings"` requires a `wordLists.settings` match,
- *        else VETO ("no-settings-word").
+ *        else VETO ("no-settings-word"); IN ADDITION, if `wordLists.save`
+ *        also matches -> VETO ("save-word") — a settings-OPENER must not
+ *        double as a consent-committing "Save" action (see the file
+ *        docblock's "openSettings ALSO vetoes on a save-family word"
+ *        section). Checked AFTER the settings-word gate passes, since a
+ *        save-labelled control (e.g. "Save my preferences") typically
+ *        also contains a settings word and would otherwise clear step 3.
  *      - any other role -> VETO ("unknown-role").
  *   4. Otherwise -> ALLOW ("ok").
  *
  * The only allow path is: non-empty name AND no accept word AND the role's
- * required positive word present. Absence of signal always resolves to "do
- * not click" — fail-closed by construction. Pure; never throws.
+ * required positive word present (AND, for openSettings, no save word
+ * present). Absence of signal always resolves to "do not click" —
+ * fail-closed by construction. Pure; never throws.
  * @param {*} accessibleName
  * @param {"reject"|"openSettings"} role
- * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string> }} wordLists
+ * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string>, save: ReadonlyArray<string> }} wordLists
  * @returns {ClickVetoResult}
  */
 function computeClickVeto(accessibleName, role, wordLists) {
@@ -266,6 +329,7 @@ function computeClickVeto(accessibleName, role, wordLists) {
   }
   if (role === "openSettings") {
     if (!matchesAny(name, folded, lists.settings)) return { allow: false, reason: "no-settings-word" };
+    if (matchesAny(name, folded, lists.save)) return { allow: false, reason: "save-word" };
     return { allow: true, reason: "ok" };
   }
   return { allow: false, reason: "unknown-role" };
