@@ -333,6 +333,188 @@ describe("cookie-noise-sync — @sync:cmp-sp-reject-click block matches src/lib/
   });
 });
 
+// ── @sync:cmp-tier2-rules block (Tier 2 declarative reject-click rule data) ─
+//
+// TIER2_RULES is a frozen array in src/lib/cmp-tier2-rules.js (unit-tested
+// there) whose body is hand-inlined ONLY into content/cookie-noise.js
+// (isolated world) — mirrors the @sync:site-exempt precedent: the lib copy
+// carries an `export` keyword content scripts cannot use, so the comparison
+// strips a leading `export ` token from each line before comparing.
+
+const TIER2_RULES_FILES = {
+  lib: join(__dirname, "../../src/lib/cmp-tier2-rules.js"),
+  isolated: FILES.isolated,
+};
+
+const tier2RulesSources = {
+  lib: readFileSync(TIER2_RULES_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const TIER2_RULES_START = "@sync:cmp-tier2-rules:start";
+const TIER2_RULES_END = "@sync:cmp-tier2-rules:end";
+
+function extractTier2RulesBlock(source, label) {
+  return extractMarkedBlock(source, TIER2_RULES_START, TIER2_RULES_END, label)
+    .map((l) => l.replace(/^export\s+/, ""));
+}
+
+describe("cookie-noise-sync — @sync:cmp-tier2-rules block matches src/lib/cmp-tier2-rules.js", () => {
+  const libBlock = extractTier2RulesBlock(tier2RulesSources.lib, "cmp-tier2-rules.js");
+  const isolatedBlock = extractTier2RulesBlock(tier2RulesSources.isolated, "cookie-noise.js");
+
+  test("tier2-rules sync block is non-empty and defines TIER2_RULES", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:cmp-tier2-rules block must not be empty — check the markers");
+    assert.ok(/const TIER2_RULES\s*=\s*Object\.freeze/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js @sync:cmp-tier2-rules block matches src/lib/cmp-tier2-rules.js (modulo the export keyword)", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cmp-tier2-rules block has drifted from src/lib/cmp-tier2-rules.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:cmp-tier2-rules block (Tier 2 is isolated-world only)", () => {
+    assert.equal(sources.mainworld.includes(TIER2_RULES_START), false,
+      "cookie-noise-mainworld.js must not inline the Tier 2 rule data — this mechanism is isolated-world only");
+  });
+
+  test("neither seed rule defines an accept-family field (no field beyond id/present/reject/openSettings)", () => {
+    const joined = libBlock.join("\n");
+    assert.doesNotMatch(joined, /allowall|accept/i);
+  });
+});
+
+// ── @sync:cmp-tier2 block (Tier 2 fail-closed reject resolution) ───────────
+//
+// resolveTier2Reject is a pure helper in src/lib/cmp-adapters.js (unit-tested
+// there) whose body is hand-inlined ONLY into content/cookie-noise.js
+// (isolated world) — mirrors the @sync:cmp-sp-reject-click precedent: a DOM
+// click needs neither a page-authored global nor the MAIN world.
+
+const TIER2_START = "@sync:cmp-tier2:start";
+const TIER2_END = "@sync:cmp-tier2:end";
+
+describe("cookie-noise-sync — @sync:cmp-tier2 block matches src/lib/cmp-adapters.js", () => {
+  const libBlock = extractMarkedBlock(sources.lib, TIER2_START, TIER2_END, "cmp-adapters.js");
+  const isolatedBlock = extractMarkedBlock(sources.isolated, TIER2_START, TIER2_END, "cookie-noise.js");
+
+  test("tier2 resolver sync block is non-empty and defines resolveTier2Reject", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:cmp-tier2 block must not be empty — check the markers");
+    assert.ok(/function resolveTier2Reject/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js @sync:cmp-tier2 block matches src/lib/cmp-adapters.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cmp-tier2 block has drifted from src/lib/cmp-adapters.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:cmp-tier2 block (Tier 2 is isolated-world only)", () => {
+    assert.equal(sources.mainworld.includes(TIER2_START), false,
+      "cookie-noise-mainworld.js must not inline the Tier 2 resolver — this mechanism is isolated-world only");
+  });
+});
+
+// ── Tier 2 dispatch — main-world exclusion (task 3.3) ───────────────────────
+//
+// Tier 2's DOM query-and-click capability must live ONLY in the isolated
+// content-script world (content/cookie-noise.js), never in
+// content/cookie-noise-mainworld.js — mirrors the identical guard for the
+// Sourcepoint reject-click dispatch above.
+
+describe("cookie-noise-mainworld.js — no Tier 2 query/click logic of any kind", () => {
+  const TIER2_IDENTIFIERS = [
+    "runTier2RejectDispatcher",
+    "resolveTier2Reject",
+    "TIER2_RULES",
+    "tier2Confirmed",
+    "tier2StartObserver",
+    "tier2StopObserver",
+    "confirmTier2RejectDismissal",
+    "tier2WarnDrift",
+  ];
+
+  for (const identifier of TIER2_IDENTIFIERS) {
+    test(`cookie-noise-mainworld.js does not contain "${identifier}"`, () => {
+      assert.equal(sources.mainworld.includes(identifier), false,
+        `cookie-noise-mainworld.js must not contain "${identifier}" — Tier 2 is isolated-world only`);
+    });
+  }
+});
+
+// ── Tier 2 reject-click dispatch — structural guards ────────────────────────
+//
+// Mirrors the Sourcepoint reject-click structural guards above: prove the
+// click call site is gated on a confirmed single target before ever
+// clicking, marks a rule acted only after a real click (never on mere
+// detection or on opening the settings hop), and the drift-warning path
+// makes no network/telemetry call of any kind (console-only, per Decision 7).
+
+describe("cookie-noise.js — Tier 2 reject-click dispatch structural guards", () => {
+  test("runTier2RejectDispatcher gates on resolveTier2Reject's single status before ever clicking", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define runTier2RejectDispatcher()");
+    const body = fnMatch[1];
+    const resolveIdx = body.indexOf("resolveTier2Reject(");
+    const clickIdx = body.indexOf(".ref.click(");
+    assert.ok(resolveIdx !== -1, "must call resolveTier2Reject");
+    assert.ok(clickIdx !== -1, "must call .ref.click()");
+    assert.ok(resolveIdx < clickIdx, "runTier2RejectDispatcher must resolve resolveTier2Reject before ever clicking");
+  });
+
+  test("the dispatcher marks a rule's _tier2Acted only INSIDE the confirmed-single reject branch, never on mere detection or on opening the settings hop (no false success)", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    const singleBranchIdx = body.indexOf('if (result.status === "single") {');
+    const actedIdx = body.indexOf("_tier2Acted[rule.id] = true;");
+    const pmOpenedIdx = body.indexOf("_tier2PmOpened[rule.id] = true;");
+    assert.ok(singleBranchIdx !== -1, "the reject click must be gated on a confirmed single target");
+    assert.ok(actedIdx !== -1, "must set _tier2Acted[rule.id] = true");
+    assert.equal(body.split("_tier2Acted[rule.id] = true;").length - 1, 1, "_tier2Acted must be set in exactly one place");
+    assert.ok(singleBranchIdx < actedIdx, "_tier2Acted must only be set AFTER confirming a single reject target");
+    assert.ok(pmOpenedIdx !== -1, "the open-settings hop must be guarded by _tier2PmOpened");
+    assert.ok(actedIdx < pmOpenedIdx, "the open-settings branch comes after the reject branch and must not set _tier2Acted");
+  });
+
+  test("the Tier 2 gate (_tier2GateOpen, from the same reject master gate as the Tier-1 API ladder and the Sourcepoint fallback) is checked before the dispatch runs", () => {
+    assert.ok(/_tier2GateOpen/.test(sources.isolated));
+  });
+
+  test("Tier 2 dispatch reuses the existing reject master gate (`open`) — no separate Tier 2 pref/toggle is read", () => {
+    const src = sources.isolated;
+    // Excludes the `let _tier2GateOpen = false;` declaration — only the
+    // real wiring assignment (inside readPrefsAndGate) is relevant here.
+    const assignments = [...src.matchAll(/(?<!let )_tier2GateOpen\s*=\s*(\w+);/g)].map((m) => m[1]);
+    assert.ok(assignments.length > 0, "cookie-noise.js must assign _tier2GateOpen from a variable");
+    assert.ok(
+      assignments.includes("open"),
+      "_tier2GateOpen must be assigned from the same `open` gate value as _spRejectGateOpen — no new gate",
+    );
+  });
+
+  test("the drift-warning path (tier2WarnDrift, confirmTier2RejectDismissal, tier2ArmGiveUp) makes no network/telemetry call — console-only", () => {
+    const src = sources.isolated;
+    const NETWORK_PATTERN = /sendMessage|fetch\s*\(|XMLHttpRequest|sendBeacon/;
+    for (const fnName of ["tier2WarnDrift", "confirmTier2RejectDismissal", "tier2ArmGiveUp"]) {
+      const fnMatch = new RegExp(`function ${fnName}\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\n  \\}`).exec(src);
+      assert.ok(fnMatch, `cookie-noise.js must define ${fnName}()`);
+      assert.doesNotMatch(fnMatch[1], NETWORK_PATTERN, `${fnName} must not make any network/telemetry call`);
+    }
+  });
+
+  test("tier2WarnDrift only ever warns once per rule id (guarded by _tier2Warned)", () => {
+    assert.ok(/_tier2Warned\[ruleId\]/.test(sources.isolated));
+  });
+});
+
 // ── Content-script structural shape ─────────────────────────────────────────
 
 describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {

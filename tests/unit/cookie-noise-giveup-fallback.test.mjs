@@ -151,15 +151,18 @@ describe("cookie-noise.js fxArmGiveUp() — bounded fallback (FIX C, Firefox pat
     vm.createContext(sandbox);
     vm.runInContext(isolatedSource, sandbox, { filename: "content/cookie-noise.js" });
 
-    // TWO observers start on an open reject gate: the Firefox fxRunDispatcher
-    // observer (index 0, started first in readPrefsAndGate) AND the
-    // Sourcepoint reject-click DOM-fallback observer (index 1, gated by the
-    // SAME reject master gate, independent of _isFirefox — see
-    // content/cookie-noise.js's runSpRejectClickDispatcher()).
-    assert.equal(FakeMutationObserver.instances.length, 2, "an active gate on Firefox must start both the fx reject observer and the SP reject-click observer");
-    const [observer, spRejectObserver] = FakeMutationObserver.instances;
+    // THREE observers start on an open reject gate: the Firefox
+    // fxRunDispatcher observer (index 0, started first in readPrefsAndGate),
+    // the Sourcepoint reject-click DOM-fallback observer (index 1, gated by
+    // the SAME reject master gate, independent of _isFirefox — see
+    // content/cookie-noise.js's runSpRejectClickDispatcher()), and the Tier 2
+    // declarative reject-click dispatcher observer (index 2, same gate — see
+    // runTier2RejectDispatcher()).
+    assert.equal(FakeMutationObserver.instances.length, 3, "an active gate on Firefox must start the fx reject observer, the SP reject-click observer, and the Tier 2 reject-click observer");
+    const [observer, spRejectObserver, tier2Observer] = FakeMutationObserver.instances;
     assert.equal(observer.disconnected, false, "must not be disconnected immediately after arming");
     assert.equal(spRejectObserver.disconnected, false, "the SP reject-click observer must not be disconnected immediately after arming either");
+    assert.equal(tier2Observer.disconnected, false, "the Tier 2 reject-click observer must not be disconnected immediately after arming either");
 
     t.mock.timers.tick(GIVE_UP_AFTER_DOM_READY_MS);
 
@@ -172,6 +175,11 @@ describe("cookie-noise.js fxArmGiveUp() — bounded fallback (FIX C, Firefox pat
       spRejectObserver.disconnected,
       true,
       "the SP reject-click observer must ALSO disconnect within its own give-up window",
+    );
+    assert.equal(
+      tier2Observer.disconnected,
+      true,
+      "the Tier 2 reject-click observer must ALSO disconnect within its own give-up window",
     );
   });
 });
