@@ -1574,6 +1574,43 @@
     "環境設定",
   ]);
 
+  // Save/persist words — checked ONLY for a `role: "openSettings"` candidate,
+  // IN ADDITION TO the SETTINGS_WORDS positive gate (see the file docblock's
+  // "openSettings ALSO vetoes on a save-family word" section). A
+  // settings-OPENER must not double as a consent-committing "Save" action.
+  // DISJOINT from DENY_WORDS and REJECT_WORDS by construction (asserted by
+  // the teeth test) — it deliberately overlaps with SETTINGS_WORDS in
+  // spirit (a "save preferences" phrase legitimately contains a settings
+  // word too), which is expected: the save check runs as an ADDITIONAL veto
+  // step, not a replacement for the settings gate.
+  const SAVE_WORDS = Object.freeze([
+    // en
+    "save",
+    "save preferences",
+    "save settings",
+    "save my preferences",
+    "save choices",
+    // es
+    "guardar",
+    "guardar preferencias",
+    "guardar mis preferencias",
+    // de
+    "speichern",
+    "einstellungen speichern",
+    // fr
+    "enregistrer",
+    "enregistrer mes preferences",
+    // it
+    "salva",
+    "salva le preferenze",
+    // pt
+    "salvar",
+    "salvar preferencias",
+    // ja
+    "保存",
+    "保存する",
+  ]);
+
   /**
    * The veto's bundled word lists (see the file docblock's "Word-list
    * distribution" section — BUNDLED, never remote). Passed explicitly into
@@ -1585,6 +1622,7 @@
     deny: DENY_WORDS,
     reject: REJECT_WORDS,
     settings: SETTINGS_WORDS,
+    save: SAVE_WORDS,
   });
 
   /**
@@ -1622,16 +1660,23 @@
    *      - `role === "reject"` requires a `wordLists.reject` match, else
    *        VETO ("no-reject-word").
    *      - `role === "openSettings"` requires a `wordLists.settings` match,
-   *        else VETO ("no-settings-word").
+   *        else VETO ("no-settings-word"); IN ADDITION, if `wordLists.save`
+   *        also matches -> VETO ("save-word") — a settings-OPENER must not
+   *        double as a consent-committing "Save" action (see the file
+   *        docblock's "openSettings ALSO vetoes on a save-family word"
+   *        section). Checked AFTER the settings-word gate passes, since a
+   *        save-labelled control (e.g. "Save my preferences") typically
+   *        also contains a settings word and would otherwise clear step 3.
    *      - any other role -> VETO ("unknown-role").
    *   4. Otherwise -> ALLOW ("ok").
    *
    * The only allow path is: non-empty name AND no accept word AND the role's
-   * required positive word present. Absence of signal always resolves to "do
-   * not click" — fail-closed by construction. Pure; never throws.
+   * required positive word present (AND, for openSettings, no save word
+   * present). Absence of signal always resolves to "do not click" —
+   * fail-closed by construction. Pure; never throws.
    * @param {*} accessibleName
    * @param {"reject"|"openSettings"} role
-   * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string> }} wordLists
+   * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string>, save: ReadonlyArray<string> }} wordLists
    * @returns {ClickVetoResult}
    */
   function computeClickVeto(accessibleName, role, wordLists) {
@@ -1647,6 +1692,7 @@
     }
     if (role === "openSettings") {
       if (!matchesAny(name, folded, lists.settings)) return { allow: false, reason: "no-settings-word" };
+      if (matchesAny(name, folded, lists.save)) return { allow: false, reason: "save-word" };
       return { allow: true, reason: "ok" };
     }
     return { allow: false, reason: "unknown-role" };
@@ -1914,10 +1960,115 @@
     return matches;
   }
 
+  // ── Tier 2 remote-rule content-side merge (#1027, Slice 2 / PR B2) ────────
+  //
+  // The background pipeline (src/lib/remote-tier2-rules.js, PR B1) fetches,
+  // signature-verifies, and shape/cap/token-validates a signed Tier2
+  // payload, then writes it storage-only to chrome.storage.local under
+  // remoteTier2Rules — there is no DOM in a service worker, so CSS
+  // parseability could not be checked there (design ADR-4/ADR-7). Every
+  // remote selector is therefore re-checked HERE, content-side, at
+  // gate-open and again on every chrome.storage.onChanged(local) update to
+  // remoteTier2Rules, via a REAL document.querySelector(...) call wrapped
+  // in try/catch: an unparseable or throwing selector is dropped,
+  // fail-closed, and is never used to match a DOM element. ADD-only merge
+  // (design ADR-5): a remote rule whose id collides with a bundled
+  // TIER2_RULES id is dropped entirely (bundled wins) — defense-in-depth on
+  // top of remote-tier2-rules.js's own ID_COLLISION rejection at fetch
+  // time, so a bundled rule can never be shadowed by a remote one even if a
+  // future bug let a colliding id slip past the background validator.
+  // runTier2RejectDispatcher and tier2ArmGiveUp below iterate `mergedRules`
+  // (bundled + filtered remote), never TIER2_RULES directly, once this
+  // module has run at least once — `mergedRules` starts equal to
+  // TIER2_RULES so a page that never reads storage (e.g. chrome.storage
+  // unavailable) still gets full bundled-rule behavior.
+
+  const BUNDLED_TIER2_IDS = new Set(TIER2_RULES.map((r) => r.id));
+  let mergedRules = TIER2_RULES;
+
+  // True when `sel` parses as valid CSS, proven by a real DOM query rather
+  // than a regex/heuristic guess. A syntax error (or any other exception)
+  // is treated as unparseable. A selector that parses but matches nothing
+  // on the current page still returns true here — this is a SYNTAX check,
+  // not a match check. Never throws.
+  function tier2SelectorParses(sel) {
+    if (typeof sel !== "string" || sel.length === 0) return false;
+    try {
+      document.querySelector(sel);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function tier2FilterSelectorArray(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((sel) => tier2SelectorParses(sel));
+  }
+
+  // Fail-closed content-side gate for a single remote rule: drops it
+  // entirely on a bundled-id collision (ADD-only, bundled wins) or once its
+  // `reject` array has zero usable (CSS-parseable) selectors left — a rule
+  // with no reject target left is pointless to keep around. `present` and
+  // `openSettings` are also filtered but are allowed to end up empty: an
+  // empty `present` already fails closed via the existing
+  // document.querySelector(rule.present.join(",")) try/catch in
+  // runTier2RejectDispatcher below (an empty join(",") throws a syntax
+  // error -> present=false -> the rule is skipped for that pass, exactly
+  // like an absent anchor). Never throws.
+  function tier2FilterRemoteRule(rule) {
+    if (!rule || typeof rule !== "object") return null;
+    if (typeof rule.id !== "string" || BUNDLED_TIER2_IDS.has(rule.id)) return null;
+    const reject = tier2FilterSelectorArray(rule.reject);
+    if (reject.length === 0) return null;
+    const present = tier2FilterSelectorArray(rule.present);
+    const openSettings = tier2FilterSelectorArray(rule.openSettings);
+    return Object.freeze({
+      id: rule.id,
+      present: Object.freeze(present),
+      reject: Object.freeze(reject),
+      openSettings: Object.freeze(openSettings),
+    });
+  }
+
+  function tier2RecomputeMergedRules(rawRemoteRules) {
+    const list = Array.isArray(rawRemoteRules) ? rawRemoteRules : [];
+    const filtered = [];
+    for (const raw of list) {
+      const rule = tier2FilterRemoteRule(raw);
+      if (rule) filtered.push(rule);
+    }
+    mergedRules = Object.freeze([...TIER2_RULES, ...filtered]);
+  }
+
+  // Reads chrome.storage.local.remoteTier2Rules and recomputes
+  // `mergedRules`. Fails closed to the bundled-only set on any error or
+  // absent chrome.storage — a broken/unavailable storage read never
+  // blocks bundled Tier 2 dispatch, it just means no remote rules are
+  // active for this pass. `callback` (optional) runs after the recompute,
+  // whether it resolved via storage or via a fail-closed fallback.
+  function tier2ReadRemoteRulesAndMerge(callback) {
+    try {
+      if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
+        tier2RecomputeMergedRules([]);
+        if (callback) callback();
+        return;
+      }
+      chrome.storage.local.get({ remoteTier2Rules: [] }, (result) => {
+        void chrome.runtime.lastError;
+        tier2RecomputeMergedRules(result && result.remoteTier2Rules);
+        if (callback) callback();
+      });
+    } catch {
+      tier2RecomputeMergedRules([]);
+      if (callback) callback();
+    }
+  }
+
   function runTier2RejectDispatcher() {
     if (!_tier2GateOpen) return;
     const candidates = collectAcceptCandidates();
-    for (const rule of TIER2_RULES) {
+    for (const rule of mergedRules) {
       if (_tier2Acted[rule.id]) continue;
       let present = false;
       try {
@@ -1987,7 +2138,7 @@
     if (_tier2GiveUpArmed) return;
     _tier2GiveUpArmed = true;
     const giveUp = () => {
-      for (const rule of TIER2_RULES) {
+      for (const rule of mergedRules) {
         if (_tier2Acted[rule.id]) continue;
         let present = false;
         try {
@@ -2076,8 +2227,15 @@
         // isSiteFullyExempt) — see computeCookieGate above.
         _tier2GateOpen = open;
         if (_tier2GateOpen) {
-          runTier2RejectDispatcher(); // initial sweep — the banner may already exist
-          tier2StartObserver();
+          // #1027 Slice 2 / PR B2: read chrome.storage.local.remoteTier2Rules
+          // and CSS-parse-filter + ADD-only merge it with TIER2_RULES BEFORE
+          // the initial dispatch sweep, so a page whose gate opens after the
+          // background pipeline (PR B1) has already cached remote rules gets
+          // them from the very first sweep.
+          tier2ReadRemoteRulesAndMerge(() => {
+            runTier2RejectDispatcher(); // initial sweep — the banner may already exist
+            tier2StartObserver();
+          });
         } else {
           tier2StopObserver();
         }
@@ -2095,8 +2253,16 @@
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
     if (!_storageListenerInstalled) {
       _storageListenerInstalled = true;
-      chrome.storage.onChanged.addListener((_changes, area) => {
+      chrome.storage.onChanged.addListener((changes, area) => {
         if (area === "sync") readPrefsAndGate();
+        // #1027 Slice 2 / PR B2: the background pipeline (PR B1) may cache
+        // a fresh signed Tier2 payload at any time via chrome.storage.local
+        // — re-filter/merge and re-dispatch immediately, but ONLY while the
+        // reject gate is open (a closed gate must not react to this at all,
+        // same posture as every other Tier 2 dispatch entry point).
+        if (area === "local" && changes && changes.remoteTier2Rules && _tier2GateOpen) {
+          tier2ReadRemoteRulesAndMerge(() => runTier2RejectDispatcher());
+        }
       });
     }
   }
