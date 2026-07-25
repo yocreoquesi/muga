@@ -32,6 +32,11 @@ import {
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
+// #1027 Slice 2 PR B1: sibling Tier2 remote-rules pipeline. Fetch/verify/
+// validate/storage-write only — nothing reads remoteTier2Rules yet (PR B2
+// adds the content-script read). Reuses the SAME TRUSTED_PUBLIC_KEYS
+// (REVISED ADR-6); no separate Tier2 key.
+import { runTier2RulesFetch } from "../lib/remote-tier2-rules.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { resolveShortener } from "../lib/native-shortener-resolver.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
@@ -673,6 +678,48 @@ async function maybeFetchRemoteRules(deps) {
   } catch (err) {
     // Non-fatal: remote rules are optional. Leave built-in rules active.
     console.warn("[MUGA] maybeFetchRemoteRules:", err?.message || err);
+  }
+}
+
+// #1027 Slice 2 PR B1 — Tier2 sibling of maybeFetchRemoteRules (design ADR-9,
+// "alarm wiring"). Rides the EXACT SAME wake-based schedule and
+// REMOTE_REFRESH_INTERVAL_MS cadence as the params fetch, gated by the SAME
+// remoteRulesEnabled + consent state (spec req 5 — no new toggle). Uses its
+// OWN remoteTier2Meta.fetchedAt freshness key and its own try/catch so a
+// Tier2 fetch/validation failure is an ISOLATED failure domain: it can never
+// block, or be blocked by, the params pipeline (design ADR-9).
+//
+// PR B1 note: currently a safe, harmless no-op in production — the signed
+// endpoint (rules.muga.app/rules/v1/tier2.json) is not deployed yet (ops
+// task, PR B3), so every real call fails at the fetch stage, records
+// remoteTier2Meta.lastError, and returns. Nothing reads remoteTier2Rules yet
+// (PR B2 adds that read), so this wiring is inert-but-harmless until B2+B3
+// ship.
+let _remoteTier2CheckedThisLifetime = false;
+
+/**
+ * Fires a Tier2 remote-rules fetch iff (a) the user has opted into remote
+ * rules, (b) consent covers the disclosing version, and (c) the last
+ * successful Tier2 fetch is older than REMOTE_REFRESH_INTERVAL_MS (or never
+ * happened). Silent no-op on any failure to read state.
+ *
+ * @param {object} deps - Dependencies for runTier2RulesFetch.
+ * @returns {Promise<void>}
+ */
+async function maybeFetchRemoteTier2Rules(deps) {
+  if (_remoteTier2CheckedThisLifetime) return;
+  _remoteTier2CheckedThisLifetime = true;
+  try {
+    const prefs = await getPrefs();
+    if (!prefs.remoteRulesEnabled) return;
+    if (shouldOpenOnboarding(prefs)) return;
+    const { remoteTier2Meta } = await chrome.storage.local.get({ remoteTier2Meta: null });
+    const last = remoteTier2Meta?.fetchedAt ? Date.parse(remoteTier2Meta.fetchedAt) : 0;
+    if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) return;
+    await runTier2RulesFetch(deps);
+  } catch (err) {
+    // Non-fatal: Tier2 remote rules are optional and inert without PR B2.
+    console.warn("[MUGA] maybeFetchRemoteTier2Rules:", err?.message || err);
   }
 }
 
@@ -1761,6 +1808,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // in each SW lifetime. Catches the "user never restarts browser" case
     // that onStartup can't reach. Runs in parallel with URL processing.
     maybeFetchRemoteRules(_remoteRulesDeps());
+    // #1027 Slice 2 PR B1: isolated Tier2 sibling fetch, same wake event.
+    maybeFetchRemoteTier2Rules(_remoteTier2RulesDeps());
     const tabId = sender.tab?.id;
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, skipSideEffects: !!message.skipSideEffects, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
@@ -1900,6 +1949,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // opportunistically via maybeFetchRemoteRules on any SW wake once the
         // 7-day interval has elapsed — no alarm required.
         await runRemoteRulesFetch(_remoteRulesDeps());
+        // #1027 Slice 2 PR B1: fire the Tier2 sibling fetch alongside params.
+        // Own try/catch — an isolated failure domain (design ADR-9) so a
+        // Tier2-only failure never blocks the params ENABLE response.
+        try {
+          await runTier2RulesFetch(_remoteTier2RulesDeps());
+        } catch (err) {
+          console.warn("[MUGA] runTier2RulesFetch (ENABLE_REMOTE_RULES):", err?.message || err);
+        }
         try { sendResponse({ ok: true }); } catch { /* channel closed */ }
       } catch (err) {
         console.error("[MUGA] ENABLE_REMOTE_RULES handler failed:", err);
@@ -1985,6 +2042,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
         await runRemoteRulesFetch(_remoteRulesDeps());
+        // #1027 Slice 2 PR B1: manual "Update now" also forces the Tier2
+        // sibling fetch. Own try/catch — isolated failure domain (ADR-9).
+        try {
+          await runTier2RulesFetch(_remoteTier2RulesDeps());
+        } catch (err) {
+          console.warn("[MUGA] runTier2RulesFetch (FORCE_FETCH_REMOTE_RULES):", err?.message || err);
+        }
         try { sendResponse({ ok: true }); } catch { /* channel closed */ }
       } catch (err) {
         console.error("[MUGA] FORCE_FETCH_REMOTE_RULES handler failed:", err);
@@ -2229,11 +2293,26 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
 //   throw-away keypair without committing any private key material.
 //   The override is inert at runtime in the packaged extension — the browser
 //   never sets __MUGA_TRUSTED_KEYS__, so production behaviour is unchanged.
-function _remoteRulesDeps() {
+//
+// #1027 Slice 2 PR B1: this resolver is factored out (rather than duplicated
+// inline in _remoteTier2RulesDeps) so the seam literal below appears exactly
+// ONCE in this file. tools/strip-test-seams.mjs's neutraliseTrustedKeysSeam()
+// strips it via a single (non-global) string replace at build time; a SECOND
+// copy of the literal would silently survive an otherwise-neutralised
+// production build and leak the test-key backdoor (caught by
+// tests/unit/strip-test-seams.test.mjs). REVISED ADR-6 reuses the SAME key
+// for Tier2, so sharing this resolver is also the semantically correct move,
+// not just a lint fix.
+function _resolveTrustedKeys() {
   const trustedKeys =
     Array.isArray(globalThis.__MUGA_TRUSTED_KEYS__) && globalThis.__MUGA_TRUSTED_KEYS__.length > 0
       ? globalThis.__MUGA_TRUSTED_KEYS__
       : TRUSTED_PUBLIC_KEYS;
+  return trustedKeys;
+}
+
+function _remoteRulesDeps() {
+  const trustedKeys = _resolveTrustedKeys();
   return {
     fetchImpl: globalThis.fetch,
     subtle: globalThis.crypto?.subtle,
@@ -2249,6 +2328,24 @@ function _remoteRulesDeps() {
   };
 }
 
+// #1027 Slice 2 PR B1: deps factory for runTier2RulesFetch. No DNR facade —
+// Tier2 is storage-only (design ADR-3). Reuses the SAME _resolveTrustedKeys()
+// helper as _remoteRulesDeps (REVISED ADR-6, one shared key) rather than
+// duplicating the test-key-override literal — see the comment above
+// _resolveTrustedKeys() for why duplicating it would be a build-time hazard.
+function _remoteTier2RulesDeps() {
+  return {
+    fetchImpl: globalThis.fetch,
+    subtle: globalThis.crypto?.subtle,
+    trustedKeys: _resolveTrustedKeys(),
+    storage: {
+      get: (d) => chrome.storage.local.get(d),
+      set: (i) => chrome.storage.local.set(i),
+      remove: (k) => chrome.storage.local.remove(k),
+    },
+  };
+}
+
 // --- On startup: apply DNR state + opportunistic remote-rules fetch ---
 chrome.runtime.onStartup.addListener(async () => {
   const prefs = await getPrefsWithCache();
@@ -2257,6 +2354,8 @@ chrome.runtime.onStartup.addListener(async () => {
   // is older than REMOTE_REFRESH_INTERVAL_MS or absent. Also short-circuits
   // immediately if remoteRulesEnabled is false.
   maybeFetchRemoteRules(_remoteRulesDeps());
+  // #1027 Slice 2 PR B1: isolated Tier2 sibling fetch, same wake event.
+  maybeFetchRemoteTier2Rules(_remoteTier2RulesDeps());
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   // on first startup after upgrade. Best-effort; failure must not break startup.
   migrateLegacyProxyPref().catch(() => {});
@@ -2372,6 +2471,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Opportunistic fetch: fires on install/update if user had enabled remote rules
   // before the update and the stored payload is stale (or absent).
   maybeFetchRemoteRules(_remoteRulesDeps());
+  // #1027 Slice 2 PR B1: isolated Tier2 sibling fetch, same wake event.
+  maybeFetchRemoteTier2Rules(_remoteTier2RulesDeps());
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   migrateLegacyProxyPref().catch(() => {});
   // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
