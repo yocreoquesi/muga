@@ -9,10 +9,15 @@
  * content-script copies are checked against this file by a dedicated sync
  * test (tests/unit/cookie-noise-sync.test.mjs).
  *
- * Scope: Tier 1 only (API adapters — calling a page-authored global
- * directly, e.g. `window.OneTrust.RejectAll()`). A Tier 2 registry slot
- * exists (declarative click-rule adapters, Consent-O-Matic-style) but
- * ships EMPTY in this slice — see design decisions.
+ * Scope: Tier 1 (API adapters — calling a page-authored global directly,
+ * e.g. `window.OneTrust.RejectAll()`) PLUS a Tier 2 registry (declarative
+ * click-rule adapters, Consent-O-Matic-style) seeded in Slice 1 with two
+ * genuinely API-less bespoke banners (Complianz, Cookie Notice) — see
+ * src/lib/cmp-tier2-rules.js and `resolveTier2Reject` below. Tier 2's DOM
+ * query-and-click execution itself lives only in the isolated-world content
+ * script (a later slice), never here — this file stays pure (no DOM,
+ * no `window`) and only resolves the pure fail-closed decision given
+ * caller-supplied candidates.
  *
  * ── The ethical spine (never-auto-*-the-user's-consent-away rule) ─────────
  *
@@ -35,6 +40,8 @@
  * block in tests/unit/cmp-adapters.test.mjs. Do not introduce that word
  * into this file, ever, including in comments.
  */
+
+import { TIER2_RULES } from "./cmp-tier2-rules.js";
 
 /**
  * @typedef {object} CmpSignals
@@ -158,6 +165,12 @@
  *   in the DOM. Secondary/corroborating signal.
  * @property {boolean} [hasCmpBoxBtnDom] - `#cmpbox .cmpboxbtn` present in
  *   the DOM. Secondary/corroborating signal.
+ * @property {Object<string, boolean>} [tier2Confirmed] - Map of Tier 2 rule
+ *   id (see src/lib/cmp-tier2-rules.js) to whether a single confirmed
+ *   reject target was resolved for that rule in the current frame. This
+ *   file never computes this map itself — it is pure and touches no DOM;
+ *   the isolated-world content script computes it (via `resolveTier2Reject`
+ *   below, fed real DOM query results) before calling `decideAction`.
  */
 
 /**
@@ -601,6 +614,85 @@ function findSpOpenSettingsTarget(candidates) {
 export { findSpRejectTarget, findSpOpenSettingsTarget };
 
 /**
+ * Tier 2 fail-closed reject resolution (#1027, Slice 1). Byte-identical
+ * contract to `findSpRejectTarget` above: `presentMatched !== true` OR zero
+ * candidates -> `"noop"`; more than one candidate -> `"ambiguous"` (still a
+ * no-op — never guesses between multiple matches); exactly one -> `"single"`
+ * with that candidate as the target.
+ *
+ * A "confirmed reject candidate" is identified POSITIVELY: the caller (the
+ * isolated-world content script) queries the DOM ONLY for a specific rule's
+ * curated `reject` selector list (see src/lib/cmp-tier2-rules.js) and passes
+ * the resulting element wrapper(s) in here — this function never scans for,
+ * vetoes, or reasons about the broad-consent control this file's structural
+ * guard forbids naming (see the file docblock). `rejectCandidates` is only
+ * ever fed matches for the one curated reject selector list; no broader DOM
+ * query result should ever reach this function.
+ *
+ * Content scripts cannot import this module (AGENTS.md — no ES imports in
+ * content scripts), so the block between the @sync:cmp-tier2 markers is
+ * hand-copied, modulo indentation, into content/cookie-noise.js (a later
+ * slice — see tests/unit/cookie-noise-sync.test.mjs once that copy exists).
+ *
+ * Pure; never throws.
+ *
+ * @param {boolean} presentMatched - Whether the rule's `present` banner-
+ *   anchor selector list matched in the current frame.
+ * @param {Array<{ref?: *}>} [rejectCandidates] - Elements matching the
+ *   rule's curated `reject` selector list.
+ * @returns {{status: "single"|"noop"|"ambiguous", target: object|null}}
+ */
+// @sync:cmp-tier2:start
+function resolveTier2Reject(presentMatched, rejectCandidates) {
+  if (presentMatched !== true) return { status: "noop", target: null };
+  const list = Array.isArray(rejectCandidates) ? rejectCandidates : [];
+  // Filter malformed entries (null/non-object) so garbage fails CLOSED to
+  // noop, byte-identical to findSpRejectTarget — a null/non-element never
+  // becomes a "single" clickable target the PR-2 dispatcher would trust.
+  const matches = [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    matches.push(candidate);
+  }
+  if (matches.length === 0) return { status: "noop", target: null };
+  if (matches.length > 1) return { status: "ambiguous", target: null };
+  return { status: "single", target: matches[0] };
+}
+// @sync:cmp-tier2:end
+
+export { resolveTier2Reject };
+
+/**
+ * Builds a Tier 2 registry entry from a declarative rule (see
+ * src/lib/cmp-tier2-rules.js). Unlike the Tier 1 adapters above, a Tier 2
+ * entry never touches a page-authored global and has no `reject` callback
+ * of its own here: the actual DOM query + resolve + click sequence runs in
+ * the isolated-world content script (a later slice), which pre-computes
+ * `signals.tier2Confirmed[rule.id]` (true only after `resolveTier2Reject`
+ * above returned `"single"` for that rule) and passes it into
+ * `decideAction`. This keeps `decideAction` a single pure decision surface
+ * with zero DOM coupling, matching Tier 1's shape.
+ *
+ * @param {import("./cmp-tier2-rules.js").Tier2Rule} rule
+ * @returns {Readonly<{id: string, tier: 2, detect: (signals: CmpSignals) => number, canReject: (signals: CmpSignals) => boolean}>}
+ */
+function makeTier2Adapter(rule) {
+  const id = rule.id;
+  return Object.freeze({
+    id,
+    tier: 2,
+    detect(signals) {
+      return signals && signals.tier2Confirmed && signals.tier2Confirmed[id] === true ? 1 : 0;
+    },
+    canReject(signals) {
+      return signals?.tier2Confirmed?.[id] === true;
+    },
+  });
+}
+
+export { makeTier2Adapter };
+
+/**
  * Invokes the caller-supplied reject call. Kept pure (no `window` access
  * here) by requiring the caller to inject the actual global call as a
  * zero-argument callback — the content-script shell is the one place that
@@ -901,16 +993,21 @@ export const TIER1 = Object.freeze([
 
 /**
  * Tier 2 registry: declarative click-rule adapters (Consent-O-Matic-style).
- * Ships EMPTY in this slice — the dispatcher below already iterates it so
- * a later slice can populate it with zero dispatcher rewrite.
+ * Seeded in Slice 1 with two genuinely API-less bespoke banners (Complianz,
+ * Cookie Notice — see src/lib/cmp-tier2-rules.js). `decideAction` below
+ * already iterated an (empty) TIER2 array before this slice, so populating
+ * it here needed zero decision-loop rewrite.
  */
-export const TIER2 = Object.freeze([]);
+export const TIER2 = Object.freeze(TIER2_RULES.map(makeTier2Adapter));
 
 /**
  * Two-tier pure decision function. Tries every Tier 1 adapter, then every
- * Tier 2 adapter (empty today), and returns the first confirmed reject
- * action. When nothing can confidently reject, distinguishes two NOOP
- * reasons for observability/testing: `"no-reject-path"` when a vendor
+ * Tier 2 adapter (Slice 1 seed: Complianz, Cookie Notice — see
+ * src/lib/cmp-tier2-rules.js), and returns the first confirmed reject
+ * action. Tier 1 always loops first, so a confirmed vendor-API reject wins
+ * over a Tier 2 DOM-click confirmation on any page where both could
+ * theoretically apply. When nothing can confidently reject, distinguishes
+ * two NOOP reasons for observability/testing: `"no-reject-path"` when a vendor
  * global is present but its reject function is not (a hard wall), and
  * `"uncertain"` for everything else (no CMP detected, or insufficient
  * corroboration — fail-closed).
