@@ -1353,6 +1353,83 @@
   }
   // @sync:cmp-sp-reject-click:end
 
+  // ── Tier 2 declarative reject-click rule data (#1027, Slice 1) ────────────
+  //
+  // Hand-copied, byte-for-byte modulo indentation (and the `export` keyword,
+  // which content scripts cannot use — see the site-exempt precedent above),
+  // from src/lib/cmp-tier2-rules.js. Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. See that file's docblock for the
+  // full reject-only-vocabulary rationale and the seed-candidate
+  // verification notes — not repeated here to avoid a second place that can
+  // drift out of prose sync with the data itself.
+  // @sync:cmp-tier2-rules:start
+  const TIER2_RULES = Object.freeze([
+    /**
+     * Complianz (cmplz) — API-less, WordPress plugin. Real-site verification
+     * (doaj.org, 2026-07) confirmed a direct first-layer reject control:
+     * `.cmplz-deny` inside `#cmplz-cookiebanner-container`.
+     *
+     * Complianz's "manage options" / "save preferences" panel was
+     * DELIBERATELY NOT modeled as an `openSettings` two-step hop: that panel's
+     * save action commits whatever categories are CURRENTLY checked, which is
+     * not guaranteed to be reject/necessary-only — the toggles' default state
+     * is theme/installation-dependent, so clicking "save" there could commit
+     * an unknown consent state. That is not an unambiguous reject path, so
+     * this rule stays single-layer for Slice 1 and relies solely on the
+     * direct `.cmplz-deny` control (fail-closed no-op if that control is
+     * absent on a given installation).
+     */
+    Object.freeze({
+      id: "complianz",
+      present: Object.freeze(["#cmplz-cookiebanner-container"]),
+      reject: Object.freeze([".cmplz-deny"]),
+      openSettings: Object.freeze([]),
+    }),
+
+    /**
+     * Cookie Notice (dFactory) — API-less, WordPress plugin. Refuse control:
+     * `#cn-refuse-cookie` (also reachable via
+     * `.cn-set-cookie[data-cookie-set="refuse"]`, kept as a single curated
+     * selector for now — see the id-selector precedent above). The refuse
+     * button is an admin-optional setting: not every installation renders it.
+     * That is fine — the fail-closed 0-match branch already no-ops gracefully
+     * when it is absent, exactly like every other rule here.
+     */
+    Object.freeze({
+      id: "cookie-notice",
+      present: Object.freeze(["#cookie-notice"]),
+      reject: Object.freeze(["#cn-refuse-cookie"]),
+      openSettings: Object.freeze([]),
+    }),
+  ]);
+  // @sync:cmp-tier2-rules:end
+
+  // ── Tier 2 fail-closed reject resolution (#1027, Slice 1) ─────────────────
+  //
+  // Hand-copied, byte-for-byte modulo indentation, from
+  // src/lib/cmp-adapters.js. Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. See that file's docblock
+  // (immediately above `resolveTier2Reject`) for the full fail-closed
+  // contract rationale — byte-identical shape/return-type contract to
+  // findSpRejectTarget above. Pure; never throws.
+  // @sync:cmp-tier2:start
+  function resolveTier2Reject(presentMatched, rejectCandidates) {
+    if (presentMatched !== true) return { status: "noop", target: null };
+    const list = Array.isArray(rejectCandidates) ? rejectCandidates : [];
+    // Filter malformed entries (null/non-object) so garbage fails CLOSED to
+    // noop, byte-identical to findSpRejectTarget — a null/non-element never
+    // becomes a "single" clickable target the PR-2 dispatcher would trust.
+    const matches = [];
+    for (const candidate of list) {
+      if (!candidate || typeof candidate !== "object") continue;
+      matches.push(candidate);
+    }
+    if (matches.length === 0) return { status: "noop", target: null };
+    if (matches.length > 1) return { status: "ambiguous", target: null };
+    return { status: "single", target: matches[0] };
+  }
+  // @sync:cmp-tier2:end
+
   let _spRejectActed = false;
   let _spPmOpened = false;
   let _spRejectGateOpen = false;
@@ -1471,6 +1548,231 @@
     _spRejectObserver = null;
   }
 
+  // ── Tier 2 declarative reject-click dispatch (#1027, Slice 1) ─────────────
+  //
+  // Isolated-world DOM query-and-click execution for the reject-only
+  // click-rule registry hand-copied above (@sync:cmp-tier2-rules /
+  // @sync:cmp-tier2) — see Decision 3 in
+  // openspec/changes/cookie-consent-tier2/design.md. This is the DOM half
+  // deferred from src/lib/cmp-adapters.js's makeTier2Adapter: that pure
+  // adapter's canReject(signals) reads signals.tier2Confirmed[rule.id],
+  // exercised only by decideAction's truth-table unit tests in
+  // tests/unit/cmp-adapters.test.mjs — this content script never calls
+  // decideAction itself, exactly like the Tier-1 ladder above
+  // (canRejectOneTrust() etc. are called directly, not through decideAction
+  // either — decideAction has no runtime call site anywhere in this
+  // extension, only a lib-level pure decision surface exercised by tests).
+  // This dispatcher IS the thing that would produce a true
+  // tier2Confirmed[rule.id] signal: it queries the DOM for the rule's
+  // curated `present`/`reject` selectors, resolves the fail-closed match via
+  // the hand-copied resolveTier2Reject above, and clicks the confirmed
+  // single target directly.
+  //
+  // Mirrors runSpRejectClickDispatcher's shape closely (reuses
+  // collectAcceptCandidates() for actionable, classified DOM nodes; a
+  // confirmed reject click is the ONLY thing that marks a rule acted; the
+  // open-settings hop is monotone-safe and never marks acted). Unlike the
+  // single-CMP SP dispatcher, TIER2_RULES holds MULTIPLE independent rules
+  // (Complianz, Cookie Notice) — every piece of per-rule state below is
+  // therefore keyed by rule.id, not a single flat boolean.
+  //
+  // Never-accept invariant: `rule.reject` / `rule.openSettings` are the ONLY
+  // selector lists this dispatcher ever queries or clicks — there is no
+  // field on a Tier2Rule capable of expressing a broad-consent path (see
+  // src/lib/cmp-tier2-rules.js's file docblock), so this dispatcher cannot
+  // click one even by a future editing mistake without first inventing a
+  // new field name, which the structural guard in
+  // tests/unit/cmp-adapters.test.mjs scans for. Fail-closed everywhere: no
+  // confirmed reject candidate means this loop iteration does nothing and
+  // leaves the banner exactly as-is.
+
+  const _tier2Acted = {};
+  const _tier2PmOpened = {};
+  const _tier2Warned = {};
+  let _tier2GateOpen = false;
+  let _tier2Observer = null;
+  const TIER2_GIVE_UP_AFTER_DOM_READY_MS = 10000;
+  let _tier2GiveUpArmed = false;
+  let _tier2GiveUpTimer = null;
+  let _tier2GiveUpFallbackTimer = null;
+
+  // Drift signal (Decision 7): console-only, warned at most ONCE per rule id
+  // — no network call, no telemetry. Covers BOTH: (a) a confirmed reject was
+  // clicked but the banner never cleared, and (b) the banner's `present`
+  // anchor stayed matched but the resolver never reached a confirmed single
+  // reject through the whole give-up window (selector drift on either the
+  // reject or the present anchor).
+  function tier2WarnDrift(ruleId) {
+    if (_tier2Warned[ruleId]) return;
+    _tier2Warned[ruleId] = true;
+    try {
+      console.warn(
+        "[MUGA] cookie-consent: tier2:" + ruleId +
+        " reject clicked but banner did not clear (possible selector drift)"
+      );
+    } catch {
+      // console unavailable — nothing else to do.
+    }
+  }
+
+  // Reuses the SAME bounded-poll mechanics as confirmRejectDismissal above
+  // (REJECT_CONFIRM_WINDOW_MS / REJECT_CONFIRM_INTERVAL_MS, deadline +
+  // interval, fail-safe-gone-on-error) — confirmRejectDismissal's own
+  // message text is pinned to the Tier-1 vendor-API-drift wording, so this
+  // small parallel version reuses its constants/timing but reports through
+  // tier2WarnDrift's Tier-2-specific wording instead of parameterizing the
+  // shared helper.
+  function confirmTier2RejectDismissal(ruleId, isBannerGone) {
+    const deadline = Date.now() + REJECT_CONFIRM_WINDOW_MS;
+    const tick = () => {
+      let gone = true;
+      try {
+        gone = !!isBannerGone();
+      } catch {
+        gone = true;
+      }
+      if (gone) return; // confirmed dismissal — stay silent
+      if (Date.now() >= deadline) {
+        tier2WarnDrift(ruleId);
+        return;
+      }
+      setTimeout(tick, REJECT_CONFIRM_INTERVAL_MS);
+    };
+    tick();
+  }
+
+  function tier2BannerGoneBy(rule) {
+    return bannerGoneBy(rule.present.join(","));
+  }
+
+  // Filters collectAcceptCandidates()'s full button/link scan down to the
+  // ones matching one of `selectors` (a rule's `reject` or `openSettings`
+  // list) AND currently actionable — the same conservative bar
+  // findSpRejectTarget applies inline above; resolveTier2Reject itself stays
+  // generic/caller-agnostic (see its docblock in src/lib/cmp-adapters.js),
+  // so this filtering lives at the call site, not inside the shared
+  // @sync:cmp-tier2 resolver. Never throws.
+  function tier2FilterCandidates(candidates, selectors) {
+    if (!Array.isArray(selectors) || selectors.length === 0) return [];
+    const joined = selectors.join(",");
+    const matches = [];
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== "object" || candidate.actionable !== true) continue;
+      try {
+        if (candidate.ref && typeof candidate.ref.matches === "function" && candidate.ref.matches(joined)) {
+          matches.push(candidate);
+        }
+      } catch {
+        // A malformed/hostile selector or element must never break the page.
+      }
+    }
+    return matches;
+  }
+
+  function runTier2RejectDispatcher() {
+    if (!_tier2GateOpen) return;
+    const candidates = collectAcceptCandidates();
+    for (const rule of TIER2_RULES) {
+      if (_tier2Acted[rule.id]) continue;
+      let present = false;
+      try {
+        present = !!document.querySelector(rule.present.join(","));
+      } catch {
+        present = false;
+      }
+      if (!present) continue;
+      const rejectCandidates = tier2FilterCandidates(candidates, rule.reject);
+      const result = resolveTier2Reject(present, rejectCandidates);
+      if (result.status === "single") {
+        _tier2Acted[rule.id] = true;
+        try {
+          result.target.ref.click();
+        } catch {
+          // A throwing/hostile page element must never break the page.
+        }
+        confirmTier2RejectDismissal(rule.id, tier2BannerGoneBy(rule));
+        continue;
+      }
+      // Single open-settings hop (Decision 3 / SP precedent): monotone-safe
+      // (opening a settings panel grants nothing), NOT marked acted — the
+      // revealed reject control is re-resolved on the observer's next pass.
+      // Dormant for both Slice-1 seed rules (openSettings: []).
+      if (_tier2PmOpened[rule.id]) continue;
+      const openCandidates = tier2FilterCandidates(candidates, rule.openSettings);
+      if (openCandidates.length !== 1) continue;
+      _tier2PmOpened[rule.id] = true;
+      try {
+        openCandidates[0].ref.click();
+      } catch {
+        // A throwing/hostile page element must never break the page.
+      }
+    }
+  }
+
+  // Bounded give-up window — same rationale and shape as the other
+  // dispatchers' give-up windows above. Also the drift-check point for
+  // "resolver stuck at noop through the give-up window" (Decision 7): a rule
+  // whose `present` anchor is still matched but never reached a confirmed
+  // reject click gets exactly one console warning here before the observer
+  // disconnects.
+  function tier2ArmGiveUp() {
+    if (_tier2GiveUpArmed) return;
+    _tier2GiveUpArmed = true;
+    const giveUp = () => {
+      for (const rule of TIER2_RULES) {
+        if (_tier2Acted[rule.id]) continue;
+        let present = false;
+        try {
+          present = !!document.querySelector(rule.present.join(","));
+        } catch {
+          present = false;
+        }
+        if (present) tier2WarnDrift(rule.id);
+      }
+      tier2StopObserver();
+    };
+    const schedule = () => {
+      _tier2GiveUpTimer = setTimeout(giveUp, TIER2_GIVE_UP_AFTER_DOM_READY_MS);
+    };
+    if (document.readyState === "loading") {
+      _tier2GiveUpFallbackTimer = setTimeout(giveUp, TIER2_GIVE_UP_AFTER_DOM_READY_MS);
+      document.addEventListener("DOMContentLoaded", schedule, { once: true });
+    } else {
+      schedule();
+    }
+  }
+
+  function tier2StartObserver() {
+    if (_tier2Observer) return;
+    if (!document || !document.documentElement) return;
+    try {
+      _tier2Observer = new MutationObserver(() => runTier2RejectDispatcher());
+      _tier2Observer.observe(document.documentElement, { childList: true, subtree: true });
+    } catch {
+      _tier2Observer = null;
+    }
+    tier2ArmGiveUp();
+  }
+
+  function tier2StopObserver() {
+    if (_tier2GiveUpTimer !== null) {
+      clearTimeout(_tier2GiveUpTimer);
+      _tier2GiveUpTimer = null;
+    }
+    if (_tier2GiveUpFallbackTimer !== null) {
+      clearTimeout(_tier2GiveUpFallbackTimer);
+      _tier2GiveUpFallbackTimer = null;
+    }
+    _tier2GiveUpArmed = false;
+    if (!_tier2Observer) return;
+    try {
+      _tier2Observer.disconnect();
+    } catch {
+      // already disconnected
+    }
+    _tier2Observer = null;
+  }
+
   function readPrefsAndGate() {
     try {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (prefs) => {
@@ -1497,6 +1799,19 @@
           spRejectStartObserver();
         } else {
           spRejectStopObserver();
+        }
+        // Tier 2 declarative reject-click dispatch — reuses the SAME reject
+        // master gate (`open`) as the Tier-1 API ladder and the Sourcepoint
+        // DOM fallback above; no separate Tier 2 toggle exists (Decision 4,
+        // task 3.6). `open` already encodes cookieConsentMode === "reject-only"
+        // (via deps.modeActive) AND not-allowlisted/exempted (via
+        // isSiteFullyExempt) — see computeCookieGate above.
+        _tier2GateOpen = open;
+        if (_tier2GateOpen) {
+          runTier2RejectDispatcher(); // initial sweep — the banner may already exist
+          tier2StartObserver();
+        } else {
+          tier2StopObserver();
         }
       });
     } catch {
