@@ -33,9 +33,13 @@
  * real-site calibration run (12 candidate sites) produced 1 pass / 2 fail /
  * 9 inconclusive from this repo's US CI vantage; both "fail" results were
  * independently confirmed (via a Playwright probe) to be a flaky vendor
- * site and a documented fail-closed gap, not adapter drift — see the `note`
- * fields on the cookiebot.com and heraldscotland.com entries in
- * cmp-sites.json. Because of this geo skew, this canary is a COARSE drift
+ * site and a documented fail-closed gap, not adapter drift. Both original
+ * "fail" sites have since been curated out (#1135): heraldscotland.com (a
+ * self-hosted/proxied Sourcepoint deployment MUGA deliberately fail-closes
+ * on, so it always read as "fail") was replaced by techradar.com, and the
+ * Cookiebot dogfood placeholder by real Cookiebot customer deployments —
+ * see the replacement notes in cmp-sites.json. Because of this
+ * geo skew, this canary is a COARSE drift
  * alarm only — it is NOT a substitute for the manual release smoke checklist
  * (docs/qa/cookie-consent-release-smoke.md), which a human runs from a
  * correct (EU) geo vantage. Treat a single flaky/low-confidence "fail" as
@@ -76,11 +80,10 @@ function recordResult(site, status, detail) {
 }
 
 /**
- * Completes onboarding and turns on cookieConsentMinimizerEnabled directly
+ * Completes onboarding and sets cookieConsentMode to "reject-only" directly
  * via chrome.storage — mirrors tests/e2e/fixtures.mjs's completeOnboarding()
- * but additionally flips the feature pref, which defaults OFF (see
- * src/content/cookie-noise-mainworld.js's docblock) and is not touched by
- * the shared e2e fixture.
+ * but additionally sets the feature pref explicitly (not touched by the
+ * shared e2e fixture), rather than relying on the PREF_DEFAULTS default.
  *
  * @param {import("@playwright/test").BrowserContext} context
  * @param {string} extensionId
@@ -101,7 +104,7 @@ async function enableCookieConsentMinimizer(context, extensionId) {
             injectOwnAffiliate: false,
             notifyForeignAffiliate: false,
             language: "en",
-            cookieConsentMinimizerEnabled: true,
+            cookieConsentMode: "reject-only",
           },
           r,
         ),

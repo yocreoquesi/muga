@@ -4,13 +4,25 @@
  * and maintains extension state.
  */
 
-import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains } from "../lib/cleaner.js";
+import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
+import { isCookieConsentModeActive } from "../lib/settings-schema.js";
 import { isValidListEntry } from "../lib/validation.js";
-import { DNR_CUSTOM_PARAMS_RULE_ID, DNR_REMOTE_PARAMS_RULE_ID, DNR_ALLOWLIST_RULE_ID_BASE, DNR_ALLOWLIST_MAX_RULES } from "../lib/dnr-ids.js";
+import {
+  DNR_CUSTOM_PARAMS_RULE_ID,
+  DNR_REMOTE_PARAMS_RULE_ID,
+  DNR_ALLOWLIST_RULE_ID_BASE,
+  DNR_ALLOWLIST_MAX_RULES,
+  DNR_SUPPRESS_REFERER_RULE_ID,
+  DNR_BLOCK_BEACONS_RULE_ID,
+  DNR_BLOCKLIST_REFERER_RULE_ID_BASE,
+  DNR_BLOCKLIST_BEACON_RULE_ID_BASE,
+  DNR_BLOCKLIST_MAX_RULES,
+  ALLOWLIST_RESOURCE_TYPES,
+} from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -199,6 +211,13 @@ const toolbarPresenter = createToolbarPresenter({
 migrateStatsToLocal();
 migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
+// Cookie-consent 2-state mode: converts the legacy
+// cookieConsentMinimizerEnabled boolean into cookieConsentMode. This
+// top-level call passes no reason, so it runs the SAFE idempotent pass only
+// (maps a present legacy key; never infers "off" from an absent mode).
+// Genuine installs are seeded by the onInstalled call site, which passes
+// details.reason.
+migrateCookieConsentMode().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
@@ -476,6 +495,87 @@ function onBeforeNavigateStrip(details) {
   return { redirectUrl: decision.cleanUrl };
 }
 
+/**
+ * Blocking onBeforeSendHeaders handler (Firefox MV2 only, referer-beacon-privacy
+ * PR 3). Removes the `referer` request header when the destination host is NOT
+ * fully exempt (allowlist) AND either the global `suppressReferer` pref is ON
+ * or the host is fully blacklisted (force-suppress regardless of the global
+ * pref, per design D2). Encodes the SAME precedence as the Chrome DNR rule
+ * priorities from PR 2: allowlist allow (1000) always wins; blocklist
+ * force-suppress (2) fires even with the global toggle OFF; the global rule
+ * (1) only fires when its own pref is ON.
+ *
+ * MUST return synchronously (a BlockingResponse or undefined), like
+ * onBeforeNavigateStrip above. Reads the warm `cachedPrefs` directly — unlike
+ * the param stripper, this listener needs no domain/path rules, so
+ * `cachedPrefs` itself is the readiness signal. Fails OPEN (returns
+ * undefined, leaving `requestHeaders` untouched) on a cold cache, a malformed
+ * URL, or an exempt/blacklist-check throw — an internal error must never
+ * strip a header a real user relies on.
+ *
+ * @param {{url:string, requestHeaders?:Array<{name:string,value?:string}>}} details
+ * @returns {{requestHeaders: Array}|undefined}
+ */
+function onBeforeSendHeadersSuppressReferer(details) {
+  if (!cachedPrefs) { getPrefsWithCache(); return; }
+
+  let host;
+  try {
+    host = new URL(details.url).hostname;
+  } catch {
+    return; // malformed URL -> pass through unchanged
+  }
+
+  try {
+    if (isSiteFullyExempt(host, cachedPrefs)) return; // allowlist always wins
+    if (cachedPrefs.suppressReferer !== true && !isSiteFullyBlacklisted(host, cachedPrefs)) return;
+  } catch {
+    return; // exempt/blacklist check threw -> pass through unchanged
+  }
+
+  const requestHeaders = (details.requestHeaders || []).filter(
+    (header) => header.name.toLowerCase() !== "referer",
+  );
+  return { requestHeaders };
+}
+
+/**
+ * Blocking onBeforeRequest handler for beacon traffic (Firefox MV2 only,
+ * referer-beacon-privacy PR 3). Registered filtered to `types:["ping","beacon"]`
+ * below: unlike Chrome (which folds both into "ping"), Firefox emits a distinct
+ * "beacon" resourceType for `navigator.sendBeacon()` and reserves "ping" for
+ * `<a ping>`, so BOTH types must be listed or real sendBeacon() calls slip
+ * through (caught by beacon-block.smoke.mjs). Cancels the request under the
+ * IDENTICAL precedence as the Referer listener above:
+ * allowlist always wins; blocklist force-blocks even with the global
+ * `blockBeacons` toggle OFF.
+ *
+ * Fails OPEN (returns undefined, letting the beacon through) on a cold cache,
+ * malformed URL, or exempt/blacklist-check throw.
+ *
+ * @param {{url:string}} details
+ * @returns {{cancel:true}|undefined}
+ */
+function onBeforeRequestBlockBeacons(details) {
+  if (!cachedPrefs) { getPrefsWithCache(); return; }
+
+  let host;
+  try {
+    host = new URL(details.url).hostname;
+  } catch {
+    return;
+  }
+
+  try {
+    if (isSiteFullyExempt(host, cachedPrefs)) return;
+    if (cachedPrefs.blockBeacons !== true && !isSiteFullyBlacklisted(host, cachedPrefs)) return;
+  } catch {
+    return;
+  }
+
+  return { cancel: true };
+}
+
 if (isFirefoxMV2) {
   // Warm the caches the blocking listener reads synchronously, then arm it. Only
   // strip once domain/path rules have settled so a startup navigation can never
@@ -489,6 +589,27 @@ if (isFirefoxMV2) {
   chrome.webRequest.onBeforeRequest.addListener(
     onBeforeNavigateStrip,
     { urls: ["<all_urls>"], types: ["main_frame"] },
+    ["blocking"],
+  );
+  // referer-beacon-privacy PR 3: Referer suppression, no resource-type filter
+  // (Referer matters across every request type, not just navigations).
+  chrome.webRequest.onBeforeSendHeaders.addListener(
+    onBeforeSendHeadersSuppressReferer,
+    { urls: ["<all_urls>"] },
+    ["blocking", "requestHeaders"],
+  );
+  // referer-beacon-privacy PR 3: beacon block. Unlike Chrome (which folds
+  // BOTH `<a ping>` navigations and navigator.sendBeacon() into a single
+  // "ping" resourceType), Firefox's webRequest classifies sendBeacon() under
+  // its OWN "beacon" resourceType and reserves "ping" for `<a ping>` only
+  // (verified empirically via tests/e2e-firefox/beacon-block.smoke.mjs — the
+  // design.md D4 claim that both surface as "ping" in FF holds for Chrome's
+  // vocabulary, not Firefox's; a "ping"-only filter silently let every real
+  // sendBeacon() call through). Both types must be listed so this listener
+  // covers the full beacon surface on Firefox.
+  chrome.webRequest.onBeforeRequest.addListener(
+    onBeforeRequestBlockBeacons,
+    { urls: ["<all_urls>"], types: ["ping", "beacon"] },
     ["blocking"],
   );
 }
@@ -613,36 +734,12 @@ const ALLOWLIST_RULE_ID_RANGE = Array.from(
   (_, i) => DNR_ALLOWLIST_RULE_ID_BASE + i,
 );
 
-/**
- * Explicit resourceTypes list for the allowlist "allow" rule.
- *
- * IMPORTANT Chrome DNR gotcha: a rule condition that omits `resourceTypes`
- * (and `excludedResourceTypes`) matches every resource type EXCEPT
- * `main_frame` - main_frame is excluded from the "match everything" default.
- * Every real strip/redirect rule MUGA registers explicitly lists
- * `main_frame` (tracking-params.json, amp-redirect.json,
- * amazon-path-canonical.json, DNR_CUSTOM_PARAMS_RULE_ID in
- * syncCustomParamsDNR() above, wrapper-dnr-rules.json, remote-rules.js), so
- * an allow rule WITHOUT an explicit main_frame entry would never even be
- * considered for the single most common case - a top-level navigation to an
- * allowlisted domain with tracking params in the URL - leaving the exact
- * network-layer bug this feature exists to fix.
- *
- * This list is therefore explicit rather than omitted, at the cost of some
- * future-proofing: a resource type Chrome adds after this list is written
- * would not automatically be covered by the allow rule (it would need to be
- * appended here). That tradeoff is accepted because the alternative -
- * omitting resourceTypes - silently fails on main_frame today, not just in
- * some hypothetical future. Limited to the resource types stable since MV3's
- * initial DNR API to avoid rejecting the whole updateDynamicRules() call on
- * a browser/version that does not recognize a newer enum value (e.g.
- * Firefox MV2's DNR support).
- */
-const ALLOWLIST_RESOURCE_TYPES = [
-  "main_frame", "sub_frame", "stylesheet", "script", "image", "font",
-  "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket",
-  "other",
-];
+// ALLOWLIST_RESOURCE_TYPES is imported from ../lib/dnr-ids.js (task 1.5,
+// referer-beacon-privacy): promoted to a shared constant so the allow rule
+// below and the global/blocklist Referer-suppression rules
+// (syncSuppressRefererDNR / syncBlocklistRefererDNR, PR 2) reference the
+// exact same list and cannot drift apart. See its JSDoc in dnr-ids.js for the
+// main_frame gotcha this list exists to guard against.
 
 /**
  * Syncs one dynamic DNR "allow" rule per fully-exempt domain
@@ -711,6 +808,202 @@ async function syncAllowlistDNR(prefs) {
   }
 }
 
+/**
+ * Syncs the dynamic GLOBAL Referer-suppression rule (referer-beacon-privacy,
+ * PR 2). Removes the `referer` request header on every http(s) request when
+ * `prefs.suppressReferer` is true; removes rule 2500 when false. Modeled on
+ * syncCustomParamsDNR() above: same hasDNR guard, try/catch, and
+ * updateDynamicRules() usage.
+ *
+ * Uses the shared ALLOWLIST_RESOURCE_TYPES list (same list syncAllowlistDNR's
+ * allow rule uses) so that rule, registered at priority 1000, deterministically
+ * shadows this one (priority 1) on allowlisted domains — see D3 in design.md.
+ * On a domain that is also on the blacklist, syncBlocklistRefererDNR's
+ * priority-2 rule fires the same action regardless of this rule/pref.
+ *
+ * @param {{ suppressReferer?: boolean }} prefs
+ */
+async function syncSuppressRefererDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    if (!prefs.suppressReferer) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
+      addRules: [{
+        id: DNR_SUPPRESS_REFERER_RULE_ID,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders: [{ header: "referer", operation: "remove" }],
+        },
+        condition: { urlFilter: "*", resourceTypes: ALLOWLIST_RESOURCE_TYPES },
+      }],
+    });
+  } catch (err) {
+    console.error("[MUGA] syncSuppressRefererDNR failed:", err);
+  }
+}
+
+/**
+ * Syncs the dynamic GLOBAL beacon-block rule (referer-beacon-privacy, PR 2).
+ * Blocks every "ping"-resourceType request (covers both `<a ping>` hyperlink
+ * auditing and `sendBeacon()`, the network-layer gap the DOM-layer
+ * `blockPings` pref cannot reach) when `prefs.blockBeacons` is true; removes
+ * rule 2600 when false. Modeled on syncCustomParamsDNR() above.
+ *
+ * @param {{ blockBeacons?: boolean }} prefs
+ */
+async function syncBlockBeaconsDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    if (!prefs.blockBeacons) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
+        addRules: [],
+      });
+      return;
+    }
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
+      addRules: [{
+        id: DNR_BLOCK_BEACONS_RULE_ID,
+        priority: 1,
+        action: { type: "block" },
+        condition: { resourceTypes: ["ping"] },
+      }],
+    });
+  } catch (err) {
+    console.error("[MUGA] syncBlockBeaconsDNR failed:", err);
+  }
+}
+
+// Full range of blocklist Referer-force rule IDs ever handed out (referer-
+// beacon-privacy, PR 2), mirroring ALLOWLIST_RULE_ID_RANGE above: a resync
+// always clears every previously-added rule so no stale force rule survives
+// a domain being removed from the blacklist.
+const BLOCKLIST_REFERER_RULE_ID_RANGE = Array.from(
+  { length: DNR_BLOCKLIST_MAX_RULES },
+  (_, i) => DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
+);
+
+// Same as above, for the beacon-block force rule range.
+const BLOCKLIST_BEACON_RULE_ID_RANGE = Array.from(
+  { length: DNR_BLOCKLIST_MAX_RULES },
+  (_, i) => DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
+);
+
+/**
+ * Syncs one dynamic DNR Referer force-suppress rule per bare-domain
+ * blacklist entry (referer-beacon-privacy, PR 2; D2 in design.md: the
+ * blocklist ALSO governs this feature). ACTIVE REGARDLESS of
+ * `prefs.suppressReferer` — a blacklisted domain forces Referer removal even
+ * when the global toggle is off, matching the blocklist's existing "be
+ * aggressive on this domain" meaning (Scenario D). Shadowed on a domain that
+ * is ALSO allowlisted by syncAllowlistDNR's priority-1000 allow rule
+ * (allowlist always wins).
+ *
+ * Structural clone of syncAllowlistDNR()'s clear-then-register pattern:
+ * clears the full BLOCKLIST_REFERER_RULE_ID_RANGE on every resync, caps at
+ * DNR_BLOCKLIST_MAX_RULES, and logs dropped domains rather than silently
+ * truncating.
+ *
+ * @param {{ blacklist?: string[] }} prefs
+ */
+async function syncBlocklistRefererDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    const domains = getFullyBlacklistedDomains(prefs);
+
+    if (domains.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
+        addRules: [],
+      });
+      return;
+    }
+
+    let syncedDomains = domains;
+    if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
+      const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
+      syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
+      console.warn(
+        `[MUGA] syncBlocklistRefererDNR: ${domains.length} blacklisted domains exceed the ` +
+        `${DNR_BLOCKLIST_MAX_RULES}-rule cap; dropped from Referer force-suppress rules:`,
+        dropped,
+      );
+    }
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
+      addRules: syncedDomains.map((domain, i) => ({
+        id: DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
+        priority: 2,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders: [{ header: "referer", operation: "remove" }],
+        },
+        condition: { requestDomains: [domain], resourceTypes: ALLOWLIST_RESOURCE_TYPES },
+      })),
+    });
+  } catch (err) {
+    console.error("[MUGA] syncBlocklistRefererDNR failed:", err);
+  }
+}
+
+/**
+ * Syncs one dynamic DNR beacon-block force rule per bare-domain blacklist
+ * entry (referer-beacon-privacy, PR 2; same D2 rationale as
+ * syncBlocklistRefererDNR above). ACTIVE REGARDLESS of `prefs.blockBeacons`.
+ * Referer removal and beacon blocking are distinct DNR action types, so a
+ * blacklisted domain needs a rule from both this function and
+ * syncBlocklistRefererDNR — they cannot be merged into one rule.
+ *
+ * @param {{ blacklist?: string[] }} prefs
+ */
+async function syncBlocklistBeaconsDNR(prefs) {
+  if (!hasDNR) return;
+  try {
+    const domains = getFullyBlacklistedDomains(prefs);
+
+    if (domains.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
+        addRules: [],
+      });
+      return;
+    }
+
+    let syncedDomains = domains;
+    if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
+      const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
+      syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
+      console.warn(
+        `[MUGA] syncBlocklistBeaconsDNR: ${domains.length} blacklisted domains exceed the ` +
+        `${DNR_BLOCKLIST_MAX_RULES}-rule cap; dropped from beacon-block force rules:`,
+        dropped,
+      );
+    }
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
+      addRules: syncedDomains.map((domain, i) => ({
+        id: DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
+        priority: 2,
+        action: { type: "block" },
+        condition: { requestDomains: [domain], resourceTypes: ["ping"] },
+      })),
+    });
+  } catch (err) {
+    console.error("[MUGA] syncBlocklistBeaconsDNR failed:", err);
+  }
+}
+
 async function applyDnrState(prefs) {
   if (!hasDNR) return;
   // Gate DNR on onboardingDone too (#consent-gate). Content scripts
@@ -751,6 +1044,16 @@ async function applyDnrState(prefs) {
     // live (see the storage.onChanged handler below and the mugaConsent /
     // mugaPerDevicePrefs branches, all of which call applyDnrState).
     await syncAllowlistDNR(prefs);
+    // Referer/beacon privacy layer (referer-beacon-privacy, PR 2): two
+    // global rules gated on their own pref (suppressReferer/blockBeacons)
+    // plus two per-domain blocklist-force rule families that are ACTIVE
+    // REGARDLESS of those prefs (D2 in design.md). Order here matches the
+    // priority scheme documented in dnr-ids.js and design.md: allowlist
+    // allow (1000, synced above) > blocklist force (2) > global suppress (1).
+    await syncSuppressRefererDNR(prefs);
+    await syncBlockBeaconsDNR(prefs);
+    await syncBlocklistRefererDNR(prefs);
+    await syncBlocklistBeaconsDNR(prefs);
     // Re-arm the dynamic remote-params rule (id 1001). The gate-closed branch
     // removes it (#921), so a close→open cycle — or a wake where the weekly
     // signed fetch is time-gated and skips re-adding it — would otherwise leave
@@ -772,6 +1075,16 @@ async function applyDnrState(prefs) {
     // out-prioritize - leaving them registered would just be a stale,
     // unnecessary MUGA network footprint while the extension is off.
     await syncAllowlistDNR({ whitelist: [], blacklist: [] });
+    // Clear the referer/beacon privacy rules too (referer-beacon-privacy,
+    // PR 2): the two global rules (2500/2600) AND the full per-domain
+    // blocklist-force ranges (2700-2899/2900-3099). "Always aggressive on
+    // this domain" (blocklist-force) still yields to "extension not yet
+    // accepted / disabled" — no Referer removal or beacon block, global or
+    // blocklist-forced, may run before onboardingDone or while disabled.
+    await syncSuppressRefererDNR({ suppressReferer: false });
+    await syncBlockBeaconsDNR({ blockBeacons: false });
+    await syncBlocklistRefererDNR({ blacklist: [] });
+    await syncBlocklistBeaconsDNR({ blacklist: [] });
     // Disabling the static rulesets and clearing rule 1000 is NOT enough: the
     // remote-params rule (dynamic id 1001) is a DNR redirect that keeps
     // stripping params for a disabled or non-consented extension. Remove it so
@@ -972,6 +1285,60 @@ async function collectBadgeTotals() {
   }
 }
 
+// --- Tab active-state (toolbar-inactive-badge) ---
+//
+// "Active-on-tab" mirrors isSiteFullyExempt/getFullyExemptDomains (#allowlist
+// -full-inert) exactly the same way syncAllowlistDNR does for the network
+// layer above: a tab is ACTIVE only when the extension is globally on,
+// onboarding/consent is complete, AND the tab's hostname is not a fully
+// exempt (allowlisted / per-site-paused — migratePerSiteDisableToAllowlist
+// folded the legacy per-site pause into the same whitelist mechanism) site.
+// Defensive by construction: any falsy/missing prefs resolves through
+// isSiteFullyExempt's own fail-safe (false), so a malformed prefs object
+// can only ever make computeTabActiveState MORE cautious about calling a
+// tab "inactive", never less.
+function computeTabActiveState(prefs, hostname) {
+  return prefs?.enabled === true && prefs?.onboardingDone === true && !isSiteFullyExempt(hostname, prefs);
+}
+
+// Repaints EVERY open tab's active-state on the toolbar (#toolbar-inactive
+// -badge). Called whenever a pref that can flip Active-on-tab changes:
+// prefs.enabled, whitelist/blacklist (allowlist + per-site pause), or
+// onboarding/consent state.
+//
+// Cold-SW-safe by construction, unlike collectBadgeTotals() above: there is
+// no durable/session-storage record of "is this tab active" to rehydrate —
+// the value is always recomputed fresh from the tab's LIVE url (via
+// chrome.tabs.query, which reflects the real open-tab list regardless of
+// service-worker restarts) plus the current prefs. So a restart loses
+// nothing this function needs; there is nothing to lose.
+async function repaintAllTabsActiveState(prefs) {
+  if (!prefs?.onboardingDone) return; // the global "!" badge owns the surface; nothing to repaint per-tab
+  let tabs;
+  try {
+    tabs = await new Promise((resolve) => {
+      chrome.tabs.query({}, (r) => { void chrome.runtime.lastError; resolve(r || []); });
+    });
+  } catch {
+    return;
+  }
+  for (const tab of tabs) {
+    if (typeof tab.id !== "number" || tab.id < 0) continue;
+    if (!tab.url || !/^https?:\/\//i.test(tab.url)) continue; // skip non-http(s) tabs (chrome://, extension pages, etc.)
+    let hostname;
+    try {
+      hostname = new URL(tab.url).hostname;
+    } catch {
+      continue; // malformed URL — never throw, just skip this tab (see AGENTS.md new URL() guard)
+    }
+    toolbarBus.emit({
+      type: "tabActiveStateChanged",
+      tabId: tab.id,
+      active: computeTabActiveState(prefs, hostname),
+    });
+  }
+}
+
 // Reset the per-PAGE popup preview count and the tooltip on every
 // navigation start. Deliberately does NOT touch `tab_badge_{tabId}` or
 // emit anything badge-related — the toolbar badge is a per-TAB running
@@ -982,11 +1349,12 @@ async function collectBadgeTotals() {
 // reset in this state, and emitting would still update the tooltip for a
 // tab the user has not consented on. Skipping is safe and matches the
 // pre-#910 behavior.
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== "loading") return;
   sessionStorage.remove(`tab_${tabId}`);
+  let prefs = null;
   try {
-    const prefs = await getPrefsWithCache();
+    prefs = await getPrefsWithCache();
     if (!prefs.onboardingDone) return;
   } catch { /* fall through and emit — toolbar reset is the safer default */ }
   // The browser CLEARS the per-tab badge TEXT on every navigation (MDN
@@ -1004,6 +1372,25 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     total = Math.max(0, Number(badgeData[badgeKey]) || 0);
   } catch { /* best-effort; presenter falls back to its in-memory total */ }
   toolbarBus.emit({ type: "navigationStarted", tabId, total });
+
+  // Recompute the tab's active-state for the NEW page (toolbar-inactive
+  // -badge). Emitted AFTER navigationStarted above so the presenter's
+  // per-page reset (which repaints the tooltip/badge from the tab's
+  // PREVIOUS active flag — see toolbar-presenter.js module doc) is
+  // immediately corrected for the new hostname; the gap is at most one JS
+  // macrotask within this same handler invocation, not user-observable.
+  // Skipped when the prefs fetch above failed (prefs stays null) — best
+  // effort, mirrors the fall-through above.
+  if (prefs) {
+    try {
+      if (tab?.url && /^https?:\/\//i.test(tab.url)) {
+        const hostname = new URL(tab.url).hostname;
+        toolbarBus.emit({ type: "tabActiveStateChanged", tabId, active: computeTabActiveState(prefs, hostname) });
+      }
+      // Non-http(s) tab (chrome://, extension pages, new-tab, etc.): leave
+      // the tab's active flag untouched — MUGA never runs there anyway.
+    } catch { /* malformed tab.url (new URL() guard) — skip this navigation's recompute */ }
+  }
 });
 
 // Clean up session data when a tab closes. Both the per-page popup
@@ -1054,6 +1441,10 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       const prefs = await getPrefsWithCache();
       await applyDnrState(prefs);
       await applyOnboardingBadge(prefs);
+      // Onboarding/consent state is one of the three Active-on-tab factors
+      // (toolbar-inactive-badge) — a fresh accept/hard-reonboard flips it
+      // for every open tab, not just the global "!" badge.
+      await repaintAllTabsActiveState(prefs);
     }
     // Per-device overrides changed (per-device-prefs.setOverrides /
     // clearOverrides). getPrefs() overlays these last, so a change flips the
@@ -1065,6 +1456,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       const prefs = await getPrefsWithCache();
       await applyDnrState(prefs);
       await applyOnboardingBadge(prefs);
+      await repaintAllTabsActiveState(prefs);
     }
     return;
   }
@@ -1074,12 +1466,24 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   _invalidatePrefsCache();
   if (changes.customParams || changes.dnrEnabled || changes.enabled ||
       changes.ampRedirect || changes.unwrapRedirects ||
-      changes.whitelist || changes.blacklist) {
+      changes.whitelist || changes.blacklist ||
+      changes.suppressReferer || changes.blockBeacons) {
     // whitelist/blacklist (#allowlist-full-inert): toggling the allowlist or
     // the per-site pause must re-sync the DNR allow rules live, without
-    // requiring the user to also flip an unrelated pref.
+    // requiring the user to also flip an unrelated pref. suppressReferer /
+    // blockBeacons (referer-beacon-privacy, PR 2) need the same live re-sync
+    // once a future UI (PR 4) lets a user flip them.
     const prefs = await getPrefsWithCache();
     await applyDnrState(prefs);
+  }
+  if (changes.enabled || changes.whitelist || changes.blacklist) {
+    // toolbar-inactive-badge: prefs.enabled and whitelist/blacklist
+    // (allowlist + per-site pause) are Active-on-tab factors — repaint every
+    // open tab's badge/tooltip immediately rather than waiting for its next
+    // navigation. getPrefsWithCache() is already warm from the block above
+    // when both conditions overlap (e.g. changes.enabled).
+    const prefs = await getPrefsWithCache();
+    await repaintAllTabsActiveState(prefs);
   }
   if (changes.contextMenuEnabled || changes.language || changes.enabled) {
     const enabled = changes.contextMenuEnabled
@@ -1197,6 +1601,9 @@ async function handleTestMessage(message, _sender) {
         event.paramsRemoved = Number(inner.paramsRemoved) || 0;
         if (Number.isFinite(inner.total)) event.total = Number(inner.total);
       }
+      if (inner.type === "tabActiveStateChanged") {
+        event.active = inner.active === true;
+      }
       toolbarBus.emit(event);
       return { ok: true };
     }
@@ -1307,7 +1714,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "getPrefs") {
     getPrefsWithCache()
-      .then(prefs => sendResponse({ ...prefs, _affiliateDomains }))
+      .then(prefs => sendResponse({
+        ...prefs,
+        _affiliateDomains,
+        // Cookie Consent Minimizer gate wiring (cookie-consent-accept Slice
+        // 2a): content scripts cannot import settings-schema.js (no ES
+        // imports — AGENTS.md), and src/lib/cmp-adapters.js's
+        // computeCookieGate is lexically restricted, so this pre-validated
+        // boolean is computed here (the one place both concerns are
+        // importable) and handed down verbatim. See the @sync:cookie-gate
+        // comment in cmp-adapters.js / content/cookie-noise.js.
+        modeActive: isCookieConsentModeActive(prefs.cookieConsentMode),
+      }))
       .catch(() => { try { sendResponse(null); } catch { /* channel closed */ } });
     return true;
   }
@@ -1336,7 +1754,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "PROCESS_URL") {
     if (typeof message.url !== "string" || message.url.length > MAX_URL_LENGTH) {
-      try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
+      try { sendResponse({ cleanUrl: null, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null }); } catch { /* channel closed */ }
       return true;
     }
     // Opportunistic remote-rules refresh — cheap no-op after the first call
@@ -1354,7 +1772,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .catch(err => {
         console.error("[MUGA] PROCESS_URL handler failed:", err);
-        try { sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null }); } catch { /* channel closed */ }
+        try { sendResponse({ cleanUrl: message.url, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null }); } catch { /* channel closed */ }
       });
     return true; // keep the channel open for the async response
   }
@@ -1640,7 +2058,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, skipSideEffects = false, referrer = "" } = {}) {
-  if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+  if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
   // retry on the next call. Both loaders run in a single outer Promise.all so
   // all three JSON files (domain + 2× path) are in flight at once.
@@ -1661,7 +2079,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled || !prefs.onboardingDone) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   }
 
   // On copy: suppress the toast and affiliate injection. User didn't navigate,
@@ -1683,7 +2101,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker, referrer, pathStripRules, pathAffiliateRules);
   } catch (err) {
     console.error("[MUGA] processUrl failed:", err, rawUrl);
-    return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null };
+    return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   }
 
   // firstUsed is initialized in onInstalled/onStartup (idempotent); the flag
@@ -1849,6 +2267,7 @@ chrome.runtime.onStartup.addListener(async () => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
+  migrateCookieConsentMode().catch(() => {});
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
@@ -1962,6 +2381,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
+  // Pass the onInstalled reason so a genuine "install" latches the disclosed
+  // reject-only default and an "update" runs the existing-user migration. The
+  // top-level and onStartup call sites pass no reason (safe idempotent pass).
+  migrateCookieConsentMode({ reason: details.reason }).catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);

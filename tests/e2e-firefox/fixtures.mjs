@@ -88,24 +88,53 @@ export async function launchFirefoxWithExtension() {
   const geckoId = readGeckoId();
   const extDir = await buildFirefoxExtensionDir();
 
-  const options = new firefox.Options();
-  options.addArguments("-headless");
-  options.setPreference("extensions.webextensions.uuids", JSON.stringify({ [geckoId]: FIXED_EXTENSION_UUID }));
-  // Allow the temporary install to run without additional prompts.
-  options.setPreference("xpinstall.signatures.required", false);
+  // Firefox 126+ gates WebDriver access to PRIVILEGED contexts (navigating to
+  // moz-extension:// pages, which completeOnboarding() does to seed the
+  // extension's chrome.storage) behind an explicit opt-in ENV VAR on the
+  // Firefox process: MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1. Without it, FF 152+
+  // rejects the navigation with UnsupportedOperationError ("Navigation ... is
+  // not allowed in this context"). This supersedes the older
+  // remote.system-access-check.enabled pref, which FF 152 no longer honors for
+  // this. geckodriver passes the inherited process env to the Firefox it
+  // launches, so setting it here (before Builder().build() spawns geckodriver)
+  // reaches Firefox. A no-op on older Firefox that never gated on it.
+  process.env.MOZ_REMOTE_ALLOW_SYSTEM_ACCESS = "1";
 
-  const firefoxBinary = process.env.MUGA_FIREFOX_BINARY;
-  if (firefoxBinary) {
-    options.setBinary(firefoxBinary);
+  let driver;
+  try {
+    const options = new firefox.Options();
+    options.addArguments("-headless");
+    options.setPreference("extensions.webextensions.uuids", JSON.stringify({ [geckoId]: FIXED_EXTENSION_UUID }));
+    // Allow the temporary install to run without additional prompts.
+    options.setPreference("xpinstall.signatures.required", false);
+
+    const firefoxBinary = process.env.MUGA_FIREFOX_BINARY;
+    if (firefoxBinary) {
+      options.setBinary(firefoxBinary);
+    }
+
+    driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
+
+    await driver.installAddon(extDir, /* temporary */ true);
+
+    const extensionOrigin = `moz-extension://${FIXED_EXTENSION_UUID}`;
+
+    return { driver, extDir, geckoId, extensionOrigin };
+  } catch (err) {
+    // The temp extension dir is created BEFORE the browser build/install; if
+    // either throws, the caller never receives extDir and its
+    // finally{ teardown } gets `undefined`, orphaning muga-ff-ext-* under
+    // tmpdir. Clean up here so a failed launch leaves nothing behind.
+    if (driver) {
+      try {
+        await driver.quit();
+      } catch {
+        // ignore — the driver may be only half-built
+      }
+    }
+    await removeDirSafe(extDir);
+    throw err;
   }
-
-  const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
-
-  await driver.installAddon(extDir, /* temporary */ true);
-
-  const extensionOrigin = `moz-extension://${FIXED_EXTENSION_UUID}`;
-
-  return { driver, extDir, geckoId, extensionOrigin };
 }
 
 /**
@@ -126,7 +155,7 @@ export async function completeOnboarding(driver, extensionOrigin, { enableFeatur
       chrome.storage.sync.set(
         {
           enabled: true,
-          cookieConsentMinimizerEnabled: enableFeatureArg,
+          cookieConsentMode: enableFeatureArg ? "reject-only" : "off",
           injectOwnAffiliate: false,
           notifyForeignAffiliate: false,
           language: "en",
@@ -152,6 +181,33 @@ export async function completeOnboarding(driver, extensionOrigin, { enableFeatur
 
   // Mirrors tests/e2e/helpers/dnr-propagation.mjs's waitForDnrPropagation:
   // no observable signal exists for prefs-cache/DNR propagation after a
+  // storage.set call, so a short fixed settle window is used (#824 debt).
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+/**
+ * Writes arbitrary keys directly into chrome.storage.sync (referer-beacon-privacy
+ * PR 3). Separate from completeOnboarding (which only seeds the fixed set of
+ * onboarding/consent keys shared with the cookie-consent smoke suite) so new
+ * prefs (suppressReferer, blockBeacons, whitelist, blacklist) can be layered on
+ * top without touching that shared fixture's contract.
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver
+ * @param {string} extensionOrigin - e.g. "moz-extension://<uuid>"
+ * @param {object} values - plain object merged into chrome.storage.sync
+ */
+export async function setStorageSync(driver, extensionOrigin, values) {
+  await driver.get(`${extensionOrigin}/popup/popup.html`);
+
+  await driver.executeAsyncScript(
+    (valuesArg, callback) => {
+      chrome.storage.sync.set(valuesArg, () => callback());
+    },
+    values
+  );
+
+  // Mirrors completeOnboarding's settle-window comment: no observable signal
+  // exists for prefs-cache invalidation / FF listener re-read after a
   // storage.set call, so a short fixed settle window is used (#824 debt).
   await new Promise((resolve) => setTimeout(resolve, 500));
 }

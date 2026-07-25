@@ -41,7 +41,7 @@
   .tab.active { background: #1c1c1e; color: #f0f0f0; font-weight: 500; }
   .tab-favicon {
     width: 14px; height: 14px;
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: linear-gradient(135deg, #6A2BCF, #5318B5);
     border-radius: 2px; flex-shrink: 0;
   }
   .tab-close { width: 16px; margin-left: auto; color: #666; font-size: 14px; text-align: center; }
@@ -73,7 +73,7 @@
     color: #6A2BCF; flex-shrink: 0;
     box-shadow: 0 0 0 2px #EFE6FB; border-radius: 4px;
   }
-  .ext-icon svg { width: 100%; height: 100%; display: block; }
+  .ext-icon img { width: 100%; height: 100%; display: block; border-radius: 4px; }
 
   /* Page background (Amazon-like) */
   .page-content {
@@ -151,6 +151,8 @@
     padding: 14px 16px 12px;
     border-bottom: 0.5px solid rgba(255,255,255,0.08);
   }
+  .popup-brand { display: flex; align-items: center; gap: 8px; }
+  .popup-mark { width: 20px; height: 20px; border-radius: 5px; display: block; }
   .popup-logo { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
   .toggle-wrap { }
   .toggle {
@@ -160,7 +162,7 @@
   .toggle input { opacity: 0; width: 0; height: 0; }
   .slider {
     position: absolute; inset: 0;
-    background: #2563eb;
+    background: #6A2BCF;
     border-radius: 20px;
   }
   .slider::before {
@@ -184,32 +186,20 @@
   .popup-stat-val { display: block; font-size: 22px; font-weight: 500; color: #f0f0f0; line-height: 1.2; }
   .popup-stat-lbl { display: block; font-size: 10px; color: #999; margin-top: 2px; line-height: 1.3; }
 
-  .popup-options { padding: 8px 0; border-bottom: 0.5px solid rgba(255,255,255,0.08); }
-  .popup-row {
+  /* Collapsed <details>/<summary> section rows, mirroring the real
+     popup's domain-stats / recent-activity sections (src/popup/popup.html).
+     No toggle switches here: MUGA's behavioural options live in Settings
+     (options.html), not in the popup itself. */
+  .popup-sections { border-bottom: 0.5px solid rgba(255,255,255,0.08); }
+  .popup-section-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 16px; gap: 12px;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    color: #ddd;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
   }
-  .popup-row-label { flex: 1; }
-  .popup-row-label span { display: block; font-size: 12.5px; }
-  .popup-row-label small { display: block; font-size: 10.5px; color: #888; margin-top: 1px; }
-  .sm-toggle {
-    position: relative; display: inline-block;
-    width: 30px; height: 17px; flex-shrink: 0;
-  }
-  .sm-slider {
-    position: absolute; inset: 0;
-    border-radius: 20px;
-  }
-  .sm-slider.on { background: #2563eb; }
-  .sm-slider.off { background: #48484a; }
-  .sm-slider::before {
-    content: '';
-    position: absolute;
-    width: 11px; height: 11px;
-    top: 3px; background: white; border-radius: 50%;
-  }
-  .sm-slider.on::before { left: auto; right: 3px; }
-  .sm-slider.off::before { left: 3px; }
+  .popup-section-row:first-child { border-top: none; }
+  .popup-section-chevron { color: #777; font-size: 10px; }
 
   .popup-footer {
     display: flex; justify-content: space-between;
@@ -281,7 +271,7 @@
         </span>
       </div>
       <div class="ext-area">
-        <div class="ext-icon" aria-label="MUGA"><svg viewBox="0 0 128 128" fill="none"><g transform="translate(12 30)" stroke="currentColor" fill="none"><path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke-width="2" stroke-linejoin="round"/></g></svg></div>
+        <div class="ext-icon" aria-label="MUGA"><img src="../../src/icons/128.png" alt="MUGA"></div>
       </div>
     </div>
   </div>
@@ -318,7 +308,10 @@
     <div class="popup-shadow">
       <div class="popup">
         <div class="popup-header">
-          <div class="popup-logo">MUGA</div>
+          <div class="popup-brand">
+            <img class="popup-mark" src="../../src/icons/128.png" alt="MUGA">
+            <div class="popup-logo">MUGA</div>
+          </div>
           <label class="toggle">
             <input type="checkbox" checked>
             <div class="slider"></div>
@@ -326,37 +319,32 @@
         </div>
         <div class="popup-stats">
           <div class="popup-stat">
-            <span class="popup-stat-val">1,284</span>
+            <span class="popup-stat-val">3,482</span>
+            <span class="popup-stat-lbl">URLs cleaned</span>
+          </div>
+          <div class="popup-stat">
+            <span class="popup-stat-val">12,894</span>
             <span class="popup-stat-lbl">bits of noise removed</span>
           </div>
           <div class="popup-stat">
-            <span class="popup-stat-val">47</span>
-            <span class="popup-stat-lbl">referral tags kept</span>
-          </div>
-          <div class="popup-stat">
-            <span class="popup-stat-val">12</span>
-            <span class="popup-stat-lbl">referrals added</span>
+            <span class="popup-stat-val">231</span>
+            <span class="popup-stat-lbl">affiliate tags detected</span>
           </div>
         </div>
-        <div class="popup-options">
-          <div class="popup-row">
-            <div class="popup-row-label">
-              <span>Inject our affiliate when none is present</span>
-              <small>Only on stores where we have an active account</small>
-            </div>
-            <div class="sm-toggle"><div class="sm-slider on"></div></div>
+        <div class="popup-sections">
+          <div class="popup-section-row">
+            <span>Where the most noise comes from</span>
+            <span class="popup-section-chevron">▾</span>
           </div>
-          <div class="popup-row">
-            <div class="popup-row-label">
-              <span>Notify me when a third-party affiliate is detected</span>
-              <small>Shows a non-intrusive toast for 5 seconds</small>
-            </div>
-            <div class="sm-toggle"><div class="sm-slider off"></div></div>
+          <div class="popup-section-row">
+            <span>Recent activity</span>
+            <span class="popup-section-chevron">▾</span>
           </div>
         </div>
         <div class="popup-footer">
-          <a>Advanced settings →</a>
-          <a>Support the project</a>
+          <a>Settings →</a>
+          <a>Rate MUGA</a>
+          <a>Support ♥</a>
         </div>
       </div>
     </div>

@@ -16,6 +16,9 @@ import {
   BOOLEAN_KEYS,
   TOAST_DURATION_OPTIONS,
   snapToastDuration,
+  COOKIE_CONSENT_MODE_OPTIONS,
+  clampCookieConsentMode,
+  isCookieConsentModeActive,
   buildExportPayload,
   planImport,
   diffImport,
@@ -63,6 +66,9 @@ const SAMPLE_PREFS = {
   experimentalParamClassesEnabled: true,
   honorCreatorMode: true,
   creatorAllowlist: ["youtube.com/@example"],
+  cookieConsentMode: "reject-only",
+  suppressReferer: false,
+  blockBeacons: false,
 };
 
 describe("SETTINGS_SCHEMA_VERSION", () => {
@@ -73,16 +79,18 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 21 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 22 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
-      "attributionLedgerEnabled", "hoverPreviewEnabled", "cookieConsentMinimizerEnabled",
+      "attributionLedgerEnabled", "hoverPreviewEnabled",
+      // referer-beacon-privacy (PR 1, opt-in, default false):
+      "suppressReferer", "blockBeacons",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 21);
+    assert.strictEqual(BOOLEAN_KEYS.length, 22);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -241,6 +249,23 @@ describe("planImport — full round-trip of every field", () => {
       const plan = planImport(validImportData({ toastDuration: raw }));
       assert.strictEqual(plan.toSave.toastDuration, snapToastDuration(raw));
     }
+  });
+
+  test("cookieConsentMode import keeps off/reject-only verbatim", () => {
+    for (const mode of ["off", "reject-only"]) {
+      const plan = planImport(validImportData({ cookieConsentMode: mode }));
+      assert.strictEqual(plan.toSave.cookieConsentMode, mode);
+    }
+  });
+
+  test("cookieConsentMode import collapses a retired/unrecognized value (e.g. the removed accept-when-necessary mode) to reject-only", () => {
+    const plan = planImport(validImportData({ cookieConsentMode: "accept-when-necessary" }));
+    assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
+  });
+
+  test("cookieConsentMode clamps an unrecognized value to the safe default (reject-only)", () => {
+    const plan = planImport(validImportData({ cookieConsentMode: "bogus-mode" }));
+    assert.strictEqual(plan.toSave.cookieConsentMode, "reject-only");
   });
 
   test("language round-trips for every SUPPORTED_LANGS code, rejects unknown codes", () => {
@@ -436,5 +461,52 @@ describe("TOAST_DURATION_OPTIONS / snapToastDuration", () => {
     assert.equal(snapToastDuration(23), 30);
     assert.equal(snapToastDuration(1000), 60);
     assert.equal(snapToastDuration(NaN), 15);
+  });
+});
+
+describe("COOKIE_CONSENT_MODE_OPTIONS / clampCookieConsentMode", () => {
+  test("the enum has exactly the two documented members, reject-only first", () => {
+    assert.deepStrictEqual([...COOKIE_CONSENT_MODE_OPTIONS], ["off", "reject-only"]);
+  });
+
+  test("clamps every valid member to itself", () => {
+    for (const mode of COOKIE_CONSENT_MODE_OPTIONS) {
+      assert.equal(clampCookieConsentMode(mode), mode);
+    }
+  });
+
+  test("clamps an unrecognized value (including the removed accept-when-necessary mode), or a non-string, to the safe default (reject-only)", () => {
+    assert.equal(clampCookieConsentMode("bogus"), "reject-only");
+    assert.equal(clampCookieConsentMode("accept-when-necessary"), "reject-only");
+    assert.equal(clampCookieConsentMode(undefined), "reject-only");
+    assert.equal(clampCookieConsentMode(null), "reject-only");
+    assert.equal(clampCookieConsentMode(123), "reject-only");
+  });
+});
+
+// isCookieConsentModeActive: the modeActive gate-wiring boundary —
+// src/lib/cmp-adapters.js's computeCookieGate no longer compares the mode
+// string itself (that file stays lexically restricted, see its structural
+// guard); instead the caller (background/service-worker.js) validates the
+// mode against this closed-enum boundary here and hands a pre-validated
+// boolean down.
+describe("isCookieConsentModeActive", () => {
+  test("reject-only is active", () => {
+    assert.equal(isCookieConsentModeActive("reject-only"), true);
+  });
+
+  test("off is not active", () => {
+    assert.equal(isCookieConsentModeActive("off"), false);
+  });
+
+  test("the removed accept-when-necessary mode is not active", () => {
+    assert.equal(isCookieConsentModeActive("accept-when-necessary"), false);
+  });
+
+  test("an unrecognized string, or a non-string, is not active (fail-closed)", () => {
+    assert.equal(isCookieConsentModeActive("bogus"), false);
+    assert.equal(isCookieConsentModeActive(undefined), false);
+    assert.equal(isCookieConsentModeActive(null), false);
+    assert.equal(isCookieConsentModeActive(123), false);
   });
 });

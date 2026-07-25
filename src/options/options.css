@@ -715,6 +715,27 @@ input[type="text"]:not(.add-row input) {
 /* Report-btn spacing (the button itself is styled by .report-btn above) */
 .report-btn-inline { margin-top: 8px; font-size: 11px; }
 
+/* Opt-in full-URL checkbox row (popup #report-broken + dev URL tester report) */
+.report-include-url-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text2);
+}
+.report-include-url-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.report-include-url-hint {
+  font-size: 10.5px;
+  color: var(--text2);
+  opacity: 0.8;
+}
+
 /* ---------- Remote-rules changelog (#984) ------------------------------- */
 #remote-rules-changelog {
   width: 100%;

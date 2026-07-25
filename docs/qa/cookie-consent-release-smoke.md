@@ -2,8 +2,9 @@
 
 ## Why this exists
 
-The 6 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
-Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics) are unit-green:
+The 10 Tier 1 cookie-consent adapters in `src/lib/cmp-adapters.js` (OneTrust,
+Cookiebot, Didomi, CookieYes, Sourcepoint, Usercentrics, Cookie Information,
+CookieScript, tarteaucitron, consentmanager.net) are unit-green:
 every detection truth table, every reject call shape, and every
 never-auto-accept structural guard is covered by `npm test`. Unit-green is
 not the same thing as real-env-green. Every adapter's merge PR shipped with
@@ -67,6 +68,32 @@ visual confirmation that no cookie was actually set after reject, or any
 geography-gated banner variant the canary's candidate site didn't happen
 to show that run. Those require the manual Chrome + Firefox steps below.
 
+## Automated reject-API surface drift check (any vantage)
+
+`tools/probe-cmp-surface.mjs` covers the drift the geo-gated canary can't
+reach: a vendor RENAMING or REMOVING the reject method our adapter calls
+(e.g. Cookiebot dropping `submitCustomConsent`). Unlike the banner, the vendor
+SDK loads and exposes its globals regardless of the consent-banner geo gate,
+so this yields a real signal from ANY vantage (including non-EU CI):
+
+    node tools/probe-cmp-surface.mjs          # table + per-adapter verdict
+    node tools/probe-cmp-surface.mjs --json    # machine-readable
+
+It navigates each adapter's real customer sites (from `tests/canary/cmp-sites.json`)
+and reports CONFIRMED (reject method present as a function), GLOBAL_ONLY
+(possible partial drift), or UNCONFIRMED (SDK never loaded — site down /
+bot-protected / not on that CMP). A 2026-07 run confirmed ALL 10 adapters'
+reject-API surface live from a non-EU vantage, after curating a better
+Usercentrics site (paulandshark.com; dish.com/conrad.de did not expose `UC_UI`
+from that vantage — the UC_UI surface is scarcer in the wild than assumed, see
+#1121). Only the banner-dismiss step below still needs an EU vantage.
+
+This does NOT replace the banner-dismiss smoke below — it proves the method
+still EXISTS to call, not that calling it dismisses the live banner. It is a
+maintainer probe, not a CI gate (real sites are flaky). Gap A's runtime
+`confirmRejectDismissal` console warning is the complementary live safety net:
+if a reject fires but its banner never clears on a real user's page, it warns.
+
 ## Per-adapter checklist
 
 Each section lists the exact reject call and detection signals as
@@ -77,7 +104,7 @@ sites (`src/content/cookie-noise-mainworld.js` for Chrome MAIN world,
 `tests/canary/cmp-sites.json` - do not test against a different site
 without first adding it there.
 
-General Chrome steps (same shape for all 6 adapters unless noted):
+General Chrome steps (same shape for all 10 adapters unless noted):
 
 1. `npm run build:content` then load the unpacked extension from `src/`
    in `chrome://extensions` (Developer mode > Load unpacked).
@@ -92,7 +119,7 @@ General Chrome steps (same shape for all 6 adapters unless noted):
    inspector (where available) to confirm the resulting consent state is
    reject / necessary-only, not accept.
 
-General Firefox steps (same shape for all 6 adapters unless noted):
+General Firefox steps (same shape for all 10 adapters unless noted):
 manual only, automation is tracked separately in #1128.
 
 1. `bash scripts/with-firefox-manifest.sh npm run build:content` then load
@@ -175,6 +202,20 @@ manual only, automation is tracked separately in #1128.
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
+#### RETIRED before ship: cookie-accept capability (not in this release)
+
+MUGA ships nothing that accepts cookies on the user's behalf, so there is NO
+accept QA gate for this release. Two accept constructions were explored and
+cut before shipping:
+- The Didomi `setCurrentUserStatus` minimum-consent pilot (proven non-viable,
+  engram id 1331) - deleted.
+- The consent-or-pay-wall accept-click (opt-in `accept-when-necessary` mode) -
+  removed from the 2.7.0 build (commit ea7f557), preserved for demand-driven
+  revival at git ref `parked/cookie-paywall-accept`.
+
+`cookieConsentMode` is now a 2-state enum (`off` | `reject-only`). Only the
+reject / necessary-only behaviour documented below is in scope for this release.
+
 ### 4. CookieYes
 
 - **Reject call:** `window.performBannerAction("reject")` (Chrome MAIN
@@ -214,8 +255,10 @@ manual only, automation is tracked separately in #1128.
   (`iframe[src*="sp-prod.net"]`), `hasSpProdScriptDom`
   (`script[src*="sp-prod.net"]`).
 - **Candidate live site(s):** `https://9gag.com`,
-  `https://www.heraldscotland.com` (lower confidence - masthead-level
-  citation only; banner selector `div[id^="sp_message_container"]`).
+  `https://www.techradar.com` (Future plc; `div[id^="sp_message_container"]`
+  + `cdn.privacy-mgmt.com` signal + a necessary-only "Essential Cookies Only"
+  reject, EU-probe validated 2026-07, replacing heraldscotland.com per #1135),
+  `https://www.pinknews.co.uk`.
 - **Specific risk to verify (PR #1126):** TCF-vs-Didomi discrimination -
   confirm on a real Sourcepoint page that `postRejectAll` fires (not a
   Didomi-shaped misfire), and separately confirm on a real Didomi-only
@@ -225,6 +268,46 @@ manual only, automation is tracked separately in #1128.
   Sourcepoint loader lacking the `privacy-mgmt.com`/`sp-prod.net`
   secondary signals yields confidence 0.4 and is deliberately missed
   (fail-closed, never misfires) - do not treat that as a FAIL here.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
+### 5b. Sourcepoint - multi-layer reject (Options panel -> Reject all) (#1123)
+
+Covers the multi-layer follow-up (`findSpOpenSettingsTarget` +
+`runSpRejectClickDispatcher` in `src/content/cookie-noise.js`). Some
+Sourcepoint walls expose ONLY a "12" ("Options"/"Manage") control at the top
+layer, with the real "Reject all" ("13") one layer deeper inside the
+privacy-manager panel that "12" opens.
+
+- **Reject flow:** with no directly actionable "13" present, MUGA clicks the
+  single actionable `sp_choice_type_12` control ONCE to open the panel, then
+  the MutationObserver re-enters and clicks the panel's revealed single
+  `sp_choice_type_13` ("Reject all"). Both are plain isolated-world
+  `element.click()` calls, so Chrome and Firefox use the SAME path here (no
+  MAIN-world / `wrappedJSObject` fork, unlike the `postRejectAll` API call).
+- **Options-only scope (the key guard to verify):** the "12" is opened ONLY
+  when NO other actionable `sp_choice` decision control (a broad-consent "11",
+  a pay "9", a direct "13", ...) is present at the top layer. On a wall that
+  also shows accept/pay, MUGA must NOT open the Options panel.
+- **Candidate live site(s):** needs a real Sourcepoint deployment whose FIRST
+  layer offers only "Options"/"Manage" (no direct "Reject all") - curation
+  tracked with the other canary-site work in #1135. The single-click SP
+  candidates in section 5 (9gag, pinknews) expose a direct "13" and exercise
+  the non-multi-layer path, not this one.
+- **Specific risk to verify (#1123):**
+  1. On a real "12-only" SP wall: MUGA opens the Options panel and the
+     revealed "Reject all" is clicked and the wall is dismissed (before/after
+     screenshot; confirm via Sourcepoint's `onMessageChoiceSelect` log
+     reporting choice type 12 then 13, if available).
+  2. NEVER-ACCEPT: if the opened panel does not surface a reachable "Reject
+     all", MUGA clicks nothing further and the wall is left intact (no consent
+     granted) - a fail-closed NOOP, never an accept.
+  3. OPTIONS-ONLY SCOPE: on a consent-or-pay wall showing [Accept][Options]
+     [Pay], MUGA does NOT auto-open the Options panel (the reject engine
+     leaves it to the direct-"13" path and the separate accept feature).
+  4. Verify the Firefox path (same isolated-world DOM clicks; no Firefox-
+     specific fork, but confirm the panel-open + revealed-"13" click fire in
+     Gecko).
 - **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
 - **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
 
@@ -284,18 +367,167 @@ following before marking this adapter PASS:
       across third-party sources per PR #1127 - note the finding either
       way, do not silently assume).
 
+### 7. Cookie Information
+
+- **Reject call:** `window.CookieInformation.declineAllCategories()` (Chrome
+  MAIN world); `window.wrappedJSObject.CookieInformation.declineAllCategories()`
+  (Firefox). Synchronous, zero-argument, void return — same call shape as
+  `Didomi.setUserDisagreeToAll()`; there is no consent-granting parameter on
+  this call at all.
+- **Detection signals:** mandatory `hasCookieInformationGlobal`
+  (`typeof window.CookieInformation === "object"`) + `hasDeclineAllCategoriesFn`
+  (`typeof window.CookieInformation.declineAllCategories === "function"`);
+  corroborating (>=1 required): `hasCoiOverlayDom` (`#coiOverlay`),
+  `hasCoiConsentBannerDom` (`#coiConsentBanner`), `hasCoiSummeryDom`
+  (`#coiSummery`), `hasCoiBannerWrapperDom` (`#coi-banner-wrapper`),
+  `hasCoiConsentSummaryDom` (`.coi-consent-summary`).
+- **Candidate live site(s):** `https://cookieinformation.com` (PLACEHOLDER —
+  UNVERIFIED, needs curation; vendor's own site, banner selector
+  `#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper,
+  .coi-consent-summary`). Replace with an independently-confirmed customer
+  deployment before treating this as a release gate.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path and
+  live-Cookie-Information compatibility are structurally tested only (the
+  Chromium e2e fixture is a regression oracle, not a real-vendor test) —
+  confirm `declineAllCategories()` actually clears the banner on a live
+  site, not just in the fixture. Also confirm the discrimination note
+  holds: this vendor can additionally expose the generic `__tcfapi` surface
+  (opt-in per site) without this adapter or the Sourcepoint adapter
+  misfiring on each other.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
+### 8. CookieScript
+
+- **Reject call:** `window.CookieScript.instance.rejectAllAction()` (Chrome
+  MAIN world); `window.wrappedJSObject.CookieScript.instance.rejectAllAction()`
+  (Firefox). Synchronous, zero-argument, void return — "rejects all cookies
+  except strictly necessary" per the vendor's own documentation.
+- **Detection signals:** TRIPLE-mandatory (all three required together,
+  since the reject call lives on `.instance`, not directly on the vendor
+  global): `hasCookieScriptGlobal` (`typeof window.CookieScript === "object"`),
+  `hasCookieScriptInstance` (`typeof window.CookieScript.instance === "object"`),
+  and `hasRejectAllActionFn`
+  (`typeof window.CookieScript.instance.rejectAllAction === "function"`);
+  corroborating (>=1 required): `hasCookiescriptInjectedDom`
+  (`#cookiescript_injected`), `hasCookiescriptDescriptionDom`
+  (`#cookiescript_description`).
+- **Candidate live site(s):** `https://cookie-script.com` (PLACEHOLDER —
+  UNVERIFIED, needs curation; vendor's own site, banner selector
+  `#cookiescript_injected, #cookiescript_description`). Replace with an
+  independently-confirmed customer deployment before treating this as a
+  release gate.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path and
+  live-CookieScript compatibility are structurally tested only (the
+  Chromium e2e fixture is a regression oracle, not a real-vendor test) —
+  confirm `instance.rejectAllAction()` actually clears the banner on a live
+  site, not just in the fixture. Also confirm `.instance` is reliably
+  populated by the time the dispatcher's MutationObserver fires (the vendor
+  SDK may attach `.instance` asynchronously after the global itself
+  appears) — a real-site smoke is the only way to observe this timing.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
+### 9. tarteaucitron
+
+- **Reject call:** `window.tarteaucitron.userInterface.respondAll(false)`
+  (Chrome MAIN world); `window.wrappedJSObject.tarteaucitron.userInterface.respondAll(false)`
+  (Firefox). Synchronous (a plain `for` loop over `tarteaucitron.job`, no
+  Promise/callback) — the literal `false` status argument denies every
+  registered service; this is the exact function/argument the vendor's own
+  "tout refuser" (reject all) UI button calls.
+- **Detection signals:** TRIPLE-mandatory (all three required together,
+  since the reject call lives on `.userInterface`, not directly on the
+  vendor global): `hasTarteaucitronGlobal` (`typeof window.tarteaucitron === "object"`),
+  `hasTarteaucitronUserInterface` (`typeof window.tarteaucitron.userInterface === "object"`),
+  and `hasRespondAllFn`
+  (`typeof window.tarteaucitron.userInterface.respondAll === "function"`);
+  corroborating (>=1 required): `hasTarteaucitronRootDom`
+  (`#tarteaucitronRoot`), `hasTarteaucitronAlertBigDom`
+  (`#tarteaucitronAlertBig`), `hasTarteaucitronBackDom`
+  (`#tarteaucitronBack`), `hasTarteaucitronModalOpenDom`
+  (`.tarteaucitron-modal-open` on `document.body`).
+- **Candidate live site(s):** `https://tarteaucitron.io` (PLACEHOLDER —
+  UNVERIFIED, needs curation; the project's own site, banner selector
+  `#tarteaucitronRoot, #tarteaucitronAlertBig`). Replace with an
+  independently-confirmed customer deployment (strong France/gov-sector
+  presence) before treating this as a release gate.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path and
+  live-tarteaucitron compatibility are structurally tested only (the
+  Chromium e2e fixture is a regression oracle, not a real-vendor test) —
+  confirm `userInterface.respondAll(false)` actually clears the banner on a
+  live site, not just in the fixture. Also confirm `.userInterface` is
+  reliably populated by the time the dispatcher's MutationObserver fires,
+  and that the literal `false` argument (not `true`, not omitted) is the
+  one that actually denies consent on a live deployment — `respondAll`'s
+  second and third arguments (`type`, `allowSafeAnalytics`) are never
+  passed by this adapter.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
+### 10. consentmanager.net
+
+- **Reject call:** `window.__cmp("setConsent", 0, callback, true)` (Chrome
+  MAIN world); `window.wrappedJSObject.__cmp("setConsent", 0, callback, true)`
+  (Firefox). Fire-and-forget: the callback fires in practice but is
+  optional-log-only and never gates control flow — `_acted`/`stopObserver()`
+  fire synchronously right after the call returns. The literal `0`
+  consent-value argument denies all (reject-all); `1` would grant broad
+  consent, so this call site never passes a variable there — confirmed
+  behaviorally on 3 live customer deployments (see the specific-risk note
+  below).
+- **Detection signals:** TRIPLE-mandatory (all three required together, since
+  `window.__cmp` is the legacy IAB TCF v1.1 generic surface every v1.1-era
+  CMP can expose and can never be a sole anchor): `hasCmpMngrGlobal`
+  (`typeof window.cmpmngr === "object"`, the vendor-specific global),
+  `hasCmpFn` (`typeof window.__cmp === "function"`, the reject surface), and
+  `hasCmpBoxDom` (`#cmpbox`, the vendor-specific DOM anchor); corroborating
+  (>=1 required): `hasCmpWelcomeBtnYesDom` (`#cmpwelcomebtnyes`),
+  `hasCmpWelcomeBtnNoDom` (`#cmpwelcomebtnno`), `hasCmpBoxBtnDom`
+  (`#cmpbox .cmpboxbtn`).
+- **Candidate live site(s):** `https://www.hoerzu.de` (banner selector
+  `#cmpbox`) — PLACEHOLDER, needs independent curation/confirmation before
+  relying on this entry for release gating. This is one of the real customer
+  deployments (alongside adac.de, blic.rs, hrt.hr) where a live headless-
+  Chromium behavioral probe confirmed `window.cmpmngr`/`window.__cmp`
+  present, `#cmpbox` visible, and `__cmp("setConsent", 0, callback, true)`
+  dismissing the banner with parity to the native reject button (engram
+  `sdd/cookie-consent-coverage/tier1-live-probe`) — but that probe was a
+  one-off verification run, not the same repeatable canary-site curation
+  process used for the other 9 adapters' entries.
+- **Specific risk to verify:** Firefox `wrappedJSObject` reject path is
+  structurally tested only — confirm `__cmp("setConsent", 0, callback, true)`
+  actually clears the banner on a live site in Firefox, not just via the
+  Chrome probe evidence above. Also confirm the dual-anchor discrimination
+  holds: this vendor's `__cmp` is the shared/generic legacy TCF v1.1 surface,
+  so verify on a real consentmanager.net page that the adapter fires (not a
+  misfire from some other bare-`__cmp`-exposing v1.1 CMP), and that a
+  non-consentmanager.net page exposing only a bare `__cmp` never triggers
+  this adapter. consentmanager.net's banner is geo-gated per-deployment
+  (confirmed during the live probe — 2 of 5 real customer sites did not
+  render from a non-EU vantage), so a single failed manual check from a
+  non-EU location is not evidence of drift; retry from an EU vantage or a
+  different candidate site before treating a no-show as a FAIL.
+- **Chrome:** PASS / FAIL / N/A ____  Notes: ______________________
+- **Firefox:** PASS / FAIL / N/A ____  Notes: ______________________
+
 ## Sign-off table
 
-All 12 cells (6 adapters x Chrome/Firefox) must be green before the
-`develop -> main` release PR opens.
+All 20 reject-adapter cells (10 adapters x Chrome/Firefox), PLUS the
+Sourcepoint multi-layer row below, must be green before the `develop -> main` release PR opens.
 
 | Adapter | Chrome | Firefox |
 | --- | --- | --- |
 | OneTrust | ____ | ____ |
 | Cookiebot | ____ | ____ |
-| Didomi | ____ | ____ |
+| Didomi (reject) | ____ | ____ |
 | CookieYes | ____ | ____ |
 | Sourcepoint | ____ | ____ |
+| Sourcepoint multi-layer (Options -> Reject, "12"-only wall) - real-EU vantage | ____ | ____ |
 | Usercentrics | ____ | ____ |
+| Cookie Information | ____ | ____ |
+| CookieScript | ____ | ____ |
+| tarteaucitron | ____ | ____ |
+| consentmanager.net | ____ | ____ |
 
 Reviewer: ______________________  Date: ______________________

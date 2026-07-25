@@ -16,7 +16,12 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createToolbarEventBus } from "../../src/lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../../src/lib/tab-presenter-state.js";
-import { createToolbarPresenter } from "../../src/lib/toolbar-presenter.js";
+import {
+  createToolbarPresenter,
+  INACTIVE_GLYPH,
+  INACTIVE_BADGE_COLOR,
+  DEFAULT_BADGE_COLOR,
+} from "../../src/lib/toolbar-presenter.js";
 
 function makeRecordingActionApi() {
   const calls = [];
@@ -24,6 +29,7 @@ function makeRecordingActionApi() {
     calls,
     setTitle(arg) { calls.push(["setTitle", arg]); },
     setBadgeText(arg) { calls.push(["setBadgeText", arg]); },
+    setBadgeBackgroundColor(arg) { calls.push(["setBadgeBackgroundColor", arg]); },
   };
 }
 
@@ -32,6 +38,7 @@ const STRINGS = {
   tooltip_cleaned:               "MUGA — tracking removed",
   tooltip_preserved:             "MUGA — creator referral preserved",
   tooltip_cleaned_and_preserved: "MUGA — tracking removed, creator referral preserved",
+  tooltip_inactive:              "MUGA: off on this site",
 };
 const t = (key) => STRINGS[key] ?? key;
 
@@ -64,6 +71,14 @@ function setup({ showBadge = true, onboardingDone = true } = {}) {
 
 function badgeCallsFor(actionApi, tabId) {
   return actionApi.calls.filter(([k, arg]) => k === "setBadgeText" && arg.tabId === tabId);
+}
+
+function bgColorCallsFor(actionApi, tabId) {
+  return actionApi.calls.filter(([k, arg]) => k === "setBadgeBackgroundColor" && arg.tabId === tabId);
+}
+
+function titleCallsFor(actionApi, tabId) {
+  return actionApi.calls.filter(([k, arg]) => k === "setTitle" && arg.tabId === tabId);
 }
 
 describe("toolbar-presenter — startup", () => {
@@ -392,6 +407,135 @@ describe("toolbar-presenter — robustness", () => {
     bus.emit({ type: "urlCleaned", tabId: 1, paramsRemoved: 1 });
     const titleCalls = actionApi.calls.filter(([k]) => k === "setTitle");
     assert.equal(titleCalls.length, 1);
+  });
+});
+
+// ── Inactive badge precedence (toolbar-inactive-badge) ──────────────────────
+//
+// A tab is INACTIVE when MUGA is globally disabled or the tab's site is
+// fully exempt. The service worker recomputes this on navigation commit and
+// on prefs changes and tells the presenter via `tabActiveStateChanged`.
+// Precedence (highest first): onboarding-incomplete > showBadge-off >
+// inactive-glyph > active-count.
+describe("toolbar-presenter — inactive badge precedence", () => {
+  test("exports INACTIVE_GLYPH, INACTIVE_BADGE_COLOR, and DEFAULT_BADGE_COLOR as named constants", () => {
+    assert.equal(typeof INACTIVE_GLYPH, "string");
+    assert.ok(INACTIVE_GLYPH.length > 0);
+    assert.equal(typeof INACTIVE_BADGE_COLOR, "string");
+    assert.equal(typeof DEFAULT_BADGE_COLOR, "string");
+    assert.notEqual(INACTIVE_BADGE_COLOR, DEFAULT_BADGE_COLOR);
+  });
+
+  test("tabActiveStateChanged(active:false) shows the inactive glyph on a grey background", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: INACTIVE_GLYPH });
+    assert.deepEqual(bgColorCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, color: INACTIVE_BADGE_COLOR });
+  });
+
+  test("inactive glyph takes precedence over a historical count — even after urlCleaned events", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 5 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: "5" });
+
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: INACTIVE_GLYPH });
+
+    // A further clean on an inactive tab must NOT bring the count back —
+    // the glyph still wins, even though the running total keeps accumulating
+    // internally (it will resurface once the tab becomes active again).
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 2 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: INACTIVE_GLYPH });
+  });
+
+  test("active tab shows the count with the default badge background", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: true });
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 4 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: "4" });
+    assert.deepEqual(bgColorCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, color: DEFAULT_BADGE_COLOR });
+  });
+
+  test("showBadge OFF shows nothing at all, even when the tab is inactive (no glyph, no count)", () => {
+    const { bus, actionApi } = setup({ showBadge: false });
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+    assert.equal(bgColorCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("onboarding incomplete writes no per-tab badge, even when the tab is inactive", () => {
+    const { bus, actionApi } = setup({ onboardingDone: false });
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.equal(badgeCallsFor(actionApi, 7).length, 0);
+    assert.equal(bgColorCallsFor(actionApi, 7).length, 0);
+  });
+
+  test("navigationStarted repaints the inactive glyph even for a tab with a zero running total", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "navigationStarted", tabId: 7 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: INACTIVE_GLYPH });
+  });
+
+  test("active -> inactive -> active repaints correctly (count, then glyph, then count again)", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: "3" });
+
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: INACTIVE_GLYPH });
+
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: true });
+    assert.deepEqual(badgeCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, text: "3" });
+  });
+
+  test("tooltip switches to tooltip_inactive when the tab becomes inactive", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    assert.deepEqual(titleCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, title: "MUGA — tracking removed" });
+
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.deepEqual(titleCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, title: "MUGA: off on this site" });
+  });
+
+  test("tooltip returns to the page-state tooltip once the tab becomes active again", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 7, paramsRemoved: 3 });
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: true });
+    assert.deepEqual(titleCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, title: "MUGA — tracking removed" });
+  });
+
+  test("inactive tooltip survives navigationStarted's per-page reset (does not bounce back to default)", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "navigationStarted", tabId: 7 });
+    assert.deepEqual(titleCallsFor(actionApi, 7).at(-1)?.[1], { tabId: 7, title: "MUGA: off on this site" });
+  });
+
+  test("tabClosed evicts the active-state flag; a reused tabId starts fresh (active by default)", () => {
+    const { bus, presenter } = setup();
+    bus.emit({ type: "tabActiveStateChanged", tabId: 7, active: false });
+    assert.equal(presenter._isTabActive(7), false);
+    bus.emit({ type: "tabClosed", tabId: 7 });
+    assert.equal(presenter._isTabActive(7), true);
+  });
+
+  test("a tab never told otherwise defaults to active (no glyph without an explicit inactive signal)", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "urlCleaned", tabId: 42, paramsRemoved: 1 });
+    assert.deepEqual(badgeCallsFor(actionApi, 42).at(-1)?.[1], { tabId: 42, text: "1" });
+  });
+
+  test("showBadgePrefChanged(true) repaint respects the inactive glyph over the durable total", () => {
+    const { bus, actionApi } = setup();
+    bus.emit({ type: "tabActiveStateChanged", tabId: 3, active: false });
+    actionApi.calls.length = 0;
+    bus.emit({ type: "showBadgePrefChanged", value: true, tabs: [{ tabId: 3, total: 7 }] });
+    assert.deepEqual(badgeCallsFor(actionApi, 3).at(-1)?.[1], { tabId: 3, text: INACTIVE_GLYPH });
+    assert.deepEqual(bgColorCallsFor(actionApi, 3).at(-1)?.[1], { tabId: 3, color: INACTIVE_BADGE_COLOR });
   });
 });
 

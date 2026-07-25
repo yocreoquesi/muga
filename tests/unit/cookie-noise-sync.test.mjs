@@ -24,6 +24,9 @@ import { join, dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const mv3Manifest = JSON.parse(readFileSync(join(__dirname, "../../src/manifest.json"), "utf8"));
+const mv2Manifest = JSON.parse(readFileSync(join(__dirname, "../../src/manifest.v2.json"), "utf8"));
+
 const FILES = {
   lib: join(__dirname, "../../src/lib/cmp-adapters.js"),
   mainworld: join(__dirname, "../../src/content/cookie-noise-mainworld.js"),
@@ -130,6 +133,30 @@ describe("cookie-noise-sync — sync block is byte-identical (modulo indentation
     assert.ok(/function detectUsercentrics/.test(joined));
     assert.ok(/function canRejectUsercentrics/.test(joined));
   });
+
+  test("sync block also defines detectCookieInformation and canRejectCookieInformation", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectCookieInformation/.test(joined));
+    assert.ok(/function canRejectCookieInformation/.test(joined));
+  });
+
+  test("sync block also defines detectCookieScript and canRejectCookieScript", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectCookieScript/.test(joined));
+    assert.ok(/function canRejectCookieScript/.test(joined));
+  });
+
+  test("sync block also defines detectTarteaucitron and canRejectTarteaucitron", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectTarteaucitron/.test(joined));
+    assert.ok(/function canRejectTarteaucitron/.test(joined));
+  });
+
+  test("sync block also defines detectConsentmanager and canRejectConsentmanager", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/function detectConsentmanager/.test(joined));
+    assert.ok(/function canRejectConsentmanager/.test(joined));
+  });
 });
 
 // ── @sync:cookie-gate block (disabled-state gate) ───────────────────────────
@@ -179,6 +206,133 @@ describe("cookie-noise-sync — @sync:cookie-gate block matches src/lib/cmp-adap
   });
 });
 
+// ── Retired Didomi minimum-accept path — full removal proof ────────────────
+//
+// The prior design (cookie-consent-accept Slice 2a) attempted a Didomi
+// setCurrentUserStatus minimum-accept path, proven non-viable (engram id
+// 1331) and retired. This must be fully gone from BOTH content scripts —
+// not just unused, but structurally absent — including the MAIN-world
+// accept dispatch fork and the cross-world gate-relay field.
+
+describe("cookie-noise content scripts — the retired Didomi minimum-accept path is fully gone", () => {
+  const RETIRED_IDENTIFIERS = [
+    "canAttemptDidomiMinimumAccept",
+    "resolveDidomiMinimumStatus",
+    "buildMinimumPayload",
+    "extractDidomiIds",
+    "extractRequiredIds",
+    "setCurrentUserStatus",
+    "getRequiredPurposeIds",
+    "getRequiredVendorIds",
+    "hasSetCurrentUserStatusFn",
+    "hasGetRequiredPurposeIdsFn",
+    "hasGetRequiredVendorIdsFn",
+    "hasGetPurposesFn",
+    "hasGetVendorsFn",
+    "didomiMinimumGateOpen",
+    "_fxDidomiMinimumGateOpen",
+    "computeDidomiMinimumGate",
+  ];
+
+  for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+    for (const identifier of RETIRED_IDENTIFIERS) {
+      test(`${label} no longer contains retired identifier "${identifier}"`, () => {
+        assert.equal(sources[key].includes(identifier), false, `${label} must not contain "${identifier}"`);
+      });
+    }
+  }
+});
+
+// ── Retired consent-or-pay-wall accept-click mechanism — full removal proof ─
+//
+// cookie-consent-paywall-accept (and its Didomi-market extension) has been
+// REMOVED entirely — MUGA never ships a capability that clicks a
+// consent-granting control on the user's behalf. This must be fully gone
+// from BOTH content scripts — not just unused, but structurally absent —
+// including the button-discrimination primitives, the accept double-gate,
+// and both dispatch functions. The DOM candidate-collection helpers
+// (collectAcceptCandidates and friends) are DELIBERATELY NOT listed here —
+// they are still used, unmodified, by the Sourcepoint reject-click DOM
+// fallback (see the @sync:cmp-sp-reject-click section below).
+
+describe("cookie-noise content scripts — the retired consent-or-pay-wall accept-click mechanism is fully gone", () => {
+  const RETIRED_ACCEPT_IDENTIFIERS = [
+    "accept-when-necessary",
+    "cookieConsentAcceptConsented",
+    "cmp-accept-adapters",
+    "classifyConsentButton",
+    "findFreeAcceptTarget",
+    "hasFreeRejectControl",
+    "hasPayOption",
+    "findSpFreeAcceptTarget",
+    "isPaywallFrame",
+    "findDidomiFreeAcceptTarget",
+    "isDidomiPaywallContext",
+    "computeAcceptGate",
+    "computeAcceptGateForFrame",
+    "resolveFrameIdentity",
+    "runAcceptClickDispatcher",
+    "runDidomiAcceptClickDispatcher",
+    "hasDidomiHostMount",
+    "isAcceptTargetVisible",
+    "acceptStartObserver",
+    "acceptStopObserver",
+    "acceptArmGiveUp",
+    "_acceptActed",
+    "_didomiAcceptActed",
+    "_acceptGateOpen",
+    "_acceptObserver",
+  ];
+
+  for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+    for (const identifier of RETIRED_ACCEPT_IDENTIFIERS) {
+      test(`${label} no longer contains retired identifier "${identifier}"`, () => {
+        assert.equal(sources[key].includes(identifier), false, `${label} must not contain "${identifier}"`);
+      });
+    }
+  }
+});
+
+// ── @sync:cmp-sp-reject-click block (Sourcepoint reject-click DOM fallback) ─
+//
+// findSpRejectTarget is a pure helper in src/lib/cmp-adapters.js (unit-tested
+// there) whose body is hand-inlined ONLY into content/cookie-noise.js
+// (isolated world) — mirrors the @sync:cookie-gate precedent: a DOM click
+// needs neither a page-authored global nor the MAIN world, so this has no
+// main-world copy either.
+
+const SP_REJECT_CLICK_START = "@sync:cmp-sp-reject-click:start";
+const SP_REJECT_CLICK_END = "@sync:cmp-sp-reject-click:end";
+
+describe("cookie-noise-sync — @sync:cmp-sp-reject-click block matches src/lib/cmp-adapters.js", () => {
+  const libBlock = extractMarkedBlock(sources.lib, SP_REJECT_CLICK_START, SP_REJECT_CLICK_END, "cmp-adapters.js");
+  const isolatedBlock = extractMarkedBlock(sources.isolated, SP_REJECT_CLICK_START, SP_REJECT_CLICK_END, "cookie-noise.js");
+
+  test("sp-reject-click sync block is non-empty and defines findSpRejectTarget", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:cmp-sp-reject-click block must not be empty — check the markers");
+    assert.ok(/function findSpRejectTarget/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js @sync:cmp-sp-reject-click block matches src/lib/cmp-adapters.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cmp-sp-reject-click block has drifted from src/lib/cmp-adapters.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:cmp-sp-reject-click block (a DOM click needs no MAIN world)", () => {
+    assert.equal(sources.mainworld.includes(SP_REJECT_CLICK_START), false,
+      "cookie-noise-mainworld.js must not inline the SP reject-click resolver — this mechanism is isolated-world only");
+  });
+
+  test("findSpRejectTarget only ever targets choice type 13, never 11 (the action this project's structural guard forbids naming)", () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/SP_REJECT_ALL_CHOICE\s*=\s*"13"/.test(joined));
+    assert.equal(/spChoice\s*!==\s*"11"/.test(joined), false, "must not reference choice type 11 at all");
+  });
+});
+
 // ── Content-script structural shape ─────────────────────────────────────────
 
 describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
@@ -193,12 +347,35 @@ describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
       assert.equal(/^\s*import\s+/m.test(src), false, `${label} must not contain ES module imports`);
     });
 
-    test(`${label} has a top-frame guard`, () => {
-      assert.ok(/window\.self\s*!==\s*window\.top/.test(src), `${label} must guard against iframes`);
+    // DELIBERATE, SCOPED CHANGE (feat/cookie-consent-all-frames): the
+    // top-frame guard (`window.self !== window.top`) was REMOVED from both
+    // consent content scripts. Real-site verification (engram
+    // sdd/cookie-consent-accept/paywall-domclick-probe) found consent-or-pay
+    // wall accept/reject UIs (Sourcepoint's sp_message_container iframe)
+    // render in a CROSS-ORIGIN CHILD FRAME, unreachable by a top-frame-only
+    // script. Both consent scripts are now registered `all_frames: true` in
+    // their OWN dedicated manifest entries (asserted below) — every OTHER
+    // content script keeps the old top-frame-only behavior. This is an
+    // intentional, product-owner-approved footprint expansion, NOT a
+    // regression: do not reintroduce the guard without re-litigating this
+    // decision.
+    test(`${label} does NOT have a top-frame guard (removed on purpose — runs in all frames)`, () => {
+      assert.equal(
+        /window\.self\s*!==\s*window\.top/.test(src),
+        false,
+        `${label} must NOT guard against iframes — this script is intentionally all_frames:true`,
+      );
     });
 
     test(`${label} has a once-guard`, () => {
       assert.ok(/window\.__muga\w+\s*\)\s*return;/.test(src), `${label} must guard against double-injection`);
+    });
+
+    test(`${label} wraps its module body in a frame-safety try/catch (never throws into the frame)`, () => {
+      assert.ok(
+        /\btry\s*\{/.test(src) && /\}\s*catch\s*\{/.test(src),
+        `${label} must wrap its body in try/catch so an uncaught error never escapes into a shared frame (all_frames:true)`,
+      );
     });
   }
 
@@ -214,6 +391,65 @@ describe("cookie-noise content scripts — IIFE shape, no ES imports", () => {
   test("cookie-noise.js uses chrome.runtime.sendMessage to read prefs", () => {
     assert.ok(/chrome\.runtime\.sendMessage/.test(sources.isolated));
     assert.ok(/getPrefs/.test(sources.isolated));
+  });
+});
+
+// ── Manifest scoping: only the two consent scripts are all_frames:true ─────
+//
+// (feat/cookie-consent-all-frames) Both consent content scripts must be
+// registered all_frames:true, EACH IN ITS OWN dedicated content_scripts
+// entry, in BOTH manifests. Every other content script must keep the
+// default top-frame-only behavior (all_frames absent or false). This test
+// is the manifest-side half of the "deliberate, scoped change" guard above
+// — it fails if a future edit widens (or narrows) the all_frames scope.
+
+describe("cookie-noise manifest scoping — all_frames:true is scoped to ONLY the consent scripts", () => {
+  const CONSENT_SCRIPTS = ["content/cookie-noise.js", "content/cookie-noise-mainworld.js"];
+
+  function collectAllFramesTrueScripts(manifest) {
+    const scripts = [];
+    for (const group of manifest.content_scripts || []) {
+      if (group.all_frames === true) scripts.push(...(group.js || []));
+    }
+    return scripts;
+  }
+
+  test("src/manifest.json (MV3): exactly the two consent scripts are all_frames:true", () => {
+    const allFramesTrue = collectAllFramesTrueScripts(mv3Manifest).sort();
+    assert.deepStrictEqual(
+      allFramesTrue,
+      [...CONSENT_SCRIPTS].sort(),
+      "MV3 must scope all_frames:true to ONLY content/cookie-noise.js and " +
+      "content/cookie-noise-mainworld.js — no other content script's injection " +
+      `scope may change. Found: ${JSON.stringify(allFramesTrue)}`,
+    );
+  });
+
+  test("src/manifest.v2.json (Firefox MV2): exactly cookie-noise.js is all_frames:true", () => {
+    // MV2 has no world:MAIN, so cookie-noise-mainworld.js is not loaded at all
+    // (see firefox-mv2-mainworld-injection.test.mjs) — only cookie-noise.js
+    // is a candidate here.
+    const allFramesTrue = collectAllFramesTrueScripts(mv2Manifest).sort();
+    assert.deepStrictEqual(
+      allFramesTrue,
+      ["content/cookie-noise.js"],
+      "MV2 must scope all_frames:true to ONLY content/cookie-noise.js — no other " +
+      `content script's injection scope may change. Found: ${JSON.stringify(allFramesTrue)}`,
+    );
+  });
+
+  test("each all_frames:true consent script sits in its OWN dedicated content_scripts entry (not mixed with other scripts)", () => {
+    for (const manifest of [mv3Manifest, mv2Manifest]) {
+      for (const group of manifest.content_scripts || []) {
+        if (group.all_frames !== true) continue;
+        assert.equal(
+          (group.js || []).length,
+          1,
+          `an all_frames:true content_scripts group must contain exactly one script (found: ${JSON.stringify(group.js)}) — ` +
+          "consent scripts must not share an all_frames:true entry with a top-frame-only script",
+        );
+      }
+    }
   });
 });
 
@@ -281,21 +517,34 @@ describe("cookie-noise gate handshake — separate channel from muga:history-gat
 // ── STRUCTURAL never-auto-reject-the-other-way guard (own section) ─────────
 //
 // Same load-bearing rule as tests/unit/cmp-adapters.test.mjs's structural
-// guard, extended to the two content-script copies that duplicate the
-// detection logic. Both files' entire source (including comments) must
-// stay free of any trace of a consent-granting action.
+// guard, extended to the reject-specific regions of the two content
+// scripts that duplicate the detection logic.
+//
+// cookie-consent-paywall-accept CHANGED THE SHAPE of this guard for
+// cookie-noise.js specifically: the accept-click mechanism is no longer a
+// handful of tiny fenced regions inside an otherwise reject-only file — it
+// is the file's OWN, legitimately extensive feature (DOM scan, veto,
+// dispatch, observer). A positional "accept-free outside N fenced regions"
+// scan would therefore be meaningless there now. The REAL invariants that
+// matter are covered elsewhere: the retired-Didomi-path absence test above,
+// the @sync:cmp-accept-veto sync-with-lib test above, and the per-vendor
+// REJECT call-shape guards below (unchanged — these prove the Tier-1 reject
+// ladder itself never calls a broad-accept method, in either file).
+//
+// cookie-noise-mainworld.js, however, carries NO accept logic at all
+// anymore (the accept-click mechanism has no MAIN-world copy) — so it keeps
+// the STRICT, unconditional guard: zero accept-family identifiers, full
+// stop, exactly like src/lib/cmp-adapters.js's own guard.
 
-describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting action path", () => {
+describe("cookie-noise-mainworld.js — STRUCTURAL guard: zero accept-family identifiers (no accept logic lives in this world at all)", () => {
   const FORBIDDEN = /allowall|accept/i;
 
-  test("cookie-noise-mainworld.js source contains no AllowAll / accept-family identifier", () => {
+  test("cookie-noise-mainworld.js contains no AllowAll / accept-family identifier anywhere", () => {
     assert.doesNotMatch(sources.mainworld, FORBIDDEN);
   });
+});
 
-  test("cookie-noise.js source contains no AllowAll / accept-family identifier", () => {
-    assert.doesNotMatch(sources.isolated, FORBIDDEN);
-  });
-
+describe("cookie-noise content scripts — REJECT-ladder call-shape guards (per-vendor, unchanged by the accept-click mechanism)", () => {
   test("only window.OneTrust.RejectAll (or wrappedJSObject equivalent) is invoked — no other OneTrust method call", () => {
     for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
       const src = sources[key];
@@ -328,7 +577,7 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
     }
   });
 
-  test("only window.Didomi.setUserDisagreeToAll (or wrappedJSObject equivalent) is invoked — no other Didomi method call", () => {
+  test("only window.Didomi.setUserDisagreeToAll (or wrappedJSObject equivalent) is invoked — no other Didomi method call anywhere (the accept dispatch that once called other Didomi methods is retired)", () => {
     for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
       const src = sources[key];
       const calls = [...src.matchAll(/Didomi\.(\w+)\s*\(/g)].map((m) => m[1]);
@@ -418,5 +667,328 @@ describe("cookie-noise content scripts — STRUCTURAL guard: no consent-granting
         `${label} must chain .catch(...) directly onto the denyAllConsents() call`,
       );
     }
+  });
+
+  test("only CookieInformation.declineAllCategories (or wrappedJSObject equivalent) is invoked — no other CookieInformation method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/CookieInformation\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call CookieInformation.declineAllCategories`);
+      for (const fn of calls) {
+        assert.equal(fn, "declineAllCategories", `${label} calls CookieInformation.${fn}() — only declineAllCategories is permitted`);
+      }
+    }
+  });
+
+  test("every declineAllCategories call passes zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/declineAllCategories\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call declineAllCategories`);
+      for (const args of calls) {
+        assert.equal(args, "", `${label} declineAllCategories must be called with zero arguments`);
+      }
+    }
+  });
+
+  test("only CookieScript.instance.rejectAllAction (or wrappedJSObject equivalent) is invoked — no other CookieScript method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/CookieScript\.instance\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call CookieScript.instance.rejectAllAction`);
+      for (const fn of calls) {
+        assert.equal(fn, "rejectAllAction", `${label} calls CookieScript.instance.${fn}() — only rejectAllAction is permitted`);
+      }
+    }
+  });
+
+  test("every rejectAllAction call passes zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/rejectAllAction\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call rejectAllAction`);
+      for (const args of calls) {
+        assert.equal(args, "", `${label} rejectAllAction must be called with zero arguments`);
+      }
+    }
+  });
+
+  test("only tarteaucitron.userInterface.respondAll (or wrappedJSObject equivalent) is invoked — no other tarteaucitron method call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/tarteaucitron\.userInterface\.(\w+)\s*\(/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call tarteaucitron.userInterface.respondAll`);
+      for (const fn of calls) {
+        assert.equal(fn, "respondAll", `${label} calls tarteaucitron.userInterface.${fn}() — only respondAll is permitted`);
+      }
+    }
+  });
+
+  // LITERAL-ARG GUARD (unlike the zero-argument adapters above): respondAll's
+  // first argument is a boolean where false = deny and true = accept-all —
+  // this call site must be pinned to the literal `false`, mirroring the
+  // Cookiebot submitCustomConsent(false, false, false) literal-args guard
+  // above. A future edit to `respondAll(true)` or `respondAll()` (default
+  // parameter semantics aside, the call site itself must never read that
+  // way) must fail here.
+  test("every respondAll call passes the literal false — never true, never a variable, never zero arguments", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/respondAll\s*\(([^)]*)\)/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call respondAll`);
+      for (const args of calls) {
+        assert.equal(args, "false", `${label} respondAll must be called with the literal false, and only false`);
+      }
+    }
+  });
+
+  // consentmanager.net (__cmp): a DUAL literal-arg guard — unlike every
+  // prior single-literal-arg adapter above, setConsent's command name
+  // ("setConsent") AND its consent-value argument (`0`) must BOTH be
+  // pinned. `setConsent(...)`'s documented shape is
+  // (command, consentValue, callback, isAsync) where consentValue: `0` =
+  // reject-all, `1` = accept-all (grants broad consent) — verified via a
+  // live behavioral probe (engram sdd/cookie-consent-coverage/tier1-live-probe).
+  // A future edit to `__cmp("setConsent", 1, ...)` (accept) or any other
+  // __cmp command must fail here.
+
+  test("only __cmp (or wrappedJSObject equivalent) is invoked as the consentmanager.net reject call", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__cmp\s*\(([^)]*)/g)].map((m) => m[1]);
+      assert.ok(calls.length > 0, `${label} must call __cmp`);
+    }
+  });
+
+  test("every __cmp call's first argument is exactly the literal 'setConsent' — never another command, never a variable", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__cmp\s*\(([^,]*),/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call __cmp`);
+      for (const firstArg of calls) {
+        assert.equal(firstArg, "\"setConsent\"", `${label} __cmp's first argument must be the literal "setConsent"`);
+      }
+    }
+  });
+
+  test("every __cmp setConsent call's second argument (the consent value) is exactly the literal 0 — never 1 (accept), never a variable", () => {
+    for (const [label, key] of [["cookie-noise-mainworld.js", "mainworld"], ["cookie-noise.js", "isolated"]]) {
+      const src = sources[key];
+      const calls = [...src.matchAll(/__cmp\s*\(\s*"setConsent"\s*,\s*([^,]+),/g)].map((m) => m[1].trim());
+      assert.ok(calls.length > 0, `${label} must call __cmp("setConsent", ...)`);
+      for (const secondArg of calls) {
+        assert.equal(secondArg, "0", `${label} __cmp("setConsent", ...)'s second argument must be the literal 0, and only 0`);
+      }
+    }
+  });
+
+  // DENYLIST scan (mirrors the same literals other vendor adapters would
+  // use for a BROAD accept-all call — the consent-or-pay accept-click
+  // mechanism does not call any vendor API at all, it only ever calls
+  // `.click()` on a DOM element it already discriminated, but this scan is
+  // cheap belt-and-suspenders defense against a future edit reintroducing
+  // a vendor accept-all call site).
+  const CONTENT_SCRIPT_DENYLIST = [
+    "AllowAll",
+    "acceptAllConsents",
+    "acceptAllServices",
+    "acceptAllAction",
+    "postAcceptAll",
+    "submitCustomConsent(true",
+    "respondAll(true)",
+    '__cmp("setConsent", 1',
+    'performBannerAction("accept_all"',
+    "setCurrentUserStatus",
+  ];
+
+  for (const forbidden of CONTENT_SCRIPT_DENYLIST) {
+    test(`neither content script's source contains the broad-accept identifier "${forbidden}"`, () => {
+      assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js contains "${forbidden}"`);
+      assert.equal(sources.isolated.includes(forbidden), false, `cookie-noise.js contains "${forbidden}"`);
+    });
+  }
+});
+
+// ── Sourcepoint reject-click dispatch — structural guards ──────────────────
+//
+// The reject-click mechanism (DOM fallback for the postRejectAll gap) lives
+// only in content/cookie-noise.js — see the @sync:cmp-sp-reject-click
+// section above for the pure resolver. Mirrors the accept-click dispatch
+// structural guards above: prove the click call site exists, is gated on
+// every required signal, marks itself acted only after a real click (never
+// on mere detection), and never touches a page-authored global.
+
+describe("cookie-noise.js — Sourcepoint reject-click dispatch structural guards", () => {
+  test("runSpRejectClickDispatcher gates on findSpRejectTarget's single status before ever clicking (no same-frame DOM anchor pre-check — see real-site probe note)", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runSpRejectClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define runSpRejectClickDispatcher()");
+    const body = fnMatch[1];
+    const targetIdx = body.indexOf("findSpRejectTarget(");
+    const clickIdx = body.indexOf(".ref.click(");
+    assert.ok(targetIdx !== -1, "must call findSpRejectTarget");
+    assert.ok(clickIdx !== -1, "must call .ref.click()");
+    assert.ok(targetIdx < clickIdx, "runSpRejectClickDispatcher must resolve findSpRejectTarget before ever clicking");
+    // A same-frame `sp_message_container` pre-check was tried and REMOVED: a
+    // real-site probe found the container div and the sp_choice_type_*
+    // buttons do not share a frame on real deployments (pinknews.co.uk), so
+    // that pre-check silently blocked the dispatcher in the exact frame
+    // where the buttons live. Must never be reintroduced without
+    // re-litigating that finding.
+    assert.equal(src.includes("hasSpMessageContainer("), false,
+      "must not reintroduce the same-frame sp_message_container pre-check gate (hasSpMessageContainerDom, the unrelated pure Sourcepoint detection signal, is fine)");
+  });
+
+  test("the dispatcher marks _spRejectActed = true only INSIDE the confirmed-single reject branch, never on mere detection or on opening the '12' panel (no false success)", () => {
+    const src = sources.isolated;
+    const fnMatch = /function runSpRejectClickDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    const singleBranchIdx = body.indexOf('if (result.status === "single") {');
+    const actedIdx = body.indexOf("_spRejectActed = true;");
+    const pmOpenedIdx = body.indexOf("_spPmOpened = true;");
+    assert.ok(singleBranchIdx !== -1, "the reject click must be gated on a confirmed single '13' target");
+    assert.ok(actedIdx !== -1, "must set _spRejectActed = true");
+    // Success is marked in EXACTLY ONE place, and it is inside the
+    // confirmed-single reject branch — never before target confirmation.
+    assert.equal(body.split("_spRejectActed = true;").length - 1, 1, "_spRejectActed must be set in exactly one place");
+    assert.ok(singleBranchIdx < actedIdx, "_spRejectActed must only be set AFTER confirming a single reject target");
+    // The multi-layer panel-open is a SEPARATE, later branch that marks only
+    // _spPmOpened (monotone-safe reveal) — it must NEVER mark reject success.
+    assert.ok(pmOpenedIdx !== -1, "the multi-layer '12' panel-open must be guarded by _spPmOpened");
+    assert.ok(actedIdx < pmOpenedIdx, "the open-'12' branch comes after the reject branch and must not set _spRejectActed");
+  });
+
+  test("the reject-click gate (_spRejectGateOpen, from the same reject master gate as the Tier-1 API ladder) is checked before the dispatch runs", () => {
+    assert.ok(/_spRejectGateOpen/.test(sources.isolated));
+  });
+
+  test("cookie-noise-mainworld.js has no Sourcepoint reject-click dispatch of any kind (mechanism is isolated-world only)", () => {
+    for (const forbidden of ["runSpRejectClickDispatcher", "findSpRejectTarget", "spRejectStartObserver"]) {
+      assert.equal(sources.mainworld.includes(forbidden), false, `cookie-noise-mainworld.js must not contain "${forbidden}"`);
+    }
+  });
+});
+
+// ── @sync:frame-host block (TOP-frame hostname resolution) ─────────────────
+//
+// cookie-consent-all-frames FIX A: resolveTopFrameHostname() is a pure
+// helper in src/lib/frame-host.js (unit-tested there) whose body is
+// hand-inlined ONLY into content/cookie-noise.js (isolated world) — the
+// main-world caller never resolves the exemption itself, it only relays
+// the already-computed gate boolean over the nonce-gated event, so it does
+// NOT carry this block either (mirrors the @sync:cookie-gate precedent).
+
+const FRAME_HOST_FILES = {
+  lib: join(__dirname, "../../src/lib/frame-host.js"),
+  isolated: FILES.isolated,
+};
+
+const frameHostSources = {
+  lib: readFileSync(FRAME_HOST_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const FRAME_HOST_START = "@sync:frame-host:start";
+const FRAME_HOST_END = "@sync:frame-host:end";
+
+describe("cookie-noise-sync — @sync:frame-host block matches src/lib/frame-host.js", () => {
+  const libBlock = extractMarkedBlock(frameHostSources.lib, FRAME_HOST_START, FRAME_HOST_END, "frame-host.js");
+  const isolatedBlock = extractMarkedBlock(frameHostSources.isolated, FRAME_HOST_START, FRAME_HOST_END, "cookie-noise.js");
+
+  test("frame-host sync block is non-empty and defines resolveTopFrameHostname", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:frame-host block must not be empty — check the markers");
+    assert.ok(/function resolveTopFrameHostname/.test(libBlock.join("\n")));
+  });
+
+  test("cookie-noise.js @sync:frame-host block matches src/lib/frame-host.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:frame-host block has drifted from src/lib/frame-host.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:frame-host block (it never resolves the exemption itself)", () => {
+    assert.equal(sources.mainworld.includes(FRAME_HOST_START), false,
+      "cookie-noise-mainworld.js must not inline the top-frame resolver — it only relays the gate boolean");
+  });
+});
+
+// ── @sync:site-exempt block (per-site exemption predicate) ─────────────────
+//
+// cookie-consent-all-frames FIX A: parseListEntry/stripTrailingDot/
+// domainMatches/isSiteFullyExempt are hand-copied, byte-identical (modulo
+// indentation AND the `export` keyword — content scripts cannot use ES
+// module `export` syntax, so the normalizer below strips a leading
+// `export ` token from each line before comparing), from src/lib/cleaner.js
+// into content/cookie-noise.js ONLY (the main-world caller never resolves
+// the exemption itself — same rationale as @sync:frame-host above).
+
+const SITE_EXEMPT_FILES = {
+  lib: join(__dirname, "../../src/lib/cleaner.js"),
+  isolated: FILES.isolated,
+};
+
+const siteExemptSources = {
+  lib: readFileSync(SITE_EXEMPT_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const SITE_EXEMPT_START = "@sync:site-exempt:start";
+const SITE_EXEMPT_END = "@sync:site-exempt:end";
+
+function extractSiteExemptBlock(source, label) {
+  return extractMarkedBlock(source, SITE_EXEMPT_START, SITE_EXEMPT_END, label)
+    .map((l) => l.replace(/^export\s+/, ""));
+}
+
+describe("cookie-noise-sync — @sync:site-exempt block matches src/lib/cleaner.js", () => {
+  const libBlock = extractSiteExemptBlock(siteExemptSources.lib, "cleaner.js");
+  const isolatedBlock = extractSiteExemptBlock(siteExemptSources.isolated, "cookie-noise.js");
+
+  test("site-exempt sync block is non-empty and defines isSiteFullyExempt", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:site-exempt block must not be empty — check the markers");
+    const joined = libBlock.join("\n");
+    assert.ok(/function parseListEntry/.test(joined));
+    assert.ok(/function stripTrailingDot/.test(joined));
+    assert.ok(/function domainMatches/.test(joined));
+    assert.ok(/function isSiteFullyExempt/.test(joined));
+  });
+
+  test("cookie-noise.js @sync:site-exempt block matches src/lib/cleaner.js (modulo the export keyword)", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:site-exempt block has drifted from src/lib/cleaner.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:site-exempt block (it never resolves the exemption itself)", () => {
+    assert.equal(sources.mainworld.includes(SITE_EXEMPT_START), false,
+      "cookie-noise-mainworld.js must not inline the exemption predicate — it only relays the gate boolean");
+  });
+});
+
+// ── computeGate() frame-branch shape ────────────────────────────────────────
+//
+// cookie-consent-all-frames FIX A: computeGate() must branch on frame
+// identity (window.top === window.self) and use the hand-copied
+// resolveTopFrameHostname()/isSiteFullyExempt() in the child-frame branch
+// instead of window.__mugaCleaner. Behavioral coverage of both branches
+// lives in tests/unit/cookie-noise-frame-exemption.test.mjs (a vm-execution
+// harness) — this is a lightweight structural companion.
+
+describe("cookie-noise.js computeGate() — frame-identity branch (FIX A)", () => {
+  test("computeGate branches on window.top === window.self", () => {
+    assert.ok(
+      /window\.top\s*===\s*window\.self/.test(sources.isolated),
+      "computeGate() must branch on frame identity to resolve the correct hostname",
+    );
+  });
+
+  test("computeGate's child-frame branch calls resolveTopFrameHostname and isSiteFullyExempt", () => {
+    assert.ok(/resolveTopFrameHostname\(/.test(sources.isolated));
+    assert.ok(/isSiteFullyExempt\(hostname, prefsArg\)/.test(sources.isolated));
   });
 });

@@ -11,6 +11,21 @@
   <h1 data-i18n="opts_title">Settings</h1>
   <p class="subtitle" data-i18n="opts_subtitle">Denoise the URLs you visit and share.</p>
 
+  <!-- One-time blocklist Referer/beacon migration disclosure (referer-beacon-privacy
+       PR 4, D2/D6): shown exactly once for existing users with a non-empty
+       blocklist, gated by a stored flag in initBlocklistMigrationNotice(). -->
+  <div id="blocklist-migration-notice" class="card" hidden role="status" aria-live="polite">
+    <div class="row">
+      <div class="row-label">
+        <p data-i18n="notice_blocklist_referer_beacon_text"></p>
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" class="add-btn" id="blocklist-migration-notice-link" data-i18n="aggressive_privacy_view_link"></button>
+      <button type="button" class="add-btn" id="blocklist-migration-notice-dismiss" data-i18n="toast_dismiss"></button>
+    </div>
+  </div>
+
   <!-- ═══ TIER 1 — always visible ═══ -->
 
   <!-- Affiliate & creators (#936): inject, notify, toast-duration (promoted
@@ -53,6 +68,16 @@
         </div>
         <label class="toggle"><input type="checkbox" id="strip-affiliates" data-i18n-aria-label="aria_strip_affiliates"><span class="slider"></span></label>
       </div>
+      <!-- D5 linked-suggestion nudge (referer-beacon-privacy PR 4): reveals ONLY
+           on the transition to checked (see shouldRevealAffiliateNudge in
+           aggressive-privacy-ui.js). Never auto-checks suppressReferer/blockBeacons. -->
+      <div class="hint nudge-hint" id="strip-affiliates-nudge" hidden aria-live="polite">
+        <small data-i18n="nudge_aggressive_privacy_text"></small>
+        <div class="add-row">
+          <button type="button" class="add-btn" id="nudge-aggressive-privacy-link" data-i18n="aggressive_privacy_view_link"></button>
+          <button type="button" class="add-btn" id="nudge-aggressive-privacy-dismiss" data-i18n="toast_dismiss"></button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -68,6 +93,7 @@
           <button class="add-btn" id="bl-add-btn" data-i18n="add_btn">+ Add</button>
         </div>
         <p class="hint" id="bl-hint" data-i18n="bl_hint"></p>
+        <p class="hint" data-i18n="disclosure_blocklist_referer_beacon"></p>
       </div>
       <div class="list-section list-group-divider">
         <strong class="list-group-title" data-i18n="section_whitelist">Protected tags &amp; domains: never strip</strong>
@@ -210,10 +236,13 @@
         </div>
         <div class="row">
           <div class="row-label">
-            <strong data-i18n="row_cookie_consent_minimizer_label">Cookie Consent Minimizer</strong>
-            <small data-i18n="row_cookie_consent_minimizer_hint">On supported cookie-consent banners (currently OneTrust), MUGA clicks reject / necessary-only for you. It never accepts or grants broader tracking on your behalf; if no safe reject option exists, it leaves the banner alone. Off by default.</small>
+            <strong data-i18n="row_cookie_consent_mode_label">Cookie Consent Minimizer</strong>
+            <small data-i18n="row_cookie_consent_mode_hint">On supported cookie-consent banners, MUGA automatically rejects tracking cookies for you, the same way it already cleans your URLs. MUGA never accepts cookies on your behalf.</small>
           </div>
-          <label class="toggle"><input type="checkbox" id="cookie-consent-minimizer-toggle" data-i18n-aria-label="aria_cookie_consent_minimizer"><span class="slider"></span></label>
+          <select class="lang-select" id="cookie-consent-mode-select" data-i18n-aria-label="aria_cookie_consent_mode">
+            <option value="reject-only" data-i18n="cookie_consent_mode_opt_reject_only">Reject only (recommended)</option>
+            <option value="off" data-i18n="cookie_consent_mode_opt_off">Off</option>
+          </select>
         </div>
         <div class="row">
           <div class="row-label">
@@ -316,6 +345,32 @@
             <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations so the popup can show recent activity. Stored on this device only.</small>
           </div>
           <label class="toggle"><input type="checkbox" id="attribution-ledger" data-i18n-aria-label="aria_attribution_ledger"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Advanced: Aggressive privacy (referer-beacon-privacy PR 4, D5).
+           Both toggles unchecked by default; wired via the existing
+           bindToggle() helper alongside the other Advanced controls. -->
+      <h2 class="mt-16" id="section-aggressive-privacy" data-i18n="section_aggressive_privacy">Aggressive privacy</h2>
+      <div class="card">
+        <div class="row">
+          <div class="row-label">
+            <p class="hint" data-i18n="disclosure_blocklist_referer_beacon"></p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_suppress_referer_label">Remove the referrer header on requests</strong>
+            <small data-i18n="row_suppress_referer_hint">Browsers already shorten the referrer to just the origin on cross-site requests. This removes it completely, including on same-origin requests and on sites that still request the full URL. Some sites use the referrer for anti-hotlink images, CSRF checks, or login redirects, so this can break them; add the site (and any separate domain its images load from) to Protected tags &amp; domains to keep it working there.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="suppress-referer" data-i18n-aria-label="aria_suppress_referer"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_block_beacons_label">Block tracking beacons and pings</strong>
+            <small data-i18n="row_block_beacons_hint">Blocks the sendBeacon() and &lt;a ping&gt; network requests some sites use to log clicks and page-leave events, closing a gap the Block &lt;a ping&gt; beacons option above cannot reach on its own. Sites that rely on beacons for analytics may undercount visits while this is on. Add a site to Protected tags &amp; domains to keep beacons working there.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="block-beacons" data-i18n-aria-label="aria_block_beacons"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -469,6 +524,13 @@
             <div id="dev-url-clean"></div>
             <div id="dev-url-removed" class="result-removed"></div>
             <button class="report-btn report-btn-inline" id="dev-url-report-btn" hidden data-i18n="dev_url_report_btn">Report a problem with this URL</button>
+            <div class="report-include-url-row" id="url-report-include-url-row" hidden>
+              <label>
+                <input type="checkbox" id="url-report-include-url">
+                <span data-i18n="report_include_full_url_label">Include the full URL</span>
+              </label>
+              <small class="report-include-url-hint" data-i18n="report_include_full_url_hint">I confirm it has no personal or sensitive data</small>
+            </div>
           </div>
         </div>
       </div>

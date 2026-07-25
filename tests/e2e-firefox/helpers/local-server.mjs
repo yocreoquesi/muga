@@ -9,6 +9,30 @@
 import http from "node:http";
 
 /**
+ * Tracks live sockets on a server and force-destroys them on close().
+ *
+ * Node's http.Server#close() only stops accepting NEW connections — it waits
+ * for existing (keep-alive) sockets to end before its callback fires. A real
+ * browser keeps its HTTP/1.1 connection to 127.0.0.1 alive by default, so
+ * without this, `close()` would hang indefinitely. Mirrors the Chromium e2e
+ * helper (tests/e2e/helpers/local-server.mjs); the FF suite has not tripped it
+ * only because its request cadence differs — fix it here too (verify S1).
+ * @param {import('node:http').Server} server
+ */
+function forceDestroyOnClose(server) {
+  const sockets = new Set();
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+  });
+  return () =>
+    new Promise((resolve) => {
+      server.close(resolve);
+      for (const socket of sockets) socket.destroy();
+    });
+}
+
+/**
  * Starts a local HTTP server on 127.0.0.1 that serves `html` for every
  * request path.
  *
@@ -17,15 +41,50 @@ import http from "node:http";
  */
 export async function serveFixturePage(html) {
   const server = http.createServer((_req, res) => {
+    res.setHeader("Connection", "close");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(html);
   });
 
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
+  const close = forceDestroyOnClose(server);
 
   return {
     url: `http://127.0.0.1:${port}/index.html`,
-    close: () => new Promise((resolve) => server.close(resolve)),
+    close,
+  };
+}
+
+/**
+ * Starts a local HTTP server on 127.0.0.1 that serves `html` for every
+ * request path AND records every incoming request's method/path/headers
+ * (referer-beacon-privacy PR 3, tasks 3.3/3.4). Used as a real network
+ * "destination" that FF smoke specs can allowlist/blocklist by hostname and
+ * inspect for header presence (Referer) or arrival (ping/sendBeacon).
+ *
+ * Responds 204 to every request (no body needed by the fixture pages; also
+ * satisfies navigator.sendBeacon()'s expectation of a quick, cheap response).
+ *
+ * @returns {Promise<{url:string, origin:string, requests: Array<{method:string, path:string, headers: object}>, close: () => Promise<void>}>}
+ */
+export async function serveCapturingServer() {
+  const requests = [];
+  const server = http.createServer((req, res) => {
+    requests.push({ method: req.method, path: req.url, headers: req.headers });
+    res.setHeader("Connection", "close");
+    res.writeHead(204);
+    res.end();
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  const close = forceDestroyOnClose(server);
+
+  return {
+    url: `http://127.0.0.1:${port}/index.html`,
+    origin: `http://127.0.0.1:${port}`,
+    requests,
+    close,
   };
 }

@@ -231,6 +231,6 @@ describe("release-smoke-report — importing the module never triggers CLI/files
     assert.equal(typeof mod.formatReleaseTable, "function");
     assert.equal(typeof mod.runReleaseSmokeReportCli, "function");
     assert.ok(Array.isArray(mod.RELEASE_CMPS));
-    assert.equal(mod.RELEASE_CMPS.length, 6);
+    assert.equal(mod.RELEASE_CMPS.length, 10);
   });
 });

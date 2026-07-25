@@ -8,9 +8,9 @@
  * paired with an isolated-world gatekeeper (content/cookie-noise.js) that
  * reads prefs and controls the gate via a nonce-gated CustomEvent
  * handshake — on a channel SEPARATE from `muga:history-gate`. This
- * feature's pref (`cookieConsentMinimizerEnabled`) defaults OFF while
- * `activeDefenseEnabled` defaults ON; sharing a gate would conflate two
- * independent opt-ins.
+ * feature's pref (`cookieConsentMode`, default "reject-only" for new
+ * installs) is independent from `activeDefenseEnabled` (default ON);
+ * sharing a gate would conflate two independent opt-ins.
  *
  * Firefox MV2 does NOT load this file at all (no `world: "MAIN"`
  * support). On Firefox the isolated-world companion performs the reject
@@ -29,14 +29,29 @@
  * Constraints for this file (main-world scripts):
  *   - No chrome.* APIs — no extension messaging in the page world.
  *   - No ES module imports. Runs as a classic script in the page world.
+ *
+ * Cross-origin-iframe scope (deliberate, scoped change): this script is
+ * registered `all_frames: true` in the manifest, IN ITS OWN dedicated
+ * content_scripts entry — every other content script stays top-frame-only.
+ * A real-site frame-location probe found that consent-or-pay wall dialogs
+ * (Sourcepoint's `sp_message_container` message iframe, hosted on a
+ * dedicated cross-origin subdomain) render in a CROSS-ORIGIN CHILD FRAME,
+ * not the top frame — so a top-frame-only script can never reach the
+ * dialog's own buttons. The previous same-frame-only guard below (an early
+ * return keyed on frame identity) was REMOVED for this reason. `all_frames`
+ * is not a new permission — MUGA already holds `<all_urls>` host
+ * permission, which already covers every frame; no new user-facing
+ * permission prompt results from this change. The module now runs once
+ * per frame (ads, embeds, same-origin iframes, cross-origin consent
+ * iframes) — see the bounded give-up window
+ * below and the defensive try/catch wrapper immediately below, both of
+ * which keep this cheap and safe when a frame has no matching CMP.
  */
 
 (function () {
   "use strict";
 
-  // Skip iframes — the OneTrust reject global lives in the top frame for
-  // this feature's scope (MVP; see design doc "Deferred" section).
-  if (window.self !== window.top) return;
+  try {
   if (window.__mugaCookieNoise) return;
   window.__mugaCookieNoise = true;
 
@@ -143,6 +158,106 @@
 
   function canRejectUsercentrics(signals) {
     return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
+  }
+
+  // Cookie Information: window.CookieInformation is a vendor-namespaced
+  // global (like OneTrust/Didomi/UC_UI), so this mirrors detectDidomi's shape
+  // (mandatory global + mandatory reject-fn signal, plus >=1 corroborating
+  // secondary signal). Do NOT key off __tcfapi — see the discrimination
+  // rationale above detectCookieInformation in the docblock preceding this
+  // sync block.
+  function detectCookieInformation(signals) {
+    if (
+      !signals ||
+      signals.hasCookieInformationGlobal !== true ||
+      signals.hasDeclineAllCategoriesFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCoiOverlayDom === true ? 1 : 0) +
+      (signals.hasCoiConsentBannerDom === true ? 1 : 0) +
+      (signals.hasCoiSummeryDom === true ? 1 : 0) +
+      (signals.hasCoiBannerWrapperDom === true ? 1 : 0) +
+      (signals.hasCoiConsentSummaryDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieInformation(signals) {
+    return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
+  }
+
+  // CookieScript: the reject call lives on window.CookieScript.instance, not
+  // directly on the vendor global — see the TRIPLE-mandatory-gate rationale
+  // above detectCookieScript in the docblock preceding this sync block.
+  function detectCookieScript(signals) {
+    if (
+      !signals ||
+      signals.hasCookieScriptGlobal !== true ||
+      signals.hasCookieScriptInstance !== true ||
+      signals.hasRejectAllActionFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCookiescriptInjectedDom === true ? 1 : 0) +
+      (signals.hasCookiescriptDescriptionDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectCookieScript(signals) {
+    return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
+  }
+
+  // tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+  // not directly on the vendor global — see the TRIPLE-mandatory-gate
+  // rationale above detectTarteaucitron in the docblock preceding this sync
+  // block.
+  function detectTarteaucitron(signals) {
+    if (
+      !signals ||
+      signals.hasTarteaucitronGlobal !== true ||
+      signals.hasTarteaucitronUserInterface !== true ||
+      signals.hasRespondAllFn !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasTarteaucitronRootDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronAlertBigDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronBackDom === true ? 1 : 0) +
+      (signals.hasTarteaucitronModalOpenDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectTarteaucitron(signals) {
+    return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
+  }
+
+  // consentmanager.net: __cmp is the legacy IAB TCF v1.1 generic surface
+  // every v1.1-era CMP can expose, so it can never be the sole mandatory
+  // anchor — see the dual-anchor discrimination rationale above
+  // detectSourcepoint. hasCmpMngrGlobal AND hasCmpFn AND hasCmpBoxDom are all
+  // mandatory together (see the TRIPLE-mandatory rationale in the docblock
+  // preceding this sync block).
+  function detectConsentmanager(signals) {
+    if (
+      !signals ||
+      signals.hasCmpMngrGlobal !== true ||
+      signals.hasCmpFn !== true ||
+      signals.hasCmpBoxDom !== true
+    ) {
+      return 0;
+    }
+    const secondary =
+      (signals.hasCmpWelcomeBtnYesDom === true ? 1 : 0) +
+      (signals.hasCmpWelcomeBtnNoDom === true ? 1 : 0) +
+      (signals.hasCmpBoxBtnDom === true ? 1 : 0);
+    return secondary >= 1 ? 1 : 0.4;
+  }
+
+  function canRejectConsentmanager(signals) {
+    return detectConsentmanager(signals) >= CONFIDENCE_THRESHOLD;
   }
   // @sync:cmp-adapters:end
 
@@ -290,6 +405,118 @@
     } catch {
       // ignore
     }
+    // Cookie Information: window.CookieInformation is a vendor-namespaced
+    // global. Do NOT key off the generic __tcfapi surface (hasTcfApiFn,
+    // already collected above) — this vendor's TCF surface is opt-in per
+    // site and is Sourcepoint's dual-mandatory anchor, not this adapter's.
+    let hasCookieInformationGlobal = false;
+    let hasDeclineAllCategoriesFn = false;
+    try {
+      hasCookieInformationGlobal =
+        typeof window.CookieInformation === "object" && window.CookieInformation !== null;
+      hasDeclineAllCategoriesFn =
+        hasCookieInformationGlobal && typeof window.CookieInformation.declineAllCategories === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasCoiOverlayDom = false;
+    let hasCoiConsentBannerDom = false;
+    let hasCoiSummeryDom = false;
+    let hasCoiBannerWrapperDom = false;
+    let hasCoiConsentSummaryDom = false;
+    try {
+      hasCoiOverlayDom = !!document.getElementById("coiOverlay");
+      hasCoiConsentBannerDom = !!document.getElementById("coiConsentBanner");
+      hasCoiSummeryDom = !!document.getElementById("coiSummery");
+      hasCoiBannerWrapperDom = !!document.getElementById("coi-banner-wrapper");
+      hasCoiConsentSummaryDom = !!document.querySelector(".coi-consent-summary");
+    } catch {
+      // document not ready / detached — leave all false.
+    }
+    // CookieScript: the reject call lives on window.CookieScript.instance,
+    // not directly on the vendor global — hasCookieScriptInstance must be
+    // confirmed an object BEFORE probing .rejectAllAction, otherwise reading
+    // a property off `undefined` would throw inside this try block (still
+    // caught, but the intent is explicit here). The vendor global itself
+    // can be EITHER an object OR a callable function with `.instance` hung
+    // off it (real-site verification found cookie-script.com ships the
+    // function-shaped variant) — allow both shapes for the global itself;
+    // `.instance` and `.rejectAllAction` are the real discriminators and
+    // stay strictly object/function-typed, so this does not loosen
+    // detection against any other CMP.
+    let hasCookieScriptGlobal = false;
+    let hasCookieScriptInstance = false;
+    let hasRejectAllActionFn = false;
+    try {
+      const cs = window.CookieScript;
+      hasCookieScriptGlobal = (typeof cs === "object" || typeof cs === "function") && cs !== null;
+      const instance = hasCookieScriptGlobal && cs.instance;
+      hasCookieScriptInstance = typeof instance === "object" && instance !== null;
+      hasRejectAllActionFn = hasCookieScriptInstance && typeof instance.rejectAllAction === "function";
+    } catch {
+      // Leave all false — fail-closed.
+    }
+    let hasCookiescriptInjectedDom = false;
+    let hasCookiescriptDescriptionDom = false;
+    try {
+      hasCookiescriptInjectedDom = !!document.getElementById("cookiescript_injected");
+      hasCookiescriptDescriptionDom = !!document.getElementById("cookiescript_description");
+    } catch {
+      // document not ready / detached — leave both false.
+    }
+    // tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+    // not directly on the vendor global — hasTarteaucitronUserInterface must
+    // be confirmed an object BEFORE probing .respondAll, otherwise reading a
+    // property off `undefined` would throw inside this try block (still
+    // caught, but the intent is explicit here). Null-safe staged checks, not
+    // a naive chained typeof.
+    let hasTarteaucitronGlobal = false;
+    let hasTarteaucitronUserInterface = false;
+    let hasRespondAllFn = false;
+    try {
+      hasTarteaucitronGlobal = typeof window.tarteaucitron === "object" && window.tarteaucitron !== null;
+      const ui = hasTarteaucitronGlobal && window.tarteaucitron.userInterface;
+      hasTarteaucitronUserInterface = typeof ui === "object" && ui !== null;
+      hasRespondAllFn = hasTarteaucitronUserInterface && typeof ui.respondAll === "function";
+    } catch {
+      // Leave all false — fail-closed.
+    }
+    let hasTarteaucitronRootDom = false;
+    let hasTarteaucitronAlertBigDom = false;
+    let hasTarteaucitronBackDom = false;
+    let hasTarteaucitronModalOpenDom = false;
+    try {
+      hasTarteaucitronRootDom = !!document.getElementById("tarteaucitronRoot");
+      hasTarteaucitronAlertBigDom = !!document.getElementById("tarteaucitronAlertBig");
+      hasTarteaucitronBackDom = !!document.getElementById("tarteaucitronBack");
+      hasTarteaucitronModalOpenDom = !!(document.body && document.body.classList.contains("tarteaucitron-modal-open"));
+    } catch {
+      // document not ready / detached — leave all false.
+    }
+    // consentmanager.net: window.cmpmngr is the vendor-specific global,
+    // window.__cmp is the legacy IAB TCF v1.1 generic reject surface — do
+    // NOT key detection off __cmp alone, see the dual-anchor discrimination
+    // rationale above detectConsentmanager.
+    let hasCmpMngrGlobal = false;
+    let hasCmpFn = false;
+    try {
+      hasCmpMngrGlobal = typeof window.cmpmngr === "object" && window.cmpmngr !== null;
+      hasCmpFn = typeof window.__cmp === "function";
+    } catch {
+      // Leave both false — fail-closed.
+    }
+    let hasCmpBoxDom = false;
+    let hasCmpWelcomeBtnYesDom = false;
+    let hasCmpWelcomeBtnNoDom = false;
+    let hasCmpBoxBtnDom = false;
+    try {
+      hasCmpBoxDom = !!document.getElementById("cmpbox");
+      hasCmpWelcomeBtnYesDom = !!document.getElementById("cmpwelcomebtnyes");
+      hasCmpWelcomeBtnNoDom = !!document.getElementById("cmpwelcomebtnno");
+      hasCmpBoxBtnDom = !!document.querySelector("#cmpbox .cmpboxbtn");
+    } catch {
+      // document not ready / detached — leave all false.
+    }
     return {
       hasOneTrustGlobal,
       hasRejectAllFn,
@@ -319,6 +546,31 @@
       hasDenyAllConsentsFn,
       hasUsercentricsRootDom,
       hasIsInitializedFn,
+      hasCookieInformationGlobal,
+      hasDeclineAllCategoriesFn,
+      hasCoiOverlayDom,
+      hasCoiConsentBannerDom,
+      hasCoiSummeryDom,
+      hasCoiBannerWrapperDom,
+      hasCoiConsentSummaryDom,
+      hasCookieScriptGlobal,
+      hasCookieScriptInstance,
+      hasRejectAllActionFn,
+      hasCookiescriptInjectedDom,
+      hasCookiescriptDescriptionDom,
+      hasTarteaucitronGlobal,
+      hasTarteaucitronUserInterface,
+      hasRespondAllFn,
+      hasTarteaucitronRootDom,
+      hasTarteaucitronAlertBigDom,
+      hasTarteaucitronBackDom,
+      hasTarteaucitronModalOpenDom,
+      hasCmpMngrGlobal,
+      hasCmpFn,
+      hasCmpBoxDom,
+      hasCmpWelcomeBtnYesDom,
+      hasCmpWelcomeBtnNoDom,
+      hasCmpBoxBtnDom,
     };
   }
 
@@ -326,6 +578,62 @@
   // act again on this page load — repeated DOM mutations (e.g. the
   // banner's own removal animation) must not re-invoke RejectAll.
   let _acted = false;
+
+  // Post-reject dismissal confirmation (#1123 / reject() honesty follow-up).
+  // PURELY OBSERVATIONAL: the reject has already fired and _acted/stopObserver
+  // have already run — this never changes that. Vendor banners clear
+  // ASYNCHRONOUSLY (the SDK reacts to the reject call on a later task), so this
+  // polls a bounded window for the banner to disappear and warns ONCE if it
+  // never does — surfacing a silent "API fired but did not dismiss" drift
+  // (the exact gap the Sourcepoint DOM-click fallback exists for). Fail-safe:
+  // any error in the banner check is treated as "gone" (no spurious warning).
+  const REJECT_CONFIRM_WINDOW_MS = 3000;
+  const REJECT_CONFIRM_INTERVAL_MS = 250;
+  function confirmRejectDismissal(adapterId, isBannerGone) {
+    const deadline = Date.now() + REJECT_CONFIRM_WINDOW_MS;
+    const tick = () => {
+      let gone = true;
+      try {
+        gone = !!isBannerGone();
+      } catch {
+        gone = true;
+      }
+      if (gone) return; // confirmed dismissal — stay silent
+      if (Date.now() >= deadline) {
+        try {
+          console.warn(
+            "[MUGA] cookie-consent: " + adapterId +
+            " reject fired but its banner did not clear within " +
+            REJECT_CONFIRM_WINDOW_MS + "ms (possible vendor-API drift)"
+          );
+        } catch {
+          // console unavailable — nothing else to do.
+        }
+        return;
+      }
+      setTimeout(tick, REJECT_CONFIRM_INTERVAL_MS);
+    };
+    tick();
+  }
+
+  // Selector-driven "is the banner gone" predicate shared by every Tier-1
+  // adapter's confirmRejectDismissal() call below. "Gone" = no element
+  // matching `selector` has a layout box (removed from the DOM counts as
+  // gone; hidden via display:none/visibility etc. also collapses
+  // getClientRects() to empty, so that counts as gone too).
+  function bannerGoneBy(selector) {
+    return () => {
+      const nodes = document.querySelectorAll(selector);
+      for (const el of nodes) {
+        try {
+          if (!el.getClientRects || el.getClientRects().length > 0) return false;
+        } catch {
+          return false;
+        }
+      }
+      return true; // no element, or all matched elements have no layout box
+    };
+  }
 
   /**
    * Two-tier dispatcher. Tier 1 (API adapters) tried first; Tier 2
@@ -344,6 +652,7 @@
       } catch {
         // A throwing page global must never break the page's own script.
       }
+      confirmRejectDismissal("onetrust", bannerGoneBy("#onetrust-banner-sdk"));
       stopObserver();
       return;
     }
@@ -359,6 +668,7 @@
       } catch {
         // A throwing page global must never break the page's own script.
       }
+      confirmRejectDismissal("cookiebot", bannerGoneBy("#CybotCookiebotDialog"));
       stopObserver();
       return;
     }
@@ -372,6 +682,7 @@
       } catch {
         // A throwing page global must never break the page's own script.
       }
+      confirmRejectDismissal("didomi", bannerGoneBy("#didomi-host"));
       stopObserver();
       return;
     }
@@ -387,6 +698,7 @@
       } catch {
         // A throwing page global must never break the page's own script.
       }
+      confirmRejectDismissal("cookieyes", bannerGoneBy(".cky-consent-container, .cky-consent-bar"));
       stopObserver();
       return;
     }
@@ -420,6 +732,74 @@
       } catch {
         // A throwing page global must never break the page's own script.
       }
+      confirmRejectDismissal("usercentrics", bannerGoneBy("#usercentrics-root"));
+      stopObserver();
+      return;
+    }
+    // Tier 1: Cookie Information API adapter. Same zero-argument,
+    // synchronous reject-call shape as OneTrust.RejectAll() /
+    // Didomi.setUserDisagreeToAll() — declineAllCategories() takes no
+    // consent-granting parameter at all.
+    if (canRejectCookieInformation(signals)) {
+      _acted = true;
+      try {
+        window.CookieInformation.declineAllCategories();
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      confirmRejectDismissal(
+        "cookieinformation",
+        bannerGoneBy("#coiOverlay, #coiConsentBanner, #coiSummery, #coi-banner-wrapper")
+      );
+      stopObserver();
+      return;
+    }
+    // Tier 1: CookieScript API adapter. Same zero-argument, synchronous
+    // reject-call shape as the adapters above — rejectAllAction() "rejects
+    // all cookies except strictly necessary" per the vendor's own docs.
+    if (canRejectCookieScript(signals)) {
+      _acted = true;
+      try {
+        window.CookieScript.instance.rejectAllAction();
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      confirmRejectDismissal("cookiescript", bannerGoneBy("#cookiescript_injected"));
+      stopObserver();
+      return;
+    }
+    // Tier 1: tarteaucitron API adapter. Same zero-argument-shape family as
+    // the adapters above, except respondAll takes one literal argument:
+    // `false` denies every registered service (the vendor's own "tout
+    // refuser" button calls this exact function with the exact same
+    // literal). Synchronous — a plain for-loop over tarteaucitron.job, no
+    // Promise/callback.
+    if (canRejectTarteaucitron(signals)) {
+      _acted = true;
+      try {
+        window.tarteaucitron.userInterface.respondAll(false);
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      confirmRejectDismissal("tarteaucitron", bannerGoneBy("#tarteaucitronRoot, #tarteaucitronAlertBig"));
+      stopObserver();
+      return;
+    }
+    // Tier 1: consentmanager.net API adapter. setConsent's second argument
+    // is the literal `0` (reject-all) — `1` would grant broad consent, so
+    // this call site must never pass a variable there. Same fire-and-forget
+    // family as the Sourcepoint adapter above: the callback fires in
+    // practice but is optional-log-only and never gates control flow —
+    // _acted and stopObserver() fire synchronously right after the call
+    // returns.
+    if (canRejectConsentmanager(signals)) {
+      _acted = true;
+      try {
+        window.__cmp("setConsent", 0, () => {}, true);
+      } catch {
+        // A throwing page global must never break the page's own script.
+      }
+      confirmRejectDismissal("consentmanager", bannerGoneBy("#cmpbox"));
       stopObserver();
       return;
     }
@@ -483,6 +863,8 @@
   let _observer = null;
   let _giveUpArmed = false;
   let _giveUpTimer = null;
+  // Unconditional fallback timer (FIX C) — see armGiveUp() below.
+  let _giveUpFallbackTimer = null;
 
   function armGiveUp() {
     if (_giveUpArmed) return;
@@ -497,6 +879,18 @@
     // sees readyState "loading" at first, but the gate may also open only
     // after the DOM is already parsed — handle both.
     if (document.readyState === "loading") {
+      // Bounded fallback (FIX C, all_frames:true): a frame that never
+      // reaches DOMContentLoaded at all (e.g. a pending subresource that
+      // never settles in a sandboxed child frame) would otherwise never
+      // arm `schedule` above, leaving the observer running for the whole
+      // page lifetime. This fallback fires unconditionally on the SAME
+      // give-up window, independent of `schedule`'s own timer — both just
+      // call the idempotent stopObserver(), so no harm if DOMContentLoaded
+      // eventually does fire and both timers end up disconnecting.
+      _giveUpFallbackTimer = setTimeout(() => {
+        _giveUpFallbackTimer = null;
+        if (!_acted) stopObserver();
+      }, GIVE_UP_AFTER_DOM_READY_MS);
       document.addEventListener("DOMContentLoaded", schedule, { once: true });
     } else {
       schedule();
@@ -520,6 +914,10 @@
       clearTimeout(_giveUpTimer);
       _giveUpTimer = null;
     }
+    if (_giveUpFallbackTimer !== null) {
+      clearTimeout(_giveUpFallbackTimer);
+      _giveUpFallbackTimer = null;
+    }
     // Reset so a later gate reopen (Settings toggle) arms a fresh window.
     _giveUpArmed = false;
     if (!_observer) return;
@@ -529,5 +927,19 @@
       // already disconnected
     }
     _observer = null;
+  }
+  } catch {
+    // Frame-safety (all_frames:true): this guards only the SYNCHRONOUS
+    // setup above — the `muga:cookie-gate:nonce` listener REGISTRATION,
+    // the `muga:cookie-gate` listener REGISTRATION, and the give-up timer
+    // scheduling call itself — against an uncaught throw during setup in
+    // ANY frame (top, same-origin iframe, cross-origin consent iframe,
+    // ad/embed iframe, restricted/opaque frame such as about:blank or a
+    // sandboxed frame). It does NOT reach code that runs from a LATER
+    // event-loop turn: the `muga:cookie-gate` event listener callback, the
+    // MutationObserver callback, and the give-up setTimeout callback all
+    // fire after this try block's dynamic extent has already ended — each
+    // of those is individually wrapped fail-closed where it is defined
+    // above.
   }
 })();

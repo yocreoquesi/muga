@@ -11,6 +11,8 @@ import {
   getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForHost,
+  detectAutoInjectedTag,
+  stripAutoInjectedTag,
 } from "./affiliates.js";
 import { unwrap, detectWrapper } from "./wrapper-engine.js";
 import { isAffiliateRedirectNetwork } from "./opaque-networks.js";
@@ -107,6 +109,17 @@ function isTrackingParam(lower, customParams, domainStrip, remoteParams, userCus
   return false;
 }
 
+// The four functions between the `@sync:site-exempt` markers below
+// (parseListEntry, stripTrailingDot, domainMatches, isSiteFullyExempt) are
+// hand-copied, byte-identical (modulo indentation), into
+// content/cookie-noise.js for the cross-origin-child-frame per-site
+// exemption check (cookie-consent-all-frames FIX A) — content scripts
+// cannot use ES module imports (AGENTS.md). Kept pure and PREFS-ONLY (no
+// `window`/`document` access) so the copy is safe to run in ANY frame,
+// including one where `window.__mugaCleaner` was never attached. Do not
+// edit one copy without the other — tests/unit/cookie-noise-sync.test.mjs
+// fails the build if they drift.
+// @sync:site-exempt:start
 /**
  * Parses a blacklist/whitelist entry string into a structured object.
  * Supported formats:
@@ -207,6 +220,7 @@ export function isSiteFullyExempt(hostname, prefs) {
 
   return false;
 }
+// @sync:site-exempt:end
 
 /**
  * Returns the deduped list of bare domains (www-stripped, lowercased) that
@@ -328,6 +342,90 @@ export function setDomainAllowlisted(whitelist, hostname, allowed) {
     return [...list, host.replace(/^www\./, "").toLowerCase()];
   }
   return list.filter((raw) => !isDomainOnlyMatch(raw));
+}
+
+/**
+ * Returns true if a hostname matches a DOMAIN-ONLY blacklist entry (bare
+ * "example.com", no ::param suffix) - i.e. the user has fully blacklisted
+ * this site (referer-beacon-privacy, D2). Structural clone of
+ * isSiteFullyExempt() but reads prefs.blacklist instead of prefs.whitelist.
+ *
+ * This predicate does NOT itself resolve allowlist-vs-blacklist precedence -
+ * it only answers "is this domain on the bare-domain blacklist". Callers
+ * that must honor "allowlist always wins" (D2) check isSiteFullyExempt()
+ * first and short-circuit before consulting this predicate (wired in a
+ * later PR - this slice adds the pure predicate only, no behavior change).
+ *
+ * A param-scoped entry ("example.com::tag::x") does NOT count - that only
+ * protects one affiliate value being replaced, it is not a "treat this
+ * domain aggressively" signal.
+ *
+ * Defensive: returns false for any falsy or malformed input so a missing or
+ * corrupt prefs object never accidentally triggers force-suppression - the
+ * fail-safe direction here is "do NOT force-suppress" (matches
+ * isSiteFullyExempt's precedent of failing toward the less-surprising
+ * outcome).
+ *
+ * @param {string} hostname - the current page's hostname.
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {boolean}
+ */
+export function isSiteFullyBlacklisted(hostname, prefs) {
+  if (!hostname || typeof hostname !== "string" || !prefs || typeof prefs !== "object") return false;
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    if (domainMatches(hostname, entry.domain)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns the deduped list of bare domains (www-stripped, lowercased) that
+ * are fully blacklisted (referer-beacon-privacy, D2) - i.e. the same
+ * domain-only-blacklist signal isSiteFullyBlacklisted() tests against a
+ * single hostname, but exposed here as the raw domain list. Structural clone
+ * of getFullyExemptDomains() but over prefs.blacklist.
+ *
+ * Used by the service worker to build one DNR dynamic per-domain Referer
+ * force-suppress rule and one per-domain beacon-block rule per blacklisted
+ * domain (src/background/service-worker.js#syncBlocklistRefererDNR /
+ * #syncBlocklistBeaconsDNR, wired in a later PR): DNR conditions match a
+ * `requestDomains` list, not a predicate function.
+ *
+ * Defensive: returns [] for any falsy or malformed prefs, matching
+ * isSiteFullyBlacklisted's fail-safe direction (no domains -> no
+ * force-suppress rules).
+ *
+ * @param {{ whitelist?: string[], blacklist?: string[] }} prefs
+ * @returns {string[]}
+ */
+export function getFullyBlacklistedDomains(prefs) {
+  if (!prefs || typeof prefs !== "object") return [];
+
+  const domains = new Set();
+
+  const blacklist = Array.isArray(prefs.blacklist) ? prefs.blacklist : [];
+  for (const raw of blacklist) {
+    let entry;
+    try {
+      entry = parseListEntry(raw);
+    } catch {
+      continue;
+    }
+    if (!entry.domain || entry.param) continue;
+    domains.add(entry.domain);
+  }
+
+  return [...domains];
 }
 
 /**
@@ -633,7 +731,11 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   Affiliate-injection rules loaded from `src/rules/path-affiliate-rules.json`
  *   via `src/lib/path-rules.js`. Injected by the service worker at call time.
  *   Defaults to `[]` (no-op) for the same reason as `pathStripRules`.
- * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, network?: string, creator?: string }}
+ * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, autoInjected?: object, network?: string, creator?: string }}
+ *   `autoInjected` (affiliate-autoinject-notice): read-only side channel,
+ *   `undefined` unless `detectAutoInjectedTag` matched a known platform
+ *   auto-injector. Never influences `action`/`cleanUrl` — default KEEP holds
+ *   regardless of this field.
  *   `action` is one of:
  *     `"untouched"`         — URL unchanged
  *     `"cleaned"`           — tracking params and/or path tokens stripped
@@ -701,6 +803,15 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // threaded through every strip call site below; empty when the referrer
   // is not a known redirect-network host.
   const landingPolicy = getLandingPolicy(hostname, referrer);
+
+  // affiliate-autoinject-notice: pure, read-only side channel. Computed on
+  // the incoming landing params (before any stripping below runs) so it sees
+  // exactly what the browser navigated to. This value is NEVER read by the
+  // strip/inject decision below — it only rides along on the final payload
+  // as `result.autoInjected` for the UI layer to optionally surface. Default
+  // KEEP (Scenario C) is guaranteed precisely because nothing downstream
+  // branches on it.
+  const autoInjected = detectAutoInjectedTag(hostname, referrer, url.searchParams) || undefined;
   // Use pre-parsed lists from the caller (service worker cache) when available
   const parsedBlacklist = prefs._parsedBlacklist || (prefs.blacklist || []).map(parseListEntry);
   const parsedWhitelist = prefs._parsedWhitelist || (prefs.whitelist || []).map(parseListEntry);
@@ -790,10 +901,29 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
 
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
 
+  // affiliate-autoinject-notice LOW-1: attach `removeUrl` — the cleaned URL
+  // with EXACTLY the auto-injected param=value pair removed — so the notice's
+  // Remove action can strip the platform tag on the CURRENT navigation, not
+  // only on the next one via the scoped-blacklist write. This is still a pure
+  // read-only side channel: it rides on `autoInjected` and never alters
+  // `action`/`cleanUrl`/`removedTracking`. A co-present genuine creator tag on
+  // the same param survives (stripAutoInjectedTag drops only the exact pair);
+  // any parse failure falls back to `cleanUrl` inside the helper.
+  const autoInjectedPayload = autoInjected
+    ? { ...autoInjected, removeUrl: stripAutoInjectedTag(url.toString(), autoInjected.param, autoInjected.value) }
+    : autoInjected;
+
   return buildReturnPayload(action, url, removedTracking, detectedAffiliate, {
     junkRemoved: removedTracking.length + blacklistStripped + (pathCleaned ? 1 : 0),
-    preservedAffiliate: detectPreservedAffiliate(url, patterns),
+    // #1157: preservedAffiliate must never surface while stripAllAffiliates
+    // is on. A whitelisted value can still survive Step 4b (whitelist is
+    // sacred, even under strip-all), but reporting it as a "preserved
+    // creator referral" contradicts the user's "remove all third-party
+    // affiliate tags" choice - that badge is only meaningful when MUGA is
+    // NOT stripping third-party tags in the first place.
+    preservedAffiliate: prefs.stripAllAffiliates ? null : detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
+    autoInjected: autoInjectedPayload,
   });
 }
 
@@ -1226,7 +1356,9 @@ function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pa
   const actionForSkip = (removed.length > 0 || pathCleaned) ? "cleaned" : "untouched";
   const payload = buildReturnPayload(actionForSkip, url, removed, null, {
     junkRemoved: removed.length + (pathCleaned ? 1 : 0),
-    preservedAffiliate: detectPreservedAffiliate(url, patterns),
+    // #1157: see the matching comment in processUrl - stripAllAffiliates ON
+    // must never surface a "preserved creator referral" badge.
+    preservedAffiliate: prefs.stripAllAffiliates ? null : detectPreservedAffiliate(url, patterns),
     creatorReferralPreserved,
   });
   return { payload, removed, removedValues };
@@ -1333,7 +1465,7 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
  * @param {string|URL} rawUrlOrUrl  String → used as cleanUrl directly; URL → .toString()
  * @param {string[]} removedTracking
  * @param {object|null} detectedAffiliate
- * @param {{ junkRemoved?: number, creatorReferralPreserved?: boolean, preservedAffiliate?: object|null, network?: string, creator?: string }} [extras]
+ * @param {{ junkRemoved?: number, creatorReferralPreserved?: boolean, preservedAffiliate?: object|null, autoInjected?: object, network?: string, creator?: string }} [extras]
  * @returns {object}
  */
 function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffiliate, extras = {}) {
@@ -1346,6 +1478,9 @@ function buildReturnPayload(action, rawUrlOrUrl, removedTracking, detectedAffili
     detectedAffiliate,
     preservedAffiliate: extras.preservedAffiliate ?? null,
     creatorReferralPreserved: extras.creatorReferralPreserved ?? false,
+    // affiliate-autoinject-notice: side-channel signal, undefined when no
+    // known auto-injector matched (or when not computed at this return site).
+    autoInjected: extras.autoInjected,
   };
   // network and creator are present ONLY on the honored-creator shape (S3).
   // Omitting them entirely (not undefined-keyed) matches today's literal returns.

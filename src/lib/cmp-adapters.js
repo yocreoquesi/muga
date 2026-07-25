@@ -100,6 +100,64 @@
  *   queryable). Secondary/corroborating signal.
  * @property {boolean} [hasIsInitializedFn] - `typeof window.UC_UI.isInitialized === "function"`.
  *   Secondary/corroborating signal.
+ * @property {boolean} [hasCookieInformationGlobal] - `typeof window.CookieInformation === "object"`.
+ * @property {boolean} [hasDeclineAllCategoriesFn] - `typeof window.CookieInformation.declineAllCategories === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasCoiOverlayDom] - `#coiOverlay` present in the DOM.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasCoiConsentBannerDom] - `#coiConsentBanner` present
+ *   in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCoiSummeryDom] - `#coiSummery` present in the DOM.
+ *   Secondary/corroborating signal.
+ * @property {boolean} [hasCoiBannerWrapperDom] - `#coi-banner-wrapper`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCoiConsentSummaryDom] - `.coi-consent-summary`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCookieScriptGlobal] - `typeof window.CookieScript === "object" || typeof window.CookieScript === "function"`.
+ *   Real-site verification (2026-07-17) found cookie-script.com ships the
+ *   vendor global as a callable FUNCTION with `.instance` hung off it, not
+ *   a plain object — the global itself may be either shape; the real
+ *   discriminators are `.instance` and `.instance.rejectAllAction` below,
+ *   which stay strictly object/function-typed.
+ * @property {boolean} [hasCookieScriptInstance] - `typeof window.CookieScript.instance === "object"`.
+ *   Mandatory signal: the reject call lives on `.instance`, so this must be
+ *   present before probing for the reject function itself.
+ * @property {boolean} [hasRejectAllActionFn] - `typeof window.CookieScript.instance.rejectAllAction === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasCookiescriptInjectedDom] - `#cookiescript_injected`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCookiescriptDescriptionDom] - `#cookiescript_description`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronGlobal] - `typeof window.tarteaucitron === "object"`.
+ * @property {boolean} [hasTarteaucitronUserInterface] - `typeof window.tarteaucitron.userInterface === "object"`.
+ *   Mandatory signal: the reject call lives on `.userInterface`, so this
+ *   must be present before probing for the reject function itself.
+ * @property {boolean} [hasRespondAllFn] - `typeof window.tarteaucitron.userInterface.respondAll === "function"`.
+ *   Mandatory signal: without this, no reject action can be confirmed.
+ * @property {boolean} [hasTarteaucitronRootDom] - `#tarteaucitronRoot`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronAlertBigDom] - `#tarteaucitronAlertBig`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronBackDom] - `#tarteaucitronBack`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasTarteaucitronModalOpenDom] - `.tarteaucitron-modal-open`
+ *   present on `document.body`. Secondary/corroborating signal.
+ * @property {boolean} [hasCmpMngrGlobal] - `typeof window.cmpmngr === "object"`.
+ *   Mandatory signal: the consentmanager.net-specific vendor global.
+ * @property {boolean} [hasCmpFn] - `typeof window.__cmp === "function"`.
+ *   Mandatory signal: `__cmp` is the legacy IAB TCF v1.1 generic surface
+ *   (shared risk with other v1.1-era CMPs), so it can never be a sole
+ *   anchor — see the dual-anchor discrimination rationale above
+ *   detectConsentmanager below.
+ * @property {boolean} [hasCmpBoxDom] - `#cmpbox` present in the DOM.
+ *   Mandatory signal: the consentmanager.net-specific DOM anchor that
+ *   discriminates this CMP from every other bare-`__cmp`-exposing vendor.
+ * @property {boolean} [hasCmpWelcomeBtnYesDom] - `#cmpwelcomebtnyes`
+ *   present in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCmpWelcomeBtnNoDom] - `#cmpwelcomebtnno` present
+ *   in the DOM. Secondary/corroborating signal.
+ * @property {boolean} [hasCmpBoxBtnDom] - `#cmpbox .cmpboxbtn` present in
+ *   the DOM. Secondary/corroborating signal.
  */
 
 /**
@@ -173,6 +231,71 @@ export const ACTIONS = Object.freeze({
  * (a separate, rarer Usercentrics integration mode) and would either
  * collide with Sourcepoint/Didomi discrimination or fail to discriminate
  * at all.
+ *
+ * The Cookie Information adapter reuses the OneTrust/Didomi/Usercentrics
+ * shape again: `window.CookieInformation` is a vendor-namespaced global, so
+ * detectCookieInformation requires the mandatory `hasCookieInformationGlobal`
+ * + `hasDeclineAllCategoriesFn` pair plus >=1 corroborating DOM secondary
+ * (`#coiOverlay`, `#coiConsentBanner`, `#coiSummery`, `#coi-banner-wrapper`,
+ * `.coi-consent-summary`) — same fail-closed confidence gate, same
+ * threshold. Do NOT key detection off `window.__tcfapi`: Cookie Information
+ * can ALSO expose the generic IAB TCF surface (opt-in per site via
+ * `data-tcf-v2-enabled`), which is Sourcepoint's dual-mandatory anchor
+ * above, not this adapter's. Detection here is keyed ONLY off the
+ * `window.CookieInformation` vendor global + `declineAllCategories`.
+ *
+ * The CookieScript adapter DEVIATES from the vendor-namespaced-global shape
+ * on purpose: its reject call (`CookieScript.instance.rejectAllAction()`)
+ * lives on a `.instance` property, not directly on the vendor global
+ * itself. detectCookieScript therefore strengthens the mandatory bar to a
+ * TRIPLE gate — `hasCookieScriptGlobal` AND `hasCookieScriptInstance` AND
+ * `hasRejectAllActionFn` — because `.instance` can be present-but-not-yet
+ * populated (or absent) even when the vendor global itself already exists,
+ * and probing `.rejectAllAction` before confirming `.instance` is an object
+ * would either throw or silently read `undefined`. Real-site verification
+ * (2026-07-17, EU sweep) found cookie-script.com exposes `window.CookieScript`
+ * as a callable FUNCTION (with `.instance` and `.init` as its own
+ * properties), not a plain object as originally assumed — the signal
+ * collectors in the content-script copies (`collectSignals`/
+ * `fxCollectSignals`) allow EITHER `typeof === "object"` OR
+ * `typeof === "function"` for the bare global while `hasCookieScriptGlobal`
+ * itself stays a plain boolean here, so this pure detect function's shape
+ * is unaffected — only what feeds it changed. `.instance` and
+ * `.rejectAllAction` remain the real, strictly object/function-typed
+ * discriminators; this does not loosen detection against any other CMP.
+ * The usual >=1 corroborating DOM secondary (`#cookiescript_injected`,
+ * `#cookiescript_description`) still gates the same fail-closed
+ * CONFIDENCE_THRESHOLD as every other adapter here.
+ *
+ * The tarteaucitron adapter reuses the CookieScript TRIPLE-mandatory-gate
+ * shape on purpose: its reject call (`tarteaucitron.userInterface.respondAll(false)`)
+ * lives on a `.userInterface` property, not directly on the vendor global
+ * itself — the same "present-but-not-yet-populated-with-the-nested-object"
+ * hazard the CookieScript rationale above describes. detectTarteaucitron
+ * therefore requires `hasTarteaucitronGlobal` AND `hasTarteaucitronUserInterface`
+ * AND `hasRespondAllFn` together, before probing for the usual >=1
+ * corroborating DOM secondary (`#tarteaucitronRoot`, `#tarteaucitronAlertBig`,
+ * `#tarteaucitronBack`, `.tarteaucitron-modal-open`) — same fail-closed
+ * CONFIDENCE_THRESHOLD as every other adapter here.
+ *
+ * The consentmanager.net adapter DEVIATES from every prior adapter's
+ * discrimination shape on purpose (dual-anchor discrimination, extended to
+ * a mandatory TRIPLE): its reject call rides `window.__cmp`, the legacy IAB
+ * TCF v1.1 generic global name — shared risk with other v1.1-era CMPs, so
+ * it can never be a sole anchor, mirroring the TCF-generic-signal
+ * discrimination rationale on detectSourcepoint above. Unlike Sourcepoint's
+ * dual-mandatory (generic fn + vendor DOM), this adapter requires a THIRD
+ * mandatory signal on top of that pair: `hasCmpMngrGlobal`
+ * (`typeof window.cmpmngr === "object"`, the vendor-specific global) AND
+ * `hasCmpFn` (`typeof window.__cmp === "function"`, the legacy generic
+ * reject surface) AND `hasCmpBoxDom` (`#cmpbox`, the vendor-specific DOM
+ * anchor) are all mandatory together — a bare `__cmp` function is common to
+ * every TCF v1.1 CMP and must never claim this adapter on its own, and
+ * `window.cmpmngr` alone (without the DOM anchor or the reject surface) is
+ * not enough either. The usual >=1 corroborating DOM secondary
+ * (`#cmpwelcomebtnyes`, `#cmpwelcomebtnno`, `#cmpbox .cmpboxbtn`) still
+ * gates the same fail-closed CONFIDENCE_THRESHOLD as every other adapter
+ * here.
  */
 // @sync:cmp-adapters:start
 const CONFIDENCE_THRESHOLD = 1;
@@ -278,7 +401,204 @@ function detectUsercentrics(signals) {
 function canRejectUsercentrics(signals) {
   return detectUsercentrics(signals) >= CONFIDENCE_THRESHOLD;
 }
+
+// Cookie Information: window.CookieInformation is a vendor-namespaced
+// global (like OneTrust/Didomi/UC_UI), so this mirrors detectDidomi's shape
+// (mandatory global + mandatory reject-fn signal, plus >=1 corroborating
+// secondary signal). Do NOT key off __tcfapi — see the discrimination
+// rationale above detectCookieInformation in the docblock preceding this
+// sync block.
+function detectCookieInformation(signals) {
+  if (
+    !signals ||
+    signals.hasCookieInformationGlobal !== true ||
+    signals.hasDeclineAllCategoriesFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCoiOverlayDom === true ? 1 : 0) +
+    (signals.hasCoiConsentBannerDom === true ? 1 : 0) +
+    (signals.hasCoiSummeryDom === true ? 1 : 0) +
+    (signals.hasCoiBannerWrapperDom === true ? 1 : 0) +
+    (signals.hasCoiConsentSummaryDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectCookieInformation(signals) {
+  return detectCookieInformation(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// CookieScript: the reject call lives on window.CookieScript.instance, not
+// directly on the vendor global — see the TRIPLE-mandatory-gate rationale
+// above detectCookieScript in the docblock preceding this sync block.
+function detectCookieScript(signals) {
+  if (
+    !signals ||
+    signals.hasCookieScriptGlobal !== true ||
+    signals.hasCookieScriptInstance !== true ||
+    signals.hasRejectAllActionFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCookiescriptInjectedDom === true ? 1 : 0) +
+    (signals.hasCookiescriptDescriptionDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectCookieScript(signals) {
+  return detectCookieScript(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// tarteaucitron: the reject call lives on window.tarteaucitron.userInterface,
+// not directly on the vendor global — see the TRIPLE-mandatory-gate
+// rationale above detectTarteaucitron in the docblock preceding this sync
+// block.
+function detectTarteaucitron(signals) {
+  if (
+    !signals ||
+    signals.hasTarteaucitronGlobal !== true ||
+    signals.hasTarteaucitronUserInterface !== true ||
+    signals.hasRespondAllFn !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasTarteaucitronRootDom === true ? 1 : 0) +
+    (signals.hasTarteaucitronAlertBigDom === true ? 1 : 0) +
+    (signals.hasTarteaucitronBackDom === true ? 1 : 0) +
+    (signals.hasTarteaucitronModalOpenDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectTarteaucitron(signals) {
+  return detectTarteaucitron(signals) >= CONFIDENCE_THRESHOLD;
+}
+
+// consentmanager.net: __cmp is the legacy IAB TCF v1.1 generic surface
+// every v1.1-era CMP can expose, so it can never be the sole mandatory
+// anchor — see the dual-anchor discrimination rationale above
+// detectSourcepoint. hasCmpMngrGlobal AND hasCmpFn AND hasCmpBoxDom are all
+// mandatory together (see the TRIPLE-mandatory rationale in the docblock
+// preceding this sync block).
+function detectConsentmanager(signals) {
+  if (
+    !signals ||
+    signals.hasCmpMngrGlobal !== true ||
+    signals.hasCmpFn !== true ||
+    signals.hasCmpBoxDom !== true
+  ) {
+    return 0;
+  }
+  const secondary =
+    (signals.hasCmpWelcomeBtnYesDom === true ? 1 : 0) +
+    (signals.hasCmpWelcomeBtnNoDom === true ? 1 : 0) +
+    (signals.hasCmpBoxBtnDom === true ? 1 : 0);
+  return secondary >= 1 ? 1 : 0.4;
+}
+
+function canRejectConsentmanager(signals) {
+  return detectConsentmanager(signals) >= CONFIDENCE_THRESHOLD;
+}
 // @sync:cmp-adapters:end
+
+/**
+ * Sourcepoint reject-click target resolution (DOM fallback for the postRejectAll
+ * gap). A real-site verification round found the __tcfapi postRejectAll call
+ * does not dismiss the vendor's own UI on real deployments even when the call
+ * fires without throwing — the confidence gate above (detectSourcepoint /
+ * canRejectSourcepoint) can confirm a reject PATH exists, but not that the wall
+ * actually closes. This resolver identifies a DOM click fallback instead.
+ *
+ * The vendor's message UI carries a stable structural anchor on every DECISION
+ * control: an `sp_choice_type_<N>` class, surfaced on each candidate object as
+ * `spChoice` (the "<N>" suffix — see the content-script candidate collector).
+ * Canonical choice types observed on real walls: "11" = the broad-consent
+ * control (never a target here — this file's own structural guard forbids
+ * even naming that action), "12" = a secondary options/settings layer, "13" =
+ * "Reject all" — the ONLY choice type this resolver ever targets.
+ *
+ * Fail-closed: only a SINGLE actionable "13" candidate is ever a target.
+ * Zero "13" candidates is a NOOP for THIS resolver. More than one actionable
+ * "13" candidate is "ambiguous" — never guesses. A "13" candidate coexisting
+ * with a "12" choice does NOT veto: "13" is clicked directly, no need to
+ * traverse the secondary layer first. Non-decision candidates (no `spChoice`,
+ * e.g. incidental privacy/imprint links) are ignored outright — they can never
+ * veto or become a target. Pure; never throws.
+ *
+ * MULTI-LAYER: a wall exposing ONLY choice type "12" ("Options"/"Manage") with
+ * no direct "13" is handled by the sibling `findSpOpenSettingsTarget` below and
+ * the content-script dispatcher, which clicks the "12" to reveal the deeper
+ * "Reject all" and then re-enters this resolver for the revealed "13". This
+ * resolver itself deliberately targets ONLY the single-click "13" — opening the
+ * panel is a separate, monotone-safe step that never grants consent.
+ *
+ * @param {Array<{spChoice?: string, actionable?: boolean, ref?: *}>} [candidates]
+ * @returns {{status: "single"|"noop"|"ambiguous", target: object|null}}
+ */
+// Content scripts cannot import this module (AGENTS.md — no ES imports in
+// content scripts), so the block between the @sync:cmp-sp-reject-click
+// markers is hand-copied, modulo indentation, into content/cookie-noise.js
+// ONLY — mirrors the @sync:cookie-gate precedent: a DOM click needs neither
+// a page-authored global nor the MAIN world, so this has no main-world copy.
+// tests/unit/cookie-noise-sync.test.mjs fails the build if the copies drift.
+// @sync:cmp-sp-reject-click:start
+const SP_REJECT_ALL_CHOICE = "13";
+
+function findSpRejectTarget(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const matches = [];
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (candidate.spChoice !== SP_REJECT_ALL_CHOICE) continue;
+    if (candidate.actionable !== true) continue;
+    matches.push(candidate);
+  }
+  if (matches.length === 0) return { status: "noop", target: null };
+  if (matches.length > 1) return { status: "ambiguous", target: null };
+  return { status: "single", target: matches[0] };
+}
+
+// SP multi-layer: some walls expose ONLY a "12" ("Options"/"Manage") control,
+// with the real "Reject all" one layer deeper inside the panel it opens.
+// Resolves the SINGLE actionable "12" to click, but ONLY on an options-ONLY
+// wall — i.e. when NO other actionable decision control (a broad-consent "11",
+// a pay "9", a direct reject "13", or any other sp_choice button) is present. A
+// wall that also shows broad-consent/pay/reject is a consent-or-pay wall, not
+// the options-only shape this deep-reject traversal targets, so it is left
+// alone (the reject engine's direct "13" path and the separate consent-or-pay
+// feature own those). Opening a settings panel never grants consent
+// (monotone-safe); the deeper "13" is clicked by findSpRejectTarget on the next
+// observer pass. Incidental non-decision candidates (no sp_choice class, e.g.
+// privacy/imprint links) are ignored. Any ambiguity (zero, or more than one
+// actionable "12") is a NOOP. Pure; never throws.
+const SP_OPEN_SETTINGS_CHOICE = "12";
+
+function findSpOpenSettingsTarget(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const options = [];
+  let otherActionableDecision = false;
+  for (const candidate of list) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (candidate.actionable !== true) continue;
+    if (typeof candidate.spChoice !== "string" || candidate.spChoice.length === 0) continue;
+    if (candidate.spChoice === SP_OPEN_SETTINGS_CHOICE) {
+      options.push(candidate);
+    } else {
+      // Any OTHER actionable sp_choice decision control (broad-consent "11",
+      // pay "9", direct reject "13", …) means this is NOT an options-only wall.
+      otherActionableDecision = true;
+    }
+  }
+  if (otherActionableDecision) return { status: "noop", target: null };
+  if (options.length === 0) return { status: "noop", target: null };
+  if (options.length > 1) return { status: "ambiguous", target: null };
+  return { status: "single", target: options[0] };
+}
+// @sync:cmp-sp-reject-click:end
+
+export { findSpRejectTarget, findSpOpenSettingsTarget };
 
 /**
  * Invokes the caller-supplied reject call. Kept pure (no `window` access
@@ -286,6 +606,24 @@ function canRejectUsercentrics(signals) {
  * zero-argument callback — the content-script shell is the one place that
  * touches the vendor CMP global directly (e.g. `window.OneTrust.RejectAll`,
  * `window.Cookiebot.submitCustomConsent`). Never throws.
+ *
+ * KNOWN HONESTY LIMITATION: this helper reports `{status: "rejected"}`
+ * whenever the injected callback runs without throwing — it does NOT verify
+ * the banner/wall actually cleared from the DOM afterward. That status
+ * string is a lib/unit-test-level value only; it is not consumed by the
+ * content-script dispatch, and gating the act decision on real dismissal is
+ * impossible synchronously here anyway, since vendor banners clear
+ * ASYNCHRONOUSLY relative to the reject call. Instead, the content scripts
+ * (content/cookie-noise-mainworld.js and content/cookie-noise.js) run a
+ * bounded, OBSERVATIONAL async post-reject DOM-dismissal check
+ * (`confirmRejectDismissal`) for every Tier-1 adapter below except
+ * Sourcepoint: it polls a short window after the reject call and warns to
+ * the console once if the banner never disappears, surfacing silent
+ * vendor-API drift without altering `_acted`/`stopObserver()` in any way.
+ * The Sourcepoint case is handled by a separate, stronger mechanism (the
+ * sp_choice_type_13 DOM-click path, see `findSpRejectTarget` below) that
+ * verifies a real click on a resolved target rather than trusting a
+ * non-throwing callback alone.
  *
  * @param {() => void} [callRejectAll]
  * @returns {{status: "rejected"|"noop"}}
@@ -432,6 +770,121 @@ export const usercentricsAdapter = Object.freeze({
   reject,
 });
 
+/**
+ * Cookie Information Tier 1 adapter. The reject call
+ * (`window.CookieInformation.declineAllCategories()`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. Same call shape as
+ * `oneTrustAdapter.RejectAll()` / `didomiAdapter.setUserDisagreeToAll()`:
+ * synchronous, zero arguments, void return — the library's own default
+ * decline button listens for click and calls this exact method (a core SDK
+ * global method, not gated behind custom-template opt-in). Independent of
+ * IAB TCF (`window.__tcfapi`, which for this vendor is additionally opt-in
+ * per site) — see detectCookieInformation's discrimination rationale above.
+ *
+ * Registered LAST in TIER1 (after usercentricsAdapter): `window.CookieInformation`
+ * is a direct, unambiguous vendor-namespaced global (like Didomi's/UC_UI's),
+ * so ordering relative to the other adapters is not safety-critical either
+ * way — appended at the end to keep the registry's history append-only.
+ * @type {Readonly<{id: "cookieinformation", tier: 1, detect: typeof detectCookieInformation, canReject: typeof canRejectCookieInformation, reject: typeof reject}>}
+ */
+export const cookieInformationAdapter = Object.freeze({
+  id: "cookieinformation",
+  tier: 1,
+  detect: detectCookieInformation,
+  canReject: canRejectCookieInformation,
+  reject,
+});
+
+/**
+ * CookieScript Tier 1 adapter. The reject call
+ * (`window.CookieScript.instance.rejectAllAction()`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. Synchronous,
+ * zero-argument, void return — "rejects all cookies except strictly
+ * necessary" per the vendor's own documentation, the same call shape as
+ * `oneTrustAdapter.RejectAll()` / `didomiAdapter.setUserDisagreeToAll()` /
+ * `cookieInformationAdapter.declineAllCategories()`.
+ *
+ * Registered LAST in TIER1 (after cookieInformationAdapter): the
+ * `.instance` indirection makes this adapter's mandatory gate the
+ * strictest of the eight (see detectCookieScript's TRIPLE-mandatory-gate
+ * rationale above), so ordering relative to the others is not
+ * safety-critical — appended at the end to keep the registry's history
+ * append-only.
+ * @type {Readonly<{id: "cookiescript", tier: 1, detect: typeof detectCookieScript, canReject: typeof canRejectCookieScript, reject: typeof reject}>}
+ */
+export const cookieScriptAdapter = Object.freeze({
+  id: "cookiescript",
+  tier: 1,
+  detect: detectCookieScript,
+  canReject: canRejectCookieScript,
+  reject,
+});
+
+/**
+ * tarteaucitron Tier 1 adapter. The reject call
+ * (`window.tarteaucitron.userInterface.respondAll(false)`) is invoked by
+ * the caller-supplied callback via the shared `reject()` helper above —
+ * this adapter definition never touches `window` itself. Synchronous
+ * (a plain `for` loop over `tarteaucitron.job`, no Promise/callback) — the
+ * `false` status argument denies every registered service, mirroring the
+ * vendor's own "tout refuser" (reject all) UI button, which calls this
+ * exact function with the exact same literal argument.
+ *
+ * Detection deviates from the vendor-namespaced-global shape on purpose
+ * (same TRIPLE-mandatory-gate rationale as CookieScript): the reject call
+ * lives on `.userInterface`, not directly on `window.tarteaucitron` — see
+ * detectTarteaucitron's rationale above.
+ *
+ * Registered LAST in TIER1 (after cookieScriptAdapter): `window.tarteaucitron`
+ * is a direct, unambiguous vendor-namespaced global (like CookieScript's),
+ * so ordering relative to the other adapters is not safety-critical —
+ * appended at the end to keep the registry's history append-only.
+ * @type {Readonly<{id: "tarteaucitron", tier: 1, detect: typeof detectTarteaucitron, canReject: typeof canRejectTarteaucitron, reject: typeof reject}>}
+ */
+export const tarteaucitronAdapter = Object.freeze({
+  id: "tarteaucitron",
+  tier: 1,
+  detect: detectTarteaucitron,
+  canReject: canRejectTarteaucitron,
+  reject,
+});
+
+/**
+ * consentmanager.net Tier 1 adapter. The reject call
+ * (`window.__cmp("setConsent", 0, callback, true)`) is invoked by the
+ * caller-supplied callback via the shared `reject()` helper above — this
+ * adapter definition never touches `window` itself. The literal `0`
+ * consent-value argument denies all (reject-all); `1` would grant broad
+ * consent, so this call site must never pass a variable there — see the
+ * literal-arg guard in tests/unit/cookie-noise-sync.test.mjs.
+ *
+ * Async call shape, fire-and-forget, same family as the Sourcepoint
+ * adapter's `__tcfapi("postRejectAll", 2, callback)`: the callback fires in
+ * practice but is optional-log-only and never gates control flow —
+ * `_acted`/`stopObserver()` fire synchronously right after the call
+ * returns, never awaited on the callback settling.
+ *
+ * Detection deviates from every prior adapter's discrimination shape on
+ * purpose (dual-anchor discrimination extended to a mandatory TRIPLE) — see
+ * detectConsentmanager's rationale above.
+ *
+ * Registered LAST in TIER1 (after tarteaucitronAdapter): `window.__cmp` is
+ * a shared/generic legacy TCF v1.1 surface (like Sourcepoint's
+ * `__tcfapi`), so ordering relative to the vendor-namespaced-global
+ * adapters is not safety-critical — appended at the end to keep the
+ * registry's history append-only.
+ * @type {Readonly<{id: "consentmanager", tier: 1, detect: typeof detectConsentmanager, canReject: typeof canRejectConsentmanager, reject: typeof reject}>}
+ */
+export const consentmanagerAdapter = Object.freeze({
+  id: "consentmanager",
+  tier: 1,
+  detect: detectConsentmanager,
+  canReject: canRejectConsentmanager,
+  reject,
+});
+
 /** Tier 1 registry: API adapters that call a page-authored global directly. */
 export const TIER1 = Object.freeze([
   oneTrustAdapter,
@@ -440,6 +893,10 @@ export const TIER1 = Object.freeze([
   cookieYesAdapter,
   sourcepointAdapter,
   usercentricsAdapter,
+  cookieInformationAdapter,
+  cookieScriptAdapter,
+  tarteaucitronAdapter,
+  consentmanagerAdapter,
 ]);
 
 /**
@@ -453,10 +910,19 @@ export const TIER2 = Object.freeze([]);
  * Two-tier pure decision function. Tries every Tier 1 adapter, then every
  * Tier 2 adapter (empty today), and returns the first confirmed reject
  * action. When nothing can confidently reject, distinguishes two NOOP
- * reasons for observability/testing: `"no-reject-path"` when the OneTrust
+ * reasons for observability/testing: `"no-reject-path"` when a vendor
  * global is present but its reject function is not (a hard wall), and
  * `"uncertain"` for everything else (no CMP detected, or insufficient
  * corroboration — fail-closed).
+ *
+ * `adapterId` is threaded through every `"no-reject-path"` branch (the
+ * specific vendor whose hard wall was detected) — a small enhancement that
+ * keeps this file's own structural guard intact (see the file docblock):
+ * this file still never spells the word that guard forbids, and never
+ * decides anything beyond the reject family. A SEPARATE module can use
+ * this id downstream to decide what, if anything, to do about a specific
+ * vendor's hard wall, without this file ever knowing what that separate
+ * module does with it.
  *
  * Pure: given the same signals it always returns the same result. Never
  * throws.
@@ -479,40 +945,77 @@ export function decideAction(signals) {
   }
 
   if (s.hasOneTrustGlobal === true && s.hasRejectAllFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "onetrust" };
   }
   if (s.hasCookiebotGlobal === true && s.hasSubmitCustomConsentFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "cookiebot" };
   }
   if (s.hasDidomiGlobal === true && s.hasSetUserDisagreeToAllFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "didomi" };
   }
   if (s.hasGetCkyConsentFn === true && s.hasPerformBannerActionFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "cookieyes" };
   }
   // Sourcepoint (#1123) hard wall is the MIRROR IMAGE of the checks above:
   // keyed off the Sourcepoint-specific DOM signal, NOT hasTcfApiFn alone —
   // a bare hasTcfApiFn is true on every TCF CMP (Didomi included) and must
   // fall through to "uncertain" below, never claim Sourcepoint.
   if (s.hasSpMessageContainerDom === true && s.hasTcfApiFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "sourcepoint" };
   }
   // Usercentrics (#1121) hard wall: same shape as the OneTrust/Didomi
   // checks above (mandatory global present, mandatory reject fn absent).
   if (s.hasUcUiGlobal === true && s.hasDenyAllConsentsFn !== true) {
-    return { action: null, reason: "no-reject-path", adapterId: null };
+    return { action: null, reason: "no-reject-path", adapterId: "usercentrics" };
+  }
+  // Cookie Information hard wall: same shape as the OneTrust/Didomi/
+  // Usercentrics checks above (mandatory global present, mandatory reject
+  // fn absent).
+  if (s.hasCookieInformationGlobal === true && s.hasDeclineAllCategoriesFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: "cookieinformation" };
+  }
+  // CookieScript hard wall: mandatory global present but the reject
+  // function is not reachable — either `.instance` itself is absent, or
+  // `.instance` exists but `.rejectAllAction` is not a function. Both
+  // sub-cases collapse to `hasRejectAllActionFn !== true` here.
+  if (s.hasCookieScriptGlobal === true && s.hasRejectAllActionFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: "cookiescript" };
+  }
+  // tarteaucitron hard wall: mandatory global present but the reject
+  // function is not reachable — either `.userInterface` itself is absent,
+  // or `.userInterface` exists but `.respondAll` is not a function. Both
+  // sub-cases collapse to `hasRespondAllFn !== true` here, same shape as
+  // the CookieScript hard wall above.
+  if (s.hasTarteaucitronGlobal === true && s.hasRespondAllFn !== true) {
+    return { action: null, reason: "no-reject-path", adapterId: "tarteaucitron" };
+  }
+  // consentmanager.net hard wall: the MIRROR IMAGE of the Sourcepoint check
+  // above, keyed off the vendor-specific DOM anchor (hasCmpBoxDom), NOT
+  // bare hasCmpFn alone — a bare __cmp function is true on every TCF v1.1
+  // CMP and must fall through to "uncertain" below, never claim
+  // consentmanager.net.
+  if (s.hasCmpBoxDom === true && (s.hasCmpMngrGlobal !== true || s.hasCmpFn !== true)) {
+    return { action: null, reason: "no-reject-path", adapterId: "consentmanager" };
   }
   return { action: null, reason: "uncertain", adapterId: null };
 }
 
 /**
- * Pure disabled-state gate for the Cookie Consent Minimizer (#1027).
+ * Pure disabled-state gate for the Cookie Consent Minimizer.
  * Decides whether the isolated-world gatekeeper (content/cookie-noise.js)
  * should open the gate, from the user's prefs plus injected environment
  * dependencies. Kept pure (no `window`/`location` access) so every
- * branch — feature off, pre-onboarding, pref off, per-site exemption,
+ * branch — feature off, pre-onboarding, mode not on, per-site exemption,
  * all-pass — is unit-tested directly here instead of only structurally in
  * a content script that Node cannot import.
+ *
+ * Mode scope: `cookieConsentMode` is a 2-state enum (`"off"` |
+ * `"reject-only"`, default `"reject-only"`; the opt-in paywall mode was
+ * removed pre-ship). This gate does not read `prefs.cookieConsentMode`
+ * at all: the caller validates the raw pref against the closed enum at the
+ * settings-schema.js boundary (which has no such lexical restriction) and
+ * passes a pre-validated `deps.modeActive` boolean instead. Fail-closed:
+ * anything other than the literal boolean `true` keeps the gate shut.
  *
  * Content scripts cannot import this module (AGENTS.md — no ES imports in
  * content scripts), so the block between the `@sync:cookie-gate` markers
@@ -524,9 +1027,10 @@ export function decideAction(signals) {
  * injected exemption predicate, returns false.
  *
  * @param {object|null|undefined} prefs Merged prefs (see PREF_DEFAULTS).
- * @param {{hostname?: string, isSiteFullyExempt?: (hostname: string, prefs: object) => boolean}} [deps]
- *   Environment hooks the content-script call site injects: the current
- *   hostname and the cleaner's per-site exemption predicate.
+ * @param {{modeActive?: boolean, hostname?: string, isSiteFullyExempt?: (hostname: string, prefs: object) => boolean}} [deps]
+ *   Environment hooks the content-script call site injects: the
+ *   pre-validated active-mode boolean, the current hostname, and the
+ *   cleaner's per-site exemption predicate.
  * @returns {boolean} true only when the gate should open.
  */
 // @sync:cookie-gate:start
@@ -534,7 +1038,7 @@ function computeCookieGate(prefs, deps) {
   if (!prefs) return false;
   if (prefs.enabled === false) return false;
   if (prefs.onboardingDone !== true) return false;
-  if (prefs.cookieConsentMinimizerEnabled !== true) return false;
+  if (!deps || deps.modeActive !== true) return false;
   const isSiteFullyExempt = deps && deps.isSiteFullyExempt;
   if (typeof isSiteFullyExempt === "function") {
     try {

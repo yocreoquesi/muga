@@ -13,14 +13,27 @@
  * resolved on a macrotask delay), so this spec exercises the fire-and-forget
  * async path — src/content/cookie-noise.js calls
  * `window.wrappedJSObject.UC_UI.denyAllConsents().catch(() => {})` and marks
- * the reject as done SYNCHRONOUSLY, without awaiting the promise. This test
- * confirms the reject still fires (polling for the async outcome) AND that
- * the page never surfaces an unhandled error / rejection despite the
- * Promise-returning call — Selenium has no `page.on("pageerror")`
- * equivalent, so a `window.onerror` / `unhandledrejection` listener is
- * installed via `executeScript` right after navigation (before the
- * dispatcher's async gate-open/act sequence has had time to run) and polled
- * at assertion time.
+ * the reject as done SYNCHRONOUSLY, without awaiting the promise.
+ *
+ * WHAT ACTUALLY PROVES THE PATH: the reject-fired assertions below — the
+ * stub's `denyAllConsents` was invoked (`__ucCalls`), the page consent
+ * state flipped to "necessary-only", and the banner host was removed. Those
+ * page-world side effects are the real proof that the async fire-and-forget
+ * call reached the page's object via `wrappedJSObject` in Gecko.
+ *
+ * THE PAGE-ERROR COLLECTOR IS A BEST-EFFORT SANITY CHECK, NOT A GUARANTEE.
+ * `installPageErrorCollector` listens on the page-world `window.onerror` /
+ * `unhandledrejection`, so it can only catch throws in the fixture's OWN
+ * page-world stub. It CANNOT observe an exception thrown inside the
+ * extension's isolated-world content script (src/content/cookie-noise.js):
+ * on Firefox, isolated-world content-script throws do not surface on the
+ * page-world window, so `assert.deepEqual(__mugaPageErrors, [])` can
+ * essentially never fail on a content-script error. On top of that, the
+ * collector is installed AFTER `driver.get()` returns (page `load`), while
+ * the content script runs at `document_start` — so the reject may already
+ * have settled before it attaches. Treat an empty `__mugaPageErrors` as
+ * "the fixture stub itself did not blow up", not as a verified async-safety
+ * property of the dispatcher.
  */
 
 import test from "node:test";
@@ -71,11 +84,14 @@ async function pollUntil(driver, predicateFn, { timeoutMs = 10000, intervalMs = 
 }
 
 /**
- * Installs a window-level error/unhandledrejection collector. Called right
- * after navigation, before the dispatcher's async gate-open/act sequence has
- * had time to run (chrome.runtime.sendMessage + the isolated-world gate read
- * both take at least one macrotask), so it is in place before
- * denyAllConsents()'s promise settles.
+ * Installs a PAGE-WORLD error/unhandledrejection collector. Best-effort
+ * only: it runs in the page world, so it observes throws from the fixture's
+ * own stub but NOT throws inside the extension's isolated-world content
+ * script (Firefox does not surface isolated-world content-script errors on
+ * the page-world window). It is also attached AFTER `driver.get()` returns
+ * (page `load`), whereas the content script runs at `document_start`, so
+ * denyAllConsents()'s promise may already have settled before this attaches.
+ * See the file docblock — the reject-fired assertions are the real proof.
  */
 async function installPageErrorCollector(driver) {
   await driver.executeScript(`
@@ -154,12 +170,19 @@ test("Firefox smoke: Usercentrics UC_UI.denyAllConsents() does NOT fire when the
     await driver.get(server.url);
     await installPageErrorCollector(driver);
 
-    // Negative assertion — no positive signal to poll on, so use a fixed
-    // settle window (mirrors the Chromium spec's disabled-state test).
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const consentState = await driver.executeScript("return window.__consentState");
-    assert.equal(consentState, null);
+    // LOW-2 (#1134): a wrongly-open gate could fire the reject slowly; a
+    // single sample after a fixed sleep would miss a fire that lands after
+    // the sample. Poll the whole window and fail fast if the reject ever
+    // fires. (A fire slower than this window is the acknowledged residual
+    // limit — a closed gate leaves no page-world readiness signal to key on.)
+    let firedWhileOff = false;
+    try {
+      await pollUntil(driver, "return window.__consentState === 'necessary-only'", { timeoutMs: 3000, intervalMs: 200 });
+      firedWhileOff = true;
+    } catch {
+      // timed out without firing — the expected feature-OFF behavior
+    }
+    assert.equal(firedWhileOff, false, "reject fired while the feature was OFF");
 
     const bannerStillThere = await driver.executeScript(
       "return document.getElementById('usercentrics-root') !== null"

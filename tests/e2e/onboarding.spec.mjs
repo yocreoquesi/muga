@@ -25,9 +25,11 @@ test.describe("Onboarding", () => {
     // Logo
     await expect(page.locator(".logo")).toHaveText("MUGA");
 
-    // Feature rows (3 features)
+    // Feature rows (5 features: the 3 URL-cleaning rows + the cookie-consent
+    // disclosure row added in #1137's onboarding Slice 1 + the Aggressive
+    // privacy OFF-by-default row added in the referer-beacon-privacy PR 4).
     const features = page.locator(".feature-row");
-    await expect(features).toHaveCount(3);
+    await expect(features).toHaveCount(5);
 
     // ToS checkbox exists
     await expect(page.locator("#tos-check")).toBeVisible();
@@ -112,6 +114,8 @@ test.describe("Onboarding", () => {
 
     expect(consent.onboardingDone).toBe(true);
     expect(sync.injectOwnAffiliate).toBe(true);
+    // Tracks REQUIRED_CONSENT_VERSION in src/lib/consent-version-manifest.js —
+    // bump here when that constant advances (now 1.4 after the accept-mode clause).
     expect(consent.consentVersion).toBe("1.2");
     expect(consent.consentDate).toBeGreaterThan(0);
 

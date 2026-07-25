@@ -6,7 +6,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl, isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
 import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
-import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
+import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
@@ -23,6 +23,7 @@ import { computeLengthReduction, computeLengthBar } from "../lib/length-reductio
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
+import { buildBrokenSiteReportFields } from "../lib/broken-site-report.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -635,6 +636,13 @@ function _resetPreviewDom() {
     previewHonored.hidden = true;
     previewHonored.textContent = "";
   }
+  // affiliate-autoinject-notice: passive badge slot. Reset every render so a
+  // prior navigation's badge never bleeds into a landing with no detection.
+  const previewAutoinject = el("preview-autoinject");
+  if (previewAutoinject) {
+    previewAutoinject.hidden = true;
+    previewAutoinject.textContent = "";
+  }
   // #728 item 26: reset the per-tab badge (#89) too. It is only re-shown when
   // the new render has count > 0, so without this a prior tab's badge would
   // bleed into a later render with no count — breaking the idempotent-render
@@ -646,6 +654,14 @@ function _resetPreviewDom() {
   }
   const reportLink = el("report-broken");
   if (reportLink) reportLink.hidden = true;
+  // The opt-in full-URL consent is per-URL and per-render: reset the row +
+  // checkbox every render (like report-broken above) so a prior navigation's
+  // ticked "no sensitive data" attestation never bleeds into a different
+  // URL's report or lingers when the result flips back to untouched.
+  const reportIncludeUrlRow = el("report-include-url-row");
+  if (reportIncludeUrlRow) reportIncludeUrlRow.hidden = true;
+  const reportIncludeUrlCheckbox = el("report-include-url");
+  if (reportIncludeUrlCheckbox) reportIncludeUrlCheckbox.checked = false;
   // #705 fix: remove any `.preview-breakdown` <details> appended by a
   // prior render. The breakdown is dynamic (paramBreakdown pref), so the
   // reset path must clear it the same way it clears the static slots
@@ -744,6 +760,31 @@ async function showUrlPreview(prefs, lang) {
     }
   }
 
+  // affiliate-autoinject-notice: passive popup badge (ADR-c). Renders
+  // whenever the dual-key predicate flagged this landing, REGARDLESS of
+  // notifyForeignAffiliate — the badge only appears when the user opens the
+  // popup themselves, so it carries none of the toast's interruption cost
+  // and is safe to show unconditionally. textContent only (no innerHTML);
+  // {platform} is the only placeholder and it's sourced from MUGA's own
+  // curated AUTOINJECTOR_PATTERNS table, never user input.
+  //
+  // LOW-2: also require the flagged param=value to STILL be present in the
+  // cleaned URL. `result.autoInjected` is computed on the incoming landing
+  // params (before stripping), so it outlives the tag when the tag was
+  // actually removed — e.g. under stripAllAffiliates (action "cleaned") or on
+  // a post-Remove re-navigation where the scoped blacklist already stripped
+  // it. Gating on presence keeps the badge honest: it only shows when the tag
+  // survived in cleanUrl.
+  if (result.autoInjected &&
+      isAutoInjectedTagPresent(result.cleanUrl, result.autoInjected.param, result.autoInjected.value)) {
+    const autoinjectEl = document.getElementById("preview-autoinject");
+    if (autoinjectEl) {
+      const template = t("autoinject_badge", lang);
+      autoinjectEl.textContent = template.replace("{platform}", String(result.autoInjected.platform ?? ""));
+      autoinjectEl.hidden = false;
+    }
+  }
+
   // Wedge feedback: when MUGA preserved a third-party creator's affiliate tag,
   // surface it visibly. This is the core "fair to creators" promise made
   // tangible — fires regardless of whether the URL was otherwise modified.
@@ -832,30 +873,28 @@ async function showUrlPreview(prefs, lang) {
       reportLink.hidden = false;
       reportLink.addEventListener("click", (e) => {
         e.preventDefault();
-        try {
-          const hostname = new URL(url).hostname;
-          const version = chrome.runtime.getManifest().version;
-          const removed = result.removedTracking?.join(", ") || "none";
-          // Form-based template (#333). Field IDs in
-          // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params.
-          // GitHub forms ignore ?body= when ?template= is set, so we prefill
-          // each field individually. Free-text "symptom" stays empty for the user.
-          const params = new URLSearchParams({
-            template: "broken-site.yml",
-            title: `[Broken] ${hostname}`,
-            hostname,
-            browser: navigator.userAgent,
-            version,
-            // Defensive: the YAML template applies labels=broken-site,bug
-            // automatically, but pass it explicitly so the label is applied
-            // even if the template file ever fails to load on GitHub's side.
-            labels: "broken-site",
-          });
-          if (removed && removed !== "none") params.set("params", removed);
-          chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
-        } catch { /* invalid URL */ }
+        // Form-based template (#333). Field IDs in
+        // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params, url.
+        // GitHub forms ignore ?body= when ?template= is set, so we prefill
+        // each field individually. Free-text "symptom" stays empty for the user.
+        const includeCheckbox = document.getElementById("report-include-url");
+        const fields = buildBrokenSiteReportFields({
+          url,
+          includeFullUrl: includeCheckbox?.checked === true,
+          removedParams: result.removedTracking,
+          version: chrome.runtime.getManifest().version,
+          browser: navigator.userAgent,
+        });
+        const params = new URLSearchParams(fields);
+        chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
       });
 
+      // Opt-in full-URL checkbox row (unchecked by default — hostname-only
+      // stays the default report contract). Reveal it alongside the report
+      // link; the checkbox itself is never cloned so its checked state
+      // survives re-renders within the same popup session.
+      const includeUrlRow = document.getElementById("report-include-url-row");
+      if (includeUrlRow) includeUrlRow.hidden = false;
     }
 
     // Param breakdown: show removed params grouped by category when feature is on

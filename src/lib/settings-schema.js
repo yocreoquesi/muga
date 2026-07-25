@@ -50,6 +50,54 @@ export function snapToastDuration(n) {
 }
 
 /**
+ * The 2-state Cookie Consent Minimizer mode enum. `"reject-only"` is the
+ * safe default; MUGA never ships an option that accepts cookies on the
+ * user's behalf.
+ */
+export const COOKIE_CONSENT_MODE_OPTIONS = Object.freeze(["off", "reject-only"]);
+
+/**
+ * Clamps an arbitrary imported value to a valid cookieConsentMode member,
+ * mirroring the snapToastDuration precedent: an unrecognized or non-string
+ * value falls back to the safe default ("reject-only") rather than
+ * rejecting the whole import.
+ */
+export function clampCookieConsentMode(v) {
+  return COOKIE_CONSENT_MODE_OPTIONS.includes(v) ? v : "reject-only";
+}
+
+/**
+ * Closed-enum "is this mode an active minimizer mode" check.
+ *
+ * src/lib/cmp-adapters.js's `computeCookieGate` reject gate opens for
+ * `"reject-only"` only. That file is lexically restricted (see its own
+ * structural guard), so the caller (background/service-worker.js, which
+ * already imports this module) validates the raw pref string here and
+ * hands the CALLER of computeCookieGate a pre-validated boolean instead —
+ * the fenced block in cmp-adapters.js / content/cookie-noise.js never
+ * compares the mode string itself again.
+ *
+ * Fail-closed: an unrecognized value, or a non-string, is never active.
+ *
+ * @param {*} mode
+ * @returns {boolean}
+ */
+export function isCookieConsentModeActive(mode) {
+  return mode === "reject-only";
+}
+
+/**
+ * Import-only clamp for cookieConsentMode. Only "off" survives verbatim;
+ * everything else — including any unrecognized legacy value — collapses to
+ * the safe default "reject-only". Functionally identical to
+ * clampCookieConsentMode() now that the enum is 2-state, kept as a
+ * separate named export so import call sites do not need to change.
+ */
+export function clampImportedCookieConsentMode(v) {
+  return v === "off" ? "off" : "reject-only";
+}
+
+/**
  * Tracking-category keys accepted for `disabledCategories`. Kept as its own
  * literal set (not derived from TRACKING_PARAM_CATEGORIES in affiliates.js)
  * so this import allowlist cannot silently drift if that taxonomy changes
@@ -97,6 +145,11 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "dnrEnabled", kind: "boolean", label: "row_dnr_label" },
   { key: "activeDefenseEnabled", kind: "boolean", label: "row_active_defense_label" },
   { key: "blockPings", kind: "boolean", label: "row_pings_label" },
+  // referer-beacon-privacy (PR 1): opt-in, default false. Labels are placeholder
+  // i18n keys wired to real TRANSLATIONS entries + the options UI in PR 4 —
+  // this slice adds config/schema only, no UI, no behavior change.
+  { key: "suppressReferer", kind: "boolean", label: "row_suppress_referer_label" },
+  { key: "blockBeacons", kind: "boolean", label: "row_block_beacons_label" },
   { key: "ampRedirect", kind: "boolean", label: "row_amp_label" },
   { key: "unwrapRedirects", kind: "boolean", label: "row_unwrap_label" },
   { key: "blacklist", kind: "list", label: "section_blacklist" },
@@ -127,8 +180,11 @@ export const SETTINGS_FIELDS = Object.freeze([
   // hoverPreviewEnabled is a plain boolean and round-trips normally via
   // BOOLEAN_KEYS.
   { key: "hoverPreviewEnabled", kind: "boolean", label: "row_hover_preview_label" },
-  // #1027: Cookie Consent Minimizer. Plain boolean, opt-in, default false.
-  { key: "cookieConsentMinimizerEnabled", kind: "boolean", label: "row_cookie_consent_minimizer_label" },
+  // Cookie Consent Minimizer — 2-state mode (supersedes #1027's boolean).
+  // cookieConsentMode is clamped via clampImportedCookieConsentMode on
+  // import so a malformed/unknown string can never land in storage from an
+  // import.
+  { key: "cookieConsentMode", kind: "cookieConsentMode", label: "row_cookie_consent_mode_label" },
 ]);
 
 /**
@@ -273,6 +329,11 @@ export function planImport(data) {
 
   if (typeof migrated.toastDuration === "number") {
     toSave.toastDuration = snapToastDuration(migrated.toastDuration);
+  }
+
+  if (typeof migrated.cookieConsentMode === "string") {
+    // Import-only clamp: collapses any unrecognized value to "reject-only".
+    toSave.cookieConsentMode = clampImportedCookieConsentMode(migrated.cookieConsentMode);
   }
 
   // #968: fold each imported creator-allowlist entry through the same pure

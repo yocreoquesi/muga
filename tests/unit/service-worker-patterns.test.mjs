@@ -69,6 +69,24 @@ describe("Service worker message handlers", () => {
     assert.ok(swSource.includes('message.type === "getPrefs"'));
   });
 
+  // Cookie Consent Minimizer gate wiring (cookie-consent-accept Slice 2a):
+  // src/lib/cmp-adapters.js's computeCookieGate no longer compares
+  // prefs.cookieConsentMode against a mode string (that file is lexically
+  // restricted, see its structural guard). The service worker is the one
+  // place both concerns (chrome.storage + settings-schema.js) are
+  // importable, so it pre-validates the mode here and hands content
+  // scripts a plain boolean via the getPrefs response.
+  test("getPrefs response computes modeActive via settings-schema's isCookieConsentModeActive", () => {
+    assert.ok(
+      swSource.includes("import { isCookieConsentModeActive } from \"../lib/settings-schema.js\""),
+      "service worker must import isCookieConsentModeActive from settings-schema.js"
+    );
+    assert.ok(
+      swSource.includes("modeActive: isCookieConsentModeActive(prefs.cookieConsentMode)"),
+      "getPrefs handler must compute modeActive from the raw cookieConsentMode pref"
+    );
+  });
+
   test("handles GET_DEBUG_LOG message type", () => {
     assert.ok(swSource.includes('message.type === "GET_DEBUG_LOG"'));
   });
@@ -228,12 +246,15 @@ describe("Cache invalidation — version counter", () => {
     // Previously the local-area branch returned without handling it, leaving
     // cachedPrefs stale. Single source-string match (no brittle slice chains)
     // captures the whole handling block and asserts its contents at once.
+    // toolbar-inactive-badge: the block grew a trailing repaintAllTabsActiveState()
+    // call — onboarding/consent is one of the Active-on-tab factors, so a
+    // per-device override change must also repaint every open tab's badge.
     const m = swSource.match(
-      /if \(changes\.mugaPerDevicePrefs\)\s*\{\s*_invalidatePrefsCache\(\);\s*const prefs = await getPrefsWithCache\(\);\s*await applyDnrState\(prefs\);\s*await applyOnboardingBadge\(prefs\);\s*\}/
+      /if \(changes\.mugaPerDevicePrefs\)\s*\{\s*_invalidatePrefsCache\(\);\s*const prefs = await getPrefsWithCache\(\);\s*await applyDnrState\(prefs\);\s*await applyOnboardingBadge\(prefs\);\s*await repaintAllTabsActiveState\(prefs\);\s*\}/
     );
     assert.ok(
       m,
-      "local-area listener must handle changes.mugaPerDevicePrefs by invalidating the cache and re-applying DNR + onboarding badge"
+      "local-area listener must handle changes.mugaPerDevicePrefs by invalidating the cache and re-applying DNR + onboarding badge + tab active-state repaint"
     );
   });
 

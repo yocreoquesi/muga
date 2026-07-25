@@ -205,3 +205,56 @@ describe("consent-clauses — #1027 cookie-consent-minimizer clause (live map)",
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Retired: cookie-consent-accept Slice 2a's Didomi-only "minimum consent"
+// pilot never shipped to real users (proven non-viable, engram id 1331) —
+// version "1.3"'s clause list is now empty, RETIRED-BEFORE-SHIP.
+// ---------------------------------------------------------------------------
+describe("consent-clauses — retired Slice 2a clause (version 1.3 is now empty)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.3'] is empty — the retired pilot never shipped a real disclosure", () => {
+    assert.deepEqual([...(CONSENT_CLAUSES_BY_VERSION["1.3"] || [])], []);
+  });
+
+  test("user at 1.2, required 1.3 -> delta surfaces nothing (no soft re-onboard for the retired pilot)", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.2",
+      requiredVersion: "1.3",
+      manifest: CONSENT_VERSION_MANIFEST,
+      // default clausesByVersion (live map)
+    });
+    assert.deepEqual(r, []);
+  });
+
+  test("the retired pilot's old i18n key no longer exists", () => {
+    assert.equal(TRANSLATIONS.ob_clause_cookie_consent_accept_pilot, undefined);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Retired: cookie-consent-paywall-accept originally staged the 1.4 additive
+// bump to disclose the real accept-when-necessary mechanism (a DOM click on
+// a consent-or-pay wall's own free "Accept all" button). That mechanism was
+// deleted entirely before it ever shipped to real users — MUGA never ships
+// a capability that accepts cookies on the user's behalf — so, like "1.3"
+// above, version "1.4"'s clause list is now empty, RETIRED-BEFORE-SHIP.
+// ---------------------------------------------------------------------------
+describe("consent-clauses — retired cookie-consent-paywall-accept clause (version 1.4 is now empty)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.4'] is empty — the retired mechanism never shipped a real disclosure", () => {
+    assert.deepEqual([...(CONSENT_CLAUSES_BY_VERSION["1.4"] || [])], []);
+  });
+
+  test("user at 1.2, required 1.4 -> delta surfaces nothing (no soft re-onboard for the retired mechanism)", () => {
+    const r = clausesForDelta({
+      acceptedVersion: "1.2",
+      requiredVersion: "1.4",
+      manifest: CONSENT_VERSION_MANIFEST,
+      // default clausesByVersion (live map)
+    });
+    assert.deepEqual(r, []);
+  });
+
+  test("the retired mechanism's old i18n key no longer exists", () => {
+    assert.equal(TRANSLATIONS.ob_clause_cookie_consent_accept_paywall, undefined);
+  });
+});

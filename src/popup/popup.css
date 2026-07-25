@@ -428,6 +428,26 @@ header {
 }
 .report-link:hover { color: var(--accent-strong); }
 
+.report-include-url-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-2);
+}
+.report-include-url-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.report-include-url-hint {
+  font-size: 10px;
+  color: var(--text-2);
+  opacity: 0.8;
+}
+
 /* ---------- Domain stats panel ------------------------------------------ */
 .domain-stats { border-top: 1px solid var(--border-1); }
 
