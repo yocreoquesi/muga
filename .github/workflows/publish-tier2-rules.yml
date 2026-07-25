@@ -1,22 +1,23 @@
-name: publish-rules
+name: publish-tier2-rules
 
-# Triggered on push to main that changes the unsigned rules source.
-# Signs the source with the Ed25519 key stored in MUGA_SIGNING_KEY secret,
-# commits the signed docs/rules/v1/params.json back to main, and smoke-checks
-# the GitHub Pages URL after publication.
+# Triggered on push to main that changes the unsigned Tier2 rules source.
+# Signs the source with the Ed25519 key stored in the SAME MUGA_SIGNING_KEY
+# repository secret already used for params.json (REVISED ADR-6 — shared
+# key, no separate Tier2 secret), commits the signed
+# docs/rules/v1/tier2.json back to main, and smoke-checks the published URL.
 #
-# Action required before first run:
-#   Upload the Ed25519 private key as the MUGA_SIGNING_KEY repository secret.
-#   See the PR body for the exact command.
+# No new secret is required — MUGA_SIGNING_KEY already exists for
+# publish-rules.yml. This workflow adds ONE MORE signing step for the Tier2
+# payload, not a parallel key/pipeline.
+#
+# Scoped to tools/rules-source/tier2.json only (not the tools/rules-source/**
+# glob) so a params-only merge doesn't trigger a redundant Tier2 sign job.
 on:
   push:
     branches:
       - main
     paths:
-      - "tools/rules-source/**"
-      # Tier 2 has its own publish-tier2-rules.yml; don't cross-trigger the
-      # params signing job (which loads the shared key) on a tier2-only change.
-      - "!tools/rules-source/tier2.json"
+      - "tools/rules-source/tier2.json"
 
 # Default to least privilege. The publish job elevates to contents: write.
 permissions:
@@ -46,7 +47,8 @@ jobs:
         run: npm ci
 
       - name: Write signing key to temp file and mask it
-        # Writes the private key PEM to a temp file in RUNNER_TEMP (not the workspace).
+        # Writes the private key PEM to a temp file in RUNNER_TEMP (not the
+        # workspace) — the SAME key used by publish-rules.yml for params.json.
         # Immediately masks the value so any accidental echo is redacted in logs.
         # SECURITY: never echo $MUGA_SIGNING_KEY directly — use the file path only.
         env:
@@ -55,10 +57,10 @@ jobs:
           echo "$MUGA_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
           while IFS= read -r line; do echo "::add-mask::$line"; done < "$RUNNER_TEMP/key.pem"
 
-      - name: Sign rules source
+      - name: Sign Tier2 rules source
         env:
           MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
-        run: node tools/sign-rules.mjs
+        run: node tools/sign-tier2-rules.mjs
 
       - name: Clean up signing key
         # Always runs — even if previous steps fail — so the key is never left on disk.
@@ -69,19 +71,24 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/rules/v1/params.json
+          git add docs/rules/v1/tier2.json
           # Only commit if the file actually changed
           if ! git diff --cached --quiet; then
-            git commit -m "ci(rules): publish signed params.json [skip ci]"
+            git commit -m "ci(rules): publish signed tier2.json [skip ci]"
             git push
           else
-            echo "No changes to docs/rules/v1/params.json — skipping commit"
+            echo "No changes to docs/rules/v1/tier2.json — skipping commit"
           fi
 
   smoke-check:
     runs-on: ubuntu-latest
     needs: publish
     # Allow some propagation delay — GitHub Pages can take a minute after push.
+    # NOTE: the https://rules.muga.app/rules/v1/tier2.json endpoint deploy is
+    # tracked separately (task 7.6, out-of-repo ops). Until that endpoint is
+    # deployed, this job is EXPECTED to fail on the first few runs after this
+    # workflow merges — it does not block the publish job above, which already
+    # committed the signed artifact to docs/rules/v1/tier2.json.
     steps:
       - name: Wait for GitHub Pages propagation
         # Brief initial pause to let the push reach Pages CDN before retrying.
@@ -100,4 +107,4 @@ jobs:
                --retry 3 \
                --retry-delay 30 \
                --retry-all-errors \
-               https://rules.muga.app/rules/v1/params.json
+               https://rules.muga.app/rules/v1/tier2.json

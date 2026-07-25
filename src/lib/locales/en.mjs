@@ -354,7 +354,7 @@ export default Object.freeze({
   aria_hover_preview: "Show a hover preview of the real link destination",
   hover_preview_label: "Goes to:",
   row_cookie_consent_mode_label: "Cookie Consent Minimizer",
-  row_cookie_consent_mode_hint: "On supported cookie-consent banners, MUGA automatically rejects tracking cookies for you, the same way it already cleans your URLs. MUGA never accepts cookies on your behalf.",
+  row_cookie_consent_mode_hint: "On supported cookie-consent banners, MUGA automatically rejects tracking cookies for you, the same way it already cleans your URLs. MUGA never accepts cookies on your behalf. MUGA also checks what a button says before clicking it, which reduces but doesn't eliminate the chance of a wrong click; when a button's label is unclear or unreadable, MUGA leaves it alone.",
   aria_cookie_consent_mode: "Cookie consent minimizer mode",
   cookie_consent_mode_opt_reject_only: "Reject only (recommended)",
   cookie_consent_mode_opt_off: "Off",

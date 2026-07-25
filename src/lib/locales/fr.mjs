@@ -354,7 +354,7 @@ export default Object.freeze({
   aria_hover_preview: "Afficher un aperçu de la vraie destination du lien au survol",
   hover_preview_label: "Mène à :",
   row_cookie_consent_mode_label: "Minimiseur de bandeaux de cookies",
-  row_cookie_consent_mode_hint: "Sur les bandeaux de consentement aux cookies pris en charge, MUGA refuse automatiquement les cookies de pistage à votre place, de la même façon qu'il nettoie déjà vos URL. MUGA n'accepte jamais de cookies en votre nom.",
+  row_cookie_consent_mode_hint: "Sur les bandeaux de consentement aux cookies pris en charge, MUGA refuse automatiquement les cookies de pistage à votre place, de la même façon qu'il nettoie déjà vos URL. MUGA n'accepte jamais de cookies en votre nom. MUGA vérifie aussi ce qu'indique un bouton avant de cliquer dessus, ce qui réduit sans l'éliminer le risque d'un clic erroné ; lorsque le libellé d'un bouton est ambigu ou illisible, MUGA n'y touche pas.",
   aria_cookie_consent_mode: "Mode du minimiseur de bandeaux de cookies",
   cookie_consent_mode_opt_reject_only: "Refuser uniquement (recommandé)",
   cookie_consent_mode_opt_off: "Désactivé",

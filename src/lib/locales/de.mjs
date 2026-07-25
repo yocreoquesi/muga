@@ -354,7 +354,7 @@ export default Object.freeze({
   aria_hover_preview: "Vorschau des echten Linkziels beim Hovern anzeigen",
   hover_preview_label: "Führt zu:",
   row_cookie_consent_mode_label: "Cookie-Consent-Minimierer",
-  row_cookie_consent_mode_hint: "Bei unterstützten Cookie-Consent-Bannern lehnt MUGA Tracking-Cookies automatisch für dich ab, genau wie es deine URLs bereits bereinigt. MUGA akzeptiert niemals Cookies in deinem Namen.",
+  row_cookie_consent_mode_hint: "Bei unterstützten Cookie-Consent-Bannern lehnt MUGA Tracking-Cookies automatisch für dich ab, genau wie es deine URLs bereits bereinigt. MUGA akzeptiert niemals Cookies in deinem Namen. MUGA prüft außerdem, was auf einer Schaltfläche steht, bevor sie angeklickt wird, was die Gefahr eines falschen Klicks verringert, aber nicht ausschließt; wenn die Beschriftung einer Schaltfläche unklar oder unlesbar ist, lässt MUGA sie unberührt.",
   aria_cookie_consent_mode: "Modus des Cookie-Consent-Minimierers",
   cookie_consent_mode_opt_reject_only: "Nur ablehnen (empfohlen)",
   cookie_consent_mode_opt_off: "Aus",

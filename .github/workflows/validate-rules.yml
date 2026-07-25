@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - "tools/rules-source/**"
+      # Tier 2 sources are gated by validate-tier2-rules.yml instead.
+      - "!tools/rules-source/tier2.json"
 
 permissions:
   contents: read

@@ -354,7 +354,7 @@ export default Object.freeze({
   aria_hover_preview: "Mostrar una vista previa del destino real del enlace al pasar el ratón",
   hover_preview_label: "Va a:",
   row_cookie_consent_mode_label: "Minimizador de avisos de cookies",
-  row_cookie_consent_mode_hint: "En avisos de cookies compatibles, MUGA rechaza automáticamente las cookies de rastreo por ti, igual que ya limpia tus URL. MUGA nunca acepta cookies en tu nombre.",
+  row_cookie_consent_mode_hint: "En avisos de cookies compatibles, MUGA rechaza automáticamente las cookies de rastreo por ti, igual que ya limpia tus URL. MUGA nunca acepta cookies en tu nombre. MUGA también comprueba lo que dice un botón antes de pulsarlo, lo que reduce pero no elimina la posibilidad de un clic equivocado; cuando la etiqueta de un botón no es clara o no se puede leer, MUGA lo deja tal cual.",
   aria_cookie_consent_mode: "Modo del minimizador de avisos de cookies",
   cookie_consent_mode_opt_reject_only: "Solo rechazar (recomendado)",
   cookie_consent_mode_opt_off: "Desactivado",
