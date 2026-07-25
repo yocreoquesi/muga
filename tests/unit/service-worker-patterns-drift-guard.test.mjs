@@ -49,7 +49,12 @@ const PATTERNS_TEST_PATH = join(
 // isCookieConsentModeActive and computes the modeActive gate-wiring field
 // from it. service-worker.js still cannot be imported in Node, so this
 // stays source-text until a future SW behavioral-harness migration.
-const MAX_SOURCE_STRING_ASSERTIONS = 74;
+// 74 → 75 (#1027 Slice 2 PR B1): added ONE source-string guard confirming
+// maybeFetchRemoteTier2Rules is wired onto the same on-wake schedule as the
+// params fetch. The gate logic (remoteRulesEnabled/consent/freshness) is
+// covered behaviorally via a pure makeMaybeFetchTier2Helper() mirror —
+// mirrors the FORCE_FETCH_REMOTE_RULES precedent above.
+const MAX_SOURCE_STRING_ASSERTIONS = 75;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 
