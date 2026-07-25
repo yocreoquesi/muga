@@ -354,7 +354,7 @@ export default Object.freeze({
   aria_hover_preview: "ホバー時にリンクの実際の遷移先をプレビュー表示する",
   hover_preview_label: "遷移先:",
   row_cookie_consent_mode_label: "Cookie同意バナーの最小化",
-  row_cookie_consent_mode_hint: "対応するCookie同意バナーでは、MUGAがトラッキングCookieを自動的に拒否し、URLをきれいにする仕組みと同じようにあなたの代わりに処理します。MUGAがあなたの代わりにCookieに同意することは一切ありません。",
+  row_cookie_consent_mode_hint: "対応するCookie同意バナーでは、MUGAがトラッキングCookieを自動的に拒否し、URLをきれいにする仕組みと同じようにあなたの代わりに処理します。MUGAがあなたの代わりにCookieに同意することは一切ありません。MUGAはクリックする前にボタンの表示内容も確認します。これにより誤クリックの可能性は減りますが、なくなるわけではありません。ボタンのラベルが不明確または読み取れない場合、MUGAはそれに触れません。",
   aria_cookie_consent_mode: "Cookie同意バナー最小化のモード",
   cookie_consent_mode_opt_reject_only: "拒否のみ（推奨）",
   cookie_consent_mode_opt_off: "オフ",
