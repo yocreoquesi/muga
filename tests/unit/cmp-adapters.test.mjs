@@ -37,7 +37,10 @@ import {
   computeCookieGate,
   findSpRejectTarget,
   findSpOpenSettingsTarget,
+  resolveTier2Reject,
+  makeTier2Adapter,
 } from "../../src/lib/cmp-adapters.js";
+import { TIER2_RULES } from "../../src/lib/cmp-tier2-rules.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -58,9 +61,15 @@ describe("cmp-adapters — registry shape", () => {
     assert.strictEqual(TIER1[9], consentmanagerAdapter);
   });
 
-  test("TIER2 ships empty in this slice", () => {
+  test("TIER2 ships with the Slice 1 seed rules (Complianz, Cookie Notice)", () => {
     assert.ok(Array.isArray(TIER2));
-    assert.equal(TIER2.length, 0);
+    assert.equal(TIER2.length, 2);
+    assert.deepEqual(TIER2.map((a) => a.id), ["complianz", "cookie-notice"]);
+    for (const adapter of TIER2) {
+      assert.equal(adapter.tier, 2);
+      assert.equal(typeof adapter.detect, "function");
+      assert.equal(typeof adapter.canReject, "function");
+    }
   });
 
   test("TIER1 and TIER2 are frozen", () => {
@@ -696,6 +705,177 @@ describe("decideAction — truth table", () => {
     assert.equal(r.action, ACTIONS.REJECT_ALL);
     assert.equal(r.reason, "reject");
     assert.equal(r.adapterId, "sourcepoint");
+  });
+
+  test("Tier 1 confirmed AND a Tier 2 signal also present -> Tier 1 wins (Tier 1 loops first)", () => {
+    const r = decideAction({
+      ...FULL_SIGNALS,
+      tier2Confirmed: { complianz: true, "cookie-notice": true },
+    });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "onetrust");
+  });
+
+  test("no Tier 1 signal, Tier 2 confirmed -> Tier 2 adapter wins as the DOM fallback", () => {
+    const r = decideAction({ tier2Confirmed: { complianz: true } });
+    assert.equal(r.action, ACTIONS.REJECT_ALL);
+    assert.equal(r.reason, "reject");
+    assert.equal(r.adapterId, "complianz");
+  });
+
+  test("tier2Confirmed present but false for every rule id -> NOOP, uncertain", () => {
+    const r = decideAction({ tier2Confirmed: { complianz: false, "cookie-notice": false } });
+    assert.equal(r.action, null);
+    assert.equal(r.reason, "uncertain");
+  });
+});
+
+// ── Tier 2 rule data (src/lib/cmp-tier2-rules.js) — shape ───────────────────
+
+describe("TIER2_RULES — closed reject-only shape (#1027 Slice 1)", () => {
+  test("TIER2_RULES contains exactly the Complianz and Cookie Notice seed rules, in order", () => {
+    assert.equal(TIER2_RULES.length, 2);
+    assert.equal(TIER2_RULES[0].id, "complianz");
+    assert.equal(TIER2_RULES[1].id, "cookie-notice");
+  });
+
+  test("TIER2_RULES and every rule entry are frozen", () => {
+    assert.ok(Object.isFrozen(TIER2_RULES));
+    for (const rule of TIER2_RULES) {
+      assert.ok(Object.isFrozen(rule), `rule "${rule.id}" must be frozen`);
+      assert.ok(Object.isFrozen(rule.present), `rule "${rule.id}".present must be frozen`);
+      assert.ok(Object.isFrozen(rule.reject), `rule "${rule.id}".reject must be frozen`);
+      assert.ok(Object.isFrozen(rule.openSettings), `rule "${rule.id}".openSettings must be frozen`);
+    }
+  });
+
+  test("every rule has EXACTLY the id/present/reject/openSettings keys — no accept/allow field can exist", () => {
+    const ALLOWED_KEYS = new Set(["id", "present", "reject", "openSettings"]);
+    for (const rule of TIER2_RULES) {
+      const keys = Object.keys(rule);
+      for (const key of keys) {
+        assert.ok(ALLOWED_KEYS.has(key), `rule "${rule.id}" has an unexpected key: ${key}`);
+      }
+      assert.equal(keys.length, 4, `rule "${rule.id}" must have exactly 4 keys`);
+    }
+  });
+
+  test("every rule's present/reject/openSettings are string arrays", () => {
+    for (const rule of TIER2_RULES) {
+      assert.ok(Array.isArray(rule.present) && rule.present.every((s) => typeof s === "string"));
+      assert.ok(Array.isArray(rule.reject) && rule.reject.every((s) => typeof s === "string"));
+      assert.ok(rule.reject.length > 0, `rule "${rule.id}".reject must not be empty`);
+      assert.ok(Array.isArray(rule.openSettings) && rule.openSettings.every((s) => typeof s === "string"));
+    }
+  });
+
+  test("Slice 1 seed ships with no two-step openSettings path (both rules rely on a direct reject control)", () => {
+    for (const rule of TIER2_RULES) {
+      assert.deepEqual(rule.openSettings, [], `rule "${rule.id}".openSettings must be empty in Slice 1`);
+    }
+  });
+
+  test("Complianz rule matches the verified real-site selectors", () => {
+    const rule = TIER2_RULES.find((r) => r.id === "complianz");
+    assert.deepEqual([...rule.present], ["#cmplz-cookiebanner-container"]);
+    assert.deepEqual([...rule.reject], [".cmplz-deny"]);
+  });
+
+  test("Cookie Notice rule matches the verified real-site selectors", () => {
+    const rule = TIER2_RULES.find((r) => r.id === "cookie-notice");
+    assert.deepEqual([...rule.present], ["#cookie-notice"]);
+    assert.deepEqual([...rule.reject], ["#cn-refuse-cookie"]);
+  });
+});
+
+// ── resolveTier2Reject — fail-closed contract (byte-identical to findSpRejectTarget) ─
+
+describe("resolveTier2Reject — fail-closed matching", () => {
+  test("presentMatched !== true -> noop, regardless of candidates", () => {
+    assert.deepEqual(resolveTier2Reject(false, [{ ref: "a" }]), { status: "noop", target: null });
+    assert.deepEqual(resolveTier2Reject(undefined, [{ ref: "a" }]), { status: "noop", target: null });
+    assert.deepEqual(resolveTier2Reject(null, [{ ref: "a" }]), { status: "noop", target: null });
+  });
+
+  test("presentMatched true + zero candidates -> noop", () => {
+    assert.deepEqual(resolveTier2Reject(true, []), { status: "noop", target: null });
+    assert.deepEqual(resolveTier2Reject(true, undefined), { status: "noop", target: null });
+    assert.deepEqual(resolveTier2Reject(true, null), { status: "noop", target: null });
+  });
+
+  test("presentMatched true + exactly one candidate -> single, target is that candidate", () => {
+    const candidate = { ref: "the-button" };
+    const r = resolveTier2Reject(true, [candidate]);
+    assert.equal(r.status, "single");
+    assert.strictEqual(r.target, candidate);
+  });
+
+  test("presentMatched true + more than one candidate -> ambiguous, never guesses", () => {
+    const r = resolveTier2Reject(true, [{ ref: "a" }, { ref: "b" }]);
+    assert.equal(r.status, "ambiguous");
+    assert.equal(r.target, null);
+  });
+
+  test("never throws on malformed input", () => {
+    assert.doesNotThrow(() => resolveTier2Reject());
+    assert.doesNotThrow(() => resolveTier2Reject(true, "not-an-array"));
+    assert.doesNotThrow(() => resolveTier2Reject(true, 42));
+  });
+
+  test("malformed candidate ENTRIES are filtered -> fail closed, never a null 'single' target", () => {
+    // Matches findSpRejectTarget's object-filter: a null/non-object entry must
+    // never become a clickable "single" target the PR-2 dispatcher would trust.
+    assert.deepEqual(resolveTier2Reject(true, [null]), { status: "noop", target: null });
+    assert.deepEqual(resolveTier2Reject(true, [undefined, "x", 7]), { status: "noop", target: null });
+    // A single VALID entry alongside garbage still resolves to that one entry.
+    const valid = { ref: "the-button" };
+    const r = resolveTier2Reject(true, [null, valid]);
+    assert.equal(r.status, "single");
+    assert.strictEqual(r.target, valid);
+    // Two valid entries + garbage stays ambiguous (never guesses).
+    assert.equal(resolveTier2Reject(true, [null, { ref: "a" }, { ref: "b" }]).status, "ambiguous");
+  });
+});
+
+// ── makeTier2Adapter — registry entry builder ───────────────────────────────
+
+describe("makeTier2Adapter", () => {
+  const rule = Object.freeze({
+    id: "example-tier2-rule",
+    present: Object.freeze(["#example"]),
+    reject: Object.freeze([".reject"]),
+    openSettings: Object.freeze([]),
+  });
+
+  test("built adapter exposes id, tier:2, detect, canReject — no reject callback (Tier 2 has no vendor-global call)", () => {
+    const adapter = makeTier2Adapter(rule);
+    assert.equal(adapter.id, "example-tier2-rule");
+    assert.equal(adapter.tier, 2);
+    assert.equal(typeof adapter.detect, "function");
+    assert.equal(typeof adapter.canReject, "function");
+    assert.equal("reject" in adapter, false, "Tier 2 adapters must not expose a reject() callback");
+  });
+
+  test("built adapter is frozen", () => {
+    assert.ok(Object.isFrozen(makeTier2Adapter(rule)));
+  });
+
+  test("canReject(signals) returns true only when signals.tier2Confirmed[rule.id] === true", () => {
+    const adapter = makeTier2Adapter(rule);
+    assert.equal(adapter.canReject({ tier2Confirmed: { "example-tier2-rule": true } }), true);
+    assert.equal(adapter.canReject({ tier2Confirmed: { "example-tier2-rule": false } }), false);
+    assert.equal(adapter.canReject({ tier2Confirmed: {} }), false);
+    assert.equal(adapter.canReject({}), false);
+    assert.equal(adapter.canReject(null), false);
+    assert.equal(adapter.canReject(undefined), false);
+    assert.doesNotThrow(() => adapter.canReject(null));
+  });
+
+  test("canReject is undefined-safe against a non-boolean tier2Confirmed value (fail-closed)", () => {
+    const adapter = makeTier2Adapter(rule);
+    assert.equal(adapter.canReject({ tier2Confirmed: { "example-tier2-rule": "yes" } }), false);
+    assert.equal(adapter.canReject({ tier2Confirmed: null }), false);
   });
 });
 
@@ -1892,6 +2072,7 @@ describe("computeCookieGate — disabled-state gate", () => {
 
 describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () => {
   const source = readFileSync(join(__dirname, "../../src/lib/cmp-adapters.js"), "utf8");
+  const tier2RulesSource = readFileSync(join(__dirname, "../../src/lib/cmp-tier2-rules.js"), "utf8");
   const FORBIDDEN = /allowall|accept/i;
 
   test("cmp-adapters.js source contains no AllowAll / accept-family identifier", () => {
@@ -1899,6 +2080,21 @@ describe("cmp-adapters — STRUCTURAL guard: closed reject-only action set", () 
       source,
       FORBIDDEN,
       "cmp-adapters.js must never reference AllowAll/accept — the action registry is reject-only",
+    );
+  });
+
+  // #1027 Slice 1: the Tier 2 rule DATA file (src/lib/cmp-tier2-rules.js) is
+  // a separate module from cmp-adapters.js — the guard above never scanned
+  // it (it did not exist before this slice). A future edit could otherwise
+  // smuggle an accept-labelled selector into a rule's `reject` array without
+  // this describe block ever noticing. Scanned the same way, same forbidden
+  // pattern, own assertion so a failure here points straight at the data
+  // file rather than the adapter/decision logic.
+  test("cmp-tier2-rules.js source contains no AllowAll / accept-family identifier", () => {
+    assert.doesNotMatch(
+      tier2RulesSource,
+      FORBIDDEN,
+      "cmp-tier2-rules.js must never reference AllowAll/accept — Tier 2 rules are reject-only by construction",
     );
   });
 
