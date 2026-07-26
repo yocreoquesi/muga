@@ -70,12 +70,36 @@
  * "Manage preferences" or "Cookie settings" contain no save word and are
  * unaffected.
  *
+ * ── The `"save"` role — a narrow, invariant-gated veto exception
+ * (cookie-consent-toggle-reject, design.md ADR-4) ───────────────────────
+ *
+ * `role === "save"` is the ONLY role that can ever be allowed while also
+ * matching a word from `VETO_WORDS.save` — every other role treats a save
+ * word as irrelevant noise. It requires BOTH a `wordLists.save` match AND
+ * `context.saveInvariantSatisfied === true` (see
+ * src/lib/cmp-tier2-save-invariant.js's `computeSaveInvariant` — the
+ * fail-closed re-verification that every non-essential toggle is off
+ * before this flag can ever be true). The absolute accept-denylist check
+ * (step 2 below) still runs FIRST and unconditionally wins: an "Accept
+ * all"-labelled control passed in with `role: "save"` and
+ * `saveInvariantSatisfied: true` is STILL vetoed — the invariant only ever
+ * relaxes the save-word requirement, never the accept-word ban. `context`
+ * is a 4th, DEFAULTED parameter (`context = {}`) so `computeClickVeto.length`
+ * stays `3` — the existing structural guard (see
+ * tests/unit/cookie-noise-sync.test.mjs's "spec scenario 5" test) keeps
+ * passing unmodified. Only `context.saveInvariantSatisfied` is ever read;
+ * any other field (e.g. an `origin`/`source`/rule-provenance marker) is
+ * inert — there is no code path here that branches on it (see
+ * tests/unit/cmp-tier2-veto.test.mjs's dedicated no-origin-exemption test).
+ *
  * @typedef {object} ClickVetoResult
  * @property {boolean} allow - true only when the accessible name is
  *   non-empty, matches no accept/agree word, AND matches the role's
- *   required positive word (and, for openSettings, matches no save word).
+ *   required positive word (and, for openSettings, matches no save word;
+ *   for save, ALSO requires context.saveInvariantSatisfied === true).
  * @property {string} reason - one of "empty-name", "accept-word",
- *   "no-reject-word", "no-settings-word", "save-word", "unknown-role", "ok".
+ *   "no-reject-word", "no-settings-word", "save-word", "no-save-word",
+ *   "save-invariant-unsatisfied", "unknown-role", "ok".
  */
 
 // @sync:cmp-tier2-veto:start
@@ -296,7 +320,10 @@ function matchesAny(name, folded, words) {
  *   1. Empty/whitespace-only `accessibleName` -> VETO ("empty-name").
  *      Covers icon-only / no-text controls and detached/hostile elements.
  *   2. Any `wordLists.deny` entry matches -> VETO ("accept-word"). Absolute
- *      and role-independent — wins over every allowlist match below.
+ *      and role-independent — wins over every allowlist match below,
+ *      INCLUDING a `role === "save"` candidate with a satisfied invariant
+ *      (design.md ADR-4: a mis-curated "Save" selector that actually
+ *      resolves to "Accept all" is still vetoed).
  *   3. Role-specific positive gate (the required word must be PRESENT):
  *      - `role === "reject"` requires a `wordLists.reject` match, else
  *        VETO ("no-reject-word").
@@ -308,19 +335,30 @@ function matchesAny(name, folded, words) {
  *        section). Checked AFTER the settings-word gate passes, since a
  *        save-labelled control (e.g. "Save my preferences") typically
  *        also contains a settings word and would otherwise clear step 3.
+ *      - `role === "save"` requires a `wordLists.save` match, else VETO
+ *        ("no-save-word"); IN ADDITION, requires
+ *        `context.saveInvariantSatisfied === true`, else VETO
+ *        ("save-invariant-unsatisfied") — see the file docblock's `"save"`
+ *        role section. Only `context.saveInvariantSatisfied` is ever read;
+ *        no other field of `context` (e.g. an origin/source marker)
+ *        affects the outcome.
  *      - any other role -> VETO ("unknown-role").
  *   4. Otherwise -> ALLOW ("ok").
  *
  * The only allow path is: non-empty name AND no accept word AND the role's
  * required positive word present (AND, for openSettings, no save word
- * present). Absence of signal always resolves to "do not click" —
- * fail-closed by construction. Pure; never throws.
+ * present; for save, ALSO the invariant flag). Absence of signal always
+ * resolves to "do not click" — fail-closed by construction. Pure; never
+ * throws.
  * @param {*} accessibleName
- * @param {"reject"|"openSettings"} role
+ * @param {"reject"|"openSettings"|"save"} role
  * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string>, save: ReadonlyArray<string> }} wordLists
+ * @param {{ saveInvariantSatisfied?: boolean }} [context] - defaulted so
+ *   `computeClickVeto.length` stays `3`; only `saveInvariantSatisfied` is
+ *   ever honored (design.md ADR-4 — no origin/source exemption).
  * @returns {ClickVetoResult}
  */
-function computeClickVeto(accessibleName, role, wordLists) {
+function computeClickVeto(accessibleName, role, wordLists, context = {}) {
   const { name, folded } = normalizeAccessibleName(accessibleName);
   if (name.length === 0) return { allow: false, reason: "empty-name" };
 
@@ -334,6 +372,12 @@ function computeClickVeto(accessibleName, role, wordLists) {
   if (role === "openSettings") {
     if (!matchesAny(name, folded, lists.settings)) return { allow: false, reason: "no-settings-word" };
     if (matchesAny(name, folded, lists.save)) return { allow: false, reason: "save-word" };
+    return { allow: true, reason: "ok" };
+  }
+  if (role === "save") {
+    if (!matchesAny(name, folded, lists.save)) return { allow: false, reason: "no-save-word" };
+    const ctx = context && typeof context === "object" ? context : {};
+    if (ctx.saveInvariantSatisfied !== true) return { allow: false, reason: "save-invariant-unsatisfied" };
     return { allow: true, reason: "ok" };
   }
   return { allow: false, reason: "unknown-role" };

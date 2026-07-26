@@ -1659,7 +1659,10 @@
    *   1. Empty/whitespace-only `accessibleName` -> VETO ("empty-name").
    *      Covers icon-only / no-text controls and detached/hostile elements.
    *   2. Any `wordLists.deny` entry matches -> VETO ("accept-word"). Absolute
-   *      and role-independent — wins over every allowlist match below.
+   *      and role-independent — wins over every allowlist match below,
+   *      INCLUDING a `role === "save"` candidate with a satisfied invariant
+   *      (design.md ADR-4: a mis-curated "Save" selector that actually
+   *      resolves to "Accept all" is still vetoed).
    *   3. Role-specific positive gate (the required word must be PRESENT):
    *      - `role === "reject"` requires a `wordLists.reject` match, else
    *        VETO ("no-reject-word").
@@ -1671,19 +1674,30 @@
    *        section). Checked AFTER the settings-word gate passes, since a
    *        save-labelled control (e.g. "Save my preferences") typically
    *        also contains a settings word and would otherwise clear step 3.
+   *      - `role === "save"` requires a `wordLists.save` match, else VETO
+   *        ("no-save-word"); IN ADDITION, requires
+   *        `context.saveInvariantSatisfied === true`, else VETO
+   *        ("save-invariant-unsatisfied") — see the file docblock's `"save"`
+   *        role section. Only `context.saveInvariantSatisfied` is ever read;
+   *        no other field of `context` (e.g. an origin/source marker)
+   *        affects the outcome.
    *      - any other role -> VETO ("unknown-role").
    *   4. Otherwise -> ALLOW ("ok").
    *
    * The only allow path is: non-empty name AND no accept word AND the role's
    * required positive word present (AND, for openSettings, no save word
-   * present). Absence of signal always resolves to "do not click" —
-   * fail-closed by construction. Pure; never throws.
+   * present; for save, ALSO the invariant flag). Absence of signal always
+   * resolves to "do not click" — fail-closed by construction. Pure; never
+   * throws.
    * @param {*} accessibleName
-   * @param {"reject"|"openSettings"} role
+   * @param {"reject"|"openSettings"|"save"} role
    * @param {{ deny: ReadonlyArray<string>, reject: ReadonlyArray<string>, settings: ReadonlyArray<string>, save: ReadonlyArray<string> }} wordLists
+   * @param {{ saveInvariantSatisfied?: boolean }} [context] - defaulted so
+   *   `computeClickVeto.length` stays `3`; only `saveInvariantSatisfied` is
+   *   ever honored (design.md ADR-4 — no origin/source exemption).
    * @returns {ClickVetoResult}
    */
-  function computeClickVeto(accessibleName, role, wordLists) {
+  function computeClickVeto(accessibleName, role, wordLists, context = {}) {
     const { name, folded } = normalizeAccessibleName(accessibleName);
     if (name.length === 0) return { allow: false, reason: "empty-name" };
 
@@ -1699,9 +1713,114 @@
       if (matchesAny(name, folded, lists.save)) return { allow: false, reason: "save-word" };
       return { allow: true, reason: "ok" };
     }
+    if (role === "save") {
+      if (!matchesAny(name, folded, lists.save)) return { allow: false, reason: "no-save-word" };
+      const ctx = context && typeof context === "object" ? context : {};
+      if (ctx.saveInvariantSatisfied !== true) return { allow: false, reason: "save-invariant-unsatisfied" };
+      return { allow: true, reason: "ok" };
+    }
     return { allow: false, reason: "unknown-role" };
   }
   // @sync:cmp-tier2-veto:end
+
+  // ── Tier 2 toggle-reject save invariant (cookie-consent-toggle-reject,
+  // PR 1 — safety core, INERT this PR) ──────────────────────────────────────
+  //
+  // Hand-copied, byte-for-byte modulo indentation, from
+  // src/lib/cmp-tier2-save-invariant.js. Kept in sync by
+  // tests/unit/cookie-noise-sync.test.mjs. NOT CALLED ANYWHERE in this PR —
+  // no dispatcher wiring, no rule uses a `toggleScope` field yet (PR 2).
+  // This block exists so the safety math is reviewable and adversarially
+  // unit-tested before any DOM actuation code exists to call it. See that
+  // file's docblock for the full contract.
+  // @sync:cmp-tier2-save-invariant:start
+
+  /**
+   * Fail-closed gate for the Save click: re-verifies the post-sweep state of
+   * every in-scope toggle PLUS a CMP-selector-independent backstop scan,
+   * instead of trusting the sweep's own actuation result. See the file
+   * docblock for the full contract. Pure; never throws.
+   *
+   * Evaluated strictly in this order — first failing check returns:
+   *   1. `toggleReadout` is not an array -> unsatisfied ("unreadable-toggle").
+   *   2. `toggleReadout` is an empty array -> unsatisfied ("empty-scope").
+   *   3. Any entry is not a well-formed object -> unsatisfied
+   *      ("unreadable-toggle").
+   *   4. Any non-locked entry has `readable !== true` -> unsatisfied
+   *      ("unreadable-toggle").
+   *   5. Any non-locked entry has `checked !== false` -> unsatisfied
+   *      ("toggle-still-on").
+   *   6. No entry in scope has `locked === true` -> unsatisfied ("no-locked").
+   *   7. `backstopCheckedCount` is not the exact numeric value `0` -> a
+   *      non-zero, non-numeric, or non-finite value all fail CLOSED
+   *      ("backstop-checked").
+   *   8. Otherwise -> satisfied ("ok").
+   * @param {Array<ToggleReadoutEntry>} toggleReadout
+   * @param {number} backstopCheckedCount
+   * @returns {SaveInvariantResult}
+   */
+  function computeSaveInvariant(toggleReadout, backstopCheckedCount) {
+    if (!Array.isArray(toggleReadout)) return { satisfied: false, reason: "unreadable-toggle" };
+    if (toggleReadout.length === 0) return { satisfied: false, reason: "empty-scope" };
+
+    let hasLocked = false;
+    for (const entry of toggleReadout) {
+      if (!entry || typeof entry !== "object") return { satisfied: false, reason: "unreadable-toggle" };
+      if (entry.locked === true) {
+        hasLocked = true;
+        continue;
+      }
+      if (entry.readable !== true) return { satisfied: false, reason: "unreadable-toggle" };
+      if (entry.checked !== false) return { satisfied: false, reason: "toggle-still-on" };
+    }
+    if (!hasLocked) return { satisfied: false, reason: "no-locked" };
+
+    const backstopIsZero = typeof backstopCheckedCount === "number"
+      && Number.isFinite(backstopCheckedCount)
+      && backstopCheckedCount === 0;
+    if (!backstopIsZero) return { satisfied: false, reason: "backstop-checked" };
+
+    return { satisfied: true, reason: "ok" };
+  }
+
+  /**
+   * Pure reject-only actuation planner: returns the indices of `toggleReadout`
+   * entries that must be forced OFF. NEVER returns an index for a locked entry
+   * and has NO representation for an "on"/enable action anywhere in its
+   * return shape — an index in the returned array means exactly one thing,
+   * "force this toggle off", so there is no code path here capable of
+   * planning a toggle-toward-ON write. An entry already reading off
+   * (`checked === false`) is omitted (no redundant write); an unreadable
+   * entry is omitted too (the impure actuation layer cannot safely act on a
+   * state it could not read — the unread toggle then surfaces as a
+   * `computeSaveInvariant` failure downstream, never as a guessed write
+   * here). Pure; never throws.
+   * @param {Array<ToggleReadoutEntry>} toggleReadout
+   * @returns {number[]} indices, within `toggleReadout`, to force OFF
+   */
+  function planToggleActuation(toggleReadout) {
+    const list = Array.isArray(toggleReadout) ? toggleReadout : [];
+    const plan = [];
+    for (let i = 0; i < list.length; i += 1) {
+      const entry = list[i];
+      if (!entry || typeof entry !== "object") continue;
+      if (entry.locked === true) continue;
+      if (entry.readable !== true) continue;
+      if (entry.checked === true) plan.push(i);
+    }
+    return plan;
+  }
+  // @sync:cmp-tier2-save-invariant:end
+
+  // Referenced here (outside the @sync-pinned block above, so this line is
+  // NOT part of the byte-identity comparison against src/lib/cmp-tier2-save-
+  // invariant.js) only to satisfy no-unused-vars while both functions are
+  // inert — this PR (PR 1) wires no dispatcher call site for either. Follows
+  // the same `void <expr>;` deliberate-no-op idiom AGENTS.md already uses
+  // for `void chrome.runtime.lastError;`. Removed once PR 2 adds the real
+  // dispatcher toggle-branch call sites.
+  void computeSaveInvariant;
+  void planToggleActuation;
 
   let _spRejectActed = false;
   let _spPmOpened = false;
