@@ -204,6 +204,10 @@ const SETTINGS_WORDS = Object.freeze([
   // it
   "impostazioni",
   "personalizza",
+  "gestisci",
+  "gestione",
+  "opzioni",
+  "preferenze",
   // pt
   "gerenciar",
   // ja

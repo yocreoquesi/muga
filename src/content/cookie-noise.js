@@ -1567,6 +1567,10 @@
     // it
     "impostazioni",
     "personalizza",
+    "gestisci",
+    "gestione",
+    "opzioni",
+    "preferenze",
     // pt
     "gerenciar",
     // ja
