@@ -109,7 +109,11 @@ describe("computeClickVeto — the four required fail-closed cases", () => {
   });
 
   test("unknown role -> VETO (unknown-role), even with an otherwise-clean reject name", () => {
-    const result = computeClickVeto("Reject all", "save", VETO_WORDS);
+    // (cookie-consent-toggle-reject, PR 1) previously used "save" as the
+    // stand-in unknown role here — now that "save" is a real, gated role
+    // (see the dedicated `role === "save"` describe block below), a
+    // genuinely-unknown role name is required to keep testing this branch.
+    const result = computeClickVeto("Reject all", "commit", VETO_WORDS);
     assert.equal(result.allow, false);
     assert.equal(result.reason, "unknown-role");
   });
@@ -196,6 +200,122 @@ describe("computeClickVeto — openSettings role: save-family word is vetoed (PR
     const result = computeClickVeto("Reject all", "reject", VETO_WORDS);
     assert.equal(result.allow, true);
     assert.equal(result.reason, "ok");
+  });
+});
+
+// ── "save" role — narrow, invariant-gated veto exception ────────────────
+// (cookie-consent-toggle-reject, PR 1 — design.md ADR-4, spec's "Save is a
+// controlled veto exception, not a relaxation" requirement)
+//
+// role === "save" is allowed ONLY when (1) the absolute accept-denylist does
+// NOT match — checked first, wins regardless of anything else; AND (2) a
+// SAVE_WORDS match is present; AND (3) context.saveInvariantSatisfied is
+// exactly true. `context` is the new, DEFAULTED 4th argument — the
+// structural guard below re-confirms computeClickVeto.length stays 3 and
+// that context carries no exploitable field beyond saveInvariantSatisfied.
+
+describe('computeClickVeto — role "save": invariant-gated exception', () => {
+  test('invariant satisfied + "Save" -> allow', () => {
+    const result = computeClickVeto("Save", "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  test('invariant satisfied + "Speichern" (de) -> allow', () => {
+    const result = computeClickVeto("Speichern", "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  test('invariant satisfied + "Accept all" -> VETO (accept-word) — deny wins over a satisfied invariant', () => {
+    const result = computeClickVeto("Accept all", "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "accept-word");
+  });
+
+  test('invariant satisfied + "Alle akzeptieren" (de accept) -> VETO (accept-word) — deny wins, even in a non-English locale', () => {
+    const result = computeClickVeto("Alle akzeptieren", "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "accept-word");
+  });
+
+  test('invariant UNSATISFIED + "Save" -> VETO (save-invariant-unsatisfied) regardless of the label', () => {
+    const result = computeClickVeto("Save", "save", VETO_WORDS, { saveInvariantSatisfied: false });
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "save-invariant-unsatisfied");
+  });
+
+  test('context omitted entirely (default {}) + "Save" -> VETO (save-invariant-unsatisfied) — safe default, never implicitly true', () => {
+    const result = computeClickVeto("Save", "save", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "save-invariant-unsatisfied");
+  });
+
+  test('invariant satisfied + a name with no save word (e.g. "Continue") -> VETO (no-save-word)', () => {
+    const result = computeClickVeto("Continue", "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "no-save-word");
+  });
+
+  test('an unknown role stays vetoed even with a save-word name and a satisfied invariant', () => {
+    const result = computeClickVeto("Save", "commit", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "unknown-role");
+  });
+
+  test("garbage context (null/undefined/non-object/array) never throws and never allows", () => {
+    for (const garbage of [null, undefined, 42, "x", []]) {
+      assert.doesNotThrow(() => computeClickVeto("Save", "save", VETO_WORDS, garbage));
+      const result = computeClickVeto("Save", "save", VETO_WORDS, garbage);
+      assert.equal(result.allow, false);
+      assert.equal(result.reason, "save-invariant-unsatisfied");
+    }
+  });
+
+  test("a context carrying an origin/source/rule-provenance field alongside saveInvariantSatisfied does not change the outcome — only saveInvariantSatisfied is ever honored (no-origin-exemption guarantee)", () => {
+    const withOrigin = computeClickVeto("Save", "save", VETO_WORDS, {
+      saveInvariantSatisfied: true,
+      origin: "remote",
+      source: "trusted-signing-key",
+      ruleOrigin: "bundled",
+    });
+    const withoutOrigin = computeClickVeto("Save", "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    assert.deepEqual(withOrigin, withoutOrigin, "an extra provenance field must not alter the veto outcome");
+    assert.equal(withOrigin.allow, true);
+  });
+
+  test("an origin/source field CANNOT substitute for or bypass saveInvariantSatisfied — a context with only provenance fields (no saveInvariantSatisfied) is vetoed identically to an empty context", () => {
+    const provenanceOnly = computeClickVeto("Save", "save", VETO_WORDS, {
+      origin: "remote",
+      source: "trusted-signing-key",
+      trusted: true,
+      verified: true,
+    });
+    assert.equal(provenanceOnly.allow, false);
+    assert.equal(provenanceOnly.reason, "save-invariant-unsatisfied");
+  });
+
+  // Strengthened structural guard (task 1.6): computeClickVeto.length must
+  // stay 3 even after adding the "save" role + context param, because
+  // `context` is a DEFAULTED 4th parameter — JS function.length only counts
+  // parameters up to (not including) the first one with a default value.
+  // Mirrors the pre-existing structural guard in
+  // tests/unit/cookie-noise-sync.test.mjs's "spec scenario 5" describe
+  // block, kept here too as direct unit-level coverage on the source module
+  // itself (not just the content-script sync copy).
+  test("computeClickVeto.length stays exactly 3 — context is a defaulted 4th parameter, not a required one", () => {
+    assert.equal(
+      computeClickVeto.length,
+      3,
+      "computeClickVeto must still report arity 3 — the 4th `context` argument must stay defaulted so no existing 3-arg call site is a breaking change",
+    );
+  });
+
+  test("computeClickVeto can still be called with exactly 3 arguments (no context) and defaults to a vetoed save — proves the 4th param is truly optional, not silently required", () => {
+    assert.doesNotThrow(() => computeClickVeto("Save", "save", VETO_WORDS));
+    const result = computeClickVeto("Save", "save", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "save-invariant-unsatisfied");
   });
 });
 

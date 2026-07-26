@@ -481,6 +481,111 @@ describe("cookie-noise-sync — @sync:cmp-tier2-veto block matches src/lib/cmp-t
     assert.ok(/save:\s*SAVE_WORDS/.test(joined), "VETO_WORDS must expose the save list");
     assert.ok(/"save-word"/.test(joined), "computeClickVeto must be able to return the save-word veto reason");
   });
+
+  test('the veto defines a "save" role branch, gated on a save-word match AND context.saveInvariantSatisfied === true (cookie-consent-toggle-reject, PR 1 / design.md ADR-4)', () => {
+    const joined = libBlock.join("\n");
+    assert.ok(/role === "save"/.test(joined), "computeClickVeto must branch on role === \"save\"");
+    assert.ok(/context\.saveInvariantSatisfied\s*!==\s*true|saveInvariantSatisfied\s*===\s*true/.test(joined),
+      "the save branch must gate on saveInvariantSatisfied === true");
+    assert.ok(/"no-save-word"/.test(joined), "must be able to return the no-save-word veto reason");
+    assert.ok(/"save-invariant-unsatisfied"/.test(joined), "must be able to return the save-invariant-unsatisfied veto reason");
+  });
+
+  test("computeClickVeto's 4th `context` parameter is defaulted so .length stays 3 (cookie-consent-toggle-reject, PR 1 — no breaking change to existing 3-arg call sites)", () => {
+    assert.ok(/function computeClickVeto\(accessibleName, role, wordLists, context = \{\}\)/.test(libBlock.join("\n")),
+      "computeClickVeto must declare context as a defaulted 4th parameter, exactly `context = {}`");
+    assert.equal(computeClickVeto.length, 3, "computeClickVeto.length must stay 3 after adding the save role");
+  });
+});
+
+// ── @sync:cmp-tier2-save-invariant block (toggle-reject save invariant) ────
+// (cookie-consent-toggle-reject, PR 1 — safety core, INERT this PR)
+//
+// computeSaveInvariant / planToggleActuation are pure exports in
+// src/lib/cmp-tier2-save-invariant.js (unit-tested there, including the
+// never-turn-ON battery) whose body is hand-inlined ONLY into
+// content/cookie-noise.js (isolated world) — mirrors the @sync:cmp-tier2-veto
+// precedent immediately above. NOT CALLED anywhere in cookie-noise.js this
+// PR (see the block's own comment there) — no dispatcher wiring exists yet
+// (PR 2). This test proves the block is present and byte-identical even
+// while inert, so the safety math itself can be reviewed before any DOM
+// actuation code is added to call it.
+
+const SAVE_INVARIANT_FILES = {
+  lib: join(__dirname, "../../src/lib/cmp-tier2-save-invariant.js"),
+  isolated: FILES.isolated,
+};
+
+const saveInvariantSources = {
+  lib: readFileSync(SAVE_INVARIANT_FILES.lib, "utf8"),
+  isolated: sources.isolated,
+};
+
+const SAVE_INVARIANT_START = "@sync:cmp-tier2-save-invariant:start";
+const SAVE_INVARIANT_END = "@sync:cmp-tier2-save-invariant:end";
+
+describe("cookie-noise-sync — @sync:cmp-tier2-save-invariant block matches src/lib/cmp-tier2-save-invariant.js", () => {
+  const libBlock = extractMarkedBlock(saveInvariantSources.lib, SAVE_INVARIANT_START, SAVE_INVARIANT_END, "cmp-tier2-save-invariant.js");
+  const isolatedBlock = extractMarkedBlock(saveInvariantSources.isolated, SAVE_INVARIANT_START, SAVE_INVARIANT_END, "cookie-noise.js");
+
+  test("save-invariant sync block is non-empty and defines computeSaveInvariant and planToggleActuation", () => {
+    assert.ok(libBlock.length > 0, "extracted @sync:cmp-tier2-save-invariant block must not be empty — check the markers");
+    const joined = libBlock.join("\n");
+    assert.ok(/function computeSaveInvariant/.test(joined));
+    assert.ok(/function planToggleActuation/.test(joined));
+  });
+
+  test("cookie-noise.js @sync:cmp-tier2-save-invariant block matches src/lib/cmp-tier2-save-invariant.js", () => {
+    assert.deepEqual(
+      isolatedBlock,
+      libBlock,
+      "content/cookie-noise.js's @sync:cmp-tier2-save-invariant block has drifted from src/lib/cmp-tier2-save-invariant.js",
+    );
+  });
+
+  test("the main-world caller does NOT carry the @sync:cmp-tier2-save-invariant block (Tier 2 is isolated-world only)", () => {
+    assert.equal(sources.mainworld.includes(SAVE_INVARIANT_START), false,
+      "cookie-noise-mainworld.js must not inline the save invariant — this mechanism is isolated-world only");
+  });
+
+  test("planToggleActuation never emits an on-action — no field in its return shape could carry one (bare number[] of force-off indices)", () => {
+    const joined = libBlock.join("\n");
+    assert.doesNotMatch(joined, /checked\s*=\s*true/, "the block must never write checked = true anywhere");
+    assert.doesNotMatch(joined, /aria-checked['"]\s*,\s*['"]true/, "the block must never set aria-checked to true anywhere");
+  });
+
+  test("this PR wires ZERO dispatcher call sites for computeSaveInvariant/planToggleActuation — behavior-inert (PR 1)", () => {
+    const src = sources.isolated;
+    for (const fnName of ["computeSaveInvariant", "planToggleActuation"]) {
+      // A deliberate `void NAME;` no-op reference (satisfying no-unused-vars
+      // while the block is inert) must exist, and it must be the ONLY
+      // reference outside the declaration/docblocks — i.e. no real call
+      // `NAME(` anywhere except the function's own declaration line.
+      assert.ok(src.includes(`void ${fnName};`), `${fnName} must have a deliberate void no-op reference, not a real call site`);
+    }
+    // Neither function is referenced at all inside the two known dispatcher
+    // bodies (runTier2RejectDispatcher today; the PR-2 toggle branch that
+    // would call them does not exist yet).
+    const dispatcherMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(dispatcherMatch, "cookie-noise.js must define runTier2RejectDispatcher()");
+    assert.doesNotMatch(dispatcherMatch[1], /computeSaveInvariant\(|planToggleActuation\(/,
+      "runTier2RejectDispatcher must not call computeSaveInvariant/planToggleActuation yet — that wiring is PR 2, out of scope for PR 1");
+  });
+
+  test("no rule instance (bundled TIER2_RULES) uses a toggleScope field yet — PR 1 adds zero CMP wiring", () => {
+    // Scoped to the actual rule-data sync block, not prose — this file's own
+    // comments legitimately MENTION "toggleScope" to explain what PR 2 will
+    // add (see the block comment above the @sync:cmp-tier2-save-invariant
+    // region). What must not exist yet is the field itself inside the rule
+    // data (both the bundled TIER2_RULES array and its content-script copy).
+    const rulesLibSrc = readFileSync(join(__dirname, "../../src/lib/cmp-tier2-rules.js"), "utf8");
+    const rulesLibBlock = extractMarkedBlock(rulesLibSrc, TIER2_RULES_START, TIER2_RULES_END, "cmp-tier2-rules.js");
+    const rulesIsolatedBlock = extractMarkedBlock(sources.isolated, TIER2_RULES_START, TIER2_RULES_END, "cookie-noise.js");
+    assert.equal(/toggleScope/.test(rulesLibBlock.join("\n")), false,
+      "src/lib/cmp-tier2-rules.js's TIER2_RULES data must not reference toggleScope at all in PR 1 — that field is introduced in PR 2");
+    assert.equal(/toggleScope/.test(rulesIsolatedBlock.join("\n")), false,
+      "cookie-noise.js's @sync:cmp-tier2-rules copy must not reference toggleScope at all in PR 1");
+  });
 });
 
 // ── Tier 2 dispatch — main-world exclusion (task 3.3) ───────────────────────
