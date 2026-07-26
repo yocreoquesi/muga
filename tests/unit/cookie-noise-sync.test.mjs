@@ -554,37 +554,183 @@ describe("cookie-noise-sync — @sync:cmp-tier2-save-invariant block matches src
     assert.doesNotMatch(joined, /aria-checked['"]\s*,\s*['"]true/, "the block must never set aria-checked to true anywhere");
   });
 
-  test("this PR wires ZERO dispatcher call sites for computeSaveInvariant/planToggleActuation — behavior-inert (PR 1)", () => {
+  test("computeSaveInvariant and planToggleActuation are wired for real — no more void no-op references (PR 2)", () => {
     const src = sources.isolated;
     for (const fnName of ["computeSaveInvariant", "planToggleActuation"]) {
-      // A deliberate `void NAME;` no-op reference (satisfying no-unused-vars
-      // while the block is inert) must exist, and it must be the ONLY
-      // reference outside the declaration/docblocks — i.e. no real call
-      // `NAME(` anywhere except the function's own declaration line.
-      assert.ok(src.includes(`void ${fnName};`), `${fnName} must have a deliberate void no-op reference, not a real call site`);
+      assert.equal(src.includes(`void ${fnName};`), false,
+        `${fnName} must no longer have a deliberate void no-op reference — PR 2 adds a real call site`);
     }
-    // Neither function is referenced at all inside the two known dispatcher
-    // bodies (runTier2RejectDispatcher today; the PR-2 toggle branch that
-    // would call them does not exist yet).
-    const dispatcherMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
-    assert.ok(dispatcherMatch, "cookie-noise.js must define runTier2RejectDispatcher()");
-    assert.doesNotMatch(dispatcherMatch[1], /computeSaveInvariant\(|planToggleActuation\(/,
-      "runTier2RejectDispatcher must not call computeSaveInvariant/planToggleActuation yet — that wiring is PR 2, out of scope for PR 1");
+    assert.ok(/computeSaveInvariant\(readout, backstop\)/.test(src),
+      "tier2RunToggleSweep must call computeSaveInvariant(readout, backstop)");
+    assert.ok(/planToggleActuation\(readout\)/.test(src),
+      "tier2ActuateToggleOff must call planToggleActuation(readout)");
   });
 
-  test("no rule instance (bundled TIER2_RULES) uses a toggleScope field yet — PR 1 adds zero CMP wiring", () => {
+  test("no BUNDLED rule instance (TIER2_RULES) uses a toggleScope field — the mechanism (PR 2) ships with zero curated CMP rules; a curated rule is PR 3's Osano pilot", () => {
     // Scoped to the actual rule-data sync block, not prose — this file's own
-    // comments legitimately MENTION "toggleScope" to explain what PR 2 will
-    // add (see the block comment above the @sync:cmp-tier2-save-invariant
-    // region). What must not exist yet is the field itself inside the rule
-    // data (both the bundled TIER2_RULES array and its content-script copy).
+    // comments legitimately MENTION "toggleScope" to explain the mechanism
+    // (see the block comment above the @sync:cmp-tier2-save-invariant
+    // region and the toggle-sweep helpers below it). What must not exist is
+    // the field itself inside the BUNDLED rule data (both TIER2_RULES and
+    // its content-script copy) — task 2.1: "Add NO rule instance that uses
+    // it yet."
     const rulesLibSrc = readFileSync(join(__dirname, "../../src/lib/cmp-tier2-rules.js"), "utf8");
     const rulesLibBlock = extractMarkedBlock(rulesLibSrc, TIER2_RULES_START, TIER2_RULES_END, "cmp-tier2-rules.js");
     const rulesIsolatedBlock = extractMarkedBlock(sources.isolated, TIER2_RULES_START, TIER2_RULES_END, "cookie-noise.js");
     assert.equal(/toggleScope/.test(rulesLibBlock.join("\n")), false,
-      "src/lib/cmp-tier2-rules.js's TIER2_RULES data must not reference toggleScope at all in PR 1 — that field is introduced in PR 2");
+      "src/lib/cmp-tier2-rules.js's TIER2_RULES data must not reference toggleScope at all in PR 2 — no bundled rule uses it yet");
     assert.equal(/toggleScope/.test(rulesIsolatedBlock.join("\n")), false,
-      "cookie-noise.js's @sync:cmp-tier2-rules copy must not reference toggleScope at all in PR 1");
+      "cookie-noise.js's @sync:cmp-tier2-rules copy must not reference toggleScope at all in PR 2");
+  });
+});
+
+// ── Tier 2 toggle-reject sweep wiring (cookie-consent-toggle-reject, PR 2 /
+// design.md ADR-2/ADR-5) — structural guards ────────────────────────────────
+//
+// Mirrors the existing reject/openSettings structural guards above:
+// computeSaveInvariant/planToggleActuation/computeClickVeto("save", ...)
+// are called before ANY write toward Save; _tier2Acted is set in exactly
+// one place inside tier2RunToggleSweep, strictly AFTER the veto passes;
+// there is no code path anywhere in this file that writes a toggle TOWARD
+// on (monotone-toward-denial); and the one-shot guard is wired into the
+// dispatcher's toggle branch.
+
+describe("cookie-noise.js — Tier 2 toggle-reject sweep structural guards (PR 2)", () => {
+  const src = sources.isolated;
+
+  function toggleSweepBody() {
+    const fnMatch = /function tier2RunToggleSweep\(rule\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define tier2RunToggleSweep(rule)");
+    return fnMatch[1];
+  }
+
+  test("tier2RunToggleSweep resolves computeSaveInvariant BEFORE ever resolving/clicking a save candidate", () => {
+    const body = toggleSweepBody();
+    const invariantIdx = body.indexOf("computeSaveInvariant(readout, backstop)");
+    const clickIdx = body.indexOf("saveCandidates[0].ref.click(");
+    assert.ok(invariantIdx !== -1, "must call computeSaveInvariant(readout, backstop)");
+    assert.ok(clickIdx !== -1, "must call saveCandidates[0].ref.click()");
+    assert.ok(invariantIdx < clickIdx, "the save invariant must be evaluated before the Save click");
+  });
+
+  test('tier2RunToggleSweep calls computeClickVeto with role "save" and { saveInvariantSatisfied: true } BEFORE the Save click', () => {
+    const body = toggleSweepBody();
+    const vetoIdx = body.indexOf('computeClickVeto(saveCandidates[0].fullText, "save", VETO_WORDS, { saveInvariantSatisfied: true })');
+    const clickIdx = body.indexOf("saveCandidates[0].ref.click(");
+    assert.ok(vetoIdx !== -1, 'must call computeClickVeto(..., "save", VETO_WORDS, { saveInvariantSatisfied: true })');
+    assert.ok(clickIdx !== -1);
+    assert.ok(vetoIdx < clickIdx, "the save veto must be evaluated before the Save click");
+  });
+
+  test("on an unsatisfied invariant, tier2RunToggleSweep returns without resolving a save candidate or setting _tier2Acted (NOOP, banner untouched)", () => {
+    const body = toggleSweepBody();
+    const invariantCheckIdx = body.indexOf("if (!invariant.satisfied) {");
+    const actedIdx = body.indexOf("_tier2Acted[rule.id] = true;");
+    assert.ok(invariantCheckIdx !== -1, "must branch on !invariant.satisfied");
+    assert.ok(actedIdx !== -1, "must set _tier2Acted[rule.id] = true somewhere in the allow path");
+    assert.ok(invariantCheckIdx < actedIdx, "the invariant check must come before _tier2Acted is ever set");
+    // The unsatisfied branch itself must return, not fall through.
+    const unsatisfiedBlock = /if \(!invariant\.satisfied\) \{([\s\S]*?)\n {4}\}/.exec(body);
+    assert.ok(unsatisfiedBlock, "must find the !invariant.satisfied block");
+    assert.ok(/return;/.test(unsatisfiedBlock[1]), "the unsatisfied branch must return (NOOP), never fall through toward a click");
+  });
+
+  test("on a save veto, tier2RunToggleSweep returns without setting _tier2Acted", () => {
+    const body = toggleSweepBody();
+    const vetoCheckIdx = body.indexOf("if (!veto.allow) {");
+    const actedIdx = body.indexOf("_tier2Acted[rule.id] = true;");
+    assert.ok(vetoCheckIdx !== -1 && actedIdx !== -1);
+    assert.ok(vetoCheckIdx < actedIdx, "the veto check must come before _tier2Acted is ever set");
+    const vetoBlock = /if \(!veto\.allow\) \{([\s\S]*?)\n {4}\}/.exec(body);
+    assert.ok(vetoBlock, "must find the !veto.allow block");
+    assert.ok(/return;/.test(vetoBlock[1]), "a save veto must return (NOOP), never fall through toward a click");
+  });
+
+  test("_tier2Acted is set in exactly ONE place inside tier2RunToggleSweep, strictly AFTER both the invariant and veto checks", () => {
+    const body = toggleSweepBody();
+    assert.equal(body.split("_tier2Acted[rule.id] = true;").length - 1, 1,
+      "tier2RunToggleSweep must set _tier2Acted in exactly one place");
+    const invariantIdx = body.indexOf("if (!invariant.satisfied) {");
+    const vetoIdx = body.indexOf("if (!veto.allow) {");
+    const actedIdx = body.indexOf("_tier2Acted[rule.id] = true;");
+    assert.ok(invariantIdx < actedIdx && vetoIdx < actedIdx,
+      "_tier2Acted must be set after both the invariant and veto gates");
+  });
+
+  test("the dispatcher's toggle branch is one-shot per rule (_tier2ToggleSwept) and only runs for a toggleScope-bearing rule, inside the panel-open branch", () => {
+    const fnMatch = /function runTier2RejectDispatcher\(\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define runTier2RejectDispatcher()");
+    const body = fnMatch[1];
+    const pmOpenedIdx = body.indexOf("if (_tier2PmOpened[rule.id]) {");
+    const toggleGuardIdx = body.indexOf("if (rule.toggleScope && !_tier2ToggleSwept[rule.id]) {");
+    const sweepCallIdx = body.indexOf("tier2RunToggleSweep(rule);");
+    assert.ok(pmOpenedIdx !== -1, "the toggle branch must live inside the panel-open ( _tier2PmOpened[rule.id] ) branch");
+    assert.ok(toggleGuardIdx !== -1 && sweepCallIdx !== -1);
+    assert.ok(pmOpenedIdx < toggleGuardIdx && toggleGuardIdx < sweepCallIdx,
+      "the toggleScope + one-shot guard must be checked, in order, before tier2RunToggleSweep is ever called");
+    assert.ok(/_tier2ToggleSwept\[rule\.id\]\s*=\s*true;/.test(body),
+      "the dispatcher must mark _tier2ToggleSwept[rule.id] = true before calling tier2RunToggleSweep — one-shot");
+  });
+
+  test("NO code path in this file ever writes checked = true or aria-checked to \"true\" — monotone-toward-denial by construction (never turn a toggle ON)", () => {
+    assert.doesNotMatch(src, /\.checked\s*=\s*true/, "must never write .checked = true anywhere in cookie-noise.js");
+    assert.doesNotMatch(src, /setAttribute\(\s*["']aria-checked["']\s*,\s*["']true["']\s*\)/,
+      "must never setAttribute('aria-checked', 'true') anywhere in cookie-noise.js");
+  });
+
+  test("tier2ActuateToggleOff only ever writes .checked = false, never true, and only inside the checkbox branch", () => {
+    const fnMatch = /function tier2ActuateToggleOff\(readout\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define tier2ActuateToggleOff(readout)");
+    const body = fnMatch[1];
+    assert.ok(/entry\.ref\.checked\s*=\s*false;/.test(body), "must write entry.ref.checked = false");
+    assert.doesNotMatch(body, /entry\.ref\.checked\s*=\s*true/, "must never write entry.ref.checked = true");
+  });
+
+  test("tier2ActuateToggleOff's ARIA branch clicks at most once and never re-clicks on a failed flip (no retry loop)", () => {
+    const fnMatch = /function tier2ActuateToggleOff\(readout\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    const clickCalls = body.split("entry.ref.click()").length - 1;
+    assert.equal(clickCalls, 1, "tier2ActuateToggleOff must call .click() in exactly one place — never a retry/second attempt");
+  });
+
+  test("collectToggleStates includes locked entries in the readout (never excludes them) — only actuation/off-check exclude locked entries", () => {
+    const fnMatch = /function collectToggleStates\(container, toggleSel, lockedOnSel\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define collectToggleStates(container, toggleSel, lockedOnSel)");
+    const body = fnMatch[1];
+    assert.doesNotMatch(body, /if\s*\(\s*locked\s*\)\s*continue;/, "collectToggleStates must not skip/exclude locked entries from the readout");
+    assert.ok(/readout\.push\(/.test(body), "every enumerated toggle (locked or not) must be pushed onto the readout");
+  });
+
+  test("countCheckedControls is CMP-selector-independent — its query does not reference the rule's own `toggle` field, only the fixed TIER2_STANDARD_CHECKED_SELECTOR", () => {
+    const fnMatch = /function countCheckedControls\(container, lockedOnSel\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define countCheckedControls(container, lockedOnSel)");
+    const body = fnMatch[1];
+    assert.ok(/TIER2_STANDARD_CHECKED_SELECTOR/.test(body), "must query TIER2_STANDARD_CHECKED_SELECTOR");
+    assert.doesNotMatch(body, /scope\.toggle|rule\.toggleScope\.toggle/, "must never reference a rule's own curated toggle selector — the backstop is selector-independent");
+  });
+
+  test("countCheckedControls fails CLOSED (non-zero, non-finite sentinel) on any query error, never a silent 0", () => {
+    const fnMatch = /function countCheckedControls\(container, lockedOnSel\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    assert.ok(/Number\.POSITIVE_INFINITY/.test(body), "must return Number.POSITIVE_INFINITY on failure — never 0");
+  });
+
+  test("neither the toggle-sweep field names (container/toggle/lockedOn/save) nor tier2RunToggleSweep's source contain an accept/allowall identifier", () => {
+    const FORBIDDEN = /allowall|accept/i;
+    const fnMatch = /function tier2RunToggleSweep\(rule\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    // collectAcceptCandidates() is a DELIBERATE, retained exception (see
+    // this file's own docblock, "the accept-click mechanism has no
+    // MAIN-world copy" section) — a neutral DOM candidate scanner reused
+    // unmodified from the retired accept-click feature; runTier2RejectDispatcher
+    // already calls it too. Strip that one known-legitimate call before
+    // scanning for a REAL accept-family identifier.
+    const stripped = fnMatch[1].replace(/collectAcceptCandidates/g, "");
+    assert.doesNotMatch(stripped, FORBIDDEN, "tier2RunToggleSweep must contain no accept/allowall identifier");
+    const rulesLibSrc = readFileSync(join(__dirname, "../../src/lib/cmp-tier2-rules.js"), "utf8");
+    assert.doesNotMatch(rulesLibSrc, FORBIDDEN, "cmp-tier2-rules.js (including the new toggleScope typedef) must contain no accept/allowall identifier");
   });
 });
 
@@ -781,10 +927,25 @@ describe("cookie-noise.js — Tier 2 semantic click-veto wiring", () => {
 // below (#824 — one new source-string assertion, mirroring the existing
 // precedent in this file and in service-worker-patterns.test.mjs).
 
+// toggleScope pass-through mirrors production's tier2FilterRemoteToggleScope
+// (cookie-consent-toggle-reject, PR 2): every field must be present and
+// CSS-parseable (via the SAME injected `canParse` predicate), `save` must
+// keep at least one parseable selector after filtering, and a malformed/
+// missing toggleScope drops ONLY that field — the rule still merges as a
+// plain reject/openSettings rule.
 function makeTier2RemoteMergeHelper(bundledIds, canParse) {
   function filterSelectorArray(arr) {
     if (!Array.isArray(arr)) return [];
     return arr.filter((sel) => typeof sel === "string" && sel.length > 0 && canParse(sel));
+  }
+  function filterToggleScope(scope) {
+    if (!scope || typeof scope !== "object") return null;
+    if (typeof scope.container !== "string" || !canParse(scope.container)) return null;
+    if (typeof scope.toggle !== "string" || !canParse(scope.toggle)) return null;
+    if (typeof scope.lockedOn !== "string" || !canParse(scope.lockedOn)) return null;
+    const save = filterSelectorArray(scope.save);
+    if (save.length === 0) return null;
+    return { container: scope.container, toggle: scope.toggle, lockedOn: scope.lockedOn, save };
   }
   function filterRemoteRule(rule) {
     if (!rule || typeof rule !== "object") return null;
@@ -793,7 +954,10 @@ function makeTier2RemoteMergeHelper(bundledIds, canParse) {
     if (reject.length === 0) return null;
     const present = filterSelectorArray(rule.present);
     const openSettings = filterSelectorArray(rule.openSettings);
-    return { id: rule.id, present, reject, openSettings };
+    const toggleScope = filterToggleScope(rule.toggleScope);
+    const filtered = { id: rule.id, present, reject, openSettings };
+    if (toggleScope) filtered.toggleScope = toggleScope;
+    return filtered;
   }
   return function recomputeMergedRules(bundledRules, rawRemoteRules) {
     const list = Array.isArray(rawRemoteRules) ? rawRemoteRules : [];
@@ -864,7 +1028,7 @@ describe("Tier 2 content-side remote-rule merge — pure re-implementation (mirr
     assert.deepEqual(rule.openSettings, []);
   });
 
-  test("a merged rule object carries no origin/source field distinguishing it from a bundled rule", () => {
+  test("a merged rule object carries no origin/source field distinguishing it from a bundled rule (toggleScope-less case)", () => {
     const canParse = () => true;
     const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
     const merged = recompute(BUNDLED, [
@@ -874,9 +1038,98 @@ describe("Tier 2 content-side remote-rule merge — pure re-implementation (mirr
       assert.deepEqual(
         Object.keys(rule).sort(),
         ["id", "openSettings", "present", "reject"],
-        "a merged rule (bundled or remote-origin) must expose exactly id/present/reject/openSettings — no origin/source field a dispatcher could branch on",
+        "a merged rule (bundled or remote-origin) without toggleScope must expose exactly id/present/reject/openSettings — no origin/source field a dispatcher could branch on",
       );
     }
+  });
+
+  // ── toggleScope pass-through (cookie-consent-toggle-reject, PR 2) ────────
+
+  test("a remote rule with a non-empty reject AND a fully parseable toggleScope carries both through", () => {
+    const canParse = () => true;
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      {
+        id: "acme-cmp",
+        present: ["#acme"],
+        reject: [".acme-reject"],
+        openSettings: ["#acme-open"],
+        toggleScope: { container: "#acme-panel", toggle: "[role='switch']", lockedOn: "[disabled]", save: ["#acme-save"] },
+      },
+    ]);
+    const rule = merged.find((r) => r.id === "acme-cmp");
+    assert.ok(rule, "the rule must merge");
+    assert.deepEqual(
+      Object.keys(rule).sort(),
+      ["id", "openSettings", "present", "reject", "toggleScope"],
+      "a merged rule WITH a valid toggleScope must expose exactly these 5 keys — still no origin/source field",
+    );
+    assert.deepEqual(rule.toggleScope, {
+      container: "#acme-panel",
+      toggle: "[role='switch']",
+      lockedOn: "[disabled]",
+      save: ["#acme-save"],
+    });
+  });
+
+  test("a toggleScope missing any required field is dropped entirely — the rule still merges without it (fail-closed, not a rejected rule)", () => {
+    const canParse = () => true;
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      {
+        id: "acme-cmp",
+        present: ["#acme"],
+        reject: [".acme-reject"],
+        openSettings: [],
+        toggleScope: { container: "#acme-panel", toggle: "[role='switch']", save: ["#acme-save"] }, // missing lockedOn
+      },
+    ]);
+    const rule = merged.find((r) => r.id === "acme-cmp");
+    assert.ok(rule, "the rule must still merge as a plain reject rule");
+    assert.equal("toggleScope" in rule, false, "a malformed toggleScope must be dropped, not merged partially");
+  });
+
+  test("a toggleScope whose selectors are all unparseable is dropped entirely (fail-closed)", () => {
+    const canParse = (sel) => sel !== ":::not-css";
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      {
+        id: "acme-cmp",
+        present: ["#acme"],
+        reject: [".acme-reject"],
+        openSettings: [],
+        toggleScope: { container: ":::not-css", toggle: "[role='switch']", lockedOn: "[disabled]", save: ["#acme-save"] },
+      },
+    ]);
+    const rule = merged.find((r) => r.id === "acme-cmp");
+    assert.ok(rule);
+    assert.equal("toggleScope" in rule, false, "an unparseable container selector must drop the whole toggleScope field");
+  });
+
+  test("a toggleScope whose save array has zero parseable selectors after filtering is dropped entirely", () => {
+    const canParse = (sel) => sel !== "#gone-save";
+    const recompute = makeTier2RemoteMergeHelper(bundledIds, canParse);
+    const merged = recompute(BUNDLED, [
+      {
+        id: "acme-cmp",
+        present: ["#acme"],
+        reject: [".acme-reject"],
+        openSettings: [],
+        toggleScope: { container: "#acme-panel", toggle: "[role='switch']", lockedOn: "[disabled]", save: ["#gone-save"] },
+      },
+    ]);
+    const rule = merged.find((r) => r.id === "acme-cmp");
+    assert.ok(rule);
+    assert.equal("toggleScope" in rule, false, "a toggleScope with zero parseable save selectors must be dropped entirely");
+  });
+
+  test("production's tier2FilterRemoteToggleScope and tier2FilterRemoteRule use a real document.querySelector try/catch (structural companion to the pure mirror above)", () => {
+    const fnMatch = /function tier2FilterRemoteToggleScope\(scope\)\s*\{([\s\S]*?)\n  \}/.exec(sources.isolated);
+    assert.ok(fnMatch, "cookie-noise.js must define tier2FilterRemoteToggleScope(scope)");
+    assert.ok(/tier2SelectorParses\(scope\.container\)/.test(fnMatch[1]));
+    assert.ok(/tier2SelectorParses\(scope\.toggle\)/.test(fnMatch[1]));
+    assert.ok(/tier2SelectorParses\(scope\.lockedOn\)/.test(fnMatch[1]));
+    assert.ok(/tier2FilterSelectorArray\(scope\.save\)/.test(fnMatch[1]));
   });
 });
 

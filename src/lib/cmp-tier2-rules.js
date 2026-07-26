@@ -58,6 +58,41 @@
  * @property {ReadonlyArray<string>} openSettings - Optional single hop to
  *   open a settings panel before re-resolving `reject` in the revealed
  *   panel. `[]` when no two-step path is used.
+ * @property {ToggleScopeConfig} [toggleScope] - Optional multi-step
+ *   reject-and-save descriptor (cookie-consent-toggle-reject, PR 2 —
+ *   design.md ADR-1/ADR-5). When present AND the panel opened by
+ *   `openSettings` is confirmed open, the dispatcher enumerates every
+ *   toggle inside `container`, sweeps it reject-only, and — ONLY when the
+ *   post-sweep save invariant (src/lib/cmp-tier2-save-invariant.js) is
+ *   satisfied AND the single resolved `save` candidate clears the `"save"`
+ *   click-veto role (src/lib/cmp-tier2-veto.js) — clicks the confirmed Save
+ *   control. Absent on both seed rules (Complianz, Cookie Notice); no
+ *   bundled rule uses this field yet (introduced for the curated Osano
+ *   pilot in a later PR). Carries NO field capable of expressing the
+ *   broad-consent-granting path this project's structural guard forbids
+ *   naming (see the file docblock above) — same closed-vocabulary
+ *   guarantee as the rest of this shape; the structural guard in
+ *   tests/unit/cookie-noise-sync.test.mjs scans this field's values for the
+ *   same forbidden pattern.
+ *
+ * @typedef {object} ToggleScopeConfig
+ * @property {string} container - CSS selector scoping the settings-panel
+ *   root that toggle enumeration and the CMP-selector-independent backstop
+ *   scan (`countCheckedControls`) both operate within.
+ * @property {string} toggle - CSS selector enumerating EVERY category
+ *   toggle control inside `container` — native `input[type=checkbox]` or an
+ *   ARIA `role=switch`/`role=checkbox` control. Every match is included in
+ *   the readout (locked or not); only non-locked, readable entries are ever
+ *   planned for actuation (see `planToggleActuation`).
+ * @property {string} lockedOn - CSS selector identifying the
+ *   necessary/locked category control(s) inside `container`. A locked entry
+ *   is excluded from actuation and from the off-check, but at least one
+ *   locked entry must be present in the readout for the save invariant to
+ *   ever be satisfied.
+ * @property {ReadonlyArray<string>} save - Curated Save/confirm control
+ *   selector(s) inside `container`, OR-matched exactly like `reject`. Fail-
+ *   closed: 0 or more than 1 actionable match is a NOOP; exactly 1 is the
+ *   confirmed Save target, still gated by the `"save"` click-veto role.
  */
 
 // @sync:cmp-tier2-rules:start
