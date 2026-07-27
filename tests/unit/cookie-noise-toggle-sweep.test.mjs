@@ -46,12 +46,28 @@ function readToggleChecked(el, kind) {
   return null;
 }
 
+// PROVABLY-INERT gate (mirrors cookie-noise.js's tier2ToggleProvablyInert):
+// `locked`/backstop-exclusion is earned by real disabled/aria-disabled DOM
+// state, NEVER by a bare `lockedOn` selector match (partial-accept hole #2).
+function toggleProvablyInert(el) {
+  const kind = toggleKind(el);
+  if (kind === "checkbox") return el.disabled === true;
+  if (kind === "aria") {
+    if (el.getAttribute("aria-disabled") === "true") return true;
+    return typeof el.matches === "function" && el.matches("[disabled]");
+  }
+  return false;
+}
+
+// lockedOnSel retained for signature parity with production; the GATE is
+// provably-inert DOM state, so lockedOnSel is intentionally not consulted.
 function collectToggleStates(container, toggleSel, lockedOnSel) {
+  void lockedOnSel; // retained hint; the GATE is provably-inert DOM state
   const readout = [];
   if (!container) return readout;
   const nodes = container.querySelectorAll(toggleSel);
   for (const el of nodes) {
-    const locked = typeof lockedOnSel === "string" && lockedOnSel.length > 0 && el.matches(lockedOnSel);
+    const locked = toggleProvablyInert(el);
     const kind = toggleKind(el);
     const checked = readToggleChecked(el, kind);
     readout.push({ ref: el, kind, checked: checked === true, locked, readable: checked !== null });
@@ -62,13 +78,15 @@ function collectToggleStates(container, toggleSel, lockedOnSel) {
 const STANDARD_CHECKED_SELECTOR =
   'input[type="checkbox"]:checked, [role="switch"][aria-checked="true"], [role="checkbox"][aria-checked="true"]';
 
+// lockedOnSel retained for signature parity with production; exclusion is
+// gated on provably-inert DOM state, so lockedOnSel is intentionally unused.
 function countCheckedControls(container, lockedOnSel) {
+  void lockedOnSel; // retained hint; exclusion is gated on provably-inert DOM state
   if (!container) return Number.POSITIVE_INFINITY;
   const nodes = container.querySelectorAll(STANDARD_CHECKED_SELECTOR);
   let count = 0;
   for (const el of nodes) {
-    const locked = typeof lockedOnSel === "string" && lockedOnSel.length > 0 && el.matches(lockedOnSel);
-    if (!locked) count += 1;
+    if (!toggleProvablyInert(el)) count += 1;
   }
   return count;
 }
@@ -331,5 +349,151 @@ describe("collectToggleStates + countCheckedControls + actuateToggleOff -> compu
     const result = computeSaveInvariant(readout, backstop);
     assert.equal(result.satisfied, false);
     assert.equal(result.reason, "no-locked");
+  });
+});
+
+// ── FIX A: lockedOn requires PROVABLY-INERT DOM state, never a bare selector
+// match (partial-accept safety hole #2) ──────────────────────────────────────
+//
+// A NON-essential, defaulted-ON toggle that ALSO matches the curated
+// `lockedOn` hint must NOT be treated as locked: a bare selector match would
+// exclude it from BOTH actuation AND the backstop count, letting
+// computeSaveInvariant pass `satisfied:true` with a tracking category still
+// ON — a PARTIAL ACCEPT. The never-accept guarantee is ABSOLUTE: `locked` is
+// earned only by provably-inert DOM state (disabled / aria-disabled), never by
+// matching a decorative selector.
+
+describe("collectToggleStates — lockedOn requires provably-inert DOM state (FIX A, partial-accept hole #2)", () => {
+  test("a checked toggle that MATCHES lockedOnSel but is NOT disabled reads locked:false (never locked on a selector match alone)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    // A non-essential category checkbox, defaulted ON, that ALSO matches the
+    // curated lockedOn hint (over-match) but is NOT actually disabled.
+    const overMatch = new FakeElement("input", { type: "checkbox", checked: true, class: "toggle necessary-hint" });
+    panel.appendChild(overMatch);
+    const readout = collectToggleStates(panel, ".toggle", ".necessary-hint");
+    const entry = readout[0];
+    assert.equal(entry.locked, false, "a non-disabled control must NEVER be locked, even if it matches the curated lockedOn hint");
+    assert.equal(entry.checked, true);
+  });
+
+  test("an ARIA switch that MATCHES lockedOnSel but has no aria-disabled/disabled reads locked:false", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    const overMatch = new FakeElement("div", { role: "switch", "aria-checked": "true", class: "toggle necessary-hint" });
+    panel.appendChild(overMatch);
+    const readout = collectToggleStates(panel, ".toggle", ".necessary-hint");
+    assert.equal(readout[0].locked, false, "an ARIA switch without aria-disabled/[disabled] is not provably inert -> not locked");
+  });
+
+  test("a genuinely disabled checkbox reads locked:true (provably inert — existing behavior preserved)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    const necessary = new FakeElement("input", { type: "checkbox", checked: true, disabled: true, class: "toggle" });
+    panel.appendChild(necessary);
+    const readout = collectToggleStates(panel, ".toggle", LOCKED_SEL);
+    assert.equal(readout[0].locked, true, "a disabled checkbox is provably inert -> locked");
+  });
+
+  test("an aria-disabled='true' switch reads locked:true (provably inert — matches the real Osano lockedOn markers)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    const necessary = new FakeElement("div", { role: "switch", "aria-checked": "true", "aria-disabled": "true", class: "toggle" });
+    panel.appendChild(necessary);
+    const readout = collectToggleStates(panel, ".toggle", "[aria-disabled='true']");
+    assert.equal(readout[0].locked, true, "aria-disabled='true' is provably inert -> locked");
+  });
+});
+
+describe("countCheckedControls — excludes ONLY provably-inert controls, never a bare lockedOn match (FIX A backstop)", () => {
+  test("a checked control that MATCHES lockedOnSel but is NOT provably inert is STILL counted (no over-match exclusion)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    // Checked, matches the lockedOn hint, but not disabled -> must be counted.
+    const rogue = new FakeElement("input", { type: "checkbox", checked: true, class: "necessary-hint" });
+    panel.appendChild(rogue);
+    assert.equal(countCheckedControls(panel, ".necessary-hint"), 1, "a non-inert checked control must count toward the backstop even if it matches the lockedOn hint");
+  });
+
+  test("a genuinely disabled checked control is excluded (provably inert)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    const necessary = new FakeElement("input", { type: "checkbox", checked: true, disabled: true });
+    panel.appendChild(necessary);
+    assert.equal(countCheckedControls(panel, LOCKED_SEL), 0, "a disabled/inert checked control does not count toward the backstop");
+  });
+
+  test("a checked aria-disabled='true' switch is excluded (provably inert)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    const necessary = new FakeElement("div", { role: "switch", "aria-checked": "true", "aria-disabled": "true" });
+    panel.appendChild(necessary);
+    assert.equal(countCheckedControls(panel, "[aria-disabled='true']"), 0);
+  });
+});
+
+// ── FIX C: adversarial end-to-end — a non-disabled toggle matching lockedOnSel
+// that stays ON must VETO the Save (never a partial accept) ───────────────────
+//
+// This is the coverage gap the review flagged: prove that the over-matched,
+// still-ON toggle propagates all the way to an UNSATISFIED invariant (VETO /
+// NOOP), not a silent partial accept. A unit guard via the fake-dom mirror is
+// used (rather than a 5th Playwright scenario) because demonstrating the hole
+// in the shared e2e fixture would require a NEW rule variant with a
+// class-based (non-inert-marker) lockedOn selector plus a stuck toggle that
+// matches it — materially complicating the shared fixture. The mirror proves
+// the exact readout+backstop -> computeSaveInvariant logic that production is
+// structurally pinned to.
+
+describe("FIX C — over-matched non-inert toggle left ON -> Save invariant UNSATISFIED (adversarial, never a partial accept)", () => {
+  test("a non-disabled aria toggle matching lockedOnSel that will NOT flip -> invariant unsatisfied (VETO/NOOP)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    // A genuine locked/necessary control (provably inert).
+    const necessary = new FakeElement("input", { type: "checkbox", checked: true, disabled: true, class: "toggle" });
+    panel.appendChild(necessary);
+    // A NON-essential, defaulted-ON aria switch that ALSO matches the lockedOn
+    // hint (over-match) and refuses to flip on .click() (stuck/hostile page).
+    const rogue = new FakeElement("div", { role: "switch", "aria-checked": "true", class: "toggle necessary-hint" });
+    panel.appendChild(rogue);
+
+    // lockedOn is a curated hint whose class-part over-matches the rogue.
+    const lockedSel = "[disabled], .necessary-hint";
+    const readout = collectToggleStates(panel, ".toggle", lockedSel);
+    actuateToggleOff(readout, { onAriaClick: () => { /* stuck — never flips */ } });
+    const backstop = countCheckedControls(panel, lockedSel);
+    const result = computeSaveInvariant(readout, backstop);
+
+    assert.equal(result.satisfied, false, "a tracking category left ON must NEVER satisfy the Save invariant (never a partial accept)");
+    assert.ok(
+      ["toggle-still-on", "backstop-checked"].includes(result.reason),
+      `expected toggle-still-on or backstop-checked, got ${result.reason}`,
+    );
+  });
+
+  test("the same scope with the rogue toggle actually turned OFF -> invariant satisfied (control: the gate is state, not selector)", () => {
+    const doc = new FakeDocument();
+    const panel = new FakeElement("div", { id: "panel", class: "cmp-panel" });
+    doc.body.appendChild(panel);
+    const necessary = new FakeElement("input", { type: "checkbox", checked: true, disabled: true, class: "toggle" });
+    panel.appendChild(necessary);
+    const rogue = new FakeElement("div", { role: "switch", "aria-checked": "true", class: "toggle necessary-hint" });
+    panel.appendChild(rogue);
+
+    const lockedSel = "[disabled], .necessary-hint";
+    const readout = collectToggleStates(panel, ".toggle", lockedSel);
+    actuateToggleOff(readout, { onAriaClick: (el) => el.setAttribute("aria-checked", "false") });
+    const backstop = countCheckedControls(panel, lockedSel);
+    const result = computeSaveInvariant(readout, backstop);
+
+    assert.equal(result.satisfied, true, result.reason);
   });
 });

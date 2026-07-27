@@ -92,8 +92,14 @@ export const BUNDLED_TIER2_IDS = new Set(TIER2_RULES.map((r) => r.id));
 const TIER2_PAYLOAD_KEYS = new Set(["schemaVersion", "version", "published", "rules", "sig"]);
 
 /** Exact keys a single Tier2 rule must have — no more, no fewer. This is the
- * structural never-accept guarantee: no field can express an accept action. */
-const TIER2_RULE_KEYS = new Set(["id", "present", "reject", "openSettings"]);
+ * structural never-accept guarantee: no field can express an accept action,
+ * and — critically — no `toggleScope` field can reach the LIVE content-side
+ * `tier2FilterRemoteToggleScope` (src/content/cookie-noise.js), which would
+ * otherwise activate a remote Save/toggle/lockedOn click surface. Exported so
+ * the never-accept tripwire test (tests/unit/remote-tier2-rules.test.mjs)
+ * can pin the exact 4-key set: widening it must fail RED and force a
+ * deliberate re-review of the remote Save-click surface. */
+export const TIER2_RULE_KEYS = new Set(["id", "present", "reject", "openSettings"]);
 
 // ── Error codes ───────────────────────────────────────────────────────────────
 

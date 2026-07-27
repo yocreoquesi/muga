@@ -54,6 +54,7 @@ import {
   MAX_TIER2_ID_LEN,
   STALE_DAYS_TIER2,
   TIER2_ID_FORMAT_RE,
+  TIER2_RULE_KEYS,
   BUNDLED_TIER2_IDS,
   ERR,
 } from "../../src/lib/remote-tier2-rules.js";
@@ -754,5 +755,29 @@ describe("runTier2RulesFetch — orchestrator (fail-closed matrix)", () => {
     await Promise.all([promise1, promise2]);
 
     assert.ok(fetchCount >= 1, "at least one fetch occurred");
+  });
+});
+
+// ── TIER2_RULE_KEYS never-accept tripwire ────────────────────────────────────
+//
+// The content-side `tier2FilterRemoteToggleScope` (src/content/cookie-noise.js)
+// is LIVE: it will happily promote a remote rule carrying a `toggleScope`
+// field into the reject-only Save/toggle/lockedOn click surface. It is
+// currently UNREACHABLE via a signed payload ONLY because this strict 4-key
+// allowlist rejects any rule with an extra key (`toggleScope` included). That
+// is the sole structural barrier between "signed remote data" and "a remote
+// Save-click selector path". This test pins the allowlist so that relaxing it
+// (e.g. adding `toggleScope` to the remote schema) trips RED and forces a
+// deliberate re-review of the remote Save-click surface — the never-accept
+// guarantee must never regress silently through a schema widening.
+describe("TIER2_RULE_KEYS — strict 4-key allowlist tripwire (never-accept)", () => {
+  test("equals EXACTLY {id, present, reject, openSettings} — widening it must force a remote toggleScope re-review", () => {
+    assert.equal(TIER2_RULE_KEYS instanceof Set, true, "TIER2_RULE_KEYS must be a Set");
+    assert.equal(TIER2_RULE_KEYS.size, 4, "exactly 4 keys — no field may express an accept/toggle action");
+    assert.deepEqual(
+      [...TIER2_RULE_KEYS].sort(),
+      ["id", "openSettings", "present", "reject"],
+      "adding any key (e.g. toggleScope) reaches the live tier2FilterRemoteToggleScope path — re-review the remote Save-click surface before widening",
+    );
   });
 });

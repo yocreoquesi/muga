@@ -717,6 +717,31 @@ describe("cookie-noise.js — Tier 2 toggle-reject sweep structural guards (PR 2
     assert.ok(/Number\.POSITIVE_INFINITY/.test(body), "must return Number.POSITIVE_INFINITY on failure — never 0");
   });
 
+  test("tier2ToggleProvablyInert defines the real inert markers (disabled / aria-disabled / [disabled]) — partial-accept hole #2 gate", () => {
+    const fnMatch = /function tier2ToggleProvablyInert\(el\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch, "cookie-noise.js must define tier2ToggleProvablyInert(el)");
+    const body = fnMatch[1];
+    assert.ok(/el\.disabled === true/.test(body), "native checkbox inert marker is `el.disabled === true`");
+    assert.ok(/getAttribute\("aria-disabled"\) === "true"/.test(body), "ARIA inert marker is aria-disabled=\"true\"");
+    assert.ok(/el\.matches\("\[disabled\]"\)/.test(body), "ARIA inert marker also accepts a matching [disabled]");
+  });
+
+  test("collectToggleStates gates `locked` on provably-inert DOM state, NEVER on a bare lockedOnSel match (partial-accept hole #2)", () => {
+    const fnMatch = /function collectToggleStates\(container, toggleSel, lockedOnSel\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    assert.ok(/const locked = tier2ToggleProvablyInert\(el\)/.test(body), "locked must be tier2ToggleProvablyInert(el)");
+    assert.doesNotMatch(body, /el\.matches\(lockedOnSel\)/, "a bare lockedOnSel match must NEVER decide `locked` (over-match hole)");
+  });
+
+  test("countCheckedControls excludes ONLY provably-inert controls, NEVER a bare lockedOnSel match (partial-accept hole #2)", () => {
+    const fnMatch = /function countCheckedControls\(container, lockedOnSel\)\s*\{([\s\S]*?)\n  \}/.exec(src);
+    assert.ok(fnMatch);
+    const body = fnMatch[1];
+    assert.ok(/!tier2ToggleProvablyInert\(el\)/.test(body), "backstop exclusion must be gated on tier2ToggleProvablyInert");
+    assert.doesNotMatch(body, /el\.matches\(lockedOnSel\)/, "a bare lockedOnSel match must NEVER exclude a control from the backstop");
+  });
+
   test("neither the toggle-sweep field names (container/toggle/lockedOn/save) nor tier2RunToggleSweep's source contain an accept/allowall identifier", () => {
     const FORBIDDEN = /allowall|accept/i;
     const fnMatch = /function tier2RunToggleSweep\(rule\)\s*\{([\s\S]*?)\n  \}/.exec(src);

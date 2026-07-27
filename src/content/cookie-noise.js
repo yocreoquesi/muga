@@ -2156,6 +2156,17 @@
   // activates via a direct chrome.storage.local.remoteTier2Rules write,
   // e.g. tests/e2e/cookie-consent-toggle-reject.spec.mjs's synthetic
   // fixture rule).
+  // NEVER-ACCEPT TRIPWIRE (do NOT widen the remote schema without re-review):
+  // this filter is LIVE and will promote a remote rule's `toggleScope` into
+  // the reject-only Save/toggle/lockedOn click surface — BUT it is currently
+  // UNREACHABLE via a signed payload, because the background validator
+  // (src/lib/remote-tier2-rules.js) enforces an EXACT 4-key rule shape
+  // (TIER2_RULE_KEYS) that rejects any rule carrying a `toggleScope` (or any
+  // other unknown) key. That strict allowlist is the sole barrier between
+  // signed remote data and a remote Save-click path; it is guarded by the
+  // TIER2_RULE_KEYS tripwire test in tests/unit/remote-tier2-rules.test.mjs.
+  // Do NOT add `toggleScope` (or any key) to the remote schema without
+  // re-reviewing this remote Save-click surface end-to-end.
   function tier2FilterRemoteToggleScope(scope) {
     if (!scope || typeof scope !== "object") return null;
     if (typeof scope.container !== "string" || !tier2SelectorParses(scope.container)) return null;
@@ -2278,8 +2289,47 @@
   }
 
   /**
+   * PROVABLY-INERT gate (cookie-consent-toggle-reject, PR 2 hardening —
+   * partial-accept safety hole #2). A toggle counts as locked/necessary ONLY
+   * when the REAL DOM proves it inert, NEVER on a curated `lockedOn` selector
+   * match alone. A non-essential, defaulted-ON control that merely MATCHES the
+   * hint would otherwise be excluded from BOTH actuation AND the backstop
+   * count, letting computeSaveInvariant pass `satisfied:true` with a tracking
+   * category still ON — a PARTIAL ACCEPT. Inert markers:
+   *   - native input[type=checkbox]        -> `disabled === true`
+   *   - ARIA role=switch / role=checkbox   -> `aria-disabled="true"` OR a
+   *     matching `[disabled]`
+   * An unknown widget kind is NEVER treated as inert (fail-closed: it must be
+   * actuated off / counted by the backstop). This matches the design's real
+   * Osano `lockedOn` (`[disabled],[aria-disabled='true']`) — the genuine
+   * markers — so genuine necessary toggles still read locked, while a
+   * non-inert over-match is correctly treated as a live category. Mis-reading
+   * a genuinely-necessary-but-not-disabled toggle as non-locked is
+   * fail-closed-safe (we try to turn it off; if it will not flip, the
+   * invariant fails -> NOOP, never an accept). Never throws.
+   * @param {Element} el
+   * @returns {boolean}
+   */
+  function tier2ToggleProvablyInert(el) {
+    try {
+      const kind = tier2ToggleKind(el);
+      if (kind === "checkbox") {
+        return el.disabled === true;
+      }
+      if (kind === "aria") {
+        if (el.getAttribute("aria-disabled") === "true") return true;
+        return typeof el.matches === "function" && el.matches("[disabled]");
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Enumerates every toggle matching `toggleSel` inside `container`,
-   * classifying each as locked (matches `lockedOnSel`) or not and reading
+   * classifying each as locked (provably inert — see tier2ToggleProvablyInert)
+   * or not and reading
    * its current on/off state — see
    * src/lib/cmp-tier2-save-invariant.js's ToggleReadoutEntry typedef for the
    * shape this produces. A LOCKED entry is still INCLUDED in the readout
@@ -2291,10 +2341,12 @@
    * a totally failed container/toggle query returns `[]`. Never throws.
    * @param {Element} container
    * @param {string} toggleSel
-   * @param {string} lockedOnSel
+   * @param {string} lockedOnSel - retained curated hint (kept for signature
+   *   stability); the `locked` GATE is provably-inert DOM state, not this.
    * @returns {Array<{ref: Element, kind: string, checked: boolean, locked: boolean, readable: boolean}>}
    */
   function collectToggleStates(container, toggleSel, lockedOnSel) {
+    void lockedOnSel; // retained curated hint; the `locked` GATE is provably-inert DOM state (hole #2)
     const readout = [];
     if (!container || typeof container.querySelectorAll !== "function") return readout;
     let nodes = [];
@@ -2304,13 +2356,12 @@
       return readout;
     }
     for (const el of nodes) {
-      let locked = false;
-      try {
-        locked = typeof lockedOnSel === "string" && lockedOnSel.length > 0
-          && typeof el.matches === "function" && el.matches(lockedOnSel);
-      } catch {
-        locked = false;
-      }
+      // `lockedOnSel` is a curated HINT only — the GATE is provably-inert DOM
+      // state (see tier2ToggleProvablyInert). A control that merely MATCHES
+      // the hint but is not actually disabled is treated as NON-locked, so it
+      // is actuated off and counted by the backstop (closes partial-accept
+      // hole #2). `lockedOnSel` is intentionally not consulted here.
+      const locked = tier2ToggleProvablyInert(el);
       const kind = tier2ToggleKind(el);
       const checked = tier2ReadToggleChecked(el, kind);
       readout.push({
@@ -2332,18 +2383,23 @@
     'input[type="checkbox"]:checked, [role="switch"][aria-checked="true"], [role="checkbox"][aria-checked="true"]';
 
   /**
-   * Counts every standard checked control inside `container` MINUS
-   * anything matching `lockedOnSel` — independent of the curated `toggle`
-   * selector (see TIER2_STANDARD_CHECKED_SELECTOR above). On any query
-   * failure, returns a non-zero, non-finite sentinel
-   * (Number.POSITIVE_INFINITY) so computeSaveInvariant's exact-zero check
-   * fails CLOSED rather than silently passing on a broken read. Never
+   * Counts every standard checked control inside `container` MINUS anything
+   * that is PROVABLY INERT (see tier2ToggleProvablyInert) — NOT anything that
+   * merely matches `lockedOnSel`. Excluding by a bare `lockedOn` match alone
+   * would let a non-essential, defaulted-ON control that over-matches the hint
+   * slip past the backstop (partial-accept hole #2); excluding only genuinely
+   * disabled/necessary controls keeps the backstop selector-independent per
+   * design ADR-3. On any query failure, returns a non-zero, non-finite
+   * sentinel (Number.POSITIVE_INFINITY) so computeSaveInvariant's exact-zero
+   * check fails CLOSED rather than silently passing on a broken read. Never
    * throws.
    * @param {Element} container
-   * @param {string} lockedOnSel
+   * @param {string} lockedOnSel - retained curated hint (kept for signature
+   *   stability); exclusion is gated on provably-inert DOM state, not this.
    * @returns {number}
    */
   function countCheckedControls(container, lockedOnSel) {
+    void lockedOnSel; // retained curated hint; exclusion is gated on provably-inert DOM state (hole #2)
     if (!container || typeof container.querySelectorAll !== "function") return Number.POSITIVE_INFINITY;
     let nodes = [];
     try {
@@ -2353,14 +2409,9 @@
     }
     let count = 0;
     for (const el of nodes) {
-      let locked = false;
-      try {
-        locked = typeof lockedOnSel === "string" && lockedOnSel.length > 0
-          && typeof el.matches === "function" && el.matches(lockedOnSel);
-      } catch {
-        locked = false;
-      }
-      if (!locked) count += 1;
+      // Exclude ONLY provably-inert (disabled/aria-disabled) controls — a bare
+      // `lockedOnSel` match is NOT sufficient (closes partial-accept hole #2).
+      if (!tier2ToggleProvablyInert(el)) count += 1;
     }
     return count;
   }
