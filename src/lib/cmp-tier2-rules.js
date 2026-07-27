@@ -167,5 +167,29 @@ export const TIER2_RULES = Object.freeze([
     reject: Object.freeze([".osano-cm-denyAll"]),
     openSettings: Object.freeze([]),
   }),
+
+  /**
+   * cookieconsent.js (Osano/Insites) — API-less, self-hosted widget.
+   * Live-probe-confirmed across 11+ real deployments (2026-07, EU vantage):
+   * `.cc-window` is the stable banner root; `.cc-deny` is the confirmed
+   * reject control, present only in the opt-in/opt-out variants (roughly
+   * 18% of probed deployments). The library's common "info" variant ships
+   * only a `.cc-dismiss` ("Got it") acknowledgement button and NO `.cc-deny`
+   * at all — `present` still matches, but the fail-closed 0-match branch in
+   * `resolveTier2Reject` already no-ops gracefully, exactly like every
+   * other rule here whose reject control is admin-optional. The
+   * structurally distinct opt-in control (`.cc-allow`) lives under its own,
+   * completely disjoint class name, so there is no selector collision risk.
+   * No shadow DOM or iframe was observed in any probed deployment. A clone
+   * library, "DPCookieConsent", reuses the same `.cc-*` class names and is
+   * covered for free by this rule. `openSettings` stays empty: this is a
+   * genuine single-hop reject, no settings panel is ever opened.
+   */
+  Object.freeze({
+    id: "cookieconsent",
+    present: Object.freeze([".cc-window"]),
+    reject: Object.freeze([".cc-deny"]),
+    openSettings: Object.freeze([]),
+  }),
 ]);
 // @sync:cmp-tier2-rules:end

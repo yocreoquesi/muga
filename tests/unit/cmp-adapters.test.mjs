@@ -61,10 +61,10 @@ describe("cmp-adapters — registry shape", () => {
     assert.strictEqual(TIER1[9], consentmanagerAdapter);
   });
 
-  test("TIER2 ships with the Slice 1 seed rules plus the Osano pilot (Complianz, Cookie Notice, Osano)", () => {
+  test("TIER2 ships with the Slice 1 seed rules plus the Osano pilot and the cookieconsent rule (Complianz, Cookie Notice, Osano, cookieconsent)", () => {
     assert.ok(Array.isArray(TIER2));
-    assert.equal(TIER2.length, 3);
-    assert.deepEqual(TIER2.map((a) => a.id), ["complianz", "cookie-notice", "osano"]);
+    assert.equal(TIER2.length, 4);
+    assert.deepEqual(TIER2.map((a) => a.id), ["complianz", "cookie-notice", "osano", "cookieconsent"]);
     for (const adapter of TIER2) {
       assert.equal(adapter.tier, 2);
       assert.equal(typeof adapter.detect, "function");
@@ -734,11 +734,12 @@ describe("decideAction — truth table", () => {
 // ── Tier 2 rule data (src/lib/cmp-tier2-rules.js) — shape ───────────────────
 
 describe("TIER2_RULES — closed reject-only shape (#1027 Slice 1)", () => {
-  test("TIER2_RULES contains exactly the Complianz, Cookie Notice, and Osano rules, in order", () => {
-    assert.equal(TIER2_RULES.length, 3);
+  test("TIER2_RULES contains exactly the Complianz, Cookie Notice, Osano, and cookieconsent rules, in order", () => {
+    assert.equal(TIER2_RULES.length, 4);
     assert.equal(TIER2_RULES[0].id, "complianz");
     assert.equal(TIER2_RULES[1].id, "cookie-notice");
     assert.equal(TIER2_RULES[2].id, "osano");
+    assert.equal(TIER2_RULES[3].id, "cookieconsent");
   });
 
   test("TIER2_RULES and every rule entry are frozen", () => {
@@ -796,6 +797,15 @@ describe("TIER2_RULES — closed reject-only shape (#1027 Slice 1)", () => {
     assert.deepEqual([...rule.reject], [".osano-cm-denyAll"]);
     assert.deepEqual([...rule.openSettings], []);
     assert.equal("toggleScope" in rule, false, "the Osano pilot must NOT use toggleScope — it has a genuine one-click reject");
+  });
+
+  test("cookieconsent (Osano/Insites) rule matches the live-probe-confirmed selectors and has no toggleScope field", () => {
+    const rule = TIER2_RULES.find((r) => r.id === "cookieconsent");
+    assert.ok(rule, "TIER2_RULES must contain a cookieconsent rule");
+    assert.deepEqual([...rule.present], [".cc-window"]);
+    assert.deepEqual([...rule.reject], [".cc-deny"]);
+    assert.deepEqual([...rule.openSettings], []);
+    assert.equal("toggleScope" in rule, false, "the cookieconsent rule must NOT use toggleScope — it has a genuine one-click reject");
   });
 });
 

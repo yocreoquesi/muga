@@ -189,6 +189,7 @@ const REJECT_WORDS = Object.freeze([
   // de
   "ablehnen",
   "alle ablehnen",
+  "abgelehnt",
   "nur notwendige",
   // fr
   "refuser",
