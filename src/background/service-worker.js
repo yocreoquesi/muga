@@ -5,7 +5,7 @@
  */
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
-import { getAffiliateDomains, resolveOurTag } from "../lib/affiliates.js";
+import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
@@ -316,9 +316,7 @@ _hydrateAttributionLedger();
  * @param {string} rawUrl
  * @param {object} result - return value from processUrl
  * @param {object} prefs  - cached prefs (already resolved)
- * @param {string} [referrer] - navigation referrer (#452/B14), threaded
- *   through so fromCleanerResult can reprocess an `injected` result with
- *   the same referrer context when deriving the tagless copy-safe URL (#946).
+ * @param {string} [referrer] - navigation referrer (#452/B14).
  */
 function pushAttributionAndPersist(rawUrl, result, prefs, referrer = "") {
   // Privacy gate: skip both in-memory accumulation AND storage write so
@@ -327,10 +325,11 @@ function pushAttributionAndPersist(rawUrl, result, prefs, referrer = "") {
   if (prefs?.attributionLedgerEnabled === false) return;
   let event;
   try {
-    // #946: ctx lets fromCleanerResult reprocess `injected` results with
-    // injectOwnAffiliate forced off, so the ledger never stores a
-    // MUGA-tagged URL. domainRules/pathStripRules/pathAffiliateRules are
-    // the same module-level caches handleProcessUrl() itself uses.
+    // #946 / drop-affiliate-injection (PR 1a): this ctx bag was originally
+    // built so fromCleanerResult could reprocess an `injected` result with
+    // injection forced off (deriving a tagless copy-safe URL). That
+    // "injected" case is now unreachable — processUrl never produces it —
+    // so ctx is currently unused by fromCleanerResult, but harmless to pass.
     event = attributionEventFromCleanerResult(rawUrl, result, {
       prefs, domainRules, pathStripRules, pathAffiliateRules, referrer,
     });
@@ -2146,10 +2145,12 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
   }
 
-  // On copy: suppress the toast and affiliate injection. User didn't navigate,
-  // they just copied a link, so we should not inject our tag either.
+  // On copy: suppress the toast. User didn't navigate, they just copied a
+  // link. drop-affiliate-injection (PR 1a): the injectOwnAffiliate override
+  // was removed — MUGA never injects its own tag anymore, so there is
+  // nothing left to suppress on that side.
   const effectivePrefs = skipNotify
-    ? { ...prefs, notifyForeignAffiliate: false, injectOwnAffiliate: false }
+    ? { ...prefs, notifyForeignAffiliate: false }
     : prefs;
 
   let result;
@@ -2192,8 +2193,8 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // user-visible tally. Copying an entry re-cleans an already-counted URL, so
   // counting it again would inflate "URLs cleaned", prepend a DUPLICATE session
   // history row (evicting real entries), and push a duplicate ledger event. When
-  // skipSideEffects is set we still compute the clean URL (and withOurAffiliate
-  // below) for the response, but write nothing.
+  // skipSideEffects is set we still compute the clean URL for the response,
+  // but write nothing.
   if (!skipSideEffects && (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0))) {
     if (parsedRaw?.search) {
       const passthroughEntry = { domain: parsedRaw.hostname.replace(/^www\./, "") };
@@ -2240,8 +2241,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
     }
   }
   if (result.action === "detected_foreign") {
-    // #966: a copy must not bump referralsSpotted or log a detection either;
-    // the with-our-affiliate variant below still builds for the response.
+    // #966: a copy must not bump referralsSpotted or log a detection either.
     if (!skipSideEffects) {
       incrementStat("referralsSpotted");
       const d = result.detectedAffiliate;
@@ -2253,21 +2253,10 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
         action: result.action,
       });
     }
-    // If injection is enabled, build the URL with our tag so "Remove it" can use it.
-    // #523 phase 3: pattern.ourTag is now a { host -> tag } map, not a flat string.
-    // Pick the tag for the cleanUrl's hostname; if we have no tag for this
-    // marketplace, skip the with-our-affiliate variant.
-    if (prefs.injectOwnAffiliate && result.detectedAffiliate?.pattern) {
-      try {
-        const url = new URL(result.cleanUrl);
-        const p = result.detectedAffiliate.pattern;
-        const ourTagForHost = resolveOurTag(p, url.hostname);
-        if (ourTagForHost) {
-          url.searchParams.set(p.param, ourTagForHost);
-          result.withOurAffiliate = url.toString();
-        }
-      } catch { /* malformed cleanUrl — skip injection */ }
-    }
+    // drop-affiliate-injection (PR 1a): the withOurAffiliate alternate-URL
+    // construction was removed — MUGA never injects its own tag anymore, so
+    // there is no "with our tag" variant for the toast's "Remove it" action
+    // to offer. It now always strips to result.cleanUrl.
   }
 
   // #460 (A2): mirror the cleaner outcome into the Attribution Ledger

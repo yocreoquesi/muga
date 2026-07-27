@@ -173,7 +173,6 @@ describe("handleWhitelistedDomain — S5 shape (whitelist domain early-return)",
 // Amazon affiliate test data
 const AMAZON_HOST = "www.amazon.com";
 const AMAZON_HOSTNAME = "amazon.com";
-const AMAZON_OUR_TAG = "muga0b-20";
 const AMAZON_AFFILIATE_PARAM = "tag";
 
 // Amazon patterns from AFFILIATE_PATTERNS
@@ -226,17 +225,11 @@ describe("TS-7 — handleAffiliatePipeline — Scenario C (foreign affiliate det
       "affiliate param must NOT be deleted on detected_foreign");
   });
 
-  test("own MUGA tag is not flagged as foreign affiliate", () => {
-    const url = new URL(`https://${AMAZON_HOST}/dp/B0000?${AMAZON_AFFILIATE_PARAM}=${AMAZON_OUR_TAG}`);
-
-    const result = handleAffiliatePipeline(
-      url, PREFS_NOTIFY_FOREIGN, AMAZON_PATTERNS, AMAZON_PARSEDBLACKLIST, AMAZON_PARSEDWHITELIST, AMAZON_HOST,
-    );
-
-    assert.notEqual(result.action, "detected_foreign",
-      "MUGA's own tag must not be flagged as foreign");
-    assert.equal(result.detectedAffiliate, null, "detectedAffiliate must be null for own tag");
-  });
+  // NOTE (drop-affiliate-injection, PR 1a): the former "own MUGA tag is not
+  // flagged as foreign" test is removed — there is no more concept of "MUGA's
+  // own tag" to exempt from detection (OUR_TAGS was deleted). Any third-party
+  // tag value present (e.g. what used to be "muga0b-20") is now correctly
+  // flagged as a foreign/creator referral.
 });
 
 describe("TS-8 — handleAffiliatePipeline — signature has exactly 6 params", () => {
@@ -262,17 +255,17 @@ describe("TS-8 — handleAffiliatePipeline — signature has exactly 6 params", 
   });
 });
 
-describe("Scenario B — handleAffiliatePipeline — own-affiliate injection", () => {
-  test("injectOwnAffiliate=true + no existing tag → action=injected, tag set in url", () => {
+describe("Scenario B (removed) — handleAffiliatePipeline — own-affiliate injection no longer happens", () => {
+  test("injectOwnAffiliate=true + no existing tag → still no injection (inert pref, tag never set)", () => {
     const url = new URL(`https://${AMAZON_HOST}/dp/B0000`);
 
     const result = handleAffiliatePipeline(
       url, PREFS_INJECT, AMAZON_PATTERNS, AMAZON_PARSEDBLACKLIST, AMAZON_PARSEDWHITELIST, AMAZON_HOST,
     );
 
-    assert.equal(result.action, "injected", "action must be 'injected' when our tag is added");
-    assert.equal(url.searchParams.get(AMAZON_AFFILIATE_PARAM), AMAZON_OUR_TAG,
-      "url must have our affiliate tag after injection");
+    assert.notEqual(result.action, "injected", "MUGA never inserts its own affiliate tag anymore");
+    assert.ok(!url.searchParams.has(AMAZON_AFFILIATE_PARAM),
+      "url must NOT have a tag added — injection is removed");
   });
 
   test("injectOwnAffiliate=false → no injection, action stays untouched", () => {

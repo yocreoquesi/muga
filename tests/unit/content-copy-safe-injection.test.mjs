@@ -368,7 +368,12 @@ const CONTENT_PREFS_NAV_INJECTS = Object.freeze({
   _affiliateDomains: [],
 });
 
-describe("#946 — content-script copy paths suppress MUGA's own injection", () => {
+describe("#946 — content-script copy paths suppress the foreign-affiliate toast", () => {
+  // drop-affiliate-injection (PR 1a): MUGA no longer injects its own tag at
+  // all, so there is nothing left for a copy path to "suppress" on the
+  // injection side — the injectOwnAffiliate gate was removed from both
+  // copyPrefs construction sites. notifyForeignAffiliate suppression (the
+  // toast) is still required on copy and is asserted below.
   test("GET_AND_COPY_CLEAN_SELECTION (context-menu 'Copy clean selection') passes copy-safe prefs to processUrl", async () => {
     const { processUrlCalls } = await runContentScriptSelectionMessage({
       contentPrefsFixture: CONTENT_PREFS_NAV_INJECTS,
@@ -377,7 +382,6 @@ describe("#946 — content-script copy paths suppress MUGA's own injection", () 
     const call = processUrlCalls.find(([url]) => url === TAGGED_URL);
     assert.ok(call, "processUrl must be called with the URL found in the selection");
     const prefsArg = call[1];
-    assert.equal(prefsArg.injectOwnAffiliate, false, "copy must suppress MUGA's own injection even though the live pref is ON");
     assert.equal(prefsArg.notifyForeignAffiliate, false, "copy must suppress the foreign-affiliate toast");
   });
 
@@ -389,7 +393,6 @@ describe("#946 — content-script copy paths suppress MUGA's own injection", () 
     const call = processUrlCalls.find(([url]) => url === TAGGED_URL);
     assert.ok(call, "processUrl must be called with the URL found in the copied text");
     const prefsArg = call[1];
-    assert.equal(prefsArg.injectOwnAffiliate, false);
     assert.equal(prefsArg.notifyForeignAffiliate, false);
   });
 
@@ -480,12 +483,15 @@ describe("#946 — copy-safe prefs preserve third-party attribution (real proces
 describe("#946 — background copy call sites already suppress injection (regression pin)", () => {
   const swSrc = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
 
-  test("handleProcessUrl's effectivePrefs branch forces both toggles off on skipNotify", () => {
+  test("handleProcessUrl's effectivePrefs branch forces the toast off on skipNotify", () => {
+    // drop-affiliate-injection (PR 1a): the injectOwnAffiliate override was
+    // removed from this branch — injection is gone, so there is nothing
+    // left to suppress on that side. notifyForeignAffiliate suppression
+    // (the toast) is still required on copy.
     const idx = swSrc.indexOf("const effectivePrefs = skipNotify");
     assert.ok(idx !== -1, "handleProcessUrl must build a copy-safe effectivePrefs branch");
     const block = swSrc.slice(idx, idx + 200);
     assert.ok(block.includes("notifyForeignAffiliate: false"));
-    assert.ok(block.includes("injectOwnAffiliate: false"));
   });
 
   test("keyboard shortcut (Alt+Shift+C) copy call site passes skipNotify: true", () => {
@@ -508,19 +514,20 @@ describe("#946 — background copy call sites already suppress injection (regres
 });
 
 describe("#946 — effectivePrefs copy-safe logic (pure mirror, behavioral)", () => {
-  // Mirrors handleProcessUrl's one-line branch verbatim.
+  // Mirrors handleProcessUrl's one-line branch verbatim (post drop-affiliate-
+  // injection PR 1a: only notifyForeignAffiliate is forced off — injection
+  // no longer exists, so there is nothing left to force off on that side).
   function buildEffectivePrefs(prefs, skipNotify) {
     return skipNotify
-      ? { ...prefs, notifyForeignAffiliate: false, injectOwnAffiliate: false }
+      ? { ...prefs, notifyForeignAffiliate: false }
       : prefs;
   }
 
-  test("skipNotify:true forces both toggles off regardless of the live prefs", () => {
+  test("skipNotify:true forces the toast off regardless of the live prefs", () => {
     const live = { injectOwnAffiliate: true, notifyForeignAffiliate: true, enabled: true };
     const effective = buildEffectivePrefs(live, true);
-    assert.equal(effective.injectOwnAffiliate, false);
     assert.equal(effective.notifyForeignAffiliate, false);
-    assert.equal(live.injectOwnAffiliate, true, "the live prefs object must not be mutated");
+    assert.equal(live.notifyForeignAffiliate, true, "the live prefs object must not be mutated");
   });
 
   test("skipNotify:false (normal navigation) passes prefs through unmodified", () => {

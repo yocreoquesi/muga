@@ -541,13 +541,13 @@ function findParamKeyCI(url, paramName) {
 /**
  * Detects whether the FINAL URL still carries a third-party affiliate tag for
  * a known store — i.e. a tag MUGA decided to preserve. Independent of
- * notifyForeignAffiliate (read-only signal for UI feedback). Skips empty
- * #523 phase 3: preserve set is now declarative (sourced from caps-spec),
- * not gated on ourTag. A creator referral on Booking, Vercel, DigitalOcean,
- * Humble Bundle, or Lemon Squeezy is preserved even when MUGA has no
- * affiliate account on those programs. The only short-circuit is when the
- * URL's value matches MUGA's own tag for THIS hostname — that's our
- * injection, not a foreign creator.
+ * notifyForeignAffiliate (read-only signal for UI feedback).
+ * #523 phase 3: preserve set is declarative (sourced from caps-spec). A
+ * creator referral on Booking, Vercel, DigitalOcean, Humble Bundle, or
+ * Lemon Squeezy is preserved even when MUGA has no affiliate account on
+ * those programs. drop-affiliate-injection (PR 1a): the former "skip our
+ * own injected tag" short-circuit was removed — MUGA no longer injects its
+ * own tag, so every present value is a third-party/creator tag to preserve.
  *
  * #1093: looks up the param key case-insensitively so an uppercase-keyed tag
  * (?TAG=creator-21) is recognized the same as the canonical lowercase form.
@@ -557,22 +557,16 @@ function findParamKeyCI(url, paramName) {
  * @returns {{param:string,value:string,store:string,group:string}|null}
  */
 function detectPreservedAffiliate(url, patterns) {
-  // #1111: normalize a trailing-dot FQDN (amazon.com.) before host matching,
-  // consistent with domainMatches()/processUrl — otherwise our own injected tag
-  // on a trailing-dot host would not be recognized and would be mis-reported.
-  const normalizedHost = stripTrailingDot(url.hostname);
-  const host = normalizedHost.replace(/^www\./, "");
   for (const pattern of patterns) {
     const actualKey = findParamKeyCI(url, pattern.param);
     if (!actualKey) continue;
-    const ourTagForHost = pattern.ourTag[host] || pattern.ourTag[normalizedHost] || "";
-    // #1111 pt.3: scan every occurrence — a foreign creator tag hiding behind
-    // our own in a duplicate (?tag=ours&tag=foreign) is still preserved in the
-    // URL and must be reported (feeds the popup + attribution ledger), not
-    // masked by our own tag being the FIRST occurrence get() returned.
+    // #1111 pt.3: scan every occurrence — a duplicate (?tag=a&tag=b) must
+    // still be preserved in the URL and reported (feeds the popup +
+    // attribution ledger). drop-affiliate-injection (PR 1a): the "skip our
+    // own injected tag" exclusion was removed — MUGA no longer injects, so
+    // every present value is a third-party/creator tag.
     for (const value of url.searchParams.getAll(actualKey)) {
       if (!value) continue;
-      if (ourTagForHost && value === ourTagForHost) continue; // our own injection, skip
       return {
         param: pattern.param,
         value,
@@ -693,7 +687,11 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   3. Foreign affiliate detection (Scenario C): skip whitelisted values
  *   4. Strip known tracking parameters (Scenario A)
  *   5. Strip blacklisted specific affiliates
- *   6. Inject our affiliate tag (Scenario B): skip if blacklisted domain
+ *
+ * drop-affiliate-injection (PR 1a): the former step 6 ("inject our own
+ * affiliate tag", Scenario B) is REMOVED. MUGA never inserts its own
+ * affiliate tag anymore — preservation (Scenario C) and cleaning
+ * (Scenario A) are unaffected.
  *
  * @param {string} rawUrl - The original URL to process.
  * @param {object} prefs  - User preferences from chrome.storage.sync.
@@ -728,9 +726,11 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   Defaults to `[]` (no-op) so call sites that have not yet migrated
  *   (or test call sites that don't exercise path behavior) are unaffected.
  * @param {Array} [pathAffiliateRules=[]]
- *   Affiliate-injection rules loaded from `src/rules/path-affiliate-rules.json`
- *   via `src/lib/path-rules.js`. Injected by the service worker at call time.
- *   Defaults to `[]` (no-op) for the same reason as `pathStripRules`.
+ *   Creator-referral detection/unwrap rules loaded from
+ *   `src/rules/path-affiliate-rules.json` via `src/lib/path-rules.js`.
+ *   Injected by the service worker at call time. Defaults to `[]` (no-op)
+ *   for the same reason as `pathStripRules`. drop-affiliate-injection (PR
+ *   1a): this file no longer carries own-affiliate-injection fields.
  * @returns {{ cleanUrl: string, action: string, removedTracking: string[], junkRemoved: number, detectedAffiliate: object|null, preservedAffiliate: object|null, creatorReferralPreserved: boolean, autoInjected?: object, network?: string, creator?: string }}
  *   `autoInjected` (affiliate-autoinject-notice): read-only side channel,
  *   `undefined` unless `detectAutoInjectedTag` matched a known platform
@@ -739,12 +739,13 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
  *   `action` is one of:
  *     `"untouched"`         — URL unchanged
  *     `"cleaned"`           — tracking params and/or path tokens stripped
- *     `"injected"`          — our affiliate tag was added
  *     `"detected_foreign"`  — a third-party affiliate tag was detected
  *     `"blacklisted"`       — domain-only blacklist stripped everything
  *     `"honored-creator"`   — Honor Creator Mode passed the wrapper through
  *                             unmodified; `network` (wrapper id) and
  *                             `creator` (matching allowlist entry) are set.
+ *   `"injected"` can no longer be produced (drop-affiliate-injection, PR 1a)
+ *   — MUGA never inserts its own affiliate tag anymore.
  */
 export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, frequencyTracker, referrer, pathStripRules = [], pathAffiliateRules = []) {
   // Step 0 — Full-site exemption choke point (#allowlist-full-inert).
@@ -862,12 +863,15 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const { removed: removedTracking, removedValues: removedTrackingValues } =
     classifyAndStripTracking(url, prefs, domainRules, landingPolicy);
 
-  // Step 6 — Affiliate pipeline (Scenarios B + C + blacklist-value strip)
+  // Step 6 — Affiliate pipeline (Scenario C detection + blacklist-value strip)
   const { action: pipeAction, detectedAffiliate, blacklistStripped } =
-    handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname, creatorReferralPreserved);
+    handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname);
 
-  // Step 7 — Action resolution + Bookshop injection + recordFrequency + final payload
-  /** @type {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} */
+  // Step 7 — Action resolution + recordFrequency + final payload.
+  // drop-affiliate-injection (PR 1a): the former "6b" Bookshop path-based
+  // injection block (getPathAffiliatePolicy's pendingInjection) is REMOVED —
+  // MUGA never inserts its own affiliate tag anymore, generic or path-based.
+  /** @type {"untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = pipeAction;
   // pathAffiliateUnwrapped (#959): the /a/CREATOR/DEST wrapper was rewritten to
   // DEST inside unwrapStep (before originalPathname was captured), so pathCleaned
@@ -876,28 +880,6 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // query strip-all path reports a stripped foreign affiliate (no junkRemoved bump).
   if (action === "untouched" && (pathCleaned || removedTracking.length > 0 || pathAffiliateUnwrapped))
     action = "cleaned";
-
-  // 6b. Path-based MUGA-affiliate injection (e.g. Bookshop.org). Rules are
-  // loaded from src/rules/path-affiliate-rules.json via src/lib/path-rules.js.
-  // The `action !== "detected_foreign"` guard is defensive — structurally
-  // unreachable today for Bookshop (no AFFILIATE_PATTERNS entry matches it),
-  // but guards against overriding a foreign affiliate if a rule domain is ever
-  // added to AFFILIATE_PATTERNS. pathPrefix presence + param absence are
-  // checked inside getPathAffiliatePolicy (data-driven per spec REQ-3).
-  const _policy = getPathAffiliatePolicy(url, pathAffiliateRules);
-  // pathAffiliateUnwrapped bypasses the stripAll guard ONLY for URLs we just
-  // unwrapped from an /a/ wrapper in this same pass (#959); plain non-wrapped
-  // /p/ pages under stripAll still do not inject (see cleaner.test.mjs:3101).
-  if (
-    _policy.pendingInjection &&
-    prefs.injectOwnAffiliate &&
-    (!prefs.stripAllAffiliates || pathAffiliateUnwrapped) &&
-    action !== "detected_foreign" &&
-    !creatorReferralPreserved
-  ) {
-    url.searchParams.set(_policy.pendingInjection.param, _policy.pendingInjection.value);
-    action = "injected";
-  }
 
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
 
@@ -933,12 +915,12 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
  * access), so it is unit-testable in isolation and shares one code path with the
  * listener (no divergence).
  *
- * Mirrors Chrome's DNR (STRIP only): affiliate injection and the foreign-affiliate
- * toast are suppressed here so (a) network-layer behavior matches Chrome, where
- * DNR cannot inject, leaving injection to the content-script self-clean on both
- * browsers, and (b) the resulting redirect is idempotent: there is no injected
- * tag for a re-entered clean URL to loop on. All strip/preserve/allowlist/
- * affiliate guards are honored automatically because they live inside processUrl.
+ * Mirrors Chrome's DNR (STRIP only): the foreign-affiliate toast is suppressed
+ * here since there is no UI at the network layer to show it to. MUGA no
+ * longer injects its own affiliate tag at all (drop-affiliate-injection, PR
+ * 1a), so idempotency no longer depends on suppressing injection here either.
+ * All strip/preserve/allowlist/affiliate guards are honored automatically
+ * because they live inside processUrl.
  *
  * @param {string} rawUrl
  * @param {object} prefs the same materialized prefs snapshot the SW caches
@@ -955,8 +937,8 @@ export function computeNavigationStrip(rawUrl, prefs, domainRules = [], pathStri
   }
   if (!prefs || !prefs.enabled || !prefs.onboardingDone) return null;
 
-  const stripPrefs = (prefs.injectOwnAffiliate || prefs.notifyForeignAffiliate)
-    ? { ...prefs, injectOwnAffiliate: false, notifyForeignAffiliate: false }
+  const stripPrefs = prefs.notifyForeignAffiliate
+    ? { ...prefs, notifyForeignAffiliate: false }
     : prefs;
 
   let result;
@@ -1093,8 +1075,9 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
   //
   // #959: when stripAllAffiliates is ON and the referral path is an unwrappable
   // /a/CREATOR/DEST wrapper (unwrapTo present), rewrite the URL to DEST so the
-  // foreign creator's attribution is removed and normal query cleaning plus
-  // Step 6b injection (below, in processUrl) can run on the destination.
+  // foreign creator's attribution is removed and normal query cleaning can run
+  // on the destination. (drop-affiliate-injection, PR 1a: the destination is
+  // never re-tagged afterward — MUGA no longer injects its own affiliate tag.)
   // /shop/NAME never has unwrapTo (no unwrapReferral match) so it is
   // unaffected. On any parse failure, fall back to leaving the URL untouched
   // (today's preserve behavior).
@@ -1126,8 +1109,14 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
 // ── handleAffiliatePipeline ───────────────────────────────────────────────────
 
 /**
- * Steps 3 + 4b + 5 + 6 + 6b: foreign-affiliate detection, stripAllAffiliates,
- * blacklist-value strip, own-affiliate injection (incl. Bookshop).
+ * Steps 3 + 4b + 5: foreign-affiliate detection, stripAllAffiliates,
+ * blacklist-value strip.
+ *
+ * drop-affiliate-injection (PR 1a): the former Step 6 (own-affiliate
+ * injection, generic AFFILIATE_PATTERNS) and Step 6b (Bookshop path-based
+ * injection) are REMOVED — MUGA never inserts its own affiliate tag
+ * anymore. This function now only detects/preserves/strips third-party
+ * affiliate tags; it never adds one.
  *
  * Mutates url.searchParams in place. Does NOT call recordFrequency.
  * The frequencyTracker is intentionally excluded — orchestrator owns both
@@ -1139,15 +1128,9 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
  * @param {Array} parsedBlacklist
  * @param {Array} parsedWhitelist
  * @param {string} hostname
- * @param {boolean} [creatorReferralPreserved=false]
- *   Defensive non-overlap guard (design D4, web-tool-naked-link-injection
- *   slice 2): when true, a creator/foreign referral was already preserved
- *   for this URL (via unwrapAndExtract's path-affiliate policy). Step 6
- *   generic injection MUST NOT co-tag over it, even if a future host gains
- *   BOTH a query-param AFFILIATE_PATTERNS entry and a path-affiliate rule.
- * @returns {{ action: "untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number }}
+ * @returns {{ action: "untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number }}
  */
-function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname, creatorReferralPreserved = false) {
+function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname) {
   // Build isWhitelisted closure for this host
   const whitelistedValues = new Set();
   const whitelistedParams = new Set();
@@ -1160,7 +1143,7 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     whitelistedParams.has(param) || whitelistedValues.has(`${param}::${value}`);
 
   let detectedAffiliate = null;
-  /** @type {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} */
+  /** @type {"untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = "untouched";
 
   // Step 3: Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
@@ -1168,19 +1151,16 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   // #1093: look up the key case-insensitively — an uppercase-keyed tag
   // (?TAG=creator-21) must be detected the same as the canonical lowercase form.
   if (!prefs.stripAllAffiliates && prefs.notifyForeignAffiliate) {
-    const hostKey = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
       const actualKey = findParamKeyCI(url, pattern.param);
       if (!actualKey) continue;
-      const ourTagForHost = pattern.ourTag[hostKey] || pattern.ourTag[hostname] || "";
       // #1111 pt.3: scan every occurrence, not just get() (the FIRST). A foreign
-      // creator tag hiding behind our own or a whitelisted duplicate
-      // (?tag=ours&tag=foreign) must still raise the notification — get() only
-      // ever saw the first value and continue'd past the foreign one.
+      // creator tag hiding behind a whitelisted duplicate (?tag=x&tag=foreign)
+      // must still raise the notification — get() only ever saw the first
+      // value and continue'd past the foreign one.
       let foreignValue = null;
       for (const val of url.searchParams.getAll(actualKey)) {
         if (!val) continue;
-        if (ourTagForHost && val === ourTagForHost) continue; // our own injection
         if (isWhitelisted(pattern.param, val)) continue;       // user-approved value
         foreignValue = val;
         break;
@@ -1194,25 +1174,22 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
 
   // Step 4b: Strip third-party affiliate params (stripAllAffiliates path)
   if (prefs.stripAllAffiliates) {
-    const hostKeyStrip = hostname.replace(/^www\./, "");
     for (const pattern of patterns) {
       // #1093: case-insensitive key lookup (see findParamKeyCI doc comment).
       const actualKey = findParamKeyCI(url, pattern.param);
       if (!actualKey) continue;
-      const ourTagForHost = pattern.ourTag[hostKeyStrip] || pattern.ourTag[hostname] || "";
       // #1091: decide per-OCCURRENCE, not from a single get() call. A repeated
       // param (?tag=evil-20&tag=creator-21) can carry a foreign value in one
-      // occurrence and a whitelisted/creator (or our own) value in another —
-      // get() only ever sees the FIRST occurrence, but delete() below would
-      // remove EVERY occurrence, so a get()-decides/delete()-removes-all
-      // split let a foreign duplicate mask (and destroy) the exact value the
-      // whitelist/injection guard exists to protect.
+      // occurrence and a whitelisted/creator value in another — get() only
+      // ever sees the FIRST occurrence, but delete() below would remove
+      // EVERY occurrence, so a get()-decides/delete()-removes-all split let
+      // a foreign duplicate mask (and destroy) the exact value the
+      // whitelist guard exists to protect.
       const values = url.searchParams.getAll(actualKey);
       const kept = [];
       let strippedAny = false;
       for (const val of values) {
-        const isOurs = prefs.injectOwnAffiliate && ourTagForHost && val === ourTagForHost;
-        if (isOurs || isWhitelisted(pattern.param, val)) {
+        if (isWhitelisted(pattern.param, val)) {
           kept.push(val);
         } else {
           strippedAny = true;
@@ -1231,11 +1208,6 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
 
   // Step 5: Strip specific blacklisted affiliate values
   let blacklistStripped = 0;
-  // Track whether a blacklist rule removed an affiliate param (injection suppression, #183).
-  // INTERNAL — does NOT cross the function boundary.
-  let blacklistRemovedAffiliate = false;
-  // #629 win 2: cached Set, allocated once per host.
-  const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   for (const entry of parsedBlacklist) {
     if (entry.param && entry.value && domainMatches(hostname, entry.domain)) {
       // #1093: entry.param is always lowercased by parseListEntry, but the
@@ -1266,9 +1238,6 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
       url.searchParams.delete(actualKey);
       for (const val of kept) url.searchParams.append(actualKey, val);
       blacklistStripped++;
-      if (affiliateParamSet.has(entry.param.toLowerCase())) {
-        blacklistRemovedAffiliate = true;
-      }
       // If this was the detected foreign affiliate, clear it.
       if (
         detectedAffiliate &&
@@ -1282,41 +1251,6 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
       }
     }
   }
-
-  // Step 6: Inject own affiliate tag (generic — AFFILIATE_PATTERNS).
-  // Runs even under stripAllAffiliates. That toggle removes affiliate tags
-  // "from other sources" (its label); Step 4b above has already stripped any
-  // foreign tag by this point, so injecting ours here operates on a
-  // now-tagless URL. It is a strip-then-inject of two explicit opt-ins, not an
-  // overwrite: the `!url.searchParams.has(pattern.param)` guard below still
-  // holds (a preserved own tag from Step 4b short-circuits injection). When
-  // stripAll is off, a foreign tag sets action="detected_foreign" and is
-  // honored instead. Supersedes the earlier #353 "no injection under
-  // strip-all" guard, per maintainer decision: remove theirs, then add ours.
-  // !creatorReferralPreserved (design D4): defensive non-overlap guard —
-  // a preserved creator/foreign referral can never be co-tagged here either,
-  // mirroring the same guard Step 6b already has via the orchestrator.
-  if (prefs.injectOwnAffiliate && action !== "detected_foreign" && !blacklistRemovedAffiliate && !creatorReferralPreserved) {
-    const hostKeyInject = hostname.replace(/^www\./, "");
-    for (const pattern of patterns) {
-      const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
-      // #1093: case-insensitive presence check — without it, an existing
-      // uppercase-keyed tag (?TAG=creator-21) was invisible to
-      // `.has(pattern.param)` and MUGA would inject a SECOND "tag" param
-      // under the canonical lowercase key alongside it (non-superposition).
-      if (ourTagForHost && !findParamKeyCI(url, pattern.param)) {
-        url.searchParams.set(pattern.param, ourTagForHost);
-        action = "injected";
-        break;
-      }
-    }
-  }
-
-  // Step 6b: Path-based MUGA-affiliate injection (e.g. Bookshop.org) is now
-  // handled declaratively in the processUrl orchestrator via getPathAffiliatePolicy
-  // (src/lib/path-rules.js, rules from src/rules/path-affiliate-rules.json).
-  // creatorReferralPreserved is NOT available here — it lives in the orchestrator
-  // closure from unwrapAndExtract. Bookshop injection remains in the orchestrator.
 
   return { action, detectedAffiliate, blacklistStripped };
 }
@@ -1461,7 +1395,10 @@ function classifyAndStripTracking(url, prefs, domainRules, landingPolicy = EMPTY
  *   network                 — included ONLY when present in extras (S3 only)
  *   creator                 — included ONLY when present in extras (S3 only)
  *
- * @param {"untouched"|"cleaned"|"injected"|"detected_foreign"|"blacklisted"|"honored-creator"} action
+ * @param {"untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator"} action
+ *   (drop-affiliate-injection, PR 1a: "injected" is no longer produced by
+ *   processUrl, but this factory itself is a dumb string passthrough —
+ *   it does not validate the action value.)
  * @param {string|URL} rawUrlOrUrl  String → used as cleanUrl directly; URL → .toString()
  * @param {string[]} removedTracking
  * @param {object|null} detectedAffiliate

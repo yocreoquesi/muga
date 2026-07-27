@@ -27,7 +27,6 @@ export default Object.freeze({
   ledger_empty: "最近のナビゲーションはまだありません。ブラウジングを始めてください。MUGAがクリーンアップしたURLをここに表示します。",
   ledger_badge_cleaned: "クリーンアップ済み",
   ledger_badge_preserve_affiliate: "クリエイターのリファラルを保持",
-  ledger_badge_inject_affiliate: "アフィリエイトを追加",
   ledger_badge_honor_creator: "クリエイタールーティングを尊重",
   ledger_badge_blocked_opaque: "不透明なラッパーをブロック",
   ledger_creator_credit_template: "{creator}を支援中",

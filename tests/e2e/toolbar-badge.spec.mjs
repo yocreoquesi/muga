@@ -33,8 +33,8 @@ import {
 // The badge is gated on onboarding being complete (the global "!" consent
 // badge must win over the count while onboarding is pending — #910). The
 // bare `context` fixture does NOT complete onboarding (unlike popupPage /
-// optionsPage), so every test here must seed consent directly, mirroring
-// enableInjection() in inject-affiliate-direct-nav.spec.mjs.
+// optionsPage), so every test here must seed consent directly (see
+// completeOnboarding() below).
 //
 // The SW's prefs cache refresh (storage.onChanged → getPrefsWithCache())
 // is async with no observable completion signal — waitForDnrPropagation

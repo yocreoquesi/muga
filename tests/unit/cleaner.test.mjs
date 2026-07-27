@@ -5,15 +5,17 @@
  *
  * Coverage:
  *   - Tracking parameter removal (Scenario A)
- *   - Affiliate injection when no tag present (Scenario B)
+ *   - MUGA's own affiliate-tag injection has been REMOVED (drop-affiliate-injection,
+ *     PR 1a). MUGA never inserts its own affiliate tag — Scenario B no longer exists.
  *   - Foreign affiliate detection (Scenario C)
  *   - Blacklist enforcement — domain-only (Scenario D)
  *   - Blacklist enforcement — specific affiliate
  *   - Whitelist — protected affiliate values are never touched
- *   - Edge cases: invalid URLs, no query string, empty ourTag
+ *   - Edge cases: invalid URLs, no query string
  *
- * Amazon Associates tags are active for ES/DE/FR/IT/UK/US.
- * Full preference interaction matrix tested below.
+ * Full preference interaction matrix tested below. `injectOwnAffiliate` in
+ * prefs objects below is INERT boilerplate (the pref field itself is removed
+ * in a follow-up PR) — it is never read by the pipeline anymore.
  */
 
 import { test, describe, before, after } from "node:test";
@@ -50,10 +52,6 @@ const TEST_PATTERN = {
   domains: ["shop.test.muga", "www.shop.test.muga"],
   param: "aff",
   type: "affiliate",
-  // #523 phase 3: ourTag is now a { host -> tag } map. The cleaner reads
-  // by stripped hostname (no `www.` prefix), so the test pattern must key
-  // on the bare host to be picked up.
-  ourTag: { "shop.test.muga": "muga-test-99" },
 };
 
 // S11 — Original length of AFFILIATE_PATTERNS, used by after() hooks to
@@ -480,14 +478,16 @@ describe("Amazon — affiliate param preserved", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Scenario B — Affiliate injection
+// Scenario B (REMOVED) — MUGA no longer injects its own affiliate tag.
+// drop-affiliate-injection PR 1a: MUGA never inserts its own affiliate tags.
+// A tagless URL stays tagless, regardless of `injectOwnAffiliate` (inert).
 // ---------------------------------------------------------------------------
-describe("Scenario B — affiliate injection", () => {
+describe("Scenario B (removed) — MUGA never injects its own affiliate tag", () => {
 
   before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
   after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
 
-  test("injectOwnAffiliate: false → never injects even on supported domain", () => {
+  test("injectOwnAffiliate: false → never injects (unchanged)", () => {
     const { action } = processUrl(
       "https://shop.test.muga/product",
       { ...PREFS, injectOwnAffiliate: false }
@@ -495,25 +495,25 @@ describe("Scenario B — affiliate injection", () => {
     assert.notEqual(action, "injected");
   });
 
-  test("injectOwnAffiliate: true + amazon.es ourTag set → injects muga0b-21", () => {
+  test("injectOwnAffiliate: true on a supported-store domain → still no injection (inert pref)", () => {
     const { action, cleanUrl } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    assert.equal(action, "injected");
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.has("tag"), false, "no tag must be added");
   });
 
-  test("injectOwnAffiliate: true + ourTag set → injects tag on clean URL", () => {
+  test("injectOwnAffiliate: true on a tagless product URL → tag param is never added", () => {
     const { action, cleanUrl } = processUrl(
       "https://shop.test.muga/product?color=red",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    assert.equal(action, "injected");
-    assert.ok(new URL(cleanUrl).searchParams.get("aff") === "muga-test-99");
+    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.has("aff"), false);
   });
 
-  test("does NOT inject when affiliate tag already present", () => {
+  test("an existing creator affiliate tag is left untouched (not treated as ours)", () => {
     const { action, cleanUrl } = processUrl(
       "https://shop.test.muga/product?aff=creator-99",
       { ...PREFS, injectOwnAffiliate: true }
@@ -522,25 +522,13 @@ describe("Scenario B — affiliate injection", () => {
     assert.equal(new URL(cleanUrl).searchParams.get("aff"), "creator-99");
   });
 
-  test("injects under stripAllAffiliates (strip-all clears foreign, then ours is injected)", () => {
-    const { action } = processUrl(
+  test("stripAllAffiliates + injectOwnAffiliate both on → tag stays absent, nothing is added back", () => {
+    const { action, cleanUrl } = processUrl(
       "https://shop.test.muga/product",
       { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true }
     );
-    assert.equal(action, "injected");
-  });
-
-  test("ourTag empty (no host entries) → does NOT inject (safety guard)", () => {
-    // #523 phase 3: ourTag is a { host -> tag } map. Empty map = no
-    // tag for any host = injection skipped on this program.
-    const original = TEST_PATTERN.ourTag;
-    TEST_PATTERN.ourTag = {};
-    const { action } = processUrl(
-      "https://shop.test.muga/product",
-      { ...PREFS, injectOwnAffiliate: true }
-    );
-    TEST_PATTERN.ourTag = original; // restore
     assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.has("aff"), false);
   });
 
 });
@@ -585,73 +573,34 @@ describe("Defensive non-overlap guard — creatorReferralPreserved blocks Step 6
 });
 
 // ---------------------------------------------------------------------------
-// Amazon affiliate tags — real tag injection per marketplace
+// Amazon / eBay affiliate tags — injection REMOVED (drop-affiliate-injection).
+// MUGA never inserts its own affiliate tag on any marketplace anymore.
 // ---------------------------------------------------------------------------
-describe("Amazon affiliate tags — real tag injection per marketplace", () => {
+describe("Amazon / eBay marketplaces — no MUGA tag injection on any marketplace", () => {
   const INJECT_PREFS = { ...PREFS, injectOwnAffiliate: true };
 
-  const MARKETS = [
-    { domain: "www.amazon.es",    tag: "muga0b-21",  name: "ES" },
-    { domain: "www.amazon.de",    tag: "muga0f-21",  name: "DE" },
-    { domain: "www.amazon.fr",    tag: "muga08a-21", name: "FR" },
-    { domain: "www.amazon.it",    tag: "muga04f-21", name: "IT" },
-    { domain: "www.amazon.co.uk", tag: "muga0a-21",  name: "UK" },
-    { domain: "www.amazon.com",   tag: "muga0b-20",  name: "US" },
+  const AMAZON_MARKETS = [
+    "www.amazon.es", "www.amazon.de", "www.amazon.fr",
+    "www.amazon.it", "www.amazon.co.uk", "www.amazon.com",
+  ];
+  const EBAY_MARKETS = [
+    "www.ebay.com", "www.ebay.es", "www.ebay.de",
+    "www.ebay.co.uk", "www.ebay.fr", "www.ebay.it",
   ];
 
-  for (const { domain, tag, name } of MARKETS) {
-    test(`amazon.${name}: injects tag=${tag} on clean URL`, () => {
-      const { action, cleanUrl } = processUrl(
-        `https://${domain}/dp/B08N5WRWNW`,
-        INJECT_PREFS
-      );
-      assert.equal(action, "injected", `${name} must inject`);
-      assert.equal(new URL(cleanUrl).searchParams.get("tag"), tag);
-    });
-
-    // (foreign-tag-survives canary moved to tools/affiliate-safety/canaries.mjs, #769 / #777)
-    test(`amazon.${name}: own tag is not flagged as foreign`, () => {
-      const { action } = processUrl(
-        `https://${domain}/dp/B08N5WRWNW?tag=${tag}`,
-        { ...PREFS, notifyForeignAffiliate: true }
-      );
-      assert.notEqual(action, "detected_foreign");
+  for (const domain of AMAZON_MARKETS) {
+    test(`amazon (${domain}): tagless product URL stays tagless`, () => {
+      const { action, cleanUrl } = processUrl(`https://${domain}/dp/B08N5WRWNW`, INJECT_PREFS);
+      assert.notEqual(action, "injected");
+      assert.equal(new URL(cleanUrl).searchParams.has("tag"), false);
     });
   }
-});
 
-// ---------------------------------------------------------------------------
-// eBay affiliate tags — real tag injection per marketplace
-// ---------------------------------------------------------------------------
-describe("eBay affiliate tags — real tag injection per marketplace", () => {
-  const INJECT_PREFS = { ...PREFS, injectOwnAffiliate: true };
-
-  const MARKETS = [
-    { domain: "www.ebay.com",   name: "US" },
-    { domain: "www.ebay.es",    name: "ES" },
-    { domain: "www.ebay.de",    name: "DE" },
-    { domain: "www.ebay.co.uk", name: "UK" },
-    { domain: "www.ebay.fr",    name: "FR" },
-    { domain: "www.ebay.it",    name: "IT" },
-  ];
-
-  for (const { domain, name } of MARKETS) {
-    test(`ebay.${name}: injects campid=5339147108 on clean URL`, () => {
-      const { action, cleanUrl } = processUrl(
-        `https://${domain}/itm/123456789`,
-        INJECT_PREFS
-      );
-      assert.equal(action, "injected", `${name} must inject`);
-      assert.equal(new URL(cleanUrl).searchParams.get("campid"), "5339147108");
-    });
-
-    // (foreign-campid-survives canary moved to tools/affiliate-safety/canaries.mjs, #769 / #777)
-    test(`ebay.${name}: own campid is not flagged as foreign`, () => {
-      const { action } = processUrl(
-        `https://${domain}/itm/123456789?campid=5339147108`,
-        { ...PREFS, notifyForeignAffiliate: true }
-      );
-      assert.notEqual(action, "detected_foreign");
+  for (const domain of EBAY_MARKETS) {
+    test(`ebay (${domain}): tagless product URL stays tagless`, () => {
+      const { action, cleanUrl } = processUrl(`https://${domain}/itm/123456789`, INJECT_PREFS);
+      assert.notEqual(action, "injected");
+      assert.equal(new URL(cleanUrl).searchParams.has("campid"), false);
     });
   }
 });
@@ -681,11 +630,11 @@ describe("Preference interaction matrix — amazon.es with real tags", () => {
     assert.notEqual(action, "injected");
   });
 
-  // --- inject:ON, stripAll:OFF, notify:OFF ---
-  test("inject ON + no tag → our tag injected", () => {
+  // --- inject:ON (inert), stripAll:OFF, notify:OFF ---
+  test("inject ON + no tag → tag is never added (injection removed)", () => {
     const { cleanUrl, action } = processUrl(CLEAN, { ...PREFS, injectOwnAffiliate: true }, domainRules);
-    assert.equal(action, "injected");
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
   test("inject ON + foreign tag → foreign tag preserved, no injection", () => {
@@ -714,35 +663,32 @@ describe("Preference interaction matrix — amazon.es with real tags", () => {
     assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
-  // --- inject:ON, stripAll:ON (strip theirs, then inject ours — supersedes #353) ---
-  test("inject ON + stripAll ON + foreign tag → foreign removed, ours injected", () => {
+  // --- inject:ON (inert), stripAll:ON — strip theirs, nothing is re-added ---
+  test("inject ON + stripAll ON + foreign tag → foreign removed, nothing re-injected", () => {
     const { cleanUrl, action } = processUrl(
       WITH_FOREIGN,
       { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
       domainRules
     );
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21", "foreign stripped, our tag injected in its place");
-    assert.equal(action, "injected", "strip-all removes theirs, then we inject ours");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null, "foreign tag stripped, nothing added in its place");
+    assert.notEqual(action, "injected", "MUGA never inserts its own affiliate tag");
   });
 
-  test("inject ON + stripAll ON + no tag → our tag injected", () => {
+  test("inject ON + stripAll ON + no tag → still no tag added", () => {
     const { cleanUrl, action } = processUrl(
       CLEAN,
       { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
       domainRules
     );
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
-    assert.equal(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
+    assert.notEqual(action, "injected");
   });
 
-  test("inject ON + stripAll ON + our tag already present → our tag preserved", () => {
-    const { cleanUrl } = processUrl(
-      WITH_OUR,
-      { ...PREFS, injectOwnAffiliate: true, stripAllAffiliates: true },
-      domainRules
-    );
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21", "own tag preserved when inject+stripAll");
-  });
+  // NOTE: the pre-removal "our tag already present → preserved under stripAll"
+  // case no longer applies — there is no more concept of "MUGA's own tag" to
+  // special-case. Any tag value present under stripAllAffiliates is subject to
+  // the exact same stripping rule as a foreign tag (see the WITH_OUR test in
+  // the "stripAll ON + inject OFF" group above, which already covers this).
 
   // --- notify:ON interactions ---
   test("notify ON + foreign tag → detected_foreign", () => {
@@ -755,13 +701,15 @@ describe("Preference interaction matrix — amazon.es with real tags", () => {
     assert.equal(detectedAffiliate.value, "creator-21");
   });
 
-  test("notify ON + our tag → NOT flagged as foreign", () => {
+  test("notify ON + a tag matching what used to be MUGA's own value → IS flagged (no more 'our tag' exemption)", () => {
+    // drop-affiliate-injection (PR 1a): OUR_TAGS was removed — "muga0b-21" is
+    // no longer special. Any present tag is a third-party/creator referral.
     const { action } = processUrl(
       WITH_OUR,
       { ...PREFS, notifyForeignAffiliate: true },
       domainRules
     );
-    assert.notEqual(action, "detected_foreign");
+    assert.equal(action, "detected_foreign");
   });
 
   test("notify ON + stripAll ON → notify skipped (stripAll takes priority)", () => {
@@ -843,35 +791,12 @@ describe("Scenario C — foreign affiliate detection", () => {
     assert.equal(detectedAffiliate.value, "someone-else-99");
   });
 
-  test("our own tag is NOT flagged as foreign", () => {
-    const { action } = processUrl(
-      "https://shop.test.muga/product?aff=muga-test-99",
-      { ...PREFS, notifyForeignAffiliate: true }
-    );
-    assert.notEqual(action, "detected_foreign");
-  });
-
   test("whitelisted foreign tag is NOT flagged", () => {
     const { action } = processUrl(
       "https://shop.test.muga/product?aff=trusted-creator-99",
       { ...PREFS, notifyForeignAffiliate: true, whitelist: ["shop.test.muga::aff::trusted-creator-99"] }
     );
     assert.notEqual(action, "detected_foreign");
-  });
-
-  test("notifyForeignAffiliate: true + ourTag empty → IS detected (decoupled, #523 phase 3)", () => {
-    // #523 phase 3 — Decision 2: preserve set is declarative (sourced from
-    // caps-spec), no longer gated on ourTag. With ourTag = {} for this
-    // host, ANY value present is foreign — there's nothing of MUGA's own
-    // to compare against, so the value cannot be the user's own tag.
-    const original = TEST_PATTERN.ourTag;
-    TEST_PATTERN.ourTag = {};
-    const { action } = processUrl(
-      "https://shop.test.muga/product?aff=someone-else-99",
-      { ...PREFS, notifyForeignAffiliate: true }
-    );
-    TEST_PATTERN.ourTag = original;
-    assert.equal(action, "detected_foreign");
   });
 
 });
@@ -895,14 +820,6 @@ describe("preservedAffiliate — UI feedback signal", () => {
     assert.equal(preservedAffiliate.param, "aff");
     assert.equal(preservedAffiliate.value, "someone-else-99");
     assert.equal(typeof preservedAffiliate.store, "string");
-  });
-
-  test("our own tag is NOT reported as preserved (it's ours, not a creator's)", () => {
-    const { preservedAffiliate } = processUrl(
-      "https://shop.test.muga/product?aff=muga-test-99",
-      { ...PREFS }
-    );
-    assert.equal(preservedAffiliate, null);
   });
 
   test("whitelisted creator tag is reported as preserved (intentional preservation)", () => {
@@ -1016,28 +933,13 @@ describe("preservedAffiliate — UI feedback signal", () => {
     assert.equal(preservedAffiliate, null);
   });
 
-  test("injected our own tag → preservedAffiliate null (injection is not preservation)", () => {
+  test("injectOwnAffiliate ON + no tag present → still no injection, preservedAffiliate null", () => {
     const { preservedAffiliate, action } = processUrl(
       "https://shop.test.muga/product",
       { ...PREFS, injectOwnAffiliate: true }
     );
-    assert.equal(action, "injected");
+    assert.notEqual(action, "injected");
     assert.equal(preservedAffiliate, null);
-  });
-
-  test("ourTag empty → preservedAffiliate IS populated (decoupled, #523 phase 3)", () => {
-    // Phase 3 — Decision 2: preserve set is declarative. A third-party
-    // creator tag on a program MUGA has no account on (empty ourTag map)
-    // is still preserved and surfaced for the user.
-    const original = TEST_PATTERN.ourTag;
-    TEST_PATTERN.ourTag = {};
-    const { preservedAffiliate } = processUrl(
-      "https://shop.test.muga/product?aff=someone-else-99",
-      { ...PREFS }
-    );
-    TEST_PATTERN.ourTag = original;
-    assert.ok(preservedAffiliate, "preservedAffiliate must be populated even with empty ourTag");
-    assert.equal(preservedAffiliate.value, "someone-else-99");
   });
 
   test("early-return paths return preservedAffiliate: null", () => {
@@ -1397,24 +1299,25 @@ describe("stripAllAffiliates — strip all affiliate params", () => {
 
   const PREFS_STRIP = { ...PREFS, stripAllAffiliates: true, injectOwnAffiliate: true };
 
-  test("strips foreign affiliate tag then injects ours when injectOwnAffiliate is on", () => {
+  test("strips foreign affiliate tag and does NOT re-inject (injection removed)", () => {
     const { cleanUrl, action } = processUrl(
       "https://www.amazon.es/dp/B08?tag=youtuber-21&utm_source=email",
       PREFS_STRIP
     );
     const u = new URL(cleanUrl);
-    assert.equal(u.searchParams.get("tag"), "muga0b-21", "foreign tag replaced with ours");
+    assert.equal(u.searchParams.get("tag"), null, "foreign tag stripped, nothing added in its place");
     assert.equal(u.searchParams.get("utm_source"), null, "tracking must be gone too");
-    assert.equal(action, "injected");
+    assert.notEqual(action, "injected");
+    assert.equal(action, "cleaned");
   });
 
-  test("injects our tag when stripAllAffiliates is on and no foreign tag present", () => {
+  test("no tag is added when stripAllAffiliates is on and no foreign tag present", () => {
     const { action, cleanUrl } = processUrl(
       "https://www.amazon.es/dp/B08?utm_source=email",
       PREFS_STRIP
     );
-    assert.equal(action, "injected");
-    assert.equal(new URL(cleanUrl).searchParams.get("tag"), "muga0b-21");
+    assert.notEqual(action, "injected");
+    assert.equal(new URL(cleanUrl).searchParams.get("tag"), null);
   });
 
   test("does not trigger foreign affiliate toast when stripAllAffiliates is on", () => {
@@ -1507,14 +1410,15 @@ describe("per-domain disable (removed) — domain::disabled is now an inert blac
     assert.notEqual(action, "blacklisted");
   });
 
-  test("affiliate injection still runs normally on a domain with only a stray `::disabled` entry", () => {
+  test("no affiliate injection happens regardless (injection removed), stray `::disabled` entry is inert", () => {
     const raw = "https://www.amazon.es/dp/B08";
     const { action } = processUrl(raw, {
       ...PREFS,
       injectOwnAffiliate: true,
       blacklist: ["amazon.es::disabled"],
     });
-    assert.equal(action, "injected");
+    assert.notEqual(action, "injected");
+    assert.equal(action, "untouched");
   });
 
   test("a real domain-only blacklist entry alongside a stray `::disabled` entry still wipes everything", () => {
@@ -1687,7 +1591,7 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
   before(() => AFFILIATE_PATTERNS.push(TEST_PATTERN));
   after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
 
-  test("blacklisted affiliate tag is removed and ourTag is NOT injected (#183)", () => {
+  test("blacklisted affiliate tag is removed and nothing is injected in its place (#183)", () => {
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
@@ -1699,13 +1603,13 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
     );
     // The third-party tag must be gone
     assert.ok(!cleanUrl.includes("other-store-21"), "other-store-21 must be stripped");
-    // Our tag must NOT have been silently injected
-    assert.ok(!cleanUrl.includes("muga-test-99"), "ourTag must NOT be injected after blacklist removal");
+    // No MUGA tag exists to be injected — injection is removed entirely
+    assert.ok(!new URL(cleanUrl).searchParams.has("aff"), "no aff param must remain after blacklist strip");
     // Action must be cleaned, not injected
     assert.notEqual(action, "injected", "action must not be 'injected' when blacklist removed the affiliate");
   });
 
-  test("when no tag is present (no blacklist hit), ourTag is still injected normally (#183 non-regression)", () => {
+  test("when no tag is present (no blacklist hit), no injection happens (#183 non-regression, injection removed)", () => {
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
@@ -1715,9 +1619,9 @@ describe("Bug #183 — blacklist removal takes priority over affiliate injection
       "https://shop.test.muga/product?color=blue",
       prefs
     );
-    // No blacklist rule fired — normal injection should proceed
-    assert.ok(cleanUrl.includes("muga-test-99"), "ourTag should be injected when no blacklist hit");
-    assert.equal(action, "injected");
+    // No blacklist rule fired, and no injection ever happens now.
+    assert.ok(!new URL(cleanUrl).searchParams.has("aff"), "no aff param must ever be added");
+    assert.notEqual(action, "injected");
   });
 });
 
@@ -1730,8 +1634,6 @@ const AMAZON_ES_TEST_PATTERN = {
   domains: ["amazon.es", "www.amazon.es"],
   param: "tag",
   type: "affiliate",
-  // #523 phase 3: ourTag is now a { host -> tag } map.
-  ourTag: { "amazon.es": "muga-es-21" },
 };
 
 describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
@@ -1750,11 +1652,11 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
     );
     const out = new URL(cleanUrl);
     assert.equal(out.searchParams.get("tag"), null, "third-party tag must be stripped");
-    assert.ok(!cleanUrl.includes("muga-es-21"), "our tag must NOT be injected after blacklist removal (#197)");
+    assert.ok(!out.searchParams.has("tag"), "no tag must be injected after blacklist removal (#197)");
     assert.notEqual(action, "injected", "action must not be injected when blacklist removed the affiliate (#197)");
   });
 
-  test("amazon.es without any tag, inject ON — ourTag IS injected (normal injection, no blacklist hit) (#197)", () => {
+  test("amazon.es without any tag, inject ON — no injection happens (#197, injection removed)", () => {
     const prefs = {
       ...PREFS,
       injectOwnAffiliate: true,
@@ -1764,8 +1666,8 @@ describe("Bug #183 regression — amazon.es blacklist + inject (#197)", () => {
       "https://www.amazon.es/dp/B0GQ4N9N33?color=blue",
       prefs
     );
-    assert.ok(cleanUrl.includes("muga0b-21"), "ourTag must be injected when no blacklist rule fires (#197)");
-    assert.equal(action, "injected", "action must be injected for normal injection without blacklist hit (#197)");
+    assert.equal(new URL(cleanUrl).searchParams.has("tag"), false, "no tag must ever be added (#197)");
+    assert.notEqual(action, "injected", "action must not be injected — MUGA never inserts its own tag (#197)");
   });
 });
 
@@ -2213,26 +2115,25 @@ describe("S9 — cleanAmazonPath with /gp/product/ path", () => {
 
 // ---------------------------------------------------------------------------
 // C12 — Foreign affiliate detection produces detectedAffiliate with pattern info
-// (withOurAffiliate is constructed by service-worker.js handleProcessUrl,
-//  but processUrl produces the detectedAffiliate.pattern.ourTag needed for it)
+// drop-affiliate-injection (PR 1a): `withOurAffiliate` (the alternate URL with
+// MUGA's own tag swapped in, previously built by service-worker.js from
+// `detectedAffiliate.pattern.ourTag`) is REMOVED entirely — there is no more
+// "our tag" to swap in. `detectedAffiliate.pattern` no longer carries an
+// `ourTag` field at all.
 // ---------------------------------------------------------------------------
-describe("C12 — foreign affiliate detection provides ourTag for withOurAffiliate", () => {
+describe("C12 — foreign affiliate detection: pattern no longer carries ourTag", () => {
 
   before(() => { AFFILIATE_PATTERNS.push(TEST_PATTERN); });
   after(() => { AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH; });
 
-  test("detectedAffiliate.pattern.ourTag contains the host→tag map (#523 phase 3)", () => {
+  test("detectedAffiliate.pattern has no ourTag field (removed, PR 1a)", () => {
     const { detectedAffiliate } = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99",
       { ...PREFS, notifyForeignAffiliate: true }
     );
     assert.ok(detectedAffiliate, "detectedAffiliate must not be null");
-    // ourTag is now a { host -> tag } map. The cleaner-side comparison
-    // uses pattern.ourTag[host] to pick the per-marketplace tag for the
-    // hostname under inspection.
-    assert.equal(typeof detectedAffiliate.pattern.ourTag, "object");
-    assert.equal(detectedAffiliate.pattern.ourTag["shop.test.muga"], "muga-test-99",
-      "detectedAffiliate.pattern.ourTag map must carry the per-host tag");
+    assert.equal(detectedAffiliate.pattern.ourTag, undefined,
+      "pattern.ourTag must no longer exist — MUGA never injects its own tag");
   });
 
   test("detectedAffiliate.pattern.param matches the affiliate param", () => {
@@ -2243,33 +2144,14 @@ describe("C12 — foreign affiliate detection provides ourTag for withOurAffilia
     assert.equal(detectedAffiliate.pattern.param, "aff");
   });
 
-  test("notifyForeignAffiliate triggers detection — withOurAffiliate built by service-worker", () => {
+  test("notifyForeignAffiliate triggers detection with no own-tag alternate URL available", () => {
     const { action, detectedAffiliate } = processUrl(
       "https://shop.test.muga/product?aff=someone-else-99",
       { ...PREFS, notifyForeignAffiliate: true }
     );
     assert.equal(action, "detected_foreign");
     assert.ok(detectedAffiliate, "detectedAffiliate must be present");
-    assert.equal(detectedAffiliate.pattern.ourTag["shop.test.muga"], "muga-test-99");
-  });
-
-  test("withOurAffiliate URL can be reconstructed from processUrl output (simulates service-worker logic)", () => {
-    const result = processUrl(
-      "https://shop.test.muga/product?aff=someone-else-99&utm_source=email",
-      { ...PREFS, notifyForeignAffiliate: true }
-    );
-    assert.equal(result.action, "detected_foreign");
-    // Simulate service-worker.js handleProcessUrl logic (#523 phase 3 shape):
-    const url = new URL(result.cleanUrl);
-    const p = result.detectedAffiliate.pattern;
-    const host = url.hostname.replace(/^www\./, "");
-    const ourTagForHost = p.ourTag[host] || p.ourTag[url.hostname] || "";
-    url.searchParams.set(p.param, ourTagForHost);
-    const withOurAffiliate = url.toString();
-    assert.ok(withOurAffiliate.includes("aff=muga-test-99"),
-      "reconstructed withOurAffiliate URL must contain the per-host ourTag");
-    assert.ok(!withOurAffiliate.includes("utm_source"),
-      "tracking params must still be stripped in withOurAffiliate URL");
+    assert.equal(detectedAffiliate.pattern.ourTag, undefined);
   });
 });
 
@@ -3223,80 +3105,47 @@ describe("Bookshop.org path-based creator referral (#603)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bookshop.org — MUGA affiliate injection (follow-up to #603, caps-spec#46).
-// Inject ?affiliate=124046 only on unattributed /p/books/... product pages.
-// NEVER on /shop/{slug} or /a/{id}/ — those are someone else's attribution
-// (or our own storefront, which Bookshop already attributes via cookie).
+// Bookshop.org — MUGA affiliate injection REMOVED (drop-affiliate-injection).
+// Bookshop path-affiliate rules no longer carry an inject* field (see
+// src/rules/path-affiliate-rules.json) — a /p/books/... product page is never
+// tagged by MUGA, regardless of prefs. Creator-referral preservation
+// (/a/{id}/, /shop/{slug}) is untouched and covered separately above.
 // ---------------------------------------------------------------------------
-describe("Bookshop.org MUGA affiliate injection", () => {
+describe("Bookshop.org — no MUGA affiliate injection (removed)", () => {
   const INJECT = { ...PREFS, injectOwnAffiliate: true };
 
-  test("injects ?affiliate=124046 on a clean /p/books/... product URL", () => {
+  test("a clean /p/books/... product URL is never tagged", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting-paul-murray/123456";
     const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(action, "injected");
-    assert.ok(cleanUrl.includes("affiliate=124046"));
+    assert.equal(cleanUrl, input);
+    assert.equal(action, "untouched");
   });
 
-  test("matches www.bookshop.org for injection", () => {
+  test("www.bookshop.org product URL is never tagged either", () => {
     const input = "https://www.bookshop.org/p/books/the-bee-sting/123456";
     const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(action, "injected");
-    assert.ok(cleanUrl.includes("affiliate=124046"));
-  });
-
-  test("does NOT inject on /shop/{slug} — someone else's storefront", () => {
-    const input = "https://bookshop.org/shop/some-other-bookstore";
-    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
     assert.equal(action, "untouched");
   });
 
-  test("does NOT inject on /a/{id}/ — creator referral", () => {
-    const input = "https://bookshop.org/a/some-creator/lists/best-of-2026";
-    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(cleanUrl, input);
-    assert.equal(action, "untouched");
-  });
-
-  test("does NOT inject on the homepage", () => {
-    const input = "https://bookshop.org/";
-    const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(cleanUrl, input);
-    assert.equal(action, "untouched");
-  });
-
-  test("does NOT inject when injectOwnAffiliate=false", () => {
-    const input = "https://bookshop.org/p/books/the-bee-sting/123456";
-    const { cleanUrl, action } = processUrl(input, PREFS, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(cleanUrl, input);
-    assert.equal(action, "untouched");
-  });
-
-  test("does NOT overwrite an existing ?affiliate= (foreign affiliate preserved)", () => {
+  test("an existing foreign ?affiliate= tag is preserved untouched", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting/123456?affiliate=999999";
     const { cleanUrl } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.ok(cleanUrl.includes("affiliate=999999"));
-    assert.ok(!cleanUrl.includes("affiliate=124046"));
+    assert.ok(!cleanUrl.includes("affiliate=124046"), "MUGA's former affiliate id must never appear");
   });
 
-  test("does NOT inject when stripAllAffiliates is true", () => {
-    const input = "https://bookshop.org/p/books/the-bee-sting/123456";
-    const { cleanUrl, action } = processUrl(input, { ...INJECT, stripAllAffiliates: true }, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(cleanUrl, input);
-    assert.equal(action, "untouched");
-  });
-
-  test("injects and strips co-occurring utm tracking params in the same pass", () => {
+  test("co-occurring utm tracking params are still stripped even though nothing is injected", () => {
     const input = "https://bookshop.org/p/books/the-bee-sting/123456?utm_source=twitter";
     const { cleanUrl, action, removedTracking } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
-    assert.equal(action, "injected");
-    assert.ok(cleanUrl.includes("affiliate=124046"));
+    assert.notEqual(action, "injected");
+    assert.equal(action, "cleaned");
+    assert.ok(!cleanUrl.includes("affiliate="));
     assert.ok(!cleanUrl.includes("utm_source"));
     assert.ok(removedTracking.includes("utm_source"));
   });
 
-  test("does NOT inject on a non-bookshop host that happens to have /p/books/", () => {
+  test("a non-bookshop host that happens to have /p/books/ is unaffected", () => {
     const input = "https://example.com/p/books/anything";
     const { cleanUrl, action } = processUrl(input, INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture);
     assert.equal(cleanUrl, input);
@@ -3322,13 +3171,14 @@ describe("Bookshop.org path unwrap under stripAllAffiliates (#959)", () => {
   const STRIP_INJECT = { ...STRIP, injectOwnAffiliate: true };
   const INJECT = { ...PREFS, injectOwnAffiliate: true };
 
-  test("stripAll ON + inject ON: /a/creator/p/... unwraps and injects our affiliate", () => {
+  test("stripAll ON + inject ON: /a/creator/p/... unwraps but no affiliate is injected (removed)", () => {
     const input = "https://bookshop.org/a/some-other-creator/p/books/9780000000000";
     const { cleanUrl, action, creatorReferralPreserved } = processUrl(
       input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
     );
-    assert.equal(cleanUrl, "https://bookshop.org/p/books/9780000000000?affiliate=124046");
-    assert.equal(action, "injected");
+    assert.equal(cleanUrl, "https://bookshop.org/p/books/9780000000000");
+    assert.notEqual(action, "injected");
+    assert.equal(action, "cleaned");
     assert.equal(creatorReferralPreserved, false);
   });
 
@@ -3354,12 +3204,12 @@ describe("Bookshop.org path unwrap under stripAllAffiliates (#959)", () => {
     assert.equal(action, "cleaned");
   });
 
-  test("stripAll ON + inject ON: embedded same-origin absolute URL destination unwraps and injects", () => {
+  test("stripAll ON + inject ON: embedded same-origin absolute URL destination unwraps, no injection (removed)", () => {
     const input = "https://bookshop.org/a/creator123/https://bookshop.org/p/books/title/123";
     const { cleanUrl } = processUrl(
       input, STRIP_INJECT, [], undefined, undefined, undefined, [], pathAffiliateRulesFixture
     );
-    assert.equal(cleanUrl, "https://bookshop.org/p/books/title/123?affiliate=124046");
+    assert.equal(cleanUrl, "https://bookshop.org/p/books/title/123");
   });
 
   test("stripAll ON (any inject setting): /shop/muga is never touched, not an attribution wrapper", () => {

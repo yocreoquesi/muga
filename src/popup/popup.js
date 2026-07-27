@@ -115,24 +115,26 @@ function copyWithFeedback(text, { onSuccess, onError, onRevert }) {
 
 /**
  * Reprocesses `originalUrl` through the copy-safe pipeline (#946) instead of
- * copying the value stored at navigation time. History's "clean" column is
- * computed with injectOwnAffiliate ON (that's the correct value for what
- * actually happened at navigation), so copying it verbatim would put MUGA's
- * own affiliate tag on the clipboard for an `injected` entry. Reusing the
+ * copying the value stored at navigation time, so a copy of a History entry
+ * re-cleans it rather than reusing the nav-time value verbatim. Reusing the
  * existing PROCESS_URL message with `skipNotify: true` mirrors the same
  * effectivePrefs branch background/service-worker.js#handleProcessUrl already
- * applies for keyboard-shortcut/context-menu copy (injectOwnAffiliate +
- * notifyForeignAffiliate both forced off) — single source of truth instead of
- * a second nav-time value.
+ * applies for keyboard-shortcut/context-menu copy (notifyForeignAffiliate
+ * forced off) — single source of truth instead of a second nav-time value.
+ * `skipSideEffects: true` (#966) additionally prevents this reprocessing
+ * from re-counting stats, duplicating session history, or pushing a
+ * duplicate ledger event for an already-recorded URL.
+ *
+ * drop-affiliate-injection (PR 1a): the original rationale here ("copying
+ * verbatim would put MUGA's own affiliate tag on the clipboard for an
+ * `injected` entry") no longer applies — MUGA never injects its own tag
+ * anymore, so there is nothing to leak on that front. The stat-dedup
+ * (skipSideEffects) and toast-suppression (skipNotify) purposes of this
+ * reprocessing still hold and are preserved as-is.
  *
  * Degraded fallback (#946): if the service worker is unreachable, return
- * `originalUrl` — the pre-navigation URL, which by construction NEVER carries
- * MUGA's own injected tag (injection only happens during cleaning, producing
- * the nav-time `entry.clean`). We deliberately do NOT fall back to the
- * nav-time clean value: for an `injected` entry that would put MUGA's own
- * affiliate tag on the clipboard, the exact leak #946 exists to prevent. The
- * original may still carry third-party tracking noise in this rare path, but
- * copy must never leak MUGA's tag — tag-safety wins over noise-freeness here.
+ * `originalUrl` — the pre-navigation URL. It may still carry third-party
+ * tracking noise in this rare path, which is an acceptable degrade.
  *
  * @param {string} originalUrl
  * @returns {Promise<string>}

@@ -36,12 +36,14 @@ const { TRANSLATIONS } = await import("../../src/lib/i18n.js");
 
 // ── i18n keys ────────────────────────────────────────────────────────────────
 
+// drop-affiliate-injection (PR 1a): "ledger_badge_inject_affiliate" was
+// removed — MUGA never inserts its own affiliate tag anymore, so the
+// "inject-affiliate" ledger event (and its badge) can no longer occur.
 const REQUIRED_KEYS = [
   "ledger_section_title",
   "ledger_empty",
   "ledger_badge_cleaned",
   "ledger_badge_preserve_affiliate",
-  "ledger_badge_inject_affiliate",
   "ledger_badge_honor_creator",
   "ledger_badge_blocked_opaque",
   "ledger_creator_credit_template",

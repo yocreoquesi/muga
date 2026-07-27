@@ -97,16 +97,15 @@ describe("renderEntries — one row per event type", () => {
     assert.ok(i18n.calls.some(c => c.key === "ledger_network_template" && c.vars?.network === "amazon"));
   });
 
-  test('"inject-affiliate" event renders inject badge + network', () => {
+  test('a stray "inject-affiliate" event is dropped (unknown type, removed in drop-affiliate-injection PR 1a)', () => {
     const ledger = pushEvent(createLedger(), {
       type: "inject-affiliate",
       url: "https://shop.example/?tag=ours",
       network: "ebay",
     });
     const i18n = makeStubI18n();
-    const [row] = renderEntries(presentLedger(ledger), i18n);
-    assert.equal(row.badgeText, "i18n(ledger_badge_inject_affiliate)");
-    assert.equal(row.networkText, "i18n(ledger_network_template;network=ebay)");
+    const rows = renderEntries(presentLedger(ledger), i18n);
+    assert.deepEqual(rows, [], "unrecognized event type must not render a row");
   });
 
   test('"honor-creator" event renders honor badge + network + creator credit', () => {

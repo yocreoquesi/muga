@@ -10,13 +10,14 @@
  *   1. Idempotence — cleaning an already-cleaned URL is a no-op.
  *   2. Copy-safe no-leak (#946) — the copy/share prefs shape
  *      (injectOwnAffiliate: false, notifyForeignAffiliate: false) must
- *      never cause MUGA's own affiliate tag to appear on the output unless
- *      it was already present on the input.
+ *      never cause a tag matching MUGA's FORMER own-tag values to appear on
+ *      the output unless it was already present on the input. This is a
+ *      trivial pass since drop-affiliate-injection (PR 1a) removed
+ *      injection entirely, but the assertion is kept as a regression guard.
  *   3. Affiliate preservation — a third-party creator's affiliate tag
  *      survives under default (non-strip-all) prefs and is removed only
- *      when the user opts into stripAllAffiliates. MUGA's own tag is
- *      injected only when injectOwnAffiliate is on and no affiliate tag
- *      is already present.
+ *      when the user opts into stripAllAffiliates. MUGA no longer injects
+ *      its own tag under any prefs combination (injection removed).
  *
  * The real `processUrl()` pipeline is exercised directly (same call shape
  * used by tests/unit/content-copy-safe-injection.test.mjs and
@@ -84,8 +85,11 @@ function shuffle(arr) {
 
 // ── Grammar data — sourced from the real ruleset, not invented ──────────
 
-// Affiliate hosts + MUGA's own tag values, taken directly from OUR_TAGS in
-// src/lib/affiliates.js (amazon-associates + ebay-partner-network programs).
+// Affiliate hosts + values that used to be MUGA's own tag (OUR_TAGS was
+// removed from src/lib/affiliates.js in drop-affiliate-injection PR 1a).
+// Kept here as fixed, arbitrary "pre-existing tag" values purely to
+// generate deterministic test data — they carry no special meaning to the
+// cleaner anymore.
 const AFFILIATE_HOSTS = [
   { host: "amazon.com", param: "tag", ourTag: "muga0b-20" },
   { host: "amazon.es", param: "tag", ourTag: "muga0b-21" },
@@ -372,40 +376,39 @@ describe("cleaner property: third-party creator affiliate tag preservation", () 
     );
   });
 
-  test("MUGA's own tag is injected only when injectOwnAffiliate is on and no tag is already present", () => {
+  test("no tag is ever injected on a tagless URL, regardless of injectOwnAffiliate (removed)", () => {
     const failures = [];
     for (const c of CORPUS) {
       if (!c.affiliateHost || c.tagState !== "none") continue;
-      const { param, ourTag } = c.affiliateHost;
+      const { param } = c.affiliateHost;
 
-      const withInject = clean(c.rawUrl, NAV_PREFS); // injectOwnAffiliate: true
-      const withInjectTag = tagValueOf(withInject.cleanUrl, param);
-      if (withInjectTag !== ourTag || withInject.action !== "injected") {
+      const withInjectPref = clean(c.rawUrl, NAV_PREFS); // injectOwnAffiliate: true (inert)
+      const withInjectPrefTag = tagValueOf(withInjectPref.cleanUrl, param);
+      if (withInjectPrefTag || withInjectPref.action === "injected") {
         failures.push({
-          invariant: "own-tag-injected-when-enabled",
+          invariant: "no-tag-ever-injected-pref-on",
           rawUrl: c.rawUrl,
-          cleanUrl: withInject.cleanUrl,
-          action: withInject.action,
-          expectedOurTag: ourTag,
-          actualTagValue: withInjectTag,
+          cleanUrl: withInjectPref.cleanUrl,
+          action: withInjectPref.action,
+          unexpectedTagValue: withInjectPrefTag,
         });
       }
 
-      const withoutInject = clean(c.rawUrl, NO_INJECT_PREFS); // injectOwnAffiliate: false
-      const withoutInjectTag = tagValueOf(withoutInject.cleanUrl, param);
-      if (withoutInjectTag) {
+      const withoutInjectPref = clean(c.rawUrl, NO_INJECT_PREFS); // injectOwnAffiliate: false
+      const withoutInjectPrefTag = tagValueOf(withoutInjectPref.cleanUrl, param);
+      if (withoutInjectPrefTag) {
         failures.push({
-          invariant: "own-tag-not-injected-when-disabled",
+          invariant: "no-tag-ever-injected-pref-off",
           rawUrl: c.rawUrl,
-          cleanUrl: withoutInject.cleanUrl,
-          unexpectedTagValue: withoutInjectTag,
+          cleanUrl: withoutInjectPref.cleanUrl,
+          unexpectedTagValue: withoutInjectPrefTag,
         });
       }
     }
     assert.equal(
       failures.length,
       0,
-      `Own-tag injection behavior violated in ${failures.length} case(s). ` +
+      `Tag injection detected in ${failures.length} case(s) — MUGA must never inject its own tag. ` +
         `First offender: ${JSON.stringify(failures[0], null, 2)}`,
     );
   });

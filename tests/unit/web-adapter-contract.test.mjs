@@ -111,45 +111,45 @@ describe("web adapter contract — negative / invalid input handling", () => {
   });
 });
 
-describe("web adapter contract — naked-link MUGA referral injection (web-tool-naked-link-injection)", () => {
-  test("naked Amazon link gets MUGA's own tag; cleanUrlNoMugaReferral is the injection-off rerun", () => {
+// drop-affiliate-injection (PR 1a): src/lib/affiliates.js no longer carries
+// OUR_TAGS / a per-pattern `ourTag` map, and src/lib/cleaner.js no longer
+// has an injection step — so the bundled engine these tests load can never
+// again produce action:"injected" or a non-empty own-referral. The adapter
+// (web/engine/adapter.js) itself is UNCHANGED in this PR (it is hand-
+// maintained, PR 2 scope) — its `resolveOurTag`/`detectOwnReferral` helpers
+// degrade gracefully (pattern.ourTag is now undefined → treated as "no own
+// tag"), so `mugaReferralInjected`/`mugaReferralPresent`/
+// `cleanUrlNoMugaReferral` are now ALWAYS false/false/null. This is a real,
+// immediate behavior change for the web tool (its "MUGA referral opt-out"
+// disclosure UI can never trigger anymore) shipped by this bundle rebuild,
+// ahead of the adapter.js/UI-copy rewiring planned for PR 2 — flagged for
+// maintainer review.
+describe("web adapter contract — naked-link MUGA referral injection (REMOVED, web-tool-naked-link-injection superseded)", () => {
+  test("naked Amazon link: no MUGA tag is added, stays tagless", () => {
     const out = cleanUrl("https://www.amazon.com/dp/B000123456", engine);
     assert.equal(out.ok, true);
-    assert.equal(out.action, "injected");
-    assert.equal(out.mugaReferralInjected, true);
-    assert.equal(out.mugaReferralPresent, true, "an injected tag is also present in the output");
-    const injected = new URL(out.cleanUrl);
-    assert.equal(injected.searchParams.get("tag"), "muga0b-20");
-    assert.ok(out.cleanUrlNoMugaReferral, "cleanUrlNoMugaReferral must be present when injected");
-    const optOut = new URL(out.cleanUrlNoMugaReferral);
-    assert.equal(optOut.searchParams.has("tag"), false, "opt-out URL must carry no MUGA tag");
-    assert.equal(optOut.pathname, injected.pathname);
+    assert.notEqual(out.action, "injected");
+    assert.equal(out.mugaReferralInjected, false);
+    assert.equal(out.mugaReferralPresent, false);
+    assert.equal(out.cleanUrlNoMugaReferral, null);
+    assert.equal(new URL(out.cleanUrl).searchParams.has("tag"), false);
   });
 
-  test("naked Amazon link WITH a product-name slug strips the slug in BOTH the injected and opt-out URLs", () => {
+  test("naked Amazon link WITH a product-name slug: slug is still stripped, no tag is added", () => {
     const out = cleanUrl("https://www.amazon.es/-/en/Sony-MDR-7506-Reduction-Closed-Headphones/dp/B000AJIF4E", engine);
     assert.equal(out.ok, true);
-    assert.equal(out.mugaReferralInjected, true);
-    assert.ok(!out.cleanUrl.includes("Sony-MDR-7506"), "injected URL must strip the Amazon slug");
-    assert.ok(out.cleanUrlNoMugaReferral, "opt-out URL must be present when injected");
-    // Regression guard: the injection-off rerun once omitted path-strip, so
-    // the opt-out URL kept the slug the injected URL had already dropped.
-    assert.ok(!out.cleanUrlNoMugaReferral.includes("Sony-MDR-7506"), "opt-out URL must also strip the Amazon slug");
-    assert.equal(
-      new URL(out.cleanUrlNoMugaReferral).pathname,
-      new URL(out.cleanUrl).pathname,
-      "opt-out and injected URLs must share the same slug-stripped pathname",
-    );
+    assert.equal(out.mugaReferralInjected, false);
+    assert.ok(!out.cleanUrl.includes("Sony-MDR-7506"), "the Amazon path-strip rule still runs, independent of injection");
+    assert.equal(out.cleanUrlNoMugaReferral, null);
   });
 
-  test("naked eBay link gets MUGA's own referral, same opt-out contract", () => {
+  test("naked eBay link: no MUGA referral is added", () => {
     const out = cleanUrl("https://www.ebay.com/itm/123456789", engine);
     assert.equal(out.ok, true);
-    assert.equal(out.action, "injected");
-    assert.equal(out.mugaReferralInjected, true);
-    assert.equal(new URL(out.cleanUrl).searchParams.get("campid"), "5339147108");
-    assert.ok(out.cleanUrlNoMugaReferral);
-    assert.equal(new URL(out.cleanUrlNoMugaReferral).searchParams.has("campid"), false);
+    assert.notEqual(out.action, "injected");
+    assert.equal(out.mugaReferralInjected, false);
+    assert.equal(new URL(out.cleanUrl).searchParams.has("campid"), false);
+    assert.equal(out.cleanUrlNoMugaReferral, null);
   });
 
   test("existing creator/foreign referral is preserved: no injection, no opt-out URL", () => {
@@ -162,34 +162,17 @@ describe("web adapter contract — naked-link MUGA referral injection (web-tool-
     assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "somecreator-20");
   });
 
-  test("a pasted link that ALREADY carries MUGA's own tag surfaces the opt-out (not just the inject case)", () => {
-    // The bug this fixes: re-cleaning a link that already carries our tag left
-    // the referral on the output with no way to copy a tag-free variant, because
-    // the opt-out was gated on action === "injected".
+  test("a pasted link carrying what used to be MUGA's own tag value is now just an ordinary preserved tag", () => {
+    // drop-affiliate-injection: "muga0b-20" is no longer a recognized MUGA
+    // value anywhere in the pipeline — a tag with this value is preserved
+    // like any other third-party/creator tag, with no opt-out offered.
     const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=muga0b-20", engine);
     assert.equal(out.ok, true);
-    assert.notEqual(out.action, "injected", "MUGA did not inject — the tag was already there");
+    assert.notEqual(out.action, "injected");
     assert.equal(out.mugaReferralInjected, false);
-    assert.equal(out.mugaReferralPresent, true, "our own tag is present in the output, so the opt-out must appear");
-    assert.ok(out.cleanUrlNoMugaReferral, "a tag-free variant must be offered");
-    assert.equal(
-      new URL(out.cleanUrlNoMugaReferral).searchParams.has("tag"),
-      false,
-      "the opt-out URL must carry no MUGA tag",
-    );
-    // The default (with-referral) URL still carries our tag.
-    assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "muga0b-20");
-  });
-
-  test("already-present tag with extra tracking: tracking is cleaned, our tag opt-out still offered", () => {
-    const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=muga0b-20&utm_source=news", engine);
-    assert.equal(out.ok, true);
-    assert.ok(out.removed.includes("utm_source"), "tracking params must still be removed");
-    assert.equal(out.mugaReferralPresent, true);
-    assert.ok(out.cleanUrlNoMugaReferral);
-    const optOut = new URL(out.cleanUrlNoMugaReferral);
-    assert.equal(optOut.searchParams.has("tag"), false, "opt-out drops our tag");
-    assert.equal(optOut.searchParams.has("utm_source"), false, "opt-out keeps the cleaned tracking removed");
+    assert.equal(out.mugaReferralPresent, false, "there is no more concept of MUGA's own tag to detect");
+    assert.equal(out.cleanUrlNoMugaReferral, null);
+    assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "muga0b-20", "the value is preserved unmodified");
   });
 
   test("non-supported program / plain link: no injection, no opt-out URL", () => {

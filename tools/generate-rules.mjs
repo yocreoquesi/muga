@@ -162,7 +162,12 @@ function readAndValidatePathStrip() {
 /**
  * Reads and validates src/rules/path-affiliate-rules.json.
  * Validates: required fields present, all referralPaths strings compile as
- * RegExp, injectPath/Param/Value are strings.  Exits non-zero on any violation.
+ * RegExp. Exits non-zero on any violation.
+ *
+ * drop-affiliate-injection (PR 1a): injectPath/injectParam/injectValue are
+ * NO LONGER required (or read) — MUGA never injects its own affiliate tag
+ * anymore, so this file only carries creator-referral detection/unwrap
+ * fields (domain, referralPaths, unwrapReferral).
  *
  * @returns {Array} parsed path-affiliate rules array
  */
@@ -190,12 +195,6 @@ function readAndValidatePathAffiliate() {
         fatal(`path-affiliate-rules[${i}].referralPaths[${j}] is not a valid regex: ${p}`);
       }
     }
-    if (typeof r.injectPath !== "string")
-      fatal(`path-affiliate-rules[${i}]: "injectPath" string required`);
-    if (typeof r.injectParam !== "string")
-      fatal(`path-affiliate-rules[${i}]: "injectParam" string required`);
-    if (typeof r.injectValue !== "string")
-      fatal(`path-affiliate-rules[${i}]: "injectValue" string required`);
   }
   return rules;
 }
