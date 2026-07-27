@@ -1724,15 +1724,15 @@
   // @sync:cmp-tier2-veto:end
 
   // ── Tier 2 toggle-reject save invariant (cookie-consent-toggle-reject,
-  // PR 1 — safety core, INERT this PR) ──────────────────────────────────────
+  // PR 2 — wired into the toggle-sweep dispatcher branch below) ─────────────
   //
   // Hand-copied, byte-for-byte modulo indentation, from
   // src/lib/cmp-tier2-save-invariant.js. Kept in sync by
-  // tests/unit/cookie-noise-sync.test.mjs. NOT CALLED ANYWHERE in this PR —
-  // no dispatcher wiring, no rule uses a `toggleScope` field yet (PR 2).
-  // This block exists so the safety math is reviewable and adversarially
-  // unit-tested before any DOM actuation code exists to call it. See that
-  // file's docblock for the full contract.
+  // tests/unit/cookie-noise-sync.test.mjs. Called from tier2RunToggleSweep
+  // (further below): the safety math shipped inert in PR 1 so it could be
+  // reviewed and adversarially unit-tested before any DOM actuation code
+  // existed to call it — this PR adds that call site. See that file's
+  // docblock for the full contract.
   // @sync:cmp-tier2-save-invariant:start
 
   /**
@@ -1811,16 +1811,6 @@
     return plan;
   }
   // @sync:cmp-tier2-save-invariant:end
-
-  // Referenced here (outside the @sync-pinned block above, so this line is
-  // NOT part of the byte-identity comparison against src/lib/cmp-tier2-save-
-  // invariant.js) only to satisfy no-unused-vars while both functions are
-  // inert — this PR (PR 1) wires no dispatcher call site for either. Follows
-  // the same `void <expr>;` deliberate-no-op idiom AGENTS.md already uses
-  // for `void chrome.runtime.lastError;`. Removed once PR 2 adds the real
-  // dispatcher toggle-branch call sites.
-  void computeSaveInvariant;
-  void planToggleActuation;
 
   let _spRejectActed = false;
   let _spPmOpened = false;
@@ -1980,6 +1970,12 @@
 
   const _tier2Acted = {};
   const _tier2PmOpened = {};
+  // One-shot guard for the toggle-reject sweep (cookie-consent-toggle-reject,
+  // PR 2 / design.md ADR-2/ADR-5): a toggleScope rule's sweep runs AT MOST
+  // once per rule id, win or lose — never re-fights a page that re-flips a
+  // toggle, never re-clicks Save. Keyed by rule.id, same shape as
+  // _tier2Acted/_tier2PmOpened.
+  const _tier2ToggleSwept = {};
   const _tier2Warned = {};
   let _tier2GateOpen = false;
   let _tier2Observer = null;
@@ -2139,6 +2135,53 @@
   // runTier2RejectDispatcher below (an empty join(",") throws a syntax
   // error -> present=false -> the rule is skipped for that pass, exactly
   // like an absent anchor). Never throws.
+  //
+  // toggleScope (cookie-consent-toggle-reject, PR 2): passed through ONLY
+  // when every one of its selector fields is a non-empty, CSS-parseable
+  // string/array — same fail-closed filtering as present/reject/
+  // openSettings above, applied field-by-field. A malformed or partially
+  // missing toggleScope (any field absent, wrong type, or left with zero
+  // parseable selectors after filtering) drops the WHOLE field — the rule
+  // still merges as a plain reject/openSettings rule, it just never enters
+  // the toggle-sweep branch (design.md's "Open Questions" flags remote-
+  // origin toggleScope as unresolved for a signed/capped schema; this
+  // content-side filter is deliberately narrow scaffolding, safety-neutral
+  // because the actual click DECISION stays entirely bundled and
+  // non-remote — computeSaveInvariant/planToggleActuation (@sync block
+  // above) and computeClickVeto/VETO_WORDS (@sync:cmp-tier2-veto above) are
+  // never influenced by remote data, only WHERE to look is. The signed
+  // background fetch pipeline, src/lib/remote-tier2-rules.js, still
+  // enforces an EXACT 4-key rule shape with no toggleScope field at all, so
+  // this path is unreachable via a real signed payload today — it only
+  // activates via a direct chrome.storage.local.remoteTier2Rules write,
+  // e.g. tests/e2e/cookie-consent-toggle-reject.spec.mjs's synthetic
+  // fixture rule).
+  // NEVER-ACCEPT TRIPWIRE (do NOT widen the remote schema without re-review):
+  // this filter is LIVE and will promote a remote rule's `toggleScope` into
+  // the reject-only Save/toggle/lockedOn click surface — BUT it is currently
+  // UNREACHABLE via a signed payload, because the background validator
+  // (src/lib/remote-tier2-rules.js) enforces an EXACT 4-key rule shape
+  // (TIER2_RULE_KEYS) that rejects any rule carrying a `toggleScope` (or any
+  // other unknown) key. That strict allowlist is the sole barrier between
+  // signed remote data and a remote Save-click path; it is guarded by the
+  // TIER2_RULE_KEYS tripwire test in tests/unit/remote-tier2-rules.test.mjs.
+  // Do NOT add `toggleScope` (or any key) to the remote schema without
+  // re-reviewing this remote Save-click surface end-to-end.
+  function tier2FilterRemoteToggleScope(scope) {
+    if (!scope || typeof scope !== "object") return null;
+    if (typeof scope.container !== "string" || !tier2SelectorParses(scope.container)) return null;
+    if (typeof scope.toggle !== "string" || !tier2SelectorParses(scope.toggle)) return null;
+    if (typeof scope.lockedOn !== "string" || !tier2SelectorParses(scope.lockedOn)) return null;
+    const save = tier2FilterSelectorArray(scope.save);
+    if (save.length === 0) return null;
+    return Object.freeze({
+      container: scope.container,
+      toggle: scope.toggle,
+      lockedOn: scope.lockedOn,
+      save: Object.freeze(save),
+    });
+  }
+
   function tier2FilterRemoteRule(rule) {
     if (!rule || typeof rule !== "object") return null;
     if (typeof rule.id !== "string" || BUNDLED_TIER2_IDS.has(rule.id)) return null;
@@ -2146,12 +2189,15 @@
     if (reject.length === 0) return null;
     const present = tier2FilterSelectorArray(rule.present);
     const openSettings = tier2FilterSelectorArray(rule.openSettings);
-    return Object.freeze({
+    const toggleScope = tier2FilterRemoteToggleScope(rule.toggleScope);
+    const filtered = {
       id: rule.id,
       present: Object.freeze(present),
       reject: Object.freeze(reject),
       openSettings: Object.freeze(openSettings),
-    });
+    };
+    if (toggleScope) filtered.toggleScope = toggleScope;
+    return Object.freeze(filtered);
   }
 
   function tier2RecomputeMergedRules(rawRemoteRules) {
@@ -2186,6 +2232,298 @@
       tier2RecomputeMergedRules([]);
       if (callback) callback();
     }
+  }
+
+  // ── Tier 2 toggle-reject sweep (cookie-consent-toggle-reject, PR 2) ───────
+  //
+  // Impure DOM-only helpers — deliberately NOT hand-copied into
+  // src/lib/* (design.md ADR-2/ADR-5): they read/write real DOM nodes, so
+  // they cannot be pure/Node-importable like computeSaveInvariant/
+  // planToggleActuation above. Pinned by STRUCTURAL guards in
+  // tests/unit/cookie-noise-sync.test.mjs, same pattern already used for
+  // collectAcceptCandidates/runTier2RejectDispatcher. Called only from
+  // tier2RunToggleSweep, further below — never from anywhere else.
+
+  /**
+   * Classifies a single toggle control's widget kind. "checkbox" for a
+   * native input[type=checkbox]; "aria" for anything exposing
+   * role=switch/role=checkbox via aria-checked; "unknown" otherwise — an
+   * "unknown" kind always reads back unreadable downstream (fail-closed),
+   * never guessed. Never throws.
+   */
+  function tier2ToggleKind(el) {
+    try {
+      const tag = typeof el.tagName === "string" ? el.tagName.toLowerCase() : "";
+      const type = typeof el.getAttribute === "function" ? el.getAttribute("type") : null;
+      if (tag === "input" && typeof type === "string" && type.toLowerCase() === "checkbox") return "checkbox";
+      const role = typeof el.getAttribute === "function" ? el.getAttribute("role") : null;
+      if (role === "switch" || role === "checkbox") return "aria";
+      return "unknown";
+    } catch {
+      return "unknown";
+    }
+  }
+
+  /**
+   * Reads a single toggle's current on/off state given its `kind`.
+   * Returns `true`/`false` on a confident read, `null` when unreadable
+   * (unknown kind, missing/invalid attribute, or any thrown error) — the
+   * caller degrades a `null` read to `readable: false`, never guesses a
+   * boolean. Never throws.
+   */
+  function tier2ReadToggleChecked(el, kind) {
+    try {
+      if (kind === "checkbox") {
+        return typeof el.checked === "boolean" ? el.checked : null;
+      }
+      if (kind === "aria") {
+        const v = el.getAttribute("aria-checked");
+        if (v === "true") return true;
+        if (v === "false") return false;
+        return null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * PROVABLY-INERT gate (cookie-consent-toggle-reject, PR 2 hardening —
+   * partial-accept safety hole #2). A toggle counts as locked/necessary ONLY
+   * when the REAL DOM proves it inert, NEVER on a curated `lockedOn` selector
+   * match alone. A non-essential, defaulted-ON control that merely MATCHES the
+   * hint would otherwise be excluded from BOTH actuation AND the backstop
+   * count, letting computeSaveInvariant pass `satisfied:true` with a tracking
+   * category still ON — a PARTIAL ACCEPT. Inert markers:
+   *   - native input[type=checkbox]        -> `disabled === true`
+   *   - ARIA role=switch / role=checkbox   -> `aria-disabled="true"` OR a
+   *     matching `[disabled]`
+   * An unknown widget kind is NEVER treated as inert (fail-closed: it must be
+   * actuated off / counted by the backstop). This matches the design's real
+   * Osano `lockedOn` (`[disabled],[aria-disabled='true']`) — the genuine
+   * markers — so genuine necessary toggles still read locked, while a
+   * non-inert over-match is correctly treated as a live category. Mis-reading
+   * a genuinely-necessary-but-not-disabled toggle as non-locked is
+   * fail-closed-safe (we try to turn it off; if it will not flip, the
+   * invariant fails -> NOOP, never an accept). Never throws.
+   * @param {Element} el
+   * @returns {boolean}
+   */
+  function tier2ToggleProvablyInert(el) {
+    try {
+      const kind = tier2ToggleKind(el);
+      if (kind === "checkbox") {
+        return el.disabled === true;
+      }
+      if (kind === "aria") {
+        if (el.getAttribute("aria-disabled") === "true") return true;
+        return typeof el.matches === "function" && el.matches("[disabled]");
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Enumerates every toggle matching `toggleSel` inside `container`,
+   * classifying each as locked (provably inert — see tier2ToggleProvablyInert)
+   * or not and reading
+   * its current on/off state — see
+   * src/lib/cmp-tier2-save-invariant.js's ToggleReadoutEntry typedef for the
+   * shape this produces. A LOCKED entry is still INCLUDED in the readout
+   * (never excluded here — only excluded from actuation/the off-check
+   * downstream, by computeSaveInvariant/planToggleActuation themselves), so
+   * the invariant can confirm at least one locked entry is present. Any
+   * single-entry DOM read failure degrades that entry to
+   * `readable: false, checked: false` (never dropped, never guessed);
+   * a totally failed container/toggle query returns `[]`. Never throws.
+   * @param {Element} container
+   * @param {string} toggleSel
+   * @param {string} lockedOnSel - retained curated hint (kept for signature
+   *   stability); the `locked` GATE is provably-inert DOM state, not this.
+   * @returns {Array<{ref: Element, kind: string, checked: boolean, locked: boolean, readable: boolean}>}
+   */
+  function collectToggleStates(container, toggleSel, lockedOnSel) {
+    void lockedOnSel; // retained curated hint; the `locked` GATE is provably-inert DOM state (hole #2)
+    const readout = [];
+    if (!container || typeof container.querySelectorAll !== "function") return readout;
+    let nodes = [];
+    try {
+      nodes = Array.from(container.querySelectorAll(toggleSel));
+    } catch {
+      return readout;
+    }
+    for (const el of nodes) {
+      // `lockedOnSel` is a curated HINT only — the GATE is provably-inert DOM
+      // state (see tier2ToggleProvablyInert). A control that merely MATCHES
+      // the hint but is not actually disabled is treated as NON-locked, so it
+      // is actuated off and counted by the backstop (closes partial-accept
+      // hole #2). `lockedOnSel` is intentionally not consulted here.
+      const locked = tier2ToggleProvablyInert(el);
+      const kind = tier2ToggleKind(el);
+      const checked = tier2ReadToggleChecked(el, kind);
+      readout.push({
+        ref: el,
+        kind,
+        checked: checked === true,
+        locked,
+        readable: checked !== null,
+      });
+    }
+    return readout;
+  }
+
+  // CMP-selector-INDEPENDENT backstop scan (design.md ADR-3): every
+  // "standard" checked control shape, deliberately NOT keyed off any rule's
+  // own `toggle` selector — this is what catches a defaulted-ON category
+  // the curated selector missed.
+  const TIER2_STANDARD_CHECKED_SELECTOR =
+    'input[type="checkbox"]:checked, [role="switch"][aria-checked="true"], [role="checkbox"][aria-checked="true"]';
+
+  /**
+   * Counts every standard checked control inside `container` MINUS anything
+   * that is PROVABLY INERT (see tier2ToggleProvablyInert) — NOT anything that
+   * merely matches `lockedOnSel`. Excluding by a bare `lockedOn` match alone
+   * would let a non-essential, defaulted-ON control that over-matches the hint
+   * slip past the backstop (partial-accept hole #2); excluding only genuinely
+   * disabled/necessary controls keeps the backstop selector-independent per
+   * design ADR-3. On any query failure, returns a non-zero, non-finite
+   * sentinel (Number.POSITIVE_INFINITY) so computeSaveInvariant's exact-zero
+   * check fails CLOSED rather than silently passing on a broken read. Never
+   * throws.
+   * @param {Element} container
+   * @param {string} lockedOnSel - retained curated hint (kept for signature
+   *   stability); exclusion is gated on provably-inert DOM state, not this.
+   * @returns {number}
+   */
+  function countCheckedControls(container, lockedOnSel) {
+    void lockedOnSel; // retained curated hint; exclusion is gated on provably-inert DOM state (hole #2)
+    if (!container || typeof container.querySelectorAll !== "function") return Number.POSITIVE_INFINITY;
+    let nodes = [];
+    try {
+      nodes = Array.from(container.querySelectorAll(TIER2_STANDARD_CHECKED_SELECTOR));
+    } catch {
+      return Number.POSITIVE_INFINITY;
+    }
+    let count = 0;
+    for (const el of nodes) {
+      // Exclude ONLY provably-inert (disabled/aria-disabled) controls — a bare
+      // `lockedOnSel` match is NOT sufficient (closes partial-accept hole #2).
+      if (!tier2ToggleProvablyInert(el)) count += 1;
+    }
+    return count;
+  }
+
+  /**
+   * Reject-only actuation (design.md ADR-2): forces OFF every index
+   * planToggleActuation names (never a locked/unreadable/already-off entry
+   * — that planner's own contract), per the entry's widget kind, then
+   * RE-READS the result into the SAME readout array entry (mutated in
+   * place) — the invariant downstream re-verifies from this fresh read,
+   * never from the plan's own assumption. Native checkbox: set
+   * `.checked = false` (only ever reached when the plan says the entry
+   * currently reads true) and dispatch `input`+`change` so any page-side
+   * listener observes the change, mirroring how a real user interaction
+   * would fire. ARIA switch/checkbox: `.click()` ONCE — never re-clicked,
+   * never forced via a direct attribute write — then re-read; if it did
+   * NOT flip to false, that entry is simply left as its (still-on or
+   * unreadable) re-read state, which surfaces as a computeSaveInvariant
+   * failure downstream, never as a second click attempt. NEVER touches a
+   * locked entry (defense-in-depth: planToggleActuation already excludes
+   * them by construction). Never throws.
+   * @param {Array<object>} readout - collectToggleStates' output, mutated
+   *   in place for every actuated index.
+   */
+  function tier2ActuateToggleOff(readout) {
+    const plan = planToggleActuation(readout);
+    for (const idx of plan) {
+      const entry = readout[idx];
+      if (!entry || entry.locked === true) continue; // defense-in-depth only
+      try {
+        if (entry.kind === "checkbox") {
+          if (entry.ref.checked === true) {
+            entry.ref.checked = false;
+            try {
+              entry.ref.dispatchEvent(new Event("input", { bubbles: true }));
+            } catch {
+              // A throwing/hostile page listener must never break the page.
+            }
+            try {
+              entry.ref.dispatchEvent(new Event("change", { bubbles: true }));
+            } catch {
+              // A throwing/hostile page listener must never break the page.
+            }
+          }
+        } else if (entry.kind === "aria") {
+          if (typeof entry.ref.click === "function") entry.ref.click();
+        }
+      } catch {
+        // A throwing/hostile page element must never break the page.
+      }
+      const checked = tier2ReadToggleChecked(entry.ref, entry.kind);
+      entry.checked = checked === true;
+      entry.readable = checked !== null;
+    }
+  }
+
+  /**
+   * The reject-only multi-step toggle sweep (design.md ADR-5): scopes to
+   * `rule.toggleScope.container`, actuates every in-scope toggle
+   * reject-only, re-verifies via the SAME fail-closed computeSaveInvariant
+   * gate PR 1 shipped inert, and — ONLY when the invariant is satisfied AND
+   * exactly one confirmed Save target clears the `"save"` veto role —
+   * clicks Save. Every failure path is a silent NOOP that leaves the
+   * banner exactly as-is and warns at most once (tier2WarnDrift /
+   * tier2WarnVeto, both console-only). `_tier2Acted[rule.id]` is set in
+   * exactly ONE place in this whole file for the toggle path: at the very
+   * end of the allow branch here, strictly AFTER the veto has already
+   * passed — mirrors the existing reject-branch invariant in
+   * runTier2RejectDispatcher above. Never throws.
+   * @param {object} rule - a mergedRules entry carrying a toggleScope.
+   */
+  function tier2RunToggleSweep(rule) {
+    const scope = rule.toggleScope;
+    if (!scope || typeof scope !== "object") return;
+    let container = null;
+    try {
+      container = document.querySelector(scope.container);
+    } catch {
+      container = null;
+    }
+    if (!container) {
+      tier2WarnDrift(rule.id);
+      return;
+    }
+    const readout = collectToggleStates(container, scope.toggle, scope.lockedOn);
+    tier2ActuateToggleOff(readout);
+    const backstop = countCheckedControls(container, scope.lockedOn);
+    const invariant = computeSaveInvariant(readout, backstop);
+    if (!invariant.satisfied) {
+      // Fail-closed NOOP — leave the banner exactly as-is. Reuses
+      // tier2WarnVeto's console-only, warn-at-most-once-per-role shape
+      // (role "save") rather than adding a third warn helper.
+      tier2WarnVeto(rule.id, "save", invariant.reason);
+      return;
+    }
+    const saveCandidates = tier2FilterCandidates(collectAcceptCandidates(), scope.save);
+    if (saveCandidates.length !== 1) {
+      tier2WarnDrift(rule.id);
+      return;
+    }
+    const veto = computeClickVeto(saveCandidates[0].fullText, "save", VETO_WORDS, { saveInvariantSatisfied: true });
+    if (!veto.allow) {
+      tier2WarnVeto(rule.id, "save", veto.reason);
+      return;
+    }
+    _tier2Acted[rule.id] = true;
+    try {
+      saveCandidates[0].ref.click();
+    } catch {
+      // A throwing/hostile page element must never break the page.
+    }
+    confirmTier2RejectDismissal(rule.id, tier2BannerGoneBy(rule));
   }
 
   function runTier2RejectDispatcher() {
@@ -2229,7 +2567,21 @@
       // (opening a settings panel grants nothing), NOT marked acted — the
       // revealed reject control is re-resolved on the observer's next pass.
       // Dormant for both Slice-1 seed rules (openSettings: []).
-      if (_tier2PmOpened[rule.id]) continue;
+      if (_tier2PmOpened[rule.id]) {
+        // Toggle-reject multi-step sweep (cookie-consent-toggle-reject,
+        // PR 2 / design.md ADR-5): once the settings panel is confirmed
+        // open, a toggleScope-bearing rule runs the reject-only toggle
+        // sweep here INSTEAD of doing nothing. One-shot per rule
+        // (_tier2ToggleSwept) so the observer never re-runs the sweep on a
+        // later mutation pass. Dormant for every rule without a
+        // toggleScope (both bundled seed rules, and any remote rule whose
+        // toggleScope failed the content-side filter).
+        if (rule.toggleScope && !_tier2ToggleSwept[rule.id]) {
+          _tier2ToggleSwept[rule.id] = true;
+          tier2RunToggleSweep(rule);
+        }
+        continue;
+      }
       const openCandidates = tier2FilterCandidates(candidates, rule.openSettings);
       if (openCandidates.length !== 1) continue;
       // Same semantic click-veto, role "openSettings" — its OWN positive
