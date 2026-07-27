@@ -146,6 +146,36 @@ describe("computeClickVeto — reject role: selector-wrongly-matches-accept-labe
   });
 });
 
+// ── Osano pilot rule coverage (cookie-consent-toggle-reject, PR 3 — pivoted
+// from a toggleScope rule to a simple direct-reject rule after a live probe
+// found `.osano-cm-denyAll` is a genuine first-layer reject control) ────────
+
+describe("computeClickVeto — Osano's .osano-cm-denyAll reject control accessible names", () => {
+  test("EN 'Reject Non-Essential' -> allow (reject-word)", () => {
+    const result = computeClickVeto("Reject Non-Essential", "reject", VETO_WORDS);
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("DE 'Nicht wesentliche Cookies ablehnen' -> allow (reject-word 'ablehnen')", () => {
+    const result = computeClickVeto("Nicht wesentliche Cookies ablehnen", "reject", VETO_WORDS);
+    assert.equal(result.allow, true);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("EN 'Accept All' (the structurally distinct opt-in control, must never be resolved as the reject target, but is vetoed regardless) -> VETO (accept-word)", () => {
+    const result = computeClickVeto("Accept All", "reject", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "accept-word");
+  });
+
+  test("DE 'Alle akzeptieren' -> VETO (accept-word)", () => {
+    const result = computeClickVeto("Alle akzeptieren", "reject", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "accept-word");
+  });
+});
+
 describe("computeClickVeto — openSettings role", () => {
   test("a settings-labelled opener -> allow", () => {
     const result = computeClickVeto("Manage options", "openSettings", VETO_WORDS);

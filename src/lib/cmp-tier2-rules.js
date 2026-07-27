@@ -66,11 +66,14 @@
  *   post-sweep save invariant (src/lib/cmp-tier2-save-invariant.js) is
  *   satisfied AND the single resolved `save` candidate clears the `"save"`
  *   click-veto role (src/lib/cmp-tier2-veto.js) — clicks the confirmed Save
- *   control. Absent on both seed rules (Complianz, Cookie Notice); no
- *   bundled rule uses this field yet (introduced for the curated Osano
- *   pilot in a later PR). Carries NO field capable of expressing the
- *   broad-consent-granting path this project's structural guard forbids
- *   naming (see the file docblock above) — same closed-vocabulary
+ *   control. No bundled rule uses this field (Complianz, Cookie Notice, and
+ *   Osano all rely on a direct single-layer `reject` control instead — a
+ *   live probe found Osano exposes a genuine one-click reject and defaults
+ *   non-essential categories to OFF under GDPR, so the toggle-and-save
+ *   machinery this field describes was deliberately NOT used for it; see
+ *   the Osano rule's own comment below). Carries NO field capable of
+ *   expressing the broad-consent-granting path this project's structural
+ *   guard forbids naming (see the file docblock above) — same closed-vocabulary
  *   guarantee as the rest of this shape; the structural guard in
  *   tests/unit/cookie-noise-sync.test.mjs scans this field's values for the
  *   same forbidden pattern.
@@ -99,8 +102,8 @@
 export const TIER2_RULES = Object.freeze([
   /**
    * Complianz (cmplz) — API-less, WordPress plugin. Real-site verification
-   * (doaj.org, 2026-07) confirmed a direct first-layer reject control:
-   * `.cmplz-deny` inside `#cmplz-cookiebanner-container`.
+   * (steuck-aachen.de, 2026-07) confirmed a direct first-layer reject
+   * control: `.cmplz-deny` inside `#cmplz-cookiebanner-container`.
    *
    * Complianz's "manage options" / "save preferences" panel was
    * DELIBERATELY NOT modeled as an `openSettings` two-step hop: that panel's
@@ -132,6 +135,36 @@ export const TIER2_RULES = Object.freeze([
     id: "cookie-notice",
     present: Object.freeze(["#cookie-notice"]),
     reject: Object.freeze(["#cn-refuse-cookie"]),
+    openSettings: Object.freeze([]),
+  }),
+
+  /**
+   * Osano — API-less, self-hosted CMP widget. Live-probe-confirmed on
+   * osano.com (2026-07, EU vantage): a direct first-layer reject control,
+   * `.osano-cm-denyAll` ("Reject Non-Essential"), inside the bottom-bar
+   * banner anchor `.osano-cm-dialog--type_bar` (`role=dialog`,
+   * `aria-label="Cookie Consent Banner"`; the banner's own `id` is a random
+   * UUID per page load, so it is deliberately NOT used as a selector here).
+   * `.osano-cm-denyAll` is locale-independent (the full class also carries
+   * an equivalent `denyAll`-suffixed type modifier); its accessible name is
+   * localized (EN "Reject Non-Essential", DE "Nicht wesentliche Cookies
+   * ablehnen"), but every observed locale carries a reject-family word, and
+   * the structurally distinct opt-in control lives under its own,
+   * completely disjoint class name, so there is no selector collision risk.
+   *
+   * Deliberately NOT modeled with the multi-step toggle-sweep-and-save
+   * descriptor: Osano exposes a genuine one-click first-layer reject and,
+   * under GDPR, defaults its non-essential categories to OFF — there is no
+   * ambiguous currently-checked panel state to sweep or verify here, so
+   * that multi-step machinery is the wrong tool for this CMP.
+   * `openSettings` stays empty: the Manage drawer is never opened, this is
+   * a genuine single-hop reject (fail-closed no-op if `.osano-cm-denyAll`
+   * is absent on a given installation).
+   */
+  Object.freeze({
+    id: "osano",
+    present: Object.freeze([".osano-cm-dialog--type_bar"]),
+    reject: Object.freeze([".osano-cm-denyAll"]),
     openSettings: Object.freeze([]),
   }),
 ]);
