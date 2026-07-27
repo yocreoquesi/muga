@@ -349,6 +349,54 @@ describe('computeClickVeto — role "save": invariant-gated exception', () => {
   });
 });
 
+// ── cookieconsent.js (Osano/Insites) `.cc-deny` accessible names + the
+// German "abgelehnt" reject-word gap (live probe, adsimple.at, 2026-07) ────
+//
+// The live probe found a real cookieconsent.js deployment (adsimple.at)
+// whose `.cc-deny` accessible name reads "abgelehnt" — NOT a substring of
+// the pre-existing German REJECT_WORDS ("ablehnen" / "alle ablehnen") — so
+// computeClickVeto used to VETO ("no-reject-word") a legitimate reject
+// button. This RED->GREEN test proves the fix.
+
+describe("computeClickVeto — cookieconsent.js .cc-deny accessible names, including the German 'abgelehnt' gap", () => {
+  test("EN 'Decline' -> allow (reject role)", () => {
+    const result = computeClickVeto("Decline", "reject", VETO_WORDS);
+    assert.equal(result.allow, true, `expected allow, got reason "${result.reason}"`);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("EN 'Reject All' -> allow (reject role)", () => {
+    const result = computeClickVeto("Reject All", "reject", VETO_WORDS);
+    assert.equal(result.allow, true, `expected allow, got reason "${result.reason}"`);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("DE 'abgelehnt' -> allow (reject role) — the adsimple.at gap fix; FAILS before REJECT_WORDS gains 'abgelehnt'", () => {
+    const result = computeClickVeto("abgelehnt", "reject", VETO_WORDS);
+    assert.equal(result.allow, true, `expected allow, got reason "${result.reason}"`);
+    assert.equal(result.reason, "ok");
+  });
+
+  test("EN accept button 'Allow' -> VETO (accept-word), never let through by the 'abgelehnt' addition", () => {
+    const result = computeClickVeto("Allow", "reject", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "accept-word");
+  });
+
+  test("DE accept button 'Alle akzeptieren' -> VETO (accept-word), never let through by the 'abgelehnt' addition", () => {
+    const result = computeClickVeto("Alle akzeptieren", "reject", VETO_WORDS);
+    assert.equal(result.allow, false);
+    assert.equal(result.reason, "accept-word");
+  });
+
+  test("'abgelehnt' is not a substring of any DENY_WORDS entry, and no DENY_WORDS entry is a substring of it (safety check — the absolute deny check still runs first and always wins)", () => {
+    for (const denyWord of VETO_WORDS.deny) {
+      assert.equal(denyWord.indexOf("abgelehnt"), -1, `DENY_WORDS entry "${denyWord}" must not contain "abgelehnt"`);
+      assert.equal("abgelehnt".indexOf(denyWord), -1, `"abgelehnt" must not contain DENY_WORDS entry "${denyWord}"`);
+    }
+  });
+});
+
 describe("computeClickVeto — multi-locale reject coverage (en/es/de/fr/it/ja/pt)", () => {
   const REJECT_ALLOWS = [
     ["en", "Reject all"],
