@@ -1366,8 +1366,8 @@
   const TIER2_RULES = Object.freeze([
     /**
      * Complianz (cmplz) — API-less, WordPress plugin. Real-site verification
-     * (doaj.org, 2026-07) confirmed a direct first-layer reject control:
-     * `.cmplz-deny` inside `#cmplz-cookiebanner-container`.
+     * (steuck-aachen.de, 2026-07) confirmed a direct first-layer reject
+     * control: `.cmplz-deny` inside `#cmplz-cookiebanner-container`.
      *
      * Complianz's "manage options" / "save preferences" panel was
      * DELIBERATELY NOT modeled as an `openSettings` two-step hop: that panel's
@@ -1399,6 +1399,36 @@
       id: "cookie-notice",
       present: Object.freeze(["#cookie-notice"]),
       reject: Object.freeze(["#cn-refuse-cookie"]),
+      openSettings: Object.freeze([]),
+    }),
+
+    /**
+     * Osano — API-less, self-hosted CMP widget. Live-probe-confirmed on
+     * osano.com (2026-07, EU vantage): a direct first-layer reject control,
+     * `.osano-cm-denyAll` ("Reject Non-Essential"), inside the bottom-bar
+     * banner anchor `.osano-cm-dialog--type_bar` (`role=dialog`,
+     * `aria-label="Cookie Consent Banner"`; the banner's own `id` is a random
+     * UUID per page load, so it is deliberately NOT used as a selector here).
+     * `.osano-cm-denyAll` is locale-independent (the full class also carries
+     * an equivalent `denyAll`-suffixed type modifier); its accessible name is
+     * localized (EN "Reject Non-Essential", DE "Nicht wesentliche Cookies
+     * ablehnen"), but every observed locale carries a reject-family word, and
+     * the structurally distinct opt-in control lives under its own,
+     * completely disjoint class name, so there is no selector collision risk.
+     *
+     * Deliberately NOT modeled with the multi-step toggle-sweep-and-save
+     * descriptor: Osano exposes a genuine one-click first-layer reject and,
+     * under GDPR, defaults its non-essential categories to OFF — there is no
+     * ambiguous currently-checked panel state to sweep or verify here, so
+     * that multi-step machinery is the wrong tool for this CMP.
+     * `openSettings` stays empty: the Manage drawer is never opened, this is
+     * a genuine single-hop reject (fail-closed no-op if `.osano-cm-denyAll`
+     * is absent on a given installation).
+     */
+    Object.freeze({
+      id: "osano",
+      present: Object.freeze([".osano-cm-dialog--type_bar"]),
+      reject: Object.freeze([".osano-cm-denyAll"]),
       openSettings: Object.freeze([]),
     }),
   ]);
