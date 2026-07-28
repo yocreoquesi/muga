@@ -105,7 +105,6 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - **Block `<a ping>` beacons**: prevents background ping requests on click
 - **AMP redirect**: silently redirects AMP pages to the canonical article URL
 - **Redirect-wrapper unwrapping**: detects and bypasses intermediary redirect wrappers so you land on the real URL
-- **Affiliate injection**: adds our tag when none is present *(you pay the same price; on by default, turn it off in onboarding or Settings anytime, at no cost to cleaning or protection)*
 
 ### Configurable
 
@@ -114,7 +113,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Whitelist: protect specific creator affiliate tags from detection. Supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
 - Custom noise params: add your own parameter names
 - Strip all affiliate parameters (opt-in)
-- Strip all third-party affiliate tags (opt-in; our tag is always preserved)
+- Strip all third-party affiliate tags (opt-in; off by default, the original referral is respected until you turn this on; MUGA never adds a tag of its own in their place)
 - Toast notification when a third-party affiliate is detected (opt-in)
 - **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **On by default**: the signing infrastructure is stable and the fetch is a single Ed25519-signed GET to a public URL at most once every 7 days, with no user data sent (see the [CHANGELOG](CHANGELOG.md) for when this shipped). Disable it any time in Settings.
 - Export / Import settings as JSON
@@ -133,25 +132,21 @@ Both toggle on and off at any time in Settings. Turning off "Follow shortener re
 
 ---
 
-## Affiliate model: the honest version
+## Affiliate model
 
-Creators come first. MUGA is an open-source project maintained by real people. To keep it maintained and improving over time, it uses a simple affiliate model.
+Creators come first. MUGA is an open-source project maintained by real people, and it does not add any affiliate tag of its own. It does not monetize your clicks.
 
-When you navigate to a supported store and there is **no existing affiliate tag** in the link, MUGA adds ours. The price you pay is exactly the same. The store just knows you arrived via MUGA. That's how affiliate programs work.
+By default, MUGA respects the original referral: if a link already carries a creator's or a third party's affiliate tag on a supported store, MUGA leaves it in place, so they keep their credit. This is the default and needs no setup.
 
-**Not every store is compatible.** We evaluated 10+ affiliate programs from major retailers and marketplaces. All of them require redirect-based attribution: your click passes through an external server before reaching the store. We do not believe forcing users through external attribution servers is necessary or fair. We rejected every one of these programs and chose to give up that revenue rather than route your clicks through them.
+If you prefer, "Strip all third-party affiliate tags" in Settings removes those tags instead, leaving none behind. This is an optional extra, off by default, and MUGA never adds a tag of its own in their place.
 
-**What this means in practice:**
-- On compatible stores: if the link has no affiliate tag, MUGA adds ours. If it has someone else's, we leave it alone by default.
-- On incompatible stores: MUGA actively strips affiliate noise parameters (`awc`, `wt_mc`, `lgw_code`, and others) placed by the same redirect networks we refuse to use. When possible, MUGA also unwraps affiliate redirect URLs and sends you directly to the store.
+On stores where attribution is redirect-based (an external server sets the referral via a 30x redirect), MUGA also strips the affiliate noise parameters (`awc`, `wt_mc`, `lgw_code`, and others) those networks leave on the landing URL, and unwraps affiliate redirect URLs where possible so you land directly on the store, without changing who gets credit for the referral.
 
 This is explained during onboarding, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/privacy-page.html), and verifiable in the source code.
 
-- Only fires when the link has **no affiliate tag at all**
-- The tag is added as a standard URL parameter. Nothing hidden, nothing obfuscated.
-- **On by default**: turn it off in onboarding or Settings anytime, at no cost to cleaning or protection
-- Turn it off any time: Settings → toggle off, globally or per domain
-- **By default, we try not to touch what isn't ours**: if a link already has someone else's affiliate tag on a compatible store, MUGA leaves it in place. Replacing it is a separate, deliberate opt-in, and even then it stays your choice
+- MUGA does not add any affiliate tag of its own
+- By default, it respects the original referral already on a link
+- Stripping third-party tags is a separate, deliberate opt-in, and it stays your choice
 
 ---
 
@@ -169,11 +164,7 @@ This is explained during onboarding, disclosed in the extension description, doc
 
 MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners. The full allowlist is documented in [`src/rules/manifest.json`](src/rules/manifest.json); the decision algorithm that governs preservation is in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
 
-On two of those programs, Amazon (ES, DE, FR, IT, UK, US) and eBay (US, ES, DE, UK, FR, IT), MUGA also has its own affiliate account active. That is where affiliate injection, which is on by default and can be turned off in onboarding or Settings anytime, adds MUGA's tag when a link arrives with no tag at all.
-
-Only stores that support direct URL parameter injection are compatible with MUGA. We evaluated and rejected 10+ stores whose affiliate programs require redirect-based attribution, because routing your clicks through external servers would violate our privacy policy.
-
-Affiliate injection is only active on stores where an account is registered and `ourTag` is set in the source.
+MUGA does not hold an affiliate account of its own on any store and does not add any affiliate tag. It only recognizes and preserves existing referrals placed by creators or third-party networks, per the "Affiliate model" above.
 
 ---
 

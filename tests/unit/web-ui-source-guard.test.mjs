@@ -156,18 +156,13 @@ describe("Copy style constraints (spec: Copy Style Constraints)", () => {
     assert.ok(/tracking/i.test(htmlBody), "page copy must reference tracking parameters");
   });
 
-  test("page copy honestly describes MUGA's own scoped referral (web-tool-naked-link-injection)", () => {
-    // Flipped from the original #1029 anti-injection assertion: the web tool
-    // now injects MUGA's own referral on naked Amazon/eBay links (ADR-1),
-    // so the copy must describe that honestly instead of denying it. The
-    // em-dash / "--" bans above and the zero-request promise below still
-    // hold; only the "never injects" claim is retired.
-    assert.ok(/own referral/i.test(htmlBody), "index.html must describe MUGA's own referral");
-    assert.ok(/selected store/i.test(htmlBody), "index.html must scope injection to selected stores");
-    assert.ok(
-      /existing|already|no referral of its own|no existing referral/i.test(htmlBody),
-      "index.html must state that an existing referral is always kept",
-    );
+  test("page copy honestly describes MUGA never adding its own affiliate tag (drop-affiliate-injection PR 3/4)", () => {
+    // Flipped back from the retired web-tool-naked-link-injection assertion:
+    // MUGA no longer adds its own referral anywhere (ADR-0006), so the copy
+    // must say so plainly instead of scoping a since-removed injection
+    // feature to "selected stores".
+    assert.ok(/never adds its own affiliate tag/i.test(htmlBody), "index.html must state MUGA never adds its own affiliate tag");
+    assert.ok(!/own referral in selected stores|uses its own referral/i.test(htmlBody), "index.html must not describe the retired own-referral injection feature");
   });
 
   test("the page keeps truthful, non-eternal privacy signals after the narrative softening", () => {
@@ -226,51 +221,18 @@ describe("sdd/web-cleaning-insight (Slice 1) DOM wiring", () => {
   });
 });
 
-describe("MUGA referral opt-out and disclosure (web-tool-naked-link-injection)", () => {
-  test("#copy-no-referral-btn exists adjacent to #copy-btn and is hidden by default", () => {
-    const resultUrlRowIndex = HTML.indexOf('id="result-url-row"');
-    const noReferralBtnIndex = HTML.indexOf('id="copy-no-referral-btn"');
-    assert.ok(resultUrlRowIndex !== -1 && noReferralBtnIndex !== -1, "both #result-url-row and #copy-no-referral-btn must exist");
-    assert.ok(noReferralBtnIndex > resultUrlRowIndex, "#copy-no-referral-btn must sit inside/adjacent to #result-url-row");
-
-    const resultUrlRowBlock = HTML.slice(resultUrlRowIndex, resultUrlRowIndex + 900);
-    const btnMatch = resultUrlRowBlock.match(/<button[^>]*id\s*=\s*["']copy-no-referral-btn["'][^>]*>/);
-    assert.ok(btnMatch, "#copy-no-referral-btn must be a <button> inside the result-url-row block");
-    assert.ok(/\bhidden\b/.test(btnMatch[0]), "#copy-no-referral-btn must be hidden by default");
+describe("no MUGA-owned referral opt-out/disclosure UI (drop-affiliate-injection PR 3/4)", () => {
+  test("#copy-no-referral-btn and #referral-disclosure no longer exist in the markup", () => {
+    assert.ok(!HTML.includes('id="copy-no-referral-btn"'), "#copy-no-referral-btn must be removed: MUGA no longer adds its own referral");
+    assert.ok(!HTML.includes('id="referral-disclosure"'), "#referral-disclosure must be removed: there is nothing of MUGA's own to disclose");
   });
 
-  test("#referral-disclosure element exists near the result", () => {
-    assert.ok(HTML.includes('id="referral-disclosure"'), "a #referral-disclosure element must exist");
-  });
-
-  test("ui.js toggles #copy-no-referral-btn on view.mugaReferralPresent and copies cleanUrlNoMugaReferral", () => {
+  test("ui.js no longer references mugaReferralPresent/cleanUrlNoMugaReferral/disclosure", () => {
     const code = stripJsComments(UI_JS);
-    // The opt-out must show whenever OUR referral is present in the output
-    // (injected this run OR already on the pasted link), not only when we
-    // injected it — so the gate is mugaReferralPresent, not mugaReferralInjected.
-    assert.ok(/mugaReferralPresent/.test(code), "ui.js must reference view.mugaReferralPresent");
-    assert.ok(/cleanUrlNoMugaReferral/.test(code), "ui.js must reference view.cleanUrlNoMugaReferral");
-  });
-
-  test("ui.js renders view.disclosure without adding new decision logic", () => {
-    const code = stripJsComments(UI_JS);
-    assert.ok(/disclosure/.test(code), "ui.js must render view.disclosure");
-    // Structural-guard precedent: ui.js applies the view-model, it does not
-    // compute affiliate/injection eligibility itself.
-    assert.ok(!/action\s*===\s*["']injected["']/.test(code), "ui.js must not re-derive injection eligibility itself");
-  });
-
-  test("CSS restores [hidden] semantics for .btn so the opt-out button actually hides", () => {
-    // Regression guard: `.btn { display: inline-flex }` overrides the UA
-    // `[hidden] { display: none }` rule, so a hidden .btn (copy-no-referral-btn)
-    // would stay visible. The stylesheet must neutralize this explicitly.
-    const styleMatch = HTML.match(/<style[\s\S]*?<\/style>/i);
-    assert.ok(styleMatch, "index.html must have a <style> block");
-    const css = styleMatch[0];
-    assert.ok(
-      /\.btn\[hidden\]\s*\{[^}]*display:\s*none/i.test(css) || /(^|[^-\w])\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i.test(css),
-      "CSS must hide a hidden .btn (e.g. `.btn[hidden] { display: none }`) so copy-no-referral-btn does not show while hidden",
-    );
+    assert.ok(!/mugaReferralPresent/.test(code), "ui.js must not reference view.mugaReferralPresent anymore");
+    assert.ok(!/mugaReferralInjected/.test(code), "ui.js must not reference view.mugaReferralInjected anymore");
+    assert.ok(!/cleanUrlNoMugaReferral/.test(code), "ui.js must not reference view.cleanUrlNoMugaReferral anymore");
+    assert.ok(!/copyNoReferralBtn|referralDisclosure/.test(code), "ui.js must not keep dead refs to the removed disclosure UI");
   });
 });
 

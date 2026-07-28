@@ -99,7 +99,7 @@ The core `processUrl(rawUrl, prefs)` function in `src/lib/cleaner.js` returns:
 ```js
 {
   cleanUrl: string,           // The cleaned URL (equals rawUrl if no changes)
-  action: string,             // "untouched" | "cleaned" | "injected" | "detected_foreign" | "blacklisted" | "honored-creator"
+  action: string,             // "untouched" | "cleaned" | "detected_foreign" | "blacklisted" | "honored-creator"
   removedTracking: string[],  // Names of tracking params removed
   junkRemoved: number,        // Count of params removed + path segments cleaned
   detectedAffiliate: {        // null unless a foreign affiliate is detected (notifyForeignAffiliate on)

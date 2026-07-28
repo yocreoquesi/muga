@@ -3,12 +3,10 @@
 A static, client-side page that reuses MUGA's real cleaning engine to strip
 tracking parameters and unwrap known redirect wrappers from a pasted URL,
 entirely in the browser. No server, no analytics, no account, nothing about
-the URL you paste ever leaves your device. Any existing affiliate or creator
-referral tag is always preserved, never stripped or overwritten. MUGA only
-uses its own referral in selected stores (Amazon, eBay), and only when there
-is no existing referral for that program (`sdd/web-tool-naked-link-injection`
-ADR-1); every injection is disclosed in the result, with a one-click "Copy
-without MUGA's referral" opt-out.
+the URL you paste ever leaves your device. MUGA cleans your links and never
+adds its own affiliate tag. Any existing affiliate or creator referral tag is
+respected by default, never stripped or overwritten; stripping third-party
+tags is an optional extra you control.
 
 Served in production at `muga.app/clean/` (see `landing/clean/` below).
 

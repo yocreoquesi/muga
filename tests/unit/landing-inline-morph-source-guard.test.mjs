@@ -227,20 +227,19 @@ describe("landing inline tool — hosts the real controller's full markup", () =
     }
   });
 
-  test("the referral opt-out control and disclosure are present", () => {
-    assert.ok(HTML.includes('id="copy-no-referral-btn"'), "#copy-no-referral-btn (copy without MUGA referral) must exist");
-    assert.ok(HTML.includes('id="referral-disclosure"'), "#referral-disclosure must exist");
+  test("no MUGA-owned referral opt-out control or disclosure remain (drop-affiliate-injection PR 3/4)", () => {
+    assert.ok(!HTML.includes('id="copy-no-referral-btn"'), "#copy-no-referral-btn must be removed: MUGA no longer adds its own referral");
+    assert.ok(!HTML.includes('id="referral-disclosure"'), "#referral-disclosure must be removed: there is nothing of MUGA's own to disclose");
   });
 
-  test("CSS restores [hidden] semantics for .btn so the opt-out button hides when not injected", () => {
-    // Regression guard for the live bug: `.btn { display: inline-flex }`
-    // overrides the UA `[hidden]` rule, so copy-no-referral-btn stayed visible
-    // even when hidden. The landing stylesheet must neutralize this.
+  test("CSS restores [hidden] semantics for .btn so a hidden button stays hidden", () => {
+    // Regression guard: `.btn { display: inline-flex }` overrides the UA
+    // `[hidden]` rule, so a hidden .btn would stay visible unless neutralized.
     const styleMatch = HTML.match(/<style[\s\S]*?<\/style>/i);
     assert.ok(styleMatch, "landing/index.html must have a <style> block");
     assert.ok(
       /\.btn\[hidden\]\s*\{[^}]*display:\s*none/i.test(styleMatch[0]),
-      "landing CSS must include `.btn[hidden] { display: none }` so the hidden opt-out button does not show",
+      "landing CSS must include `.btn[hidden] { display: none }` so a hidden .btn does not show",
     );
   });
 });
@@ -296,7 +295,7 @@ describe("landing inline tool — copy style constraints", () => {
   });
 
   test("added tool markup copy (labels, button text, disclaimers) has no em-dash", () => {
-    const addedIds = ["url-input", "clean-btn", "copy-btn", "copy-no-referral-btn", "report-link", "bk"];
+    const addedIds = ["url-input", "clean-btn", "copy-btn", "report-link", "bk"];
     for (const id of addedIds) {
       const tagMatch = HTML.match(new RegExp(`<[a-z]+[^>]*id\\s*=\\s*["']${id}["'][^>]*>([^<]*)`, "i"));
       assert.ok(tagMatch, `element #${id} must exist`);

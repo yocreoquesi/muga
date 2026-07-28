@@ -54,19 +54,16 @@
     <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click; see the Privacy Policy for the full list and rationale</li>
     <li>Optionally resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) by fetching the shortener host directly (native, no MUGA server) so you can see where a short link actually leads. Off by default. Affiliate-redirect networks are NEVER followed</li>
     <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted: no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
-    <li>Adds our affiliate tag to links that carry no affiliate tag: on by default, and you can turn it off during onboarding or any time in Settings</li>
+    <li>Respects the original referral on links that already carry an affiliate tag, and lets you optionally remove third-party affiliate tags in Settings; MUGA does not add any affiliate tag of its own</li>
   </ul>
   <p>You have full control over every feature. MUGA never collects, sells, or shares your browsing data. Any feature that contacts an external service requires your explicit action.</p>
 
   <h2>3. Affiliate model and disclosure</h2>
-  <p>MUGA is maintained by an independent developer. To keep the project alive and free, MUGA participates in affiliate programs operated by third-party stores, including but not limited to Amazon Associates and eBay Partner Network.</p>
-  <p>On by default, MUGA adds our affiliate tag to URLs that contain <strong>no existing affiliate tag</strong>. You can turn this off during onboarding or any time in Settings, with no loss of cleaning or protection. This does not change the price you pay. Affiliate tags tell the store who referred the visit, nothing more. The developer may earn a small commission from qualifying purchases.</p>
+  <p>MUGA does not add any affiliate tag of its own, and it does not monetize your clicks. By default, MUGA respects the original referral: if a creator you follow earned an affiliate tag on a link, it stays, so they keep their credit. Affiliate tags tell the store who referred the visit, nothing more, and this does not change the price you pay.</p>
   <ul>
     <li>By default, MUGA leaves an affiliate tag that is already present in a URL in place. Stripping third-party tags is a separate choice that is always yours</li>
     <li>By default, MUGA does not overwrite a content creator's or another affiliate's tag. You decide whether to strip third-party tags, and you stay in control</li>
-    <li>Affiliate tag injection only applies to the supported stores explicitly listed in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener">source code</a></li>
-    <li>You can disable affiliate tag injection at any time in the Extension's Settings, no questions asked</li>
-    <li>As an Amazon Associate, the developer earns from qualifying purchases. This disclosure is required by the <a href="https://affiliate-program.amazon.com/help/operating/agreement" target="_blank" rel="noopener">Amazon Associates Program Operating Agreement</a></li>
+    <li>MUGA does not participate in affiliate programs and earns no commission from your clicks or purchases</li>
   </ul>
 
   <h2>4. No data collection</h2>
@@ -74,7 +71,7 @@
   <p>For full details, see the <a href="privacy.html">Privacy Policy</a>.</p>
 
   <h2>5. Third-party services</h2>
-  <p>When MUGA modifies a URL to include an affiliate tag and you navigate to that store, your interaction with the store is governed entirely by that store's own terms of service and privacy policy. MUGA has no control over and assumes no responsibility for the content, practices, or policies of third-party websites.</p>
+  <p>When you navigate to a store via a link that already carries an affiliate tag, your interaction with the store is governed entirely by that store's own terms of service and privacy policy. MUGA has no control over and assumes no responsibility for the content, practices, or policies of third-party websites.</p>
 
   <h2>6. Open-source license</h2>
   <p>MUGA is released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU General Public License v3 (GPL v3)</a>. You are free to use, study, modify, and distribute the source code, provided that any derivative work is also released under the GPL v3. The complete source code is available at <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener">github.com/yocreoquesi/muga</a>.</p>
@@ -84,8 +81,7 @@
 
   <h2>8. Disclaimer of warranties</h2>
   <p>MUGA is provided <strong>"as is"</strong> and <strong>"as available"</strong>, without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
-  <p>The developer does not warrant that MUGA will operate without interruption or error, that tracking parameters will always be detected, or that affiliate tag injection will always function correctly. Website structures and tracking methods change frequently and may temporarily affect functionality.</p>
-  <p>Affiliate commissions are not guaranteed. They depend on the terms and availability of third-party affiliate programs, which may change at any time without notice from the developer.</p>
+  <p>The developer does not warrant that MUGA will operate without interruption or error, or that tracking parameters will always be detected. Website structures and tracking methods change frequently and may temporarily affect functionality.</p>
   <p><strong>EU consumers:</strong> Nothing in these Terms limits or excludes your mandatory statutory rights under applicable consumer protection law, including the rights provided under Directive 2011/83/EU (Consumer Rights Directive) and applicable national legislation implementing it. Statutory warranty rights and rights of withdrawal, where applicable, remain unaffected.</p>
 
   <h2>9. Limitation of liability</h2>

@@ -130,8 +130,8 @@
   .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); box-shadow: none; }
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); color: var(--ink); }
   /* .btn sets display:inline-flex, which would otherwise override the UA
-     [hidden] rule and leave a hidden button (e.g. the demo tool's
-     copy-no-referral-btn) visible. Restore hidden semantics explicitly. */
+     [hidden] rule and leave a hidden button visible. Restore hidden
+     semantics explicitly. */
   .btn[hidden] { display: none; }
   .btn.bare { background: transparent; color: var(--ink-2); font-weight: 500; box-shadow: none; padding: 14px 20px; }
   .btn.bare:hover { background: transparent; color: var(--ink); transform: none; }
@@ -206,8 +206,6 @@
     background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
     padding: 13px 15px; word-break: break-all;
   }
-  #demo-tool .referral-disclosure { font-size: 12.5px; color: var(--ink-3); margin: 0 0 14px; }
-  #demo-tool .referral-disclosure[hidden] { display: none; }
   #demo-tool .length-bar { margin: 0 0 18px; }
   #demo-tool .length-bar[hidden] { display: none; }
   #demo-tool .length-bar-headline { font-size: 14.5px; color: var(--good); margin: 0 0 8px; font-weight: 600; }
@@ -576,10 +574,7 @@
             <div class="result-url-row" id="result-url-row">
               <div class="result-url-box" id="result-url-box"></div>
               <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
-              <button type="button" class="btn ghost" id="copy-no-referral-btn" hidden>Copy without MUGA's referral</button>
             </div>
-
-            <p class="referral-disclosure" id="referral-disclosure" hidden></p>
 
             <div class="length-bar" id="length-bar" hidden>
               <p class="length-bar-headline" id="length-bar-headline"></p>
@@ -729,7 +724,7 @@
         <div class="trust-cell">
           <span class="ic">03 · honest</span>
           <h3>We document the tradeoffs</h3>
-          <p>Including that MUGA adds its own referral, on by default, on a page that has none, and it stays under your control: turn it off in onboarding or Settings anytime, and your price stays the same. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
+          <p>MUGA never adds its own affiliate tag. By default it respects the original referral, and stripping third-party tags is an optional extra you control in Settings, with no change to your price. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
         </div>
       </div>
 
