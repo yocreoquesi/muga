@@ -76,7 +76,15 @@ async function completeOnboardingAndSeedRule(context, extensionId, { enableFeatu
     { enableFeature, rule: TOGGLE_RULE }
   );
   await page.close();
-  await waitForDnrPropagation(page);
+  // CI-health (flake fix): this setup writes THREE chained storage.set calls
+  // (sync -> local -> sync) before the content script on the next page can
+  // observe cookieConsentMode + remoteTier2Rules. The default 500ms floor
+  // (see waitForDnrPropagation's docblock, #824) was demonstrated
+  // insufficient here specifically — this spec failed on 3/3 CI attempts
+  // while its ~40 sibling Tier2 e2e specs (same helper, same 500ms) did not.
+  // Bumped to 1000ms, mirroring the existing precedent in
+  // redirect-unwrap-merged.spec.mjs for its own known-flaky scenarios.
+  await waitForDnrPropagation(page, 1000);
 }
 
 /**
@@ -179,6 +187,23 @@ async function stubToggleFixturePage(page, {
 }
 
 test.describe("Cookie Consent Toggle-Reject sweep (cookie-consent-toggle-reject, PR 2)", () => {
+  // CI-health (flake fix, NOT a feature change): this file's positive
+  // scenarios hold a page.waitForFunction open across TWO async hops (click
+  // "open settings" -> the fixture's deliberate 50ms-delayed panel render ->
+  // MutationObserver dispatch -> sweep -> Save), a longer live-window than
+  // sibling Tier2 e2e specs whose single-hop reject click resolves in low
+  // hundreds of ms. Real CI evidence (3 GitHub Actions attempts on the same
+  // PR, all reliably hitting this file) showed EVERY scenario here failing
+  // at ~30.1s with "Target page, context or browser has been closed" —
+  // exactly the file-level default timeout (playwright.config.mjs
+  // `timeout: 30_000`), not the inner waitForFunction's own 10s budget. That
+  // signature means the runner stalled (CPU/scheduler contention on the
+  // shared GitHub Actions box), not that the assertions were ever wrong —
+  // the same safety assertions below are unchanged. Widening this file's
+  // own budget (without touching the global 30s used by ~40 other, faster
+  // e2e specs) gives the stall room to pass without retry.
+  test.describe.configure({ timeout: 60_000 });
+
   test("(a) all non-locked toggles read OFF after the sweep -> the save invariant is satisfied -> Save is clicked, banner dismissed", async ({
     context,
     extensionId,
@@ -191,7 +216,7 @@ test.describe("Cookie Consent Toggle-Reject sweep (cookie-consent-toggle-reject,
     await stubToggleFixturePage(page, { toggleStartsOn: true, toggleFlipsOnClick: true });
     await page.goto(`https://${HOST}/index.html`);
 
-    await page.waitForFunction(() => window.__e2eConsentState === "necessary-only", { timeout: 10000 });
+    await page.waitForFunction(() => window.__e2eConsentState === "necessary-only", { timeout: 20000 });
 
     const clicks = await page.evaluate(() => window.__e2eClicks);
     // Exact sequence: open settings -> sweep clicks the category toggle
@@ -229,7 +254,7 @@ test.describe("Cookie Consent Toggle-Reject sweep (cookie-consent-toggle-reject,
     // The sweep still runs (the curated toggle gets clicked off) — wait for
     // that positive signal, then give the extension ample time to
     // (wrongly, if it regressed) click Save anyway.
-    await page.waitForFunction(() => window.__e2eClicks.includes("category-click"), { timeout: 10000 });
+    await page.waitForFunction(() => window.__e2eClicks.includes("category-click"), { timeout: 20000 });
     // REASON: adversarial negative (mirrors the Sourcepoint multi-layer
     // spec) — settle, then assert a regressed Save click never fired.
     await page.waitForTimeout(1500);
@@ -264,7 +289,7 @@ test.describe("Cookie Consent Toggle-Reject sweep (cookie-consent-toggle-reject,
     await stubToggleFixturePage(page, { toggleStartsOn: true, toggleFlipsOnClick: false });
     await page.goto(`https://${HOST}/index.html`);
 
-    await page.waitForFunction(() => window.__e2eClicks.includes("category-click"), { timeout: 10000 });
+    await page.waitForFunction(() => window.__e2eClicks.includes("category-click"), { timeout: 20000 });
     // REASON: adversarial negative — same settle-then-assert-nothing-more
     // pattern as scenario (b) above; a correct run never resolves a save
     // candidate once the invariant is unsatisfied.
