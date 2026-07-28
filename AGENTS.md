@@ -120,9 +120,9 @@
 ## Business Rules (CRITICAL — block on violation)
 
 - **Scenario A** (tracking strip): always active, no user consent needed.
-- **Scenario B** (affiliate injection): only when `injectOwnAffiliate` is on AND no existing affiliate tag AND not a copy operation.
+- **Scenario B** (affiliate preservation): MUGA detects an existing creator tag and, by default, keeps it in place. MUGA never adds a tag of its own — the former own-tag injection path is removed (see `docs/adr/0006-remove-own-tag-affiliate-injection.md`).
 - **Scenario C** (foreign affiliate detection): default action is KEEP ORIGINAL. Auto-dismiss defaults to `"original"`. Never silently replace.
-- **Scenario D** (blacklist): strip everything, no injection, no notification.
+- **Scenario D** (blacklist): strip everything, no notification.
 - **Whitelist entries are sacred:** whitelisted affiliates are never touched, never overridden.
 - DNR rules must NOT strip params that `domain-rules.json` marks as `preserveParams`. Conflicting params must be handled by the content script only.
 

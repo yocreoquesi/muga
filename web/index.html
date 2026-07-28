@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MUGA Clean: paste a URL, strip the tracking noise</title>
-<meta name="description" content="Paste any URL and MUGA Clean strips tracking parameters and unwraps known redirect wrappers, right in the page. Existing creator or affiliate referrals are kept; MUGA only uses its own referral in selected stores, and only when there is no existing referral. Open source, no analytics, no account.">
+<meta name="description" content="Paste any URL and MUGA Clean strips tracking parameters and unwraps known redirect wrappers, right in the page. MUGA never adds its own affiliate tag; existing creator or affiliate referrals are respected by default. Open source, no analytics, no account.">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDQgNjgiPjxwYXRoIGQ9Ik0gMTIgNTYgQyAxMiA4LCA0NiA4LCA1MiA0NiBMIDYyIDIyIEwgNzIgNTAgTCA4NCA1MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQTg4M0YwIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNIDgwIDM3IEwgOTggNTAgTCA4MCA2MyBaIiBmaWxsPSIjQTg4M0YwIiBzdHJva2U9IiNBODgzRjAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==">
 
@@ -100,8 +100,8 @@
   .btn:disabled { opacity: .45; cursor: not-allowed; }
   .btn:disabled:hover { background: var(--panel-2); }
   /* .btn sets display:inline-flex, which would otherwise override the UA
-     [hidden] rule and leave a hidden button (e.g. copy-no-referral-btn)
-     visible. Restore hidden semantics explicitly. */
+     [hidden] rule and leave a hidden button visible. Restore hidden
+     semantics explicitly. */
   .btn[hidden] { display: none; }
 
   .result-panel { border-color: var(--rule-2); }
@@ -117,11 +117,6 @@
     background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
     padding: 13px 15px; word-break: break-all;
   }
-
-  .referral-disclosure {
-    font-size: 12.5px; color: var(--ink-3); margin: 0 0 14px;
-  }
-  .referral-disclosure[hidden] { display: none; }
 
   .length-bar { margin: 0 0 18px; }
   .length-bar[hidden] { display: none; }
@@ -196,10 +191,10 @@
     <p class="lede">
       Paste any link below and MUGA strips tracking parameters (<code>utm_*</code>, <code>fbclid</code>,
       <code>gclid</code>, <code>mc_cid</code> and more) and unwraps known redirect wrappers. The cleaning
-      runs right here in the page. Existing creator or affiliate referrals are kept; for a few
-      selected stores, if a link carries no referral at all, MUGA may add its own so the tool can stay
-      free, and you can always copy the version without it. If you choose to report a bad result, that
-      opens a prefilled GitHub issue you review and submit yourself.
+      runs right here in the page. MUGA cleans your links and never adds its own affiliate tag: by
+      default it respects the original referral, and you can optionally strip third-party tags too.
+      If you choose to report a bad result, that opens a prefilled GitHub issue you review and submit
+      yourself.
     </p>
 
     <section class="panel" aria-labelledby="input-heading">
@@ -218,10 +213,7 @@
       <div class="result-url-row" id="result-url-row">
         <div class="result-url-box" id="result-url-box"></div>
         <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
-        <button type="button" class="btn ghost" id="copy-no-referral-btn" hidden>Copy without MUGA's referral</button>
       </div>
-
-      <p class="referral-disclosure" id="referral-disclosure" hidden></p>
 
       <div class="length-bar" id="length-bar" hidden>
         <p class="length-bar-headline" id="length-bar-headline"></p>
@@ -256,7 +248,7 @@
 
     <footer class="trust">
       <p>No analytics. No third-party requests. No account. Reporting a result opens GitHub only if you click it.</p>
-      <p>MUGA only uses its own referral in selected stores, and only when there is no existing referral. Any creator or foreign referral is kept.</p>
+      <p>MUGA never adds its own affiliate tag. Any creator or foreign referral already on a link is kept by default.</p>
       <p><a href="https://github.com/yocreoquesi/muga">View source</a> &middot; <a href="https://muga.app/">Get the MUGA extension</a></p>
     </footer>
   </div>

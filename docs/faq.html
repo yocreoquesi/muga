@@ -54,7 +54,7 @@
   <ol>
     <li><strong>Remove the same noise parameters those tools remove</strong>, <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_cid</code>, <code>igshid</code>, the rest of the usual set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js#L18"><code>src/lib/affiliates-data.js:18</code></a>).</li>
     <li><strong>Preserve affiliate parameters that belong to a creator</strong>, even on programs MUGA itself has no commercial relationship with (Booking, Vercel, DigitalOcean, etc.). The preservation table is sourced from MUGA's documented affiliate-program rules (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</li>
-    <li><strong>Be explicit about the one case where MUGA itself benefits</strong>, affiliate injection, which is on by default for new installs and can be turned off during onboarding or any time in Settings, with cleaning and every protection unaffected (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L25"><code>src/lib/prefs.js:25</code></a>).</li>
+    <li><strong>Never monetize through an affiliate tag of its own.</strong> MUGA does not add any affiliate tag; it only recognizes and, by default, preserves the tags creators and third-party networks already placed on the link (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>).</li>
   </ol>
 
   <p>If you only want noise removed and don't care about creator attribution, a generic cleaner is fine. If you want the YouTuber who recommended you that USB-C dock to actually get paid for the recommendation, you need a tool that knows the difference between a noise param and an affiliate tag.</p>
@@ -84,47 +84,19 @@
 
   <h3>Q: Is MUGA monetised? How?</h3>
 
-  <p>Yes. On a small set of supported stores, MUGA injects its own affiliate tag into URLs that arrive <strong>without any affiliate tag at all</strong>. This is on by default for new installs, and you can turn it off during onboarding or any time in Settings. The set of programs MUGA has its own tag for is hardcoded in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L74"><code>src/lib/affiliates.js:74</code></a> (Amazon and eBay marketplaces; a handful of programs pending account approval; everything else is preservation-only).</p>
-
-  <h3>Q: Is injection on by default?</h3>
-
-  <p>Yes, for new installs. The default for <code>injectOwnAffiliate</code> is <code>true</code>:</p>
-
-  <pre><code>// src/lib/prefs.js:25
-injectOwnAffiliate: true,  // on by default; user can turn it off in onboarding or Settings (#1032)</code></pre>
-
-  <p>Injection only adds MUGA's own referral on a few supported stores, and only to links that carry no affiliate tag at all. By default it leaves someone else's tag in place, and your price never changes. The honest reason it ships on: it lets an independent project stay maintainable as it grows, and since everything in MUGA is yours to adjust, you are the one who decides. You can turn it off during onboarding via the checkbox, or any time in Settings, and cleaning and every protection keep working exactly the same. The default only affects fresh installs, so nobody's existing choice is changed behind their back.</p>
-
-  <p>The user sees this clearly during onboarding via a checkbox that ships checked, and can uncheck it to opt out before finishing setup (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.html#L96"><code>src/onboarding/onboarding.html:96</code></a>, <a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L183-L184"><code>src/onboarding/onboarding.js:183-184</code></a>). On a per-device basis, the user can turn it off even if a sibling device enabled it; the choice is stored as a local override and does not propagate back to sync (<a href="https://github.com/yocreoquesi/muga/blob/main/src/onboarding/onboarding.js#L170-L176"><code>src/onboarding/onboarding.js:170-176</code></a>).</p>
+  <p>No. MUGA doesn't add any affiliate tag of its own, and it doesn't monetize your clicks. By default it respects the referral of the creator who recommended you, so they keep their credit. If you prefer, you can turn on an option to also remove third-party affiliate tags. If you'd like to support MUGA, see the sponsor links in the <a href="https://github.com/yocreoquesi/muga/blob/main/README.md#support">README</a>.</p>
 
   <h3>Q: Does MUGA ever overwrite an existing affiliate tag?</h3>
 
-  <p>Only if you have BOTH "Remove all affiliate tags from other sources" and MUGA's own-tag injection turned on. In that case the foreign tag is first stripped (per your remove-all choice), then ours is injected into the now-tagless URL. With injection alone (remove-all off), MUGA never touches an existing foreign tag: it is detected and honored (<code>action = "detected_foreign"</code>).</p>
-
-  <p>The injection branch itself is still gated by <code>!url.searchParams.has(pattern.param)</code>, so it never overwrites a tag that is present at injection time (an own tag the remove-all step preserved short-circuits it):</p>
-
-  <pre><code>// src/lib/cleaner.js (Step 6)
-if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp; !blacklistRemovedAffiliate) {
-  const hostKeyInject = hostname.replace(/^www\./, "");
-  for (const pattern of patterns) {
-    const ourTagForHost = pattern.ourTag[hostKeyInject] || pattern.ourTag[hostname] || "";
-    if (ourTagForHost &amp;&amp; !url.searchParams.has(pattern.param)) {
-      url.searchParams.set(pattern.param, ourTagForHost);
-      action = "injected";
-      break;
-    }
-  }
-}</code></pre>
-
-  <p>That <code>!url.searchParams.has(pattern.param)</code> is the contract: a tag already on the URL at injection time is never overwritten in place.</p>
+  <p>Only if you turn on "Remove all affiliate tags from other sources" in Settings. With that off, the default, MUGA never touches an existing tag: it is detected and left in place (<code>action = "detected_foreign"</code> when a foreign tag is preserved). With it on, third-party tags are stripped from the URL, leaving none behind; MUGA does not add a tag of its own in their place.</p>
 
   <h3>Q: What happens if a creator's tag is on a program MUGA has no account on?</h3>
 
-  <p>It is preserved anyway. The <code>ourTag</code> map is allowed to be empty for a program, preservation does not require MUGA to have its own tag for that program. The detection loop at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js#L679"><code>src/lib/cleaner.js:679</code></a> iterates every pattern that matches the host, not just patterns where <code>OUR_TAGS[prog.id]</code> is populated. Programs like Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy ride this path (the <code>AFFILIATE_PATTERNS</code> table, <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</p>
+  <p>It is preserved anyway, the same as on any other supported program. MUGA does not hold an affiliate account on any store, so this question has the same answer everywhere: the tag stays unless you explicitly enable stripping. The detection loop in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js"><code>src/lib/cleaner.js</code></a> iterates every pattern that matches the host, regardless of MUGA's commercial relationship with that program. Programs like Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy ride this path (the <code>AFFILIATE_PATTERNS</code> table, <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>).</p>
 
-  <h3>Q: Does my price change when MUGA injects its tag?</h3>
+  <h3>Q: Does my price change if I strip third-party affiliate tags?</h3>
 
-  <p>No. Affiliate programs pay a commission to the store, not the buyer. The URL change only affects who the store credits with the referral. Your checkout total is unchanged. This is the standard rebate-economy model that Amazon Associates / eBay Partner Network / Bookshop / etc. all run.</p>
+  <p>No. Affiliate programs pay a commission to the store, not the buyer. Removing the tag only changes who the store credits with the referral (nobody, once removed). Your checkout total is unchanged.</p>
 
   <hr>
 
@@ -171,7 +143,7 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
 
   <h3>Q: How does MUGA pay for itself?</h3>
 
-  <p>Affiliate revenue from the injection feature described above, on the small set of programs in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L74"><code>src/lib/affiliates.js:74</code></a>. The cost base is intentionally low:</p>
+  <p>MUGA does not monetize your clicks. It's free, ad-free, and does not add any affiliate tag of its own. The cost base is intentionally low:</p>
 
   <ul>
     <li>The cleaner is a local computation; there is no per-user server cost.</li>
@@ -179,11 +151,11 @@ if (prefs.injectOwnAffiliate &amp;&amp; action !== "detected_foreign" &amp;&amp;
     <li>Remote Rules is a static signed JSON served from GitHub Pages, fetched at most once per 7 days.</li>
   </ul>
 
-  <p>If you want to support the project without enabling injection, the <a href="https://github.com/yocreoquesi/muga/blob/main/README.md#support">Ko-fi link in the README</a> is the alternative.</p>
+  <p>If MUGA saves you time, the <a href="https://github.com/yocreoquesi/muga/blob/main/README.md#support">sponsor links in the README</a> are how you can support development.</p>
 
-  <h3>Q: What programs are NOT in MUGA, and why?</h3>
+  <h3>Q: What programs does MUGA not treat as attribution to preserve, and why?</h3>
 
-  <p>By design, MUGA refuses to participate in affiliate programs whose model forces user clicks through external tracking servers (the "network-redirect" class, Awin, ShareASale, Admitad, Impact Radius, and similar). The extension still <strong>strips</strong> their noise parameters when encountered; it just will not <strong>inject</strong> them on MUGA's behalf. The rationale is in the <code>MUGA_EXCLUDED_IDS</code> set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/wrapper-engine.js#L226"><code>src/lib/wrapper-engine.js:226</code></a>) and the comment at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L105"><code>src/lib/affiliates.js:105</code></a>: deprecated Booking / Humble Bundle entries are removed, and Apple's PHG is intentionally not in <code>OUR_TAGS</code> because the program is closed to small publishers.</p>
+  <p>By design, MUGA does not treat redirect-based affiliate programs (the "network-redirect" class: Awin, ShareASale, Admitad, Impact Radius, and similar) as attribution to keep on the landing URL. The redirect itself is the attribution event, so MUGA lets it pass through unchanged and only strips their noise parameters from the final destination once you land there. The rationale is in the <code>MUGA_EXCLUDED_IDS</code> set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/wrapper-engine.js"><code>src/lib/wrapper-engine.js</code></a>) and the comments in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>.</p>
 
   <h3>Q: What is the roadmap?</h3>
 

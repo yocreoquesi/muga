@@ -72,7 +72,7 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
 │      domain-specific stripParams + remote params     │
 │      landing policy: preserve matrix-required params │
 │      on first-touch redirect-network landings        │
-│  2.  Affiliate check — preserve/inject affiliate tag │
+│  2.  Affiliate check — preserve existing tag         │
 │      (AFFILIATE_PATTERNS from affiliates.js)         │
 │  3.  Path strip      — path-strip-rules.json         │
 │  → returns { cleanUrl, action, removedTracking, … }  │
@@ -120,7 +120,7 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
 
 **Tracking param** — a URL query parameter that carries surveillance signal (click IDs, session tokens, campaign attribution) with no bearing on what the user sees. Safe to strip universally. Lives in `TRACKING_PARAMS` (`src/lib/affiliates-data.js`). DNR rules in `src/rules/tracking-params.json` strip them pre-navigation.
 
-**Affiliate param** — a parameter that carries creator-attribution for a monetization program (Amazon `tag=`, eBay `campid=`). MUGA preserves or injects these. Lives in `AFFILIATE_PATTERNS` (`src/lib/affiliates.js`). Stripping one silently kills a creator's commission.
+**Affiliate param** — a parameter that carries creator-attribution for a monetization program (Amazon `tag=`, eBay `campid=`). MUGA preserves these by default and never adds a tag of its own. Lives in `AFFILIATE_PATTERNS` (`src/lib/affiliates.js`). Stripping one silently kills a creator's commission.
 
 **Landing param** — a parameter that a redirect-network's first-party merchant tag reads on landing to populate its attribution cookie (`awc` for Awin, `cjevent` for CJ Affiliate, etc.). Must survive the first page load; may be stripped on same-site subsequent navigations. Lives in `REDIRECT_NETWORK_PATTERNS.landingParams` (`src/lib/redirect-networks.js`). The `getLandingPolicy()` function in `src/lib/cleaner.js` implements this via referrer matching.
 

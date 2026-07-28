@@ -9,12 +9,11 @@
  * Mirrors the precedent set by src/lib/remote-rules-changelog-view.js.
  *
  * Copy constraints (spec "Copy Style Constraints"): messages never use
- * an em-dash or "--". MUGA injects its own referral on naked Amazon/eBay
- * links (web-tool-naked-link-injection slice 2, ADR-1). When it does, this
- * module surfaces `mugaReferralInjected`, `cleanUrlNoMugaReferral`, and a
- * disclosure string, so the DOM layer can render the FTC-style notice and
- * the "Copy without MUGA's referral" opt-out. Any creator/foreign referral
- * is always preserved and never gets a disclosure (nothing MUGA added).
+ * an em-dash or "--". MUGA does not add any affiliate tag of its own; by
+ * default it respects the original referral already on a link, and
+ * stripping third-party tags is an optional extra the user controls
+ * elsewhere (not this tool's concern: the adapter never rewrites an
+ * existing referral).
  */
 
 /**
@@ -28,27 +27,7 @@
  * @property {string|null} destinationHost
  * @property {boolean} affiliatePreserved
  * @property {boolean} noChanges
- * @property {boolean} mugaReferralInjected
- * @property {boolean} mugaReferralPresent
- * @property {string|null} cleanUrlNoMugaReferral
- * @property {string|null} disclosure
  */
-
-/**
- * FTC-style disclosures shown when the cleaned URL carries MUGA's own
- * referral. Two variants (maintainer-approved verbatim copy):
- *  - INJECTED: MUGA added its tag to a link that had none this run.
- *  - PRESENT:  the pasted link already carried MUGA's tag (re-cleaned).
- * Both point at the opt-out without a directional phrase ("below"/"above"),
- * because the opt-out button sits ABOVE this text in the DOM.
- */
-const REFERRAL_DISCLOSURE_INJECTED =
-  "This link had no referral of its own, so MUGA added one for a selected store " +
-  "to help keep the tool free. Prefer a clean link? You can copy one without it too.";
-
-const REFERRAL_DISCLOSURE_PRESENT =
-  "This link already carries MUGA's referral, which helps keep the tool free. " +
-  "Prefer a clean link? You can copy one without it too.";
 
 /**
  * The view shown before the user has cleaned anything yet.
@@ -65,10 +44,6 @@ export function emptyStateView() {
     destinationHost: null,
     affiliatePreserved: false,
     noChanges: false,
-    mugaReferralInjected: false,
-    mugaReferralPresent: false,
-    cleanUrlNoMugaReferral: null,
-    disclosure: null,
   };
 }
 
@@ -147,9 +122,6 @@ export function computeLengthReduction(originalUrl, cleanUrl) {
  *   unwrapped?: boolean,
  *   destinationHost?: string|null,
  *   affiliatePreserved?: boolean,
- *   mugaReferralInjected?: boolean,
- *   mugaReferralPresent?: boolean,
- *   cleanUrlNoMugaReferral?: string|null,
  *   action?: string,
  *   error?: string,
  * }|null|undefined} result
@@ -170,20 +142,12 @@ export function formatCleanResult(result) {
       destinationHost: null,
       affiliatePreserved: false,
       noChanges: false,
-      mugaReferralInjected: false,
-      mugaReferralPresent: false,
-      cleanUrlNoMugaReferral: null,
-      disclosure: null,
     };
   }
 
   const removedList = Array.isArray(result.removed) ? result.removed : [];
   const unwrapped = !!result.unwrapped;
   const noChanges = removedList.length === 0 && !unwrapped;
-  const mugaReferralInjected = !!result.mugaReferralInjected;
-  // A just-injected referral is always present in the output too, so treat
-  // "injected" as a superset of "present" even if the adapter only set one.
-  const mugaReferralPresent = !!result.mugaReferralPresent || mugaReferralInjected;
 
   return {
     state: "clean",
@@ -195,15 +159,5 @@ export function formatCleanResult(result) {
     destinationHost: result.destinationHost ?? null,
     affiliatePreserved: !!result.affiliatePreserved,
     noChanges,
-    mugaReferralInjected,
-    mugaReferralPresent,
-    cleanUrlNoMugaReferral: mugaReferralPresent && typeof result.cleanUrlNoMugaReferral === "string"
-      ? result.cleanUrlNoMugaReferral
-      : null,
-    // Wording follows how the referral got there: added this run vs already
-    // on the pasted link. Both only show when our referral is present.
-    disclosure: mugaReferralInjected
-      ? REFERRAL_DISCLOSURE_INJECTED
-      : (mugaReferralPresent ? REFERRAL_DISCLOSURE_PRESENT : null),
   };
 }

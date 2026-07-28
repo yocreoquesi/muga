@@ -28,29 +28,26 @@
     <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click; see the Privacy Policy for the full list and rationale</li>
     <li>Resolves generic URL shorteners (bit.ly, tinyurl.com, and other well-known shorteners) directly in your browser via a standard HTTP fetch; no URL is sent to any MUGA server. On Chrome this is on by default, covered by the extension's existing host access; on Firefox it is opt-in and requests permission for the shortener domains when you enable it. It only runs when you hover-hold or click a shortened link, never on passive page load. Affiliate-redirect networks are NEVER resolved this way</li>
     <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted: no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
-    <li>Adds our affiliate tag to links that carry no affiliate tag: on by default, and you can turn it off during onboarding or any time in Settings</li>
+    <li>Respects the original referral on links that already carry an affiliate tag, and lets you optionally remove third-party affiliate tags in Settings; MUGA does not add any affiliate tag of its own</li>
     <li>Optionally clicks "reject" or "necessary-only" on certain cookie-consent banners it recognizes (currently OneTrust) when you turn this on in Settings: off by default, entirely local, and it never clicks "accept" or grants broader tracking on your behalf. If no safe reject option exists on a banner, MUGA leaves it alone</li>
   </ul>
   <p>You stay in control of every feature. MUGA does not collect, sell, or share your browsing data. Every feature that contacts an external service is listed above, carries no data about you, and can be turned off in Settings.</p>
 
   <h2>3. Affiliate model and disclosure</h2>
-  <p>MUGA is maintained by an independent developer. To sustain active development, MUGA participates in affiliate programs operated by third-party stores, including but not limited to the programs of supported stores listed in the source code.</p>
-  <p>On by default, MUGA adds our affiliate tag to URLs that contain <strong>no existing affiliate tag</strong>. You can turn this off during onboarding or any time in Settings, with no loss of cleaning or protection. This does not change the price you pay. Affiliate tags tell the store who referred the visit, nothing more. The developer may earn a small commission from qualifying purchases.</p>
+  <p>MUGA does not add any affiliate tag of its own, and it does not monetize your clicks. By default, MUGA respects the original referral: if a creator you follow earned an affiliate tag on a link, it stays, so they keep their credit. Affiliate tags tell the store who referred the visit, nothing more, and this does not change the price you pay.</p>
   <ul>
-    <li>By default, MUGA leaves an affiliate tag that is already present in a URL in place. Whether to strip third-party tags is your decision: replacing one only happens if you deliberately turn that on. You stay in control</li>
-    <li>Affiliate tag injection only applies to the supported stores explicitly listed in the <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">source code</a></li>
-    <li>You can disable affiliate tag injection at any time in the Extension's Settings, no questions asked</li>
-    <li>The "Remove all affiliate tags from other sources" option strips third-party tags. MUGA's own tag is preserved <strong>only when you also have affiliate injection enabled on this device</strong>. If you have injection off, MUGA's tag is treated like any other and removed too, symmetric with your stated preference</li>
-    <li>The developer may earn commissions from qualifying purchases through supported affiliate programs. This disclosure is required by the operating agreements of those programs</li>
+    <li>By default, MUGA leaves an affiliate tag that is already present in a URL in place. Stripping third-party tags is a separate choice that is always yours</li>
+    <li>The "Remove all affiliate tags from other sources" option strips third-party tags from links, leaving none behind. This is an optional extra, off by default: MUGA never adds its own tag in their place</li>
+    <li>MUGA does not participate in affiliate programs and earns no commission from your clicks or purchases</li>
   </ul>
 
   <h2>4. No data collection</h2>
   <p>MUGA does not collect, transmit, or store your browsing data. Every feature is transparent and configurable. MUGA has no analytics, no telemetry, and no crash-reporting services. Optional features that contact an external service (such as rule updates) do not send your browsing history, are listed in these Terms, and can be turned off in Settings.</p>
-  <p>Your data lives in two places, neither of which is visible to the developer: behavioural preferences (language, blacklist, whitelist, the affiliate toggles' default values) are stored in <code>chrome.storage.sync</code> and follow you across your own devices via your browser account; consent metadata and per-device decisions are stored in <code>chrome.storage.local</code> on each device individually. Acceptance of these Terms is recorded per device, not per browser account; the rationale is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
+  <p>Your data lives in two places, neither of which is visible to the developer: behavioural preferences (language, blacklist, whitelist, the affiliate toggle's default value) are stored in <code>chrome.storage.sync</code> and follow you across your own devices via your browser account; consent metadata and per-device decisions are stored in <code>chrome.storage.local</code> on each device individually. Acceptance of these Terms is recorded per device, not per browser account; the rationale is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
   <p>For full details, see the <a href="privacy.html">Privacy Policy</a>.</p>
 
   <h2>5. Third-party services</h2>
-  <p>When MUGA modifies a URL to include an affiliate tag and you navigate to that store, your interaction with the store is governed entirely by that store's own terms of service and privacy policy. MUGA has no control over and assumes no responsibility for the content, practices, or policies of third-party websites.</p>
+  <p>When you navigate to a store via a link that already carries an affiliate tag, your interaction with the store is governed entirely by that store's own terms of service and privacy policy. MUGA has no control over and assumes no responsibility for the content, practices, or policies of third-party websites.</p>
 
   <h2>6. Open-source license</h2>
   <p>MUGA is released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3 (GPL v3)</a>. You are free to use, study, modify, and distribute the source code, provided that any derivative work is also released under the GPL v3. The complete source code is available at <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a>.</p>
@@ -60,8 +57,7 @@
 
   <h2>8. Disclaimer of warranties</h2>
   <p>MUGA is provided <strong>"as is"</strong> and <strong>"as available"</strong>, without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
-  <p>The developer does not warrant that MUGA will operate without interruption or error, that tracking parameters will always be detected, or that affiliate tag injection will always function correctly. Website structures and tracking methods change frequently and may temporarily affect functionality.</p>
-  <p>Affiliate commissions are not guaranteed. They depend on the terms and availability of third-party affiliate programs, which may change at any time without notice from the developer.</p>
+  <p>The developer does not warrant that MUGA will operate without interruption or error, or that tracking parameters will always be detected. Website structures and tracking methods change frequently and may temporarily affect functionality.</p>
   <p><strong>EU consumers:</strong> Nothing in these Terms limits or excludes your mandatory statutory rights under applicable consumer protection law, including the rights provided under Directive 2011/83/EU (Consumer Rights Directive) and applicable national legislation implementing it. Statutory warranty rights and rights of withdrawal, where applicable, remain unaffected.</p>
 
   <h2>9. Limitation of liability</h2>

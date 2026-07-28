@@ -167,7 +167,7 @@
   const STRINGS = {
     en: {
       toast_title:   "MUGA found someone else's affiliate tag",
-      toast_tag_msg: "has an affiliate tag that isn't ours:",
+      toast_tag_msg: "carries a third-party affiliate tag:",
       toast_allow:   "Keep it",
       toast_block:   "Remove it",
       toast_dismiss: "Dismiss",
@@ -178,7 +178,7 @@
     },
     es: {
       toast_title:   "MUGA encontró el tag de afiliado de otro",
-      toast_tag_msg: "tiene un tag de afiliado que no es nuestro:",
+      toast_tag_msg: "lleva un tag de afiliado de terceros:",
       toast_allow:   "Mantenerlo",
       toast_block:   "Eliminarlo",
       toast_dismiss: "Descartar",
@@ -189,7 +189,7 @@
     },
     pt: {
       toast_title:   "MUGA encontrou a tag de afiliado de outra pessoa",
-      toast_tag_msg: "tem uma tag de afiliado que não é nossa:",
+      toast_tag_msg: "tem uma tag de afiliado de terceiros:",
       toast_allow:   "Manter",
       toast_block:   "Remover",
       toast_dismiss: "Ignorar",
@@ -200,7 +200,7 @@
     },
     de: {
       toast_title:   "MUGA hat ein fremdes Affiliate-Tag gefunden",
-      toast_tag_msg: "hat ein Affiliate-Tag, das nicht unseres ist:",
+      toast_tag_msg: "enthält ein Affiliate-Tag eines Drittanbieters:",
       toast_allow:   "Behalten",
       toast_block:   "Entfernen",
       toast_dismiss: "Schließen",
@@ -211,7 +211,7 @@
     },
     fr: {
       toast_title:   "MUGA a trouvé un tag d'affiliation de quelqu'un d'autre",
-      toast_tag_msg: "a un tag d'affiliation qui n'est pas le nôtre :",
+      toast_tag_msg: "porte un tag d'affiliation tiers :",
       toast_allow:   "Conserver",
       toast_block:   "Supprimer",
       toast_dismiss: "Ignorer",
@@ -222,7 +222,7 @@
     },
     it: {
       toast_title:   "MUGA ha trovato il tag di affiliazione di qualcun altro",
-      toast_tag_msg: "ha un tag di affiliazione che non è il nostro:",
+      toast_tag_msg: "contiene un tag di affiliazione di terze parti:",
       toast_allow:   "Mantieni",
       toast_block:   "Rimuovi",
       toast_dismiss: "Ignora",
@@ -233,7 +233,7 @@
     },
     ja: {
       toast_title:   "MUGAは他者のアフィリエイトタグを検出しました",
-      toast_tag_msg: "には当方のものではないアフィリエイトタグがあります:",
+      toast_tag_msg: "にはサードパーティのアフィリエイトタグが含まれています:",
       toast_allow:   "保持",
       toast_block:   "削除",
       toast_dismiss: "閉じる",

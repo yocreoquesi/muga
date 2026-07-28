@@ -173,102 +173,30 @@ describe("formatCleanResult() — success paths", () => {
   });
 });
 
-describe("formatCleanResult() — MUGA referral disclosure and opt-out (web-tool-naked-link-injection)", () => {
-  test("injected result surfaces mugaReferralInjected/Present, the opt-out URL, and the ADDED disclosure line", () => {
-    const result = {
-      ok: true,
-      cleanUrl: "https://www.amazon.com/dp/B000123456?tag=muga0b-20",
-      removed: [],
-      unwrapped: false,
-      destinationHost: "amazon.com",
-      affiliatePreserved: false,
-      mugaReferralInjected: true,
-      mugaReferralPresent: true,
-      cleanUrlNoMugaReferral: "https://www.amazon.com/dp/B000123456",
-      action: "injected",
-    };
-    const view = formatCleanResult(result);
-    assert.equal(view.mugaReferralInjected, true);
-    assert.equal(view.mugaReferralPresent, true);
-    assert.equal(view.cleanUrlNoMugaReferral, "https://www.amazon.com/dp/B000123456");
-    assert.equal(typeof view.disclosure, "string");
-    assert.ok(view.disclosure.length > 0);
-    assert.ok(/added one/i.test(view.disclosure), "injected disclosure must say MUGA added the referral");
-    assert.ok(!/below|above/i.test(view.disclosure), "disclosure must not reference button direction");
-    assert.ok(!view.disclosure.includes("—"), "disclosure must not contain an em-dash");
-    assert.ok(!view.disclosure.includes("--"), "disclosure must not contain \"--\"");
-  });
-
-  test("already-present MUGA referral (not injected this run) still surfaces the opt-out with the ALREADY-CARRIES disclosure", () => {
-    const result = {
-      ok: true,
-      cleanUrl: "https://www.amazon.com/dp/B000123456?tag=muga0b-20",
-      removed: [],
-      unwrapped: false,
-      destinationHost: "amazon.com",
-      affiliatePreserved: false,
-      mugaReferralInjected: false,
-      mugaReferralPresent: true,
-      cleanUrlNoMugaReferral: "https://www.amazon.com/dp/B000123456",
-      action: "untouched",
-    };
-    const view = formatCleanResult(result);
-    assert.equal(view.mugaReferralInjected, false);
-    assert.equal(view.mugaReferralPresent, true);
-    assert.equal(view.cleanUrlNoMugaReferral, "https://www.amazon.com/dp/B000123456");
-    assert.equal(typeof view.disclosure, "string");
-    assert.ok(/already carries/i.test(view.disclosure), "present disclosure must say the link already carries the referral");
-    assert.ok(!/added one/i.test(view.disclosure), "present disclosure must NOT claim MUGA added the referral");
-    assert.ok(!/below|above/i.test(view.disclosure), "disclosure must not reference button direction");
-    assert.ok(!view.disclosure.includes("—"), "disclosure must not contain an em-dash");
-    assert.ok(!view.disclosure.includes("--"), "disclosure must not contain \"--\"");
-  });
-
-  test("non-injected result (preserved referral) has no disclosure and no opt-out URL", () => {
-    const result = {
+describe("formatCleanResult() — no MUGA-owned referral disclosure (drop-affiliate-injection PR 3/4)", () => {
+  test("view-model no longer carries mugaReferralInjected/Present, cleanUrlNoMugaReferral, or disclosure fields", () => {
+    const cleanView = formatCleanResult({
       ok: true,
       cleanUrl: "https://amazon.es/dp/B0?tag=creator-20",
       removed: [],
       unwrapped: false,
       destinationHost: "amazon.es",
       affiliatePreserved: true,
-      mugaReferralInjected: false,
-      cleanUrlNoMugaReferral: null,
       action: "cleaned",
-    };
-    const view = formatCleanResult(result);
-    assert.equal(view.mugaReferralInjected, false);
-    assert.equal(view.cleanUrlNoMugaReferral, null);
-    assert.equal(view.disclosure, null);
-  });
+    });
+    for (const key of ["mugaReferralInjected", "mugaReferralPresent", "cleanUrlNoMugaReferral", "disclosure"]) {
+      assert.ok(!(key in cleanView), `formatCleanResult() view must not carry "${key}" anymore`);
+    }
 
-  test("plain clean result has no disclosure and no opt-out URL", () => {
-    const result = {
-      ok: true,
-      cleanUrl: "https://example.com/already-clean?id=42",
-      removed: [],
-      unwrapped: false,
-      destinationHost: "example.com",
-      affiliatePreserved: false,
-      mugaReferralInjected: false,
-      cleanUrlNoMugaReferral: null,
-      action: "untouched",
-    };
-    const view = formatCleanResult(result);
-    assert.equal(view.disclosure, null);
-    assert.equal(view.cleanUrlNoMugaReferral, null);
-  });
-
-  test("empty and error states carry the referral fields with safe defaults", () => {
-    assert.equal(emptyStateView().mugaReferralInjected, false);
-    assert.equal(emptyStateView().mugaReferralPresent, false);
-    assert.equal(emptyStateView().cleanUrlNoMugaReferral, null);
-    assert.equal(emptyStateView().disclosure, null);
     const errorView = formatCleanResult(null);
-    assert.equal(errorView.mugaReferralInjected, false);
-    assert.equal(errorView.mugaReferralPresent, false);
-    assert.equal(errorView.cleanUrlNoMugaReferral, null);
-    assert.equal(errorView.disclosure, null);
+    for (const key of ["mugaReferralInjected", "mugaReferralPresent", "cleanUrlNoMugaReferral", "disclosure"]) {
+      assert.ok(!(key in errorView), `formatCleanResult() error view must not carry "${key}" anymore`);
+    }
+
+    const empty = emptyStateView();
+    for (const key of ["mugaReferralInjected", "mugaReferralPresent", "cleanUrlNoMugaReferral", "disclosure"]) {
+      assert.ok(!(key in empty), `emptyStateView() must not carry "${key}" anymore`);
+    }
   });
 });
 
