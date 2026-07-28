@@ -710,7 +710,7 @@ To run at the **2026-08-24** review (and every quarter after):
 
 ## Out of scope for v1.0
 
-- **The non-redirect direct-injection programs** (Amazon Associates, eBay Partner Network, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) — these use simple `?tag=` injection, are already handled correctly by `AFFILIATE_PATTERNS`, and are not affected by the 2.1 pivot.
+- **The non-redirect direct-injection programs** (Amazon Associates, eBay Partner Network, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) — these carry attribution in a simple `?tag=` query parameter, which MUGA detects and preserves via `AFFILIATE_PATTERNS` (it never adds a tag of its own; see [ADR-0006](adr/0006-remove-own-tag-affiliate-injection.md)), and are not affected by the 2.1 pivot.
 - **Tradedoubler, ShareASale, VigLink** — flagged in the "Known-unknowns" section above. Become matrix entries in the next quarterly review or on first observed payout regression.
 - **MUGA's own affiliate partnerships** with redirect networks — explicitly out of scope per ADR-0002. The matrix describes how to preserve **creator** attribution; MUGA opening its own AliExpress / CJ / Awin accounts is a 2.2+ roadmap question.
 

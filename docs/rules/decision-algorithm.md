@@ -10,7 +10,7 @@ run in priority order; the first layer that matches governs the outcome.
 1. **Wrapper layer** — detect and unwrap redirect networks
 2. **Contextual bounded-scope layer** — strip PARAM_PAIRS entries when the URL
    host is a direct-injection affiliate landing page
-3. **Direct-injection affiliate layer** — preserve or inject affiliate tags
+3. **Direct-injection affiliate layer** — detect and preserve an existing affiliate tag (MUGA never adds a tag of its own)
 
 ## Wrappers
 
@@ -47,14 +47,13 @@ conformance vector `network-redirect-host-bypasses-contextual` covers this case.
 ## Direct-Injection Affiliate
 
 The `src/rules/manifest.data.js` module exports `CAPS_DIRECT_INJECTION_PROGRAMS`,
-the roster of affiliate programs that MUGA recognizes for tag preservation and
-injection. Each entry declares:
+the roster of affiliate programs that MUGA recognizes for tag preservation. Each
+entry declares:
 
 - `id` — stable kebab-case identifier (e.g. `amazon-associates`)
 - `programType` — always `direct-injection` in this roster
 - `domains` — host strings the program covers
 - `param` — URL query parameter that carries the affiliate tag
 
-MUGA's per-host tag values (`ourTag`) live in `src/lib/affiliates.js` and are
-intentionally outside the rule artifact — they are implementer-specific and
-not part of the algorithm definition.
+MUGA detects the `param` on these hosts to preserve an existing creator tag; it
+never adds a tag of its own (see [ADR-0006](../adr/0006-remove-own-tag-affiliate-injection.md)).
