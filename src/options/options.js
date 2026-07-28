@@ -3,7 +3,7 @@
  */
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
-import { getSupportedStores, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
+import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
 import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
@@ -18,7 +18,7 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
-import { snapToastDuration, buildExportPayload, planImport, diffImport, BOOLEAN_KEYS, clampCookieConsentMode } from "../lib/settings-schema.js";
+import { snapToastDuration, buildExportPayload, planImport, diffImport, clampCookieConsentMode } from "../lib/settings-schema.js";
 import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
 import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
@@ -293,10 +293,10 @@ async function init() {
 
   // Initial toggle state MUST come from the canonical merged prefs (sync +
   // consent + per-device overrides), NOT a raw sync read. A raw sync read
-  // ignores per-device overrides (per-device-prefs), so a toggle like
-  // injectOwnAffiliate or remoteRulesEnabled could DISPLAY a value that
-  // disagrees with the effective value getPrefs() gives the rest of the
-  // extension (#888 follow-up).
+  // ignores per-device overrides (per-device-prefs), so a guarded toggle like
+  // remoteRulesEnabled could DISPLAY a value that disagrees with the
+  // effective value getPrefs() gives the rest of the extension (#888
+  // follow-up).
   let prefs;
   try { prefs = await getPrefs(); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
 
@@ -312,7 +312,6 @@ async function init() {
     return;
   }
 
-  bindToggle("inject", "injectOwnAffiliate", prefs);
   bindToggle("notify", "notifyForeignAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);
   // D5 linked-suggestion nudge: reveals when strip-affiliates transitions to
@@ -394,7 +393,6 @@ async function init() {
   // come from the popup's "Strip locally" button).
   renderList("user-custom-rules-items", prefs.userCustomRules || [], "userCustomRules");
   renderCategories(prefs.disabledCategories || []);
-  renderStores();
   initLanguageSelect();
   bindListButtons();
   initStatsSection();
@@ -830,159 +828,6 @@ function renderCategories(disabledCategories) {
   }
 }
 
-/**
- * Renders the supported affiliate stores grid.
- *
- * drop-affiliate-injection (PR 1a): `AFFILIATE_PATTERNS` entries no longer
- * carry an `ourTag` map (src/lib/affiliates.js) — MUGA never injects its own
- * affiliate tag anymore, so there is no more "active store" to display.
- * `p.ourTag || {}` below is a defensive guard against the now-missing field
- * (Object.values(undefined) would throw); `activePrograms` is therefore
- * always empty and the grid always shows its "no active stores" placeholder,
- * which is the CORRECT reflection of the new behavior. This UI section
- * itself (copy, hiding it entirely, etc.) is otherwise out of scope for this
- * PR — full options/onboarding UI rewiring is deferred to a follow-up PR.
- */
-function renderStores() {
-  const allPrograms = getSupportedStores();
-  const activePrograms = allPrograms.filter(
-    (p) => Object.values(p.ourTag || {}).some((tag) => tag && tag.trim() !== ""),
-  );
-
-  const grid = document.getElementById("stores-grid");
-  const hintEl = document.getElementById("stores-hint");
-  grid.replaceChildren();
-
-  if (activePrograms.length === 0) {
-    grid.hidden = true;
-    if (hintEl) hintEl.hidden = true;
-    const placeholder = document.createElement("p");
-    placeholder.className = "empty stores-empty";
-    placeholder.textContent = t("no_active_stores", _currentLang);
-    grid.parentNode.insertBefore(placeholder, grid);
-    const countEl = document.getElementById("stores-count");
-    if (countEl) countEl.textContent = "";
-    return;
-  }
-
-  grid.hidden = false;
-  if (hintEl) hintEl.hidden = false;
-
-  // Group programs by display brand. Today caps-spec programs have a
-  // 1:1 relationship with display groups, but we keep the grouping so
-  // a future caps-spec change (e.g. Amazon Vendor Central as a separate
-  // entry sharing the "Amazon" brand) reuses the same UI shape.
-  const groups = new Map();
-  for (const p of activePrograms) {
-    const key = p.group || p.name;
-    if (!groups.has(key)) groups.set(key, []);
-    // Expand each program into one row per (host, tag) pair so the
-    // marketplace-level detail surfaces in the UI. p.ourTag no longer
-    // exists (drop-affiliate-injection, PR 1a) — this loop is now
-    // unreachable dead code in practice (activePrograms is always empty),
-    // guarded defensively rather than deleted since renderStores()'s UI is
-    // out of scope for this PR.
-    for (const [host, tag] of Object.entries(p.ourTag || {})) {
-      if (!tag || tag.trim() === "") continue;
-      groups.get(key).push({ name: host, param: p.param, ourTag: tag });
-    }
-  }
-
-  for (const [groupName, stores] of groups) {
-    const isSingle = stores.length === 1;
-
-    const chip = document.createElement("div");
-    chip.className = "store-chip" + (isSingle ? "" : " store-group");
-
-    const dot = document.createElement("div");
-    dot.className = "store-dot active";
-
-    const info = document.createElement("div");
-    info.className = "store-info";
-
-    const header = document.createElement("div");
-    header.className = "store-header";
-
-    const nameEl = document.createElement("span");
-    nameEl.className = "store-name";
-    nameEl.textContent = groupName;
-    header.appendChild(nameEl);
-
-    if (!isSingle) {
-      const countBadge = document.createElement("span");
-      countBadge.className = "store-count";
-      countBadge.textContent = `(${stores.length})`;
-      header.appendChild(countBadge);
-
-      const arrow = document.createElement("span");
-      arrow.className = "store-arrow";
-      arrow.textContent = "›";
-      header.appendChild(arrow);
-    }
-
-    info.appendChild(header);
-
-    if (isSingle) {
-      const paramEl = document.createElement("div");
-      paramEl.className = "store-param";
-      paramEl.textContent = `${stores[0].param}=${stores[0].ourTag}`;
-      info.appendChild(paramEl);
-    } else {
-      const detail = document.createElement("div");
-      detail.className = "store-detail";
-      detail.hidden = true;
-
-      for (const s of stores) {
-        const row = document.createElement("div");
-        row.className = "store-detail-row";
-
-        const rowDot = document.createElement("div");
-        rowDot.className = "store-dot active";
-
-        const rowInfo = document.createElement("div");
-
-        const rowName = document.createElement("div");
-        rowName.className = "store-name";
-        rowName.textContent = s.name;
-
-        const rowParam = document.createElement("div");
-        rowParam.className = "store-param";
-        rowParam.textContent = `${s.param}=${s.ourTag}`;
-
-        rowInfo.appendChild(rowName);
-        rowInfo.appendChild(rowParam);
-        row.appendChild(rowDot);
-        row.appendChild(rowInfo);
-        detail.appendChild(row);
-      }
-
-      info.appendChild(detail);
-
-      chip.setAttribute("role", "button");
-      chip.setAttribute("tabindex", "0");
-      chip.setAttribute("aria-label", t("store_group_toggle", _currentLang).replace("{name}", groupName));
-      chip.setAttribute("aria-expanded", "false");
-      chip.addEventListener("click", () => {
-        const wasOpen = !detail.hidden;
-        detail.hidden = wasOpen;
-        chip.setAttribute("aria-expanded", String(!wasOpen));
-        chip.classList.toggle("open", !wasOpen);
-      });
-      chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chip.click(); } });
-    }
-
-    chip.appendChild(dot);
-    chip.appendChild(info);
-    grid.appendChild(chip);
-  }
-
-  const countEl = document.getElementById("stores-count");
-  if (countEl) {
-    const brandCount = groups.size;
-    countEl.textContent = `(${brandCount})`;
-  }
-}
-
 /** Initializes the language dropdown and binds change handler. */
 function initLanguageSelect() {
   const select = document.getElementById("lang-select");
@@ -1246,24 +1091,14 @@ function initExportImport() {
         await setDevMode(plan.special.devMode);
       }
 
-      // #965: importing a config is an explicit choice for this device. For
-      // guarded prefs (injectOwnAffiliate), getPrefs() overlays the per-device
-      // override LAST, so a stale onboarding-decline override would keep the
+      // #965: importing a config is an explicit choice for this device.
+      // remoteRulesEnabled is guarded (synced-affiliate-pref-guard.js) and
+      // permission-gated, so it never enters plan.toSave.
+      // Reconcile its per-device override to the value that actually landed
+      // (post permission gate) so sync, override, effective, and UI all
+      // agree — otherwise a stale onboarding-decline override would keep the
       // extension's effective value at odds with the freshly imported sync
-      // value AND the checkbox. Reconcile the override to the imported value so
-      // sync, override, effective, and UI all agree. Only guarded keys we
-      // actually wrote (present in plan.toSave, i.e. BOOLEAN_KEYS ∩
-      // GUARDED_PREFS that arrived as booleans) are reconciled, and we read the
-      // value from the plan — not raw `data` — so it follows any future
-      // migrate() transform.
-      for (const key of GUARDED_PREFS) {
-        if (BOOLEAN_KEYS.includes(key) && key in plan.toSave) {
-          await reconcileOverrideForExplicitChoice(key, plan.toSave[key]);
-        }
-      }
-      // remoteRulesEnabled is guarded too, but permission-gated so it never
-      // enters plan.toSave / BOOLEAN_KEYS. Reconcile its per-device override to
-      // the value that actually landed (post permission gate). NOTE: unlike the
+      // value. NOTE: unlike the
       // ENABLE/DISABLE_REMOTE_RULES toggle path, import only writes the pref +
       // override; it deliberately does NOT force an immediate signed fetch (that
       // would start egress from a file import, bypassing the gesture the toggle
@@ -1275,7 +1110,6 @@ function initExportImport() {
 
       // Re-read prefs and update all UI toggles and lists
       const newPrefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-      document.getElementById("inject").checked = newPrefs.injectOwnAffiliate;
       document.getElementById("notify").checked = newPrefs.notifyForeignAffiliate;
       document.getElementById("strip-affiliates").checked = newPrefs.stripAllAffiliates;
       document.getElementById("dnr-enabled").checked = newPrefs.dnrEnabled;

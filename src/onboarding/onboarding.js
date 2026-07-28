@@ -15,15 +15,16 @@
  * acceptance write uses REQUIRED_CONSENT_VERSION (#365), so a user
  * who completes a re-onboard moves their stored consent forward.
  *
- * Per-device confirmation prompts (#364) for sync-inherited prefs are
- * still surfaced when applicable, alongside the re-onboard rendering.
+ * drop-affiliate-injection (PR 1b): the guarded-pref confirmation step
+ * (#364) that used to run alongside the re-onboard rendering was
+ * deleted — its only wired pref was injectOwnAffiliate, retired in this
+ * PR. remoteRulesEnabled remains in GUARDED_PREFS (synced-affiliate-
+ * pref-guard.js) but has never had onboarding UI wired to it; that gap
+ * predates this PR and is unchanged by it.
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
-import { PREF_DEFAULTS } from "../lib/prefs.js";
 import { setConsent, getConsent } from "../lib/consent-storage.js";
-import { setOverrides, getOverrides } from "../lib/per-device-prefs.js";
-import { pendingConfirmations, GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import {
   CONSENT_VERSION_MANIFEST,
@@ -34,8 +35,6 @@ import { getTestFixtures } from "../lib/test-fixtures.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const tosCheck         = document.getElementById("tos-check");
-  const affiliateCheck   = document.getElementById("affiliate-check");
-  const affiliateSynced  = document.getElementById("affiliate-synced-note");
   const startBtn         = document.getElementById("start-btn");
   const featuresSection  = document.getElementById("features-section");
   const reonboardDelta   = document.getElementById("reonboard-delta");
@@ -48,34 +47,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyTranslations(lang);
 
   // --- Read state ----------------------------------------------------------
-  const [syncPrefs, localConsent, existingOverrides, fixtures, rawGuardedSync] = await Promise.all([
-    new Promise((resolve) => {
-      // Source the fallbacks from PREF_DEFAULTS so onboarding sees the SAME
-      // default as getPrefs() when a key is absent from sync. After #888
-      // flipped remoteRulesEnabled to `true`, a hardcoded `false` here made
-      // the per-device confirmation section stay hidden on fresh installs
-      // even though the effective default is on — the disclosure would never
-      // surface. Reading the canonical defaults keeps the two paths aligned.
-      chrome.storage.sync.get(
-        {
-          injectOwnAffiliate: PREF_DEFAULTS.injectOwnAffiliate,
-          remoteRulesEnabled: PREF_DEFAULTS.remoteRulesEnabled,
-        },
-        (r) => resolve(r || {})
-      );
-    }),
+  const [localConsent, fixtures] = await Promise.all([
     getConsent(),
-    getOverrides(),
     getTestFixtures(),
-    new Promise((resolve) => {
-      // Raw presence read (NO defaults) of every guarded pref, fed to
-      // pendingConfirmations below. Passing the defaults-merged syncPrefs there
-      // would make an on-by-default guarded pref (injectOwnAffiliate after #1032,
-      // remoteRulesEnabled after #888) look like a value synced-enabled from
-      // another device on a fresh install, so the guard would flag it pending and
-      // the completion write would skip persisting it (#1032).
-      chrome.storage.sync.get([...GUARDED_PREFS], (r) => resolve(r || {}));
-    }),
   ]);
 
   // Test-only overrides (#407). Fixtures are null in production.
@@ -131,32 +105,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // --- Per-device confirmation prompt setup (#364) ------------------------
-  const pending = new Set(
-    pendingConfirmations({ syncPrefs: rawGuardedSync, localConsent, overrides: existingOverrides })
-  );
-
-  // Default the affiliate checkbox to the EFFECTIVE value on THIS device: a
-  // per-device override (#364) wins over the synced value. On a fresh install
-  // there is no override, so this is PREF_DEFAULTS.injectOwnAffiliate (on by
-  // default, #1032), which new users can turn off here or in Settings. On a
-  // re-onboard, reading the raw synced value while ignoring an existing
-  // override (audit #1038) both misrepresented this device's effective state
-  // AND — via the completion write below — clobbered another device's setting
-  // the user never touched here.
-  const hasAffiliateOverride = Object.prototype.hasOwnProperty.call(
-    existingOverrides, "injectOwnAffiliate"
-  );
-  const effectiveAffiliate = hasAffiliateOverride
-    ? !!existingOverrides.injectOwnAffiliate
-    : !!syncPrefs.injectOwnAffiliate;
-  affiliateCheck.checked = effectiveAffiliate;
-
-  if (pending.has("injectOwnAffiliate")) {
-    affiliateCheck.checked = true;
-    if (affiliateSynced) affiliateSynced.hidden = false;
-  }
-
   function updateButton() {
     if (tosCheck.checked) {
       startBtn.removeAttribute("aria-disabled");
@@ -206,35 +154,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     submitInFlight = true;
 
     try {
-      // Compute per-device overrides for any synced pref the user
-      // declined here. Sync stays untouched — declining on Device B
-      // must not propagate back to Device A's settings (#364).
-      const overrideUpdates = {};
-      if (pending.has("injectOwnAffiliate") && !affiliateCheck.checked) {
-        overrideUpdates.injectOwnAffiliate = false;
-      }
-
-      // Sync writes: only push values that were not sync-inherited.
       const syncWrites = {
         notifyForeignAffiliate: false,
         language: lang,
       };
-      // injectOwnAffiliate is a GUARDED per-device pref (#364): only a FRESH
-      // install establishes its shared synced value (#1032). On any re-onboard
-      // a change here is device-local and must be recorded as a per-device
-      // override, never pushed back to sync where it would flip other devices
-      // (audit #1038).
-      if (!pending.has("injectOwnAffiliate")) {
-        if (mode === "fresh") {
-          syncWrites.injectOwnAffiliate = affiliateCheck.checked;
-        } else if (affiliateCheck.checked !== effectiveAffiliate) {
-          overrideUpdates.injectOwnAffiliate = affiliateCheck.checked;
-        }
-      }
 
-      // #741: write sync prefs + per-device overrides FIRST, and only mark
-      // consent complete (onboardingDone:true) AFTER they succeed. setConsent
-      // writes mugaConsent to storage.local independently, so running it in
+      // #741: write sync prefs FIRST, and only mark consent complete
+      // (onboardingDone:true) AFTER it succeeds. setConsent writes
+      // mugaConsent to storage.local independently, so running it in
       // parallel meant a sync-write failure (quota / MAX_WRITE_OPERATIONS) left
       // the local record with onboardingDone:true permanently — the user was
       // told the save failed yet was treated as fully onboarded, with no
@@ -248,9 +175,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
         }),
       ];
-      if (Object.keys(overrideUpdates).length > 0) {
-        preConsentOps.push(setOverrides(overrideUpdates));
-      }
       await Promise.all(preConsentOps);
 
       // Consent record carries the active required version — moves the user

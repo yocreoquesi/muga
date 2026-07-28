@@ -6,15 +6,19 @@
  *   chrome.storage.sync.get(PREF_DEFAULTS)
  * which never overlays per-device overrides (per-device-prefs.getOverrides()),
  * unlike the canonical getPrefs(). So a toggle with a per-device override —
- * injectOwnAffiliate or remoteRulesEnabled — could DISPLAY a value that
- * disagrees with the effective value the rest of the extension uses.
+ * remoteRulesEnabled — could DISPLAY a value that disagrees with the
+ * effective value the rest of the extension uses.
  *
  * The fix makes init() read from getPrefs(). These tests:
- *   1. Pin the canonical merge behaviour (getPrefs overlays per-device
- *      overrides for both injectOwnAffiliate and remoteRulesEnabled), so the
- *      value the fixed Settings read renders is the effective one.
+ *   1. Pin the canonical merge behaviour (getPrefs overlays the per-device
+ *      override for remoteRulesEnabled), so the value the fixed Settings
+ *      read renders is the effective one.
  *   2. Source-guard options.js so the initial read cannot regress back to the
  *      raw sync read that ignored overrides.
+ *
+ * drop-affiliate-injection (PR 1b): injectOwnAffiliate was removed from
+ * GUARDED_PREFS along with the pref itself — remoteRulesEnabled is now the
+ * sole guarded pref covered here.
  */
 
 import { test, describe, beforeEach } from "node:test";
@@ -75,20 +79,6 @@ describe("canonical merged prefs — the value Settings must display", () => {
   let stores;
   beforeEach(() => { stores = installChromeStub(); });
 
-  test("injectOwnAffiliate: per-device override false wins over an absent/true sync value", async () => {
-    // Device B: user declined a sync-inherited injectOwnAffiliate prompt.
-    const perDevice = await freshPerDevice();
-    await perDevice.setOverrides({ injectOwnAffiliate: false });
-    stores.syncStore.set("injectOwnAffiliate", true); // sync says ON
-
-    const getPrefs = await freshGetPrefs();
-    const prefs = await getPrefs();
-    assert.strictEqual(
-      prefs.injectOwnAffiliate, false,
-      "getPrefs must reflect the per-device override; Settings must render OFF to match"
-    );
-  });
-
   test("remoteRulesEnabled: per-device override false wins over the true default", async () => {
     const perDevice = await freshPerDevice();
     await perDevice.setOverrides({ remoteRulesEnabled: false });
@@ -99,29 +89,29 @@ describe("canonical merged prefs — the value Settings must display", () => {
     assert.strictEqual(prefs.remoteRulesEnabled, false);
   });
 
-  test("injectOwnAffiliate display: the value init() renders equals getPrefs(), not the raw sync value", async () => {
-    // Device declined the sync-inherited injectOwnAffiliate prompt (override=false)
+  test("remoteRulesEnabled display: the value init() renders equals getPrefs(), not the raw sync value", async () => {
+    // Device declined the sync-inherited remoteRulesEnabled prompt (override=false)
     // while sync says ON. init() renders the toggle from `prefs[key]` where
     // `prefs = await getPrefs()` (see options.js init + bindToggle). The OLD
     // buggy read used a raw chrome.storage.sync.get(PREF_DEFAULTS), which would
     // have rendered ON. This proves the two disagree and the fix must pick the
     // merged (override-honored) value.
     const perDevice = await freshPerDevice();
-    await perDevice.setOverrides({ injectOwnAffiliate: false });
-    stores.syncStore.set("injectOwnAffiliate", true);
+    await perDevice.setOverrides({ remoteRulesEnabled: false });
+    stores.syncStore.set("remoteRulesEnabled", true);
 
     // What the OLD code read (raw sync, ignoring overrides).
     const rawSync = await new Promise((resolve) =>
-      globalThis.chrome.storage.sync.get({ injectOwnAffiliate: false }, resolve));
+      globalThis.chrome.storage.sync.get({ remoteRulesEnabled: false }, resolve));
 
     // What init() now renders: the effective getPrefs() value.
     const getPrefs = await freshGetPrefs();
-    const rendered = (await getPrefs()).injectOwnAffiliate;
+    const rendered = (await getPrefs()).remoteRulesEnabled;
 
-    assert.strictEqual(rawSync.injectOwnAffiliate, true, "raw sync read (old path) says ON");
+    assert.strictEqual(rawSync.remoteRulesEnabled, true, "raw sync read (old path) says ON");
     assert.strictEqual(rendered, false, "getPrefs (new path) honors the per-device override → renders OFF");
     assert.notStrictEqual(
-      rendered, rawSync.injectOwnAffiliate,
+      rendered, rawSync.remoteRulesEnabled,
       "the fix matters: the effective value the toggle renders must differ from the raw sync value"
     );
   });
@@ -129,7 +119,6 @@ describe("canonical merged prefs — the value Settings must display", () => {
   test("no override → getPrefs returns the sync/default value unchanged", async () => {
     const getPrefs = await freshGetPrefs();
     const prefs = await getPrefs();
-    assert.strictEqual(prefs.injectOwnAffiliate, true, "default"); // #1032: on by default
     assert.strictEqual(prefs.remoteRulesEnabled, true, "default");
   });
 });

@@ -35,13 +35,6 @@
     <div class="card">
       <div class="row">
         <div class="row-label">
-          <strong data-i18n="row_inject_label">Inject our affiliate tag when a link has none</strong>
-          <small data-i18n="row_inject_hint">On by default. You always pay the same price. Turn it off anytime in Settings, with no loss of cleaning or protection. This is how you support an independent developer at zero cost to you.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="inject" data-i18n-aria-label="aria_inject"><span class="slider"></span></label>
-      </div>
-      <div class="row">
-        <div class="row-label">
           <strong data-i18n="row_notify_label">Alert me when a link has someone else's affiliate tag</strong>
           <small data-i18n="row_notify_hint">Shows a quick notification with options, then auto-dismisses</small>
         </div>
@@ -466,19 +459,6 @@
           <button class="add-btn" id="import-btn" data-i18n="import_btn">Import settings</button>
           <input type="file" id="import-file" accept=".json" class="input-file-hidden">
         </div>
-      </div>
-
-      <!-- Advanced: Affiliate stores -->
-      <div class="card card-dev"><details class="stores-details">
-          <summary class="stores-summary">
-            <span data-i18n="section_stores">Affiliate stores</span>
-            <span class="stores-count" id="stores-count"></span>
-          </summary>
-          <div class="stores-grid" id="stores-grid"></div>
-          <div class="stores-footer-hint">
-            <p class="hint" id="stores-hint" data-i18n="stores_hint">Green dot = affiliate account active and configured. Grey = account pending registration.</p>
-          </div>
-        </details>
       </div>
 
       <!-- Developer tools (Tier 3 sub-group) -->

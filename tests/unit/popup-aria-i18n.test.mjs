@@ -131,14 +131,9 @@ describe("#934 — dead CSS classes removed from markup", () => {
     );
   });
 
-  test("onboarding.html: #affiliate-synced-note no longer carries the dead synced-note class", () => {
-    const m = ONBOARD_HTML.match(/<small[^>]*id="affiliate-synced-note"[^>]*>/);
-    assert.ok(m, "#affiliate-synced-note must still exist");
-    assert.ok(
-      !/class="synced-note"/.test(m[0]),
-      "#affiliate-synced-note must not carry the dead .synced-note class",
-    );
-  });
+  // drop-affiliate-injection (PR 1b): #affiliate-synced-note was removed
+  // along with the affiliate onboarding step, so the dead-class regression
+  // it guarded against no longer applies (the element itself is gone).
 });
 
 // ── #932 — missing CSS rules added ──────────────────────────────────────────

@@ -174,37 +174,13 @@ describe("#741 — onboarding consent write ordering", () => {
 });
 
 // ---------------------------------------------------------------------------
-// #888 — onboarding must source sync-get fallbacks from PREF_DEFAULTS, not a
-// hardcoded `false`. After remoteRulesEnabled flipped to true by default, a
-// hardcoded false fallback would hide the per-device confirmation section on
-// fresh installs even though the effective default is on.
+// drop-affiliate-injection (PR 1b) — the #888 sync-get-fallback fix and its
+// tests were tied entirely to the guarded-pref confirmation flow (which only
+// ever wired injectOwnAffiliate). That whole flow was deleted along with the
+// affiliate onboarding step; remoteRulesEnabled has no onboarding UI or
+// sync-get fallback to guard here. See the replacement coverage in
+// synced-affiliate-pref-guard.test.mjs and per-device-prefs.test.mjs.
 // ---------------------------------------------------------------------------
-describe("#888 — onboarding sync-get fallback comes from PREF_DEFAULTS", () => {
-  test("onboarding.js imports PREF_DEFAULTS", () => {
-    assert.ok(
-      /import\s*\{[^}]*\bPREF_DEFAULTS\b[^}]*\}\s*from\s*["']\.\.\/lib\/prefs\.js["']/.test(ONBOARDING_JS),
-      "onboarding.js must import PREF_DEFAULTS from ../lib/prefs.js"
-    );
-  });
-
-  test("the storage.sync.get fallback uses PREF_DEFAULTS for both guarded prefs", () => {
-    assert.ok(
-      ONBOARDING_JS.includes("remoteRulesEnabled: PREF_DEFAULTS.remoteRulesEnabled"),
-      "remoteRulesEnabled fallback must read PREF_DEFAULTS.remoteRulesEnabled"
-    );
-    assert.ok(
-      ONBOARDING_JS.includes("injectOwnAffiliate: PREF_DEFAULTS.injectOwnAffiliate"),
-      "injectOwnAffiliate fallback must read PREF_DEFAULTS.injectOwnAffiliate"
-    );
-  });
-
-  test("no hardcoded remoteRulesEnabled: false fallback remains", () => {
-    assert.ok(
-      !/remoteRulesEnabled:\s*false/.test(ONBOARDING_JS),
-      "onboarding.js must not hardcode remoteRulesEnabled: false as a sync-get fallback"
-    );
-  });
-});
 
 describe("#728 item 25 — gated-CTA flash + aria-live announcement", () => {
   const ONBOARDING_HTML = readFileSync(
@@ -261,40 +237,46 @@ describe("#728 item 25 — gated-CTA flash + aria-live announcement", () => {
 });
 
 // ---------------------------------------------------------------------------
-// audit #1038 — re-onboard must honor the per-device override and must NOT
-// re-sync injectOwnAffiliate to shared sync.
-//
-// The affiliate checkbox was defaulted from the raw synced value, ignoring an
-// existing per-device override (#364), and the completion write pushed the
-// checkbox value back to chrome.storage.sync unconditionally. On a re-onboard
-// that both misrepresented THIS device's effective state and clobbered another
-// device's setting the user never touched. injectOwnAffiliate is a guarded
-// per-device pref: only a FRESH install establishes its synced value (#1032);
-// any re-onboard change must be recorded as a per-device override.
+// drop-affiliate-injection (PR 1b) — audit #1038's per-device-override
+// regression coverage was entirely about the affiliate checkbox and
+// injectOwnAffiliate sync/override writes, all removed with the affiliate
+// onboarding step.
 // ---------------------------------------------------------------------------
-describe("#1038 — re-onboard honors per-device affiliate override, no sync clobber", () => {
-  test("the affiliate checkbox defaults from the effective (override-aware) value", () => {
+describe("drop-affiliate-injection PR 1b — the guarded-pref confirmation cluster is gone", () => {
+  test("onboarding.js no longer reads or writes the retired injectOwnAffiliate pref", () => {
+    // A historical mention in a doc comment is fine; what must be gone is any
+    // live code path that reads or writes the key.
     assert.ok(
-      /existingOverrides\s*,\s*["']injectOwnAffiliate["']/.test(ONBOARDING_JS),
-      "onboarding must read injectOwnAffiliate from existingOverrides for the effective value",
-    );
-    assert.ok(
-      /affiliateCheck\.checked\s*=\s*effectiveAffiliate/.test(ONBOARDING_JS),
-      "the affiliate checkbox must be initialized from the effective (override-aware) value, not raw sync",
+      !/\.injectOwnAffiliate\b/.test(ONBOARDING_JS),
+      "onboarding.js must not read or write .injectOwnAffiliate anywhere",
     );
   });
 
-  test("injectOwnAffiliate is written to SYNC only on a fresh install", () => {
+  test("onboarding.js no longer imports the guarded-pref confirmation helpers", () => {
     assert.ok(
-      /mode\s*===\s*["']fresh["'][\s\S]{0,160}syncWrites\.injectOwnAffiliate\s*=/.test(ONBOARDING_JS),
-      "the sync write of injectOwnAffiliate must be gated behind mode === 'fresh'",
+      !/from\s*["']\.\.\/lib\/synced-affiliate-pref-guard\.js["']/.test(ONBOARDING_JS),
+      "onboarding.js must not import from synced-affiliate-pref-guard.js",
+    );
+    assert.ok(
+      !/from\s*["']\.\.\/lib\/per-device-prefs\.js["']/.test(ONBOARDING_JS),
+      "onboarding.js must not import from per-device-prefs.js",
     );
   });
 
-  test("a re-onboard change is recorded as a per-device override, not a sync write", () => {
+  test("no setOverrides call remains reachable in onboarding.js", () => {
     assert.ok(
-      /overrideUpdates\.injectOwnAffiliate\s*=\s*affiliateCheck\.checked/.test(ONBOARDING_JS),
-      "a re-onboard change to injectOwnAffiliate must be recorded as a per-device override",
+      !ONBOARDING_JS.includes("setOverrides("),
+      "onboarding.js must not call setOverrides — the guarded-pref confirmation step was deleted",
     );
+  });
+
+  test("onboarding.html no longer contains the affiliate checkbox or synced-note", () => {
+    const ONBOARDING_HTML = readFileSync(
+      join(__dirname, "../../src/onboarding/onboarding.html"),
+      "utf8",
+    );
+    assert.ok(!ONBOARDING_HTML.includes('id="affiliate-check"'));
+    assert.ok(!ONBOARDING_HTML.includes('id="affiliate-synced-note"'));
+    assert.ok(!ONBOARDING_HTML.includes('id="affiliate-label"'));
   });
 });

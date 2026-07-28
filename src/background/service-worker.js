@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, migrateDropInjectOwnAffiliate, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isCookieConsentModeActive } from "../lib/settings-schema.js";
@@ -223,6 +223,9 @@ migratePerSiteDisableToAllowlist().catch(() => {});
 // Genuine installs are seeded by the onInstalled call site, which passes
 // details.reason.
 migrateCookieConsentMode().catch(() => {});
+// drop-affiliate-injection (PR 1b): deletes the retired injectOwnAffiliate
+// key from sync. Best-effort; failure must not break startup.
+migrateDropInjectOwnAffiliate().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;

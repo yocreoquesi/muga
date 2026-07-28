@@ -12,8 +12,12 @@
  * 2. Every `data-i18n-aria-label` key resolves to a real TRANSLATIONS entry
  *    in `src/lib/i18n.js` and covers all SUPPORTED_LANGS.
  *
- * 3. The consent-gate checkboxes (#affiliate-check, #tos-check) specifically
- *    carry `data-i18n-aria-label`.
+ * 3. The consent-gate checkbox (#tos-check) specifically carries
+ *    `data-i18n-aria-label`.
+ *
+ * drop-affiliate-injection (PR 1b): the #affiliate-check checkbox was
+ * removed along with the affiliate onboarding step, so it is no longer
+ * covered here.
  */
 
 import { test, describe } from "node:test";
@@ -74,7 +78,6 @@ describe("#930 — onboarding consent-gate checkbox aria-labels are i18n-driven"
   });
 
   const checkboxes = [
-    { id: "affiliate-check", key: "aria_onboarding_affiliate_check" },
     { id: "tos-check", key: "aria_onboarding_tos_check" },
   ];
 

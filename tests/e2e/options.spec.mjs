@@ -31,7 +31,6 @@ async function setCheckbox(page, id, checked) {
 test.describe("Options — toggles", () => {
   test("all main toggles render and respond to clicks", async ({ optionsPage: page }) => {
     const toggles = [
-      { id: "inject", default: false },
       { id: "notify", default: false },
       { id: "strip-affiliates", default: false },
       { id: "context-menu-toggle", default: true },
@@ -61,20 +60,20 @@ test.describe("Options — toggles", () => {
   });
 
   test("toggle changes persist to storage", async ({ optionsPage: page }) => {
-    // Enable affiliate injection
-    await setCheckbox(page, "inject", true);
+    // Enable third-party affiliate stripping
+    await setCheckbox(page, "strip-affiliates", true);
 
     const val = await page.evaluate(() => {
       return new Promise((resolve) => {
-        chrome.storage.sync.get({ injectOwnAffiliate: false }, (r) =>
-          resolve(r.injectOwnAffiliate)
+        chrome.storage.sync.get({ stripAllAffiliates: false }, (r) =>
+          resolve(r.stripAllAffiliates)
         );
       });
     });
     expect(val).toBe(true);
 
     // Restore
-    await setCheckbox(page, "inject", false);
+    await setCheckbox(page, "strip-affiliates", false);
   });
 });
 

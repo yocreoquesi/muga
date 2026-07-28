@@ -6,11 +6,21 @@
  * list of prefs that arrived enabled via sync but have not yet been
  * confirmed on this device.
  *
- * Used by the onboarding page to decide which "your other device has
- * X enabled, do you want it here?" prompts to render. Once the user
- * confirms or declines via onboarding, the response is recorded as a
- * per-device override (see per-device-prefs.js) and the pref no
- * longer shows up in pendingConfirmations.
+ * Intended for a caller (e.g. the onboarding page) to decide which
+ * "your other device has X enabled, do you want it here?" prompts to
+ * render. A confirm/decline response would be recorded as a per-device
+ * override (see per-device-prefs.js), after which the pref would no
+ * longer show up in pendingConfirmations.
+ *
+ * drop-affiliate-injection (PR 1b): the onboarding page no longer calls
+ * this function — its only caller was the injectOwnAffiliate
+ * confirmation step, deleted along with the retired pref.
+ * remoteRulesEnabled has never had onboarding UI wired to it either
+ * (a pre-existing gap), so this module currently has no production
+ * caller. The guard architecture itself is intentionally kept: this
+ * stays the single source of truth for "which guarded prefs are
+ * pending confirmation" if/when remoteRulesEnabled onboarding UI is
+ * built.
  *
  * The set of guarded prefs is closed and small. Adding a new one
  * requires updating GUARDED_PREFS here AND adding the matching
@@ -23,7 +33,6 @@
  * onboarding (or has not yet recorded an override decision for them).
  */
 export const GUARDED_PREFS = Object.freeze([
-  "injectOwnAffiliate",
   "remoteRulesEnabled",
 ]);
 

@@ -156,7 +156,6 @@ export async function completeOnboarding(driver, extensionOrigin, { enableFeatur
         {
           enabled: true,
           cookieConsentMode: enableFeatureArg ? "reject-only" : "off",
-          injectOwnAffiliate: false,
           notifyForeignAffiliate: false,
           language: "en",
         },

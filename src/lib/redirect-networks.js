@@ -20,12 +20,12 @@
 // These networks are categorically distinct from AFFILIATE_PATTERNS
 // (which holds caps-spec direct-injection programs like Amazon Associates
 // where MUGA can generate a tag URL on its own). Redirect networks
-// require a publisher account in the network itself; MUGA never inject
-// these tags (`ourTag` is always {}). What MUGA MUST do is preserve the
-// `landingParams` on the FIRST landing after a redirect-network click,
-// because the merchant's first-party tag reads those params from the URL
-// on landing to populate its cookie. Stripping them at `document_start`
-// kills the creator's commission.
+// require a publisher account in the network itself; MUGA never injects
+// these tags. What MUGA MUST do is preserve the `landingParams` on the
+// FIRST landing after a redirect-network click, because the merchant's
+// first-party tag reads those params from the URL on landing to populate
+// its cookie. Stripping them at `document_start` kills the creator's
+// commission.
 //
 // Source of truth for each entry: docs/affiliate-networks-matrix.md v1.0
 // (per-network "Recommended cleaner policy" and "Param table" sections).
@@ -38,7 +38,6 @@
 //   - `landingParams[]` — URL params the merchant tag reads on landing.
 //     Must be preserved on the first-touch document; subsequent same-site
 //     navigations may strip them (cookie already populated).
-//   - `ourTag` — always {}. These entries are NOT injectable.
 //   - `type` — `"redirect-network"`, distinguishing from caps-spec
 //     `"affiliate"` entries in AFFILIATE_PATTERNS.
 //
@@ -71,7 +70,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     redirectHosts: ["awin1.com"],
     landingParams: ["awc", "wt_mc"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#awin"],
     notes:
       "awin1.com/cread.php?awinaffid=X&p=URL → merchant landing. " +
@@ -94,7 +92,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     ],
     landingParams: ["cjevent", "cjdata"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#cj-affiliate-commission-junction"],
     notes:
       "Eight redirect domains all funnel to the merchant landing carrying " +
@@ -115,7 +112,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
       "ws_ab_test",
     ],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#aliexpress-portals--multi-network"],
     notes:
       "AliExpress runs frequent A/B tests on its attribution stack. The aff_* " +
@@ -131,7 +127,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     redirectHosts: ["*.pxf.io"],
     landingParams: ["irclickid", "irgwc", "iclid"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#impact-radius-impactcom"],
     notes:
       "Impact assigns each advertiser a *.pxf.io subdomain. The primary click " +
@@ -145,7 +140,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     redirectHosts: ["prf.hn"],
     landingParams: ["clickref", "pubref", "adref"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#partnerize-performance-horizon"],
     notes:
       "Strongest documented attribution verdict in the matrix — Partnerize's " +
@@ -160,7 +154,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     redirectHosts: ["ad.admitad.com", "alitems.com"],
     landingParams: ["admitad_uid", "tagtag_uid"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#admitad"],
     notes:
       "Two redirect hosts: ad.admitad.com (global) and alitems.com (deep-link " +
@@ -174,7 +167,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     redirectHosts: ["px.a8.net"],
     landingParams: ["a8"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#a8net-japan"],
     notes:
       "Japanese affiliate network. Param `a8` already lives in TRACKING_PARAMS " +
@@ -191,7 +183,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     // case-insensitive on the param name when consumed by getLandingPolicy.
     landingParams: ["ranmid", "ransiteid", "raneaid"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#rakuten-advertising-linkshare"],
     notes:
       "click.linksynergy.com is the redirect host (today also handled as a " +
@@ -206,7 +197,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     redirectHosts: ["tc.tradetracker.net"],
     landingParams: ["ttaid", "ttrk", "ttcid"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#tradetracker"],
     notes:
       "Same surface-inversion category as Rakuten. Real Attribution alternative " +
@@ -223,7 +213,6 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
     // before the tag fires kills attribution. Moved out of TRACKING_PARAMS in #695.
     landingParams: ["tduid"],
     type: "redirect-network",
-    ourTag: {},
     references: ["docs/affiliate-networks-matrix.md#tradedoubler"],
     notes:
       "Promoted from matrix-v1.0 known-unknowns in #695 alongside the content-" +
