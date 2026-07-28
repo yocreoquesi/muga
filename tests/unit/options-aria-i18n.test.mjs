@@ -192,27 +192,11 @@ describe("store-group chip aria-label is i18n + no JS-set hardcodes remain (#757
     );
   });
 
-  test('the store-group chip resolves its aria-label through t("store_group_toggle")', () => {
-    assert.ok(
-      /setAttribute\(\s*["']aria-label["']\s*,\s*t\(\s*["']store_group_toggle["']\s*,\s*_currentLang\s*\)\.replace\(/.test(
-        OPTIONS_JS,
-      ),
-      'the store-group chip must build its aria-label from t("store_group_toggle", _currentLang).replace("{name}", groupName)',
-    );
-  });
-
-  test("store_group_toggle exists, covers all SUPPORTED_LANGS, and keeps the {name} placeholder", () => {
-    const entry = TRANSLATIONS.store_group_toggle;
-    assert.ok(entry, "TRANSLATIONS.store_group_toggle must exist");
-    for (const { code } of SUPPORTED_LANGS) {
-      assert.ok(
-        typeof entry[code] === "string" && entry[code].length > 0,
-        `store_group_toggle is missing a non-empty "${code}" value`,
-      );
-      assert.ok(
-        entry[code].includes("{name}"),
-        `store_group_toggle["${code}"] must keep the {name} placeholder for interpolation`,
-      );
-    }
+  // drop-affiliate-injection (PR 1b): the store-group chip / renderStores()
+  // and its store_group_toggle aria-label were removed from options.js along
+  // with the "Affiliate stores" dev-diagnostics card. See
+  // tests/unit/i18n-orphan.test.mjs for the corresponding key-removal check.
+  test("store_group_toggle no longer exists (removed with renderStores())", () => {
+    assert.strictEqual(TRANSLATIONS.store_group_toggle, undefined);
   });
 });

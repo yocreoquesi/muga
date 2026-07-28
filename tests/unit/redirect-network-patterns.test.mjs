@@ -63,7 +63,6 @@ describe("REDIRECT_NETWORK_PATTERNS — shape", () => {
       assert.ok(Array.isArray(entry.landingParams), `landingParams not array on ${entry.id}`);
       assert.ok(entry.landingParams.length > 0, `landingParams empty on ${entry.id}`);
       assert.strictEqual(entry.type, "redirect-network", `type wrong on ${entry.id}`);
-      assert.deepStrictEqual(entry.ourTag, {}, `ourTag must be empty on ${entry.id}`);
       assert.ok(Array.isArray(entry.references), `references not array on ${entry.id}`);
     }
   });
@@ -165,10 +164,9 @@ describe("REDIRECT_NETWORK_PATTERNS — invariants across the table", () => {
     assert.deepStrictEqual(wildcards, ["impact-radius:*.pxf.io"]);
   });
 
-  test("ourTag is empty {} for every entry (never injectable by MUGA)", () => {
+  test("no entry carries an ourTag field (drop-affiliate-injection PR 1b: dead data removed)", () => {
     for (const entry of REDIRECT_NETWORK_PATTERNS) {
-      assert.deepStrictEqual(entry.ourTag, {}, `${entry.id} must have empty ourTag`);
-      assert.strictEqual(Object.keys(entry.ourTag).length, 0);
+      assert.ok(!("ourTag" in entry), `${entry.id} must not carry an ourTag field`);
     }
   });
 

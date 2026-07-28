@@ -16,11 +16,14 @@
  *   - #964: followShortenersEnabled must never be handed back in `toSave`.
  *     It is permission-gated and the permission check requires chrome APIs,
  *     so planImport only reports the raw request via `special`.
- *   - #965: guarded prefs (injectOwnAffiliate) must appear in `toSave` as
- *     plain booleans so options.js can run reconcileOverrideForExplicitChoice
- *     against them exactly as before.
  *   - #968: toastDuration/experimentalParamClassesEnabled/honorCreatorMode/
  *     creatorAllowlist must round-trip through export + import.
+ *
+ * drop-affiliate-injection (PR 1b): the injectOwnAffiliate entry was removed
+ * from SETTINGS_FIELDS — the pref itself (and its Settings UI) no longer
+ * exist, so it no longer round-trips through export/import. remoteRulesEnabled
+ * remains the only guarded pref this module still describes (via `guarded`),
+ * and it was never a plain boolean here (`kind: "permissionGated"`).
  */
 
 import { isValidListEntry, isValidCustomParam, capImportedLists, IMPORT_LIST_CAPS } from "./validation.js";
@@ -139,7 +142,6 @@ export const SETTINGS_FIELDS = Object.freeze([
   // key is reused so the diff preview and the settings page never disagree
   // on wording — no new key was introduced unless nothing suitable existed.
   { key: "enabled", kind: "boolean", label: "toggle_enabled" },
-  { key: "injectOwnAffiliate", kind: "boolean", guarded: true, label: "row_inject_label" },
   { key: "notifyForeignAffiliate", kind: "boolean", label: "row_notify_label" },
   { key: "stripAllAffiliates", kind: "boolean", label: "row_strip_affiliates_label" },
   { key: "dnrEnabled", kind: "boolean", label: "row_dnr_label" },

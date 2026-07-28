@@ -59,7 +59,6 @@ describe("export settings (buildExportPayload behavior)", () => {
   test("32. export includes ALL expected boolean keys", () => {
     const SYNC_BOOL_KEYS = [
       "enabled",
-      "injectOwnAffiliate",
       "notifyForeignAffiliate",
       "stripAllAffiliates",
       "dnrEnabled",
@@ -181,10 +180,10 @@ describe("import settings (planImport behavior)", () => {
   });
 
   test("7. import validates boolean keys by typeof", () => {
-    const plan = planImport(validImportData({ enabled: "true", injectOwnAffiliate: true, dnrEnabled: 1 }));
+    const plan = planImport(validImportData({ enabled: "true", notifyForeignAffiliate: true, dnrEnabled: 1 }));
     assert.equal(plan.ok, true);
     assert.strictEqual(plan.toSave.enabled, undefined, "non-boolean typed value must not be imported");
-    assert.strictEqual(plan.toSave.injectOwnAffiliate, true);
+    assert.strictEqual(plan.toSave.notifyForeignAffiliate, true);
     assert.strictEqual(plan.toSave.dnrEnabled, undefined, "non-boolean typed value must not be imported");
   });
 
@@ -459,17 +458,13 @@ describe("import/export hardening (#964/#965/#968)", () => {
     );
   });
 
-  // #965 — guarded-pref override desync
-  test("42. injectOwnAffiliate is reconcilable: present in toSave when boolean", () => {
+  // drop-affiliate-injection PR 1b: injectOwnAffiliate was removed from
+  // SETTINGS_FIELDS/BOOLEAN_KEYS along with its Settings row, so it no
+  // longer round-trips through import at all — even when the imported file
+  // still carries the legacy key (e.g. an old settings backup).
+  test("42. injectOwnAffiliate no longer round-trips through import (schema removed)", () => {
     const plan = planImport(validImportData({ injectOwnAffiliate: true }));
-    assert.strictEqual(plan.toSave.injectOwnAffiliate, true);
-    // The reconcile call stays in options.js, but reads the value from the
-    // plan (plan.toSave[key]) rather than raw `data`, so it follows any future
-    // migrate() transform of the payload instead of silently diverging.
-    assert.ok(
-      /reconcileOverrideForExplicitChoice\(\s*key\s*,\s*plan\.toSave\[key\]\s*\)/.test(OPTIONS_SOURCE),
-      "Import must reconcile the per-device override to the imported guarded value"
-    );
+    assert.strictEqual(plan.toSave.injectOwnAffiliate, undefined);
   });
 
   // #968 — toast-duration select

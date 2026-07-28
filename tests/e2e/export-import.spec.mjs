@@ -46,7 +46,6 @@ test.describe("Export / Import", () => {
     expect(data.muga).toBe(true);
     expect(data.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(typeof data.enabled).toBe("boolean");
-    expect(typeof data.injectOwnAffiliate).toBe("boolean");
     expect(typeof data.dnrEnabled).toBe("boolean");
     expect(typeof data.blockPings).toBe("boolean");
     expect(typeof data.ampRedirect).toBe("boolean");
@@ -72,7 +71,6 @@ test.describe("Export / Import", () => {
       muga: true,
       version: "1.0.0",
       enabled: true,
-      injectOwnAffiliate: true,
       notifyForeignAffiliate: true,
       stripAllAffiliates: false,
       dnrEnabled: true,
@@ -107,7 +105,6 @@ test.describe("Export / Import", () => {
     await page.locator("#import-diff-confirm").click();
 
     // Verify toggles updated
-    await expect(page.locator("#inject")).toBeChecked();
     await expect(page.locator("#notify")).toBeChecked();
 
     // Verify blacklist contains our entry

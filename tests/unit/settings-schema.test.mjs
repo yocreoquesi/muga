@@ -79,9 +79,9 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 22 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 21 documented plain-boolean prefs", () => {
     const EXPECTED = [
-      "enabled", "injectOwnAffiliate", "notifyForeignAffiliate", "stripAllAffiliates",
+      "enabled", "notifyForeignAffiliate", "stripAllAffiliates",
       "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
@@ -90,7 +90,7 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
       "suppressReferer", "blockBeacons",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 22);
+    assert.strictEqual(BOOLEAN_KEYS.length, 21);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -104,9 +104,9 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
     assert.strictEqual(new Set(keys).size, keys.length);
   });
 
-  test("injectOwnAffiliate is flagged guarded", () => {
+  test("injectOwnAffiliate is no longer part of the schema (drop-affiliate-injection PR 1b)", () => {
     const field = SETTINGS_FIELDS.find((f) => f.key === "injectOwnAffiliate");
-    assert.strictEqual(field.guarded, true);
+    assert.strictEqual(field, undefined);
   });
 });
 
@@ -347,12 +347,12 @@ describe("planImport — #987 remoteRulesEnabled permission gate", () => {
   });
 });
 
-describe("planImport — #965 guarded pref reconciliation input", () => {
-  test("injectOwnAffiliate lands in toSave as a plain boolean so options.js can reconcile it", () => {
+describe("planImport — injectOwnAffiliate removed from the schema (drop-affiliate-injection PR 1b)", () => {
+  test("injectOwnAffiliate is never written to toSave, even when present in the imported file", () => {
     const plan = planImport(validImportData({ injectOwnAffiliate: true }));
-    assert.strictEqual(plan.toSave.injectOwnAffiliate, true);
+    assert.strictEqual(plan.toSave.injectOwnAffiliate, undefined);
     const planFalse = planImport(validImportData({ injectOwnAffiliate: false }));
-    assert.strictEqual(planFalse.toSave.injectOwnAffiliate, false);
+    assert.strictEqual(planFalse.toSave.injectOwnAffiliate, undefined);
   });
 });
 
@@ -388,12 +388,12 @@ describe("diffImport", () => {
   });
 
   test("a boolean flip produces a single scalar row", () => {
-    const incoming = { ...SAMPLE_PREFS, injectOwnAffiliate: false };
+    const incoming = { ...SAMPLE_PREFS, notifyForeignAffiliate: false };
     const rows = diffImport(SAMPLE_PREFS, incoming);
     assert.strictEqual(rows.length, 1);
     assert.deepStrictEqual(rows[0], {
-      key: "injectOwnAffiliate",
-      labelKey: "row_inject_label",
+      key: "notifyForeignAffiliate",
+      labelKey: "row_notify_label",
       kind: "scalar",
       before: true,
       after: false,
