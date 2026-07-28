@@ -13,8 +13,11 @@ const _pathStripIndex = new WeakMap();
 
 /**
  * Per-array compiled-regex index for path-affiliate rules.
- * Each value is a Map<domain, { referralRe: RegExp, injectPath: string,
- *   injectParam: string, injectValue: string, affiliateIdSource: string }>.
+ * Each value is a Map<domain, { referralRe: RegExp, unwrapRe: RegExp|null }>.
+ *
+ * drop-affiliate-injection (PR 1a): the inject* fields (injectPath,
+ * injectParam, injectValue, affiliateIdSource) were removed — this index
+ * only ever drove creator-referral detection/unwrap, not injection.
  */
 const _pathAffiliateIndex = new WeakMap();
 
@@ -59,15 +62,6 @@ function _validateAffiliateEntry(rule, i) {
   }
   if (!Array.isArray(rule.referralPaths)) {
     throw new TypeError(`path-affiliate-rules[${i}]: referralPaths must be an array`);
-  }
-  if (typeof rule.injectPath !== "string") {
-    throw new TypeError(`path-affiliate-rules[${i}]: injectPath (string) is required`);
-  }
-  if (typeof rule.injectParam !== "string") {
-    throw new TypeError(`path-affiliate-rules[${i}]: injectParam (string) is required`);
-  }
-  if (typeof rule.injectValue !== "string") {
-    throw new TypeError(`path-affiliate-rules[${i}]: injectValue (string) is required`);
   }
   for (const [j, p] of rule.referralPaths.entries()) {
     try { new RegExp(p); } catch (e) {
@@ -157,10 +151,6 @@ function _ensureAffiliateIndex(rules) {
     idx.set(rule.domain, {
       referralRe,
       unwrapRe: rule.unwrapReferral ? new RegExp(rule.unwrapReferral) : null,
-      injectPath: rule.injectPath,
-      injectParam: rule.injectParam,
-      injectValue: rule.injectValue,
-      affiliateIdSource: rule.affiliateIdSource ?? "",
     });
   }
   _pathAffiliateIndex.set(rules, idx);
@@ -238,28 +228,22 @@ export function applyPathStrip(hostname, pathname, pathStripRules) {
 /**
  * Returns the path-affiliate policy for the given URL.
  *
- * JSON / orchestrator split (design §7 R1):
- *   This function resolves the DATA half of the Bookshop injection guard:
- *     - Does the domain match?
- *     - Does the pathname start with injectPath?
- *     - Is the injectParam already present? (returns pendingInjection: null if yes)
- *
- *   The orchestrator (processUrl in cleaner.js) handles the RUNTIME half:
- *     - prefs.injectOwnAffiliate
- *     - !prefs.stripAllAffiliates
- *     - action !== "detected_foreign"
- *     - !creatorReferralPreserved
+ * drop-affiliate-injection (PR 1a): this function used to also resolve the
+ * DATA half of the Bookshop own-affiliate-injection guard (`pendingInjection`)
+ * — that responsibility is REMOVED along with the inject* fields in
+ * path-affiliate-rules.json. This function now ONLY resolves creator-referral
+ * detection + unwrap; it never signals a pending injection.
  *
  * @param {URL}   url                  URL being processed (read-only).
  * @param {Array} pathAffiliateRules   Parsed path-affiliate-rules.json array.
- * @returns {{ creatorReferralPreserved: boolean, pendingInjection: object|null, unwrapTo?: string }}
+ * @returns {{ creatorReferralPreserved: boolean, unwrapTo?: string }}
  *   `unwrapTo` (#959) is present only when the referral path is an
  *   unwrappable /a/CREATOR/DEST wrapper (rule.unwrapReferral matched with a
  *   usable destination); it holds the destination pathname + search to
  *   rewrite the URL to when the caller opts into unwrapping (stripAllAffiliates).
  */
 export function getPathAffiliatePolicy(url, pathAffiliateRules) {
-  const NO_MATCH = { creatorReferralPreserved: false, pendingInjection: null };
+  const NO_MATCH = { creatorReferralPreserved: false };
   const idx = _ensureAffiliateIndex(pathAffiliateRules);
   if (!idx) return NO_MATCH;
 
@@ -268,28 +252,12 @@ export function getPathAffiliatePolicy(url, pathAffiliateRules) {
   const entry = idx.get(hostname);
   if (!entry) return NO_MATCH;
 
-  // Check creator-referral paths first — any match suppresses injection
+  // Check creator-referral paths — any match means the referral is preserved.
   if (entry.referralRe.test(url.pathname)) {
     const unwrapTo = _computeUnwrapTo(entry, url, hostname);
     return unwrapTo !== undefined
-      ? { creatorReferralPreserved: true, pendingInjection: null, unwrapTo }
-      : { creatorReferralPreserved: true, pendingInjection: null };
-  }
-
-  // Data-side injection conditions (spec REQ-3 clarification):
-  //   injectParam presence check stays IN THE LOADER — it is data-driven
-  //   (the param name comes from the JSON, not from the orchestrator).
-  if (
-    url.pathname.startsWith(entry.injectPath) &&
-    !url.searchParams.has(entry.injectParam)
-  ) {
-    return {
-      creatorReferralPreserved: false,
-      pendingInjection: {
-        param: entry.injectParam,
-        value: entry.injectValue,
-      },
-    };
+      ? { creatorReferralPreserved: true, unwrapTo }
+      : { creatorReferralPreserved: true };
   }
 
   return NO_MATCH;

@@ -301,12 +301,14 @@
       const domainRules = _domainRulesCache || [];
       const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
       // Copy-safe prefs (#946): the user is copying, not navigating, so
-      // MUGA must never inject its own affiliate tag nor surface the
-      // foreign-affiliate toast on a copy action. Mirrors the effectivePrefs
-      // pattern in background/service-worker.js#handleProcessUrl (skipNotify
-      // branch) — third-party attribution tags are still preserved, only
-      // MUGA's own injection + notification are suppressed.
-      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false, injectOwnAffiliate: false };
+      // MUGA must never surface the foreign-affiliate toast on a copy
+      // action. Mirrors the effectivePrefs pattern in
+      // background/service-worker.js#handleProcessUrl (skipNotify branch) —
+      // third-party attribution tags are still preserved, only the
+      // notification is suppressed. drop-affiliate-injection (PR 1a): the
+      // injectOwnAffiliate override was removed — MUGA never injects its
+      // own tag anymore, so there is nothing left to suppress on that side.
+      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false };
       const urlMap = new Map();
       for (const url of allUrls) {
         let r;
@@ -367,7 +369,6 @@
         { param: "tag", value: "somestore-21" },
         "https://amazon.es/dp/B08N5WRWNW?tag=somestore-21",
         "https://amazon.es/dp/B08N5WRWNW",
-        undefined,
         () => {}
       );
       return;
@@ -412,9 +413,11 @@
       const domainRules = _domainRulesCache || [];
       const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
       // Copy-safe prefs (#946): same rationale as the GET_AND_COPY_CLEAN_SELECTION
-      // handler above — Ctrl+C is a copy action, not a navigation, so MUGA's own
-      // affiliate injection and the foreign-affiliate toast must both be suppressed.
-      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false, injectOwnAffiliate: false };
+      // handler above — Ctrl+C is a copy action, not a navigation, so the
+      // foreign-affiliate toast must be suppressed. drop-affiliate-injection
+      // (PR 1a): the injectOwnAffiliate override was removed — nothing left
+      // to suppress on that side.
+      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false };
       let resultText = trimmed;
       let totalJunkRemoved = 0;
       const allRemovedTracking = [];
@@ -615,13 +618,12 @@
   // — even on Chrome (verified empirically). This branch therefore runs on
   // BOTH Chrome and Firefox. On Chrome it is a practical no-op for STRIPPING
   // (DNR already cleaned tracking params at the network layer before
-  // document_start, so processUrl returns the URL unchanged), but it STILL
-  // performs Step 6 affiliate-tag injection when injectOwnAffiliate is on —
-  // DNR cannot inject — which is how our tag lands on direct Amazon
-  // navigations (address bar / bookmark) on Chrome. The `!_hasDNR` guard was
-  // originally meant to skip this on a DNR-capable browser; since the API is
-  // unavailable to content scripts it never actually skips. Left as-is
-  // (harmless: the stripping path is idempotent) — do not rely on it to gate.
+  // document_start, so processUrl returns the URL unchanged). drop-affiliate-
+  // injection (PR 1a): this branch no longer performs any affiliate-tag
+  // injection either — MUGA never inserts its own tag anymore. The `!_hasDNR`
+  // guard was originally meant to skip this on a DNR-capable browser; since
+  // the API is unavailable to content scripts it never actually skips. Left
+  // as-is (harmless: the stripping path is idempotent) — do not rely on it to gate.
   //
   // Domain rules are fetched once at IIFE start (see getDomainRulesCached
   // hoisted above). Stats and badge updates fire-and-forget; SW death is
@@ -763,31 +765,6 @@
 
     const { cleanUrl, action, detectedAffiliate, autoInjected } = result;
 
-    // Compute withOurAffiliate locally (was previously added by the SW
-    // in handleProcessUrl). Mirrors the SW logic exactly: if injection
-    // is enabled and the detected pattern has an ourTag, build the
-    // alternative URL the user can pick from the toast's "Remove it"
-    // action.
-    let withOurAffiliate;
-    if (action === "detected_foreign"
-        && detectedAffiliate?.pattern?.ourTag
-        && _contentPrefs?.injectOwnAffiliate) {
-      try {
-        const u = new URL(cleanUrl);
-        const p = detectedAffiliate.pattern;
-        // #904: pattern.ourTag is a { host -> tag } map, not a flat string.
-        // Resolve by hostname (mirrors resolveOurTag() in lib/affiliates.js —
-        // MV3 content scripts cannot import ES modules). Passing the map object
-        // straight to searchParams.set() serialized it to "[object Object]".
-        const host = u.hostname.replace(/^www\./, "");
-        const ourTagForHost = p.ourTag[host] || p.ourTag[u.hostname] || "";
-        if (ourTagForHost) {
-          u.searchParams.set(p.param, ourTagForHost);
-          withOurAffiliate = u.toString();
-        }
-      } catch { /* malformed cleanUrl — toast falls back to cleanUrl */ }
-    }
-
     // Fire-and-forget stats + history. SW death is no longer fatal.
     chrome.runtime.sendMessage({
       type: "BADGE_AND_STATS",
@@ -820,11 +797,11 @@
           else if (choice === "clean") navigate(autoInjected.removeUrl || cleanUrl, opensNewTab);
         });
       } else {
-        showAffiliateNotice(detectedAffiliate, href, cleanUrl, withOurAffiliate, (choice) => {
+        // drop-affiliate-injection (PR 1a): "Remove it" always strips to the
+        // clean URL now — there is no more MUGA-tagged alternative to offer.
+        showAffiliateNotice(detectedAffiliate, href, cleanUrl, (choice) => {
           if (choice === "original") navigate(href, opensNewTab);
-          else if (choice === "clean") {
-            navigate(withOurAffiliate || cleanUrl, opensNewTab);
-          }
+          else if (choice === "clean") navigate(cleanUrl, opensNewTab);
         });
       }
     } else {
@@ -906,13 +883,14 @@
   /**
    * Shows a non-intrusive toast when a foreign affiliate tag is detected.
    * Auto-dismisses after 15 seconds if the user does not interact.
+   * drop-affiliate-injection (PR 1a): "Remove it" (choice === "clean") always
+   * strips to `cleanUrl` now — there is no more MUGA-tagged alternative.
    * @param {object} affiliate
    * @param {string} originalUrl
    * @param {string} cleanUrl
-   * @param {string|undefined} withOurAffiliate - URL with our tag (when injectOwnAffiliate is on)
    * @param {function} callback
    */
-  function showAffiliateNotice(affiliate, originalUrl, cleanUrl, withOurAffiliate, callback) {
+  function showAffiliateNotice(affiliate, originalUrl, cleanUrl, callback) {
     if (_toastTimer) clearTimeout(_toastTimer);
     document.getElementById("muga-notice")?.remove();
 

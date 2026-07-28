@@ -3,13 +3,15 @@
  *
  * Safety-net added before refactoring processUrl (issue #627).
  * These tests MUST pass on unmodified main — they pin the ordering invariant
- * that recordFrequency (Site B, main path) fires AFTER Bookshop injection.
+ * that recordFrequency (Site B, main path) fires after the tracking-param
+ * strip pass runs.
  *
- * Why this matters: if a refactor accidentally moves the recordFrequency call
- * before url.searchParams.set("affiliate", MUGA_BOOKSHOP_AFFILIATE_ID), the
- * frequency record would be fired with the pre-injection URL state, which
- * would cause a silent functional regression even though the return value
- * looks correct.
+ * drop-affiliate-injection (PR 1a): Bookshop's own-affiliate injection has
+ * been removed — MUGA never inserts its own affiliate tag anymore. TS-12
+ * below now pins "no injection occurs" instead of "injection occurs after
+ * the strip pass". TS-11 (tracking-param ordering) is unaffected, since
+ * recordFrequency only ever observed stripped TRACKING params, never the
+ * (now-removed) injection step.
  */
 
 import { test, describe } from "node:test";
@@ -17,7 +19,8 @@ import assert from "node:assert/strict";
 import { processUrl } from "../../src/lib/cleaner.js";
 import { pathAffiliateRulesFixture } from "./helpers/path-rules-fixture.mjs";
 
-// ── Prefs that enable Bookshop injection (Scenario B / TS-12)
+// ── Prefs with the (now inert) injectOwnAffiliate pref left ON, to prove
+// it no longer has any effect on the pipeline.
 const PREFS_INJECT = {
   enabled: true,
   injectOwnAffiliate: true,
@@ -27,14 +30,11 @@ const PREFS_INJECT = {
   whitelist: [],
 };
 
-// ── A bookshop.org product page that qualifies for injection:
+// ── A bookshop.org product page that used to qualify for injection:
 //    - hostname = bookshop.org
 //    - pathname starts with /p/
 //    - no existing ?affiliate param
 const BOOKSHOP_URL = "https://bookshop.org/p/books/some-title/123456?utm_source=newsletter";
-
-// ── The MUGA Bookshop affiliate ID as it appears in src/lib/cleaner.js
-const MUGA_BOOKSHOP_AFFILIATE_ID = "124046";
 
 /**
  * Makes a tracker spy that records:
@@ -76,18 +76,16 @@ describe("TS-11 — recordFrequency fires after Bookshop injection (Site B order
     assert.ok(tracker.observedNames.includes("utm_source"), "observe must record utm_source");
   });
 
-  test("TS-12 — Bookshop injection: result.action is 'injected' and cleanUrl contains affiliate tag", () => {
+  test("TS-12 — Bookshop: no affiliate is injected (injection removed), tracking still stripped", () => {
     const tracker = {
       observe() { return Promise.resolve(); },
     };
 
     const result = processUrl(BOOKSHOP_URL, PREFS_INJECT, [], undefined, tracker, undefined, [], pathAffiliateRulesFixture);
 
-    assert.equal(result.action, "injected", "action must be 'injected' for Bookshop injection");
-    assert.ok(
-      result.cleanUrl.includes(`affiliate=${MUGA_BOOKSHOP_AFFILIATE_ID}`),
-      `cleanUrl must contain affiliate=${MUGA_BOOKSHOP_AFFILIATE_ID}`,
-    );
+    assert.notEqual(result.action, "injected", "MUGA never inserts its own affiliate tag anymore");
+    assert.equal(result.action, "cleaned", "utm_source is still stripped");
+    assert.ok(!result.cleanUrl.includes("affiliate="), "no affiliate param must ever be added");
     assert.equal(result.creatorReferralPreserved, false, "creatorReferralPreserved must be false for /p/ path");
   });
 

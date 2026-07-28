@@ -36,11 +36,12 @@ const ELLIPSIS = "…"; // single-char "…"
 
 /** Maps each ledger event-decision to its corresponding badge i18n key.
  *  Decision values come from attribution-ledger.js EVENT_TYPES. `navigate`
- *  is intentionally absent — bare navigations have no badge. */
+ *  is intentionally absent — bare navigations have no badge.
+ *  drop-affiliate-injection (PR 1a): "inject-affiliate" was removed — MUGA
+ *  never inserts its own affiliate tag anymore. */
 const BADGE_KEY_BY_DECISION = Object.freeze({
   clean: "ledger_badge_cleaned",
   "preserve-affiliate": "ledger_badge_preserve_affiliate",
-  "inject-affiliate": "ledger_badge_inject_affiliate",
   "honor-creator": "ledger_badge_honor_creator",
   "blocked-opaque": "ledger_badge_blocked_opaque",
 });

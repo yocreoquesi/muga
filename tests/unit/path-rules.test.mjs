@@ -38,17 +38,19 @@ const STRIP_RULES = [
   },
 ];
 
-/** Mirror of src/rules/path-affiliate-rules.json */
+/**
+ * Mirror of src/rules/path-affiliate-rules.json.
+ *
+ * drop-affiliate-injection (PR 1a): the inject* fields (injectPath,
+ * injectParam, injectValue, affiliateIdSource) were removed from the real
+ * JSON — this fixture only carries creator-referral detection/unwrap fields.
+ */
 const AFFILIATE_RULES = [
   {
     domain: "bookshop.org",
     referralPaths: ["^\\/a\\/[^/]+\\/", "^\\/shop\\/[^/]+\\/?$"],
-    injectPath: "/p/",
-    injectParam: "affiliate",
-    injectValue: "124046",
-    affiliateIdSource: "MUGA_OWN",
     unwrapReferral: "^\\/a\\/[^/]+\\/(.+)$",
-    note: "Bookshop creator-referral detection + own-affiliate injection",
+    note: "Bookshop creator-referral detection + unwrap",
   },
 ];
 
@@ -196,13 +198,13 @@ describe("#1094 — Amazon domainPattern lookalike anchoring", () => {
 // ── getPathAffiliatePolicy() ──────────────────────────────────────────────────
 
 describe("getPathAffiliatePolicy()", () => {
-  // Scenario 7 — non-bookshop hostname → both false/null
-  test("7. non-bookshop hostname returns { false, null }", () => {
+  // Scenario 7 — non-bookshop hostname → no match
+  test("7. non-bookshop hostname returns { creatorReferralPreserved: false }", () => {
     const result = getPathAffiliatePolicy(
       new URL("https://amazon.com/p/something"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: false, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: false });
   });
 
   // Scenario 8 — bookshop.org /a/creator-id/ → creatorReferralPreserved: true.
@@ -215,7 +217,6 @@ describe("getPathAffiliatePolicy()", () => {
     );
     assert.deepEqual(result, {
       creatorReferralPreserved: true,
-      pendingInjection: null,
       unwrapTo: "/some-book",
     });
   });
@@ -226,40 +227,38 @@ describe("getPathAffiliatePolicy()", () => {
       new URL("https://bookshop.org/shop/my-store"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: true });
   });
 
-  // Scenario 10 — bookshop.org /p/ without affiliate param → pendingInjection
-  test("10. bookshop.org /p/ without affiliate param → pendingInjection", () => {
+  // Scenario 10 — bookshop.org /p/ product page → NO_MATCH (drop-affiliate-
+  // injection PR 1a: injectPath/injectParam/injectValue were removed from the
+  // rule schema entirely — there is no more "pendingInjection" concept).
+  test("10. bookshop.org /p/ product page → no policy match (injection removed)", () => {
     const result = getPathAffiliatePolicy(
       new URL("https://bookshop.org/p/books/some-title/12345"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, {
-      creatorReferralPreserved: false,
-      pendingInjection: { param: "affiliate", value: "124046" },
-    });
+    assert.deepEqual(result, { creatorReferralPreserved: false });
   });
 
-  // Scenario 11 — bookshop.org /p/ WITH existing ?affiliate=X → pendingInjection: null
-  test("11. bookshop.org /p/ with existing ?affiliate param → pendingInjection: null", () => {
+  // Scenario 11 — same /p/ path, this time already carrying a foreign
+  // ?affiliate= param → still just NO_MATCH (nothing to compare against;
+  // the query-param itself is left alone by this data-only loader).
+  test("11. bookshop.org /p/ with an existing ?affiliate param → still no policy match", () => {
     const result = getPathAffiliatePolicy(
       new URL("https://bookshop.org/p/books/title/123?affiliate=99999"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: false, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: false });
   });
 
   // Scenario 12 — www.bookshop.org normalized to bookshop.org → same as #10
-  test("12. www.bookshop.org normalized → same injection result as bookshop.org", () => {
+  test("12. www.bookshop.org normalized → same no-match result as bookshop.org", () => {
     const result = getPathAffiliatePolicy(
       new URL("https://www.bookshop.org/p/books/some-title/12345"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, {
-      creatorReferralPreserved: false,
-      pendingInjection: { param: "affiliate", value: "124046" },
-    });
+    assert.deepEqual(result, { creatorReferralPreserved: false });
   });
 });
 
@@ -273,7 +272,6 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
     );
     assert.deepEqual(result, {
       creatorReferralPreserved: true,
-      pendingInjection: null,
       unwrapTo: "/p/books/9780000000000",
     });
   });
@@ -285,7 +283,6 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
     );
     assert.deepEqual(result, {
       creatorReferralPreserved: true,
-      pendingInjection: null,
       unwrapTo: "/lists/best-of-2026",
     });
   });
@@ -297,7 +294,6 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
     );
     assert.deepEqual(result, {
       creatorReferralPreserved: true,
-      pendingInjection: null,
       unwrapTo: "/p/books/title/123",
     });
   });
@@ -307,7 +303,7 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       new URL("https://bookshop.org/a/creator/https://evil.example/phishing"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: true });
   });
 
   test("/shop/muga (no unwrapReferral match) → no unwrapTo", () => {
@@ -315,7 +311,7 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       new URL("https://bookshop.org/shop/muga"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: true });
   });
 
   test("nesting guard: capture starting with /a/ → no unwrapTo", () => {
@@ -323,7 +319,7 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       new URL("https://bookshop.org/a/creator/a/other-creator/p/books/1"),
       AFFILIATE_RULES
     );
-    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: true });
   });
 
   test("rule entry without unwrapReferral field → old shape, no crash (backward compat)", () => {
@@ -331,10 +327,6 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       {
         domain: "bookshop.org",
         referralPaths: ["^\\/a\\/[^/]+\\/", "^\\/shop\\/[^/]+\\/?$"],
-        injectPath: "/p/",
-        injectParam: "affiliate",
-        injectValue: "124046",
-        affiliateIdSource: "MUGA_OWN",
         // unwrapReferral intentionally omitted
       },
     ];
@@ -342,7 +334,7 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       new URL("https://bookshop.org/a/creator/p/books/9780000000000"),
       rulesNoUnwrap
     );
-    assert.deepEqual(result, { creatorReferralPreserved: true, pendingInjection: null });
+    assert.deepEqual(result, { creatorReferralPreserved: true });
   });
 
   test("unwrapReferral as an invalid regex string → throws TypeError", () => {
@@ -350,10 +342,6 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       {
         domain: "bookshop.org",
         referralPaths: ["^\\/a\\/[^/]+\\/"],
-        injectPath: "/p/",
-        injectParam: "affiliate",
-        injectValue: "124046",
-        affiliateIdSource: "MUGA_OWN",
         unwrapReferral: "(unclosed[", // invalid regex
       },
     ];
@@ -361,6 +349,23 @@ describe("getPathAffiliatePolicy() unwrapTo (#959)", () => {
       () => getPathAffiliatePolicy(new URL("https://bookshop.org/a/creator/dest"), badRule),
       /unwrapReferral.*not a valid regex/i
     );
+  });
+
+  // drop-affiliate-injection (PR 1a): a rule entry that matches the REAL new
+  // path-affiliate-rules.json shape (no inject* fields at all) must validate
+  // and resolve correctly — this is the shape production rules use now.
+  test("rule entry with NO inject* fields at all validates fine (new real schema shape)", () => {
+    const rulesNoInject = [
+      {
+        domain: "bookshop.org",
+        referralPaths: ["^\\/a\\/[^/]+\\/", "^\\/shop\\/[^/]+\\/?$"],
+        unwrapReferral: "^\\/a\\/[^/]+\\/(.+)$",
+      },
+    ];
+    const referral = getPathAffiliatePolicy(new URL("https://bookshop.org/shop/my-store"), rulesNoInject);
+    assert.deepEqual(referral, { creatorReferralPreserved: true });
+    const nonMatch = getPathAffiliatePolicy(new URL("https://bookshop.org/p/books/title/1"), rulesNoInject);
+    assert.deepEqual(nonMatch, { creatorReferralPreserved: false });
   });
 });
 
@@ -418,10 +423,6 @@ describe("schema validation", () => {
       {
         domain: "bookshop.org",
         referralPaths: "not-an-array", // should be array
-        injectPath: "/p/",
-        injectParam: "affiliate",
-        injectValue: "124046",
-        affiliateIdSource: "MUGA_OWN",
       },
     ];
     assert.throws(

@@ -27,7 +27,6 @@ export default Object.freeze({
   ledger_empty: "Aucune navigation récente. Commencez à naviguer. MUGA listera ici les URL nettoyées.",
   ledger_badge_cleaned: "Nettoyée",
   ledger_badge_preserve_affiliate: "Affiliation du créateur préservée",
-  ledger_badge_inject_affiliate: "Affiliation ajoutée",
   ledger_badge_honor_creator: "Routage du créateur respecté",
   ledger_badge_blocked_opaque: "Wrapper opaque bloqué",
   ledger_creator_credit_template: "Soutien à {creator}",

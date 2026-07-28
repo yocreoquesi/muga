@@ -22,20 +22,21 @@
  * user switches language without rebuilding event history.
  */
 
-import { processUrl } from "./cleaner.js";
-
 /** Default size of the ledger ring buffer. Caps how many events the popup ever renders. */
 export const DEFAULT_LEDGER_CAPACITY = 10;
 
 /**
  * Frozen list of event types the presenter recognizes. Anything else is
  * dropped by `pushEvent` so a buggy caller can't poison the buffer.
+ *
+ * drop-affiliate-injection (PR 1a): "inject-affiliate" was removed — MUGA
+ * never inserts its own affiliate tag anymore, so that event can no longer
+ * be produced.
  */
 export const EVENT_TYPES = Object.freeze([
   "navigate",
   "clean",
   "preserve-affiliate",
-  "inject-affiliate",
   "honor-creator",
   "blocked-opaque",
 ]);
@@ -97,7 +98,6 @@ function entryFor(ev) {
       entry.badge = BADGE_CLEANED;
       break;
     case "preserve-affiliate":
-    case "inject-affiliate":
       if (ev.network) entry.network = ev.network;
       break;
     case "honor-creator":
@@ -124,61 +124,23 @@ export function presentLedger(ledger) {
 }
 
 /**
- * Re-derives the tag-free destination for an `injected` result (#946).
- *
- * `processUrl()` does not produce a tagless value on a normal injecting
- * call — the tag is added in the same pass that strips tracking params, so
- * there is no intermediate "clean but not yet tagged" URL to read off the
- * result object. Rather than regex-stripping MUGA's tag back out of
- * `result.cleanUrl` (fragile: tag param names/positions vary per pattern),
- * we reprocess the ORIGINAL raw URL through the same pipeline with
- * `injectOwnAffiliate` forced off. This is the same principled approach
- * background/service-worker.js#handleProcessUrl already uses for its
- * copy-safe `effectivePrefs` (skipNotify branch) — single source of truth
- * for "what would this URL look like if MUGA never injected its own tag".
- *
- * Falls back to `rawUrl` (the pre-injection original — guaranteed free of
- * MUGA's tag by construction, though not guaranteed to have tracking
- * params stripped) when `ctx` is missing or reprocessing throws. This only
- * matters for callers that don't supply a `ctx` (e.g. isolated unit
- * tests) — the production caller (pushAttributionAndPersist) always does.
- *
- * @param {string} rawUrl
- * @param {{prefs?: object, domainRules?: Array, pathStripRules?: Array, pathAffiliateRules?: Array, referrer?: string}|undefined} ctx
- * @returns {string}
- */
-function deriveTaglessUrl(rawUrl, ctx) {
-  if (!ctx || typeof ctx !== "object" || !ctx.prefs) return rawUrl;
-  try {
-    const tagless = processUrl(
-      rawUrl,
-      { ...ctx.prefs, injectOwnAffiliate: false },
-      ctx.domainRules || [],
-      undefined,
-      undefined,
-      ctx.referrer,
-      ctx.pathStripRules || [],
-      ctx.pathAffiliateRules || [],
-    );
-    return tagless?.cleanUrl ?? rawUrl;
-  } catch {
-    return rawUrl;
-  }
-}
-
-/**
  * Adapts a `processUrl()` result object into a presenter event. Returns
  * null when the action is unrecognized so callers can skip without
  * polluting the ledger with garbage entries.
  *
  * Action mapping (#946 — every `url` here is a COPY-SAFE value: tracking
- * stripped, no MUGA-injected tag, third-party creator attribution intact):
+ * stripped, third-party creator attribution intact):
  *   `untouched`        → navigate         (URL passed through unchanged; rawUrl)
  *   `cleaned`          → clean            (result.cleanUrl — tracking stripped)
  *   `blacklisted`      → clean            (result.cleanUrl — params stripped via blacklist)
- *   `injected`         → inject-affiliate (tagless destination, see deriveTaglessUrl; network from preservedAffiliate.group)
  *   `detected_foreign` → preserve-affiliate (result.cleanUrl — third-party tag preserved; network from detectedAffiliate.pattern.group)
  *   `honored-creator`  → honor-creator    (result.cleanUrl — wrapper passed through unchanged; network + creator)
+ *
+ * drop-affiliate-injection (PR 1a): `processUrl()` can no longer produce
+ * `action: "injected"` — MUGA never inserts its own affiliate tag anymore.
+ * That case (and its `deriveTaglessUrl` reprocessing helper) was removed;
+ * an `"injected"` action now falls through to the `default: return null`
+ * branch, same as any other unrecognized action.
  *
  * `blocked-opaque` has no cleaner action today — it's a future event the
  * popup may emit when an opaque wrapper (t.co etc.) couldn't be resolved.
@@ -186,13 +148,13 @@ function deriveTaglessUrl(rawUrl, ctx) {
  *
  * @param {string} rawUrl
  * @param {object|null|undefined} result - return value from processUrl
- * @param {{prefs?: object, domainRules?: Array, pathStripRules?: Array, pathAffiliateRules?: Array, referrer?: string}} [ctx]
- *   Optional reprocessing context, only consulted for the `injected` action.
- *   Production callers (pushAttributionAndPersist) always supply it so the
- *   ledger never stores a MUGA-tagged URL.
+ * @param {{prefs?: object, domainRules?: Array, pathStripRules?: Array, pathAffiliateRules?: Array, referrer?: string}} [_ctx]
+ *   Unused — kept for call-site compatibility with existing callers
+ *   (pushAttributionAndPersist still builds and passes this bag). It was
+ *   previously consulted only by the now-removed `injected` case.
  * @returns {object|null}
  */
-export function fromCleanerResult(rawUrl, result, ctx) {
+export function fromCleanerResult(rawUrl, result, _ctx) {
   if (!result || typeof result !== "object") return null;
 
   switch (result.action) {
@@ -201,14 +163,6 @@ export function fromCleanerResult(rawUrl, result, ctx) {
     case "cleaned":
     case "blacklisted":
       return { type: "clean", url: result.cleanUrl ?? rawUrl };
-    case "injected": {
-      // Network sourced from the preservedAffiliate descriptor when the
-      // cleaner attached one (group is the program family, e.g. "amazon").
-      const network = result.preservedAffiliate?.group || result.preservedAffiliate?.store;
-      const ev = { type: "inject-affiliate", url: deriveTaglessUrl(rawUrl, ctx) };
-      if (network) ev.network = network;
-      return ev;
-    }
     case "detected_foreign": {
       // detectedAffiliate carries the matched pattern; group identifies
       // the program family the foreign tag belongs to. cleanUrl already

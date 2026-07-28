@@ -77,12 +77,16 @@ describe("rules-manifest.json — structural integrity (TA-3)", () => {
       assert.ok(Array.isArray(r.replacements), "strip entry must have replacements array");
       assert.equal(r.pathPatterns.length, r.replacements.length, "pathPatterns and replacements must be same length");
     }
+    // drop-affiliate-injection (PR 1a): injectPath/injectParam/injectValue
+    // are no longer part of the schema — MUGA never injects its own
+    // affiliate tag anymore, so path_affiliate_rules entries only carry
+    // creator-referral detection/unwrap fields.
     for (const r of manifest.path_affiliate_rules) {
       assert.ok(typeof r.domain === "string", "affiliate entry must have domain string");
       assert.ok(Array.isArray(r.referralPaths), "affiliate entry must have referralPaths array");
-      assert.ok(typeof r.injectPath === "string", "affiliate entry must have injectPath string");
-      assert.ok(typeof r.injectParam === "string", "affiliate entry must have injectParam string");
-      assert.ok(typeof r.injectValue === "string", "affiliate entry must have injectValue string");
+      assert.ok(!("injectPath" in r), "affiliate entry must NOT have injectPath (removed, PR 1a)");
+      assert.ok(!("injectParam" in r), "affiliate entry must NOT have injectParam (removed, PR 1a)");
+      assert.ok(!("injectValue" in r), "affiliate entry must NOT have injectValue (removed, PR 1a)");
     }
     assert.ok(!("path_rules" in manifest), "v1 path_rules key must be removed in v2");
   });

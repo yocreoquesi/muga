@@ -830,16 +830,23 @@ function renderCategories(disabledCategories) {
   }
 }
 
-/** Renders the supported affiliate stores grid. */
+/**
+ * Renders the supported affiliate stores grid.
+ *
+ * drop-affiliate-injection (PR 1a): `AFFILIATE_PATTERNS` entries no longer
+ * carry an `ourTag` map (src/lib/affiliates.js) — MUGA never injects its own
+ * affiliate tag anymore, so there is no more "active store" to display.
+ * `p.ourTag || {}` below is a defensive guard against the now-missing field
+ * (Object.values(undefined) would throw); `activePrograms` is therefore
+ * always empty and the grid always shows its "no active stores" placeholder,
+ * which is the CORRECT reflection of the new behavior. This UI section
+ * itself (copy, hiding it entirely, etc.) is otherwise out of scope for this
+ * PR — full options/onboarding UI rewiring is deferred to a follow-up PR.
+ */
 function renderStores() {
-  // #523 phase 3: each program has a `{ host -> tag }` map for ourTag.
-  // Active = at least one host has a non-empty tag. We expand each
-  // program into per-marketplace "store" rows so the UI looks the same
-  // post-consolidation as it did when the legacy AFFILIATE_PATTERNS
-  // array carried one entry per marketplace.
   const allPrograms = getSupportedStores();
   const activePrograms = allPrograms.filter(
-    (p) => Object.values(p.ourTag).some((tag) => tag && tag.trim() !== ""),
+    (p) => Object.values(p.ourTag || {}).some((tag) => tag && tag.trim() !== ""),
   );
 
   const grid = document.getElementById("stores-grid");
@@ -870,8 +877,12 @@ function renderStores() {
     const key = p.group || p.name;
     if (!groups.has(key)) groups.set(key, []);
     // Expand each program into one row per (host, tag) pair so the
-    // marketplace-level detail surfaces in the UI.
-    for (const [host, tag] of Object.entries(p.ourTag)) {
+    // marketplace-level detail surfaces in the UI. p.ourTag no longer
+    // exists (drop-affiliate-injection, PR 1a) — this loop is now
+    // unreachable dead code in practice (activePrograms is always empty),
+    // guarded defensively rather than deleted since renderStores()'s UI is
+    // out of scope for this PR.
+    for (const [host, tag] of Object.entries(p.ourTag || {})) {
       if (!tag || tag.trim() === "") continue;
       groups.get(key).push({ name: host, param: p.param, ourTag: tag });
     }

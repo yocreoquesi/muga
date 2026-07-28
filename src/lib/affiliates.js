@@ -2,12 +2,16 @@
  * MUGA: Affiliate and tracking parameter database
  *
  * AFFILIATE_PATTERNS is the consolidated view of caps-spec's
- * direct-injection programs joined with MUGA's hand-maintained OUR_TAGS
- * map. The program identity (id, name, domains, param) is sourced from
- * the vendored `caps-spec/manifest.json` (#523 phase 1, now hand-maintained
- * in `src/rules/manifest.data.js`). The per-host affiliate tag values
- * MUGA injects on its own behalf live in OUR_TAGS in this file — they
- * are intentionally NOT in the open standard.
+ * direct-injection programs. The program identity (id, name, domains,
+ * param) is sourced from the vendored `caps-spec/manifest.json` (#523
+ * phase 1, now hand-maintained in `src/rules/manifest.data.js`).
+ *
+ * drop-affiliate-injection (PR 1a): MUGA no longer injects its own
+ * affiliate tag. The hand-maintained OUR_TAGS map and `resolveOurTag()`
+ * were removed, along with the `ourTag` field on each AFFILIATE_PATTERNS
+ * entry. AFFILIATE_PATTERNS still doubles as the PRESERVATION table
+ * (third-party/creator affiliate tags and whitelist/blacklist matching) —
+ * only the injection half of its former responsibility is gone.
  *
  * Entry shape:
  *   {
@@ -17,15 +21,11 @@
  *     domains:    array of host strings the program covers
  *     param:      URL query parameter that carries the tag value
  *     type:       always "affiliate" (legacy field preserved for clarity)
- *     ourTag:     { host -> tag } map. Programs MUGA has no account on
- *                 carry an empty {} — preservation still works (caps-spec
- *                 declares it preservable); only injection is skipped.
  *     references: array of source citations from caps-spec
  *   }
  *
- * To add a NEW per-marketplace tag for an existing program: edit
- * OUR_TAGS only. To add a NEW program: edit `src/rules/manifest.data.js`
- * directly and update `EXPECTED_PROGRAM_IDS` in `tests/unit/caps-manifest-sync.test.mjs`.
+ * To add a NEW program: edit `src/rules/manifest.data.js` directly and
+ * update `EXPECTED_PROGRAM_IDS` in `tests/unit/caps-manifest-sync.test.mjs`.
  *
  * ── #826 module split ────────────────────────────────────────────────────
  * The static tracking-param dataset (TRACKING_PARAMS, TRACKING_PREFIXES,
@@ -67,54 +67,16 @@ export {
 } from "./redirect-networks.js";
 
 // ────────────────────────────────────────────────────────────────────────
-// AFFILIATE_PATTERNS — caps-spec direct-injection programs joined with
-// MUGA's per-host affiliate tag values (#523).
+// AFFILIATE_PATTERNS — caps-spec direct-injection programs, used for
+// PRESERVATION (third-party/creator tag detection + whitelist/blacklist
+// matching). The program identity (id, name, domains, param) is sourced
+// from `src/rules/manifest.data.js`.
+//
+// drop-affiliate-injection (PR 1a): OUR_TAGS (MUGA's hand-maintained own-tag
+// map) was removed — MUGA no longer injects its own affiliate tag on any
+// program. To add a NEW program: update the rule artifact and regenerate
+// via the rules pipeline.
 // ────────────────────────────────────────────────────────────────────────
-//
-// The program identity (id, name, domains, param) is sourced from
-// `src/rules/manifest.data.js`. The per-host tag values MUGA
-// injects on its own behalf live in OUR_TAGS below — they are
-// intentionally NOT in the rule artifact (`ourTag` is per-implementer).
-//
-// To add a NEW per-marketplace tag for an existing program: edit
-// OUR_TAGS only. To add a NEW program: update the rule artifact and
-// regenerate via the rules pipeline.
-const OUR_TAGS = {
-  "amazon-associates": {
-    "amazon.com":   "muga0b-20",
-    "amazon.es":    "muga0b-21",
-    "amazon.de":    "muga0f-21",
-    "amazon.fr":    "muga08a-21",
-    "amazon.it":    "muga04f-21",
-    "amazon.co.uk": "muga0a-21",
-  },
-  "ebay-partner-network": {
-    // eBay shares one campid across all marketplaces, but we still key
-    // per-host so the consolidated shape is uniform and the cleaner's
-    // injection lookup is a single `pattern.ourTag[hostname]` regardless
-    // of program.
-    "ebay.com":   "5339147108",
-    "ebay.es":    "5339147108",
-    "ebay.de":    "5339147108",
-    "ebay.co.uk": "5339147108",
-    "ebay.fr":    "5339147108",
-    "ebay.it":    "5339147108",
-  },
-  "vercel":        {}, // pending Vercel referral username
-  "digitalocean":  {}, // pending DigitalOcean referral code
-  "lemon-squeezy": {}, // pending Lemon Squeezy affiliate id
-};
-// booking and humble-bundle were removed when caps-spec deprecated those
-// programs upstream (Booking terminated direct affiliate partnerships May
-// 2025 → migrated to Awin; Humble Bundle migrated to Impact). The sync
-// script filters out programType=deprecated, so an entry here would be
-// dead code — coverage continues via network-redirect (awin / impact-radius).
-//
-// apple-phg is intentionally NOT in OUR_TAGS: Apple Performance Partners is
-// a curated program closed to small publishers (volume + quality gate). We
-// preserve third-party at= tags via caps-spec (moat-aligned) but skip
-// injection. Fallback `OUR_TAGS[prog.id] || {}` keeps preservation working
-// without a placeholder entry.
 
 // Maps caps-spec program ids to MUGA's existing display "group" so the
 // popup / attribution-ledger UI keeps showing familiar labels (e.g.
@@ -131,15 +93,15 @@ function _deriveGroup(prog) {
 
 /**
  * Affiliate-pattern table consumed by `cleaner.js` and friends.
- * Built once at module load by joining caps-spec direct-injection
- * programs with the hand-maintained OUR_TAGS map.
+ * Built once at module load from caps-spec's direct-injection programs.
  *
  * Entry shape:
- *   { id, name, group, domains, param, type, ourTag, references }
- * where `ourTag` is a `{ hostname → tag }` map (NOT a flat string).
- * Programs MUGA has no account on carry an empty `ourTag: {}` —
- * preservation still works (caps-spec declares them preservable);
- * only injection is skipped on those.
+ *   { id, name, group, domains, param, type, references }
+ *
+ * drop-affiliate-injection (PR 1a): the `ourTag` field was removed — MUGA
+ * no longer injects its own affiliate tag, so there is nothing to resolve
+ * per hostname anymore. This table is now used for PRESERVATION only
+ * (third-party/creator tag detection + whitelist/blacklist matching).
  */
 export const AFFILIATE_PATTERNS = CAPS_DIRECT_INJECTION_PROGRAMS.map((prog) => ({
   id: prog.id,
@@ -148,7 +110,6 @@ export const AFFILIATE_PATTERNS = CAPS_DIRECT_INJECTION_PROGRAMS.map((prog) => (
   domains: prog.domains.slice(),
   param: prog.param,
   type: "affiliate",
-  ourTag: OUR_TAGS[prog.id] || {},
   references: prog.references || [],
 }));
 
@@ -245,22 +206,3 @@ export function getAffiliateDomains() {
   return [...set];
 }
 
-/**
- * Resolves MUGA's own affiliate tag for a given pattern + hostname.
- *
- * `pattern.ourTag` is a `{ host -> tag }` map (#523 phase 3), NOT a flat
- * string. Callers MUST look it up by hostname; passing the map object
- * straight to `URLSearchParams.set()` serializes it to "[object Object]"
- * (the bug fixed in #904). This is the single source of truth for that
- * lookup: the service worker imports it, and the content script mirrors it
- * inline because MV3 content scripts cannot import ES modules.
- *
- * @param {{ourTag?: Object}|null|undefined} pattern  affiliate pattern (from AFFILIATE_PATTERNS)
- * @param {string} hostname  the marketplace hostname (e.g. "amazon.de" or "www.amazon.de")
- * @returns {string} the tag configured for this host, or "" when none exists
- */
-export function resolveOurTag(pattern, hostname) {
-  if (!pattern || !pattern.ourTag || !hostname) return "";
-  const host = hostname.replace(/^www\./, "");
-  return pattern.ourTag[host] || pattern.ourTag[hostname] || "";
-}

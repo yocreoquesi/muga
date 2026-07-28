@@ -47,13 +47,15 @@ describe("createLedger", () => {
   });
 
   test("EVENT_TYPES is the full set the popup may receive", () => {
+    // drop-affiliate-injection (PR 1a): "inject-affiliate" removed — MUGA
+    // never injects its own affiliate tag anymore, so that event type can
+    // no longer be produced.
     assert.deepEqual(
       [...EVENT_TYPES].sort(),
       [
         "blocked-opaque",
         "clean",
         "honor-creator",
-        "inject-affiliate",
         "navigate",
         "preserve-affiliate",
       ],
@@ -168,16 +170,14 @@ describe("presentLedger", () => {
     assert.equal(entry.creatorCredit, undefined);
   });
 
-  test("inject-affiliate event → carries network", () => {
+  test("a stray 'inject-affiliate' event is rejected (unknown type, removed)", () => {
+    // drop-affiliate-injection (PR 1a): "inject-affiliate" is no longer a
+    // recognized EVENT_TYPE — pushEvent must silently drop it, same as any
+    // other unknown/garbage type (defensive, see pushEvent's validation).
     let ledger = createLedger();
-    ledger = pushEvent(ledger, {
-      type: "inject-affiliate",
-      url: URL_A,
-      network: "amazon",
-    });
-    const [entry] = presentLedger(ledger).entries;
-    assert.equal(entry.decision, "inject-affiliate");
-    assert.equal(entry.network, "amazon");
+    const before = ledger;
+    ledger = pushEvent(ledger, { type: "inject-affiliate", url: URL_A, network: "amazon" });
+    assert.equal(ledger, before, "unrecognized event type must be dropped, ledger reference unchanged");
   });
 
   test("honor-creator event → carries network + creatorCredit", () => {
@@ -250,14 +250,15 @@ describe("fromCleanerResult", () => {
     assert.equal(ev.url, URL_B);
   });
 
-  test("action='injected' → inject-affiliate event with network when present", () => {
+  test("action='injected' → returns null (unrecognized — injection removed, PR 1a)", () => {
+    // processUrl() can no longer produce action: "injected" (drop-affiliate-
+    // injection PR 1a), so fromCleanerResult treats it like any other
+    // unrecognized action and returns null rather than a ghost event.
     const ev = fromCleanerResult(URL_A, {
       action: "injected",
       preservedAffiliate: { group: "amazon" },
     });
-    assert.equal(ev.type, "inject-affiliate");
-    assert.equal(ev.url, URL_A);
-    assert.equal(ev.network, "amazon");
+    assert.equal(ev, null);
   });
 
   test("action='detected_foreign' → preserve-affiliate event", () => {
@@ -340,21 +341,15 @@ describe("fromCleanerResult — #946 copy-safe action table", () => {
     assert.notEqual(ev.url, raw);
   });
 
-  test("'injected' derives a TAGLESS url via ctx reprocessing (real processUrl, injection re-forced off)", () => {
+  test("a real navigation on a tagless Amazon URL never produces action='injected' (injection removed)", () => {
     const raw = "https://www.amazon.com/dp/B00X?utm_source=newsletter";
     const navResult = processUrl(raw, NAV_PREFS, domainRules);
-    assert.equal(navResult.action, "injected", "sanity: this URL really gets MUGA's tag injected at navigation time");
-    assert.ok(navResult.cleanUrl.includes("tag="), "sanity: the real nav result carries our tag");
+    assert.notEqual(navResult.action, "injected", "MUGA never inserts its own affiliate tag anymore");
+    assert.ok(!navResult.cleanUrl.includes("tag="), "no tag must ever be added");
 
     const ev = fromCleanerResult(raw, navResult, { prefs: NAV_PREFS, domainRules });
-    assert.equal(ev.type, "inject-affiliate");
-    assert.ok(!ev.url.includes("tag="), "ledger must never store MUGA's own injected tag");
-    assert.ok(!ev.url.includes("utm_source"), "tracking noise must still be stripped from the derived copy-safe url");
-  });
-
-  test("'injected' without ctx falls back to the pre-injection rawUrl (backward compatible, still tag-free)", () => {
-    const ev = fromCleanerResult(URL_A, { action: "injected", preservedAffiliate: { group: "amazon" } });
-    assert.equal(ev.url, URL_A, "no ctx supplied — falls back to rawUrl rather than crashing or using a tagged cleanUrl");
+    assert.equal(ev.type, "clean");
+    assert.ok(!ev.url.includes("utm_source"), "tracking noise must still be stripped");
   });
 
   test("'detected_foreign' preserves the third-party creator tag via result.cleanUrl", () => {
