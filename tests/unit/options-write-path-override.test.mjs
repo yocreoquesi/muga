@@ -16,9 +16,13 @@
  * value for GUARDED_PREFS only. These are genuine behavioural tests: they drive
  * the real reconcile helper + getPrefs merge and assert the effective value.
  *
- * The two wiring sites (options.js bindToggle for injectOwnAffiliate;
+ * The wiring sites (options.js bindToggle for guarded prefs;
  * service-worker.js ENABLE/DISABLE_REMOTE_RULES) are browser-only and covered
  * by source guards below, matching the codebase's established pattern.
+ *
+ * drop-affiliate-injection (PR 1b): injectOwnAffiliate was removed from
+ * GUARDED_PREFS along with the pref itself — remoteRulesEnabled is now the
+ * sole guarded pref covered here.
  */
 
 import { test, describe, beforeEach } from "node:test";
@@ -76,25 +80,6 @@ async function freshPerDevice() {
 
 describe("write path — explicit Settings toggle reconciles the per-device override", () => {
   beforeEach(() => { installChromeStub(); });
-
-  test("injectOwnAffiliate: enabling ON with a pre-existing override=false makes getPrefs() return true (sticks)", async () => {
-    const perDevice = await freshPerDevice();
-    // Device declined the sync-inherited prompt during onboarding.
-    await perDevice.setOverrides({ injectOwnAffiliate: false });
-
-    // Simulate the Settings write path: setPrefs writes sync ...
-    const prefs = await freshPrefs();
-    await prefs.setPrefs({ injectOwnAffiliate: true });
-
-    // ... and (the fix) the explicit choice reconciles the per-device override.
-    await perDevice.reconcileOverrideForExplicitChoice("injectOwnAffiliate", true);
-
-    const effective = await prefs.getPrefs();
-    assert.strictEqual(
-      effective.injectOwnAffiliate, true,
-      "after an explicit Settings enable, getPrefs must return true — the stale override must not win"
-    );
-  });
 
   test("remoteRulesEnabled: enabling ON with a pre-existing override=false makes getPrefs() return true (sticks)", async () => {
     const perDevice = await freshPerDevice();

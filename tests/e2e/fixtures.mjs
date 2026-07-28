@@ -45,7 +45,6 @@ async function completeOnboarding(context, extensionId) {
       const syncWrite = new Promise((r) =>
         chrome.storage.sync.set(
           {
-            injectOwnAffiliate: false,
             notifyForeignAffiliate: false,
             language: "en",
           },

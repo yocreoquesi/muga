@@ -3,6 +3,12 @@
  *
  * Round-trip tests for the per-device override map. Asserts overrides
  * go to chrome.storage.local, never to sync.
+ *
+ * drop-affiliate-injection (PR 1b): injectOwnAffiliate was removed from
+ * GUARDED_PREFS — remoteRulesEnabled is now the sole guarded pref, so it
+ * is the example key used throughout. A dedicated regression test below
+ * confirms setOverrides now rejects the retired injectOwnAffiliate key
+ * (it is no longer a valid override target).
  */
 import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -60,33 +66,37 @@ describe("per-device-prefs", () => {
   });
 
   test("setOverrides + getOverrides round-trips", async () => {
-    await mod.setOverrides({ injectOwnAffiliate: false });
+    await mod.setOverrides({ remoteRulesEnabled: false });
     const o = await mod.getOverrides();
-    assert.deepEqual(o, { injectOwnAffiliate: false });
+    assert.deepEqual(o, { remoteRulesEnabled: false });
   });
 
   test("setOverrides writes to local, never to sync", async () => {
-    await mod.setOverrides({ injectOwnAffiliate: false });
+    await mod.setOverrides({ remoteRulesEnabled: false });
     assert.ok(stores.localStore.has("mugaPerDevicePrefs"));
     assert.equal(stores.syncStore.has("mugaPerDevicePrefs"), false);
   });
 
   test("setOverrides merges against the stored record", async () => {
-    await mod.setOverrides({ injectOwnAffiliate: false });
+    // Seed an existing (non-guarded-key-validated) record directly to prove
+    // setOverrides MERGES rather than replaces. GUARDED_PREFS now has only
+    // one member, so a real two-guarded-key merge cannot be exercised
+    // through the public API alone.
+    stores.localStore.set("mugaPerDevicePrefs", { legacyKey: true });
     await mod.setOverrides({ remoteRulesEnabled: false });
     const o = await mod.getOverrides();
-    assert.deepEqual(o, { injectOwnAffiliate: false, remoteRulesEnabled: false });
+    assert.deepEqual(o, { legacyKey: true, remoteRulesEnabled: false });
   });
 
   test("setOverrides can override a previous value for the same key", async () => {
-    await mod.setOverrides({ injectOwnAffiliate: false });
-    await mod.setOverrides({ injectOwnAffiliate: true });
+    await mod.setOverrides({ remoteRulesEnabled: false });
+    await mod.setOverrides({ remoteRulesEnabled: true });
     const o = await mod.getOverrides();
-    assert.equal(o.injectOwnAffiliate, true);
+    assert.equal(o.remoteRulesEnabled, true);
   });
 
   test("clearOverrides removes the record", async () => {
-    await mod.setOverrides({ injectOwnAffiliate: false });
+    await mod.setOverrides({ remoteRulesEnabled: false });
     await mod.clearOverrides();
     const o = await mod.getOverrides();
     assert.deepEqual(o, {});
@@ -103,13 +113,24 @@ describe("per-device-prefs", () => {
     await assert.rejects(() => mod.setOverrides({ notAPref: true }));
   });
 
+  test("setOverrides rejects the retired injectOwnAffiliate key (drop-affiliate-injection PR 1b)", async () => {
+    // injectOwnAffiliate was removed from GUARDED_PREFS when the own-tag
+    // affiliate injection feature was retired. This is the exact crash this
+    // PR had to design around: any surviving caller passing this key must
+    // fail fast with a clear TypeError, not silently write junk.
+    await assert.rejects(
+      () => mod.setOverrides({ injectOwnAffiliate: false }),
+      TypeError,
+    );
+  });
+
   test("setOverrides rejects a non-boolean value for a guarded key (#728 item 24)", async () => {
-    await assert.rejects(() => mod.setOverrides({ injectOwnAffiliate: "false" }));
+    await assert.rejects(() => mod.setOverrides({ remoteRulesEnabled: "false" }));
     await assert.rejects(() => mod.setOverrides({ remoteRulesEnabled: 0 }));
   });
 
   test("a rejected setOverrides writes nothing (validation runs before the store write) (#728 item 24)", async () => {
-    await assert.rejects(() => mod.setOverrides({ injectOwnAffiliate: "nope" }));
+    await assert.rejects(() => mod.setOverrides({ remoteRulesEnabled: "nope" }));
     const o = await mod.getOverrides();
     assert.deepEqual(o, {}, "a rejected setOverrides must not persist a partial record");
   });

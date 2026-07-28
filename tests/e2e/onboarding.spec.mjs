@@ -1,8 +1,7 @@
 /**
  * E2E: Onboarding flow
  *
- * Tests the first-run experience: ToS acceptance, affiliate opt-in,
- * and storage persistence.
+ * Tests the first-run experience: ToS acceptance and storage persistence.
  */
 
 import { test, expect } from "./fixtures.mjs";
@@ -34,9 +33,6 @@ test.describe("Onboarding", () => {
     // ToS checkbox exists
     await expect(page.locator("#tos-check")).toBeVisible();
 
-    // Affiliate checkbox exists
-    await expect(page.locator("#affiliate-check")).toBeVisible();
-
     // Start button exists
     await expect(page.locator("#start-btn")).toBeVisible();
   });
@@ -65,19 +61,6 @@ test.describe("Onboarding", () => {
     await expect(syncNote).toContainText("browser feature, not MUGA");
   });
 
-  test("affiliate checkbox is on by default and can be turned off", async ({ onboardingPage: page }) => {
-    const affiliateCheck = page.locator("#affiliate-check");
-    // #1032: injection is on by default on a fresh install; the onboarding box
-    // reflects that and the user can turn it off right here (revertible, with no
-    // loss of cleaning or protection).
-    await expect(affiliateCheck).toBeChecked();
-
-    // Can turn it off without affecting start button state
-    await affiliateCheck.uncheck();
-    await expect(affiliateCheck).not.toBeChecked();
-    await expect(page.locator("#start-btn")).toBeDisabled(); // still disabled without ToS
-  });
-
   test("completing onboarding saves preferences to storage", async ({ context, extensionId }) => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
@@ -86,9 +69,6 @@ test.describe("Onboarding", () => {
 
     // Accept ToS
     await page.locator("#tos-check").check();
-
-    // Opt in to affiliate
-    await page.locator("#affiliate-check").check();
 
     // Click start — this calls window.close(), so the page will close
     await page.locator("#start-btn").click();
@@ -100,20 +80,16 @@ test.describe("Onboarding", () => {
     const verifyPage = await context.newPage();
     await verifyPage.goto(`chrome-extension://${extensionId}/popup/popup.html`);
 
-    // Consent fields live in chrome.storage.local (#355 / ADR-0001);
-    // behavioural prefs continue to live in chrome.storage.sync.
-    const { sync, consent } = await verifyPage.evaluate(() => {
+    // Consent fields live in chrome.storage.local (#355 / ADR-0001).
+    const { consent } = await verifyPage.evaluate(() => {
       return new Promise((resolve) => {
-        chrome.storage.sync.get(null, (syncPrefs) => {
-          chrome.storage.local.get({ mugaConsent: {} }, (local) => {
-            resolve({ sync: syncPrefs, consent: local.mugaConsent || {} });
-          });
+        chrome.storage.local.get({ mugaConsent: {} }, (local) => {
+          resolve({ consent: local.mugaConsent || {} });
         });
       });
     });
 
     expect(consent.onboardingDone).toBe(true);
-    expect(sync.injectOwnAffiliate).toBe(true);
     // Tracks REQUIRED_CONSENT_VERSION in src/lib/consent-version-manifest.js —
     // bump here when that constant advances (now 1.4 after the accept-mode clause).
     expect(consent.consentVersion).toBe("1.2");

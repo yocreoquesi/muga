@@ -209,6 +209,32 @@ export async function migratePerSiteDisableToAllowlist() {
 }
 
 /**
+ * One-time migration (drop-affiliate-injection, PR 1b): deletes the retired
+ * `injectOwnAffiliate` key from chrome.storage.sync. The own-tag affiliate
+ * injection feature was removed in PR 1a; the pref itself (and its guarded
+ * per-device override machinery — see synced-affiliate-pref-guard.js's
+ * GUARDED_PREFS) is retired in PR 1b, so no code path writes or reads this
+ * key anymore. Safe to call on every startup: `chrome.storage.sync.remove`
+ * is a no-op when the key is already absent, so this is naturally
+ * idempotent without needing an explicit presence check.
+ *
+ * Fail-safe: wrapped in try/catch — a storage error must never throw out to
+ * the caller or break startup.
+ */
+export async function migrateDropInjectOwnAffiliate() {
+  try {
+    await new Promise((resolve) => {
+      chrome.storage.sync.remove("injectOwnAffiliate", () => {
+        void chrome.runtime.lastError; // non-critical
+        resolve();
+      });
+    });
+  } catch {
+    // Migration is best-effort — a failure here must never break startup.
+  }
+}
+
+/**
  * One-time migration (cookie-consent 2-state mode): converts the legacy
  * `cookieConsentMinimizerEnabled` boolean into the `cookieConsentMode` enum
  * ("off" | "reject-only"). Safe to call on every startup; idempotent once

@@ -101,7 +101,6 @@ async function enableCookieConsentMinimizer(context, extensionId) {
       const syncWrite = new Promise((r) =>
         chrome.storage.sync.set(
           {
-            injectOwnAffiliate: false,
             notifyForeignAffiliate: false,
             language: "en",
             cookieConsentMode: "reject-only",

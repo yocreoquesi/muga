@@ -51,7 +51,6 @@ function defaultFollowShortenersEnabled() {
 
 export const PREF_DEFAULTS = {
   enabled: true,
-  injectOwnAffiliate: true,   // on by default to keep the project sustainable; shown in onboarding and revertible any time in Settings, with no loss of cleaning/protection (#224, #1032)
   notifyForeignAffiliate: false,
   stripAllAffiliates: false,
   blacklist: [],     // e.g. ["amazon.es", "booking.com::aid::123456"]
@@ -224,9 +223,9 @@ export const PREF_DEFAULTS = {
  * `chrome.storage.sync` (cross-device). Consent fields
  * (`onboardingDone`, `consentVersion`, `consentDate`) are overlaid
  * from per-device `chrome.storage.local` via consent-storage (#355,
- * ADR-0001). Per-device behavioural overrides (`injectOwnAffiliate`,
- * `remoteRulesEnabled` after a user declines a sync-inherited prompt)
- * are overlaid from per-device-prefs (#364) — local wins.
+ * ADR-0001). Per-device behavioural overrides (`remoteRulesEnabled`
+ * after a user declines a sync-inherited prompt) are overlaid from
+ * per-device-prefs (#364) — local wins.
  *
  * Reads in parallel for minimum latency.
  *

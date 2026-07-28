@@ -13,7 +13,7 @@
  * `getPrefs()` overlays the overrides on top of the sync read so the
  * device-local effective value is what the rest of the codebase sees.
  *
- * Currently overridable: `injectOwnAffiliate`, `remoteRulesEnabled`.
+ * Currently overridable: `remoteRulesEnabled`.
  * Adding a new pref requires updating GUARDED_PREFS in
  * `synced-affiliate-pref-guard.js`.
  */

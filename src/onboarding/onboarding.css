@@ -91,7 +91,7 @@
     .feature-text strong { display: block; font-weight: 500; margin-bottom: 3px; color: var(--text-1); letter-spacing: -0.005em; }
     .feature-text small { color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
 
-    /* Affiliate card */
+    /* Shorteners card */
     .affiliate-body {
       background: var(--surface-1);
       border-radius: var(--r-lg);
@@ -110,31 +110,6 @@
     .feedback-note, .sync-note {
       font-size: 12.5px; color: var(--text-2); line-height: 1.55;
     }
-
-    /* Consent checkboxes */
-    .consent-check {
-      display: flex; align-items: flex-start; gap: 12px;
-      padding: 14px 16px;
-      background: var(--surface-2);
-      border: 1px solid var(--border-1);
-      border-radius: var(--r-md);
-      cursor: pointer;
-      transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
-      margin-bottom: 10px;
-    }
-    .consent-check:last-child { margin-bottom: 0; }
-    .consent-check:hover { border-color: var(--border-2); }
-    .consent-check:has(input:checked) {
-      border-color: var(--accent); background: var(--accent-soft);
-    }
-    .consent-check input[type="checkbox"] {
-      width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0;
-      accent-color: var(--accent-strong); cursor: pointer;
-    }
-    .consent-check-label { font-size: 13px; line-height: 1.55; color: var(--text-1); }
-    .consent-check-label strong { display: block; font-weight: 500; margin-bottom: 3px; }
-    .consent-check-label small { color: var(--text-2); font-size: 12px; }
-    .consent-check-label a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
 
     /* ToS section */
     .tos-section { margin-top: 18px; }
