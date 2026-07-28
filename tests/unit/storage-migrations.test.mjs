@@ -95,6 +95,24 @@ describe("migrateDropInjectOwnAffiliate", () => {
     assert.equal(stores.syncStore.get("remoteRulesEnabled"), true);
   });
 
+  test("reads first and issues NO sync write when the key is already absent (write-quota hygiene)", async () => {
+    // The key is absent — the migration must read-and-skip, never spending a
+    // sync `remove` write op (which counts against Chrome's quota even for an
+    // absent key). Guards against a regression to unconditional-write.
+    stores.syncStore.set("remoteRulesEnabled", true);
+    let removeCalls = 0;
+    const realRemove = globalThis.chrome.storage.sync.remove;
+    globalThis.chrome.storage.sync.remove = (keys, cb) => {
+      removeCalls += 1;
+      return realRemove(keys, cb);
+    };
+
+    const { migrateDropInjectOwnAffiliate } = await loadMigration();
+    await migrateDropInjectOwnAffiliate();
+
+    assert.equal(removeCalls, 0, "remove must not be called when the key is absent");
+  });
+
   test("is idempotent — running twice is safe and has the same effect as running once", async () => {
     stores.syncStore.set("injectOwnAffiliate", true);
 
