@@ -111,54 +111,39 @@ describe("web adapter contract — negative / invalid input handling", () => {
   });
 });
 
-// drop-affiliate-injection (PR 1a): src/lib/affiliates.js no longer carries
-// OUR_TAGS / a per-pattern `ourTag` map, and src/lib/cleaner.js no longer
-// has an injection step — so the bundled engine these tests load can never
-// again produce action:"injected" or a non-empty own-referral. The adapter
-// (web/engine/adapter.js) itself is UNCHANGED in this PR (it is hand-
-// maintained, PR 2 scope) — its `resolveOurTag`/`detectOwnReferral` helpers
-// degrade gracefully (pattern.ourTag is now undefined → treated as "no own
-// tag"), so `mugaReferralInjected`/`mugaReferralPresent`/
-// `cleanUrlNoMugaReferral` are now ALWAYS false/false/null. This is a real,
-// immediate behavior change for the web tool (its "MUGA referral opt-out"
-// disclosure UI can never trigger anymore) shipped by this bundle rebuild,
-// ahead of the adapter.js/UI-copy rewiring planned for PR 2 — flagged for
-// maintainer review.
-describe("web adapter contract — naked-link MUGA referral injection (REMOVED, web-tool-naked-link-injection superseded)", () => {
+// drop-affiliate-injection (PR 2/4): the adapter's own-tag injection
+// scaffolding (`resolveOurTag`, `detectOwnReferral`, the `injectOwnAffiliate`
+// pref override, and the mugaReferralInjected/mugaReferralPresent/
+// cleanUrlNoMugaReferral result fields) is now REMOVED from
+// web/engine/adapter.js and landing/clean/engine/adapter.js, not merely
+// degraded. PR 1a already stopped the engine from ever producing
+// action:"injected" or a non-empty own-referral; this PR deletes the
+// now-dead adapter code that used to read/report that state.
+describe("web adapter contract — own-tag injection scaffolding removed (drop-affiliate-injection PR 2/4)", () => {
   test("naked Amazon link: no MUGA tag is added, stays tagless", () => {
     const out = cleanUrl("https://www.amazon.com/dp/B000123456", engine);
     assert.equal(out.ok, true);
     assert.notEqual(out.action, "injected");
-    assert.equal(out.mugaReferralInjected, false);
-    assert.equal(out.mugaReferralPresent, false);
-    assert.equal(out.cleanUrlNoMugaReferral, null);
     assert.equal(new URL(out.cleanUrl).searchParams.has("tag"), false);
   });
 
   test("naked Amazon link WITH a product-name slug: slug is still stripped, no tag is added", () => {
     const out = cleanUrl("https://www.amazon.es/-/en/Sony-MDR-7506-Reduction-Closed-Headphones/dp/B000AJIF4E", engine);
     assert.equal(out.ok, true);
-    assert.equal(out.mugaReferralInjected, false);
     assert.ok(!out.cleanUrl.includes("Sony-MDR-7506"), "the Amazon path-strip rule still runs, independent of injection");
-    assert.equal(out.cleanUrlNoMugaReferral, null);
   });
 
   test("naked eBay link: no MUGA referral is added", () => {
     const out = cleanUrl("https://www.ebay.com/itm/123456789", engine);
     assert.equal(out.ok, true);
     assert.notEqual(out.action, "injected");
-    assert.equal(out.mugaReferralInjected, false);
     assert.equal(new URL(out.cleanUrl).searchParams.has("campid"), false);
-    assert.equal(out.cleanUrlNoMugaReferral, null);
   });
 
-  test("existing creator/foreign referral is preserved: no injection, no opt-out URL", () => {
+  test("existing creator/foreign referral is preserved: no injection", () => {
     const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=somecreator-20", engine);
     assert.equal(out.ok, true);
     assert.equal(out.affiliatePreserved, true);
-    assert.equal(out.mugaReferralInjected, false, "MUGA must not add anything when a referral already exists");
-    assert.equal(out.mugaReferralPresent, false, "a foreign referral is not MUGA's own — no opt-out");
-    assert.equal(out.cleanUrlNoMugaReferral, null, "nothing to opt out of when the referral is not MUGA's");
     assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "somecreator-20");
   });
 
@@ -169,21 +154,18 @@ describe("web adapter contract — naked-link MUGA referral injection (REMOVED, 
     const out = cleanUrl("https://www.amazon.com/dp/B000123456?tag=muga0b-20", engine);
     assert.equal(out.ok, true);
     assert.notEqual(out.action, "injected");
-    assert.equal(out.mugaReferralInjected, false);
-    assert.equal(out.mugaReferralPresent, false, "there is no more concept of MUGA's own tag to detect");
-    assert.equal(out.cleanUrlNoMugaReferral, null);
     assert.equal(new URL(out.cleanUrl).searchParams.get("tag"), "muga0b-20", "the value is preserved unmodified");
   });
 
-  test("non-supported program / plain link: no injection, no opt-out URL", () => {
+  test("non-supported program / plain link: nothing injection-related on the result", () => {
     const out = cleanUrl("https://example.com/already-clean?id=42", engine);
     assert.equal(out.ok, true);
-    assert.equal(out.mugaReferralInjected, false);
-    assert.equal(out.mugaReferralPresent, false);
-    assert.equal(out.cleanUrlNoMugaReferral, null);
+    assert.equal("mugaReferralInjected" in out, false);
+    assert.equal("mugaReferralPresent" in out, false);
+    assert.equal("cleanUrlNoMugaReferral" in out, false);
   });
 
-  test("existing fields (removed, unwrapped, affiliatePreserved, action) are unchanged by the new fields", () => {
+  test("existing fields (removed, unwrapped, affiliatePreserved, action) are unchanged", () => {
     const out = cleanUrl(
       "https://example.com/shop/item?utm_source=news&utm_medium=email&id=42",
       engine,
@@ -193,9 +175,22 @@ describe("web adapter contract — naked-link MUGA referral injection (REMOVED, 
     assert.equal(out.unwrapped, false);
     assert.equal(out.affiliatePreserved, false);
     assert.equal(out.action, "cleaned");
-    assert.equal(out.mugaReferralInjected, false);
-    assert.equal(out.mugaReferralPresent, false);
-    assert.equal(out.cleanUrlNoMugaReferral, null);
+  });
+
+  test("the ok:true result shape has exactly the stable keys — no injection scaffolding fields survive", () => {
+    const out = cleanUrl("https://example.com/already-clean?id=42", engine);
+    const EXPECTED_KEYS = new Set([
+      "ok",
+      "cleanUrl",
+      "removed",
+      "unwrapped",
+      "destinationHost",
+      "affiliatePreserved",
+      "action",
+    ]);
+    for (const key of Object.keys(out)) {
+      assert.ok(EXPECTED_KEYS.has(key), `unexpected key on result: ${key}`);
+    }
   });
 });
 

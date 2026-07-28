@@ -17,7 +17,6 @@ import { PATH_STRIP_RULES } from "../../web/engine/path-strip-rules.gen.mjs";
 
 const FAKE_PREF_DEFAULTS = {
   enabled: true,
-  injectOwnAffiliate: true,
   notifyForeignAffiliate: true,
   stripAllAffiliates: false,
   honorCreatorMode: true,
@@ -107,10 +106,10 @@ describe("web adapter — pure-cleaner prefs", () => {
     assert.ok(captured, "processUrl must have been called");
     assert.equal(captured.prefs.enabled, true);
     assert.equal(captured.prefs.onboardingDone, true);
-    // injectOwnAffiliate defaults to true for the web tool (design D1,
-    // web-tool-naked-link-injection slice 2): MUGA injects its own referral
-    // on naked Amazon/eBay links by default, disclosed with an opt-out.
-    assert.equal(captured.prefs.injectOwnAffiliate, true);
+    // drop-affiliate-injection (PR 2/4): the adapter no longer forces
+    // injectOwnAffiliate — the engine no longer reads that pref (PR 1a/1b
+    // already dropped injection support), so the adapter stops passing it.
+    assert.equal("injectOwnAffiliate" in captured.prefs, false);
     assert.equal(captured.prefs.notifyForeignAffiliate, false);
     assert.equal(captured.prefs.honorCreatorMode, false);
     assert.deepEqual(captured.prefs.blacklist, []);
@@ -193,6 +192,12 @@ describe("web adapter — result mapping", () => {
     assert.equal(out.destinationHost, "example.com");
     assert.equal(out.affiliatePreserved, false);
     assert.equal(out.action, "cleaned");
+    // drop-affiliate-injection (PR 2/4): the own-tag injection scaffolding
+    // (mugaReferralInjected/mugaReferralPresent/cleanUrlNoMugaReferral) is
+    // gone from the result shape entirely — not just false/null.
+    assert.equal("mugaReferralInjected" in out, false);
+    assert.equal("mugaReferralPresent" in out, false);
+    assert.equal("cleanUrlNoMugaReferral" in out, false);
   });
 
   test("marks affiliatePreserved true when processUrl reports a preserved affiliate", () => {
@@ -249,6 +254,9 @@ describe("web adapter — degradation", () => {
     assert.equal(out.ok, false);
     assert.equal(out.action, "error");
     assert.equal(out.error, "engine-unavailable");
+    assert.equal("mugaReferralInjected" in out, false);
+    assert.equal("mugaReferralPresent" in out, false);
+    assert.equal("cleanUrlNoMugaReferral" in out, false);
   });
 
   test("returns engine-unavailable when the injected engine has no processUrl function", () => {
