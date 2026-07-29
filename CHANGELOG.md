@@ -12,6 +12,7 @@ All notable changes to MUGA will be documented in this file.
 ### Changed
 
 - **Affiliate: MUGA cleans and respects.** It adds no affiliate tag of its own, keeps the original creator's referral by default, and can optionally strip third-party tags.
+- **MUGA is a focused URL cleaner.** It cleans tracking parameters, unwraps redirects, and preserves creator referrals. The cookie-consent minimizer (#1027) has been retired to keep the extension lean and low-maintenance.
 
 ## [2.6.0] - 2026-07-13
 

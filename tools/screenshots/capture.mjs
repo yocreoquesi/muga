@@ -259,8 +259,7 @@ try {
               consentVersion: requiredConsentVersion,
               consentDate: Date.now(),
             },
-            // devMode unlocks the Advanced (Tier 2/3) card in options.html,
-            // including the Cookie Consent Minimizer select.
+            // devMode unlocks the Advanced (Tier 2/3) card in options.html.
             devMode: true,
             // Lifetime stats (popup.js reads chrome.storage.local["stats"]).
             // Populated so the popup shows real numbers instead of 0/0/0.
