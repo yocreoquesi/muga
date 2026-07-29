@@ -145,17 +145,20 @@ export async function launchFirefoxWithExtension() {
  *
  * @param {import('selenium-webdriver').WebDriver} driver
  * @param {string} extensionOrigin - e.g. "moz-extension://<uuid>"
- * @param {{enableFeature?: boolean}} [opts]
+ * @param {{enableFeature?: boolean}} [opts] - drop-cookie-consent (Slice D of
+ *   6): `enableFeature` used to gate the now-removed cookieConsentMode seed.
+ *   It is accepted (and ignored) for backward compatibility with existing
+ *   call sites — none of them depend on any behaviour it drove.
  */
-export async function completeOnboarding(driver, extensionOrigin, { enableFeature = true } = {}) {
+export async function completeOnboarding(driver, extensionOrigin, { enableFeature } = {}) {
+  void enableFeature; // retained for call-site compatibility only; see JSDoc above.
   await driver.get(`${extensionOrigin}/popup/popup.html`);
 
   await driver.executeAsyncScript(
-    (enableFeatureArg, callback) => {
+    (callback) => {
       chrome.storage.sync.set(
         {
           enabled: true,
-          cookieConsentMode: enableFeatureArg ? "reject-only" : "off",
           notifyForeignAffiliate: false,
           language: "en",
         },
@@ -174,8 +177,7 @@ export async function completeOnboarding(driver, extensionOrigin, { enableFeatur
           );
         }
       );
-    },
-    enableFeature
+    }
   );
 
   // Mirrors tests/e2e/helpers/dnr-propagation.mjs's waitForDnrPropagation:

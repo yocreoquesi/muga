@@ -247,140 +247,73 @@ export async function migrateDropInjectOwnAffiliate() {
 }
 
 /**
- * One-time migration (cookie-consent 2-state mode): converts the legacy
- * `cookieConsentMinimizerEnabled` boolean into the `cookieConsentMode` enum
- * ("off" | "reject-only"). Safe to call on every startup; idempotent once
- * `cookieConsentMode` is present (modulo the defensive cleanup below).
+ * One-time migration (drop-cookie-consent, Slice D of 6): deletes every
+ * storage key left behind by the retired cookie-consent-minimizer subsystem.
+ * The runtime that read these keys (content/cookie-noise.js,
+ * lib/cmp-adapters.js, the Tier2 remote-rules pipeline) was already deleted
+ * in Slices A/B, so no live code reads or writes any of them anymore — this
+ * migration exists purely to stop existing installs from carrying dead
+ * bytes in storage forever.
  *
- * The install/update discriminator is `chrome.runtime.onInstalled`'s
- * `details.reason`, passed in by the caller — NOT any storage signal. Storage
- * alone cannot tell a freshly-onboarded new user from a pre-existing user:
- * both have `cookieConsentMode` absent, no legacy key, and `onboardingDone`
- * true (the `reject-only` default lives only in PREF_DEFAULTS and is overlaid
- * at read time, never persisted). Inferring "off" from that shared state
- * silently downgraded every new install from the disclosed `reject-only`
- * default. `reason` is the only ground truth.
+ * `chrome.storage.sync`:
+ *   - `cookieConsentMode` — the 2-state mode pref itself.
+ *   - `cookieConsentMinimizerEnabled` — legacy boolean predecessor.
+ *   - `cookieConsentAcceptConsented` — retired accept-gesture flag.
  *
- *   - `reason === "install"` (genuine fresh install) -> PERSIST the disclosed
- *     default `cookieConsentMode: "reject-only"` so it latches; every later
- *     idempotent pass is then a no-op.
- *   - `reason === "update"` (existing user upgrading) -> legacy
- *     `cookieConsentMinimizerEnabled === true` preserves the prior opt-in as
- *     `reject-only`; legacy `=== false` or ABSENT stays `off` (no forced
- *     enable). Legacy key deleted.
- *   - no `reason` (top-level module load / onStartup) -> a SAFE idempotent
- *     pass ONLY: if `cookieConsentMode` is present, no-op (aside from the
- *     defensive cleanup below); else if the legacy key is present, map it
- *     (`true` -> `reject-only`, `false` -> `off`) and delete it; else DO
- *     NOTHING (leave the mode absent so the PREF_DEFAULTS overlay applies
- *     and `onInstalled` seeds genuine installs). This pass NEVER infers
- *     "off" from an absent mode.
+ * `chrome.storage.local`:
+ *   - `remoteTier2Rules`, `remoteTier2Meta`, `remoteTier2VersionFloor` — the
+ *     dead Tier2 remote-rules cache (Slice B removed the code that wrote
+ *     these; any pre-Slice-B install may still carry them).
  *
- * Defensive cleanup (the accept-when-necessary mode never shipped enabled to
- * real users, but may exist in a pre-release/dev profile from this codebase's
- * own history): a persisted `cookieConsentMode === "accept-when-necessary"`
- * is collapsed to `"reject-only"`, and a stale `cookieConsentAcceptConsented`
- * key (the retired accept-gesture flag) is dropped. Both run unconditionally,
- * even when `cookieConsentMode` is already a valid 2-state value, so this
- * cleanup is not gated behind the "already migrated" no-op above.
+ * Read-first, write-only-if-present (mirrors migrateDropInjectOwnAffiliate
+ * exactly): each area is read before any write, and a `remove` is issued
+ * for that area ONLY when at least one of its keys is actually present
+ * (`!== undefined`, the robust presence signal that also covers a stored
+ * `false`). `remove` still counts against Chrome's sync write quota even
+ * for an absent key, so an unconditional call on every SW wake would waste
+ * quota forever — this keeps steady-state (already-clean) installs at zero
+ * writes.
  *
- * @param {{ reason?: string }} [details] - The onInstalled `details` object.
- *   Omit (or omit `reason`) for the top-level/onStartup safe idempotent pass.
+ * Idempotent: after the first successful run, every key is absent, so a
+ * later call finds nothing to remove and is a pure no-op.
  *
  * Fail-safe: wrapped in try/catch — a storage error must never throw out to
- * the caller or break startup.
+ * the caller or break startup. Best-effort throughout.
  */
-export async function migrateCookieConsentMode({ reason } = {}) {
+export async function migrateDropCookieConsent() {
   try {
-    const syncData = await new Promise((resolve, reject) =>
-      chrome.storage.sync.get(
-        {
-          cookieConsentMinimizerEnabled: null,
-          cookieConsentMode: null,
-          cookieConsentAcceptConsented: null,
-        },
-        (result) => {
-          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-          else resolve(result);
-        }
-      )
-    ).catch(() => ({
-      cookieConsentMinimizerEnabled: null,
-      cookieConsentMode: null,
-      cookieConsentAcceptConsented: null,
-    }));
-
-    // Defensive cleanup — runs regardless of whether cookieConsentMode was
-    // already migrated. Best-effort; never required for correctness since
-    // this mode never shipped enabled to real users.
-    const cleanup = {};
-    if (syncData.cookieConsentMode === "accept-when-necessary") {
-      cleanup.cookieConsentMode = "reject-only";
-    }
-    if (Object.keys(cleanup).length > 0) {
-      await new Promise((resolve) =>
-        chrome.storage.sync.set(cleanup, () => {
+    const syncKeys = ["cookieConsentMode", "cookieConsentMinimizerEnabled", "cookieConsentAcceptConsented"];
+    const syncData = await new Promise((resolve) => {
+      chrome.storage.sync.get(syncKeys, (result) => {
+        void chrome.runtime.lastError; // non-critical
+        resolve(result || {});
+      });
+    });
+    const syncPresent = syncKeys.some((k) => syncData[k] !== undefined);
+    if (syncPresent) {
+      await new Promise((resolve) => {
+        chrome.storage.sync.remove(syncKeys, () => {
           void chrome.runtime.lastError; // non-critical
           resolve();
-        })
-      );
+        });
+      });
     }
-    if (syncData.cookieConsentAcceptConsented !== null) {
-      await new Promise((resolve) =>
-        chrome.storage.sync.remove("cookieConsentAcceptConsented", () => {
+
+    const localKeys = ["remoteTier2Rules", "remoteTier2Meta", "remoteTier2VersionFloor"];
+    const localData = await new Promise((resolve) => {
+      chrome.storage.local.get(localKeys, (result) => {
+        void chrome.runtime.lastError; // non-critical
+        resolve(result || {});
+      });
+    });
+    const localPresent = localKeys.some((k) => localData[k] !== undefined);
+    if (localPresent) {
+      await new Promise((resolve) => {
+        chrome.storage.local.remove(localKeys, () => {
           void chrome.runtime.lastError; // non-critical
           resolve();
-        })
-      );
-    }
-
-    if (syncData.cookieConsentMode !== null) return; // already migrated — no-op
-
-    const legacy = syncData.cookieConsentMinimizerEnabled;
-
-    let updates = null;
-    let removeLegacy = false;
-
-    if (reason === "install") {
-      // Genuine fresh install: latch the disclosed default so no later pass can
-      // re-derive it. There is no legacy key on a fresh install, so nothing to
-      // delete.
-      updates = { cookieConsentMode: "reject-only" };
-    } else if (reason === "update") {
-      // Existing user upgrading. Preserve a prior opt-in as the safe mode; a
-      // false or absent legacy value stays off.
-      updates = { cookieConsentMode: legacy === true ? "reject-only" : "off" };
-      removeLegacy = true;
-    } else {
-      // Top-level module load / onStartup: SAFE idempotent pass only. Map a
-      // legacy key when present; otherwise DO NOTHING. Never infer "off" from
-      // an absent mode — that was the downgrade bug.
-      if (legacy === true) {
-        updates = { cookieConsentMode: "reject-only" };
-        removeLegacy = true;
-      } else if (legacy === false) {
-        updates = { cookieConsentMode: "off" };
-        removeLegacy = true;
-      }
-      // else: legacy absent — leave the mode absent, let PREF_DEFAULTS stand.
-    }
-
-    if (!updates) return;
-
-    await new Promise((resolve, reject) =>
-      chrome.storage.sync.set(updates, () => {
-        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-        else resolve();
-      })
-    );
-
-    if (removeLegacy) {
-      await new Promise((resolve) =>
-        chrome.storage.sync.remove("cookieConsentMinimizerEnabled", () => {
-          void chrome.runtime.lastError; // non-critical
-          resolve();
-        })
-      );
+        });
+      });
     }
   } catch {
     // Migration is best-effort — a failure here must never break startup.

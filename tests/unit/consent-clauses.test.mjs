@@ -171,38 +171,37 @@ describe("consent-clauses — #888 remote-rules default clause (live map)", () =
 });
 
 // ---------------------------------------------------------------------------
-// #1027 — the 1.2 additive bump surfaces the cookie-consent-minimizer clause
-// in the delta list. Mirrors the #888 section above against the LIVE map.
+// Retired: drop-cookie-consent (Slice D of 6) removed the entire Cookie
+// Consent Minimizer subsystem this clause originally disclosed (#1027).
+// Unlike the "1.3"/"1.4" sections below (pilots that never shipped to real
+// users), this feature DID ship and its disclosure DID reach real users —
+// but since the capability itself no longer exists in the codebase, the
+// clause list for "1.2" was emptied so no one (fresh or upgrading) is ever
+// shown a disclosure for dead functionality. REQUIRED_CONSENT_VERSION stays
+// "1.2" unchanged, so this is NOT a re-onboard trigger: consent-policy.js's
+// evaluate() compares version numbers only, and every user already at or
+// past "1.2" is already `valid` and never re-evaluated against this clause
+// list. See consent-clauses.js's docblock ("Scope-reducing removal
+// exception") for the full rationale on why this is a narrow, deliberate
+// exception to the append-only invariant.
 // ---------------------------------------------------------------------------
-describe("consent-clauses — #1027 cookie-consent-minimizer clause (live map)", () => {
-  test("CONSENT_CLAUSES_BY_VERSION['1.2'] discloses the cookie-consent-minimizer clause", () => {
-    assert.deepEqual(
-      [...(CONSENT_CLAUSES_BY_VERSION["1.2"] || [])],
-      ["ob_clause_cookie_consent_minimizer"]
-    );
+describe("consent-clauses — retired cookie-consent-minimizer clause (version 1.2 is now empty)", () => {
+  test("CONSENT_CLAUSES_BY_VERSION['1.2'] is empty — the retired feature no longer has a real disclosure", () => {
+    assert.deepEqual([...(CONSENT_CLAUSES_BY_VERSION["1.2"] || [])], []);
   });
 
-  test("user at 1.1, required 1.2 -> delta surfaces the cookie-consent-minimizer clause", () => {
+  test("user at 1.1, required 1.2 -> delta surfaces nothing (no clause for a removed feature)", () => {
     const r = clausesForDelta({
       acceptedVersion: "1.1",
       requiredVersion: "1.2",
       manifest: CONSENT_VERSION_MANIFEST,
       // default clausesByVersion (live map)
     });
-    assert.deepEqual(r, ["ob_clause_cookie_consent_minimizer"]);
+    assert.deepEqual(r, []);
   });
 
-  test("the clause i18n key resolves to non-empty text in EN and ES (official locales)", () => {
-    assert.ok(
-      typeof TRANSLATIONS.ob_clause_cookie_consent_minimizer?.en === "string" &&
-        TRANSLATIONS.ob_clause_cookie_consent_minimizer.en.trim().length > 0,
-      "EN clause text must exist"
-    );
-    assert.ok(
-      typeof TRANSLATIONS.ob_clause_cookie_consent_minimizer?.es === "string" &&
-        TRANSLATIONS.ob_clause_cookie_consent_minimizer.es.trim().length > 0,
-      "ES clause text must exist"
-    );
+  test("the retired feature's old i18n key no longer exists", () => {
+    assert.equal(TRANSLATIONS.ob_clause_cookie_consent_minimizer, undefined);
   });
 });
 

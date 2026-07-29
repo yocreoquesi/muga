@@ -18,7 +18,7 @@ import { GENERIC_SHORTENERS } from "../lib/native-shortener-resolver.js";
 import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
-import { snapToastDuration, buildExportPayload, planImport, diffImport, clampCookieConsentMode } from "../lib/settings-schema.js";
+import { snapToastDuration, buildExportPayload, planImport, diffImport } from "../lib/settings-schema.js";
 import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
 import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
@@ -327,19 +327,6 @@ async function init() {
   // Hover destination preview (#1028). Plain boolean toggle; not
   // guarded (no per-device override reconciliation needed).
   bindToggle("hover-preview-toggle", "hoverPreviewEnabled", prefs);
-  // Cookie Consent Minimizer — 2-state mode. Not guarded (no per-device
-  // override reconciliation needed). MUGA never ships a mode that accepts
-  // cookies on the user's behalf.
-  const cookieConsentModeSelect = document.getElementById("cookie-consent-mode-select");
-
-  if (cookieConsentModeSelect) {
-    cookieConsentModeSelect.value = clampCookieConsentMode(prefs.cookieConsentMode);
-    cookieConsentModeSelect.addEventListener("change", () => {
-      const nextMode = cookieConsentModeSelect.value;
-      try { setPrefs({ cookieConsentMode: nextMode }); }
-      catch (err) { console.error("[MUGA] save cookie consent mode:", err); }
-    });
-  }
   // Honor Creator Mode (#435, B12). Plumbing only: persists the pref so
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
@@ -1119,11 +1106,6 @@ function initExportImport() {
       document.getElementById("amp-redirect").checked = newPrefs.ampRedirect;
       document.getElementById("unwrap-redirects").checked = newPrefs.unwrapRedirects;
       document.getElementById("hover-preview-toggle").checked = newPrefs.hoverPreviewEnabled;
-      // clampImportedCookieConsentMode already clamped any unrecognized value
-      // to "reject-only" before this point; clampCookieConsentMode here is
-      // just the display clamp.
-      document.getElementById("cookie-consent-mode-select").value =
-        clampCookieConsentMode(newPrefs.cookieConsentMode);
       // #925: refresh the newly-surfaced privacy + display toggles after import
       document.getElementById("canonical-extractor").checked = newPrefs.canonicalExtractorEnabled;
       document.getElementById("cross-site-frequency").checked = newPrefs.crossSiteFrequencyEnabled;

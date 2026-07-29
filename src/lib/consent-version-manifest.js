@@ -73,6 +73,13 @@ export const CONSENT_VERSION_MANIFEST = Object.freeze([
     // existing term is modified or removed — so users who accepted an
     // earlier version get a SOFT re-onboard (delta review) surfacing this
     // one new clause, not a hard gate.
+    //
+    // drop-cookie-consent (Slice D of 6): the whole subsystem this entry
+    // disclosed was later removed. The version entry itself stays (append-
+    // only, this array is never edited) — only its clause list in
+    // consent-clauses.js was emptied (see that file's docblock). This
+    // version number, "1.2", is unchanged and remains
+    // REQUIRED_CONSENT_VERSION.
     version: "1.2",
     additive: true,
   }),

@@ -206,3 +206,42 @@ describe("consent-policy — #888 remote-rules additive bump (live manifest)", (
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// drop-cookie-consent (Slice D of 6) — load-bearing acceptance criterion:
+// removing the Cookie Consent Minimizer subsystem (and emptying its "1.2"
+// disclosure clause in consent-clauses.js) must NOT re-prompt any existing
+// user to re-accept terms. REQUIRED_CONSENT_VERSION was left unchanged at
+// "1.2" specifically so this holds: evaluate() decides re-onboard status by
+// comparing consentVersion NUMBERS against REQUIRED_CONSENT_VERSION only —
+// it never inspects a version's clause list — so a user already at the
+// pre-change required version reads as "valid" both before and after this
+// change, with zero re-onboard of any kind (soft or hard).
+// ---------------------------------------------------------------------------
+describe("consent-policy — drop-cookie-consent Slice D: no re-prompt for existing users", () => {
+  test("a user stored at the (unchanged) required version 1.2 is valid — no re-onboard, no re-prompt", () => {
+    const r = evaluate({
+      stored: { onboardingDone: true, consentVersion: "1.2" },
+    });
+    assert.equal(r.status, "valid");
+    assert.equal(r.requiredVersion, "1.2");
+    assert.equal(REQUIRED_CONSENT_VERSION, "1.2", "REQUIRED_CONSENT_VERSION must stay 1.2 — bumping it would force a re-onboard this change must not cause");
+  });
+
+  test("a user already past 1.2 (e.g. accepted a later retired-before-ship entry) is also valid", () => {
+    const r = evaluate({
+      stored: { onboardingDone: true, consentVersion: "1.4" },
+    });
+    assert.equal(r.status, "valid");
+  });
+
+  test("emptying CONSENT_CLAUSES_BY_VERSION['1.2'] cannot influence evaluate() at all — it takes no clause map argument", () => {
+    // Structural proof: evaluate()'s signature only accepts stored/requiredVersion/manifest.
+    // It has no way to read consent-clauses.js, so retiring a clause list can never change
+    // its status decision for any user, at any accepted version.
+    assert.deepStrictEqual(
+      Object.keys(evaluate({ stored: { onboardingDone: true, consentVersion: "1.2" } })).sort(),
+      ["acceptedVersion", "requiredVersion", "status"].sort()
+    );
+  });
+});

@@ -280,3 +280,27 @@ describe("drop-affiliate-injection PR 1b — the guarded-pref confirmation clust
     assert.ok(!ONBOARDING_HTML.includes('id="affiliate-label"'));
   });
 });
+
+// ---------------------------------------------------------------------------
+// drop-cookie-consent (Slice D of 6) — the Cookie Consent Minimizer feature
+// bullet in the fresh-onboarding features list is gone, along with the
+// runtime it described (removed in Slices A-C).
+// ---------------------------------------------------------------------------
+describe("drop-cookie-consent Slice D — the cookie-consent feature bullet is gone", () => {
+  const ONBOARDING_HTML = readFileSync(
+    join(__dirname, "../../src/onboarding/onboarding.html"),
+    "utf8",
+  );
+
+  test("onboarding.html no longer contains the ob_feat4 cookie-consent bullet", () => {
+    assert.ok(!ONBOARDING_HTML.includes('data-i18n="ob_feat4_title"'));
+    assert.ok(!ONBOARDING_HTML.includes('data-i18n="ob_feat4_desc"'));
+  });
+
+  test("the remaining feature rows (feat1-3, aggressive-privacy) are intact", () => {
+    assert.ok(ONBOARDING_HTML.includes('data-i18n="ob_feat1_title"'));
+    assert.ok(ONBOARDING_HTML.includes('data-i18n="ob_feat2_title"'));
+    assert.ok(ONBOARDING_HTML.includes('data-i18n="ob_feat3_title"'));
+    assert.ok(ONBOARDING_HTML.includes('data-i18n="ob_aggressive_privacy_title"'));
+  });
+});

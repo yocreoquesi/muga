@@ -467,6 +467,21 @@ describe("import/export hardening (#964/#965/#968)", () => {
     assert.strictEqual(plan.toSave.injectOwnAffiliate, undefined);
   });
 
+  // drop-cookie-consent (Slice D of 6): cookieConsentMode was removed from
+  // SETTINGS_FIELDS along with its Settings row, its migration, and the
+  // runtime it gated (Slices A-C). An old settings backup that still
+  // carries the key must import cleanly — the whole file is not rejected —
+  // with the key simply ignored (never written to toSave).
+  test("42b. an old settings file with cookieConsentMode imports cleanly, the key is ignored (schema removed, drop-cookie-consent Slice D)", () => {
+    const plan = planImport(validImportData({ cookieConsentMode: "reject-only" }));
+    assert.equal(plan.ok, true, "a legacy cookieConsentMode key must not abort the whole import");
+    assert.strictEqual(plan.toSave.cookieConsentMode, undefined);
+
+    const planOff = planImport(validImportData({ cookieConsentMode: "off" }));
+    assert.equal(planOff.ok, true);
+    assert.strictEqual(planOff.toSave.cookieConsentMode, undefined);
+  });
+
   // #968 — toast-duration select
   test("43. toast-duration options span the full 5..60 range in the UI", () => {
     for (const v of ["5", "10", "15", "30", "45", "60"]) {

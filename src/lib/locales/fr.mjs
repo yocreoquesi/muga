@@ -260,8 +260,6 @@ export default Object.freeze({
   ob_feat2_desc: "Chaque détour que le web ajoute entre vous et la page souhaitée est corrigé localement, dans votre navigateur.",
   ob_feat3_title: "Les URL nettoyées sont plus courtes, plus jolies et sûres à partager",
   ob_feat3_desc: "Parfois on devine à peine où mène un lien avec tout ce bruit accroché. Clic droit sur n'importe quel lien pour le copier propre, silencieux et honnête.",
-  ob_feat4_title: "Calme aussi les bandeaux de cookies",
-  ob_feat4_desc: "Sur les bandeaux de consentement aux cookies pris en charge, MUGA refuse les cookies de pistage à votre place par défaut, de la même façon qu'il nettoie déjà vos URL. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom. Désactivable à tout moment dans les paramètres.",
   ob_tos_label: "J'ai lu et accepté les <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Conditions d'utilisation</a> et la <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Politique de confidentialité</a><small class=\"tos-required-hint\">Obligatoire pour continuer</small>",
   ob_feedback_note: "<strong>Construit en apprenant de ses erreurs.</strong> MUGA a grandi au fil de nombreuses itérations et ne sera pas parfait. Si vous trouvez un lien mal nettoyé, un lien d'affiliation qu'il n'aurait pas dû toucher, ou quoi que ce soit d'étrange, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">dites-le-nous</a>. Les questions, idées et rapports de bugs sont vraiment les bienvenus et façonnent l'avenir de MUGA.",
   ob_cta_btn: "Activer MUGA",
@@ -271,7 +269,6 @@ export default Object.freeze({
   ob_reonboard_material_title: "Important : les conditions ont changé de manière substantielle",
   ob_reonboard_material_desc: "Les conditions de MUGA ont été mises à jour d'une manière qui affecte ce que vous avez accepté précédemment. L'utilisation continue de l'extension nécessite l'acceptation des nouvelles conditions. Veuillez consulter les Conditions d'utilisation et la Politique de confidentialité ci-dessous.",
   ob_clause_remote_rules_default: "Les mises à jour hebdomadaires des règles sont désormais activées par défaut : MUGA récupère une liste à jour de paramètres de suivi depuis rules.muga.app environ une fois par semaine. Il s'agit d'une requête signée (Ed25519) qui n'envoie aucune donnée personnelle (ni historique de navigation, ni cookies) et vous pouvez la désactiver à tout moment dans les Paramètres.",
-  ob_clause_cookie_consent_minimizer: "Nouveau, désactivé par défaut : sur les bandeaux de consentement aux cookies pris en charge (actuellement OneTrust), MUGA peut cliquer sur « refuser » ou « nécessaires uniquement » à votre place, de la même façon qu'il supprime déjà le bruit de pistage des URL. Il n'accepte ni n'accorde jamais de pistage plus large en votre nom. S'il n'existe aucune option de refus sûre, MUGA laisse le bandeau tel quel. Vous pouvez l'activer à tout moment dans les Paramètres.",
   migration_accept: "Activer",
   migration_decline: "Non merci",
   migration_counter: "{n} sur {total}",
@@ -339,11 +336,6 @@ export default Object.freeze({
   row_hover_preview_hint: "Sur ordinateur, laissez la souris quelques secondes sur un lien pour voir sa vraie destination nettoyée (uniquement pour les liens qui redirigent ailleurs).",
   aria_hover_preview: "Afficher un aperçu de la vraie destination du lien au survol",
   hover_preview_label: "Mène à :",
-  row_cookie_consent_mode_label: "Minimiseur de bandeaux de cookies",
-  row_cookie_consent_mode_hint: "Sur les bandeaux de consentement aux cookies pris en charge, MUGA refuse automatiquement les cookies de pistage à votre place, de la même façon qu'il nettoie déjà vos URL. MUGA n'accepte jamais de cookies en votre nom. MUGA vérifie aussi ce qu'indique un bouton avant de cliquer dessus, ce qui réduit sans l'éliminer le risque d'un clic erroné ; lorsque le libellé d'un bouton est ambigu ou illisible, MUGA n'y touche pas.",
-  aria_cookie_consent_mode: "Mode du minimiseur de bandeaux de cookies",
-  cookie_consent_mode_opt_reject_only: "Refuser uniquement (recommandé)",
-  cookie_consent_mode_opt_off: "Désactivé",
 
   // referer-beacon-privacy PR 4 : interface des réglages, avis et i18n.
   section_aggressive_privacy: "Confidentialité renforcée",

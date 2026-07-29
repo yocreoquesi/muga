@@ -23,6 +23,23 @@
  *   2. Add one i18n key per new clause to `i18n.js` covering at least
  *      EN and ES (the official languages per #351).
  *   3. The delta-mode rendering picks them up automatically.
+ *
+ * **Scope-reducing removal exception (drop-cookie-consent, Slice D of 6)**:
+ * the "1.2" entry below was edited (not merely appended past) — its clause
+ * disclosing the Cookie Consent Minimizer was removed because the feature
+ * itself was deleted entirely (Slices A-C). This is a deliberate, narrow
+ * exception to append-only: consent-policy.js's evaluate() decides
+ * soft/hard-reonboard status by comparing VERSION NUMBERS only
+ * (compareVersions(acceptedVersion, requiredVersion)), never by hashing or
+ * diffing a version's clause content. REQUIRED_CONSENT_VERSION stays "1.2"
+ * (unchanged), so every user already at consentVersion >= "1.2" reads as
+ * "valid" and is never re-evaluated against this clause list at all — no
+ * re-onboard, no re-prompt. Emptying the list only changes what a user
+ * upgrading THROUGH 1.2 (i.e. still below it) sees in the delta view: they
+ * no longer see a clause about a capability that no longer exists, which is
+ * strictly more correct than disclosing dead functionality. Use this
+ * exception ONLY when the disclosed feature has been fully removed from the
+ * codebase, never to quietly retract a still-active disclosure.
  */
 
 /** @type {Readonly<Record<string, ReadonlyArray<string>>>} */
@@ -34,11 +51,20 @@ export const CONSENT_CLAUSES_BY_VERSION = Object.freeze({
   // clause disclosing the new weekly signed network egress. The i18n key
   // resolves to the localized clause text rendered in the delta list.
   "1.1": Object.freeze(["ob_clause_remote_rules_default"]),
-  // 1.2 (#1027): the opt-in Cookie Consent Minimizer. Single additive
-  // clause disclosing the new capability (calling a page's own reject
-  // function). The feature itself stays OFF until the user opts in from
-  // Settings; this clause is disclosure, not an activation.
-  "1.2": Object.freeze(["ob_clause_cookie_consent_minimizer"]),
+  // 1.2 (#1027): originally disclosed the opt-in Cookie Consent Minimizer's
+  // new capability (calling a page's own reject function). The whole
+  // subsystem this clause described — the CMP runtime, the Tier 2
+  // remote-rules pipeline, the cookieConsentMode pref and its Settings UI —
+  // was removed by drop-cookie-consent (Slices A-D). The clause list is now
+  // empty, RETIRED-AFTER-SHIP: unlike "1.3"/"1.4" below (which retired
+  // pilots that never reached real users), 1.2's clause DID ship and DID
+  // disclose a real, shipped capability at the time. It is emptied here
+  // anyway because that capability no longer exists, and REQUIRED_CONSENT_
+  // VERSION stays "1.2" — every user already at or past "1.2" reads as
+  // `valid` in consent-policy.js (version-number compare only) and is never
+  // re-evaluated against this list, so no existing user is re-prompted by
+  // this change. See the append-only docblock above for the full rationale.
+  "1.2": Object.freeze([]),
   // 1.3 (cookie-consent-accept Slice 2a): originally staged for the
   // accept-when-necessary mode's Didomi-only "minimum consent" pilot. That
   // delivery mechanism was proven non-viable before ever shipping to real

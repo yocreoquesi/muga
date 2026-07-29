@@ -24,11 +24,13 @@ test.describe("Onboarding", () => {
     // Logo
     await expect(page.locator(".logo")).toHaveText("MUGA");
 
-    // Feature rows (5 features: the 3 URL-cleaning rows + the cookie-consent
-    // disclosure row added in #1137's onboarding Slice 1 + the Aggressive
+    // Feature rows (4 features: the 3 URL-cleaning rows + the Aggressive
     // privacy OFF-by-default row added in the referer-beacon-privacy PR 4).
+    // The cookie-consent disclosure row (#1137's onboarding Slice 1) was
+    // removed by drop-cookie-consent (Slice D of 6) along with the whole
+    // subsystem it described.
     const features = page.locator(".feature-row");
-    await expect(features).toHaveCount(5);
+    await expect(features).toHaveCount(4);
 
     // ToS checkbox exists
     await expect(page.locator("#tos-check")).toBeVisible();
