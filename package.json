@@ -43,12 +43,10 @@
     "add-rule": "node tools/add-rule.mjs",
     "test:e2e": "npx playwright test",
     "test:firefox-smoke": "node --test tests/e2e-firefox/*.smoke.mjs",
-    "test:canary": "playwright test --config playwright.canary.config.mjs",
     "typecheck": "tsc -p jsconfig.json",
     "lint:js": "eslint .",
     "moat:report": "node tools/moat-expansion/cli.mjs",
-    "fpfn": "node tools/fpfn-harness/run.mjs",
-    "smoke:release": "node tools/release-smoke-report.mjs"
+    "fpfn": "node tools/fpfn-harness/run.mjs"
   },
   "engines": {
     "node": ">=20.11"
