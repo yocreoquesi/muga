@@ -4,14 +4,10 @@ All notable changes to MUGA will be documented in this file.
 
 ## [Unreleased]
 
-### Features
-
-- **Cookie Consent Minimizer** (#1027). Opt-in, off by default: on supported cookie-consent banners (currently OneTrust), MUGA can click reject / necessary-only for you the same way it already strips tracking noise from URLs. It never clicks "accept" or grants broader tracking on your behalf; if no safe reject option exists, it leaves the banner alone. Disclosed via a consent-version bump, opt-in any time in Settings > Advanced.
-- **Cookie Consent Minimizer: verified click + remote-curated coverage** (#1027 Slice 2). Before clicking, MUGA now double-checks what a button actually says it does, not just where it sits on the page. This reduces, but does not eliminate, the chance of a wrong click: a button with unclear or unreadable wording (icon-only, or in a language MUGA doesn't recognize yet) is left alone rather than guessed at. Coverage for more cookie-consent banners can now also arrive as a small, signed weekly update instead of waiting for a full extension release, reviewed the same way MUGA's tracking-parameter list already is.
-
 ### Changed
 
 - **Affiliate: MUGA cleans and respects.** It adds no affiliate tag of its own, keeps the original creator's referral by default, and can optionally strip third-party tags.
+- **MUGA is a focused URL cleaner.** It cleans tracking parameters, unwraps redirects, and preserves creator referrals.
 
 ## [2.6.0] - 2026-07-13
 
