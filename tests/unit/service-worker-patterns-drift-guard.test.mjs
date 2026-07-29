@@ -54,7 +54,12 @@ const PATTERNS_TEST_PATH = join(
 // params fetch. The gate logic (remoteRulesEnabled/consent/freshness) is
 // covered behaviorally via a pure makeMaybeFetchTier2Helper() mirror —
 // mirrors the FORCE_FETCH_REMOTE_RULES precedent above.
-const MAX_SOURCE_STRING_ASSERTIONS = 75;
+// 75 → 72 (cookie-consent removal, Slice A of 6): dropped the two
+// isCookieConsentModeActive/modeActive source-string guards (the
+// content-script gate they fed no longer exists) and the one Tier2 sibling
+// on-wake wiring guard (the Tier2 fetch pipeline and its describe block
+// were removed alongside the deleted src/lib/remote-tier2-rules.js).
+const MAX_SOURCE_STRING_ASSERTIONS = 72;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 

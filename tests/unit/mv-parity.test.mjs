@@ -186,14 +186,9 @@ describe("MV parity — background message-type handlers share one source file (
 // ---------------------------------------------------------------------------
 
 // Chrome-MV3-only content scripts (world: "MAIN"), see file header (#1026).
-// content/cookie-noise-mainworld.js (#1027) joined this list for the same
-// reason: Firefox MV2 has no world:"MAIN" support, so its isolated-world
-// companion (content/cookie-noise.js) performs the reject call directly via
-// window.wrappedJSObject instead (see that file's docblock).
 const ALLOWED_MV3_ONLY_SCRIPTS = [
   "content/history-defuser-mainworld.js",
   "content/window-name-defuser-mainworld.js",
-  "content/cookie-noise-mainworld.js",
 ];
 
 // Firefox-MV2-only content script (document_end fallback), see file header (#820).

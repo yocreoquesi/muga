@@ -110,15 +110,14 @@ function isTrackingParam(lower, customParams, domainStrip, remoteParams, userCus
 }
 
 // The four functions between the `@sync:site-exempt` markers below
-// (parseListEntry, stripTrailingDot, domainMatches, isSiteFullyExempt) are
-// hand-copied, byte-identical (modulo indentation), into
-// content/cookie-noise.js for the cross-origin-child-frame per-site
-// exemption check (cookie-consent-all-frames FIX A) — content scripts
-// cannot use ES module imports (AGENTS.md). Kept pure and PREFS-ONLY (no
-// `window`/`document` access) so the copy is safe to run in ANY frame,
-// including one where `window.__mugaCleaner` was never attached. Do not
-// edit one copy without the other — tests/unit/cookie-noise-sync.test.mjs
-// fails the build if they drift.
+// (parseListEntry, stripTrailingDot, domainMatches, isSiteFullyExempt) were
+// historically hand-copied, byte-identical (modulo indentation), into
+// content/cookie-noise.js for a cross-origin-child-frame per-site exemption
+// check — content scripts cannot use ES module imports (AGENTS.md). That
+// content script (and its sync test) was removed with the cookie-consent
+// subsystem; kept here as the single source of truth. Still deliberately
+// pure and PREFS-ONLY (no `window`/`document` access) in case a future
+// content-script consumer needs the same hand-copy pattern.
 // @sync:site-exempt:start
 /**
  * Parses a blacklist/whitelist entry string into a structured object.
