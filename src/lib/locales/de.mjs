@@ -260,8 +260,6 @@ export default Object.freeze({
   ob_feat2_desc: "Jeder Umweg, den das Web zwischen dich und die gewünschte Seite einfügt, wird lokal in deinem Browser begradigt.",
   ob_feat3_title: "Saubere URLs sind kürzer, schöner und sicher zum Teilen",
   ob_feat3_desc: "Manchmal kann man kaum erkennen, wohin ein Link führt, mit all dem Rauschen dran. Klicke mit rechts auf jeden Link, um ihn sauber zu kopieren, ruhig und ehrlich.",
-  ob_feat4_title: "Beruhigt auch Cookie-Consent-Banner",
-  ob_feat4_desc: "Bei unterstützten Cookie-Consent-Bannern lehnt MUGA standardmäßig Tracking-Cookies für dich ab, genau wie es deine URLs bereits bereinigt. MUGA akzeptiert oder gewährt dabei nie weitergehendes Tracking in deinem Namen. Jederzeit in den Einstellungen abschaltbar.",
   ob_tos_label: "Ich habe die <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Nutzungsbedingungen</a> und die <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Datenschutzrichtlinie</a> gelesen und akzeptiert<small class=\"tos-required-hint\">Erforderlich zum Fortfahren</small>",
   ob_feedback_note: "<strong>Entstanden durch das Lernen aus Fehlern.</strong> MUGA ist über viele Iterationen gewachsen und wird nicht perfekt sein. Wenn du einen Link findest, den es falsch bereinigt hat, ein Referral, das es nicht hätte berühren sollen, oder irgendetwas Seltsames, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">sag uns Bescheid</a>. Fragen, Ideen und Fehlerberichte sind wirklich willkommen und prägen, wohin sich MUGA entwickelt.",
   ob_cta_btn: "MUGA aktivieren",
@@ -271,7 +269,6 @@ export default Object.freeze({
   ob_reonboard_material_title: "Wichtig: die Nutzungsbedingungen haben sich wesentlich geändert",
   ob_reonboard_material_desc: "MUGAs Nutzungsbedingungen wurden in einer Weise aktualisiert, die deine bisherige Zustimmung berührt. Die weitere Nutzung der Erweiterung erfordert die Annahme der neuen Bedingungen. Bitte überprüfe die unten verlinkten Nutzungsbedingungen und Datenschutzrichtlinien.",
   ob_clause_remote_rules_default: "Wöchentliche Regelaktualisierungen sind jetzt standardmäßig aktiviert: MUGA lädt etwa einmal pro Woche eine aktualisierte Liste von Tracking-Parametern von rules.muga.app. Es handelt sich um eine Ed25519-signierte Anfrage, die keine personenbezogenen Daten sendet (keinen Browserverlauf, keine Cookies) und du kannst sie jederzeit in den Einstellungen deaktivieren.",
-  ob_clause_cookie_consent_minimizer: "Neu, standardmäßig deaktiviert: Bei unterstützten Cookie-Consent-Bannern (derzeit OneTrust) kann MUGA für dich auf „ablehnen“ bzw. „nur erforderliche“ klicken, genauso wie es bereits Tracking-Rauschen aus URLs entfernt. MUGA akzeptiert oder gewährt dabei nie weitergehendes Tracking in deinem Namen. Gibt es keine sichere Ablehnoption, lässt MUGA den Banner unangetastet. Du kannst die Funktion jederzeit in den Einstellungen aktivieren.",
   migration_accept: "Aktivieren",
   migration_decline: "Nein, danke",
   migration_counter: "{n} von {total}",
@@ -339,11 +336,6 @@ export default Object.freeze({
   row_hover_preview_hint: "Halte am Desktop die Maus einige Sekunden über einen Link, um das echte, bereinigte Ziel zu sehen (nur bei Links, die woanders hin weiterleiten).",
   aria_hover_preview: "Vorschau des echten Linkziels beim Hovern anzeigen",
   hover_preview_label: "Führt zu:",
-  row_cookie_consent_mode_label: "Cookie-Consent-Minimierer",
-  row_cookie_consent_mode_hint: "Bei unterstützten Cookie-Consent-Bannern lehnt MUGA Tracking-Cookies automatisch für dich ab, genau wie es deine URLs bereits bereinigt. MUGA akzeptiert niemals Cookies in deinem Namen. MUGA prüft außerdem, was auf einer Schaltfläche steht, bevor sie angeklickt wird, was die Gefahr eines falschen Klicks verringert, aber nicht ausschließt; wenn die Beschriftung einer Schaltfläche unklar oder unlesbar ist, lässt MUGA sie unberührt.",
-  aria_cookie_consent_mode: "Modus des Cookie-Consent-Minimierers",
-  cookie_consent_mode_opt_reject_only: "Nur ablehnen (empfohlen)",
-  cookie_consent_mode_opt_off: "Aus",
 
   // referer-beacon-privacy PR 4: Optionen-UI, Hinweis und i18n.
   section_aggressive_privacy: "Aggressiver Datenschutz",

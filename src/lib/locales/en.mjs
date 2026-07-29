@@ -260,8 +260,6 @@ export default Object.freeze({
   ob_feat2_desc: "Every detour the web adds between you and the page you wanted is straightened out, locally, inside your browser.",
   ob_feat3_title: "Clean URLs are shorter, prettier, and safe to share",
   ob_feat3_desc: "Sometimes you can barely tell where a link goes with all the noise attached. Right-click any link to copy it clean, quiet and honest.",
-  ob_feat4_title: "Quiets cookie-consent banners too",
-  ob_feat4_desc: "On supported cookie-consent banners, MUGA rejects tracking cookies for you by default, the same way it already cleans your URLs. It never accepts or grants broader tracking on your behalf. Turn it off any time in Settings.",
   ob_tos_label: "I have read and accept the <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Terms of use</a> and <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Privacy policy</a><small class=\"tos-required-hint\">Required to continue</small>",
   ob_feedback_note: "<strong>Built by learning from mistakes.</strong> MUGA grew through many iterations, and it won't be perfect. If you find a link it cleaned wrong, a referral it shouldn't have touched, or anything that feels off, please <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">let us know</a>. Questions, ideas, and bug reports are genuinely welcome, and they shape where MUGA goes next.",
   ob_cta_btn: "Activate MUGA",
@@ -271,7 +269,6 @@ export default Object.freeze({
   ob_reonboard_material_title: "Important: terms have changed materially",
   ob_reonboard_material_desc: "MUGA's terms have been updated in a way that affects what you previously agreed to. Continued use of the extension requires accepting the new terms. Please review the linked Terms of Use and Privacy Policy below.",
   ob_clause_remote_rules_default: "Weekly rule updates are now on by default: MUGA fetches an updated tracker-parameter list from rules.muga.app about once a week. It is an Ed25519-signed request that sends no personal data (no browsing history, no cookies) and you can turn it off any time in Settings.",
-  ob_clause_cookie_consent_minimizer: "New, off by default: on supported cookie-consent banners (currently OneTrust), MUGA can click reject / necessary-only for you, the same way it already strips tracking noise from URLs. It never accepts or grants broader tracking on your behalf. If no safe reject option exists, MUGA leaves the banner alone. Turn it on any time in Settings.",
   migration_accept: "Enable",
   migration_decline: "No thanks",
   migration_counter: "{n} of {total}",
@@ -339,11 +336,6 @@ export default Object.freeze({
   row_hover_preview_hint: "On desktop, hold the mouse over a link for a few seconds to preview its real cleaned destination (only for links that redirect elsewhere).",
   aria_hover_preview: "Show a hover preview of the real link destination",
   hover_preview_label: "Goes to:",
-  row_cookie_consent_mode_label: "Cookie Consent Minimizer",
-  row_cookie_consent_mode_hint: "On supported cookie-consent banners, MUGA automatically rejects tracking cookies for you, the same way it already cleans your URLs. MUGA never accepts cookies on your behalf. MUGA also checks what a button says before clicking it, which reduces but doesn't eliminate the chance of a wrong click; when a button's label is unclear or unreadable, MUGA leaves it alone.",
-  aria_cookie_consent_mode: "Cookie consent minimizer mode",
-  cookie_consent_mode_opt_reject_only: "Reject only (recommended)",
-  cookie_consent_mode_opt_off: "Off",
 
   // referer-beacon-privacy PR 4: Options UI, disclosure, i18n (opt-in, off
   // by default; see design.md D5/D6 for the honest-copy constraints).

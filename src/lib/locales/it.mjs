@@ -260,8 +260,6 @@ export default Object.freeze({
   ob_feat2_desc: "Ogni deviazione che il web aggiunge tra te e la pagina che volevi viene corretta localmente, nel tuo browser.",
   ob_feat3_title: "Gli URL ripuliti sono più corti, più belli e sicuri da condividere",
   ob_feat3_desc: "A volte riesci a malapena a capire dove porta un link con tutto quel rumore attaccato. Clic destro su qualsiasi link per copiarlo pulito, silenzioso e onesto.",
-  ob_feat4_title: "Calma anche i banner sui cookie",
-  ob_feat4_desc: "Sui banner di consenso ai cookie supportati, MUGA rifiuta di default i cookie di tracciamento al posto tuo, proprio come già ripulisce i tuoi URL. Non accetta né concede mai un tracciamento più ampio a tuo nome. Disattivabile in qualsiasi momento nelle Impostazioni.",
   ob_tos_label: "Ho letto e accetto i <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Termini di utilizzo</a> e l'<a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Informativa sulla privacy</a><small class=\"tos-required-hint\">Obbligatorio per continuare</small>",
   ob_feedback_note: "<strong>Creato imparando dagli errori.</strong> MUGA è cresciuto attraverso molte iterazioni e non sarà perfetto. Se trovi un link pulito male, un referral che non avrebbe dovuto toccare o qualcosa di strano, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">faccelo sapere</a>. Domande, idee e segnalazioni di bug sono davvero benvenute e guidano dove andrà MUGA.",
   ob_cta_btn: "Attiva MUGA",
@@ -271,7 +269,6 @@ export default Object.freeze({
   ob_reonboard_material_title: "Importante: i termini sono cambiati in modo sostanziale",
   ob_reonboard_material_desc: "I termini di MUGA sono stati aggiornati in modo che incide su quanto hai accettato in precedenza. L'uso continuato dell'estensione richiede l'accettazione dei nuovi termini. Esamina i Termini di utilizzo e l'Informativa sulla privacy collegati qui sotto.",
   ob_clause_remote_rules_default: "Gli aggiornamenti settimanali delle regole sono ora attivi per impostazione predefinita: MUGA scarica un elenco aggiornato di parametri di tracciamento da rules.muga.app circa una volta alla settimana. È una richiesta firmata con Ed25519 che non invia alcun dato personale (nessuna cronologia di navigazione, nessun cookie) e puoi disattivarla in qualsiasi momento nelle Impostazioni.",
-  ob_clause_cookie_consent_minimizer: "Novità, disattivata per impostazione predefinita: sui banner di consenso ai cookie supportati (al momento OneTrust), MUGA può cliccare al posto tuo su «rifiuta» o «solo necessari», esattamente come già rimuove il rumore di tracciamento dagli URL. Non accetta né concede mai un tracciamento più ampio a tuo nome. Se non esiste un'opzione di rifiuto sicura, MUGA lascia il banner così com'è. Puoi attivarlo quando vuoi nelle Impostazioni.",
   migration_accept: "Attiva",
   migration_decline: "No, grazie",
   migration_counter: "{n} di {total}",
@@ -339,11 +336,6 @@ export default Object.freeze({
   row_hover_preview_hint: "Su desktop, tieni il mouse fermo su un link per qualche secondo per vedere la sua vera destinazione pulita (solo per i link che reindirizzano altrove).",
   aria_hover_preview: "Mostra un'anteprima della vera destinazione del link al passaggio del mouse",
   hover_preview_label: "Porta a:",
-  row_cookie_consent_mode_label: "Minimizzatore di banner sui cookie",
-  row_cookie_consent_mode_hint: "Sui banner di consenso ai cookie supportati, MUGA rifiuta automaticamente i cookie di tracciamento al posto tuo, proprio come già ripulisce i tuoi URL. MUGA non accetta mai cookie a tuo nome. MUGA controlla anche cosa dice un pulsante prima di premerlo, il che riduce ma non elimina la possibilità di un clic sbagliato; quando l'etichetta di un pulsante non è chiara o leggibile, MUGA lo lascia stare.",
-  aria_cookie_consent_mode: "Modalità del minimizzatore di banner sui cookie",
-  cookie_consent_mode_opt_reject_only: "Solo rifiuta (consigliato)",
-  cookie_consent_mode_opt_off: "Disattivato",
 
   // referer-beacon-privacy PR 4: interfaccia impostazioni, avviso e i18n.
   section_aggressive_privacy: "Privacy aggressiva",

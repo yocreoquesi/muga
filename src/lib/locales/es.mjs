@@ -260,8 +260,6 @@ export default Object.freeze({
   ob_feat2_desc: "Cada desvío que la web pone entre tú y la página que querías se corrige localmente, dentro de tu navegador.",
   ob_feat3_title: "Las URLs limpias son más cortas, más bonitas y seguras para compartir",
   ob_feat3_desc: "A veces casi no puedes saber a dónde va un enlace con tanto ruido pegado. Clic derecho en cualquier enlace para copiarlo limpio, silencioso y honesto.",
-  ob_feat4_title: "También calma los avisos de cookies",
-  ob_feat4_desc: "En avisos de cookies compatibles, MUGA rechaza las cookies de rastreo por ti de forma predeterminada, igual que ya limpia tus URL. Nunca acepta ni concede más rastreo en tu nombre. Puedes desactivarlo cuando quieras en Ajustes.",
   ob_tos_label: "He leído y acepto los <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Términos de uso</a> y la <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Política de privacidad</a><small class=\"tos-required-hint\">Obligatorio para continuar</small>",
   ob_feedback_note: "<strong>Hecho aprendiendo de los errores.</strong> MUGA ha crecido a base de muchas iteraciones y no será perfecto. Si encuentras un enlace que limpió mal, un referido que no debería haber tocado o cualquier cosa rara, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">cuéntanoslo</a>. Las preguntas, ideas y reportes de errores son muy bienvenidos y marcan hacia dónde va MUGA.",
   ob_cta_btn: "Activar MUGA",
@@ -271,7 +269,6 @@ export default Object.freeze({
   ob_reonboard_material_title: "Importante: los términos cambiaron sustancialmente",
   ob_reonboard_material_desc: "Los términos de MUGA se han actualizado de una manera que afecta a lo que aceptaste anteriormente. El uso continuado de la extensión requiere aceptar los nuevos términos. Revisa los Términos de uso y la Política de privacidad enlazados abajo.",
   ob_clause_remote_rules_default: "Las actualizaciones semanales de reglas ahora están activadas de forma predeterminada: MUGA descarga una lista actualizada de parámetros de rastreo desde rules.muga.app aproximadamente una vez por semana. Es una solicitud firmada con Ed25519 que no envía ningún dato personal (ni historial de navegación ni cookies) y puedes desactivarla cuando quieras en los Ajustes.",
-  ob_clause_cookie_consent_minimizer: "Nueva función, desactivada por defecto: en avisos de cookies compatibles (por ahora OneTrust), MUGA puede pulsar por ti \"rechazar\" o \"solo necesarias\", igual que ya elimina el ruido de rastreo de las URL. Nunca acepta ni concede más rastreo en tu nombre. Si no existe una opción segura de rechazo, MUGA deja el aviso tal cual. Actívalo cuando quieras en los Ajustes.",
   migration_accept: "Activar",
   migration_decline: "No, gracias",
   migration_counter: "{n} de {total}",
@@ -339,11 +336,6 @@ export default Object.freeze({
   row_hover_preview_hint: "En el ordenador, mantén el ratón sobre un enlace unos segundos para ver su destino real ya limpio (solo en enlaces que redirigen a otro sitio).",
   aria_hover_preview: "Mostrar una vista previa del destino real del enlace al pasar el ratón",
   hover_preview_label: "Va a:",
-  row_cookie_consent_mode_label: "Minimizador de avisos de cookies",
-  row_cookie_consent_mode_hint: "En avisos de cookies compatibles, MUGA rechaza automáticamente las cookies de rastreo por ti, igual que ya limpia tus URL. MUGA nunca acepta cookies en tu nombre. MUGA también comprueba lo que dice un botón antes de pulsarlo, lo que reduce pero no elimina la posibilidad de un clic equivocado; cuando la etiqueta de un botón no es clara o no se puede leer, MUGA lo deja tal cual.",
-  aria_cookie_consent_mode: "Modo del minimizador de avisos de cookies",
-  cookie_consent_mode_opt_reject_only: "Solo rechazar (recomendado)",
-  cookie_consent_mode_opt_off: "Desactivado",
 
   // referer-beacon-privacy PR 4: interfaz de ajustes, aviso e i18n (opt-in,
   // desactivado por defecto; ver design.md D5/D6 para las restricciones de

@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateCookieConsentMode, migrateDropInjectOwnAffiliate, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -210,16 +210,14 @@ const toolbarPresenter = createToolbarPresenter({
 migrateStatsToLocal();
 migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
-// Cookie-consent 2-state mode: converts the legacy
-// cookieConsentMinimizerEnabled boolean into cookieConsentMode. This
-// top-level call passes no reason, so it runs the SAFE idempotent pass only
-// (maps a present legacy key; never infers "off" from an absent mode).
-// Genuine installs are seeded by the onInstalled call site, which passes
-// details.reason.
-migrateCookieConsentMode().catch(() => {});
 // drop-affiliate-injection (PR 1b): deletes the retired injectOwnAffiliate
 // key from sync. Best-effort; failure must not break startup.
 migrateDropInjectOwnAffiliate().catch(() => {});
+// drop-cookie-consent (Slice D of 6): deletes every storage key left behind
+// by the retired cookie-consent-minimizer subsystem (sync pref + legacy
+// keys, plus the dead Tier2 remote-rules local cache). Best-effort;
+// failure must not break startup.
+migrateDropCookieConsent().catch(() => {});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
@@ -2262,7 +2260,7 @@ chrome.runtime.onStartup.addListener(async () => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
-  migrateCookieConsentMode().catch(() => {});
+  migrateDropCookieConsent().catch(() => {});
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
@@ -2376,10 +2374,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   _initFirstUsed();
   migrateStatsToLocal();
   migrateConsentToLocal();
-  // Pass the onInstalled reason so a genuine "install" latches the disclosed
-  // reject-only default and an "update" runs the existing-user migration. The
-  // top-level and onStartup call sites pass no reason (safe idempotent pass).
-  migrateCookieConsentMode({ reason: details.reason }).catch(() => {});
+  migrateDropCookieConsent().catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);
