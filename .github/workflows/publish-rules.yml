@@ -14,9 +14,6 @@ on:
       - main
     paths:
       - "tools/rules-source/**"
-      # Tier 2 has its own publish-tier2-rules.yml; don't cross-trigger the
-      # params signing job (which loads the shared key) on a tier2-only change.
-      - "!tools/rules-source/tier2.json"
 
 # Default to least privilege. The publish job elevates to contents: write.
 permissions:
