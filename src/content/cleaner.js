@@ -696,14 +696,16 @@
     }
 
     // Intercept clicks to affiliate store domains, OR — when the user opted
-    // into "Follow shortener redirects" — clicks to a generic shortener, so the
-    // shortener-resolution branch below is actually reachable at click time.
+    // into click-time shortener resolution (browsewrap Phase 2's
+    // resolveShortenersOnClick, split from the retired single shared pref)
+    // — clicks to a generic shortener, so the shortener-resolution branch
+    // below is actually reachable at click time.
     // (Audit: that branch was dead code behind an affiliate-only gate, since no
     // generic shortener host is an affiliate store domain — hover resolved them
     // but click never did.) All other clicks pass through unmodified: DNR
     // (Chrome) and self-clean (Firefox) handle tracking-param removal without
     // disrupting SPA navigation.
-    const isFollowableShortener = _contentPrefs?.followShortenersEnabled === true &&
+    const isFollowableShortener = _contentPrefs?.resolveShortenersOnClick === true &&
       !!window.__mugaCleaner?.isGenericShortener?.(url.hostname);
     if (!isAffiliateDomain(url.hostname) && !isFollowableShortener) return;
 
@@ -808,8 +810,8 @@
       // ADR-0004 phase 5 (#701): Privacy Proxy decommissioned. Opaque affiliate
       // redirect networks (awin, CJ, etc.) and generic shorteners (bit.ly, t.co,
       // etc.) both pass through the standard navigate() path. Generic shorteners
-      // are resolved natively via the "Follow shortener redirects" opt-in flow
-      // (RESOLVE_SHORTENER message + followShortenersEnabled pref), which is
+      // are resolved natively via the click-time opt-in flow (browsewrap Phase
+      // 2: RESOLVE_SHORTENER message + resolveShortenersOnClick pref), which is
       // handled separately by the isGenericShortener check below.
       //
       // For opaque affiliate networks: just navigate. Their redirect is the
@@ -819,14 +821,16 @@
       // by the content bundle (window.__mugaCleaner). Single source of truth
       // lives in src/lib/opaque-networks.js.
       if (window.__mugaCleaner?.isGenericShortener(url.hostname)) {
-        if (_contentPrefs?.followShortenersEnabled) {
-          // Follow-shorteners ON: attempt to resolve via RESOLVE_SHORTENER.
+        if (_contentPrefs?.resolveShortenersOnClick) {
+          // Click-time resolution ON: attempt to resolve via RESOLVE_SHORTENER.
+          // source: "click" so the service worker's source-gated handler
+          // re-checks resolveShortenersOnClick itself (defense-in-depth).
           const _SHORTENER_TIMEOUT_MS = 6000;
           (async () => {
             let response;
             try {
               response = await Promise.race([
-                chrome.runtime.sendMessage({ type: "RESOLVE_SHORTENER", url: href }),
+                chrome.runtime.sendMessage({ type: "RESOLVE_SHORTENER", url: href, source: "click" }),
                 new Promise((_, reject) =>
                   setTimeout(() => reject(new Error("shortener-resolve timeout")), _SHORTENER_TIMEOUT_MS)
                 ),
@@ -858,7 +862,7 @@
           })();
           return; // Async branch took over; skip the synchronous navigate below.
         }
-        // followShortenersEnabled is OFF — navigate to the shortener URL directly.
+        // resolveShortenersOnClick is OFF — navigate to the shortener URL directly.
       }
       navigate(cleanUrl, opensNewTab);
     }

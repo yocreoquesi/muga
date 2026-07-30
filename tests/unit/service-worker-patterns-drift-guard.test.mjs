@@ -66,7 +66,13 @@ const PATTERNS_TEST_PATH = join(
 // details.reason === "install", and openOnboardingOnce() still fires
 // unconditionally on install. The fresh/update/existing-user branching
 // itself is covered behaviorally via a pure onInstalledConsentGate() mirror.
-const MAX_SOURCE_STRING_ASSERTIONS = 73;
+// 73 → 74 (browsewrap Phase 2, shortener click/hover split): added ONE
+// source-string extraction (another swSource.match() assigned to `region`)
+// pinning that the RESOLVE_SHORTENER handler re-checks the pref matching
+// message.source (resolveShortenersOnClick/resolveShortenersOnHover) rather
+// than trusting the caller's own gate. The gate LOGIC itself is covered
+// behaviorally via a pure resolveShortenerSourceGate() mirror.
+const MAX_SOURCE_STRING_ASSERTIONS = 74;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 

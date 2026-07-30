@@ -170,14 +170,25 @@ describe("Temporal Dead Zone guard — _contentPrefs declaration ordering", () =
 // deleted (review S-1/S-2). They guard the no-fallback failure handling: every
 // failure mode must still navigate to the original href so navigation never hangs.
 describe("RESOLVE_SHORTENER — content-script path", () => {
-  test("only resolves generic shorteners, gated on followShortenersEnabled", () => {
+  test("only resolves generic shorteners, gated on resolveShortenersOnClick (browsewrap Phase 2)", () => {
     assert.ok(
       cleanerSource.includes("isGenericShortener(url.hostname)"),
       "must gate the native path on isGenericShortener"
     );
     assert.ok(
-      cleanerSource.includes("followShortenersEnabled"),
-      "must gate resolution on the followShortenersEnabled opt-in pref"
+      cleanerSource.includes("resolveShortenersOnClick"),
+      "must gate resolution on the resolveShortenersOnClick opt-in pref"
+    );
+    assert.ok(
+      !cleanerSource.includes("followShortenersEnabled"),
+      "the retired followShortenersEnabled pref must not remain in cleaner.js"
+    );
+  });
+
+  test("declares source: \"click\" on the RESOLVE_SHORTENER message (source-gated defense-in-depth)", () => {
+    assert.ok(
+      /type:\s*"RESOLVE_SHORTENER",\s*url:\s*href,\s*source:\s*"click"/.test(cleanerSource),
+      "the click-time RESOLVE_SHORTENER message must declare source: \"click\""
     );
   });
 

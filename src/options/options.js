@@ -1000,24 +1000,31 @@ function initExportImport() {
       // request/mutation may happen before the user confirms in the diff
       // modal. chrome.permissions.contains() is a read, so it is safe here.
 
-      // #964: followShortenersEnabled is permission-gated. An import may carry
-      // the preference but CANNOT grant the host permissions (no user gesture
-      // survives the async file read, and silently prompting on import is
-      // surprising). So enable it only when the grant is already present;
-      // otherwise force it off. This closes the gate-bypass and keeps the
-      // pref honest — the user re-enables it via the toggle, which prompts.
-      // planImport is pure and cannot call chrome.permissions itself, so it
-      // only reports the request via plan.special (followShortenersProvided =
-      // "the file carries a real boolean"; followShortenersRequested = "that
-      // boolean is true") and this async gate stays here. As before, this
-      // field is written ONLY when the imported file carries it as a boolean —
-      // a missing key leaves the stored value untouched instead of silently
-      // forcing it off. We branch on plan.special, not raw `data`, so the
-      // decision follows any future migrate() transform of the payload.
+      // #964 / browsewrap Phase 2: resolveShortenersOnClick/OnHover are each
+      // permission-gated. An import may carry either preference but CANNOT
+      // grant the host permissions (no user gesture survives the async file
+      // read, and silently prompting on import is surprising). So enable
+      // each only when the grant is already present; otherwise force it off.
+      // This closes the gate-bypass and keeps the prefs honest — the user
+      // re-enables via the toggle, which prompts. planImport is pure and
+      // cannot call chrome.permissions itself, so it only reports the
+      // request via plan.special (resolveOnClick/HoverProvided = "the file
+      // carries a real boolean"; resolveOnClick/HoverRequested = "that
+      // boolean is true") and this async gate stays here. As before, each
+      // field is written ONLY when the imported file carries it as a
+      // boolean — a missing key leaves the stored value untouched instead of
+      // silently forcing it off. We branch on plan.special, not raw `data`,
+      // so the decision follows any future migrate() transform of the
+      // payload. Both share the SAME host-permission grant (the shortener
+      // origins).
       const toSave = { ...plan.toSave };
-      if (plan.special.followShortenersProvided) {
-        toSave.followShortenersEnabled =
-          plan.special.followShortenersRequested && (await hasShortenerPermissions());
+      if (plan.special.resolveOnClickProvided) {
+        toSave.resolveShortenersOnClick =
+          plan.special.resolveOnClickRequested && (await hasShortenerPermissions());
+      }
+      if (plan.special.resolveOnHoverProvided) {
+        toSave.resolveShortenersOnHover =
+          plan.special.resolveOnHoverRequested && (await hasShortenerPermissions());
       }
       // remoteRulesEnabled follows the same permission gate: enabling remote
       // rules needs the rules.muga.app optional host grant, which an import
@@ -1109,10 +1116,13 @@ function initExportImport() {
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
       document.getElementById("show-badge").checked = newPrefs.showBadge;
-      // #964: reflect the gated result — the checkbox must match the pref that
-      // actually landed (forced off unless the host grant was already present).
-      const followShortenersEl = document.getElementById("followShortenersEnabled");
-      if (followShortenersEl) followShortenersEl.checked = newPrefs.followShortenersEnabled;
+      // #964 / browsewrap Phase 2: reflect the gated result for EACH split
+      // toggle — each checkbox must match the pref that actually landed
+      // (forced off unless the host grant was already present).
+      const resolveOnClickEl = document.getElementById("resolveShortenersOnClick");
+      if (resolveOnClickEl) resolveOnClickEl.checked = newPrefs.resolveShortenersOnClick;
+      const resolveOnHoverEl = document.getElementById("resolveShortenersOnHover");
+      if (resolveOnHoverEl) resolveOnHoverEl.checked = newPrefs.resolveShortenersOnHover;
       // Reflect the gated remote-rules result. remoteRulesEnabled is guarded, so
       // its EFFECTIVE value is the per-device override overlaid on sync
       // (getPrefs), NOT the raw sync value. Reading raw could show ON while an
@@ -1790,14 +1800,15 @@ async function requestShortenerPermissions() {
 
 /**
  * Shows or hides the "new shorteners available, re-enable" notice
- * (shortener-resolver-expansion Slice 1, design D3). Only relevant while the
- * toggle is ON: GENERIC_SHORTENERS grew from 7 to 13 hosts, so an existing
- * grantee's original 7-origin grant no longer covers every host and
- * hasShortenerPermissions() now returns false for them. The notice's button
- * reuses requestShortenerPermissions() (all origins) — Chrome/Firefox
+ * (shortener-resolver-expansion Slice 1, design D3). Only relevant while
+ * EITHER split toggle is ON: GENERIC_SHORTENERS grew from 7 to 13 hosts, so
+ * an existing grantee's original 7-origin grant no longer covers every host
+ * and hasShortenerPermissions() now returns false for them. The notice's
+ * button reuses requestShortenerPermissions() (all origins) — Chrome/Firefox
  * silently no-op already-granted origins and prompt only for the delta.
  *
- * @param {boolean} enabled - Current followShortenersEnabled checkbox state
+ * @param {boolean} enabled - true when either resolveShortenersOnClick or
+ *   resolveShortenersOnHover is currently checked
  */
 async function updateShortenerRegrantNotice(enabled) {
   const notice = document.getElementById("shortener-regrant-notice");
@@ -1809,44 +1820,67 @@ async function updateShortenerRegrantNotice(enabled) {
 }
 
 /**
- * Initialises the "Follow shortener redirects" toggle (ADR-0004 phase 2, #699).
- * The permission request is the first await in the enable path (Firefox MV2
- * gesture-frame requirement). The pref persists to chrome.storage.sync, and a
- * denial reverts the checkbox.
+ * Initialises the two shortener-resolution toggles (browsewrap Phase 2,
+ * split from the single ADR-0004 phase 2 (#699) "Follow shortener redirects"
+ * toggle):
+ *   - #resolveShortenersOnClick — click-time resolution, default ON.
+ *   - #resolveShortenersOnHover — hover/proactive resolution, default OFF
+ *     (opt-in) — pings the shortener host for a link the user only looked
+ *     at, a privacy cost click-time resolution doesn't have.
+ *
+ * Both share the same optional host-permission grant (the eight-plus
+ * shortener origins) — enabling EITHER one for the first time requests it.
+ * The permission request is the first await in each enable path (Firefox
+ * MV2 gesture-frame requirement). Each pref persists to chrome.storage.sync
+ * independently, and a denial reverts only the checkbox being toggled.
  *
  * @param {object} prefs - Merged preferences object (PREF_DEFAULTS shape)
  */
 async function initFollowShorteners(prefs) {
-  const checkbox = document.getElementById("followShortenersEnabled");
-  if (!checkbox) return;
-  checkbox.checked = !!prefs.followShortenersEnabled;
-  await updateShortenerRegrantNotice(checkbox.checked);
+  const clickCheckbox = document.getElementById("resolveShortenersOnClick");
+  const hoverCheckbox = document.getElementById("resolveShortenersOnHover");
+  if (!clickCheckbox && !hoverCheckbox) return;
 
-  checkbox.addEventListener("change", async () => {
-    if (checkbox.checked) {
-      // CRITICAL: chrome.permissions.request MUST be the FIRST await in the
-      // enable branch (Firefox MV2 gesture-frame requirement).
-      const granted = await requestShortenerPermissions();
-      if (!granted) {
-        checkbox.checked = false;
-        showToast(t("shortener_regrant_denied", _currentLang));
-        return;
+  if (clickCheckbox) clickCheckbox.checked = !!prefs.resolveShortenersOnClick;
+  if (hoverCheckbox) hoverCheckbox.checked = !!prefs.resolveShortenersOnHover;
+
+  const anyEnabled = () => !!(clickCheckbox?.checked || hoverCheckbox?.checked);
+  await updateShortenerRegrantNotice(anyEnabled());
+
+  /**
+   * Wires a single toggle's change handler: request permission on enable,
+   * persist the given pref key, then refresh the shared regrant notice.
+   */
+  function wireToggle(checkbox, prefKey) {
+    if (!checkbox) return;
+    checkbox.addEventListener("change", async () => {
+      if (checkbox.checked) {
+        // CRITICAL: chrome.permissions.request MUST be the FIRST await in
+        // the enable branch (Firefox MV2 gesture-frame requirement).
+        const granted = await requestShortenerPermissions();
+        if (!granted) {
+          checkbox.checked = false;
+          showToast(t("shortener_regrant_denied", _currentLang));
+          return;
+        }
+        try { await setPrefs({ [prefKey]: true }); }
+        catch (err) { console.error(`[MUGA] save ${prefKey}:`, err); }
+      } else {
+        try { await setPrefs({ [prefKey]: false }); }
+        catch (err) { console.error(`[MUGA] save ${prefKey}:`, err); }
       }
-      try { await setPrefs({ followShortenersEnabled: true }); }
-      catch (err) { console.error("[MUGA] save followShortenersEnabled:", err); }
-      await updateShortenerRegrantNotice(true);
-    } else {
-      try { await setPrefs({ followShortenersEnabled: false }); }
-      catch (err) { console.error("[MUGA] save followShortenersEnabled:", err); }
-      await updateShortenerRegrantNotice(false);
-    }
-  });
+      await updateShortenerRegrantNotice(anyEnabled());
+    });
+  }
+
+  wireToggle(clickCheckbox, "resolveShortenersOnClick");
+  wireToggle(hoverCheckbox, "resolveShortenersOnHover");
 
   const regrantBtn = document.getElementById("shortener-regrant-btn");
   if (regrantBtn) {
     regrantBtn.addEventListener("click", async () => {
       // CRITICAL: chrome.permissions.request MUST be the FIRST await in this
-      // handler (Firefox MV2 gesture-frame requirement) — same rule as the
+      // handler (Firefox MV2 gesture-frame requirement) — same rule as each
       // toggle's enable branch above.
       const granted = await requestShortenerPermissions();
       if (granted) {

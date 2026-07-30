@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
 import { setConsent } from "../lib/consent-storage.js";
@@ -2003,13 +2003,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Consent gate (#922): a disabled or non-onboarded extension MUST NOT
         // perform the live shortener-resolution egress. This mirrors the DNR
         // consent gate — no network activity until the user has enabled the
-        // extension AND accepted the ToS. Checked before followShortenersEnabled
-        // and before any fetch so the gate cannot be bypassed by the feature toggle.
+        // extension AND accepted the ToS. Checked before the source-gated
+        // pref check below and before any fetch, so the gate cannot be
+        // bypassed by the feature toggle.
         if (!prefs.enabled || !prefs.onboardingDone) {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
           return;
         }
-        if (!prefs.followShortenersEnabled) {
+        // Source-gated defense-in-depth (browsewrap Phase 2): the single,
+        // now-retired shared shortener pref (which gated BOTH click-time and
+        // hover resolution together) is replaced by two independent prefs.
+        // The caller declares WHY it wants a resolution
+        // (message.source: "click" | "hover"), and the handler enforces the
+        // MATCHING pref itself — it does not trust the caller's own gate, so
+        // a buggy or compromised content script cannot trigger hover-only
+        // egress (a bigger privacy cost — it pings the shortener for a link
+        // the user only looked at) by omitting its own check or mislabeling
+        // its source. An unrecognized/absent source is always denied
+        // (fail-closed).
+        const sourceAllowed =
+          message.source === "click" ? prefs.resolveShortenersOnClick === true :
+          message.source === "hover" ? prefs.resolveShortenersOnHover === true :
+          false;
+        if (!sourceAllowed) {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
           return;
         }
@@ -2255,6 +2271,10 @@ chrome.runtime.onStartup.addListener(async () => {
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   // on first startup after upgrade. Best-effort; failure must not break startup.
   migrateLegacyProxyPref().catch(() => {});
+  // browsewrap Phase 2: split the (now-retired) followShortenersEnabled pref
+  // into resolveShortenersOnClick/resolveShortenersOnHover on first startup
+  // after upgrade. Best-effort; failure must not break startup.
+  migrateFollowShortenersSplit().catch(() => {});
   // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
   // domain-only whitelist entries. Best-effort; failure must not break startup.
   migratePerSiteDisableToAllowlist().catch(() => {});
@@ -2407,6 +2427,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   maybeFetchRemoteRules(_remoteRulesDeps());
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   migrateLegacyProxyPref().catch(() => {});
+  // browsewrap Phase 2: split the (now-retired) followShortenersEnabled pref
+  // into resolveShortenersOnClick/resolveShortenersOnHover. Best-effort;
+  // failure must not break startup.
+  migrateFollowShortenersSplit().catch(() => {});
   // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
   // domain-only whitelist entries. Best-effort; failure must not break startup.
   migratePerSiteDisableToAllowlist().catch(() => {});

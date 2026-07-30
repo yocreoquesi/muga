@@ -134,7 +134,7 @@ describe("hover-preview.js — source guards", () => {
     );
   });
 
-  test("resolves shorteners over the network when followShortenersEnabled is on (#1088)", () => {
+  test("resolves shorteners over the network when resolveShortenersOnHover is on (#1088, browsewrap Phase 2)", () => {
     // When the local unwrap finds no host change, a generic shortener whose
     // destination needs a network round trip is resolved via RESOLVE_SHORTENER.
     // Regression guard for the whole hover-shortener path.
@@ -143,8 +143,12 @@ describe("hover-preview.js — source guards", () => {
       "must fall through to maybeResolveShortener when the host is unchanged",
     );
     assert.ok(
-      /_prefs\.followShortenersEnabled\s*!==\s*true/.test(HOVER_PREVIEW_SRC),
-      "must gate the network resolution on followShortenersEnabled",
+      /_prefs\.resolveShortenersOnHover\s*!==\s*true/.test(HOVER_PREVIEW_SRC),
+      "must gate the network resolution on resolveShortenersOnHover",
+    );
+    assert.ok(
+      !HOVER_PREVIEW_SRC.includes("followShortenersEnabled"),
+      "the retired followShortenersEnabled pref must not remain in hover-preview.js",
     );
     assert.ok(
       HOVER_PREVIEW_SRC.includes("isGenericShortener"),
@@ -153,6 +157,10 @@ describe("hover-preview.js — source guards", () => {
     assert.ok(
       /type:\s*["']RESOLVE_SHORTENER["']/.test(HOVER_PREVIEW_SRC),
       "must resolve via the RESOLVE_SHORTENER service-worker message",
+    );
+    assert.ok(
+      /source:\s*["']hover["']/.test(HOVER_PREVIEW_SRC),
+      "must declare source: \"hover\" on the RESOLVE_SHORTENER message (source-gated defense-in-depth)",
     );
   });
 

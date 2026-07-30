@@ -16,12 +16,16 @@
  *
  * 2. Shortener resolution (opt-in, network access): if the local unwrap
  *    leaves the host unchanged AND the anchor host is a known generic
- *    shortener (bit.ly, tinyurl.com, …) AND the user has enabled "Follow
- *    shortener redirects" (followShortenersEnabled) in Settings, the real
- *    destination is resolved with a service-worker round trip
- *    (RESOLVE_SHORTENER, the same mechanism already used at click time in
- *    content/cleaner.js). This performs a network request but reuses an
- *    opt-in the user already granted — it requests no NEW permission.
+ *    shortener (bit.ly, tinyurl.com, …) AND the user has enabled
+ *    "resolve on hover" (resolveShortenersOnHover, browsewrap Phase 2 — a
+ *    separate, off-by-default opt-in from click-time resolution, since
+ *    resolving on hover pings the shortener host for a link the user only
+ *    looked at) in Settings, the real destination is resolved with a
+ *    service-worker round trip (RESOLVE_SHORTENER, the same mechanism
+ *    already used at click time in content/cleaner.js, but declaring
+ *    source: "hover" so the service worker enforces the matching pref
+ *    itself). This performs a network request but reuses an opt-in the
+ *    user already granted for THIS path specifically.
  *
  * A plain link that neither unwraps locally nor resolves via case 2 shows
  * NOTHING — no mutation of the anchor's href, no interference with the click.
@@ -343,18 +347,20 @@
 
     // Local unwrap left the host unchanged. Generic shorteners never unwrap
     // locally (resolving them needs a network round trip) — if this host is
-    // one AND the user opted into "follow shorteners", resolve it over the
-    // network. Otherwise this is a plain link: show nothing.
+    // one AND the user opted into "resolve on hover" (resolveShortenersOnHover),
+    // resolve it over the network. Otherwise this is a plain link: show nothing.
     maybeResolveShortener(anchor, href, anchorHost);
   }
 
   // ── Shortener resolution (network, opt-in only) ──────────────────────────
   // Only reached when the local unwrap above found no host change. Mirrors
-  // the click-time RESOLVE_SHORTENER flow in content/cleaner.js.
+  // the click-time RESOLVE_SHORTENER flow in content/cleaner.js, but declares
+  // source: "hover" so the service worker's source-gated handler enforces
+  // resolveShortenersOnHover (not resolveShortenersOnClick) itself.
   const SHORTENER_RESOLVE_TIMEOUT_MS = 6000;
 
   function maybeResolveShortener(anchor, href, anchorHost) {
-    if (!_prefs || _prefs.followShortenersEnabled !== true) return;
+    if (!_prefs || _prefs.resolveShortenersOnHover !== true) return;
     if (!window.__mugaCleaner || typeof window.__mugaCleaner.isGenericShortener !== "function") return;
 
     let isShortener = false;
@@ -374,7 +380,7 @@
       let response;
       try {
         response = await Promise.race([
-          chrome.runtime.sendMessage({ type: "RESOLVE_SHORTENER", url: href }),
+          chrome.runtime.sendMessage({ type: "RESOLVE_SHORTENER", url: href, source: "hover" }),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error("shortener-resolve timeout")), SHORTENER_RESOLVE_TIMEOUT_MS)
           ),
@@ -392,7 +398,7 @@
       // must not preempt it.
       if (gen !== _hoverGen) return;
       if (_currentAnchor !== anchor) return;
-      if (!gatePasses() || _prefs.followShortenersEnabled !== true) return;
+      if (!gatePasses() || _prefs.resolveShortenersOnHover !== true) return;
       if (!response || response.ok !== true) return;
 
       const dest = response.destination;

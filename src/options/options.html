@@ -390,7 +390,7 @@
         </div>
       </div>
 
-      <!-- Advanced: Follow shortener redirects (#936 — moved into the gated card) -->
+      <!-- Advanced: shortener resolution, split click/hover (browsewrap Phase 2, #936 card) -->
       <section id="follow-shorteners">
         <h2 class="mt-16" data-i18n="follow_shorteners_section_title"></h2>
         <div class="card">
@@ -401,10 +401,17 @@
           </div>
           <div class="row">
             <label class="toggle">
-              <input type="checkbox" id="followShortenersEnabled" data-i18n-aria-label="enable_follow_shorteners_cta">
+              <input type="checkbox" id="resolveShortenersOnClick" data-i18n-aria-label="enable_resolve_on_click_cta">
               <span class="slider"></span>
             </label>
-            <span data-i18n="follow_shorteners_enabled"></span>
+            <span data-i18n="resolve_on_click_label"></span>
+          </div>
+          <div class="row">
+            <label class="toggle">
+              <input type="checkbox" id="resolveShortenersOnHover" data-i18n-aria-label="enable_resolve_on_hover_cta">
+              <span class="slider"></span>
+            </label>
+            <span data-i18n="resolve_on_hover_label"></span>
           </div>
           <div class="row">
             <p class="hint" id="shortener-regrant-notice" hidden data-i18n="shortener_regrant_notice"></p>

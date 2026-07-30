@@ -369,10 +369,12 @@ describe("Content script — affiliate-only click interception", () => {
     // resolution DEAD CODE — no generic shortener host is an affiliate store
     // domain, so bit.ly/t.co clicks never reached the RESOLVE_SHORTENER branch
     // (hover resolved them, click didn't). The gate must ALSO admit a generic
-    // shortener when the user opted into follow-shorteners.
+    // shortener when the user opted into click-time resolution (browsewrap
+    // Phase 2: resolveShortenersOnClick, split from the retired
+    // followShortenersEnabled).
     assert.ok(
-      /const isFollowableShortener\s*=[\s\S]*?followShortenersEnabled === true[\s\S]*?isGenericShortener/.test(clickHandler),
-      "must compute isFollowableShortener from followShortenersEnabled === true AND isGenericShortener(hostname)",
+      /const isFollowableShortener\s*=[\s\S]*?resolveShortenersOnClick === true[\s\S]*?isGenericShortener/.test(clickHandler),
+      "must compute isFollowableShortener from resolveShortenersOnClick === true AND isGenericShortener(hostname)",
     );
     assert.ok(
       clickHandler.includes("if (!isAffiliateDomain(url.hostname) && !isFollowableShortener) return;"),
