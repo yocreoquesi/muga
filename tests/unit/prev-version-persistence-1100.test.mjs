@@ -129,7 +129,10 @@ describe("#1100 — persistPrevVersion writes mugaPrevVersion", () => {
   test("onInstalled listener calls persistPrevVersion before reading prefs", () => {
     const onInstalledPos = SW_SOURCE.indexOf("chrome.runtime.onInstalled.addListener");
     assert.ok(onInstalledPos !== -1, "onInstalled.addListener must be present");
-    const block = SW_SOURCE.slice(onInstalledPos, onInstalledPos + 400);
+    // Window bumped 400 -> 900 (browsewrap Phase 1): the listener grew the
+    // implicit-accept-on-install branch (recordImplicitAcceptOnInstall) and
+    // its explanatory comment between persistPrevVersion and the prefs read.
+    const block = SW_SOURCE.slice(onInstalledPos, onInstalledPos + 900);
     const persistIdx = block.indexOf("persistPrevVersion(details)");
     const prefsIdx = block.indexOf("getPrefsWithCache()");
     assert.ok(persistIdx !== -1, "onInstalled handler must call persistPrevVersion(details)");

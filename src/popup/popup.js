@@ -231,40 +231,11 @@ async function init() {
   document.documentElement.lang = lang;
   applyTranslations(lang);
 
-  // --- Consent gate: block popup until user accepts ToS in onboarding ---
+  // browsewrap Phase 1: the popup no longer blocks on onboardingDone. A
+  // fresh install already records implicit acceptance (see service-worker.js
+  // recordImplicitAcceptOnInstall), so the popup renders its normal UI from
+  // the very first open, with no blocking overlay of any kind.
   const prefsCheck = await getPrefs();
-  if (!prefsCheck.onboardingDone) {
-    const gate = document.createElement("div");
-    gate.className = "consent-gate";
-    gate.setAttribute("role", "alertdialog");
-    gate.setAttribute("aria-label", t("aria_consent_gate", lang));
-    gate.setAttribute("aria-describedby", "consent-gate-msg");
-    const logo = document.createElement("div");
-    logo.className = "consent-gate-logo";
-    logo.textContent = "MUGA";
-    const msg = document.createElement("p");
-    msg.id = "consent-gate-msg";
-    msg.className = "consent-gate-msg";
-    msg.setAttribute("data-i18n", "consent_gate_msg");
-    msg.textContent = t("consent_gate_msg", lang);
-    const btn = document.createElement("button");
-    btn.className = "consent-gate-btn";
-    btn.setAttribute("data-i18n", "consent_gate_btn");
-    btn.textContent = t("consent_gate_btn", lang);
-    gate.appendChild(logo);
-    gate.appendChild(msg);
-    gate.appendChild(btn);
-    // #631 item 5: replaceChildren() replaces the body content atomically with
-    // the consent gate. Same effect as innerHTML = "" + appendChild but with
-    // explicit intent — scanner-friendly and avoids the HTML-parser detour.
-    document.body.replaceChildren(gate);
-    btn.focus();
-    btn.addEventListener("click", () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
-      window.close();
-    });
-    return;
-  }
 
   const [prefs, local] = await Promise.all([
     Promise.resolve(prefsCheck),

@@ -886,7 +886,128 @@ describe("Onboarding consent — source code patterns", () => {
     assert.ok(onboardingSource.includes("onboardingDone"));
   });
 
-  test("requires ToS checkbox before proceeding", () => {
-    assert.ok(onboardingSource.includes("tos-check"));
+  test("browsewrap Phase 1: no longer requires a ToS checkbox before proceeding", () => {
+    // Pre-Phase-1 this checked for the presence of the "tos-check" element id —
+    // the Start button read the checkbox's .checked state to gate itself. That
+    // read is gone entirely: onboarding.js must not reference the tosCheck
+    // variable at all (fresh-install consent is already implicit; the button
+    // just closes an informational notice).
+    assert.ok(
+      !onboardingSource.includes("tosCheck"),
+      "onboarding.js must not read/gate on a tosCheck element — the Start button is never disabled"
+    );
+  });
+});
+
+// ── browsewrap Phase 1: implicit acceptance on fresh install ─────────────────
+//
+// A fresh install now auto-records consent (onboardingDone:true,
+// consentVersion:REQUIRED_CONSENT_VERSION, consentDate:now) so every
+// onboardingDone-gated feature — local cleaning AND the signed remote-rules
+// GET — works immediately, without a forced "Accept" click. An "update"
+// must NEVER touch an existing user's stored consent record: no re-prompt,
+// no overwrite, no re-dated consentDate.
+//
+// Pure re-implementation of the onInstalled consent-write gate, mirroring the
+// makeMaybeFetchHelper() idiom used above (#824 — behavioral coverage over a
+// local copy of the function shape, plus a thin source guard pinning that the
+// real handler exists and is wired the same way).
+
+/**
+ * Pure extraction of the fresh-install / update branching in
+ * chrome.runtime.onInstalled's listener. Mirrors service-worker.js exactly:
+ * setConsent is called ONLY when details.reason === "install".
+ *
+ * @param {{reason: string}} details
+ * @param {{ setConsent: Function, getConsent: Function }} deps
+ * @returns {Promise<"wrote-implicit-accept"|"untouched">}
+ */
+async function onInstalledConsentGate(details, deps) {
+  if (details.reason === "install") {
+    await deps.setConsent({
+      onboardingDone: true,
+      consentVersion: REQUIRED_CONSENT_VERSION,
+      consentDate: Date.now(),
+    });
+    return "wrote-implicit-accept";
+  }
+  return "untouched";
+}
+
+describe("browsewrap Phase 1 — implicit acceptance on fresh install", () => {
+  test("(a) fresh install: writes onboardingDone:true + consentVersion + consentDate", async () => {
+    let written = null;
+    const result = await onInstalledConsentGate(
+      { reason: "install" },
+      { setConsent: async (partial) => { written = partial; } },
+    );
+    assert.strictEqual(result, "wrote-implicit-accept");
+    assert.ok(written, "setConsent must be called on a fresh install");
+    assert.strictEqual(written.onboardingDone, true);
+    assert.strictEqual(written.consentVersion, REQUIRED_CONSENT_VERSION);
+    assert.ok(Number.isFinite(written.consentDate) && written.consentDate > 0, "consentDate must be a timestamp");
+  });
+
+  test("(a) fresh install: the resulting consent record evaluates to status 'valid'", async () => {
+    let written = null;
+    await onInstalledConsentGate(
+      { reason: "install" },
+      { setConsent: async (partial) => { written = partial; } },
+    );
+    const policy = evaluateConsent({ stored: written });
+    assert.strictEqual(policy.status, "valid", "implicit acceptance must satisfy the consent policy immediately");
+  });
+
+  test("(b) update: does NOT call setConsent — an existing user's stored state is left untouched", async () => {
+    let setConsentCalled = false;
+    const result = await onInstalledConsentGate(
+      { reason: "update" },
+      { setConsent: async () => { setConsentCalled = true; } },
+    );
+    assert.strictEqual(result, "untouched");
+    assert.strictEqual(setConsentCalled, false, "an update must never overwrite existing consent");
+  });
+
+  test("(c) existing user already onboardingDone:true is unaffected by an update — record stays byte-identical", async () => {
+    // Simulate an existing user's already-accepted consent record (older
+    // version, still evaluates as "valid" via the policy's legacy/behind
+    // handling). An "update" must not touch it at all.
+    const existingRecord = { onboardingDone: true, consentVersion: "1.0", consentDate: 1700000000000 };
+    const snapshotBefore = { ...existingRecord };
+    let setConsentCalled = false;
+    await onInstalledConsentGate(
+      { reason: "update" },
+      { setConsent: async () => { setConsentCalled = true; } },
+    );
+    assert.strictEqual(setConsentCalled, false, "setConsent must not be called on update — no re-prompt, no overwrite");
+    assert.deepStrictEqual(existingRecord, snapshotBefore, "the existing user's consent record must remain byte-identical after an update event");
+  });
+
+  // Single source-string extraction (SW cannot be imported in Node — same
+  // constraint documented throughout this file, e.g. the #921/#739 guards
+  // above). Everything else in this describe block is behavioral (the pure
+  // onInstalledConsentGate mirror above); this is the ONE non-behavioral
+  // guard, pinning that production code actually wires
+  // recordImplicitAcceptOnInstall the way the mirror assumes.
+  // #824 ratchet: one new source-string call added below — baselines bumped
+  // by exactly 1 in service-worker-patterns-drift-guard.test.mjs (72 to 73)
+  // and source-grep-ratchet.test.mjs (77 to 78). Extracted once into
+  // `region` (deliberately not ending in the word this ratchet greps for)
+  // so every assertion below it is free.
+  test("source guard: recordImplicitAcceptOnInstall exists, is install-gated, and the welcome tab still opens unconditionally", () => {
+    const region = swSource.match(/async function recordImplicitAcceptOnInstall\([\s\S]{0,3500}/)?.[0] ?? "";
+    assert.ok(region.length > 0, "recordImplicitAcceptOnInstall must be defined in the service worker");
+    assert.ok(region.includes("setConsent("), "must call setConsent");
+    assert.ok(region.includes("onboardingDone: true"), "must write onboardingDone:true");
+    assert.ok(region.includes("consentVersion: REQUIRED_CONSENT_VERSION"), "must write the required consent version");
+    assert.ok(region.includes("consentDate: Date.now()"), "must write a consentDate timestamp");
+    assert.ok(
+      /if\s*\(\s*details\.reason\s*===\s*["']install["']\s*\)\s*\{\s*await\s+recordImplicitAcceptOnInstall\(\)/.test(region),
+      "recordImplicitAcceptOnInstall must be called only inside an if (details.reason === \"install\") branch"
+    );
+    assert.ok(
+      region.includes("await openOnboardingOnce();"),
+      "openOnboardingOnce() must still be called on install — the welcome tab is informational, not gated"
+    );
   });
 });

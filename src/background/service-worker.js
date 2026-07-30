@@ -9,6 +9,8 @@ import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
+import { setConsent } from "../lib/consent-storage.js";
+import { REQUIRED_CONSENT_VERSION } from "../lib/consent-version-manifest.js";
 import { isValidListEntry } from "../lib/validation.js";
 import {
   DNR_CUSTOM_PARAMS_RULE_ID,
@@ -2356,14 +2358,52 @@ async function persistPrevVersion(details) {
   }
 }
 
+// --- Browsewrap Phase 1: implicit acceptance on fresh install --------------
+// "By using MUGA you agree to the Terms of use and Privacy policy." A fresh
+// install auto-records acceptance so every onboardingDone-gated feature
+// (local cleaning, remote-rules fetch, DNR rulesets) works immediately —
+// no forced "Accept" click. Writes the SAME fields the old explicit-accept
+// click used to write (see onboarding.js's setConsent call), so downstream
+// consent-policy evaluation treats a fresh install exactly like a completed
+// acceptance.
+//
+// Runs ONLY on details.reason === "install". An "update" must NEVER touch an
+// existing user's stored consent — no re-prompt, no overwrite, no re-dating
+// consentDate. This is idempotent (setConsent merges over whatever is
+// already there), so calling it more than once on the same install is safe,
+// but the "update" gate is what actually protects existing users.
+async function recordImplicitAcceptOnInstall() {
+  try {
+    await setConsent({
+      onboardingDone: true,
+      consentVersion: REQUIRED_CONSENT_VERSION,
+      consentDate: Date.now(),
+    });
+  } catch (err) {
+    console.error("[MUGA] recordImplicitAcceptOnInstall failed:", err);
+  }
+}
+
 // --- On install: open onboarding on first run, sync DNR + maybe fetch rules ---
 chrome.runtime.onInstalled.addListener(async (details) => {
   await persistPrevVersion(details);
+
+  // Implicit browsewrap acceptance (Phase 1). Written BEFORE the prefs read
+  // below so applyDnrState/maybeFetchRemoteRules/badge all see
+  // onboardingDone:true on the very first SW wake — features work
+  // immediately, without waiting for a welcome-tab click. Never runs on
+  // "update" (existing users keep their stored consent untouched).
+  if (details.reason === "install") {
+    await recordImplicitAcceptOnInstall();
+  }
+
   const prefs = await getPrefsWithCache();
   await applyDnrState(prefs);
   await applyOnboardingBadge(prefs);
   // Opportunistic fetch: fires on install/update if user had enabled remote rules
-  // before the update and the stored payload is stale (or absent).
+  // before the update and the stored payload is stale (or absent). On a fresh
+  // install this now fires immediately — the implicit-accept write above
+  // already moved consent to "valid" before this call runs.
   maybeFetchRemoteRules(_remoteRulesDeps());
   // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
   migrateLegacyProxyPref().catch(() => {});
@@ -2381,10 +2421,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 
   if (details.reason === "install") {
-    const installPrefs = await getPrefs();
-    if (shouldOpenOnboarding(installPrefs)) {
-      await openOnboardingOnce();
-    }
+    // Non-blocking informational welcome tab (Phase 1 browsewrap): always
+    // opens on a fresh install — consent is already implicit, so this is a
+    // notice the user can read and close, not a gate they must act on.
+    await openOnboardingOnce();
   }
 });
 

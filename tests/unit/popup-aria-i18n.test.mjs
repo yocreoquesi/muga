@@ -9,8 +9,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
-import { TRANSLATIONS, SUPPORTED_LANGS } from "../../src/lib/i18n.js";
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
 const POPUP_HTML = readFileSync(join(ROOT, "src/popup/popup.html"), "utf8");
@@ -19,32 +17,25 @@ const POPUP_CSS = readFileSync(join(ROOT, "src/popup/popup.css"), "utf8");
 const ONBOARD_HTML = readFileSync(join(ROOT, "src/onboarding/onboarding.html"), "utf8");
 const ONBOARD_CSS = readFileSync(join(ROOT, "src/onboarding/onboarding.css"), "utf8");
 
-// ── #931.1 — consent-gate modal aria-label is i18n ─────────────────────────
+// ── browsewrap Phase 1 — the consent-gate modal is gone entirely ──────────
+//
+// #931.1 used to verify the consent-gate modal's aria-label was i18n-driven.
+// Phase 1 removed the consent-gate overlay itself (popup.js no longer blocks
+// on onboardingDone), so there is no gate element left to label. These tests
+// guard the removal instead — the aria_consent_gate/consent_gate_msg/
+// consent_gate_btn translation keys are left in place (unused, retired for a
+// future Phase 3 cleanup) but must not be wired to any live DOM element.
 
-describe("#931 — consent-gate modal aria-label is i18n-driven", () => {
-  test("popup.js no longer hardcodes the English consent-gate aria-label", () => {
+describe("browsewrap Phase 1 — consent-gate modal removed from popup.js", () => {
+  test("popup.js no longer creates a consent-gate element at all", () => {
     assert.ok(
-      !POPUP_JS.includes('gate.setAttribute("aria-label", "MUGA consent required")'),
-      "popup.js must not hardcode the consent-gate aria-label string",
+      !/gate\.setAttribute\(/.test(POPUP_JS),
+      "popup.js must not build a consent-gate element — the popup is never blocked",
     );
-  });
-
-  test('popup.js sets the consent-gate aria-label via t("aria_consent_gate")', () => {
     assert.ok(
-      /gate\.setAttribute\(\s*["']aria-label["']\s*,\s*t\(\s*["']aria_consent_gate["']/.test(POPUP_JS),
-      "popup.js must resolve the consent-gate aria-label through t(\"aria_consent_gate\", lang)",
+      !POPUP_JS.includes('t("aria_consent_gate"'),
+      "popup.js must not resolve aria_consent_gate — the consent-gate modal no longer exists",
     );
-  });
-
-  test("aria_consent_gate key exists and covers all SUPPORTED_LANGS", () => {
-    const entry = TRANSLATIONS.aria_consent_gate;
-    assert.ok(entry, "TRANSLATIONS.aria_consent_gate must exist");
-    for (const { code } of SUPPORTED_LANGS) {
-      assert.ok(
-        typeof entry[code] === "string" && entry[code].length > 0,
-        `aria_consent_gate is missing a non-empty "${code}" value`,
-      );
-    }
   });
 });
 

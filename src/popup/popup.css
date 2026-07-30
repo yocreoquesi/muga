@@ -704,45 +704,6 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   border: 0;
 }
 
-/* ---------- Consent gate ------------------------------------------------- */
-.consent-gate {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 36px 24px;
-  text-align: center;
-  min-height: 220px;
-  background: var(--surface-1);
-}
-.consent-gate-logo {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  color: var(--accent-strong);
-}
-.consent-gate-msg {
-  font-size: 13px;
-  color: var(--text-2);
-  line-height: 1.55;
-  margin-bottom: 20px;
-  max-width: 280px;
-}
-.consent-gate-btn {
-  background: var(--accent-strong);
-  color: var(--on-accent);
-  border: 1px solid var(--accent-strong);
-  border-radius: var(--r-md);
-  padding: 9px 22px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: filter var(--dur) var(--ease);
-}
-.consent-gate-btn:hover { filter: brightness(1.08); }
-
 /* ---------- Param breakdown ---------------------------------------------- */
 .preview-breakdown {
   margin-top: 8px;

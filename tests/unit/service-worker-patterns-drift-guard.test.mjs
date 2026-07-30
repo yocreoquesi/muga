@@ -59,7 +59,14 @@ const PATTERNS_TEST_PATH = join(
 // content-script gate they fed no longer exists) and the one Tier2 sibling
 // on-wake wiring guard (the Tier2 fetch pipeline and its describe block
 // were removed alongside the deleted src/lib/remote-tier2-rules.js).
-const MAX_SOURCE_STRING_ASSERTIONS = 72;
+// 72 → 73 (browsewrap Phase 1, implicit-accept-on-install): added ONE
+// source-string extraction (a single swSource.match() assigned to `region`,
+// a non-Source-suffixed name so downstream assertions on it are free)
+// pinning that recordImplicitAcceptOnInstall exists, is gated on
+// details.reason === "install", and openOnboardingOnce() still fires
+// unconditionally on install. The fresh/update/existing-user branching
+// itself is covered behaviorally via a pure onInstalledConsentGate() mirror.
+const MAX_SOURCE_STRING_ASSERTIONS = 73;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 

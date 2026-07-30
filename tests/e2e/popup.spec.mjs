@@ -86,3 +86,19 @@ test.describe("Popup", () => {
     await expect(page.locator("#preview")).toBeHidden();
   });
 });
+
+test.describe("Popup — browsewrap Phase 1: never blocked by a consent gate", () => {
+  test("popup renders normally on a fresh install, before any onboarding tab interaction", async ({ context, extensionId }) => {
+    // Fresh install: the service worker's implicit-accept-on-install already
+    // wrote onboardingDone:true before this test runs (no clearAll/reset
+    // here — this deliberately exercises the real fresh-install state). The
+    // popup must render its normal UI, never the old consent-gate overlay.
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.locator(".consent-gate")).toHaveCount(0);
+    await expect(page.locator("#enabled-toggle")).toBeAttached();
+    await page.close();
+  });
+});
