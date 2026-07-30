@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_feat2_desc: "Ogni deviazione che il web aggiunge tra te e la pagina che volevi viene corretta localmente, nel tuo browser.",
   ob_feat3_title: "Gli URL ripuliti sono più corti, più belli e sicuri da condividere",
   ob_feat3_desc: "A volte riesci a malapena a capire dove porta un link con tutto quel rumore attaccato. Clic destro su qualsiasi link per copiarlo pulito, silenzioso e onesto.",
-  ob_tos_label: "Ho letto e accetto i <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Termini di utilizzo</a> e l'<a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Informativa sulla privacy</a><small class=\"tos-required-hint\">Obbligatorio per continuare</small>",
+  ob_tos_label: "Ho letto e accetto i <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Termini di utilizzo</a> e l'<a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Informativa sulla privacy</a>",
   ob_feedback_note: "<strong>Creato imparando dagli errori.</strong> MUGA è cresciuto attraverso molte iterazioni e non sarà perfetto. Se trovi un link pulito male, un referral che non avrebbe dovuto toccare o qualcosa di strano, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">faccelo sapere</a>. Domande, idee e segnalazioni di bug sono davvero benvenute e guidano dove andrà MUGA.",
   ob_cta_btn: "Attiva MUGA",
   ob_reonboard_delta_title: "Alcune clausole sono state aggiunte dall'ultima volta che hai accettato",

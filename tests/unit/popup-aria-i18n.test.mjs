@@ -23,8 +23,8 @@ const ONBOARD_CSS = readFileSync(join(ROOT, "src/onboarding/onboarding.css"), "u
 // Phase 1 removed the consent-gate overlay itself (popup.js no longer blocks
 // on onboardingDone), so there is no gate element left to label. These tests
 // guard the removal instead — the aria_consent_gate/consent_gate_msg/
-// consent_gate_btn translation keys are left in place (unused, retired for a
-// future Phase 3 cleanup) but must not be wired to any live DOM element.
+// consent_gate_btn translation keys were deleted from all locales in the same
+// change, so no live DOM element must reference them.
 
 describe("browsewrap Phase 1 — consent-gate modal removed from popup.js", () => {
   test("popup.js no longer creates a consent-gate element at all", () => {

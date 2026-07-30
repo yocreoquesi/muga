@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_feat2_desc: "ウェブがあなたと目的ページの間に加えるすべての寄り道を、ブラウザ内でローカルに解消します。",
   ob_feat3_title: "クリーンなURLはより短く、より美しく、安全に共有できます",
   ob_feat3_desc: "ノイズだらけでリンクの行き先がほとんどわからないことがあります。任意のリンクを右クリックしてクリーンにコピー。静かで正直。",
-  ob_tos_label: "<a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">利用規約</a>と<a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">プライバシーポリシー</a>を読み、同意しました<small class=\"tos-required-hint\">続行するには必須</small>",
+  ob_tos_label: "<a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">利用規約</a>と<a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">プライバシーポリシー</a>を読み、同意しました",
   ob_feedback_note: "<strong>失敗から学んで作られました。</strong>MUGAは何度も改良を重ねて成長してきましたが、完璧ではありません。誤って処理されたリンク、触れるべきでなかったリファラル、または何かおかしな点を見つけたら、<a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">お知らせください</a>。質問、アイデア、バグ報告は大歓迎で、MUGAの今後を形づくります。",
   ob_cta_btn: "MUGAを有効にする",
   ob_reonboard_delta_title: "前回の同意以降、いくつかの条項が追加されました",

@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_feat2_desc: "Jeder Umweg, den das Web zwischen dich und die gewünschte Seite einfügt, wird lokal in deinem Browser begradigt.",
   ob_feat3_title: "Saubere URLs sind kürzer, schöner und sicher zum Teilen",
   ob_feat3_desc: "Manchmal kann man kaum erkennen, wohin ein Link führt, mit all dem Rauschen dran. Klicke mit rechts auf jeden Link, um ihn sauber zu kopieren, ruhig und ehrlich.",
-  ob_tos_label: "Ich habe die <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Nutzungsbedingungen</a> und die <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Datenschutzrichtlinie</a> gelesen und akzeptiert<small class=\"tos-required-hint\">Erforderlich zum Fortfahren</small>",
+  ob_tos_label: "Ich habe die <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Nutzungsbedingungen</a> und die <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Datenschutzrichtlinie</a> gelesen und akzeptiert",
   ob_feedback_note: "<strong>Entstanden durch das Lernen aus Fehlern.</strong> MUGA ist über viele Iterationen gewachsen und wird nicht perfekt sein. Wenn du einen Link findest, den es falsch bereinigt hat, ein Referral, das es nicht hätte berühren sollen, oder irgendetwas Seltsames, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">sag uns Bescheid</a>. Fragen, Ideen und Fehlerberichte sind wirklich willkommen und prägen, wohin sich MUGA entwickelt.",
   ob_cta_btn: "MUGA aktivieren",
   ob_reonboard_delta_title: "Seit deiner letzten Zustimmung wurden einige Klauseln ergänzt",

@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_feat2_desc: "Every detour the web adds between you and the page you wanted is straightened out, locally, inside your browser.",
   ob_feat3_title: "Clean URLs are shorter, prettier, and safe to share",
   ob_feat3_desc: "Sometimes you can barely tell where a link goes with all the noise attached. Right-click any link to copy it clean, quiet and honest.",
-  ob_tos_label: "I have read and accept the <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Terms of use</a> and <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Privacy policy</a><small class=\"tos-required-hint\">Required to continue</small>",
+  ob_tos_label: "I have read and accept the <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Terms of use</a> and <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Privacy policy</a>",
   ob_feedback_note: "<strong>Built by learning from mistakes.</strong> MUGA grew through many iterations, and it won't be perfect. If you find a link it cleaned wrong, a referral it shouldn't have touched, or anything that feels off, please <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">let us know</a>. Questions, ideas, and bug reports are genuinely welcome, and they shape where MUGA goes next.",
   ob_cta_btn: "Activate MUGA",
   ob_reonboard_delta_title: "A few terms have been added since you last accepted",
