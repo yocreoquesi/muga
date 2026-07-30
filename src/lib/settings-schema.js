@@ -13,9 +13,13 @@
  *
  * Regression coverage this module exists to protect (see
  * tests/unit/settings-schema.test.mjs):
- *   - #964: followShortenersEnabled must never be handed back in `toSave`.
- *     It is permission-gated and the permission check requires chrome APIs,
- *     so planImport only reports the raw request via `special`.
+ *   - #964 / browsewrap Phase 2: resolveShortenersOnClick/OnHover must never
+ *     be handed back in `toSave`. Both are permission-gated and the
+ *     permission check requires chrome APIs, so planImport only reports the
+ *     raw request via `special` for each. (The single followShortenersEnabled
+ *     pref this split replaces is retired; a legacy backup carrying it
+ *     imports cleanly with the key simply ignored — same precedent as
+ *     cookieConsentMode below.)
  *   - #968: toastDuration/experimentalParamClassesEnabled/honorCreatorMode/
  *     creatorAllowlist must round-trip through export + import.
  *
@@ -83,11 +87,12 @@ const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noi
  *   - "language"        — validated against SUPPORTED_LANGS
  *   - "creatorAllowlist" — folded through addCreatorAllowlistEntry
  *   - "customRulesList"  — userCustomRules, filtered via isValidCustomParam + capped
- *   - "permissionGated"  — followShortenersEnabled / remoteRulesEnabled: each
- *                          requires an optional host-permission grant that
- *                          cannot happen inside this pure module, so they are
- *                          kept OUT of toSave and reported via `special` for
- *                          options.js to gate against chrome.permissions
+ *   - "permissionGated"  — resolveShortenersOnClick / resolveShortenersOnHover
+ *                          / remoteRulesEnabled: each requires an optional
+ *                          host-permission grant that cannot happen inside
+ *                          this pure module, so they are kept OUT of toSave
+ *                          and reported via `special` for options.js to gate
+ *                          against chrome.permissions
  *   - "local"            — devMode: chrome.storage.local, not a synced pref
  *
  * `guarded: true` marks prefs that also appear in GUARDED_PREFS
@@ -127,7 +132,15 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "showReportButton", kind: "boolean", label: "row_show_report_button_label" },
   { key: "domainStats", kind: "boolean", label: "row_domain_stats_label" },
   { key: "showBadge", kind: "boolean", label: "row_show_badge_label" },
-  { key: "followShortenersEnabled", kind: "permissionGated", label: "follow_shorteners_section_title" },
+  // browsewrap Phase 2: the single followShortenersEnabled permission-gated
+  // pref (#964) is split into two independently-gated prefs — click-time
+  // resolution (resolveShortenersOnClick) and hover/proactive resolution
+  // (resolveShortenersOnHover). Both keep the exact same "permissionGated"
+  // treatment: neither can enter `toSave` from this pure module (the host
+  // permission check needs chrome.permissions, which this module cannot
+  // call) — options.js resolves each independently via `special`.
+  { key: "resolveShortenersOnClick", kind: "permissionGated", label: "resolve_on_click_label" },
+  { key: "resolveShortenersOnHover", kind: "permissionGated", label: "resolve_on_hover_label" },
   { key: "remoteRulesEnabled", kind: "permissionGated", guarded: true, label: "optionsRemoteRulesTitle" },
   { key: "canonicalExtractorEnabled", kind: "boolean", label: "row_canonical_extractor_label" },
   { key: "crossSiteFrequencyEnabled", kind: "boolean", label: "row_cross_site_frequency_label" },
@@ -318,18 +331,26 @@ export function planImport(data) {
     ok: true,
     toSave,
     special: {
-      // #964: the raw request only. Whether it actually lands as `true` on
-      // save depends on chrome.permissions.contains(), which this pure
-      // module cannot call — options.js resolves that and merges the
-      // result into its own toSave before calling setPrefs().
+      // #964 / browsewrap Phase 2: the raw request only, for EACH of the two
+      // independently-gated shortener-resolution prefs. Whether either
+      // actually lands as `true` on save depends on
+      // chrome.permissions.contains(), which this pure module cannot call —
+      // options.js resolves that and merges the result into its own toSave
+      // before calling setPrefs().
       //
-      // `followShortenersProvided` distinguishes "file carries the key as a
-      // real boolean" (write it, gated) from "absent" (leave the stored value
-      // untouched). options.js branches on THIS, not on the raw `data`, so the
-      // decision stays derived from the migrated payload — if a future
-      // migrate() rewrites the field, the gate follows it automatically.
-      followShortenersProvided: typeof migrated.followShortenersEnabled === "boolean",
-      followShortenersRequested: migrated.followShortenersEnabled === true,
+      // `resolveOnClick/HoverProvided` distinguishes "file carries the key as
+      // a real boolean" (write it, gated) from "absent" (leave the stored
+      // value untouched). options.js branches on THIS, not on the raw
+      // `data`, so the decision stays derived from the migrated payload — if
+      // a future migrate() rewrites the field, the gate follows it
+      // automatically. A legacy backup carrying only the retired
+      // followShortenersEnabled key is simply ignored here (not read,
+      // neither toSave nor special) — same precedent as the removed
+      // cookieConsentMode key.
+      resolveOnClickProvided: typeof migrated.resolveShortenersOnClick === "boolean",
+      resolveOnClickRequested: migrated.resolveShortenersOnClick === true,
+      resolveOnHoverProvided: typeof migrated.resolveShortenersOnHover === "boolean",
+      resolveOnHoverRequested: migrated.resolveShortenersOnHover === true,
       // remoteRulesEnabled is likewise permission-gated (optional host grant for
       // rules.muga.app) AND guarded (per-device override). options.js enables it
       // only when the grant is already present, then reconciles the override to

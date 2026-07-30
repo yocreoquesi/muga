@@ -16,7 +16,7 @@
 export { PREF_DEFAULTS, getPrefs, setPrefs } from "./prefs.js";
 
 // ── Re-exports: one-time migrations ──────────────────────────────────────────
-export { migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate } from "./storage-migrations.js";
+export { migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, migrateFollowShortenersSplit } from "./storage-migrations.js";
 
 // ── Firefox MV2 compat: chrome.* APIs must return Promises ──────────────────
 //

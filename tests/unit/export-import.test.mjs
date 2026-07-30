@@ -435,22 +435,31 @@ describe("import/export hardening (#964/#965/#968)", () => {
     assert.deepStrictEqual(plan.toSave.creatorAllowlist, ["youtube.com/@example"]);
   });
 
-  // #964 — permission-gate bypass
-  test("41. followShortenersEnabled is NOT included in toSave; only surfaced via special", () => {
-    const plan = planImport(validImportData({ followShortenersEnabled: true }));
-    assert.strictEqual(plan.toSave.followShortenersEnabled, undefined, "followShortenersEnabled must never be in toSave (pure module cannot check permissions)");
-    assert.strictEqual(plan.special.followShortenersRequested, true);
+  // #964 — permission-gate bypass, split in browsewrap Phase 2 into two
+  // independently-gated prefs: resolveShortenersOnClick / resolveShortenersOnHover.
+  test("41. resolveShortenersOnClick/OnHover are NOT included in toSave; only surfaced via special", () => {
+    const plan = planImport(validImportData({ resolveShortenersOnClick: true, resolveShortenersOnHover: true }));
+    assert.strictEqual(plan.toSave.resolveShortenersOnClick, undefined, "resolveShortenersOnClick must never be in toSave (pure module cannot check permissions)");
+    assert.strictEqual(plan.toSave.resolveShortenersOnHover, undefined, "resolveShortenersOnHover must never be in toSave (pure module cannot check permissions)");
+    assert.strictEqual(plan.special.resolveOnClickRequested, true);
+    assert.strictEqual(plan.special.resolveOnHoverRequested, true);
 
-    const planFalse = planImport(validImportData({ followShortenersEnabled: false }));
-    assert.strictEqual(planFalse.special.followShortenersRequested, false);
+    const planFalse = planImport(validImportData({ resolveShortenersOnClick: false, resolveShortenersOnHover: false }));
+    assert.strictEqual(planFalse.special.resolveOnClickRequested, false);
+    assert.strictEqual(planFalse.special.resolveOnHoverRequested, false);
 
     const planMissing = planImport(validImportData({}));
-    assert.strictEqual(planMissing.special.followShortenersRequested, false);
+    assert.strictEqual(planMissing.special.resolveOnClickRequested, false);
+    assert.strictEqual(planMissing.special.resolveOnHoverRequested, false);
 
     // The actual host-permission gate stays in options.js.
     assert.ok(
-      /followShortenersRequested\s*&&\s*\(await hasShortenerPermissions\(\)\)/.test(OPTIONS_SOURCE),
-      "options.js must only enable followShortenersEnabled when the host grant is present"
+      /resolveOnClickRequested\s*&&\s*\(await hasShortenerPermissions\(\)\)/.test(OPTIONS_SOURCE),
+      "options.js must only enable resolveShortenersOnClick when the host grant is present"
+    );
+    assert.ok(
+      /resolveOnHoverRequested\s*&&\s*\(await hasShortenerPermissions\(\)\)/.test(OPTIONS_SOURCE),
+      "options.js must only enable resolveShortenersOnHover when the host grant is present"
     );
     assert.ok(
       OPTIONS_SOURCE.includes("chrome.permissions.contains"),

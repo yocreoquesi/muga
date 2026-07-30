@@ -319,3 +319,69 @@ export async function migrateDropCookieConsent() {
     // Migration is best-effort — a failure here must never break startup.
   }
 }
+
+/**
+ * One-time migration (browsewrap Phase 2, shortener click/hover split):
+ * replaces the single `followShortenersEnabled` pref with two independently
+ * gated prefs — `resolveShortenersOnClick` (new default true) and
+ * `resolveShortenersOnHover` (new default false, opt-in) — then removes the
+ * retired key. Safe to call on every startup.
+ *
+ * Maps the user's EXPLICIT prior intent, using a bare read (no default) to
+ * distinguish "explicitly stored" from "never stored" — the same
+ * explicit-vs-auto-default detection prefs.js's getPrefs() used to perform
+ * for the now-retired browser-aware default:
+ *   - explicitly `true`  → the user had opted into shortener resolution;
+ *     preserve that intent on BOTH new prefs (click AND hover become true).
+ *   - explicitly `false` → the user had explicitly opted out; preserve that
+ *     on both (click AND hover become false).
+ *   - never stored (the old browser-computed auto-default only, which is
+ *     indistinguishable from "absent" in storage) → nothing to preserve;
+ *     no write — the new prefs' own defaults (click true, hover false)
+ *     simply apply.
+ *
+ * Read-first, write-only-if-needed (mirrors migrateLegacyProxyPref): the old
+ * key is removed unconditionally once present; a write to the new keys only
+ * happens for the two explicit branches above.
+ *
+ * Fail-safe: wrapped in try/catch — a storage error must never throw out to
+ * the caller or break startup.
+ */
+export async function migrateFollowShortenersSplit() {
+  try {
+    const data = await new Promise((resolve, reject) =>
+      chrome.storage.sync.get({ followShortenersEnabled: null }, (result) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(result);
+      })
+    ).catch(() => ({ followShortenersEnabled: null }));
+
+    if (data.followShortenersEnabled === null) return; // never explicitly stored — nothing to migrate
+
+    const updates = {};
+    if (data.followShortenersEnabled === true) {
+      updates.resolveShortenersOnClick = true;
+      updates.resolveShortenersOnHover = true;
+    } else if (data.followShortenersEnabled === false) {
+      updates.resolveShortenersOnClick = false;
+      updates.resolveShortenersOnHover = false;
+    }
+    if (Object.keys(updates).length > 0) {
+      await new Promise((resolve, reject) =>
+        chrome.storage.sync.set(updates, () => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve();
+        })
+      );
+    }
+    // Remove the deprecated key.
+    await new Promise((resolve) =>
+      chrome.storage.sync.remove("followShortenersEnabled", () => {
+        void chrome.runtime.lastError; // non-critical
+        resolve();
+      })
+    );
+  } catch {
+    // Migration is best-effort — a failure here must never break startup.
+  }
+}

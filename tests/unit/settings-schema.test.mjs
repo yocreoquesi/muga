@@ -54,7 +54,8 @@ const SAMPLE_PREFS = {
   showReportButton: true,
   domainStats: true,
   showBadge: true,
-  followShortenersEnabled: true,
+  resolveShortenersOnClick: true,
+  resolveShortenersOnHover: false,
   remoteRulesEnabled: true,
   canonicalExtractorEnabled: true,
   crossSiteFrequencyEnabled: true,
@@ -91,6 +92,8 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
     assert.ok(!BOOLEAN_KEYS.includes("followShortenersEnabled"));
+    assert.ok(!BOOLEAN_KEYS.includes("resolveShortenersOnClick"));
+    assert.ok(!BOOLEAN_KEYS.includes("resolveShortenersOnHover"));
     assert.ok(!BOOLEAN_KEYS.includes("remoteRulesEnabled"));
     assert.ok(!BOOLEAN_KEYS.includes("devMode"));
   });
@@ -297,27 +300,62 @@ describe("planImport — full round-trip of every field", () => {
   });
 });
 
-describe("planImport — #964 followShortenersEnabled permission gate", () => {
-  test("followShortenersEnabled never appears in toSave — pure module cannot check permissions", () => {
-    const plan = planImport(validImportData({ followShortenersEnabled: true }));
-    assert.strictEqual(plan.toSave.followShortenersEnabled, undefined);
+describe("planImport — browsewrap Phase 2: resolveShortenersOnClick/OnHover permission gate", () => {
+  // #964's original followShortenersEnabled permission gate is split into
+  // two independently-gated prefs (browsewrap Phase 2). Both keep the exact
+  // same shape: never appear in toSave (a pure module cannot check
+  // chrome.permissions), only surfaced via `special` for options.js to gate.
+  test("resolveShortenersOnClick never appears in toSave — pure module cannot check permissions", () => {
+    const plan = planImport(validImportData({ resolveShortenersOnClick: true }));
+    assert.strictEqual(plan.toSave.resolveShortenersOnClick, undefined);
   });
 
-  test("special.followShortenersRequested reflects the raw imported value", () => {
-    assert.strictEqual(planImport(validImportData({ followShortenersEnabled: true })).special.followShortenersRequested, true);
-    assert.strictEqual(planImport(validImportData({ followShortenersEnabled: false })).special.followShortenersRequested, false);
-    assert.strictEqual(planImport(validImportData({})).special.followShortenersRequested, false);
-    assert.strictEqual(planImport(validImportData({ followShortenersEnabled: "true" })).special.followShortenersRequested, false, "non-boolean truthy values must not be treated as a request");
+  test("resolveShortenersOnHover never appears in toSave — pure module cannot check permissions", () => {
+    const plan = planImport(validImportData({ resolveShortenersOnHover: true }));
+    assert.strictEqual(plan.toSave.resolveShortenersOnHover, undefined);
   });
 
-  // options.js branches on followShortenersProvided (not raw data) to tell
+  test("special.resolveOnClickRequested reflects the raw imported value", () => {
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnClick: true })).special.resolveOnClickRequested, true);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnClick: false })).special.resolveOnClickRequested, false);
+    assert.strictEqual(planImport(validImportData({})).special.resolveOnClickRequested, false);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnClick: "true" })).special.resolveOnClickRequested, false, "non-boolean truthy values must not be treated as a request");
+  });
+
+  test("special.resolveOnHoverRequested reflects the raw imported value", () => {
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnHover: true })).special.resolveOnHoverRequested, true);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnHover: false })).special.resolveOnHoverRequested, false);
+    assert.strictEqual(planImport(validImportData({})).special.resolveOnHoverRequested, false);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnHover: "true" })).special.resolveOnHoverRequested, false, "non-boolean truthy values must not be treated as a request");
+  });
+
+  // options.js branches on the *Provided fields (not raw data) to tell
   // "present as false" (write false) apart from "absent" (leave untouched),
   // keeping the gate derived from the migrated plan.
-  test("special.followShortenersProvided is true only for a real boolean, false for absent/non-boolean", () => {
-    assert.strictEqual(planImport(validImportData({ followShortenersEnabled: true })).special.followShortenersProvided, true);
-    assert.strictEqual(planImport(validImportData({ followShortenersEnabled: false })).special.followShortenersProvided, true);
-    assert.strictEqual(planImport(validImportData({})).special.followShortenersProvided, false);
-    assert.strictEqual(planImport(validImportData({ followShortenersEnabled: "true" })).special.followShortenersProvided, false);
+  test("special.resolveOnClickProvided is true only for a real boolean, false for absent/non-boolean", () => {
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnClick: true })).special.resolveOnClickProvided, true);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnClick: false })).special.resolveOnClickProvided, true);
+    assert.strictEqual(planImport(validImportData({})).special.resolveOnClickProvided, false);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnClick: "true" })).special.resolveOnClickProvided, false);
+  });
+
+  test("special.resolveOnHoverProvided is true only for a real boolean, false for absent/non-boolean", () => {
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnHover: true })).special.resolveOnHoverProvided, true);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnHover: false })).special.resolveOnHoverProvided, true);
+    assert.strictEqual(planImport(validImportData({})).special.resolveOnHoverProvided, false);
+    assert.strictEqual(planImport(validImportData({ resolveShortenersOnHover: "true" })).special.resolveOnHoverProvided, false);
+  });
+
+  test("a legacy backup carrying only the retired followShortenersEnabled key imports cleanly (key ignored)", () => {
+    // Mirrors the cookieConsentMode-ignored-on-import precedent: an old key
+    // no longer described by SETTINGS_FIELDS is simply not read by planImport
+    // — it neither lands in toSave nor surfaces in `special`, and the import
+    // does not fail.
+    const plan = planImport(validImportData({ followShortenersEnabled: true }));
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.followShortenersEnabled, undefined);
+    assert.strictEqual(plan.special.followShortenersRequested, undefined);
+    assert.strictEqual(plan.special.followShortenersProvided, undefined);
   });
 });
 

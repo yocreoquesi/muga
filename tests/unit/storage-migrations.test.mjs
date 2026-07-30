@@ -294,3 +294,121 @@ describe("migrateDropCookieConsent", () => {
     await assert.doesNotReject(() => migrateDropCookieConsent());
   });
 });
+
+/**
+ * migrateFollowShortenersSplit (browsewrap Phase 2)
+ *
+ * Splits the single `followShortenersEnabled` pref into two independently
+ * gated prefs — `resolveShortenersOnClick` (new default true) and
+ * `resolveShortenersOnHover` (new default false, opt-in) — mapping the
+ * user's EXPLICIT prior intent (mirrors the explicit-vs-auto-default bare
+ * read prefs.js's getPrefs() used to do for the retired browser-aware
+ * default):
+ *
+ *   - explicit `true`  → both new prefs become `true` (preserve the intent:
+ *     the user opted into shortener resolution generally).
+ *   - explicit `false` → both new prefs become `false` (preserve the
+ *     explicit opt-out).
+ *   - never stored (browser-computed auto-default only, indistinguishable
+ *     from absent) → nothing to preserve; no write, the new prefs' own
+ *     defaults (click true / hover false) simply apply.
+ *
+ * The old key is removed once present, regardless of which branch fired.
+ */
+describe("migrateFollowShortenersSplit", () => {
+  let stores;
+
+  beforeEach(() => {
+    stores = installChromeStub();
+  });
+
+  test("explicit true → both resolveShortenersOnClick and resolveShortenersOnHover become true", async () => {
+    stores.syncStore.set("followShortenersEnabled", true);
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await migrateFollowShortenersSplit();
+
+    assert.equal(stores.syncStore.get("resolveShortenersOnClick"), true);
+    assert.equal(stores.syncStore.get("resolveShortenersOnHover"), true);
+    assert.equal(stores.syncStore.has("followShortenersEnabled"), false);
+  });
+
+  test("explicit false → both resolveShortenersOnClick and resolveShortenersOnHover become false", async () => {
+    stores.syncStore.set("followShortenersEnabled", false);
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await migrateFollowShortenersSplit();
+
+    assert.equal(stores.syncStore.get("resolveShortenersOnClick"), false);
+    assert.equal(stores.syncStore.get("resolveShortenersOnHover"), false);
+    assert.equal(stores.syncStore.has("followShortenersEnabled"), false);
+  });
+
+  test("never stored (absent) → no write, old key stays absent, new prefs untouched", async () => {
+    stores.syncStore.set("remoteRulesEnabled", true); // unrelated key present
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await migrateFollowShortenersSplit();
+
+    assert.equal(stores.syncStore.has("resolveShortenersOnClick"), false, "must not write a value — the new pref's own default applies");
+    assert.equal(stores.syncStore.has("resolveShortenersOnHover"), false, "must not write a value — the new pref's own default applies");
+    assert.equal(stores.syncStore.has("followShortenersEnabled"), false);
+  });
+
+  test("leaves unrelated sync keys untouched", async () => {
+    stores.syncStore.set("followShortenersEnabled", true);
+    stores.syncStore.set("language", "en");
+    stores.syncStore.set("remoteRulesEnabled", true);
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await migrateFollowShortenersSplit();
+
+    assert.equal(stores.syncStore.get("language"), "en");
+    assert.equal(stores.syncStore.get("remoteRulesEnabled"), true);
+  });
+
+  test("is idempotent — running twice is safe and has the same effect as running once", async () => {
+    stores.syncStore.set("followShortenersEnabled", true);
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await migrateFollowShortenersSplit();
+    await assert.doesNotReject(() => migrateFollowShortenersSplit());
+
+    assert.equal(stores.syncStore.get("resolveShortenersOnClick"), true);
+    assert.equal(stores.syncStore.get("resolveShortenersOnHover"), true);
+    assert.equal(stores.syncStore.has("followShortenersEnabled"), false);
+  });
+
+  test("reads first and issues NO writes when followShortenersEnabled is already absent (write-quota hygiene)", async () => {
+    stores.syncStore.set("remoteRulesEnabled", true);
+    let setCalls = 0;
+    let removeCalls = 0;
+    const realSet = globalThis.chrome.storage.sync.set;
+    const realRemove = globalThis.chrome.storage.sync.remove;
+    globalThis.chrome.storage.sync.set = (data, cb) => { setCalls += 1; return realSet(data, cb); };
+    globalThis.chrome.storage.sync.remove = (keys, cb) => { removeCalls += 1; return realRemove(keys, cb); };
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await migrateFollowShortenersSplit();
+
+    assert.equal(setCalls, 0, "set must not be called when followShortenersEnabled was never stored");
+    assert.equal(removeCalls, 0, "remove must not be called when the key is already absent");
+  });
+
+  test("never throws even if chrome.storage.sync.set/remove report lastError", async () => {
+    stores.syncStore.set("followShortenersEnabled", true);
+    globalThis.chrome.storage.sync.set = (data, cb) => {
+      globalThis.chrome.runtime.lastError = { message: "simulated set failure" };
+      cb && cb();
+      globalThis.chrome.runtime.lastError = null;
+    };
+    globalThis.chrome.storage.sync.remove = (keys, cb) => {
+      globalThis.chrome.runtime.lastError = { message: "simulated remove failure" };
+      cb && cb();
+      globalThis.chrome.runtime.lastError = null;
+    };
+
+    const { migrateFollowShortenersSplit } = await loadMigration();
+    await assert.doesNotReject(() => migrateFollowShortenersSplit());
+  });
+});

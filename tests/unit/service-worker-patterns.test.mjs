@@ -1011,3 +1011,74 @@ describe("browsewrap Phase 1 — implicit acceptance on fresh install", () => {
     );
   });
 });
+
+// ── browsewrap Phase 2: source-gated RESOLVE_SHORTENER defense-in-depth ──────
+//
+// followShortenersEnabled (one pref gating both click-time and hover
+// resolution) is retired in favour of resolveShortenersOnClick /
+// resolveShortenersOnHover. The RESOLVE_SHORTENER handler no longer trusts
+// the caller's own gate — it re-checks the matching pref itself based on a
+// `source: "click"|"hover"` field the caller must declare, so a buggy or
+// compromised content script cannot trigger hover-only egress by omitting
+// its own check (or by lying about which pref it already checked).
+//
+// Pure re-implementation of the handler's source-gate, mirroring the
+// onInstalledConsentGate() idiom above.
+
+/**
+ * Pure extraction of the RESOLVE_SHORTENER handler's source-based gate.
+ * Mirrors service-worker.js exactly: an unrecognized/absent `source` is
+ * always denied (fail-closed), never treated as either pref.
+ *
+ * @param {{resolveShortenersOnClick?: boolean, resolveShortenersOnHover?: boolean}} prefs
+ * @param {string} source - "click" | "hover" | anything else
+ * @returns {boolean} whether the fetch may proceed
+ */
+function resolveShortenerSourceGate(prefs, source) {
+  if (source === "click") return prefs.resolveShortenersOnClick === true;
+  if (source === "hover") return prefs.resolveShortenersOnHover === true;
+  return false;
+}
+
+describe("browsewrap Phase 2 — RESOLVE_SHORTENER source-gated defense-in-depth", () => {
+  test("a click-source request is allowed only when resolveShortenersOnClick is true", () => {
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: true, resolveShortenersOnHover: false }, "click"), true);
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: false, resolveShortenersOnHover: true }, "click"), false);
+  });
+
+  test("a hover-source request is allowed only when resolveShortenersOnHover is true", () => {
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: false, resolveShortenersOnHover: true }, "hover"), true);
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: true, resolveShortenersOnHover: false }, "hover"), false);
+  });
+
+  test("a hover-source request is refused even when only the click pref is on (no cross-gating)", () => {
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: true, resolveShortenersOnHover: false }, "hover"), false);
+  });
+
+  test("a click-source request is refused even when only the hover pref is on (no cross-gating)", () => {
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: false, resolveShortenersOnHover: true }, "click"), false);
+  });
+
+  test("an unrecognized or missing source is always denied (fail-closed)", () => {
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: true, resolveShortenersOnHover: true }, "navigation"), false);
+    assert.strictEqual(resolveShortenerSourceGate({ resolveShortenersOnClick: true, resolveShortenersOnHover: true }, undefined), false);
+  });
+
+  // Single source-string extraction (SW cannot be imported in Node — same
+  // constraint as the browsewrap Phase 1 guard above). Everything else in
+  // this describe block is behavioral (the pure resolveShortenerSourceGate
+  // mirror above); this is the ONE non-behavioral guard, pinning that
+  // production code actually implements the source-based re-check instead
+  // of trusting a single shared pref.
+  // Ratchet: ONE new source-string extraction added — baselines bumped by
+  // exactly 1 in service-worker-patterns-drift-guard.test.mjs (73 to 74)
+  // and source-grep-ratchet.test.mjs (78 to 79).
+  test("source guard: RESOLVE_SHORTENER handler re-checks the pref matching message.source", () => {
+    const region = swSource.match(/if \(message\.type === "RESOLVE_SHORTENER"\) \{[\s\S]{0,2000}/)?.[0] ?? "";
+    assert.ok(region.length > 0, "RESOLVE_SHORTENER handler must be defined in the service worker");
+    assert.ok(region.includes("message.source"), "handler must branch on message.source");
+    assert.ok(region.includes("resolveShortenersOnClick"), "handler must check resolveShortenersOnClick for the click source");
+    assert.ok(region.includes("resolveShortenersOnHover"), "handler must check resolveShortenersOnHover for the hover source");
+    assert.ok(!region.includes("followShortenersEnabled"), "the retired followShortenersEnabled pref must not be referenced");
+  });
+});
