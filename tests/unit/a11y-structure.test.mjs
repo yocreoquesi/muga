@@ -41,20 +41,18 @@ describe("<main> landmark present in all primary pages", () => {
   }
 });
 
-// ── Consent gate aria-describedby ─────────────────────────────────────────
+// ── Consent gate removed (browsewrap Phase 1) ─────────────────────────────
+//
+// popup.js used to render a consent-gate overlay with aria-describedby
+// wiring to its message paragraph. Phase 1 removed the overlay entirely —
+// the popup never blocks on onboardingDone — so there is no gate element
+// left to carry that wiring. Guard the removal instead.
 
-describe("Consent gate has aria-describedby pointing to the message paragraph", () => {
-  test("popup.js: sets aria-describedby on consent gate", () => {
+describe("browsewrap Phase 1 — no consent-gate overlay remains in popup.js", () => {
+  test("popup.js does not construct a consent-gate element", () => {
     assert.ok(
-      popupJs.includes('aria-describedby'),
-      'Consent gate in popup.js must have aria-describedby so screen readers announce the description'
-    );
-  });
-
-  test("popup.js: consent gate message paragraph has id='consent-gate-msg'", () => {
-    assert.ok(
-      popupJs.includes("consent-gate-msg"),
-      "The consent gate message <p> must have id='consent-gate-msg' to be referenced by aria-describedby"
+      !popupJs.includes("consent-gate"),
+      "popup.js must not reference a consent-gate element — the popup is never blocked"
     );
   });
 });

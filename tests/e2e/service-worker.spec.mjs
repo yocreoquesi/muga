@@ -77,7 +77,12 @@ test.describe("Service worker", () => {
     });
 
     expect(result).toBeDefined();
-    expect(result.cleanUrl).toBe("https://example.com?q=search&page=1");
+    // browsewrap Phase 1: a fresh install now auto-records implicit consent
+    // (onboardingDone:true), so this URL is genuinely run through
+    // processUrl() instead of being short-circuited by a closed consent
+    // gate. Same URL-constructor normalization as the "cleans a dirty URL"
+    // test above: example.com -> example.com/ (trailing slash), optional.
+    expect(result.cleanUrl).toMatch(/^https:\/\/example\.com\/?\?q=search&page=1$/);
     expect(result.removedTracking).toHaveLength(0);
 
     await page.close();

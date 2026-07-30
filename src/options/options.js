@@ -5,7 +5,6 @@
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
-import { getConsent } from "../lib/consent-storage.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -300,17 +299,10 @@ async function init() {
   let prefs;
   try { prefs = await getPrefs(); } catch (err) { console.error("[MUGA] load prefs:", err); prefs = { ...PREF_DEFAULTS }; }
 
-  // --- Consent gate: redirect to onboarding if user hasn't accepted ToS ---
-  // Consent fields moved out of chrome.storage.sync into chrome.storage.local
-  // in #355 (ADR-0001). Reading onboardingDone from sync silently returns
-  // the PREF_DEFAULTS false and bounced everyone back to onboarding even
-  // after a successful acceptance. Use the dedicated consent-storage read
-  // so the gate matches the popup + service-worker source of truth.
-  const consent = await getConsent();
-  if (!consent.onboardingDone) {
-    window.location.href = chrome.runtime.getURL("onboarding/onboarding.html");
-    return;
-  }
+  // browsewrap Phase 1: Settings is always accessible — no redirect to
+  // onboarding. A fresh install already records implicit acceptance (see
+  // service-worker.js recordImplicitAcceptOnInstall), so there is no
+  // onboardingDone state that would ever legitimately bounce a user here.
 
   bindToggle("notify", "notifyForeignAffiliate", prefs);
   bindToggle("strip-affiliates", "stripAllAffiliates", prefs);

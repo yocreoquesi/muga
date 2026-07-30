@@ -309,3 +309,18 @@ test.describe("Options — version", () => {
     expect(text).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
+
+test.describe("Options — browsewrap Phase 1: never redirects to onboarding", () => {
+  test("Settings renders normally on a fresh install, without visiting onboarding first", async ({ context, extensionId }) => {
+    // Fresh install: the service worker's implicit-accept-on-install already
+    // wrote onboardingDone:true before this test runs. Options must render
+    // its normal UI directly — no redirect to onboarding/onboarding.html.
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/options/options.html`);
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    expect(page.url()).toContain("/options/options.html");
+    expect(page.url()).not.toContain("/onboarding/");
+    await page.close();
+  });
+});

@@ -1,23 +1,46 @@
 /**
  * E2E: Onboarding flow
  *
- * Tests the first-run experience: ToS acceptance and storage persistence.
+ * browsewrap Phase 1: onboarding is a non-blocking informational welcome.
+ * Fresh-install acceptance is recorded implicitly by the service worker the
+ * moment MUGA is installed, so this page never needs to gate anything —
+ * it tests the informational welcome + non-blocking storage persistence.
  */
 
 import { test, expect } from "./fixtures.mjs";
 
 test.describe("Onboarding", () => {
-  test("start button is disabled until ToS is accepted", async ({ onboardingPage: page }) => {
+  test("start button is never disabled — checking or unchecking ToS has no effect on it", async ({ onboardingPage: page }) => {
     const startBtn = page.locator("#start-btn");
-    await expect(startBtn).toBeDisabled();
+    await expect(startBtn).toBeEnabled();
 
-    // Check ToS
+    // Check ToS — still enabled (was already enabled)
     await page.locator("#tos-check").check();
     await expect(startBtn).toBeEnabled();
 
-    // Uncheck ToS
+    // Uncheck ToS — still enabled (Phase 1 browsewrap: never gated)
     await page.locator("#tos-check").uncheck();
-    await expect(startBtn).toBeDisabled();
+    await expect(startBtn).toBeEnabled();
+  });
+
+  test("clicking start without checking the ToS box still completes onboarding", async ({ context, extensionId }) => {
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    // Do NOT check #tos-check — click Start directly.
+    await page.locator("#start-btn").click();
+    await page.waitForEvent("close", { timeout: 5000 }).catch(() => {});
+
+    const verifyPage = await context.newPage();
+    await verifyPage.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+    const consent = await verifyPage.evaluate(() =>
+      new Promise((resolve) => {
+        chrome.storage.local.get({ mugaConsent: {} }, (local) => resolve(local.mugaConsent || {}));
+      })
+    );
+    expect(consent.onboardingDone).toBe(true);
+    await verifyPage.close();
   });
 
   test("page renders with correct structure", async ({ onboardingPage: page }) => {

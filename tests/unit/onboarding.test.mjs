@@ -1,8 +1,13 @@
 /**
  * MUGA — Onboarding / Consent Gate Tests
  *
- * Verifies the extension does not function until the user accepts ToS and
- * that only one onboarding tab opens per background lifetime (dedup).
+ * browsewrap Phase 1: MUGA moved from a forced "Accept ToS" gate to implicit
+ * acceptance on install ("terms available + acceptance by use"). This file
+ * now verifies (a) the ~13 individual onboardingDone feature gates that
+ * remain as defense-in-depth (service-worker's handleProcessUrl, cleaner.js)
+ * still exist, (b) popup/options no longer hard-block on onboardingDone,
+ * and (c) only one onboarding tab opens per background lifetime (dedup) —
+ * the welcome tab is now informational, not a wall.
  */
 
 import { test, describe } from "node:test";
@@ -10,7 +15,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import { TRANSLATIONS } from "../../src/lib/i18n.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,9 +35,13 @@ const ONBOARDING_JS = readFileSync(
 );
 
 // ---------------------------------------------------------------------------
-// Consent gate: extension must not function until user accepts ToS
+// Consent gate: the ~13 individual onboardingDone feature gates remain as
+// defense-in-depth (untouched by browsewrap Phase 1 — an install now writes
+// onboardingDone:true immediately, so these gates pass in practice, but they
+// still exist as a safety net for an edge case where the implicit-accept
+// write somehow failed).
 // ---------------------------------------------------------------------------
-describe("Consent gate — onboardingDone enforcement", () => {
+describe("Consent gate — onboardingDone feature gates (defense-in-depth)", () => {
   // Service worker: handleProcessUrl must return untouched when !onboardingDone
   test("service-worker blocks URL processing when onboardingDone is false", () => {
     assert.ok(
@@ -47,30 +55,6 @@ describe("Consent gate — onboardingDone enforcement", () => {
     );
   });
 
-  // Popup: must check onboardingDone and show consent gate
-  test("popup.js checks onboardingDone before rendering", () => {
-    assert.ok(
-      POPUP_JS.includes("onboardingDone"),
-      "popup.js must check onboardingDone pref"
-    );
-    assert.ok(
-      POPUP_JS.includes("consent-gate"),
-      "popup.js must render a consent-gate element when onboarding not done"
-    );
-  });
-
-  // Options: must redirect to onboarding when !onboardingDone
-  test("options.js redirects to onboarding when consent not given", () => {
-    assert.ok(
-      OPTIONS_JS.includes("onboardingDone"),
-      "options.js must check onboardingDone pref"
-    );
-    assert.ok(
-      OPTIONS_JS.includes("onboarding/onboarding.html"),
-      "options.js must redirect to onboarding page"
-    );
-  });
-
   // Content script: must check onboardingDone for ping blocking
   test("cleaner.js checks onboardingDone before ping blocking", () => {
     assert.ok(
@@ -78,23 +62,40 @@ describe("Consent gate — onboardingDone enforcement", () => {
       "cleaner.js must check onboardingDone pref"
     );
   });
+});
 
-  // i18n: consent gate strings must exist in both languages
-  test("i18n has consent_gate_msg and consent_gate_btn in EN and ES", () => {
-    assert.ok(TRANSLATIONS.consent_gate_msg?.en, "consent_gate_msg must have EN translation");
-    assert.ok(TRANSLATIONS.consent_gate_msg?.es, "consent_gate_msg must have ES translation");
-    assert.ok(TRANSLATIONS.consent_gate_btn?.en, "consent_gate_btn must have EN translation");
-    assert.ok(TRANSLATIONS.consent_gate_btn?.es, "consent_gate_btn must have ES translation");
-  });
-
-  // Popup CSS: must have consent-gate styles
-  test("popup.css includes consent-gate styles", () => {
-    const popupCSS = readFileSync(
-      join(__dirname, "../../src/popup/popup.css"), "utf8"
+// ---------------------------------------------------------------------------
+// browsewrap Phase 1 — popup and options no longer hard-block on
+// onboardingDone. The consent-gate overlay (popup) and the onboarding
+// redirect (options) are gone; both surfaces render normally regardless of
+// onboarding state, since a fresh install already recorded implicit consent.
+// ---------------------------------------------------------------------------
+describe("browsewrap Phase 1 — popup is non-blocking", () => {
+  test("popup.js no longer renders a consent-gate overlay", () => {
+    assert.ok(
+      !POPUP_JS.includes("consent-gate"),
+      "popup.js must not render a consent-gate element — the popup is never blocked (Phase 1 browsewrap)"
     );
     assert.ok(
-      popupCSS.includes(".consent-gate"),
-      "popup.css must contain .consent-gate class"
+      !/if\s*\(\s*!prefsCheck\.onboardingDone\s*\)/.test(POPUP_JS),
+      "popup.js must not gate rendering on !prefsCheck.onboardingDone"
+    );
+  });
+});
+
+describe("browsewrap Phase 1 — options is non-blocking", () => {
+  test("options.js no longer redirects to onboarding", () => {
+    // Dev-tools keeps a legitimate "Show onboarding" button that opens the
+    // page in a NEW tab via chrome.tabs.create — that stays. What must be
+    // gone is the init-time consent-gate REDIRECT that replaced the whole
+    // page via window.location.href.
+    assert.ok(
+      !/window\.location\.href\s*=\s*chrome\.runtime\.getURL\(\s*["']onboarding\/onboarding\.html["']\s*\)/.test(OPTIONS_JS),
+      "options.js must not redirect (window.location.href) to the onboarding page — Settings is always accessible (Phase 1 browsewrap)"
+    );
+    assert.ok(
+      !OPTIONS_JS.includes("getConsent"),
+      "options.js must not import/call getConsent for a consent redirect (the gate was removed)"
     );
   });
 });
@@ -164,12 +165,17 @@ describe("#741 — onboarding consent write ordering", () => {
     assert.ok(!batch.includes("setConsent("), "setConsent must NOT be in the parallel pre-consent batch");
   });
 
-  test("save-error catch restores the gate via updateButton(), not the dead .disabled no-op", () => {
+  test("save-error catch does not use the dead .disabled no-op (Phase 1: no aria-disabled gate to restore)", () => {
     const catchIdx = ONBOARDING_JS.indexOf('t("ob_save_error"');
     assert.ok(catchIdx !== -1, "error path must exist");
     const tail = ONBOARDING_JS.slice(catchIdx, catchIdx + 500);
-    assert.ok(tail.includes("updateButton()"), "catch must re-sync the aria-disabled gate via updateButton()");
     assert.ok(!/startBtn\.disabled\s*=\s*false/.test(tail), "must not use the no-op startBtn.disabled = false");
+    // Phase 1 browsewrap: the button is never gated, so there is no
+    // updateButton()/aria-disabled state left to re-sync on a save error.
+    assert.ok(
+      !ONBOARDING_JS.includes("function updateButton("),
+      "updateButton() must not exist — the Start button is never gated (Phase 1 browsewrap)"
+    );
   });
 });
 
@@ -182,56 +188,64 @@ describe("#741 — onboarding consent write ordering", () => {
 // synced-affiliate-pref-guard.test.mjs and per-device-prefs.test.mjs.
 // ---------------------------------------------------------------------------
 
-describe("#728 item 25 — gated-CTA flash + aria-live announcement", () => {
+// ---------------------------------------------------------------------------
+// browsewrap Phase 1 — the gated-CTA flash (#728 item 25) was entirely a
+// mechanism for signaling "you must check the ToS box before this button
+// works". That requirement no longer exists: fresh-install consent is
+// implicit and the Start button is never disabled. These tests guard the
+// removal — flashTosGate, ob_cta_gated_msg wiring, the tosCheck-gated click
+// branch, and the aria-disabled attribute must all be gone.
+// ---------------------------------------------------------------------------
+describe("browsewrap Phase 1 — onboarding Start button is never gated", () => {
   const ONBOARDING_HTML = readFileSync(
     join(__dirname, "../../src/onboarding/onboarding.html"),
     "utf8",
   );
 
-  test("flashTosGate exists and re-triggers the flash animation", () => {
-    const fnIdx = ONBOARDING_JS.indexOf("function flashTosGate(");
-    assert.ok(fnIdx !== -1, "flashTosGate must exist in onboarding.js");
-    const body = ONBOARDING_JS.slice(fnIdx, fnIdx + 700);
+  test("flashTosGate no longer exists in onboarding.js", () => {
     assert.ok(
-      /classList\.remove\(\s*["']is-flashing["']\s*\)/.test(body),
-      "flashTosGate must remove is-flashing to reset the animation",
-    );
-    assert.ok(
-      /void\s+tosLabel\.offsetWidth/.test(body),
-      "flashTosGate must force a reflow so the flash re-triggers on consecutive clicks",
-    );
-    assert.ok(
-      /classList\.add\(\s*["']is-flashing["']\s*\)/.test(body),
-      "flashTosGate must add is-flashing to flash the gate",
+      !ONBOARDING_JS.includes("function flashTosGate("),
+      "flashTosGate must be removed — there is no ToS gate left to flash"
     );
   });
 
-  test("flashTosGate re-writes #cta-gated-msg on a tick so aria-live re-announces", () => {
-    const fnIdx = ONBOARDING_JS.indexOf("function flashTosGate(");
-    const body = ONBOARDING_JS.slice(fnIdx, fnIdx + 700);
+  test("onboarding.js no longer references ob_cta_gated_msg", () => {
     assert.ok(
-      /ctaGatedMsg\.textContent\s*=\s*""/.test(body),
-      "flashTosGate must clear #cta-gated-msg first",
-    );
-    assert.ok(
-      /setTimeout\([\s\S]{0,160}ctaGatedMsg\.textContent\s*=\s*t\(\s*["']ob_cta_gated_msg["']/.test(body),
-      "flashTosGate must re-write the gated message on a tick so a live region announces even when the text is unchanged",
+      !ONBOARDING_JS.includes("ob_cta_gated_msg"),
+      "the gated-CTA message key must no longer be written by onboarding.js"
     );
   });
 
-  test("#cta-gated-msg is an aria-live region in onboarding.html", () => {
-    const tagMatch = ONBOARDING_HTML.match(/<p[^>]+id="cta-gated-msg"[^>]*>/);
-    assert.ok(tagMatch, "#cta-gated-msg must exist as a <p>");
+  test("the start button click handler no longer branches on tosCheck.checked", () => {
     assert.ok(
-      /aria-live="polite"/.test(tagMatch[0]),
-      "#cta-gated-msg must be an aria-live=polite region for screen-reader announcement",
+      !/tosCheck/.test(ONBOARDING_JS),
+      "onboarding.js must not reference tosCheck at all — the button is never gated on it"
     );
   });
 
-  test("the start button's gated path triggers flashTosGate when ToS is unchecked", () => {
+  test("start-btn has no aria-disabled attribute in onboarding.html", () => {
+    const tagMatch = ONBOARDING_HTML.match(/<button[^>]+id="start-btn"[^>]*>/);
+    assert.ok(tagMatch, "#start-btn must exist");
     assert.ok(
-      /if\s*\(\s*!tosCheck\.checked\s*\)\s*\{[\s\S]{0,80}flashTosGate\(\)/.test(ONBOARDING_JS),
-      "an unchecked ToS on start-click must trigger flashTosGate()",
+      !/aria-disabled/.test(tagMatch[0]),
+      "#start-btn must not carry aria-disabled — it is never gated (Phase 1 browsewrap)"
+    );
+  });
+
+  test("onboarding.html no longer contains #cta-gated-msg", () => {
+    assert.ok(
+      !ONBOARDING_HTML.includes('id="cta-gated-msg"'),
+      "#cta-gated-msg must be removed along with flashTosGate"
+    );
+  });
+
+  test("the ToS checkbox and Terms/Privacy links stay visible (informational, not required)", () => {
+    assert.ok(ONBOARDING_HTML.includes('id="tos-check"'), "the ToS checkbox stays in the markup");
+    assert.ok(ONBOARDING_HTML.includes('href="../privacy/tos.html"'), "the Terms link stays visible");
+    assert.ok(ONBOARDING_HTML.includes('href="../privacy/privacy.html"'), "the Privacy link stays visible");
+    assert.ok(
+      !ONBOARDING_HTML.includes("tos-required-hint"),
+      "the 'Required to continue' hint must be removed — it is no longer accurate"
     );
   });
 });
