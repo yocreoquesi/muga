@@ -47,6 +47,9 @@ MUGA processes your URLs locally, inside your browser. No analytics, no telemetr
 Yours to control
 Turn cleaning on or off per site, add your own rules, and back up your settings whenever you like. And if you would rather keep MUGA on a shorter leash, your browser lets you limit which sites it runs on, from its own extensions settings. It is your browser. MUGA just tidies up after the trackers.
 
+Still working after the platform change
+Chrome retired its old extension platform, and add-ons that never moved across simply stopped running. MUGA is built on the current one, so it keeps cleaning your links without you having to think about it.
+
 Open source, and proud of it
 Every line is public on GitHub under the GPL v3 license. Want the technical detail, or just want to check we do what we say? Read it, audit it, fork it.
 
