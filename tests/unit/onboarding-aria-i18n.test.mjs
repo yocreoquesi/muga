@@ -52,7 +52,11 @@ describe("#930 — onboarding consent-gate checkbox aria-labels are i18n-driven"
     const keys = [];
     let m;
     while ((m = keyRe.exec(ONBOARDING_HTML)) !== null) keys.push(m[1]);
-    assert.ok(keys.length > 0, "expected at least one data-i18n-aria-label in onboarding.html");
+    // Zero is valid: the ToS checkbox was the page's only aria-labelled
+    // control and it went away with the acceptance step (acceptance is by use
+    // now, so there is nothing to tick). The loop below still guards any
+    // control added later, which is the reason to keep this rather than delete
+    // the file.
     for (const key of keys) {
       assert.ok(
         Object.prototype.hasOwnProperty.call(TRANSLATIONS, key),
@@ -77,9 +81,11 @@ describe("#930 — onboarding consent-gate checkbox aria-labels are i18n-driven"
     }
   });
 
-  const checkboxes = [
-    { id: "tos-check", key: "aria_onboarding_tos_check" },
-  ];
+  // The ToS checkbox (#tos-check / aria_onboarding_tos_check) used to be
+  // covered here. It gated nothing after browsewrap Phase 1 and was removed
+  // with the versioned-consent engine; a checkbox that records no decision is
+  // worse than none, because it implies one was asked for.
+  const checkboxes = [];
 
   for (const { id, key } of checkboxes) {
     test(`#${id} carries data-i18n-aria-label="${key}" and no literal aria-label`, () => {

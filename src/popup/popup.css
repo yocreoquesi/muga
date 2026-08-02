@@ -640,6 +640,27 @@ footer .footer-link-btn {
 footer a:hover,
 footer .footer-link-btn:hover { color: var(--accent-strong); }
 
+/* ---------- Legal links --------------------------------------------------- */
+/* Deliberately quieter than the footer above it: always present, never
+   competing with the actions. Availability is the point, not prominence. */
+.footer-legal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 8px;
+  background: var(--surface-1);
+}
+.footer-legal a {
+  font-size: 10.5px;
+  color: var(--text-2);
+  text-decoration: none;
+  opacity: 0.85;
+  transition: color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.footer-legal a:hover { color: var(--accent-strong); opacity: 1; }
+.footer-legal span { font-size: 10.5px; color: var(--text-2); opacity: 0.6; }
+
 /* ---------- Growth bar (rate / share) ----------------------------------- */
 .growth-bar {
   display: flex;
