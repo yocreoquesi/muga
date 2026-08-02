@@ -258,7 +258,7 @@ export default Object.freeze({
   ob_feat2_desc: "Chaque détour que le web ajoute entre vous et la page souhaitée est corrigé localement, dans votre navigateur.",
   ob_feat3_title: "Les URL nettoyées sont plus courtes, plus jolies et sûres à partager",
   ob_feat3_desc: "Parfois on devine à peine où mène un lien avec tout ce bruit accroché. Clic droit sur n'importe quel lien pour le copier propre, silencieux et honnête.",
-  ob_tos_note: "MUGA commence à nettoyer les URL dès son installation. En l'utilisant, vous acceptez les <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Conditions d'utilisation</a> et la <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Politique de confidentialité</a>.",
+  ob_tos_note: "MUGA commence à nettoyer les URL dès son installation. En l'installant ou en l'utilisant, vous acceptez les <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Conditions d'utilisation</a> et la <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Politique de confidentialité</a>.",
   ob_feedback_note: "<strong>Construit en apprenant de ses erreurs.</strong> MUGA a grandi au fil de nombreuses itérations et ne sera pas parfait. Si vous trouvez un lien mal nettoyé, un lien d'affiliation qu'il n'aurait pas dû toucher, ou quoi que ce soit d'étrange, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">dites-le-nous</a>. Les questions, idées et rapports de bugs sont vraiment les bienvenus et façonnent l'avenir de MUGA.",
   ob_cta_btn: "Activer MUGA",
   migration_accept: "Activer",

@@ -258,7 +258,7 @@ export default Object.freeze({
   ob_feat2_desc: "Cada desvío que la web pone entre tú y la página que querías se corrige localmente, dentro de tu navegador.",
   ob_feat3_title: "Las URLs limpias son más cortas, más bonitas y seguras para compartir",
   ob_feat3_desc: "A veces casi no puedes saber a dónde va un enlace con tanto ruido pegado. Clic derecho en cualquier enlace para copiarlo limpio, silencioso y honesto.",
-  ob_tos_note: "MUGA empieza a limpiar URLs en cuanto se instala. Al usarlo aceptas los <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Términos de uso</a> y la <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Política de privacidad</a>.",
+  ob_tos_note: "MUGA empieza a limpiar URLs en cuanto se instala. Al instalarlo o usarlo aceptas los <a href=\"../privacy/tos.html\" target=\"_blank\" rel=\"noopener noreferrer\">Términos de uso</a> y la <a href=\"../privacy/privacy.html\" target=\"_blank\" rel=\"noopener noreferrer\">Política de privacidad</a>.",
   ob_feedback_note: "<strong>Hecho aprendiendo de los errores.</strong> MUGA ha crecido a base de muchas iteraciones y no será perfecto. Si encuentras un enlace que limpió mal, un referido que no debería haber tocado o cualquier cosa rara, <a href=\"https://github.com/yocreoquesi/muga/issues\" target=\"_blank\" rel=\"noopener noreferrer\">cuéntanoslo</a>. Las preguntas, ideas y reportes de errores son muy bienvenidos y marcan hacia dónde va MUGA.",
   ob_cta_btn: "Activar MUGA",
   migration_accept: "Activar",
