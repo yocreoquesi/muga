@@ -1,11 +1,12 @@
-name: Moat expansion — weekly affiliate-param discovery
+name: Moat expansion — monthly affiliate-param discovery
 
 on:
   schedule:
-    # Sunday 06:00 UTC — 2 h after import-upstream (0 4 * * 0) so the two
-    # weekly jobs do not collide.  Off-peak arrival at the start of the
-    # maintainer's week.
-    - cron: "0 6 * * 0"
+    # 1st of the month, 06:00 UTC — 2 h after import-upstream (0 4 1 * *) so the
+    # two monthly jobs do not collide. Monthly rather than weekly: gap entries
+    # are only useful once triaged, and a weekly cadence re-reported the same
+    # untriaged backlog every run instead of surfacing new signal.
+    - cron: "0 6 1 * *"
   workflow_dispatch:
 
 permissions:
@@ -48,7 +49,7 @@ jobs:
 
       - name: Exit early if no new gaps
         if: steps.report.outputs.gap_count == '0'
-        run: echo "No new gaps found this week — moat is current. Exiting cleanly."
+        run: echo "No new gaps found this month — moat is current. Exiting cleanly."
 
       - name: Configure git for the bot commit
         if: steps.report.outputs.gap_count != '0'
@@ -88,7 +89,7 @@ jobs:
           REPORT_BODY=$(cat "$REPORT")
 
           BODY=$(cat <<EOF
-          Weekly automated moat-expansion diff against [ClearURLs data.min.json](https://gitlab.com/ClearURLs/Rules/-/raw/master/data.min.json) (LGPL-3.0, signals-not-copies).
+          Monthly automated moat-expansion diff against [ClearURLs data.min.json](https://gitlab.com/ClearURLs/Rules/-/raw/master/data.min.json) (LGPL-3.0, signals-not-copies).
 
           **Fetched at:** $DATE
           **Raw file:** quarantined in \`tools/moat-expansion/quarantine/\` (gitignored — not committed)

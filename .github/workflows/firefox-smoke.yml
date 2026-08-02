@@ -1,9 +1,12 @@
 name: Firefox Smoke
 
-# Real headless-Firefox smoke coverage for the Cookie Consent Minimizer's
-# Firefox-only wrappedJSObject reject path (#1128). Deterministic: every
-# fixture is a local HTTP page served by tests/e2e-firefox/helpers/local-server.mjs,
-# not a live site, so this CAN be a real merge gate.
+# Real headless-Firefox smoke coverage for the Firefox-only privacy paths that
+# a Chromium run cannot exercise: referer suppression and beacon blocking.
+# (Originally added for the cookie-consent minimizer's wrappedJSObject reject
+# path in #1128; that subsystem was removed, and these specs replaced it.)
+# Deterministic: every fixture is a local HTTP page served by
+# tests/e2e-firefox/helpers/local-server.mjs, not a live site, so this CAN be a
+# real merge gate.
 on:
   pull_request:
     branches: [develop, main]
@@ -45,5 +48,5 @@ jobs:
       # add a browser-actions/setup-geckodriver step here (SHA-pinned) as a
       # fallback before this step.
 
-      - name: Run Firefox smoke tests (#1128)
+      - name: Run Firefox smoke tests (referer + beacon privacy)
         run: npm run test:firefox-smoke
