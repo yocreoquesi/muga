@@ -8,22 +8,11 @@
  * The Start button here is a "close this notice" action, not a consent gate
  * — it is never disabled and does not require checking any box first.
  *
- * Renders one of three informational modes based on the consent state of
- * THIS device:
- *
- *   fresh    — first install. Full feature explainer.
- *   delta    — soft re-onboard. User has accepted an older version;
- *              every intermediate ToS bump up to required is additive.
- *              Surfaces only the new clauses; declining keeps the
- *              previously accepted version valid.
- *   material — hard re-onboard. At least one intermediate bump is
- *              material. Purely a disclosure banner in the browsewrap
- *              model — it does not block the button or require an
- *              action before the page can be closed.
- *
- * Mode is selected by ConsentPolicy.evaluate() (#365). The actual
- * acceptance write uses REQUIRED_CONSENT_VERSION (#365), so a user
- * who completes a re-onboard moves their stored consent forward.
+ * There is exactly one mode: the feature explainer. MUGA follows the uBlock
+ * Origin model — the Terms and Privacy policy are available and linked,
+ * acceptance is by use, and changing them never re-prompts an existing user.
+ * The delta / material re-onboard modes and the versioned-consent policy that
+ * selected between them were removed.
  *
  * drop-affiliate-injection (PR 1b): the guarded-pref confirmation step
  * (#364) that used to run alongside the re-onboard rendering was
@@ -34,87 +23,15 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
-import { setConsent, getConsent } from "../lib/consent-storage.js";
-import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
-import {
-  CONSENT_VERSION_MANIFEST,
-  REQUIRED_CONSENT_VERSION,
-} from "../lib/consent-version-manifest.js";
-import { clausesForDelta, CONSENT_CLAUSES_BY_VERSION } from "../lib/consent-clauses.js";
-import { getTestFixtures } from "../lib/test-fixtures.js";
+import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const startBtn         = document.getElementById("start-btn");
-  const featuresSection  = document.getElementById("features-section");
-  const reonboardDelta   = document.getElementById("reonboard-delta");
-  const reonboardDeltaClauses = document.getElementById("reonboard-delta-clauses");
-  const reonboardMaterial = document.getElementById("reonboard-material");
+  const startBtn = document.getElementById("start-btn");
 
   // Apply translations using the shared i18n module
   const lang = await getStoredLang();
   document.documentElement.lang = lang;
   applyTranslations(lang);
-
-  // --- Read state ----------------------------------------------------------
-  const [localConsent, fixtures] = await Promise.all([
-    getConsent(),
-    getTestFixtures(),
-  ]);
-
-  // Test-only overrides (#407). Fixtures are null in production.
-  const activeManifest = fixtures?.consentManifest || CONSENT_VERSION_MANIFEST;
-  const activeRequiredVersion = fixtures?.requiredConsentVersion || REQUIRED_CONSENT_VERSION;
-  const activeClausesByVersion = fixtures?.consentClausesByVersion || CONSENT_CLAUSES_BY_VERSION;
-
-  // --- Re-onboard mode dispatch (#370) ------------------------------------
-  const policy = evaluateConsent({
-    stored: localConsent,
-    requiredVersion: activeRequiredVersion,
-    manifest: activeManifest,
-  });
-  const mode = policy.status === "soft-reonboard"
-    ? "delta"
-    : policy.status === "hard-reonboard"
-      ? "material"
-      : "fresh";
-
-  if (mode === "delta") {
-    // Soft re-onboard: feature explainer hidden; delta banner with the
-    // new clauses since the user's last accepted version.
-    if (featuresSection) featuresSection.hidden = true;
-    if (reonboardDelta) {
-      reonboardDelta.hidden = false;
-      // Move focus to the revealed banner so screen-reader users land on (and
-      // hear) the terms-changed notice instead of it being silently shown (#740).
-      reonboardDelta.focus();
-      const clauseKeys = clausesForDelta({
-        acceptedVersion: policy.acceptedVersion,
-        requiredVersion: policy.requiredVersion,
-        manifest: activeManifest,
-        clausesByVersion: activeClausesByVersion,
-      });
-      if (reonboardDeltaClauses) {
-        // Build the clause list with createElement + textContent (no innerHTML).
-        for (const key of clauseKeys) {
-          const li = document.createElement("li");
-          li.textContent = t(key, lang);
-          reonboardDeltaClauses.appendChild(li);
-        }
-      }
-    }
-  } else if (mode === "material") {
-    // Hard re-onboard: feature explainer hidden; banner explains the
-    // material change. This is a disclosure only in the browsewrap model —
-    // the Start button below is never disabled and requires no prior action.
-    if (featuresSection) featuresSection.hidden = true;
-    if (reonboardMaterial) {
-      reonboardMaterial.hidden = false;
-      // Move focus to the alert banner so it is announced and reachable by
-      // screen readers, not silently shown (#740) — an accessibility
-      // courtesy, not a functional gate.
-      reonboardMaterial.focus();
-    }
-  }
 
   // browsewrap Phase 1: the Start button is never gated on the ToS checkbox.
   // It is always enabled — clicking it simply records/advances consent
@@ -127,7 +44,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // before interacting with the page (same pattern as options.html; avoids
   // fixture-ready races where clicks land before listeners are registered).
   document.body.dataset.mugaReady = "1";
-  document.body.dataset.mugaReonboardMode = mode;
 
   // Guard against a rapid double-click running the async completion twice
   // (duplicate history writes, double tab-remove, focus flicker) — audit #1048.
@@ -160,13 +76,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       ];
       await Promise.all(preConsentOps);
 
-      // Consent record carries the active required version — moves the user
-      // forward whether this is fresh, delta, or material acceptance. Under
-      // test fixtures (#407), activeRequiredVersion may differ from the static
-      // REQUIRED_CONSENT_VERSION export. Written LAST (the gate flag).
+      // Consent record carries the Terms version that was current when the
+      // user was shown this page. Provenance only — nothing evaluates it
+      // (see consent-storage's TERMS_VERSION). Written LAST (the gate flag).
       await setConsent({
         onboardingDone: true,
-        consentVersion: activeRequiredVersion,
+        consentVersion: TERMS_VERSION,
         consentDate:    Date.now(),
       });
 

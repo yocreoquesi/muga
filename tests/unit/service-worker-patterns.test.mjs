@@ -11,12 +11,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { isValidListEntry } from "../../src/lib/validation.js";
-import { evaluate as evaluateConsent } from "../../src/lib/consent-policy.js";
-import { REQUIRED_CONSENT_VERSION } from "../../src/lib/consent-version-manifest.js";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 
-// A stored consent record that is CURRENT (accepted the required version).
-// maybeFetchRemoteRules only fetches when consent is `valid` (#888 review C1).
-const VALID_CONSENT = { onboardingDone: true, consentVersion: REQUIRED_CONSENT_VERSION };
+// A stored consent record for a device that has recorded acceptance.
+// maybeFetchRemoteRules fetches once onboardingDone is true; the Terms version
+// is provenance only and no longer gates anything.
+const VALID_CONSENT = { onboardingDone: true, consentVersion: TERMS_VERSION };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const swSource = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
@@ -359,9 +359,11 @@ function makeMaybeFetchHelper() {
     // Read FULL merged prefs (includes the consent overlay), mirroring prod.
     const prefs = await deps.getPrefs();
     if (!prefs.remoteRulesEnabled) return "disabled";
-    // C1 consent gate — mirrors shouldOpenOnboarding(prefs) in service-worker.js.
-    // The egress must wait until stored consent is current (status === "valid").
-    if (evaluateConsent({ stored: prefs }).status !== "valid") return "consent-blocked";
+    // Egress gate — mirrors shouldOpenOnboarding(prefs) in service-worker.js.
+    // The egress waits until this device has a recorded acceptance at all. It
+    // is no longer coupled to a consent VERSION (see the uBO-model note on the
+    // production gate).
+    if (!prefs.onboardingDone) return "consent-blocked";
     const { remoteRulesMeta } = await deps.getRemoteParams();
     const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
     if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) {
@@ -427,26 +429,31 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     assert.strictEqual(fetchCalled, true);
   });
 
-  // ── #888 review C1: consent gate on the network egress ────────────────────
-  // The weekly signed GET must NOT fire until the user has accepted the consent
-  // version (v1.1) that disclosed it. These assert REAL behavior (was runFetch
-  // called?), not source text.
-  test("C1: does NOT fetch when consent is soft-reonboard (stored 1.0, required 1.1)", async () => {
+  // ── Egress gate on the weekly signed GET ──────────────────────────────────
+  // The request must not fire on a device that has never recorded acceptance.
+  // These assert REAL behavior (was runFetch called?), not source text.
+  //
+  // #888 review C1 additionally blocked a user whose stored consentVersion
+  // predated the version that disclosed this request. That per-version
+  // coupling was dropped with the versioned-consent engine when MUGA adopted
+  // the uBlock Origin model; the test below pins the resulting behavior so the
+  // change stays visible rather than silently regressing back.
+  test("an older stored consentVersion no longer blocks the fetch (uBO model)", async () => {
     let fetchCalled = false;
     const maybe = makeMaybeFetchHelper();
     const result = await maybe({
-      // remoteRulesEnabled true (new default) but consent still at 1.0 → the
-      // user has not yet accepted the delta re-onboard that discloses the egress.
+      // Accepted long ago, at a Terms version predating this request's
+      // disclosure. Under the versioned engine this returned "consent-blocked".
       getPrefs: async () => ({ remoteRulesEnabled: true, onboardingDone: true, consentVersion: "1.0" }),
       getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
-    assert.strictEqual(result, "consent-blocked");
-    assert.strictEqual(fetchCalled, false, "egress must not fire before the disclosure is accepted");
+    assert.strictEqual(result, "ran");
+    assert.strictEqual(fetchCalled, true, "acceptance is not re-gated per Terms version");
   });
 
-  test("C1: does NOT fetch when consent is never-accepted", async () => {
+  test("does NOT fetch when consent is never-accepted", async () => {
     let fetchCalled = false;
     const maybe = makeMaybeFetchHelper();
     const result = await maybe({
@@ -463,7 +470,7 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
     let fetchCalled = false;
     const maybe = makeMaybeFetchHelper();
     const result = await maybe({
-      // Uses the live REQUIRED_CONSENT_VERSION (via VALID_CONSENT) rather than
+      // Uses the live TERMS_VERSION (via VALID_CONSENT) rather than
       // a hardcoded literal so this test does not go stale every time a new
       // consent version ships.
       getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
@@ -902,7 +909,7 @@ describe("Onboarding consent — source code patterns", () => {
 // ── browsewrap Phase 1: implicit acceptance on fresh install ─────────────────
 //
 // A fresh install now auto-records consent (onboardingDone:true,
-// consentVersion:REQUIRED_CONSENT_VERSION, consentDate:now) so every
+// consentVersion:TERMS_VERSION, consentDate:now) so every
 // onboardingDone-gated feature — local cleaning AND the signed remote-rules
 // GET — works immediately, without a forced "Accept" click. An "update"
 // must NEVER touch an existing user's stored consent record: no re-prompt,
@@ -926,7 +933,7 @@ async function onInstalledConsentGate(details, deps) {
   if (details.reason === "install") {
     await deps.setConsent({
       onboardingDone: true,
-      consentVersion: REQUIRED_CONSENT_VERSION,
+      consentVersion: TERMS_VERSION,
       consentDate: Date.now(),
     });
     return "wrote-implicit-accept";
@@ -944,18 +951,20 @@ describe("browsewrap Phase 1 — implicit acceptance on fresh install", () => {
     assert.strictEqual(result, "wrote-implicit-accept");
     assert.ok(written, "setConsent must be called on a fresh install");
     assert.strictEqual(written.onboardingDone, true);
-    assert.strictEqual(written.consentVersion, REQUIRED_CONSENT_VERSION);
+    assert.strictEqual(written.consentVersion, TERMS_VERSION);
     assert.ok(Number.isFinite(written.consentDate) && written.consentDate > 0, "consentDate must be a timestamp");
   });
 
-  test("(a) fresh install: the resulting consent record evaluates to status 'valid'", async () => {
+  test("(a) fresh install: the resulting record opens every onboardingDone gate", async () => {
     let written = null;
     await onInstalledConsentGate(
       { reason: "install" },
       { setConsent: async (partial) => { written = partial; } },
     );
-    const policy = evaluateConsent({ stored: written });
-    assert.strictEqual(policy.status, "valid", "implicit acceptance must satisfy the consent policy immediately");
+    assert.strictEqual(
+      written.onboardingDone, true,
+      "implicit acceptance must open the feature gates immediately",
+    );
   });
 
   test("(b) update: does NOT call setConsent — an existing user's stored state is left untouched", async () => {
@@ -999,7 +1008,7 @@ describe("browsewrap Phase 1 — implicit acceptance on fresh install", () => {
     assert.ok(region.length > 0, "recordImplicitAcceptOnInstall must be defined in the service worker");
     assert.ok(region.includes("setConsent("), "must call setConsent");
     assert.ok(region.includes("onboardingDone: true"), "must write onboardingDone:true");
-    assert.ok(region.includes("consentVersion: REQUIRED_CONSENT_VERSION"), "must write the required consent version");
+    assert.ok(region.includes("consentVersion: TERMS_VERSION"), "must write the Terms version");
     assert.ok(region.includes("consentDate: Date.now()"), "must write a consentDate timestamp");
     assert.ok(
       /if\s*\(\s*details\.reason\s*===\s*["']install["']\s*\)\s*\{\s*await\s+recordImplicitAcceptOnInstall\(\)/.test(region),
