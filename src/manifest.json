@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "MUGA: The URL denoise extension for the web",
+  "name": "MUGA: URL Cleaner. Remove tracking, unwrap redirects",
   "short_name": "MUGA",
   "version": "2.6.0",
   "version_name": "2.6.0",
