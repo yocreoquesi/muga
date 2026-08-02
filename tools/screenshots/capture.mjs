@@ -34,11 +34,11 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
-// Single source of truth for the ToS version the running code requires
-// (src/lib/consent-version-manifest.js). Keeping this in sync with the seeded
-// mugaConsent.consentVersion avoids a soft/hard re-onboard gate kicking in
-// during capture (see getPrefs()'s ConsentPolicy check in src/lib/prefs.js).
-import { REQUIRED_CONSENT_VERSION } from '../../src/lib/consent-version-manifest.js';
+// Terms version stamped into the seeded mugaConsent record so the capture
+// matches what a real install stores. Provenance only — no re-onboard gate
+// can fire during capture any more, since the versioned-consent policy was
+// removed (see src/lib/consent-storage.js's TERMS_VERSION).
+import { TERMS_VERSION } from '../../src/lib/consent-storage.js';
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -301,7 +301,7 @@ try {
         );
       }),
     ]);
-  }, REQUIRED_CONSENT_VERSION);
+  }, TERMS_VERSION);
   // Close auto-opened onboarding tabs
   for (const p of context.pages()) {
     if (p.url().includes('/onboarding/')) {
