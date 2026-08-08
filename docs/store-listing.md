@@ -1,6 +1,6 @@
 # MUGA: Store Listings
 
-> Version: 2.6.0
+> Version: 3.0.0
 > Last updated: 2026-07-29
 > NOTE: version tracks package.json (version-consistency.test.mjs). If the short description below changes, sync src/manifest.json "description" to match.
 > Status: Consumer-first, honesty pass. Same friendly, non-technical voice as prior versions. MUGA is a URL cleaner: it removes tracking parameters, unwraps redirect chains, reveals what a shortened link actually points to, and by default tries to preserve the referral of whoever recommended you (a best-effort intention, not a guarantee, and always user-controllable). MUGA adds no affiliate tag of its own, so there is no injection to disclose: the copy states plainly that it never monetizes your clicks. IMPORTANT copy rules kept from prior versions: NO enumeration of retailer/brand names anywhere (this triggered the Chrome Web Store keyword-spam rejection, routing ID FZSL, 2026-05). Technical detail (full param list, permission internals, affiliate mechanics) is deferred to GitHub and the website. Permission justifications live in the CWS "Privacy practices" tab and the privacy policy, NOT in this marketing body. No em-dashes and no "--" per house copy rules.

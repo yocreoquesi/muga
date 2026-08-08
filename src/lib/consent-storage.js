@@ -31,8 +31,14 @@ export const CONSENT_STORAGE_KEY = "mugaConsent";
  * required version (consent-policy / consent-version-manifest / consent-clauses)
  * was removed. Bump this when the Terms text changes so the stored record says
  * which wording the user was shown; that is its whole job.
+ *
+ * It MUST equal the version printed in src/privacy/tos.html (and its docs/
+ * mirror). It had drifted — code said 1.2 while the shipped document said 1.4
+ * and the docs copy said 1.3 — which made the stored provenance meaningless,
+ * since it named a wording no user was ever shown. tos-version-sync.test.mjs
+ * now fails the build if the three ever disagree again.
  */
-export const TERMS_VERSION = "1.2";
+export const TERMS_VERSION = "1.5";
 
 /** Default record returned when nothing is stored yet. */
 export const CONSENT_DEFAULTS = Object.freeze({

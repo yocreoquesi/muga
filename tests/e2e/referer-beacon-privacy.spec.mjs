@@ -23,22 +23,27 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 import { serveFixturePage, serveCapturingServer } from "./helpers/local-server.mjs";
 
 /** Completes onboarding directly via storage (mirrors hot-path-query-splice.spec.mjs). */
 async function completeOnboarding(context, extensionId) {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+  // Passed as an argument, not closed over: this callback is serialised and
+  // runs inside the page, where the Node-scope TERMS_VERSION import does not
+  // exist (referencing it there throws and destroys the execution context).
   await page.evaluate(
-    () =>
+    (termsVersion) =>
       new Promise((resolve) => {
         chrome.storage.sync.set({ enabled: true, onboardingDone: true }, () => {
           chrome.storage.local.set(
-            { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: Date.now() } },
+            { mugaConsent: { onboardingDone: true, consentVersion: termsVersion, consentDate: Date.now() } },
             resolve
           );
         });
-      })
+      }),
+    TERMS_VERSION
   );
   await page.close();
 }

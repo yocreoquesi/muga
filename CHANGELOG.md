@@ -2,12 +2,52 @@
 
 All notable changes to MUGA will be documented in this file.
 
-## [Unreleased]
+## [3.0.0] - 2026-08-08
 
-### Changed
+This release is about what MUGA is, and what it is not. Three things it used to
+do are gone: it no longer adds an affiliate tag of its own, it no longer
+interrupts you about its own Terms, and it no longer tries to be a cookie-banner
+tool. What is left is a URL cleaner that does that one job well, plus real
+privacy enforcement at the network layer.
 
-- **Affiliate: MUGA cleans and respects.** It adds no affiliate tag of its own, keeps the original creator's referral by default, and can optionally strip third-party tags.
-- **MUGA is a focused URL cleaner.** It cleans tracking parameters, unwraps redirects, and preserves creator referrals.
+### Removed
+
+- **MUGA never adds its own affiliate tag** (#1182, #1184, #1185, #1186). Previously MUGA could add its own referral to a naked store link, in the extension and in the web tool. That is gone: no hidden tag, nothing added on your behalf, and no commission from your clicks. Preserving the original creator's referral is unchanged and still on by default, and stripping third-party tags is still yours to choose in Settings. If you had "Add MUGA's referral" enabled, the setting no longer exists and nothing replaces it.
+- **No more Terms re-prompts** (#1203). MUGA used to compare the Terms version you accepted against a required one and could re-open onboarding, gating features until you accepted again. That engine is gone, along with roughly a thousand lines whose only job was deciding when to interrupt you. MUGA now follows the model uBlock Origin uses: the Terms are permanently available and linked, acceptance is by use, and updating them never re-prompts or disables anything. The reasoning is in [ADR-0007](docs/adr/0007-terms-available-not-accepted.md).
+- **The cookie-consent minimizer was removed before it ever reached you** (#1187, #1188, #1190, #1191, #1192). It was built during this cycle and taken back out in the same cycle, so no released version ever shipped it. MUGA is a URL cleaner, and the feature pulled it somewhere else.
+
+### Features
+
+- **Referer and beacon privacy** (#1156, #1159, #1160, #1161). MUGA can suppress the `Referer` header and block `<a ping>` tracking beacons, enforced at the network layer on Chrome through declarativeNetRequest and on Firefox through blocking webRequest. Both are in Settings, and sites on your blocklist get them enforced regardless of the global toggles.
+- **Short-link resolution split by privacy risk** (#1194). Resolving a short link **when you open it** is on by default: you were navigating there anyway, so the shortener receives the request your click would have made. Resolving one **when you merely hover** is now a separate opt-in setting, off by default, because it would contact the shortener for a link you only looked at.
+- **The Terms are reachable from everywhere** (#1202). A plain note on onboarding, a quiet legal line in the popup, and a Terms link in the Settings footer next to the Privacy link. The onboarding checkbox that gated nothing and recorded nothing was removed: a checkbox a user reasonably believes registers a decision, but does not, is worse than no checkbox.
+- **A notice when a platform injects an affiliate tag for you** (#1155). Read-only, and it never changes the strip decision.
+- **LinkedIn `/safety/go` unwrapping**, so the real destination shows through.
+
+### Fixed
+
+- **Downloads no longer break on presigned links** (#1200, #1204). A GitHub artifact link redirects to an Azure signed URL, and MUGA was stripping `spr`, one of the fields the signature covers, so the download failed with 403 and nothing pointing at the extension. MUGA now recognises a signed URL and leaves it completely alone. The same fix covers Azure, Amazon S3, Google Cloud Storage and CloudFront signed links, in the runtime cleaner and at the network layer both.
+- **Affiliate and tracking decisions are made per occurrence** (#1091, #1093, #1111). A URL carrying the same parameter twice was judged on its first value only, so a foreign tag hiding behind a whitelisted one survived. Key matching is now case-insensitive too.
+- **Allowlist exemptions survive an unwrap** (#1096). A destination you had allowlisted was still cleaned when it was reached through a redirect wrapper.
+- **Redirect-network attribution params survive the fast path** (#1092). The synchronous strip tables were removing parameters the affiliate pipeline needed.
+- **Amazon rules are anchored to real marketplaces** (#1094, #1109). A lookalike domain could match, and the fix for it briefly dropped active marketplaces. Both are corrected, with the matcher reshaped to stay inside Chrome's declarativeNetRequest memory limit.
+- **Trailing-dot hostnames** (`example.com.`) are normalised before any host matching (#1095), so a site could no longer sidestep your allowlist or blocklist with one character.
+- **Fragments survive unwrapping** (#1103). The destination's `#fragment` was dropped by the naked-query extractor.
+- **The preserved-creator badge no longer appears while "remove all affiliate tags" is on** (#1157). It claimed a preservation that had not happened.
+- **Clipboard failures never pass silently** (#1098, #1110). Every copy path now routes through the guard, including a synchronous throw before the fallback runs.
+- **Custom parameter rules are capped at 200 entries** and deduplicated (#1099).
+- **The migration banner fires again** after upgrade, because the previous version is now persisted.
+
+### Security and hardening
+
+- **Remote rules cannot be rolled back.** The anti-rollback version floor now survives the feature being disabled and re-enabled.
+- **Private-network hosts are rejected more completely** in the shortener resolver, including IPv6 unique local addresses (`fc00::/7`).
+- **`email`, `content` and `title` can never arrive as remote strip rules** (#1105, #1189), so a remote list cannot break a form or a search box.
+
+### Documentation
+
+- **The Terms, Privacy Policy and transparency pages describe what MUGA actually does.** They still promised a re-acceptance flow that no longer exists, and the extension copy, the repository copy and the version recorded in code had drifted to three different values. They are reconciled at Version 1.5, and a test now fails the build if they ever diverge again.
+- **The store listing is accurate about the network.** Both requests MUGA can make, the weekly rule update and short-link resolution, are now stated plainly rather than described as "the only thing it fetches".
 
 ## [2.6.0] - 2026-07-13
 
@@ -1118,7 +1158,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/yocreoquesi/muga/compare/v2.6.0...v3.0.0
 [2.6.0]: https://github.com/yocreoquesi/muga/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/yocreoquesi/muga/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/yocreoquesi/muga/compare/v2.3.0...v2.4.0

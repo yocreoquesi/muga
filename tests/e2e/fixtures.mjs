@@ -13,6 +13,7 @@
 import { test as base, chromium } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionPath = path.resolve(__dirname, "../../src");
@@ -32,7 +33,10 @@ async function completeOnboarding(context, extensionId) {
     await extPage.goto(`${extOrigin}/onboarding/onboarding.html`);
   }
 
-  await extPage.evaluate(() => {
+  // termsVersion is passed as an evaluate ARGUMENT, not closed over: the
+  // callback below is serialised and runs inside the page, where Node-scope
+  // imports like TERMS_VERSION do not exist.
+  await extPage.evaluate((termsVersion) => {
     // Consent fields (onboardingDone, consentVersion, consentDate) live
     // in chrome.storage.local under "mugaConsent" since #355 / ADR-0001.
     // Behavioural prefs stay in chrome.storage.sync. Writing
@@ -56,11 +60,12 @@ async function completeOnboarding(context, extensionId) {
           {
             mugaConsent: {
               onboardingDone: true,
-              // Current required consent version. Keep in sync with
-              // REQUIRED_CONSENT_VERSION (bumped to 1.2 in #1027, previously
-              // 1.1 in #888); seeding an older version puts fixtured users
-              // into a soft re-onboard state.
-              consentVersion: "1.2",
+              // Provenance only: the Terms wording this fixtured user was
+              // shown. Read from TERMS_VERSION rather than hardcoded, so a
+              // Terms bump does not require touching every e2e spec. Nothing
+              // gates on it any more — the versioned re-acceptance engine and
+              // its soft/hard re-onboard states were removed in ADR-0007.
+              consentVersion: termsVersion,
               consentDate: Date.now(),
             },
           },
@@ -69,7 +74,7 @@ async function completeOnboarding(context, extensionId) {
       );
       Promise.all([syncWrite, localWrite]).then(() => resolve());
     });
-  });
+  }, TERMS_VERSION);
 
   // Close auto-opened onboarding tabs (keep about:blank — browser needs ≥1 page)
   for (const p of context.pages()) {
