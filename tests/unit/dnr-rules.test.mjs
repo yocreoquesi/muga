@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { DNR_SIGNED_URL_ALLOW_RULE_ID } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
@@ -77,7 +78,13 @@ test("Every DNR rule has id, priority, action, and condition", () => {
 // Test 4 — action.type is "redirect" (correct type for param stripping via queryTransform)
 // ---------------------------------------------------------------------------
 test("All DNR rules use action.type === 'redirect' for param stripping", () => {
-  const wrong = rules.filter(r => r.action?.type !== "redirect");
+  // The one documented exception is the signed-URL guard (#1200): an `allow`
+  // rule that exempts presigned URLs from every strip rule. It is named
+  // explicitly rather than waved through by action type, so a future stray
+  // `allow` rule still fails this test.
+  const wrong = rules.filter(
+    r => r.action?.type !== "redirect" && r.id !== DNR_SIGNED_URL_ALLOW_RULE_ID
+  );
   assert.equal(
     wrong.length,
     0,
@@ -85,11 +92,33 @@ test("All DNR rules use action.type === 'redirect' for param stripping", () => {
   );
 });
 
+test("the signed-URL guard is an allow rule that outranks every strip rule", () => {
+  const guard = rules.find(r => r.id === DNR_SIGNED_URL_ALLOW_RULE_ID);
+  assert.ok(guard, "tracking-params.json is missing the signed-URL allow rule (#1200)");
+  assert.equal(guard.action?.type, "allow");
+  assert.ok(
+    typeof guard.condition?.regexFilter === "string" && guard.condition.regexFilter.length > 0,
+    "the signed-URL guard must be scoped by regexFilter"
+  );
+
+  // If a strip rule ever matched at equal-or-higher priority, a presigned URL
+  // would be stripped and the download would 403 with no visible cause.
+  const stripPriorities = rules
+    .filter(r => r.action?.type === "redirect")
+    .map(r => r.priority ?? 1);
+  assert.ok(
+    guard.priority > Math.max(...stripPriorities),
+    `signed-URL guard priority ${guard.priority} must exceed every strip rule's (max ${Math.max(...stripPriorities)})`
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Test 5 — action.redirect.transform.queryTransform.removeParams is a non-empty string array
 // ---------------------------------------------------------------------------
 test("All DNR rules have a non-empty removeParams array of strings", () => {
-  for (const rule of rules) {
+  // Strip rules only — the signed-URL guard (#1200) carries no removeParams
+  // by design: it exempts the request instead of rewriting it.
+  for (const rule of rules.filter(r => r.action?.type === "redirect")) {
     const removeParams = rule.action?.redirect?.transform?.queryTransform?.removeParams;
     assert.ok(
       Array.isArray(removeParams) && removeParams.length > 0,

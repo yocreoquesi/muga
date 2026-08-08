@@ -20,6 +20,7 @@ import { extractCanonical } from "./canonical-extractor.js";
 import { shouldHonor } from "./honor-creator.js";
 import { classify as classifyParams } from "./param-classifier.js";
 import { applyPathStrip, getPathAffiliatePolicy } from "./path-rules.js";
+import { isSignedUrl } from "./signed-url.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -769,6 +770,25 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     }
   } catch {
     // Unparseable rawUrl - fall through to normal handling below.
+  }
+
+  // Step 0b — Signed-URL choke point (#1200).
+  //
+  // A presigned URL's query string IS the credential: the signature is
+  // computed over the other fields, so removing any one of them invalidates
+  // it and the server answers 403. This runs BEFORE unwrap, before
+  // applyPathStrip and before every strip branch below, because the signature
+  // covers the path as well as the query — a slug strip breaks an Azure SAS
+  // exactly as thoroughly as a param strip does.
+  //
+  // Placed here rather than next to the AUTH_PATH_RE exemption further down
+  // for that reason: by the time control reaches AUTH_PATH_RE the URL has
+  // already been through unwrapAndExtract.
+  //
+  // isSignedUrl() is fail-safe toward cleaning (false on malformed input), so
+  // a parse failure here can never become a blanket exemption.
+  if (isSignedUrl(rawUrl)) {
+    return buildReturnPayload("untouched", rawUrl, [], null, {});
   }
 
   // Step 1 — Unwrap + Honor + Canonical (steps 0a, 0, 0b)

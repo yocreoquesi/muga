@@ -27,7 +27,10 @@ import {
   DNR_STATIC_RULE_ID,
   DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
   DNR_DOMAIN_PRESERVE_MAX_RULES,
+  DNR_SIGNED_URL_ALLOW_RULE_ID,
+  DNR_SIGNED_URL_ALLOW_PRIORITY,
 } from "../src/lib/dnr-ids.js";
+import { SIGNED_URL_REGEX_FILTER } from "../src/lib/signed-url.js";
 
 /** Amazon marketplace hosts we scope the internal-nav strip rule to. */
 const AMAZON_HOST_RE = /(^|\.)amazon\./;
@@ -456,6 +459,20 @@ export function buildDnrRules() {
 
   const rules = [
     {
+      // Signed-URL guard (#1200). Emitted FIRST so it is impossible to read
+      // this file without seeing that every strip rule below is subject to it.
+      // A presigned URL's signature covers its query fields, so stripping one
+      // returns 403 — see src/lib/signed-url.js for the full rationale and the
+      // shared detection rule this regex mirrors.
+      id: DNR_SIGNED_URL_ALLOW_RULE_ID,
+      priority: DNR_SIGNED_URL_ALLOW_PRIORITY,
+      action: { type: "allow" },
+      condition: {
+        regexFilter: SIGNED_URL_REGEX_FILTER,
+        resourceTypes: ["main_frame"],
+      },
+    },
+    {
       id: DNR_STATIC_RULE_ID,
       priority: 1,
       action: {
@@ -510,7 +527,10 @@ function main() {
   const manifest = buildManifest();
   const dnrRules = buildDnrRules();
 
-  const globalCount = dnrRules[0].action.redirect.transform.queryTransform.removeParams.length;
+  // Look the global rule up by ID rather than by position: the signed-URL
+  // allow rule (#1200) is emitted ahead of it, so index 0 is not the strip rule.
+  const globalRule = dnrRules.find((r) => r.id === DNR_STATIC_RULE_ID);
+  const globalCount = globalRule.action.redirect.transform.queryTransform.removeParams.length;
   const profileRules = dnrRules.filter(
     (r) => r.id >= DNR_DOMAIN_PRESERVE_RULE_ID_BASE && r.id < DNR_DOMAIN_PRESERVE_RULE_ID_BASE + DNR_DOMAIN_PRESERVE_MAX_RULES
   );

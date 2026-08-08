@@ -9,6 +9,10 @@
  *   1        — static ruleset: global tracking-param strip (tracking-params.json).
  *              Removes ALL TRACKING_PARAMS on every host EXCEPT the tailored
  *              domains, which it lists in excludedRequestDomains (see 300-799).
+ *   2        — static ruleset: signed-URL "allow" guard (tracking-params.json,
+ *              #1200). Exempts presigned URLs from every strip rule, because
+ *              their signature covers the query fields and removing one
+ *              returns 403. See src/lib/signed-url.js.
  *   100-102  — static ruleset: AMP unwrap redirects (amp-redirect.json)
  *   1-5      — static ruleset: wrapper-link unwrap redirects (wrapper-dnr-rules.json,
  *              its own file-scoped namespace, distinct from tracking-params.json's 1)
@@ -57,6 +61,21 @@
 
 /** ID of the static tracking-params ruleset (tracking-params.json). */
 export const DNR_STATIC_RULE_ID = 1;
+
+/**
+ * ID of the static "allow" rule that exempts presigned URLs from every
+ * tracking-param strip rule (#1200). Emitted into tracking-params.json
+ * alongside the strip rules it guards, so the exemption ships and versions
+ * with them rather than depending on runtime registration.
+ *
+ * Priority mirrors the dynamic allowlist allow rule (1000) so it outranks
+ * every strip rule MUGA registers — static (priority 1) and dynamic (the
+ * custom-params and remote-params rules, also priority 1).
+ */
+export const DNR_SIGNED_URL_ALLOW_RULE_ID = 2;
+
+/** Priority of the signed-URL allow rule. Must exceed every strip rule's. */
+export const DNR_SIGNED_URL_ALLOW_PRIORITY = 1000;
 
 /**
  * Base ID for the static per-domain-profile tracking-param strip rules emitted
