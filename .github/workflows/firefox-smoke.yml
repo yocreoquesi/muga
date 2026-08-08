@@ -9,7 +9,7 @@ name: Firefox Smoke
 # real merge gate.
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
