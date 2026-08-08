@@ -10,6 +10,10 @@
  *   3. The Chrome Web Store description in store-listing.md does not claim
  *      Firefox uses MV3 (the inaccurate "Works on Chrome and Firefox" claim
  *      that implied a single MV3 build).
+ *   4. The manifest name fits the 45-character store limit and is identical in
+ *      both manifests. Both Chrome and AMO reject a longer name, and AMO only
+ *      reports it at `web-ext lint` time, which is the last gate before a
+ *      release. Catching it here fails in one second instead.
  */
 
 import { describe, it } from "node:test";
@@ -76,6 +80,43 @@ describe("manifest description consistency", () => {
       "Chrome Web Store description uses 'Built natively for Manifest V3. Works on Chrome and Firefox' " +
       "which implies Firefox uses MV3 — it uses MV2. " +
       "Separate the claims, e.g. 'Manifest V3 on Chrome. Available for Firefox via Manifest V2.'"
+    );
+  });
+});
+
+describe("manifest name store limits", () => {
+  // Chrome caps manifest "name" at 45 characters, and AMO enforces the same
+  // ceiling through its JSON schema (JSON_INVALID "/name" must NOT have more
+  // than 45 characters). Neither limit is visible until submission or lint.
+  const NAME_MAX = 45;
+
+  it("manifest.json (MV3) name fits the 45-character store limit", () => {
+    assert.ok(
+      mv3.name.length <= NAME_MAX,
+      `manifest.json name is ${mv3.name.length} characters, limit is ${NAME_MAX}: "${mv3.name}"`
+    );
+  });
+
+  it("manifest.v2.json (MV2) name fits the 45-character store limit", () => {
+    assert.ok(
+      mv2.name.length <= NAME_MAX,
+      `manifest.v2.json name is ${mv2.name.length} characters, limit is ${NAME_MAX}: "${mv2.name}"`
+    );
+  });
+
+  it("both manifests declare the same name", () => {
+    assert.equal(
+      mv3.name,
+      mv2.name,
+      "The Chrome and Firefox builds must ship under the same store name."
+    );
+  });
+
+  it("the store listing documents the name the manifests actually ship", () => {
+    assert.ok(
+      storeListing.includes(mv3.name),
+      `docs/store-listing.md does not mention the shipped name "${mv3.name}". ` +
+      "The listing is what gets pasted into the store consoles, so it must match the manifest."
     );
   });
 });

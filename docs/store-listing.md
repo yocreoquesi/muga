@@ -11,7 +11,7 @@
 
 ### Extension name
 
-MUGA: URL Cleaner. Remove tracking, unwrap redirects
+MUGA: URL Cleaner. Remove tracking
 
 ### Short description (132 chars max)
 
@@ -67,7 +67,7 @@ URL cleaner, remove tracking, UTM, clean links, redirect
 
 ### Extension name
 
-MUGA: URL Cleaner. Remove tracking, unwrap redirects
+MUGA: URL Cleaner. Remove tracking
 
 ### Summary (250 chars max)
 
@@ -112,7 +112,7 @@ https://github.com/yocreoquesi/muga
 
 ### AMO metadata
 
-- Extension name: MUGA: URL Cleaner. Remove tracking, unwrap redirects
+- Extension name: MUGA: URL Cleaner. Remove tracking
 - License: GPL v3
 - Primary category: Privacy & Security
 - Secondary category: Shopping
