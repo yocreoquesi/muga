@@ -23,6 +23,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 import { serveFixturePage, serveCapturingServer } from "./helpers/local-server.mjs";
 
 /** Completes onboarding directly via storage (mirrors hot-path-query-splice.spec.mjs). */
@@ -34,7 +35,7 @@ async function completeOnboarding(context, extensionId) {
       new Promise((resolve) => {
         chrome.storage.sync.set({ enabled: true, onboardingDone: true }, () => {
           chrome.storage.local.set(
-            { mugaConsent: { onboardingDone: true, consentVersion: "1.2", consentDate: Date.now() } },
+            { mugaConsent: { onboardingDone: true, consentVersion: TERMS_VERSION, consentDate: Date.now() } },
             resolve
           );
         });

@@ -8,6 +8,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 
 test.describe("Onboarding", () => {
   test("start button is enabled with nothing to accept first", async ({ onboardingPage: page }) => {
@@ -111,7 +112,7 @@ test.describe("Onboarding", () => {
     expect(consent.onboardingDone).toBe(true);
     // Tracks REQUIRED_CONSENT_VERSION in src/lib/consent-version-manifest.js —
     // bump here when that constant advances (now 1.4 after the accept-mode clause).
-    expect(consent.consentVersion).toBe("1.2");
+    expect(consent.consentVersion).toBe(TERMS_VERSION);
     expect(consent.consentDate).toBeGreaterThan(0);
 
     await verifyPage.close();
