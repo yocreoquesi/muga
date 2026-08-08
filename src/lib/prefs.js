@@ -13,10 +13,6 @@
 import { getConsent } from "./consent-storage.js";
 // Per-device pref overrides on top of synced behavioural prefs (#364).
 import { getOverrides as getPerDeviceOverrides } from "./per-device-prefs.js";
-// Consent version-comparison for feature gating during hard re-onboard (#370).
-import { evaluate as evaluateConsentPolicy } from "./consent-policy.js";
-// E2E fixture overrides (#407). Returns null in production.
-import { getTestFixtures } from "./test-fixtures.js";
 
 // ── Sync: user preferences ──────────────────────────────────────────────────
 
@@ -198,7 +194,7 @@ export async function getPrefs() {
   // consent record (onboardingDone) or the per-device overrides — otherwise a
   // fully onboarded user is treated as never-onboarded for this call, and a
   // declined per-device pref silently reverts to the synced value (audit #1045).
-  const [sync, consent, overrides, fixtures] = await Promise.all([
+  const [sync, consent, overrides] = await Promise.all([
     new Promise((resolve) => {
       chrome.storage.sync.get(PREF_DEFAULTS, (result) => {
         if (chrome.runtime.lastError) {
@@ -217,7 +213,6 @@ export async function getPrefs() {
       console.error("[MUGA] getPrefs overrides read failed:", err);
       return {};
     }),
-    getTestFixtures().catch(() => null),
   ]);
 
   // Consent overlay (#355). Local wins over sync.
@@ -226,31 +221,12 @@ export async function getPrefs() {
   if (consent.consentVersion !== null) overlay.consentVersion = consent.consentVersion;
   if (consent.consentDate !== null) overlay.consentDate = consent.consentDate;
 
-  // Hard-reonboard gate (#370). When ConsentPolicy says material change
-  // pending, force `onboardingDone: false` so existing feature gates
-  // (`if (!prefs.onboardingDone) return`) bail until the user re-accepts.
-  // Soft re-onboard does NOT gate features — the user's prior consent
-  // remains valid for previously accepted behaviour.
-  // Under e2e fixtures (#407), the gate fires against the fixture
-  // manifest + required version so tests can drive the dormant path.
-  // Defensive: a malformed stored consentVersion could make evaluateConsentPolicy
-  // throw. getPrefs must never reject on that (callers await it without a catch),
-  // so on an un-evaluable policy we FAIL SAFE — gate features by forcing
-  // onboardingDone:false, matching the pre-#1045 return-defaults behaviour.
-  let policy;
-  try {
-    policy = evaluateConsentPolicy({
-      stored: consent,
-      ...(fixtures?.requiredConsentVersion ? { requiredVersion: fixtures.requiredConsentVersion } : {}),
-      ...(fixtures?.consentManifest ? { manifest: fixtures.consentManifest } : {}),
-    });
-  } catch (err) {
-    console.error("[MUGA] getPrefs consent-policy eval failed:", err);
-    policy = { status: "hard-reonboard" };
-  }
-  if (policy.status === "hard-reonboard") {
-    overlay.onboardingDone = false;
-  }
+  // No re-acceptance gate. MUGA follows the uBlock Origin model: the Terms
+  // and Privacy policy are available and linked, acceptance is by use, and a
+  // change to them never re-prompts or re-gates an existing user. The
+  // versioned-consent policy engine that used to force `onboardingDone:false`
+  // on a material bump was removed along with its manifest and clause list.
+  // `onboardingDone` now comes solely from the stored per-device record.
 
   // Per-device pref overlay (#364). Any key set in overrides wins
   // over sync. Boolean shape is enforced at the source (overrides

@@ -21,6 +21,19 @@
 
 export const CONSENT_STORAGE_KEY = "mugaConsent";
 
+/**
+ * Version of the Terms text that was current when acceptance was recorded.
+ *
+ * Provenance only. Nothing reads this to decide anything: MUGA follows the
+ * uBlock Origin model, where the Terms are available and linked, acceptance
+ * is by use, and updating them never re-prompts or re-gates an existing user.
+ * The versioned-consent policy engine that used to compare this against a
+ * required version (consent-policy / consent-version-manifest / consent-clauses)
+ * was removed. Bump this when the Terms text changes so the stored record says
+ * which wording the user was shown; that is its whole job.
+ */
+export const TERMS_VERSION = "1.2";
+
 /** Default record returned when nothing is stored yet. */
 export const CONSENT_DEFAULTS = Object.freeze({
   onboardingDone: false,

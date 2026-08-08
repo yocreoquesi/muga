@@ -8,9 +8,7 @@ import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomai
 import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
-import { evaluate as evaluateConsent } from "../lib/consent-policy.js";
-import { setConsent } from "../lib/consent-storage.js";
-import { REQUIRED_CONSENT_VERSION } from "../lib/consent-version-manifest.js";
+import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 import { isValidListEntry } from "../lib/validation.js";
 import {
   DNR_CUSTOM_PARAMS_RULE_ID,
@@ -654,18 +652,23 @@ async function maybeFetchRemoteRules(deps) {
     // consentDate), which the consent gate below needs.
     const prefs = await getPrefs();
     if (!prefs.remoteRulesEnabled) return;
-    // #888 review C1: the weekly signed GET to rules.muga.app is a
-    // consent-gated network egress. It MUST NOT fire until the user has
-    // accepted the consent version that introduced it (v1.1). Since #888
-    // flipped remoteRulesEnabled ON by default, an existing user with stored
-    // consent 1.0 who never touched the toggle would otherwise leak the GET on
-    // the very next SW wake — BEFORE acting on the non-blocking soft re-onboard
-    // tab. shouldOpenOnboarding(prefs) is true for every non-`valid` status
-    // (never-accepted / soft- / hard-reonboard), i.e. exactly the states where
-    // the disclosure has not been accepted. Block the egress in those states so
-    // disclosure and egress stay coupled. Fresh installs write consentVersion
-    // 1.1 on onboarding completion → valid → allowed; existing 1.0 users stay
-    // blocked until they accept the delta re-onboard (which writes 1.1).
+    // Egress gate. Blocks the weekly signed GET to rules.muga.app until this
+    // device has a recorded acceptance at all.
+    //
+    // DELIBERATE CHANGE, not an oversight. #888 review C1 originally coupled
+    // this egress to a consent VERSION: a user still at stored consentVersion
+    // 1.0 (accepted before v1.1 disclosed the request) stayed blocked until
+    // they accepted a delta re-onboard. Adopting the uBlock Origin model
+    // removed the versioned-consent engine, so that per-version coupling is
+    // gone: a 1.0 user now makes the request on the next SW wake.
+    //
+    // Accepted on the same reasoning uBO applies to its own filter-list
+    // fetches — the Terms describing the request are available and linked, the
+    // request carries no data about the user (Ed25519-signed, credentials
+    // omitted, no body), and it can be turned off in Settings, which returns
+    // MUGA to making no outbound requests. Re-coupling disclosure to a version
+    // would mean reintroducing the version engine; that trade was considered
+    // and declined.
     if (shouldOpenOnboarding(prefs)) return;
     const { remoteRulesMeta } = await getRemoteParams();
     const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
@@ -2325,23 +2328,20 @@ function clearOnboardingTabFlag() {
 
 /**
  * Single decision function consulted by both the onInstalled and the
- * background-load fallback paths (#365). Returns true when the
- * onboarding tab should be opened — either because the user has never
- * accepted, or because the required ToS version has advanced past
- * what they accepted (soft or hard re-onboard).
+ * background-load fallback paths (#365). Returns true when the onboarding
+ * tab should be opened, which now means one thing only: this device has no
+ * recorded acceptance.
  *
- * Today the manifest holds only "1.0" so this is functionally
- * equivalent to the prior `!prefs.onboardingDone` check; the gate is
- * in place for slice #370 which adds the delta / material rendering
- * modes that consume the policy's `soft-reonboard` / `hard-reonboard`
- * statuses.
+ * A Terms update never reopens this tab. MUGA follows the uBlock Origin
+ * model — Terms available and linked, acceptance by use, no re-prompt — so
+ * the versioned-consent policy that used to return `soft-reonboard` /
+ * `hard-reonboard` here was removed.
  *
  * @param {object} prefs - Merged prefs (consent overlay applied by getPrefs).
  * @returns {boolean}
  */
 function shouldOpenOnboarding(prefs) {
-  const result = evaluateConsent({ stored: prefs });
-  return result.status !== "valid";
+  return !prefs.onboardingDone;
 }
 
 // --- Migration banner support: persist the previous version (#1100) --------
@@ -2383,9 +2383,10 @@ async function persistPrevVersion(details) {
 // install auto-records acceptance so every onboardingDone-gated feature
 // (local cleaning, remote-rules fetch, DNR rulesets) works immediately —
 // no forced "Accept" click. Writes the SAME fields the old explicit-accept
-// click used to write (see onboarding.js's setConsent call), so downstream
-// consent-policy evaluation treats a fresh install exactly like a completed
-// acceptance.
+// click used to write (see onboarding.js's setConsent call), so a fresh
+// install is indistinguishable from a completed acceptance. consentVersion
+// is provenance only — nothing evaluates it (see consent-storage's
+// TERMS_VERSION).
 //
 // Runs ONLY on details.reason === "install". An "update" must NEVER touch an
 // existing user's stored consent — no re-prompt, no overwrite, no re-dating
@@ -2396,7 +2397,7 @@ async function recordImplicitAcceptOnInstall() {
   try {
     await setConsent({
       onboardingDone: true,
-      consentVersion: REQUIRED_CONSENT_VERSION,
+      consentVersion: TERMS_VERSION,
       consentDate: Date.now(),
     });
   } catch (err) {
