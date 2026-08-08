@@ -33,7 +33,10 @@ async function completeOnboarding(context, extensionId) {
     await extPage.goto(`${extOrigin}/onboarding/onboarding.html`);
   }
 
-  await extPage.evaluate(() => {
+  // termsVersion is passed as an evaluate ARGUMENT, not closed over: the
+  // callback below is serialised and runs inside the page, where Node-scope
+  // imports like TERMS_VERSION do not exist.
+  await extPage.evaluate((termsVersion) => {
     // Consent fields (onboardingDone, consentVersion, consentDate) live
     // in chrome.storage.local under "mugaConsent" since #355 / ADR-0001.
     // Behavioural prefs stay in chrome.storage.sync. Writing
@@ -62,7 +65,7 @@ async function completeOnboarding(context, extensionId) {
               // Terms bump does not require touching every e2e spec. Nothing
               // gates on it any more — the versioned re-acceptance engine and
               // its soft/hard re-onboard states were removed in ADR-0007.
-              consentVersion: TERMS_VERSION,
+              consentVersion: termsVersion,
               consentDate: Date.now(),
             },
           },
@@ -71,7 +74,7 @@ async function completeOnboarding(context, extensionId) {
       );
       Promise.all([syncWrite, localWrite]).then(() => resolve());
     });
-  });
+  }, TERMS_VERSION);
 
   // Close auto-opened onboarding tabs (keep about:blank — browser needs ≥1 page)
   for (const p of context.pages()) {

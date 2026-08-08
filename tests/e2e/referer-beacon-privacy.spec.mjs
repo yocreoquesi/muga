@@ -30,16 +30,20 @@ import { serveFixturePage, serveCapturingServer } from "./helpers/local-server.m
 async function completeOnboarding(context, extensionId) {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+  // Passed as an argument, not closed over: this callback is serialised and
+  // runs inside the page, where the Node-scope TERMS_VERSION import does not
+  // exist (referencing it there throws and destroys the execution context).
   await page.evaluate(
-    () =>
+    (termsVersion) =>
       new Promise((resolve) => {
         chrome.storage.sync.set({ enabled: true, onboardingDone: true }, () => {
           chrome.storage.local.set(
-            { mugaConsent: { onboardingDone: true, consentVersion: TERMS_VERSION, consentDate: Date.now() } },
+            { mugaConsent: { onboardingDone: true, consentVersion: termsVersion, consentDate: Date.now() } },
             resolve
           );
         });
-      })
+      }),
+    TERMS_VERSION
   );
   await page.close();
 }
