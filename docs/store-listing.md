@@ -11,7 +11,7 @@
 
 ### Extension name
 
-MUGA: The URL denoise extension for the web
+MUGA: URL Cleaner. Remove tracking
 
 ### Short description (132 chars max)
 
@@ -42,10 +42,13 @@ Most cleaners strip everything, including the referral of whoever recommended yo
 MUGA never adds an affiliate tag of its own. It doesn't monetize your clicks, on any store: there is no hidden tag, nothing added on your behalf, and your price is never touched. MUGA stays free and open source, kept going by people who choose to chip in, not by your purchases, with cleaning and every protection working just the same.
 
 No analytics, no telemetry
-MUGA processes your URLs locally, inside your browser. No analytics, no telemetry, no account, no sign-in, and it never sends your browsing anywhere. The only thing it fetches on its own is an updated tracking-param list: a small signed file, with nothing about you in the request, which you can turn off. Other network features, like following a short link to see where it leads, are optional and stay off until you enable them.
+MUGA processes your URLs locally, inside your browser. No analytics, no telemetry, no account, no sign-in, and it never reports your browsing to us or to anyone else. Two things do reach the network, and both are listed right here. MUGA fetches an updated tracking-param list on its own: a small signed file, with nothing about you in the request, which you can turn off. And when you open a shortened link, MUGA follows that link to find out where it really goes, so you land on a clean address instead of a tracking hop. That request goes to the short link itself, never to us, and it happens only on links you actually open. You can turn it off in settings. Looking up a link you are only hovering over is a separate option, and it stays off unless you switch it on.
 
 Yours to control
-Turn cleaning on or off per site, add your own rules, and back up your settings whenever you like. It is your browser. MUGA just tidies up after the trackers.
+Turn cleaning on or off per site, add your own rules, and back up your settings whenever you like. And if you would rather keep MUGA on a shorter leash, your browser lets you limit which sites it runs on, from its own extensions settings. It is your browser. MUGA just tidies up after the trackers.
+
+Still working after the platform change
+Chrome retired its old extension platform, and add-ons that never moved across simply stopped running. MUGA is built on the current one, so it keeps cleaning your links without you having to think about it.
 
 Open source, and proud of it
 Every line is public on GitHub under the GPL v3 license. Want the technical detail, or just want to check we do what we say? Read it, audit it, fork it.
@@ -56,7 +59,7 @@ https://github.com/yocreoquesi/muga
 
 ### Keywords (Chrome Web Store, max 5)
 
-denoise, URL cleaner, tracking params, creator-friendly, UTM
+URL cleaner, remove tracking, UTM, clean links, redirect
 
 ---
 
@@ -64,7 +67,7 @@ denoise, URL cleaner, tracking params, creator-friendly, UTM
 
 ### Extension name
 
-MUGA: The URL denoise extension for the web
+MUGA: URL Cleaner. Remove tracking
 
 ### Summary (250 chars max)
 
@@ -95,10 +98,10 @@ Most cleaners strip everything, including the referral of whoever recommended yo
 MUGA never adds an affiliate tag of its own. It doesn't monetize your clicks, on any store: there is no hidden tag, nothing added on your behalf, and your price is never touched. MUGA stays free and open source, kept going by people who choose to chip in, not by your purchases, with cleaning and every protection working just the same.
 
 No analytics, no telemetry
-MUGA processes your URLs locally, inside your browser. No analytics, no telemetry, no account, no sign-in, and it never sends your browsing anywhere. The only thing it fetches on its own is an updated tracking-param list: a small signed file, with nothing about you in the request, which you can turn off. Other network features, like following a short link to see where it leads, are optional and stay off until you enable them.
+MUGA processes your URLs locally, inside your browser. No analytics, no telemetry, no account, no sign-in, and it never reports your browsing to us or to anyone else. Two things do reach the network, and both are listed right here. MUGA fetches an updated tracking-param list on its own: a small signed file, with nothing about you in the request, which you can turn off. And when you open a shortened link, MUGA follows that link to find out where it really goes, so you land on a clean address instead of a tracking hop. On Firefox it asks for your permission for those short-link domains first. That request goes to the short link itself, never to us, and it happens only on links you actually open. You can turn it off in settings. Looking up a link you are only hovering over is a separate option, and it stays off unless you switch it on.
 
 Yours to control
-Turn cleaning on or off per site, add your own rules, and back up your settings whenever you like. It is your browser. MUGA just tidies up after the trackers.
+Turn cleaning on or off per site, add your own rules, and back up your settings whenever you like. And if you would rather keep MUGA on a shorter leash, your browser lets you limit which sites it runs on, from its own extensions settings. It is your browser. MUGA just tidies up after the trackers.
 
 Open source, and proud of it
 Every line is public on GitHub under the GPL v3 license. We built MUGA to be the URL cleaner we wanted to use ourselves: honest about what it does, and respectful of the people who keep the open web worth reading. Want the technical detail, or just want to check we do what we say? Read it, audit it, fork it.
@@ -109,9 +112,9 @@ https://github.com/yocreoquesi/muga
 
 ### AMO metadata
 
-- Extension name: MUGA: The URL denoise extension for the web
+- Extension name: MUGA: URL Cleaner. Remove tracking
 - License: GPL v3
 - Primary category: Privacy & Security
 - Secondary category: Shopping
-- Tags: denoise, noise, url-cleaner, tracking-params, creator-friendly
+- Tags: url-cleaner, tracking, utm, privacy, redirects
 - Website: https://github.com/yocreoquesi/muga
