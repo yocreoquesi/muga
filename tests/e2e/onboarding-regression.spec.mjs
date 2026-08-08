@@ -70,7 +70,6 @@ async function completeOnboardingAndKeepPageOpen(page) {
       chrome.tabs.remove = () => {};
     }
   });
-  await page.locator("#tos-check").check();
   await page.locator("#start-btn").click();
   await expect(page.locator('[data-testid="ob-success"]')).toBeVisible();
 }
@@ -123,8 +122,7 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
       }
     });
 
-    await page.locator("#tos-check").check();
-    await page.locator("#start-btn").click();
+      await page.locator("#start-btn").click();
 
     // Success state appears in-place. Asserting this is the regression
     // guard: pre-fix, the page just sat there silently if window.close()

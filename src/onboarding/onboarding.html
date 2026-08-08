@@ -108,17 +108,17 @@
       <p class="feedback-note" data-i18n-html="ob_feedback_note"><strong>Built by learning from mistakes.</strong> MUGA grew through many iterations, and it won't be perfect. If you find a link it cleaned wrong, a referral it shouldn't have touched, or anything that feels off, please <a href="https://github.com/yocreoquesi/muga/issues" target="_blank" rel="noopener noreferrer">let us know</a>. Questions, ideas, and bug reports are genuinely welcome, and they shape where MUGA goes next.</p>
     </div>
 
-    <!-- ToS acceptance -->
+    <!-- Terms availability. Not an acceptance step: acceptance is by use, so
+         there is nothing here to tick. The checkbox that used to live here
+         gated nothing after browsewrap Phase 1 and was removed with the
+         versioned-consent engine. -->
     <div class="tos-section">
-      <label class="tos-check" id="tos-label">
-        <input type="checkbox" id="tos-check" data-i18n-aria-label="aria_onboarding_tos_check">
-        <div class="tos-check-label" data-i18n-html="ob_tos_label">
-          I have read and accept the
-          <a href="../privacy/tos.html" target="_blank" rel="noopener noreferrer">Terms of use</a>
-          and
-          <a href="../privacy/privacy.html" target="_blank" rel="noopener noreferrer">Privacy policy</a>
-        </div>
-      </label>
+      <p class="tos-note" id="tos-note" data-i18n-html="ob_tos_note">
+        MUGA starts cleaning URLs the moment it is installed. By using it you accept the
+        <a href="../privacy/tos.html" target="_blank" rel="noopener noreferrer">Terms of use</a>
+        and the
+        <a href="../privacy/privacy.html" target="_blank" rel="noopener noreferrer">Privacy policy</a>.
+      </p>
     </div>
 
     <!-- CTA -->

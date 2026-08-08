@@ -113,25 +113,17 @@
 
     /* ToS section */
     .tos-section { margin-top: 18px; }
-    .tos-check {
-      display: flex; align-items: flex-start; gap: 12px;
+    /* Informational, not a control: no card chrome, no hover affordance, no
+       cursor change. It should not read as something you can interact with. */
+    .tos-note {
+      margin: 0;
       padding: 14px 18px;
       background: var(--surface-1);
       border: 1.5px solid var(--border-1);
       border-radius: var(--r-md);
-      cursor: pointer;
-      transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+      font-size: 13px; line-height: 1.55; color: var(--text-1);
     }
-    .tos-check:hover { border-color: var(--border-2); }
-    .tos-check:has(input:checked) {
-      border-color: var(--accent); background: var(--accent-soft);
-    }
-    .tos-check input[type="checkbox"] {
-      width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0;
-      accent-color: var(--accent-strong); cursor: pointer;
-    }
-    .tos-check-label { font-size: 13px; line-height: 1.55; color: var(--text-1); }
-    .tos-check-label a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
+    .tos-note a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
 
     /* Re-onboard banners (#370) */
     .reonboard-banner {
@@ -176,20 +168,9 @@
       background: var(--surface-3); color: var(--text-3); border-color: var(--border-2);
     }
     .btn-primary:not([aria-disabled="true"]):hover { filter: brightness(1.08); }
-    /* CTA gated state: when the user clicks the button without accepting
-       the ToS, we flash the ToS card so they discover the requirement
-       instead of seeing nothing happen. Animation runs once per click. */
-    .tos-check.is-flashing {
-      animation: tos-flash 600ms var(--ease);
-    }
-    @keyframes tos-flash {
-      0%   { box-shadow: 0 0 0 0 var(--accent); }
-      40%  { box-shadow: 0 0 0 4px var(--accent-soft); border-color: var(--accent); }
-      100% { box-shadow: 0 0 0 0 transparent; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .tos-check.is-flashing { animation: none; border-color: var(--accent); }
-    }
+    /* The tos-flash animation lived here. It existed to draw attention to the
+       acceptance checkbox when the CTA was gated on it. Nothing is gated now,
+       so there is nothing to flash. */
     .sr-only {
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
