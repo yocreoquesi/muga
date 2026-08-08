@@ -1,5 +1,18 @@
 [
   {
+    "id": 2,
+    "priority": 1000,
+    "action": {
+      "type": "allow"
+    },
+    "condition": {
+      "regexFilter": "[?&](sig|signature|x-amz-signature|x-goog-signature)=[^&]{16,}",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
     "id": 1,
     "priority": 1,
     "action": {

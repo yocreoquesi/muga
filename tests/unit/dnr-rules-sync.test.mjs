@@ -211,10 +211,15 @@ test("ONE-RULE-PER-HOST — subdomain-aware: every tailored host (and a deep sub
   // to maps.google.com (or www.maps.google.com) would match BOTH — Chrome fires
   // one, half-cleaning it. This probes each tailored host and a synthetic deep
   // subdomain against ALL rules honoring Chrome's subdomain semantics.
+  // Param rules only. The signed-URL guard (#1200) is an `allow` rule that
+  // deliberately matches every host — it is scoped by regexFilter, not by
+  // domain, and it exempts rather than competes. Counting it here would flag
+  // every tailored host as a double-match.
+  const paramRules = RULES.filter((r) => r.action?.type === "redirect");
   const hosts = [...new Set(PROFILE_RULES.flatMap((r) => r.condition?.requestDomains ?? []))];
   for (const host of hosts) {
     for (const probe of [host, "deep-probe." + host]) {
-      const matches = RULES.filter((r) => ruleMatchesHost(r, probe));
+      const matches = paramRules.filter((r) => ruleMatchesHost(r, probe));
       assert.equal(
         matches.length,
         1,
