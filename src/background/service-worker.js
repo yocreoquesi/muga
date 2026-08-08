@@ -1132,10 +1132,12 @@ async function reconcileRemoteDnrRule(prefs) {
 }
 
 /**
- * Global toolbar badge for the consent-required state. Shown as "!"
- * while the user has not yet accepted the ToS — including
- * hard-reonboard, where getPrefs() forces onboardingDone:false.
- * Cleared on acceptance.
+ * Global toolbar badge for the onboarding state. Shown as "!" while this
+ * device has no recorded acceptance, cleared once it has one.
+ *
+ * ADR-0007: there is no longer a `hard-reonboard` case here. That gate forced
+ * onboardingDone:false when the Terms version moved; the engine behind it was
+ * removed, so a fresh install is the only way this badge appears.
  *
  * Uses the global setBadgeText (no tabId), so it surfaces on every tab.
  */
@@ -1430,29 +1432,28 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area === "local") {
     if (changes.remoteParams) _invalidatePrefsCache();
     // E2E fixture overrides (#407): when fixtures change, prefs may
-    // produce a different effective onboardingDone (hard-reonboard
-    // gate) — drop the cache so the next read picks up the fixture.
+    // produce a different effective onboardingDone — drop the cache so
+    // the next read picks up the fixture.
     // The sentinel + fixture keys are never written in production.
     if (changes.__muga_test_mode || changes.__muga_test_fixtures) {
       _invalidatePrefsCache();
     }
-    // Consent record changed (onboarding completed, hard-reonboard
-    // accepted, etc.). Re-sync the cleaner gate + badge in one shot so
-    // both DNR and the toolbar reflect the new state without needing a
-    // browser restart.
+    // Consent record changed (onboarding completed on this device).
+    // Re-sync the cleaner gate + badge in one shot so both DNR and the
+    // toolbar reflect the new state without needing a browser restart.
     if (changes.mugaConsent) {
       _invalidatePrefsCache();
       const prefs = await getPrefsWithCache();
       await applyDnrState(prefs);
       await applyOnboardingBadge(prefs);
       // Onboarding/consent state is one of the three Active-on-tab factors
-      // (toolbar-inactive-badge) — a fresh accept/hard-reonboard flips it
-      // for every open tab, not just the global "!" badge.
+      // (toolbar-inactive-badge) — completing onboarding flips it for every
+      // open tab, not just the global "!" badge.
       await repaintAllTabsActiveState(prefs);
     }
     // Per-device overrides changed (per-device-prefs.setOverrides /
     // clearOverrides). getPrefs() overlays these last, so a change flips the
-    // EFFECTIVE prefs (e.g. injectOwnAffiliate) that drive DNR + badge. Without
+    // EFFECTIVE prefs (e.g. remoteRulesEnabled) that drive DNR + badge. Without
     // this the cache stays stale; previously correctness relied on overrides
     // only ever being written alongside a mugaConsent write — a fragile coupling.
     if (changes.mugaPerDevicePrefs) {

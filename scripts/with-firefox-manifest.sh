@@ -12,7 +12,10 @@ cleanup() {
     rm -f "$BACKUP"
   fi
 }
-trap cleanup EXIT INT TERM
+# PIPE matters as much as INT/TERM here: `npm run lint | head` closes the pipe
+# early, and without a PIPE trap the script dies before restoring, leaving the
+# Firefox MV2 manifest sitting in src/manifest.json.
+trap cleanup EXIT INT TERM PIPE
 
 cp "$SRC" "$BACKUP"
 cp src/manifest.v2.json "$SRC"

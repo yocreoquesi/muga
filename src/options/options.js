@@ -432,7 +432,7 @@ function bindToggle(id, key, prefs) {
   el.addEventListener("change", () => {
     try {
       setPrefs({ [key]: el.checked });
-      // Guarded prefs (injectOwnAffiliate, remoteRulesEnabled) may carry a
+      // Guarded prefs (see GUARDED_PREFS: remoteRulesEnabled) may carry a
       // per-device override that getPrefs() overlays LAST. An explicit Settings
       // toggle is this device's authoritative choice, so reconcile the override
       // to match — otherwise a stale onboarding-decline override keeps winning
