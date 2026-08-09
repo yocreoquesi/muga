@@ -67,6 +67,22 @@ describe("Docs version stamps must match manifest version", () => {
     );
   });
 
+  test(`docs/faq.html — Version stamp matches manifest (${MANIFEST_VERSION})`, () => {
+    // Added after the FAQ sat at 2.6.0 through the whole 3.0 cycle: it was the
+    // one public doc carrying a version stamp that nothing asserted, so it
+    // drifted in silence while its neighbours were kept honest.
+    const html = read("docs/faq.html");
+    const matches = [...html.matchAll(/Version\s+(\d+\.\d+\.\d+)/g)];
+    assert.ok(matches.length > 0, "docs/faq.html must contain a Version X.Y.Z stamp");
+    for (const m of matches) {
+      assert.equal(
+        m[1],
+        MANIFEST_VERSION,
+        `docs/faq.html has stale version stamp "${m[1]}", expected "${MANIFEST_VERSION}"`
+      );
+    }
+  });
+
   test(`src/privacy/privacy.html — Version stamp matches manifest (${MANIFEST_VERSION})`, () => {
     const html = read("src/privacy/privacy.html");
     const match = html.match(/Version\s+(\d+\.\d+\.\d+)/);

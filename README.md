@@ -4,18 +4,18 @@
 [![Version](https://img.shields.io/badge/version-3.0.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
-# MUGA: The URL denoise extension for the web
+# MUGA: URL Cleaner. Remove tracking
 
 ### Install now
 
 [![Firefox](https://img.shields.io/badge/Firefox-Install_from_AMO-FF7139?logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/firefox/addon/muga/)
-[![Chrome](https://img.shields.io/badge/Chrome-Install_from_CWS-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
+[![Chrome](https://img.shields.io/badge/Chrome-Install_from_CWS-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
 
 ---
 
-**MUGA turns the noise down on every URL while trying not to strip the credit of whoever recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup shows a "Creator referral preserved" badge so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
+**MUGA removes the tracking from every URL while trying not to strip the credit of whoever recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup shows a "Creator referral preserved" badge so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
 
-> **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
+> **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** Clean URLs, tracking removed.
 
 > **3.0.0 shipped.** MUGA no longer adds an affiliate tag of its own: no hidden tag, no commission from your clicks, and the original creator's referral is still preserved by default. It also stops interrupting you about its own Terms, which are now permanently available and linked instead of announced. New in this release: `Referer` suppression and `<a ping>` beacon blocking enforced at the network layer, and short-link resolution split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are now left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
