@@ -11,9 +11,16 @@
  * (the onboarding accept path relies on `PREF_DEFAULTS.remoteRulesEnabled =
  * true`), so a hardcoded `false` default would report the toggle as OFF even
  * though the pref DEFAULTS to enabled. The toggle must reflect that default.
- * (The weekly signed fetch itself only begins once the user grants the
- * `rules.muga.app` optional host permission via the Settings toggle — it is
- * not running pre-grant.) Routing through `getPrefs()` keeps the Settings
+ * (The weekly signed fetch is opt-OUT and already running by the time this
+ * status is first read: `onInstalled` calls `maybeFetchRemoteRules()`
+ * directly, `runRemoteRulesFetch()` carries no permission check, and the
+ * `rules.muga.app` optional host permission reads as already granted because
+ * the manifest's `<all_urls>` host permission covers it — `permissions
+ * .contains()` reports coverage, not exact declaration. An earlier version of
+ * this note claimed the fetch "is not running pre-grant", which was wrong and
+ * is the sort of thing a privacy policy gets written from; see
+ * tests/e2e/remote-rules-fresh-install.spec.mjs, which pins both facts in a
+ * real browser.) Routing through `getPrefs()` keeps the Settings
  * toggle in lockstep with the effective preference, including any per-device
  * override written when a user declines a sync-inherited prompt.
  *

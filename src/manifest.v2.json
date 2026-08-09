@@ -1,10 +1,10 @@
 {
   "manifest_version": 2,
-  "name": "MUGA: The URL denoise extension for the web",
+  "name": "MUGA: URL Cleaner. Remove tracking",
   "short_name": "MUGA",
-  "version": "2.6.0",
-  "version_name": "2.6.0",
-  "description": "Clean the tracking noise from your URLs without breaking them. No analytics, no telemetry. Open source.",
+  "version": "3.0.0",
+  "version_name": "3.0.0",
+  "description": "Clean the tracking noise from your URLs: strip trackers, unwrap redirects, reveal short links, keep creator referrals. Open source.",
 
   "permissions": [
     "storage",

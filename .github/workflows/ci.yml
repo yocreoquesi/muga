@@ -1,9 +1,12 @@
 name: CI
 
-# Run tests on every pull request to main and on every push to main
+# Run tests on every pull request to main or to the dev integration branch,
+# and on every push to main. Pushes to dev are covered by the PR gate above;
+# the push trigger stays main-only so the live Worker contract tests (which
+# reach the network) run at a single, predictable point.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   push:
     branches: [main]
 

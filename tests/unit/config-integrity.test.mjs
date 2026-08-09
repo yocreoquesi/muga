@@ -183,6 +183,27 @@ describe("manifest.json integrity", () => {
     assert.equal(mv3.name, mv2.name, "Extension name must match across manifests");
   });
 
+  // `scripts/with-firefox-manifest.sh` copies manifest.v2.json OVER
+  // src/manifest.json for the duration of a Firefox command (dev:firefox,
+  // build:firefox, and `npm run lint`), restoring it from a backup via a trap.
+  // The trap covers EXIT/INT/TERM but not SIGPIPE or SIGKILL, so a command
+  // killed by a closed pipe — `npm run lint | head`, for instance — can leave
+  // the MV2 manifest sitting in src/manifest.json. Committing at that moment
+  // ships Manifest V2 to Chrome, which no longer runs MV2 extensions at all.
+  // The failure would be total and would look like a one-line diff.
+  test("manifest.json is Manifest V3 (Chrome build, never the swapped MV2 copy)", () => {
+    assert.equal(
+      mv3.manifest_version,
+      3,
+      "src/manifest.json is not MV3. If it reads 2, the Firefox manifest swap did not restore — " +
+      "run `git checkout src/manifest.json` and delete any leftover src/manifest.v3.json."
+    );
+  });
+
+  test("manifest.v2.json is Manifest V2 (Firefox build)", () => {
+    assert.equal(mv2.manifest_version, 2, "src/manifest.v2.json must stay MV2 for Firefox");
+  });
+
   test("MV2 has gecko ID", () => {
     const geckoId = mv2.browser_specific_settings?.gecko?.id;
     assert.ok(geckoId, "manifest.v2.json must have browser_specific_settings.gecko.id");

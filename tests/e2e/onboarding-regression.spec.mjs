@@ -20,6 +20,7 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 import {
   installTestModeSentinel,
   clearTestModeSentinel,
@@ -70,7 +71,6 @@ async function completeOnboardingAndKeepPageOpen(page) {
       chrome.tabs.remove = () => {};
     }
   });
-  await page.locator("#tos-check").check();
   await page.locator("#start-btn").click();
   await expect(page.locator('[data-testid="ob-success"]')).toBeVisible();
 }
@@ -123,8 +123,7 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
       }
     });
 
-    await page.locator("#tos-check").check();
-    await page.locator("#start-btn").click();
+      await page.locator("#start-btn").click();
 
     // Success state appears in-place. Asserting this is the regression
     // guard: pre-fix, the page just sat there silently if window.close()
@@ -148,7 +147,7 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     expect(consent.onboardingDone).toBe(true);
     // Tracks REQUIRED_CONSENT_VERSION in src/lib/consent-version-manifest.js —
     // bump here when that constant advances (now 1.4 after the accept-mode clause).
-    expect(consent.consentVersion).toBe("1.2");
+    expect(consent.consentVersion).toBe(TERMS_VERSION);
     expect(consent.consentDate).toBeGreaterThan(0);
     await verify.close();
 

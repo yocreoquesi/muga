@@ -239,13 +239,24 @@ describe("browsewrap Phase 1 — onboarding Start button is never gated", () => 
     );
   });
 
-  test("the ToS checkbox and Terms/Privacy links stay visible (informational, not required)", () => {
-    assert.ok(ONBOARDING_HTML.includes('id="tos-check"'), "the ToS checkbox stays in the markup");
+  test("the Terms and Privacy links stay visible, with nothing to accept", () => {
     assert.ok(ONBOARDING_HTML.includes('href="../privacy/tos.html"'), "the Terms link stays visible");
     assert.ok(ONBOARDING_HTML.includes('href="../privacy/privacy.html"'), "the Privacy link stays visible");
     assert.ok(
       !ONBOARDING_HTML.includes("tos-required-hint"),
       "the 'Required to continue' hint must be removed — it is no longer accurate"
+    );
+    // Phase 1 left the checkbox in place as informational. That was a
+    // half-measure: it recorded no decision and gated nothing, so it implied
+    // an acceptance step that did not exist. Acceptance is by use; the markup
+    // must not offer anything to tick.
+    assert.ok(
+      !ONBOARDING_HTML.includes('id="tos-check"'),
+      "the dead ToS checkbox must be gone — it gated nothing and implied a decision was being recorded"
+    );
+    assert.ok(
+      !/<input[^>]*type="checkbox"/.test(ONBOARDING_HTML),
+      "onboarding must carry no checkbox at all"
     );
   });
 });

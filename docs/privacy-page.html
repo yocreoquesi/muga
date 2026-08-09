@@ -32,7 +32,7 @@
   <div class="wrap">
 
   <h1>Privacy Policy</h1>
-  <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Effective date: 2026-05-25 &nbsp;·&nbsp; Version 2.6.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+  <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Effective date: 2026-05-25 &nbsp;·&nbsp; Version 3.0.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
     <strong>Short version:</strong> You control what MUGA does. Every feature is transparent and configurable.
@@ -51,9 +51,9 @@
   <p>Neither bucket is ever visible to MUGA. Session data (<code>chrome.storage.session</code>) is automatically cleared when the browser restarts. Usage counters are never transmitted anywhere.</p>
 
   <h2>Per-device consent</h2>
-  <p>Acceptance of these terms is recorded <strong>per device</strong>, not per browser account. If you install MUGA on a second device, you will be asked to read and accept the terms on that device too, even if you already accepted them somewhere else. The reasoning is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>: consent is an act between you and the device you are using; inheriting it across devices silently would deny each device's user the chance to read and decide.</p>
+  <p>Acceptance of these terms is recorded <strong>per device</strong>, not per browser account. Installing and using MUGA is what constitutes acceptance, and that record is made on each device separately rather than inherited from another one. The reasoning is captured in our architectural decision record <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>: consent is an act between you and the device you are using; inheriting it across devices silently would deny each device's user the chance to read and decide. The terms are linked from onboarding, from the popup and from the Settings footer on every device, so reading them never depends on having caught a prompt.</p>
   <p>Behavioural preferences (toggles like "Enable remote rule updates", "Remove all affiliate tags from other sources", and others) follow your browser account through sync. But on a fresh device, if any of those preferences arrives enabled from another device, MUGA shows you an explicit confirmation prompt during onboarding before acting on them. If you decline a preference on this device, the override is recorded locally and your other devices' settings are left untouched.</p>
-  <p>If we update these terms in a way that materially changes what you previously agreed to, MUGA will surface a re-acceptance flow on each device the next time the service worker wakes up. If we only add clauses (without changing existing ones), the flow shows you the new clauses and lets you accept or decline; declining keeps you under the previously accepted terms.</p>
+  <p>Updating these terms does not re-prompt you and does not gate any feature. MUGA follows the model uBlock Origin uses: the documents are permanently reachable rather than announced once, and continuing to use the extension after an update means you accept the updated terms. See <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0007-terms-available-not-accepted.md" target="_blank" rel="noopener noreferrer">ADR-0007</a> for why the versioned re-acceptance engine was removed.</p>
 
   <h2>Migration on upgrade</h2>
   <p>If you previously installed MUGA before this version and your acceptance was stored across devices via sync, MUGA will migrate that acceptance to local storage on the first run after upgrade. The migration is one-way (sync → local) and idempotent: you keep your acceptance state without re-onboarding. The migration is implemented in <code>src/lib/sync-migration.js</code> in the source.</p>

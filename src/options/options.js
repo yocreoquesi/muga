@@ -272,6 +272,14 @@ async function hasShortenerPermissions() {
  * gesture survives the async file read), so import may only restore
  * remoteRulesEnabled:true when this grant already exists — otherwise the pref
  * would say ON while the weekly signed fetch stays blocked.
+ *
+ * As long as the manifest declares `<all_urls>` in host_permissions, this
+ * returns true on a fresh install with nothing granted, because
+ * `permissions.contains()` reports coverage rather than exact declaration
+ * (pinned by tests/e2e/remote-rules-fresh-install.spec.mjs). The check is kept
+ * because it becomes load-bearing the moment `<all_urls>` is narrowed, which
+ * is the direction Chrome Web Store best practices push. It is a safety net
+ * that currently happens to be subsumed, not dead code.
  * @returns {Promise<boolean>}
  */
 async function hasRemoteRulesPermission() {
@@ -424,7 +432,7 @@ function bindToggle(id, key, prefs) {
   el.addEventListener("change", () => {
     try {
       setPrefs({ [key]: el.checked });
-      // Guarded prefs (injectOwnAffiliate, remoteRulesEnabled) may carry a
+      // Guarded prefs (see GUARDED_PREFS: remoteRulesEnabled) may carry a
       // per-device override that getPrefs() overlays LAST. An explicit Settings
       // toggle is this device's authoritative choice, so reconcile the override
       // to match — otherwise a stale onboarding-decline override keeps winning

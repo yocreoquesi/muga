@@ -2,9 +2,10 @@ name: Import upstream tracking params
 
 on:
   schedule:
-    # Sunday 04:00 UTC. Off-peak so the PR notification arrives at the start
-    # of the maintainer's week without competing with weekday CI traffic.
-    - cron: "0 4 * * 0"
+    # 1st of the month, 04:00 UTC. Monthly rather than weekly: upstream
+    # candidates are only useful once triaged, and a weekly cadence re-reported
+    # the same untriaged backlog every run instead of surfacing new signal.
+    - cron: "0 4 1 * *"
   workflow_dispatch:
 
 permissions:
@@ -46,7 +47,7 @@ jobs:
 
       - name: Exit early if no new candidates
         if: steps.diff.outputs.count == '0'
-        run: echo "No new candidates from upstream this week. Exiting cleanly."
+        run: echo "No new candidates from upstream this month. Exiting cleanly."
 
       - name: Configure git for the bot commit
         if: steps.diff.outputs.count != '0'
@@ -90,7 +91,7 @@ jobs:
           CANDIDATES=$(jq -r '.new_candidates[] | "- `" + . + "`"' "$REPORT")
 
           BODY=$(cat <<EOF
-          Weekly automated diff against [AdGuard URL Tracking Protection (Filter 17)](https://filters.adtidy.org/extension/safari/filters/17.txt).
+          Monthly automated diff against [AdGuard URL Tracking Protection (Filter 17)](https://filters.adtidy.org/extension/safari/filters/17.txt).
 
           **Source:** AdGuard Filter 17
           **Fetched at:** $(jq -r '.fetched_at' "$REPORT")

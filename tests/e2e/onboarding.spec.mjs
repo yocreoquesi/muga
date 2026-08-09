@@ -8,27 +8,25 @@
  */
 
 import { test, expect } from "./fixtures.mjs";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 
 test.describe("Onboarding", () => {
-  test("start button is never disabled — checking or unchecking ToS has no effect on it", async ({ onboardingPage: page }) => {
+  test("start button is enabled with nothing to accept first", async ({ onboardingPage: page }) => {
     const startBtn = page.locator("#start-btn");
     await expect(startBtn).toBeEnabled();
 
-    // Check ToS — still enabled (was already enabled)
-    await page.locator("#tos-check").check();
-    await expect(startBtn).toBeEnabled();
-
-    // Uncheck ToS — still enabled (Phase 1 browsewrap: never gated)
-    await page.locator("#tos-check").uncheck();
-    await expect(startBtn).toBeEnabled();
+    // There is no acceptance control to interact with at all. Phase 1 left a
+    // checkbox in place as informational; it recorded no decision and gated
+    // nothing, so it was removed rather than left implying otherwise.
+    await expect(page.locator('input[type="checkbox"]')).toHaveCount(0);
   });
 
-  test("clicking start without checking the ToS box still completes onboarding", async ({ context, extensionId }) => {
+  test("clicking start completes onboarding", async ({ context, extensionId }) => {
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/onboarding/onboarding.html`);
     await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
 
-    // Do NOT check #tos-check — click Start directly.
+    // Nothing to tick first: click Start directly.
     await page.locator("#start-btn").click();
     await page.waitForEvent("close", { timeout: 5000 }).catch(() => {});
 
@@ -55,8 +53,8 @@ test.describe("Onboarding", () => {
     const features = page.locator(".feature-row");
     await expect(features).toHaveCount(4);
 
-    // ToS checkbox exists
-    await expect(page.locator("#tos-check")).toBeVisible();
+    // Terms note is present, and it is a note, not a control
+    await expect(page.locator("#tos-note")).toBeVisible();
 
     // Start button exists
     await expect(page.locator("#start-btn")).toBeVisible();
@@ -92,9 +90,6 @@ test.describe("Onboarding", () => {
     // Wait for init-complete flag so change listeners are registered before we click
     await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
 
-    // Accept ToS
-    await page.locator("#tos-check").check();
-
     // Click start — this calls window.close(), so the page will close
     await page.locator("#start-btn").click();
 
@@ -117,15 +112,15 @@ test.describe("Onboarding", () => {
     expect(consent.onboardingDone).toBe(true);
     // Tracks REQUIRED_CONSENT_VERSION in src/lib/consent-version-manifest.js —
     // bump here when that constant advances (now 1.4 after the accept-mode clause).
-    expect(consent.consentVersion).toBe("1.2");
+    expect(consent.consentVersion).toBe(TERMS_VERSION);
     expect(consent.consentDate).toBeGreaterThan(0);
 
     await verifyPage.close();
   });
 
   test("ToS and privacy links open in new tabs", async ({ onboardingPage: page }) => {
-    const tosLink = page.locator('.tos-check-label a[href*="tos.html"]');
-    const privacyLink = page.locator('.tos-check-label a[href*="privacy.html"]');
+    const tosLink = page.locator('.tos-note a[href*="tos.html"]');
+    const privacyLink = page.locator('.tos-note a[href*="privacy.html"]');
 
     await expect(tosLink).toHaveAttribute("target", "_blank");
     await expect(tosLink).toHaveAttribute("rel", /noopener/);

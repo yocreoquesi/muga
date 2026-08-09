@@ -1,8 +1,8 @@
 /**
  * MUGA — Structural tests for .github/workflows/moat-expansion.yml
  *
- * Covers spec requirements (Weekly GitHub Actions Workflow):
- *   - Weekly cron "0 6 * * 0" (Sunday 06:00 UTC) + workflow_dispatch
+ * Covers spec requirements (Scheduled GitHub Actions Workflow):
+ *   - Monthly cron "0 6 1 * *" (1st of the month, 06:00 UTC) + workflow_dispatch
  *   - permissions: contents: write + pull-requests: write (before jobs:)
  *   - Node 20 runtime
  *   - Pinned action SHAs byte-identical to import-upstream.yml
@@ -61,11 +61,11 @@ function readImportUpstream() {
 // Triggers: schedule cron + workflow_dispatch
 // ---------------------------------------------------------------------------
 describe("triggers", () => {
-  test("has schedule trigger with cron '0 6 * * 0' (weekly Sun 06:00 UTC)", () => {
+  test("has schedule trigger with cron '0 6 1 * *' (monthly, 1st at 06:00 UTC)", () => {
     const content = readWorkflow();
     assert.ok(
-      /cron:\s*["']0 6 \* \* 0["']/.test(content),
-      "moat-expansion.yml must have a weekly cron schedule '0 6 * * 0'"
+      /cron:\s*["']0 6 1 \* \*["']/.test(content),
+      "moat-expansion.yml must have a monthly cron schedule '0 6 1 * *'"
     );
   });
 

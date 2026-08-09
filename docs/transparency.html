@@ -32,7 +32,7 @@
   <div class="wrap">
 
   <h1>Transparency Report</h1>
-  <p class="meta">MUGA: The web, with the noise turned down &nbsp;&middot;&nbsp; Version 2.6.0 &nbsp;&middot;&nbsp; 2026-07-13 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
+  <p class="meta">MUGA: The web, with the noise turned down &nbsp;&middot;&nbsp; Version 3.0.0 &nbsp;&middot;&nbsp; 2026-08-08 &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">Source code</a></p>
 
   <div class="highlight">
     Privacy policies say "we don't collect your data." This page shows the evidence behind that claim: what MUGA actually does, which permissions it uses and why, and how you can verify every statement yourself.
@@ -43,11 +43,11 @@
   <div class="at-a-glance">
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Version</span>
-      <span class="at-a-glance-value">2.6.0</span>
+      <span class="at-a-glance-value">3.0.0</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">External server connections</span>
-      <span class="at-a-glance-value"><em>Remote rule updates</em>: on by default, at most 1 HTTPS GET per week to <code>rules.muga.app</code>, disable it any time in Settings. Optional <em>Follow shortener redirects</em>: off by default; when enabled, the extension itself fetches the shortener host directly (bit.ly, t.co, tinyurl.com, &hellip;) with credentials omitted to read its redirect, no MUGA server is involved. No cookies, no identifiers, no POST body. Auditable open-source code.</span>
+      <span class="at-a-glance-value"><em>Remote rule updates</em>: on by default, at most 1 HTTPS GET per week to <code>rules.muga.app</code>, disable it any time in Settings. <em>Short-link resolution</em>, split by privacy risk: resolving a short link <strong>when you open it</strong> is on by default, since you were navigating there anyway; resolving one <strong>when you merely hover</strong> is off by default and opt-in. Either way the extension fetches the shortener host directly (bit.ly, t.co, tinyurl.com, &hellip;) with credentials omitted, and no MUGA server is involved. No cookies, no identifiers, no POST body. Auditable open-source code.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Analytics / telemetry</span>
@@ -55,7 +55,7 @@
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Data sent anywhere</span>
-      <span class="at-a-glance-value">Never your browsing data. Remote rule updates make HTTPS GETs to <code>rules.muga.app</code> weekly, on by default (an Ed25519-signed public payload carrying no user data; disable it any time in Settings). Optional Follow shortener redirects make direct HTTPS GETs to the shortener host (bit.ly, t.co, &hellip;) when enabled, no MUGA server is contacted.</span>
+      <span class="at-a-glance-value">Never your browsing data. Remote rule updates make HTTPS GETs to <code>rules.muga.app</code> weekly, on by default (an Ed25519-signed public payload carrying no user data; disable it any time in Settings). Short-link resolution makes a direct HTTPS GET to the shortener host (bit.ly, t.co, &hellip;), on by default for links you open and opt-in for links you only hover; no MUGA server is contacted either way.</span>
     </div>
     <div class="at-a-glance-row">
       <span class="at-a-glance-label">Third-party dependencies</span>
@@ -97,9 +97,9 @@
 
   <h2>Per-Device Consent</h2>
 
-  <p>MUGA records your acceptance of its Terms and Privacy Policy <strong>per device</strong>, not per browser account. If you install MUGA on a second device, you'll be asked to read and accept the documents on that device too, even if you already accepted them somewhere else. Behavioural preferences (language, toggles) still follow your account through sync, but the <em>consent</em> to act on them is local. The full reasoning is in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
+  <p>MUGA records your acceptance of its Terms and Privacy Policy <strong>per device</strong>, not per browser account. Installing and using MUGA is what constitutes acceptance, and each device records that for itself rather than inheriting it from another one. Behavioural preferences (language, toggles) still follow your account through sync, but the <em>consent</em> to act on them is local. The full reasoning is in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0001-per-device-consent.md" target="_blank" rel="noopener noreferrer">ADR-0001</a>.</p>
 
-  <p><strong>Re-onboarding.</strong> If we materially change the Terms, MUGA surfaces a re-acceptance flow on each device the next time the service worker wakes up; affected features are gated until you re-accept. If we only add clauses (without changing existing ones), MUGA shows you the new clauses and lets you accept or decline; declining keeps you under the previously accepted Terms.</p>
+  <p><strong>No re-prompting.</strong> Changing the Terms does not interrupt you and does not gate any feature until you acknowledge it. MUGA follows the model uBlock Origin uses: the documents are permanently reachable rather than announced once, linked from onboarding, from the popup and from the Settings footer. The versioned re-acceptance engine that used to gate features was removed, along with roughly a thousand lines whose only job was deciding when to interrupt you about a document change. The reasoning is in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0007-terms-available-not-accepted.md" target="_blank" rel="noopener noreferrer">ADR-0007</a>.</p>
 
   <p><strong>Migration on upgrade.</strong> If you previously installed MUGA before per-device consent shipped and your acceptance was stored across devices via sync, MUGA migrates that acceptance to local storage on the first run after upgrade. The migration is one-way (sync &rarr; local) and idempotent. You keep your acceptance state without re-onboarding. Implemented in <code>src/lib/sync-migration.js</code>.</p>
 
@@ -176,7 +176,7 @@
   <hr>
 
   <div class="footer">
-    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v2.6.0 (2026-07-13) &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
+    <p>This report is updated with each release. &nbsp;&middot;&nbsp; Last updated: v3.0.0 (2026-08-08) &nbsp;&middot;&nbsp; <a href="https://github.com/yocreoquesi/muga" target="_blank" rel="noopener noreferrer">github.com/yocreoquesi/muga</a></p>
   </div>
 
   </div>

@@ -9,7 +9,7 @@
 <body>
 
   <h1>Terms of Use</h1>
-  <p class="meta">MUGA: Shorter, cleaner URLs, fair to every creator &nbsp;&middot;&nbsp; Version 1.4 &nbsp;&middot;&nbsp; Last updated: 2026-07-15</p>
+  <p class="meta">MUGA: Shorter, cleaner URLs, fair to every creator &nbsp;&middot;&nbsp; Version 1.5 &nbsp;&middot;&nbsp; Last updated: 2026-08-08</p>
 
   <div class="highlight">
     MUGA is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3</a>. You control what MUGA does. Every feature is transparent and configurable, and the ones that reach out to a network are listed in these Terms.
@@ -26,7 +26,7 @@
     <li>Redirects AMP pages to their canonical article URLs</li>
     <li>Blocks <code>&lt;a ping&gt;</code> tracking beacons on link clicks</li>
     <li>Unwraps link-share wrappers where the destination is embedded in the URL's query string (Facebook, Instagram, certain Twitter templates). Affiliate-redirect networks are deliberately preserved so the creator's commission survives the click; see the Privacy Policy for the full list and rationale</li>
-    <li>Resolves generic URL shorteners (bit.ly, tinyurl.com, and other well-known shorteners) directly in your browser via a standard HTTP fetch; no URL is sent to any MUGA server. On Chrome this is on by default, covered by the extension's existing host access; on Firefox it is opt-in and requests permission for the shortener domains when you enable it. It only runs when you hover-hold or click a shortened link, never on passive page load. Affiliate-redirect networks are NEVER resolved this way</li>
+    <li>Resolves well-known generic URL shorteners directly in your browser via a standard HTTP fetch; no URL is sent to any MUGA server. This is split by privacy risk into two separate settings. Resolving a short link <strong>when you open it</strong> is on by default: you were navigating there anyway, so the shortener receives the request your click would have made, and MUGA hands you the cleaned destination. Resolving a short link <strong>when you merely hover over it</strong> is off by default and opt-in, because it would contact the shortener for a link you only looked at. On Chrome the extension's existing host access covers this; on Firefox, enabling it requests permission for the shortener domains. Neither runs on passive page load, and either can be turned off in Settings. Affiliate-redirect networks are NEVER resolved this way</li>
     <li>Fetches weekly rule updates <strong>by default</strong>: about once a week, MUGA downloads an updated tracking-parameter list from <code>rules.muga.app</code> over HTTPS. The request is Ed25519-signed and sent with credentials omitted: no browsing history, no cookies, no identifiers, no request body. You can turn it off at any time in Settings, which returns the Extension to making no outbound requests</li>
     <li>Respects the original referral on links that already carry an affiliate tag, and lets you optionally remove third-party affiliate tags in Settings; MUGA does not add any affiliate tag of its own</li>
   </ul>
@@ -64,12 +64,9 @@
   <p>This limitation does not apply to liability that cannot be excluded or limited under applicable law, including liability for wilful misconduct or gross negligence under Spanish law.</p>
 
   <h2>10. Changes to these Terms</h2>
-  <p>The developer may update these Terms from time to time. The Extension distinguishes between two kinds of update:</p>
-  <ul>
-    <li><strong>Material changes</strong> (changes that alter your existing rights or obligations under previously accepted Terms): the version number and "Last updated" date at the top of this document are updated, and the Extension displays a re-acceptance flow on each device. Affected features are gated until you re-accept. If you do not accept, you may uninstall the Extension.</li>
-    <li><strong>Additive changes</strong> (clauses that are added without altering existing ones): the version number and "Last updated" date are updated, and the Extension displays a delta-review flow on each device showing only the new clauses. If you decline the delta, you continue under the previously accepted Terms; only the behaviours gated by the new clauses stay disabled.</li>
-  </ul>
-  <p>Non-material changes (such as formatting, typos, or clarifications that do not alter your rights) may be made without re-acceptance, but the updated document will always be available inside the Extension.</p>
+  <p>The developer may update these Terms from time to time. When they change, the version number and the "Last updated" date at the top of this document are updated.</p>
+  <p>MUGA does not interrupt you to announce a change, and it does not gate or disable any feature until you acknowledge one. As stated in section 1, your acceptance is by installing and using the Extension, so continuing to use MUGA after an update means you accept the Terms as updated. If you do not accept them, you may stop using the Extension and uninstall it.</p>
+  <p>What replaces the announcement is availability: these Terms are linked from the onboarding page, from the extension popup and from the Settings footer, so the current version is always one click away from wherever you are in MUGA.</p>
 
   <h2>11. Governing law and jurisdiction</h2>
   <p>These Terms are governed by and construed in accordance with the laws of Spain. Any disputes arising out of or in connection with these Terms shall be submitted to the competent courts of Spain.</p>

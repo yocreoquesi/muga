@@ -142,6 +142,18 @@ const CORPUS = [
     divergence: true,
     preservedParam: "ab_channel",
   },
+  // #1200 — an Azure Blob SAS URL, the shape behind a GitHub artifact
+  // download. NOT a divergence: both paths must strip nothing at all, DNR via
+  // the signed-URL allow rule and the runtime via cleaner.js's Step 0b guard.
+  // The two mechanisms are independent, which is exactly why they are pinned
+  // together here: if either one regresses, downloads break and this fails.
+  {
+    url:
+      "https://productionresultssa10.blob.core.windows.net/actions-results/1a2b/artifacts/build.zip" +
+      "?sv=2025-01-05&spr=https&se=2026-08-08T22%3A00%3A00Z&sr=b&sp=r" +
+      "&sig=nBx7Qk2ZfLp9YwR4tVhC8mJdE6sA1uGvXo0KpTzN5Ic%3D",
+    divergence: false,
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -155,12 +167,35 @@ function hostUnderAny(hostname, domains) {
 }
 
 /**
- * Simulates Chrome DNR queryTransform.removeParams semantics FAITHFULLY: Chrome
- * applies at most ONE redirect rule per request. This collects every rule whose
- * condition matches the host and asserts that AT MOST ONE matches — a stronger
- * guard than unioning, because a multi-match is exactly the one-rule-per-request
- * violation that would half-clean URLs on real Chrome. It then applies that
- * single rule's removeParams (exact, case-insensitive; no prefix matching).
+ * True when a rule's condition matches this request. Covers the three
+ * condition forms tracking-params.json actually emits: requestDomains,
+ * excludedRequestDomains and regexFilter. DNR matches regexFilter
+ * case-insensitively unless isUrlFilterCaseSensitive is set, which MUGA does
+ * not set anywhere.
+ */
+function conditionMatches(rule, url, host) {
+  const c = rule.condition;
+  if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) return false;
+  if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) return false;
+  if (c.regexFilter && !new RegExp(c.regexFilter, "i").test(url)) return false;
+  return true;
+}
+
+/**
+ * Simulates Chrome DNR semantics FAITHFULLY.
+ *
+ * Two rules of the engine matter here:
+ *
+ *  1. An `allow` rule that outranks the matching redirect rules exempts the
+ *     request: nothing is modified. That is how the signed-URL guard (#1200,
+ *     rule id 2, priority 1000) protects presigned URLs from every strip rule.
+ *  2. Chrome then applies at most ONE redirect rule per request. This asserts
+ *     that at most one matches — a stronger guard than unioning, because a
+ *     multi-match is exactly the one-rule-per-request violation that would
+ *     half-clean URLs on real Chrome.
+ *
+ * The surviving rule's removeParams are applied exactly and
+ * case-insensitively, with no prefix matching.
  *
  * @param {string} rawUrl
  * @param {Array}  trackingParamsJson — parsed tracking-params.json array
@@ -170,22 +205,28 @@ function simulateDnr(rawUrl, trackingParamsJson) {
   const u = new URL(rawUrl);
   const host = u.hostname;
 
-  const matching = trackingParamsJson.filter((rule) => {
-    const c = rule.condition;
-    if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) return false;
-    if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) return false;
-    return true;
-  });
+  const matching = trackingParamsJson.filter((rule) => conditionMatches(rule, rawUrl, host));
+
+  const allowRules = matching.filter((r) => r.action.type === "allow");
+  const redirectRules = matching.filter((r) => r.action.type === "redirect");
+
+  // An allow rule wins on strictly higher priority (and, at equal priority,
+  // by Chrome's allow > redirect action precedence). Either way the request
+  // passes through untouched.
+  const topRedirectPriority = Math.max(0, ...redirectRules.map((r) => r.priority ?? 1));
+  if (allowRules.some((r) => (r.priority ?? 1) >= topRedirectPriority)) {
+    return rawUrl;
+  }
 
   assert.ok(
-    matching.length <= 1,
-    `ONE-RULE-PER-REQUEST violated for host "${host}": rules [${matching
+    redirectRules.length <= 1,
+    `ONE-RULE-PER-REQUEST violated for host "${host}": rules [${redirectRules
       .map((r) => r.id)
       .join(", ")}] all match. Chrome would fire only one, half-cleaning the URL.`,
   );
 
   const removeParams = new Set(
-    (matching[0]?.action.redirect.transform.queryTransform.removeParams ?? []).map((p) =>
+    (redirectRules[0]?.action.redirect.transform.queryTransform.removeParams ?? []).map((p) =>
       p.toLowerCase(),
     ),
   );

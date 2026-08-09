@@ -94,32 +94,7 @@ describe("Decorative feature icons in onboarding.html are aria-hidden", () => {
   });
 });
 
-// ── Re-onboard banners are announced + focused (#740) ────────────────────────
-//
-// In delta/material re-onboard mode the JS only reveals a static banner. With
-// no role/aria-live and no focus move, the change is silent for screen-reader
-// users — and material mode is a hard gate they MUST act on.
-const onboardJs = readFileSync(join(ROOT, "src/onboarding/onboarding.js"), "utf8");
-
-describe("re-onboard banners are announced and focused (#740)", () => {
-  test("reonboard-delta banner carries a live role and is focusable", () => {
-    const m = onboardHtml.match(/<div[^>]*id="reonboard-delta"[^>]*>/);
-    assert.ok(m, "reonboard-delta banner must exist");
-    const tag = m[0];
-    assert.ok(/role="(status|alert)"/.test(tag), "delta banner must have a live role");
-    assert.ok(tag.includes('tabindex="-1"'), "delta banner must be focusable (tabindex=-1)");
-  });
-
-  test("reonboard-material banner carries role=alert and is focusable", () => {
-    const m = onboardHtml.match(/<div[^>]*id="reonboard-material"[^>]*>/);
-    assert.ok(m, "reonboard-material banner must exist");
-    const tag = m[0];
-    assert.ok(tag.includes('role="alert"'), "material banner (hard gate) must have role=alert");
-    assert.ok(tag.includes('tabindex="-1"'), "material banner must be focusable (tabindex=-1)");
-  });
-
-  test("onboarding.js moves focus to each revealed banner", () => {
-    assert.ok(/reonboardDelta\.focus\(\)/.test(onboardJs), "must focus the delta banner on reveal");
-    assert.ok(/reonboardMaterial\.focus\(\)/.test(onboardJs), "must focus the material banner on reveal");
-  });
-});
+// The #740 re-onboard banner assertions lived here. Both banners were deleted
+// along with the versioned-consent engine when MUGA adopted the uBlock Origin
+// model — the onboarding page has a single informational mode now, so there is
+// no reveal to announce and no focus to move.

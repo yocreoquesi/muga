@@ -22,7 +22,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { REQUIRED_CONSENT_VERSION } from "../../src/lib/consent-version-manifest.js";
+import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../..");
@@ -104,7 +104,7 @@ describe("#1045 — getPrefs degrades per-source; a sync failure keeps consent +
     const { localStore } = installChromeStub({ failSyncGet: true });
     localStore.set("mugaConsent", {
       onboardingDone: true,
-      consentVersion: REQUIRED_CONSENT_VERSION,
+      consentVersion: TERMS_VERSION,
       consentDate: 1,
     });
     const prefs = await freshPrefs();
