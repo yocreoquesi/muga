@@ -103,19 +103,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Chrome extension
-        run: npm run build:chrome
-
-      - name: Build Firefox extension
-        run: npm run build:firefox
-
       - name: Get version from tag
         id: version
         run: |
           # For push events, GITHUB_REF_NAME is the tag (v1.2.3); for
           # workflow_dispatch, read from the input.
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
           echo "VERSION=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the tag matches what would be published
+        # The stores validate the MANIFEST version, not the tag name. Tagging
+        # v3.0.1 with manifests still at 3.0.0 publishes 3.0.0 under a tag that
+        # says otherwise, and nothing about that is loud: the store accepts it
+        # and the GitHub Release is named after the tag. The cost lands later,
+        # when a version number has been silently burned and cannot be reused.
+        #
+        # Runs BEFORE the builds so a mistyped tag costs seconds, not a full
+        # build-and-publish cycle, and long before anything is uploaded.
+        run: node tools/verify-release-version.mjs "${{ steps.version.outputs.TAG }}"
+
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
 
       - name: Rename build artifacts
         run: |

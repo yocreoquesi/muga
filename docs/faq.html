@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUGA FAQ: The denoise extension for the web</title>
+  <title>MUGA FAQ: URL Cleaner. Remove tracking</title>
   <meta name="description" content="A direct, evidence-cited FAQ for skeptics. Every factual claim is backed by a line in MUGA's open source. No analytics, no telemetry. GPL v3.">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="/assets/muga-mark.svg">
@@ -33,10 +33,10 @@
   <div class="wrap">
 
   <h1>Frequently Asked Questions</h1>
-  <p class="meta">MUGA: The web, with the noise turned down &nbsp;·&nbsp; Version 2.6.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
+  <p class="meta">MUGA: Clean URLs, tracking removed &nbsp;·&nbsp; Version 3.0.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
-    A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web, it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins, please open an issue.
+    A direct, evidence-cited FAQ for skeptics. MUGA is a URL cleaner: it removes the tracking parameters from every URL, unwraps redirects, and reveals where a shortened link really goes. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins, please open an issue.
   </div>
 
   <p>This document is intentionally written for a technical audience that has already read the <a href="/privacy-page.html">Privacy policy</a> and the <a href="/tos.html">Terms of service</a> and wants to verify the claims.</p>
@@ -59,7 +59,7 @@
 
   <p>If you only want noise removed and don't care about creator attribution, a generic cleaner is fine. If you want the YouTuber who recommended you that USB-C dock to actually get paid for the recommendation, you need a tool that knows the difference between a noise param and an affiliate tag.</p>
 
-  <h3>Q: Doesn't preserving affiliate parameters defeat the denoise goal?</h3>
+  <h3>Q: Doesn't preserving affiliate parameters defeat the point of a URL cleaner?</h3>
 
   <p>No, and the distinction matters. An affiliate tag like <code>?tag=somecreator-21</code> identifies <strong>the recommender</strong>, not you. A tracking parameter like <code>?fbclid=IwAR3...</code> identifies <strong>you</strong>, across sessions, across sites. MUGA strips the second and preserves the first.</p>
 
@@ -175,7 +175,7 @@
       <a href="/faq.html">FAQ</a>
       <a href="https://github.com/yocreoquesi/muga">GitHub</a>
     </div>
-    <div class="colophon">MUGA · GPL v3 · The web, with the noise turned down.</div>
+    <div class="colophon">MUGA · GPL v3 · Clean URLs, tracking removed.</div>
   </div>
 </footer>
 

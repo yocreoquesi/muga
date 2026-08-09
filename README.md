@@ -4,18 +4,18 @@
 [![Version](https://img.shields.io/badge/version-3.0.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
-# MUGA: The URL denoise extension for the web
+# MUGA: URL Cleaner. Remove tracking
 
 ### Install now
 
 [![Firefox](https://img.shields.io/badge/Firefox-Install_from_AMO-FF7139?logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/firefox/addon/muga/)
-[![Chrome](https://img.shields.io/badge/Chrome-Install_from_CWS-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
+[![Chrome](https://img.shields.io/badge/Chrome-Install_from_CWS-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
 
 ---
 
-**MUGA turns the noise down on every URL while trying not to strip the credit of whoever recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup shows a "Creator referral preserved" badge so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
+**MUGA removes the tracking from every URL while trying not to strip the credit of whoever recommended you.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup shows a "Creator referral preserved" badge so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
 
-> **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** The web, with the noise turned down.
+> **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** Clean URLs, tracking removed.
 
 > **3.0.0 shipped.** MUGA no longer adds an affiliate tag of its own: no hidden tag, no commission from your clicks, and the original creator's referral is still preserved by default. It also stops interrupting you about its own Terms, which are now permanently available and linked instead of announced. New in this release: `Referer` suppression and `<a ping>` beacon blocking enforced at the network layer, and short-link resolution split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are now left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
@@ -29,7 +29,7 @@
 
 ![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
 
-MUGA intercepts URLs as you browse and removes noise patterns before the page loads. The result is a shorter, quieter URL: your browsing stays the same, minus the surveillance.
+MUGA intercepts URLs as you browse and removes the tracking before the page loads. The result is a shorter, cleaner URL: your browsing stays the same, minus the surveillance.
 
 <details>
 <summary><strong>More examples</strong></summary>
@@ -59,7 +59,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ---
 
-## What it quiets
+## What it removes
 
 **447 tracking params + 12 prefix patterns** across 6 categories, on every site:
 
@@ -69,10 +69,10 @@ After:  https://www.ebay.es/itm/123456789
 | Paid Ads | `fbclid`, `gclid`, `msclkid`, `ttclid`, `li_fat_id` + 30 more |
 | Email Marketing | `mc_cid`, `_hsenc`, `mkt_tok`, `_mkto_trk`, `_kx` + 20 more |
 | Social Media | `igshid`, `igsh`, `epik`, `sc_channel`, `pin_unauth` + 5 more |
-| Platform Noise | E-commerce session IDs, click params, marketplace tokens + 25 more |
+| Platform tracking | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **188 domains** preserve functional query params (search queries, pagination, filters) while removing the noise.
+Domain-specific rules for **188 domains** preserve functional query params (search queries, pagination, filters) while removing the tracking.
 
 ---
 
@@ -92,8 +92,8 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Always on, no configuration needed
 
-- Quiet 447 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
-- Strip e-commerce path noise (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
+- Remove 447 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Strip e-commerce path clutter (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
 - Badge counter showing params stripped on current tab
@@ -101,7 +101,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Optional, configured during first setup
 
-- **Pre-navigation cleaning**: browser-native DNR rules quiet noise patterns *before* the page loads, covering address-bar navigation, bookmarks, and external apps
+- **Pre-navigation cleaning**: browser-native DNR rules remove tracking patterns *before* the page loads, covering address-bar navigation, bookmarks, and external apps
 - **Block `<a ping>` beacons**: prevents background ping requests on click
 - **AMP redirect**: silently redirects AMP pages to the canonical article URL
 - **Redirect-wrapper unwrapping**: detects and bypasses intermediary redirect wrappers so you land on the real URL
@@ -111,7 +111,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Per-domain blacklist: strip everything on a specific site, a single param value (`domain::param::value`), or a param regardless of its value (`domain::param::*`)
 - Per-domain disable (`domain::disabled`): opt entire domains out of MUGA
 - Whitelist: protect specific creator affiliate tags from detection. Supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
-- Custom noise params: add your own parameter names
+- Custom tracking params: add your own parameter names
 - Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; off by default, the original referral is respected until you turn this on; MUGA never adds a tag of its own in their place)
 - Toast notification when a third-party affiliate is detected (opt-in)
@@ -140,7 +140,7 @@ By default, MUGA respects the original referral: if a link already carries a cre
 
 If you prefer, "Strip all third-party affiliate tags" in Settings removes those tags instead, leaving none behind. This is an optional extra, off by default, and MUGA never adds a tag of its own in their place.
 
-On stores where attribution is redirect-based (an external server sets the referral via a 30x redirect), MUGA also strips the affiliate noise parameters (`awc`, `wt_mc`, `lgw_code`, and others) those networks leave on the landing URL, and unwraps affiliate redirect URLs where possible so you land directly on the store, without changing who gets credit for the referral.
+On stores where attribution is redirect-based (an external server sets the referral via a 30x redirect), MUGA also strips the affiliate tracking parameters (`awc`, `wt_mc`, `lgw_code`, and others) those networks leave on the landing URL, and unwraps affiliate redirect URLs where possible so you land directly on the store, without changing who gets credit for the referral.
 
 This is explained during onboarding, disclosed in the extension description, documented in the [privacy policy](https://rules.muga.app/privacy-page.html), and verifiable in the source code.
 
@@ -172,7 +172,7 @@ MUGA does not hold an affiliate account of its own on any store and does not add
 
 **Firefox.** [Install from AMO](https://addons.mozilla.org/firefox/addon/muga/)
 
-**Chrome.** [Install from Chrome Web Store](https://chromewebstore.google.com/detail/muga-clean-urls-fair-to-e/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
+**Chrome.** [Install from Chrome Web Store](https://chromewebstore.google.com/detail/pjdpeamhcjdhfijpmgamjdoplbnbajoh)
 
 Or install from source:
 
@@ -201,7 +201,7 @@ New release: tag `vX.Y.Z` → push → GitHub Actions builds and publishes autom
 
 ## Contributing
 
-PRs welcome for new noise patterns, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions.
+PRs welcome for new tracking patterns, new stores, or additional languages. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and conventions.
 
 Key contribution points:
 
