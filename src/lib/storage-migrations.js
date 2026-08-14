@@ -209,44 +209,6 @@ export async function migratePerSiteDisableToAllowlist() {
 }
 
 /**
- * One-time migration (drop-affiliate-injection, PR 1b): deletes the retired
- * `injectOwnAffiliate` key from chrome.storage.sync. The own-tag affiliate
- * injection feature was removed in PR 1a; the pref itself (and its guarded
- * per-device override machinery — see synced-affiliate-pref-guard.js's
- * GUARDED_PREFS) is retired in PR 1b, so no code path writes or reads this
- * key anymore. Safe to call on every startup: it reads the key FIRST and
- * only issues the `remove` write when the key is actually present, so after
- * the one-time cleanup it never spends a sync write op again (matching the
- * read-first, write-only-if-needed pattern of the sibling migrations —
- * `remove` still counts against Chrome's sync write quota even for an absent
- * key, so an unconditional write on every SW wake would waste quota forever).
- *
- * Fail-safe: wrapped in try/catch — a storage error must never throw out to
- * the caller or break startup.
- */
-export async function migrateDropInjectOwnAffiliate() {
-  try {
-    const present = await new Promise((resolve) => {
-      chrome.storage.sync.get("injectOwnAffiliate", (data) => {
-        void chrome.runtime.lastError; // non-critical
-        // chrome omits absent keys; a stored boolean is defined. `!== undefined`
-        // is the robust presence signal (covers stored `false` too).
-        resolve(!!data && data.injectOwnAffiliate !== undefined);
-      });
-    });
-    if (!present) return; // already clean — no write, no wasted quota op
-    await new Promise((resolve) => {
-      chrome.storage.sync.remove("injectOwnAffiliate", () => {
-        void chrome.runtime.lastError; // non-critical
-        resolve();
-      });
-    });
-  } catch {
-    // Migration is best-effort — a failure here must never break startup.
-  }
-}
-
-/**
  * One-time migration (drop-cookie-consent, Slice D of 6): deletes every
  * storage key left behind by the retired cookie-consent-minimizer subsystem.
  * The runtime that read these keys (content/cookie-noise.js,
@@ -265,7 +227,7 @@ export async function migrateDropInjectOwnAffiliate() {
  *     dead Tier2 remote-rules cache (Slice B removed the code that wrote
  *     these; any pre-Slice-B install may still carry them).
  *
- * Read-first, write-only-if-present (mirrors migrateDropInjectOwnAffiliate
+ * Read-first, write-only-if-present (mirrors migratePerSiteDisableToAllowlist
  * exactly): each area is read before any write, and a `remove` is issued
  * for that area ONLY when at least one of its keys is actually present
  * (`!== undefined`, the robust presence signal that also covers a stored

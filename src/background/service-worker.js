@@ -6,7 +6,7 @@
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateDropInjectOwnAffiliate, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -210,9 +210,6 @@ const toolbarPresenter = createToolbarPresenter({
 migrateStatsToLocal();
 migrateConsentToLocal();
 migratePerSiteDisableToAllowlist().catch(() => {});
-// drop-affiliate-injection (PR 1b): deletes the retired injectOwnAffiliate
-// key from sync. Best-effort; failure must not break startup.
-migrateDropInjectOwnAffiliate().catch(() => {});
 // drop-cookie-consent (Slice D of 6): deletes every storage key left behind
 // by the retired cookie-consent-minimizer subsystem (sync pref + legacy
 // keys, plus the dead Tier2 remote-rules local cache). Best-effort;
