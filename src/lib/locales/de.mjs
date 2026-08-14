@@ -101,7 +101,7 @@ export default Object.freeze({
   categories_hint: "Aktiviere oder deaktiviere das Entfernen pro Parameter-Kategorie. Deaktivierte Kategorien behalten ihre Parameter in URLs.",
   lang_label: "Anzeigesprache",
   lang_hint: "Betrifft das Popup und die Einstellungsseite. Hat keinen Einfluss auf die URL-Verarbeitung.",
-  lang_community_note: "Von der Community gepflegt. Beiträge willkommen.",
+  lang_assisted_note: "KI-gestützte Übersetzung. Beiträge willkommen.",
   row_dnr_label: "Links vor der Navigation bereinigen",
   row_dnr_hint: "Bereinigt URLs während du in der Adressleiste tippst, aus Lesezeichen und Links aus anderen Apps. Vor dem Laden der Seite.",
   row_active_defense_label: "Aktive Abwehr",

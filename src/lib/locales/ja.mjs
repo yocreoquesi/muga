@@ -101,7 +101,7 @@ export default Object.freeze({
   categories_hint: "各パラメータカテゴリの削除を有効/無効にします。カテゴリを無効にすると、そのパラメータはURLに残ります。",
   lang_label: "表示言語",
   lang_hint: "ポップアップと設定ページに影響します。URLの処理には影響しません。",
-  lang_community_note: "AI支援による翻訳。貢献を歓迎します。",
+  lang_assisted_note: "AI支援による翻訳。貢献を歓迎します。",
   row_dnr_label: "ナビゲーション前にリンクをクリーンに",
   row_dnr_hint: "アドレスバーへの入力、ブックマーク、他のアプリからのリンクのURLをクリーンアップします。ページが読み込まれる前に。",
   row_active_defense_label: "アクティブディフェンス",

@@ -101,7 +101,7 @@ export default Object.freeze({
   categories_hint: "Enable or disable stripping for each param category. Disabling a category keeps those parameters in URLs.",
   lang_label: "Display language",
   lang_hint: "Affects the popup and settings page. Does not affect URL processing.",
-  lang_community_note: "Community-maintained. Contributions welcome.",
+  lang_assisted_note: "AI-assisted translation. Contributions welcome.",
   row_dnr_label: "Clean links before navigation",
   row_dnr_hint: "Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.",
   row_active_defense_label: "Active defense",

@@ -101,7 +101,7 @@ export default Object.freeze({
   categories_hint: "Activez ou désactivez la suppression par catégorie de paramètres. Désactiver une catégorie conserve ces paramètres dans les URL.",
   lang_label: "Langue d'affichage",
   lang_hint: "Affecte le popup et la page de paramètres. N'affecte pas le traitement des URL.",
-  lang_community_note: "Assisté par IA. Contributions bienvenues.",
+  lang_assisted_note: "Traduction assistée par IA. Contributions bienvenues.",
   row_dnr_label: "Nettoyer les liens avant la navigation",
   row_dnr_hint: "Nettoie les URL pendant que vous tapez dans la barre d'adresse, depuis les favoris et les liens d'autres applications. Avant le chargement de la page.",
   row_active_defense_label: "Défense active",

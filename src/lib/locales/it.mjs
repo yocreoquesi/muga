@@ -101,7 +101,7 @@ export default Object.freeze({
   categories_hint: "Attiva o disattiva la rimozione per ogni categoria di parametri. Disattivare una categoria mantiene quei parametri negli URL.",
   lang_label: "Lingua dell'interfaccia",
   lang_hint: "Influisce sul popup e sulla pagina delle impostazioni. Non influisce sull'elaborazione degli URL.",
-  lang_community_note: "Assistito da IA. Contributi benvenuti.",
+  lang_assisted_note: "Traduzione assistita da IA. Contributi benvenuti.",
   row_dnr_label: "Pulire i link prima della navigazione",
   row_dnr_hint: "Ripulisce gli URL mentre digiti nella barra degli indirizzi, dai segnalibri e dai link di altre app. Prima del caricamento della pagina.",
   row_active_defense_label: "Difesa attiva",

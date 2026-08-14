@@ -101,7 +101,7 @@ export default Object.freeze({
   categories_hint: "Activa o desactiva la eliminación por categoría. Desactivar una categoría conserva esos parámetros en las URLs.",
   lang_label: "Idioma de la interfaz",
   lang_hint: "Afecta al popup y a esta página. No afecta al procesamiento de URLs.",
-  lang_community_note: "Mantenido por la comunidad. Se aceptan contribuciones.",
+  lang_assisted_note: "Traducción asistida por IA. Se aceptan contribuciones.",
   row_dnr_label: "Limpiar los enlaces antes de navegar",
   row_dnr_hint: "Limpia URLs mientras escribes en la barra de direcciones, desde marcadores y enlaces de otras apps. Antes de que cargue la página.",
   row_active_defense_label: "Defensa activa",
