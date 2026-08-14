@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>MUGA — CWS screenshot 1: popup in context</title>
+<style>
+  /*
+   * Chrome Web Store screenshot 1 frame (1280x800, per CWS spec).
+   *
+   * The real popup is 380px wide (popup.css fixes body { width: 380px }), so
+   * screenshotting it alone produces a 380px asset that the store rejects.
+   * This frame composes that same live popup, at its natural size and with no
+   * bitmap upscaling, into the browser context a user actually sees it in.
+   *
+   * capture.mjs injects two images at runtime:
+   *   #popup-slot  <- live popup.html body screenshot
+   *   .ext-icon img, .brand-chip img <- src/icons/128.png
+   */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 1280px; height: 800px; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+    background: #f0f0f0;
+  }
+
+  .browser {
+    width: 100%; height: 100%;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ---- Browser chrome (matches ss1-before-after.html) ---- */
+  .browser-chrome {
+    background: #dee1e6;
+    padding: 10px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .traffic-lights { display: flex; gap: 7px; align-items: center; }
+  .light { width: 12px; height: 12px; border-radius: 50%; }
+  .l-red { background: #ff5f57; border: 0.5px solid rgba(0,0,0,.12); }
+  .l-yellow { background: #febc2e; border: 0.5px solid rgba(0,0,0,.12); }
+  .l-green { background: #28c840; border: 0.5px solid rgba(0,0,0,.12); }
+
+  .tabs-row { display: flex; gap: 2px; align-items: flex-end; padding-top: 4px; }
+  .tab {
+    height: 32px; padding: 0 16px;
+    background: #f0f2f5;
+    border-radius: 8px 8px 0 0;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #666; min-width: 200px;
+  }
+  .tab.active { background: #fff; color: #1a1a1a; font-weight: 500; }
+  .tab-favicon {
+    width: 14px; height: 14px;
+    background: #c9ccd1;
+    border-radius: 3px; flex-shrink: 0;
+  }
+  .tab-close { margin-left: auto; color: #999; font-size: 14px; line-height: 16px; }
+
+  .omnibox-row {
+    background: #fff;
+    padding: 6px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #888; font-size: 15px; flex-shrink: 0;
+  }
+  .omnibox {
+    flex: 1; height: 32px;
+    background: #f0f2f5;
+    border-radius: 20px;
+    display: flex; align-items: center;
+    padding: 0 14px; gap: 8px;
+    font-size: 13px; color: #333; overflow: hidden;
+  }
+  .omnibox-lock { color: #5a7f50; font-size: 12px; flex-shrink: 0; }
+  .omnibox-url {
+    flex: 1; white-space: nowrap; overflow: hidden;
+    font-family: 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', monospace;
+    font-size: 12.5px;
+  }
+  .omnibox-url .host { color: #1a1a1a; font-weight: 600; }
+  .omnibox-url .path { color: #444; }
+  /* The surviving creator referral, marked as kept rather than stripped. */
+  .omnibox-url .kept {
+    color: #14532d;
+    background: #e7f8ed;
+    border-radius: 3px;
+    padding: 1px 4px;
+  }
+
+  .ext-area { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .ext-icon {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border-radius: 7px;
+    /* Active state: the popup below is open, so the toolbar button reads as pressed. */
+    background: #EFE6FB;
+    box-shadow: 0 0 0 2px #D8C6F5;
+  }
+  .ext-icon img { width: 20px; height: 20px; display: block; border-radius: 4px; }
+
+  /* ---- Page behind the popup ----
+     Deliberately a neutral content skeleton: no retailer names or logos, so the
+     asset carries no brand copy (see docs/store-listing.md, routing ID FZSL).
+     Attention belongs on the omnibox and the popup. */
+  .page-content {
+    flex: 1;
+    background: #fff;
+    padding: 0 64px 90px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 40px;
+  }
+  /* Kept narrower than the popup's left edge (882px) so nothing runs underneath it. */
+  .skeleton { display: flex; gap: 40px; width: 760px; }
+  .sk-media {
+    width: 210px; height: 210px;
+    background: #f2f3f5;
+    border: 1px solid #e8eaed;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .sk-body { flex: 1; padding-top: 4px; }
+  .sk-line { height: 12px; background: #eceef1; border-radius: 4px; margin-bottom: 12px; }
+  .sk-line.w90 { width: 90%; }
+  .sk-line.w70 { width: 70%; }
+  .sk-line.tall { height: 20px; width: 78%; background: #e3e5e9; margin-bottom: 20px; }
+  .sk-price { height: 26px; width: 110px; background: #e3e5e9; border-radius: 6px; margin: 20px 0 18px; }
+  .sk-btn { height: 36px; width: 180px; background: #eceef1; border-radius: 18px; }
+
+  /* ---- What MUGA did to this link ----
+     This band is the point of the screenshot: every other cleaner would strip
+     the whole query string, referral included. Showing "removed" and "kept"
+     side by side is the one claim no competitor can make. */
+  .ledger { display: flex; gap: 40px; align-items: flex-start; width: 1150px; }
+  .ledger-col { display: flex; flex-direction: column; gap: 9px; }
+  .ledger-col.removed { flex: 1; }
+  .ledger-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: #8b8b96;
+  }
+  .ledger-label b { color: #18171C; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; max-width: 620px; }
+  .chip {
+    font-family: 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', monospace;
+    font-size: 11.5px;
+    border-radius: 5px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+  .chip.out {
+    background: #fdf0f0;
+    border: 1px solid #f2c4c4;
+    color: #8d2f2f;
+    text-decoration: line-through;
+    text-decoration-color: rgba(141, 47, 47, 0.45);
+  }
+  .chip.in {
+    background: #eef9f1;
+    border: 1px solid #a9dcb9;
+    color: #14532d;
+    font-weight: 600;
+  }
+  .ledger-note { font-size: 11.5px; color: #8b8b96; margin-top: 2px; }
+  .ledger-divider { width: 1px; align-self: stretch; background: #ebecef; }
+
+  /* ---- The popup, anchored to its toolbar button ---- */
+  .popup-anchor {
+    position: absolute;
+    /* Sits clear of the 88px-tall chrome so the toolbar button stays visible. */
+    top: 120px;
+    right: 18px;
+    z-index: 10;
+    filter: drop-shadow(0 12px 34px rgba(24, 23, 28, 0.26));
+  }
+  .popup-tail {
+    position: absolute;
+    top: -6px; right: 12px;
+    width: 14px; height: 14px;
+    background: #fff;
+    transform: rotate(45deg);
+    border-radius: 2px;
+  }
+  #popup-slot {
+    display: block;
+    border-radius: 12px;
+    /* Injected at natural size (380px wide). No upscaling: the bitmap is
+       rendered 1:1, which is also exactly how large the popup is in real use. */
+  }
+
+  /* ---- Caption strip ---- */
+  .caption {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: #18171C;
+    color: #fff;
+    padding: 20px 64px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .brand-chip {
+    width: 34px; height: 34px;
+    background: #fff;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-chip img { width: 26px; height: 26px; display: block; }
+  .caption-text { display: flex; flex-direction: column; gap: 3px; }
+  .caption-head {
+    font-size: 19px; font-weight: 650; letter-spacing: -0.01em;
+  }
+  .caption-head em { color: #C4A5F5; font-style: normal; }
+  .caption-sub { font-size: 13.5px; color: #A9A6B3; }
+</style>
+</head>
+<body>
+
+<div class="browser">
+
+  <div class="browser-chrome">
+    <div class="traffic-lights">
+      <span class="light l-red"></span>
+      <span class="light l-yellow"></span>
+      <span class="light l-green"></span>
+    </div>
+    <div class="tabs-row">
+      <div class="tab active">
+        <span class="tab-favicon"></span>
+        <span>Product page</span>
+        <span class="tab-close">&times;</span>
+      </div>
+    </div>
+    <div class="omnibox-row">
+      <span class="nav-btn">&#8592;</span>
+      <span class="nav-btn">&#8594;</span>
+      <span class="nav-btn">&#10227;</span>
+      <div class="omnibox">
+        <span class="omnibox-lock">&#128274;</span>
+        <span class="omnibox-url"><span class="host">www.amazon.es</span><span class="path">/dp/B09B8YWXDF?</span><span class="kept">tag=youtuber-21</span></span>
+      </div>
+      <div class="ext-area">
+        <span class="ext-icon"><img alt="MUGA"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="skeleton">
+      <div class="sk-media"></div>
+      <div class="sk-body">
+        <div class="sk-line tall"></div>
+        <div class="sk-line w90"></div>
+        <div class="sk-line w70"></div>
+        <div class="sk-price"></div>
+        <div class="sk-btn"></div>
+      </div>
+    </div>
+
+    <div class="ledger">
+      <div class="ledger-col removed">
+        <div class="ledger-label"><b>Removed</b> from this link</div>
+        <div class="chips">
+          <span class="chip out">utm_source</span>
+          <span class="chip out">utm_medium</span>
+          <span class="chip out">utm_campaign</span>
+          <span class="chip out">gclid</span>
+          <span class="chip out">linkCode</span>
+          <span class="chip out">linkId</span>
+          <span class="chip out">pd_rd_r</span>
+          <span class="chip out">pf_rd_p</span>
+          <span class="chip out">pf_rd_r</span>
+          <span class="chip out">ref_</span>
+        </div>
+      </div>
+
+      <div class="ledger-divider"></div>
+
+      <div class="ledger-col">
+        <div class="ledger-label"><b>Kept</b> on purpose</div>
+        <div class="chips">
+          <span class="chip in">tag=youtuber-21</span>
+        </div>
+        <div class="ledger-note">The referral of whoever recommended it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="popup-anchor">
+    <div class="popup-tail"></div>
+    <img id="popup-slot" alt="MUGA popup">
+  </div>
+
+  <div class="caption">
+    <div class="brand-chip"><img alt="MUGA"></div>
+    <div class="caption-text">
+      <div class="caption-head">Ten trackers gone. The creator still gets <em>credit</em>.</div>
+      <div class="caption-sub">Every other cleaner strips the referral too. MUGA tries to leave it alone, and tells you when it does.</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
