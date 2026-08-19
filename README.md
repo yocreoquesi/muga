@@ -17,7 +17,7 @@
 
 > **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** Clean URLs, tracking removed.
 
-> **3.0.0 shipped.** MUGA no longer adds an affiliate tag of its own: no hidden tag, no commission from your clicks, and the original creator's referral is still preserved by default. It also stops interrupting you about its own Terms, which are now permanently available and linked instead of announced. New in this release: `Referer` suppression and `<a ping>` beacon blocking enforced at the network layer, and short-link resolution split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are now left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
+> **3.0.0 shipped.** `Referer` suppression and `<a ping>` beacon blocking are enforced at the network layer, and short-link resolution is split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
 [Privacy policy](https://rules.muga.app/privacy-page.html) · [FAQ](docs/faq.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 

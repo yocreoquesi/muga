@@ -818,7 +818,7 @@ function renderCategories(disabledCategories) {
 /** Initializes the language dropdown and binds change handler. */
 function initLanguageSelect() {
   const select = document.getElementById("lang-select");
-  const communityNote = document.getElementById("lang-community-note");
+  const assistedNote = document.getElementById("lang-assisted-note");
   // #707: populate <option>s from SUPPORTED_LANGS so every language registered
   // in i18n.js shows up here automatically. Previously hardcoded en/es/pt/de
   // hid fr/it/ja from the picker even though their translations were complete.
@@ -830,19 +830,20 @@ function initLanguageSelect() {
       return opt;
     }),
   );
-  // Community-maintained languages (#360 / #351 / #707). Visible in the
-  // language section so users selecting one of these understand the support
-  // level they should expect. PT/DE were the original two; FR/IT/JA join
-  // them now that the picker exposes them.
-  const COMMUNITY_LANGS = new Set(["pt", "de", "fr", "it", "ja"]);
-  function updateCommunityNote(lang) {
-    if (communityNote) communityNote.hidden = !COMMUNITY_LANGS.has(lang);
+  // Non-official locales (#360 / #351 / #707). EN and ES are written by the
+  // maintainer; these five were produced with AI assistance, so the note is
+  // shown only while one of them is selected, to set the expected support
+  // level. It renders in the selected language, which is why every one of
+  // these five must carry the same claim.
+  const ASSISTED_LANGS = new Set(["pt", "de", "fr", "it", "ja"]);
+  function updateAssistedNote(lang) {
+    if (assistedNote) assistedNote.hidden = !ASSISTED_LANGS.has(lang);
   }
   select.value = _currentLang;
-  updateCommunityNote(_currentLang);
+  updateAssistedNote(_currentLang);
   select.addEventListener("change", async () => {
     _currentLang = select.value;
-    updateCommunityNote(_currentLang);
+    updateAssistedNote(_currentLang);
     try { await setPrefs({ language: _currentLang }); } catch (err) { console.error("[MUGA] save language:", err); }
     document.documentElement.lang = _currentLang;
     applyTranslations(_currentLang);

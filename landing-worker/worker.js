@@ -10,7 +10,12 @@
 // CSP audit (landing/index.html):
 //   - All styles are in a single <style> block in <head> (static, no user data).
 //   - Two <script> blocks are inline (backronym rotator + console easter egg).
-//   - External resources: images/icons from rules.muga.app (img-src).
+//   - External resources: images/icons from rules.muga.app (img-src), and the
+//     Archivo + IBM Plex Mono webfonts (the stylesheet from fonts.googleapis.com
+//     via style-src, the font files from fonts.gstatic.com via font-src). Those
+//     two origins are the only external hosts the page may reach; if the
+//     landing ever drops the <link> to Google Fonts, tighten both directives
+//     back down.
 //   - No eval, no external scripts, no frames.
 //   - 'unsafe-inline' is required for both style-src and script-src because the
 //     landing page uses a <style> tag and two inline <script> blocks with no
@@ -23,9 +28,9 @@ const SECURITY_HEADERS = {
   "Content-Security-Policy":
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' https://rules.muga.app data:; " +
-    "font-src 'none'; " +
+    "font-src https://fonts.gstatic.com; " +
     "object-src 'none'; " +
     "frame-ancestors 'none'; " +
     "base-uri 'self'",

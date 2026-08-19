@@ -164,6 +164,70 @@ async function captureCropped(context, url, destFilename, label) {
   }
 }
 
+/**
+ * Capture the live popup and compose it into a 1280x800 browser frame.
+ *
+ * WHY this exists instead of reusing captureCropped(): popup.css fixes
+ * `body { width: 380px }`, so a cropped popup screenshot is 380px wide. That is
+ * correct for the README, but the Chrome Web Store only accepts screenshots at
+ * 1280x800 or 640x400, and a listing image that is blurry or padded reads
+ * against the "quality images" criterion the Featured badge is judged on.
+ *
+ * The popup bitmap is placed at its NATURAL size inside the frame, never
+ * upscaled, so it stays pixel-sharp. 380px is also how wide the popup genuinely
+ * is on screen, which makes the composite an honest depiction rather than a
+ * flattering one.
+ */
+async function capturePopupFramed(context, popupUrl, destFilename, label) {
+  // 1. Shoot the real popup on its own.
+  const popupPage = await context.newPage();
+  await popupPage.setViewportSize({ width: 480, height: 900 });
+  let popupBuffer;
+  try {
+    await popupPage.goto(popupUrl, { waitUntil: 'networkidle', timeout: 20_000 });
+    await popupPage.waitForTimeout(600);
+    popupBuffer = await popupPage.locator('body').screenshot();
+  } finally {
+    await popupPage.close();
+  }
+  const popupDataUri = `data:image/png;base64,${popupBuffer.toString('base64')}`;
+
+  // 2. Compose it into the browser frame and shoot that at full viewport.
+  const page = await context.newPage();
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
+  try {
+    await page.goto(`file://${path.join(mockDir, 'cws-ss1-popup-frame.html')}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 10_000,
+    });
+    await page.evaluate(
+      ({ popupUri, iconUri }) => {
+        const slot = /** @type {HTMLImageElement} */ (document.getElementById('popup-slot'));
+        slot.src = popupUri;
+        const icons = /** @type {NodeListOf<HTMLImageElement>} */ (
+          document.querySelectorAll('.ext-icon img, .brand-chip img')
+        );
+        for (const img of icons) {
+          img.src = iconUri;
+        }
+      },
+      { popupUri: popupDataUri, iconUri: ICON_DATA_URI },
+    );
+    // Data URIs decode asynchronously; shooting early yields a frame with holes.
+    await page.waitForFunction(
+      () => [...document.images].every((i) => i.complete && i.naturalWidth > 0),
+      null,
+      { timeout: 10_000 },
+    );
+    await page.waitForTimeout(200);
+    const dest = path.join(assetsPath, destFilename);
+    await page.screenshot({ path: dest, fullPage: false });
+    console.log(`  captured  ${destFilename}  (${label})`);
+  } finally {
+    await page.close();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Amazon test URL — contains realistic tracking garbage that MUGA should strip
 // ---------------------------------------------------------------------------
@@ -277,7 +341,6 @@ try {
               events: [
                 { type: 'clean', url: 'https://www.amazon.es/dp/B09B8YWXDF' },
                 { type: 'preserve-affiliate', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', network: 'youtube' },
-                { type: 'inject-affiliate', url: 'https://www.booking.com/hotel/es/my-hotel.html', network: 'booking' },
               ],
             },
           },
@@ -290,7 +353,6 @@ try {
       new Promise((resolve) => {
         chrome.storage.sync.set(
           {
-            injectOwnAffiliate: true,
             notifyForeignAffiliate: false,
             language: 'en',
             blacklist: ['facebook.com', 'twitter.com'],
@@ -362,12 +424,13 @@ try {
   console.log('');
   console.log('-- Chrome Web Store screenshots --');
 
-  // cws-ss1: Popup on Amazon — same live popup URL
-  await captureCropped(
+  // cws-ss1: Popup in browser context. Framed rather than cropped, so the asset
+  // lands at the 1280x800 the store requires (see capturePopupFramed above).
+  await capturePopupFramed(
     context,
     popupUrl,
     'cws-ss1-popup-amazon.png',
-    'CWS: popup (live extension UI)',
+    'CWS: popup in browser frame (live extension UI)',
   );
 
   // cws-ss2: Before/after — reuse the same mock-up HTML

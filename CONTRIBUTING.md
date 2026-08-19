@@ -87,7 +87,7 @@ src/
 │   ├── affiliates.js      Affiliate patterns + tracking params
 │   ├── storage.js         chrome.storage helpers + PREF_DEFAULTS
 │   ├── i18n.js            i18n logic (t, applyTranslations, getStoredLang) + locale registry
-│   └── locales/           Per-locale translation data (en/es official; pt/de/fr/it/ja community)
+│   └── locales/           Per-locale translation data (en/es official; pt/de/fr/it/ja AI-assisted)
 ├── popup/                 Browser action popup
 └── options/               Full options page
 tests/unit/                Node.js test runner tests
@@ -213,7 +213,7 @@ The consistency test catches the rule-level violation. It does not catch poor ju
 
 ## Translations
 
-MUGA ships UI in 7 locales: English, Spanish, Portuguese, German, French, Italian, and Japanese. The maintainer is a native Spanish speaker (English fluent); the other five are community-contributed.
+MUGA ships UI in 7 locales: English, Spanish, Portuguese, German, French, Italian, and Japanese. The maintainer is a native Spanish speaker (English fluent); the other five were produced with AI assistance and have not yet been reviewed by a native speaker. Contributions correcting them are welcome and are the fastest way to help.
 
 ### Where translation strings live
 
@@ -223,11 +223,11 @@ Each locale has its own file under `src/lib/locales/`:
 |------|--------|
 | `src/lib/locales/en.mjs` | English (official) |
 | `src/lib/locales/es.mjs` | Spanish (official) |
-| `src/lib/locales/pt.mjs` | Portuguese (community) |
-| `src/lib/locales/de.mjs` | German (community) |
-| `src/lib/locales/fr.mjs` | French (community) |
-| `src/lib/locales/it.mjs` | Italian (community) |
-| `src/lib/locales/ja.mjs` | Japanese (community) |
+| `src/lib/locales/pt.mjs` | Portuguese (AI-assisted) |
+| `src/lib/locales/de.mjs` | German (AI-assisted) |
+| `src/lib/locales/fr.mjs` | French (AI-assisted) |
+| `src/lib/locales/it.mjs` | Italian (AI-assisted) |
+| `src/lib/locales/ja.mjs` | Japanese (AI-assisted) |
 
 Each file exports a frozen object: `export default Object.freeze({ key: "value", ... })`. To edit a translation, find the key in the relevant locale file and change its value. The key set in every locale file must stay in sync with `en.mjs` — the structural test `tests/unit/i18n-locale-modules.test.mjs` enforces this.
 
@@ -235,12 +235,12 @@ Each file exports a frozen object: `export default Object.freeze({ key: "value",
 
 - **Officially maintained**: `en` and `es`. Every key in `src/lib/locales/en.mjs` must have a non-empty value in both locale files. The completeness test in `tests/unit/i18n-completeness.test.mjs` enforces this floor — a PR that adds a key without an EN+ES value fails CI.
 
-- **Community-maintained**: `pt`, `de`, `fr`, `it`, `ja`. New keys may ship with `null` initially; the runtime fallback lands missing entries on EN cleanly. Community-locale PRs do not require native-speaker review by the maintainer — the EN+ES floor is what gates a merge.
+- **AI-assisted**: `pt`, `de`, `fr`, `it`, `ja`. New keys may ship with `null` initially; the runtime fallback lands missing entries on EN cleanly. PRs against these locales do not require native-speaker review by the maintainer — the EN+ES floor is what gates a merge. The Settings language picker states the same thing to users whenever one of these five is selected.
 
 To find which keys are missing in a community locale, run:
 
 ```bash
-node tools/missing-translations.mjs           # all community locales
+node tools/missing-translations.mjs           # all AI-assisted locales
 node tools/missing-translations.mjs pt        # PT only
 node tools/missing-translations.mjs de        # DE only
 node tools/missing-translations.mjs fr        # FR only

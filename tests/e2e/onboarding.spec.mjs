@@ -60,16 +60,21 @@ test.describe("Onboarding", () => {
     await expect(page.locator("#start-btn")).toBeVisible();
   });
 
-  test("ob_tagline_sub renders the 2.1 denoise-first wording (no 'Fair to creators')", async ({ onboardingPage: page }) => {
-    // 2.1 pivot replaced the creator-favouring 2.0 wording ("Fair to creators ·
-    // nice to you · honest about both") with a creator-agnostic denoise frame.
-    // See ADR-0002 and the original miss flagged in #704. This test guards
-    // against a regression that brings the moral-positioning copy back.
+  test("ob_tagline_sub renders the URL-cleaner wording (no 'Fair to creators', no denoise identity)", async ({ onboardingPage: page }) => {
+    // Two retired framings are guarded here, not one. The 2.0 wording ("Fair to
+    // creators · nice to you · honest about both") was moral positioning the 2.1
+    // pivot dropped (ADR-0002, and the original miss in #704). The denoise frame
+    // that replaced it was itself retired in 3.0: the stores list MUGA as "URL
+    // Cleaner. Remove tracking" while onboarding still opened with "Denoise every
+    // URL", so an install read as a different product than the listing sold.
+    // Descriptive "noise" prose elsewhere is current copy and deliberately out
+    // of scope here — this only pins the identity line.
     const tagline = page.locator('[data-i18n="ob_tagline_sub"]');
     await expect(tagline).toBeVisible();
     const text = await tagline.textContent();
-    expect(text).toContain("Denoise every URL");
+    expect(text).toContain("Clean every URL");
     expect(text).toContain("zero telemetry");
+    expect(text).not.toContain("Denoise");
     expect(text).not.toContain("Fair to creators");
     expect(text).not.toContain("honest about both");
   });
