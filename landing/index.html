@@ -19,6 +19,13 @@
 
 <link rel="icon" href="https://rules.muga.app/assets/muga-mark.svg">
 
+<!-- Archivo (display/body) + IBM Plex Mono (technical labels). Google Fonts is
+     the only external origin the landing Worker's CSP admits; keep the two in
+     step (see SECURITY_HEADERS in landing-worker/worker.js). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -51,8 +58,8 @@
     --accent-soft: #C9B2F5;
     --good: #4CC38A;
     --bad: #E0665C;
-    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: Archivo, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --maxw: 1120px;
   }
 
@@ -93,39 +100,67 @@
     .brand .ver { display: none; }
   }
 
-  /* ---------- hero ---------- */
-  .hero { position: relative; padding: 40px 0 40px; }
-  .hero-glow {
-    position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
-    width: 820px; height: 480px;
-    background: radial-gradient(closest-side, rgba(106,43,207,.22), transparent);
-    pointer-events: none;
+  /* ---------- hero ----------
+     The hero is left-aligned and carries no radial glow. The brand mark is
+     promoted from a 30px icon to the figure that explains the product: the
+     arc is the noisy URL, the spike is where the tracking comes off, the flat
+     run and the arrow are the clean link you actually wanted. */
+  .hero { position: relative; padding: 24px 0 40px; }
+  .hero-inner { position: relative; }
+  .hero-top {
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(32px, 5vw, 60px); align-items: center;
   }
-  .hero-inner { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
+  .eyebrow {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 22px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink);
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
   h1 {
     margin: 0 0 22px;
-    font-size: clamp(44px, 7vw, 84px);
-    line-height: 1.0; letter-spacing: -.03em; font-weight: 700;
-    max-width: 15ch; text-wrap: balance;
+    font-size: clamp(40px, 5.4vw, 66px);
+    line-height: .98; letter-spacing: -.035em; font-weight: 800;
+    max-width: 17ch; text-wrap: balance;
   }
   h1 .mark { color: var(--accent-ink); }
   .lede {
     margin: 0 0 32px;
     font-size: clamp(15px, 1.7vw, 17px); line-height: 1.6;
-    color: var(--ink-2); max-width: 54ch; text-wrap: pretty;
+    color: var(--ink-2); max-width: 46ch; text-wrap: pretty;
   }
   .lede b { color: var(--ink); font-weight: 600; }
 
-  .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 16px; }
+  .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin-bottom: 16px; }
+
+  /* Same path data as src/icons/muga-mark.svg, annotated in its own
+     coordinate space so the labels scale with the mark. */
+  .hero-figure { position: relative; }
+  .signal { display: block; width: 100%; height: auto; }
+  .signal .stroke { stroke: var(--accent-ink); }
+  .signal .head { fill: var(--accent-ink); stroke: var(--accent-ink); }
+  .signal .base { stroke: var(--rule); }
+  .signal .tick { stroke: var(--rule-2); }
+  .signal .lbl { fill: var(--ink-3); font-family: var(--mono); font-size: 3.8px; letter-spacing: .2px; }
+  .signal .junk { fill: var(--ink-3); opacity: .5; font-family: var(--mono); font-size: 3.4px; letter-spacing: .3px; }
+  @media (max-width: 900px) {
+    .hero-top { grid-template-columns: 1fr; gap: 28px; }
+    .hero-figure { order: -1; max-width: 460px; }
+  }
   .install[hidden] { display: none; }
+  /* .btn dresses both <a> and <button>. A <button> inherits neither the
+     page font nor a zeroed border, so both are set here explicitly: without
+     them the tool's Clean/Copy controls render in the UA font inside a 2px
+     outset border. */
   .btn {
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--accent); color: #fff; text-decoration: none;
-    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 12px;
-    box-shadow: 0 10px 30px -10px rgba(106,43,207,.55);
-    transition: transform .14s ease, background .14s ease, border-color .14s ease;
+    font-family: inherit; border: 0; cursor: pointer;
+    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 10px;
+    transition: background .14s ease, border-color .14s ease;
   }
-  .btn:hover { background: var(--accent-hi); transform: translateY(-1px); color: #fff; }
+  .btn:hover { background: var(--accent-hi); color: #fff; }
   .btn .ico { flex: none; }
   .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); box-shadow: none; }
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); color: var(--ink); }
@@ -141,7 +176,7 @@
     margin-top: 20px; padding-top: 16px;
     border-top: 1px solid var(--rule-soft);
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    display: flex; align-items: baseline; justify-content: center; gap: 8px;
+    display: flex; align-items: baseline; justify-content: flex-start; gap: 8px;
   }
   .bk-slot .bk-text {
     color: var(--ink-2);
@@ -152,10 +187,9 @@
 
   /* ---------- demo terminal ---------- */
   .demo {
-    position: relative; margin: 56px auto 0; max-width: 920px;
-    border: 1px solid var(--rule); border-radius: 16px;
+    position: relative; margin: 56px 0 0; max-width: none;
+    border: 1px solid var(--rule); border-radius: 12px;
     background: var(--panel); overflow: hidden;
-    box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(168,131,240,.06);
   }
   .demo-head {
     display: flex; align-items: center; gap: 14px;
@@ -164,12 +198,10 @@
     background: var(--bg-2);
     border-bottom: 1px solid var(--rule-soft);
   }
-  .demo-head .lights { display: flex; gap: 6px; }
-  .demo-head .lights span { width: 10px; height: 10px; border-radius: 999px; background: var(--rule); }
+  .demo-head .ttl { color: var(--ink-2); letter-spacing: .02em; }
   .demo-head .label { margin-left: auto; }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero-glow, .cta-glow { animation: none; }
     .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
     .wedge-card .v.strip, .wedge-card .v.strip::after { animation: none !important; }
   }
@@ -241,22 +273,32 @@
   #demo-tool .report-block[hidden] { display: none; }
   #demo-tool .report-warning { font-size: 12px; color: var(--ink-3); margin: 8px 0 0; }
 
-  /* ---------- stats ---------- */
-  .stats { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-  .stat { border: 1px solid var(--rule); border-radius: 16px; background: var(--panel); padding: 32px 28px; }
+  /* ---------- stats: a hairline rail, not three floating cards ---------- */
+  .stats {
+    margin-top: 72px; display: flex; align-items: stretch;
+    border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft);
+  }
+  .stat { flex: 1 1 0; padding: 34px 32px; border-left: 1px solid var(--rule-soft); }
+  .stat:first-child { border-left: 0; padding-left: 0; }
+  .stat:last-child { padding-right: 0; }
   .stat .num {
-    font-size: clamp(42px, 4.6vw, 58px); font-weight: 700;
-    letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums;
+    font-size: clamp(40px, 4.2vw, 54px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums;
   }
   .stat .num .unit { color: var(--accent-ink); }
   .stat .label {
-    margin-top: 12px; font-family: var(--mono); font-size: 11.5px;
-    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3);
+    margin-top: 12px; font-family: var(--mono); font-size: 11px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
   }
-  .stat .desc { margin-top: 8px; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+  .stat .desc { margin-top: 8px; color: var(--ink-2); font-size: 13.5px; line-height: 1.55; max-width: 32ch; }
+  @media (max-width: 760px) {
+    .stats { flex-direction: column; }
+    .stat { border-left: 0; border-top: 1px solid var(--rule-soft); padding: 26px 0; }
+    .stat:first-child { border-top: 0; padding-top: 0; }
+  }
 
   /* ---------- sections ---------- */
-  .section { margin-top: 110px; }
+  .section { margin-top: 88px; }
   .section-label {
     font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
     text-transform: uppercase; color: var(--accent-ink); margin-bottom: 16px;
@@ -280,9 +322,9 @@
      the nested .wedge-card/.trust-cell/.shot boxes so those still stand out
      as the focal elements, not a jarring box-in-box. */
   .wrap.section-frame {
-    border: 1px solid var(--rule); border-radius: 16px;
-    background: var(--bg-2);
-    padding: clamp(32px, 5vw, 56px) clamp(20px, 4vw, 40px);
+    border: 0; border-top: 1px solid var(--rule); border-radius: 0;
+    background: transparent;
+    padding: clamp(36px, 5vw, 56px) 28px 0;
   }
 
   /* ---------- scroll reveal + ambient motion (progressive enhancement) ----------
@@ -296,15 +338,11 @@
   }
   .reveal.is-visible { opacity: 1; transform: translateY(0); }
 
-  @keyframes glowDrift {
-    0%, 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: .9; }
-    50% { transform: translateX(-50%) translateY(-16px) scale(1.05); opacity: 1; }
-  }
-  .hero-glow { animation: glowDrift 16s ease-in-out infinite; }
-  .cta-glow { animation: glowDrift 19s ease-in-out infinite reverse; animation-delay: -5s; }
-
   /* ---------- wedge ---------- */
-  .wedge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 56px; align-items: start; }
+  /* min() lets the track drop under its 340px floor on narrow phones; without
+     it the floor plus .wrap's padding forces a 368px page and anything
+     narrower scrolls sideways. */
+  .wedge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 56px; align-items: start; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     font-family: var(--mono); font-size: 11.5px;
@@ -313,20 +351,21 @@
     border-radius: 999px; padding: 2px 10px; vertical-align: middle;
   }
   .wedge-card {
-    border: 1px solid var(--rule); border-radius: 16px;
-    background: var(--panel); padding: 22px;
+    border: 0; border-radius: 0;
+    background: transparent; padding: 0;
     font-family: var(--mono); font-size: 13px;
-    box-shadow: 0 20px 60px -30px rgba(0,0,0,.6);
+    box-shadow: none;
   }
   .wedge-card .header {
     display: flex; justify-content: space-between; align-items: center;
-    padding-bottom: 12px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 4px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--rule); margin-bottom: 4px;
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
   }
   .wedge-card .header .ttl { color: var(--ink); }
   .wedge-card .header .meta { color: var(--ink-3); font-size: 11px; }
   .wedge-card .row {
-    display: grid; grid-template-columns: 64px 1fr; gap: 12px;
-    padding: 11px 0; border-bottom: 1px dashed var(--rule-soft);
+    display: grid; grid-template-columns: 64px 1fr; gap: 20px;
+    padding: 13px 0; border-bottom: 1px solid var(--rule-soft);
   }
   .wedge-card .row:last-child { border-bottom: 0; }
   .wedge-card .k { color: var(--ink-3); }
@@ -346,18 +385,27 @@
 
   /* ---------- trust ---------- */
   .trust-intro { margin-bottom: 36px; }
-  .trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  /* Three explicit columns, then a stack. With auto-fit the grid wrapped to
+     two columns around 800px and the wrapped cell kept the left rule and the
+     28px indent that only mid-row cells should carry. */
+  .trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
   .trust-cell {
-    border: 1px solid var(--rule); border-radius: 16px;
-    background: var(--panel); padding: 26px;
+    border: 0; border-left: 1px solid var(--rule-soft); border-radius: 0;
+    background: transparent; padding: 4px 0 0 28px;
     transition: border-color .14s ease;
   }
-  .trust-cell:hover { border-color: #463A61; }
+  .trust-cell:first-child { border-left: 0; padding-left: 0; }
+  .trust-cell:hover { border-color: var(--rule-2); }
   .trust-cell .ic {
     display: inline-block; font-family: var(--mono); font-size: 11px;
-    color: var(--accent-soft); background: rgba(106,43,207,.16);
-    border: 1px solid rgba(106,43,207,.4);
-    padding: 3px 10px; border-radius: 6px; margin-bottom: 16px;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent-ink); background: transparent;
+    border: 0; padding: 0; border-radius: 0; margin-bottom: 14px;
+  }
+  @media (max-width: 900px) {
+    .trust-grid { grid-template-columns: 1fr; }
+    .trust-cell { border-left: 0; border-top: 1px solid var(--rule-soft); padding: 22px 0 0; margin-top: 22px; }
+    .trust-cell:first-child { border-top: 0; margin-top: 0; padding-top: 4px; }
   }
   .trust-cell h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
   .trust-cell p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
@@ -426,34 +474,30 @@
 
   /* ---------- final CTA ---------- */
   .cta-panel {
-    position: relative; border: 1px solid var(--rule-2); border-radius: 20px;
-    background: var(--panel); padding: clamp(40px, 6vw, 72px) clamp(20px, 5vw, 32px);
-    text-align: center; overflow: hidden;
-  }
-  .cta-glow {
-    position: absolute; bottom: -160px; left: 50%; transform: translateX(-50%);
-    width: 640px; height: 320px;
-    background: radial-gradient(closest-side, rgba(106,43,207,.25), transparent);
-    pointer-events: none;
+    position: relative; border: 0; border-top: 1px solid var(--rule); border-radius: 0;
+    background: transparent; padding: clamp(40px, 6vw, 64px) 0 0;
+    text-align: left; overflow: visible;
   }
   .cta-inner { position: relative; }
   .cta-inner .mark-lg { color: var(--accent-ink); margin-bottom: 20px; }
   .cta-inner h2 { margin-bottom: 14px; font-size: clamp(26px, 3.2vw, 38px); }
-  .cta-inner p { margin: 0 auto 30px; color: var(--ink-2); font-size: 16px; max-width: 44ch; }
+  .cta-inner p { margin: 0 0 30px; color: var(--ink-2); font-size: 16px; max-width: 44ch; }
   .cta-inner .install { margin-bottom: 0; }
 
   /* three ways to use MUGA — always shows every option, for every visitor */
   .ways {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
     margin-top: 32px; text-align: left;
+    border-top: 1px solid var(--rule-soft);
   }
   .way {
     position: relative; display: flex; flex-direction: column; gap: 9px;
-    border: 1px solid var(--rule); border-radius: 16px; background: var(--panel);
-    padding: 22px 20px 20px; text-decoration: none; color: var(--ink);
-    transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    border: 0; border-left: 1px solid var(--rule-soft); border-radius: 0; background: transparent;
+    padding: 26px 24px; text-decoration: none; color: var(--ink);
+    transition: background .16s ease;
   }
-  .way:hover { transform: translateY(-3px); border-color: var(--accent); background: var(--panel-2); color: var(--ink); }
+  .way:first-child { border-left: 0; padding-left: 0; }
+  .way:hover { transform: none; background: var(--bg-2); color: var(--ink); }
   .way:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
   .way-ico { color: var(--accent-ink); }
   .way-title { font-size: 16px; font-weight: 600; }
@@ -461,14 +505,19 @@
   .way-cta { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--accent-ink); }
   .way-cta .arr { transition: transform .16s ease; }
   .way:hover .way-cta .arr { transform: translateX(3px); }
-  .way.is-you { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 12px 40px -18px rgba(106,43,207,.6); }
+  .way.is-you { box-shadow: inset 0 2px 0 0 var(--accent); background: var(--bg-2); }
   .way-badge {
-    position: absolute; top: 13px; right: 13px;
-    font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
-    color: var(--accent-ink); background: rgba(106,43,207,.14);
-    border: 1px solid var(--rule-2); border-radius: 999px; padding: 3px 9px;
+    position: absolute; top: 27px; right: 24px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent-ink);
+    background: transparent; border: 0; border-radius: 0; padding: 0;
   }
-  @media (max-width: 620px) { .ways { grid-template-columns: 1fr; } }
+  @media (max-width: 620px) {
+    .ways { grid-template-columns: 1fr; }
+    .way { border-left: 0; border-top: 1px solid var(--rule-soft); padding: 24px 0; }
+    .way:first-child { border-top: 0; }
+    .way-badge { right: 0; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .way:hover { transform: none; }
     .way-cta .arr, .way:hover .way-cta .arr { transition: none; transform: none; }
@@ -527,25 +576,46 @@
 <main>
 
   <section class="hero">
-    <div class="hero-glow"></div>
     <div class="wrap hero-inner">
-      <h1>Every link, <span class="mark">with the tracking&nbsp;removed.</span></h1>
+      <div class="hero-top">
+        <div class="hero-copy">
+          <p class="eyebrow">Browser extension &#183; Chrome &#183; Firefox</p>
 
-      <p class="lede">
-        MUGA removes the tracking from every link you open, without breaking pages.
-        And unlike most URL cleaners, it tries to keep the referral of whoever recommended
-        you the link, and leaves you in control.
-      </p>
+          <h1>Every link, <span class="mark">with the tracking removed.</span></h1>
 
-      <div class="install" id="hero-install">
-        <a class="btn" id="cta-chrome" href="https://chromewebstore.google.com/detail/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
-          <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-chrome"/></svg>
-          Add to Chrome
-        </a>
-        <a class="btn ghost" id="cta-firefox" href="https://addons.mozilla.org/firefox/addon/muga/">
-          <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-firefox"/></svg>
-          Add to Firefox
-        </a>
+          <p class="lede">
+            MUGA strips the tracking noise out of every link you open, without breaking pages.
+            And unlike most URL cleaners, it tries to keep the referral of whoever recommended
+            you the link, and leaves you in control.
+          </p>
+
+          <div class="install" id="hero-install">
+            <a class="btn" id="cta-chrome" href="https://chromewebstore.google.com/detail/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
+              <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-chrome"/></svg>
+              Add to Chrome
+            </a>
+            <a class="btn ghost" id="cta-firefox" href="https://addons.mozilla.org/firefox/addon/muga/">
+              <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-firefox"/></svg>
+              Add to Firefox
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-figure">
+          <svg class="signal" viewBox="-6 -22 122 112" fill="none" role="img"
+               aria-label="The MUGA mark read as a diagram: a noisy URL goes in, the tracking is cut, one clean link comes out.">
+            <line class="base" x1="-4" y1="50" x2="114" y2="50" stroke-width="0.6" stroke-dasharray="2 3"/>
+            <text class="junk" x="-4" y="-12">?utm_source=newsletter&amp;fbclid=IwAR2x</text>
+            <path class="stroke" d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+            <path class="head" d="M 80 37 L 98 50 L 80 63 Z" stroke-width="2" stroke-linejoin="round"/>
+            <line class="tick" x1="24" y1="70" x2="24" y2="64" stroke-width="0.6"/>
+            <line class="tick" x1="59" y1="70" x2="59" y2="64" stroke-width="0.6"/>
+            <line class="tick" x1="95" y1="70" x2="95" y2="64" stroke-width="0.6"/>
+            <text class="lbl" x="24" y="79" text-anchor="middle">noisy in</text>
+            <text class="lbl" x="59" y="79" text-anchor="middle">tracking cut</text>
+            <text class="lbl" x="95" y="79" text-anchor="middle">clean out</text>
+          </svg>
+        </div>
       </div>
 
       <!-- Live tool terminal. The FULL /clean tool (#demo-tool) is visible from
@@ -557,7 +627,7 @@
            markup and its styles are kept in sync with web/index.html. -->
       <div class="demo" id="demo" aria-label="MUGA URL cleaner" style="width:100%;">
         <div class="demo-head">
-          <div class="lights"><span></span><span></span><span></span></div>
+          <span class="ttl">Try it on a real link</span>
           <span class="label">muga · clean</span>
         </div>
 
@@ -748,7 +818,6 @@
   <section class="section" id="get">
     <div class="wrap">
       <div class="cta-panel">
-        <div class="cta-glow"></div>
         <div class="cta-inner">
           <svg class="mark-lg" viewBox="0 0 104 68" width="52" height="34" fill="none" aria-hidden="true">
             <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
