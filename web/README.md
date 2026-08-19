@@ -57,9 +57,10 @@ npm run build:web
 ```
 
 (`tools/build-web.mjs`). This script also mirrors the entire `web/` tree
-into `landing/clean/`, which the existing `deploy-landing.yml` workflow
-already picks up (its `paths:` trigger includes `landing/**`) — that mirror
-is how `muga.app/clean/` gets deployed, with zero new infrastructure.
+into `landing/clean/`, which the Cloudflare Pages project that serves
+muga.app picks up automatically (its build output directory is `landing/`) —
+that mirror is how `muga.app/clean/` gets deployed, with zero new
+infrastructure.
 
 If you edit `web/engine/cleaner-bundle.js`, `web/engine/domain-rules.json`,
 `web/engine/domain-rules.gen.mjs`, or anything under `landing/clean/`

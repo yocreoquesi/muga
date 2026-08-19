@@ -10,7 +10,7 @@
  *   no-var                — enforces const/let discipline
  *
  * Scope: src/ + tools/ + tests/ (excludes node_modules, dist, landing,
- * landing-worker, and generated artifacts via the top-level ignores).
+ * and generated artifacts via the top-level ignores).
  *
  * The existing web-ext lint script ("lint") is unchanged; this adds
  * "lint:js" as a separate fast JS-only gate.
@@ -34,7 +34,6 @@ export default [
       "node_modules/**",
       "dist/**",
       "landing/**",
-      "landing-worker/**",
       "tmp/**",
       "test-results/**",
       // Generated content bundle — linting source is already covered

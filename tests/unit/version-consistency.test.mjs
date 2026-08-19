@@ -119,8 +119,8 @@ describe("Version consistency — all files must match package.json", () => {
     assert.equal(match[1], VERSION, `privacy-page.html has "${match[1]}", expected "${VERSION}"`);
   });
 
-  // The landing at muga.app is served by a Cloudflare Worker that deploys
-  // landing/index.html via wrangler on push to main. The version stamps
+  // The landing at muga.app is served by the Cloudflare Pages project
+  // "muga-landing", which builds landing/ on push to main. The version stamps
   // here MUST match package.json so the public site never lags the release.
   test("landing/index.html softwareVersion matches", () => {
     const html = read("landing/index.html");

@@ -218,7 +218,7 @@ jobs:
           # protection's required checks pass and `--auto` merge can complete.
           # [skip ci] here skips those checks → the PR stays BLOCKED forever.
           # The redundant post-merge push run is harmless: publish-rules.yml is
-          # idempotent (no-op commit guard) and deploy-landing.yml is path-scoped
+          # idempotent (no-op commit guard) and the Pages build is path-agnostic
           # to landing/**, so neither re-fires on a params-only change.
           git commit -m "chore(rules): auto-ingest params ($DATE)"
           git push -u origin "$BRANCH" --force-with-lease

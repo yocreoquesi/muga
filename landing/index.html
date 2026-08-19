@@ -21,7 +21,7 @@
 
 <!-- Archivo (display/body) + IBM Plex Mono (technical labels). Google Fonts is
      the only external origin the landing Worker's CSP admits; keep the two in
-     step (see SECURITY_HEADERS in landing-worker/worker.js). -->
+     step (see the CSP in landing/_headers, which Cloudflare Pages applies). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
