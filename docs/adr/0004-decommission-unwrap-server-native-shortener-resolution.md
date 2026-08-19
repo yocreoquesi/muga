@@ -1,7 +1,7 @@
 # ADR-0004: Decommission `unwrap.muga.app`, migrate shortener resolution to native
 
 **Date**: 2026-05-27
-**Status**: Implemented (phase 5 shipped 2026-06-01; phase 6 pending)
+**Status**: Implemented (phase 5 shipped 2026-06-01; phase 6 complete — `unwrap.muga.app` now answers 522, and the in-repo cleanup it required landed 2026-08-19)
 **Issue**: TBD (this ADR + three implementation issues to be filed under milestone v2.2.0)
 **Supersedes**: nothing
 **Builds on**: [ADR-0002](./0002-denoise-pivot-creator-agnostic.md) (denoise pivot — creator-agnostic)

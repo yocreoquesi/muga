@@ -280,48 +280,63 @@ describe("G5 — release.yml: publish gated on unit + integration + E2E jobs", (
 });
 
 // ---------------------------------------------------------------------------
-// G6 — ci.yml PR gate must use stub-only integration (#825)
+// G6 — the retired unwrap Worker must not come back (#825, #701, ADR-0004)
 //
-// The PR-triggered integration step must invoke `test:integration:stub` (not
-// `test:integration` or `test:integration:live`) so that transient
-// unwrap.muga.app / CDN hiccups cannot hard-fail unrelated contributor PRs.
-// The full live-Worker contract run is reserved for push-to-main only.
+// This guard used to pin a PR/push split: PRs ran test:integration:stub while
+// pushes to main added the live unwrap.muga.app contract tests under
+// MUGA_LIVE_TESTS=1. That split existed only so transient Worker/CDN hiccups
+// could not hard-fail contributor PRs. ADR-0004 phase 6 shut the Worker down —
+// it answers 522 — so tests/integration/live/ and the live scripts are gone and
+// integration runs the same way on both events. What is worth pinning now is
+// that nothing quietly reintroduces a hard dependency on a host that no longer
+// exists, which is exactly how main went red after the shutdown landed.
 // ---------------------------------------------------------------------------
-describe("G6 — ci.yml PR gate uses stub-only integration (#825)", () => {
-  test("ci.yml PR integration step invokes test:integration:stub", () => {
+describe("G6 — the retired unwrap Worker stays retired (#701, ADR-0004)", () => {
+  test("ci.yml runs the integration suite without an event split", () => {
     const content = readWorkflow("ci.yml");
     assert.ok(
-      /npm\s+run\s+test:integration:stub/.test(content),
-      "ci.yml must invoke 'npm run test:integration:stub' for the PR gate — " +
-      "the full live-Worker suite must not run on pull_request triggers (#825)"
+      /npm\s+run\s+test:integration\b/.test(content),
+      "ci.yml must invoke 'npm run test:integration'"
+    );
+    assert.ok(
+      !/npm\s+run\s+test:integration:live/.test(content),
+      "ci.yml must not invoke test:integration:live — the live suite was deleted with the Worker"
     );
   });
 
-  test("ci.yml PR integration step is conditional on pull_request event", () => {
+  test("ci.yml never sets MUGA_LIVE_TESTS", () => {
     const content = readWorkflow("ci.yml");
-    // The stub step must carry an `if: github.event_name == 'pull_request'` guard
     assert.ok(
-      /if:\s*github\.event_name\s*==\s*['"]pull_request['"]/.test(content),
-      "ci.yml must guard the stub integration step with " +
-      "\"if: github.event_name == 'pull_request'\" (#825)"
+      !/MUGA_LIVE_TESTS/.test(content),
+      "MUGA_LIVE_TESTS only ever enabled the unwrap.muga.app contract tests; the host is decommissioned, so setting it means CI is depending on a dead service again"
     );
   });
 
-  test("ci.yml main-push integration step sets MUGA_LIVE_TESTS=1", () => {
-    const content = readWorkflow("ci.yml");
-    assert.ok(
-      /MUGA_LIVE_TESTS:\s*["']?1["']?/.test(content),
-      "ci.yml must set MUGA_LIVE_TESTS: \"1\" on the push-to-main integration step " +
-      "so the live Worker contract tests actually execute (#825)"
-    );
+  test("no workflow references the decommissioned unwrap host in a run step", () => {
+    for (const wf of ["ci.yml", "release.yml"]) {
+      const lines = readWorkflow(wf).split("\n");
+      const executable = lines.filter((l) => !l.trim().startsWith("#"));
+      const hits = executable.filter((l) => l.includes("unwrap.muga.app"));
+      assert.deepEqual(
+        hits,
+        [],
+        `${wf} still reaches unwrap.muga.app from an executable step: ${hits.join(" | ")}`
+      );
+    }
   });
 
-  test("ci.yml main-push integration step is conditional on push event", () => {
-    const content = readWorkflow("ci.yml");
+  test("package.json defines no live-integration script", () => {
+    const pkg = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8")
+    );
+    assert.equal(
+      pkg.scripts["test:integration:live"],
+      undefined,
+      "test:integration:live ran the deleted tests/integration/live/ suite"
+    );
     assert.ok(
-      /if:\s*github\.event_name\s*==\s*['"]push['"]/.test(content),
-      "ci.yml must guard the live integration step with " +
-      "\"if: github.event_name == 'push'\" (#825)"
+      !/integration\/live/.test(pkg.scripts["test:integration"] ?? ""),
+      "test:integration must not glob the deleted tests/integration/live/ directory"
     );
   });
 });
