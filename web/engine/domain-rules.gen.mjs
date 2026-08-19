@@ -2290,7 +2290,8 @@ export const DOMAIN_RULES = [
       "ppn",
       "ppt",
       "hpid",
-      "ctx"
+      "ctx",
+      "fm"
     ],
     "note": "Indian e-commerce. otracker/ssid/marketplace are internal tracking."
   },
@@ -3373,13 +3374,6 @@ export const DOMAIN_RULES = [
     "note": "Shinsegae Group online department store"
   },
   {
-    "domain": "steampowered.com",
-    "preserveParams": [
-      "curator_clanid"
-    ],
-    "note": "Steam Curator attribution (#614). curator_clanid identifies the curator account whose recommendation card is surfaced inline on the store page when the visitor arrives with this param. Non-monetary creator attribution — same MUGA philosophy as Bookshop /a/{id}/ referrals (#612). Subdomain-aware match covers store.steampowered.com."
-  },
-  {
     "domain": "stackoverflow.com",
     "preserveParams": [
       "tab",
@@ -3389,6 +3383,13 @@ export const DOMAIN_RULES = [
       "q"
     ],
     "note": "Sort, pagination and search: functional"
+  },
+  {
+    "domain": "steampowered.com",
+    "preserveParams": [
+      "curator_clanid"
+    ],
+    "note": "Steam Curator attribution (#614). curator_clanid identifies the curator account whose recommendation card is surfaced inline on the store page when the visitor arrives with this param. Non-monetary creator attribution — same MUGA philosophy as Bookshop /a/{id}/ referrals (#612). Subdomain-aware match covers store.steampowered.com."
   },
   {
     "domain": "target.com",
@@ -3469,7 +3470,8 @@ export const DOMAIN_RULES = [
       "refer",
       "web_id",
       "embed_source",
-      "referer_url"
+      "referer_url",
+      "_r"
     ],
     "note": "Search and locale: functional. Share/embed/referral tracking stripped."
   },
@@ -3614,7 +3616,8 @@ export const DOMAIN_RULES = [
       "from",
       "povid",
       "sourceid",
-      "wmlspartner"
+      "wmlspartner",
+      "u1"
     ],
     "note": "Search and filters: functional. Internal recommendation/affiliate tracking stripped (#508 — athcpid is Walmart's per-impression content ID, sourceid is the campaign source tag)."
   },

@@ -43,6 +43,28 @@ export const MAX_PARAM_COUNT = 500;
 /** Maximum length per param string (REQ-VALIDATE-3). */
 export const MAX_PARAM_LEN = 64;
 
+/**
+ * Minimum length per param string (#1217).
+ *
+ * A one or two character name is not an identifier, it is a collision. Both
+ * upstream sources the ingestion pipeline reads attach such names to specific
+ * hosts and never to the open web: of the twenty short names that reached this
+ * list, ZERO are global rules in ClearURLs and only one is in AdGuard Filter
+ * 17's global bucket. The remote list has no way to express a host scope, so
+ * ingesting one of these names silently promotes "on tiktok.com, _d is a
+ * tracker" into "_d is a tracker everywhere".
+ *
+ * That is not hypothetical: it is exactly how `u` — ShareASale's affiliate id,
+ * a ClearURLs rule scoped to tweakers and LinkedIn Learning — ended up being
+ * stripped on shareasale.com and destroying creator attribution (#1212).
+ *
+ * Host-scoped facts belong in src/rules/domain-rules.json, which matches on
+ * hostname suffix and already carries most of them. Three is the floor because
+ * every name that caused harm was one or two characters; the three-character
+ * entries currently in the list are left alone rather than swept up on a hunch.
+ */
+export const MIN_PARAM_LEN = 3;
+
 /** Payload freshness window in days (REQ-VALIDATE-8). */
 export const STALE_DAYS = 180;
 /**
@@ -382,7 +404,7 @@ export function validatePayloadShape(obj) {
  *
  * Validation order (design §6, steps 5–11):
  *   1. Per-param format regex (INVALID_FORMAT)
- *   2. Per-param length bounds [1, 64] (INVALID_FORMAT)
+ *   2. Per-param length bounds [MIN_PARAM_LEN, MAX_PARAM_LEN] (INVALID_FORMAT)
  *   3. Denylist match, case-insensitive (DENYLIST_HIT)
  *   4. Affiliate-guard match, case-insensitive (DENYLIST_HIT)
  *   5. Version monotonic: newVersion > stored.version (VERSION_REGRESSION)
@@ -422,6 +444,20 @@ export function validateParams(params, stored, nowMs, opts = {}) {
     const lower = param.toLowerCase();
     if (REMOTE_PARAM_DENYLIST.has(lower) || AFFILIATE_PARAM_GUARD.has(lower)) {
       return { ok: false, code: ERR.DENYLIST_HIT };
+    }
+  }
+
+  // 4b. Minimum-length floor (#1217, INVALID_FORMAT).
+  //
+  // Deliberately AFTER the denylist and the affiliate guard. Both of those sets
+  // are full of short names — "q", "id", "sid", "tag" — and they carry the more
+  // specific diagnosis, so a denylisted name must keep reporting DENYLIST_HIT
+  // rather than being swallowed by a length error. What reaches here is a short
+  // name nobody has classified, which is exactly the dangerous case: the list
+  // has no way to express a host scope, so it would apply everywhere.
+  for (const param of params) {
+    if (param.length < MIN_PARAM_LEN) {
+      return { ok: false, code: ERR.INVALID_FORMAT };
     }
   }
 

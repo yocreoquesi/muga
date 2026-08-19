@@ -504,8 +504,22 @@ describe("validateParams — content validation (REQ-VALIDATE-2 through REQ-VALI
   });
 
   // Length bounds tests (REQ-VALIDATE-3)
-  test("param of length 1 is valid (lower boundary)", () => {
+  //
+  // The lower bound moved from 1 to MIN_PARAM_LEN in #1217. A one or two
+  // character name cannot be carried safely by this payload: the list has no
+  // host scope and buildRemoteRule() applies it to every site, while both
+  // upstream sources only ever attach such names to specific hosts. `u`, one
+  // character, was ShareASale's affiliate id and cost creators their
+  // attribution before it was caught (#1212). Host-scoped facts belong in
+  // src/rules/domain-rules.json.
+  test("param below MIN_PARAM_LEN is rejected (lower boundary)", () => {
     const r = validateParams(["x"], storedV1, nowMs);
+    assert.equal(r.ok, false);
+    assert.strictEqual(r.code, ERR.INVALID_FORMAT);
+  });
+
+  test("param of length MIN_PARAM_LEN is valid (lower boundary)", () => {
+    const r = validateParams(["xyz"], storedV1, nowMs);
     if (!r.ok) assert.notStrictEqual(r.code, ERR.INVALID_FORMAT);
   });
 

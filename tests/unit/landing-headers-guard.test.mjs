@@ -45,9 +45,16 @@ const GOOGLE_FONTS_CSS = "https://fonts.googleapis.com";
 const GOOGLE_FONTS_FILES = "https://fonts.gstatic.com";
 const ASSET_HOST = "https://rules.muga.app";
 
-/** Lines with the `#` comments stripped — comments must never satisfy a check. */
+/** Lines, comment-free and end-of-line agnostic.
+ *
+ * Splitting on "\n" alone leaves a trailing "\r" on a CRLF working copy, and
+ * JS's `.` excludes line terminators, so `(.+)$` quietly stops matching and
+ * every header reads as absent. This passed CI on Linux and failed on every
+ * Windows checkout until the split was fixed: the same shape of silent,
+ * environment-only failure the headers themselves had. Comments must never
+ * satisfy a check either. */
 function rules() {
-  return HEADERS.split("\n").filter((l) => !l.trim().startsWith("#"));
+  return HEADERS.split(/\r?\n/).filter((l) => !l.trim().startsWith("#"));
 }
 
 /** The value of a header as declared under the given path pattern. */

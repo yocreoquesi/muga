@@ -43,3 +43,4 @@ web/engine/param-categories.gen.mjs                text eol=lf
 web/engine/param-breakdown-view.gen.mjs            text eol=lf
 landing/clean/engine/param-categories.gen.mjs      text eol=lf
 landing/clean/engine/param-breakdown-view.gen.mjs  text eol=lf
+landing/_headers                           text eol=lf
