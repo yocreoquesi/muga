@@ -1,6 +1,6 @@
 {
-  "version": 8,
-  "published": "2026-08-09T05:07:46.311Z",
+  "version": 9,
+  "published": "2026-08-19T09:20:00.000Z",
   "params": [
     "__source",
     "__tn__",
@@ -181,7 +181,6 @@
     "trackingid",
     "trk",
     "ts",
-    "u",
     "u_code",
     "u1",
     "uclick_id",

@@ -1,6 +1,6 @@
 {
-  "version": 8,
-  "published": "2026-08-09T05:07:46.311Z",
+  "version": 9,
+  "published": "2026-08-19T09:20:00.000Z",
   "params": [
     "__source",
     "__tn__",
@@ -181,7 +181,6 @@
     "trackingid",
     "trk",
     "ts",
-    "u",
     "u_code",
     "u1",
     "uclick_id",
@@ -212,5 +211,5 @@
     "xtor",
     "zrclid"
   ],
-  "sig": "VPj7mipd0gkeIfmEhk31LAm4oIeLj3ECBBRUa8CaIahycgOnd0CiNwLW04tipILREuRaPXNwBpmvT1hVNXqpAQ"
+  "sig": "Apk6ireViUnQwLfUJDEJQ2AsJ_b1V_b8JabXGYPQMsIxAOqMJ5ifO9w1q58ne3HPBXAXhqc2IB-aZhQMDdoFCg"
 }

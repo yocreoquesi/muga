@@ -35,6 +35,16 @@ export const STATIC_PRESERVE = Object.freeze(new Set([
   // gate would auto-merge it back into the strip list (ADR-0005's
   // catastrophic path).
   "ascsubtag",
+  // ShareASale affiliate id (#1212): r.cfm?b=<banner>&u=<affiliate>
+  // &m=<merchant>&urllink=<destination>. ShareASale lives in
+  // AFFILIATE_REDIRECT_NETWORKS, not REDIRECT_NETWORK_PATTERNS, so it
+  // contributes no landingParams and the two live arrays cannot express this
+  // name — the same shape as ascsubtag above. It reached the signed list
+  // through ingestion once already and shipped live at v7/v8, stripping the
+  // creator's id on the one host whose contract is to pass through untouched.
+  // This entry is what stops ingestion re-proposing it; the sibling entry in
+  // remote-rules' AFFILIATE_PARAM_GUARD is what stops signing and runtime.
+  "u",
 ]));
 
 // ── Preserve-index construction ─────────────────────────────────────────────
