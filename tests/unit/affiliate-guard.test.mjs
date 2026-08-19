@@ -417,3 +417,54 @@ describe("audit #1039 — AFFILIATE_PARAM_GUARD covers all redirect-network land
     assert.ok(!isValidCustomParam("cjdata"), "cjdata (Commission Junction) must be rejected");
   });
 });
+
+// ── #1212 regression: a guarded param reached the PUBLISHED list ─────────────
+//
+// ShareASale's affiliate id is `u`: r.cfm?b=<banner>&u=<affiliate>&m=<merchant>
+// &urllink=<destination>. It was auto-ingested into the signed remote list and
+// shipped live at v7/v8, so MUGA stripped it on shareasale.com — an
+// AFFILIATE_REDIRECT_NETWORKS host whose entire contract is to pass through
+// untouched — handing the network a click with nobody attached.
+//
+// Two things were missing. `u` was in no guard, so neither the ingestion gate
+// nor sign-rules.mjs objected; and nothing ever checked the published artifact
+// against the guards, so it stayed live. Both are covered below.
+describe("published-artifact guard (#1212)", () => {
+  it("u is rejected by the live gate with source static-guard", () => {
+    const result = checkAffiliateGuard({ param: "u" });
+    assert.equal(result.rejected, true, "u is ShareASale's affiliate id and must never auto-merge as a tracker");
+    assert.equal(result.collidingPrograms[0].source, "static-guard");
+  });
+
+  it("AFFILIATE_PARAM_GUARD still contains u (re-introduction defense)", async () => {
+    const { AFFILIATE_PARAM_GUARD } = await import("../../src/lib/remote-rules.js");
+    assert.ok(
+      AFFILIATE_PARAM_GUARD.has("u"),
+      "u shipped in the signed list at v7/v8 — the guard entry is what keeps ingestion from re-adding it, and it is also what makes already-installed clients ignore it at runtime"
+    );
+  });
+
+  it("the committed docs/rules/v1/params.json contains no guarded or denylisted param", async () => {
+    // The check that was missing. sign-rules.mjs validates the SOURCE at
+    // signing time, but nothing re-checked the artifact that actually ships,
+    // so a param that predated a guard entry stayed live indefinitely.
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, join } = await import("node:path");
+    const { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } = await import("../../src/lib/remote-rules.js");
+
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+    const published = JSON.parse(readFileSync(join(root, "docs/rules/v1/params.json"), "utf8"));
+
+    const offenders = published.params.filter((p) => {
+      const lower = p.toLowerCase();
+      return AFFILIATE_PARAM_GUARD.has(lower) || REMOTE_PARAM_DENYLIST.has(lower);
+    });
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `the published rules list strips params the guards say are functional or carry attribution: ${offenders.join(", ")}. Remove them from tools/rules-source/params.json, bump the version and re-sign.`
+    );
+  });
+});

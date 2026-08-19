@@ -173,6 +173,19 @@ export const AFFILIATE_PARAM_GUARD = Object.freeze(new Set([
   "partnerizecampaignid",
   // Connexity (shopping affiliate, flagged separately from the AdGuard triage)
   "cnxclid",
+  // ShareASale — `u` is the affiliate id in an r.cfm click:
+  // r.cfm?b=<banner>&u=<affiliate>&m=<merchant>&urllink=<destination>.
+  // A signed payload carried it as a global strip target, and because
+  // shareasale.com is an AFFILIATE_REDIRECT_NETWORKS host whose whole contract
+  // is to pass through untouched, stripping it handed the network a click with
+  // nobody attached. It cannot ride REDIRECT_NETWORK_PATTERNS.landingParams:
+  // those are the params a merchant tag reads on the landing AFTER the 30x,
+  // whereas `u` lives on the redirector itself. The same token is also the
+  // destination holder of `l.facebook.com/l.php?u=` in src/rules/wrappers.json,
+  // so it is doubly unsafe to strip globally. Guarding it here also protects
+  // installs that already cached the bad payload, because this set is filtered
+  // at runtime, not only at signing time.
+  "u",
   // Redirect-network landing params (#695): the click IDs a merchant tag reads
   // on the FIRST post-redirect landing. Derived from REDIRECT_NETWORK_PATTERNS
   // so every declared network stays auto-guarded and a future or compromised
