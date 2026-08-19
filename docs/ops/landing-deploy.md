@@ -1,88 +1,49 @@
 # Landing deploy — `muga.app`
 
-The marketing landing at `muga.app` is served by a Cloudflare Worker named
-**`muga-landing`** that wraps `landing/index.html` (and future sibling
-assets) via the Workers Static Assets binding. Source of truth lives in
-this repo; production stays in sync via `.github/workflows/deploy-landing.yml`.
+`muga.app` is served by the **Cloudflare Pages** project `muga-landing`, connected directly to this GitHub repository.
 
-## One-time setup (maintainer only)
+| Setting | Value |
+|---|---|
+| Build command | none |
+| Build output directory | `landing` |
+| Root directory | repository root |
+| Response headers | [`landing/_headers`](../../landing/_headers) |
 
-The auto-deploy workflow needs a Cloudflare API token in the GitHub repo's
-secrets. Without it the workflow emits a warning and skips the deploy — it
-does **not** fail CI, so the secret can be added retroactively at any time.
+Push to `main` and Pages builds and deploys. There is no secret to configure and no workflow in this repo that deploys the site.
 
-### 1. Create the API token in Cloudflare
+## Response headers
 
-1. Cloudflare Dashboard → top-right avatar → **My Profile**
-2. Tab **API Tokens** → **Create Token**
-3. Pick the **Edit Cloudflare Workers** template
-4. **Account Resources**: include the account that owns the `muga-landing`
-   Worker (only that one — least privilege)
-5. **Zone Resources**: include `muga.app` (so the Worker can manage its
-   custom domain binding)
-6. Click **Continue to summary** → **Create Token**
-7. Copy the token immediately — Cloudflare only shows it once
+Everything the site sends — CSP, `X-Frame-Options`, `Referrer-Policy`, HSTS, and the `Cache-Control` overrides that keep the `/clean` bundle from outliving a deploy — comes from `landing/_headers`. Pages reads that file from the **root of the build output directory**, which is why it lives at `landing/_headers` and not at the repository root. A rule that does not match fails silently: nothing errors, the header is simply absent.
 
-### 2. Add the secret to GitHub
+`tests/unit/landing-headers-guard.test.mjs` pins the file's contents, but it cannot prove the platform applied them. **Verify against production after any change:**
 
-1. GitHub repo (`yocreoquesi/muga`) → **Settings** → **Secrets and variables**
-   → **Actions** → **New repository secret**
-2. Name: `CLOUDFLARE_API_TOKEN`
-3. Value: the token from step 1
-4. Click **Add secret**
+```bash
+curl -sD - -o /dev/null https://muga.app/ | grep -iE 'content-security-policy|x-frame-options|strict-transport'
+curl -sD - -o /dev/null https://muga.app/clean/ui.js | grep -i cache-control
+```
 
-### 3. Confirm the existing Worker name
-
-Cloudflare Dashboard → **Workers & Pages** → confirm there is a Worker
-named exactly **`muga-landing`** (case-sensitive). If the existing Worker
-has a different name, either:
-
-- Rename the existing Worker to `muga-landing` in the CF dashboard, or
-- Update the `name = "muga-landing"` line in [`wrangler.toml`](../../wrangler.toml)
-  to match the existing name
-
-The `muga.app` custom-domain binding lives on the existing Worker and is
-**not** redeclared in `wrangler.toml`. `wrangler deploy` updates the
-Worker's script and assets without touching its triggers, so the custom
-domain survives the migration.
-
-## What gets deployed
-
-| Path | What it is |
-| --- | --- |
-| `landing/index.html` | The landing markup (served at `https://muga.app/`) |
-| `landing/**` | Any future sibling assets (CSS, images) under the same dir |
-| `landing-worker/worker.js` | The Worker shim that defers all requests to the `ASSETS` binding |
-| `wrangler.toml` | Worker name + assets binding config |
-
-## Trigger surface
-
-The workflow runs on `push` to `main` and only when one of the relevant
-paths changes:
-
-- `landing/**`
-- `landing-worker/**`
-- `wrangler.toml`
-- `.github/workflows/deploy-landing.yml`
-
-It can also be triggered manually via the **Actions** tab → **Deploy landing**
-→ **Run workflow**.
+The first must print three headers. The second must say `no-cache`, not `max-age=14400`.
 
 ## Rollback
 
-If a deploy goes wrong, Cloudflare keeps the last ~10 Worker versions:
+Cloudflare dashboard → Workers & Pages → `muga-landing` → Deployments → pick a previous deployment → **Rollback**. Deploys are immutable, so rolling back is instant and does not need a revert commit. Fix forward on `main` afterwards.
 
-1. Cloudflare Dashboard → **Workers & Pages** → `muga-landing` → tab
-   **Deployments**
-2. Find the previous good deployment → **Rollback**
+## History: the Worker that never was
 
-The rollback is instant and does not touch the repo. After rolling back,
-fix the issue in the repo and push again to redeploy.
+Until 2026-08-19 this document described a different deployment: a Cloudflare Worker, also named `muga-landing`, deployed by `.github/workflows/deploy-landing.yml` via `wrangler`, wrapping `landing/` through the Workers Static Assets binding and stamping security headers in `landing-worker/worker.js`.
 
-## Version in the landing must match the package version
+None of it ever ran. The workflow needed a `CLOUDFLARE_API_TOKEN` repository secret that was never added, and it was written to **skip rather than fail** when the secret was missing:
 
-`tests/unit/version-consistency.test.mjs` enforces that the four version
-stamps in `landing/index.html` (JSON-LD `softwareVersion`, brand `.ver`
-tag, hero eyebrow, and footer) all match `package.json`. Forgetting to
-bump them when bumping the extension version will fail CI before the
-deploy workflow runs.
+```
+Skipping deploy. Add CLOUDFLARE_API_TOKEN as a repository secret to enable auto-deploy of muga.app.
+```
+
+So it reported success on every run from 2026-07-24 onward while deploying nothing, and Pages quietly served the site the whole time. The consequences were invisible for two months:
+
+- `muga.app` shipped with **no CSP, no `X-Frame-Options` and no HSTS**, because the only file that declared them was never deployed.
+- The `/clean` revalidation fix (#1082) never took effect, leaving a four-hour window where a fresh page could run against a stale engine bundle.
+- Two unit tests asserted the Worker's headers and passed, which is what made the gap look covered.
+
+The Worker, its wrangler config, its workflow and those two tests were removed in favour of `landing/_headers`. `landing-headers-guard.test.mjs` now asserts they stay removed: a second file claiming to set these headers is precisely how the first gap went unnoticed.
+
+**The transferable lesson:** a deploy step that cannot fail is not a deploy step, and a guard that reads a file the platform never consumes is not a guard. Check response headers against production, not workflow exit codes.

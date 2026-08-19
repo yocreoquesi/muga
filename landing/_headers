@@ -1,0 +1,53 @@
+# muga.app response headers — Cloudflare Pages.
+#
+# The site is served by the Cloudflare Pages project "muga-landing", whose
+# build output directory is `landing/`. This file is the ONLY place response
+# headers are configured: there is no Worker in front of it. Pages applies the
+# file on the NEXT deployment, so a change here is not live until main is
+# pushed and the build finishes.
+#
+# Verify after any change to this file, because a rule that does not match
+# fails silently — nothing errors, the header is simply absent:
+#
+#   curl -sD - -o /dev/null https://muga.app/ | grep -i content-security-policy
+#   curl -sD - -o /dev/null https://muga.app/clean/ui.js | grep -i cache-control
+#
+# CSP audit (landing/index.html, landing/clean/index.html):
+#   - Styles: one <style> block per page, static, no user data.
+#   - Scripts: inline blocks (backronym rotator, console easter egg, the lazy
+#     tool bootstrap) plus same-origin ES modules under /clean/.
+#   - External origins, and there are only three: images and icons from
+#     rules.muga.app, the Archivo + IBM Plex Mono stylesheet from
+#     fonts.googleapis.com, and the font files that stylesheet pulls from
+#     fonts.gstatic.com.
+#   - 'unsafe-inline' is required for both style-src and script-src: the pages
+#     have no build step and no nonce/hash injection. They carry no
+#     user-controlled data, so the risk is accepted for a static site.
+#   - No eval, no external scripts, no frames.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://rules.muga.app data:; font-src https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000
+
+# Pages serves HTML with max-age=0 but static assets with max-age=14400, so a
+# deploy can hand a browser the new /clean page against a four-hour-old engine.
+# /clean is a contract: index.html, ui.js and the vendored engine bundle only
+# agree when they ship together (#1082). Force the rest to revalidate too.
+
+/*.html
+  Cache-Control: no-cache
+
+/*.js
+  Cache-Control: no-cache
+
+/*.mjs
+  Cache-Control: no-cache
+
+/*.css
+  Cache-Control: no-cache
+
+/*.json
+  Cache-Control: no-cache

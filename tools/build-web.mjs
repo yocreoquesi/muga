@@ -49,7 +49,7 @@
  * existing byte-copy drift tests (web-engine-mirror.test.mjs) still hold.
  *
  * Then mirrors the entire web/ tree into landing/clean/, which the
- * existing deploy-landing.yml workflow already picks up (its `paths:`
+ * Cloudflare Pages build already picks up (it deploys the whole `landing/`
  * trigger includes `landing/**`). See design ADR-2
  * (sdd/web-cleaner-tool/design).
  *
