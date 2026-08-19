@@ -38,6 +38,7 @@ import { dirname } from "node:path";
 import {
   REMOTE_PARAM_DENYLIST,
   AFFILIATE_PARAM_GUARD,
+  MIN_PARAM_LEN,
 } from "../src/lib/remote-rules.js";
 
 // ── Path resolution ──────────────────────────────────────────────────────────
@@ -132,6 +133,17 @@ function validateSource(obj) {
       return {
         ok: false,
         error: `Param "${param}" is in AFFILIATE_PARAM_GUARD and must not be published`,
+      };
+    }
+    // Checked last, mirroring validateParams step 4b: the denylist and the
+    // affiliate guard are full of short names and carry the more specific
+    // diagnosis, so they must report first. What survives to here is a short
+    // name nobody has classified — and the payload cannot express a host scope,
+    // so publishing one applies it to every site (#1217).
+    if (param.length < MIN_PARAM_LEN) {
+      return {
+        ok: false,
+        error: `Param "${param}" is shorter than ${MIN_PARAM_LEN} characters. Names this short are host-scoped upstream and would apply globally here; put it in src/rules/domain-rules.json instead (#1217)`,
       };
     }
   }
