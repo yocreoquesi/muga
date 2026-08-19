@@ -117,27 +117,12 @@ jobs:
       - name: Run unit tests
         run: npm test
 
-      - name: Run integration tests — stub only on PRs (#608, #825)
-        # On pull_request: runs the stub/local integration suite only
-        # (tests/integration/*.test.mjs). Live Worker tests (tests/integration/live/)
-        # are excluded so transient unwrap.muga.app / CDN hiccups cannot hard-fail
-        # unrelated contributor PRs (#825). Stub coverage already validates the
-        # extension-Worker contract shape (path, param schema, affiliate flow).
-        #
-        # On push to main: ALSO runs the live Worker contract tests with
-        # MUGA_LIVE_TESTS=1 — contract drift is visible where it belongs, on the
-        # integration branch, without blocking PR authors (#825/#701).
-        #
-        # Decommission path (#701): when unwrap.muga.app is retired, delete
-        # tests/integration/live/ and remove the live step below. The stub step
-        # and test:integration:stub script need no changes.
-        if: github.event_name == 'pull_request'
-        run: npm run test:integration:stub
-
-      - name: Run integration tests — full suite incl. live Worker on main pushes (#608, #825)
-        if: github.event_name == 'push'
-        env:
-          MUGA_LIVE_TESTS: "1"
+      - name: Run integration tests (#608, #825)
+        # Runs on pull_request AND on push to main. There is no longer a split:
+        # the live Worker tests this step used to add on main pushes targeted
+        # unwrap.muga.app, decommissioned in ADR-0004 phase 6, and were removed
+        # along with tests/integration/live/ — the decommission path both this
+        # comment and the test file itself prescribed (#701).
         run: npm run test:integration
 
       - name: CAPS-Contextual conformance gate (#543)
