@@ -16,6 +16,17 @@
  *
  * Each test seeds storage from a known clean slate, runs the migration
  * via the test-mode handler, and asserts on storage afterwards.
+ *
+ * Flake hazard, if you are reading this after a red run (#1216): the service
+ * worker ALSO calls migrateConsentToLocal() from module scope and from its
+ * startup handler, so a wake between seedStorage() and runMigration() puts two
+ * migrations in flight over the same data. The report below is per-call, so an
+ * overlap used to produce `ranWork: true, copiedToLocal: false` for a copy that
+ * had in fact happened — the storage assertions stayed correct throughout,
+ * only the report lied. #1216 made concurrent callers share one migration and
+ * one report; tests/unit/sync-migration.test.mjs pins that. If a report
+ * assertion here fails again, check whether the worker completed a migration
+ * on its own before the explicit call rather than alongside it.
  */
 
 import { test, expect } from "./fixtures.mjs";

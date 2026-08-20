@@ -64,12 +64,45 @@ function syncHasLegacy(sync) {
 }
 
 /**
- * Performs the migration. Idempotent. Returns a small report describing
- * what happened, useful for tests and diagnostics.
+ * In-flight migration, shared by concurrent callers (#1216).
+ *
+ * The service worker calls migrateConsentToLocal() from module scope AND from
+ * its startup/install handlers, so on a fresh wake two or three calls overlap
+ * by design. The migration is idempotent in its EFFECT, but it was not atomic:
+ * read sync, read local, write local, remove sync. Two runs could interleave
+ * so that the second reads sync (still holding the legacy keys, because the
+ * first has not reached removeLegacySync yet) and local (already written by
+ * the first), and therefore reports `copiedToLocal: false` for a copy that did
+ * happen.
+ *
+ * The stored data was always correct; only the report lied, which is why this
+ * surfaced as a flaky e2e assertion rather than a user-visible bug. Sharing
+ * one promise makes concurrent callers observe the same, accurate report and
+ * removes the duplicate storage writes on every wake.
+ *
+ * Cleared once settled so a later wake can migrate again if it needs to.
+ */
+let _inFlight = null;
+
+/**
+ * Performs the migration. Idempotent, and safe to call concurrently: callers
+ * that arrive while a migration is running share its result. Returns a small
+ * report describing what happened, useful for tests and diagnostics.
  *
  * @returns {Promise<{ ranWork: boolean, copiedToLocal: boolean, cleanedSync: boolean }>}
  */
 export async function migrateConsentToLocal() {
+  if (_inFlight) return _inFlight;
+  _inFlight = _migrateConsentToLocal();
+  try {
+    return await _inFlight;
+  } finally {
+    _inFlight = null;
+  }
+}
+
+/** @returns {Promise<{ ranWork: boolean, copiedToLocal: boolean, cleanedSync: boolean }>} */
+async function _migrateConsentToLocal() {
   try {
     const sync = await readLegacySync();
     if (!syncHasLegacy(sync)) {
