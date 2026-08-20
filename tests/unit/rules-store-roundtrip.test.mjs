@@ -19,10 +19,17 @@
  * developer affordance, but `strip-table-generated.test.mjs` is what actually
  * fails the build. A test also runs locally, before the push.
  *
- * Three of these assertions exist because the specific mistake is easy to make
- * and silent when made: an absent `stripParams` key normalised to `[]`, a
- * platform line ending on a file `.gitattributes` pins to LF, and a store entry
- * the legacy schema cannot represent being dropped instead of reported.
+ * Several assertions here exist because the specific mistake is easy to make and
+ * silent when made: an absent `stripParams` key normalised to `[]`, a platform
+ * line ending on a file `.gitattributes` pins to LF, a store entry the legacy
+ * schema cannot represent being dropped instead of reported, and an unrecognised
+ * action swept into the strip bucket — which would turn a param that exists to
+ * be PRESERVED into one to be stripped.
+ *
+ * Every guard here has been mutation-tested: the corresponding breakage was
+ * applied and the suite confirmed to fail. That pass caught a blind assertion of
+ * its own (see the unroutable-action test), which is the reason it is worth
+ * doing rather than assuming.
  */
 
 import { test } from "node:test";
@@ -42,6 +49,7 @@ import {
   parseStore,
   serializeStore,
 } from "../../tools/rules-store.mjs";
+import { renderArtifacts } from "../../tools/build-rules-store.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..");
@@ -65,7 +73,7 @@ test("the store projects domain-rules.json byte-for-byte", () => {
   );
 });
 
-test("the store projects the params array byte-for-byte", () => {
+test("the store projects the params array exactly", () => {
   const store = parseStore(read(STORE_PATH));
   const committed = JSON.parse(read(PARAMS_PATH));
   assert.deepEqual(
@@ -210,4 +218,89 @@ test("global entries stay out of domain-rules.json", () => {
   assert.equal(emitted.length, 1);
   assert.equal(emitted[0].domain, "a.com");
   assert.deepEqual(emitParams(store), ["utm_source"]);
+});
+
+// ── File-level byte identity, through the real I/O path ──────────────
+
+test("the rendered FILES are byte-identical to what is committed", () => {
+  // The assertions above compare a string and an array. Neither covers
+  // params.json's file bytes: its `version`/`published` fields are preserved by
+  // renderParamsFile in the I/O wrapper, and a change to that function's key
+  // order or indentation would slip past an array comparison entirely. This
+  // test exists because a review found exactly that gap — and because the
+  // earlier test was NAMED "byte-for-byte" while comparing arrays, which is a
+  // worse failure than the gap itself.
+  const rendered = renderArtifacts();
+  assert.equal(
+    rendered.domainRules,
+    read(DOMAIN_RULES_PATH),
+    `src/rules/domain-rules.json bytes differ — ${REGENERATE}`
+  );
+  assert.equal(
+    rendered.params,
+    read(PARAMS_PATH),
+    `tools/rules-source/params.json bytes differ — ${REGENERATE}`
+  );
+});
+
+// ── Validation on the way IN, not only on construction ───────────────
+
+test("parseStore rejects a reserved action read from disk", () => {
+  // makeEntry guards the construction path. The path that matters more is this
+  // one: the store is the source of truth, so it is READ far more often than it
+  // is built. Before this guard, a hand-edited `action: "referral"` parsed
+  // cleanly and emitDomainRules rendered it into `stripParams` — silently
+  // turning a param that exists to be PRESERVED into one to be stripped.
+  const hostile = JSON.stringify({
+    schemaVersion: 1,
+    projection: { scopes: { "a.com": { emitStripParams: true, note: "n" } } },
+    entries: [
+      { scope: "a.com", param: "q", action: ACTIONS.PRESERVE },
+      { scope: "a.com", param: "tag", action: "referral" },
+    ],
+  });
+
+  assert.throws(
+    () => parseStore(hostile),
+    (err) => err.message.includes("referral") && err.message.includes("tag"),
+    "a reserved action survived the load path"
+  );
+});
+
+test("parseStore rejects an unknown action and a missing entries array", () => {
+  const unknown = JSON.stringify({
+    schemaVersion: 1,
+    projection: { scopes: {} },
+    entries: [{ scope: "a.com", param: "x", action: "nonsense" }],
+  });
+  assert.throws(() => parseStore(unknown), /nonsense/);
+
+  assert.throws(
+    () => parseStore(JSON.stringify({ schemaVersion: 1, projection: { scopes: {} } })),
+    /entries/
+  );
+});
+
+test("an unroutable action can never reach the strip bucket", () => {
+  // parseStore now rejects these, but emitDomainRules is exported and callable
+  // with a hand-built object. The grouping must refuse rather than sweep an
+  // unrecognised action into strip via an else branch.
+  // The scope carries a preserve entry ON PURPOSE. Without it the
+  // no-preserve guard would throw first, and its message also contains the
+  // param name — so a test asserting only on "tag" would pass even with the
+  // routing restored. It has to be the ROUTING that fails, and it has to be
+  // distinguishable from the other throw.
+  const store = {
+    schemaVersion: 1,
+    entries: [
+      { scope: "a.com", param: "q", action: ACTIONS.PRESERVE },
+      { scope: "a.com", param: "tag", action: "referral" },
+    ],
+    projection: { scopes: { "a.com": { emitStripParams: true } } },
+  };
+  assert.throws(
+    () => emitDomainRules(store),
+    (err) => err.message.includes("unroutable") && err.message.includes("tag"),
+    "an unrecognised action was routed instead of refused"
+  );
 });

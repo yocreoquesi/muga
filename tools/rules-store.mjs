@@ -78,11 +78,31 @@ const VALID_ACTIONS = new Set(Object.values(ACTIONS));
  * @throws {Error} On an empty field, an unknown action, or a reserved action.
  */
 export function makeEntry({ scope, param, action }) {
+  return validateEntry({ scope, param, action });
+}
+
+/**
+ * The single validation path for an entry, wherever it came from.
+ *
+ * Extracted because `makeEntry` guards only the CONSTRUCTION path, and the path
+ * that matters most is the other one: the store is the source of truth, so it is
+ * read from disk far more often than it is built in memory. A review of this
+ * module found that a hand-edited `action: "referral"` sailed through
+ * `parseStore` and was then rendered by `emitDomainRules` as a `stripParams`
+ * entry — silently turning a param that exists to be PRESERVED into one to be
+ * stripped, which is the one direction that costs a creator real money.
+ *
+ * @param {{scope: string, param: string, action: string}} entry
+ * @param {string} [where] Context for the error message.
+ * @returns {{scope: string, param: string, action: string}}
+ * @throws {Error} On an empty field, an unknown action, or a reserved action.
+ */
+function validateEntry({ scope, param, action }, where = "entry") {
   if (typeof scope !== "string" || scope.length === 0) {
-    throw new Error(`rules-store: entry needs a scope (param: ${String(param)})`);
+    throw new Error(`rules-store: ${where} needs a scope (param: ${String(param)})`);
   }
   if (typeof param !== "string" || param.length === 0) {
-    throw new Error(`rules-store: entry needs a param (scope: ${scope})`);
+    throw new Error(`rules-store: ${where} needs a param (scope: ${scope})`);
   }
   if (RESERVED_ACTIONS.includes(action)) {
     throw new Error(
@@ -162,7 +182,11 @@ function groupByScope(store) {
     if (!grouped.has(entry.scope)) grouped.set(entry.scope, { preserve: [], strip: [] });
     const bucket = grouped.get(entry.scope);
     if (entry.action === ACTIONS.PRESERVE) bucket.preserve.push(entry.param);
-    else bucket.strip.push(entry.param);
+    else if (entry.action === ACTIONS.STRIP) bucket.strip.push(entry.param);
+    // No catch-all: an unrecognised action must never fall into the strip
+    // bucket. validateEntry rejects one before it reaches here, and this
+    // branch stays explicit so a future action cannot be silently mis-filed.
+    else throw new Error(`rules-store: unroutable action "${entry.action}" (${entry.scope} / ${entry.param})`);
   }
   return grouped;
 }
@@ -265,5 +289,12 @@ export function parseStore(text) {
       `rules-store: schemaVersion ${store.schemaVersion} is not ${SCHEMA_VERSION}`
     );
   }
+  if (!Array.isArray(store.entries)) {
+    throw new Error("rules-store: store has no entries array");
+  }
+  // Validate on the way IN, not only on the way out. Everything downstream
+  // (groupByScope, emitDomainRules, emitParams) assumes a known action; an
+  // unknown one would be swept into the strip bucket by the else branch.
+  store.entries.forEach((entry, i) => validateEntry(entry, `entries[${i}]`));
   return store;
 }
