@@ -283,6 +283,18 @@ async function probe(page, host, pathAndQuery) {
   await page.goto(`https://${host}${pathAndQuery}`);
   await page.waitForLoadState("domcontentloaded");
 
+  // Without this the next line reads `new URL(undefined)` and the spec dies
+  // with "Invalid URL" — a failure that says nothing about what happened. The
+  // whole point of these probes is diagnosis, so an empty capture has to name
+  // itself: it means the navigation never reached the route handler at all,
+  // which is a different fault from any rule winning or losing.
+  if (seen.length === 0) {
+    throw new Error(
+      `probe: no request to ${host} was captured — the navigation never reached ` +
+        `the route handler, so no precedence conclusion can be drawn`
+    );
+  }
+
   const networkUrl = seen[seen.length - 1];
   return {
     requests: seen,
