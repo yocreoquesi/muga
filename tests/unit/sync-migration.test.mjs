@@ -175,4 +175,55 @@ describe("sync-migration", () => {
     const second = await mod.migrateConsentToLocal();
     assert.deepEqual(second, { ranWork: false, copiedToLocal: false, cleanedSync: false });
   });
+
+  // ── #1216: overlapping calls are the normal case ──────────────────────────
+  //
+  // The service worker calls migrateConsentToLocal() from module scope AND
+  // from its startup/install handlers, so two or three calls overlap on every
+  // wake. The migration is idempotent in effect but was not atomic: read sync,
+  // read local, write local, remove sync. A second call landing mid-sequence
+  // read sync (still holding the legacy keys, because the first had not
+  // reached removeLegacySync) and local (already written by the first), so it
+  // reported copiedToLocal:false for a copy that did happen. The data was
+  // always right; the report was not, which is how this surfaced as a flaky
+  // e2e assertion instead of a user-visible bug.
+  test("concurrent calls share one migration and report it identically", async () => {
+    stores.syncStore.set("onboardingDone", true);
+    stores.syncStore.set("consentVersion", "1.0");
+    stores.syncStore.set("consentDate", 100);
+
+    const area = globalThis.chrome.storage.local;
+    const realSet = area.set.bind(area);
+    let localWrites = 0;
+    area.set = (data, cb) => {
+      localWrites += 1;
+      return realSet(data, cb);
+    };
+
+    const [a, b, c] = await Promise.all([
+      mod.migrateConsentToLocal(),
+      mod.migrateConsentToLocal(),
+      mod.migrateConsentToLocal(),
+    ]);
+
+    const expected = { ranWork: true, copiedToLocal: true, cleanedSync: true };
+    assert.deepEqual(a, expected, "the winning call must report the copy it performed");
+    assert.deepEqual(b, expected, "a caller that arrived mid-migration must see the same report");
+    assert.deepEqual(c, expected, "and so must a third");
+    assert.equal(localWrites, 1, "one migration means one write to local, not one per caller");
+
+    assert.equal(stores.localStore.get("mugaConsent").onboardingDone, true);
+    assert.equal(stores.syncStore.has("onboardingDone"), false);
+  });
+
+  test("a later call still migrates — the in-flight guard is not a latch", async () => {
+    // Clearing the shared promise once settled matters: a service worker that
+    // wakes again must be able to migrate data that appeared in the meantime.
+    const first = await mod.migrateConsentToLocal();
+    assert.deepEqual(first, { ranWork: false, copiedToLocal: false, cleanedSync: false });
+
+    stores.syncStore.set("onboardingDone", true);
+    const second = await mod.migrateConsentToLocal();
+    assert.deepEqual(second, { ranWork: true, copiedToLocal: true, cleanedSync: true });
+  });
 });
