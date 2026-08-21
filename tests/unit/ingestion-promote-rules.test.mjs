@@ -1756,3 +1756,112 @@ describe("runPromote — writes the normalized store, not just the artifact", ()
     assert.strictEqual(readFileSync(sourcePath, "utf8"), sourceBefore, "params.json was written despite a bad signature");
   });
 });
+
+// ── The MIN_PARAM_LEN floor (#1218 gap, found by exercising auto-ingest) ──────
+
+describe("runPromote — short names never reach params.json", () => {
+  test("a param shorter than MIN_PARAM_LEN is skipped, not merged", async () => {
+    // #1218 put this floor on sign-rules.mjs and the runtime validator but NOT
+    // on promote. The 2026-08-21 auto-ingest dispatch proved the consequence:
+    // promote wrote "_d" into params.json, every gate passed, and the run died
+    // at `sign-rules.mjs`. The weekly job could only ever succeed when it was a
+    // no-op.
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const result = await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          // "u" is ShareASale's affiliate id -- the exact param of #1212, and it
+          // is really in the current auto-merge candidate list.
+          params: ["_d", "u", "long_enough_param"],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: ["existing_param"],
+      }),
+      storePath: writeStore(tmpDir),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["safe_keep"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.ok(!result.merged.includes("_d"), '"_d" reached the merged list');
+    assert.ok(!result.merged.includes("u"), '"u" reached the merged list');
+    assert.ok(
+      result.merged.includes("long_enough_param"),
+      "a valid param was collateral damage"
+    );
+
+    assert.ok(
+      result.skipped.some(
+        (s) => s.param === "_d" && s.reason === "shorter than MIN_PARAM_LEN"
+      ),
+      '"_d" must be reported with the length reason, not silently dropped'
+    );
+
+    // "u" is stopped EARLIER, by the affiliate guard in step 4b, and keeps that
+    // more specific reason. The layering is the point: the length floor is the
+    // last net, not the first. Asserting the length reason here would have
+    // pinned the wrong contract -- an earlier draft of this test did exactly
+    // that and failed.
+    const uSkip = result.skipped.find((s) => s.param === "u");
+    assert.ok(uSkip, '"u" must be reported as skipped');
+    assert.notEqual(
+      uSkip.reason,
+      "shorter than MIN_PARAM_LEN",
+      '"u" should be caught by the affiliate guard, which is more specific'
+    );
+  });
+
+  test("a preserveParams collision outranks the length reason", async () => {
+    // Ordering matters: the more specific safety reason must survive, matching
+    // how the denylist and affiliate guard outrank this check upstream.
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const result = await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          params: ["ab", "long_enough_param"],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: ["existing_param"],
+      }),
+      storePath: writeStore(tmpDir),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["ab"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.ok(
+      result.skipped.some(
+        (s) => s.param === "ab" && s.reason === "collides with preserveParams"
+      ),
+      "the preserve reason was replaced by the length reason"
+    );
+  });
+});
