@@ -101,12 +101,22 @@ function makeInjectedPaths(tmpDir, { sourceParams = [] } = {}) {
   const reportPath = join(tmpDir, "quarantine-report.json");
   const sourcePath = join(tmpDir, "params.json");
   const domainRulesPath = join(tmpDir, "domain-rules.json");
+  // params.json is a PROJECTION of the store, so an injected path set must
+  // carry both. promote fails closed otherwise: reading a fixture while writing
+  // the repository's real store is never what a caller meant, and that is
+  // exactly what happened before the guard existed.
+  const storePath = join(tmpDir, "rules.json");
 
   mkdirSync(join(tmpDir, "promote"), { recursive: true });
   writeSourceParams(sourcePath, { version: 1, params: sourceParams });
   writeDomainRules(domainRulesPath);
+  writeFileSync(
+    storePath,
+    JSON.stringify({ schemaVersion: 1, projection: { scopes: {} }, entries: [] }, null, 2) + "\n",
+    "utf8"
+  );
 
-  return { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath };
+  return { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath };
 }
 
 // ── R1: Chain + exit propagation ──────────────────────────────────────────────
@@ -122,7 +132,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
 
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir);
 
     const ingestError = new Error("fake network failure");
@@ -145,6 +155,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: keyPath,
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -165,7 +176,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
     const tmpDir = makeTmpDir();
     // Use a non-existent key path so orchestrate-cli throws CliError(2)
     const missingKeyPath = join(tmpDir, "does-not-exist.pem");
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir);
 
     // Capture initial source content BEFORE running — regression guard mirrors R4-A:
@@ -192,6 +203,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: missingKeyPath,
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -218,7 +230,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
 
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir);
 
     const passAdapter = {
@@ -244,6 +256,7 @@ describe("R1 — Pipeline chain + exit propagation", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: keyPath,
         trustedKeys: wrongTrustedKeys,  // wrong key → verify fails
         subtle: globalThis.crypto?.subtle,
@@ -277,7 +290,7 @@ describe("R2 — No-op detection + return shape", () => {
     // This is a "nothing passed corroboration so nothing changed" noop, NOT a "param already
     // present" noop. The source seeding is required to make merged===current hold.
     const nooParams = ["utm_source"];
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: nooParams });
 
     // Adapter that parses "utm_source" out
@@ -300,6 +313,7 @@ describe("R2 — No-op detection + return shape", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: keyPath,
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -321,7 +335,7 @@ describe("R2 — No-op detection + return shape", () => {
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
 
     // Source starts empty → any candidate produces a change → noop:false
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: [] });
 
     // Adapter producing "utm_source" with two signals (corroboration)
@@ -353,6 +367,7 @@ describe("R2 — No-op detection + return shape", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: keyPath,
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -377,7 +392,7 @@ describe("R3 — Happy-path return shape", () => {
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
 
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: [] });
 
     const passAdapter = {
@@ -405,6 +420,7 @@ describe("R3 — Happy-path return shape", () => {
       reportPath,
       sourcePath,
       domainRulesPath,
+      storePath,
       signingKeyPath: keyPath,
       trustedKeys,
       subtle: globalThis.crypto?.subtle,
@@ -428,7 +444,7 @@ describe("R4 — Signing-key fail-closed", () => {
     const { runPipeline } = await import("../../tools/rule-ingestion/pipeline.mjs");
 
     const tmpDir = makeTmpDir();
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: [] });
 
     // Read initial content to verify it is untouched after the rejection
@@ -465,6 +481,7 @@ describe("R4 — Signing-key fail-closed", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: undefined,  // no key
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -499,7 +516,7 @@ describe("R4 — Signing-key fail-closed", () => {
     const { runPipeline } = await import("../../tools/rule-ingestion/pipeline.mjs");
 
     const tmpDir = makeTmpDir();
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: [] });
 
     const savedEnvKey = process.env.MUGA_SIGNING_KEY_PATH;
@@ -515,6 +532,7 @@ describe("R4 — Signing-key fail-closed", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: "",  // empty string = falsy
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -542,7 +560,7 @@ describe("Critical trap — candidates.json wrapper shape", () => {
 
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: [] });
 
     const passAdapter = {
@@ -572,6 +590,7 @@ describe("Critical trap — candidates.json wrapper shape", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: keyPath,
         trustedKeys,
         subtle: globalThis.crypto?.subtle,
@@ -611,7 +630,7 @@ describe("T-14 — surface-input.json written on both branches", () => {
 
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, surfaceInputPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath, surfaceInputPath } =
       makeInjectedPathsWithSurface(tmpDir, { sourceParams: ["utm_source"] });
 
     const passAdapter = {
@@ -632,6 +651,7 @@ describe("T-14 — surface-input.json written on both branches", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         surfaceInputPath,
         signingKeyPath: keyPath,
         trustedKeys,
@@ -659,7 +679,7 @@ describe("T-14 — surface-input.json written on both branches", () => {
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
     // Empty source → any candidate produces a change → noop:false
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, surfaceInputPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath, surfaceInputPath } =
       makeInjectedPathsWithSurface(tmpDir, { sourceParams: [] });
 
     const passAdapter = {
@@ -688,6 +708,7 @@ describe("T-14 — surface-input.json written on both branches", () => {
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         surfaceInputPath,
         signingKeyPath: keyPath,
         trustedKeys,
@@ -722,7 +743,7 @@ describe("R5 — GITHUB_OUTPUT dual-emit", () => {
     // Use the noop scenario: single adapter + source pre-seeded with the same param.
     // Corroboration gate quarantines the single-signal candidate → promote artifact has
     // params:[] → merges with current source (already has "utm_source") → noop:true.
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: ["utm_source"] });
 
     const passAdapter = {
@@ -761,6 +782,7 @@ describe("R5 — GITHUB_OUTPUT dual-emit", () => {
           reportPath,
           sourcePath,
           domainRulesPath,
+          storePath,
           trustedKeys,
           subtle: globalThis.crypto?.subtle,
           now: TEST_NOW,
@@ -820,7 +842,7 @@ describe("T-15 — discoveredDir forwarded from pipeline to orchestrate-cli", ()
 
     const tmpDir = makeTmpDir();
     const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
-    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath } =
+    const { candidatesPath, promotePath, reportPath, sourcePath, domainRulesPath, storePath } =
       makeInjectedPaths(tmpDir, { sourceParams: [] });
 
     // Write a discovered artifact that carries value_entropy for utm_source
@@ -859,6 +881,7 @@ describe("T-15 — discoveredDir forwarded from pipeline to orchestrate-cli", ()
         reportPath,
         sourcePath,
         domainRulesPath,
+        storePath,
         signingKeyPath: keyPath,
         trustedKeys,
         subtle: globalThis.crypto?.subtle,

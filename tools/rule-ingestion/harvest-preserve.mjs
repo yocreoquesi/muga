@@ -59,6 +59,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TRACKING_PARAMS, TRACKING_PREFIXES } from "../../src/lib/affiliates-data.js";
+import {
+  emitDomainRules,
+  parseStore,
+  serializeStore,
+  withDomainRules,
+} from "../rules-store.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "../..");
@@ -66,6 +72,7 @@ const REPO_ROOT = join(__dirname, "../..");
 const ADGUARD_RAW_PATH = join(REPO_ROOT, "tools/rule-ingestion/quarantine/adguard-tp.raw");
 const CLEARURLS_RAW_PATH = join(REPO_ROOT, "tools/moat-expansion/quarantine/clearurls.raw");
 const DOMAIN_RULES_PATH = join(REPO_ROOT, "src/rules/domain-rules.json");
+const STORE_PATH = join(REPO_ROOT, "tools/rules-source/rules.json");
 
 const HARVEST_NOTE = "Preserve params harvested from AdGuard/ClearURLs exceptions";
 
@@ -373,7 +380,12 @@ export function mergeIntoDomainRules(existingRules, harvestedEntries) {
 function main() {
   const adguardRaw = readFileSync(ADGUARD_RAW_PATH, "utf8");
   const clearUrlsRaw = readFileSync(CLEARURLS_RAW_PATH, "utf8");
-  const existingRules = JSON.parse(readFileSync(DOMAIN_RULES_PATH, "utf8"));
+  // Read the STORE, not the artifact. domain-rules.json is a projection of it,
+  // so going through the store means there is one place this job can read a
+  // stale or hand-edited truth from -- and the projection it merges into is by
+  // construction the one it will write back.
+  const store = parseStore(readFileSync(STORE_PATH, "utf8"));
+  const existingRules = JSON.parse(emitDomainRules(store));
 
   const adguard = parseAdguardExceptions(adguardRaw);
   const clearUrls = parseClearUrlsProviders(clearUrlsRaw);
@@ -387,7 +399,19 @@ function main() {
   const droppedNoop = rawEntries.length - harvestedEntries.length;
   const { rules, domainsTouched, paramsAdded } = mergeIntoDomainRules(existingRules, harvestedEntries);
 
-  const payload = JSON.stringify(rules, null, 2) + "\n";
+  // The store is the SOURCE; domain-rules.json is its projection. Writing the
+  // artifact alone would recreate the two-sources problem the store exists to
+  // remove, and the drift test would fail on drift this job introduced.
+  //
+  // Both payloads are rendered BEFORE either is written: emitDomainRules throws
+  // on an entry the legacy schema cannot represent, and a throw between the two
+  // writes would leave the store and the artifact disagreeing.
+  const nextStore = withDomainRules(store, rules);
+  const storePayload = serializeStore(nextStore);
+  const payload = emitDomainRules(nextStore);
+
+  writeFileSync(STORE_PATH + ".tmp", storePayload, "utf8");
+  renameSync(STORE_PATH + ".tmp", STORE_PATH);
   writeFileSync(DOMAIN_RULES_PATH + ".tmp", payload, "utf8");
   renameSync(DOMAIN_RULES_PATH + ".tmp", DOMAIN_RULES_PATH);
 
