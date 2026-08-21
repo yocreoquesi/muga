@@ -167,6 +167,58 @@ export function importArtifacts(domainRules, globalParams) {
   return { schemaVersion: SCHEMA_VERSION, entries, projection: { scopes } };
 }
 
+// ── Updates: the writers' entry points ───────────────────────────────
+
+/**
+ * Returns a NEW store whose GLOBAL strip list is `params`, leaving every
+ * host-scoped entry and all projection metadata untouched.
+ *
+ * Surgical on purpose. Rebuilding the whole store with `importArtifacts` from
+ * the current artifacts would be equivalent TODAY, because the store holds
+ * nothing the artifacts cannot express — and it would silently become data loss
+ * the moment Slice 2 adds a host-scoped strip that `domain-rules.json` cannot
+ * represent. A writer must only ever replace the axis it owns.
+ *
+ * @param {object} store
+ * @param {string[]} params
+ * @returns {object}
+ */
+export function withGlobalParams(store, params) {
+  const kept = store.entries.filter((e) => e.scope !== GLOBAL_SCOPE);
+  const globals = params.map((param) =>
+    makeEntry({ scope: GLOBAL_SCOPE, param, action: ACTIONS.STRIP })
+  );
+  return { ...store, entries: [...kept, ...globals] };
+}
+
+/**
+ * Returns a NEW store whose HOST-SCOPED entries and projection metadata come
+ * from `domainRules`, leaving the global list untouched.
+ *
+ * The mirror of withGlobalParams, and the same warning applies in reverse: this
+ * replaces every host-scoped entry, so a caller must pass the COMPLETE domain
+ * rule set, not a delta. `harvest-preserve.mjs` does exactly that — it reads the
+ * full projection, merges into it, and hands back the whole thing.
+ *
+ * SLICE 2 NOTE: once the store carries host-scoped facts that `domain-rules.json`
+ * cannot express, a caller that derives `domainRules` from the projection will no
+ * longer be handing back everything it is about to replace. This function is
+ * where that breaks, and it should grow a merge rather than a replace then.
+ *
+ * @param {object} store
+ * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], note?: string}>} domainRules
+ * @returns {object}
+ */
+export function withDomainRules(store, domainRules) {
+  const globals = store.entries.filter((e) => e.scope === GLOBAL_SCOPE);
+  const rebuilt = importArtifacts(domainRules, []);
+  return {
+    ...store,
+    entries: [...rebuilt.entries, ...globals],
+    projection: rebuilt.projection,
+  };
+}
+
 // ── Projection: store → domain-rules.json ────────────────────────────
 
 /**

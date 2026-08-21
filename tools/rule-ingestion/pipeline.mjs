@@ -65,6 +65,8 @@ const DEFAULT_SURFACE_INPUT_PATH = resolve(__dirname, "quarantine/surface-input.
  * @param {string}         [opts.reportPath]      quarantine-report.json path.
  * @param {string}         [opts.sourcePath]      tools/rules-source/params.json path.
  * @param {string}         [opts.domainRulesPath]    src/rules/domain-rules.json path.
+ * @param {string}         [opts.storePath]       tools/rules-source/rules.json path
+ *                                                (the normalized source params.json projects from).
  * @param {string}         [opts.surfaceInputPath]   quarantine/surface-input.json path (injectable for tests).
  * @param {string}         [opts.signingKeyPath]  Ed25519 private key PEM path. Fail-closed: if falsy, rejects.
  * @param {readonly string[]} [opts.trustedKeys]  Trusted public keys. Defaults to TRUSTED_PUBLIC_KEYS.
@@ -96,6 +98,7 @@ export async function runPipeline({
   reportPath = DEFAULT_REPORT_PATH,
   sourcePath = DEFAULT_SOURCE_PATH,
   domainRulesPath = DEFAULT_DOMAIN_RULES_PATH,
+  storePath,
   surfaceInputPath = DEFAULT_SURFACE_INPUT_PATH,
   signingKeyPath,
   trustedKeys = TRUSTED_PUBLIC_KEYS,
@@ -178,6 +181,10 @@ export async function runPipeline({
     promotePath,
     sourcePath,
     domainRulesPath,
+    // Forwarded so an injected path set stays coherent. promote fails closed if
+    // sourcePath is redirected while storePath is not, because reading a fixture
+    // and writing the repository's store is never what a caller meant.
+    ...(storePath ? { storePath } : {}),
     trustedKeys,
     subtle,
     now: nowDate,

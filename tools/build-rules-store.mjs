@@ -30,7 +30,7 @@
  * only its `params` array is replaced.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,6 +41,8 @@ import {
   parseStore,
   serializeStore,
 } from "./rules-store.mjs";
+
+export { withDomainRules, withGlobalParams } from "./rules-store.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -64,7 +66,12 @@ function read(file) {
  * `core.autocrlf=true`.
  */
 function write(file, contents) {
-  writeFileSync(file, contents, "utf8");
+  // Atomic: write beside the target, then rename over it. `promote-rules.mjs`
+  // runs unattended every Sunday and has always written this way, so delegating
+  // its writes here must not quietly downgrade that guarantee — a half-written
+  // params.json would be served to every user by the publish workflow.
+  writeFileSync(`${file}.tmp`, contents, "utf8");
+  renameSync(`${file}.tmp`, file);
 }
 
 /** Renders params.json with a replaced `params` array, preserving every other field. */
@@ -86,19 +93,46 @@ export function runImport() {
  * Store → artifact contents, as strings. Shared by the write and check paths so
  * they can never diverge.
  */
-export function renderArtifacts() {
-  const store = parseStore(read(STORE_PATH));
+export function renderArtifacts(store = parseStore(read(STORE_PATH)), paramsMeta = null) {
+  const base = paramsMeta
+    ? JSON.stringify({ ...JSON.parse(read(PARAMS_PATH)), ...paramsMeta })
+    : read(PARAMS_PATH);
   return {
     domainRules: emitDomainRules(store),
-    params: renderParamsFile(read(PARAMS_PATH), emitParams(store)),
+    params: renderParamsFile(base, emitParams(store)),
   };
+}
+
+/**
+ * Persists a store and both of its projections.
+ *
+ * Everything is RENDERED BEFORE ANYTHING IS WRITTEN. `emitDomainRules` throws on
+ * an entry the legacy schema cannot represent, and a throw partway through the
+ * writes would leave the store updated with artifacts that no longer match it —
+ * drift committed by the very run that was supposed to prevent it.
+ *
+ * @param {object} store
+ * @param {{version?: number, published?: string}|null} [paramsMeta]
+ *   Overrides for params.json's signing-flow fields. `promote-rules.mjs` owns
+ *   the version bump; the store deliberately does not model those fields.
+ */
+export function writeAll(store, paramsMeta = null) {
+  const rendered = renderArtifacts(store, paramsMeta);
+  const serialized = serializeStore(store);
+
+  write(STORE_PATH, serialized);
+  write(DOMAIN_RULES_PATH, rendered.domainRules);
+  write(PARAMS_PATH, rendered.params);
+}
+
+/** Reads and validates the committed store. */
+export function loadStore() {
+  return parseStore(read(STORE_PATH));
 }
 
 /** Store → artifacts, written to disk. */
 export function runBuild() {
-  const rendered = renderArtifacts();
-  write(DOMAIN_RULES_PATH, rendered.domainRules);
-  write(PARAMS_PATH, rendered.params);
+  writeAll(loadStore());
 }
 
 /**

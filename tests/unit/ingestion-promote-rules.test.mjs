@@ -88,6 +88,26 @@ function writeParamsJson(dir, { version, published, params }) {
   return path;
 }
 
+/**
+ * Write a normalized-store fixture.
+ *
+ * An EMPTY store is enough here: runPromote replaces the whole global list via
+ * withGlobalParams, so the store's prior global entries never reach the output.
+ * What matters is that a store exists at an INJECTED path -- promote now fails
+ * closed if sourcePath is overridden while storePath is not, because the first
+ * run of that retarget had `npm test` silently rewrite the repository's real
+ * tools/rules-source/rules.json.
+ */
+function writeStore(dir) {
+  const path = join(dir, "rules.json");
+  writeFileSync(
+    path,
+    JSON.stringify({ schemaVersion: 1, projection: { scopes: {} }, entries: [] }, null, 2) + "\n",
+    "utf8"
+  );
+  return path;
+}
+
 /** Write a domain-rules.json fixture */
 function writeDomainRules(dir, rules) {
   const path = join(dir, "domain-rules.json");
@@ -219,6 +239,7 @@ describe("runPromote — valid merge (A1)", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -286,6 +307,7 @@ describe("runPromote — tampered sig → fail-closed (A2)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -330,6 +352,7 @@ describe("runPromote — missing sig → fail-closed (A2b)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -375,6 +398,7 @@ describe("runPromote — malformed source params.json", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -417,6 +441,7 @@ describe("runPromote — malformed source params.json", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -452,6 +477,7 @@ describe("runPromote — missing files → exitCode 3", () => {
         runPromote({
           promotePath: join(tmpDir, "does-not-exist.json"),
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -485,6 +511,7 @@ describe("runPromote — missing files → exitCode 3", () => {
         runPromote({
           promotePath,
           sourcePath: join(tmpDir, "does-not-exist-params.json"),
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -533,6 +560,7 @@ describe("runPromote — stale artifact (STALE_DAYS=180)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -580,6 +608,7 @@ describe("runPromote — preserveParams collision skip (A3)", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -637,6 +666,7 @@ describe("runPromote — preserveParams union across multiple domains", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -683,6 +713,7 @@ describe("runPromote — ALL promoted params collide → noop", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -727,6 +758,7 @@ describe("runPromote — idempotent no-op (A4)", () => {
     const first = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -741,6 +773,7 @@ describe("runPromote — idempotent no-op (A4)", () => {
     const second = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -782,6 +815,7 @@ describe("runPromote — version monotonicity", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -824,6 +858,7 @@ describe("runPromote — exit codes R7-S1/S2", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -858,6 +893,7 @@ describe("runPromote — exit codes R7-S1/S2", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -924,6 +960,7 @@ describe("runPromote — future-dated artifact bypass (FIX-6)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -969,6 +1006,7 @@ describe("runPromote — future-dated artifact bypass (FIX-6)", () => {
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -1009,6 +1047,7 @@ describe("runPromote — domain-rules.json fail-CLOSED (FIX-7)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath: join(tmpDir, "domain-rules-does-not-exist.json"),
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -1061,6 +1100,7 @@ describe("runPromote — domain-rules.json fail-CLOSED (FIX-7)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -1120,6 +1160,7 @@ describe("runPromote — non-string params in artifact (FIX-8)", () => {
         runPromote({
           promotePath,
           sourcePath,
+          storePath: writeStore(tmpDir),
           domainRulesPath,
           trustedKeys: TEST_TRUSTED_KEYS,
           subtle: globalThis.crypto.subtle,
@@ -1171,6 +1212,7 @@ describe("runPromote — idempotency with unsorted source params (FIX-5)", () =>
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -1210,7 +1252,7 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
     const bytesBefore = readFileSync(sourcePath, "utf8");
 
     await assert.rejects(
-      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      () => runPromote({ promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
       (err) => {
         assert.ok(err instanceof PromoteError, "must be PromoteError");
         assert.strictEqual(err.exitCode, 1, "bad format param → exitCode 1");
@@ -1241,7 +1283,7 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
     const bytesBefore = readFileSync(sourcePath, "utf8");
 
     await assert.rejects(
-      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      () => runPromote({ promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
       (err) => {
         assert.ok(err instanceof PromoteError, "must be PromoteError");
         assert.strictEqual(err.exitCode, 1, "over-long param → exitCode 1");
@@ -1272,7 +1314,7 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
 
     // Must NOT throw — denylist hit is now a skip, not a fatal error (#898)
     const result = await runPromote({
-      promotePath, sourcePath, domainRulesPath,
+      promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
     });
 
@@ -1307,7 +1349,7 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
 
     // Must NOT throw — affiliate guard hit is now a skip, not a fatal error (#898)
     const result = await runPromote({
-      promotePath, sourcePath, domainRulesPath,
+      promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
     });
 
@@ -1341,7 +1383,7 @@ describe("#821-I2 — Param format validation at promote boundary", () => {
 
     // Must NOT throw — guard/denylist hits are skipped; valid params are promoted
     const result = await runPromote({
-      promotePath, sourcePath, domainRulesPath,
+      promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
     });
 
@@ -1403,7 +1445,7 @@ describe("#821-I3 — Validate `published` in source params.json schema", () => 
     const bytesBefore = readFileSync(sourcePath, "utf8");
 
     await assert.rejects(
-      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      () => runPromote({ promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
       (err) => {
         assert.ok(err instanceof PromoteError, "must be PromoteError");
         assert.strictEqual(err.exitCode, 1, "missing published in source → exitCode 1 (SCHEMA_ERROR)");
@@ -1439,7 +1481,7 @@ describe("#821-I3 — Validate `published` in source params.json schema", () => 
     const domainRulesPath = writeDomainRules(tmpDir, []);
 
     await assert.rejects(
-      () => runPromote({ promotePath, sourcePath, domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
+      () => runPromote({ promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath, trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now }),
       (err) => {
         assert.ok(err instanceof PromoteError, "must be PromoteError");
         assert.strictEqual(err.exitCode, 1, "non-string published in source → exitCode 1");
@@ -1472,7 +1514,7 @@ describe("#821-I3 — Validate `published` in source params.json schema", () => 
 
     // Must not throw — valid published field
     const result = await runPromote({
-      promotePath, sourcePath, domainRulesPath,
+      promotePath, sourcePath, storePath: writeStore(tmpDir), domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS, subtle: globalThis.crypto.subtle, now,
     });
     assert.strictEqual(result.verified, true, "valid source must proceed to verify");
@@ -1513,6 +1555,7 @@ describe("Import smoke — promote-rules.mjs under Node (D1 mitigation)", () => 
     const result = await runPromote({
       promotePath,
       sourcePath,
+      storePath: writeStore(tmpDir),
       domainRulesPath,
       trustedKeys: TEST_TRUSTED_KEYS,
       subtle: globalThis.crypto.subtle,
@@ -1520,5 +1563,196 @@ describe("Import smoke — promote-rules.mjs under Node (D1 mitigation)", () => 
     });
 
     assert.strictEqual(result.verified, true, "smoke test: verified must be true");
+  });
+});
+
+// ── Store retargeting: params.json is a PROJECTION, not a source ──────────────
+
+describe("runPromote — writes the normalized store, not just the artifact", () => {
+  test("the store is updated at the INJECTED path and the artifact matches it", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+    const { parseStore, emitParams } = await import("../../tools/rules-store.mjs");
+
+    const tmpDir = makeTmpDir();
+    const promotePath = writeArtifact(
+      tmpDir,
+      buildArtifact({
+        version: 3,
+        published: "2026-05-01T00:00:00.000Z",
+        params: ["new_param"],
+        privateKey: TEST_PRIV_KEY,
+      })
+    );
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      params: ["existing_param"],
+    });
+    const storePath = writeStore(tmpDir);
+
+    const result = await runPromote({
+      promotePath,
+      sourcePath,
+      storePath,
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["safe_keep"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.strictEqual(result.written, true);
+
+    // The store must carry the merged list...
+    const store = parseStore(readFileSync(storePath, "utf8"));
+    assert.deepEqual(emitParams(store), result.merged);
+
+    // ...and params.json must be exactly its projection. If these two ever
+    // disagree, the next drift test fails on drift THIS job introduced.
+    const artifact = JSON.parse(readFileSync(sourcePath, "utf8"));
+    assert.deepEqual(artifact.params, emitParams(store));
+  });
+
+  test("host-scoped entries in the store survive a global-list promotion", async () => {
+    // withGlobalParams must replace ONLY the global axis. Rebuilding the store
+    // from the artifacts would be equivalent today and silent data loss the
+    // moment Slice 2 adds a host-scoped strip.
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+    const { parseStore } = await import("../../tools/rules-store.mjs");
+
+    const tmpDir = makeTmpDir();
+    const storePath = join(tmpDir, "rules.json");
+    writeFileSync(
+      storePath,
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          projection: { scopes: { "example.com": { emitStripParams: false, note: "n" } } },
+          entries: [{ scope: "example.com", param: "safe_keep", action: "preserve" }],
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          params: ["new_param"],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: ["existing_param"],
+      }),
+      storePath,
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["safe_keep"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    const store = parseStore(readFileSync(storePath, "utf8"));
+    const hostEntries = store.entries.filter((e) => e.scope === "example.com");
+    assert.deepEqual(hostEntries, [
+      { scope: "example.com", param: "safe_keep", action: "preserve" },
+    ]);
+  });
+
+  test("an overridden sourcePath with a default storePath is refused", async () => {
+    // The regression that made this guard necessary: the first run of this
+    // retarget against the existing suite had `npm test` silently rewrite the
+    // REPOSITORY's tools/rules-source/rules.json, because every test injected
+    // sourcePath into a tmpdir and left storePath at its default.
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    await assert.rejects(
+      () =>
+        runPromote({
+          promotePath: writeArtifact(
+            tmpDir,
+            buildArtifact({
+              version: 3,
+              published: "2026-05-01T00:00:00.000Z",
+              params: ["new_param"],
+              privateKey: TEST_PRIV_KEY,
+            })
+          ),
+          sourcePath: writeParamsJson(tmpDir, {
+            version: 3,
+            published: "2026-04-01T00:00:00.000Z",
+            params: ["existing_param"],
+          }),
+          // storePath deliberately omitted
+          domainRulesPath: writeDomainRules(tmpDir, [
+            { domain: "example.com", preserveParams: ["safe_keep"] },
+          ]),
+          trustedKeys: TEST_TRUSTED_KEYS,
+          subtle: globalThis.crypto.subtle,
+          now: new Date("2026-06-01T12:00:00.000Z"),
+        }),
+      (err) => err.message.includes("CONFIG_ERROR") && err.exitCode === 2
+    );
+  });
+
+  test("a bad signature writes NEITHER the store NOR the artifact", async () => {
+    // Fail-closed must survive the retarget: verification still happens before
+    // any write, and now there are two files that must both stay untouched.
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: ["new_param"],
+      privateKey: TEST_PRIV_KEY,
+    });
+    artifact.sig = "AAAA" + artifact.sig.slice(4);
+
+    const promotePath = writeArtifact(tmpDir, artifact);
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      params: ["existing_param"],
+    });
+    const storePath = writeStore(tmpDir);
+
+    const storeBefore = readFileSync(storePath, "utf8");
+    const sourceBefore = readFileSync(sourcePath, "utf8");
+
+    await assert.rejects(() =>
+      runPromote({
+        promotePath,
+        sourcePath,
+        storePath,
+        domainRulesPath: writeDomainRules(tmpDir, [
+          { domain: "example.com", preserveParams: ["safe_keep"] },
+        ]),
+        trustedKeys: TEST_TRUSTED_KEYS,
+        subtle: globalThis.crypto.subtle,
+        now: new Date("2026-06-01T12:00:00.000Z"),
+      })
+    );
+
+    assert.strictEqual(readFileSync(storePath, "utf8"), storeBefore, "store was written despite a bad signature");
+    assert.strictEqual(readFileSync(sourcePath, "utf8"), sourceBefore, "params.json was written despite a bad signature");
   });
 });

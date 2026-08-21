@@ -25,6 +25,8 @@
  */
 
 import { readFileSync, writeFileSync, renameSync } from "node:fs";
+
+import { emitParams, parseStore, serializeStore, withGlobalParams } from "../rules-store.mjs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -63,6 +65,10 @@ const DEFAULT_PROMOTE_PATH = resolve(
 const DEFAULT_SOURCE_PATH = resolve(
   __dirname,
   "../../tools/rules-source/params.json"
+);
+const DEFAULT_STORE_PATH = resolve(
+  __dirname,
+  "../../tools/rules-source/rules.json"
 );
 const DEFAULT_DOMAIN_RULES_PATH = resolve(
   __dirname,
@@ -130,6 +136,8 @@ export function computeMerge(currentParams, cleanParams) {
  * @param {string}          [opts.promotePath]    Path to promote-candidates.json.
  * @param {string}          [opts.sourcePath]     Path to tools/rules-source/params.json.
  * @param {string}          [opts.domainRulesPath] Path to src/rules/domain-rules.json.
+ * @param {string}          [opts.storePath]      Path to tools/rules-source/rules.json,
+ *                                                the normalized source the artifact projects from.
  * @param {readonly string[]} [opts.trustedKeys]  Defaults to TRUSTED_PUBLIC_KEYS.
  * @param {SubtleCrypto}    [opts.subtle]         Defaults to globalThis.crypto?.subtle.
  * @param {Date}            [opts.now]            Defaults to new Date().
@@ -151,10 +159,30 @@ export async function runPromote({
   promotePath = DEFAULT_PROMOTE_PATH,
   sourcePath = DEFAULT_SOURCE_PATH,
   domainRulesPath = DEFAULT_DOMAIN_RULES_PATH,
+  storePath = DEFAULT_STORE_PATH,
   trustedKeys = TRUSTED_PUBLIC_KEYS,
   subtle = globalThis.crypto?.subtle,
   now = new Date(),
 } = {}) {
+  // ── Step 0: Refuse an incoherent path set ─────────────────────────────────
+  //
+  // params.json is a PROJECTION of the store, so the two must describe the same
+  // world. A caller that redirects sourcePath at a fixture while leaving
+  // storePath at its default would read a temp artifact and write the
+  // REPOSITORY's store -- which is exactly what happened the first time this
+  // retarget ran against the existing test suite: `npm test` silently rewrote
+  // tools/rules-source/rules.json.
+  //
+  // Fail closed and loudly. A silent repo mutation from a unit test is the kind
+  // of fault that is discovered by `git status` days later, if at all.
+  if (sourcePath !== DEFAULT_SOURCE_PATH && storePath === DEFAULT_STORE_PATH) {
+    throw new PromoteError(
+      "CONFIG_ERROR: sourcePath was overridden but storePath was not — refusing " +
+        "to write the repository store from a run pointed at a different params.json",
+      2
+    );
+  }
+
   // ── Step 1: Read + parse source params.json ───────────────────────────────
   let current;
   try {
@@ -377,12 +405,31 @@ export async function runPromote({
   // ── Step 8: Write — ONLY reached after verify+freshness+merge produce change
   const newVersion = current.version + 1;
   const newPublished = now.toISOString();
+  // The normalized store is the SOURCE; params.json is its projection. Writing
+  // the artifact alone would recreate the two-sources problem the store exists
+  // to remove, and the next run's drift test would fail on drift this job
+  // introduced itself.
+  //
+  // `version` and `published` stay owned HERE: the store deliberately does not
+  // model signing-flow fields, and a regenerated `published` would invalidate a
+  // signature for no reason.
+  const nextStore = withGlobalParams(
+    parseStore(readFileSync(storePath, "utf8")),
+    merged
+  );
+  const storePayload = serializeStore(nextStore);
   const payload = JSON.stringify(
-    { version: newVersion, published: newPublished, params: merged },
+    { version: newVersion, published: newPublished, params: emitParams(nextStore) },
     null,
     2
   ) + "\n";
 
+  // Both payloads are rendered ABOVE, before either is written. parseStore
+  // validates every entry and can throw; a throw between these two writes would
+  // leave the store and the artifact disagreeing -- committed drift from the one
+  // run that must never produce it.
+  writeFileSync(storePath + ".tmp", storePayload, "utf8");
+  renameSync(storePath + ".tmp", storePath);
   writeFileSync(sourcePath + ".tmp", payload, "utf8");
   renameSync(sourcePath + ".tmp", sourcePath);
 
