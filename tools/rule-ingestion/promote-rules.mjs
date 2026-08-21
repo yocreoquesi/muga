@@ -34,6 +34,7 @@ import {
   verifySignature,
   PARAM_FORMAT_RE,
   MAX_PARAM_LEN,
+  MIN_PARAM_LEN,
   REMOTE_PARAM_DENYLIST,
   AFFILIATE_PARAM_GUARD,
 } from "../../src/lib/remote-rules.js";
@@ -373,6 +374,24 @@ export async function runPromote({
         `[promote-rules] skip: ${param} collides with preserveParams — excluded from merge`
       );
       skipped.push({ param, reason: "collides with preserveParams" });
+    } else if (param.length < MIN_PARAM_LEN) {
+      // The floor #1218 put on signing and on the runtime validator, but not
+      // here. promote kept admitting these, so every non-noop weekly run wrote
+      // them into params.json and then died at `sign-rules.mjs` -- the job could
+      // only ever succeed when it had nothing to do.
+      //
+      // Checked AFTER the preserve collision so a short name that is also a
+      // preserveParams entry keeps reporting the more specific reason, matching
+      // how the denylist and affiliate guard outrank this check upstream.
+      //
+      // The names this catches are not harmless: the auto-merge list contains
+      // `u`, ShareASale's affiliate id and the exact param of #1212. A
+      // two-character name is host-scoped upstream; applied globally it is the
+      // bug this floor exists to prevent.
+      console.log(
+        `[promote-rules] skip: ${param} is shorter than ${MIN_PARAM_LEN} characters — excluded from merge`
+      );
+      skipped.push({ param, reason: "shorter than MIN_PARAM_LEN" });
     } else {
       cleanParams.push(param);
     }
