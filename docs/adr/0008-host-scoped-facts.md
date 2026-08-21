@@ -1,7 +1,7 @@
 # ADR-0008: Host-scoped facts — may `(param, host)` leave quarantine?
 
 **Date**: 2026-08-22
-**Status**: **Proposed** — decision required before the host-scope slice of the rule-model normalization can start
+**Status**: **Accepted** — Path A. Unblocks the host-scope slice of the rule-model normalization
 **Issue**: [#1221](https://github.com/yocreoquesi/muga/issues/1221)
 **Builds on**: [ADR-0005](./0005-rule-scaling-pipeline.md) (clean-room ingestion), and `tools/rule-ingestion/PROVENANCE.md` (the license ledger)
 **Amends**: ADR-0005's extraction boundary — not its gates, not its risk posture
@@ -9,8 +9,9 @@
 
 > **This is an engineering analysis, not legal advice.** It sets out what the
 > repo already commits to, what changes, and where the exposure sits, so the
-> decision is made deliberately rather than by omission. A lawyer should confirm
-> the reading before this moves to Accepted.
+> decision was made deliberately rather than by omission. The reading has not
+> been confirmed by a lawyer; Path B below is the recorded fallback precisely
+> because that confirmation has not happened.
 
 ## Context
 
@@ -98,7 +99,7 @@ Path C is what the four measurements above argue against. It is listed because
 
 ## Decision
 
-**Proposed: Path A, with Path B as the documented fallback.**
+**Path A, with Path B as the documented fallback.**
 
 `(param, host)` may leave quarantine as an atomic fact, on the same terms bare
 names already do: raw bytes stay quarantined and uncommitted, no curated regex,

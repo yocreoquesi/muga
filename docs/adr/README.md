@@ -13,7 +13,7 @@ than edit.
 | [0005](./0005-rule-scaling-pipeline.md) | Self-scaling ruleset — clean-room ingestion + affiliate safety net | 2026-06-03 | Accepted |
 | [0006](./0006-remove-own-tag-affiliate-injection.md) | Remove MUGA's own-tag affiliate injection | 2026-07-28 | Accepted |
 | [0007](./0007-terms-available-not-accepted.md) | Terms available, not accepted — adopt the uBlock Origin model | 2026-08-02 | Accepted |
-| [0008](./0008-host-scoped-facts.md) | Host-scoped facts — may `(param, host)` leave quarantine? | 2026-08-22 | **Proposed** |
+| [0008](./0008-host-scoped-facts.md) | Host-scoped facts — may `(param, host)` leave quarantine? | 2026-08-22 | Accepted |
 
 New ADRs: copy the structure of the latest entry (Context → Decision →
 Consequences), number sequentially, and add a row here in the same PR.
