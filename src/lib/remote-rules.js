@@ -146,6 +146,34 @@ export const REMOTE_PARAM_DENYLIST = Object.freeze(new Set([
 /**
  * Affiliate attribution params — protecting affiliate economics (REQ-VALIDATE-5).
  * A compromised endpoint must never add these to the strip list.
+ *
+ * ── What this set is, and what it is NOT ──────────────────────────────
+ *
+ * This is an INGESTION safety net. It bounds what the remote payload and the
+ * rule-ingestion pipeline may ADD to the strip list, and it is deliberately
+ * WIDER than the set of params that actually carry attribution: a name that
+ * merely looks affiliate-shaped belongs here, because the cost of wrongly
+ * admitting one is a creator's commission and the cost of wrongly blocking one
+ * is an un-stripped low-value param.
+ *
+ * It is NOT a claim that MUGA never strips these names anywhere. MUGA's own
+ * curated rules may strip one deliberately — `src/rules/tracking-params.json`
+ * rule 302 removes `linkcode`, `creativeasin`, `linkid` and `ref_` on amazon.*
+ * while keeping `tag`, which is the param that actually carries the associate
+ * id. That is a curation decision about a specific host, not a contradiction of
+ * this set.
+ *
+ * It is also NOT the runtime's affiliate model. That is `AFFILIATE_PATTERNS`
+ * (src/lib/affiliates.js), built from CAPS_DIRECT_INJECTION_PROGRAMS, which
+ * names the ONE param per program that carries attribution — `tag` for Amazon
+ * Associates. Only names in THAT model are identified at runtime, preserved by
+ * default, and stripped when the user turns `stripAllAffiliates` on.
+ *
+ * The distinction matters because DNR rules cannot read a preference. A param
+ * in a static strip rule is removed for every user, always; the user's choice
+ * about affiliate params can only be honoured by the runtime cleaner. Moving a
+ * genuine attribution param into an ingested strip list would not enable that
+ * choice, it would destroy it.
  */
 export const AFFILIATE_PARAM_GUARD = Object.freeze(new Set([
   // Amazon
