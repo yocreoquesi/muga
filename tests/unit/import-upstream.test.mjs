@@ -176,6 +176,30 @@ describe("parseRemoveparamRules — scoped extraction (Slice 2, additive)", () =
     assert.deepEqual(scoped, []);
   });
 
+  test("@@ exception carrying domain= yields no scoped pair (C2, obs #1523, issue #1234)", () => {
+    // This is the exception guard's ONLY load-bearing branch. The `@@||host^`
+    // form above cannot prove the guard does anything: the anchor regex
+    // `/^\|\|([^^]*)\^/` already rejects a line starting with `@@` on its own,
+    // so that test stays green even with `if (isException) continue;` deleted.
+    // The `domain=` form is different — without the guard it emits a scoped
+    // pair, inverting a curated "preserve utm_medium on this host" into
+    // "strip utm_medium on this host", at host precision. Shape taken verbatim
+    // from live AdGuard Filter 17.
+    const text = "@@$removeparam=utm_medium,domain=hobbygames.ru";
+    const { params, scoped } = parseRemoveparamRules(text);
+    // The pre-existing global leak is out of scope for this slice (issue #1234);
+    // assert it stays exactly as it is rather than silently changing it here.
+    assert.deepEqual([...params], ["utm_medium"]);
+    // The scoped path must emit nothing.
+    assert.deepEqual(scoped, []);
+  });
+
+  test("@@ exception carrying a pipe-separated domain= list yields no scoped pairs", () => {
+    const text = "@@$removeparam=utm_source,domain=a.example|b.example";
+    const { scoped } = parseRemoveparamRules(text);
+    assert.deepEqual(scoped, []);
+  });
+
   test("a line carrying BOTH ||host^ and domain= is skipped from scoped and counted in scopeSkipped", () => {
     const text = "||example.com^$removeparam=x,domain=other.example";
     const { params, scoped, scopeSkipped } = parseRemoveparamRules(text);
