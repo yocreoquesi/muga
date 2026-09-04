@@ -38,11 +38,21 @@
  *     in `signals[]` (see PROVENANCE.md — caps-crawler is not a corroboration source, #821).
  */
 
-// Sentinel key segment for the unscoped (global) axis of the dedup key.
-// A NUL joiner cannot be forged by a crafted param or a validated host
-// (neither passes through with a literal `\0`), so the composite key below
-// cannot collide across the global/scoped boundary (design D-candidate).
-const GLOBAL = "*";
+// Separator for the composite dedup key below. A NUL joiner cannot be forged
+// by a crafted param or a validated host (neither passes through with a
+// literal `\0`).
+//
+// WARNING-2 fix (verify-report-slice-2, obs #1527): the key used to be
+// `${scope || GLOBAL}${KEY_SEP}${param}` with `GLOBAL = "*"`. Because GLOBAL
+// was itself a value a legal scope could also hold, a candidate whose `scope`
+// happened to BE "*" produced the exact same key as an unscoped candidate —
+// `"*" || "*"` and `undefined || "*"` are both `"*"`. That silently merged two
+// candidates orchestrate.mjs#isScoped intends to keep apart (it treats
+// scope:"*" as scoped-and-excluded), inflating a GATE 2 signal count from 1 to
+// 2. The key below distinguishes the axis by IDENTITY — whether a scope
+// argument was passed at all — never by comparing the scope's VALUE against a
+// sentinel, so no legal (or illegal) scope string can ever impersonate the
+// unscoped axis.
 const KEY_SEP = "\0";
 
 /**
@@ -92,7 +102,12 @@ export function mergeCandidates(adapterResults, { now } = {}) {
   const accumulate = (rawParam, id, scope) => {
     const param = String(rawParam).trim().toLowerCase();
     if (!param) { emptyDropped++; return; }
-    const key = `${scope || GLOBAL}${KEY_SEP}${param}`;
+    // Identity, not value: `scope` is `undefined` for every `params` entry and
+    // always a string for every `scopedParams` entry (see the WARNING-2 note
+    // above `KEY_SEP`), so the axis a candidate belongs to can never be forged
+    // by a scope value that happens to equal a sentinel.
+    const key =
+      scope === undefined ? `unscoped${KEY_SEP}${param}` : `scoped${KEY_SEP}${scope}${KEY_SEP}${param}`;
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, makeCandidate(param, id, { now, scope }));
