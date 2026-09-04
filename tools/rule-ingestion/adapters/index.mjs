@@ -10,7 +10,7 @@
  * @property {string} name          Human-readable source name.
  * @property {string} license       SPDX-ish license id of the source data.
  * @property {string} url           Source URL.
- * @property {(rawText: string) => { params: Set<string>, skipped?: number, affiliateExcluded?: number }} parse  Raw → literal param names with exclusion counts.
+ * @property {(rawText: string) => { params: Set<string>, skipped?: number, affiliateExcluded?: number, scopedParams?: Array<{param: string, scope: string}> }} parse  Raw → literal param names with exclusion counts. `scopedParams` (Slice 2, rules-scope-normalization) is an OPTIONAL list of host-anchored (param, host) facts; an adapter that omits it emits no scoped facts.
  * @property {(opts?: {fetchImpl?: typeof fetch}) => Promise<string>} fetchRaw
  */
 

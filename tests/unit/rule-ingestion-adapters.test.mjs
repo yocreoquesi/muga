@@ -75,6 +75,38 @@ test("T-04: parseRemoveparamRules returns { params, skipped } not a bare Set", (
   assert.ok(result.skipped >= 1, `expected skipped >= 1 (regex spec), got ${result.skipped}`);
 });
 
+// ── Slice 2 (rules-scope-normalization): adapter passthrough (A.7-A.9) ────────
+
+test("A.9: adguardTp.parse forwards scopedParams for anchored lines", () => {
+  const result = adguardTp.parse(SAMPLE_ADGUARD);
+  assert.ok(Array.isArray(result.scopedParams), "scopedParams must be an array");
+  assert.deepEqual(
+    result.scopedParams,
+    [{ param: "msclkid", scope: "example.com" }],
+  );
+});
+
+test("A.9: ClearURLs adapter output is unchanged (SC-3.5) — no scopedParams key present", async () => {
+  const { clearurls, extractClearurlsLiterals } = await import(
+    "../../tools/rule-ingestion/adapters/clearurls.mjs"
+  );
+  const fixture = JSON.stringify({
+    providers: {
+      example: { rules: ["gclid", "fbclid"], referralMarketing: ["tag"] },
+    },
+  });
+
+  // Byte-compare against a fixture computed directly from the unmodified
+  // extraction function — this adapter must not gain a scoped path.
+  const expected = extractClearurlsLiterals(fixture);
+  const result = clearurls.parse(fixture);
+
+  assert.deepEqual([...result.params].sort(), [...expected.params].sort());
+  assert.equal(result.skipped, expected.skipped);
+  assert.equal(result.affiliateExcluded, expected.affiliateExcluded);
+  assert.ok(!("scopedParams" in result), "ClearURLs adapter must not emit scopedParams (SC-3.5)");
+});
+
 test("registry enables AdGuard TP and ClearURLs (two independent signal sources for GATE 2, #776)", () => {
   assert.deepEqual(
     ENABLED_ADAPTERS.map((a) => a.id),

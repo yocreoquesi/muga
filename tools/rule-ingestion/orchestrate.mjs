@@ -104,6 +104,20 @@ export function canonicalMessage(version, published, params) {
 }
 
 /**
+ * Slice 2 (rules-scope-normalization): identifies a host-scoped candidate.
+ *
+ * A `scope` of `"*"` counts as scoped (i.e. excluded from the global path) —
+ * fail closed. Exclusion only ever costs reach; inclusion is the #1212-shaped
+ * bug this whole change exists to stop.
+ *
+ * @param {object} c Candidate (may or may not carry a `scope` field).
+ * @returns {boolean}
+ */
+export function isScoped(c) {
+  return typeof c.scope === "string" && c.scope !== "";
+}
+
+/**
  * Deduplicates and sorts auto-merge candidate params for use in the
  * signed artifact body. Set-based dedup + localeCompare sort.
  *
@@ -111,12 +125,17 @@ export function canonicalMessage(version, published, params) {
  * Dedup via Set iteration order is irrelevant to output because we sort AFTER
  * dedup — this is the determinism keystone.
  *
+ * Slice 2 (rules-scope-normalization): scoped candidates are filtered out
+ * BEFORE dedup/sort — this is the exported, directly-unit-tested function
+ * where the #1212-shaped leak (a host-scoped fact reaching the global signed
+ * list) would occur, so the guard lives here rather than only at the caller.
+ *
  * @param {object[]} autoMerge - Array of candidates that passed all gates.
- * @returns {string[]} Sorted, deduplicated param strings.
+ * @returns {string[]} Sorted, deduplicated param strings (global candidates only).
  */
 export function buildParams(autoMerge) {
-  return [...new Set(autoMerge.map((c) => c.param))].sort((a, b) =>
-    a.localeCompare(b)
+  return [...new Set(autoMerge.filter((c) => !isScoped(c)).map((c) => c.param))].sort(
+    (a, b) => a.localeCompare(b)
   );
 }
 
@@ -142,12 +161,20 @@ export function buildParams(autoMerge) {
  *   autoMerge: object[],
  *   quarantine: Array<{ candidate: object, rejections: Array<{ gate: string, reason: string, evidence: object }> }>,
  *   acceptances: Array<{ candidate: object, accepted: Array<{ gate: string, passedArm?: string }> }>,
- *   artifactBody: { version: number, published: string, params: string[] }
+ *   artifactBody: { version: number, published: string, params: string[] },
+ *   scopedAutoMerge: object[]
  * }}
  *   `acceptances` is PARALLEL to `autoMerge` (same order, same length): entry i
  *   holds the accept-path audit metadata (from each gate's normalizeAccepted, if
  *   any) for autoMerge[i]. Gates without normalizeAccepted contribute nothing, so
  *   `accepted` may be empty. Quarantined candidates never appear here (#878).
+ *
+ *   `scopedAutoMerge` (Slice 2, rules-scope-normalization) is the SUBSET of
+ *   `autoMerge` for which `isScoped()` is true. `autoMerge` itself stays a
+ *   superset — unchanged shape/semantics, so existing tests and the
+ *   `acceptances` parallelism are untouched. All four EPIC C gates run
+ *   IDENTICALLY on scoped and unscoped candidates; no gate reads `scope`.
+ *   Only `artifactBody.params` (via `buildParams`) excludes scoped entries.
  */
 export function runOrchestration({
   candidates,
@@ -188,6 +215,7 @@ export function runOrchestration({
 
   const params = buildParams(autoMerge);
   const artifactBody = { version, published, params };
+  const scopedAutoMerge = autoMerge.filter(isScoped);
 
-  return { autoMerge, quarantine, acceptances, artifactBody };
+  return { autoMerge, quarantine, acceptances, artifactBody, scopedAutoMerge };
 }

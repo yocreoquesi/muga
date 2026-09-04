@@ -106,6 +106,40 @@ describe("F2 — Per-adapter ingest stats table", () => {
   });
 });
 
+// ── Slice 2 (rules-scope-normalization): scopedAdmitted per adapter ──────────
+// A.19: report renders scopedAdmitted per adapter, defaults to 0 when absent
+// (backward compatible with old-shaped stats that predate this slice).
+
+describe("A.19 — scopedAdmitted rendered per adapter in ingest stats table", () => {
+  test("output includes scopedAdmitted count when present on an adapter stat", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const report = makeReport({
+      ingestStats: makeIngestStats({
+        adapters: [
+          { adapterId: "adguard-tp", admitted: 120, skipped: 5, affiliateExcluded: 2, scopedAdmitted: 7 },
+          { adapterId: "clearurls", admitted: 80, skipped: 3, affiliateExcluded: 1, scopedAdmitted: 0 },
+        ],
+      }),
+    });
+    const md = formatQuarantineReport(report);
+
+    assert.ok(/7/.test(md), "output must include scopedAdmitted count 7 for adguard-tp");
+  });
+
+  test("output defaults scopedAdmitted to 0 when absent (old-shaped stats, backward compatible)", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    // makeIngestStats() default adapters have no scopedAdmitted field at all.
+    const report = makeReport();
+    let md;
+    assert.doesNotThrow(() => {
+      md = formatQuarantineReport(report);
+    }, "must not throw when scopedAdmitted is absent from an adapter stat");
+    assert.ok(typeof md === "string" && md.length > 0);
+  });
+});
+
 describe("F3 — Quarantine summary: count + gate breakdown + param listing", () => {
   test("output mentions quarantineCount", async () => {
     const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");

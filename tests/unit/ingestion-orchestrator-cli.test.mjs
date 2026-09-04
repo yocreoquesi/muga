@@ -738,6 +738,146 @@ describe("#878 — passedArm audit in quarantine report (not in signed artifact)
   });
 });
 
+// ── Slice 2 (rules-scope-normalization): scopedAutoMerge sidecar (A.23/A.26) ──
+// A scoped candidate never enters the signed artifact; it is written into the
+// UNSIGNED quarantine-report.json sidecar only, alongside a count.
+
+describe("A.23/A.26 — scopedAutoMerge lands only in the unsigned sidecar", () => {
+  /** A scoped candidate carrying enough signals to clear the real GATE2 default (minSignals: 2). */
+  function passScopedCandidate(param, scope) {
+    return {
+      param,
+      scope,
+      signals: ["adguard-tp", "other-source"],
+      entropy: null,
+      crossSiteFrequency: null,
+      firstSeenAt: "2024-01-01T00:00:00.000Z",
+    };
+  }
+
+  test("A.26: promote-candidates.json is byte-identical to a scope-free run with the same global candidate", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    // Run A: global candidate only.
+    const tmpDirA = makeTmpDir();
+    const keyPathA = writeTmpPrivKey(tmpDirA, TEST_PRIV_KEY);
+    const candidatesPathA = writeCandidatesFixture(tmpDirA, [passCandidate("utm_source")]);
+    const promotePathA = join(tmpDirA, "promote-candidates.json");
+    const reportPathA = join(tmpDirA, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath: candidatesPathA,
+      promotePath: promotePathA,
+      reportPath: reportPathA,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath: keyPathA,
+    });
+
+    // Run B: same global candidate PLUS one scoped candidate.
+    const tmpDirB = makeTmpDir();
+    const keyPathB = writeTmpPrivKey(tmpDirB, TEST_PRIV_KEY);
+    const candidatesPathB = writeCandidatesFixture(tmpDirB, [
+      passCandidate("utm_source"),
+      passScopedCandidate("si", "youtube.com"),
+    ]);
+    const promotePathB = join(tmpDirB, "promote-candidates.json");
+    const reportPathB = join(tmpDirB, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath: candidatesPathB,
+      promotePath: promotePathB,
+      reportPath: reportPathB,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath: keyPathB,
+    });
+
+    const contentA = readFileSync(promotePathA, "utf8");
+    const contentB = readFileSync(promotePathB, "utf8");
+
+    // Signature covers the canonical message, not the key — but the artifact
+    // for the SAME candidates+version+published must be identical apart from
+    // the signature (which is deterministic for Ed25519, but keys differ
+    // across the two temp dirs). Compare everything except `sig`.
+    const artifactA = JSON.parse(contentA);
+    const artifactB = JSON.parse(contentB);
+    assert.deepStrictEqual(artifactB.params, artifactA.params, "params must be identical — the scoped candidate must not leak in");
+    assert.strictEqual(artifactB.version, artifactA.version);
+    assert.strictEqual(artifactB.published, artifactA.published);
+
+    const reportB = JSON.parse(readFileSync(reportPathB, "utf8"));
+    assert.ok("scopedAutoMerge" in reportB, "sidecar must carry scopedAutoMerge");
+    assert.ok("scopedAutoMergeCount" in reportB, "sidecar must carry scopedAutoMergeCount");
+    assert.strictEqual(reportB.scopedAutoMergeCount, 1);
+    assert.strictEqual(reportB.scopedAutoMerge.length, 1);
+    assert.strictEqual(reportB.scopedAutoMerge[0].param, "si");
+    assert.strictEqual(reportB.scopedAutoMerge[0].scope, "youtube.com");
+  });
+
+  test("scoped-only run: signed artifact has params:[]; sidecar carries the scoped candidate", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [
+      passScopedCandidate("si", "youtube.com"),
+    ]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+    });
+
+    const artifact = JSON.parse(readFileSync(promotePath, "utf8"));
+    assert.deepStrictEqual(artifact.params, [], "a fully-scoped run must not leak into the signed artifact");
+    assert.deepStrictEqual(
+      Object.keys(artifact).sort(),
+      ["params", "published", "sig", "version"],
+      "scoped audit fields must NOT appear in the signed artifact"
+    );
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.strictEqual(report.scopedAutoMergeCount, 1);
+    assert.strictEqual(report.autoMergeCount, 1, "autoMerge stays a superset — the scoped candidate still counts there");
+  });
+
+  test("no-scoped-candidates run: sidecar carries scopedAutoMerge: [] and scopedAutoMergeCount: 0", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const candidatesPath = writeCandidatesFixture(tmpDir, [passCandidate("utm_source")]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+    });
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.deepStrictEqual(report.scopedAutoMerge, []);
+    assert.strictEqual(report.scopedAutoMergeCount, 0);
+  });
+});
+
 // ── n3: Dedup at CLI boundary ─────────────────────────────────────────────────
 
 describe("R4 — Dedup at CLI boundary", () => {

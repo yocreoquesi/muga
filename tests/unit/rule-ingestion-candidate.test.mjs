@@ -97,6 +97,102 @@ test("empty/whitespace params are dropped", () => {
   );
 });
 
+// ── Slice 2 (rules-scope-normalization): candidate carries an optional scope ──
+// A.10-A.14: `scope` is added only when truthy (conditional spread); dedup key
+// becomes (scope, param); `mergeCandidates` also folds `scopedParams`.
+
+test("A.10: makeCandidate with no scope deep-equals today's unscoped shape (regression pin)", () => {
+  const c = makeCandidate("UTM_Source", "adguard-tp", { now: NOW });
+  assert.deepEqual(c, {
+    param: "utm_source",
+    signals: ["adguard-tp"],
+    entropy: null,
+    crossSiteFrequency: null,
+    firstSeenAt: NOW,
+  });
+  assert.ok(!("scope" in c), "unscoped candidate must not carry a scope key at all");
+});
+
+test("A.10: makeCandidate with a truthy scope carries it alongside the existing fields", () => {
+  const c = makeCandidate("si", "adguard-tp", { now: NOW, scope: "youtube.com" });
+  assert.deepEqual(c, {
+    param: "si",
+    signals: ["adguard-tp"],
+    entropy: null,
+    crossSiteFrequency: null,
+    firstSeenAt: NOW,
+    scope: "youtube.com",
+  });
+});
+
+test("A.11/A.14: same param unscoped + scoped to a host produce two independent candidates", () => {
+  const { candidates: out } = mergeCandidates(
+    [
+      { id: "adguard-tp", params: ["si"], scopedParams: [{ param: "si", scope: "youtube.com" }] },
+    ],
+    { now: NOW },
+  );
+  assert.equal(out.length, 2);
+  const global = out.find((c) => !("scope" in c));
+  const scoped = out.find((c) => c.scope === "youtube.com");
+  assert.ok(global, "unscoped 'si' candidate must exist");
+  assert.ok(scoped, "scoped 'si'@youtube.com candidate must exist");
+  assert.equal(global.param, "si");
+  assert.equal(scoped.param, "si");
+  // Independent accumulation: each carries its own signals array.
+  assert.deepEqual(global.signals, ["adguard-tp"]);
+  assert.deepEqual(scoped.signals, ["adguard-tp"]);
+});
+
+test("A.14: same (param, host) pair from two adapters merges into one candidate with two signals", () => {
+  const { candidates: out } = mergeCandidates(
+    [
+      { id: "adguard-tp", params: [], scopedParams: [{ param: "si", scope: "youtube.com" }] },
+      { id: "other-source", params: [], scopedParams: [{ param: "si", scope: "youtube.com" }] },
+    ],
+    { now: NOW },
+  );
+  assert.equal(out.length, 1);
+  assert.equal(out[0].param, "si");
+  assert.equal(out[0].scope, "youtube.com");
+  assert.deepEqual(out[0].signals, ["adguard-tp", "other-source"]);
+});
+
+test("A.12: sort tiebreak by scope leaves today's no-scope order bit-identical", () => {
+  // With zero scoped candidates present, output order must be unaffected by
+  // the new tiebreak (it only ever activates when signals.length AND param
+  // both tie, which is already covered by existing sort tests).
+  const { candidates: out } = mergeCandidates(
+    [{ id: "a", params: ["zeta", "shared"] }, { id: "b", params: ["shared", "alpha"] }],
+    { now: NOW },
+  );
+  assert.deepEqual(
+    out.map((c) => c.param),
+    ["shared", "alpha", "zeta"],
+  );
+});
+
+test("A.12: scoped candidates sharing signal count + param sort by scope (tiebreak)", () => {
+  const { candidates: out } = mergeCandidates(
+    [
+      {
+        id: "a",
+        params: [],
+        scopedParams: [
+          { param: "x", scope: "zzz.example" },
+          { param: "x", scope: "aaa.example" },
+        ],
+      },
+    ],
+    { now: NOW },
+  );
+  assert.equal(out.length, 2);
+  assert.deepEqual(
+    out.map((c) => c.scope),
+    ["aaa.example", "zzz.example"],
+  );
+});
+
 // ── T-08 (quarantine-surface #782): mergeCandidates emptyDropped ──────────────
 
 test("T-08: mergeCandidates returns { candidates, emptyDropped }", () => {
