@@ -38,6 +38,13 @@
  *     in `signals[]` (see PROVENANCE.md — caps-crawler is not a corroboration source, #821).
  */
 
+// Sentinel key segment for the unscoped (global) axis of the dedup key.
+// A NUL joiner cannot be forged by a crafted param or a validated host
+// (neither passes through with a literal `\0`), so the composite key below
+// cannot collide across the global/scoped boundary (design D-candidate).
+const GLOBAL = "*";
+const KEY_SEP = "\0";
+
 /**
  * Build a fresh candidate for a param first seen via `signalId`.
  *
@@ -45,15 +52,19 @@
  * @param {string} signalId Adapter id that reported it.
  * @param {object} [opts]
  * @param {string} [opts.now] ISO timestamp override (for deterministic tests).
+ * @param {string} [opts.scope] Host this fact is scoped to (Slice 2, rules-scope-normalization).
+ *   Added to the candidate ONLY when truthy — an unscoped call keeps today's exact shape
+ *   (no `scope` key at all), which is what every existing caller/test pins.
  * @returns {object} Candidate carrying one provenance signal.
  */
-export function makeCandidate(param, signalId, { now } = {}) {
+export function makeCandidate(param, signalId, { now, scope } = {}) {
   return {
     param: String(param).trim().toLowerCase(),
     signals: [signalId],
     entropy: null,
     crossSiteFrequency: null,
     firstSeenAt: now || new Date().toISOString(),
+    ...(scope ? { scope } : {}),
   };
 }
 
@@ -62,34 +73,50 @@ export function makeCandidate(param, signalId, { now } = {}) {
  * provenance in `signals[]`. With a single adapter every candidate carries one
  * signal; the array shape means adding a source later is a no-op on the contract.
  *
- * @param {Array<{id:string, params:Iterable<string>}>} adapterResults
+ * Slice 2 (rules-scope-normalization): each adapter result may also carry an
+ * optional `scopedParams` list of `{param, scope}` facts. These are merged
+ * using the SAME accumulation logic as `params`, but keyed on `(scope, param)`
+ * instead of `param` alone — a global fact and a host-scoped fact sharing a
+ * name stay distinct candidates (REQ-2). `params` is iterated first (order/
+ * semantics unchanged from before this slice), then `scopedParams`.
+ *
+ * @param {Array<{id:string, params:Iterable<string>, scopedParams?:Array<{param:string, scope:string}>}>} adapterResults
  * @param {object} [opts]
  * @param {string} [opts.now] ISO timestamp override for deterministic tests.
  * @returns {{ candidates: object[], emptyDropped: number }} Candidates + empty-drop count.
  */
 export function mergeCandidates(adapterResults, { now } = {}) {
-  const byParam = new Map();
+  const byKey = new Map();
   let emptyDropped = 0;
 
-  for (const { id, params } of adapterResults) {
-    for (const raw of params) {
-      const param = String(raw).trim().toLowerCase();
-      if (!param) { emptyDropped++; continue; }
-      const existing = byParam.get(param);
-      if (!existing) {
-        byParam.set(param, makeCandidate(param, id, { now }));
-      } else if (!existing.signals.includes(id)) {
-        existing.signals.push(id);
-      }
+  const accumulate = (rawParam, id, scope) => {
+    const param = String(rawParam).trim().toLowerCase();
+    if (!param) { emptyDropped++; return; }
+    const key = `${scope || GLOBAL}${KEY_SEP}${param}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, makeCandidate(param, id, { now, scope }));
+    } else if (!existing.signals.includes(id)) {
+      existing.signals.push(id);
+    }
+  };
+
+  for (const { id, params, scopedParams } of adapterResults) {
+    for (const raw of params) accumulate(raw, id, undefined);
+    if (scopedParams) {
+      for (const { param, scope } of scopedParams) accumulate(param, id, scope);
     }
   }
 
-  for (const candidate of byParam.values()) {
+  for (const candidate of byKey.values()) {
     candidate.signals.sort();
   }
 
-  const candidates = [...byParam.values()].sort(
-    (a, b) => b.signals.length - a.signals.length || a.param.localeCompare(b.param),
+  const candidates = [...byKey.values()].sort(
+    (a, b) =>
+      b.signals.length - a.signals.length ||
+      a.param.localeCompare(b.param) ||
+      (a.scope ?? "").localeCompare(b.scope ?? ""),
   );
 
   return { candidates, emptyDropped };
