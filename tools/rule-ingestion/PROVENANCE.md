@@ -57,12 +57,20 @@ The pipeline enforces this structurally:
    `scopedFacts[]` (`tools/rules-store.mjs`) via the manual, reviewed
    `land-scoped.mjs` — never the unattended weekly path.
 
-A gate-admitted `(param, host)` pair is visible in the weekly ingestion run's
-`quarantine-report.json` summary (`scopedAutoMerge`) before it lands anywhere.
-That report is unsigned, gitignored, and read by a human; landing it into the
-committed store is a separate, manual step precisely because
+A gate-admitted `(param, host)` pair is recorded in the ingestion run's
+`quarantine-report.json` (`scopedAutoMerge`). That report is unsigned and
+gitignored (`.gitignore:54`), the weekly workflow uploads no artifact, and
+`report-formatter.mjs` does not render the field — so on the unattended weekly
+run the pair is not visible to anyone. Reading it today means running ingestion
+locally.
+
+Landing a pair into the committed store is a separate, manual step run through
+`land-scoped.mjs`, and deliberately so:
 `.github/workflows/auto-ingest-rules.yml` squash-auto-merges its own PR with no
-one in the loop.
+one in the loop. Until the weekly run surfaces `scopedAutoMerge`, that CLI has
+no input reachable from CI. Closing that gap is a prerequisite for the slice
+that lets the corroboration gate admit scoped facts, not for this one, where
+nothing is admitted.
 
 A param that survives the gates is justified by MUGA's verification, not by the
 upstream list's say-so. That is the clean room.
