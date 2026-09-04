@@ -240,6 +240,31 @@ describe("Constants — shape and values", () => {
     );
   });
 
+  // Issue #1234: docs/affiliate-networks-matrix.md:415-416 classifies both as
+  // required-at-landing, but before this fix neither had any guard — they
+  // were preserved only by absence. The AdGuard `@@` exception-line leak
+  // could have handed `tagtag_uid` to candidate generation as a global strip
+  // fact (the one exception-only name found in Filter 17 on 2026-09-04).
+  test("AFFILIATE_PARAM_GUARD contains 'admitad_uid' and 'tagtag_uid' (Admitad, issue #1234)", () => {
+    assert.ok(
+      AFFILIATE_PARAM_GUARD.has("admitad_uid"),
+      "admitad_uid must be guarded — required-at-landing per affiliate-networks-matrix.md:415",
+    );
+    assert.ok(
+      AFFILIATE_PARAM_GUARD.has("tagtag_uid"),
+      "tagtag_uid must be guarded — required-at-landing per affiliate-networks-matrix.md:416",
+    );
+  });
+
+  test("validateParams rejects a remote payload that tries to strip 'admitad_uid' or 'tagtag_uid' (issue #1234)", () => {
+    const stored = { version: 0, published: "2020-01-01T00:00:00Z" };
+    for (const param of ["admitad_uid", "tagtag_uid"]) {
+      const r = validateParams([param], stored, Date.parse("2026-01-01T00:00:00Z"));
+      assert.strictEqual(r.ok, false, `'${param}' must be denied`);
+      assert.strictEqual(r.code, "DENYLIST_HIT");
+    }
+  });
+
   test("PARAM_FORMAT_RE is the correct regex", () => {
     assert.ok(PARAM_FORMAT_RE instanceof RegExp);
     assert.ok(PARAM_FORMAT_RE.test("utm_source"));
