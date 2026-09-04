@@ -228,7 +228,7 @@ export async function runOrchestrateCli({
   const published = (now instanceof Date ? now : new Date()).toISOString();
 
   // ── 6. Run orchestration ────────────────────────────────────────────────────
-  const { autoMerge, quarantine, acceptances, artifactBody } = runOrchestration({
+  const { autoMerge, quarantine, acceptances, artifactBody, scopedAutoMerge } = runOrchestration({
     candidates,
     version,
     published,
@@ -305,6 +305,10 @@ export async function runOrchestrateCli({
   }
 
   // ── 9. Write unsigned audit sidecar (write-always, R8-S2) ──────────────────
+  // Slice 2 (rules-scope-normalization): `scopedAutoMerge`/`scopedAutoMergeCount`
+  // land HERE, in the unsigned sidecar, only. The signed promote artifact stays
+  // exactly {version, published, params, sig} (pinned above) — a scoped
+  // candidate never reaches it, by construction of buildParams/runOrchestration.
   const reportOut = {
     generatedAt: published,
     autoMergeCount: autoMerge.length,
@@ -312,6 +316,8 @@ export async function runOrchestrateCli({
     passedArmDistribution, // #878 — rescue-arm counts over auto-merged candidates
     ingestStats: candidateReport.stats ?? null,  // null-safe: tolerates stats-less old candidates.json (#782)
     autoMerge: autoMergeAudit, // #878 — per-param { param, passedArm } accept trail
+    scopedAutoMerge, // Slice 2 — full candidate objects that cleared every gate but carry a scope
+    scopedAutoMergeCount: scopedAutoMerge.length, // Slice 2
     quarantine, // full QuarantineEntry[] with candidate + rejections
   };
 
@@ -342,6 +348,7 @@ export async function runOrchestrateCli({
       version: artifactBody.version,
       autoMergeCount: autoMerge.length,
       quarantineCount: quarantine.length,
+      scopedAutoMergeCount: scopedAutoMerge.length, // Slice 2
       passedArmDistribution, // #878
       sha256,
     })

@@ -23,6 +23,7 @@ import {
   buildParams,
   canonicalMessage,
   DEFAULT_GATES,
+  isScoped,
 } from "../../tools/rule-ingestion/orchestrate.mjs";
 
 import { checkCorroborationGate } from "../../tools/rule-ingestion/gates/corroboration-gate.mjs";
@@ -491,6 +492,157 @@ describe("buildParams", () => {
 
   test("empty input → []", () => {
     assert.deepStrictEqual(buildParams([]), []);
+  });
+});
+
+// ── Slice 2 (rules-scope-normalization): the load-bearing partition ──────────
+// A.20-A.26: scoped candidates are extracted, gated identically, and then
+// partitioned OUT of the global signed path. This is the #1212-shaped
+// mechanism this whole change exists to guard.
+
+describe("A.20 — isScoped", () => {
+  test("a candidate with a non-empty string scope is scoped", () => {
+    assert.strictEqual(isScoped({ param: "si", scope: "youtube.com" }), true);
+  });
+
+  test("a candidate with no scope key is not scoped", () => {
+    assert.strictEqual(isScoped({ param: "utm_source" }), false);
+  });
+
+  test("a candidate with scope: '' is not scoped", () => {
+    assert.strictEqual(isScoped({ param: "utm_source", scope: "" }), false);
+  });
+
+  test("a candidate with scope: '*' IS scoped — fail closed (exclusion only ever costs reach)", () => {
+    assert.strictEqual(isScoped({ param: "utm_source", scope: "*" }), true);
+  });
+});
+
+describe("A.21 — buildParams filters scoped candidates before dedup/sort", () => {
+  test("a scoped candidate is excluded from buildParams output even if it would otherwise sort in", () => {
+    const autoMerge = [
+      { param: "a-rule" },
+      { param: "si", scope: "youtube.com" },
+      { param: "z-rule" },
+    ];
+    assert.deepStrictEqual(buildParams(autoMerge), ["a-rule", "z-rule"]);
+  });
+
+  test("all-scoped input → buildParams returns []", () => {
+    const autoMerge = [{ param: "si", scope: "youtube.com" }];
+    assert.deepStrictEqual(buildParams(autoMerge), []);
+  });
+});
+
+describe("A.22/A.24 — runOrchestration partitions scoped candidates out of the global path", () => {
+  /** A candidate carrying a host scope, with enough signals to clear GATE2 under a relaxed floor. */
+  function makeScopedCandidate(param, scope, overrides = {}) {
+    return {
+      param,
+      scope,
+      signals: ["signal-a"],
+      entropy: null,
+      crossSiteFrequency: null,
+      firstSeenAt: "2024-01-01T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  test("A.22: a scoped candidate that passes all gates lands in scopedAutoMerge, not in artifactBody.params", () => {
+    const scoped = makeScopedCandidate("si", "youtube.com");
+    const global = makeCandidate("utm_source");
+
+    const result = runOrchestration({
+      candidates: [scoped, global],
+      gates: ALL_PASS_GATES,
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    // autoMerge stays a superset (existing acceptances parallelism unchanged).
+    assert.strictEqual(result.autoMerge.length, 2);
+    // scopedAutoMerge is the new subset view.
+    assert.deepStrictEqual(result.scopedAutoMerge, [scoped]);
+    // The signed artifact body carries ONLY the global param — the load-bearing guarantee.
+    assert.deepStrictEqual(result.artifactBody.params, ["utm_source"]);
+  });
+
+  test("A.24: real GATE2 with minSignals:1 injected — a scoped candidate that clears every gate still never reaches buildParams/artifactBody.params", () => {
+    const realGate2 = DEFAULT_GATES.find((d) => d.gate === "corroboration-gate");
+    const gatesWithRealGate2 = [
+      stubPass("affiliate-guard"),
+      realGate2,
+      stubPass("canary-gate"),
+      stubPass("functional-bias-gate"),
+    ];
+
+    const scoped = makeScopedCandidate("si", "youtube.com", { signals: ["adguard-tp"] });
+
+    const result = runOrchestration({
+      candidates: [scoped],
+      gates: gatesWithRealGate2,
+      gateOpts: { corroborationGate: { minSignals: 1 } },
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    // It clears every gate under the relaxed floor...
+    assert.strictEqual(result.quarantine.length, 0, "scoped candidate must clear all 4 gates under minSignals:1");
+    assert.strictEqual(result.autoMerge.length, 1);
+    assert.deepStrictEqual(result.scopedAutoMerge, [scoped]);
+
+    // ...but it is STILL excluded from the global list and the signed message —
+    // the negative property this slice exists to prove.
+    assert.deepStrictEqual(result.artifactBody.params, []);
+    assert.ok(!buildParams(result.autoMerge).includes("si"));
+  });
+
+  test("A.24: no gate special-cases scope — a scoped candidate reaches every gate with its scope field intact and untouched", () => {
+    const seenCandidates = [];
+    function trackingGate(label) {
+      return {
+        gate: label,
+        check: (candidate) => {
+          seenCandidates.push({ gate: label, candidate });
+          return { rejected: false };
+        },
+        optsKey: label,
+        normalize: (v) => ({ gate: label, reason: v.reason, evidence: {} }),
+      };
+    }
+    const trackGates = [
+      trackingGate("affiliate-guard"),
+      trackingGate("corroboration-gate"),
+      trackingGate("canary-gate"),
+      trackingGate("functional-bias-gate"),
+    ];
+
+    const scoped = makeScopedCandidate("si", "youtube.com");
+
+    runOrchestration({
+      candidates: [scoped],
+      gates: trackGates,
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(seenCandidates.length, 4, "all 4 gates must see the scoped candidate");
+    for (const { candidate } of seenCandidates) {
+      // Same reference, untouched — no gate reads or mutates `scope`.
+      assert.strictEqual(candidate, scoped);
+      assert.strictEqual(candidate.scope, "youtube.com");
+    }
+  });
+
+  test("R1 unaffected: an all-unscoped run produces scopedAutoMerge: [] (regression pin)", () => {
+    const candidate = makeCandidate("utm_source");
+    const result = runOrchestration({
+      candidates: [candidate],
+      gates: ALL_PASS_GATES,
+      version: 1,
+      published: "2024-01-01T00:00:00.000Z",
+    });
+    assert.deepStrictEqual(result.scopedAutoMerge, []);
   });
 });
 
