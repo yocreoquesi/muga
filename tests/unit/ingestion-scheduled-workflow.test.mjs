@@ -369,6 +369,24 @@ describe("pipeline invocation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// B.14 (rules-scope-normalization, Slice 2 PR B) — land-scoped.mjs is never
+// wired into the unattended weekly job. That job squash-auto-merges its own
+// PR (`gh pr merge --squash --auto`, see step 10 above); landing a host-scoped
+// fact is a manual, reviewed step by design (ADR-0008 Path A, design D2).
+// ---------------------------------------------------------------------------
+describe("land-scoped.mjs stays a standalone, human-run tool", () => {
+  test("workflow never references land-scoped", () => {
+    const content = readWorkflow();
+    assert.ok(
+      !/land-scoped/.test(content),
+      "auto-ingest-rules.yml must NEVER invoke land-scoped.mjs — landing a " +
+      "host-scoped fact must stay a manual, reviewed step, never part of the " +
+      "workflow that auto-merges its own PR"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // T-20 [RED] — quarantine review summary step (ADR-7)
 // ---------------------------------------------------------------------------
 describe("T-20 — quarantine review summary step", () => {
