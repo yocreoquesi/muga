@@ -28,12 +28,18 @@ export const adguardTp = {
 
   /**
    * Extract literal tracking param names from an AdGuard filter list.
+   *
+   * Forwards the host-anchored `(param, host)` pairs from
+   * `parseRemoveparamRules` as `scopedParams` (Slice 2, rules-scope-
+   * normalization) — additive alongside `params`, never a replacement (see
+   * `parseRemoveparamRules` docblock for the full extraction contract).
+   *
    * @param {string} rawText Raw filter-list contents.
-   * @returns {{ params: Set<string>, skipped: number, affiliateExcluded: number }}
+   * @returns {{ params: Set<string>, skipped: number, affiliateExcluded: number, scopedParams: Array<{param: string, scope: string}> }}
    */
   parse(rawText) {
-    const { params, skipped } = parseRemoveparamRules(rawText);
-    return { params, skipped, affiliateExcluded: 0 };
+    const { params, skipped, scoped } = parseRemoveparamRules(rawText);
+    return { params, skipped, affiliateExcluded: 0, scopedParams: scoped };
   },
 
   /**
