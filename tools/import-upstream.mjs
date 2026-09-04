@@ -71,20 +71,27 @@ function normalizeHost(raw) {
  * facts. This is purely ADDITIVE — the bare global param in `params` keeps
  * flowing exactly as before (design correction C1; an "anchored ⇒ not
  * global" rule was measured to amputate 85% of today's auto-merge reach, see
- * obs #1513). `@@` exception lines are excluded from the scoped path only
- * (AdGuard's `@@` means "preserve", the opposite of a strip fact — obs
- * #1523); the pre-existing leak of `@@` lines into the GLOBAL `params` set is
- * untouched here, it is a separate, already-filed defect.
+ * obs #1513).
+ *
+ * `@@` exception lines (AdGuard's `@@` inverts a rule: "preserve this
+ * parameter here", not "strip it") are excluded from BOTH the scoped path
+ * (C2, obs #1523) and the global `params` path (fix for issue #1234 — the
+ * global path used to read an exception as a strip fact, the exact inverse
+ * of upstream intent). An exception line is not a malformed spec, so it is
+ * counted in its own `exceptionsSkipped` field rather than folded into
+ * `skipped` — conflating the two hid this bug for as long as it existed.
  *
  * @param {string} text The raw filter list contents.
- * @returns {{ params: Set<string>, skipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number }}
- *   Lowercased parameter names, skip count, host-anchored (param, host) facts, and a count of
- *   lines skipped from the scoped path because they carried both anchor forms at once (ambiguous).
+ * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number }}
+ *   Lowercased parameter names, skip count, count of `@@` exception lines excluded from `params`,
+ *   host-anchored (param, host) facts, and a count of lines skipped from the scoped path because
+ *   they carried both anchor forms at once (ambiguous).
  */
 export function parseRemoveparamRules(text) {
   const params = new Set();
   const scoped = [];
   let skipped = 0;
+  let exceptionsSkipped = 0;
   let scopeSkipped = 0;
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -93,15 +100,16 @@ export function parseRemoveparamRules(text) {
     if (line.startsWith("[")) continue; // section header
 
     // AdGuard exception syntax: `@@` inverts a rule's meaning (preserve, not
-    // strip). The GLOBAL path below does not skip these today (pre-existing
-    // leak, obs #1523, out of scope for this slice) — only the scoped path
-    // below is guarded against it.
+    // strip). Excluded from both the global `params` path (issue #1234) and
+    // the scoped path (C2, obs #1523) below.
     const isException = line.startsWith("@@");
 
     // Find the $removeparam modifier; multiple modifiers may be present so we
     // search anywhere on the line and stop at the next `,` or end-of-line.
     const match = /\$.*?removeparam=([^,$]+)/i.exec(line);
     if (!match) continue;
+
+    if (isException) { exceptionsSkipped++; continue; }
 
     const spec = match[1].trim();
     if (!spec) { skipped++; continue; }
@@ -119,8 +127,6 @@ export function parseRemoveparamRules(text) {
       params.add(name);
       names.push(name);
     }
-
-    if (isException) continue; // no scoped emission for exception lines (C2)
 
     // Two independent anchor forms, either of which may be present:
     //   `||host^...`            — the whole line is scoped to `host`.
@@ -156,7 +162,7 @@ export function parseRemoveparamRules(text) {
       }
     }
   }
-  return { params, skipped, scoped, scopeSkipped };
+  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped };
 }
 
 async function main() {
@@ -168,7 +174,7 @@ async function main() {
   }
   const text = await response.text();
 
-  const { params: upstreamParams, skipped } = parseRemoveparamRules(text);
+  const { params: upstreamParams, skipped, exceptionsSkipped } = parseRemoveparamRules(text);
   const existing = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
 
   const candidates = [...upstreamParams].filter((p) => !existing.has(p));
@@ -183,11 +189,12 @@ async function main() {
     new_candidates_count: candidates.length,
     new_candidates: candidates,
     skipped,
+    exceptionsSkipped,
   };
 
   const outPath = process.env.IMPORT_REPORT_PATH || "/tmp/import-report.json";
   writeFileSync(outPath, JSON.stringify(report, null, 2) + "\n", "utf8");
-  console.log(`[import-upstream] parseRemoveparamRules: skipped ${skipped} non-literal removeparam spec(s)`);
+  console.log(`[import-upstream] parseRemoveparamRules: skipped ${skipped} non-literal removeparam spec(s), ${exceptionsSkipped} @@ exception line(s)`);
   console.log(`AdGuard Filter 17: ${upstreamParams.size} params parsed`);
   console.log(`MUGA TRACKING_PARAMS: ${existing.size} entries`);
   console.log(`New candidates: ${candidates.length}`);
