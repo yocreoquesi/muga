@@ -31,21 +31,46 @@ MUGA's own gates. We never lift, mirror, or light-edit a compilation.
 
 | Allowed (facts / signals) | Forbidden (compilation) |
 |---|---|
-| Extract individual literal param **names** from a source | Copy a source's file into the repo |
-| Treat a name as a *candidate* to be re-verified | Ship a name because the source ships it |
+| Extract individual literal param **names**, or a **`(param, host)` pair** naming the site where the param was observed ([ADR-0008](../../docs/adr/0008-host-scoped-facts.md), Path A) | Copy a source's file into the repo |
+| Treat a name or pair as a *candidate* to be re-verified | Ship a name because the source ships it |
 | Skip regex/patterns, keep atomic facts only | Reproduce a source's curated regex set |
 | Quarantine raw bytes, derive, discard | Commit or bundle raw upstream bytes |
+
+A `(param, host)` pair leaves quarantine on the SAME terms a bare name always
+has: it is a candidate, not a compilation, re-derived through the gates before
+it can land anywhere. [ADR-0008](../../docs/adr/0008-host-scoped-facts.md)
+(accepted, Path A) is the sui-generis analysis behind that reading; it amends
+only this extraction boundary, not the gates or the risk posture below.
 
 The pipeline enforces this structurally:
 
 1. **Signal** — an adapter fetches a list (`adapters/*.mjs`).
 2. **Quarantine** — raw bytes land in the gitignored, outside-`src/` `quarantine/`
    dir and never reach the repo or `dist/` (`verify-quarantine.mjs`, CI-gated).
-3. **Extract facts** — only literal param names are kept; curated patterns are
-   dropped (`candidate.mjs`).
+3. **Extract facts** — literal param names are kept, now optionally paired with
+   the host they were anchored to; curated patterns are always dropped
+   (`candidate.mjs`, ADR-0008 Path A).
 4. **Re-derive** — EPIC C gates (affiliate-guard #775, cross-corroboration #776,
    canary #777, functional-bias #778) independently justify each candidate
-   against MUGA's own data before it can land in `TRACKING_PARAMS`.
+   against MUGA's own data before it can land: a global candidate in
+   `TRACKING_PARAMS`, a host-scoped one in the normalized store's
+   `scopedFacts[]` (`tools/rules-store.mjs`) via the manual, reviewed
+   `land-scoped.mjs` — never the unattended weekly path.
+
+A gate-admitted `(param, host)` pair is recorded in the ingestion run's
+`quarantine-report.json` (`scopedAutoMerge`). That report is unsigned and
+gitignored (`.gitignore:54`), the weekly workflow uploads no artifact, and
+`report-formatter.mjs` does not render the field — so on the unattended weekly
+run the pair is not visible to anyone. Reading it today means running ingestion
+locally.
+
+Landing a pair into the committed store is a separate, manual step run through
+`land-scoped.mjs`, and deliberately so:
+`.github/workflows/auto-ingest-rules.yml` squash-auto-merges its own PR with no
+one in the loop. Until the weekly run surfaces `scopedAutoMerge`, that CLI has
+no input reachable from CI. Closing that gap is a prerequisite for the slice
+that lets the corroboration gate admit scoped facts, not for this one, where
+nothing is admitted.
 
 A param that survives the gates is justified by MUGA's verification, not by the
 upstream list's say-so. That is the clean room.

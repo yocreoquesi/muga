@@ -193,6 +193,36 @@ test("A.12: scoped candidates sharing signal count + param sort by scope (tiebre
   );
 });
 
+// ── WARNING-2 (verify-report-slice-2, obs #1527): the GLOBAL sentinel must ──
+// never collide with a LEGAL wildcard scope value. Before the fix, the dedup
+// key was `${scope || GLOBAL}${KEY_SEP}${param}` — since GLOBAL is itself the
+// string "*", a candidate whose `scope` happened to BE "*" produced the exact
+// same key as an unscoped candidate (`"*" || "*"` is `"*"`, same as
+// `undefined || "*"`). That silently merged two candidates a downstream guard
+// (orchestrate.mjs#isScoped, which treats scope:"*" as scoped-and-excluded)
+// intends to keep apart, inflating a GATE 2 signal count from 1 to 2 — exactly
+// the MIN_SIGNALS floor. Unreachable via the real AdGuard adapter today (the
+// host regex rejects "*"), but reachable by any future scopedParams producer,
+// including a hand-built fixture or a future Slice 3 source.
+
+test("WARNING-2: a global param and a wildcard-scoped param sharing a name do NOT merge", () => {
+  const { candidates: out } = mergeCandidates(
+    [
+      { id: "adapter-a", params: ["utm_source"] },
+      { id: "adapter-b", params: [], scopedParams: [{ param: "utm_source", scope: "*" }] },
+    ],
+    { now: NOW },
+  );
+  // Two DISTINCT candidates, not one merged candidate with 2 signals.
+  assert.equal(out.length, 2, "a wildcard-scoped candidate must not collapse into the unscoped one");
+  const global = out.find((c) => !("scope" in c));
+  const wildcardScoped = out.find((c) => c.scope === "*");
+  assert.ok(global, "the unscoped candidate must still exist on its own");
+  assert.ok(wildcardScoped, "the wildcard-scoped candidate must still exist on its own");
+  assert.deepEqual(global.signals, ["adapter-a"]);
+  assert.deepEqual(wildcardScoped.signals, ["adapter-b"]);
+});
+
 // ── T-08 (quarantine-surface #782): mergeCandidates emptyDropped ──────────────
 
 test("T-08: mergeCandidates returns { candidates, emptyDropped }", () => {

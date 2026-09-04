@@ -39,6 +39,21 @@
  *
  * Purity is what lets the round-trip test compare emitted STRINGS without
  * touching disk, which is how losslessness gets proven rather than eyeballed.
+ *
+ * ── Slice 2 adds `scopedFacts[]`, a sibling of `entries[]` ────────────
+ *
+ * A gate-admitted host-scoped candidate (ADR-0008, Path A) cannot land in
+ * `entries[]`: `groupByScope`/`emitDomainRules` read that array, and a fresh
+ * host-scoped strip with no sibling preserve entry throws by design (the seam
+ * documented above). `scopedFacts` is a TOP-LEVEL SIBLING the projections never
+ * read, so it never reaches that throw and never changes what
+ * `domain-rules.json` or `params.json` contain.
+ *
+ * It is absent when empty, so a store that has landed nothing carries the same
+ * bytes it always did. `serializeStore` MUST emit it when present — an unknown
+ * top-level key is otherwise silently destroyed by the very next
+ * `promote-rules.mjs` or `harvest-preserve.mjs` round trip, because both go
+ * through `serializeStore` and it writes only the keys it knows about.
  */
 
 // ── Schema ───────────────────────────────────────────────────────────
@@ -116,6 +131,43 @@ function validateEntry({ scope, param, action }, where = "entry") {
     );
   }
   return { scope, param, action };
+}
+
+/**
+ * The validation path for a `scopedFacts[]` entry (Slice 2, rules-scope-
+ * normalization), wherever it came from — construction (`withScopedFacts`) or
+ * disk (`parseStore`).
+ *
+ * Deliberately NARROWER than `validateEntry`: a scoped fact can never carry
+ * GLOBAL_SCOPE (that is what `entries[]` is for) and can never carry an action
+ * other than STRIP — a scoped PRESERVE has no projection to render it, and
+ * nothing in this slice produces one.
+ *
+ * @param {{scope: string, param: string, action: string, provenance?: object}} fact
+ * @param {string} [where] Context for the error message.
+ * @returns {{scope: string, param: string, action: string, provenance?: object}}
+ * @throws {Error} On an empty/GLOBAL_SCOPE scope, an empty param, or a non-STRIP action.
+ */
+function validateScopedFact({ scope, param, action, provenance }, where = "scopedFacts entry") {
+  if (typeof scope !== "string" || scope.length === 0) {
+    throw new Error(`rules-store: ${where} needs a scope (param: ${String(param)})`);
+  }
+  if (scope === GLOBAL_SCOPE) {
+    throw new Error(
+      `rules-store: ${where} cannot use GLOBAL_SCOPE ("${GLOBAL_SCOPE}") — a scoped fact ` +
+        `must name a real host (param: ${param})`
+    );
+  }
+  if (typeof param !== "string" || param.length === 0) {
+    throw new Error(`rules-store: ${where} needs a param (scope: ${scope})`);
+  }
+  if (action !== ACTIONS.STRIP) {
+    throw new Error(
+      `rules-store: ${where} action must be "${ACTIONS.STRIP}" (scope: ${scope}, param: ` +
+        `${param}, got: "${String(action)}")`
+    );
+  }
+  return { scope, param, action, ...(provenance ? { provenance } : {}) };
 }
 
 // ── Import: artifacts → store ────────────────────────────────────────
@@ -217,6 +269,59 @@ export function withDomainRules(store, domainRules) {
     entries: [...rebuilt.entries, ...globals],
     projection: rebuilt.projection,
   };
+}
+
+/**
+ * Returns a NEW store whose `scopedFacts[]` merges `facts` into whatever the
+ * store already carries, deduping on `(scope, param)` and UNIONING
+ * `provenance.signals` on a collision (the same corroboration semantics
+ * `mergeCandidates` already uses for `signals[]`).
+ *
+ * Surgical, like `withGlobalParams`: it only ever replaces the axis it owns.
+ * `entries[]` and `projection` are untouched — this is preserved automatically
+ * by the `{...store}` spread, not by an explicit copy, which is why
+ * `withGlobalParams`/`withDomainRules` preserving `scopedFacts` in return is a
+ * pinned test rather than an edit: both already spread the whole store.
+ *
+ * Absent-when-empty (I1) is enforced here, not left to the caller: an empty
+ * result DELETES the key rather than setting `[]`, so a store that has landed
+ * nothing serializes identically to one that never called this at all.
+ *
+ * @param {object} store
+ * @param {Array<{scope: string, param: string, action: string, provenance?: object}>} facts
+ * @returns {object}
+ * @throws {Error} Via validateScopedFact — GLOBAL_SCOPE, a non-STRIP action, or a malformed param.
+ */
+export function withScopedFacts(store, facts) {
+  const byKey = new Map();
+
+  for (const raw of [...(store.scopedFacts ?? []), ...facts]) {
+    const fact = validateScopedFact(raw);
+    const key = `${fact.scope}\0${fact.param}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, fact);
+      continue;
+    }
+    const signals = new Set([
+      ...(existing.provenance?.signals ?? []),
+      ...(fact.provenance?.signals ?? []),
+    ]);
+    byKey.set(key, {
+      ...existing,
+      ...fact,
+      provenance: { ...existing.provenance, ...fact.provenance, signals: [...signals].sort() },
+    });
+  }
+
+  const scopedFacts = [...byKey.values()].sort(
+    (a, b) => a.scope.localeCompare(b.scope) || a.param.localeCompare(b.param)
+  );
+
+  const next = { ...store };
+  if (scopedFacts.length > 0) next.scopedFacts = scopedFacts;
+  else delete next.scopedFacts;
+  return next;
 }
 
 // ── Projection: store → domain-rules.json ────────────────────────────
@@ -323,6 +428,17 @@ export function serializeStore(store) {
   ];
   const entries = store.entries.map((e) => `    ${JSON.stringify(e)}`);
   lines.push(entries.join(",\n"));
+
+  // `scopedFacts` is absent-when-empty (I1): a store that has landed nothing
+  // serializes to the exact same bytes it always did. This is the line that
+  // makes C4 hold — a segment `serializeStore` does not emit is destroyed by
+  // the very next promote/harvest round trip, silently.
+  if (store.scopedFacts && store.scopedFacts.length > 0) {
+    lines.push("  ],", `  "scopedFacts": [`);
+    const facts = store.scopedFacts.map((f) => `    ${JSON.stringify(f)}`);
+    lines.push(facts.join(",\n"));
+  }
+
   lines.push("  ]", "}");
   return `${lines.join("\n")}\n`;
 }
@@ -348,5 +464,13 @@ export function parseStore(text) {
   // (groupByScope, emitDomainRules, emitParams) assumes a known action; an
   // unknown one would be swept into the strip bucket by the else branch.
   store.entries.forEach((entry, i) => validateEntry(entry, `entries[${i}]`));
+
+  if (store.scopedFacts !== undefined) {
+    if (!Array.isArray(store.scopedFacts)) {
+      throw new Error("rules-store: scopedFacts must be an array when present");
+    }
+    store.scopedFacts.forEach((fact, i) => validateScopedFact(fact, `scopedFacts[${i}]`));
+  }
+
   return store;
 }
