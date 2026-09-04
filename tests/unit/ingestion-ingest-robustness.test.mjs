@@ -472,6 +472,118 @@ describe("T-813-5 — null-payload fetch → records as failed, no crash", () =>
 // still bubble up immediately (not recorded as transient failures).
 // This is the updated FIX-2 behavior: sentinel path, not `instanceof TypeError`.
 
+// ── Slice 2 (rules-scope-normalization): scopedParams adapter contract ────────
+// A.15/A.16/A.18: when an adapter reports `scopedParams`, ingest.mjs must
+// validate its shape (array of {param, scope}) and surface a per-adapter
+// `scopedAdmitted` stat — read defensively (?? 0) so old-shaped stats keep
+// working unmodified.
+
+describe("A.15/A.16/A.18 — scopedParams adapter contract + scopedAdmitted stat", () => {
+  test("well-formed scopedParams flows into stats as scopedAdmitted", async () => {
+    const quarantineDir = makeTmpDir();
+
+    const scopedAdapter = makeAdapter({ id: "adguard-tp", params: new Set(["fbclid"]) });
+    scopedAdapter.parse = () => ({
+      params: new Set(["fbclid"]),
+      skipped: 0,
+      affiliateExcluded: 0,
+      scopedParams: [
+        { param: "si", scope: "youtube.com" },
+        { param: "igshid", scope: "instagram.com" },
+      ],
+    });
+
+    const { stats } = await runIngestion({
+      adapters: [scopedAdapter],
+      fetchImpl: makeOkFetch(),
+      quarantineDir,
+    });
+
+    const stat = stats.adapters.find((a) => a.adapterId === "adguard-tp");
+    assert.ok(stat, "adapter stat entry must exist");
+    assert.equal(stat.scopedAdmitted, 2, "scopedAdmitted must count scopedParams entries");
+  });
+
+  test("adapter with no scopedParams field defaults scopedAdmitted to 0 (backward compatible)", async () => {
+    const quarantineDir = makeTmpDir();
+
+    const plainAdapter = makeAdapter({ id: "clearurls", params: new Set(["gclid"]) });
+
+    const { stats } = await runIngestion({
+      adapters: [plainAdapter],
+      fetchImpl: makeOkFetch(),
+      quarantineDir,
+    });
+
+    const stat = stats.adapters.find((a) => a.adapterId === "clearurls");
+    assert.ok(stat, "adapter stat entry must exist");
+    assert.equal(stat.scopedAdmitted, 0, "scopedAdmitted must default to 0 when absent");
+  });
+
+  test("malformed scopedParams (not an array) throws AdapterContractError", async () => {
+    const quarantineDir = makeTmpDir();
+
+    const badAdapter = makeAdapter({ id: "bad-scoped", params: new Set(["x"]) });
+    badAdapter.parse = () => ({
+      params: new Set(["x"]),
+      skipped: 0,
+      affiliateExcluded: 0,
+      scopedParams: "not-an-array",
+    });
+
+    await assert.rejects(
+      () => runIngestion({ adapters: [badAdapter], quarantineDir }),
+      (err) => {
+        assert.strictEqual(err.code, "ADAPTER_CONTRACT");
+        assert.ok(err.message.includes("bad-scoped"));
+        return true;
+      },
+    );
+  });
+
+  test("malformed scopedParams entry (missing scope field) throws AdapterContractError", async () => {
+    const quarantineDir = makeTmpDir();
+
+    const badAdapter = makeAdapter({ id: "bad-scoped-entry", params: new Set(["x"]) });
+    badAdapter.parse = () => ({
+      params: new Set(["x"]),
+      skipped: 0,
+      affiliateExcluded: 0,
+      scopedParams: [{ param: "si" }], // missing `scope`
+    });
+
+    await assert.rejects(
+      () => runIngestion({ adapters: [badAdapter], quarantineDir }),
+      (err) => {
+        assert.strictEqual(err.code, "ADAPTER_CONTRACT");
+        assert.ok(err.message.includes("bad-scoped-entry"));
+        return true;
+      },
+    );
+  });
+
+  test("malformed scopedParams entry (missing param field) throws AdapterContractError", async () => {
+    const quarantineDir = makeTmpDir();
+
+    const badAdapter = makeAdapter({ id: "bad-scoped-entry-2", params: new Set(["x"]) });
+    badAdapter.parse = () => ({
+      params: new Set(["x"]),
+      skipped: 0,
+      affiliateExcluded: 0,
+      scopedParams: [{ scope: "youtube.com" }], // missing `param`
+    });
+
+    await assert.rejects(
+      () => runIngestion({ adapters: [badAdapter], quarantineDir }),
+      (err) => {
+        assert.strictEqual(err.code, "ADAPTER_CONTRACT");
+        assert.ok(err.message.includes("bad-scoped-entry-2"));
+        return true;
+      },
+    );
+  });
+});
+
 describe("T-813-6 — AdapterContractError sentinel still re-throws for true contract violations", () => {
   test("parse() returning null → throws with code ADAPTER_CONTRACT (not recorded as failed)", async () => {
     const quarantineDir = makeTmpDir();

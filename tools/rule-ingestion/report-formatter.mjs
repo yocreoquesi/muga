@@ -75,14 +75,17 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
       lines.push("");
     }
 
-    lines.push("| Adapter | Status | Admitted | Skipped | Affiliate-Excluded | Error |");
-    lines.push("|---------|--------|----------|---------|-------------------|-------|");
+    // Slice 2 (rules-scope-normalization): `scopedAdmitted` is read defensively
+    // (?? 0) so an adapter stat recorded before this slice — with no such
+    // field at all — still renders instead of showing "undefined".
+    lines.push("| Adapter | Status | Admitted | Scoped-Admitted | Skipped | Affiliate-Excluded | Error |");
+    lines.push("|---------|--------|----------|------------------|---------|-------------------|-------|");
 
     for (const a of adapters) {
       const status = a.status === "failed" ? "FAILED" : "ok";
       const errorCell = a.status === "failed" ? escMd(a.error ?? "unknown error") : "";
       lines.push(
-        `| ${escMd(a.adapterId ?? "?")} | ${status} | ${a.admitted ?? 0} | ${a.skipped ?? 0} | ${a.affiliateExcluded ?? 0} | ${errorCell} |`
+        `| ${escMd(a.adapterId ?? "?")} | ${status} | ${a.admitted ?? 0} | ${a.scopedAdmitted ?? 0} | ${a.skipped ?? 0} | ${a.affiliateExcluded ?? 0} | ${errorCell} |`
       );
     }
 

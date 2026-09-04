@@ -88,6 +88,7 @@ export async function runIngestion({
           admitted: 0,
           skipped: 0,
           affiliateExcluded: 0,
+          scopedAdmitted: 0,
         });
         continue;
       }
@@ -108,14 +109,39 @@ export async function runIngestion({
         );
       }
 
+      // Slice 2 (rules-scope-normalization): `scopedParams` is optional — an
+      // adapter that omits it (e.g. ClearURLs, SC-3.5) is reporting "no scoped
+      // facts", which is legal. When present it MUST be an array of
+      // {param, scope} objects; anything else is an adapter programming bug,
+      // not a transient upstream failure, so it re-throws like the `params`
+      // contract check above.
+      const { scopedParams } = parseResult;
+      if (scopedParams !== undefined) {
+        if (!Array.isArray(scopedParams)) {
+          throw new AdapterContractError(
+            adapter.id,
+            `scopedParams must be an array of {param, scope} — got ${typeof scopedParams}`
+          );
+        }
+        for (const entry of scopedParams) {
+          if (!entry || typeof entry.param !== "string" || typeof entry.scope !== "string") {
+            throw new AdapterContractError(
+              adapter.id,
+              `scopedParams entries must be { param: string, scope: string } — got ${JSON.stringify(entry)}`
+            );
+          }
+        }
+      }
+
       const { params, skipped = 0, affiliateExcluded = 0 } = parseResult;
-      results.push({ id: adapter.id, params });
+      results.push({ id: adapter.id, params, scopedParams });
       adapterStats.push({
         adapterId: adapter.id,
         status: "ok",
         admitted: params.size,   // per-adapter count BEFORE cross-adapter dedup
         skipped,
         affiliateExcluded,
+        scopedAdmitted: scopedParams?.length ?? 0,
       });
     } catch (err) {
       // Re-throw ONLY the named contract-violation sentinel — these are adapter bugs,
@@ -135,6 +161,7 @@ export async function runIngestion({
         admitted: 0,
         skipped: 0,
         affiliateExcluded: 0,
+        scopedAdmitted: 0,
       });
     }
   }
