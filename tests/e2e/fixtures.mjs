@@ -108,48 +108,48 @@ async function completeOnboarding(context, extensionId) {
  * only once the install-time write has already happened and there is
  * nothing left in flight to race it.
  *
+ * Takes an ALREADY-OPEN extension page rather than opening (and closing)
+ * one of its own. The caller controls the page's lifetime deliberately:
+ * an install-time write is itself part of a sequence of service-worker
+ * events (onInstalled goes on to call applyDnrState, openOnboardingOnce,
+ * several migrations, ...), and opening/closing an extra tab mid-sequence
+ * perturbs that timing rather than merely observing it. A barrier that
+ * introduces its own page churn to fix a race risks relocating the race
+ * instead of closing it — see the full-suite popup.spec.mjs regression
+ * this shape caused when the barrier managed its own page.
+ *
  * Bounded: if `mugaConsent` never appears within `timeoutMs`, this
  * throws naming what it was waiting for and the last value it actually
  * observed, rather than hanging silently — a real regression here (e.g.
  * recordImplicitAcceptOnInstall stops firing, or stops being called on
  * install) must fail loud, not time out a test suite mysteriously.
  *
- * @param {import('@playwright/test').BrowserContext} context
- * @param {string} extensionId
+ * @param {import('@playwright/test').Page} page - an already-open page
+ *   on the extension's origin (chrome-extension://<id>/...). Its
+ *   lifecycle is entirely the caller's responsibility — this function
+ *   never opens or closes a page.
  * @param {number} [timeoutMs] - defaults to 5000ms.
  * @returns {Promise<object>} the settled mugaConsent record.
  */
-export async function waitForInstallSettled(context, extensionId, timeoutMs = 5000) {
-  const extOrigin = `chrome-extension://${extensionId}`;
-  let page = context.pages().find((p) => p.url().startsWith(extOrigin));
-  let opened = false;
-  if (!page) {
-    page = await context.newPage();
-    await page.goto(`${extOrigin}/popup/popup.html`);
-    opened = true;
-  }
-  try {
-    const deadline = Date.now() + timeoutMs;
-    let last = null;
-    while (Date.now() < deadline) {
-      last = await page.evaluate(
-        () => new Promise((resolve) =>
-          chrome.storage.local.get({ mugaConsent: null }, (r) => resolve(r.mugaConsent))
-        )
-      );
-      if (last !== null) return last;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    throw new Error(
-      `waitForInstallSettled: timed out after ${timeoutMs}ms waiting for chrome.storage.local.mugaConsent ` +
-      `to be written by the install-time recordImplicitAcceptOnInstall() (service-worker.js). ` +
-      `Last observed value: ${JSON.stringify(last)}. If this function has stopped running on install, ` +
-      `that is a real regression, not a flake — this barrier existing to protect e2e determinism (#1231) ` +
-      `does not mean it is safe to delete when it fails.`
+export async function waitForInstallSettled(page, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  let last = null;
+  while (Date.now() < deadline) {
+    last = await page.evaluate(
+      () => new Promise((resolve) =>
+        chrome.storage.local.get({ mugaConsent: null }, (r) => resolve(r.mugaConsent))
+      )
     );
-  } finally {
-    if (opened) await page.close();
+    if (last !== null) return last;
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
+  throw new Error(
+    `waitForInstallSettled: timed out after ${timeoutMs}ms waiting for chrome.storage.local.mugaConsent ` +
+    `to be written by the install-time recordImplicitAcceptOnInstall() (service-worker.js). ` +
+    `Last observed value: ${JSON.stringify(last)}. If this function has stopped running on install, ` +
+    `that is a real regression, not a flake — this barrier existing to protect e2e determinism (#1231) ` +
+    `does not mean it is safe to delete when it fails.`
+  );
 }
 
 export const test = base.extend({

@@ -105,7 +105,20 @@ test.describe("Onboarding regression: Firefox close + consent gate", () => {
     // never set. waitForInstallSettled() blocks until that write has
     // already happened, so clearAll is the last write before this test's
     // own state takes over.
-    await waitForInstallSettled(context, extensionId);
+    //
+    // The page opened here (if none exists yet) is deliberately left open
+    // rather than closed: waitForInstallSettled only OBSERVES storage and
+    // must not itself perturb the service-worker's onInstalled sequence by
+    // opening/closing tabs mid-race. clearAll/installTestModeSentinel below
+    // reuse this same page (they look for an existing extension page before
+    // opening their own), so no extra churn is introduced.
+    const extOrigin = `chrome-extension://${extensionId}`;
+    let page = context.pages().find((p) => p.url().startsWith(extOrigin));
+    if (!page) {
+      page = await context.newPage();
+      await page.goto(`${extOrigin}/popup/popup.html`);
+    }
+    await waitForInstallSettled(page);
     await clearAll(context, extensionId);
     // The badge + DNR introspection helpers go through __TEST__
     // handlers, which are gated on chrome.storage.local["__muga_test_mode"].
