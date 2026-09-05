@@ -27,9 +27,21 @@
  * one report; tests/unit/sync-migration.test.mjs pins that. If a report
  * assertion here fails again, check whether the worker completed a migration
  * on its own before the explicit call rather than alongside it.
+ *
+ * Flake hazard #2 (#1231): every launched context is a fresh install, so
+ * `recordImplicitAcceptOnInstall()` (service-worker.js) fires on EVERY test
+ * and writes `mugaConsent` to chrome.storage.local asynchronously, outside
+ * this file's control. `clearAllStorage()` in beforeEach does not cancel a
+ * write already in flight — if it lands after the clear, the explicit
+ * migration below sees a local record that was never seeded by this test
+ * (`copiedToLocal: false` when `true` was expected, or a stray
+ * `consentVersion: "1.5"` — that is TERMS_VERSION, not a seeded value).
+ * `waitForInstallSettled()` (fixtures.mjs) is the barrier: it blocks until
+ * that write has landed, so clearAllStorage() always runs after it rather
+ * than racing it.
  */
 
-import { test, expect } from "./fixtures.mjs";
+import { test, expect, waitForInstallSettled } from "./fixtures.mjs";
 import {
   seedStorage,
   installTestModeSentinel,
@@ -98,6 +110,11 @@ async function clearAllStorage(context, extensionId) {
 
 test.describe("Consent migration: sync → local (#406)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
+    // Must run BEFORE clearAllStorage — see the "Flake hazard #2" docblock
+    // above. Ensures the install-time implicit-accept write has already
+    // landed, so the clear below is the last write before this test seeds
+    // its own state.
+    await waitForInstallSettled(context, extensionId);
     await clearAllStorage(context, extensionId);
     await installTestModeSentinel(context, extensionId);
   });

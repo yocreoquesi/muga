@@ -84,6 +84,74 @@ async function completeOnboarding(context, extensionId) {
   }
 }
 
+/**
+ * Barrier: waits until the service worker's install-time implicit-accept
+ * write has landed in chrome.storage.local before the caller is allowed
+ * to proceed (#1231).
+ *
+ * WHY this exists: `chrome.runtime.onInstalled` fires with
+ * `details.reason === "install"` on every context this fixture launches
+ * — `launchPersistentContext("", ...)` gives each test a fresh profile,
+ * so every test IS a fresh install in the extension's eyes. That handler
+ * calls `recordImplicitAcceptOnInstall()` (src/background/service-worker.js),
+ * which writes `mugaConsent` to chrome.storage.local asynchronously, on a
+ * schedule the test does not control. A spec's `beforeEach` that clears
+ * storage and then seeds its own consent/legacy state does not cancel
+ * that in-flight write — if it lands after the clear (or after the
+ * spec's own seed), it silently stomps onboardingDone/consentVersion/
+ * consentDate underneath the test. A fixed sleep cannot fix this: the
+ * write isn't slow, it's unsequenced. So this polls for the write's
+ * actual, observable side effect — `mugaConsent` appearing in
+ * chrome.storage.local — instead of waiting on a clock.
+ *
+ * Call this BEFORE a spec's own storage clear/seed, so that clear runs
+ * only once the install-time write has already happened and there is
+ * nothing left in flight to race it.
+ *
+ * Bounded: if `mugaConsent` never appears within `timeoutMs`, this
+ * throws naming what it was waiting for and the last value it actually
+ * observed, rather than hanging silently — a real regression here (e.g.
+ * recordImplicitAcceptOnInstall stops firing, or stops being called on
+ * install) must fail loud, not time out a test suite mysteriously.
+ *
+ * @param {import('@playwright/test').BrowserContext} context
+ * @param {string} extensionId
+ * @param {number} [timeoutMs] - defaults to 5000ms.
+ * @returns {Promise<object>} the settled mugaConsent record.
+ */
+export async function waitForInstallSettled(context, extensionId, timeoutMs = 5000) {
+  const extOrigin = `chrome-extension://${extensionId}`;
+  let page = context.pages().find((p) => p.url().startsWith(extOrigin));
+  let opened = false;
+  if (!page) {
+    page = await context.newPage();
+    await page.goto(`${extOrigin}/popup/popup.html`);
+    opened = true;
+  }
+  try {
+    const deadline = Date.now() + timeoutMs;
+    let last = null;
+    while (Date.now() < deadline) {
+      last = await page.evaluate(
+        () => new Promise((resolve) =>
+          chrome.storage.local.get({ mugaConsent: null }, (r) => resolve(r.mugaConsent))
+        )
+      );
+      if (last !== null) return last;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error(
+      `waitForInstallSettled: timed out after ${timeoutMs}ms waiting for chrome.storage.local.mugaConsent ` +
+      `to be written by the install-time recordImplicitAcceptOnInstall() (service-worker.js). ` +
+      `Last observed value: ${JSON.stringify(last)}. If this function has stopped running on install, ` +
+      `that is a real regression, not a flake — this barrier existing to protect e2e determinism (#1231) ` +
+      `does not mean it is safe to delete when it fails.`
+    );
+  } finally {
+    if (opened) await page.close();
+  }
+}
+
 export const test = base.extend({
   context: async ({}, use) => {
     const ctx = await chromium.launchPersistentContext("", {

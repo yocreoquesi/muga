@@ -19,7 +19,7 @@
  *      the user has accepted the ToS. Enabled after acceptance.
  */
 
-import { test, expect } from "./fixtures.mjs";
+import { test, expect, waitForInstallSettled } from "./fixtures.mjs";
 import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 import {
   installTestModeSentinel,
@@ -95,6 +95,17 @@ async function readGlobalBadge(context, extensionId) {
 
 test.describe("Onboarding regression: Firefox close + consent gate", () => {
   test.beforeEach(async ({ context, extensionId }) => {
+    // Must run BEFORE clearAll (#1231): every launched context is a fresh
+    // install, so the service worker's onInstalled handler fires here too
+    // and asynchronously writes mugaConsent (recordImplicitAcceptOnInstall,
+    // service-worker.js) on a schedule this test does not control. If that
+    // write lands after clearAll, onboardingDone flips true underneath a
+    // test that expects it false (the badge/DNR-gating tests below), or the
+    // "Settings does NOT bounce back to onboarding" test observes state it
+    // never set. waitForInstallSettled() blocks until that write has
+    // already happened, so clearAll is the last write before this test's
+    // own state takes over.
+    await waitForInstallSettled(context, extensionId);
     await clearAll(context, extensionId);
     // The badge + DNR introspection helpers go through __TEST__
     // handlers, which are gated on chrome.storage.local["__muga_test_mode"].
