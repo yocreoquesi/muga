@@ -99,6 +99,18 @@ async function clearAllStorage(context, extensionId) {
     await page.goto(`${extOrigin}/popup/popup.html`);
     opened = true;
   }
+  // #1231: wait for the install-time implicit-accept write to land BEFORE
+  // clearing, using this SAME page — no page beyond the one this function
+  // already opens-if-needed/closes-if-opened. An earlier version of this
+  // fix waited from a page the caller opened separately and then left open
+  // for the rest of the test; that changed how many extension pages exist
+  // at any given moment relative to main, which was enough to intermittently
+  // break the unrelated `context.waitForEvent("page")` race in
+  // popup.spec.mjs's "settings link opens options page" test, elsewhere in
+  // the same serial suite. Folding the wait into the page this function was
+  // going to open (and close) anyway keeps the page-lifecycle shape
+  // identical to main.
+  await waitForInstallSettled(page);
   await page.evaluate(() =>
     Promise.all([
       new Promise(resolve => chrome.storage.sync.clear(resolve)),
@@ -110,25 +122,10 @@ async function clearAllStorage(context, extensionId) {
 
 test.describe("Consent migration: sync → local (#406)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
-    // Must run BEFORE clearAllStorage — see the "Flake hazard #2" docblock
-    // above. Ensures the install-time implicit-accept write has already
-    // landed, so the clear below is the last write before this test seeds
-    // its own state.
-    //
-    // The page opened here (if none exists yet — e.g. the auto-opened
-    // onboarding tab hasn't appeared) is deliberately left open rather
-    // than closed: waitForInstallSettled only OBSERVES storage and must
-    // not itself perturb the service-worker's onInstalled sequence by
-    // opening/closing tabs mid-race. clearAllStorage/installTestModeSentinel
-    // below reuse this same page (they look for an existing extension page
-    // before opening their own), so no extra churn is introduced.
-    const extOrigin = `chrome-extension://${extensionId}`;
-    let page = context.pages().find((p) => p.url().startsWith(extOrigin));
-    if (!page) {
-      page = await context.newPage();
-      await page.goto(`${extOrigin}/popup/popup.html`);
-    }
-    await waitForInstallSettled(page);
+    // waitForInstallSettled() runs inside clearAllStorage (above), on the
+    // same page that function already manages, BEFORE the clear itself —
+    // see the "Flake hazard #2" docblock above for why the wait has to
+    // happen before this clear runs at all.
     await clearAllStorage(context, extensionId);
     await installTestModeSentinel(context, extensionId);
   });

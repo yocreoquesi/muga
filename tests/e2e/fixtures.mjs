@@ -118,6 +118,20 @@ async function completeOnboarding(context, extensionId) {
  * instead of closing it — see the full-suite popup.spec.mjs regression
  * this shape caused when the barrier managed its own page.
  *
+ * Prefer calling this from INSIDE a function that already opens-if-needed
+ * and closes-if-opened a page for its own purpose (e.g. a storage-clear
+ * helper), passing it that same page, rather than opening a page in the
+ * caller specifically to satisfy this barrier and then leaving it open for
+ * the rest of the test. The latter shape was tried and reverted: it fixed
+ * the original race but left an extension page open for the whole test
+ * instead of the short-lived open/close main already does at this point,
+ * which changed how many extension pages exist at any given moment
+ * relative to main and intermittently broke an unrelated
+ * `context.waitForEvent("page")` race elsewhere in the same serial suite
+ * (popup.spec.mjs). Folding the wait into an existing open/close cycle
+ * keeps the page-lifecycle shape identical to a build without this
+ * barrier at all.
+ *
  * Bounded: if `mugaConsent` never appears within `timeoutMs`, this
  * throws naming what it was waiting for and the last value it actually
  * observed, rather than hanging silently — a real regression here (e.g.
