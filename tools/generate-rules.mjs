@@ -42,6 +42,11 @@ const PATH_STRIP_PATH      = resolve(ROOT, "src/rules/path-strip-rules.json");
 const PATH_AFFILIATE_PATH  = resolve(ROOT, "src/rules/path-affiliate-rules.json");
 const MANIFEST_PATH        = resolve(ROOT, "src/rules/rules-manifest.json");
 const DNR_PATH             = resolve(ROOT, "src/rules/tracking-params.json");
+// #1221: derived guard set — the union of every domain entry's preserveParams,
+// lowercased. Generated (never hand-edited) so the signing tool and the runtime
+// check the SAME set the extension actually ships, and so the existing
+// `compile:rules` + `git diff --exit-code -- src/rules/` gate keeps it fresh.
+const PRESERVE_PARAMS_PATH = resolve(ROOT, "src/rules/preserve-params.data.js");
 // #826: TRACKING_PARAMS/TRACKING_PREFIXES/TRACKING_PARAM_CATEGORIES moved to
 // affiliates-data.js. The path below now points at the data module for
 // source-text extraction (prefix inline comments). affiliates.js re-exports
@@ -521,7 +526,54 @@ export function buildDnrRules() {
 }
 
 /**
- * Writes both output files when the script is run directly.
+ * Builds the source text of `src/rules/preserve-params.data.js` (#1221).
+ *
+ * The set is the union of every domain entry's `preserveParams`, lowercased and
+ * sorted. It exists so the invariant "a fact learned about one host must never
+ * be applied to another" can be enforced STRUCTURALLY: a name a host declares it
+ * needs must not be publishable to the global remote channel, which has no way
+ * to say where it applies.
+ *
+ * Emitted as a JS module rather than read from JSON at runtime because
+ * `src/lib/remote-rules.js` runs in the service worker, where the domain rules
+ * are fetched asynchronously (service-worker.js:73 — import assertions are
+ * incompatible with Firefox). A guard that depended on that fetch would be absent
+ * exactly when the fetch failed, which is the wrong direction to fail.
+ *
+ * @returns {string} Module source text, ending in a newline.
+ */
+export function buildPreserveParamsModule() {
+  let domainRules;
+  try {
+    domainRules = JSON.parse(readFileSync(DOMAIN_RULES_PATH, "utf8"));
+  } catch (err) {
+    process.stderr.write(
+      `generate-rules.mjs: failed to parse src/rules/domain-rules.json: ${err.message}\n`
+    );
+    process.exit(1);
+  }
+
+  const preserved = new Set();
+  for (const rule of domainRules) {
+    for (const p of rule.preserveParams ?? []) preserved.add(p.toLowerCase());
+  }
+  const sorted = [...preserved].sort((a, b) => a.localeCompare(b));
+
+  return (
+    "// muga rule artifact: params some host explicitly preserves (#1221).\n" +
+    "// DO NOT EDIT BY HAND. Derived from src/rules/domain-rules.json by\n" +
+    "// `npm run compile:rules`; CI re-runs it and diffs src/rules/.\n" +
+    "//\n" +
+    "// A name in here must never be published to the GLOBAL remote channel: that\n" +
+    "// channel cannot express a host scope, so publishing one strips it on the very\n" +
+    "// hosts that declared they need it — #1212's failure class, reached through the\n" +
+    "// signed payload instead of through ingestion.\n" +
+    "export const PRESERVED_PARAMS = " + JSON.stringify(sorted, null, 2) + ";\n"
+  );
+}
+
+/**
+ * Writes the output files when the script is run directly.
  */
 function main() {
   const manifest = buildManifest();
@@ -539,8 +591,11 @@ function main() {
     0
   );
 
+  const preserveModule = buildPreserveParamsModule();
+
   writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n", "utf8");
   writeFileSync(DNR_PATH, JSON.stringify(dnrRules, null, 2) + "\n", "utf8");
+  writeFileSync(PRESERVE_PARAMS_PATH, preserveModule, "utf8");
 
   console.log(
     `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${globalCount} global DNR params; ${profileRules.length} per-domain-profile rules covering ${profileDomains} domains)`

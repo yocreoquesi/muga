@@ -363,3 +363,63 @@ describe("sign-rules.mjs exit code 3 (IO error)", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// #1221 — refuse to publish a param some host declares in preserveParams
+// ---------------------------------------------------------------------------
+//
+// The global payload has no way to say WHERE a param applies, so publishing a
+// name a host protects strips it on exactly the hosts whose domain-rules entry
+// exists to keep it. This is the publication gate: a hit here means someone is
+// about to ship a mistake, so it refuses outright rather than filtering.
+describe("sign-rules.mjs preserveParams guard (#1221)", () => {
+  test("exits 1 when a param is declared in some host's preserveParams", async () => {
+    const { PRESERVED_PARAMS } = await import("../../src/rules/preserve-params.data.js");
+    // Taken from the real generated set rather than invented, so the test fails
+    // if the guard stops reading the artifact the extension actually ships.
+    const preserved = PRESERVED_PARAMS.find((p) => p.length >= 3 && /^[a-z0-9_.-]+$/.test(p));
+    assert.ok(preserved, "the generated guard set must contain a publishable-shaped name");
+
+    const fixture = JSON.stringify({
+      version: 1,
+      published: new Date().toISOString(),
+      params: ["utm_fine", preserved],
+    });
+
+    const result = runScript({ sourceContent: fixture });
+
+    assert.strictEqual(
+      result.status,
+      1,
+      `Expected exit 1, got ${result.status}. stderr: ${result.stderr}`
+    );
+    assert.ok(
+      result.stderr.includes(preserved),
+      "the refusal must name the offending param"
+    );
+    assert.ok(
+      /preserveParams/.test(result.stderr),
+      "the refusal must say WHY, so the fix is obvious without reading the source"
+    );
+  });
+
+  test("a param no host preserves still signs cleanly", async () => {
+    const { PRESERVED_PARAMS } = await import("../../src/rules/preserve-params.data.js");
+    const preserved = new Set(PRESERVED_PARAMS.map((p) => p.toLowerCase()));
+    assert.ok(!preserved.has("utm_fine"), "fixture param must not be in the guard set");
+
+    const fixture = JSON.stringify({
+      version: 1,
+      published: new Date().toISOString(),
+      params: ["utm_fine"],
+    });
+
+    const result = runScript({ sourceContent: fixture });
+
+    assert.strictEqual(
+      result.status,
+      0,
+      `Expected exit 0, got ${result.status}. stderr: ${result.stderr}`
+    );
+  });
+});

@@ -1865,3 +1865,145 @@ describe("runPromote — short names never reach params.json", () => {
     );
   });
 });
+
+// ── #1221: the preserve guard applies to the WHOLE published set ─────────────
+//
+// The collision check only ever saw params arriving in the current run, and it
+// compared case-sensitively while every other guard in the file lowercases.
+// Both gaps let a name a host protects stay in — or get into — the global
+// payload, which has no way to say where it applies.
+
+describe("#1221 — loadPreservedSet lowercases", () => {
+  test("a mixed-case preserveParams entry is stored lowercased", async () => {
+    const { loadPreservedSet } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+    const set = loadPreservedSet([
+      { domain: "example.com", preserveParams: ["SearchText", "FIELD-KEYWORDS"] },
+    ]);
+    assert.ok(set.has("searchtext"));
+    assert.ok(set.has("field-keywords"));
+  });
+});
+
+describe("#1221 — collision check is case-insensitive", () => {
+  test("an incoming param collides with a preserveParams entry of different case", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: ["SearchText"],
+      privateKey: TEST_PRIV_KEY,
+    });
+    const promotePath = writeArtifact(tmpDir, artifact);
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      params: ["existing_param"],
+    });
+    const domainRulesPath = writeDomainRules(tmpDir, [
+      { domain: "example.com", preserveParams: ["searchtext"] },
+    ]);
+
+    const result = await runPromote({
+      promotePath,
+      sourcePath,
+      storePath: writeStore(tmpDir),
+      domainRulesPath,
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.ok(
+      !result.merged.includes("SearchText"),
+      "a case-different name must not slip past the protection the entry provides"
+    );
+    assert.ok(
+      result.skipped.some((s) => s.param === "SearchText"),
+      "the skip must be reported, not silent"
+    );
+  });
+});
+
+describe("#1221 — drift sweep over already-published params", () => {
+  test("a param published earlier is removed once a host starts preserving it", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    // The artifact brings NOTHING new. Without the sweep this is a clean no-op
+    // and `legacy_param` keeps being stripped on a host that now declares it
+    // needs it — forever, because nothing ever re-examines the back catalogue.
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: [],
+      privateKey: TEST_PRIV_KEY,
+    });
+    const promotePath = writeArtifact(tmpDir, artifact);
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      params: ["legacy_param", "still_fine"],
+    });
+    const domainRulesPath = writeDomainRules(tmpDir, [
+      { domain: "example.com", preserveParams: ["legacy_param"] },
+    ]);
+
+    const result = await runPromote({
+      promotePath,
+      sourcePath,
+      storePath: writeStore(tmpDir),
+      domainRulesPath,
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.strictEqual(result.noop, false, "a sweep is a change: params leave the payload");
+    assert.strictEqual(result.written, true);
+    assert.deepStrictEqual(result.merged, ["still_fine"]);
+    assert.ok(
+      result.skipped.some((s) => s.param === "legacy_param" && /drift sweep/.test(s.reason)),
+      "the removal must be reported with its own reason, distinguishable from a new-param skip"
+    );
+  });
+
+  test("no sweep, no change: a clean back catalogue still reports noop", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const artifact = buildArtifact({
+      version: 3,
+      published: "2026-05-01T00:00:00.000Z",
+      params: [],
+      privateKey: TEST_PRIV_KEY,
+    });
+    const result = await runPromote({
+      promotePath: writeArtifact(tmpDir, artifact),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: ["still_fine"],
+      }),
+      storePath: writeStore(tmpDir),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["unrelated"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.strictEqual(result.noop, true, "the sweep must not manufacture a change out of nothing");
+    assert.strictEqual(result.written, false);
+  });
+});
