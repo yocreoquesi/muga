@@ -1565,3 +1565,87 @@ describe("NFR-PERF-2 — remote params do not measurably slow processUrl", () =>
     );
   });
 });
+
+// ── #1221: host-preserve guard ───────────────────────────────────────────────
+//
+// The remote payload is a flat list with no way to say WHERE a param applies,
+// so a published name is stripped on every site. When that name is one a host
+// declares in `preserveParams`, publishing it removes the very param that
+// entry exists to protect — #1212's failure class reached through the signed
+// channel. `tools/sign-rules.mjs` refuses to publish one; this guard is the
+// runtime half, and it must hold on builds whose domain-rules grew AFTER a
+// payload was signed.
+
+describe("#1221 — filterAgainstPreserved", () => {
+  test("drops a param a host declares in preserveParams, keeps the rest", async () => {
+    const { filterAgainstPreserved } = await import("../../src/lib/remote-rules.js");
+
+    const preserved = new Set(["searchtext", "field-keywords"]);
+    const out = filterAgainstPreserved(
+      ["utm_campaign", "searchtext", "mc_eid", "field-keywords"],
+      preserved
+    );
+
+    assert.deepStrictEqual(out, ["utm_campaign", "mc_eid"]);
+  });
+
+  test("comparison is case-insensitive on both sides", async () => {
+    const { filterAgainstPreserved } = await import("../../src/lib/remote-rules.js");
+
+    // A payload naming the param in different case must not slip past a
+    // protection the domain entry provides. Every other guard in this module
+    // lowercases before comparing; this one has to agree with them.
+    const out = filterAgainstPreserved(["SearchText", "FIELD-KEYWORDS"], new Set(["searchtext", "field-keywords"]));
+    assert.deepStrictEqual(out, []);
+  });
+
+  test("an empty preserved set is a pass-through, not a wipe", async () => {
+    const { filterAgainstPreserved } = await import("../../src/lib/remote-rules.js");
+    const params = ["utm_campaign", "mc_eid"];
+    assert.deepStrictEqual(filterAgainstPreserved(params, new Set()), params);
+  });
+});
+
+describe("#1221 — the shipped guard set matches the shipped domain rules", () => {
+  test("PRESERVED_PARAMS is exactly the lowercased union of every preserveParams", async () => {
+    const { PRESERVED_PARAMS } = await import("../../src/rules/preserve-params.data.js");
+    const { readFileSync } = await import("node:fs");
+    const domainRules = JSON.parse(
+      readFileSync(new URL("../../src/rules/domain-rules.json", import.meta.url), "utf8")
+    );
+
+    const expected = new Set();
+    for (const d of domainRules) for (const p of (d.preserveParams ?? [])) expected.add(p.toLowerCase());
+
+    assert.deepStrictEqual(
+      [...PRESERVED_PARAMS].sort(),
+      [...expected].sort(),
+      "regenerate with `npm run compile:rules` — a stale guard set protects hosts the extension no longer matches"
+    );
+    assert.ok(PRESERVED_PARAMS.length > 0, "an empty guard set would silently protect nothing");
+  });
+
+  test("no param in the PUBLISHED payload survives the guard on a host that protects it", async () => {
+    // The end-to-end invariant, read from the real shipped artifacts rather
+    // than a fixture: whatever is published today, nothing that some host
+    // declares it needs reaches the DNR rule. Three names currently in the
+    // payload (cuid, utm_medium, utm_source) are in preserveParams lists; they
+    // are also builtin, so the dedup already removed them — this asserts the
+    // outcome rather than the reason, so it keeps holding if that changes.
+    const { filterAgainstPreserved, filterAgainstBuiltin } = await import("../../src/lib/remote-rules.js");
+    const { PRESERVED_PARAMS } = await import("../../src/rules/preserve-params.data.js");
+    const { TRACKING_PARAMS } = await import("../../src/lib/affiliates-data.js");
+    const { readFileSync } = await import("node:fs");
+
+    const payload = JSON.parse(
+      readFileSync(new URL("../../docs/rules/v1/params.json", import.meta.url), "utf8")
+    );
+    const preserved = new Set(PRESERVED_PARAMS.map((p) => p.toLowerCase()));
+    const builtin = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
+
+    const accepted = filterAgainstPreserved(filterAgainstBuiltin(payload.params, builtin), preserved);
+    const leaked = accepted.filter((p) => preserved.has(p.toLowerCase()));
+
+    assert.deepStrictEqual(leaked, [], "a published param is being stripped on a host that declares it needs it");
+  });
+});

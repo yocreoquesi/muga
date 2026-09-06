@@ -41,6 +41,10 @@ import {
   MIN_PARAM_LEN,
 } from "../src/lib/remote-rules.js";
 
+// #1221: the same generated set the runtime guard reads, so signing and the
+// extension cannot drift apart on what a host protects.
+import { PRESERVED_PARAMS } from "../src/rules/preserve-params.data.js";
+
 // ── Path resolution ──────────────────────────────────────────────────────────
 
 const DEFAULT_SOURCE = new URL("../tools/rules-source/params.json", import.meta.url).pathname;
@@ -140,6 +144,17 @@ function validateSource(obj) {
     // diagnosis, so they must report first. What survives to here is a short
     // name nobody has classified — and the payload cannot express a host scope,
     // so publishing one applies it to every site (#1217).
+    // #1221. Placed BEFORE the length floor: a preserved name carries the more
+    // specific diagnosis (a host declared it needs this param), and unlike
+    // "too short" it names an actual protection being overridden. The global
+    // payload cannot express a host scope, so publishing this name strips it on
+    // the very hosts that declared they need it.
+    if (PRESERVED_SET.has(lower)) {
+      return {
+        ok: false,
+        error: `Param "${param}" is declared in some host's preserveParams in src/rules/domain-rules.json and must not be published to the global channel — it would be stripped on the hosts that protect it (#1221). Grep domain-rules.json for it to see which hosts.`,
+      };
+    }
     if (param.length < MIN_PARAM_LEN) {
       return {
         ok: false,
@@ -150,6 +165,9 @@ function validateSource(obj) {
 
   return { ok: true };
 }
+
+/** Lowercased `preserveParams` union — see src/rules/preserve-params.data.js (#1221). */
+const PRESERVED_SET = new Set(PRESERVED_PARAMS.map((p) => p.toLowerCase()));
 
 // ── Canonical message ─────────────────────────────────────────────────────────
 

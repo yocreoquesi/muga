@@ -104,7 +104,12 @@ export class PromoteError extends Error {
  * @returns {Set<string>}
  */
 export function loadPreservedSet(domainRules) {
-  return new Set(domainRules.flatMap((d) => d.preserveParams ?? []));
+  // Lowercased (#1221). Every other guard in this file compares case-insensitively
+  // (`REMOTE_PARAM_DENYLIST.has(lower)`), and this one did not — so a param whose
+  // case differed from the domain entry's would have slipped past a protection the
+  // entry exists to provide. No live entry is mixed-case today, which is exactly
+  // why the inconsistency survived unnoticed.
+  return new Set(domainRules.flatMap((d) => (d.preserveParams ?? []).map((p) => p.toLowerCase())));
 }
 
 /**
@@ -369,7 +374,7 @@ export async function runPromote({
   const cleanParams = [];
 
   for (const param of filteredArtParams) {
-    if (preservedSet.has(param)) {
+    if (preservedSet.has(param.toLowerCase())) {
       console.log(
         `[promote-rules] skip: ${param} collides with preserveParams — excluded from merge`
       );
@@ -403,7 +408,31 @@ export async function runPromote({
   const sortedCurrentParams = [...current.params].sort((a, b) =>
     a.localeCompare(b)
   );
-  const { merged, changed } = computeMerge(sortedCurrentParams, cleanParams);
+  const mergeResult = computeMerge(sortedCurrentParams, cleanParams);
+
+  // #1221 drift sweep. The collision check above only ever saw params arriving
+  // in THIS run. A name already in params.json is never re-examined, so adding a
+  // `preserveParams` entry to a host today does nothing about a param published
+  // last year — it keeps being stripped on that host forever, and the protection
+  // the entry was written to provide silently does not exist.
+  //
+  // Sweeping the merged list closes that: the guard applies to the whole
+  // published set on every run, so tightening domain-rules.json takes effect on
+  // the next weekly run without anyone remembering to audit the back catalogue.
+  // This is also what keeps `tools/sign-rules.mjs`'s refusal from wedging the
+  // pipeline — signing sees a list this step has already cleaned.
+  const merged = mergeResult.merged.filter((p) => !preservedSet.has(p.toLowerCase()));
+  const sweptCount = mergeResult.merged.length - merged.length;
+  for (const param of mergeResult.merged) {
+    if (preservedSet.has(param.toLowerCase()) && !cleanParams.includes(param)) {
+      console.log(
+        `[promote-rules] sweep: ${param} was already published but now collides with preserveParams — removed (#1221)`
+      );
+      skipped.push({ param, reason: "collides with preserveParams (drift sweep)" });
+    }
+  }
+  // A sweep is a change even when nothing new merged: params leave the payload.
+  const changed = mergeResult.changed || sweptCount > 0;
 
   // ── Step 7: No-op path ───────────────────────────────────────────────────
   if (!changed) {

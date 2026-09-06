@@ -16,6 +16,13 @@
 import { TRUSTED_PUBLIC_KEYS } from "./remote-rules-keys.js";
 import { DNR_REMOTE_PARAMS_RULE_ID } from "./dnr-ids.js";
 import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
+// #1221: the union of every domain entry's preserveParams, generated from
+// src/rules/domain-rules.json by `npm run compile:rules`. Imported statically for
+// the same reason as TRACKING_PARAMS above: this module runs in the service
+// worker, where the domain rules themselves are only available through an async
+// fetch that can fail. A guard that went missing precisely when that fetch failed
+// would fail in the wrong direction.
+import { PRESERVED_PARAMS as _PRESERVED_PARAMS } from "../rules/preserve-params.data.js";
 import { REDIRECT_NETWORK_PATTERNS } from "./redirect-networks.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -560,6 +567,40 @@ export function filterAgainstBuiltin(params, builtinSet) {
 }
 
 /**
+ * Drops params that some host explicitly declares in `preserveParams` (#1221).
+ *
+ * The remote payload is a flat list with no way to say WHERE a param applies, so
+ * a published name is stripped on every site. When that name is one a host has
+ * declared it needs — `field-keywords` on Amazon, `searchtext` on AliExpress —
+ * publishing it removes the very param that host's entry exists to protect. That
+ * is #1212's failure class (a fact learned about one host applied to another),
+ * reached through the signed channel rather than through ingestion.
+ *
+ * FILTERS rather than rejecting the payload, deliberately, and unlike the
+ * denylist and affiliate guard in `validateParams`. Those describe names that
+ * must never be published at all, so a hit means the payload is wrong. This set
+ * moves independently of the payload: a LATER extension version can add a
+ * `preserveParams` entry that collides with a param published months earlier and
+ * signed correctly at the time. Rejecting there would discard every remaining
+ * param over one collision, and a fresh install would get nothing at all until
+ * the next signing run — a self-inflicted outage of the rules channel caused by
+ * tightening a protection. Dropping the single colliding param instead makes the
+ * newly-preserved name stop being stripped immediately, without waiting for a
+ * re-sign, and leaves the rest of the payload working.
+ *
+ * `tools/sign-rules.mjs` refuses outright on the same collision, which is where
+ * a hit means someone is about to publish a mistake. Both read the same
+ * generated set, so they cannot drift.
+ *
+ * @param {string[]} params        - Params that already passed validateParams.
+ * @param {Set<string>} preservedSet - Lowercased preserveParams union.
+ * @returns {string[]} params with preserved names removed.
+ */
+export function filterAgainstPreserved(params, preservedSet) {
+  return params.filter(p => !preservedSet.has(p.toLowerCase()));
+}
+
+/**
  * Fetches the remote rules URL with streaming 50 KB cap and timeout.
  *
  * Design constraints (design §7, ADR-D4):
@@ -923,7 +964,23 @@ export async function runRemoteRulesFetch(deps = {}) {
     // cleaner.js; affiliates.js → remote-rules.js is the only direction that would create
     // a cycle, and affiliates.js has no such import.
     const builtinSet = new Set(_BUILTIN_TRACKING_PARAMS.map(p => p.toLowerCase()));
-    const accepted = filterAgainstBuiltin(validResult.accepted, builtinSet);
+    const deduped = filterAgainstBuiltin(validResult.accepted, builtinSet);
+
+    // 6b. Host-preserve guard (#1221). Runs AFTER the builtin dedup so a name
+    // that is both builtin and preserved is already gone and is not counted
+    // twice. Counted rather than silent: a param disappearing because a host
+    // protects it is a different event from one disappearing as a duplicate,
+    // and the two must be distinguishable when someone asks why a published
+    // param is not being stripped.
+    const preservedSet = new Set(_PRESERVED_PARAMS.map(p => p.toLowerCase()));
+    const accepted = filterAgainstPreserved(deduped, preservedSet);
+    const preserveFiltered = deduped.length - accepted.length;
+    if (preserveFiltered > 0) {
+      console.warn(
+        "[MUGA] remote-rules: dropped " + preserveFiltered +
+        " param(s) that a host declares in preserveParams (#1221)"
+      );
+    }
 
     // 7. Merge into cache
     const nowIso = new Date(nowMs).toISOString();
