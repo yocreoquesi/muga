@@ -39,11 +39,12 @@ import {
   REMOTE_PARAM_DENYLIST,
   AFFILIATE_PARAM_GUARD,
   MIN_PARAM_LEN,
+  canonicalScopedMessage,
 } from "../src/lib/remote-rules.js";
 
 // #1221: the same generated set the runtime guard reads, so signing and the
 // extension cannot drift apart on what a host protects.
-import { PRESERVED_PARAMS } from "../src/rules/preserve-params.data.js";
+import { PRESERVED_PARAMS, PRESERVED_BY_HOST } from "../src/rules/preserve-params.data.js";
 
 // ── Path resolution ──────────────────────────────────────────────────────────
 
@@ -163,7 +164,83 @@ function validateSource(obj) {
     }
   }
 
+  // -- Scoped facts (#1221 slice 1) -----------------------------------------
+  // Optional. Absent means a params-only payload, exactly as before.
+  //
+  // REFUSES rather than filters, unlike the runtime's `validateScopedFacts`.
+  // The asymmetry is the same one the preserveParams guard uses: at the runtime
+  // a bad fact must not cost every other host its cleaning, but HERE a bad fact
+  // means someone is about to publish a mistake, and publishing it silently
+  // minus the bad entry would hide that.
+  if (Object.prototype.hasOwnProperty.call(o, "scoped")) {
+    if (!Array.isArray(o.scoped)) {
+      return { ok: false, error: "'scoped' must be an array of { param, hosts } facts" };
+    }
+    for (const fact of /** @type {unknown[]} */ (o.scoped)) {
+      if (fact === null || typeof fact !== "object" || Array.isArray(fact)) {
+        return { ok: false, error: "Each 'scoped' entry must be an object { param, hosts }" };
+      }
+      const f = /** @type {Record<string, unknown>} */ (fact);
+      const param = f.param;
+      if (typeof param !== "string" || param.length < 1 || param.length > MAX_PARAM_LEN) {
+        return { ok: false, error: "A scoped fact has a missing or over-long 'param'" };
+      }
+      if (!PARAM_FORMAT_RE.test(param)) {
+        return { ok: false, error: `Scoped param "${param}" contains invalid characters` };
+      }
+      const lower = param.toLowerCase();
+      // ABSOLUTE, and the one guard a host scope does not relax: #1212 was an
+      // affiliate id applied to the wrong host, and a scoped fact naming an
+      // affiliate param is that same catastrophe with a smaller blast radius.
+      if (AFFILIATE_PARAM_GUARD.has(lower)) {
+        return { ok: false, error: `Scoped param "${param}" is in AFFILIATE_PARAM_GUARD and must not be published at any scope` };
+      }
+      if (REMOTE_PARAM_DENYLIST.has(lower)) {
+        return { ok: false, error: `Scoped param "${param}" is in REMOTE_PARAM_DENYLIST — these names are functional on any host, so a scope does not make them safe` };
+      }
+      if (!Array.isArray(f.hosts) || f.hosts.length === 0) {
+        return { ok: false, error: `Scoped param "${param}" must name at least one host` };
+      }
+      for (const h of /** @type {unknown[]} */ (f.hosts)) {
+        if (typeof h !== "string" || !SCOPED_HOST_RE.test(h.toLowerCase())) {
+          return { ok: false, error: `Scoped param "${param}" has an invalid host: ${String(h)}` };
+        }
+        if (hostPreserves(h.toLowerCase(), lower)) {
+          return {
+            ok: false,
+            error: `Scoped fact "${param}" @ ${h} collides with that host's preserveParams in src/rules/domain-rules.json (#1221)`,
+          };
+        }
+      }
+    }
+  }
+
   return { ok: true };
+}
+
+/** Same hostname shape the runtime validator accepts. */
+const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+/**
+ * Suffix-walked preserve check, mirroring the runtime's `_hostPreserves`.
+ * `domain-rules.json` is matched by hostname suffix, so an entry for
+ * `youtube.com` governs `www.youtube.com`; a direct key lookup would let the
+ * protection be bypassed by spelling the host with a subdomain.
+ *
+ * @param {string} host
+ * @param {string} param
+ * @returns {boolean}
+ */
+function hostPreserves(host, param) {
+  let candidate = host;
+  for (;;) {
+    const own = PRESERVED_BY_HOST[candidate];
+    if (own && own.includes(param)) return true;
+    const dot = candidate.indexOf(".");
+    if (dot === -1) return false;
+    candidate = candidate.slice(dot + 1);
+    if (!candidate.includes(".")) return false;
+  }
 }
 
 /** Lowercased `preserveParams` union — see src/rules/preserve-params.data.js (#1221). */
@@ -254,6 +331,31 @@ async function main() {
     params: source.params,
     sig: sigBase64url,
   };
+
+  // #1221: the scoped section carries its OWN signature. `sig` above is left
+  // byte-identical to what it has always been, over the same canonical string,
+  // because a payload signed over an EXTENDED canonical was measured to fail
+  // verification on every currently deployed version — which would stop them
+  // receiving even the global rules they get today. Old versions ignore both
+  // new keys (validatePayloadShape does not reject unknown ones) and keep going.
+  if (Array.isArray(source.scoped) && source.scoped.length > 0) {
+    const scopedCanonical = canonicalScopedMessage(
+      source.version, source.published, source.scoped
+    );
+    let scopedSigBuf;
+    try {
+      scopedSigBuf = cryptoSign(null, Buffer.from(scopedCanonical, "utf8"), privateKey);
+    } catch (err) {
+      console.error(`[sign-rules] ERROR: Scoped signing failed: ${err.message}`);
+      process.exit(2);
+    }
+    output.scoped = source.scoped;
+    output.scopedSig = scopedSigBuf
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
 
   try {
     mkdirSync(dirname(OUTPUT_FILE), { recursive: true });

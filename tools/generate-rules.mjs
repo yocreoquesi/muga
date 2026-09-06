@@ -559,6 +559,14 @@ export function buildPreserveParamsModule() {
   }
   const sorted = [...preserved].sort((a, b) => a.localeCompare(b));
 
+  // host -> its own preserveParams, lowercased and sorted. Keys are emitted in
+  // sorted order so the artifact is byte-deterministic for the CI diff gate.
+  const byHost = {};
+  for (const rule of [...domainRules].sort((a, b) => a.domain.localeCompare(b.domain))) {
+    const own = [...new Set((rule.preserveParams ?? []).map((p) => p.toLowerCase()))].sort();
+    if (own.length > 0) byHost[rule.domain.toLowerCase()] = own;
+  }
+
   return (
     "// muga rule artifact: params some host explicitly preserves (#1221).\n" +
     "// DO NOT EDIT BY HAND. Derived from src/rules/domain-rules.json by\n" +
@@ -568,7 +576,15 @@ export function buildPreserveParamsModule() {
     "// channel cannot express a host scope, so publishing one strips it on the very\n" +
     "// hosts that declared they need it — #1212's failure class, reached through the\n" +
     "// signed payload instead of through ingestion.\n" +
-    "export const PRESERVED_PARAMS = " + JSON.stringify(sorted, null, 2) + ";\n"
+    "export const PRESERVED_PARAMS = " + JSON.stringify(sorted, null, 2) + ";\n" +
+    "\n" +
+    "// Per-host view of the same data (#1221 slice 1). The union above answers\n" +
+    "// \"may this name be published GLOBALLY\"; a host-SCOPED fact needs the\n" +
+    "// narrower question \"does THIS host preserve it\", because the whole point of\n" +
+    "// a scoped payload is that one name can be a tracker on one host and\n" +
+    "// load-bearing on another. Checking a scoped fact against the union would\n" +
+    "// reinstate exactly the flat model the scope exists to escape.\n" +
+    "export const PRESERVED_BY_HOST = " + JSON.stringify(byHost, null, 2) + ";\n"
   );
 }
 

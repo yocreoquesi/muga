@@ -423,3 +423,102 @@ describe("sign-rules.mjs preserveParams guard (#1221)", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// #1221 slice 1 — the scoped section and its own signature
+// ---------------------------------------------------------------------------
+describe("sign-rules.mjs scoped facts (#1221)", () => {
+  test("emits scoped + scopedSig, and leaves the base sig BYTE-IDENTICAL", () => {
+    // The backward-compatibility proof, and the reason `sig` is not extended:
+    // a payload signed over an extended canonical fails verification on every
+    // currently deployed version, which would stop them receiving even the
+    // global rules they get today. Same version/published/params in and out,
+    // so the base signature must not move at all.
+    const version = 1;
+    const published = new Date().toISOString();
+    const params = ["utm_scoped_signing"];
+
+    const withoutScoped = runScript({
+      sourceContent: JSON.stringify({ version, published, params }),
+    });
+    assert.strictEqual(withoutScoped.status, 0, withoutScoped.stderr);
+    const plain = JSON.parse(readFileSync(tmpOutputFile, "utf8"));
+
+    const withScoped = runScript({
+      sourceContent: JSON.stringify({
+        version,
+        published,
+        params,
+        scoped: [{ param: "si", hosts: ["youtube.com"] }],
+      }),
+    });
+    assert.strictEqual(withScoped.status, 0, withScoped.stderr);
+    const scopedOut = JSON.parse(readFileSync(tmpOutputFile, "utf8"));
+
+    assert.strictEqual(
+      scopedOut.sig,
+      plain.sig,
+      "adding a scoped section must not change the base signature by a single byte"
+    );
+    assert.ok(typeof scopedOut.scopedSig === "string" && scopedOut.scopedSig.length > 0);
+    assert.deepStrictEqual(scopedOut.scoped, [{ param: "si", hosts: ["youtube.com"] }]);
+  });
+
+  test("refuses an affiliate param at ANY scope", () => {
+    const result = runScript({
+      sourceContent: JSON.stringify({
+        version: 1,
+        published: new Date().toISOString(),
+        params: ["utm_ok"],
+        scoped: [{ param: "tag", hosts: ["example.com"] }],
+      }),
+    });
+
+    assert.strictEqual(result.status, 1, `Expected exit 1. stderr: ${result.stderr}`);
+    assert.ok(/AFFILIATE_PARAM_GUARD/.test(result.stderr));
+  });
+
+  test("refuses a scoped fact that collides with that host's preserveParams, via suffix", () => {
+    // youtube.com preserves search_query; domain-rules is matched by hostname
+    // SUFFIX, so naming the subdomain must not slip past the same protection.
+    const result = runScript({
+      sourceContent: JSON.stringify({
+        version: 1,
+        published: new Date().toISOString(),
+        params: ["utm_ok"],
+        scoped: [{ param: "search_query", hosts: ["www.youtube.com"] }],
+      }),
+    });
+
+    assert.strictEqual(result.status, 1, `Expected exit 1. stderr: ${result.stderr}`);
+    assert.ok(/preserveParams/.test(result.stderr));
+    assert.ok(/www\.youtube\.com/.test(result.stderr), "the refusal must name the offending host");
+  });
+
+  test("refuses a scoped fact with no host — a fact with no scope is a global claim", () => {
+    const result = runScript({
+      sourceContent: JSON.stringify({
+        version: 1,
+        published: new Date().toISOString(),
+        params: ["utm_ok"],
+        scoped: [{ param: "si", hosts: [] }],
+      }),
+    });
+    assert.strictEqual(result.status, 1, `Expected exit 1. stderr: ${result.stderr}`);
+    assert.ok(/at least one host/.test(result.stderr));
+  });
+
+  test("a short name IS allowed when scoped", () => {
+    // MIN_PARAM_LEN guards the global path, where a two-character name applies
+    // to the whole web. Anchored to one host it is just a correct rule (#1229).
+    const result = runScript({
+      sourceContent: JSON.stringify({
+        version: 1,
+        published: new Date().toISOString(),
+        params: ["utm_ok"],
+        scoped: [{ param: "si", hosts: ["youtube.com"] }],
+      }),
+    });
+    assert.strictEqual(result.status, 0, `Expected exit 0. stderr: ${result.stderr}`);
+  });
+});
