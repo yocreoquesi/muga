@@ -1649,3 +1649,262 @@ describe("#1221 — the shipped guard set matches the shipped domain rules", () 
     assert.deepStrictEqual(leaked, [], "a published param is being stripped on a host that declares it needs it");
   });
 });
+
+// ── #1221 slice 1: the scoped section ────────────────────────────────────────
+//
+// The payload gains an OPTIONAL `scoped` array with its own `scopedSig`. Two
+// measured facts shape it and both are pinned below:
+//
+//   - `validatePayloadShape` never rejected unknown keys, so old versions
+//     ignore `scoped`/`scopedSig` and keep verifying `sig` exactly as before.
+//     That is what makes shipping this without a preparatory release possible.
+//   - a payload signed over an EXTENDED canonical fails verification on every
+//     deployed version, which is why `sig` is left untouched and the scoped
+//     facts get a SECOND signature instead.
+
+describe("#1221 — canonicalScopedMessage", () => {
+  const FACTS = [
+    { param: "spm", hosts: ["www.aliexpress.com", "aliexpress.com"] },
+    { param: "si", hosts: ["youtube.com"] },
+  ];
+
+  test("is deterministic: reordering facts or hosts yields the same string", async () => {
+    const { canonicalScopedMessage } = await import("../../src/lib/remote-rules.js");
+
+    const a = canonicalScopedMessage(11, "2026-01-01T00:00:00.000Z", FACTS);
+    const reordered = [...FACTS].reverse().map((f) => ({ ...f, hosts: [...f.hosts].reverse() }));
+    const b = canonicalScopedMessage(11, "2026-01-01T00:00:00.000Z", reordered);
+
+    assert.strictEqual(a, b, "signer and verifier must not disagree over ordering alone");
+  });
+
+  test("binds version and published, so a scoped block cannot be spliced onto another payload", async () => {
+    const { canonicalScopedMessage } = await import("../../src/lib/remote-rules.js");
+
+    const base = canonicalScopedMessage(11, "2026-01-01T00:00:00.000Z", FACTS);
+    assert.notStrictEqual(base, canonicalScopedMessage(12, "2026-01-01T00:00:00.000Z", FACTS));
+    assert.notStrictEqual(base, canonicalScopedMessage(11, "2026-02-02T00:00:00.000Z", FACTS));
+  });
+
+  test("separators cannot occur inside a param or host, so two fact sets cannot collide", async () => {
+    const { canonicalScopedMessage, PARAM_FORMAT_RE } = await import("../../src/lib/remote-rules.js");
+
+    // The canonical uses @ + , and | as structure. If any of them could appear
+    // inside a param, two different fact sets could serialise identically and
+    // one signature would cover both.
+    for (const ch of ["@", "+", ",", "|"]) {
+      assert.ok(!PARAM_FORMAT_RE.test(`ab${ch}cd`), `PARAM_FORMAT_RE must reject "${ch}"`);
+    }
+    const s = canonicalScopedMessage(1, "p", [{ param: "a", hosts: ["h.com"] }]);
+    assert.strictEqual(s, "1|p|a@h.com");
+  });
+});
+
+describe("#1221 — validateScopedFacts", () => {
+  test("accepts a well-formed fact and normalises host order", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+
+    const { accepted, rejected } = validateScopedFacts([
+      { param: "spm", hosts: ["www.aliexpress.com", "aliexpress.com"] },
+    ]);
+    assert.strictEqual(rejected, 0);
+    assert.deepStrictEqual(accepted, [
+      { param: "spm", hosts: ["aliexpress.com", "www.aliexpress.com"] },
+    ]);
+  });
+
+  test("AFFILIATE_PARAM_GUARD is absolute — a scope does not license an affiliate param", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+
+    // #1212 was an affiliate id applied to the wrong host. A scoped fact naming
+    // one is the same catastrophe with a smaller blast radius, not a different
+    // kind of thing, so this is the one guard scope must NOT relax.
+    const { accepted, rejected } = validateScopedFacts([{ param: "tag", hosts: ["example.com"] }]);
+    assert.deepStrictEqual(accepted, []);
+    assert.strictEqual(rejected, 1);
+  });
+
+  test("REMOTE_PARAM_DENYLIST still applies — those names are functional on any host", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+    const { accepted } = validateScopedFacts([{ param: "q", hosts: ["example.com"] }]);
+    assert.deepStrictEqual(accepted, []);
+  });
+
+  test("a host's OWN preserveParams wins, and the check walks suffixes", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+
+    // domain-rules.json keys youtube.com; runtime matching is by hostname
+    // SUFFIX, so www.youtube.com is governed by the same entry. A direct key
+    // lookup would admit search_query on the subdomain — the protection
+    // bypassed by spelling the host differently.
+    const { accepted } = validateScopedFacts([
+      { param: "search_query", hosts: ["youtube.com", "www.youtube.com", "m.youtube.com"] },
+    ]);
+    assert.deepStrictEqual(accepted, [], "no spelling of the host may strip a param it preserves");
+  });
+
+  test("a fact keeps the hosts that are fine and drops only the ones that preserve it", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+
+    const { accepted } = validateScopedFacts([
+      { param: "search_query", hosts: ["www.youtube.com", "example.com"] },
+    ]);
+    assert.deepStrictEqual(accepted, [{ param: "search_query", hosts: ["example.com"] }]);
+  });
+
+  test("the same name can be a tracker on one host and preserved on another", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+
+    // This IS the feature. searchtext is in aliexpress.com's preserveParams;
+    // scoped to a host that does not preserve it, it is a legitimate fact.
+    // Checking against the global union instead would reinstate the flat model
+    // the scope exists to escape.
+    const { accepted } = validateScopedFacts([
+      { param: "searchtext", hosts: ["example.com"] },
+      { param: "searchtext", hosts: ["aliexpress.com"] },
+    ]);
+    assert.deepStrictEqual(accepted, [{ param: "searchtext", hosts: ["example.com"] }]);
+  });
+
+  test("MIN_PARAM_LEN is NOT applied to a scoped fact", async () => {
+    const { validateScopedFacts, MIN_PARAM_LEN } = await import("../../src/lib/remote-rules.js");
+
+    // The floor exists because anything published today is global, and a
+    // two-character name applied to the whole web is #1212's shape. The same
+    // name applied to the one host it was anchored to is just a correct rule.
+    assert.ok(MIN_PARAM_LEN > 2);
+    const { accepted } = validateScopedFacts([{ param: "si", hosts: ["youtube.com"] }]);
+    assert.deepStrictEqual(accepted, [{ param: "si", hosts: ["youtube.com"] }]);
+  });
+
+  test("malformed entries are dropped individually, not all-or-nothing", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+
+    const { accepted, rejected } = validateScopedFacts([
+      null,
+      { param: "", hosts: ["a.com"] },
+      { param: "ok_param", hosts: [] },
+      { param: "ok_param", hosts: ["not a host"] },
+      { param: "good_one", hosts: ["fine.com"] },
+    ]);
+    assert.deepStrictEqual(accepted, [{ param: "good_one", hosts: ["fine.com"] }]);
+    assert.strictEqual(rejected, 4, "one bad fact must not cost every other host its cleaning");
+  });
+
+  test("a non-array scoped value is simply no facts, not a throw", async () => {
+    const { validateScopedFacts } = await import("../../src/lib/remote-rules.js");
+    for (const v of [undefined, null, "scoped", 42, {}]) {
+      assert.deepStrictEqual(validateScopedFacts(v), { accepted: [], rejected: 0 });
+    }
+  });
+});
+
+describe("#1221 — runRemoteRulesFetch and the scoped section", () => {
+  const subtle = globalThis.crypto?.subtle;
+  const testPubB64 = testPubKeyBase64();
+
+  function fetchBody(body) {
+    const bytes = Buffer.from(body, "utf8");
+    return async () => {
+      let done = false;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: {
+          getReader() {
+            return {
+              read() {
+                if (done) return Promise.resolve({ done: true, value: undefined });
+                done = true;
+                return Promise.resolve({ done: false, value: new Uint8Array(bytes) });
+              },
+              releaseLock() {},
+              cancel() { return Promise.resolve(); },
+            };
+          },
+        },
+      };
+    };
+  }
+
+  async function runWith(payloadPatch) {
+    const { runRemoteRulesFetch, canonicalMessage, canonicalScopedMessage } =
+      await import("../../src/lib/remote-rules.js");
+
+    const version = 7;
+    const published = new Date(Date.now() - 3600_000).toISOString();
+    const params = ["utm_scoped_orch"];
+    const payload = {
+      version,
+      published,
+      params,
+      sig: signMessage(canonicalMessage(version, published, params)),
+      ...payloadPatch({ version, published, canonicalScopedMessage }),
+    };
+
+    const storage = makeStorageFake({
+      remoteParams: [],
+      remoteRulesMeta: { version: 0, fetchedAt: null, paramCount: 0, lastError: null, published: null },
+    });
+    await runRemoteRulesFetch({
+      fetchImpl: fetchBody(JSON.stringify(payload)),
+      subtle,
+      nowMs: Date.now(),
+      storage,
+      dnr: makeDnrFake(),
+      trustedKeys: [testPubB64],
+    });
+    return storage.get({ remoteParams: [], remoteRulesMeta: {} });
+  }
+
+  const FACTS = [{ param: "si", hosts: ["youtube.com"] }];
+
+  test("a correctly signed scoped section is accepted and persisted", async () => {
+    const result = await runWith(({ version, published, canonicalScopedMessage }) => ({
+      scoped: FACTS,
+      scopedSig: signMessage(canonicalScopedMessage(version, published, FACTS)),
+    }));
+
+    assert.deepStrictEqual(result.remoteRulesMeta.scopedFacts, FACTS);
+    assert.ok(result.remoteParams.includes("utm_scoped_orch"), "the base payload still applies");
+  });
+
+  test("an UNSIGNED scoped section is ignored, and the base payload still lands", async () => {
+    // The asymmetry that matters: whoever can tamper with the payload in
+    // transit can SUPPRESS scoped facts (costs cleaning) but never INJECT one.
+    // Failing the whole payload instead would hand that same attacker an off
+    // switch for the global rules too.
+    const result = await runWith(() => ({ scoped: FACTS }));
+
+    assert.deepStrictEqual(result.remoteRulesMeta.scopedFacts, []);
+    assert.ok(result.remoteParams.includes("utm_scoped_orch"), "the base payload must survive");
+  });
+
+  test("a scoped section signed for a DIFFERENT version is rejected (splicing)", async () => {
+    const result = await runWith(({ published, canonicalScopedMessage }) => ({
+      scoped: FACTS,
+      // Signed as if it belonged to version 999 — a valid block lifted off
+      // another payload.
+      scopedSig: signMessage(canonicalScopedMessage(999, published, FACTS)),
+    }));
+
+    assert.deepStrictEqual(result.remoteRulesMeta.scopedFacts, []);
+    assert.ok(result.remoteParams.includes("utm_scoped_orch"));
+  });
+
+  test("a fact ADDED after signing is rejected along with the section", async () => {
+    const result = await runWith(({ version, published, canonicalScopedMessage }) => ({
+      scoped: [...FACTS, { param: "injected", hosts: ["victim.com"] }],
+      scopedSig: signMessage(canonicalScopedMessage(version, published, FACTS)),
+    }));
+
+    assert.deepStrictEqual(result.remoteRulesMeta.scopedFacts, []);
+  });
+
+  test("a payload with no scoped section behaves exactly as before", async () => {
+    const result = await runWith(() => ({}));
+    assert.deepStrictEqual(result.remoteRulesMeta.scopedFacts, []);
+    assert.ok(result.remoteParams.includes("utm_scoped_orch"));
+  });
+});

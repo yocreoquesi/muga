@@ -22,7 +22,7 @@ import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
 // worker, where the domain rules themselves are only available through an async
 // fetch that can fail. A guard that went missing precisely when that fetch failed
 // would fail in the wrong direction.
-import { PRESERVED_PARAMS as _PRESERVED_PARAMS } from "../rules/preserve-params.data.js";
+import { PRESERVED_PARAMS as _PRESERVED_PARAMS, PRESERVED_BY_HOST as _PRESERVED_BY_HOST } from "../rules/preserve-params.data.js";
 import { REDIRECT_NETWORK_PATTERNS } from "./redirect-networks.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -327,6 +327,145 @@ async function importTrustedKeys(base64Keys, subtle) {
  */
 export function canonicalMessage(version, published, params) {
   return `${version}|${published}|${params.join(",")}`;
+}
+
+/**
+ * Canonical message for the SCOPED section of a payload (#1221).
+ *
+ * Format: `${version}|${published}|param@host+host,param@host`
+ *
+ * Three properties this shape has to have, and why:
+ *
+ * 1. It BINDS to `version` and `published`. Signing the scoped facts on their
+ *    own would let a validly-signed scoped block be lifted off one payload and
+ *    spliced onto another — the same replay the freshness window and the
+ *    version-monotonic check already close on the base payload. Binding closes
+ *    it here for the same reason.
+ *
+ * 2. It is UNAMBIGUOUS. `PARAM_FORMAT_RE` allows only [a-zA-Z0-9_.-] and a
+ *    hostname adds nothing beyond [a-z0-9.-], so `@`, `+`, `,` and `|` can
+ *    never occur inside a param or a host. No separator can be smuggled in to
+ *    make two different fact sets serialise identically.
+ *
+ * 3. It is DETERMINISTIC. Hosts are sorted within a fact and the facts are
+ *    sorted as rendered strings, so the signer and the verifier cannot disagree
+ *    because a producer happened to emit a different order.
+ *
+ * This is a SEPARATE signature, not an extension of `canonicalMessage`. Adding
+ * the scoped facts to the existing canonical string was measured: a payload
+ * signed that way fails verification on every currently deployed version, which
+ * would stop them receiving even the global rules they get today.
+ *
+ * @param {number} version
+ * @param {string} published
+ * @param {Array<{param: string, hosts: string[]}>} scoped
+ * @returns {string}
+ */
+export function canonicalScopedMessage(version, published, scoped) {
+  const rendered = scoped
+    .map((f) => `${f.param}@${[...f.hosts].sort().join("+")}`)
+    .sort();
+  return `${version}|${published}|${rendered.join(",")}`;
+}
+
+/** Hostname shape accepted in a scoped fact. Deliberately narrow. */
+const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+/** Upper bound on scoped facts in one payload, mirroring MAX_PARAM_COUNT's intent. */
+export const MAX_SCOPED_FACTS = 2000;
+
+/**
+ * Does `host`, or any domain it sits under, declare `param` in preserveParams?
+ *
+ * Suffix-walked rather than looked up directly, because `domain-rules.json` is
+ * matched by hostname SUFFIX at runtime (`cleaner.js`), so an entry for
+ * `youtube.com` governs `www.youtube.com` too. A direct key lookup misses that
+ * and would admit `search_query` scoped to `www.youtube.com` — the protection
+ * bypassed by spelling the host differently, which is #1212's shape wearing a
+ * subdomain.
+ *
+ * @param {string} host  Lowercased hostname.
+ * @param {string} param Lowercased param name.
+ * @returns {boolean}
+ */
+function _hostPreserves(host, param) {
+  let candidate = host;
+  for (;;) {
+    const own = _PRESERVED_BY_HOST[candidate];
+    if (own && own.includes(param)) return true;
+    const dot = candidate.indexOf(".");
+    if (dot === -1) return false;
+    candidate = candidate.slice(dot + 1);
+    if (!candidate.includes(".")) return false;
+  }
+}
+
+/**
+ * Validates the scoped section of a payload and returns the facts that survive
+ * (#1221).
+ *
+ * Per-fact, not all-or-nothing: unlike `validateParams`, a bad fact is dropped
+ * and the rest are kept. The reasoning is the same as `filterAgainstPreserved`'s
+ * — this set is large, upstream-derived and host-specific, so one malformed
+ * entry must not cost every other host its cleaning.
+ *
+ * Guards, in order:
+ *
+ *   - shape: `{param: string, hosts: string[]}`, both non-empty
+ *   - param format and MAX_PARAM_LEN
+ *   - AFFILIATE_PARAM_GUARD — ABSOLUTE. A name that is an affiliate param
+ *     anywhere is stripped nowhere, scoped or not. This is the one guard scope
+ *     does NOT relax: #1212 was an affiliate id applied to the wrong host, and
+ *     a scoped fact naming an affiliate param is the same catastrophe with a
+ *     smaller blast radius, not a different kind of thing.
+ *   - REMOTE_PARAM_DENYLIST — these are functional names (q, page, id...) that
+ *     are load-bearing on any host, so a scope does not make them safe either.
+ *   - the host's OWN preserveParams. Checked per-host on purpose: the union
+ *     would reject `searchtext` scoped to a host that does not preserve it,
+ *     which is exactly the expressiveness a scoped payload exists to provide.
+ *
+ * `MIN_PARAM_LEN` is deliberately NOT applied. That floor exists because
+ * anything published today is global, and a two-character name applied to the
+ * whole web is the #1212 shape; the same name applied to the one host it was
+ * anchored to is just a correct rule. The floor stays strict on the global path
+ * where its reason still holds.
+ *
+ * @param {unknown} scoped Raw `scoped` value from the payload.
+ * @returns {{accepted: Array<{param: string, hosts: string[]}>, rejected: number}}
+ */
+export function validateScopedFacts(scoped) {
+  if (!Array.isArray(scoped)) return { accepted: [], rejected: 0 };
+
+  const accepted = [];
+  let rejected = 0;
+
+  for (const fact of scoped.slice(0, MAX_SCOPED_FACTS)) {
+    if (fact === null || typeof fact !== "object" || Array.isArray(fact)) { rejected++; continue; }
+    const param = fact.param;
+    if (typeof param !== "string" || param.length < 1 || param.length > MAX_PARAM_LEN) { rejected++; continue; }
+    if (!PARAM_FORMAT_RE.test(param)) { rejected++; continue; }
+
+    const lower = param.toLowerCase();
+    if (AFFILIATE_PARAM_GUARD.has(lower) || REMOTE_PARAM_DENYLIST.has(lower)) { rejected++; continue; }
+
+    if (!Array.isArray(fact.hosts) || fact.hosts.length === 0) { rejected++; continue; }
+    const hosts = [];
+    for (const h of fact.hosts) {
+      if (typeof h !== "string") continue;
+      const host = h.toLowerCase();
+      if (!SCOPED_HOST_RE.test(host)) continue;
+      // The host's own preserve list wins over an upstream claim about it.
+      if (_hostPreserves(host, lower)) continue;
+      hosts.push(host);
+    }
+    // Every host filtered out means the fact has nowhere left to apply.
+    if (hosts.length === 0) { rejected++; continue; }
+
+    accepted.push({ param, hosts: [...new Set(hosts)].sort() });
+  }
+
+  if (scoped.length > MAX_SCOPED_FACTS) rejected += scoped.length - MAX_SCOPED_FACTS;
+  return { accepted, rejected };
 }
 
 /**
@@ -710,7 +849,7 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  *   - Does NOT touch remoteRulesEnabled (sync) or customParams.
  *
  * @param {string[]} accepted - Validated and deduped remote params.
- * @param {{ version: number, fetchedAt: string|null, paramCount: number, lastError: null, published: string|null }} meta
+ * @param {{ version: number, fetchedAt: string|null, paramCount: number, lastError: null, published: string|null, scopedFacts?: Array<{param: string, hosts: string[]}> }} meta
  * @param {{ storage: object, dnr: object }} deps - Injected storage and DNR facades.
  * @returns {Promise<void>}
  */
@@ -982,6 +1121,48 @@ export async function runRemoteRulesFetch(deps = {}) {
       );
     }
 
+    // 6c. Scoped section (#1221 slice 1). Verified and validated here; NOTHING
+    // consumes it yet — no DNR rule is built from it in this slice. It is
+    // persisted so the slice that does can read facts that were already
+    // signature-checked rather than re-deriving trust later.
+    //
+    // A missing, malformed or badly-signed scoped section is NOT a payload
+    // error: it degrades to "no scoped facts" and the base payload is accepted
+    // exactly as before. That asymmetry is deliberate. Whoever can tamper with
+    // the payload in transit can therefore SUPPRESS scoped facts, which costs
+    // cleaning, but can never INJECT one, which would strip a param on a host
+    // nobody vouched for. Failing the whole payload instead would hand that
+    // same attacker an off switch for the global rules as well.
+    let scopedFacts = [];
+    if (Array.isArray(obj.scoped) && obj.scoped.length > 0) {
+      // Not load-bearing for the OUTCOME — `verifySignature` fails closed on a
+      // missing signature, and removing this branch was mutation-tested to
+      // change nothing. It is here so the log distinguishes "published without
+      // a signature" (a producer bug) from "signature did not verify" (tampering
+      // or a key rotation), and so the security of this path does not rest on
+      // how a helper happens to treat `undefined`.
+      if (typeof obj.scopedSig !== "string" || obj.scopedSig.length === 0) {
+        console.warn("[MUGA] remote-rules: scoped section present but unsigned — ignored (#1221)");
+      } else {
+        const scopedCanonical = canonicalScopedMessage(obj.version, obj.published, obj.scoped);
+        const scopedVerified = await verifySignature(
+          scopedCanonical, obj.scopedSig, trustedKeys, subtle
+        );
+        if (!scopedVerified) {
+          console.warn("[MUGA] remote-rules: scoped signature did not verify — ignored (#1221)");
+        } else {
+          const scopedResult = validateScopedFacts(obj.scoped);
+          scopedFacts = scopedResult.accepted;
+          if (scopedResult.rejected > 0) {
+            console.warn(
+              "[MUGA] remote-rules: dropped " + scopedResult.rejected +
+              " scoped fact(s) that failed validation (#1221)"
+            );
+          }
+        }
+      }
+    }
+
     // 7. Merge into cache
     const nowIso = new Date(nowMs).toISOString();
     await mergeIntoCache(accepted, {
@@ -990,6 +1171,7 @@ export async function runRemoteRulesFetch(deps = {}) {
       paramCount: accepted.length,
       lastError: null,
       published: obj.published,
+      scopedFacts, // #1221 slice 1 — persisted, not yet applied
     }, { storage, dnr });
 
   } finally {
