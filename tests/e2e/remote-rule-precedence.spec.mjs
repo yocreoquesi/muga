@@ -388,20 +388,53 @@ test.describe("DNR precedence: remote rule 1001 vs the static strip rules (#1221
 });
 
 test.describe("A remote param that collides with a host's preserveParams (#1221)", () => {
-  // The payload publishes a name youtube.com depends on. Nothing in the
-  // pipeline stops this: it is not a built-in, not denylisted, not an affiliate
-  // param, and long enough for MIN_PARAM_LEN.
+  // The payload publishes a name youtube.com depends on. When this spec was
+  // written nothing stopped that: the name is not a built-in, not denylisted,
+  // not an affiliate param, and long enough for MIN_PARAM_LEN — so it reached
+  // rule 1001, which has no host scope, and came off a host whose domain-rules
+  // entry exists to keep it. That was the measurement this file recorded.
+  //
+  // It is now guarded. `filterAgainstPreserved` (src/lib/remote-rules.js) drops
+  // any param some host declares in `preserveParams` before the dynamic rule is
+  // built, so the collision can no longer be armed at all. The spec is kept and
+  // inverted rather than deleted: the defect was real, and this is the only
+  // place it is proved absent in a real browser rather than in a fixture.
   test.use({ remotePayloadParams: [TAILORED_PRESERVED_PARAM] });
 
   test.beforeEach(async ({ context, optionsPage }) => {
     await injectTestKey(context, KEYPAIR.publicKeyB64Raw);
     await grantHostPermission(optionsPage);
-    await armRemoteRule(optionsPage, TAILORED_PRESERVED_PARAM);
+    // Deliberately NOT armRemoteRule(): arming asserts the param REACHES rule
+    // 1001, which is exactly what must no longer happen. Enable the channel and
+    // let the guard act.
+    await enableRemoteRules(optionsPage);
   });
 
-  test("overrides the host's protection, because rule 1001 has no host scope", async ({
-    context,
+  test("cannot reach rule 1001 at all — the guard drops it before the rule is built", async ({
+    optionsPage,
   }) => {
+    // Give the fetch+validate+filter path the same budget arming used to get,
+    // so a slow pipeline reads as a slow pipeline and not as a passing guard.
+    await expect
+      .poll(
+        async () => {
+          const rules = await getDynamicRules(optionsPage);
+          const remoteRule = rules.find((r) => r.id === 1001);
+          return JSON.stringify(
+            remoteRule?.action?.redirect?.transform?.queryTransform?.removeParams ?? null
+          );
+        },
+        {
+          timeout: 15_000,
+          message:
+            `rule 1001 came up carrying "${TAILORED_PRESERVED_PARAM}" — a name ` +
+            "youtube.com declares in preserveParams reached the global strip rule",
+        }
+      )
+      .not.toContain(TAILORED_PRESERVED_PARAM);
+  });
+
+  test("so the host keeps the param it declared it needs", async ({ context }) => {
     const page = await context.newPage();
     const result = await probe(
       page,
@@ -410,19 +443,19 @@ test.describe("A remote param that collides with a host's preserveParams (#1221)
     );
     report("preserve-collision", result, [BUILTIN_PARAM, TAILORED_PRESERVED_PARAM]);
 
-    // The finding, pinned as a regression test rather than left as prose:
-    // youtube.com lists this name in preserveParams, so rule 316 keeps it, and
-    // the global rule 1 never sees this host. The name comes off anyway, and
-    // the only rule that could have done it is 1001.
-    //
-    // The day rule 1001 gains a host scope — or an excludedRequestDomains list
-    // mirroring rule 1's (option B in #1221) — this assertion flips, and it
-    // SHOULD: flip it to .toBe(true) and the spec keeps proving the invariant
-    // from the other side.
+    // The outcome that matters, read on the wire rather than inferred from the
+    // rule table: the search query survives to the network.
     expect(
-      result.networkParams.has(TAILORED_PRESERVED_PARAM),
-      "the remote rule no longer overrides preserveParams — if this is the " +
-        "intended fix, flip this assertion to true (see #1221)"
+      result.networkParams.get(TAILORED_PRESERVED_PARAM),
+      "a name youtube.com lists in preserveParams was stripped anyway (#1221)"
+    ).toBe("muga");
+
+    // And the guard did not cost the host its normal cleaning: the built-in
+    // still comes off through rule 316, so this is a scoped protection rather
+    // than the channel going inert on this host.
+    expect(
+      result.networkParams.has(BUILTIN_PARAM),
+      "the tailored rule stopped stripping the built-in — the guard was too broad"
     ).toBe(false);
 
     await page.close();
