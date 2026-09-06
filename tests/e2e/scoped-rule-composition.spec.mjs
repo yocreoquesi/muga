@@ -1,8 +1,8 @@
 /**
- * E2E: does a THIN host-scoped rule compose with the global strip rule?
+ * E2E: what does a THIN host-scoped rule need in order to compose with the
+ * global strip rule?
  *
- * This settles the question #1221's budget comment left open and explicitly
- * flagged as unverified:
+ * Opens from the question #1221's budget comment flagged as unverified:
  *
  *   > Option C's "merge into the complete-per-host rule at runtime" framing may
  *   > be over-built. Rules compose across passes, so a SEPARATE scoped rule
@@ -20,29 +20,60 @@
  * Importing AdGuard's host-anchored coverage (#1229) would add ~630 new host
  * profiles. Modelled as complete-per-host rules, each copying all 447 global
  * params, that ruleset is ~3.6 MB against 97 KB today. Modelled as THIN rules
- * carrying only each host's extra params, it is ~149 KB — 25x smaller.
+ * carrying only each host's extra params, it is ~149 KB — 25x smaller. The thin
+ * shape is only available if a scoped rule ADDS to the global rule instead of
+ * replacing it.
  *
- * The thin shape is only available if a scoped rule ADDS to the global rule
- * instead of replacing it. #1222 measured that a static rule and the dynamic
- * remote rule both apply to one navigation, because the first winner redirects
- * and Chrome re-matches the redirected request. What was never measured is the
- * case that matters here: a rule with `requestDomains` competing against rule 1
- * on a host rule 1 is NOT excluded from, with both rules carrying real work.
+ * The finding: composition is real, but PRIORITY IS LOAD-BEARING
+ * -------------------------------------------------------------
+ * #1222 measured that a static rule and the dynamic remote rule both apply to
+ * one navigation, because the first winner redirects and Chrome re-matches the
+ * redirected request. Both carry `priority: 1`, and that reads as if equal
+ * priority were enough. It is not.
+ *
+ * At EQUAL priority the outcome is not deterministic. Measured here with the
+ * thin rule at `priority: 1`, against rule 1 on an untailored host:
+ *
+ *   local, 12 repeats   11 composed, 1 did NOT  (the scoped param survived)
+ *   CI                  failed on the first run and on its retry
+ *
+ * The mechanism fits #1221's own note — composition happens only because the
+ * first winner's transform actually changes the URL, producing a redirect and a
+ * second matching pass. When rule 1 wins pass 1 it removes the built-in; on
+ * pass 2 rule 1 still matches but now has nothing to remove, so there is no
+ * redirect, no pass 3, and the thin rule never fires. Which rule wins pass 1 is
+ * the whole outcome, and at equal priority it is not something to rely on.
+ *
+ * With the scoped rule at a HIGHER priority it wins pass 1 by construction,
+ * redirects, and the global rule takes pass 2:
+ *
+ *   priority 2, 12 repeats x 2 tests   24/24 composed, 0 failures
+ *
+ * So a thin scoped profile is viable, but only if it outranks the global rule.
+ * That is a design constraint for #1229, not an implementation detail: a
+ * scoped-rule scheme that reuses `priority: 1` would work almost always and
+ * silently drop facts the rest of the time — the worst failure mode available,
+ * because it looks correct in testing.
+ *
+ * Static rules are a separate answer, measured outside this spec: a synthetic
+ * STATIC thin rule for a host not in rule 1's `excludedRequestDomains` never
+ * fired at all. That is #1221's "correction 1" holding for thin rules too. It
+ * is not pinned here because asserting it would mean shipping a synthetic rule
+ * in the bundle to prove it does nothing.
  *
  * Method
  * ------
- * A thin dynamic rule (id 9001) scoped to the probe host, removing ONE param
- * that no static rule knows. Then one navigation carrying three witnesses:
+ * A thin dynamic rule (id 9001) scoped to the probe host, removing ONE param no
+ * static rule knows. Then one navigation carrying three witnesses:
  *
  *   mugascoped_only=1   only the thin scoped rule can remove it
  *   utm_source=strip    built-in — only a static rule can remove it
  *   v=keep              functional — must survive either way
  *
  * Read on the wire, not from `page.url()`: MUGA also cleans in-page, and this
- * has to isolate DNR. Dynamic rules stand in for static ones deliberately —
- * the question is Chrome's composition behaviour for a host-scoped redirect
- * rule against the global one, and a dynamic rule answers it without shipping
- * 630 profiles to find out.
+ * has to isolate DNR. Dynamic rules stand in for static ones deliberately — the
+ * question is Chrome's composition behaviour for a host-scoped redirect rule,
+ * and a dynamic rule answers it without shipping 630 profiles to find out.
  *
  * #1229, #1221
  */
@@ -74,7 +105,11 @@ async function installThinScopedRule(page, host) {
             addRules: [
               {
                 id,
-                priority: 1,
+                // Load-bearing, not cosmetic: at priority 1 this rule loses pass 1
+                // to the global rule often enough to fail ~1 run in 12 (and it
+                // failed on CI). See the docblock — a scoped rule has to outrank
+                // the global one to compose deterministically.
+                priority: 2,
                 action: {
                   type: "redirect",
                   redirect: { transform: { queryTransform: { removeParams: [param] } } },
@@ -167,10 +202,11 @@ test.describe("A thin host-scoped rule vs the global strip rule (#1229)", () => 
       "the thin host-scoped rule did not fire at all"
     ).toBe(false);
 
-    // ...and the global rule STILL fired. This is the whole question: if the
-    // scoped rule shadowed the global one, a built-in would survive here, and
-    // every scoped profile would have to carry the full global list to be safe
-    // — the 3.6 MB shape. If it does not, ~149 KB of thin rules is available.
+    // ...and the global rule STILL fired, on the second matching pass. This is
+    // the whole question: if the scoped rule replaced the global one, a built-in
+    // would survive here, and every scoped profile would have to carry the full
+    // global list to be safe — the 3.6 MB shape. It does not, so ~149 KB of thin
+    // rules is available, PROVIDED the scoped rule outranks the global one.
     expect(
       result.networkParams.has(BUILTIN_PARAM),
       "the scoped rule SHADOWED the global rule — thin scoped profiles are unsafe, " +
@@ -188,7 +224,10 @@ test.describe("A thin host-scoped rule vs the global strip rule (#1229)", () => 
   }) => {
     // Rule 1 is excluded here, so the static work is rule 316's. If composition
     // depended on the global rule specifically rather than on redirect chaining,
-    // this is where it would show.
+    // this is where it would show. This case did not reproduce the equal-priority
+    // flake in 12 repeats, which is not evidence that it cannot — the ordering
+    // that decides it is the same one. It runs at the same higher priority for
+    // that reason rather than because a difference was measured.
     await installThinScopedRule(optionsPage, TAILORED_HOST);
 
     const page = await context.newPage();
