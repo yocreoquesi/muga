@@ -427,3 +427,120 @@ describe("F9 — output length well under 1 MB with large fixture", () => {
     assert.ok(/\+\d+\s+more/i.test(md), "large fixture must use '+N more' truncation");
   });
 });
+
+// ── #1239: scoped facts awaiting manual landing ──────────────────────────────
+//
+// `scopedAutoMerge[]` is computed by orchestrate-cli.mjs and written to
+// quarantine-report.json — a gitignored, never-uploaded file. The weekly PR
+// body (built from this formatter's summary.md) is the ONLY channel that
+// reaches a human, so if this section stops rendering, gate-admitted
+// (param, host) facts become invisible AND unlandable: the run's report is
+// destroyed with the runner, and land-scoped.mjs has no other input.
+//
+// These tests exist so that silence is distinguishable from "nothing to
+// report" — the exact distinction whose absence caused #1239.
+
+/** A gate-admitted scoped candidate, in the shape orchestrate.mjs produces. */
+function makeScopedCandidate(param, scope, signals = ["adguard-tp"]) {
+  return { param, scope, signals, firstSeenAt: "2025-01-01T00:00:00.000Z" };
+}
+
+describe("#1239 — scopedAutoMerge is surfaced in the rendered report", () => {
+  test("a scoped fact's param, scope and count all appear in the output", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const report = makeReport({
+      scopedAutoMerge: [makeScopedCandidate("si", "youtube.com")],
+      scopedAutoMergeCount: 1,
+    });
+    const md = formatQuarantineReport(report);
+
+    assert.ok(/scoped/i.test(md), "output must carry a scoped-facts section");
+    assert.ok(md.includes("si"), "output must name the admitted param");
+    assert.ok(md.includes("youtube.com"), "output must name the host scope");
+    assert.ok(/\*\*Gate-admitted[^*]*\*\*:\s*1/.test(md), "output must state the admitted count");
+  });
+
+  test("the rendered block round-trips: it parses back into land-scoped.mjs's exact input shape", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    // The strongest anti-regression pin: rendering a count alone would not
+    // close #1239, because quarantine-report.json dies with the runner and
+    // land-scoped.mjs takes a report FILE. The summary must therefore carry
+    // the candidates losslessly enough that a maintainer can reconstruct the
+    // report from the PR body alone.
+    const candidates = [
+      makeScopedCandidate("si", "youtube.com"),
+      makeScopedCandidate("spm", "aliexpress.com", ["adguard-tp", "clearurls"]),
+    ];
+    const report = makeReport({ scopedAutoMerge: candidates, scopedAutoMergeCount: 2 });
+    const md = formatQuarantineReport(report);
+
+    const fenced = md.match(/```json\n([\s\S]*?)\n```/);
+    assert.ok(fenced, "output must carry a fenced json block with the candidates");
+
+    const parsed = JSON.parse(fenced[1]);
+    assert.deepStrictEqual(
+      parsed.scopedAutoMerge,
+      candidates,
+      "the fenced block must round-trip into exactly what land-scoped.mjs --report reads"
+    );
+  });
+
+  test("the section says explicitly that these facts are NOT in the PR and need a manual landing", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const report = makeReport({
+      scopedAutoMerge: [makeScopedCandidate("si", "youtube.com")],
+      scopedAutoMergeCount: 1,
+    });
+    const md = formatQuarantineReport(report);
+
+    assert.ok(/land-scoped\.mjs/.test(md), "output must name the tool that lands these facts");
+    assert.ok(
+      /not (included |part of )?in this (PR|pull request)/i.test(md),
+      "output must state the facts are not in this PR"
+    );
+  });
+
+  test("empty scopedAutoMerge renders an explicit 'nothing to land' line, not silence", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const report = makeReport({ scopedAutoMerge: [], scopedAutoMergeCount: 0 });
+    const md = formatQuarantineReport(report);
+
+    assert.ok(/scoped/i.test(md), "the section must render even when empty");
+    assert.ok(/nothing to land/i.test(md), "an empty run must say so explicitly");
+    assert.ok(!/```json/.test(md), "no fenced landing block when there is nothing to land");
+  });
+
+  test("a report with no scopedAutoMerge key at all does not throw (pre-Slice-2 reports)", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const report = makeReport(); // no scopedAutoMerge field whatsoever
+    let md;
+    assert.doesNotThrow(() => {
+      md = formatQuarantineReport(report);
+    }, "must tolerate a report shape that predates Slice 2");
+    assert.ok(/nothing to land/i.test(md));
+  });
+
+  test("truncation is loud: over topN, the block is marked partial and names how many are missing", async () => {
+    const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+    const candidates = Array.from({ length: 25 }, (_, i) =>
+      makeScopedCandidate(`p${i}`, `host${i}.com`)
+    );
+    const report = makeReport({ scopedAutoMerge: candidates, scopedAutoMergeCount: 25 });
+    const md = formatQuarantineReport(report, { topN: 20 });
+
+    const fenced = md.match(/```json\n([\s\S]*?)\n```/);
+    assert.ok(fenced, "a truncated run must still render a block");
+    const parsed = JSON.parse(fenced[1]);
+    assert.strictEqual(parsed.scopedAutoMerge.length, 20, "block is capped at topN");
+    assert.ok(
+      /PARTIAL/.test(md) && /5/.test(md),
+      "a capped block must be marked PARTIAL and name the 5 omitted candidates"
+    );
+  });
+});

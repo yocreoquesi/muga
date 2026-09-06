@@ -12,6 +12,8 @@
  *   2. Quarantine    — total count + gate breakdown + top-N params ("+N more")
  *   3. Promote skips — param + reason list ("+N more" when over topN)
  *   4. Auto-merge    — autoMergeCount summary line
+ *   5. Scoped facts  — scopedAutoMerge candidates awaiting a MANUAL landing
+ *                     (#1239: this summary is their only channel to a human)
  *
  * Size bound: topN cap (default 20) keeps output well under GitHub's ~1 MB
  * step-summary limit even with thousands of quarantine entries.
@@ -178,6 +180,68 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
   lines.push("### Auto-Merge");
   lines.push("");
   lines.push(`**Params promoted this run**: ${reportObj.autoMergeCount ?? 0}`);
+  lines.push("");
+
+  // -- Section 5: Scoped facts awaiting a manual landing (#1239) -------------
+  // `scopedAutoMerge[]` is the ONLY output of a run that a human is supposed
+  // to review before it can reach the store (ADR-0008 Path A), and this
+  // summary is the ONLY channel that reaches one: the report file it comes
+  // from lives under a gitignored directory and is never uploaded, so it dies
+  // with the runner. Rendering a bare count would leave the facts visible but
+  // unlandable -- land-scoped.mjs takes a report FILE -- so the candidates are
+  // also emitted verbatim, in exactly the shape that tool reads, for a
+  // maintainer to copy back out of the PR body.
+  const scopedAutoMerge = Array.isArray(reportObj.scopedAutoMerge) ? reportObj.scopedAutoMerge : [];
+  const scopedCount = reportObj.scopedAutoMergeCount ?? scopedAutoMerge.length;
+
+  lines.push("### Scoped Facts Awaiting Manual Landing");
+  lines.push("");
+  lines.push(`**Gate-admitted (param, host) facts this run**: ${scopedCount}`);
+  lines.push("");
+
+  if (scopedAutoMerge.length === 0) {
+    // Said out loud on purpose: an empty run and a section that stopped
+    // rendering must never look the same from the outside (#1239).
+    lines.push("_No scoped facts cleared the gates this run - nothing to land._");
+  } else {
+    lines.push(
+      "> **ACTION REQUIRED**: these facts are **not included in this PR**. " +
+      "A host-scoped fact never lands automatically (ADR-0008 Path A) - it reaches " +
+      "the store only when a maintainer reviews it and runs " +
+      "`node tools/rule-ingestion/land-scoped.mjs --report <file>`."
+    );
+    lines.push("");
+
+    const scopedToShow = scopedAutoMerge.slice(0, topN);
+    const scopedRemaining = scopedAutoMerge.length - scopedToShow.length;
+
+    lines.push("| Param | Scope | Signals |");
+    lines.push("|-------|-------|---------|");
+    for (const c of scopedToShow) {
+      const signals = Array.isArray(c?.signals) ? c.signals.map((s) => escMd(String(s))).join(", ") : "";
+      lines.push(`| \`${escMd(c?.param ?? "?")}\` | \`${escMd(c?.scope ?? "?")}\` | ${signals} |`);
+    }
+    lines.push("");
+
+    if (scopedRemaining > 0) {
+      lines.push(
+        `> **PARTIAL**: ${scopedRemaining} further candidate(s) were admitted and are ` +
+        "NOT in the block below. Re-run ingestion locally to obtain the complete " +
+        "`quarantine-report.json` before landing."
+      );
+      lines.push("");
+    }
+
+    // Copy-pasteable: save the block as report.json, then
+    //   node tools/rule-ingestion/land-scoped.mjs --report report.json
+    lines.push("<details><summary>Landing input (copy to a file, pass to <code>--report</code>)</summary>");
+    lines.push("");
+    lines.push("```json");
+    lines.push(JSON.stringify({ scopedAutoMerge: scopedToShow }, null, 2));
+    lines.push("```");
+    lines.push("");
+    lines.push("</details>");
+  }
   lines.push("");
 
   return lines.join("\n");

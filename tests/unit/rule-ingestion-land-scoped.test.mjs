@@ -101,3 +101,53 @@ test("refusal never calls writeAllImpl — fail closed, not partially applied", 
   );
   assert.deepEqual(written, []);
 });
+
+// -- #1239: the weekly summary is a REACHABLE input for this tool --------------
+//
+// land-scoped.mjs reads a report FILE, but on the weekly run that file is
+// gitignored, never uploaded, and destroyed with the runner. The rendered
+// summary (which reaches a human in the PR body) is therefore the only
+// surviving copy of the candidates. This test closes the loop end to end:
+// whatever formatQuarantineReport() renders must parse straight back into an
+// input this tool accepts. If the two shapes ever drift, #1239 silently
+// reopens -- the facts stay visible but stop being landable.
+
+test("#1239: the rendered weekly summary parses back into a report this tool lands", async () => {
+  const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
+
+  const candidate = {
+    param: "si",
+    scope: "youtube.com",
+    signals: ["adguard-tp", "clearurls"],
+    firstSeenAt: "2025-01-01T00:00:00.000Z",
+  };
+
+  const md = formatQuarantineReport({
+    generatedAt: "2025-01-15T12:00:00.000Z",
+    autoMergeCount: 0,
+    quarantineCount: 0,
+    ingestStats: null,
+    quarantine: [],
+    scopedAutoMerge: [candidate],
+    scopedAutoMergeCount: 1,
+  });
+
+  const fenced = md.match(/```json\n([\s\S]*?)\n```/);
+  assert.ok(fenced, "the summary must carry a fenced landing block");
+
+  const { result, written } = harness({ report: JSON.parse(fenced[1]) });
+
+  assert.equal(result.written, true, "the surfaced block must be landable as-is");
+  assert.equal(result.landed, 1);
+  assert.equal(written.length, 1);
+  const [nextStore] = written;
+  assert.equal(nextStore.scopedFacts.length, 1);
+  assert.equal(nextStore.scopedFacts[0].scope, "youtube.com", "the host scope must survive the round trip");
+  assert.equal(nextStore.scopedFacts[0].param, "si");
+  assert.equal(nextStore.scopedFacts[0].action, ACTIONS.STRIP);
+  assert.deepEqual(
+    nextStore.scopedFacts[0].provenance.signals,
+    ["adguard-tp", "clearurls"],
+    "the corroborating signals must survive the round trip, not just the pair"
+  );
+});
