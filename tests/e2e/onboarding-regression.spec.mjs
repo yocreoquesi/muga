@@ -19,7 +19,7 @@
  *      the user has accepted the ToS. Enabled after acceptance.
  */
 
-import { test, expect } from "./fixtures.mjs";
+import { test, expect, waitForInstallSettled } from "./fixtures.mjs";
 import { TERMS_VERSION } from "../../src/lib/consent-storage.js";
 import {
   installTestModeSentinel,
@@ -35,6 +35,18 @@ async function clearAll(context, extensionId) {
     await page.goto(`${extOrigin}/popup/popup.html`);
     opened = true;
   }
+  // #1231: wait for the install-time implicit-accept write to land BEFORE
+  // clearing, using this SAME page — no page beyond the one this function
+  // already opens-if-needed/closes-if-opened. An earlier version of this
+  // fix waited from a page the caller opened separately and left open for
+  // the rest of the test; that changed how many extension pages exist at
+  // any given moment relative to main, which was enough to intermittently
+  // break the unrelated `context.waitForEvent("page")` race in
+  // popup.spec.mjs's "settings link opens options page" test, elsewhere in
+  // the same serial suite. Folding the wait into the page this function was
+  // going to open (and close) anyway keeps the page-lifecycle shape
+  // identical to main.
+  await waitForInstallSettled(page);
   await page.evaluate(() =>
     Promise.all([
       new Promise(r => chrome.storage.sync.clear(r)),
@@ -95,6 +107,16 @@ async function readGlobalBadge(context, extensionId) {
 
 test.describe("Onboarding regression: Firefox close + consent gate", () => {
   test.beforeEach(async ({ context, extensionId }) => {
+    // waitForInstallSettled() runs inside clearAll (above), on the same
+    // page that function already manages, BEFORE the clear itself. Must
+    // happen before the clear (#1231): every launched context is a fresh
+    // install, so the service worker's onInstalled handler fires here too
+    // and asynchronously writes mugaConsent (recordImplicitAcceptOnInstall,
+    // service-worker.js) on a schedule this test does not control. If that
+    // write lands after the clear, onboardingDone flips true underneath a
+    // test that expects it false (the badge/DNR-gating tests below), or the
+    // "Settings does NOT bounce back to onboarding" test observes state it
+    // never set.
     await clearAll(context, extensionId);
     // The badge + DNR introspection helpers go through __TEST__
     // handlers, which are gated on chrome.storage.local["__muga_test_mode"].

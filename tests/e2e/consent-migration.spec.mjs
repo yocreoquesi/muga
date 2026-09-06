@@ -27,9 +27,21 @@
  * one report; tests/unit/sync-migration.test.mjs pins that. If a report
  * assertion here fails again, check whether the worker completed a migration
  * on its own before the explicit call rather than alongside it.
+ *
+ * Flake hazard #2 (#1231): every launched context is a fresh install, so
+ * `recordImplicitAcceptOnInstall()` (service-worker.js) fires on EVERY test
+ * and writes `mugaConsent` to chrome.storage.local asynchronously, outside
+ * this file's control. `clearAllStorage()` in beforeEach does not cancel a
+ * write already in flight — if it lands after the clear, the explicit
+ * migration below sees a local record that was never seeded by this test
+ * (`copiedToLocal: false` when `true` was expected, or a stray
+ * `consentVersion: "1.5"` — that is TERMS_VERSION, not a seeded value).
+ * `waitForInstallSettled()` (fixtures.mjs) is the barrier: it blocks until
+ * that write has landed, so clearAllStorage() always runs after it rather
+ * than racing it.
  */
 
-import { test, expect } from "./fixtures.mjs";
+import { test, expect, waitForInstallSettled } from "./fixtures.mjs";
 import {
   seedStorage,
   installTestModeSentinel,
@@ -87,6 +99,18 @@ async function clearAllStorage(context, extensionId) {
     await page.goto(`${extOrigin}/popup/popup.html`);
     opened = true;
   }
+  // #1231: wait for the install-time implicit-accept write to land BEFORE
+  // clearing, using this SAME page — no page beyond the one this function
+  // already opens-if-needed/closes-if-opened. An earlier version of this
+  // fix waited from a page the caller opened separately and then left open
+  // for the rest of the test; that changed how many extension pages exist
+  // at any given moment relative to main, which was enough to intermittently
+  // break the unrelated `context.waitForEvent("page")` race in
+  // popup.spec.mjs's "settings link opens options page" test, elsewhere in
+  // the same serial suite. Folding the wait into the page this function was
+  // going to open (and close) anyway keeps the page-lifecycle shape
+  // identical to main.
+  await waitForInstallSettled(page);
   await page.evaluate(() =>
     Promise.all([
       new Promise(resolve => chrome.storage.sync.clear(resolve)),
@@ -98,6 +122,10 @@ async function clearAllStorage(context, extensionId) {
 
 test.describe("Consent migration: sync → local (#406)", () => {
   test.beforeEach(async ({ context, extensionId }) => {
+    // waitForInstallSettled() runs inside clearAllStorage (above), on the
+    // same page that function already manages, BEFORE the clear itself —
+    // see the "Flake hazard #2" docblock above for why the wait has to
+    // happen before this clear runs at all.
     await clearAllStorage(context, extensionId);
     await installTestModeSentinel(context, extensionId);
   });
