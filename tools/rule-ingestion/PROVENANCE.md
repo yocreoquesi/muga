@@ -59,18 +59,22 @@ The pipeline enforces this structurally:
 
 A gate-admitted `(param, host)` pair is recorded in the ingestion run's
 `quarantine-report.json` (`scopedAutoMerge`). That report is unsigned and
-gitignored (`.gitignore:54`), the weekly workflow uploads no artifact, and
-`report-formatter.mjs` does not render the field — so on the unattended weekly
-run the pair is not visible to anyone. Reading it today means running ingestion
-locally.
+gitignored (`.gitignore:54`) and the weekly workflow uploads no artifact, so the
+file itself dies with the runner. `report-formatter.mjs` renders the field into
+the run's summary (#1239) — the same markdown that becomes the weekly PR body —
+under **Scoped Facts Awaiting Manual Landing**. That section states the count,
+lists each `(param, host)` with its corroborating signals, and carries the
+candidates verbatim in a fenced JSON block shaped exactly like `land-scoped.mjs`'s
+`--report` input, so the pair survives the runner and stays actionable from the
+PR body alone. An empty run says so in words rather than rendering nothing: a
+silent section and a quiet week must not look alike.
 
 Landing a pair into the committed store is a separate, manual step run through
 `land-scoped.mjs`, and deliberately so:
 `.github/workflows/auto-ingest-rules.yml` squash-auto-merges its own PR with no
-one in the loop. Until the weekly run surfaces `scopedAutoMerge`, that CLI has
-no input reachable from CI. Closing that gap is a prerequisite for the slice
-that lets the corroboration gate admit scoped facts, not for this one, where
-nothing is admitted.
+one in the loop. The weekly run surfaces the candidates; it never lands them.
+A person copies the block out of the PR body, reviews it, and runs the CLI —
+which is the whole point of keeping the scoped path off the unattended one.
 
 A param that survives the gates is justified by MUGA's verification, not by the
 upstream list's say-so. That is the clean room.
