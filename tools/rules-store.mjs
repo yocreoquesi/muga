@@ -80,6 +80,21 @@ export const RESERVED_ACTIONS = Object.freeze(["referral", "unwrap"]);
 /** @type {Set<string>} */
 const VALID_ACTIONS = new Set(Object.values(ACTIONS));
 
+/**
+ * Hostname shape a `scopedFacts[]` scope must have.
+ *
+ * Deliberately identical to `SCOPED_HOST_RE` in `src/lib/remote-rules.js` and
+ * `tools/sign-rules.mjs`: a scoped fact's whole purpose is to reach the signed
+ * payload and then a DNR `requestDomains` entry, so anything this accepts and
+ * those two reject would land in the store and die silently at publication.
+ * Not imported from there because this module is the tooling's own boundary and
+ * has no browser-targeted imports; the three are pinned together by test.
+ *
+ * Note this is NARROWER than an `entries[]` scope, which is a hostname SUFFIX
+ * matched by `cleaner.js` and never leaves the bundle.
+ */
+const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
 // ── Entry construction ───────────────────────────────────────────────
 
 /**
@@ -156,6 +171,15 @@ function validateScopedFact({ scope, param, action, provenance }, where = "scope
     throw new Error(
       `rules-store: ${where} cannot use GLOBAL_SCOPE ("${GLOBAL_SCOPE}") — a scoped fact ` +
         `must name a real host (param: ${param})`
+    );
+  }
+  if (!SCOPED_HOST_RE.test(scope)) {
+    throw new Error(
+      `rules-store: ${where} scope "${scope}" is not a plain hostname (param: ${param}). ` +
+        "A scoped fact is published to the signed payload and becomes a DNR " +
+        "`requestDomains` entry, and neither can express a wildcard anchor like " +
+        '"amazon.*" or a truncated one like "www.ebay." — upstream writes those, and ' +
+        "they have to be enumerated into real hosts before they can land"
     );
   }
   if (typeof param !== "string" || param.length === 0) {
@@ -404,6 +428,43 @@ export function emitParams(store) {
   return store.entries
     .filter((e) => e.scope === GLOBAL_SCOPE && e.action === ACTIONS.STRIP)
     .map((e) => e.param);
+}
+
+/**
+ * Extracts the host-scoped strip facts, in the shape the signed payload's
+ * `scoped` section uses (#1221).
+ *
+ * The store is SCOPE-major — one fact per `(scope, param)` pair, because that
+ * is the unit `land-scoped.mjs` admits and the unit provenance hangs off. The
+ * payload is PARAM-major — `{param, hosts[]}` — because that is what
+ * `canonicalScopedMessage` signs and what the runtime validates per host. This
+ * is the one place that pivot happens, so the store never has to model the
+ * payload's shape and the payload never has to carry provenance.
+ *
+ * Provenance is deliberately dropped: the payload is served to every user on
+ * every fetch, and which upstream lists corroborated a fact is repository
+ * history, not something worth spending bytes on for 630 hosts.
+ *
+ * Deterministic — params sorted, hosts sorted and deduped within a param — so
+ * an unchanged store re-renders byte-identical bytes and re-signs to an
+ * identical `scopedSig`.
+ *
+ * @param {object} store
+ * @returns {Array<{param: string, hosts: string[]}>}
+ */
+export function emitScoped(store) {
+  const hostsByParam = new Map();
+
+  for (const fact of store.scopedFacts ?? []) {
+    if (fact.action !== ACTIONS.STRIP) continue;
+    let hosts = hostsByParam.get(fact.param);
+    if (!hosts) { hosts = new Set(); hostsByParam.set(fact.param, hosts); }
+    hosts.add(fact.scope);
+  }
+
+  return [...hostsByParam.keys()]
+    .sort()
+    .map((param) => ({ param, hosts: [...hostsByParam.get(param)].sort() }));
 }
 
 // ── Store serialization ──────────────────────────────────────────────

@@ -48,8 +48,12 @@ import {
   makeEntry,
   parseStore,
   serializeStore,
+  withScopedFacts,
 } from "../../tools/rules-store.mjs";
-import { renderArtifacts } from "../../tools/build-rules-store.mjs";
+import {
+  buildImportedStore,
+  renderArtifacts,
+} from "../../tools/build-rules-store.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..");
@@ -57,6 +61,9 @@ const REPO_ROOT = join(__dirname, "..", "..");
 const DOMAIN_RULES_PATH = join(REPO_ROOT, "src", "rules", "domain-rules.json");
 const PARAMS_PATH = join(REPO_ROOT, "tools", "rules-source", "params.json");
 const STORE_PATH = join(REPO_ROOT, "tools", "rules-source", "rules.json");
+
+/** The committed store, parsed. */
+const loadStore = () => parseStore(readFileSync(STORE_PATH, "utf8"));
 
 const read = (file) => readFileSync(file, "utf8");
 
@@ -303,4 +310,89 @@ test("an unroutable action can never reach the strip bucket", () => {
     (err) => err.message.includes("unroutable") && err.message.includes("tag"),
     "an unrecognised action was routed instead of refused"
   );
+});
+
+// ── The `scoped` section of params.json (#1221) ──────────────────────
+//
+// params.json is the SIGNABLE SOURCE: `sign-rules.mjs` reads it, signs the
+// scoped section with its own key, and the published payload is what every
+// installed extension fetches. So this projection is the last link in a chain
+// that ends at a DNR rule on a user's machine, and the two properties that
+// matter are that an empty store changes nothing, and that a non-empty one
+// emits exactly what the signer and the runtime accept.
+
+test("with no scoped facts, params.json is byte-identical to what is committed", () => {
+  // The whole safety argument for adding a section to a signed source: today's
+  // published bytes must not move. Absent-when-empty is what buys that — an
+  // empty `scoped: []` would rewrite the file for no behavioural change, and
+  // would be a third state neither the signer nor the runtime needs.
+  const { params } = renderArtifacts(loadStore());
+  assert.strictEqual(params, readFileSync(PARAMS_PATH, "utf8"));
+  assert.ok(!JSON.parse(params).scoped, "an empty store must emit no scoped key");
+});
+
+test("a landed scoped fact appears in params.json as the payload shape", () => {
+  const store = withScopedFacts(loadStore(), [
+    { scope: "tiktok.com", param: "_r", action: ACTIONS.STRIP },
+    { scope: "vt.tiktok.com", param: "_r", action: ACTIONS.STRIP },
+  ]);
+
+  const rendered = JSON.parse(renderArtifacts(store).params);
+
+  assert.deepStrictEqual(rendered.scoped, [
+    { param: "_r", hosts: ["tiktok.com", "vt.tiktok.com"] },
+  ]);
+});
+
+test("adding a scoped fact leaves version, published and params untouched", () => {
+  // `version` and `published` belong to the signing flow and a regenerated
+  // `published` would invalidate a signature for no reason. `params` is the
+  // global list every deployed version already consumes: a scoped fact must not
+  // be able to disturb it, because a payload that changed both at once is one
+  // where the scoped half cannot be rolled back on its own.
+  const committed = JSON.parse(readFileSync(PARAMS_PATH, "utf8"));
+  const store = withScopedFacts(loadStore(), [
+    { scope: "instagram.com", param: "igsh", action: ACTIONS.STRIP },
+  ]);
+
+  const rendered = JSON.parse(renderArtifacts(store).params);
+
+  assert.strictEqual(rendered.version, committed.version);
+  assert.strictEqual(rendered.published, committed.published);
+  assert.deepStrictEqual(rendered.params, committed.params);
+});
+
+test("an import carries landed scoped facts forward instead of deleting them", () => {
+  // The silent failure this exists to stop: `--import` rebuilds the store from
+  // the artifacts, and params.json's `scoped` section is a LOSSY projection of
+  // scopedFacts (the pivot drops provenance). Rebuilding them from it, or
+  // simply not carrying them, would erase every landed fact — and the next
+  // `--check` would report drift with nothing in the diff to explain it.
+  const committed = loadStore();
+  const landed = [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z" },
+    },
+  ];
+
+  const imported = buildImportedStore(
+    JSON.parse(readFileSync(DOMAIN_RULES_PATH, "utf8")),
+    JSON.parse(readFileSync(PARAMS_PATH, "utf8")).params,
+    landed,
+  );
+
+  assert.deepStrictEqual(imported.scopedFacts, landed, "provenance must survive the round trip");
+  assert.strictEqual(imported.entries.length, committed.entries.length);
+});
+
+test("an import with nothing landed leaves the store without the key", () => {
+  const imported = buildImportedStore(
+    JSON.parse(readFileSync(DOMAIN_RULES_PATH, "utf8")),
+    JSON.parse(readFileSync(PARAMS_PATH, "utf8")).params,
+    [],
+  );
+  assert.strictEqual(imported.scopedFacts, undefined);
 });

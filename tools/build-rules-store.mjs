@@ -37,9 +37,11 @@ import { fileURLToPath } from "node:url";
 import {
   emitDomainRules,
   emitParams,
+  emitScoped,
   importArtifacts,
   parseStore,
   serializeStore,
+  withScopedFacts,
 } from "./rules-store.mjs";
 
 export { withDomainRules, withGlobalParams } from "./rules-store.mjs";
@@ -74,19 +76,67 @@ function write(file, contents) {
   renameSync(`${file}.tmp`, file);
 }
 
-/** Renders params.json with a replaced `params` array, preserving every other field. */
-function renderParamsFile(existingText, params) {
+/**
+ * Renders params.json with a replaced `params` array and `scoped` section,
+ * preserving every other field.
+ *
+ * `scoped` is ABSENT-WHEN-EMPTY, matching the store's own I1 convention and,
+ * more importantly, the payload contract: `runRemoteRulesFetch` treats a
+ * missing scoped section as "no scoped facts" and behaves exactly as it did
+ * before #1221, while `sign-rules.mjs` only signs a section that is a non-empty
+ * array. An empty `scoped: []` would be a third state neither of them needs,
+ * and it would rewrite today's committed bytes for no behavioural change.
+ */
+function renderParamsFile(existingText, params, scoped) {
   const current = JSON.parse(existingText);
-  return `${JSON.stringify({ ...current, params }, null, 2)}\n`;
+  const next = { ...current, params };
+  if (scoped.length > 0) next.scoped = scoped;
+  else delete next.scoped;
+  return `${JSON.stringify(next, null, 2)}\n`;
 }
 
 /** Artifacts → store. */
 export function runImport() {
-  const domainRules = JSON.parse(read(DOMAIN_RULES_PATH));
-  const params = JSON.parse(read(PARAMS_PATH)).params;
-  const store = importArtifacts(domainRules, params);
+  const store = buildImportedStore(
+    JSON.parse(read(DOMAIN_RULES_PATH)),
+    JSON.parse(read(PARAMS_PATH)).params,
+    existingScopedFacts(),
+  );
   write(STORE_PATH, serializeStore(store));
-  return { entries: store.entries.length };
+  return { entries: store.entries.length, scopedFacts: store.scopedFacts?.length ?? 0 };
+}
+
+/**
+ * The pure core of `runImport`, so the carry-forward below can be tested
+ * without writing over the committed store.
+ *
+ * `entries[]` is rebuilt from the artifacts, which are authoritative for it.
+ * `scopedFacts[]` is NOT: params.json's `scoped` section is a projection OF it,
+ * and a lossy one — the pivot to `{param, hosts[]}` drops provenance, so
+ * reconstructing facts from it would silently discard which upstream lists
+ * corroborated each one. The already-landed facts are carried forward untouched
+ * instead. Without this an import would delete every landed fact, and the very
+ * next `--check` would report params.json as drifted with nothing in the diff
+ * to explain why.
+ *
+ * @param {Array<object>} domainRules  domain-rules.json, parsed.
+ * @param {string[]} params            params.json's `params` array.
+ * @param {Array<object>} landed       Scoped facts already in the store.
+ * @returns {object}
+ */
+export function buildImportedStore(domainRules, params, landed) {
+  const rebuilt = importArtifacts(domainRules, params);
+  return landed.length > 0 ? withScopedFacts(rebuilt, landed) : rebuilt;
+}
+
+/** The committed store's scoped facts, or `[]` when there is no store yet. */
+function existingScopedFacts() {
+  try {
+    return parseStore(read(STORE_PATH)).scopedFacts ?? [];
+  } catch {
+    // No store on disk yet — the bootstrap case this command exists for.
+    return [];
+  }
 }
 
 /**
@@ -99,7 +149,7 @@ export function renderArtifacts(store = parseStore(read(STORE_PATH)), paramsMeta
     : read(PARAMS_PATH);
   return {
     domainRules: emitDomainRules(store),
-    params: renderParamsFile(base, emitParams(store)),
+    params: renderParamsFile(base, emitParams(store), emitScoped(store)),
   };
 }
 

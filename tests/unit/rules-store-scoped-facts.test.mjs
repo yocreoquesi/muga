@@ -25,6 +25,7 @@ import {
   GLOBAL_SCOPE,
   emitDomainRules,
   emitParams,
+  emitScoped,
   makeEntry,
   parseStore,
   serializeStore,
@@ -32,6 +33,7 @@ import {
   withGlobalParams,
   withScopedFacts,
 } from "../../tools/rules-store.mjs";
+import { validateScopedFacts } from "../../src/lib/remote-rules.js";
 
 const baseStore = () => ({
   schemaVersion: 1,
@@ -217,4 +219,153 @@ test("emitParams does not include a scoped fact's param", () => {
     { scope: "youtube.com", param: "si", action: ACTIONS.STRIP, provenance: { signals: ["adguard-tp"] } },
   ]);
   assert.deepEqual(emitParams(store), ["utm_source"]);
+});
+
+// ── The scope must be a plain hostname ───────────────────────────────
+//
+// A scoped fact is the only store content that LEAVES the repository: it is
+// projected into params.json, signed, served, and finally becomes a DNR
+// `requestDomains` entry. Both ends of that channel — `sign-rules.mjs` and
+// `src/lib/remote-rules.js` — reject anything but a plain hostname, so a fact
+// this module accepted and they did not would land in the store, survive
+// review, and die silently at publication with nothing to point at.
+//
+// Upstream writes wildcard and truncated anchors routinely (`amazon.*`,
+// `www.ebay.`, #1228), so this is the shape that actually shows up.
+
+test("withScopedFacts rejects a wildcard anchor", () => {
+  assert.throws(
+    () => withScopedFacts(baseStore(), [
+      { scope: "amazon.*", param: "dchild", action: ACTIONS.STRIP },
+    ]),
+    /not a plain hostname/,
+  );
+});
+
+test("withScopedFacts rejects a truncated anchor", () => {
+  assert.throws(
+    () => withScopedFacts(baseStore(), [
+      { scope: "www.ebay.", param: "mkcid", action: ACTIONS.STRIP },
+    ]),
+    /not a plain hostname/,
+  );
+});
+
+test("withScopedFacts rejects a single-label host", () => {
+  // No public suffix, so it can never be a real anchor — and DNR would match it
+  // against an intranet name.
+  assert.throws(
+    () => withScopedFacts(baseStore(), [
+      { scope: "localhost", param: "si", action: ACTIONS.STRIP },
+    ]),
+    /not a plain hostname/,
+  );
+});
+
+test("withScopedFacts accepts a subdomain host", () => {
+  const store = withScopedFacts(baseStore(), [
+    { scope: "gaming.amazon.com", param: "ingress", action: ACTIONS.STRIP },
+  ]);
+  assert.strictEqual(store.scopedFacts[0].scope, "gaming.amazon.com");
+});
+
+test("parseStore rejects a wildcard anchor read from disk", () => {
+  // The guard has to hold on the read path too: a fact hand-edited into the
+  // committed store would otherwise reach the projection unchecked.
+  const text = serializeStore({
+    ...baseStore(),
+    scopedFacts: [{ scope: "amazon.ca", param: "dchild", action: ACTIONS.STRIP }],
+  }).replace('"amazon.ca"', '"amazon.*"');
+
+  assert.throws(() => parseStore(text), /not a plain hostname/);
+});
+
+// ── emitScoped: the store→payload pivot ──────────────────────────────
+//
+// The store is SCOPE-major (one fact per (scope, param), which is the unit
+// provenance hangs off); the signed payload is PARAM-major ({param, hosts[]},
+// which is what canonicalScopedMessage signs). emitScoped is the one place that
+// pivot happens.
+
+test("emitScoped on a store with no scoped facts is an empty list", () => {
+  assert.deepStrictEqual(emitScoped(baseStore()), []);
+  assert.deepStrictEqual(emitScoped({ ...baseStore(), scopedFacts: [] }), []);
+});
+
+test("emitScoped pivots scope-major facts into param-major payload entries", () => {
+  const store = withScopedFacts(baseStore(), [
+    { scope: "tiktok.com", param: "_r", action: ACTIONS.STRIP },
+    { scope: "vt.tiktok.com", param: "_r", action: ACTIONS.STRIP },
+    { scope: "instagram.com", param: "igsh", action: ACTIONS.STRIP },
+  ]);
+
+  assert.deepStrictEqual(emitScoped(store), [
+    { param: "_r", hosts: ["tiktok.com", "vt.tiktok.com"] },
+    { param: "igsh", hosts: ["instagram.com"] },
+  ]);
+});
+
+test("emitScoped is deterministic — params sorted, hosts sorted", () => {
+  // The payload is re-signed from this. If the order moved between runs, an
+  // unchanged store would produce a different scopedSig and a pointless diff on
+  // every weekly run.
+  const a = withScopedFacts(baseStore(), [
+    { scope: "z.example.com", param: "zz", action: ACTIONS.STRIP },
+    { scope: "a.example.com", param: "zz", action: ACTIONS.STRIP },
+    { scope: "m.example.com", param: "aa", action: ACTIONS.STRIP },
+  ]);
+  const b = withScopedFacts(baseStore(), [
+    { scope: "m.example.com", param: "aa", action: ACTIONS.STRIP },
+    { scope: "a.example.com", param: "zz", action: ACTIONS.STRIP },
+    { scope: "z.example.com", param: "zz", action: ACTIONS.STRIP },
+  ]);
+
+  assert.deepStrictEqual(emitScoped(a), emitScoped(b));
+  assert.deepStrictEqual(emitScoped(a), [
+    { param: "aa", hosts: ["m.example.com"] },
+    { param: "zz", hosts: ["a.example.com", "z.example.com"] },
+  ]);
+});
+
+test("emitScoped drops provenance — it is repository history, not payload bytes", () => {
+  const store = withScopedFacts(baseStore(), [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z" },
+    },
+  ]);
+
+  assert.deepStrictEqual(emitScoped(store), [{ param: "_r", hosts: ["tiktok.com"] }]);
+});
+
+test("emitScoped ignores a non-strip action", () => {
+  // Unreachable through withScopedFacts, which refuses one. Asserted on a raw
+  // store so the projection cannot become the place a scoped PRESERVE turns
+  // into a strip if a later slice ever admits one.
+  const store = {
+    ...baseStore(),
+    scopedFacts: [
+      { scope: "example.com", param: "keep", action: ACTIONS.PRESERVE },
+      { scope: "example.com", param: "drop", action: ACTIONS.STRIP },
+    ],
+  };
+
+  assert.deepStrictEqual(emitScoped(store), [{ param: "drop", hosts: ["example.com"] }]);
+});
+
+test("emitScoped output is what the RUNTIME validator accepts", () => {
+  // Pins the two ends of the channel together. The store could emit a shape
+  // that is internally consistent and still be discarded on every user's
+  // machine; this is the assertion that would catch that.
+  const store = withScopedFacts(baseStore(), [
+    { scope: "tiktok.com", param: "_r", action: ACTIONS.STRIP },
+    { scope: "instagram.com", param: "igsh", action: ACTIONS.STRIP },
+  ]);
+  const emitted = emitScoped(store);
+
+  const { accepted, rejected } = validateScopedFacts(emitted);
+  assert.strictEqual(rejected, 0, "the runtime dropped a fact the store published");
+  assert.deepStrictEqual(accepted, emitted);
 });
