@@ -46,6 +46,11 @@ import {
 // extension cannot drift apart on what a host protects.
 import { PRESERVED_PARAMS, PRESERVED_BY_HOST } from "../src/rules/preserve-params.data.js";
 
+// The built-ins the extension already ships. Imported for the same
+// no-drift reason as the set above: the runtime decides what a published param
+// can do by comparing against this exact list.
+import { TRACKING_PARAMS } from "../src/lib/affiliates.js";
+
 // ── Path resolution ──────────────────────────────────────────────────────────
 
 const DEFAULT_SOURCE = new URL("../tools/rules-source/params.json", import.meta.url).pathname;
@@ -150,7 +155,20 @@ function validateSource(obj) {
     // "too short" it names an actual protection being overridden. The global
     // payload cannot express a host scope, so publishing this name strips it on
     // the very hosts that declared they need it.
-    if (PRESERVED_SET.has(lower)) {
+    //
+    // Asked only of a name the remote channel can actually apply. The runtime
+    // runs `filterAgainstBuiltin` BEFORE `filterAgainstPreserved`, so a param
+    // the extension already ships is removed from the remote list before the
+    // preserve filter ever sees it — publishing it cannot override anybody's
+    // preserveParams, because it is never applied from this channel at all.
+    // Refusing on one is a false positive, and a load-bearing one: `utm_source`
+    // and `utm_medium` are both built-ins that some host declares, so the guard
+    // as first written could not sign the committed source, and the publish
+    // workflow would have failed on the next push touching it.
+    //
+    // The guard itself is unchanged for every name this channel does apply,
+    // which is where it protects against #1212's failure class.
+    if (!BUILTIN_SET.has(lower) && PRESERVED_SET.has(lower)) {
       return {
         ok: false,
         error: `Param "${param}" is declared in some host's preserveParams in src/rules/domain-rules.json and must not be published to the global channel — it would be stripped on the hosts that protect it (#1221). Grep domain-rules.json for it to see which hosts.`,
@@ -245,6 +263,14 @@ function hostPreserves(host, param) {
 
 /** Lowercased `preserveParams` union — see src/rules/preserve-params.data.js (#1221). */
 const PRESERVED_SET = new Set(PRESERVED_PARAMS.map((p) => p.toLowerCase()));
+
+/**
+ * Lowercased built-ins the extension already ships.
+ *
+ * The same set `filterAgainstBuiltin` dedupes the remote list against, which is
+ * why a name in here is inert on this channel however it is published.
+ */
+const BUILTIN_SET = new Set([...TRACKING_PARAMS].map((p) => p.toLowerCase()));
 
 // ── Canonical message ─────────────────────────────────────────────────────────
 
