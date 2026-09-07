@@ -1026,7 +1026,10 @@ describe("mergeIntoCache — writes params + meta to storage", () => {
     const dnr = makeDnrFake();
     await mergeIntoCache(["utm_test"], { version: 1, fetchedAt: null, paramCount: 1, lastError: null, published: null }, { storage, dnr });
 
-    assert.strictEqual(dnr._calls.length, 1);
+    // Two calls since #1221 slice 2: the global rule first, then the
+    // host-scoped range — which this payload has no facts for, so that second
+    // call is a clear. The global call must keep its exact shape regardless.
+    assert.strictEqual(dnr._calls.length, 2);
     const call = dnr._calls[0];
     assert.ok(Array.isArray(call.addRules));
     assert.strictEqual(call.addRules[0].id, REMOTE_RULE_ID);
@@ -1040,7 +1043,9 @@ describe("mergeIntoCache — writes params + meta to storage", () => {
     const storage = makeStorageFake();
     const dnr = makeDnrFake();
     await mergeIntoCache([], { version: 1, fetchedAt: null, paramCount: 0, lastError: null, published: null }, { storage, dnr });
-    assert.strictEqual(dnr._calls.length, 1);
+    // Call 2 is the host-scoped range clear (#1221 slice 2); rule 1001's own
+    // remove-only shape is what this test is about.
+    assert.strictEqual(dnr._calls.length, 2);
     const call = dnr._calls[0];
     assert.deepEqual(call.removeRuleIds, [REMOTE_RULE_ID], "stale rule 1001 must still be removed");
     assert.ok(
@@ -1906,5 +1911,258 @@ describe("#1221 — runRemoteRulesFetch and the scoped section", () => {
     const result = await runWith(() => ({}));
     assert.deepStrictEqual(result.remoteRulesMeta.scopedFacts, []);
     assert.ok(result.remoteParams.includes("utm_scoped_orch"));
+  });
+});
+
+// ── #1221 slice 2: the scoped facts become DNR rules ─────────────────────────
+//
+// Slice 1 verified, validated and persisted the scoped section without acting
+// on it. This is the half that acts: thin, host-scoped, dynamic rules in the
+// 3100-4099 range, at a priority that outranks the global strip rules.
+//
+// Two measured constraints drive the whole shape (#1229, PR #1242):
+//   - THIN rules only. Modelled as complete-per-host profiles the measured
+//     import is ~3.6 MB of rules against today's 97 KB; thin it is ~149 KB.
+//   - Priority MUST exceed the global rules'. At equal priority composition
+//     happened 11 times in 12 and failed on CI; at priority 2, 24 of 24.
+
+describe("#1221 slice 2 — buildScopedDnrRules", () => {
+  test("no facts is no rules, for every empty shape", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    for (const v of [undefined, null, [], "scoped", 42, {}]) {
+      assert.deepStrictEqual(buildScopedDnrRules(v), [], `input: ${JSON.stringify(v)}`);
+    }
+  });
+
+  test("inverts fact-major facts into host-major rules", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    // The payload says "param X applies on these hosts"; DNR needs
+    // "on host Y remove these params". Two facts overlapping on one host is
+    // the case that only works if the inversion accumulates rather than
+    // overwrites.
+    const rules = buildScopedDnrRules([
+      { param: "si", hosts: ["youtube.com", "example.org"] },
+      { param: "feature", hosts: ["youtube.com"] },
+    ]);
+
+    const byHost = new Map();
+    for (const r of rules) {
+      for (const h of r.condition.requestDomains) {
+        byHost.set(h, r.action.redirect.transform.queryTransform.removeParams);
+      }
+    }
+    assert.deepStrictEqual(byHost.get("youtube.com"), ["feature", "si"]);
+    assert.deepStrictEqual(byHost.get("example.org"), ["si"]);
+  });
+
+  test("hosts sharing an identical param set share ONE rule", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    // Same profile grouping the static per-domain rules (300-799) use. At the
+    // measured import size this is the difference between one rule per host
+    // and one per distinct profile.
+    const rules = buildScopedDnrRules([
+      { param: "si", hosts: ["a.com", "b.com", "c.com"] },
+      { param: "feature", hosts: ["c.com"] },
+    ]);
+
+    assert.strictEqual(rules.length, 2);
+    const shared = rules.find((r) => r.condition.requestDomains.includes("a.com"));
+    assert.deepStrictEqual(shared.condition.requestDomains, ["a.com", "b.com"]);
+    assert.deepStrictEqual(shared.action.redirect.transform.queryTransform.removeParams, ["si"]);
+  });
+
+  test("output is deterministic under reordering, so an unchanged payload re-registers identical rules", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    const a = buildScopedDnrRules([
+      { param: "si", hosts: ["b.com", "a.com"] },
+      { param: "feature", hosts: ["a.com"] },
+    ]);
+    const b = buildScopedDnrRules([
+      { param: "feature", hosts: ["a.com"] },
+      { param: "si", hosts: ["a.com", "b.com"] },
+    ]);
+    assert.deepStrictEqual(a, b);
+  });
+
+  test("runs at a HIGHER priority than the global remote rule", async () => {
+    const { buildScopedDnrRules, buildRemoteDnrRule } =
+      await import("../../src/lib/remote-rules.js");
+    // The measured constraint. A scoped rule at the global rule's priority
+    // works almost always and silently drops facts the rest of the time —
+    // the worst failure mode available here, because it looks correct in
+    // testing and fails in production at single-digit percentages.
+    const scoped = buildScopedDnrRules([{ param: "si", hosts: ["youtube.com"] }])[0];
+    const globalRule = buildRemoteDnrRule(["utm_source"]);
+    assert.ok(
+      scoped.priority > globalRule.priority,
+      `scoped priority ${scoped.priority} must exceed global ${globalRule.priority}`,
+    );
+  });
+
+  test("is THIN: the rule carries only the scoped params, never the global list", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    const rules = buildScopedDnrRules([{ param: "si", hosts: ["youtube.com"] }]);
+    assert.deepStrictEqual(
+      rules[0].action.redirect.transform.queryTransform.removeParams,
+      ["si"],
+    );
+  });
+
+  test("is scoped to main_frame, like every other MUGA strip rule", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    // Same reason buildRemoteDnrRule is: stripping params inside embedded
+    // frames broke same-origin widgets carrying functional params (#1006).
+    const rules = buildScopedDnrRules([{ param: "si", hosts: ["youtube.com"] }]);
+    assert.deepStrictEqual(rules[0].condition.resourceTypes, ["main_frame"]);
+  });
+
+  test("ids start at the range base and never leave the range", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    const { DNR_SCOPED_PARAMS_RULE_ID_BASE, DNR_SCOPED_PARAMS_MAX_RULES } =
+      await import("../../src/lib/dnr-ids.js");
+    const rules = buildScopedDnrRules([
+      { param: "one", hosts: ["a.com"] },
+      { param: "two", hosts: ["b.com"] },
+    ]);
+    assert.strictEqual(rules[0].id, DNR_SCOPED_PARAMS_RULE_ID_BASE);
+    for (const r of rules) {
+      assert.ok(r.id >= DNR_SCOPED_PARAMS_RULE_ID_BASE);
+      assert.ok(r.id < DNR_SCOPED_PARAMS_RULE_ID_BASE + DNR_SCOPED_PARAMS_MAX_RULES);
+    }
+  });
+
+  test("caps at DNR_SCOPED_PARAMS_MAX_RULES instead of overrunning the next range", async () => {
+    const { buildScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    const { DNR_SCOPED_PARAMS_RULE_ID_BASE, DNR_SCOPED_PARAMS_MAX_RULES } =
+      await import("../../src/lib/dnr-ids.js");
+    // One distinct profile per host, so grouping cannot shrink the count.
+    const facts = Array.from(
+      { length: DNR_SCOPED_PARAMS_MAX_RULES + 25 },
+      (_, i) => ({ param: `p${i}`, hosts: [`h${i}.com`] }),
+    );
+    const warn = console.warn;
+    let warned = false;
+    console.warn = () => { warned = true; };
+    let rules;
+    try { rules = buildScopedDnrRules(facts); } finally { console.warn = warn; }
+
+    assert.strictEqual(rules.length, DNR_SCOPED_PARAMS_MAX_RULES);
+    assert.ok(warned, "dropped hosts must be logged, not truncated silently");
+    const maxId = Math.max(...rules.map((r) => r.id));
+    assert.ok(maxId < DNR_SCOPED_PARAMS_RULE_ID_BASE + DNR_SCOPED_PARAMS_MAX_RULES);
+  });
+});
+
+describe("#1221 slice 2 — applyScopedDnrRules", () => {
+  test("no facts clears the whole range, so a payload can WITHDRAW a scoped fact", async () => {
+    const { applyScopedDnrRules, SCOPED_RULE_ID_RANGE } =
+      await import("../../src/lib/remote-rules.js");
+    const dnr = makeDnrFake();
+    await applyScopedDnrRules([], dnr);
+
+    assert.strictEqual(dnr._calls.length, 1);
+    assert.deepStrictEqual(dnr._calls[0].removeRuleIds, [...SCOPED_RULE_ID_RANGE]);
+    assert.strictEqual(dnr._calls[0].addRules, undefined);
+  });
+
+  test("clears the full range before adding, so a shrinking payload leaves nothing behind", async () => {
+    const { applyScopedDnrRules, SCOPED_RULE_ID_RANGE } =
+      await import("../../src/lib/remote-rules.js");
+    const dnr = makeDnrFake();
+    await applyScopedDnrRules([{ param: "si", hosts: ["youtube.com"] }], dnr);
+
+    assert.deepStrictEqual(dnr._calls[0].removeRuleIds, [...SCOPED_RULE_ID_RANGE]);
+    assert.strictEqual(dnr._calls[0].addRules.length, 1);
+  });
+
+  test("a DNR failure is swallowed rather than thrown", async () => {
+    const { applyScopedDnrRules } = await import("../../src/lib/remote-rules.js");
+    const err = console.error;
+    console.error = () => {};
+    try {
+      await applyScopedDnrRules([{ param: "si", hosts: ["youtube.com"] }], {
+        updateDynamicRules: () => Promise.reject(new Error("boom")),
+      });
+    } finally { console.error = err; }
+    // Reaching here is the assertion: the caller must not be able to lose the
+    // global rules or the cache write because the scoped half failed.
+  });
+});
+
+describe("#1221 slice 2 — mergeIntoCache applies the scoped rules", () => {
+  test("registers the scoped rules in a SEPARATE call, after the global rule", async () => {
+    const { mergeIntoCache, REMOTE_RULE_ID } = await import("../../src/lib/remote-rules.js");
+    const { DNR_SCOPED_PARAMS_RULE_ID_BASE } = await import("../../src/lib/dnr-ids.js");
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache(["utm_source"], {
+      version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 1,
+      lastError: null, published: "2026-01-01T00:00:00.000Z",
+      scopedFacts: [{ param: "si", hosts: ["youtube.com"] }],
+    }, { storage, dnr });
+
+    assert.strictEqual(dnr._calls.length, 2, "global and scoped must not share one call");
+    assert.strictEqual(dnr._calls[0].addRules[0].id, REMOTE_RULE_ID);
+    assert.strictEqual(dnr._calls[1].addRules[0].id, DNR_SCOPED_PARAMS_RULE_ID_BASE);
+  });
+
+  test("a scoped DNR failure costs neither the cache write nor the global rule", async () => {
+    const { mergeIntoCache, REMOTE_RULE_ID } = await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({});
+    const calls = [];
+    const dnr = {
+      updateDynamicRules(opts) {
+        calls.push(opts);
+        // First call is the global rule; only the scoped one fails.
+        return calls.length === 1 ? Promise.resolve() : Promise.reject(new Error("boom"));
+      },
+    };
+    const err = console.error;
+    console.error = () => {};
+    try {
+      await mergeIntoCache(["utm_source"], {
+        version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 1,
+        lastError: null, published: "2026-01-01T00:00:00.000Z",
+        scopedFacts: [{ param: "si", hosts: ["youtube.com"] }],
+      }, { storage, dnr });
+    } finally { console.error = err; }
+
+    assert.strictEqual(calls[0].addRules[0].id, REMOTE_RULE_ID);
+    const saved = await storage.get({ remoteParams: [], remoteRulesMeta: null });
+    assert.deepStrictEqual(saved.remoteParams, ["utm_source"]);
+    assert.strictEqual(saved.remoteRulesMeta.lastError, null,
+      "the payload was accepted; only the scoped half is missing");
+  });
+
+  test("a payload with no scoped facts still clears the range", async () => {
+    const { mergeIntoCache, SCOPED_RULE_ID_RANGE } = await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache(["utm_source"], {
+      version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 1,
+      lastError: null, published: "2026-01-01T00:00:00.000Z",
+    }, { storage, dnr });
+
+    assert.strictEqual(dnr._calls.length, 2);
+    assert.deepStrictEqual(dnr._calls[1].removeRuleIds, [...SCOPED_RULE_ID_RANGE]);
+    assert.strictEqual(dnr._calls[1].addRules, undefined);
+  });
+});
+
+describe("#1221 slice 2 — clearRemoteCache takes the scoped range with it", () => {
+  test("disabling remote rules leaves no scoped rule registered", async () => {
+    const { clearRemoteCache, REMOTE_RULE_ID, SCOPED_RULE_ID_RANGE } =
+      await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({ remoteParams: ["utm_source"] });
+    const dnr = makeDnrFake();
+
+    await clearRemoteCache({ storage, dnr });
+
+    assert.deepStrictEqual(
+      dnr._calls[0].removeRuleIds,
+      [REMOTE_RULE_ID, ...SCOPED_RULE_ID_RANGE],
+    );
   });
 });
