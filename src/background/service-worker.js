@@ -28,6 +28,8 @@ import {
   runRemoteRulesFetch,
   clearRemoteCache,
   buildRemoteDnrRule,
+  applyScopedDnrRules,
+  SCOPED_RULE_ID_RANGE,
 } from "../lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
@@ -755,8 +757,9 @@ const ALLOWLIST_RULE_ID_RANGE = Array.from(
  * must be listed explicitly) and `requestDomains: [domain]` (Chrome matches
  * this against the domain and its subdomains, same semantics as
  * domainMatches() in cleaner.js). Priority is set to 1000 - strictly higher
- * than every strip/redirect rule MUGA registers today (all declared at
- * priority 1, the DNR default) - so Chrome's documented precedence rule
+ * than every strip/redirect rule MUGA registers today (priority 1, the DNR
+ * default, except the host-scoped remote rules at priority 2) - so Chrome's
+ * documented precedence rule
  * (a higher-priority "allow" action wins over a lower-priority
  * "redirect"/"block" action for the same request, regardless of rule order
  * or ruleset) makes the allow win deterministically. Because the condition
@@ -1090,14 +1093,20 @@ async function applyDnrState(prefs) {
     // remote-params rule (dynamic id 1001) is a DNR redirect that keeps
     // stripping params for a disabled or non-consented extension. Remove it so
     // the consent gate holds across the dynamic cleaning path too. (#921)
+    //
+    // The host-scoped range (3100-4099, #1221 slice 2) is a DNR redirect from
+    // the same channel and is cleared in the same call for the same reason: a
+    // scoped rule left registered would keep stripping params on hosts the
+    // remote payload named, for an extension the user has not consented to or
+    // has switched off.
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID],
+      removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID, ...SCOPED_RULE_ID_RANGE],
     }).catch(err => console.warn("[MUGA] applyDnrState remote-params clear:", err));
   }
 }
 
-// Reconciles the dynamic remote-params rule (id 1001) with current prefs +
-// cached payload. Used on gate-open so rule 1001 is restored after the
+// Reconciles the dynamic remote-params rule (id 1001) AND the host-scoped
+// range (3100-4099, #1221 slice 2) with current prefs + cached payload. Used on gate-open so rule 1001 is restored after the
 // gate-closed branch removed it, without waiting for the next weekly fetch.
 // buildRemoteDnrRule rejects an empty removeParams transform, so an empty or
 // missing cache resolves to "no rule" (removal only). (#921)
@@ -1109,9 +1118,19 @@ async function applyDnrState(prefs) {
 async function reconcileRemoteDnrRule(prefs) {
   if (!hasDNR) return;
   try {
-    const params = prefs.remoteRulesEnabled
-      ? (await getRemoteParams()).remoteParams
-      : [];
+    const cache = prefs.remoteRulesEnabled ? await getRemoteParams() : null;
+
+    // The host-scoped range (#1221 slice 2) is restored from the SAME cache and
+    // gated on the same pref, so the gate-closed branch above does not leave
+    // scoped cleaning off until the next weekly fetch — the exact staleness
+    // this function exists to fix for rule 1001. applyScopedDnrRules swallows
+    // its own failure, so a scoped problem cannot skip the global reconcile
+    // below; the reverse is not true, which is why it runs first.
+    await applyScopedDnrRules(cache?.remoteRulesMeta?.scopedFacts, {
+      updateDynamicRules: (opts) => chrome.declarativeNetRequest.updateDynamicRules(opts),
+    });
+
+    const params = cache ? cache.remoteParams : [];
     const list = Array.isArray(params) ? params : [];
     if (list.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({

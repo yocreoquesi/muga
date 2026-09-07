@@ -14,7 +14,12 @@
  */
 
 import { TRUSTED_PUBLIC_KEYS } from "./remote-rules-keys.js";
-import { DNR_REMOTE_PARAMS_RULE_ID } from "./dnr-ids.js";
+import {
+  DNR_REMOTE_PARAMS_RULE_ID,
+  DNR_SCOPED_PARAMS_RULE_ID_BASE,
+  DNR_SCOPED_PARAMS_MAX_RULES,
+  DNR_SCOPED_PARAMS_PRIORITY,
+} from "./dnr-ids.js";
 import { TRACKING_PARAMS as _BUILTIN_TRACKING_PARAMS } from "./affiliates.js";
 // #1221: the union of every domain entry's preserveParams, generated from
 // src/rules/domain-rules.json by `npm run compile:rules`. Imported statically for
@@ -846,6 +851,8 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  *   - Also writes remoteRulesChangelog: a set-diff against the previous
  *     remoteParams cache, surfaced by Settings as "N added / M removed" (#984).
  *   - Calls dnr.updateDynamicRules to add/replace rule 1001.
+ *   - Then replaces the host-scoped rules (3100-4099) from meta.scopedFacts,
+ *     in a separate, non-fatal call (#1221 slice 2).
  *   - Does NOT touch remoteRulesEnabled (sync) or customParams.
  *
  * @param {string[]} accepted - Validated and deduped remote params.
@@ -887,6 +894,12 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
     console.error("[MUGA] remote-rules:", ERR.DNR_ERROR, err?.message ?? err);
     return;
   }
+
+  // Host-scoped rules (#1221 slice 2), AFTER the global rule and in their own
+  // call so a failure here cannot take the global channel down with it. An
+  // empty or absent scoped section clears the range, which is what makes a
+  // payload that withdraws a scoped fact actually withdraw it.
+  await applyScopedDnrRules(meta?.scopedFacts, dnr);
 
   // Build the weekly changelog against the PREVIOUS cache before overwriting
   // it (#984). This runs for every successful merge, including the
@@ -930,7 +943,12 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
 export async function clearRemoteCache({ storage, dnr }) {
   await storage.remove(["remoteParams", "remoteRulesMeta", "remoteRulesChangelog"]);
   await dnr.updateDynamicRules({
-    removeRuleIds: [REMOTE_RULE_ID],
+    // The host-scoped range travels on the same channel and the same consent
+    // (#1221 slice 2): disabling remote rules must leave no scoped rule behind
+    // stripping params on the user's behalf. Cleared in the SAME call as rule
+    // 1001 — unlike the merge path there is no half-state worth protecting
+    // here, so the disable is atomic.
+    removeRuleIds: [REMOTE_RULE_ID, ...SCOPED_RULE_ID_RANGE],
     addRules: [],
   });
 }
@@ -971,6 +989,137 @@ export function buildRemoteDnrRule(params) {
       resourceTypes: ["main_frame"],
     },
   };
+}
+
+/**
+ * Every rule ID the host-scoped range can hold (#1221 slice 2).
+ *
+ * Cleared in full on every resync, exactly like ALLOWLIST_RULE_ID_RANGE: the
+ * grouping is derived from the payload, so a rule that existed under the
+ * previous payload may have no counterpart under this one. Removing IDs that
+ * are not registered is a no-op for the DNR API.
+ */
+export const SCOPED_RULE_ID_RANGE = Object.freeze(
+  Array.from({ length: DNR_SCOPED_PARAMS_MAX_RULES }, (_, i) => DNR_SCOPED_PARAMS_RULE_ID_BASE + i),
+);
+
+/**
+ * Builds the dynamic DNR rules for the host-scoped facts of a payload
+ * (#1221 slice 2). Returns `[]` for an empty or non-array input.
+ *
+ * THIN, not complete-per-host. Each rule removes only the params anchored to
+ * its hosts and leaves the global list to the global rules, which is what makes
+ * this affordable: modelled as complete-per-host profiles the measured #1229
+ * import is ~3.6 MB of rules against today's 97 KB, and as thin rules ~149 KB.
+ * That shape is only available because these rules travel dynamically — a
+ * STATIC thin rule is shadowed by the global rule outright and never fires
+ * (measured in real Chromium, PR #1242).
+ *
+ * Composition with the global rules is what DNR_SCOPED_PARAMS_PRIORITY buys;
+ * see the constant for the measurement behind it. In short: at priority 2 the
+ * scoped rule wins pass 1, its transform changes the URL, and the resulting
+ * second pass lets the global rule strip the rest.
+ *
+ * Scoped to `main_frame` only, for the same reason buildRemoteDnrRule is: MUGA
+ * cleans the URL the user navigates to, and stripping params inside embedded
+ * frames broke same-origin widgets (#1006).
+ *
+ * Hosts sharing an identical param set share one rule — the same profile
+ * grouping the static per-domain rules use (300-799) — and the whole output is
+ * deterministic (hosts sorted, params sorted, groups ordered by their first
+ * host) so an unchanged payload produces byte-identical rules at the same IDs.
+ *
+ * `requestDomains` matches a domain AND its subdomains, which is the same
+ * suffix semantics validateScopedFacts' preserve check walks. A fact anchored
+ * to `example.com` therefore also applies on `www.example.com`, and the
+ * preserve guard has already been asked about the anchor.
+ *
+ * @param {Array<{param: string, hosts: string[]}>} facts Validated scoped facts.
+ * @returns {object[]} DNR rule objects in the 3100-4099 range.
+ */
+export function buildScopedDnrRules(facts) {
+  if (!Array.isArray(facts) || facts.length === 0) return [];
+
+  // 1. Invert fact-major (param → hosts) into rule-major (host → params).
+  const paramsByHost = new Map();
+  for (const fact of facts) {
+    if (!fact || typeof fact.param !== "string" || !Array.isArray(fact.hosts)) continue;
+    for (const host of fact.hosts) {
+      if (typeof host !== "string" || host.length === 0) continue;
+      let set = paramsByHost.get(host);
+      if (!set) { set = new Set(); paramsByHost.set(host, set); }
+      set.add(fact.param);
+    }
+  }
+  if (paramsByHost.size === 0) return [];
+
+  // 2. Group hosts by identical param profile, visiting hosts in sorted order
+  //    so both the grouping and the group order are stable across runs.
+  const groups = new Map();
+  for (const host of [...paramsByHost.keys()].sort()) {
+    const params = [...paramsByHost.get(host)].sort();
+    // "," cannot appear in a param name (PARAM_FORMAT_RE), so the joined form
+    // is an unambiguous profile key.
+    const key = params.join(",");
+    const group = groups.get(key);
+    if (group) group.hosts.push(host);
+    else groups.set(key, { params, hosts: [host] });
+  }
+
+  let emitted = [...groups.values()];
+  if (emitted.length > DNR_SCOPED_PARAMS_MAX_RULES) {
+    const dropped = emitted.slice(DNR_SCOPED_PARAMS_MAX_RULES).flatMap((g) => g.hosts);
+    emitted = emitted.slice(0, DNR_SCOPED_PARAMS_MAX_RULES);
+    console.warn(
+      `[MUGA] remote-rules: ${groups.size} scoped rule groups exceed the ` +
+      `${DNR_SCOPED_PARAMS_MAX_RULES}-rule cap; these hosts get no scoped rule (#1221):`,
+      dropped,
+    );
+  }
+
+  return emitted.map((group, i) => ({
+    id: DNR_SCOPED_PARAMS_RULE_ID_BASE + i,
+    priority: DNR_SCOPED_PARAMS_PRIORITY,
+    action: {
+      type: "redirect",
+      redirect: { transform: { queryTransform: { removeParams: group.params } } },
+    },
+    condition: {
+      requestDomains: group.hosts,
+      resourceTypes: ["main_frame"],
+    },
+  }));
+}
+
+/**
+ * Applies the host-scoped rules for a payload, replacing whatever the previous
+ * payload registered (#1221 slice 2).
+ *
+ * Deliberately a SEPARATE updateDynamicRules call from the global rule's, and
+ * deliberately non-fatal. The global channel must not go down because one
+ * scoped rule is unacceptable to the DNR API: at the runtime, one bad fact must
+ * not cost every other host its cleaning. That is the same asymmetry
+ * validateScopedFacts applies per-fact and the orchestrator applies to an
+ * unsigned scoped section.
+ *
+ * @param {Array<{param: string, hosts: string[]}>|undefined} facts
+ * @param {{ updateDynamicRules: Function }} dnr
+ * @returns {Promise<void>}
+ */
+export async function applyScopedDnrRules(facts, dnr) {
+  try {
+    const addRules = buildScopedDnrRules(facts);
+    await dnr.updateDynamicRules(
+      addRules.length === 0
+        ? { removeRuleIds: [...SCOPED_RULE_ID_RANGE] }
+        : { removeRuleIds: [...SCOPED_RULE_ID_RANGE], addRules },
+    );
+  } catch (err) {
+    // Logged, not persisted as lastError: the payload itself was accepted and
+    // the global rules are live. Recording a payload-level error here would
+    // report the whole fetch as failed when only the scoped half is missing.
+    console.error("[MUGA] remote-rules: scoped DNR update failed (#1221):", err?.message ?? err);
+  }
 }
 
 /**

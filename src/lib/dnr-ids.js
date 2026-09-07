@@ -52,11 +52,18 @@
  *              REGARDLESS of prefs.blockBeacons (same D2 rationale as
  *              2700-2899). Managed by syncBlocklistBeaconsDNR(). Capped at
  *              DNR_BLOCKLIST_MAX_RULES.
+ *   3100-4099 — dynamic HOST-SCOPED remote param strip rules (#1221 slice 2),
+ *              built from the signed `scoped` section of the remote payload.
+ *              THIN: each rule removes only the params anchored to its hosts,
+ *              NOT the whole global list, and runs at priority 2 so it
+ *              outranks the global strip rules rather than being shadowed by
+ *              them. Managed by lib/remote-rules.js. Capped at
+ *              DNR_SCOPED_PARAMS_MAX_RULES.
  *
  * When adding a new dynamic rule, pick an ID > 1001 (and outside 2000-2499,
- * 2500, 2600, 2700-2899, 2900-3099 unless it belongs to one of those existing
- * ranges), document it here, and verify it does not overlap with any
- * existing entry in this file.
+ * 2500, 2600, 2700-2899, 2900-3099, 3100-4099 unless it belongs to one of
+ * those existing ranges), document it here, and verify it does not overlap
+ * with any existing entry in this file.
  */
 
 /** ID of the static tracking-params ruleset (tracking-params.json). */
@@ -69,8 +76,9 @@ export const DNR_STATIC_RULE_ID = 1;
  * with them rather than depending on runtime registration.
  *
  * Priority mirrors the dynamic allowlist allow rule (1000) so it outranks
- * every strip rule MUGA registers — static (priority 1) and dynamic (the
- * custom-params and remote-params rules, also priority 1).
+ * every strip rule MUGA registers — static (priority 1), the dynamic
+ * custom-params and remote-params rules (also priority 1), and the dynamic
+ * host-scoped rules (priority 2, see DNR_SCOPED_PARAMS_PRIORITY).
  */
 export const DNR_SIGNED_URL_ALLOW_RULE_ID = 2;
 
@@ -179,6 +187,51 @@ export const DNR_BLOCKLIST_BEACON_RULE_ID_BASE = 2900;
  * dropped rather than truncating silently.
  */
 export const DNR_BLOCKLIST_MAX_RULES = 200;
+
+/**
+ * Base ID for the dynamic HOST-SCOPED remote param strip rules (#1221 slice 2).
+ * One rule per group of hosts sharing an identical scoped param set, at
+ * id = DNR_SCOPED_PARAMS_RULE_ID_BASE + i. Built by
+ * remote-rules.js#buildScopedDnrRules from the signed `scoped` section of the
+ * remote payload, and applied by mergeIntoCache alongside rule 1001.
+ *
+ * Range 3100-4099, immediately after the 2900-3099 blocklist beacon range.
+ */
+export const DNR_SCOPED_PARAMS_RULE_ID_BASE = 3100;
+
+/**
+ * Maximum number of dynamic host-scoped strip rules
+ * (ids BASE .. + DNR_SCOPED_PARAMS_MAX_RULES - 1). Sized against the measured
+ * yield of the AdGuard host-anchored import (#1229: ~630 host profiles), with
+ * headroom, and well under Chrome's dynamic-rule ceiling once the allowlist
+ * (500) and blocklist (200 + 200) ranges are counted. Over the cap the builder
+ * drops the tail and logs the dropped hosts rather than truncating silently,
+ * mirroring DNR_ALLOWLIST_MAX_RULES.
+ */
+export const DNR_SCOPED_PARAMS_MAX_RULES = 1000;
+
+/**
+ * Priority of the dynamic host-scoped strip rules. MUST exceed the priority of
+ * the global strip rules (all 1) — this is a measured constraint, not a
+ * stylistic one.
+ *
+ * A thin scoped rule only ADDS to the global strip; it does not replace it. In
+ * Chrome that composition happens across redirect passes: the pass-1 winner's
+ * transform changes the URL, which produces a redirect and a second matching
+ * pass where the next rule applies. At EQUAL priority which rule wins pass 1 is
+ * not determined — when the global rule wins it removes its params, and on
+ * pass 2 it still matches but has nothing left to remove, so there is no
+ * redirect, no pass 3, and the scoped rule never fires. Measured in real
+ * Chromium at equal priority: composed 11 times in 12, and the twelfth failed
+ * on CI. At priority 2: 24 of 24, no failures. See #1229 and PR #1242.
+ *
+ * A scheme that reused priority 1 here would look correct in testing and
+ * silently drop scoped facts in production at single-digit percentages.
+ *
+ * Stays far below DNR_SIGNED_URL_ALLOW_PRIORITY (1000) and the allowlist allow
+ * rules, so "allowlist always wins" is unaffected.
+ */
+export const DNR_SCOPED_PARAMS_PRIORITY = 2;
 
 /**
  * Shared `resourceTypes` list for every dynamic DNR rule that must cover the
