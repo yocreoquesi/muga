@@ -47,6 +47,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(__dirname, "../../tools/sign-rules.mjs");
+const REPO_ROOT = join(__dirname, "..", "..");
 
 // ---------------------------------------------------------------------------
 // Test-only keypair — generated ONCE per test run, thrown away after.
@@ -520,5 +521,85 @@ describe("sign-rules.mjs scoped facts (#1221)", () => {
       }),
     });
     assert.strictEqual(result.status, 0, `Expected exit 0. stderr: ${result.stderr}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The preserve guard vs. the built-ins (#1221)
+//
+// The guard added with the scoped channel refuses to publish a param some host
+// declares in preserveParams — publishing it would strip the very param that
+// host's entry exists to protect, which is #1212's failure class reached
+// through the signed channel.
+//
+// Asked of EVERY name, it also refused three the channel cannot apply. The
+// runtime runs `filterAgainstBuiltin` BEFORE `filterAgainstPreserved`, so a
+// param the extension already ships is removed from the remote list before the
+// preserve filter ever sees it. `utm_source` and `utm_medium` are both
+// built-ins that some host declares, so the guard as first written could not
+// sign the committed source at all, and the publish workflow — which runs on
+// every push touching tools/rules-source/** — would have failed on the next one.
+// ---------------------------------------------------------------------------
+
+describe("sign-rules.mjs preserve guard vs. built-ins (#1221)", () => {
+  test("the COMMITTED rules source can actually be signed", () => {
+    // The regression test the defect needed and did not have. Every other test
+    // here signs a fixture, so all of them passed while the one file the
+    // workflow actually signs was unsignable.
+    const result = runScript({
+      sourceFile: join(REPO_ROOT, "tools", "rules-source", "params.json"),
+    });
+
+    assert.strictEqual(
+      result.status,
+      0,
+      `the committed source must be signable — the publish workflow signs exactly this file.\n${result.stderr}`
+    );
+  });
+
+  test("signing the committed source reproduces the published params exactly", () => {
+    // The fix must restore the ability to sign WITHOUT changing what users get.
+    // A signer that passed by quietly dropping params would satisfy the test
+    // above and be far worse than the failure it replaced.
+    runScript({ sourceFile: join(REPO_ROOT, "tools", "rules-source", "params.json") });
+
+    const signed = JSON.parse(readFileSync(tmpOutputFile, "utf8"));
+    const published = JSON.parse(
+      readFileSync(join(REPO_ROOT, "docs", "rules", "v1", "params.json"), "utf8")
+    );
+
+    assert.deepStrictEqual(signed.params, published.params);
+    assert.strictEqual(signed.version, published.version);
+  });
+
+  test("a built-in that some host preserves is allowed through", () => {
+    // utm_source is the exact shape: a built-in, and in glavnoe.life's
+    // preserveParams. Inert on this channel either way.
+    const result = runScript({
+      sourceContent: JSON.stringify({
+        version: 1,
+        published: new Date().toISOString(),
+        params: ["utm_source"],
+      }),
+    });
+
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.deepStrictEqual(JSON.parse(readFileSync(tmpOutputFile, "utf8")).params, ["utm_source"]);
+  });
+
+  test("a NON-built-in that some host preserves is still refused", () => {
+    // The guard is narrowed, not removed. `field-keywords` is Amazon's search
+    // field and not a built-in, so publishing it globally would strip it on the
+    // host whose entry exists to protect it — which is the whole point.
+    const result = runScript({
+      sourceContent: JSON.stringify({
+        version: 1,
+        published: new Date().toISOString(),
+        params: ["field-keywords"],
+      }),
+    });
+
+    assert.strictEqual(result.status, 1);
+    assert.match(result.stderr, /preserveParams/);
   });
 });
