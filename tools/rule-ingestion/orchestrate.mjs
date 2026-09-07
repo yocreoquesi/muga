@@ -172,9 +172,15 @@ export function buildParams(autoMerge) {
  *   `scopedAutoMerge` (Slice 2, rules-scope-normalization) is the SUBSET of
  *   `autoMerge` for which `isScoped()` is true. `autoMerge` itself stays a
  *   superset — unchanged shape/semantics, so existing tests and the
- *   `acceptances` parallelism are untouched. All four EPIC C gates run
- *   IDENTICALLY on scoped and unscoped candidates; no gate reads `scope`.
- *   Only `artifactBody.params` (via `buildParams`) excludes scoped entries.
+ *   `acceptances` parallelism are untouched. Only `artifactBody.params` (via
+ *   `buildParams`) excludes scoped entries.
+ *
+ *   Since #1229 the corroboration gate DOES read `scope`: a host-anchored
+ *   candidate answers to SCOPED_MIN_SIGNALS rather than MIN_SIGNALS, because
+ *   taking an anchored fact at its anchor is upstream's own claim at upstream's
+ *   own scope. Its anchor test is deliberately stricter than `isScoped` — a
+ *   `"*"` scope gets no relaxation there. The other three gates still run
+ *   identically on scoped and unscoped candidates.
  */
 export function runOrchestration({
   candidates,

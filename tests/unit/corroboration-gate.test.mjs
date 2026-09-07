@@ -19,11 +19,13 @@ import assert from "node:assert/strict";
 
 import {
   MIN_SIGNALS,
+  SCOPED_MIN_SIGNALS,
   ENTROPY_FLOOR,
   CSF_FLOOR,
   checkCorroborationGate,
   partitionCandidates,
 } from "../../tools/rule-ingestion/gates/corroboration-gate.mjs";
+import { isScoped } from "../../tools/rule-ingestion/orchestrate.mjs";
 
 // ── T-01: Module shape ────────────────────────────────────────────────────────
 
@@ -38,6 +40,11 @@ describe("corroboration-gate module shape", () => {
 
   test("CSF_FLOOR is 3", () => {
     assert.equal(CSF_FLOOR, 3);
+  });
+
+  test("SCOPED_MIN_SIGNALS is 1, strictly below MIN_SIGNALS", () => {
+    assert.equal(SCOPED_MIN_SIGNALS, 1);
+    assert.ok(SCOPED_MIN_SIGNALS < MIN_SIGNALS);
   });
 
   test("checkCorroborationGate is a function", () => {
@@ -366,5 +373,116 @@ describe("partitionCandidates", () => {
     const { accepted, rejected } = partitionCandidates([cLow], { entropyFloor: 3.5 });
     assert.equal(accepted.length, 1);
     assert.equal(rejected.length, 0);
+  });
+});
+
+// ── Scope-aware arm 1 (#1229) ────────────────────────────────────────────────
+//
+// MIN_SIGNALS is 2 because a promoted param applies to the whole web, and one
+// upstream's word is not enough for that. An anchored fact makes a smaller
+// claim — "this param is a tracker ON THIS HOST" — which is the claim upstream
+// itself made, at the scope upstream chose. Taking it there runs the risk
+// upstream's own users already run; widening it to global claims more than
+// upstream ever did, which is #1212's shape.
+//
+// The measurement that makes this load-bearing: AdGuard's host-anchored
+// coverage is a SINGLE adapter, so at MIN_SIGNALS=2 none of #1229's 1541
+// gate-admitted (param, host) pairs can pass arm 1 at all.
+
+describe("GATE 2 — scope-aware signal threshold (#1229)", () => {
+  test("a host-anchored candidate passes on ONE signal", () => {
+    const result = checkCorroborationGate({
+      param: "igsh",
+      scope: "instagram.com",
+      signals: ["adguard-tp"],
+    });
+
+    assert.strictEqual(result.rejected, false);
+    assert.strictEqual(result.passedArm, "anchor");
+  });
+
+  test("the SAME candidate without an anchor is still rejected", () => {
+    // The whole point: nothing is relaxed on the global path. One upstream
+    // saying a name is a tracker everywhere is exactly what the gate refuses.
+    const result = checkCorroborationGate({ param: "igsh", signals: ["adguard-tp"] });
+
+    assert.strictEqual(result.rejected, true);
+    assert.strictEqual(result.reason, "corroboration-below-threshold");
+  });
+
+  test("an anchored candidate with NO signals is still rejected", () => {
+    // Relaxed to 1, not to 0. A candidate no upstream reported is the failure
+    // mode this gate exists to catch, and that reasoning does not depend on
+    // scope.
+    const result = checkCorroborationGate({ param: "igsh", scope: "instagram.com", signals: [] });
+
+    assert.strictEqual(result.rejected, true);
+    assert.strictEqual(result.detail.anchored, true);
+    assert.strictEqual(result.detail.minSignals, SCOPED_MIN_SIGNALS);
+  });
+
+  test('scope "*" gets NO relaxation, even though isScoped() calls it scoped', () => {
+    // The asymmetry that is easy to get wrong. `isScoped` counts "*" as scoped
+    // so it stays OUT of the global signed list — exclusion only costs reach.
+    // Here "*" IS the global claim, so counting it as anchored would hand the
+    // relaxed threshold to the exact case the threshold protects.
+    const result = checkCorroborationGate({ param: "cid", scope: "*", signals: ["adguard-tp"] });
+
+    assert.strictEqual(result.rejected, true);
+    assert.strictEqual(result.detail.anchored, false);
+    assert.strictEqual(result.detail.minSignals, MIN_SIGNALS);
+    // And the predicate the global path uses still calls it scoped, unchanged.
+    assert.strictEqual(isScoped({ scope: "*" }), true);
+  });
+
+  test('an empty scope is not an anchor', () => {
+    const result = checkCorroborationGate({ param: "cid", scope: "", signals: ["adguard-tp"] });
+    assert.strictEqual(result.rejected, true);
+    assert.strictEqual(result.detail.anchored, false);
+  });
+
+  test("an anchored candidate that clears the GLOBAL bar reports 'signals', not 'anchor'", () => {
+    // So the quarantine report distinguishes a fact that NEEDED its scope from
+    // one that merely has it. Reporting "anchor" for both would overstate how
+    // much the relaxation is actually carrying.
+    const result = checkCorroborationGate({
+      param: "igsh",
+      scope: "instagram.com",
+      signals: ["adguard-tp", "clearurls"],
+    });
+
+    assert.strictEqual(result.rejected, false);
+    assert.strictEqual(result.passedArm, "signals");
+  });
+
+  test("scopedMinSignals is overridable without touching the global threshold", () => {
+    const candidate = { param: "igsh", scope: "instagram.com", signals: ["adguard-tp"] };
+
+    assert.strictEqual(checkCorroborationGate(candidate).rejected, false);
+    assert.strictEqual(
+      checkCorroborationGate(candidate, { scopedMinSignals: 2 }).rejected,
+      true,
+      "raising the scoped threshold must bind the scoped path",
+    );
+  });
+
+  test("lowering minSignals does not raise the bar on the anchored path", () => {
+    // The thresholds are chosen explicitly rather than as a min() of the two,
+    // so a one-off run that loosens the global bar cannot silently tighten the
+    // scoped one, or the reverse.
+    const anchored = { param: "igsh", scope: "instagram.com", signals: ["adguard-tp"] };
+    assert.strictEqual(checkCorroborationGate(anchored, { minSignals: 5 }).rejected, false);
+  });
+
+  test("partitionCandidates splits an anchored and a global single-signal candidate", () => {
+    const { accepted, rejected } = partitionCandidates([
+      { param: "igsh", scope: "instagram.com", signals: ["adguard-tp"] },
+      { param: "igsh", signals: ["adguard-tp"] },
+    ]);
+
+    assert.strictEqual(accepted.length, 1);
+    assert.strictEqual(accepted[0].scope, "instagram.com");
+    assert.strictEqual(rejected.length, 1);
+    assert.strictEqual(rejected[0].candidate.scope, undefined);
   });
 });
