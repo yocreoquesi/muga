@@ -162,7 +162,7 @@
 
   <p>The roadmap lives in <a href="https://github.com/yocreoquesi/muga/issues">GitHub Issues</a>, the concrete work items.</p>
 
-  <p>Material changes to the privacy contract trigger a re-onboarding flow on each device the next time the service worker wakes up (<a href="https://github.com/yocreoquesi/muga/blob/main/docs/privacy-page.html#L56"><code>docs/privacy-page.html:56</code></a>), so the user always has a chance to re-consent before behaviour changes.</p>
+  <p>Updating the terms does not re-prompt you and does not gate any feature. MUGA follows the model uBlock Origin uses: the documents stay permanently reachable rather than being announced once, and continuing to use the extension after an update means you accept the updated terms. The versioned re-acceptance engine was removed in <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0007-terms-available-not-accepted.md">ADR-0007</a>.</p>
 
   </div>
 </main>

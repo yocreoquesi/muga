@@ -1,6 +1,6 @@
 # MUGA: Frequently Asked Questions
 
-A direct, evidence-cited FAQ for skeptics. MUGA is the denoise extension for the web, it quiets the noise on every URL so the web feels clean and fast again. Every factual claim below is backed
+A direct, evidence-cited FAQ for skeptics. MUGA is a URL cleaner: it removes the tracking parameters from every URL, unwraps redirects, and reveals where a shortened link really goes. Every factual claim below is backed
 by a line in the source tree of this repository. If you find a discrepancy
 between what is written here and the code, the code wins, please open an
 issue.
@@ -42,7 +42,7 @@ a generic cleaner is fine. If you want the YouTuber who recommended you
 that USB-C dock to actually get paid for the recommendation, you need a
 tool that knows the difference between a noise param and an affiliate tag.
 
-### Q: Doesn't preserving affiliate parameters defeat the denoise goal?
+### Q: Doesn't preserving affiliate parameters defeat the point of cleaning?
 
 No, and the distinction matters. An affiliate tag like `?tag=somecreator-21`
 identifies **the recommender**, not you. A tracking parameter like
@@ -237,7 +237,9 @@ comments in [`src/lib/affiliates.js`](../src/lib/affiliates.js).
 
 The roadmap lives in [GitHub Issues](https://github.com/yocreoquesi/muga/issues), the concrete work items.
 
-Material changes to the privacy contract trigger a re-onboarding flow on
-each device the next time the service worker wakes up
-([`docs/privacy-page.html:56`](privacy-page.html#L56)), so
-the user always has a chance to re-consent before behaviour changes.
+Updating the terms does not re-prompt you and does not gate any feature.
+MUGA follows the model uBlock Origin uses: the documents stay permanently
+reachable rather than being announced once, and continuing to use the
+extension after an update means you accept the updated terms. The
+versioned re-acceptance engine was removed in
+[ADR-0007](adr/0007-terms-available-not-accepted.md).
