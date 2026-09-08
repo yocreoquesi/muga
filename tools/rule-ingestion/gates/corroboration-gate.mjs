@@ -7,13 +7,23 @@
  *   2. entropy !== null && entropy >= ENTROPY_FLOOR  (entropy arm)
  *   3. crossSiteFrequency !== null && crossSiteFrequency >= CSF_FLOOR  (CSF arm)
  *
+ * SCOPE-AWARE since #1229: arm 1's threshold is SCOPED_MIN_SIGNALS for a
+ * candidate carrying a real host anchor, and MIN_SIGNALS for a global claim.
+ * Nothing is relaxed on the global path. See SCOPED_MIN_SIGNALS for why an
+ * anchored fact answers to a lower bar, and `hasHostAnchor` for why `"*"` is
+ * deliberately NOT an anchor here even though `isScoped` counts it as scoped.
+ *
  * Null values on heuristic arms (entropy/CSF) cause that arm to be SKIPPED
  * entirely — they do not count as failing. This preserves the existing
  * signal-count-only behaviour for candidates where enrichment produced no data.
  *
- * Accepted results include a `passedArm` field ("signals" | "entropy" | "csf")
- * identifying which arm caused acceptance; when multiple arms qualify, the FIRST
- * in the precedence order above is recorded.
+ * Accepted results include a `passedArm` field
+ * ("signals" | "anchor" | "entropy" | "csf") identifying which arm caused
+ * acceptance; when multiple arms qualify, the FIRST in the precedence order
+ * above is recorded. "anchor" is arm 1 passing ONLY because the candidate is
+ * host-anchored — an anchored candidate that clears the global bar anyway
+ * reports "signals", so the report distinguishes a fact that NEEDED its scope
+ * from one that merely has it.
  *
  * Rejected results include an extended `detail` object with all evaluated arm
  * values (signalCount, minSignals, entropy, entropyFloor, crossSiteFrequency,
@@ -34,6 +44,7 @@
  *
  * Public API (named exports only — no default):
  *   MIN_SIGNALS              → number (default signal threshold = 2)
+ *   SCOPED_MIN_SIGNALS       → number (host-anchored signal threshold = 1)
  *   ENTROPY_FLOOR            → number (default entropy threshold = 4.0)
  *   CSF_FLOOR                → number (default cross-site-frequency threshold = 3)
  *   checkCorroborationGate   → (candidate, opts?) → { rejected, passedArm? }
@@ -88,7 +99,54 @@ export const ENTROPY_FLOOR = 4.0;
  */
 export const CSF_FLOOR = 3;
 
+/**
+ * Signal threshold for a candidate that carries a REAL HOST ANCHOR (#1229).
+ *
+ * MIN_SIGNALS is 2 because everything this pipeline promotes to the global list
+ * applies to the whole web, and one upstream's word is not enough to strip a
+ * param on every site anyone visits. An anchored fact makes a much smaller
+ * claim: it says "this param is a tracker ON THIS HOST", which is the claim
+ * upstream itself made, at the scope upstream chose. Taking it at that scope is
+ * running the same risk upstream's own users already run; widening it to global
+ * is claiming more than upstream ever did, and that is #1212's shape.
+ *
+ * Still 1 rather than 0. A candidate no upstream reported at all is exactly the
+ * failure mode this gate exists to catch, and that reasoning does not depend on
+ * scope.
+ *
+ * What this unlocks is measured: AdGuard's host-anchored coverage is a SINGLE
+ * adapter, so at MIN_SIGNALS=2 none of the 1541 gate-admitted (param, host)
+ * pairs in #1229 can pass the signals arm. This threshold is the difference
+ * between that import being possible and being empty.
+ *
+ * @type {number}
+ */
+export const SCOPED_MIN_SIGNALS = 1;
+
 // ── Predicate ─────────────────────────────────────────────────────────────────
+
+/**
+ * Does this candidate name a real host to anchor its claim to?
+ *
+ * DELIBERATELY NOT `orchestrate.mjs`'s `isScoped`, which counts `"*"` as
+ * scoped. The two fail closed in OPPOSITE directions and both are right:
+ *
+ *   - `isScoped` decides what to keep OUT of the global signed list, so an
+ *     ambiguous `"*"` must count as scoped — exclusion only costs reach.
+ *   - this decides who gets a RELAXED threshold, so an ambiguous `"*"` must
+ *     count as unanchored — `"*"` is the global claim itself, and relaxing
+ *     corroboration for it is precisely the thing that must never happen.
+ *
+ * Sharing one predicate between the two would make one of them wrong, and the
+ * wrong one would be silent.
+ *
+ * @param {object|null|undefined} candidate
+ * @returns {boolean}
+ */
+function hasHostAnchor(candidate) {
+  const scope = candidate?.scope;
+  return typeof scope === "string" && scope !== "" && scope !== "*";
+}
 
 /**
  * Checks a single ingestion candidate against the three-arm OR corroboration
@@ -108,15 +166,17 @@ export const CSF_FLOOR = 3;
  *
  * PURE: no file writes, no network calls, no singleton mutations.
  *
- * @param {{ signals?: string[], entropy?: number | null, crossSiteFrequency?: number | null } | null | undefined} candidate
+ * @param {{ scope?: string, signals?: string[], entropy?: number | null, crossSiteFrequency?: number | null } | null | undefined} candidate
  * @param {object} [opts]
  * @param {number} [opts.minSignals]
+ * @param {number} [opts.scopedMinSignals]
  * @param {number} [opts.entropyFloor]
  * @param {number} [opts.csfFloor]
  * @returns {{ rejected: boolean, passedArm?: string, reason?: string, detail?: object }}
  */
 export function checkCorroborationGate(candidate, {
   minSignals = MIN_SIGNALS,
+  scopedMinSignals = SCOPED_MIN_SIGNALS,
   entropyFloor = ENTROPY_FLOOR,
   csfFloor = CSF_FLOOR,
 } = {}) {
@@ -128,9 +188,23 @@ export function checkCorroborationGate(candidate, {
   const entropy = candidate?.entropy ?? null;
   const csf = candidate?.crossSiteFrequency ?? null;
 
+  // #1229: an anchored fact answers to its own threshold. Chosen explicitly
+  // rather than as a min() of the two so a caller lowering `minSignals` for a
+  // one-off run cannot accidentally raise the bar on the scoped path, or the
+  // reverse — each path's threshold is the one its own option names.
+  const anchored = hasHostAnchor(candidate);
+  const effectiveMinSignals = anchored ? scopedMinSignals : minSignals;
+
   // Arm 1: signals
-  if (signalCount >= minSignals) {
-    return { rejected: false, passedArm: "signals" };
+  if (signalCount >= effectiveMinSignals) {
+    // "anchor" is reported only when the relaxation is what carried it. An
+    // anchored candidate that clears the global bar anyway reports "signals",
+    // so the quarantine report distinguishes a fact that needed the scope from
+    // one that merely has it.
+    return {
+      rejected: false,
+      passedArm: anchored && signalCount < minSignals ? "anchor" : "signals",
+    };
   }
 
   // Arm 2: entropy (null-skip guard — null does NOT rescue)
@@ -148,7 +222,8 @@ export function checkCorroborationGate(candidate, {
     reason: "corroboration-below-threshold",
     detail: {
       signalCount,
-      minSignals,
+      minSignals: effectiveMinSignals,
+      anchored,
       entropy,
       entropyFloor,
       crossSiteFrequency: csf,
@@ -165,11 +240,13 @@ export function checkCorroborationGate(candidate, {
  *
  * Forwards `opts` to each `checkCorroborationGate` call so callers can
  * override thresholds at batch level (mirrors GATE 3's partition signature).
- * Supports the full opts shape: { minSignals?, entropyFloor?, csfFloor? }.
+ * Supports the full opts shape:
+ * { minSignals?, scopedMinSignals?, entropyFloor?, csfFloor? }.
  *
- * @param {Array<{ signals?: string[], entropy?: number | null, crossSiteFrequency?: number | null }>} candidates
+ * @param {Array<{ scope?: string, signals?: string[], entropy?: number | null, crossSiteFrequency?: number | null }>} candidates
  * @param {object} [opts]
  * @param {number} [opts.minSignals]
+ * @param {number} [opts.scopedMinSignals]
  * @param {number} [opts.entropyFloor]
  * @param {number} [opts.csfFloor]
  * @returns {{ accepted: Array, rejected: Array<{ candidate: object, reason: string, detail: object }> }}
