@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { runLandScoped } from "../../tools/rule-ingestion/land-scoped.mjs";
-import { GLOBAL_SCOPE, ACTIONS } from "../../tools/rules-store.mjs";
+import { GLOBAL_SCOPE, ACTIONS, withScopedFacts } from "../../tools/rules-store.mjs";
 
 const baseStore = () => ({
   schemaVersion: 1,
@@ -149,5 +149,209 @@ test("#1239: the rendered weekly summary parses back into a report this tool lan
     nextStore.scopedFacts[0].provenance.signals,
     ["adguard-tp", "clearurls"],
     "the corroborating signals must survive the round trip, not just the pair"
+  );
+});
+
+// ── #1229: landing is automatic, so it has to report whether it MOVED ────────
+//
+// The weekly workflow re-offers every gate-admitted fact, not just the new
+// ones — the quarantine is gitignored and rebuilt from upstream on every run.
+// So "did this run do anything" cannot mean "did it run": it has to mean "did
+// the store change", or every week would commit an identical store and re-sign
+// the payload for nothing.
+//
+// It also has to be reported separately from the pipeline's own `noop`, which
+// measures the GLOBAL param list. The two paths move independently, and gating
+// the commit on the global signal alone would mean scoped facts never land in
+// any week with no new global params.
+
+function harnessWith({ report, initialFacts = [] }) {
+  const written = [];
+  const store = withScopedFacts(baseStore(), initialFacts);
+  const result = runLandScoped({
+    reportPath: "unused-because-readReport-is-injected",
+    readReport: () => report,
+    loadStoreImpl: () => store,
+    writeAllImpl: (nextStore) => written.push(nextStore),
+  });
+  return { result, written };
+}
+
+const LANDED = {
+  scope: "tiktok.com",
+  param: "_r",
+  action: ACTIONS.STRIP,
+  provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z", admittedAt: "2026-09-08T00:00:00.000Z" },
+};
+
+test("re-offering a fact the store already holds does not write at all", () => {
+  const { result, written } = harnessWith({
+    initialFacts: [LANDED],
+    report: {
+      scopedAutoMerge: [
+        { param: "_r", scope: "tiktok.com", signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z" },
+      ],
+    },
+  });
+
+  assert.equal(result.changed, false, "the store did not move, so nothing should be written");
+  assert.equal(result.written, false);
+  assert.equal(result.added, 0);
+  assert.equal(result.landed, 1, "the fact was still offered — landed counts offers, not changes");
+  assert.deepEqual(written, [], "an unchanged store must never reach writeAll");
+});
+
+test("a genuinely new fact reports changed and counts what was added", () => {
+  const { result, written } = harnessWith({
+    initialFacts: [LANDED],
+    report: {
+      scopedAutoMerge: [
+        { param: "_r", scope: "tiktok.com", signals: ["adguard-tp"] },
+        { param: "igsh", scope: "instagram.com", signals: ["adguard-tp"] },
+      ],
+    },
+  });
+
+  assert.equal(result.changed, true);
+  assert.equal(result.written, true);
+  assert.equal(result.added, 1, "one of the two offered facts was new");
+  assert.equal(result.landed, 2);
+  assert.equal(written.length, 1);
+  assert.equal(written[0].scopedFacts.length, 2);
+});
+
+test("an empty report reports changed:false, not just written:false", () => {
+  // The workflow routes on `changed`; a shape that only set `written` would
+  // leave that signal undefined and the step's output empty.
+  const { result } = harnessWith({ report: { scopedAutoMerge: [] } });
+  assert.equal(result.changed, false);
+  assert.equal(result.added, 0);
+});
+
+test("a new SIGNAL on an already-landed fact counts as a change", () => {
+  // Nothing is added to the segment, but the provenance moved, so the store
+  // moved — and a store that changed must be committed or the next run's drift
+  // check blames an innocent PR.
+  const { result, written } = harnessWith({
+    initialFacts: [LANDED],
+    report: {
+      scopedAutoMerge: [{ param: "_r", scope: "tiktok.com", signals: ["clearurls"] }],
+    },
+  });
+
+  assert.equal(result.changed, true);
+  assert.equal(result.added, 0, "no new fact, but the existing one gained corroboration");
+  assert.equal(written.length, 1);
+  assert.deepEqual(written[0].scopedFacts[0].provenance.signals, ["adguard-tp", "clearurls"]);
+});
+
+// ── #1229: what the gates admit is not what the payload can carry ────────────
+//
+// The EPIC C gates and the publication contract are different tests, on
+// purpose. Gate 1 guards against known affiliate PROGRAMS and documents that it
+// deliberately does not consume the broader AFFILIATE_PARAM_GUARD;
+// REMOTE_PARAM_DENYLIST is not consulted at ingestion at all. Harmless while a
+// person stood in that gap — not harmless once landing is automatic, because
+// `sign-rules.mjs` refuses the WHOLE payload on any of these and the weekly run
+// would publish nothing.
+//
+// Measured against the live quarantine: of 1608 gate-admitted scoped facts, 150
+// are unpublishable — 36 affiliate names, 18 denylisted names and 8 pairs
+// colliding with the host's own preserveParams.
+
+test("an affiliate param is dropped, however upstream anchored it", () => {
+  // The referral protection is what must not bend. `aff_id` on an affiliate
+  // host is a real case from the live data (get.surfshark.net, tradingview.com):
+  // upstream calls it a tracker, MUGA calls it someone's credit.
+  const { result, written } = harnessWith({
+    report: {
+      scopedAutoMerge: [
+        { param: "aff_id", scope: "get.surfshark.net", signals: ["adguard-tp"] },
+        { param: "si", scope: "youtube.com", signals: ["adguard-tp"] },
+      ],
+    },
+  });
+
+  assert.equal(result.added, 1, "only the non-affiliate fact may land");
+  assert.deepEqual(
+    written[0].scopedFacts.map((f) => f.param),
+    ["si"],
+  );
+});
+
+test("a denylisted param is dropped — a scope does not make it functional-safe", () => {
+  // `action` is in REMOTE_PARAM_DENYLIST and reached the gates anchored to a
+  // real host in the live data. It is load-bearing on any site.
+  const { result, written } = harnessWith({
+    report: {
+      scopedAutoMerge: [
+        { param: "action", scope: "stripchat.com", signals: ["adguard-tp"] },
+        { param: "si", scope: "youtube.com", signals: ["adguard-tp"] },
+      ],
+    },
+  });
+
+  assert.equal(result.added, 1);
+  assert.deepEqual(written[0].scopedFacts.map((f) => f.param), ["si"]);
+});
+
+test("a fact colliding with the host's OWN preserveParams is dropped", () => {
+  // youtube.com declares `v`. Upstream may call it a tracker there; the host's
+  // own entry wins, and it wins through a suffix walk so spelling the host with
+  // a subdomain does not bypass it.
+  const { result } = harnessWith({
+    report: {
+      scopedAutoMerge: [
+        { param: "v", scope: "www.youtube.com", signals: ["adguard-tp"] },
+      ],
+    },
+  });
+
+  assert.equal(result.changed, false, "nothing publishable, so nothing lands");
+  assert.equal(result.added, 0);
+});
+
+test("dropping the unpublishable ones does NOT refuse the run", () => {
+  // The posture that matters for an unattended weekly job: one bad fact among
+  // many is ordinary at this volume, and refusing over it would mean the
+  // pipeline publishes nothing at all.
+  const { result, written } = harnessWith({
+    report: {
+      scopedAutoMerge: [
+        { param: "aff_id", scope: "get.surfshark.net", signals: ["adguard-tp"] },
+        { param: "action", scope: "stripchat.com", signals: ["adguard-tp"] },
+        { param: "si", scope: "youtube.com", signals: ["adguard-tp"] },
+        { param: "igsh", scope: "instagram.com", signals: ["adguard-tp"] },
+      ],
+    },
+  });
+
+  assert.equal(result.changed, true);
+  assert.equal(result.added, 2);
+  assert.deepEqual(written[0].scopedFacts.map((f) => f.param), ["igsh", "si"]);
+});
+
+test("a report of ONLY unpublishable facts is a clean no-op, not a throw", () => {
+  const { result, written } = harnessWith({
+    report: {
+      scopedAutoMerge: [{ param: "aff_id", scope: "get.surfshark.net", signals: ["adguard-tp"] }],
+    },
+  });
+
+  assert.equal(result.changed, false);
+  assert.equal(result.written, false);
+  assert.deepEqual(written, []);
+});
+
+test("a candidate with no host scope STILL refuses the run", () => {
+  // The filter must not have softened the refusals. A candidate with no scope
+  // means the report itself is malformed, which is a different kind of problem
+  // from upstream naming a param MUGA knows better about.
+  assert.throws(
+    () =>
+      harnessWith({
+        report: { scopedAutoMerge: [{ param: "si", signals: ["adguard-tp"] }] },
+      }),
+    /no host scope/,
   );
 });

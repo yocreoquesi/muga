@@ -231,7 +231,7 @@ describe("CI gate-parity — every ci.yml test-job gate must be in auto-ingest-r
         `(GitHub GITHUB_TOKEN recursion guard), so it must replicate the full gate\n` +
         `suite inline. Add the missing step to auto-ingest-rules.yml's inline gate\n` +
         `block (section 6, after the ingestion pipeline run, gated on\n` +
-        `steps.pipeline.outputs.noop == 'false').\n` +
+        `steps.work.outputs.any == 'true').\n` +
         `\n` +
         `See: .github/workflows/ci.yml (test job), ADR-0005 Consequences, issue #891.`
       );
@@ -289,8 +289,13 @@ describe("CI gate-parity — typecheck + lint:js step ordering in auto-ingest-ru
 //        correct noop guard and the correct step names from ci.yml.
 // ---------------------------------------------------------------------------
 describe("CI gate-parity — typecheck + lint:js step shape", () => {
-  test("typecheck step is gated on steps.pipeline.outputs.noop == 'false'", () => {
-    // Find the block around 'npm run typecheck' and verify the noop guard precedes it.
+  // #1229: the gate moved from the pipeline's own `noop` to a combined
+  // signal. `noop` measures the GLOBAL param list only; host-scoped facts
+  // land on their own path and the two move independently, so gating the
+  // mutating steps on `noop` alone would mean scoped facts never reach a
+  // commit in any week with no new global params.
+  test("typecheck step is gated on steps.work.outputs.any == 'true'", () => {
+    // Find the block around 'npm run typecheck' and verify the guard precedes it.
     const lines = autoIngestYaml.split("\n");
     const typecheckLine = lines.findIndex(l => /npm run typecheck/.test(l));
     assert.ok(typecheckLine !== -1, "auto-ingest-rules.yml must contain 'npm run typecheck'");
@@ -298,32 +303,32 @@ describe("CI gate-parity — typecheck + lint:js step shape", () => {
     // Scan backwards to find the nearest `if:` for this step
     let foundGuard = false;
     for (let i = typecheckLine; i >= Math.max(0, typecheckLine - 5); i--) {
-      if (/steps\.pipeline\.outputs\.noop\s*==\s*['"]false['"]/.test(lines[i])) {
+      if (/steps\.work\.outputs\.any\s*==\s*['"]true['"]/.test(lines[i])) {
         foundGuard = true;
         break;
       }
     }
     assert.ok(
       foundGuard,
-      "typecheck step must be gated on steps.pipeline.outputs.noop == 'false'"
+      "typecheck step must be gated on steps.work.outputs.any == 'true'"
     );
   });
 
-  test("lint:js step is gated on steps.pipeline.outputs.noop == 'false'", () => {
+  test("lint:js step is gated on steps.work.outputs.any == 'true'", () => {
     const lines = autoIngestYaml.split("\n");
     const lintJsLine = lines.findIndex(l => /npm run lint:js/.test(l));
     assert.ok(lintJsLine !== -1, "auto-ingest-rules.yml must contain 'npm run lint:js'");
 
     let foundGuard = false;
     for (let i = lintJsLine; i >= Math.max(0, lintJsLine - 5); i--) {
-      if (/steps\.pipeline\.outputs\.noop\s*==\s*['"]false['"]/.test(lines[i])) {
+      if (/steps\.work\.outputs\.any\s*==\s*['"]true['"]/.test(lines[i])) {
         foundGuard = true;
         break;
       }
     }
     assert.ok(
       foundGuard,
-      "lint:js step must be gated on steps.pipeline.outputs.noop == 'false'"
+      "lint:js step must be gated on steps.work.outputs.any == 'true'"
     );
   });
 

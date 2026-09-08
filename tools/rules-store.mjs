@@ -95,6 +95,15 @@ const VALID_ACTIONS = new Set(Object.values(ACTIONS));
  */
 const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 
+/**
+ * Param-name shape a `scopedFacts[]` entry must have — identical to
+ * `PARAM_FORMAT_RE` in `src/lib/remote-rules.js`, and enforced here for the
+ * reason that regex exists: `canonicalScopedMessage` uses `@`, `+`, `,` and `|`
+ * as separators, so a name carrying one would let two different fact sets
+ * serialise to the same string and share a signature.
+ */
+const SCOPED_PARAM_RE = /^[a-zA-Z0-9_.\-]+$/;
+
 // ── Entry construction ───────────────────────────────────────────────
 
 /**
@@ -133,6 +142,13 @@ function validateEntry({ scope, param, action }, where = "entry") {
   }
   if (typeof param !== "string" || param.length === 0) {
     throw new Error(`rules-store: ${where} needs a param (scope: ${scope})`);
+  }
+  if (!SCOPED_PARAM_RE.test(param)) {
+    throw new Error(
+      `rules-store: ${where} param "${param}" is not a valid param name (scope: ${scope}). ` +
+        "`canonicalScopedMessage` separates facts with @ + , and | — a name containing " +
+        "one would let two different fact sets serialise identically and share a signature"
+    );
   }
   if (RESERVED_ACTIONS.includes(action)) {
     throw new Error(
@@ -301,6 +317,12 @@ export function withDomainRules(store, domainRules) {
  * `provenance.signals` on a collision (the same corroboration semantics
  * `mergeCandidates` already uses for `signals[]`).
  *
+ * IDEMPOTENT: re-landing a fact the store already holds returns a byte-identical
+ * store. That is a requirement, not a nicety — the weekly run re-derives every
+ * candidate from scratch and re-lands all of them, so anything that moved on a
+ * re-land would churn the whole segment every week. See the timestamp handling
+ * below.
+ *
  * Surgical, like `withGlobalParams`: it only ever replaces the axis it owns.
  * `entries[]` and `projection` are untouched — this is preserved automatically
  * by the `{...store}` spread, not by an explicit copy, which is why
@@ -334,7 +356,30 @@ export function withScopedFacts(store, facts) {
     byKey.set(key, {
       ...existing,
       ...fact,
-      provenance: { ...existing.provenance, ...fact.provenance, signals: [...signals].sort() },
+      provenance: {
+        ...existing.provenance,
+        ...fact.provenance,
+        signals: [...signals].sort(),
+        // FIRST LANDING WINS on both timestamps. `tools/rule-ingestion/quarantine/`
+        // is gitignored, so every run rebuilds its candidates from upstream and
+        // stamps them with that run's clock — `firstSeenAt` from
+        // `candidate.mjs`, `admittedAt` from `land-scoped.mjs`. Letting the new
+        // values win would make both mean "the last time a workflow ran", which
+        // is not information, AND would rewrite every landed fact on every
+        // weekly run: a diff of the whole segment, and a fresh `scopedSig` over
+        // an unchanged rule set. This store IS the persistence the quarantine
+        // deliberately lacks, so re-landing an unchanged fact must be a no-op
+        // down to the byte.
+        //
+        // `signals` is unioned rather than pinned because a second adapter
+        // reporting the same fact is genuine new information.
+        ...(existing.provenance?.firstSeenAt
+          ? { firstSeenAt: existing.provenance.firstSeenAt }
+          : {}),
+        ...(existing.provenance?.admittedAt
+          ? { admittedAt: existing.provenance.admittedAt }
+          : {}),
+      },
     });
   }
 

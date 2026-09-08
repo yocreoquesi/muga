@@ -369,3 +369,93 @@ test("emitScoped output is what the RUNTIME validator accepts", () => {
   assert.strictEqual(rejected, 0, "the runtime dropped a fact the store published");
   assert.deepStrictEqual(accepted, emitted);
 });
+
+// ── #1229: re-landing must be a byte-level no-op ─────────────────────────────
+//
+// `tools/rule-ingestion/quarantine/` is gitignored, so every weekly run rebuilds
+// its candidates from upstream and re-offers ALL of them — that is what makes
+// "land the backlog, then only ever see the delta" work with no delta
+// machinery. It only works if a fact the store already holds re-lands to
+// identical bytes. Both timestamps are generated per run (`firstSeenAt` by
+// candidate.mjs, `admittedAt` by land-scoped.mjs), so without pinning them the
+// weekly diff would rewrite every landed fact and re-sign the payload over an
+// unchanged rule set.
+
+test("re-landing an already-held fact returns a byte-identical store", () => {
+  const week1 = withScopedFacts(baseStore(), [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z", admittedAt: "2026-09-08T00:00:00.000Z" },
+    },
+  ]);
+  const week2 = withScopedFacts(week1, [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      // A later run's clock, which is what actually happens.
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-15T00:00:00.000Z", admittedAt: "2026-09-15T00:00:00.000Z" },
+    },
+  ]);
+
+  assert.strictEqual(serializeStore(week1), serializeStore(week2));
+});
+
+test("the FIRST landing's timestamps win on a collision", () => {
+  // The store is the persistence the quarantine deliberately lacks. Letting the
+  // new values win would make both fields mean "the last time a workflow ran".
+  const first = withScopedFacts(baseStore(), [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z", admittedAt: "2026-09-08T00:00:00.000Z" },
+    },
+  ]);
+  const again = withScopedFacts(first, [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-12-01T00:00:00.000Z", admittedAt: "2026-12-01T00:00:00.000Z" },
+    },
+  ]);
+
+  assert.strictEqual(again.scopedFacts[0].provenance.firstSeenAt, "2026-09-01T00:00:00.000Z");
+  assert.strictEqual(again.scopedFacts[0].provenance.admittedAt, "2026-09-08T00:00:00.000Z");
+});
+
+test("a NEW signal on a re-land is still unioned in", () => {
+  // Pinning the timestamps must not freeze the whole provenance: a second
+  // adapter reporting the same fact is genuine new information, and it is what
+  // the corroboration semantics are built on.
+  const first = withScopedFacts(baseStore(), [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["adguard-tp"], firstSeenAt: "2026-09-01T00:00:00.000Z", admittedAt: "2026-09-08T00:00:00.000Z" },
+    },
+  ]);
+  const corroborated = withScopedFacts(first, [
+    {
+      scope: "tiktok.com",
+      param: "_r",
+      action: ACTIONS.STRIP,
+      provenance: { signals: ["clearurls"], firstSeenAt: "2026-12-01T00:00:00.000Z", admittedAt: "2026-12-01T00:00:00.000Z" },
+    },
+  ]);
+
+  assert.deepStrictEqual(corroborated.scopedFacts[0].provenance.signals, ["adguard-tp", "clearurls"]);
+  assert.notStrictEqual(serializeStore(first), serializeStore(corroborated));
+});
+
+test("a first landing with no provenance timestamps does not invent them", () => {
+  const store = withScopedFacts(baseStore(), [
+    { scope: "tiktok.com", param: "_r", action: ACTIONS.STRIP, provenance: { signals: [] } },
+  ]);
+  assert.strictEqual(store.scopedFacts[0].provenance.firstSeenAt, undefined);
+  assert.strictEqual(store.scopedFacts[0].provenance.admittedAt, undefined);
+});

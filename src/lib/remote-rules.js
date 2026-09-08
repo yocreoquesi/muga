@@ -389,10 +389,20 @@ export const MAX_SCOPED_FACTS = 2000;
  * bypassed by spelling the host differently, which is #1212's shape wearing a
  * subdomain.
  *
+ * Exported as `hostPreservesParam` (which lowercases for you) so the ingestion
+ * landing step and `tools/sign-rules.mjs` ask this question with ONE
+ * implementation. They used to hold private copies, and a divergence between
+ * what ingestion admits and what publication accepts is exactly how #1229's
+ * first automated run would have shipped nothing at all.
+ *
  * @param {string} host  Lowercased hostname.
  * @param {string} param Lowercased param name.
  * @returns {boolean}
  */
+export function hostPreservesParam(host, param) {
+  return _hostPreserves(String(host).toLowerCase(), String(param).toLowerCase());
+}
+
 function _hostPreserves(host, param) {
   let candidate = host;
   for (;;) {

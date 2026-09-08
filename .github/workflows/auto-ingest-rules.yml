@@ -89,38 +89,74 @@ jobs:
         continue-on-error: true
         run: node tools/rule-ingestion/format-surface.mjs >> "$GITHUB_STEP_SUMMARY"
 
-      # ── 5. No-op early exit ───────────────────────────────────────────────────
-      # If promote detected no change (params already up to date), exit cleanly.
-      # All subsequent steps are gated on noop == 'false' — they are never reached.
-      - name: Skip — no new parameters this run (noop)
-        if: steps.pipeline.outputs.noop == 'true'
+      # ── 4c. Land host-scoped facts (#1229) ──────────────────────────────────
+      # The gate-admitted (param, host) pairs from this run, into the normalized
+      # store. NOT gated on the pipeline's noop: that signal measures the GLOBAL
+      # param list only, and the two paths move independently. A week with no new
+      # global params can still carry new scoped facts, and gating this on the
+      # global signal would mean they never land at all.
+      #
+      # Re-landing is a byte-level no-op (land-scoped.mjs pins provenance
+      # timestamps to the first landing), so this re-offers every fact every week
+      # and only genuinely new ones reach the diff. That is what makes "land the
+      # backlog, then only the delta" work with no delta machinery: the
+      # quarantine is gitignored and rebuilt from upstream on every run.
+      #
+      # NOT continue-on-error: a refusal here (a candidate with no host scope, or
+      # one withScopedFacts rejects) means the report is malformed, and the right
+      # answer is to fail the run rather than publish around it.
+      - name: Land host-scoped facts
+        id: land_scoped
+        if: steps.pipeline.conclusion == 'success'
+        run: node tools/rule-ingestion/land-scoped.mjs --report tools/rule-ingestion/quarantine/quarantine-report.json
+
+      # ── 4d. Did anything change on EITHER path? ─────────────────────────────
+      # One signal for every downstream gate, publish and commit step, so neither
+      # path can starve the other. `noop` from the pipeline covers the global
+      # param list; `changed` from land-scoped covers the host-scoped segment.
+      - name: Decide whether this run has work to commit
+        id: work
+        if: steps.pipeline.conclusion == 'success'
         run: |
-          echo "Pipeline reported noop=true: params are already up to date."
+          GLOBAL='${{ steps.pipeline.outputs.noop }}'
+          SCOPED='${{ steps.land_scoped.outputs.changed }}'
+          if [ "$GLOBAL" = 'false' ] || [ "$SCOPED" = 'true' ]; then ANY=true; else ANY=false; fi
+          echo "global noop=$GLOBAL scoped changed=$SCOPED -> any=$ANY"
+          echo "any=$ANY" >> "$GITHUB_OUTPUT"
+
+      # ── 5. No-op early exit ───────────────────────────────────────────────────
+      # Nothing changed on EITHER path (no new global params AND no new scoped
+      # facts), so exit cleanly. All subsequent steps are gated on the same
+      # combined signal — they are never reached.
+      - name: Skip — nothing new this run (noop)
+        if: steps.work.outputs.any == 'false'
+        run: |
+          echo "No new global params and no new host-scoped facts: everything is up to date."
           echo "Skipping gates, publish, and PR steps."
 
-      # ── 6. Gates (ALL gated on noop == 'false'; NO if:always()) ─────────────
+      # ── 6. Gates (ALL gated on the combined signal; NO if:always()) ────────
       # These steps mirror ci.yml exactly. A failure in any gate causes the job
       # to fail, which prevents all downstream publish/commit/PR steps from
       # running. This is the inline gate enforcement mechanism (R8).
 
       - name: Type-check JS (tsc --checkJs) (#823)
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run typecheck
 
       - name: Lint JS (ESLint flat config) (#823)
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run lint:js
 
       - name: Compile rules artifacts
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run compile:rules
 
       - name: Generate wrapper DNR rules
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run build:dnr
 
       - name: Check src/rules/ is up to date
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: |
           if ! git diff --exit-code -- src/rules/; then
             echo "ERROR: src/rules/ artifacts are out of sync with their source."
@@ -128,11 +164,11 @@ jobs:
           fi
 
       - name: Bundle content script
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run build:content
 
       - name: Check content bundle is up to date
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: |
           if ! git diff --exit-code src/content/cleaner-bundle.js; then
             echo "ERROR: cleaner-bundle.js is out of sync with its source."
@@ -140,11 +176,11 @@ jobs:
           fi
 
       - name: Refresh web engine + landing mirror
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run build:web
 
       - name: Check web engine + landing mirror are up to date
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: |
           if ! git diff --exit-code -- web/engine landing/clean; then
             echo "ERROR: web/ engine copy or landing/clean mirror out of sync."
@@ -152,23 +188,23 @@ jobs:
           fi
 
       - name: Check web/src dependency-direction boundary
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run check:web-boundary
 
       - name: Verify browser-polyfill integrity
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: node tools/verify-polyfill-integrity.mjs
 
       - name: Verify rule-ingestion quarantine
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run verify:quarantine
 
       - name: Check i18n quality
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run check:i18n
 
       - name: Run unit tests
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm test
 
       # `npm test` above already covers this via rules-store-roundtrip, and it
@@ -180,23 +216,23 @@ jobs:
         run: npm run check:rules-store
 
       - name: Run integration tests
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run test:integration
 
       - name: CAPS-Contextual conformance gate
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run conformance:contextual
 
       - name: Lint extension
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npm run lint
 
       - name: Install Playwright browsers
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests (xvfb)
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: xvfb-run npx playwright test
 
       # ── 7. Inline publish ─────────────────────────────────────────────────────
@@ -204,7 +240,7 @@ jobs:
       # promote) and writes docs/rules/v1/params.json. Identical to publish-rules.yml.
       # Runs AFTER all gates — a gate failure never reaches this step.
       - name: Sign and publish rules
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         env:
           MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
         run: node tools/sign-rules.mjs
@@ -214,7 +250,7 @@ jobs:
       # (keeps pipeline deterministic and testable).
       # Only two files are committed — clean PR diff, no transient artifacts.
       - name: Create branch and commit updated params
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -243,7 +279,7 @@ jobs:
       # Mirror the guard from import-upstream.yml: check for an open PR on the
       # branch first; if one exists, update it with `gh pr edit` and skip create.
       - name: Create or update pull request
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         env:
           GH_TOKEN: ${{ secrets.MUGA_PR_TOKEN }}
         run: |
@@ -255,7 +291,8 @@ jobs:
           same job before this PR was created. Immediate squash-merge is safe.
 
           Files changed:
-          - `tools/rules-source/rules.json` — normalized store (the source)
+          - `tools/rules-source/rules.json` — normalized store (the source; global params
+            and any host-scoped facts landed this run)
           - `tools/rules-source/params.json` — projection of the store (signed by promote step)
           - `docs/rules/v1/params.json` — re-signed published artifact
 
@@ -287,7 +324,7 @@ jobs:
       # recursion guard). --auto waits for required checks (test, e2e) to pass
       # before merging, satisfying main's branch protection policy.
       - name: Squash-merge pull request
-        if: steps.pipeline.outputs.noop == 'false'
+        if: steps.work.outputs.any == 'true'
         env:
           GH_TOKEN: ${{ secrets.MUGA_PR_TOKEN }}
         run: gh pr merge "$BRANCH" --squash --auto --delete-branch
