@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { runLandScoped } from "../../tools/rule-ingestion/land-scoped.mjs";
-import { GLOBAL_SCOPE, ACTIONS, withScopedFacts, serializeStore } from "../../tools/rules-store.mjs";
+import { GLOBAL_SCOPE, ACTIONS, withScopedFacts } from "../../tools/rules-store.mjs";
 
 const baseStore = () => ({
   schemaVersion: 1,
