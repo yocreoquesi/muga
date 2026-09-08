@@ -670,6 +670,7 @@ describe("#878 — passedArm audit in quarantine report (not in signed artifact)
     // Distribution: only the passing candidate counts, via the signals arm.
     assert.deepStrictEqual(report.passedArmDistribution, {
       signals: 1,
+      anchor: 0,
       entropy: 0,
       csf: 0,
     });
@@ -733,8 +734,54 @@ describe("#878 — passedArm audit in quarantine report (not in signed artifact)
     });
 
     const report = JSON.parse(readFileSync(reportPath, "utf8"));
-    assert.deepStrictEqual(report.passedArmDistribution, { signals: 0, entropy: 0, csf: 0 });
+    assert.deepStrictEqual(report.passedArmDistribution, {
+      signals: 0,
+      anchor: 0,
+      entropy: 0,
+      csf: 0,
+    });
     assert.deepStrictEqual(report.autoMerge, []);
+  });
+
+  // #1229: the scope-aware gate added an "anchor" arm, and the distribution's
+  // SEED is what the counter can count. Unseeded, `dist["anchor"] += 1` was
+  // `undefined + 1` — NaN, which JSON renders as `null`. The weekly summary
+  // therefore reported "anchor: null" for what is now the largest arm by far
+  // (1616 of 1801 accepts on the live data): the one number a maintainer would
+  // look at to see how much the relaxation is actually doing.
+  test("an anchored accept is COUNTED, not rendered as null", async () => {
+    const { runOrchestrateCli } = await import(
+      "../../tools/rule-ingestion/orchestrate-cli.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    // One signal only, so it can pass ONLY via the anchor relaxation.
+    const anchored = { ...passCandidate("mugaanchored"), signals: ["adguard-tp"], scope: "example.com" };
+    const candidatesPath = writeCandidatesFixture(tmpDir, [anchored]);
+    const keyPath = writeTmpPrivKey(tmpDir, TEST_PRIV_KEY);
+    const promotePath = join(tmpDir, "promote-candidates.json");
+    const reportPath = join(tmpDir, "quarantine-report.json");
+
+    await runOrchestrateCli({
+      candidatesPath,
+      promotePath,
+      reportPath,
+      version: 1,
+      now: new Date("2024-01-01T00:00:00.000Z"),
+      keyPath,
+      discoveredDir: emptyDiscoveredDir(tmpDir),
+    });
+
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+
+    assert.strictEqual(report.passedArmDistribution.anchor, 1);
+    assert.strictEqual(report.passedArmDistribution.signals, 0);
+    // The specific breakage: NaN survives a round trip through JSON as null.
+    for (const [arm, n] of Object.entries(report.passedArmDistribution)) {
+      assert.ok(Number.isInteger(n), `${arm} must be a number, got ${JSON.stringify(n)}`);
+    }
+    // And the scoped candidate still stays out of the signed global list.
+    assert.deepStrictEqual(report.scopedAutoMergeCount, 1);
   });
 });
 

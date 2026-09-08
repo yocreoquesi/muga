@@ -145,8 +145,13 @@ describe("Constants — shape and values", () => {
     );
   });
 
-  test("MAX_PAYLOAD_BYTES is 50 KB (51200 bytes)", () => {
-    assert.strictEqual(MAX_PAYLOAD_BYTES, 50 * 1024);
+  test("MAX_PAYLOAD_BYTES is 256 KB", () => {
+    // Raised from 50 KB when host-scoped facts joined the payload (#1229): the
+    // first import measured ~105 KB of scoped facts against ~3 KB of global
+    // params, so the old bound rejected the whole payload and took the global
+    // rules down with it. MUGA's own bound, not a platform one — it exists so a
+    // hostile endpoint cannot stream unbounded data in, and that still holds.
+    assert.strictEqual(MAX_PAYLOAD_BYTES, 256 * 1024);
   });
 
   test("FETCH_TIMEOUT_MS is 15 seconds", () => {

@@ -247,12 +247,19 @@ export async function runOrchestrateCli({
 
   // Rescue-arm distribution: the data that justifies recalibrating the heuristic
   // floors (ENTROPY_FLOOR, CSF_FLOOR) once real crawler artifacts accumulate.
+  //
+  // #1229: `anchor` is seeded because the scope-aware gate added it, and the
+  // seed is what the counter can count. Without it `dist["anchor"] += 1` was
+  // `undefined + 1` — NaN, which JSON renders as `null`, so the weekly summary
+  // reported "anchor: null" for what is now the LARGEST arm by far (1616 of
+  // 1801 accepts on the live data). The `?? 0` makes a future arm count wrong
+  // rather than silently unreadable.
   const passedArmDistribution = autoMergeAudit.reduce(
     (dist, { passedArm }) => {
-      if (passedArm) dist[passedArm] += 1;
+      if (passedArm) dist[passedArm] = (dist[passedArm] ?? 0) + 1;
       return dist;
     },
-    { signals: 0, entropy: 0, csf: 0 }
+    { signals: 0, anchor: 0, entropy: 0, csf: 0 }
   );
 
   // ── 7. Sign the canonical message ───────────────────────────────────────────

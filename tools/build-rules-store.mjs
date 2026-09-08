@@ -77,6 +77,62 @@ function write(file, contents) {
 }
 
 /**
+ * How many bytes of published payload the scoped section may occupy.
+ *
+ * SEPARATE from the runtime's `MAX_PAYLOAD_BYTES` on purpose, and deliberately
+ * smaller. That constant is compiled into every installed build; this one is
+ * what we actually serve. Serving above the bound the DEPLOYED fleet carries
+ * makes those installs reject the whole payload — the global rules included —
+ * until they auto-update, so the two numbers move at different times: the
+ * runtime bound rises with a release, this one rises once that release has
+ * adoption.
+ *
+ * Set to the pre-#1229 runtime bound, which is what the fleet carries today.
+ * Raising it is a one-line change and needs no client work.
+ */
+export const PUBLISH_PAYLOAD_BUDGET_BYTES = 50 * 1024;
+
+/**
+ * Trims the scoped section to what the published payload can carry.
+ *
+ * The store keeps every landed fact — this only decides what is SERVED. Facts
+ * are dropped from the end of an already-sorted list, so the published set is
+ * deterministic and grows monotonically as the budget rises: raising the budget
+ * publishes more, it never reshuffles what was already out there.
+ *
+ * Measured against the SIGNED, COMPACT payload - what `fetchWithCap` actually
+ * streams - and NOT against this pretty-printed source. The two differ by
+ * roughly 2x, and budgeting against the wrong one errs in the direction that
+ * takes the channel down.
+ *
+ * @param {Array<{param: string, hosts: string[]}>} scoped
+ * @param {number} baseBytes Compact size of the payload without the scoped section.
+ * @param {number} budget
+ * @returns {{published: Array, dropped: number}}
+ */
+function fitScopedToBudget(scoped, baseBytes, budget) {
+  const published = [];
+  let used = baseBytes + SCOPED_SECTION_OVERHEAD_BYTES;
+
+  for (const fact of scoped) {
+    const cost = JSON.stringify(fact).length + 2; // entry + separator
+    if (used + cost > budget) break;
+    used += cost;
+    published.push(fact);
+  }
+
+  return { published, dropped: scoped.length - published.length };
+}
+
+/**
+ * Slack for the `"scoped":[...]` wrapper plus the `sig` and `scopedSig` the
+ * signer adds after this file is written (~88 base64 chars each). Generous on
+ * purpose: overshooting takes the whole channel down for installed builds,
+ * while undershooting costs a handful of facts that publish on the next run.
+ */
+const SCOPED_SECTION_OVERHEAD_BYTES = 512;
+
+/**
  * Renders params.json with a replaced `params` array and `scoped` section,
  * preserving every other field.
  *
@@ -90,9 +146,46 @@ function write(file, contents) {
 function renderParamsFile(existingText, params, scoped) {
   const current = JSON.parse(existingText);
   const next = { ...current, params };
-  if (scoped.length > 0) next.scoped = scoped;
-  else delete next.scoped;
-  return `${JSON.stringify(next, null, 2)}\n`;
+  if (scoped.length === 0) {
+    delete next.scoped;
+    return `${JSON.stringify(next, null, 2)}\n`;
+  }
+
+  // ONE FACT PER LINE, for the same reason `serializeStore` writes one store
+  // entry per line: at this size the default 2-space expansion spreads ~1000
+  // facts over ~6800 lines, and a weekly run that adds three of them produces a
+  // diff nobody can read. Compacted, a new fact is a one-line diff — which is
+  // the whole point of re-offering the backlog every week and only committing
+  // the delta.
+  //
+  // Formatting is free to change: `canonicalScopedMessage` signs VALUES, not
+  // the file's bytes, so the signature is unaffected.
+  // What the DEPLOYED fleet can actually fetch, not what the store holds.
+  const bare = { ...next };
+  delete bare.scoped;
+  const { published, dropped } = fitScopedToBudget(
+    scoped,
+    JSON.stringify(bare).length,
+    PUBLISH_PAYLOAD_BUDGET_BYTES,
+  );
+
+  if (dropped > 0) {
+    console.warn(
+      `[rules-store] ${dropped} of ${scoped.length} scoped fact(s) exceed the ` +
+        `${PUBLISH_PAYLOAD_BUDGET_BYTES}-byte publish budget and are NOT in this payload. ` +
+        "They stay in the store and publish themselves once the budget rises."
+    );
+  }
+
+  if (published.length === 0) {
+    delete next.scoped;
+    return `${JSON.stringify(next, null, 2)}\n`;
+  }
+
+  const SENTINEL = "__MUGA_SCOPED_FACTS__";
+  next.scoped = SENTINEL;
+  const block = `[\n${published.map((f) => `    ${JSON.stringify(f)}`).join(",\n")}\n  ]`;
+  return `${JSON.stringify(next, null, 2).replace(`"${SENTINEL}"`, block)}\n`;
 }
 
 /** Artifacts → store. */
