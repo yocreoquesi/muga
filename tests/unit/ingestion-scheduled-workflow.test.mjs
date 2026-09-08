@@ -11,7 +11,7 @@
  *   - Key written to RUNNER_TEMP + ::add-mask:: present
  *   - Cleanup step with `if: always()` removes key
  *   - All `uses:` lines reference a 40-char commit SHA (belt-and-suspenders; authoritative in workflows-hardened)
- *   - No-op skip step gated on steps.pipeline.outputs.noop == 'true'
+ *   - No-op skip step gated on steps.work.outputs.any == 'false'
  *   - `gh pr merge --squash` present, `--auto` absent
  *   - `[skip ci]` present in commit message
  *   - Only tools/rules-source/params.json + docs/rules/v1/params.json added to git
@@ -182,19 +182,24 @@ describe("signing key security — write, mask, cleanup", () => {
 // No-op early exit (R2)
 // ---------------------------------------------------------------------------
 describe("no-op early exit", () => {
-  test("has a step gated on steps.pipeline.outputs.noop == 'true'", () => {
+  // #1229: the gate moved from the pipeline's own `noop` to a combined
+  // signal. `noop` measures the GLOBAL param list only; host-scoped facts
+  // land on their own path and the two move independently, so gating the
+  // mutating steps on `noop` alone would mean scoped facts never reach a
+  // commit in any week with no new global params.
+  test("has a step gated on steps.work.outputs.any == 'false'", () => {
     const content = readWorkflow();
     assert.ok(
-      /steps\.pipeline\.outputs\.noop\s*==\s*['"]true['"]/.test(content),
-      "workflow must have a step with if: steps.pipeline.outputs.noop == 'true' for early exit"
+      /steps\.work\.outputs\.any\s*==\s*['"]false['"]/.test(content),
+      "workflow must have a step with if: steps.work.outputs.any == 'false' for early exit"
     );
   });
 
-  test("subsequent steps are gated on steps.pipeline.outputs.noop == 'false'", () => {
+  test("subsequent steps are gated on steps.work.outputs.any == 'true'", () => {
     const content = readWorkflow();
     assert.ok(
-      /steps\.pipeline\.outputs\.noop\s*==\s*['"]false['"]/.test(content),
-      "workflow must gate publish/commit/PR steps on steps.pipeline.outputs.noop == 'false'"
+      /steps\.work\.outputs\.any\s*==\s*['"]true['"]/.test(content),
+      "workflow must gate publish/commit/PR steps on steps.work.outputs.any == 'true'"
     );
   });
 });
@@ -369,20 +374,66 @@ describe("pipeline invocation", () => {
 });
 
 // ---------------------------------------------------------------------------
-// B.14 (rules-scope-normalization, Slice 2 PR B) — land-scoped.mjs is never
-// wired into the unattended weekly job. That job squash-auto-merges its own
-// PR (`gh pr merge --squash --auto`, see step 10 above); landing a host-scoped
-// fact is a manual, reviewed step by design (ADR-0008 Path A, design D2).
+// #1229 — host-scoped landing runs in the weekly job.
+//
+// This used to assert the opposite: that land-scoped.mjs was NEVER wired in,
+// because landing a host-scoped fact with no gate of its own into a job that
+// auto-merges its own PR was a materially different risk from the global path,
+// which the corroboration gate protects.
+//
+// That asymmetry is gone. The corroboration gate is scope-aware (#1247): an
+// anchored candidate answers to SCOPED_MIN_SIGNALS, the threshold ADR-0008
+// anticipated — "a HOST-SCOPED one can be admitted on one, because its blast
+// radius is a single site". The scoped path has its own gate, so the argument
+// for a human standing in for one is spent.
+//
+// What replaces the review is not nothing: land-scoped drops every fact the
+// payload cannot carry (affiliate guard, remote denylist, the host's own
+// preserveParams), and the broken-site report names the scoped params applied
+// on a host so a wrong one is reportable.
 // ---------------------------------------------------------------------------
-describe("land-scoped.mjs stays a standalone, human-run tool", () => {
-  test("workflow never references land-scoped", () => {
+describe("host-scoped landing is part of the weekly job (#1229)", () => {
+  test("workflow invokes land-scoped.mjs with the quarantine report", () => {
     const content = readWorkflow();
-    assert.ok(
-      !/land-scoped/.test(content),
-      "auto-ingest-rules.yml must NEVER invoke land-scoped.mjs — landing a " +
-      "host-scoped fact must stay a manual, reviewed step, never part of the " +
-      "workflow that auto-merges its own PR"
+    assert.match(
+      content,
+      /land-scoped\.mjs\s+--report\s+tools\/rule-ingestion\/quarantine\/quarantine-report\.json/,
+      "auto-ingest-rules.yml must land host-scoped facts from the run's own report"
     );
+  });
+
+  test("landing is NOT gated on the pipeline's global noop signal", () => {
+    // The trap this pins. `noop` measures the GLOBAL param list; a week with no
+    // new global params can still carry new scoped facts. Gating the landing
+    // step on it would mean they never land at all.
+    const content = readWorkflow();
+    const lines = content.split("\n");
+    const idx = lines.findIndex((l) => /land-scoped\.mjs/.test(l));
+    assert.ok(idx > 0, "land-scoped step not found");
+
+    let nearestIf = "";
+    for (let i = idx; i >= 0 && i > idx - 12; i--) {
+      if (/^\s*if:/.test(lines[i])) { nearestIf = lines[i]; break; }
+    }
+    assert.ok(nearestIf, "land-scoped step must carry an explicit if:");
+    assert.ok(
+      !/outputs\.noop/.test(nearestIf),
+      `land-scoped must not be gated on the global noop signal. Found: "${nearestIf}"`
+    );
+    assert.match(
+      nearestIf,
+      /steps\.pipeline\.conclusion\s*==\s*['"]success['"]/,
+      "land-scoped runs whenever the pipeline succeeded, noop or not"
+    );
+  });
+
+  test("the combined work signal reads BOTH paths", () => {
+    // Neither path may starve the other: the commit runs when the global list
+    // moved OR the scoped segment did.
+    const content = readWorkflow();
+    assert.match(content, /steps\.pipeline\.outputs\.noop/, "must read the global signal");
+    assert.match(content, /steps\.land_scoped\.outputs\.changed/, "must read the scoped signal");
+    assert.match(content, /any=\$ANY/, "must emit a single combined signal");
   });
 });
 
@@ -404,7 +455,7 @@ describe("T-20 — quarantine review summary step", () => {
     );
   });
 
-  test("summary step is gated on steps.pipeline.conclusion == 'success' (NOT noop == false)", () => {
+  test("summary step is gated on steps.pipeline.conclusion == 'success' (NOT the work signal)", () => {
     const content = readWorkflow();
     // The summary step's if: condition must be the conclusion check
     assert.ok(
@@ -432,8 +483,8 @@ describe("T-20 — quarantine review summary step", () => {
     // The nearest if: must NOT gate on noop == 'false' (which would skip noop runs)
     if (nearestIfLine !== null) {
       assert.ok(
-        !/noop\s*==\s*['"]false['"]/.test(nearestIfLine),
-        `summary step 'if:' must NOT gate on noop == 'false'. Found: "${nearestIfLine}"`
+        !/steps\.work\.outputs\.any/.test(nearestIfLine),
+        `summary step 'if:' must NOT gate on the work signal. Found: "${nearestIfLine}"`
       );
     }
   });

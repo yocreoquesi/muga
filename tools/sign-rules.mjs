@@ -40,11 +40,15 @@ import {
   AFFILIATE_PARAM_GUARD,
   MIN_PARAM_LEN,
   canonicalScopedMessage,
+  // #1229: ONE implementation of the preserve suffix walk, shared with the
+  // ingestion landing step. Private copies on both sides are how ingestion and
+  // publication drift into disagreeing about what may be published.
+  hostPreservesParam as hostPreserves,
 } from "../src/lib/remote-rules.js";
 
 // #1221: the same generated set the runtime guard reads, so signing and the
 // extension cannot drift apart on what a host protects.
-import { PRESERVED_PARAMS, PRESERVED_BY_HOST } from "../src/rules/preserve-params.data.js";
+import { PRESERVED_PARAMS } from "../src/rules/preserve-params.data.js";
 
 // The built-ins the extension already ships. Imported for the same
 // no-drift reason as the set above: the runtime decides what a published param
@@ -249,17 +253,6 @@ const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z
  * @param {string} param
  * @returns {boolean}
  */
-function hostPreserves(host, param) {
-  let candidate = host;
-  for (;;) {
-    const own = PRESERVED_BY_HOST[candidate];
-    if (own && own.includes(param)) return true;
-    const dot = candidate.indexOf(".");
-    if (dot === -1) return false;
-    candidate = candidate.slice(dot + 1);
-    if (!candidate.includes(".")) return false;
-  }
-}
 
 /** Lowercased `preserveParams` union — see src/rules/preserve-params.data.js (#1221). */
 const PRESERVED_SET = new Set(PRESERVED_PARAMS.map((p) => p.toLowerCase()));
