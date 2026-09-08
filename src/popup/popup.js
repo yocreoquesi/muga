@@ -5,7 +5,7 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { processUrl, isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
-import { getPrefs, sessionStorage, getDomainStats } from "../lib/storage.js";
+import { getPrefs, sessionStorage, getDomainStats, getRemoteParams } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
@@ -24,6 +24,7 @@ import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
 import { buildBrokenSiteReportFields } from "../lib/broken-site-report.js";
+import { scopedParamsForHost } from "../lib/remote-rules.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -840,6 +841,22 @@ async function showUrlPreview(prefs, lang) {
       // listener accumulates and a single click opens N GitHub tabs.
       // The clone drops the accumulated listeners; the subsequent
       // addEventListener attaches exactly one.
+      // #1229: resolved BEFORE the listener so the click handler stays
+      // synchronous. An await inside it would let the popup close first and
+      // chrome.tabs.create would never run. A failure degrades to "no scoped
+      // params" — the report exactly as it was before this existed, because a
+      // broken report is worse than a less specific one.
+      let scopedParams = [];
+      try {
+        const { remoteRulesMeta } = await getRemoteParams();
+        scopedParams = scopedParamsForHost(
+          new URL(url).hostname,
+          remoteRulesMeta?.scopedFacts,
+        );
+      } catch {
+        scopedParams = [];
+      }
+
       const oldLink = document.getElementById("report-broken");
       const reportLink = oldLink.cloneNode(true);
       oldLink.parentNode.replaceChild(reportLink, oldLink);
@@ -855,6 +872,7 @@ async function showUrlPreview(prefs, lang) {
           url,
           includeFullUrl: includeCheckbox?.checked === true,
           removedParams: result.removedTracking,
+          scopedParams,
           version: chrome.runtime.getManifest().version,
           browser: navigator.userAgent,
         });

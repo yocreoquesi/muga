@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getRemoteParams } from "../lib/storage.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -19,6 +19,7 @@ import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport } from "../lib/settings-schema.js";
 import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
+import { scopedParamsForHost } from "../lib/remote-rules.js";
 import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
 let _currentLang = "en";
@@ -1450,6 +1451,17 @@ async function testUrl() {
     // #858: use hidden attribute to reveal result (no inline style)
     resultDiv.hidden = false;
 
+    // #1229: resolved here rather than in the click handler, for the same
+    // reason as the popup's — the handler stays synchronous. A failure degrades
+    // to "no scoped params", the report exactly as it was before.
+    let scopedParams = [];
+    try {
+      const { remoteRulesMeta } = await getRemoteParams();
+      scopedParams = scopedParamsForHost(new URL(input).hostname, remoteRulesMeta?.scopedFacts);
+    } catch {
+      scopedParams = [];
+    }
+
     // Show report button after results (clone to avoid listener accumulation)
     if (reportBtn) {
       const newBtn = reportBtn.cloneNode(true);
@@ -1473,6 +1485,7 @@ async function testUrl() {
             browser: navigator.userAgent,
             action: result.action,
             removedParams: result.removedTracking,
+            scopedParams,
           });
           const title = encodeURIComponent(`[URL Report] ${hostname}`);
           window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");

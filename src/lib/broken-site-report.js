@@ -87,11 +87,13 @@ function _canIncludeFullUrl(url, includeFullUrl, isValidHttpUrl) {
  * Defensive defaults — never throws on bad input:
  *   - url null/undefined/malformed → hostname "", url key omitted
  *   - removedParams empty/missing  → params key omitted
+ *   - scopedParams empty/missing   → scoped key omitted
  *
  * @param {object} input
  * @param {string} input.url - the page URL being reported
  * @param {boolean} [input.includeFullUrl] - user opt-in checkbox state
  * @param {string[]} [input.removedParams] - tracking params MUGA removed
+ * @param {string[]} [input.scopedParams] - host-anchored params MUGA applies here (#1229)
  * @param {string} [input.version] - MUGA version (manifest)
  * @param {string} [input.browser] - browser identifier (e.g. navigator.userAgent)
  * @returns {object} plain fields object for URLSearchParams
@@ -99,7 +101,7 @@ function _canIncludeFullUrl(url, includeFullUrl, isValidHttpUrl) {
 export function buildBrokenSiteReportFields(input) {
   // Defensive: destructuring defaults (`= {}`) only cover `undefined`, not an
   // explicit `null` argument — normalise both to an empty object up front.
-  const { url, includeFullUrl, removedParams, version, browser } = input || {};
+  const { url, includeFullUrl, removedParams, scopedParams, version, browser } = input || {};
   const { hostname, isValidHttpUrl } = _parseReportUrl(url);
 
   const fields = {
@@ -116,6 +118,18 @@ export function buildBrokenSiteReportFields(input) {
 
   if (Array.isArray(removedParams) && removedParams.length > 0) {
     fields.params = removedParams.join(", ");
+  }
+
+  // #1229: which of those params came from a HOST-ANCHORED fact. Carries no
+  // information about the user — these are MUGA's own published rules for a
+  // hostname the report already names — and it is what makes the report
+  // actionable: a scoped fact was admitted on ONE upstream's word for this
+  // exact host and can be withdrawn in the next payload, where a built-in has
+  // been shipping to everyone for months and is unlikely to be new breakage.
+  // Omitted entirely when there are none, so a report from a host with no
+  // scoped facts reads exactly as it did before.
+  if (Array.isArray(scopedParams) && scopedParams.length > 0) {
+    fields.scoped = scopedParams.join(", ");
   }
 
   // PRIVACY-CRITICAL: `url` is added ONLY when every gate passes. Do not
@@ -142,12 +156,14 @@ export function buildBrokenSiteReportFields(input) {
  * @param {string} [input.browser] - browser identifier
  * @param {string} [input.action] - cleaner action taken (e.g. "cleaned")
  * @param {string[]} [input.removedParams] - tracking params MUGA removed
+ * @param {string[]} [input.scopedParams] - host-anchored params MUGA applies here (#1229)
  * @returns {string} markdown body
  */
 export function buildBrokenSiteReportBody(input) {
   // Defensive: destructuring defaults (`= {}`) only cover `undefined`, not an
   // explicit `null` argument — normalise both to an empty object up front.
-  const { url, includeFullUrl, hostname, version, browser, action, removedParams } = input || {};
+  const { url, includeFullUrl, hostname, version, browser, action, removedParams, scopedParams } =
+    input || {};
   const parsed = _parseReportUrl(url);
   const safeHostname = hostname == null || hostname === "" ? parsed.hostname : String(hostname);
   const safeVersion = version == null ? "" : String(version);
@@ -162,13 +178,22 @@ export function buildBrokenSiteReportBody(input) {
     ? `**Full URL:** ${url}\n`
     : `**Domain:** ${safeHostname}\n`;
 
+  // #1229: omitted rather than rendered as "none", so a report from a host with
+  // no scoped facts produces exactly the body it produced before.
+  const scopedLine =
+    Array.isArray(scopedParams) && scopedParams.length > 0
+      ? `**Host-scoped params:** ${scopedParams.join(", ")}\n`
+      : "";
+
   return (
     `## URL Report\n\n` +
     locationLine +
     `**MUGA version:** ${safeVersion}\n` +
     `**Browser:** ${safeBrowser}\n` +
     `**Action taken:** ${safeAction}\n` +
-    `**Params removed:** ${safeRemoved}\n\n` +
+    `**Params removed:** ${safeRemoved}\n` +
+    scopedLine +
+    `\n` +
     `## Problem\n\n` +
     `<!-- Describe what went wrong: params that should have been removed but weren't, or params that were removed but shouldn't have been -->\n\n` +
     `## Expected behavior\n\n` +

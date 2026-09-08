@@ -1092,6 +1092,53 @@ export function buildScopedDnrRules(facts) {
 }
 
 /**
+ * The scoped params MUGA applies on `host`, from a set of accepted facts
+ * (#1229 step 4).
+ *
+ * Exists for the correction loop. A host-anchored fact is admitted on ONE
+ * upstream's word, at a host MUGA has no preserve knowledge for, so the way a
+ * wrong one is caught is a user reporting that the site broke. For that report
+ * to be actionable it has to name the suspects: a param removed by a built-in
+ * rule has been shipping to everyone for months and is unlikely to be the new
+ * breakage, while a param removed by a scoped fact was imported for that exact
+ * host and can be withdrawn in the next payload.
+ *
+ * Suffix-matched, because that is what the rules themselves do: a scoped rule's
+ * `requestDomains` matches the anchor AND its subdomains, so a fact anchored to
+ * `tiktok.com` is applied on `vt.tiktok.com` and belongs in that host's report.
+ * The dot is part of the comparison on purpose — `notyoutube.com` does not sit
+ * under `youtube.com`.
+ *
+ * Pure and defensive: no storage, no clock, never throws, and malformed facts
+ * are skipped individually rather than costing the whole answer.
+ *
+ * @param {string} host Hostname being reported.
+ * @param {Array<{param: string, hosts: string[]}>|null|undefined} scopedFacts
+ * @returns {string[]} Sorted, deduped params anchored to this host.
+ */
+export function scopedParamsForHost(host, scopedFacts) {
+  if (typeof host !== "string" || host.length === 0) return [];
+  if (!Array.isArray(scopedFacts)) return [];
+
+  const lower = host.toLowerCase();
+  const found = new Set();
+
+  for (const fact of scopedFacts) {
+    if (!fact || typeof fact.param !== "string" || !Array.isArray(fact.hosts)) continue;
+    for (const h of fact.hosts) {
+      if (typeof h !== "string" || h.length === 0) continue;
+      const anchor = h.toLowerCase();
+      if (lower === anchor || lower.endsWith(`.${anchor}`)) {
+        found.add(fact.param);
+        break;
+      }
+    }
+  }
+
+  return [...found].sort();
+}
+
+/**
  * Applies the host-scoped rules for a payload, replacing whatever the previous
  * payload registered (#1221 slice 2).
  *
