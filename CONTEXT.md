@@ -2,7 +2,7 @@
 
 > **Read this first.** This document is the one-stop map for contributors and AI agents navigating the codebase. README has the pitch; CONTEXT.md has the system.
 
-MUGA is a browser extension (Chrome MV3 + Firefox MV2) that removes 447 tracking parameters and 12 prefix-based noise patterns from URLs before a page loads, while preserving affiliate attribution tags that pay independent creators. It operates entirely in the browser — no server, no telemetry, no remote processing — and ships a self-scaling rule-ingestion pipeline that grows its coverage automatically from upstream filter lists without human review in the hot path.
+MUGA is a browser extension (Chrome MV3 + Firefox MV2) that removes 447 tracking parameters and 12 prefix-based noise patterns from URLs before a page loads, while preserving affiliate attribution tags that pay independent creators. The cleaning itself is entirely local: no telemetry, no analytics, and no URL of yours is ever sent anywhere for processing. Two things do leave the browser, both user-controllable and both documented below: a weekly signed rule fetch from `rules.muga.app` (section 6), and short-link resolution, which goes straight to the shortener host with no MUGA server in between (section 3). MUGA ships a self-scaling rule-ingestion pipeline that grows its coverage automatically from upstream filter lists without human review in the hot path.
 
 ---
 
@@ -34,12 +34,12 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
 | Manifest version | MV3 | MV2 |
 | Background | `service_worker` (ephemeral, module) | `page` (background.html, persistent) |
 | Action API | `chrome.action` | `chrome.browserAction` |
-| DNR rulesets | `tracking_params`, `amp_redirect`, `wrapper_unwrap` | `tracking_params`, `wrapper_unwrap` (no `amp_redirect`) |
+| DNR rulesets | `tracking_params`, `amp_redirect`, `wrapper_unwrap`, `amazon_path_canonical` | `tracking_params`, `wrapper_unwrap` |
 | MAIN-world injection | Inline content-script entry with `world: "MAIN"` | Separate content-script entry (second block) |
 | Host permissions | `host_permissions: ["<all_urls>"]` | Inline in `permissions` array |
 | Optional permissions | `optional_host_permissions` | `optional_permissions` |
 
-**Why it differs:** MV3 requires separate declarative rulesets and explicit `world: "MAIN"` for history-defuser and window-name-defuser injections. Firefox MV2 injects those scripts as a second content-script block without the `world` key. The `amp_redirect` DNR ruleset is absent from MV2 because Firefox does not support `queryTransform` in DNR rules (handled by `src/content/amp-redirect.js` instead — a `document_end` content script present only in MV2).
+**Why it differs:** MV3 requires separate declarative rulesets and explicit `world: "MAIN"` for history-defuser and window-name-defuser injections. Firefox MV2 injects those scripts as a second content-script block without the `world` key. Two DNR rulesets are Chrome-only. `amp_redirect` is absent from MV2 because Firefox does not support `queryTransform` in DNR rules; `src/content/amp-redirect.js`, a `document_end` content script present only in MV2, does that job instead. `amazon_path_canonical` (one `regexSubstitution` redirect that collapses an Amazon product slug to `/dp/<ASIN>`) is likewise MV3-only; on Firefox the same collapse happens locally in `processUrl()` step 3, from `src/rules/path-strip-rules.json`.
 
 ---
 
@@ -58,8 +58,14 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
                         │ URL enters page load
                         ▼
 ┌──────────────────────────────────────────────────────┐
-│            SERVICE WORKER — PROCESS_URL              │
-│  Triggered by content-script message on every nav    │
+│      CLEANING ENGINE — processUrl(), in-page         │
+│  The hot path runs inside the tab, not the service   │
+│  worker: src/content/cleaner.js calls                │
+│  window.__mugaCleaner.processUrl() from the bundled  │
+│  engine (cleaner-bundle.js), so a navigation never   │
+│  waits on an SW wake. The service worker runs the    │
+│  SAME processUrl() for the popup's copy action and   │
+│  the context menu (PROCESS_URL).                     │
 │                                                      │
 │  processUrl() steps (src/lib/cleaner.js):            │
 │  0a. Honor Creator?  — if honorCreatorMode + wrapper │
@@ -77,13 +83,13 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
 │  3.  Path strip      — path-strip-rules.json         │
 │  → returns { cleanUrl, action, removedTracking, … }  │
 └───────────────────────┬──────────────────────────────┘
-                        │ PROCESS_URL response
+                        │ cleaned URL, in-page
                         ▼
 ┌──────────────────────────────────────────────────────┐
 │              CONTENT SCRIPT LAYER                    │
 │  src/content/cleaner.js        — click interceptor,  │
-│    receives PROCESS_URL result, rewrites link before  │
-│    navigation; shows toast notification               │
+│    rewrites the link before navigation from its own  │
+│    processUrl() result; shows toast notification      │
 │  src/content/dom-link-rewriter.js — rewrites <a>     │
 │    href values in DOM (MutationObserver)              │
 │  src/content/dom-link-rewriter-click.js — click-time │
@@ -276,7 +282,8 @@ src/
 ├── manifest.json              Chrome MV3 manifest
 ├── manifest.v2.json           Firefox MV2 manifest
 ├── background/
-│   └── service-worker.js      PROCESS_URL handler, storage bootstrap
+│   └── service-worker.js      PROCESS_URL handler (popup copy +
+│                             context menu), storage bootstrap
 ├── content/
 │   ├── cleaner.js             Click interceptor + content-side processing
 │   ├── cleaner-bundle.js      Bundled lib (generated — do not edit by hand)
@@ -306,7 +313,7 @@ src/
 │   └── locales/               Per-locale data: en.mjs es.mjs pt.mjs de.mjs …
 ├── rules/
 │   ├── tracking-params.json   DNR rules (generated from TRACKING_PARAMS)
-│   ├── domain-rules.json      Per-domain preserve/strip rules (169 entries)
+│   ├── domain-rules.json      Per-domain preserve/strip rules (188 entries)
 │   ├── path-strip-rules.json  Path-token strip rules (Amazon slug/ref, etc.)
 │   ├── path-affiliate-rules.json  Path-based affiliate injection rules
 │   ├── wrapper-dnr-rules.json DNR wrapper-unwrap rules (generated)

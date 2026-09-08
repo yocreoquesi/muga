@@ -21,12 +21,28 @@
  *            equals 2 (adguardTp + clearurls — the corroboration baseline)
  *        b4. docs/adr/0005-rule-scaling-pipeline.md exists (CONTEXT.md links it)
  *
+ *  (C) STATED NUMBERS AND INVENTORIES (#1254) — the gap the pinned claims
+ *      left open. (A) proves a path still exists and (B) pins four hand-picked
+ *      structural facts, so a COUNT stated in prose could drift freely:
+ *      CONTEXT.md said domain-rules.json had 169 entries when it had 188, and
+ *      its manifest table omitted a DNR ruleset the manifest declares. These
+ *      read the number out of CONTEXT.md and compare it to live data.
+ *
+ *        c1. The domain-rules.json entry count CONTEXT.md states is the real one
+ *        c2. The tracking-param and prefix counts CONTEXT.md states are real
+ *        c3. Every DNR ruleset id in both manifests is named in CONTEXT.md,
+ *            and its per-manifest table row claims exactly those ids —
+ *            over-claiming a ruleset Firefox does not ship is the same
+ *            defect as omitting one Chrome does
+ *        c4. Every ADR is indexed in docs/adr/README.md, with a status that
+ *            agrees with the ADR's own
+ *
  * Run with: npm test
  */
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -127,6 +143,136 @@ describe("context-map — load-bearing claims", () => {
       existsSync(join(ROOT, "docs/adr/0005-rule-scaling-pipeline.md")),
       "docs/adr/0005-rule-scaling-pipeline.md must exist — CONTEXT.md links it in sections 4, 6, and 7. " +
         "If the ADR was moved or renamed, update CONTEXT.md and the guard accordingly."
+    );
+  });
+});
+
+// ── (C) Stated numbers and inventories ────────────────────────────────────────
+
+describe("context-map — stated numbers and inventories", () => {
+  // c1. domain-rules.json entry count
+  test("(c1) the domain-rules.json entry count CONTEXT.md states is the real one", () => {
+    const context = readRoot("CONTEXT.md");
+    const m = context.match(/domain-rules\.json[^\n]*?\((\d+) entries\)/);
+    assert.ok(
+      m,
+      'CONTEXT.md must state the domain-rules.json size as "(N entries)" so it can be checked'
+    );
+
+    const stated = Number(m[1]);
+    const actual = JSON.parse(readRoot("src/rules/domain-rules.json")).length;
+    assert.strictEqual(
+      stated,
+      actual,
+      `CONTEXT.md says domain-rules.json has ${stated} entries; it has ${actual}. ` +
+        "Update the number in CONTEXT.md section 8."
+    );
+  });
+
+  // c2. Tracking-param and prefix counts in the lead paragraph
+  test("(c2) the tracking-param and prefix counts CONTEXT.md states are real", async () => {
+    const context = readRoot("CONTEXT.md");
+    const m = context.match(
+      /removes (\d+) tracking parameters and (\d+) prefix-based noise patterns/
+    );
+    assert.ok(
+      m,
+      "CONTEXT.md's lead paragraph must state the tracking-param and prefix counts"
+    );
+
+    const { TRACKING_PARAMS, TRACKING_PREFIXES } = await import(
+      "../../src/lib/affiliates.js"
+    );
+    assert.deepStrictEqual(
+      [Number(m[1]), Number(m[2])],
+      [TRACKING_PARAMS.length, TRACKING_PREFIXES.length],
+      `CONTEXT.md's lead says ${m[1]} tracking parameters and ${m[2]} prefixes; the code ships ` +
+        `${TRACKING_PARAMS.length} and ${TRACKING_PREFIXES.length}. ` +
+        "Update the lead paragraph, which is the first thing a contributor reads."
+    );
+  });
+
+  // c3. DNR ruleset inventory, per manifest, in both directions.
+  //
+  // CONTEXT.md section 2 has one "DNR rulesets" row with a cell per manifest.
+  // The cell must name exactly what that manifest declares: a missing id is a
+  // rewrite rule no contributor knows exists, and an extra one sends a Firefox
+  // contributor looking for a ruleset that is not there.
+  const MANIFEST_COLUMNS = [
+    { column: 1, path: "src/manifest.json", label: "Chrome MV3" },
+    { column: 2, path: "src/manifest.v2.json", label: "Firefox MV2" },
+  ];
+
+  for (const { column, path, label } of MANIFEST_COLUMNS) {
+    test(`(c3) CONTEXT.md's ${label} column lists exactly ${path}'s DNR rulesets`, () => {
+      const declared = (
+        JSON.parse(readRoot(path)).declarative_net_request?.rule_resources ?? []
+      ).map((r) => r.id);
+      assert.ok(declared.length > 0, `${path} must declare at least one DNR ruleset`);
+
+      const row = readRoot("CONTEXT.md")
+        .split("\n")
+        .find((l) => l.startsWith("| DNR rulesets |"));
+      assert.ok(
+        row,
+        'CONTEXT.md section 2 must keep a "| DNR rulesets |" row, one cell per manifest'
+      );
+
+      // cells[0] is the empty string before the leading pipe, cells[1] the label.
+      const cell = row.split("|").map((c) => c.trim())[column + 1] ?? "";
+      const stated = [...cell.matchAll(/`([a-z_]+)`/g)].map((m) => m[1]);
+
+      assert.deepStrictEqual(
+        stated.slice().sort(),
+        declared.slice().sort(),
+        `CONTEXT.md's ${label} column says [${stated.join(", ")}] but ${path} declares ` +
+          `[${declared.join(", ")}]. Update the table row in CONTEXT.md section 2, and the ` +
+          '"Why it differs" paragraph under it if the difference is new.'
+      );
+    });
+  }
+
+  // c4. ADR index completeness and status agreement
+  test("(c4) every ADR is indexed in docs/adr/README.md with an agreeing status", () => {
+    const index = readRoot("docs/adr/README.md");
+    const adrFiles = readdirSync(join(ROOT, "docs/adr"))
+      .filter((f) => /^\d{4}-.*\.md$/.test(f))
+      .sort();
+    assert.ok(adrFiles.length > 0, "docs/adr must contain numbered ADRs");
+
+    const problems = [];
+    for (const file of adrFiles) {
+      if (!index.includes(file)) {
+        problems.push(`${file} has no row in docs/adr/README.md`);
+        continue;
+      }
+
+      // The ADR's own status, first word, stripped of markdown emphasis.
+      const own = readRoot(`docs/adr/${file}`).match(/^\*\*Status\*\*:\s*(.+)$/m);
+      if (!own) {
+        problems.push(`${file} has no "**Status**:" line`);
+        continue;
+      }
+      const ownWord = own[1].replace(/\*/g, "").trim().split(/[\s—-]/)[0];
+
+      // The status cell is the last column of that ADR's row.
+      const row = index.split("\n").find((l) => l.includes(file) && l.startsWith("|"));
+      const cells = row.split("|").map((c) => c.trim());
+      const stated = cells[cells.length - 2] ?? "";
+      if (!stated.startsWith(ownWord)) {
+        problems.push(
+          `${file} says "${ownWord}" but the index row says "${stated}"`
+        );
+      }
+    }
+
+    assert.deepStrictEqual(
+      problems,
+      [],
+      `docs/adr/README.md disagrees with the ADRs it indexes:\n  ${problems.join("\n  ")}\n` +
+        "The index is where a contributor decides which ADR still binds them, so a stale " +
+        'status there ("phases pending" for work that shipped) is worse than no index. ' +
+        "Update the row, or the ADR's own Status line, so the two agree."
     );
   });
 });
