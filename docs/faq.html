@@ -102,15 +102,16 @@
 
   <h2>Network behavior</h2>
 
-  <p>MUGA ships with two features that involve network requests: Remote Rules (on by default, #888) and "Follow shortener redirects" (opt-in, default-off). If you disable both in Settings, MUGA makes zero outbound network requests.</p>
+  <p>MUGA ships with two features that involve network requests: Remote Rules (on by default, #888) and "Follow shortener redirects" (two switches: resolving a link you open is on by default, resolving one you only hover over is opt-in). If you disable all of them in Settings, MUGA makes zero outbound network requests.</p>
 
   <h3>Q: What is "Follow shortener redirects" and when does it fire?</h3>
 
-  <p>"Follow shortener redirects" is an opt-in feature that resolves generic URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in, fb.me, ebay.to) so you can see the destination before navigating. The extension performs a direct <code>fetch(url, { redirect: "manual", credentials: "omit", cache: "no-store" })</code> to the shortener host and reads the <code>Location</code> header. No MUGA server is contacted; there is no signed envelope because the redirect comes straight from the shortener host. Affiliate-redirect networks are NEVER followed.</p>
+  <p>"Follow shortener redirects" resolves the 19 generic URL shorteners listed in <code>GENERIC_SHORTENERS</code> (<code>src/lib/opaque-networks.js</code>) so you can see the destination before navigating. The full host list is enumerated in the <a href="privacy-page.html">privacy policy</a>. The extension performs a direct <code>fetch(url, { redirect: "manual", credentials: "omit", cache: "no-store" })</code> to the shortener host and reads the <code>Location</code> header. No MUGA server is contacted; there is no signed envelope because the redirect comes straight from the shortener host. Affiliate-redirect networks are NEVER followed.</p>
 
   <ul>
-    <li>Default: <strong>off</strong> (<code>followShortenersEnabled: false</code>).</li>
-    <li>Permissions are granted per-host only when you enable the feature, and are revocable at any time via your browser's extension settings.</li>
+    <li>Two independent switches, split by privacy cost (<code>src/lib/prefs.js</code>): resolving a link <strong>when you open it</strong> is on by default, since you were navigating there anyway; resolving one <strong>when you merely hover</strong> is off by default and opt-in.</li>
+    <li>The toggle is the gate. The handler (<code>src/background/service-worker.js</code>, <code>RESOLVE_SHORTENER</code>) resolves nothing unless the extension is enabled, onboarding is done, and the switch matching the source (click or hover) is on. It re-checks that itself rather than trusting the caller.</li>
+    <li>MUGA's manifest already carries broad host access on both browsers, so no separate permission prompt stands between the toggle and the first resolution. Settings also asks for the per-host permissions explicitly, which keeps the list visible and revocable in your browser's extension settings.</li>
     <li>Implementation: <code>src/lib/native-shortener-resolver.js</code>.</li>
   </ul>
 
@@ -127,11 +128,11 @@
 
   <h3>Q: Does any of this leak my browsing history?</h3>
 
-  <p>When "Follow shortener redirects" is enabled, the <strong>extension itself</strong> sends a <code>GET</code> directly to the shortener host (e.g. <code>bit.ly</code>) with credentials omitted and no referrer. No MUGA server is involved; the request goes to the same shortener host your browser would have contacted on click. The only difference is that you never actually navigate to that URL, so no page-load context is handed to the shortener. It only fires on the seven opted-in shortener hosts when the feature is enabled.</p>
+  <p>When "Follow shortener redirects" is enabled, the <strong>extension itself</strong> sends a <code>GET</code> directly to the shortener host (e.g. <code>bit.ly</code>) with credentials omitted and no referrer. No MUGA server is involved; the request goes to the same shortener host your browser would have contacted on click. The only difference is that you never actually navigate to that URL, so no page-load context is handed to the shortener. It only ever fires on the 19 shortener hosts in <code>GENERIC_SHORTENERS</code>, and only for the half of the feature you left switched on.</p>
 
   <p>Remote Rules sends no user data in the request: it is a one-way <code>GET</code> of a signed, public JSON file. Like any request to any website, it does expose your IP address to whoever serves the file (the rules are published on GitHub Pages), which MUGA neither logs nor stores.</p>
 
-  <p>If you want zero network activity, turn off both toggles in Settings. "Follow shortener redirects" already defaults to off; Remote Rules defaults to on (#888) and needs to be disabled explicitly.</p>
+  <p>If you want zero network activity, turn off every toggle in Settings. Both "Follow shortener redirects" (the on-open half) and Remote Rules (#888) default to on and need to be disabled explicitly; the on-hover half is already off.</p>
 
   <hr>
 
@@ -147,7 +148,7 @@
 
   <ul>
     <li>The cleaner is a local computation; there is no per-user server cost.</li>
-    <li>The "Follow shortener redirects" feature (opt-in, off by default) is resolved entirely inside the extension, no MUGA server is involved, so there is no per-resolution infrastructure cost.</li>
+    <li>The "Follow shortener redirects" feature is resolved entirely inside the extension, no MUGA server is involved, so there is no per-resolution infrastructure cost.</li>
     <li>Remote Rules is a static signed JSON served from GitHub Pages, fetched at most once per 7 days.</li>
   </ul>
 

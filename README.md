@@ -121,14 +121,14 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Two optional toggles
 
-Beyond the default local cleaning, MUGA has two independent switches, **both off by default**:
+Beyond the default local cleaning, MUGA has two independent switches:
 
 | Toggle | Default | What it does |
 |--------|:---:|---|
 | **Honor Creator Mode** | Off | Tries to preserve creator referral chains on trusted social-media and link-shortener redirects, so the creator who recommended you the link keeps the credit. This is best-effort, not a guarantee, and you can override it. Redirect-based affiliate-network referrals pass through untouched by default, independent of this toggle, unless you opt in to "strip all third-party affiliate tags". |
-| **Follow shortener redirects** | Off | Resolves the eight generic URL shorteners (`bit.ly`, `t.co`, and the like) so you can see where a short link actually leads. Resolution is native: the extension performs the same HTTP request your browser would, reads the redirect target, and rewrites the URL locally, with no MUGA server involved. Requires granting the eight shortener host permissions from Settings. Affiliate-redirect networks are never resolved this way; they pass through unchanged. |
+| **Follow shortener redirects** | On for links you open, off for links you only hover | Resolves the 19 generic URL shorteners (`bit.ly`, `t.co`, and the like) so you can see where a short link actually leads. Resolution is native: the extension performs the same HTTP request your browser would, reads the redirect target, and rewrites the URL locally, with no MUGA server involved. It is two separate switches: resolving a link you open is on by default, resolving one you merely hover over is opt-in. The toggle is the gate, not a permission prompt: MUGA's manifest already carries broad host access on both browsers, so nothing extra is requested before the first resolution. Affiliate-redirect networks are never resolved this way; they pass through unchanged. |
 
-Both toggle on and off at any time in Settings. Turning off "Follow shortener redirects" does not revoke the host permissions automatically; remove them from your browser's extension manager if you prefer.
+All of them toggle on and off at any time in Settings. Turning off "Follow shortener redirects" does not revoke the host permissions automatically; remove them from your browser's extension manager if you prefer.
 
 ---
 
