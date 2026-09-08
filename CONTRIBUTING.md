@@ -2,7 +2,7 @@
 
 Thanks for your interest in contributing! This document covers how to set up the project, run tests, and submit changes.
 
-> **2.2.0 shipped.** The creator-agnostic denoise pivot is complete — see [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md) for the full rationale. If your contribution touches product copy, affiliate handling, or the URL Unwrapper feature, read the ADR first.
+> **Read the ADRs before changing behaviour.** [docs/adr/](docs/adr/) is the record of every decision that shaped MUGA, and [its README](docs/adr/README.md) indexes them. If your contribution touches product copy, affiliate handling, or shortener resolution, read the relevant one first: the reasoning is there, and it is usually the answer to "why is it done this way?".
 
 ## How to contribute without code
 
@@ -10,7 +10,7 @@ Most contributions don't need a pull request. The fastest paths in:
 
 - **A site MUGA broke?** Use the [broken-site issue template](.github/ISSUE_TEMPLATE/broken-site.yml). The popup's "Report broken site" button prefills it for you.
 - **A tracking parameter MUGA missed?** Use the [missed-tracking-param template](.github/ISSUE_TEMPLATE/missed-tracking-param.yml). Names only — never values or full URLs.
-- **A new affiliate program to add?** Use the [new-affiliate-program template](.github/ISSUE_TEMPLATE/new-affiliate-program.yml). MUGA detects and preserves the creator's tag on direct-injection programs; it never adds a tag of its own (see [ADR-0006](docs/adr/0006-remove-own-tag-affiliate-injection.md)). Preservation on redirect-based networks (AliExpress, CJ, Awin, Impact, Partnerize, Admitad) is being added under [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md). See [Adding affiliate stores](#adding-affiliate-stores) for the current shape and the ADR for where this is going.
+- **A new affiliate program to add?** Use the [new-affiliate-program template](.github/ISSUE_TEMPLATE/new-affiliate-program.yml). MUGA detects and preserves the creator's tag on direct-injection programs; it never adds a tag of its own (see [ADR-0006](docs/adr/0006-remove-own-tag-affiliate-injection.md)). Preservation on redirect-based networks (AliExpress, CJ, Awin, Impact, Partnerize, Admitad and six more) shipped under [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md); `tests/integration/affiliate-harness.test.mjs` guards it. See [Adding affiliate stores](#adding-affiliate-stores) for the shape a new program takes.
 - **General question or design discussion?** Open a [GitHub Discussion](https://github.com/yocreoquesi/muga/discussions) instead of an Issue.
 - **Suspected security issue?** [Open a private security advisory](https://github.com/yocreoquesi/muga/security/advisories/new), not a public Issue.
 
@@ -149,7 +149,7 @@ A new tracking parameter can land in one of three places. The choice has real co
 
 | Carrier | Scope | Source file |
 |---|---|---|
-| `TRACKING_PARAMS` (universal DNR) | Stripped on every domain | `src/lib/affiliates.js` |
+| `TRACKING_PARAMS` (universal DNR) | Stripped on every domain | `src/lib/affiliates-data.js` |
 | `stripParams` per domain | Stripped only on the listed domain(s) | `src/rules/domain-rules.json` |
 | `preserveParams` per domain | Kept on the listed domain(s); implicitly removed from universal DNR | `src/rules/domain-rules.json` |
 

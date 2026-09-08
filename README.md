@@ -205,8 +205,8 @@ PRs welcome for new tracking patterns, new stores, or additional languages. Read
 
 Key contribution points:
 
-- **New tracking parameters**: add to `TRACKING_PARAMS` and the appropriate `TRACKING_PARAM_CATEGORIES` group in [`src/lib/affiliates.js`](src/lib/affiliates.js)
-- **New stores**: add an entry to `AFFILIATE_PATTERNS` in [`src/lib/affiliates.js`](src/lib/affiliates.js)
+- **New tracking parameters**: add to `TRACKING_PARAMS` and the appropriate `TRACKING_PARAM_CATEGORIES` group in [`src/lib/affiliates-data.js`](src/lib/affiliates-data.js). `src/lib/affiliates.js` re-exports them, so editing it there changes nothing.
+- **New stores**: `AFFILIATE_PATTERNS` is derived in [`src/lib/affiliates.js`](src/lib/affiliates.js) from the CAPS direct-injection programs, so add the program there
 - **Domain-specific param preservation**: add a rule to [`src/rules/domain-rules.json`](src/rules/domain-rules.json)
 - **Tests**: see [`tests/unit/cleaner.test.mjs`](tests/unit/cleaner.test.mjs)
 
