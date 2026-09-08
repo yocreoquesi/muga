@@ -2,6 +2,32 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [Unreleased]
+
+This cycle is about MUGA learning **where** a tracking parameter applies, not just
+which ones exist. Until now every rule MUGA published applied to the entire web,
+and that single fact shaped everything: a parameter that is a tracker on one site
+and load-bearing on another could not be published at all, so it was not. Roughly
+1800 upstream signals per cycle were discarded for that reason alone.
+
+MUGA can now say "this parameter is a tracker **on this site**", and the rules it
+ships are anchored to the sites they were actually observed on.
+
+### Features
+
+- **Site-anchored cleaning** (#1221, #1229, #1241, #1243, #1244, #1249, #1250). MUGA now ships around 890 parameters anchored to the roughly 600 sites where they were observed as trackers, instead of only the parameters safe enough to apply everywhere. `si` on YouTube, `_r` on TikTok, `igsh` on Instagram, and 50 separate parameters on temu.com are cleaned now and were not before. The same name can be cleaned on one site and left alone on another, which the old flat model could not express: it had to choose one answer for the whole web, and the safe choice was usually to do nothing.
+- **Anchored rules carry their own signature** (#1243). The site-anchored section of the rules payload is signed separately from the global one. An attacker who can tamper with the payload in transit can suppress anchored rules, which costs cleaning, but can never inject one, which would strip a parameter on a site nobody vouched for. Older versions ignore the new section and keep updating exactly as before.
+- **The problem report says which rules were site-specific** (#1248). When you report a site as broken, the report now names the parameters MUGA applied *only on that site*. Each of those was admitted on one upstream source's word for that site alone, so they are the first suspects, and naming them is what makes a wrong rule findable and reversible rather than a guess.
+
+### Fixed
+
+- **ShareASale referrals are no longer stripped** (#1213). MUGA was removing `u`, ShareASale's affiliate id, on every site. The upstream rule it came from was scoped to two unrelated sites, and dropping that scope turned a correct fact into a broken one: creator attribution was lost on every ShareASale link. This is the failure the whole site-anchoring change above exists to prevent.
+- **Short parameter names stay out of the global rules** (#1218). Names of one or two characters are almost always site-specific upstream, and applied to the whole web they are the shape of the bug above. They are now refused on the global path and allowed only when anchored to a site.
+- **Referrals a site declares as functional are never published as trackers** (#1241). If a site's own profile says it needs a parameter, MUGA now refuses to publish that name in the global rules, at the point of signing rather than after the fact.
+- **Onboarding no longer races itself on a fresh install** (#1219). Two or three copies of the consent migration could run at once on every service worker wake, because it was invoked from module scope and from two separate handlers. Being idempotent was not enough: the intermediate states had to be safe too.
+- **The extension's own screens say what MUGA is.** The retired "denoise" identity is gone from the interface, matching the store listing and the site.
+- **Translation credits name who actually wrote them.**
+
 ## [3.0.0] - 2026-08-08
 
 This release is about what MUGA is, and what it is not. Three things it used to
