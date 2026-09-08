@@ -44,6 +44,16 @@ body:
       label: Params MUGA removed (if known)
       description: Comma-separated list. Leave blank if unknown.
       placeholder: utm_source, fbclid
+  - type: textarea
+    id: scoped
+    attributes:
+      label: Host-scoped params (auto-filled)
+      description: >-
+        Params MUGA applies only on this host, from its host-anchored rules.
+        Prefilled by the extension — these are the first suspects when a site
+        stops working, because each was admitted on one upstream source's word
+        for this host alone. Leave blank if it was not prefilled.
+      placeholder: _r, igsh
   - type: input
     id: url
     attributes:

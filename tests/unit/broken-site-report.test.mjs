@@ -195,3 +195,150 @@ describe("buildBrokenSiteReportBody", () => {
     assert.match(body, /\*\*Domain:\*\*/);
   });
 });
+
+// ── #1229 step 4: the correction loop names its suspects ─────────────────────
+//
+// A host-anchored fact is admitted on ONE upstream source's word, for a host
+// MUGA has no preserve knowledge of. #1229 states the residual risk plainly: a
+// param that is functional on one of those hosts would be stripped on AdGuard's
+// say-so and nothing in the pipeline would catch it. What closes that is a user
+// reporting the site broke — but only if the report says WHICH params came from
+// a host-anchored fact.
+//
+// Without it a maintainer gets a param list with no provenance, and has to
+// guess whether the culprit is a built-in that has shipped to everyone for
+// months or one of ~630 facts imported last week for that exact host.
+
+describe("#1229 — scopedParamsForHost", () => {
+  const FACTS = [
+    { param: "_r", hosts: ["tiktok.com"] },
+    { param: "igsh", hosts: ["instagram.com", "threads.net"] },
+    { param: "ved", hosts: ["google.com"] },
+  ];
+
+  test("returns the params anchored to the host", async () => {
+    const { scopedParamsForHost } = await import("../../src/lib/remote-rules.js");
+    assert.deepStrictEqual(scopedParamsForHost("tiktok.com", FACTS), ["_r"]);
+    assert.deepStrictEqual(scopedParamsForHost("threads.net", FACTS), ["igsh"]);
+  });
+
+  test("matches a SUBDOMAIN of the anchor, because the rule does", async () => {
+    // A scoped rule's `requestDomains` matches the anchor and its subdomains,
+    // so a fact anchored to tiktok.com IS applied on vt.tiktok.com. A report
+    // from there that omitted it would point the maintainer away from the
+    // actual cause.
+    const { scopedParamsForHost } = await import("../../src/lib/remote-rules.js");
+    assert.deepStrictEqual(scopedParamsForHost("vt.tiktok.com", FACTS), ["_r"]);
+    assert.deepStrictEqual(scopedParamsForHost("a.b.tiktok.com", FACTS), ["_r"]);
+  });
+
+  test("does NOT match a host that merely ends with the anchor's text", async () => {
+    // notyoutube.com does not sit under youtube.com. The dot is part of the
+    // comparison for the same reason it is in the DNR matcher.
+    const { scopedParamsForHost } = await import("../../src/lib/remote-rules.js");
+    assert.deepStrictEqual(scopedParamsForHost("nottiktok.com", FACTS), []);
+  });
+
+  test("is case-insensitive on both sides", async () => {
+    const { scopedParamsForHost } = await import("../../src/lib/remote-rules.js");
+    assert.deepStrictEqual(scopedParamsForHost("VT.TikTok.COM", FACTS), ["_r"]);
+    assert.deepStrictEqual(
+      scopedParamsForHost("tiktok.com", [{ param: "_r", hosts: ["TikTok.com"] }]),
+      ["_r"],
+    );
+  });
+
+  test("dedupes and sorts, so the report line is stable", async () => {
+    const { scopedParamsForHost } = await import("../../src/lib/remote-rules.js");
+    const result = scopedParamsForHost("shop.example.com", [
+      { param: "zz", hosts: ["example.com"] },
+      { param: "aa", hosts: ["shop.example.com"] },
+      { param: "zz", hosts: ["shop.example.com", "example.com"] },
+    ]);
+    assert.deepStrictEqual(result, ["aa", "zz"]);
+  });
+
+  test("never throws on malformed input, and skips bad facts individually", async () => {
+    const { scopedParamsForHost } = await import("../../src/lib/remote-rules.js");
+    for (const bad of [undefined, null, "facts", 42, {}]) {
+      assert.deepStrictEqual(scopedParamsForHost("example.com", bad), []);
+    }
+    for (const host of [undefined, null, "", 42]) {
+      assert.deepStrictEqual(scopedParamsForHost(host, FACTS), []);
+    }
+    // One malformed fact must not cost the report the good ones.
+    assert.deepStrictEqual(
+      scopedParamsForHost("example.com", [
+        null,
+        { param: 42, hosts: ["example.com"] },
+        { param: "ok", hosts: "example.com" },
+        { param: "good", hosts: ["example.com"] },
+      ]),
+      ["good"],
+    );
+  });
+});
+
+describe("#1229 — the report attributes host-scoped params", () => {
+  test("the form fields carry a `scoped` entry", async () => {
+    const { buildBrokenSiteReportFields } = await import("../../src/lib/broken-site-report.js");
+    const fields = buildBrokenSiteReportFields({
+      url: "https://tiktok.com/@x/video/1",
+      removedParams: ["_r", "utm_source"],
+      scopedParams: ["_r"],
+    });
+
+    assert.strictEqual(fields.scoped, "_r");
+    assert.strictEqual(fields.params, "_r, utm_source");
+  });
+
+  test("no scoped params means no `scoped` key at all", async () => {
+    // Absent, not empty: a report from a host with no host-anchored facts must
+    // read exactly as it did before this existed.
+    const { buildBrokenSiteReportFields } = await import("../../src/lib/broken-site-report.js");
+    for (const scopedParams of [undefined, [], null, "nope"]) {
+      const fields = buildBrokenSiteReportFields({
+        url: "https://example.com/",
+        removedParams: ["utm_source"],
+        scopedParams,
+      });
+      assert.ok(!("scoped" in fields), `scoped must be omitted for ${JSON.stringify(scopedParams)}`);
+    }
+  });
+
+  test("the markdown body carries a Host-scoped params line", async () => {
+    const { buildBrokenSiteReportBody } = await import("../../src/lib/broken-site-report.js");
+    const body = buildBrokenSiteReportBody({
+      url: "https://tiktok.com/@x",
+      hostname: "tiktok.com",
+      removedParams: ["_r"],
+      scopedParams: ["_r"],
+    });
+
+    assert.match(body, /\*\*Host-scoped params:\*\* _r/);
+  });
+
+  test("the body is unchanged when there are no scoped params", async () => {
+    const { buildBrokenSiteReportBody } = await import("../../src/lib/broken-site-report.js");
+    const base = { url: "https://example.com/", hostname: "example.com", removedParams: ["utm_source"] };
+
+    assert.strictEqual(
+      buildBrokenSiteReportBody({ ...base, scopedParams: [] }),
+      buildBrokenSiteReportBody(base),
+    );
+    assert.ok(!buildBrokenSiteReportBody(base).includes("Host-scoped"));
+  });
+
+  test("the scoped field id matches the issue template's", async () => {
+    // The prefill is by field ID: a rename on either side silently drops the
+    // most useful line in the report, with no error anywhere.
+    const { readFileSync } = await import("node:fs");
+    // Resolved from this file, not the cwd: the assertion must mean the same
+    // thing however the runner is invoked.
+    const template = readFileSync(
+      new URL("../../.github/ISSUE_TEMPLATE/broken-site.yml", import.meta.url),
+      "utf8",
+    );
+    assert.match(template, /id: scoped/);
+  });
+});
