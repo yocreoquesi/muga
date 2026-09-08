@@ -568,8 +568,18 @@ describe("sign-rules.mjs preserve guard vs. built-ins (#1221)", () => {
       readFileSync(join(REPO_ROOT, "docs", "rules", "v1", "params.json"), "utf8")
     );
 
+    // The load-bearing half: signing must not silently drop params. A signer
+    // that "passed" by discarding the offending ones would satisfy the
+    // signability test above and be far worse than the failure it replaced.
     assert.deepStrictEqual(signed.params, published.params);
-    assert.strictEqual(signed.version, published.version);
+
+    // NOT equality: the source legitimately runs AHEAD of the published file
+    // whenever a version bump is committed and waiting to publish. Monotonicity
+    // is the actual invariant — the runtime rejects VERSION_REGRESSION.
+    assert.ok(
+      signed.version >= published.version,
+      `source version ${signed.version} must not regress below published ${published.version}`
+    );
   });
 
   test("a built-in that some host preserves is allowed through", () => {

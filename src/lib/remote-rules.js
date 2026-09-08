@@ -43,8 +43,28 @@ export const REMOTE_RULES_URL =
  */
 export const REMOTE_RULE_ID = DNR_REMOTE_PARAMS_RULE_ID;
 
-/** Maximum response body size before rejection (REQ-SECURITY-4, REQ-FETCH-4). */
-export const MAX_PAYLOAD_BYTES = 50 * 1024; // 50 KB
+/**
+ * Maximum response body size before rejection (REQ-SECURITY-4, REQ-FETCH-4).
+ *
+ * MUGA's own bound, not a platform one: Chrome places no limit on what a
+ * service worker may `fetch()`. It exists so a hostile or compromised endpoint
+ * cannot stream unbounded data into the extension, which is a real protection
+ * and stays — the number is what changes.
+ *
+ * Raised from 50 KB when host-scoped facts began shipping in the same payload
+ * (#1229). Measured: the global params are ~3 KB, and the ~1070 scoped facts
+ * from the first AdGuard import are ~105 KB, so the old bound rejected the
+ * whole payload — losing the global rules too, not just the scoped half.
+ *
+ * ADOPTION MATTERS HERE. This bound lives in every INSTALLED build, so raising
+ * it only takes effect for users who update. A payload above the OLD bound is
+ * `OVER_CAP` on an older build: its previous params survive (ADR-D9) so
+ * cleaning keeps working, but the channel stops updating and Settings shows an
+ * error until the extension auto-updates. That is why the PUBLISHER has its own,
+ * deliberately smaller budget (`tools/build-rules-store.mjs`), moved up only
+ * once a build carrying this value has adoption.
+ */
+export const MAX_PAYLOAD_BYTES = 256 * 1024; // 256 KB
 
 /** Fetch timeout in milliseconds (REQ-FETCH-5). */
 export const FETCH_TIMEOUT_MS = 15_000;

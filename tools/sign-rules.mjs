@@ -378,7 +378,14 @@ async function main() {
 
   try {
     mkdirSync(dirname(OUTPUT_FILE), { recursive: true });
-    writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2) + "\n", "utf8");
+    // COMPACT, not pretty-printed. This file is fetched by the extension and
+    // parsed; nobody reads it. Pretty-printing cost 46% more bytes on every
+    // fetch for every user once host-scoped facts joined the payload
+    // (measured: 108,225 vs 58,811 for the same 1068 facts) - against a size
+    // cap the extension itself enforces. The signature is over VALUES via
+    // canonicalMessage, so formatting cannot affect it, and every consumer
+    // JSON.parses this rather than reading it.
+    writeFileSync(OUTPUT_FILE, JSON.stringify(output) + "\n", "utf8");
   } catch (err) {
     console.error(`[sign-rules] ERROR: Cannot write output to "${OUTPUT_FILE}": ${err.message}`);
     process.exit(3);

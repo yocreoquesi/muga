@@ -49,11 +49,14 @@ import {
   parseStore,
   serializeStore,
   withScopedFacts,
+  emitScoped,
 } from "../../tools/rules-store.mjs";
 import {
   buildImportedStore,
   renderArtifacts,
+  PUBLISH_PAYLOAD_BUDGET_BYTES,
 } from "../../tools/build-rules-store.mjs";
+import { MAX_PAYLOAD_BYTES } from "../../src/lib/remote-rules.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..");
@@ -321,27 +324,42 @@ test("an unroutable action can never reach the strip bucket", () => {
 // matter are that an empty store changes nothing, and that a non-empty one
 // emits exactly what the signer and the runtime accept.
 
-test("with no scoped facts, params.json is byte-identical to what is committed", () => {
-  // The whole safety argument for adding a section to a signed source: today's
-  // published bytes must not move. Absent-when-empty is what buys that — an
-  // empty `scoped: []` would rewrite the file for no behavioural change, and
-  // would be a third state neither the signer nor the runtime needs.
+test("the committed store re-renders params.json byte-identically", () => {
+  // The drift guard, and the reason the projection is safe to regenerate on
+  // every run: whatever the store holds, re-emitting it must reproduce the
+  // committed bytes exactly.
   const { params } = renderArtifacts(loadStore());
   assert.strictEqual(params, readFileSync(PARAMS_PATH, "utf8"));
-  assert.ok(!JSON.parse(params).scoped, "an empty store must emit no scoped key");
+});
+
+test("a store with NO scoped facts emits no scoped key at all", () => {
+  // Absent-when-empty is what let this section ship without moving a single
+  // published byte, and it stays true independently of what has landed since.
+  // Built from the committed store with the segment removed, so this keeps
+  // meaning the same thing after a backlog import.
+  const emptied = { ...loadStore() };
+  delete emptied.scopedFacts;
+
+  const rendered = JSON.parse(renderArtifacts(emptied).params);
+  assert.ok(!("scoped" in rendered), "an empty store must emit no scoped key");
 });
 
 test("a landed scoped fact appears in params.json as the payload shape", () => {
+  // Asserted on THIS fact rather than on the whole array: the committed store
+  // carries a real backlog, and a deep-equal here would only ever be testing
+  // how much of it had landed on the day the test was written.
   const store = withScopedFacts(loadStore(), [
-    { scope: "tiktok.com", param: "_r", action: ACTIONS.STRIP },
-    { scope: "vt.tiktok.com", param: "_r", action: ACTIONS.STRIP },
+    { scope: "muga-test.example", param: "mugaprojected", action: ACTIONS.STRIP },
+    { scope: "shop.muga-test.example", param: "mugaprojected", action: ACTIONS.STRIP },
   ]);
 
   const rendered = JSON.parse(renderArtifacts(store).params);
+  const entry = rendered.scoped.find((f) => f.param === "mugaprojected");
 
-  assert.deepStrictEqual(rendered.scoped, [
-    { param: "_r", hosts: ["tiktok.com", "vt.tiktok.com"] },
-  ]);
+  assert.deepStrictEqual(entry, {
+    param: "mugaprojected",
+    hosts: ["muga-test.example", "shop.muga-test.example"],
+  });
 });
 
 test("adding a scoped fact leaves version, published and params untouched", () => {
@@ -352,7 +370,7 @@ test("adding a scoped fact leaves version, published and params untouched", () =
   // where the scoped half cannot be rolled back on its own.
   const committed = JSON.parse(readFileSync(PARAMS_PATH, "utf8"));
   const store = withScopedFacts(loadStore(), [
-    { scope: "instagram.com", param: "igsh", action: ACTIONS.STRIP },
+    { scope: "muga-test.example", param: "mugauntouched", action: ACTIONS.STRIP },
   ]);
 
   const rendered = JSON.parse(renderArtifacts(store).params);
@@ -395,4 +413,88 @@ test("an import with nothing landed leaves the store without the key", () => {
     [],
   );
   assert.strictEqual(imported.scopedFacts, undefined);
+});
+
+test("params.json renders one scoped fact per line", () => {
+  // Same reasoning as serializeStore's one-entry-per-line: the weekly run
+  // re-offers the whole backlog and commits only the delta, so a new fact has
+  // to read as a one-line diff. Expanded, ~1000 facts cover ~6800 lines and
+  // bury the three that changed.
+  const text = renderArtifacts(loadStore()).params;
+  const scoped = JSON.parse(text).scoped ?? [];
+  if (scoped.length === 0) return;
+
+  const factLines = text.split("\n").filter((l) => /^\s{4}\{"param":/.test(l));
+  assert.strictEqual(
+    factLines.length,
+    scoped.length,
+    "every scoped fact must occupy exactly one line",
+  );
+});
+
+// ── The published payload must fit what INSTALLED builds will fetch ──────────
+//
+// `fetchWithCap` rejects a response over `MAX_PAYLOAD_BYTES`, and that constant
+// is compiled into every installed build. A payload above the bound the
+// deployed fleet carries is `OVER_CAP` there: its previous params survive so
+// cleaning keeps working, but the channel stops updating — the global rules
+// included, not just the scoped half — until the extension auto-updates.
+//
+// This is not hypothetical. The first host-scoped import weighed 108 KB against
+// a 50 KB bound, and it was caught by signing it by hand rather than by any
+// check. These are that check.
+
+test("the committed source signs to a payload within the publish budget", () => {
+  // Simulates the SIGNED, COMPACT bytes — what fetchWithCap streams — rather
+  // than the pretty-printed source, which is about twice the size. Budgeting
+  // against the wrong one errs in the direction that takes the channel down.
+  const source = JSON.parse(readFileSync(PARAMS_PATH, "utf8"));
+  const signed = {
+    ...source,
+    sig: "s".repeat(96),
+    ...(source.scoped ? { scopedSig: "s".repeat(96) } : {}),
+  };
+  const bytes = JSON.stringify(signed).length + 1;
+
+  assert.ok(
+    bytes <= PUBLISH_PAYLOAD_BUDGET_BYTES,
+    `published payload would be ${bytes} bytes, over the ` +
+      `${PUBLISH_PAYLOAD_BUDGET_BYTES}-byte budget by ${bytes - PUBLISH_PAYLOAD_BUDGET_BYTES}`,
+  );
+});
+
+test("the publish budget stays at or below the runtime cap", () => {
+  // The two move at different times — the runtime bound rises with a release,
+  // the publish budget once that release has adoption — but the publisher may
+  // never exceed what the client accepts.
+  assert.ok(PUBLISH_PAYLOAD_BUDGET_BYTES <= MAX_PAYLOAD_BYTES);
+});
+
+test("a store whose scoped facts exceed the budget publishes a subset, not everything", () => {
+  // The guard has to bite rather than warn. Built from the committed store so
+  // it exercises the real projection path.
+  const store = loadStore();
+  const scoped = store.scopedFacts ?? [];
+  if (scoped.length === 0) return;
+
+  const rendered = JSON.parse(renderArtifacts(store).params);
+  const distinctParams = new Set(scoped.map((f) => f.param)).size;
+
+  assert.ok(
+    rendered.scoped.length <= distinctParams,
+    "the published section may never carry more facts than the store holds",
+  );
+});
+
+test("the published subset is a PREFIX of the full projection", () => {
+  // Deterministic and monotonic: raising the budget publishes more, it never
+  // reshuffles what was already served. A payload that reordered on every
+  // budget change would churn scopedSig and every consumer's DNR rules.
+  const store = loadStore();
+  if ((store.scopedFacts ?? []).length === 0) return;
+
+  const full = emitScoped(store);
+  const published = JSON.parse(renderArtifacts(store).params).scoped ?? [];
+
+  assert.deepStrictEqual(published, full.slice(0, published.length));
 });
