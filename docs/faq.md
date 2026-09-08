@@ -123,23 +123,36 @@ Removing the tag only changes who the store credits with the referral
 ## Network behavior
 
 MUGA ships with two features that involve network requests: Remote Rules
-(on by default, #888) and "Follow shortener redirects" (opt-in,
-default-off). If you disable both in Settings, MUGA makes zero outbound
-network requests.
+(on by default, #888) and "Follow shortener redirects" (two switches:
+resolving a link you open is on by default, resolving one you only hover
+over is opt-in). If you disable all of them in Settings, MUGA makes zero
+outbound network requests.
 
 ### Q: What is "Follow shortener redirects" and when does it fire?
 
-"Follow shortener redirects" is an opt-in feature that resolves generic
-URL shorteners (bit.ly, tinyurl.com, t.co, link.medium.com, lnkd.in,
-fb.me, ebay.to) so you can see the destination before navigating. The
+"Follow shortener redirects" resolves the 19 generic URL shorteners
+listed in `GENERIC_SHORTENERS` (`src/lib/opaque-networks.js`) so you can
+see the destination before navigating. The full host list is enumerated
+in the [privacy policy](privacy-page.html). The
 extension performs a direct `fetch(url, { redirect: "manual", credentials: "omit", cache: "no-store" })` to the shortener host and reads the
 `Location` header. No MUGA server is contacted; there is no signed
 envelope because the redirect comes straight from the shortener host.
 Affiliate-redirect networks are NEVER followed.
 
-- Default: **off** (`followShortenersEnabled: false`).
-- Permissions are granted per-host only when you enable the feature, and
-  are revocable at any time via your browser's extension settings.
+- Two independent switches, split by privacy cost
+  (`src/lib/prefs.js`): resolving a link **when you open it** is on by
+  default, since you were navigating there anyway; resolving one **when
+  you merely hover** is off by default and opt-in.
+- The toggle is the gate. The handler
+  ([`src/background/service-worker.js`](../src/background/service-worker.js),
+  `RESOLVE_SHORTENER`) resolves nothing unless the extension is enabled,
+  onboarding is done, and the switch matching the source (click or hover)
+  is on. It re-checks that itself rather than trusting the caller.
+- MUGA's manifest already carries broad host access on both browsers, so
+  no separate permission prompt stands between the toggle and the first
+  resolution. Settings also asks for the per-host permissions explicitly,
+  which keeps the list visible and revocable in your browser's extension
+  settings.
 - Implementation: `src/lib/native-shortener-resolver.js`.
 
 ### Q: What are Remote Rules and how are they signed?
@@ -172,15 +185,16 @@ with credentials omitted and no referrer. No MUGA server is involved;
 the request goes to the same shortener host your browser would have
 contacted on click. The only difference is that you never actually
 navigate to that URL, so no page-load context is handed to the shortener.
-It only fires on the seven opted-in shortener hosts when the feature is
-enabled.
+It only ever fires on the 19 shortener hosts in `GENERIC_SHORTENERS`, and
+only for the half of the feature you left switched on.
 
 Remote Rules sends no user data at all: it is a one-way `GET` of a
 signed JSON file.
 
-If you want zero network activity, turn off both toggles in Settings.
-"Follow shortener redirects" already defaults to off; Remote Rules
-defaults to on (#888) and needs to be disabled explicitly.
+If you want zero network activity, turn off every toggle in Settings.
+Both "Follow shortener redirects" (the on-open half) and Remote Rules
+(#888) default to on and need to be disabled explicitly; the on-hover
+half is already off.
 
 ---
 
