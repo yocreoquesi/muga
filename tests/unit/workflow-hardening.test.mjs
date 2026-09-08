@@ -340,3 +340,75 @@ describe("G6 — the retired unwrap Worker stays retired (#701, ADR-0004)", () =
     );
   });
 });
+
+// ── G6 — publish-rules.yml publishes through a PR, never a push to main ──────
+//
+// `main` is protected ("Changes must be made through a pull request"), so a
+// direct `git push` from CI is rejected with GH006. The workflow did exactly
+// that, and it went unnoticed for months: the signed artifact is normally
+// committed INSIDE the auto-ingest PR, which left this workflow with nothing to
+// push and a green "No changes" on every run. The first run that had real work
+// to do failed, with the signed payload already correct and simply unpublishable
+// (#1250).
+//
+// The failure mode this guards is not "a push fails loudly". It is a publish
+// path that reports success for months because it never does anything.
+
+describe("G6 — publish-rules.yml cannot push to a protected branch", () => {
+  const publishWorkflow = readFileSync(join(workflowsDir, "publish-rules.yml"), "utf8");
+
+  test("does not push to main", () => {
+    const pushes = publishWorkflow
+      .split("\n")
+      .filter((l) => /^\s*git push\s*$/.test(l) || /git push\s+origin\s+main/.test(l));
+
+    assert.deepStrictEqual(
+      pushes,
+      [],
+      `publish-rules.yml must not push to main; found: ${JSON.stringify(pushes)}`,
+    );
+  });
+
+  test("opens a pull request and lets it auto-merge", () => {
+    assert.match(publishWorkflow, /gh pr create/, "must open a PR to publish");
+    assert.match(publishWorkflow, /gh pr merge .*--squash --auto/, "must auto-merge it");
+  });
+
+  test("uses MUGA_PR_TOKEN, because GITHUB_TOKEN cannot trigger the required checks", () => {
+    // A PR opened with GITHUB_TOKEN does not trigger ci.yml (GitHub's recursion
+    // guard), so branch protection's required checks never run and `--auto`
+    // waits forever.
+    assert.match(publishWorkflow, /secrets\.MUGA_PR_TOKEN/);
+  });
+
+  test("never marks the publish commit [skip ci]", () => {
+    // [skip ci] skips the very checks `--auto` is waiting for, leaving the PR
+    // blocked forever. Same trap auto-ingest-rules.yml documents.
+    // Non-comment lines only: the workflow explains this trap in a comment,
+    // and a guard that its own rationale trips is a guard nobody can write.
+    const live = publishWorkflow
+      .split("\n")
+      .filter((l) => !/^\s*#/.test(l))
+      .filter((l) => /\[skip ci\]/.test(l));
+
+    assert.deepStrictEqual(
+      live,
+      [],
+      "publish-rules.yml must not use [skip ci] — it blocks its own auto-merge",
+    );
+  });
+
+  test("the smoke check runs only when there was nothing to publish", () => {
+    // A run that opened a PR cannot verify the endpoint: `--auto` merges minutes
+    // later, after required checks. Asserting on the live URL there would fail
+    // on timing and say nothing about correctness.
+    assert.match(
+      publishWorkflow,
+      /needs\.publish\.outputs\.published == 'false'/,
+      "smoke-check must be gated on the no-op path",
+    );
+    // And the merge of a publish PR has to re-enter the workflow, or the
+    // endpoint would never be checked at all.
+    assert.match(publishWorkflow, /docs\/rules\/v1\/params\.json/);
+  });
+});
