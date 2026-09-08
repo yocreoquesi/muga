@@ -71,11 +71,21 @@ const TAILORED_HOST = "www.youtube.com";
  * Writing `dnrEnabled` is the trigger: its storage change drives
  * `applyDnrState` → `reconcileRemoteDnrRule`, which is the production path that
  * restores the scoped range from the cache. `set()` fires `onChanged` whether
- * or not the value moved, so ONE write is enough — and one is what this needs.
- * An off-then-on flip was tried and is a race: the `false` pass clears the
- * scoped range, and it can land AFTER the `true` pass has registered it,
- * removing the rule between the poll below and the navigation. It failed 1 run
- * in 6 that way, with the scoped param surviving while the static rule fired —
+ * or not the value moved.
+ *
+ * The trigger is RE-SENT on every poll iteration rather than fired once. One
+ * write is enough only if the service worker is alive to receive it: a single
+ * fire-and-forget write is lost if the worker is asleep or being recycled in
+ * that window, and then no amount of waiting recovers it. That is not a
+ * hypothetical — it failed twice on CI with "never registered" (not
+ * "registered late") while passing 138/138 locally, which is the signature of a
+ * lost event rather than a slow one. Re-sending is idempotent: the production
+ * path it drives is a reconcile.
+ *
+ * An off-then-on flip is a different thing and stays rejected: the `false` pass
+ * CLEARS the scoped range and can land after the `true` pass registered it,
+ * removing the rule between the poll and the navigation. It failed 1 run in 6
+ * that way, with the scoped param surviving while the static rule fired —
  * which reads exactly like a priority bug and is not one.
  *
  * The install barrier comes first for the same reason (#1231): the install-time
@@ -97,28 +107,31 @@ async function installScopedRules(page, host) {
   expect(expected.length, "the builder emitted no rule for one scoped fact").toBe(1);
   expect(expected[0].id).toBe(DNR_SCOPED_PARAMS_RULE_ID_BASE);
 
-  await page.evaluate(
-    ([param, h]) =>
-      new Promise((resolve) => {
-        chrome.storage.local.set(
-          {
-            // A non-empty param list keeps rule 1001 in play, so this also
-            // exercises the scoped and global rules coexisting.
-            remoteParams: ["mugaremote_e2e"],
-            remoteRulesMeta: {
-              version: 1,
-              fetchedAt: new Date().toISOString(),
-              paramCount: 1,
-              lastError: null,
-              published: new Date().toISOString(),
-              scopedFacts: [{ param, hosts: [h] }],
+  const seedAndTrigger = () =>
+    page.evaluate(
+      ([param, h]) =>
+        new Promise((resolve) => {
+          chrome.storage.local.set(
+            {
+              // A non-empty param list keeps rule 1001 in play, so this also
+              // exercises the scoped and global rules coexisting.
+              remoteParams: ["mugaremote_e2e"],
+              remoteRulesMeta: {
+                version: 1,
+                fetchedAt: new Date().toISOString(),
+                paramCount: 1,
+                lastError: null,
+                published: new Date().toISOString(),
+                scopedFacts: [{ param, hosts: [h] }],
+              },
             },
-          },
-          () => chrome.storage.sync.set({ dnrEnabled: true }, () => resolve())
-        );
-      }),
-    [SCOPED_ONLY_PARAM, host]
-  );
+            () => chrome.storage.sync.set({ dnrEnabled: true }, () => resolve())
+          );
+        }),
+      [SCOPED_ONLY_PARAM, host]
+    );
+
+  await seedAndTrigger();
 
   let live = [];
   await expect
@@ -130,10 +143,15 @@ async function installScopedRules(page, host) {
               chrome.declarativeNetRequest.getDynamicRules((r) => resolve(r))
             )
         );
-        return live.some((r) => r.id === DNR_SCOPED_PARAMS_RULE_ID_BASE);
+        if (live.some((r) => r.id === DNR_SCOPED_PARAMS_RULE_ID_BASE)) return true;
+        // Re-send rather than just wait: a lost storage event is not something
+        // a longer timeout recovers from.
+        await seedAndTrigger();
+        return false;
       },
       {
-        timeout: 15_000,
+        timeout: 30_000,
+        intervals: [250, 500, 1000],
         message: `the service worker never registered scoped rule ${DNR_SCOPED_PARAMS_RULE_ID_BASE}`,
       }
     )
