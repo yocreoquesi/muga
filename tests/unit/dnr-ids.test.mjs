@@ -19,8 +19,11 @@ import {
 } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const swSource = readFileSync(
-  join(__dirname, "../../src/background/service-worker.js"),
+// The DNR sync helpers (and their dnr-ids.js import) moved out of
+// service-worker.js into src/background/dnr-sync.js (#1266 item 5, #1268),
+// so it — not the service worker — is now the direct importer to check.
+const dnrSyncSource = readFileSync(
+  join(__dirname, "../../src/background/dnr-sync.js"),
   "utf8"
 );
 const remoteRulesSource = readFileSync(
@@ -69,22 +72,22 @@ describe("dnr-ids.js — no ID collisions", () => {
 // ── Import chain ─────────────────────────────────────────────────────────────
 
 describe("dnr-ids.js — import chain", () => {
-  test("service-worker.js imports from lib/dnr-ids.js", () => {
+  test("dnr-sync.js imports from lib/dnr-ids.js", () => {
     assert.ok(
-      swSource.includes('from "../lib/dnr-ids.js"'),
-      "service-worker.js must import from lib/dnr-ids.js"
+      dnrSyncSource.includes('from "../lib/dnr-ids.js"'),
+      "dnr-sync.js must import from lib/dnr-ids.js"
     );
   });
 
-  test("service-worker.js uses DNR_CUSTOM_PARAMS_RULE_ID (not a bare literal 1000)", () => {
+  test("dnr-sync.js uses DNR_CUSTOM_PARAMS_RULE_ID (not a bare literal 1000)", () => {
     assert.ok(
-      swSource.includes("DNR_CUSTOM_PARAMS_RULE_ID"),
-      "service-worker.js must reference DNR_CUSTOM_PARAMS_RULE_ID"
+      dnrSyncSource.includes("DNR_CUSTOM_PARAMS_RULE_ID"),
+      "dnr-sync.js must reference DNR_CUSTOM_PARAMS_RULE_ID"
     );
     // Ensure the bare constant 1000 is not used directly as a rule ID
     assert.ok(
-      !swSource.includes("removeRuleIds: [1000]"),
-      "service-worker.js must not use bare literal 1000 as a DNR rule ID"
+      !dnrSyncSource.includes("removeRuleIds: [1000]"),
+      "dnr-sync.js must not use bare literal 1000 as a DNR rule ID"
     );
   });
 

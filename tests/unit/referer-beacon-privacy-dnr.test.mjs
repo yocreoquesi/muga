@@ -51,6 +51,14 @@ const swSource = readFileSync(
   join(__dirname, "../../src/background/service-worker.js"),
   "utf8",
 );
+// The four sync*DNR functions and applyDnrState moved to dnr-sync.js (#1266
+// item 5, #1268), so the source guards below that concern their own bodies
+// now read this file instead of swSource. The storage.onChanged wiring stays
+// in service-worker.js (the composition root) and is still checked there.
+const dnrSyncSource = readFileSync(
+  join(__dirname, "../../src/background/dnr-sync.js"),
+  "utf8",
+);
 
 // ── Thin adapters over the REAL builders ─────────────────────────────────────
 //
@@ -424,29 +432,29 @@ describe("Consent gate — gate-closed removes all four rule families; global pr
 
 // ── Source-level guards: verify the production SW was updated ───────────────
 
-const swFnStart = swSource.indexOf("async function syncSuppressRefererDNR(");
-const swFnBlock = swSource.slice(swFnStart, swFnStart + 6500); // covers all four fns
-const applyFnStart = swSource.indexOf("async function applyDnrState(");
+const swFnStart = dnrSyncSource.indexOf("export async function syncSuppressRefererDNR(");
+const swFnBlock = dnrSyncSource.slice(swFnStart, swFnStart + 6500); // covers all four fns
+const applyFnStart = dnrSyncSource.indexOf("export async function applyDnrState(");
 // Bumped 6000 -> 9000 for #1257 item 5: the gate-closed branch grew a
 // tearDownAndVerify() wrapper, which pushed the calls asserted below past the
 // old window. A fixed-size slice that must be re-tuned whenever the function
 // grows is a guard that eventually gets deleted, so the first assertion in the
 // gate-closed test now checks the window still reaches its target and says so.
-const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 9000);
+const applyFnBlock = dnrSyncSource.slice(applyFnStart, applyFnStart + 9000);
 const gateClosedBlock = applyFnBlock.slice(applyFnBlock.indexOf("Gate closed:"));
 
-describe("service-worker.js source guards — the four new sync fns exist and are wired", () => {
-  test("all four sync functions exist, guard on hasDNR, and use try/catch", () => {
-    assert.ok(swFnStart !== -1, "syncSuppressRefererDNR must exist in the service worker");
+describe("dnr-sync.js source guards — the four new sync fns exist and are wired", () => {
+  test("all four sync functions exist, guard on hasDNR(), and use try/catch", () => {
+    assert.ok(swFnStart !== -1, "syncSuppressRefererDNR must exist in dnr-sync.js");
     for (const name of [
-      "async function syncSuppressRefererDNR(",
-      "async function syncBlockBeaconsDNR(",
-      "async function syncBlocklistRefererDNR(",
-      "async function syncBlocklistBeaconsDNR(",
+      "export async function syncSuppressRefererDNR(",
+      "export async function syncBlockBeaconsDNR(",
+      "export async function syncBlocklistRefererDNR(",
+      "export async function syncBlocklistBeaconsDNR(",
     ]) {
-      assert.ok(swSource.includes(name), `${name} must exist`);
+      assert.ok(dnrSyncSource.includes(name), `${name} must exist`);
     }
-    assert.ok(swFnBlock.includes("if (!hasDNR) return;"));
+    assert.ok(swFnBlock.includes("if (!hasDNR()) return;"));
     assert.ok(swFnBlock.includes("try {") && swFnBlock.includes("catch (err)"));
   });
 
@@ -474,12 +482,12 @@ describe("service-worker.js source guards — the four new sync fns exist and ar
 
   test("ALLOWLIST_RESOURCE_TYPES is imported from ../lib/dnr-ids.js, not re-declared locally", () => {
     assert.ok(
-      swSource.includes('ALLOWLIST_RESOURCE_TYPES,') && swSource.includes('from "../lib/dnr-ids.js"'),
+      dnrSyncSource.includes('ALLOWLIST_RESOURCE_TYPES,') && dnrSyncSource.includes('from "../lib/dnr-ids.js"'),
       "ALLOWLIST_RESOURCE_TYPES must be imported from dnr-ids.js (task 1.5)",
     );
     assert.ok(
-      !swSource.includes("const ALLOWLIST_RESOURCE_TYPES = ["),
-      "service-worker.js must not re-declare ALLOWLIST_RESOURCE_TYPES locally after promoting it to dnr-ids.js",
+      !dnrSyncSource.includes("const ALLOWLIST_RESOURCE_TYPES = ["),
+      "dnr-sync.js must not re-declare ALLOWLIST_RESOURCE_TYPES locally after promoting it to dnr-ids.js",
     );
   });
 

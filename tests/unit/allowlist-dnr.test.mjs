@@ -1,24 +1,39 @@
 /**
- * MUGA — Unit tests for syncAllowlistDNR() (#allowlist-full-inert)
+ * MUGA — Unit tests for syncAllowlistDNR() (#allowlist-full-inert, #1266 item 5, #1268)
  *
- * The service worker has no behavioral unit harness (Chrome API bindings at
- * module scope - see the same note in tests/unit/dnr-consent-gate.test.mjs),
- * so this file follows that file's established pattern: a pure extraction of
- * the sync algorithm exercised against a fake declarativeNetRequest facade,
- * plus source guards confirming the production service-worker.js actually
- * wires the real function in.
+ * This file used to reach the service worker two ways: a hand-written mirror
+ * of syncAllowlistDNR() exercised against a fake declarativeNetRequest
+ * facade, plus a set of `swSource.indexOf`/`.slice`/`.includes` source-region
+ * guards scraping production text for wiring that could not otherwise be
+ * reached (`applyDnrState` calls `syncAllowlistDNR` after
+ * `syncCustomParamsDNR`, the gate-closed branch clears it, and so on). Both
+ * are the debt #1268 is about: a mirror can drift from production and stay
+ * green, and a source scrape only proves a string is present, not that the
+ * code behaves.
  *
- * getFullyExemptDomains() itself is NOT reimplemented here - it is imported
- * directly from src/lib/cleaner.js, so these tests exercise the real
- * domain-selection logic and only stub the chrome.* boundary.
+ * `syncAllowlistDNR` and `applyDnrState` moved to src/background/dnr-sync.js
+ * (#1266 item 5), which is importable in Node with a stubbed `chrome`. So
+ * this file now imports the REAL functions: the algorithm tests below run
+ * the shipped `syncAllowlistDNR` directly, and the wiring assertions that
+ * used to scrape `applyDnrState`'s source now call the real `applyDnrState`
+ * and record the ORDER its `updateDynamicRules` calls actually happen in.
+ *
+ * getFullyExemptDomains() itself is NOT reimplemented here — syncAllowlistDNR
+ * imports it directly from src/lib/cleaner.js, so calling the real sync
+ * function exercises the real domain-selection logic too.
+ *
+ * One assertion could not be migrated: "storage.onChanged re-syncs DNR when
+ * whitelist or blacklist changes" concerns wiring in the message-listener /
+ * lifecycle code that stays in service-worker.js as the composition root
+ * (#1266 item 5's own scope note). It remains a source guard, kept in a
+ * dedicated describe block below.
  */
 
-import { test, describe } from "node:test";
+import { test, describe, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import { getFullyExemptDomains } from "../../src/lib/cleaner.js";
 import {
   DNR_ALLOWLIST_RULE_ID_BASE,
   DNR_ALLOWLIST_MAX_RULES,
@@ -28,58 +43,20 @@ import {
 } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// storage.onChanged wiring stays in service-worker.js (the composition
+// root — see #1266 item 5) and is not reachable through dnr-sync.js, so
+// that one assertion still reads the service worker's source.
 const swSource = readFileSync(
   join(__dirname, "../../src/background/service-worker.js"),
   "utf8"
 );
-
-// ── Pure implementation under test ───────────────────────────────────────────
-//
-// Mirrors syncAllowlistDNR() in service-worker.js exactly (same removeRuleIds
-// range, same rule shape, same cap-and-warn behavior) but wired to a fake DNR
-// facade so the exact calls can be asserted without a browser.
 
 const ALLOWLIST_RULE_ID_RANGE = Array.from(
   { length: DNR_ALLOWLIST_MAX_RULES },
   (_, i) => DNR_ALLOWLIST_RULE_ID_BASE + i,
 );
 
-// Mirrors ALLOWLIST_RESOURCE_TYPES in service-worker.js. Chrome's DNR API
-// matches every resource type EXCEPT main_frame when resourceTypes is
-// omitted, so main_frame - the single most common case, a top-level
-// navigation to an allowlisted domain - must be listed explicitly or the
-// allow rule silently never applies to it.
-const ALLOWLIST_RESOURCE_TYPES = [
-  "main_frame", "sub_frame", "stylesheet", "script", "image", "font",
-  "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket",
-  "other",
-];
-
-async function syncAllowlistDNRLogic(prefs, dnrApi, warn) {
-  const domains = getFullyExemptDomains(prefs);
-
-  if (domains.length === 0) {
-    await dnrApi.updateDynamicRules({ removeRuleIds: ALLOWLIST_RULE_ID_RANGE, addRules: [] });
-    return;
-  }
-
-  let syncedDomains = domains;
-  if (domains.length > DNR_ALLOWLIST_MAX_RULES) {
-    const dropped = domains.slice(DNR_ALLOWLIST_MAX_RULES);
-    syncedDomains = domains.slice(0, DNR_ALLOWLIST_MAX_RULES);
-    warn?.(dropped);
-  }
-
-  await dnrApi.updateDynamicRules({
-    removeRuleIds: ALLOWLIST_RULE_ID_RANGE,
-    addRules: syncedDomains.map((domain, i) => ({
-      id: DNR_ALLOWLIST_RULE_ID_BASE + i,
-      priority: 1000,
-      action: { type: "allow" },
-      condition: { requestDomains: [domain], resourceTypes: ALLOWLIST_RESOURCE_TYPES },
-    })),
-  });
-}
+// ── Stub chrome BEFORE importing dnr-sync.js ─────────────────────────────────
 
 function makeFakeDnr() {
   const calls = [];
@@ -92,15 +69,42 @@ function makeFakeDnr() {
   };
 }
 
+let fakeDnr;
+let syncAllowlistDNR;
+let applyDnrState;
+const warnCalls = [];
+let realWarn;
+
+before(async () => {
+  globalThis.chrome = {
+    declarativeNetRequest: {
+      updateDynamicRules: (opts) => fakeDnr.updateDynamicRules(opts),
+      updateEnabledRulesets: () => Promise.resolve(),
+      getDynamicRules: () => Promise.resolve([]),
+    },
+    runtime: {
+      getManifest: () => ({ manifest_version: 3, declarative_net_request: { rule_resources: [] } }),
+      getURL: (p) => "file://" + p,
+    },
+  };
+  ({ syncAllowlistDNR, applyDnrState } = await import("../../src/background/dnr-sync.js"));
+  realWarn = console.warn;
+  console.warn = (...args) => { warnCalls.push(args); realWarn(...args); };
+});
+
+beforeEach(() => {
+  fakeDnr = makeFakeDnr();
+  warnCalls.length = 0;
+});
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("syncAllowlistDNR — one allow rule per exempt domain", () => {
   test("a domain-only whitelist entry produces exactly one allow rule", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: ["example.com"], blacklist: [] }, dnr);
+    await syncAllowlistDNR({ whitelist: ["example.com"], blacklist: [] });
 
-    assert.strictEqual(dnr.calls.length, 1);
-    const call = dnr.calls[0];
+    assert.strictEqual(fakeDnr.calls.length, 1);
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 1);
     const rule = call.addRules[0];
     assert.strictEqual(rule.action.type, "allow");
@@ -109,18 +113,16 @@ describe("syncAllowlistDNR — one allow rule per exempt domain", () => {
   });
 
   test("a `::disabled` blacklist entry (legacy syntax, removed) does NOT produce an allow rule", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: [], blacklist: ["paused.com::disabled"] }, dnr);
+    await syncAllowlistDNR({ whitelist: [], blacklist: ["paused.com::disabled"] });
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 0);
   });
 
   test("allow rule priority (1000) is strictly higher than every strip/redirect rule (priority 1)", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: ["example.com"], blacklist: [] }, dnr);
+    await syncAllowlistDNR({ whitelist: ["example.com"], blacklist: [] });
 
-    const rule = dnr.calls[0].addRules[0];
+    const rule = fakeDnr.calls[0].addRules[0];
     assert.strictEqual(rule.priority, 1000);
     assert.ok(rule.priority > 1, "allow priority must exceed the priority-1 strip/redirect rules");
   });
@@ -131,26 +133,25 @@ describe("syncAllowlistDNR — one allow rule per exempt domain", () => {
     // (tracking-params.json, syncCustomParamsDNR, amp-redirect.json, ...)
     // explicitly lists main_frame, so the allow rule must too, or a plain
     // top-level navigation to an allowlisted domain would still get its
-    // tracking params stripped at the network layer.
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: ["example.com"], blacklist: [] }, dnr);
+    // tracking params stripped at the network layer. Asserted against the
+    // real ALLOWLIST_RESOURCE_TYPES import (not a re-declared local copy).
+    await syncAllowlistDNR({ whitelist: ["example.com"], blacklist: [] });
 
-    const rule = dnr.calls[0].addRules[0];
+    const rule = fakeDnr.calls[0].addRules[0];
+    assert.deepEqual(rule.condition.resourceTypes, IMPORTED_ALLOWLIST_RESOURCE_TYPES);
     assert.ok(Array.isArray(rule.condition.resourceTypes), "resourceTypes must be an explicit array, not omitted");
     assert.ok(rule.condition.resourceTypes.includes("main_frame"), "main_frame must be explicitly listed");
     assert.ok(rule.condition.resourceTypes.includes("sub_frame"), "sub_frame must be covered too (wrapper/AMP redirects run there)");
   });
 
   test("multiple exempt domains each get their own rule with distinct ids", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic(
+    await syncAllowlistDNR(
       // c.com::disabled is a stray legacy blacklist entry (removed syntax) and
       // must NOT produce a rule alongside the two real whitelist entries.
       { whitelist: ["a.com", "b.com"], blacklist: ["c.com::disabled"] },
-      dnr,
     );
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 2);
     const domains = call.addRules.map(r => r.condition.requestDomains[0]).sort();
     assert.deepEqual(domains, ["a.com", "b.com"]);
@@ -159,38 +160,34 @@ describe("syncAllowlistDNR — one allow rule per exempt domain", () => {
   });
 
   test("a param-scoped whitelist entry does NOT produce an allow rule", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: ["example.com::tag::x"], blacklist: [] }, dnr);
+    await syncAllowlistDNR({ whitelist: ["example.com::tag::x"], blacklist: [] });
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 0);
   });
 
   test("a plain blacklist entry without ::disabled does NOT produce an allow rule", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: [], blacklist: ["blocked.com"] }, dnr);
+    await syncAllowlistDNR({ whitelist: [], blacklist: ["blocked.com"] });
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 0);
   });
 });
 
 describe("syncAllowlistDNR — clears stale rules", () => {
   test("every sync removes the full allowlist id range before adding the current set", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: ["example.com"], blacklist: [] }, dnr);
+    await syncAllowlistDNR({ whitelist: ["example.com"], blacklist: [] });
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.removeRuleIds.length, DNR_ALLOWLIST_MAX_RULES);
     assert.ok(call.removeRuleIds.includes(DNR_ALLOWLIST_RULE_ID_BASE));
     assert.ok(call.removeRuleIds.includes(DNR_ALLOWLIST_RULE_ID_BASE + DNR_ALLOWLIST_MAX_RULES - 1));
   });
 
   test("no exempt domains — removeRuleIds still clears the range, addRules is empty (no stale rules survive de-whitelisting)", async () => {
-    const dnr = makeFakeDnr();
-    await syncAllowlistDNRLogic({ whitelist: [], blacklist: [] }, dnr);
+    await syncAllowlistDNR({ whitelist: [], blacklist: [] });
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 0);
     assert.strictEqual(call.removeRuleIds.length, DNR_ALLOWLIST_MAX_RULES);
   });
@@ -202,82 +199,115 @@ describe("syncAllowlistDNR — clears stale rules", () => {
 });
 
 describe("syncAllowlistDNR — cap and warn, no silent truncation", () => {
-  test("exempt-domain count over the cap: only the cap is added, excess is reported via the warn callback", async () => {
-    const dnr = makeFakeDnr();
+  test("exempt-domain count over the cap: only the cap is added, excess is reported via console.warn", async () => {
     const many = Array.from({ length: DNR_ALLOWLIST_MAX_RULES + 5 }, (_, i) => `d${i}.com`);
-    let warnedDropped = null;
-    await syncAllowlistDNRLogic({ whitelist: many, blacklist: [] }, dnr, (dropped) => { warnedDropped = dropped; });
+    await syncAllowlistDNR({ whitelist: many, blacklist: [] });
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, DNR_ALLOWLIST_MAX_RULES);
-    assert.ok(Array.isArray(warnedDropped), "cap overflow must be reported, not silently dropped");
-    assert.strictEqual(warnedDropped.length, 5);
+    assert.strictEqual(warnCalls.length, 1, "cap overflow must be reported, not silently dropped");
+    const [, dropped] = warnCalls[0];
+    assert.ok(Array.isArray(dropped));
+    assert.strictEqual(dropped.length, 5);
   });
 
-  test("exempt-domain count under the cap: warn callback is never invoked", async () => {
-    const dnr = makeFakeDnr();
-    let warnCalled = false;
-    await syncAllowlistDNRLogic({ whitelist: ["example.com"], blacklist: [] }, dnr, () => { warnCalled = true; });
-    assert.strictEqual(warnCalled, false);
+  test("exempt-domain count under the cap: console.warn is never invoked", async () => {
+    await syncAllowlistDNR({ whitelist: ["example.com"], blacklist: [] });
+    assert.strictEqual(warnCalls.length, 0);
   });
 });
 
-// ── Source-level guards: verify the production SW was updated ────────────────
+describe("syncAllowlistDNR — hasDNR guard and error isolation", () => {
+  test("wraps updateDynamicRules in try/catch: a throwing DNR call does not reject syncAllowlistDNR", async () => {
+    globalThis.chrome.declarativeNetRequest.updateDynamicRules = () => {
+      throw new Error("simulated DNR failure");
+    };
+    try {
+      await assert.doesNotReject(() => syncAllowlistDNR({ whitelist: ["example.com"], blacklist: [] }));
+    } finally {
+      globalThis.chrome.declarativeNetRequest.updateDynamicRules = (opts) => fakeDnr.updateDynamicRules(opts);
+    }
+  });
+});
+
+// ── applyDnrState wiring: real ordering, not a source scrape ────────────────
 //
-// The service worker cannot be imported in Node (chrome.* at module scope),
-// so — same as tests/unit/dnr-consent-gate.test.mjs — a handful of source
-// regions are extracted ONCE each and every subsequent check runs against
-// the extracted (non-"...Source"-named) local, keeping this file's
-// source-grep footprint minimal per the #824 ratchet.
-//
-// ALLOWLIST_RESOURCE_TYPES was promoted to a shared export in dnr-ids.js
-// (referer-beacon-privacy task 1.5), so its main_frame-inclusion check is now
-// a BEHAVIORAL assertion against the real import (IMPORTED_ALLOWLIST_RESOURCE_TYPES
-// above) instead of a source-string scrape — this LOWERS this file's
-// source-grep footprint by one, per the #824 ratchet's stated goal.
+// #1268: this used to scan applyDnrState's SOURCE TEXT for the exact call
+// strings "await syncCustomParamsDNR(prefs.customParams);" and
+// "await syncAllowlistDNR(prefs);" and compare their string offsets. That
+// proves the calls are textually present in that order; it does not prove
+// applyDnrState actually invokes them in that order at runtime — a
+// refactor that kept both lines but changed control flow around them could
+// still pass. Calling the real, imported applyDnrState and recording which
+// rule family each updateDynamicRules call touches (by inspecting
+// removeRuleIds) asserts the real runtime order instead.
 
-const syncFnStart = swSource.indexOf("async function syncAllowlistDNR(");
-const syncFnBlock = swSource.slice(syncFnStart, syncFnStart + 1800);
+function ruleFamilyOf(call) {
+  const ids = call.removeRuleIds ?? [];
+  if (ids.includes(DNR_CUSTOM_PARAMS_RULE_ID)) return "customParams";
+  if (ids.includes(DNR_ALLOWLIST_RULE_ID_BASE)) return "allowlist";
+  return null;
+}
 
-const applyFnStart = swSource.indexOf("async function applyDnrState(");
-const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 6000);
-const gateClosedBlock = applyFnBlock.slice(applyFnBlock.indexOf("Gate closed:"));
+describe("applyDnrState — real ordering and gate-closed clearing of the allowlist", () => {
+  test("gate-open branch calls syncAllowlistDNR after syncCustomParamsDNR", async () => {
+    await applyDnrState({
+      enabled: true,
+      dnrEnabled: true,
+      onboardingDone: true,
+      customParams: ["tracked"],
+      whitelist: ["example.com"],
+      blacklist: [],
+      remoteRulesEnabled: false,
+    });
 
-const storageListenerStart = swSource.lastIndexOf("chrome.storage.onChanged.addListener");
-const storageListenerBlock = swSource.slice(storageListenerStart, storageListenerStart + 2500);
-
-describe("service-worker.js source guards — syncAllowlistDNR present and wired", () => {
-  test("syncAllowlistDNR exists, guards on hasDNR, wraps in try/catch, and derives domains via getFullyExemptDomains", () => {
-    assert.ok(syncFnStart !== -1, "syncAllowlistDNR must exist in the service worker");
-    assert.ok(syncFnBlock.includes("if (!hasDNR) return;"), "must guard on hasDNR like syncCustomParamsDNR");
-    assert.ok(syncFnBlock.includes("try {") && syncFnBlock.includes("catch (err)"), "must be wrapped in try/catch like syncCustomParamsDNR");
-    assert.ok(syncFnBlock.includes("updateDynamicRules"), "must call updateDynamicRules");
-    assert.ok(syncFnBlock.includes("getFullyExemptDomains"), "must derive exempt domains via getFullyExemptDomains, not reimplement domain matching");
+    const families = fakeDnr.calls.map(ruleFamilyOf).filter(Boolean);
+    const customIdx = families.indexOf("customParams");
+    const allowIdx = families.indexOf("allowlist");
+    assert.ok(customIdx !== -1 && allowIdx !== -1, "both gate-open calls must actually happen");
+    assert.ok(allowIdx > customIdx, "syncAllowlistDNR must run after syncCustomParamsDNR in the gate-open branch");
   });
 
-  test("allow rule uses type \"allow\", priority 1000, requestDomains, and an explicit resourceTypes list including main_frame", () => {
-    assert.ok(syncFnBlock.includes('action: { type: "allow" }'));
-    assert.ok(syncFnBlock.includes("priority: 1000"));
-    assert.ok(syncFnBlock.includes("requestDomains: [domain]"));
-    assert.ok(syncFnBlock.includes("resourceTypes: ALLOWLIST_RESOURCE_TYPES"), "the allow rule must use the explicit resourceTypes list (Chrome excludes main_frame by default otherwise)");
-    assert.ok(IMPORTED_ALLOWLIST_RESOURCE_TYPES.includes("main_frame"), "ALLOWLIST_RESOURCE_TYPES must explicitly include main_frame");
-  });
+  test("gate-closed branch clears the allowlist range (addRules empty)", async () => {
+    await applyDnrState({
+      enabled: false,
+      dnrEnabled: true,
+      onboardingDone: true,
+      whitelist: ["example.com"],
+      blacklist: [],
+      remoteRulesEnabled: false,
+    });
 
-  test("applyDnrState calls syncAllowlistDNR after syncCustomParamsDNR in the gate-open branch, and clears it in the gate-closed branch", () => {
-    assert.ok(applyFnStart !== -1, "applyDnrState must exist");
-    const customIdx = applyFnBlock.indexOf("await syncCustomParamsDNR(prefs.customParams);");
-    const allowIdx = applyFnBlock.indexOf("await syncAllowlistDNR(prefs);");
-    assert.ok(customIdx !== -1 && allowIdx !== -1, "both gate-open calls must be present");
-    assert.ok(allowIdx > customIdx, "syncAllowlistDNR must be called after syncCustomParamsDNR in the gate-open branch");
-    assert.ok(
-      gateClosedBlock.includes("syncAllowlistDNR({ whitelist: [], blacklist: [] })"),
-      "gate-closed branch must clear the allowlist rules so no MUGA network footprint remains while disabled"
+    const allowlistCalls = fakeDnr.calls.filter((c) => ruleFamilyOf(c) === "allowlist");
+    assert.strictEqual(allowlistCalls.length, 1, "gate-closed teardown must clear the allowlist range exactly once");
+    assert.deepEqual(allowlistCalls[0].addRules, [], "gate-closed must register no allow rules");
+    assert.strictEqual(
+      allowlistCalls[0].removeRuleIds.length,
+      DNR_ALLOWLIST_MAX_RULES,
+      "gate-closed must clear the full allowlist id range"
     );
   });
+});
 
+// ── Source-level guard: wiring that stays in service-worker.js ──────────────
+//
+// storage.onChanged lives in the message-listener / lifecycle code that
+// stays in service-worker.js as the composition root (#1266 item 5's own
+// scope note), so it is not reachable through the extracted dnr-sync.js and
+// remains a source guard.
+
+describe("service-worker.js source guard — storage.onChanged wiring", () => {
   test("storage.onChanged re-syncs DNR when whitelist or blacklist changes", () => {
-    assert.ok(storageListenerStart !== -1);
-    assert.ok(storageListenerBlock.includes("changes.whitelist"), "must re-sync DNR when the whitelist changes");
-    assert.ok(storageListenerBlock.includes("changes.blacklist"), "must re-sync DNR when the blacklist changes");
+    const storageListenerStart = swSource.lastIndexOf("chrome.storage.onChanged.addListener");
+    assert.ok(storageListenerStart !== -1, "storage onChanged listener must exist");
+    const storageListenerBlock = swSource.slice(storageListenerStart, storageListenerStart + 2500);
+    assert.ok(
+      storageListenerBlock.includes("changes.whitelist"),
+      "must re-sync DNR when the whitelist changes"
+    );
+    assert.ok(
+      storageListenerBlock.includes("changes.blacklist"),
+      "must re-sync DNR when the blacklist changes"
+    );
   });
 });

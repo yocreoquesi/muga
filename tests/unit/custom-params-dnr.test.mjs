@@ -1,12 +1,18 @@
 /**
- * MUGA — Unit tests for syncCustomParamsDNR() (#1104)
+ * MUGA — Unit tests for syncCustomParamsDNR() (#1104, #1266 item 5, #1268)
  *
- * The service worker has no behavioral unit harness (chrome.* bindings at
- * module scope — see the same note in tests/unit/allowlist-dnr.test.mjs and
- * tests/unit/dnr-consent-gate.test.mjs), so this file follows that
- * established pattern: a pure extraction of the sync algorithm exercised
- * against a fake declarativeNetRequest facade, plus a source guard confirming
- * the production service-worker.js actually carries the empty-guard fix.
+ * This file used to say it "Mirrors the FIXED syncCustomParamsDNR() in
+ * service-worker.js exactly" — a hand-written reimplementation with no
+ * generator and no structural check tying it to the original, plus a
+ * `swSource.indexOf`/`.slice` source-region guard scraping production text
+ * for the empty-guard fix. Both are the exact debt #1268 is about: a mirror
+ * that drifts keeps passing while shipped behaviour changes, and a source
+ * scrape only proves a string is present, not that the function behaves.
+ *
+ * `syncCustomParamsDNR` moved to src/background/dnr-sync.js (#1266 item 5),
+ * which is importable in Node with a stubbed `chrome`. So this file now
+ * imports the REAL function and exercises it directly — no mirror, no source
+ * scrape, and every assertion below runs against the shipped implementation.
  *
  * Bug (#1104): when every entry in customParams fails the format filter
  * (`/^[a-zA-Z0-9_.-]+$/`), `normalized` resolves to an empty array, and the
@@ -18,58 +24,16 @@
  * like "no customParams at all" — remove any stale rule, add nothing.
  */
 
-import { test, describe } from "node:test";
+import { test, describe, before } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
 import { DNR_CUSTOM_PARAMS_RULE_ID } from "../../src/lib/dnr-ids.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const swSource = readFileSync(
-  join(__dirname, "../../src/background/service-worker.js"),
-  "utf8"
-);
-
-// ── Pure implementation under test ───────────────────────────────────────────
+// ── Stub chrome BEFORE importing dnr-sync.js ─────────────────────────────────
 //
-// Mirrors the FIXED syncCustomParamsDNR() in service-worker.js exactly (same
-// filter/normalize logic, same rule shape, same empty-guard), wired to a fake
-// DNR facade so the exact calls can be asserted without a browser.
-
-async function syncCustomParamsDNRLogic(customParams, dnrApi) {
-  if (!customParams || customParams.length === 0) {
-    await dnrApi.updateDynamicRules({
-      removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
-      addRules: [],
-    });
-    return;
-  }
-  const normalized = customParams
-    .filter(p => /^[a-zA-Z0-9_.-]+$/.test(p.trim()))
-    .map(p => p.trim().toLowerCase());
-
-  if (normalized.length === 0) {
-    await dnrApi.updateDynamicRules({
-      removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
-      addRules: [],
-    });
-    return;
-  }
-
-  await dnrApi.updateDynamicRules({
-    removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
-    addRules: [{
-      id: DNR_CUSTOM_PARAMS_RULE_ID,
-      priority: 1,
-      action: {
-        type: "redirect",
-        redirect: { transform: { queryTransform: { removeParams: normalized } } },
-      },
-      condition: { urlFilter: "*", resourceTypes: ["main_frame"] },
-    }],
-  });
-}
+// dnr-sync.js reads `globalThis.chrome` lazily (hasDNR() / the sync functions
+// themselves), so the stub just needs to exist before the calls run — but it
+// must exist before the module's exported functions are invoked, so it is
+// installed here, synchronously, before the dynamic import below.
 
 function makeFakeDnr() {
   const calls = [];
@@ -82,65 +46,53 @@ function makeFakeDnr() {
   };
 }
 
+let fakeDnr;
+let syncCustomParamsDNR;
+
+before(async () => {
+  globalThis.chrome = {
+    declarativeNetRequest: {
+      updateDynamicRules: (opts) => fakeDnr.updateDynamicRules(opts),
+    },
+  };
+  ({ syncCustomParamsDNR } = await import("../../src/background/dnr-sync.js"));
+});
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("syncCustomParamsDNR — empty resolved param list is a no-op registration guard (#1104)", () => {
   test("all-invalid customParams (fail the format filter) → remove-only update, no addRules", async () => {
-    const dnr = makeFakeDnr();
-    await syncCustomParamsDNRLogic(["!!!", "###", "  "], dnr);
+    fakeDnr = makeFakeDnr();
+    await syncCustomParamsDNR(["!!!", "###", "  "]);
 
-    assert.strictEqual(dnr.calls.length, 1);
-    const call = dnr.calls[0];
+    assert.strictEqual(fakeDnr.calls.length, 1);
+    const call = fakeDnr.calls[0];
     assert.deepEqual(call.removeRuleIds, [DNR_CUSTOM_PARAMS_RULE_ID]);
     assert.deepEqual(call.addRules, [], "must not register a rule with an empty removeParams transform");
   });
 
   test("mixed valid + invalid customParams → rule registered with only the valid, normalized entries", async () => {
-    const dnr = makeFakeDnr();
-    await syncCustomParamsDNRLogic(["Valid_Param", "!!!invalid"], dnr);
+    fakeDnr = makeFakeDnr();
+    await syncCustomParamsDNR(["Valid_Param", "!!!invalid"]);
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.strictEqual(call.addRules.length, 1);
     assert.deepEqual(call.addRules[0].action.redirect.transform.queryTransform.removeParams, ["valid_param"]);
   });
 
   test("empty array customParams → remove-only update (pre-existing behavior, unchanged)", async () => {
-    const dnr = makeFakeDnr();
-    await syncCustomParamsDNRLogic([], dnr);
+    fakeDnr = makeFakeDnr();
+    await syncCustomParamsDNR([]);
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.deepEqual(call.addRules, []);
   });
 
   test("null/undefined customParams → remove-only update (pre-existing behavior, unchanged)", async () => {
-    const dnr = makeFakeDnr();
-    await syncCustomParamsDNRLogic(undefined, dnr);
+    fakeDnr = makeFakeDnr();
+    await syncCustomParamsDNR(undefined);
 
-    const call = dnr.calls[0];
+    const call = fakeDnr.calls[0];
     assert.deepEqual(call.addRules, []);
-  });
-});
-
-// ── Source-level guard: verify the production SW carries the empty-guard ────
-//
-// The service worker cannot be imported in Node (chrome.* at module scope),
-// so — same as tests/unit/allowlist-dnr.test.mjs — a region is extracted once
-// and checked for the empty-post-filter guard that prevents registering a DNR
-// rule with an empty removeParams transform.
-
-describe("syncCustomParamsDNR — production source guard (#1104)", () => {
-  const fnStart = swSource.indexOf("async function syncCustomParamsDNR(");
-  const fnEnd = swSource.indexOf("\n}\n", fnStart);
-  const fnBlock = swSource.slice(fnStart, fnEnd);
-
-  test("syncCustomParamsDNR is present in service-worker.js", () => {
-    assert.ok(fnStart !== -1, "syncCustomParamsDNR function not found in service-worker.js");
-  });
-
-  test("guards against registering a rule when the normalized param list is empty", () => {
-    assert.ok(
-      /normalized\.length\s*===\s*0/.test(fnBlock),
-      "syncCustomParamsDNR must skip rule registration when the post-filter normalized param list is empty (#1104)"
-    );
   });
 });

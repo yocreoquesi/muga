@@ -192,12 +192,17 @@ describe("computeBlockBeaconDecision — Firefox onBeforeRequest(types:[\"ping\"
 
 // ── Source-level guards: verify the production SW was updated ──────────────
 
-const isFxIdx = swSource.indexOf("const isFirefoxMV2 =");
+// isFirefoxMV2 moved to src/background/dnr-sync.js (#1266 item 5, #1268): it
+// is now a lazily-evaluated exported function, imported here at the top of
+// the service worker rather than declared as a local const.
+const isFxIdx = swSource.indexOf(
+  'import { hasDNR, isFirefoxMV2, applyDnrState } from "./dnr-sync.js";',
+);
 const suppressFnStart = swSource.indexOf("function onBeforeSendHeadersSuppressReferer(");
 const suppressFnBlock = swSource.slice(suppressFnStart, suppressFnStart + 1400);
 const beaconFnStart = swSource.indexOf("function onBeforeRequestBlockBeacons(");
 const beaconFnBlock = swSource.slice(beaconFnStart, beaconFnStart + 1400);
-const fxGateStart = swSource.indexOf("if (isFirefoxMV2) {");
+const fxGateStart = swSource.indexOf("if (isFirefoxMV2()) {");
 const fxGateBlock = swSource.slice(fxGateStart, fxGateStart + 2000);
 
 describe("service-worker.js source guards — the two new FF listeners exist and are wired", () => {
