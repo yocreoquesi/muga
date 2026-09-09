@@ -98,14 +98,28 @@ function writeParamsJson(dir, { version, published, params }) {
  * run of that retarget had `npm test` silently rewrite the repository's real
  * tools/rules-source/rules.json.
  */
-function writeStore(dir) {
+function writeStore(dir, scopedFacts = []) {
   const path = join(dir, "rules.json");
   writeFileSync(
     path,
-    JSON.stringify({ schemaVersion: 1, projection: { scopes: {} }, entries: [] }, null, 2) + "\n",
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        projection: { scopes: {} },
+        entries: [],
+        ...(scopedFacts.length ? { scopedFacts } : {}),
+      },
+      null,
+      2
+    ) + "\n",
     "utf8"
   );
   return path;
+}
+
+/** A host-scoped fact, in the shape rules-store validates. */
+function scopedFact(scope, param) {
+  return { scope, param, action: "strip", provenance: { signals: ["adguard-tp"] } };
 }
 
 /** Write a domain-rules.json fixture */
@@ -2005,5 +2019,231 @@ describe("#1221 — drift sweep over already-published params", () => {
 
     assert.strictEqual(result.noop, true, "the sweep must not manufacture a change out of nothing");
     assert.strictEqual(result.written, false);
+  });
+});
+
+// ── #1263: affiliate attribution can never reach the global strip list ────────
+//
+// GATE 1's affiliate index has always guarded INGESTION (orchestrate.mjs).
+// promote validated against AFFILIATE_PARAM_GUARD and the remote denylist, but
+// never against that index, so a name could reach the universal strip list by
+// any route that does not pass through ingestion.
+//
+// `ref` is the concrete hole: Vercel's referral param. It is in the gate's
+// index (via AFFILIATE_PATTERNS) and NOT in AFFILIATE_PARAM_GUARD (#1252), and
+// at three characters it clears MIN_PARAM_LEN. Nothing in promote refused it.
+//
+// Stripping `ref` globally is the #1213 failure exactly: MUGA would delete the
+// referral of the person who recommended the link, on every site, and the
+// creator would simply not be paid.
+
+describe("promote-rules — affiliate attribution guard (#1263)", () => {
+  test("a param in the affiliate index is refused, and the rest of the run survives", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const result = await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          // `ref` is Vercel's referral param; the other two are ordinary noise.
+          params: ["ref", "utm_source", "mc_cid"],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: [],
+      }),
+      storePath: writeStore(tmpDir),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["unrelated"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.ok(
+      !result.merged.includes("ref"),
+      "`ref` is Vercel's referral param — promoting it globally deletes creator attribution everywhere"
+    );
+    assert.deepStrictEqual(
+      result.merged,
+      ["mc_cid", "utm_source"],
+      "one refusal must not discard the run's other candidates"
+    );
+    assert.deepStrictEqual(
+      result.skipped.filter((x) => x.param === "ref"),
+      [{ param: "ref", reason: "affiliate attribution" }]
+    );
+  });
+
+  test("the refusal names the host-scoped overlap when there is one", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const result = await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          params: ["ref"],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: ["utm_source"],
+      }),
+      // The same name already anchored to a host: attribution on one site,
+      // proposed as noise on all of them. That combination is #1213's shape.
+      storePath: writeStore(tmpDir, [scopedFact("example.com", "ref")]),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["unrelated"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.deepStrictEqual(
+      result.skipped.filter((x) => x.param === "ref"),
+      [{ param: "ref", reason: "affiliate attribution, already host-scoped" }]
+    );
+  });
+
+  test("the sweep removes an affiliate param that was already published", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    const sourcePath = writeParamsJson(tmpDir, {
+      version: 3,
+      published: "2026-04-01T00:00:00.000Z",
+      // Already in the published list, from before the guard existed. Without a
+      // sweep it stays there forever: the candidate check only ever sees names
+      // arriving in THIS run.
+      params: ["ref", "utm_source"],
+    });
+
+    const result = await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          params: [],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath,
+      storePath: writeStore(tmpDir),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["unrelated"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.deepStrictEqual(result.merged, ["utm_source"]);
+    assert.strictEqual(
+      result.written,
+      true,
+      "a sweep is a change even when nothing new merged — the param leaves the payload"
+    );
+    assert.deepStrictEqual(
+      result.skipped.filter((x) => x.param === "ref"),
+      [{ param: "ref", reason: "affiliate attribution (drift sweep)" }]
+    );
+    assert.deepStrictEqual(
+      JSON.parse(readFileSync(sourcePath, "utf8")).params,
+      ["utm_source"]
+    );
+  });
+
+  test("a scoped fact alone does NOT block promotion — only attribution does", async () => {
+    const { runPromote } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    // 139 params legitimately hold both shapes in the committed store: one
+    // source calls a name a tracker everywhere, another anchors the same name
+    // to a host, and both are true. ADR-0008 treats anchors as additive data.
+    // This pins that the guard is attribution-aware, not a blanket refusal —
+    // tightening it to "scoped implies never global" would wedge the weekly run
+    // on the store as committed.
+    const tmpDir = makeTmpDir();
+    const result = await runPromote({
+      promotePath: writeArtifact(
+        tmpDir,
+        buildArtifact({
+          version: 3,
+          published: "2026-05-01T00:00:00.000Z",
+          params: ["ocid"],
+          privateKey: TEST_PRIV_KEY,
+        })
+      ),
+      sourcePath: writeParamsJson(tmpDir, {
+        version: 3,
+        published: "2026-04-01T00:00:00.000Z",
+        params: [],
+      }),
+      storePath: writeStore(tmpDir, [scopedFact("msn.com", "ocid")]),
+      domainRulesPath: writeDomainRules(tmpDir, [
+        { domain: "example.com", preserveParams: ["unrelated"] },
+      ]),
+      trustedKeys: TEST_TRUSTED_KEYS,
+      subtle: globalThis.crypto.subtle,
+      now: new Date("2026-06-01T12:00:00.000Z"),
+    });
+
+    assert.deepStrictEqual(result.merged, ["ocid"]);
+    assert.deepStrictEqual(result.skipped, []);
+  });
+
+  test("an unreadable store fails the run closed rather than guarding on an empty set", async () => {
+    const { runPromote, PromoteError } = await import(
+      "../../tools/rule-ingestion/promote-rules.mjs"
+    );
+
+    const tmpDir = makeTmpDir();
+    await assert.rejects(
+      runPromote({
+        promotePath: writeArtifact(
+          tmpDir,
+          buildArtifact({
+            version: 3,
+            published: "2026-05-01T00:00:00.000Z",
+            params: ["utm_source"],
+            privateKey: TEST_PRIV_KEY,
+          })
+        ),
+        sourcePath: writeParamsJson(tmpDir, {
+          version: 3,
+          published: "2026-04-01T00:00:00.000Z",
+          params: [],
+        }),
+        storePath: join(tmpDir, "does-not-exist.json"),
+        domainRulesPath: writeDomainRules(tmpDir, [
+          { domain: "example.com", preserveParams: ["unrelated"] },
+        ]),
+        trustedKeys: TEST_TRUSTED_KEYS,
+        subtle: globalThis.crypto.subtle,
+        now: new Date("2026-06-01T12:00:00.000Z"),
+      }),
+      (err) => err instanceof PromoteError && /IO_ERROR/.test(err.message)
+    );
   });
 });
