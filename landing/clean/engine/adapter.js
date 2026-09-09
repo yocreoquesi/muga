@@ -30,7 +30,22 @@ import { DOMAIN_RULES } from "./domain-rules.gen.mjs";
 // change.
 import { PATH_STRIP_RULES } from "./path-strip-rules.gen.mjs";
 
-/** Redirect-destination length cap, mirrored from AGENTS.md security rules. */
+/**
+ * Tool-level cap on the URL a visitor types into muga.app/clean.
+ *
+ * #1265: this is NOT the AGENTS.md security rule, despite what this comment
+ * used to claim. That rule ("redirect destinations must be ≤ 2000 characters")
+ * governs a destination MUGA is about to NAVIGATE to, and is enforced where
+ * such a destination is produced or followed: GENERIC_DEST_LENGTH_CAP in
+ * src/lib/wrapper-engine.js (#730) and the dest checks in src/content/cleaner.js.
+ *
+ * Nothing navigates here. This is a paste-box input contract: the web tool
+ * refuses absurd input up front rather than rendering an insight panel for it.
+ * The core engine (src/lib/cleaner.js) has no length cap at all and is not
+ * meant to — it is a pure function, and capping it would silently stop
+ * cleaning long-but-legitimate URLs inside the extension. That divergence is
+ * deliberate; see the pathological-length test in tests/unit/cleaner.test.mjs.
+ */
 const MAX_URL_LENGTH = 2000;
 
 /**
