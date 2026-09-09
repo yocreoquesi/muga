@@ -59,6 +59,14 @@ const BUILTIN_PARAM = "utm_source";
 /** Functional witness — nothing may remove it. */
 const KEEP_PARAM = "v";
 
+/**
+ * How long to wait for the worker to register the seeded rule.
+ *
+ * Two thirds of the test budget in each environment, so the poll always loses
+ * the race to its own test timeout and its message is the one that gets read.
+ */
+const POLL_TIMEOUT_MS = process.env.CI ? 60_000 : 20_000;
+
 /** Rule 1 applies here (not one of the tailored domains). */
 const PROBE_HOST = "example.com";
 /** Rule 1 is excluded here; a complete rule in 300-799 does the static work. */
@@ -167,7 +175,14 @@ async function installScopedRules(page, host) {
         return false;
       },
       {
-        timeout: 30_000,
+        // STRICTLY under the test timeout, or this message never gets printed.
+        //
+        // It used to be 30_000 against a 30_000 test budget, so the test died
+        // first and reported "never registered a scoped rule" as a timeout
+        // rather than as this poll's verdict — an accusation about the service
+        // worker for what was a stopwatch running out. Every CI failure of this
+        // spec read that way, and none of them meant it.
+        timeout: POLL_TIMEOUT_MS,
         intervals: [250, 500, 1000],
         message: `the service worker never registered a scoped rule stripping ${SCOPED_ONLY_PARAM}`,
       }
