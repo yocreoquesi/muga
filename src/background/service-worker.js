@@ -25,6 +25,7 @@ import {
   DNR_CATEGORY_FILTER_MAX_RULES,
 } from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
+import { createSingleFlightLoader, createFirstUsedBootstrap } from "./single-flight-loader.js";
 import { buildCategoryFilteredRules } from "../lib/dnr-category-filter.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -61,18 +62,17 @@ self.addEventListener("unhandledrejection", (e) => {
 // Pre-compute affiliate domains once at startup for getPrefs responses
 const _affiliateDomains = getAffiliateDomains();
 
-let _firstUsedSet = false;
 
 // Idempotent firstUsed bootstrap. Called from onInstalled + onStartup so the
 // hot path (handleProcessUrl) only sees a free boolean check, not a storage
 // read, on the first processed URL. Sets firstUsed only when absent (#833).
+// #1268: the body moved to background/single-flight-loader.js so Node can
+// import it. It was previously mirrored inside sw-robustness-833.test.mjs,
+// where nothing proved the copy still matched this file.
+const _firstUsedBootstrap = createFirstUsedBootstrap({ getStats, setStats });
+
 async function _initFirstUsed() {
-  if (_firstUsedSet) return;
-  try {
-    const stats = await getStats();
-    if (!stats.firstUsed) await setStats({ firstUsed: Date.now() });
-    _firstUsedSet = true;
-  } catch { /* best-effort; handleProcessUrl fallback still guards */ }
+  await _firstUsedBootstrap.ensure();
 }
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
@@ -83,36 +83,31 @@ async function _initFirstUsed() {
 // still operate without domain-specific rules.
 //
 // #629 win 3: lazy load. The fetch is deferred until the first PROCESS_URL
-// message — handleProcessUrl already gates on `_domainRulesReady` and triggers
-// `_loadDomainRules()` on demand. The pre-#629 eager call at module top-level
+// message — handleProcessUrl already gates through `_domainRulesLoader.ensure()`
+// on demand. The pre-#629 eager call at module top-level
 // blocked SW cold start by ~10-15ms even on tabs the user never tries to clean.
 let domainRules = [];
-let _domainRulesReady = null;
-let _domainRulesFetchAttempts = 0;
 const DOMAIN_RULES_MAX_ATTEMPTS = 3;
 
-async function _loadDomainRules() {
-  const cached = await getCachedDomainRules();
-  if (cached) {
-    domainRules = cached;
-    return;
-  }
-  if (_domainRulesFetchAttempts >= DOMAIN_RULES_MAX_ATTEMPTS) {
-    console.error("[MUGA] domain-rules.json: max fetch attempts reached; domain rules unavailable");
-    return;
-  }
-  try {
-    _domainRulesFetchAttempts++;
+// #1268: the single-flight gating lives in background/single-flight-loader.js,
+// which Node can import. sw-robustness-833.test.mjs used to assert the #833
+// invariant against a copy of this pattern written inside the test file; it now
+// asserts it against this loader.
+const _domainRulesLoader = createSingleFlightLoader({
+  label: "domain-rules.json",
+  maxAttempts: DOMAIN_RULES_MAX_ATTEMPTS,
+  isLoaded: () => domainRules.length > 0,
+  readCache: () => getCachedDomainRules(),
+  fetchAll: async () => {
     const r = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
-    const data = await r.json();
-    domainRules = data;
-    await cacheDomainRules(data);
-  } catch (err) {
-    console.error("[MUGA] domain-rules.json fetch failed (attempt", _domainRulesFetchAttempts, "):", err);
-    // Do NOT null _domainRulesReady here — concurrent callers share this promise.
-    // handleProcessUrl nulls it after all callers finish awaiting, enabling retry.
-  }
-}
+    return r.json();
+  },
+  apply: (data) => { domainRules = data; },
+  writeCache: (data) => cacheDomainRules(data),
+  onError: (err, attempt) => {
+    console.error("[MUGA] domain-rules.json fetch failed (attempt", attempt, "):", err);
+  },
+});
 
 // Path rules — declarative path-strip and path-affiliate arrays (issue #625).
 // Follows the same lazy-load / retry-cap pattern as domain rules above.
@@ -120,42 +115,34 @@ async function _loadDomainRules() {
 // cache-on-first-load complexity does not pay rent at this size.
 let pathStripRules = [];
 let pathAffiliateRules = [];
-let _pathRulesReady = null;
-let _pathRulesFetchAttempts = 0;
 const PATH_RULES_MAX_ATTEMPTS = 3;
 
-/**
- * Fetch path-strip-rules.json and path-affiliate-rules.json in parallel and
- * assign their parsed arrays to the module-level `pathStripRules` and
- * `pathAffiliateRules` vars. Called lazily on the first PROCESS_URL message,
- * in a single outer Promise.all alongside _loadDomainRules() so all three
- * JSON files are in flight at once.
- *
- * On failure: both arrays are reset to [] (graceful-degradation — path logic
- * becomes a no-op), a console.warn is emitted, and _pathRulesReady is nulled
- * so the next call retries (up to PATH_RULES_MAX_ATTEMPTS).
- */
-async function _loadPathRules() {
-  if (_pathRulesFetchAttempts >= PATH_RULES_MAX_ATTEMPTS) {
-    console.error("[MUGA] path-rules: max fetch attempts reached; path rules unavailable");
-    return;
-  }
-  try {
-    _pathRulesFetchAttempts++;
+// Same shape as the domain loader above, minus the session cache: both files
+// are tiny (much less than 1KB combined) and caching them does not pay rent.
+const _pathRulesLoader = createSingleFlightLoader({
+  label: "path-rules",
+  maxAttempts: PATH_RULES_MAX_ATTEMPTS,
+  isLoaded: () => pathStripRules.length > 0 || pathAffiliateRules.length > 0,
+  fetchAll: async () => {
     const [stripResp, affResp] = await Promise.all([
       fetch(chrome.runtime.getURL("rules/path-strip-rules.json")),
       fetch(chrome.runtime.getURL("rules/path-affiliate-rules.json")),
     ]);
-    pathStripRules     = await stripResp.json();
-    pathAffiliateRules = await affResp.json();
-  } catch (err) {
+    return { strip: await stripResp.json(), affiliate: await affResp.json() };
+  },
+  apply: (data) => {
+    pathStripRules = data.strip;
+    pathAffiliateRules = data.affiliate;
+  },
+  onError: (err) => {
     console.warn("[MUGA] path rules fetch failed:", err);
-    pathStripRules     = [];
+    // Graceful degradation: path logic becomes a no-op rather than throwing
+    // into every caller.
+    pathStripRules = [];
     pathAffiliateRules = [];
-    // Do NOT null _pathRulesReady here — concurrent callers share this promise.
-    // handleProcessUrl nulls it after all callers finish awaiting, enabling retry.
-  }
-}
+  },
+});
+
 
 // B3: chrome.action (MV3) does not exist in Firefox MV2; fall back to browserAction
 const _rawActionApi = globalThis.chrome?.action || globalThis.chrome?.browserAction || {};
@@ -582,9 +569,7 @@ if (isFirefoxMV2) {
   // strip once domain/path rules have settled so a startup navigation can never
   // over-strip a preserve-domain param. Firefox's background page is persistent,
   // so this warm-up runs once at startup.
-  if (_domainRulesReady === null) _domainRulesReady = _loadDomainRules();
-  if (_pathRulesReady === null) _pathRulesReady = _loadPathRules();
-  Promise.all([getPrefsWithCache(), _domainRulesReady, _pathRulesReady])
+  Promise.all([getPrefsWithCache(), _domainRulesLoader.ensure(), _pathRulesLoader.ensure()])
     .catch(() => { /* best-effort warm; failures fall back to pass-through */ })
     .finally(() => { _fxStripperReady = true; });
   chrome.webRequest.onBeforeRequest.addListener(
@@ -2238,23 +2223,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, skipSideEffects = false, referrer = "" } = {}) {
   if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
-  // _domainRulesReady / _pathRulesReady are nulled on fetch failure to allow
-  // retry on the next call. Both loaders run in a single outer Promise.all so
-  // all three JSON files (domain + 2× path) are in flight at once.
-  // Single-flight: each ref is assigned once per attempt so concurrent callers
-  // share the in-flight promise rather than racing to increment the attempt counter.
-  // After the shared await, null the ref only if the load failed and more retries
-  // remain — this keeps the single-flight guarantee while still allowing retry.
-  if (!_domainRulesReady) _domainRulesReady = _loadDomainRules();
-  if (!_pathRulesReady)   _pathRulesReady   = _loadPathRules();
-  await Promise.all([_domainRulesReady, _pathRulesReady]);
-  if (domainRules.length === 0 && _domainRulesFetchAttempts < DOMAIN_RULES_MAX_ATTEMPTS) {
-    _domainRulesReady = null;
-  }
-  if (pathStripRules.length === 0 && pathAffiliateRules.length === 0 &&
-      _pathRulesFetchAttempts < PATH_RULES_MAX_ATTEMPTS) {
-    _pathRulesReady = null;
-  }
+  // Both loaders in one outer Promise.all so all three JSON files (domain +
+  // 2x path) are in flight at once. Each ensure() shares a single in-flight
+  // promise across concurrent callers and re-arms the retry after the await
+  // — the #833 invariant, now in background/single-flight-loader.js where it
+  // can be tested directly rather than through a copy (#1268).
+  await Promise.all([_domainRulesLoader.ensure(), _pathRulesLoader.ensure()]);
   const prefs = await getPrefsWithCache();
 
   if (!prefs.enabled || !prefs.onboardingDone) {
@@ -2288,18 +2262,12 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // firstUsed is initialized in onInstalled/onStartup (idempotent); the flag
   // is set there so this hot path is a free boolean check on every call after
   // the first SW lifetime event.
-  if (!_firstUsedSet) {
-    const localStats = await getStats();
-    if (localStats.firstUsed) {
-      _firstUsedSet = true;
-    } else {
-      // Fallback: lifecycle events haven't fired yet (e.g., Firefox temporary
-      // add-on loaded without install/startup). Set here so the timestamp is
-      // as accurate as possible rather than relying on a future startup event.
-      await setStats({ firstUsed: Date.now() });
-      _firstUsedSet = true;
-    }
-  }
+  // Fallback for a lifecycle event that has not fired yet (a Firefox temporary
+  // add-on loads without install/startup), so the timestamp is as accurate as
+  // it can be rather than waiting for a future startup. ensure() is the same
+  // call onInstalled/onStartup make and is idempotent per worker lifetime, so
+  // after the first one this is a boolean check (#1268).
+  await _firstUsedBootstrap.ensure();
 
   // Update stats and session history. Only count if the URL actually changed (S13).
   const urlChanged = result.cleanUrl !== rawUrl;
