@@ -468,23 +468,41 @@ describe("content/cleaner.js — window.__mugaReclean wiring (#951 Layer B)", ()
     return match[0];
   }
 
-  test("__mugaReclean passes pathRules.pathStripRules and pathRules.pathAffiliateRules into processUrl", () => {
-    const body = recleanBody();
-    assert.ok(/processUrl\(/.test(body), "__mugaReclean must call processUrl");
+  // #1255 moved the argument assembly out of every call site and into one
+  // cleanWithContext() helper. The property these two tests were written to
+  // pin — a reclean sees the path rules and the domain rules, never the
+  // hardcoded empty arrays of the pre-#951 bug — is unchanged; the place to
+  // check it is now the helper rather than each caller. Pointing them at the
+  // helper is also what makes them cover hover-preview and the two DOM link
+  // rewriters, which #1255 found calling processUrl with an empty context and
+  // no context at all.
+  function contextHelperBody() {
+    const match = cleanerSrc.match(
+      /function cleanWithContext\(rawUrl, prefOverrides\)[\s\S]*?\n {2}\}/
+    );
+    assert.ok(match, "cleaner.js must define the shared cleanWithContext helper");
+    return match[0];
+  }
+
+  test("the shared cleaning context forwards both path-rule lists, never empty arrays", () => {
+    const body = contextHelperBody();
+    assert.ok(/processUrl\(/.test(body), "cleanWithContext must call processUrl");
     assert.ok(body.includes("pathRules.pathStripRules"),
-      "__mugaReclean must forward pathRules.pathStripRules to processUrl");
+      "cleanWithContext must forward pathRules.pathStripRules to processUrl");
     assert.ok(body.includes("pathRules.pathAffiliateRules"),
-      "__mugaReclean must forward pathRules.pathAffiliateRules to processUrl");
+      "cleanWithContext must forward pathRules.pathAffiliateRules to processUrl");
     // Guards against a silent regression back to hardcoded empty arrays —
-    // the exact shape of the pre-#951 bug.
+    // the exact shape of the pre-#951 bug, and of the #1255 preview surfaces.
     assert.equal(/processUrl\([^)]*\[\],\s*\[\]/.test(body), false,
-      "__mugaReclean must not call processUrl with hardcoded empty path-rule arrays");
+      "cleanWithContext must not call processUrl with hardcoded empty path-rule arrays");
+    assert.ok(/__mugaReclean/.test(cleanerSrc) && recleanBody().includes("cleanWithContext"),
+      "__mugaReclean must clean through the shared helper, not a hand-assembled argument list");
   });
 
-  test("__mugaReclean also forwards domainRules (so domain-scoped params like aref are stripped)", () => {
-    const body = recleanBody();
-    assert.ok(body.includes("domainRules"),
-      "__mugaReclean must forward domainRules to processUrl");
+  test("the shared cleaning context also forwards domainRules (so domain-scoped params like aref are stripped)", () => {
+    const body = contextHelperBody();
+    assert.ok(body.includes("_domainRulesCache"),
+      "cleanWithContext must forward the cached domain rules to processUrl");
   });
 
   test("loop guard: __mugaReclean short-circuits when the URL matches the last recleaned URL", () => {
@@ -494,10 +512,11 @@ describe("content/cleaner.js — window.__mugaReclean wiring (#951 Layer B)", ()
     // The short-circuit compare must appear BEFORE the processUrl() call so
     // the guard actually prevents redundant work / recursive re-entry.
     const guardIdx = body.indexOf("url === _lastRecleanUrl");
-    const processIdx = body.indexOf("processUrl(");
+    const processIdx = body.indexOf("cleanWithContext(");
     assert.ok(guardIdx !== -1, "must compare url === _lastRecleanUrl");
+    assert.ok(processIdx !== -1, "__mugaReclean must clean through cleanWithContext (#1255)");
     assert.ok(guardIdx < processIdx,
-      "the loop-guard check must run before processUrl() is invoked");
+      "the loop-guard check must run before the cleaning call is invoked");
     // _lastRecleanUrl must be updated with the URL we actually WROTE (the
     // fragment-safe target), so a re-entrant call triggered by our own
     // replaceState is recognized and short-circuited.
