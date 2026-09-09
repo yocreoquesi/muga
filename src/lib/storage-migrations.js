@@ -26,12 +26,6 @@ import { parseListEntry, domainMatches } from "./cleaner.js";
  * if migration already done or no old data exists.
  */
 export async function migrateStatsToLocal() {
-  const STAT_DEFAULTS = {
-    stats: { urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 },
-    firstUsed: null,
-    nudgeDismissed: false,
-  };
-
   const syncData = await new Promise((resolve, reject) =>
     chrome.storage.sync.get({ stats: null, firstUsed: null, nudgeDismissed: null }, (result) => {
       if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
@@ -46,19 +40,36 @@ export async function migrateStatsToLocal() {
 
   if (!hasOldStats) return;
 
-  // Copy to local (only if local doesn't already have data)
+  // Copy to local ONLY where local has nothing (#1257).
+  //
+  // This used to read `syncData.x ?? localData.x`, the opposite of what the
+  // comment above it said: any non-null value in sync won, including over a
+  // newer local one. The window is real rather than theoretical --
+  // incrementStat() flushes in batches (storage.js), so a flush landing between
+  // the local read below and the local write further down was silently
+  // overwritten by a value from before the migration.
+  //
+  // Reading with NULL defaults rather than the stat defaults is what makes the
+  // preference expressible. With those defaults a missing local key comes back
+  // as its default -- `stats` as a zeroed object, `nudgeDismissed` as `false`
+  // -- neither of which is nullish, so "prefer local" would discard the user's
+  // synced stats on the very first migration, which is the whole point of the
+  // migration. Null defaults make "local has nothing" distinguishable from
+  // "local has a legitimately falsy value".
   const localData = await new Promise((resolve, reject) =>
-    chrome.storage.local.get(STAT_DEFAULTS, (result) => {
+    chrome.storage.local.get({ stats: null, firstUsed: null, nudgeDismissed: null }, (result) => {
       if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
       else resolve(result);
     })
-  ).catch(() => ({ ...STAT_DEFAULTS }));
+  ).catch(() => ({ stats: null, firstUsed: null, nudgeDismissed: null }));
 
-  const merged = {
-    stats: syncData.stats ?? localData.stats,
-    firstUsed: syncData.firstUsed ?? localData.firstUsed,
-    nudgeDismissed: syncData.nudgeDismissed ?? localData.nudgeDismissed,
-  };
+  // Only keys one side actually has. Writing an explicit null for a key neither
+  // side holds would leave storage worse than untouched.
+  const merged = {};
+  for (const key of ["stats", "firstUsed", "nudgeDismissed"]) {
+    const value = localData[key] ?? syncData[key];
+    if (value !== null && value !== undefined) merged[key] = value;
+  }
 
   await new Promise((resolve, reject) =>
     chrome.storage.local.set(merged, () => {

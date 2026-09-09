@@ -26,6 +26,7 @@ import {
 } from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
 import { createSingleFlightLoader, createFirstUsedBootstrap } from "./single-flight-loader.js";
+import { runOneTimeMigrations } from "./run-migrations.js";
 import { buildCategoryFilteredRules } from "../lib/dnr-category-filter.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -197,16 +198,34 @@ const toolbarPresenter = createToolbarPresenter({
   isOnboardingDone: () => cachedPrefs?.onboardingDone === true,
 });
 
-// Run migrations once on startup (no-ops if already done).
-// All are idempotent and best-effort — failures must not break startup.
-migrateStatsToLocal();
-migrateConsentToLocal();
-migratePerSiteDisableToAllowlist().catch(() => {});
-// drop-cookie-consent (Slice D of 6): deletes every storage key left behind
-// by the retired cookie-consent-minimizer subsystem (sync pref + legacy
-// keys, plus the dead Tier2 remote-rules local cache). Best-effort;
-// failure must not break startup.
-migrateDropCookieConsent().catch(() => {});
+// The ONE place one-time migrations are invoked (#1257).
+//
+// They used to run from here AND from onInstalled AND from onStartup, so any
+// wake that fired either handler raced this call — two or three copies of the
+// same read-modify-write at once, with only migrateConsentToLocal guarded
+// (#1216/#1219). The three sites were never independent: every wake evaluates
+// this module and the handlers only fire on wakes, so module scope already ran
+// on a strict superset of the occasions they did.
+//
+// Each is idempotent and best-effort; runOneTimeMigrations settles them all and
+// reports failures rather than letting one escape as an unhandled rejection,
+// which is what the two bare calls here used to do.
+runOneTimeMigrations({
+  // ADR-0004 phase 5 (#701): privacyProxyEnabled -> followShortenersEnabled.
+  migrateLegacyProxyPref,
+  // browsewrap Phase 2: the retired followShortenersEnabled pref splits into
+  // resolveShortenersOnClick / resolveShortenersOnHover.
+  migrateFollowShortenersSplit,
+  // Legacy `domain::disabled` blacklist entries (removed syntax) become
+  // domain-only whitelist entries.
+  migratePerSiteDisableToAllowlist,
+  migrateStatsToLocal,
+  migrateConsentToLocal,
+  // drop-cookie-consent (Slice D of 6): deletes every storage key left behind
+  // by the retired cookie-consent-minimizer subsystem (sync pref + legacy
+  // keys, plus the dead Tier2 remote-rules local cache).
+  migrateDropCookieConsent,
+});
 
 // --- Session log (actions + errors, exported via debug log) ---
 const SESSION_LOG_MAX = 2000;
@@ -2406,21 +2425,11 @@ chrome.runtime.onStartup.addListener(async () => {
   // is older than REMOTE_REFRESH_INTERVAL_MS or absent. Also short-circuits
   // immediately if remoteRulesEnabled is false.
   maybeFetchRemoteRules(_remoteRulesDeps());
-  // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
-  // on first startup after upgrade. Best-effort; failure must not break startup.
-  migrateLegacyProxyPref().catch(() => {});
-  // browsewrap Phase 2: split the (now-retired) followShortenersEnabled pref
-  // into resolveShortenersOnClick/resolveShortenersOnHover on first startup
-  // after upgrade. Best-effort; failure must not break startup.
-  migrateFollowShortenersSplit().catch(() => {});
-  // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
-  // domain-only whitelist entries. Best-effort; failure must not break startup.
-  migratePerSiteDisableToAllowlist().catch(() => {});
-  // #833: bootstrap firstUsed + run migrations here so the hot path is free.
+  // Migrations are NOT invoked here (#1257). This handler only fires on a wake,
+  // and every wake evaluates the module, so the single call site at module
+  // scope has already started them. Repeating them here raced that call.
+  // #833: bootstrap firstUsed here so the hot path stays free.
   _initFirstUsed();
-  migrateStatsToLocal();
-  migrateConsentToLocal();
-  migrateDropCookieConsent().catch(() => {});
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
@@ -2561,20 +2570,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // install this now fires immediately — the implicit-accept write above
   // already moved consent to "valid" before this call runs.
   maybeFetchRemoteRules(_remoteRulesDeps());
-  // ADR-0004 phase 5 (#701): migrate privacyProxyEnabled → followShortenersEnabled
-  migrateLegacyProxyPref().catch(() => {});
-  // browsewrap Phase 2: split the (now-retired) followShortenersEnabled pref
-  // into resolveShortenersOnClick/resolveShortenersOnHover. Best-effort;
-  // failure must not break startup.
-  migrateFollowShortenersSplit().catch(() => {});
-  // Convert legacy `domain::disabled` blacklist entries (removed syntax) into
-  // domain-only whitelist entries. Best-effort; failure must not break startup.
-  migratePerSiteDisableToAllowlist().catch(() => {});
-  // #833: bootstrap firstUsed + run migrations so hot path is free.
+  // Migrations are NOT invoked here (#1257) — see the onStartup handler and the
+  // single call site at module scope, which this handler's own wake has
+  // already evaluated.
+  // #833: bootstrap firstUsed so the hot path stays free.
   _initFirstUsed();
-  migrateStatsToLocal();
-  migrateConsentToLocal();
-  migrateDropCookieConsent().catch(() => {});
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);
