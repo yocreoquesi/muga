@@ -453,6 +453,47 @@
     clearHoverState();
   }, true);
 
+  // ── Keyboard path (#1260) ────────────────────────────────────────────────
+  //
+  // Everything above is pointer-only, which put the whole feature behind an
+  // interaction a keyboard-only or screen-reader user cannot perform — while
+  // the tooltip it produces is the one place MUGA says out loud where a
+  // wrapped link actually goes. The ARIA wiring in showTooltip (reciprocal
+  // aria-describedby, role="tooltip") existed for a reader that could never
+  // reach it.
+  //
+  // Focus reuses the SAME hold timer rather than firing immediately. Tabbing
+  // is how a keyboard user reads a page, so an instant trigger would resolve a
+  // shortener over the network for every link they pass through; the delay
+  // keeps the network cost tied to dwelling on one link, exactly as hover does.
+  document.addEventListener("focusin", (e) => {
+    const anchor = resolveHttpAnchor(e.target);
+    if (!anchor || anchor === _currentAnchor) return;
+    clearHoverState();
+    _currentAnchor = anchor;
+    let href;
+    try {
+      href = anchor.href;
+    } catch {
+      _currentAnchor = null;
+      return;
+    }
+    const delay = (_prefs && _prefs.hoverPreviewDelayMs) || 2500;
+    _timer = setTimeout(() => {
+      _timer = null;
+      fireHover(anchor, href);
+    }, delay);
+  }, true);
+
+  document.addEventListener("focusout", (e) => {
+    if (!_currentAnchor) return;
+    // Mirrors mouseout: moving focus INTO the same anchor's subtree is not a
+    // leave. relatedTarget is where focus is headed.
+    const to = e.relatedTarget;
+    if (to && _currentAnchor.contains(to)) return;
+    clearHoverState();
+  }, true);
+
   document.addEventListener("mousemove", (e) => {
     if (!_currentAnchor) return;
     // "Still-ish" hold: only reset if the pointer has moved onto a different

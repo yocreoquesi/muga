@@ -296,6 +296,12 @@ async function hasRemoteRulesPermission() {
 /** Initializes the options page: loads prefs, binds controls, renders lists. */
 async function init() {
   _currentLang = await getStoredLang();
+  // Set on the ROOT, not just in the translated strings: a screen reader picks
+  // its pronunciation profile from document.lang, so rendering Spanish under
+  // lang="en" is read with an English profile. The language <select> below
+  // already did this on change; init did not, so every load before the first
+  // change was announced in the wrong voice.
+  document.documentElement.lang = _currentLang;
   applyTranslations(_currentLang);
   renderContextMenuHint(_currentLang);
 
@@ -942,6 +948,11 @@ function initStatsSection() {
   const forgetBtn = document.getElementById("forget-reported-params-btn");
   if (forgetBtn) {
     forgetBtn.addEventListener("click", async () => {
+      // Same safety net as "Reset stats" directly above it. Both wipe local
+      // state with no undo, and having one guarded and the other fire straight
+      // to a toast teaches the user that buttons in this card are safe to press.
+      const ok = await showConfirm(t("forget_reported_params_confirm", _currentLang));
+      if (!ok) return;
       try {
         await chrome.storage.local.set({ submittedParams: {} });
         showToast(t("forget_reported_params_done", _currentLang));
@@ -1155,6 +1166,9 @@ function initExportImport() {
       if (toSave.language) {
         _currentLang = toSave.language;
         document.getElementById("lang-select").value = _currentLang;
+        // Third site that changes the rendered language, and the third that
+        // has to move the root's lang with it (#1260).
+        document.documentElement.lang = _currentLang;
         applyTranslations(_currentLang);
         renderContextMenuHint(_currentLang);
       }

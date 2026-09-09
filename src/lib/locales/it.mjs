@@ -45,6 +45,7 @@ export default Object.freeze({
   forget_reported_params_btn: "Dimentica i parametri segnalati",
   forget_reported_params_label: "Parametri segnalati",
   forget_reported_params_done: "Elenco delle segnalazioni cancellato",
+  forget_reported_params_confirm: "Sei sicuro? Verrà cancellato l'elenco locale dei parametri già segnalati.",
   forget_reported_params_hint: "Cancella l'elenco locale dei parametri che hai già segnalato. Lo stesso parametro potrà essere segnalato di nuovo.",
   domain_stats_empty: "Ancora nessuna statistica per dominio. Continua a navigare!",
   domain_stats_params: "parametri rimossi",
