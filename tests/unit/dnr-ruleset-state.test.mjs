@@ -76,3 +76,68 @@ describe("partitionRulesets — unmanaged rulesets surface, not silently dropped
     assert.deepEqual(partitionRulesets(CHROME_DECLARED, allPrefsOn).unmanaged, []);
   });
 });
+
+// ── #1256: the static ruleset stands down while a category is filtered ───────
+//
+// disabledCategories reached the JS cleaner and stopped there. Chrome strips
+// navigations from DNR rules generated at build time out of the full param
+// list, so the setting did nothing on the one path it most visibly governs.
+// syncCategoryFilteredDNR() re-registers the same rules as dynamic ones with
+// the disabled params subtracted; this is the other half, and neither is safe
+// alone. Chrome applies exactly ONE redirect rule per request, so if both the
+// static ruleset and the mirrors matched, the winner would be arbitrary.
+
+describe("partitionRulesets — category filtering (#1256)", () => {
+  test("Chrome DISABLES tracking_params while any category is off", () => {
+    const { enableRulesetIds, disableRulesetIds } = partitionRulesets(
+      CHROME_DECLARED,
+      { ...allPrefsOn, disabledCategories: ["utm"] },
+      { isFirefoxMV2: false },
+    );
+    assert.ok(disableRulesetIds.includes("tracking_params"),
+      "the dynamic mirrors stand in for it; leaving both on would let Chrome pick either");
+    assert.ok(!enableRulesetIds.includes("tracking_params"));
+  });
+
+  test("Chrome keeps tracking_params enabled when the list is empty", () => {
+    const { enableRulesetIds } = partitionRulesets(
+      CHROME_DECLARED,
+      { ...allPrefsOn, disabledCategories: [] },
+      { isFirefoxMV2: false },
+    );
+    assert.ok(enableRulesetIds.includes("tracking_params"),
+      "the untouched-settings path must stay on the static ruleset, which costs nothing");
+  });
+
+  test("a missing disabledCategories key behaves as empty", () => {
+    const { enableRulesetIds } = partitionRulesets(
+      CHROME_DECLARED, allPrefsOn, { isFirefoxMV2: false },
+    );
+    assert.ok(enableRulesetIds.includes("tracking_params"));
+  });
+
+  test("Firefox is unaffected: already disabled, for its own reason", () => {
+    const { disableRulesetIds } = partitionRulesets(
+      FIREFOX_DECLARED,
+      { ...allPrefsOn, disabledCategories: ["utm"] },
+      { isFirefoxMV2: true },
+    );
+    assert.deepStrictEqual(
+      disableRulesetIds.filter((id) => id === "tracking_params"),
+      ["tracking_params"],
+      "disabled once, not twice: the webRequest stripper already owns this path and honours the pref"
+    );
+  });
+
+  test("the other rulesets are untouched by category filtering", () => {
+    const { enableRulesetIds } = partitionRulesets(
+      CHROME_DECLARED,
+      { ...allPrefsOn, disabledCategories: ["utm", "ads"] },
+      { isFirefoxMV2: false },
+    );
+    assert.ok(enableRulesetIds.includes("wrapper_unwrap"));
+    assert.ok(enableRulesetIds.includes("amp_redirect"));
+    assert.ok(enableRulesetIds.includes("amazon_path_canonical"),
+      "categories govern tracking params, not redirect unwrapping or path canonicalisation");
+  });
+});

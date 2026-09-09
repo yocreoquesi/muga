@@ -30,7 +30,19 @@ export function partitionRulesets(declaredIds, prefs, { isFirefoxMV2 = false } =
       // avoids a redundant DNR+webRequest double-strip that would also hinge on an
       // unverified webRequest-vs-DNR evaluation order. So disable this ruleset on
       // Firefox. Chrome (no blocking webRequest) keeps DNR as its strip path.
-      (isFirefoxMV2 ? disableRulesetIds : enableRulesetIds).push(id);
+      //
+      // Chrome ALSO stands it down while any tracking category is disabled
+      // (#1256). These rules are generated at build time from the full param
+      // list and cannot express a runtime per-category choice, so a user who
+      // turned a category off still had it stripped on every navigation, which
+      // is the one path this ruleset owns and the one the Settings hint
+      // promises. syncCategoryFilteredDNR() re-registers the same rules as
+      // dynamic ones with those params subtracted; disabling here is what stops
+      // the two from both matching, since Chrome applies exactly one redirect
+      // rule per request and the winner between them would be arbitrary.
+      const filteringByCategory =
+        !isFirefoxMV2 && (prefs.disabledCategories?.length ?? 0) > 0;
+      (isFirefoxMV2 || filteringByCategory ? disableRulesetIds : enableRulesetIds).push(id);
     } else if (id === "amazon_path_canonical") {
       // Amazon /dp/ SEO-slug strip (#903): always-on when the gate is open. No
       // dedicated feature pref; Chrome-only (not declared in the Firefox manifest).

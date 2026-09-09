@@ -59,11 +59,22 @@
  *              outranks the global strip rules rather than being shadowed by
  *              them. Managed by lib/remote-rules.js. Capped at
  *              DNR_SCOPED_PARAMS_MAX_RULES.
+ *   4100-4399 — dynamic CATEGORY-FILTERED mirrors of the whole
+ *              tracking-params.json ruleset (#1256). Registered ONLY while
+ *              prefs.disabledCategories is non-empty, in which case the static
+ *              ruleset is disabled and these stand in for it: same rules, same
+ *              priorities, same conditions, minus the params of the categories
+ *              the user turned off. Each mirror keeps its source rule's own
+ *              priority (1 for the strips, 1000 for the signed-URL allow
+ *              guard), so the precedence between MUGA's rule families is
+ *              unchanged from the unfiltered state. Managed by
+ *              syncCategoryFilteredDNR() in service-worker.js. Capped at
+ *              DNR_CATEGORY_FILTER_MAX_RULES.
  *
  * When adding a new dynamic rule, pick an ID > 1001 (and outside 2000-2499,
- * 2500, 2600, 2700-2899, 2900-3099, 3100-4099 unless it belongs to one of
- * those existing ranges), document it here, and verify it does not overlap
- * with any existing entry in this file.
+ * 2500, 2600, 2700-2899, 2900-3099, 3100-4099, 4100-4399 unless it belongs to
+ * one of those existing ranges), document it here, and verify it does not
+ * overlap with any existing entry in this file.
  */
 
 /** ID of the static tracking-params ruleset (tracking-params.json). */
@@ -270,3 +281,21 @@ export const ALLOWLIST_RESOURCE_TYPES = [
   "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket",
   "other",
 ];
+
+/**
+ * First ID of the dynamic category-filtered mirror range (#1256).
+ *
+ * Chosen to sit above the host-scoped remote range (3100-4099) so the two can
+ * never collide: both are rebuilt from scratch on their own schedule, and a
+ * shared ID would make one silently overwrite the other.
+ */
+export const DNR_CATEGORY_FILTER_RULE_ID_BASE = 4100;
+
+/**
+ * Ceiling on mirrored rules. tracking-params.json ships 19 today (one global
+ * strip, one signed-URL allow guard, and one per host profile), and the profile
+ * count grows with `domain-rules.json`, so this range is sized well past the
+ * DNR_DOMAIN_PRESERVE_MAX_RULES it mirrors would ever fill in practice.
+ * Exceeding it drops rules rather than overrunning the next range.
+ */
+export const DNR_CATEGORY_FILTER_MAX_RULES = 300;

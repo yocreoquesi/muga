@@ -5,7 +5,7 @@
  */
 
 import { processUrl, computeNavigationStrip, parseListEntry, getFullyExemptDomains, isSiteFullyExempt, getFullyBlacklistedDomains, isSiteFullyBlacklisted } from "../lib/cleaner.js";
-import { getAffiliateDomains } from "../lib/affiliates.js";
+import { getAffiliateDomains, TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
@@ -21,8 +21,11 @@ import {
   DNR_BLOCKLIST_BEACON_RULE_ID_BASE,
   DNR_BLOCKLIST_MAX_RULES,
   ALLOWLIST_RESOURCE_TYPES,
+  DNR_CATEGORY_FILTER_RULE_ID_BASE,
+  DNR_CATEGORY_FILTER_MAX_RULES,
 } from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
+import { buildCategoryFilteredRules } from "../lib/dnr-category-filter.js";
 import { t } from "../lib/i18n.js";
 import {
   runRemoteRulesFetch,
@@ -812,6 +815,115 @@ async function syncAllowlistDNR(prefs) {
   }
 }
 
+// Full range of category-filter rule IDs ever handed out (#1256), cleared on
+// every resync so no mirror survives the user re-enabling a category.
+const CATEGORY_FILTER_RULE_ID_RANGE = Array.from(
+  { length: DNR_CATEGORY_FILTER_MAX_RULES },
+  (_, i) => DNR_CATEGORY_FILTER_RULE_ID_BASE + i,
+);
+
+/**
+ * The parsed rules/tracking-params.json, cached for this service-worker
+ * lifetime. It ships inside the package and never changes at runtime, so one
+ * read per wake is enough; a null cache means "not read yet", not "empty".
+ *
+ * @type {Array<object>|null}
+ */
+let _staticTrackingRules = null;
+
+/**
+ * Reads the static tracking-param ruleset out of the extension package.
+ *
+ * Read through chrome.runtime.getURL rather than bundled at build time so the
+ * mirrors are provably the same rules the static ruleset would have applied.
+ * Deliberately NOT added to web_accessible_resources: an extension's own
+ * service worker can fetch its own files, and exposing another path to the open
+ * web would widen the fingerprinting surface (#1258).
+ *
+ * @returns {Promise<Array<object>>} the rules, or [] if unreadable
+ */
+async function loadStaticTrackingRules() {
+  if (_staticTrackingRules !== null) return _staticTrackingRules;
+  try {
+    const res = await fetch(chrome.runtime.getURL("rules/tracking-params.json"));
+    const parsed = await res.json();
+    _staticTrackingRules = Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error("[MUGA] loadStaticTrackingRules failed:", err);
+    _staticTrackingRules = [];
+  }
+  return _staticTrackingRules;
+}
+
+/**
+ * Syncs the dynamic category-filtered mirrors of the static tracking-param
+ * ruleset (#1256).
+ *
+ * `disabledCategories` reached the JS cleaner and stopped there. On Chrome the
+ * network layer strips navigations before any JS runs, from rules generated at
+ * build time out of the full param list, so a user who turned a category off
+ * still had it stripped on every page they opened -- while Settings told them
+ * "Disabling a category keeps those parameters in URLs".
+ *
+ * When at least one category is off, partitionRulesets() disables the static
+ * ruleset and this registers the same rules as dynamic ones with those params
+ * subtracted. Both halves are required and neither is safe alone: two matching
+ * rule sets would leave Chrome to pick one, and it applies exactly one redirect
+ * rule per request.
+ *
+ * When no category is off this clears the range and the static ruleset carries
+ * navigations exactly as before, so the untouched-settings path costs nothing
+ * beyond one updateDynamicRules call that removes nothing.
+ *
+ * @param {{ disabledCategories?: string[] }} prefs
+ */
+async function syncCategoryFilteredDNR(prefs) {
+  if (!hasDNR) return;
+  // Firefox MV2 never reaches this: its navigations go through the blocking
+  // webRequest stripper, which calls processUrl and honours the pref already.
+  if (isFirefoxMV2) return;
+  try {
+    const disabled = prefs?.disabledCategories ?? [];
+    if (disabled.length === 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: CATEGORY_FILTER_RULE_ID_RANGE,
+        addRules: [],
+      });
+      return;
+    }
+
+    const staticRules = await loadStaticTrackingRules();
+    const mirrors = buildCategoryFilteredRules(
+      staticRules,
+      disabled,
+      TRACKING_PARAM_CATEGORIES,
+      {
+        idBase: DNR_CATEGORY_FILTER_RULE_ID_BASE,
+        maxRules: DNR_CATEGORY_FILTER_MAX_RULES,
+      },
+    );
+
+    if (staticRules.length > 0 && mirrors.length === 0) {
+      // Every rule filtered away. Reachable only when the user disabled every
+      // category, in which case stripping nothing at the network layer is the
+      // correct outcome and matches what the JS cleaner does. Said out loud
+      // because the alternative reading -- the ruleset failed to load, so
+      // MUGA silently stopped cleaning -- looks identical from the outside.
+      console.warn(
+        "[MUGA] syncCategoryFilteredDNR: every static rule filtered away; " +
+        "no network-layer strip while these categories are off:", disabled,
+      );
+    }
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: CATEGORY_FILTER_RULE_ID_RANGE,
+      addRules: mirrors,
+    });
+  } catch (err) {
+    console.error("[MUGA] syncCategoryFilteredDNR failed:", err);
+  }
+}
+
 /**
  * Syncs the dynamic GLOBAL Referer-suppression rule (referer-beacon-privacy,
  * PR 2). Removes the `referer` request header on every http(s) request when
@@ -1042,6 +1154,10 @@ async function applyDnrState(prefs) {
       enableRulesetIds,
       disableRulesetIds,
     }).catch(err => console.warn("[MUGA] applyDnrState enable:", err));
+    // Immediately after the ruleset toggle above, because the two are one
+    // decision: partitionRulesets() just disabled tracking_params iff a
+    // category is off, and this registers what stands in for it (#1256).
+    await syncCategoryFilteredDNR(prefs);
     await syncCustomParamsDNR(prefs.customParams);
     // Allowlist "allow" rules (#allowlist-full-inert) - rebuilt from current
     // prefs on every gate-open sync so a whitelist/pause change takes effect
@@ -1073,6 +1189,11 @@ async function applyDnrState(prefs) {
       }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
     }
     await syncCustomParamsDNR([]);
+    // The category mirrors are strip rules like any other, so the consent gate
+    // has to reach them too: leaving them registered would keep cleaning
+    // navigations for a disabled or non-consented extension, which is the
+    // exact hole #921 closed for the remote-params rule (#1256).
+    await syncCategoryFilteredDNR({ disabledCategories: [] });
     // Clear the allowlist "allow" rules too: when the gate is closed every
     // strip/redirect rule is already off (disabled rulesets + cleared
     // dynamic rules above), so there is nothing left for an "allow" rule to

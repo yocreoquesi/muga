@@ -130,6 +130,7 @@ describe("dnr-ids.js — dynamic ID ranges never overlap", () => {
       ["blocklist-referer", ids.DNR_BLOCKLIST_REFERER_RULE_ID_BASE, ids.DNR_BLOCKLIST_MAX_RULES],
       ["blocklist-beacons", ids.DNR_BLOCKLIST_BEACON_RULE_ID_BASE, ids.DNR_BLOCKLIST_MAX_RULES],
       ["scoped-params", ids.DNR_SCOPED_PARAMS_RULE_ID_BASE, ids.DNR_SCOPED_PARAMS_MAX_RULES],
+      ["category-filter", ids.DNR_CATEGORY_FILTER_RULE_ID_BASE, ids.DNR_CATEGORY_FILTER_MAX_RULES],
     ].map(([name, base, length]) => ({ name, start: base, end: base + length - 1 }));
 
     for (let i = 0; i < ranges.length; i++) {
