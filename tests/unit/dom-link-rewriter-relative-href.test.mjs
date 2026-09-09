@@ -120,7 +120,25 @@ function runContentScript(sourcePath, { anchors, locationHref, attachBundle = tr
   fakeWindow.self = fakeWindow;
   fakeWindow.top = fakeWindow;
   if (attachBundle) {
+    // #1255: the rewriters now call `cleanWithContext`, the shared entry point
+    // content/cleaner.js publishes with the resolved prefs and rule sets. They
+    // used to call `processUrl(raw)` with no context at all, which threw on
+    // every call and made this "prefer the bundle" path dead code in
+    // production -- while this harness, stubbing a one-argument processUrl,
+    // showed it working. Both names are exposed because the real namespace
+    // carries both.
     fakeWindow.__mugaCleaner = { processUrl: processUrlImpl };
+    // #1255: the rewriters call `window.__mugaCleanWithContext`, the entry
+    // point content/cleaner.js publishes with the resolved prefs and rule
+    // sets. It is a SIBLING global rather than a property of __mugaCleaner,
+    // which the bundle freezes -- assigning onto that namespace throws under
+    // "use strict" and takes the rest of cleaner.js with it.
+    //
+    // They used to call `processUrl(raw)` with no context, which threw on
+    // every call and made this "prefer the bundle" path dead in production,
+    // while this harness -- stubbing a one-argument processUrl -- showed it
+    // working.
+    fakeWindow.__mugaCleanWithContext = processUrlImpl;
   }
 
   class FakeMutationObserver {

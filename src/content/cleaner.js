@@ -113,6 +113,70 @@
   // path (copy-clean-link, context menu) had the real rules threaded in.
   let _pathRulesCache = null;
   let _pathRulesPending = null;
+
+  /**
+   * The ONE cleaning call for the content-script world (#1255).
+   *
+   * processUrl takes eight positional arguments and, before this, every caller
+   * assembled them by hand. The ones that got it wrong were the surfaces whose
+   * whole job is to show what MUGA is about to do:
+   *
+   *   - hover-preview.js passed `[]` for domainRules, pathStripRules AND
+   *     pathAffiliateRules, so the tooltip promising the real destination
+   *     ignored all 188 per-domain rules and every path rule.
+   *   - dom-link-rewriter.js and dom-link-rewriter-click.js passed the URL and
+   *     NOTHING else. processUrl reads `prefs.canonicalExtractorEnabled`, so
+   *     that throws every time; the throw was caught and both rewriters fell
+   *     through to their inline subset. Their own docblock says the bundle is
+   *     PREFERRED over that subset, and it never once was.
+   *
+   * The root is that the resolved context is private to this IIFE, so the other
+   * content scripts in the same isolated world could not reach it and invented
+   * empty ones. Publishing this on the shared namespace is what removes the
+   * hand-assembly rather than adding an eighth copy of it.
+   *
+   * Returns null when the context is not warm yet (prefs still loading, or the
+   * bundle not attached). Callers must treat null as "not ready", not as
+   * "nothing to clean" — the rewriters fall back to their inline subset, which
+   * is exactly the paint-time safety net it was written to be.
+   *
+   * @param {string} rawUrl
+   * @param {object} [prefOverrides] shallow-merged over the cached prefs
+   * @returns {object|null} the processUrl result, or null when not ready
+   */
+  function cleanWithContext(rawUrl, prefOverrides) {
+    const engine = window.__mugaCleaner;
+    if (!engine || typeof engine.processUrl !== "function") return null;
+    if (!_contentPrefs) return null;
+    const prefs = prefOverrides ? { ..._contentPrefs, ...prefOverrides } : _contentPrefs;
+    const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
+    return engine.processUrl(
+      rawUrl, prefs, _domainRulesCache || [],
+      undefined, undefined, undefined,
+      pathRules.pathStripRules, pathRules.pathAffiliateRules,
+    );
+  }
+
+  /**
+   * Copy-safe prefs (#946): the user is copying, not navigating, so MUGA must
+   * never surface the foreign-affiliate toast on a copy action. Mirrors the
+   * effectivePrefs pattern in background/service-worker.js#handleProcessUrl
+   * (skipNotify branch) — third-party attribution tags are still preserved,
+   * only the notification is suppressed.
+   */
+  const COPY_PREF_OVERRIDES = Object.freeze({ notifyForeignAffiliate: false });
+
+  // Published as its own isolated-world global, NOT as a property of
+  // window.__mugaCleaner.
+  //
+  // The bundle builds that namespace with `Object.freeze({...})`
+  // (content/cleaner-bundle-src.mjs), and this file is "use strict", so
+  // assigning a property onto it THROWS at IIFE evaluation time -- which
+  // aborts the rest of this file, taking __mugaReclean, the click interceptor
+  // and the copy handlers with it. The freeze is deliberate: the namespace is
+  // the cleaning engine, and nothing should be able to swap a method on it.
+  // A sibling global is the extension point that respects that.
+  window.__mugaCleanWithContext = cleanWithContext;
   function getPathRulesCached() {
     if (_pathRulesCache) return Promise.resolve(_pathRulesCache);
     if (_pathRulesPending) return _pathRulesPending;
@@ -298,26 +362,11 @@
         return true;
       }
 
-      const domainRules = _domainRulesCache || [];
-      const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
-      // Copy-safe prefs (#946): the user is copying, not navigating, so
-      // MUGA must never surface the foreign-affiliate toast on a copy
-      // action. Mirrors the effectivePrefs pattern in
-      // background/service-worker.js#handleProcessUrl (skipNotify branch) —
-      // third-party attribution tags are still preserved, only the
-      // notification is suppressed. drop-affiliate-injection (PR 1a): the
-      // injectOwnAffiliate override was removed — MUGA never injects its
-      // own tag anymore, so there is nothing left to suppress on that side.
-      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false };
       const urlMap = new Map();
       for (const url of allUrls) {
         let r;
         try {
-          r = window.__mugaCleaner.processUrl(
-            url, copyPrefs, domainRules,
-            undefined, undefined, undefined,
-            pathRules.pathStripRules, pathRules.pathAffiliateRules,
-          );
+          r = cleanWithContext(url, COPY_PREF_OVERRIDES);
         } catch { r = null; }
         urlMap.set(url, r?.cleanUrl ?? url);
       }
@@ -410,14 +459,6 @@
       // preventing a shorter URL that is a prefix of a longer one from
       // corrupting the longer URL during replaceAll.
       const sortedMatches = [...matches].sort((a, b) => b[0].length - a[0].length);
-      const domainRules = _domainRulesCache || [];
-      const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
-      // Copy-safe prefs (#946): same rationale as the GET_AND_COPY_CLEAN_SELECTION
-      // handler above — Ctrl+C is a copy action, not a navigation, so the
-      // foreign-affiliate toast must be suppressed. drop-affiliate-injection
-      // (PR 1a): the injectOwnAffiliate override was removed — nothing left
-      // to suppress on that side.
-      const copyPrefs = { ..._contentPrefs, notifyForeignAffiliate: false };
       let resultText = trimmed;
       let totalJunkRemoved = 0;
       const allRemovedTracking = [];
@@ -426,11 +467,7 @@
         const cleanCandidate = rawUrl.replace(/[.,;:!?)\]]+$/, "");
         let r;
         try {
-          r = window.__mugaCleaner.processUrl(
-            cleanCandidate, copyPrefs, domainRules,
-            undefined, undefined, undefined,
-            pathRules.pathStripRules, pathRules.pathAffiliateRules,
-          );
+          r = cleanWithContext(cleanCandidate, COPY_PREF_OVERRIDES);
         } catch { continue; }
         if (r?.cleanUrl && r.cleanUrl !== cleanCandidate) {
           resultText = resultText.replaceAll(cleanCandidate, r.cleanUrl);
@@ -562,15 +599,9 @@
     // still call this often. Not coalesced (microtask/rAF) for now — keep
     // an eye on this if profiling shows it matters; the main-world sync
     // subset intentionally avoids this cost for the common case.
-    const domainRules = _domainRulesCache || [];
-    const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
     let result;
     try {
-      result = window.__mugaCleaner.processUrl(
-        url, _contentPrefs, domainRules,
-        undefined, undefined, undefined,
-        pathRules.pathStripRules, pathRules.pathAffiliateRules,
-      );
+      result = cleanWithContext(url);
     } catch (err) {
       console.error("[MUGA] reclean failed:", err);
       return;
@@ -747,13 +778,7 @@
 
     let result;
     try {
-      const domainRules = _domainRulesCache || [];
-      const pathRules = _pathRulesCache || { pathStripRules: [], pathAffiliateRules: [] };
-      result = window.__mugaCleaner.processUrl(
-        href, _contentPrefs, domainRules,
-        undefined, undefined, undefined,
-        pathRules.pathStripRules, pathRules.pathAffiliateRules,
-      );
+      result = cleanWithContext(href);
     } catch (err) {
       console.error("[MUGA] local click clean failed:", err);
       navigate(href, opensNewTab);

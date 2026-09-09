@@ -164,12 +164,19 @@ describe("hover-preview.js — source guards", () => {
     );
   });
 
-  test("calls processUrl with the documented argument shape", () => {
+  test("cleans through the shared context, never a hand-assembled empty one", () => {
+    // This test used to REQUIRE the bug (#1255). It asserted the call shape
+    // `processUrl(href, prefs, [], undefined, undefined, "", [], [])` and
+    // called it "the documented argument shape" -- three empty arrays where
+    // the domain rules, the path-strip rules and the path-affiliate rules
+    // belong. A tooltip whose whole promise is "here is where this link really
+    // goes" was computed without any of the 188 per-domain rules, and the
+    // guard that should have caught it was pinning it in place instead.
     assert.ok(
-      /__mugaCleaner\.processUrl\(\s*href,\s*_?prefs,\s*\[\],\s*undefined,\s*undefined,\s*["']["'],\s*\[\],\s*\[\]\s*\)/.test(
-        HOVER_PREVIEW_SRC,
-      ),
-      "must call window.__mugaCleaner.processUrl(href, prefs, [], undefined, undefined, \"\", [], [])",
+      /__mugaCleanWithContext\(\s*href\s*\)/.test(HOVER_PREVIEW_SRC) &&
+        !/__mugaCleaner\.processUrl\(/.test(HOVER_PREVIEW_SRC),
+      "hover preview must clean via window.__mugaCleanWithContext(href), which carries " +
+        "the same context the click path uses, and must not hand-assemble a processUrl call",
     );
   });
 

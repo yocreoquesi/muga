@@ -315,12 +315,21 @@
     // timer and it firing (defensive; clearHoverState should already have
     // cancelled the timeout in that case).
     if (_currentAnchor !== anchor) return;
-    if (!window.__mugaCleaner || typeof window.__mugaCleaner.processUrl !== "function") return;
+    if (typeof window.__mugaCleanWithContext !== "function") return;
     if (!gatePasses()) return;
 
     let result;
     try {
-      result = window.__mugaCleaner.processUrl(href, _prefs, [], undefined, undefined, "", [], []);
+      // #1255: this used to hand-assemble the argument list and pass `[]` for
+      // domainRules, pathStripRules AND pathAffiliateRules. The tooltip whose
+      // entire promise is "here is where this link really goes" was therefore
+      // computed without any of the 188 per-domain rules or any path rule, and
+      // could show a destination the extension would not produce.
+      //
+      // cleanWithContext resolves the same context content/cleaner.js uses for
+      // the click path, so the preview and the navigation now agree by
+      // construction rather than by two call sites happening to match.
+      result = window.__mugaCleanWithContext(href);
     } catch {
       return;
     }
