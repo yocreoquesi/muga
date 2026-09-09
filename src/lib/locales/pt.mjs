@@ -250,7 +250,7 @@ export default Object.freeze({
   autoinject_badge: "{platform} adicionou esta tag de indicação automaticamente",
   ob_page_title: "Bem-vindo ao MUGA",
   ob_tagline: "Seus links, sem o rastreamento.",
-  ob_tagline_sub: "Limpa o rastreamento conhecido · mantém as referências de criadores · zero telemetria.",
+  ob_tagline_sub: "Remove o rastreamento dos teus URLs · mantém as referências de criadores · zero telemetria.",
   ob_step1_title: "Como MUGA aquieta suas URLs",
   ob_feat1_title: "Remove 440+ padrões de rastreamento conhecidos",
   ob_feat1_desc: "fbclid, gclid, UTMs e centenas mais, desaparecidos antes de a página carregar. A limpeza acontece localmente no seu navegador, sem analíticas nem telemetria.",

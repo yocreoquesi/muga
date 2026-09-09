@@ -250,7 +250,7 @@ export default Object.freeze({
   autoinject_badge: "{platform} ha aggiunto questo tag di affiliazione automaticamente",
   ob_page_title: "Benvenuto in MUGA",
   ob_tagline: "I tuoi link, senza il tracciamento.",
-  ob_tagline_sub: "Rimuovi il tracciamento noto · mantieni i referral dei creator · zero telemetria.",
+  ob_tagline_sub: "Rimuovi il tracciamento dalle tue URL · mantieni i referral dei creator · zero telemetria.",
   ob_step1_title: "Come MUGA acquieta le tue URL",
   ob_feat1_title: "Rimuove oltre 440 pattern di tracciamento noti",
   ob_feat1_desc: "fbclid, gclid, UTM e centinaia di altri, spariti prima del caricamento della pagina. La pulizia avviene localmente nel tuo browser, senza analisi né telemetria.",

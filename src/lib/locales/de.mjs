@@ -250,7 +250,7 @@ export default Object.freeze({
   autoinject_badge: "{platform} hat dieses Empfehlungs-Tag automatisch hinzugefügt",
   ob_page_title: "Willkommen bei MUGA",
   ob_tagline: "Deine Links, ohne das Tracking.",
-  ob_tagline_sub: "Bekanntes Tracking entfernen · Creator-Empfehlungen behalten · keine Telemetrie.",
+  ob_tagline_sub: "Tracking aus deinen URLs entfernen · Creator-Empfehlungen behalten · keine Telemetrie.",
   ob_step1_title: "Wie MUGA deine URLs beruhigt",
   ob_feat1_title: "Entfernt 440+ bekannte Tracking-Muster",
   ob_feat1_desc: "fbclid, gclid, UTMs und Hunderte mehr: weg, bevor die Seite lädt. Die Bereinigung läuft lokal in deinem Browser, ohne Analyse und ohne Telemetrie.",

@@ -250,7 +250,7 @@ export default Object.freeze({
   autoinject_badge: "{platform} a ajouté ce tag de parrainage automatiquement",
   ob_page_title: "Bienvenue dans MUGA",
   ob_tagline: "Vos liens, sans le pistage.",
-  ob_tagline_sub: "Supprimer le pistage connu · conserver les référents des créateurs · zéro télémétrie.",
+  ob_tagline_sub: "Supprimer le pistage de vos URL · conserver les référents des créateurs · zéro télémétrie.",
   ob_step1_title: "Comment MUGA apaise vos URL",
   ob_feat1_title: "Supprime plus de 440 motifs de pistage connus",
   ob_feat1_desc: "fbclid, gclid, UTM et des centaines d'autres, disparus avant le chargement de la page. Le nettoyage s'effectue localement dans votre navigateur, sans analytique ni télémétrie.",

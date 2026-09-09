@@ -250,7 +250,7 @@ export default Object.freeze({
   autoinject_badge: "{platform} added this referral tag automatically",
   ob_page_title: "Welcome to MUGA",
   ob_tagline: "Your links, with the tracking taken out.",
-  ob_tagline_sub: "Strip the tracking we know about · keep creator referrals · zero telemetry.",
+  ob_tagline_sub: "Strip tracking from your URLs · keep creator referrals · zero telemetry.",
   ob_step1_title: "How MUGA quiets your URLs",
   ob_feat1_title: "Strips 440+ known tracking patterns",
   ob_feat1_desc: "fbclid, gclid, UTMs, and hundreds more, gone before the page loads. The cleaning runs locally in your browser, with no analytics and no telemetry.",
