@@ -118,6 +118,15 @@
   <p>This is the one thing MUGA fetches on its own, and it is <strong>on by default</strong>. You can turn it off in Settings at any time. At most once every 7 days, piggybacked on a natural service-worker wake event, MUGA makes a single HTTPS GET to <code>rules.muga.app</code> for an updated tracking-parameter list. The response is an Ed25519-signed payload verified against a public key shipped inside the extension; an unsigned, tampered, or older payload is rejected and your existing rules are kept.</p>
   <p>The request is sent with <code>credentials: "omit"</code> and <code>cache: "no-store"</code>: no cookies, no account, no identifiers, and nothing about you or your browsing goes with it. It is a plain download of a public file. Like any request to any website, it does reveal your IP address and the time of the request to whoever serves that file. MUGA neither logs nor stores this, but we would rather say it plainly than imply the request is invisible. The fetch will not happen until you have accepted the onboarding disclosure that describes it, and it never fires while remote rules are turned off.</p>
 
+  <h2>What a website can tell about MUGA</h2>
+  <p>MUGA cleans tracking parameters out of the URLs you visit, so it is worth being straight about what a site can still work out.</p>
+  <ul>
+    <li><strong>On Chrome</strong>: MUGA's rule files are declared as web-accessible so its own content scripts can read them. They use a per-session dynamic address, so a page cannot simply guess a fixed URL and probe for it to detect that MUGA is installed.</li>
+    <li><strong>On Firefox</strong>: the extension platform there has no equivalent of that dynamic address, and a Firefox add-on carries a fixed identifier in any case. A determined site can therefore still detect MUGA on Firefox. We would rather say so than imply a protection that is not there.</li>
+    <li><strong>Why it matters</strong>: this is about how well MUGA can do its job, not about your data. Nothing about you is exposed either way. A site that knows MUGA is present could switch to a tracking method MUGA does not yet clean.</li>
+    <li><strong>Following a short link</strong>: when you turn on "Follow shortener redirects", MUGA follows the short link's redirect chain to its destination and checks that destination before using it. Because of a browser limitation, that check happens after the redirect chain has been followed rather than at each hop, so a short link pointing at a private or local network address would have been contacted before MUGA rejects it. MUGA never navigates you there, and nothing is sent to any MUGA server.</li>
+  </ul>
+
   <h2>Open source</h2>
   <p>MUGA is licensed under the <a href="https://github.com/yocreoquesi/muga/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">GNU General Public License v3 (GPL v3)</a>. The complete source code is public. If you want to verify that this privacy policy accurately describes the extension's behaviour, read the code. It's all there.</p>
 
