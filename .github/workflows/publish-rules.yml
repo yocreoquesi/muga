@@ -127,21 +127,43 @@ jobs:
     if: needs.publish.outputs.published == 'false'
     # Allow some propagation delay — GitHub Pages can take a minute after push.
     steps:
+      # Needed to compare the live payload against the one this repository
+      # committed. Without a checkout the job can only ask "does the URL
+      # answer?", which is the gap this step closes.
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
       - name: Wait for GitHub Pages propagation
         # Brief initial pause to let the push reach Pages CDN before retrying.
         run: sleep 30
 
-      - name: Smoke-check published URL
-        # --fail exits non-zero on HTTP 4xx/5xx (including 404 during propagation).
-        # --retry-all-errors retries on transient HTTP errors (not just network errors).
-        # --retry 3 with --retry-delay 30 tolerates up to ~120s of propagation lag.
-        # --silent suppresses progress bar; --show-error still shows error messages.
+      # Fetches the BODY and compares it to docs/rules/v1/params.json.
+      #
+      # This was `curl --head` (#1267), which asked only whether the URL
+      # answered at all. A publish that landed a broken or stale payload passed
+      # its own smoke check by construction: a 200 on the wrong bytes looks
+      # exactly like a 200 on the right ones. This is the check that should
+      # have caught #1251, where the workflow published nothing for months.
+      #
+      # `sig` is the strongest single field to compare: it is the Ed25519
+      # signature over the payload, so an equal sig means the endpoint serves
+      # the exact bytes this repository signed. `version` is compared too,
+      # because it is the field a human reads during an incident.
+      #
+      # --fail exits non-zero on HTTP 4xx/5xx (including 404 during propagation).
+      # --retry-all-errors retries on transient HTTP errors (not just network errors).
+      # --retry 3 with --retry-delay 30 tolerates up to ~120s of propagation lag.
+      - name: Verify the live endpoint serves the committed payload
         run: |
-          curl --head \
-               --fail \
+          set -euo pipefail
+          curl --fail \
                --silent \
                --show-error \
                --retry 3 \
                --retry-delay 30 \
                --retry-all-errors \
+               -o "$RUNNER_TEMP/live-params.json" \
                https://rules.muga.app/rules/v1/params.json
+          node tools/verify-published-params.mjs \
+               --live "$RUNNER_TEMP/live-params.json" \
+               --committed docs/rules/v1/params.json
