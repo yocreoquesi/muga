@@ -28,6 +28,8 @@ import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
 import { createSingleFlightLoader, createFirstUsedBootstrap } from "./single-flight-loader.js";
 import { runOneTimeMigrations } from "./run-migrations.js";
 import { enqueueListMutation } from "../lib/list-mutation-queue.js";
+import { tearDownAndVerify, ownedDynamicRanges } from "./dnr-teardown.js";
+import * as DNR_IDS from "../lib/dnr-ids.js";
 import { buildCategoryFilteredRules } from "../lib/dnr-category-filter.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -1221,46 +1223,55 @@ async function applyDnrState(prefs) {
     // Gate closed: disable ALL declared rulesets so that AMP redirects
     // and wrapper-unwrapping cannot fire before the user has accepted
     // the ToS or while the extension is toggled off. (#810)
-    if (declaredIds.length > 0) {
-      await chrome.declarativeNetRequest.updateEnabledRulesets({
-        disableRulesetIds: declaredIds,
-      }).catch(err => console.warn("[MUGA] applyDnrState disable:", err));
-    }
-    await syncCustomParamsDNR([]);
-    // The category mirrors are strip rules like any other, so the consent gate
-    // has to reach them too: leaving them registered would keep cleaning
-    // navigations for a disabled or non-consented extension, which is the
-    // exact hole #921 closed for the remote-params rule (#1256).
-    await syncCategoryFilteredDNR({ disabledCategories: [] });
-    // Clear the allowlist "allow" rules too: when the gate is closed every
-    // strip/redirect rule is already off (disabled rulesets + cleared
-    // dynamic rules above), so there is nothing left for an "allow" rule to
-    // out-prioritize - leaving them registered would just be a stale,
-    // unnecessary MUGA network footprint while the extension is off.
-    await syncAllowlistDNR({ whitelist: [], blacklist: [] });
-    // Clear the referer/beacon privacy rules too (referer-beacon-privacy,
-    // PR 2): the two global rules (2500/2600) AND the full per-domain
-    // blocklist-force ranges (2700-2899/2900-3099). "Always aggressive on
-    // this domain" (blocklist-force) still yields to "extension not yet
-    // accepted / disabled" — no Referer removal or beacon block, global or
-    // blocklist-forced, may run before onboardingDone or while disabled.
-    await syncSuppressRefererDNR({ suppressReferer: false });
-    await syncBlockBeaconsDNR({ blockBeacons: false });
-    await syncBlocklistRefererDNR({ blacklist: [] });
-    await syncBlocklistBeaconsDNR({ blacklist: [] });
-    // Disabling the static rulesets and clearing rule 1000 is NOT enough: the
-    // remote-params rule (dynamic id 1001) is a DNR redirect that keeps
-    // stripping params for a disabled or non-consented extension. Remove it so
-    // the consent gate holds across the dynamic cleaning path too. (#921)
+    // Every step below used to be awaited bare, and each swallows its own
+    // error and returns. Nothing looked at the results and nothing retried, so
+    // one failing step left that ID range registered and still acting at the
+    // network layer for a user who had just withdrawn consent (#1257 item 5).
     //
-    // The host-scoped range (3100-4099, #1221 slice 2) is a DNR redirect from
-    // the same channel and is cleared in the same call for the same reason: a
-    // scoped rule left registered would keep stripping params on hosts the
-    // remote payload named, for an extension the user has not consented to or
-    // has switched off.
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID, ...SCOPED_RULE_ID_RANGE],
-    }).catch(err => console.warn("[MUGA] applyDnrState remote-params clear:", err));
+    // tearDownAndVerify runs them all — a thrown step does not stop the others,
+    // because on a withdrawal the goal is to remove as much as possible — and
+    // then READS BACK what is still registered. Verifying state rather than
+    // collecting eight self-reports is the point: the dangerous failure is a
+    // step that returns normally while its rules survive.
+    await tearDownAndVerify({
+      ranges: ownedDynamicRanges(DNR_IDS),
+      readLiveRuleIds: async () => {
+        const rules = await chrome.declarativeNetRequest.getDynamicRules();
+        return (rules ?? []).map((r) => r.id);
+      },
+      steps: {
+        staticRulesets: async () => {
+          if (declaredIds.length === 0) return;
+          await chrome.declarativeNetRequest.updateEnabledRulesets({
+            disableRulesetIds: declaredIds,
+          });
+        },
+        customParams: () => syncCustomParamsDNR([]),
+        // The category mirrors are strip rules like any other, so the consent
+        // gate has to reach them too: leaving them registered would keep
+        // cleaning navigations for a disabled or non-consented extension,
+        // which is the exact hole #921 closed for rule 1001 (#1256).
+        categoryMirrors: () => syncCategoryFilteredDNR({ disabledCategories: [] }),
+        // With every strip/redirect rule off there is nothing left for an
+        // "allow" rule to out-prioritize; leaving them registered would just be
+        // a stale MUGA network footprint while the extension is off.
+        allowlist: () => syncAllowlistDNR({ whitelist: [], blacklist: [] }),
+        // referer-beacon-privacy PR 2: the two global rules AND the per-domain
+        // blocklist-force ranges. "Always aggressive on this domain" still
+        // yields to "extension not accepted / disabled".
+        suppressReferer: () => syncSuppressRefererDNR({ suppressReferer: false }),
+        blockBeacons: () => syncBlockBeaconsDNR({ blockBeacons: false }),
+        blocklistReferer: () => syncBlocklistRefererDNR({ blacklist: [] }),
+        blocklistBeacons: () => syncBlocklistBeaconsDNR({ blacklist: [] }),
+        // Disabling the static rulesets and clearing rule 1000 is NOT enough:
+        // rule 1001 is a DNR redirect that keeps stripping params for a
+        // disabled extension (#921). The host-scoped range (3100-4099, #1221
+        // slice 2) comes from the same channel and goes in the same call.
+        remoteParams: () => chrome.declarativeNetRequest.updateDynamicRules({
+          removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID, ...SCOPED_RULE_ID_RANGE],
+        }),
+      },
+    });
   }
 }
 

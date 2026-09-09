@@ -462,7 +462,12 @@ describe("Consent gate — gate-closed removes all four rule families; global pr
 const swFnStart = swSource.indexOf("async function syncSuppressRefererDNR(");
 const swFnBlock = swSource.slice(swFnStart, swFnStart + 6500); // covers all four fns
 const applyFnStart = swSource.indexOf("async function applyDnrState(");
-const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 6000);
+// Bumped 6000 -> 9000 for #1257 item 5: the gate-closed branch grew a
+// tearDownAndVerify() wrapper, which pushed the calls asserted below past the
+// old window. A fixed-size slice that must be re-tuned whenever the function
+// grows is a guard that eventually gets deleted, so the first assertion in the
+// gate-closed test now checks the window still reaches its target and says so.
+const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 9000);
 const gateClosedBlock = applyFnBlock.slice(applyFnBlock.indexOf("Gate closed:"));
 
 describe("service-worker.js source guards — the four new sync fns exist and are wired", () => {
@@ -516,6 +521,12 @@ describe("service-worker.js source guards — the four new sync fns exist and ar
   });
 
   test("applyDnrState gate-closed branch explicitly clears 2500, 2600, and both blocklist ranges", () => {
+    assert.ok(
+      gateClosedBlock.includes("syncBlocklistBeaconsDNR"),
+      "the extraction window no longer spans the gate-closed branch — raise the slice " +
+        "bound above. The assertions below are reading a truncated region, and their " +
+        "failures would read as a real regression when they are not."
+    );
     assert.ok(gateClosedBlock.includes("syncSuppressRefererDNR({ suppressReferer: false })"));
     assert.ok(gateClosedBlock.includes("syncBlockBeaconsDNR({ blockBeacons: false })"));
     assert.ok(gateClosedBlock.includes("syncBlocklistRefererDNR({ blacklist: [] })"));
