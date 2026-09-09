@@ -25,6 +25,7 @@ export default Object.freeze({
   popup_badge_honored_creator: "Roteado por {network} para honrar {creator}",
   ledger_section_title: "Atividade recente",
   ledger_empty: "Sem navegações recentes ainda. Comece a navegar. MUGA listará as URLs limpas aqui.",
+  stats_zero_state: "Ainda nada limpo. Abra um link com rastreamento e estes contadores começam a andar.",
   ledger_badge_cleaned: "Limpa",
   ledger_badge_preserve_affiliate: "Indicação do criador preservada",
   ledger_badge_honor_creator: "Rota de criador honrada",

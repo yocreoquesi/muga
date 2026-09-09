@@ -57,6 +57,16 @@
     </div>
   </section>
 
+  <!-- Zero state (#1260). Three bare zeros are the first thing a fresh install
+       sees, and they read as "nothing works" rather than "nothing has happened
+       yet". Shown only while all three counters are 0, so an established user
+       never sees it. Same pattern as #recent-activity-empty below: the string
+       is in the markup with its data-i18n key, so it is translated even before
+       the JS layer reads chrome.storage.local. -->
+  <p id="stats-empty" class="stats-empty" data-i18n="stats_zero_state" hidden>
+    Nothing cleaned yet. Open a link with tracking on it and these counters start moving.
+  </p>
+
   <details class="domain-stats" id="domain-stats" hidden>
     <summary data-i18n="domain_stats_label">Where the most noise comes from</summary>
     <div id="domain-stats-list"></div>

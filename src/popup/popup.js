@@ -23,6 +23,7 @@ import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
+import { isFreshInstall } from "../lib/stats-zero-state.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
 import { buildBrokenSiteReportFields } from "../lib/broken-site-report.js";
 import { scopedParamsForHost } from "../lib/remote-rules.js";
@@ -252,6 +253,13 @@ async function init() {
     formatStat(local.stats?.junkRemoved ?? 0);
   document.getElementById("stat-referrals").textContent =
     formatStat(local.stats?.referralsSpotted ?? 0);
+
+  // A fresh install shows three zeros and nothing else, which reads as broken
+  // rather than new (#1260). The ledger below already explains its own empty
+  // state; this gives the counters the same courtesy, and only while they are
+  // all still zero.
+  const statsEmpty = document.getElementById("stats-empty");
+  if (statsEmpty) statsEmpty.hidden = !isFreshInstall(local.stats);
 
   const enabledToggle = document.getElementById("enabled-toggle");
   enabledToggle.checked = prefs.enabled;
