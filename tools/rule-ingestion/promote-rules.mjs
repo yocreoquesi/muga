@@ -39,6 +39,7 @@ import {
   AFFILIATE_PARAM_GUARD,
 } from "../../src/lib/remote-rules.js";
 import { TRUSTED_PUBLIC_KEYS } from "../../src/lib/remote-rules-keys.js";
+import { checkAffiliateGuard } from "./gates/affiliate-guard.mjs";
 import { canonicalMessage } from "./orchestrate.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -303,6 +304,34 @@ export async function runPromote({
     );
   }
 
+  // ── Step 4a: Read the normalized store ────────────────────────────────────
+  //
+  // params.json is a PROJECTION of this store, and the store is the only place
+  // that knows which params are host-scoped facts. Promotion is a decision about
+  // whether a name is safe EVERYWHERE, so the run needs that knowledge before it
+  // decides, not at write time.
+  //
+  // Read here rather than at the write step (#1263). Fail closed for the same
+  // reason Step 0 refuses an incoherent path set: a run that cannot read the
+  // store cannot honestly claim a param is safe to publish globally, and a
+  // silently-empty scoped set would turn this guard off exactly when the store
+  // is damaged.
+  let store;
+  try {
+    store = parseStore(readFileSync(storePath, "utf8"));
+  } catch (err) {
+    throw new PromoteError(
+      `IO_ERROR: cannot read the normalized store at ${storePath} — ${err.message}`,
+      3
+    );
+  }
+
+  // Every param that exists as a host-scoped fact, lowercased. A name in here is
+  // one some source anchored to specific hosts rather than to the whole web.
+  const scopedParams = new Set(
+    (store.scopedFacts ?? []).map((f) => String(f.param).toLowerCase())
+  );
+
   // ── Step 4b: Param format + denylist + affiliate-guard validation ───────────
   // Applied after sig/freshness so we don't expose format info on unsigned data.
   // Mirrors the REQ-VALIDATE-2/3/4/5 checks in remote-rules.js validateParams.
@@ -338,6 +367,40 @@ export async function runPromote({
         `[promote-rules] skip: ${param} is in AFFILIATE_PARAM_GUARD — excluded from promote (issue #898)`
       );
       guardSkipped.push({ param, reason: "AFFILIATE_PARAM_GUARD" });
+      continue;
+    }
+    // GATE 1's live affiliate index (#1263). Ingestion consults it through
+    // orchestrate.mjs; promote never did, so a name could reach the global
+    // strip list by any route that bypasses ingestion. The index is derived at
+    // module load from AFFILIATE_PATTERNS + REDIRECT_NETWORK_PATTERNS +
+    // STATIC_PRESERVE, so a program added to those arrays protects this path
+    // too, with no edit here.
+    //
+    // This is deliberately NOT "refuse anything that is also a scoped fact".
+    // 139 params legitimately hold both shapes today — one source calls a name
+    // a tracker everywhere, another anchors the same name to a host, and both
+    // are true. ADR-0008 treats anchors as additive data, and a blanket refusal
+    // would contradict it while wedging the weekly run on the committed store.
+    // What must never happen is the `u` shape: a name that carries CREATOR
+    // ATTRIBUTION going global. That is what this checks.
+    const affiliate = checkAffiliateGuard({ param: lower });
+    if (affiliate.rejected) {
+      const owners = (affiliate.collidingPrograms ?? [])
+        .map((o) => `${o.id} (${o.source})`)
+        .join(", ");
+      console.log(
+        `[promote-rules] skip: ${param} is affiliate attribution — excluded from promote (#1263)` +
+          (owners ? ` — claimed by ${owners}` : "") +
+          (scopedParams.has(lower)
+            ? " — and it already exists as a host-scoped fact, which is the #1213 shape exactly"
+            : "")
+      );
+      guardSkipped.push({
+        param,
+        reason: scopedParams.has(lower)
+          ? "affiliate attribution, already host-scoped"
+          : "affiliate attribution",
+      });
       continue;
     }
   }
@@ -421,7 +484,18 @@ export async function runPromote({
   // the next weekly run without anyone remembering to audit the back catalogue.
   // This is also what keeps `tools/sign-rules.mjs`'s refusal from wedging the
   // pipeline — signing sees a list this step has already cleaned.
-  const merged = mergeResult.merged.filter((p) => !preservedSet.has(p.toLowerCase()));
+  //
+  // The affiliate index gets the same treatment (#1263). A param published last
+  // year is never re-examined either, so adding a new affiliate program today
+  // does nothing about a name that program uses which is already in the global
+  // list — it keeps being stripped on every site the program pays out on. This
+  // is the sweep that would have pulled `u` back out (#1213) on the next run
+  // instead of waiting for a person to notice.
+  const merged = mergeResult.merged.filter(
+    (p) =>
+      !preservedSet.has(p.toLowerCase()) &&
+      !checkAffiliateGuard({ param: p.toLowerCase() }).rejected
+  );
   const sweptCount = mergeResult.merged.length - merged.length;
   for (const param of mergeResult.merged) {
     if (preservedSet.has(param.toLowerCase()) && !cleanParams.includes(param)) {
@@ -429,6 +503,11 @@ export async function runPromote({
         `[promote-rules] sweep: ${param} was already published but now collides with preserveParams — removed (#1221)`
       );
       skipped.push({ param, reason: "collides with preserveParams (drift sweep)" });
+    } else if (checkAffiliateGuard({ param: param.toLowerCase() }).rejected) {
+      console.log(
+        `[promote-rules] sweep: ${param} was already published but is affiliate attribution — removed (#1263)`
+      );
+      skipped.push({ param, reason: "affiliate attribution (drift sweep)" });
     }
   }
   // A sweep is a change even when nothing new merged: params leave the payload.
@@ -461,10 +540,7 @@ export async function runPromote({
   // `version` and `published` stay owned HERE: the store deliberately does not
   // model signing-flow fields, and a regenerated `published` would invalidate a
   // signature for no reason.
-  const nextStore = withGlobalParams(
-    parseStore(readFileSync(storePath, "utf8")),
-    merged
-  );
+  const nextStore = withGlobalParams(store, merged);
   const storePayload = serializeStore(nextStore);
   const payload = JSON.stringify(
     { version: newVersion, published: newPublished, params: emitParams(nextStore) },
