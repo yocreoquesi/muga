@@ -4,12 +4,19 @@
  * wiring (tasks 2.6-2.9).
  *
  * The service worker has no behavioral unit harness (Chrome API bindings at
- * module scope), so this file follows the established pattern from
- * tests/unit/allowlist-dnr.test.mjs and tests/unit/dnr-consent-gate.test.mjs:
- * a pure extraction of each sync algorithm exercised against a fake
- * declarativeNetRequest facade, plus source guards confirming the production
- * service-worker.js actually wires the real functions in with the same
- * shapes/priorities/ranges.
+ * module scope), so this file used to reimplement each sync algorithm and test
+ * the copy, plus source guards confirming production wired in the real ones
+ * with the same shapes.
+ *
+ * #1268: the four referer/beacon rule builders now live in
+ * src/background/dnr-privacy-rules.js and are imported here, so the assertions
+ * below exercise the SHIPPED logic. What remains local is a thin adapter that
+ * hands the built rules to a fake declarativeNetRequest facade, mirroring only
+ * the plumbing the service worker also has around them.
+ *
+ * syncAllowlistDNRLogic is still a genuine mirror: syncAllowlistDNR was not
+ * part of that extraction. It is labelled as such at its definition rather
+ * than left to look like the others.
  *
  * getFullyBlacklistedDomains() itself is NOT reimplemented here — it is
  * imported directly from src/lib/cleaner.js, so these tests exercise the
@@ -22,6 +29,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { getFullyExemptDomains, getFullyBlacklistedDomains } from "../../src/lib/cleaner.js";
+import {
+  buildSuppressRefererRules,
+  buildBlockBeaconsRules,
+  buildBlocklistRefererRules,
+  buildBlocklistBeaconsRules,
+} from "../../src/background/dnr-privacy-rules.js";
 import {
   DNR_SUPPRESS_REFERER_RULE_ID,
   DNR_BLOCK_BEACONS_RULE_ID,
@@ -39,102 +52,54 @@ const swSource = readFileSync(
   "utf8",
 );
 
-// ── Pure implementations under test ──────────────────────────────────────────
+// ── Thin adapters over the REAL builders ─────────────────────────────────────
 //
-// Each mirrors its service-worker.js counterpart exactly (same removeRuleIds
-// range, same rule shape, same cap-and-warn behavior) but wired to a fake DNR
-// facade so the exact calls can be asserted without a browser.
+// #1268: these four functions used to be full reimplementations of their
+// service-worker.js counterparts, opening with "Each mirrors its
+// service-worker.js counterpart exactly". That is the pattern #1268 is about:
+// the assertions below were checking a copy, and a copy stays green while the
+// shipped behaviour changes. It is also only ever tested for what its author
+// already thought of.
+//
+// The rule building now lives in src/background/dnr-privacy-rules.js, so what
+// is left here is the thin part the service worker also has: hand the built
+// rules to the DNR facade, and report dropped domains. These adapters exist
+// only so the ~350 lines of assertions below keep their call shape; the logic
+// they exercise is the shipped logic.
+//
+// syncAllowlistDNRLogic further down is still a genuine mirror. syncAllowlistDNR
+// was not part of this extraction, so that one is honestly labelled rather than
+// quietly grouped with these.
 
 async function syncSuppressRefererDNRLogic(prefs, dnrApi) {
-  if (!prefs.suppressReferer) {
-    await dnrApi.updateDynamicRules({ removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID], addRules: [] });
-    return;
-  }
-  await dnrApi.updateDynamicRules({
-    removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
-    addRules: [{
-      id: DNR_SUPPRESS_REFERER_RULE_ID,
-      priority: 1,
-      action: { type: "modifyHeaders", requestHeaders: [{ header: "referer", operation: "remove" }] },
-      condition: { urlFilter: "*", resourceTypes: ALLOWLIST_RESOURCE_TYPES },
-    }],
-  });
+  await dnrApi.updateDynamicRules(buildSuppressRefererRules(prefs));
 }
 
 async function syncBlockBeaconsDNRLogic(prefs, dnrApi) {
-  if (!prefs.blockBeacons) {
-    await dnrApi.updateDynamicRules({ removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID], addRules: [] });
-    return;
-  }
-  await dnrApi.updateDynamicRules({
-    removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
-    addRules: [{
-      id: DNR_BLOCK_BEACONS_RULE_ID,
-      priority: 1,
-      action: { type: "block" },
-      condition: { resourceTypes: ["ping"] },
-    }],
-  });
+  await dnrApi.updateDynamicRules(buildBlockBeaconsRules(prefs));
 }
 
-const BLOCKLIST_REFERER_RULE_ID_RANGE = Array.from(
-  { length: DNR_BLOCKLIST_MAX_RULES },
-  (_, i) => DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
-);
-const BLOCKLIST_BEACON_RULE_ID_RANGE = Array.from(
-  { length: DNR_BLOCKLIST_MAX_RULES },
-  (_, i) => DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
-);
-
 async function syncBlocklistRefererDNRLogic(prefs, dnrApi, warn) {
-  const domains = getFullyBlacklistedDomains(prefs);
-  if (domains.length === 0) {
-    await dnrApi.updateDynamicRules({ removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE, addRules: [] });
-    return;
-  }
-  let syncedDomains = domains;
-  if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
-    const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
-    syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
-    warn?.(dropped);
-  }
-  await dnrApi.updateDynamicRules({
-    removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
-    addRules: syncedDomains.map((domain, i) => ({
-      id: DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
-      priority: 2,
-      action: { type: "modifyHeaders", requestHeaders: [{ header: "referer", operation: "remove" }] },
-      condition: { requestDomains: [domain], resourceTypes: ALLOWLIST_RESOURCE_TYPES },
-    })),
-  });
+  const { dropped, ...rules } = buildBlocklistRefererRules(getFullyBlacklistedDomains(prefs));
+  if (dropped.length > 0) warn?.(dropped);
+  await dnrApi.updateDynamicRules(rules);
 }
 
 async function syncBlocklistBeaconsDNRLogic(prefs, dnrApi, warn) {
-  const domains = getFullyBlacklistedDomains(prefs);
-  if (domains.length === 0) {
-    await dnrApi.updateDynamicRules({ removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE, addRules: [] });
-    return;
-  }
-  let syncedDomains = domains;
-  if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
-    const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
-    syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
-    warn?.(dropped);
-  }
-  await dnrApi.updateDynamicRules({
-    removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
-    addRules: syncedDomains.map((domain, i) => ({
-      id: DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
-      priority: 2,
-      action: { type: "block" },
-      condition: { requestDomains: [domain], resourceTypes: ["ping"] },
-    })),
-  });
+  const { dropped, ...rules } = buildBlocklistBeaconsRules(getFullyBlacklistedDomains(prefs));
+  if (dropped.length > 0) warn?.(dropped);
+  await dnrApi.updateDynamicRules(rules);
 }
 
-// Mirrors syncAllowlistDNR() exactly (see tests/unit/allowlist-dnr.test.mjs) —
-// needed here only for the precedence tests (2.8), which must prove the
-// allow rule still registers even when a domain is ALSO blacklisted.
+// STILL A MIRROR (#1268). Reimplements syncAllowlistDNR() (see
+// tests/unit/allowlist-dnr.test.mjs), needed here only for the precedence
+// tests (2.8), which must prove the allow rule still registers even when a
+// domain is ALSO blacklisted.
+//
+// syncAllowlistDNR was not part of the dnr-privacy-rules.js extraction, so
+// this copy can still drift from production while these tests stay green.
+// It is the next candidate: extracting a buildAllowlistRules() would let this
+// import the real thing and delete the last mirror in the file.
 const ALLOWLIST_RULE_ID_RANGE = Array.from(
   { length: DNR_ALLOWLIST_MAX_RULES },
   (_, i) => DNR_ALLOWLIST_RULE_ID_BASE + i,
