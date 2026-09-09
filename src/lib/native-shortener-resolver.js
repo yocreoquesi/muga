@@ -201,9 +201,13 @@ export async function resolveShortener(url, opts) {
   // `connect-src 'self' https: http:`, which permits both schemes to any
   // origin, so nothing here is CSP-enforced and an un-upgraded http fetch
   // would have gone out fine. The upgrade is worth keeping on its own merits;
-  // only the stated reason was wrong. Whether connect-src should instead be
-  // enumerated from GENERIC_SHORTENERS (the unfinished tail of #1035) is an
-  // open decision on #1258, not something this comment should pre-empt.
+  // only the stated reason was wrong.
+  //
+  // And connect-src cannot be tightened to fix that, which is now measured
+  // rather than assumed: CSP is re-checked against the REDIRECT TARGET, and
+  // this function follows a redirect to a destination that is arbitrary by
+  // definition. An enumerated policy would refuse the final hop of every real
+  // short link. See ADR-0009.
   // The destination is read from response.url below, so an http:// destination
   // is still preserved as-is — we never re-fetch it.
   let fetchUrl = inputUrl.toString();
