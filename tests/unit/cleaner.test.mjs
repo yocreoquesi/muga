@@ -2211,12 +2211,187 @@ describe("N9 — processUrl edge cases", () => {
     assert.equal(cleanUrl, raw);
   });
 
-  test("ftp:// URL → untouched (non-http(s) parsed but no matching params)", () => {
+  test("ftp:// URL → untouched: the protocol guard bails before any strip runs", () => {
+    // #1265: this test used to assert only `typeof cleanUrl === "string"`, which
+    // is trivially true, under a comment claiming "processUrl does not filter by
+    // protocol". That claim is false. `new URL("ftp://...")` parses, and
+    // utm_source IS present in searchParams, but unwrapAndExtract rejects any
+    // non-http(s) scheme and returns the untouched payload, which processUrl
+    // passes straight through. These assertions fail if that guard is removed.
     const raw = "ftp://files.example.com/data?utm_source=email";
-    const { cleanUrl } = processUrl(raw, PREFS);
-    // new URL("ftp://...") succeeds but utm_source would still be found in searchParams
-    // processUrl does not filter by protocol — it processes any parseable URL
-    assert.equal(typeof cleanUrl, "string");
+    const { action, cleanUrl, removedTracking, junkRemoved } = processUrl(raw, PREFS);
+    assert.equal(action, "untouched", "non-http(s) schemes must never be cleaned");
+    assert.equal(cleanUrl, raw, "the URL must come back byte-identical");
+    assert.ok(new URL(raw).searchParams.has("utm_source"),
+      "precondition: a strippable param IS present, so only the protocol guard explains the no-op");
+    assert.deepEqual(removedTracking, []);
+    assert.equal(junkRemoved, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #1265 — URL edge cases that had no test pinning current behaviour.
+//
+// The cleaner handles hostile input by definition. Each case below already
+// does something reasonable; these tests exist so a refactor cannot change any
+// of it silently. Where the behaviour is a known limitation rather than a
+// desirable property, the test says so explicitly.
+// ---------------------------------------------------------------------------
+describe("#1265 — URL edge cases pinned", () => {
+
+  test("bare param with no '=' survives, re-serialized with a trailing '='", () => {
+    // "?flag" parses as key "flag" with an empty value. URLSearchParams
+    // re-serializes it as "flag=", so the cleaned URL is not byte-identical to
+    // the input even though nothing functional was removed.
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://example.com/page?flag&utm_source=x", PREFS, domainRules
+    );
+    assert.equal(action, "cleaned");
+    assert.equal(cleanUrl, "https://example.com/page?flag=",
+      "the bare param is preserved; the trailing '=' is URLSearchParams re-serialization");
+    assert.deepEqual(removedTracking, ["utm_source"]);
+  });
+
+  test("encoded delimiters (%26, %3D) inside a value stay inside that value", () => {
+    // The danger is a value splitting on a decoded "&" or "=" and becoming two
+    // params, one of which might then match a tracking key.
+    const { cleanUrl } = processUrl(
+      "https://example.com/p?q=a%26b%3Dc&utm_source=x", PREFS, domainRules
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("q"), "a&b=c",
+      "the encoded delimiters decode as part of the value, not as separators");
+    assert.equal([...u.searchParams.keys()].length, 1,
+      "the value must not have split into extra params");
+    assert.equal(cleanUrl, "https://example.com/p?q=a%26b%3Dc",
+      "and it must be re-encoded on the way out");
+  });
+
+  test("an IDN host is normalized to punycode and still cleaned", () => {
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://bücher.example/p?utm_source=x", PREFS, domainRules
+    );
+    assert.equal(action, "cleaned");
+    assert.equal(cleanUrl, "https://xn--bcher-kva.example/p",
+      "the URL parser lowercases and punycodes the host before rules are matched");
+    assert.deepEqual(removedTracking, ["utm_source"]);
+  });
+
+  test("the punycode spelling of that same host cleans identically", () => {
+    // Both spellings must converge, otherwise a domain rule could match one
+    // spelling of a host and miss the other.
+    const idn = processUrl("https://bücher.example/p?utm_source=x", PREFS, domainRules);
+    const ascii = processUrl("https://xn--bcher-kva.example/p?utm_source=x", PREFS, domainRules);
+    assert.equal(ascii.cleanUrl, idn.cleanUrl);
+    assert.equal(ascii.action, idn.action);
+  });
+
+  test("an IPv6 literal host is cleaned, and its canonical form carries no dots", () => {
+    // getDomainParamSets splits the hostname on "." to build suffix candidates.
+    // For an IPv4-mapped literal the input text "[::ffff:192.168.0.1]" looks
+    // dotted, but the URL parser canonicalizes it to hex first, so the split
+    // never sees those dots and no nonsense suffix candidate is generated.
+    const plain = processUrl("https://[::1]/p?utm_source=x", PREFS, domainRules);
+    assert.equal(plain.action, "cleaned");
+    assert.equal(plain.cleanUrl, "https://[::1]/p");
+
+    const mapped = processUrl("https://[::ffff:192.168.0.1]/p?utm_source=x", PREFS, domainRules);
+    assert.equal(mapped.action, "cleaned");
+    assert.equal(mapped.cleanUrl, "https://[::ffff:c0a8:1]/p",
+      "canonicalized to hex — this is what makes the dot-split loop a non-issue here");
+    assert.ok(!new URL("https://[::ffff:192.168.0.1]/p").hostname.includes("."),
+      "the hostname the rules actually see has no dots");
+  });
+
+  test("a protocol-relative URL is untouched, not guessed at", () => {
+    // "//host/path" has no scheme, so new URL() throws and the pipeline returns
+    // the untouched payload. It must never be silently upgraded to https and
+    // cleaned — the caller owns scheme resolution.
+    const raw = "//host.example/path?utm_source=x";
+    const { action, cleanUrl, removedTracking } = processUrl(raw, PREFS, domainRules);
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, raw, "returned verbatim");
+    assert.deepEqual(removedTracking, []);
+  });
+
+  test("malformed percent-encoding does not throw and is re-encoded, not decoded", () => {
+    // There is no unguarded decodeURIComponent in the cleaning path. A lone "%"
+    // or an invalid "%zz" would throw URIError if there were one.
+    const cases = [
+      ["https://example.com/p?utm_source=x&keep=%zz", "https://example.com/p?keep=%25zz"],
+      ["https://example.com/p?utm_source=x&keep=%", "https://example.com/p?keep=%25"],
+    ];
+    for (const [raw, expected] of cases) {
+      const { action, cleanUrl, removedTracking } = processUrl(raw, PREFS, domainRules);
+      assert.equal(action, "cleaned", raw);
+      assert.equal(cleanUrl, expected, raw + ": the stray % is escaped to %25, never decoded");
+      assert.deepEqual(removedTracking, ["utm_source"], raw);
+    }
+  });
+
+  test("a pathological-length URL is processed, not rejected — the core has no length cap", () => {
+    // Deliberate: src/lib/cleaner.js is a pure function that never navigates, so
+    // the AGENTS.md ≤ 2000-char rule (which governs redirect DESTINATIONS, and is
+    // enforced by GENERIC_DEST_LENGTH_CAP in src/lib/wrapper-engine.js and the
+    // dest checks in src/content/cleaner.js) does not apply to it. web/engine/adapter.js
+    // caps its own typed input at 2000; that is a tool-level input contract,
+    // documented there, not this one.
+    const filler = "a".repeat(100000);
+    const { action, cleanUrl, removedTracking } = processUrl(
+      "https://example.com/p?utm_source=x&q=" + filler, PREFS, domainRules
+    );
+    assert.equal(action, "cleaned", "no length cap short-circuits the core engine");
+    assert.deepEqual(removedTracking, ["utm_source"]);
+    assert.equal(new URL(cleanUrl).searchParams.get("q"), filler,
+      "the long functional value is preserved intact");
+  });
+
+  test("two preserved affiliate tags on one URL: both kept, only the first REPORTED", () => {
+    // Known limitation, pinned deliberately. detectPreservedAffiliate returns on
+    // the first pattern that matches, so the popup badge under-reports when one
+    // URL carries tags for two different stores. The URL itself is correct —
+    // both tags survive — so this is a reporting gap, not a cleaning bug. If it
+    // is ever fixed, this is the test that must change.
+    const A = { id: "_t_a", name: "Test Store A", domains: ["shop.test.muga"], param: "aff", type: "affiliate" };
+    const B = { id: "_t_b", name: "Test Store B", domains: ["shop.test.muga"], param: "partnerid", type: "affiliate" };
+    AFFILIATE_PATTERNS.push(A, B);
+    try {
+      const { cleanUrl, preservedAffiliate } = processUrl(
+        "https://shop.test.muga/item?aff=alice&partnerid=bob&utm_source=x", PREFS, domainRules
+      );
+      const u = new URL(cleanUrl);
+      assert.equal(u.searchParams.get("aff"), "alice", "both tags must survive on the URL");
+      assert.equal(u.searchParams.get("partnerid"), "bob", "both tags must survive on the URL");
+      assert.ok(!u.searchParams.has("utm_source"), "tracking still stripped alongside them");
+
+      assert.ok(preservedAffiliate, "one of them must be reported");
+      assert.equal(preservedAffiliate.param, "aff");
+      assert.equal(preservedAffiliate.store, "Test Store A",
+        "under-reports: only the FIRST matching pattern is surfaced, the second is invisible to the badge");
+    } finally {
+      AFFILIATE_PATTERNS.length = AFFILIATE_PATTERNS_ORIGINAL_LENGTH;
+    }
+  });
+
+  test("'ref' is host-scoped: stripped on Amazon, preserved on a non-listed retailer", () => {
+    // The boundary from the failure side. "ref" is a real referral param for
+    // shops MUGA does not list, AND an Amazon tracking param. If the Amazon
+    // scope on that rule were ever lost (#1217), the second assertion would
+    // break and MUGA would be destroying a creator's attribution on every
+    // unlisted shop.
+    const amazon = processUrl(
+      "https://www.amazon.es/dp/B08?ref=creator123&utm_source=x", PREFS, domainRules
+    );
+    assert.ok(amazon.removedTracking.includes("ref"),
+      "on Amazon, ref IS tracking and must be stripped");
+
+    const other = processUrl(
+      "https://unknown-shop.example/p?ref=creator123&utm_source=x", PREFS, domainRules
+    );
+    assert.equal(new URL(other.cleanUrl).searchParams.get("ref"), "creator123",
+      "on an unlisted retailer, ref is somebody's referral and must survive");
+    assert.deepEqual(other.removedTracking, ["utm_source"],
+      "only the unambiguous tracking param goes");
   });
 });
 
