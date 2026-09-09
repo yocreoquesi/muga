@@ -379,7 +379,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "__mk_en_gb",
       "__mk_pt_br",
       "__mk_ja_jp",
-      "ie",
       "mkevt",
       "mkcid",
       "mkrid",
