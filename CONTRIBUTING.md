@@ -113,6 +113,35 @@ tests/unit/                Node.js test runner tests
 - Minimal permissions in manifests: only what is strictly needed
 - Content scripts must be explicitly listed in `manifest.json` and `manifest.v2.json`
 
+## Positioning anti-goals
+
+MUGA strips the tracking patterns it knows about. It does not know all of them,
+it never will, and any copy implying otherwise writes a cheque the code cannot
+cash. The same goes for creator referrals: MUGA preserves the ones it
+recognises, and it will occasionally get one wrong.
+
+So, in anything a user reads:
+
+- **Do not state coverage or preservation as absolute.** No "every URL", no
+  "leaving none behind", no "affiliate links are never touched". Say what MUGA
+  does, and admit the edge: "the tracking we know about", "some will slip
+  through".
+- **Absolutes are fine when MUGA controls the outcome.** "MUGA never adds its
+  own affiliate tag" and "zero telemetry" are promises kept in code. "Remove
+  all third-party affiliate tags" is the name of a mode the user picked, not a
+  claim about detection. The line is whether the guarantee depends on an
+  open-ended set nobody controls.
+- **Explain the why instead of promising the what.** "Affiliate links are left
+  alone: that redirect is how the creator gets paid" tells the reader something
+  true and useful. "Affiliate links are never touched" just sounds confident.
+- **Numbers are claims too.** "N+ tracking patterns" asserts *at least* N. It
+  shipped for a while saying 450 when the list held 447.
+
+`tests/unit/copy-absolute-claims.test.mjs` and
+`tests/unit/tracking-count-claims.test.mjs` enforce both, so this is a
+reviewable rule rather than folklore. English is the source; the other six
+locales are translated from it, which is why the tests check English.
+
 ## Commit message format
 
 ```
