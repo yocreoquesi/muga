@@ -44,7 +44,13 @@ const templates = readdirSync(TEMPLATE_DIR)
  * files: inline (`labels: ["a", "b"]`) and block (`labels:\n  - a\n  - b`).
  * Parsed without a YAML dependency because the shape is this small and fixed.
  */
-function labelsOf(text) {
+function labelsOf(raw) {
+  // CRLF is normalised first. Without it the block form fails to parse on a
+  // Windows checkout while passing in CI, because git hands the same file back
+  // with different line endings on each. A platform-dependent test is worse
+  // than no test: green everywhere it is measured, red only on a contributor's
+  // machine. This repo has hit EOL drift before.
+  const text = raw.replace(/\r\n/g, "\n");
   const inline = text.match(/^labels:\s*\[(.*)\]\s*$/m);
   if (inline) {
     return inline[1].split(",").map((s) => s.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
