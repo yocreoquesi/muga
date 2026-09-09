@@ -14,6 +14,11 @@
  *       The publish job must declare `needs: [test, e2e]` so that both gate jobs
  *       must pass before AMO / CWS submissions are attempted.
  *
+ * G6 — no workflow resurrects the retired unwrap Worker (#701, ADR-0004)
+ * G7 — publish-rules.yml opens a PR instead of pushing to a protected branch
+ * G8 — import-upstream.yml never tells a reviewer to append its candidates to
+ *       the global strip list (#1303)
+ *
  * Uses string/regex assertions only — no external YAML parser.
  * Mirrors the pattern from tests/unit/ingestion-scheduled-workflow.test.mjs.
  *
@@ -354,7 +359,7 @@ describe("G6 — the retired unwrap Worker stays retired (#701, ADR-0004)", () =
 // The failure mode this guards is not "a push fails loudly". It is a publish
 // path that reports success for months because it never does anything.
 
-describe("G6 — publish-rules.yml cannot push to a protected branch", () => {
+describe("G7 — publish-rules.yml cannot push to a protected branch", () => {
   const publishWorkflow = readFileSync(join(workflowsDir, "publish-rules.yml"), "utf8");
 
   test("does not push to main", () => {
@@ -410,5 +415,72 @@ describe("G6 — publish-rules.yml cannot push to a protected branch", () => {
     // And the merge of a publish PR has to re-enter the workflow, or the
     // endpoint would never be checked at all.
     assert.match(publishWorkflow, /docs\/rules\/v1\/params\.json/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G8 — the monthly importer must not reopen the global landing path (#1303)
+// ---------------------------------------------------------------------------
+// MUGA's global strip rule carries no `urlFilter` (#1217), so a param appended
+// to TRACKING_PARAMS is stripped on every site. The 2026-09-01 import measured
+// what that means for this workflow's own output: of 1441 candidates, 100 were
+// two characters or shorter and 22 collided with common functional names. `u`
+// is the param behind the ShareASale incident; `at` and `ref` are Apple's and
+// Vercel's affiliate tokens.
+//
+// The workflow used to open a PR whose reviewer checklist said, in order,
+// "categorize each candidate" and "append to TRACKING_PARAMS". That checklist
+// is the defect — the report itself is harmless. These assertions are written
+// against the instruction, not against the report, so the measurement can keep
+// being produced while the path it used to point at stays closed. The facts
+// land host-anchored through tools/rule-ingestion/ instead (#1229).
+describe("G8 — import-upstream.yml keeps the global landing path closed", () => {
+  const importWorkflow = readWorkflow("import-upstream.yml");
+
+  // Comments in this workflow explain the closed path by naming it, so a guard
+  // that trips on its own rationale is a guard nobody can keep. Instructions
+  // live in the PR body, which is not comment-prefixed.
+  const live = importWorkflow
+    .split("\n")
+    .filter((l) => !/^\s*#/.test(l))
+    .join("\n");
+
+  test("does not instruct anyone to append candidates to the global list", () => {
+    assert.doesNotMatch(
+      live,
+      /Append to .{0,10}TRACKING_PARAMS/i,
+      "the PR body must not ask a reviewer to widen these candidates to every site (#1303)",
+    );
+  });
+
+  test("does not ask for them to be categorised into the global buckets either", () => {
+    // Categorising is the step before appending, and on its own it produces a
+    // diff nobody should merge. Removing only the append left a checklist whose
+    // remaining steps still walked toward it.
+    assert.doesNotMatch(
+      live,
+      /Categorize each candidate/i,
+      "categorisation into TRACKING_PARAM_CATEGORIES is the same closed path (#1303)",
+    );
+  });
+
+  test("names the host-anchored pipeline as the place these facts do land", () => {
+    // Closing a path without naming the open one is how the closed one gets
+    // reopened by the next person who needs to land something.
+    assert.match(
+      live,
+      /tools\/rule-ingestion\//,
+      "the PR body must point at the ingestion pipeline that takes these at their anchor",
+    );
+  });
+
+  test("links a source URL AdGuard still serves", () => {
+    // tools/import-upstream.mjs:33 moved off the `safari` platform path when
+    // AdGuard deprecated it; the PR body kept linking the 404 for months.
+    assert.doesNotMatch(
+      importWorkflow,
+      /filters\.adtidy\.org\/extension\/safari\//,
+      "the safari platform path 404s — use the chromium one, like the importer does",
+    );
   });
 });
