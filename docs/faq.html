@@ -36,7 +36,7 @@
   <p class="meta">MUGA: Clean URLs, tracking removed &nbsp;·&nbsp; Version 3.0.0 &nbsp;·&nbsp; <a href="https://github.com/yocreoquesi/muga">Source code</a></p>
 
   <div class="highlight">
-    A direct, evidence-cited FAQ for skeptics. MUGA is a URL cleaner: it removes the tracking parameters from every URL, unwraps redirects, and reveals where a shortened link really goes. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins, please open an issue.
+    A direct, evidence-cited FAQ for skeptics. MUGA is a URL cleaner: it removes the tracking parameters it knows about, unwraps redirects, and reveals where a shortened link really goes. Every factual claim below is backed by a line in the source tree of this repository. If you find a discrepancy between what is written here and the code, the code wins, please open an issue.
   </div>
 
   <p>This document is intentionally written for a technical audience that has already read the <a href="/privacy-page.html">Privacy policy</a> and the <a href="/tos.html">Terms of service</a> and wants to verify the claims.</p>
@@ -88,7 +88,7 @@
 
   <h3>Q: Does MUGA ever overwrite an existing affiliate tag?</h3>
 
-  <p>Only if you turn on "Remove all affiliate tags from other sources" in Settings. With that off, the default, MUGA never touches an existing tag: it is detected and left in place (<code>action = "detected_foreign"</code> when a foreign tag is preserved). With it on, third-party tags are stripped from the URL, leaving none behind; MUGA does not add a tag of its own in their place.</p>
+  <p>Only if you turn on "Remove all affiliate tags from other sources" in Settings. With that off, the default, MUGA leaves an existing tag alone: it is detected and left in place (<code>action = "detected_foreign"</code> when a foreign tag is preserved). With it on, the third-party tags MUGA recognises are stripped from the URL; MUGA does not add a tag of its own in their place.</p>
 
   <h3>Q: What happens if a creator's tag is on a program MUGA has no account on?</h3>
 

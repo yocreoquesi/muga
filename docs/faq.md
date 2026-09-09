@@ -1,6 +1,6 @@
 # MUGA: Frequently Asked Questions
 
-A direct, evidence-cited FAQ for skeptics. MUGA is a URL cleaner: it removes the tracking parameters from every URL, unwraps redirects, and reveals where a shortened link really goes. Every factual claim below is backed
+A direct, evidence-cited FAQ for skeptics. MUGA is a URL cleaner: it removes the tracking parameters it knows about, unwraps redirects, and reveals where a shortened link really goes. Every factual claim below is backed
 by a line in the source tree of this repository. If you find a discrepancy
 between what is written here and the code, the code wins, please open an
 issue.
@@ -94,10 +94,10 @@ support MUGA, see the sponsor links in the
 ### Q: Does MUGA ever overwrite an existing affiliate tag?
 
 Only if you turn on "Remove all affiliate tags from other sources" in
-Settings. With that off, the default, MUGA never touches an existing tag:
+Settings. With that off, the default, MUGA leaves an existing tag alone:
 it is detected and left in place (`action = "detected_foreign"` when a
 foreign tag is preserved). With it on, third-party tags are stripped from
-the URL, leaving none behind; MUGA does not add a tag of its own in their
+the URL; MUGA does not add a tag of its own in their
 place.
 
 ### Q: What happens if a creator's tag is on a program MUGA has no account on?

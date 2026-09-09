@@ -40,16 +40,43 @@ const ROOT = join(__dirname, "../..");
  * English is where this copy is authored; the other six locales are
  * translations of it. Catching the claim at the source stops it before it is
  * ever translated six ways, which is how "450+" reached all 7 files.
+ *
+ * The documentation and legal pages are here for the opposite reason: nothing
+ * translates them, and nobody rereads them. #1259's fix reached the product
+ * copy and stopped at the doorstep of the documents — so the settings hint for
+ * the strip-all toggle said "Some will slip through" while the privacy policy
+ * described the same switch as "leaving none behind", and the Terms promised
+ * the creator's "commission survives the click".
+ *
+ * A legal document contradicting the product about the product is the worse
+ * half of this defect, not the lesser one, which is why the list grew rather
+ * than staying at the two surfaces the first pass covered.
+ *
+ * Both copies of each legal document are listed: they ship separately (one
+ * inside the extension, one on muga.app) and a fix applied to one is not a fix.
  */
-const SURFACES = ["src/lib/locales/en.mjs", "landing/index.html"];
+const SURFACES = [
+  "src/lib/locales/en.mjs",
+  "landing/index.html",
+  "src/privacy/privacy.html",
+  "src/privacy/tos.html",
+  "docs/privacy-page.html",
+  "docs/tos.html",
+  "docs/transparency.html",
+  "docs/faq.html",
+  "docs/faq.md",
+  "docs/index.html",
+];
 
 /** Absolute claims about what MUGA can detect or preserve. */
 const BANNED = [
   { re: /every (?:URL|link)/i, why: "states coverage as total; MUGA cleans the patterns it knows" },
   { re: /leaving none behind/i, why: "an absolute detection guarantee" },
   { re: /(?:are|is) never touched/i, why: "absolute preservation; say what MUGA does and why instead" },
+  { re: /never touches an existing/i, why: "absolute preservation, in the third person" },
   { re: /strips? (?:all|every) tracking/i, why: "states coverage as total" },
   { re: /catches everything/i, why: "states detection as total" },
+  { re: /commission survives/i, why: "states the outcome as guaranteed; MUGA preserves the networks it recognises" },
 ];
 
 // There is deliberately NO allowlist.
