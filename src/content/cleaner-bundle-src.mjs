@@ -51,6 +51,15 @@ import {
   isGenericShortener,
   isAffiliateRedirectNetwork,
 } from "../lib/opaque-networks.js";
+// #1270: domain-rules.json was fetched and cached by two independent
+// implementations. The service worker's had a session cache and a 3-attempt
+// retry budget; the content script's had neither, and on failure returned []
+// so the cleaner silently proceeded with no domain rules at all for that
+// navigation. Same file, same job, different resilience, and the weaker one
+// ran on every page. The loader moved to src/lib/ so both sides can reach it,
+// and is exposed here because content/cleaner.js is not bundled and cannot
+// import ES modules -- the same route isOpaqueNetworkHost already takes.
+import { createSingleFlightLoader } from "../lib/single-flight-loader.js";
 
 // Attach onto the isolated-world window. Content scripts in the same
 // content_scripts entry share a window object; cleaner.js (loaded after
@@ -76,6 +85,7 @@ if (!window.__mugaCleaner) {
     getRedirectNetworkPatterns,
     getRedirectNetworkForRedirectHost,
     getLandingParamsForReferrer,
+    createSingleFlightLoader,
     detectWrapper,
     unwrap,
     WRAPPERS,
