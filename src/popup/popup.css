@@ -901,7 +901,7 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   font-family: inherit;
 }
 .strip-locally-btn:hover:not(:disabled) {
-  background: var(--bg-2, rgba(0, 0, 0, 0.04));
+  background: var(--surface-2);
 }
 .strip-locally-btn.is-done,
 .strip-locally-btn:disabled {
@@ -924,7 +924,7 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   font-family: inherit;
 }
 .report-upstream-btn:hover:not(:disabled) {
-  background: var(--bg-2, rgba(0, 0, 0, 0.04));
+  background: var(--surface-2);
 }
 
 .strip-locally-count {
