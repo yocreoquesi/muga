@@ -319,6 +319,42 @@ describe("manifest.json integrity", () => {
     }
   });
 
+  // #1258: a published extension's ID is fixed and identical for every install,
+  // so a statically-addressable web_accessible_resource is a stable, guessable
+  // URL any page can probe for load-versus-404 to detect MUGA. The cost is to
+  // cleaning efficacy rather than to a privacy claim: a site that can detect
+  // MUGA can switch to a tracking mechanism MUGA does not clean, or vary what
+  // it serves. `use_dynamic_url` (Chrome 109+) rotates the token per session,
+  // which removes the static address while leaving chrome.runtime.getURL()
+  // working for the extension's own content scripts.
+  test("every MV3 web_accessible_resources entry sets use_dynamic_url", () => {
+    const entries = mv3.web_accessible_resources || [];
+    assert.ok(entries.length > 0, "precondition: MV3 declares web-accessible resources");
+    for (const entry of entries) {
+      assert.equal(
+        entry.use_dynamic_url, true,
+        `web_accessible_resources entry ${JSON.stringify(entry.resources)} must set ` +
+        `"use_dynamic_url": true, or the extension stays trivially detectable`,
+      );
+    }
+  });
+
+  // The Firefox residual, pinned so it is not mistaken for an oversight.
+  // MV2 has no use_dynamic_url equivalent, and Firefox is detectable through
+  // its fixed gecko.id regardless, so there is nothing to assert on MV2 beyond
+  // the fact that adding the key there would be meaningless. Stated in
+  // src/privacy/privacy.html rather than left implicit in the manifest.
+  test("MV2 does not pretend to support use_dynamic_url", () => {
+    const entries = mv2.web_accessible_resources || [];
+    for (const entry of entries) {
+      assert.equal(
+        typeof entry, "string",
+        "MV2 web_accessible_resources is a flat string array; an object entry here " +
+        "suggests someone copied the MV3 use_dynamic_url shape, which Firefox ignores",
+      );
+    }
+  });
+
   test("MV3 and MV2 declare the same permissions (excluding host_permissions, MV-specific equivalents, and Firefox-only network permissions)", () => {
     // MV3 uses declarativeNetRequestWithHostAccess (required for redirect rules in MV3)
     // MV2 uses declarativeNetRequest (Firefox MV2 doesn't support the WithHostAccess variant)
