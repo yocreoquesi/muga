@@ -315,7 +315,7 @@
     // timer and it firing (defensive; clearHoverState should already have
     // cancelled the timeout in that case).
     if (_currentAnchor !== anchor) return;
-    if (!window.__mugaCleaner || typeof window.__mugaCleaner.cleanWithContext !== "function") return;
+    if (typeof window.__mugaCleanWithContext !== "function") return;
     if (!gatePasses()) return;
 
     let result;
@@ -329,7 +329,7 @@
       // cleanWithContext resolves the same context content/cleaner.js uses for
       // the click path, so the preview and the navigation now agree by
       // construction rather than by two call sites happening to match.
-      result = window.__mugaCleaner.cleanWithContext(href);
+      result = window.__mugaCleanWithContext(href);
     } catch {
       return;
     }

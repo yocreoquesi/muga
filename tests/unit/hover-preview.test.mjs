@@ -173,9 +173,9 @@ describe("hover-preview.js — source guards", () => {
     // goes" was computed without any of the 188 per-domain rules, and the
     // guard that should have caught it was pinning it in place instead.
     assert.ok(
-      /__mugaCleaner\.cleanWithContext\(\s*href\s*\)/.test(HOVER_PREVIEW_SRC) &&
+      /__mugaCleanWithContext\(\s*href\s*\)/.test(HOVER_PREVIEW_SRC) &&
         !/__mugaCleaner\.processUrl\(/.test(HOVER_PREVIEW_SRC),
-      "hover preview must clean via window.__mugaCleaner.cleanWithContext(href), which carries " +
+      "hover preview must clean via window.__mugaCleanWithContext(href), which carries " +
         "the same context the click path uses, and must not hand-assemble a processUrl call",
     );
   });

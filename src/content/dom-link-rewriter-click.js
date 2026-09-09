@@ -110,7 +110,6 @@
    * absolute before reaching this function — see `urlCleaner` below.
    */
   function cleanAbsolute(raw) {
-    const bundled = window.__mugaCleaner;
     // #1255: this called `bundled.processUrl(raw)` with no prefs and no rules.
     // processUrl reads `prefs.canonicalExtractorEnabled`, so it threw on every
     // single call, the catch below swallowed it, and this function fell through
@@ -118,9 +117,9 @@
     // PREFERRED over that subset; it never once was. cleanWithContext carries
     // the resolved context and returns null while it is still warming, which is
     // the case the inline subset was written to cover.
-    if (bundled && typeof bundled.cleanWithContext === "function") {
+    if (typeof window.__mugaCleanWithContext === "function") {
       try {
-        const out = bundled.cleanWithContext(raw);
+        const out = window.__mugaCleanWithContext(raw);
         if (typeof out === "string") return out;
         if (out && typeof out.cleanUrl === "string") return out.cleanUrl;
       } catch {

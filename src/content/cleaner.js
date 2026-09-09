@@ -166,12 +166,17 @@
    */
   const COPY_PREF_OVERRIDES = Object.freeze({ notifyForeignAffiliate: false });
 
-  // Published on the bundle's own namespace rather than a new global: the other
-  // content scripts already feature-detect `window.__mugaCleaner`, so this
-  // reaches them through a check they perform anyway.
-  if (window.__mugaCleaner && typeof window.__mugaCleaner === "object") {
-    window.__mugaCleaner.cleanWithContext = cleanWithContext;
-  }
+  // Published as its own isolated-world global, NOT as a property of
+  // window.__mugaCleaner.
+  //
+  // The bundle builds that namespace with `Object.freeze({...})`
+  // (content/cleaner-bundle-src.mjs), and this file is "use strict", so
+  // assigning a property onto it THROWS at IIFE evaluation time -- which
+  // aborts the rest of this file, taking __mugaReclean, the click interceptor
+  // and the copy handlers with it. The freeze is deliberate: the namespace is
+  // the cleaning engine, and nothing should be able to swap a method on it.
+  // A sibling global is the extension point that respects that.
+  window.__mugaCleanWithContext = cleanWithContext;
   function getPathRulesCached() {
     if (_pathRulesCache) return Promise.resolve(_pathRulesCache);
     if (_pathRulesPending) return _pathRulesPending;
