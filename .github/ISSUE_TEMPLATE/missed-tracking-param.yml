@@ -1,7 +1,7 @@
 name: Missed tracking parameter
 description: Report a tracking parameter that MUGA did not strip.
 title: "[Unclean] "
-labels: ["unclean-url", "good first issue"]
+labels: ["unclean-url", "good first issue", "needs-triage"]
 body:
   - type: markdown
     attributes:

@@ -1,7 +1,7 @@
 name: New affiliate program support
 description: Suggest adding a new store / affiliate program to MUGA.
 title: "[Affiliate] "
-labels: ["enhancement", "affiliate"]
+labels: ["enhancement", "affiliate", "needs-triage"]
 body:
   - type: markdown
     attributes:

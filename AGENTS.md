@@ -144,6 +144,17 @@ Issues are tracked on GitHub at `yocreoquesi/muga`. Use the `gh` CLI for all iss
 
 Five canonical labels with default names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`).
 
+`needs-triage` is the **entry state**, and every issue template applies it, so a
+report arrives already inside this state machine instead of needing a manual
+relabel first (#1269). The other four are **maintainer-set**: they describe
+triage state, which only a maintainer can judge, whereas a template can only ask
+a reporter about the kind of thing they are reporting.
+
+That split is why the templates also carry kind labels (`bug`, `broken-site`,
+`enhancement`, and so on) and why those are not part of this vocabulary.
+`tests/unit/issue-templates.test.mjs` asserts every template still applies the
+entry label.
+
 ### Domain docs
 
 Single-context repo. `CONTEXT.md` and `docs/adr/` at the root, created lazily.

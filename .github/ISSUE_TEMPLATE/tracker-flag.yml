@@ -8,6 +8,7 @@ title: "[tracker-flag] <param-name>"
 labels:
   - tracker-candidate
   - category:product
+  - needs-triage
 body:
   - type: markdown
     attributes:

@@ -1,7 +1,7 @@
 name: Site broken by MUGA
 description: Report a site that stopped working after MUGA cleaned a URL.
 title: "[Broken] "
-labels: ["broken-site", "bug"]
+labels: ["broken-site", "bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
