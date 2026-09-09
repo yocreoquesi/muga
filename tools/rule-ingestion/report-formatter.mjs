@@ -12,8 +12,8 @@
  *   2. Quarantine    — total count + gate breakdown + top-N params ("+N more")
  *   3. Promote skips — param + reason list ("+N more" when over topN)
  *   4. Auto-merge    — autoMergeCount summary line
- *   5. Scoped facts  — scopedAutoMerge candidates awaiting a MANUAL landing
- *                     (#1239: this summary is their only channel to a human)
+ *   5. Scoped facts  — the (param, host) facts this run landed in the store
+ *                     (#1239 surfaced them; #1229 made the landing automatic)
  *
  * Size bound: topN cap (default 20) keeps output well under GitHub's ~1 MB
  * step-summary limit even with thousands of quarantine entries.
@@ -182,19 +182,24 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
   lines.push(`**Params promoted this run**: ${reportObj.autoMergeCount ?? 0}`);
   lines.push("");
 
-  // -- Section 5: Scoped facts awaiting a manual landing (#1239) -------------
-  // `scopedAutoMerge[]` is the ONLY output of a run that a human is supposed
-  // to review before it can reach the store (ADR-0008 Path A), and this
-  // summary is the ONLY channel that reaches one: the report file it comes
-  // from lives under a gitignored directory and is never uploaded, so it dies
-  // with the runner. Rendering a bare count would leave the facts visible but
-  // unlandable -- land-scoped.mjs takes a report FILE -- so the candidates are
-  // also emitted verbatim, in exactly the shape that tool reads, for a
-  // maintainer to copy back out of the PR body.
+  // -- Section 5: the scoped facts this run landed (#1239, #1229) ------------
+  // `scopedAutoMerge[]` used to be the one output a person had to act on: the
+  // scoped path was deliberately unwired, so these facts reached the store only
+  // when a maintainer ran land-scoped.mjs by hand. #1229 wired it, and the
+  // workflow now runs land-scoped.mjs before it commits, so by the time anyone
+  // reads this summary the facts are already in the diff below it.
+  //
+  // The section stays, and so does the verbatim block, for two reasons that did
+  // NOT go away: the report file is gitignored and never uploaded, so it dies
+  // with the runner, and this summary is still the only durable record of what
+  // an unattended run decided. It is an audit trail now rather than a to-do
+  // list, which is exactly why the wording had to stop saying ACTION REQUIRED
+  // (#1263) -- an instruction nobody needs to follow trains a reader to skip
+  // the section that says what changed.
   const scopedAutoMerge = Array.isArray(reportObj.scopedAutoMerge) ? reportObj.scopedAutoMerge : [];
   const scopedCount = reportObj.scopedAutoMergeCount ?? scopedAutoMerge.length;
 
-  lines.push("### Scoped Facts Awaiting Manual Landing");
+  lines.push("### Host-Scoped Facts Landed This Run");
   lines.push("");
   lines.push(`**Gate-admitted (param, host) facts this run**: ${scopedCount}`);
   lines.push("");
@@ -202,13 +207,16 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
   if (scopedAutoMerge.length === 0) {
     // Said out loud on purpose: an empty run and a section that stopped
     // rendering must never look the same from the outside (#1239).
-    lines.push("_No scoped facts cleared the gates this run - nothing to land._");
+    lines.push("_No scoped facts cleared the gates this run - nothing landed._");
   } else {
     lines.push(
-      "> **ACTION REQUIRED**: these facts are **not included in this PR**. " +
-      "A host-scoped fact never lands automatically (ADR-0008 Path A) - it reaches " +
-      "the store only when a maintainer reviews it and runs " +
-      "`node tools/rule-ingestion/land-scoped.mjs --report <file>`."
+      "> These facts are **already in this PR**. `land-scoped.mjs` ran earlier in " +
+      "this same workflow and wrote them into `tools/rules-source/rules.json`, " +
+      "which is committed below (#1229). No one has to land them, and no one " +
+      "reviewed them: each was admitted by the gates on its own corroboration, " +
+      "at SCOPED_MIN_SIGNALS, because a host-scoped fact's blast radius is one " +
+      "site (ADR-0008). Re-landing is a byte-level no-op, so the block below " +
+      "reproduces this run rather than instructing a landing."
     );
     lines.push("");
 
@@ -225,16 +233,18 @@ export function formatQuarantineReport(reportObj, { promoteSkipped = [], topN = 
 
     if (scopedRemaining > 0) {
       lines.push(
-        `> **PARTIAL**: ${scopedRemaining} further candidate(s) were admitted and are ` +
-        "NOT in the block below. Re-run ingestion locally to obtain the complete " +
-        "`quarantine-report.json` before landing."
+        `> **TRUNCATED**: ${scopedRemaining} further fact(s) landed and are NOT ` +
+        "listed below - this section caps its output so the summary stays under " +
+        "GitHub's size limit. The complete set is the diff to " +
+        "`tools/rules-source/rules.json` in this PR, which is authoritative."
       );
       lines.push("");
     }
 
-    // Copy-pasteable: save the block as report.json, then
-    //   node tools/rule-ingestion/land-scoped.mjs --report report.json
-    lines.push("<details><summary>Landing input (copy to a file, pass to <code>--report</code>)</summary>");
+    // Kept copy-pasteable: `land-scoped.mjs --report <file>` re-lands this exact
+    // block as a byte-level no-op, which makes it a reproducible record of the
+    // run rather than a pending action.
+    lines.push("<details><summary>What landed (replayable via <code>land-scoped.mjs --report</code>)</summary>");
     lines.push("");
     lines.push("```json");
     lines.push(JSON.stringify({ scopedAutoMerge: scopedToShow }, null, 2));

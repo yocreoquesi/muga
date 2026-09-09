@@ -428,17 +428,18 @@ describe("F9 — output length well under 1 MB with large fixture", () => {
   });
 });
 
-// ── #1239: scoped facts awaiting manual landing ──────────────────────────────
+// ── #1239 / #1229: the host-scoped facts a run landed ────────────────────────
 //
 // `scopedAutoMerge[]` is computed by orchestrate-cli.mjs and written to
-// quarantine-report.json — a gitignored, never-uploaded file. The weekly PR
-// body (built from this formatter's summary.md) is the ONLY channel that
-// reaches a human, so if this section stops rendering, gate-admitted
-// (param, host) facts become invisible AND unlandable: the run's report is
-// destroyed with the runner, and land-scoped.mjs has no other input.
+// quarantine-report.json — a gitignored, never-uploaded file that dies with the
+// runner. The weekly PR body (built from this formatter's summary.md) is the
+// only durable record of what an unattended run decided, so if this section
+// stops rendering, gate-admitted (param, host) facts land on `main` with no
+// trace of how they got there.
 //
 // These tests exist so that silence is distinguishable from "nothing to
-// report" — the exact distinction whose absence caused #1239.
+// report" — the exact distinction whose absence caused #1239 — and, since
+// #1263, so that the section cannot go back to claiming a person lands these.
 
 /** A gate-admitted scoped candidate, in the shape orchestrate.mjs produces. */
 function makeScopedCandidate(param, scope, signals = ["adguard-tp"]) {
@@ -487,19 +488,36 @@ describe("#1239 — scopedAutoMerge is surfaced in the rendered report", () => {
     );
   });
 
-  test("the section says explicitly that these facts are NOT in the PR and need a manual landing", async () => {
+  test("the section says these facts are already in the PR, and that nobody reviewed them", async () => {
     const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
 
+    // This assertion is the inverse of the one it replaces (#1263). The old
+    // one pinned "**not included in this PR**", which stopped being true when
+    // #1229 wired land-scoped.mjs into the workflow ahead of the commit step.
+    // The section had been printing ACTION REQUIRED at a reader who had no
+    // action to take, on a PR that squash-auto-merges itself.
     const report = makeReport({
       scopedAutoMerge: [makeScopedCandidate("si", "youtube.com")],
       scopedAutoMergeCount: 1,
     });
     const md = formatQuarantineReport(report);
 
-    assert.ok(/land-scoped\.mjs/.test(md), "output must name the tool that lands these facts");
+    assert.ok(/land-scoped\.mjs/.test(md), "output must name the tool that landed these facts");
     assert.ok(
-      /not (included |part of )?in this (PR|pull request)/i.test(md),
-      "output must state the facts are not in this PR"
+      /already in this (PR|pull request)/i.test(md),
+      "output must state the facts are already in this PR"
+    );
+    assert.ok(
+      !/not (included |part of )?in this (PR|pull request)/i.test(md),
+      "the retired claim must not survive anywhere in the section"
+    );
+    assert.ok(
+      !/ACTION REQUIRED/i.test(md),
+      "there is no action to take: an instruction nobody follows trains a reader to skip the section"
+    );
+    assert.ok(
+      /no one reviewed them|nobody reviewed them|no one has to land them/i.test(md),
+      "the summary must be honest that the landing is unreviewed, not merely automatic"
     );
   });
 
@@ -510,7 +528,7 @@ describe("#1239 — scopedAutoMerge is surfaced in the rendered report", () => {
     const md = formatQuarantineReport(report);
 
     assert.ok(/scoped/i.test(md), "the section must render even when empty");
-    assert.ok(/nothing to land/i.test(md), "an empty run must say so explicitly");
+    assert.ok(/nothing landed/i.test(md), "an empty run must say so explicitly");
     assert.ok(!/```json/.test(md), "no fenced landing block when there is nothing to land");
   });
 
@@ -522,10 +540,10 @@ describe("#1239 — scopedAutoMerge is surfaced in the rendered report", () => {
     assert.doesNotThrow(() => {
       md = formatQuarantineReport(report);
     }, "must tolerate a report shape that predates Slice 2");
-    assert.ok(/nothing to land/i.test(md));
+    assert.ok(/nothing landed/i.test(md));
   });
 
-  test("truncation is loud: over topN, the block is marked partial and names how many are missing", async () => {
+  test("truncation is loud: over topN, the block is marked truncated and names how many are missing", async () => {
     const { formatQuarantineReport } = await import("../../tools/rule-ingestion/report-formatter.mjs");
 
     const candidates = Array.from({ length: 25 }, (_, i) =>
@@ -539,8 +557,12 @@ describe("#1239 — scopedAutoMerge is surfaced in the rendered report", () => {
     const parsed = JSON.parse(fenced[1]);
     assert.strictEqual(parsed.scopedAutoMerge.length, 20, "block is capped at topN");
     assert.ok(
-      /PARTIAL/.test(md) && /5/.test(md),
-      "a capped block must be marked PARTIAL and name the 5 omitted candidates"
+      /TRUNCATED/.test(md) && /5/.test(md),
+      "a capped block must be marked TRUNCATED and name the 5 omitted facts"
+    );
+    assert.ok(
+      /rules\.json/.test(md),
+      "the cap is a display limit, so the summary must point at the authoritative diff"
     );
   });
 });

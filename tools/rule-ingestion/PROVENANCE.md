@@ -54,27 +54,41 @@ The pipeline enforces this structurally:
    canary #777, functional-bias #778) independently justify each candidate
    against MUGA's own data before it can land: a global candidate in
    `TRACKING_PARAMS`, a host-scoped one in the normalized store's
-   `scopedFacts[]` (`tools/rules-store.mjs`) via the manual, reviewed
-   `land-scoped.mjs` — never the unattended weekly path.
+   `scopedFacts[]` (`tools/rules-store.mjs`) via `land-scoped.mjs`. Both run
+   unattended in the weekly workflow. What justifies a candidate is the gates,
+   not a person.
 
 A gate-admitted `(param, host)` pair is recorded in the ingestion run's
 `quarantine-report.json` (`scopedAutoMerge`). That report is unsigned and
 gitignored (`.gitignore:54`) and the weekly workflow uploads no artifact, so the
 file itself dies with the runner. `report-formatter.mjs` renders the field into
 the run's summary (#1239) — the same markdown that becomes the weekly PR body —
-under **Scoped Facts Awaiting Manual Landing**. That section states the count,
+under **Host-Scoped Facts Landed This Run**. That section states the count,
 lists each `(param, host)` with its corroborating signals, and carries the
 candidates verbatim in a fenced JSON block shaped exactly like `land-scoped.mjs`'s
-`--report` input, so the pair survives the runner and stays actionable from the
-PR body alone. An empty run says so in words rather than rendering nothing: a
-silent section and a quiet week must not look alike.
+`--report` input, so the run's decision survives the runner and stays auditable
+from the PR body alone. An empty run says so in words rather than rendering
+nothing: a silent section and a quiet week must not look alike.
 
-Landing a pair into the committed store is a separate, manual step run through
-`land-scoped.mjs`, and deliberately so:
-`.github/workflows/auto-ingest-rules.yml` squash-auto-merges its own PR with no
-one in the loop. The weekly run surfaces the candidates; it never lands them.
-A person copies the block out of the PR body, reviews it, and runs the CLI —
-which is the whole point of keeping the scoped path off the unattended one.
+**Landing is automatic, and nobody reviews it.** This used to be a manual step,
+deliberately, on the reasoning that `.github/workflows/auto-ingest-rules.yml`
+squash-auto-merges its own PR with no one in the loop. #1229 removed the
+requirement and the workflow now runs `land-scoped.mjs` unconditionally
+(`auto-ingest-rules.yml`, step "Land host-scoped facts"), before it commits
+`tools/rules-source/rules.json` and before the `--squash --auto` merge. A
+host-scoped fact therefore reaches `main` in the same unattended run that
+proposed it.
+
+What replaced the person is not nothing, and it is worth being exact about,
+because "a maintainer reviews these" was load-bearing in the old reading of this
+document. The corroboration gate became scope-aware: a global claim still needs
+two independent sources, an anchored one is admitted on one, for the reason
+ADR-0008 gives — its blast radius is a single site. On top of that the affiliate
+guard applies absolutely, at ingestion, at promotion (#1263), at signing and at
+the runtime; so do the remote denylist, the functional-bias gate and each host's
+own `preserveParams`. What a person was adding was judgement about hosts nobody
+has preserve knowledge for, which is the residual risk #1229 states plainly and
+which the broken-site report closes after the fact, not review before it.
 
 A param that survives the gates is justified by MUGA's verification, not by the
 upstream list's say-so. That is the clean room.
