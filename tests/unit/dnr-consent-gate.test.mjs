@@ -474,15 +474,43 @@ describe("service-worker.js source guards — #810 fix present", () => {
 
 describe("service-worker.js source guard — #921 remote-params rule (1001) gated", () => {
   // Extract applyDnrState + the reconcile helper defined immediately after it.
-  // Window bumped 4500 -> 6000 for #allowlist-full-inert: the gate-open and
-  // gate-closed branches both grew a syncAllowlistDNR() call plus comments.
+  // Window bumped 4500 -> 6000 for #allowlist-full-inert, then 6000 -> 9000 for
+  // #1256, which added a syncCategoryFilteredDNR() call to both branches. The
+  // function body ended at ~6200 chars, so the old window cut the gate-closed
+  // assertions off and this guard failed for a reason unrelated to what it
+  // guards. The generous headroom is deliberate: a window that has to be
+  // re-tuned every time a comment is added is a guard that gets deleted.
   const applyRegion =
-    swSource.match(/async function applyDnrState\([\s\S]{0,6000}/)?.[0] ?? "";
+    swSource.match(/async function applyDnrState\([\s\S]{0,9000}/)?.[0] ?? "";
   const gateClosed = applyRegion.slice(applyRegion.indexOf("Gate closed:"));
 
   test("applyDnrState region was located", () => {
     assert.ok(applyRegion.length > 0, "applyDnrState must exist in the service worker");
     assert.ok(applyRegion.includes("Gate closed:"), "applyDnrState must have a gate-closed branch");
+  });
+
+  test("the extraction window still reaches the end of applyDnrState", () => {
+    // Without this, growing the function past the window makes the assertions
+    // below fail with "gate-closed branch must clear rule 1001" — which reads
+    // as a real consent-gate regression and is not one. Fail here instead, and
+    // say what to do.
+    assert.ok(
+      /reconcileRemoteDnrRule\(prefs\)[\s\S]*Gate closed:/.test(applyRegion),
+      "the fixed-size extraction window no longer spans applyDnrState. Raise the {0,N} " +
+        "bound above; the assertions below are testing a truncated region and their " +
+        "failures would be misleading."
+    );
+  });
+
+  test("gate-closed branch clears the category-filter mirrors (#1256)", () => {
+    // Same class as #921 one line up: the mirrors are strip rules, so leaving
+    // them registered would keep cleaning navigations for a disabled or
+    // non-consented extension. They stand in for the static ruleset, and the
+    // gate disables that, so the gate has to reach these too.
+    assert.ok(
+      gateClosed.includes("syncCategoryFilteredDNR"),
+      "gate-closed branch must clear the dynamic category-filtered mirrors"
+    );
   });
 
   test("gate-closed branch removes rule 1001 (DNR_REMOTE_PARAMS_RULE_ID) via removeRuleIds", () => {
