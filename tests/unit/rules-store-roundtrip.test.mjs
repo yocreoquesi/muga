@@ -48,6 +48,7 @@ import {
   makeEntry,
   parseStore,
   serializeStore,
+  withGlobalParams,
   withScopedFacts,
   emitScoped,
 } from "../../tools/rules-store.mjs";
@@ -494,7 +495,91 @@ test("the published subset is a PREFIX of the full projection", () => {
   if ((store.scopedFacts ?? []).length === 0) return;
 
   const full = emitScoped(store);
+  const globalParams = new Set(emitParams(store));
+  const publishable = full.filter((f) => !globalParams.has(f.param));
   const published = JSON.parse(renderArtifacts(store).params).scoped ?? [];
 
-  assert.deepStrictEqual(published, full.slice(0, published.length));
+  assert.deepStrictEqual(published, publishable.slice(0, published.length));
+});
+
+// ── Shadowed scoped facts must not spend the budget (#1278) ──────────────────
+//
+// The payload's global rule (id 1001) carries no requestDomains, so it strips
+// its params on every host — including the ones a scoped fact names. A scoped
+// entry for a param that is also global changes NOTHING, and the budget it
+// spends is cut from facts that would change something.
+//
+// The filter is a PROJECTION, never a deletion: params leave the global list on
+// their own (the #1221 preserveParams sweep, #1263's affiliate sweep), and the
+// fact has to start publishing again when one does. The last test below is what
+// makes the store-side retention load-bearing rather than decorative.
+
+/** A store with one global strip param and one host-scoped fact for the same. */
+const shadowedStore = (globalParams, facts) =>
+  withScopedFacts(
+    {
+      schemaVersion: 1,
+      entries: globalParams.map((param) =>
+        makeEntry({ scope: GLOBAL_SCOPE, param, action: ACTIONS.STRIP }),
+      ),
+      projection: { scopes: {} },
+    },
+    facts.map((f) => ({ ...f, action: ACTIONS.STRIP })),
+  );
+
+const publishedScoped = (store) => JSON.parse(renderArtifacts(store).params).scoped ?? [];
+
+test("a scoped fact whose param is in the published global list is NOT published", () => {
+  const store = shadowedStore(
+    ["shadowed_p", "utm_source"],
+    [
+      { scope: "example.com", param: "shadowed_p" },
+      { scope: "example.org", param: "host_only_p" },
+    ],
+  );
+
+  const rendered = JSON.parse(renderArtifacts(store).params);
+
+  assert.ok(rendered.params.includes("shadowed_p"), "the param stays in the global list");
+  assert.deepStrictEqual(
+    rendered.scoped,
+    [{ param: "host_only_p", hosts: ["example.org"] }],
+    "the globally-stripped param must not also ride in the scoped section",
+  );
+});
+
+test("the committed store publishes no scoped fact its global list already strips", () => {
+  const store = loadStore();
+  if ((store.scopedFacts ?? []).length === 0) return;
+
+  const globalParams = new Set(emitParams(store));
+  const shadowed = publishedScoped(store).filter((f) => globalParams.has(f.param));
+
+  assert.deepStrictEqual(shadowed, [], "inert entries are spending a bounded publish budget");
+});
+
+test("the store still HOLDS the shadowed fact — the filter is a projection", () => {
+  const store = shadowedStore(["shadowed_p"], [{ scope: "example.com", param: "shadowed_p" }]);
+
+  // Absent from the payload...
+  assert.equal(publishedScoped(store).length, 0);
+  // ...and present in what gets committed, which is the only copy there is.
+  assert.deepStrictEqual(emitScoped(store), [{ param: "shadowed_p", hosts: ["example.com"] }]);
+  assert.ok(serializeStore(store).includes("shadowed_p"));
+});
+
+test("a fact starts publishing again once its param leaves the global list", () => {
+  const shadowed = shadowedStore(
+    ["shadowed_p", "utm_source"],
+    [{ scope: "example.com", param: "shadowed_p" }],
+  );
+  assert.equal(publishedScoped(shadowed).length, 0);
+
+  // What the #1221 preserveParams sweep and #1263's affiliate sweep do: remove
+  // a param from the GLOBAL list, leaving the host-anchored fact behind.
+  const swept = withGlobalParams(shadowed, ["utm_source"]);
+
+  assert.deepStrictEqual(publishedScoped(swept), [
+    { param: "shadowed_p", hosts: ["example.com"] },
+  ]);
 });
