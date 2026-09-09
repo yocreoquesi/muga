@@ -28,7 +28,7 @@
  * creator referral is honored by DEFAULT via pass-through — the request
  * always reaches the network's own redirect so the 30x can populate the
  * merchant's first-party cookie — regardless of `honorCreatorMode` or the
- * allowlist. The destination is still denoised afterward by the normal
+ * allowlist. The destination is still cleaned afterward by the normal
  * DNR + content-script cleaning pipeline once it lands on the merchant.
  * This module and its `honorCreatorMode` preference never apply to those
  * networks; `shouldHonor()` will always return `{ honor: false }` for a

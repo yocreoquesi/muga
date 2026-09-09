@@ -293,7 +293,30 @@ Whether you're adding a key to `en.mjs`/`es.mjs` or improving an existing commun
 
 - `es` locale = peninsular/Castilian Spanish (e.g. "enlace", "ajustes"; avoid Latino forms).
 - No em-dashes in user-facing copy.
-- Every string keeps MUGA's URL-cleaner framing explicit (MUGA cleans URLs), even where the surrounding narrative talks about "denoise" or "noise removal".
+- Every string keeps MUGA's URL-cleaner framing explicit (MUGA cleans URLs). Draw the words themselves from the canonical vocabulary below.
+
+#### Canonical vocabulary
+
+MUGA is a URL cleaner. Privacy is a consequence of that, never the pitch. Nothing about MUGA's behavior is promised absolutely: creator-referral preservation is best-effort, always, and saying so plainly is part of the product rather than a caveat bolted onto it. The table below is the vocabulary every new string should draw from, and where each term belongs.
+
+| Term | Meaning | Where it belongs |
+|---|---|---|
+| URL cleaner | The category noun. What MUGA is. | Titles, taglines, store name, H1 |
+| Clean | The verb for the outcome a user sees | User-facing action copy |
+| Strip, remove | The verb for the mechanical operation on one parameter | Feature bullets, technical docs |
+| Tracking parameter | The precise noun for what is removed | Anywhere accuracy matters |
+| Noise | Informal synonym, supporting sentences only, never a self-description | Body copy |
+| Denoise | Retired. Not a self-description anywhere. | Nowhere |
+| Debloat | Currently unused. Adopt only if it earns a keyword slot. | Nowhere yet |
+
+#### Anti-goals
+
+Claims that must not come back, and why:
+
+- "100% local" / "zero egress" as an eternal promise: MUGA makes two outbound requests, the signed rules fetch and short-link resolution.
+- "Credit-safe by default": rejected in review, "safe" promises a guarantee exactly where only best-effort exists.
+- Privacy as the headline pitch: MUGA is a URL cleaner, privacy is a consequence.
+- Absolute counts that go stale in copy.
 
 ### Community locales: native-speaker review welcome
 
