@@ -38,8 +38,14 @@ export { GENERIC_SHORTENERS };
 /** Default fetch timeout in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 5000;
 
-/** Maximum destination URL length accepted. Mirrors the cleaner.js 2000-char cap. */
-const MAX_DESTINATION_LENGTH = 2000;
+/**
+ * Maximum destination URL length accepted. Mirrors the cleaner.js 2000-char cap.
+ *
+ * Exported since #1264: the service worker cleans the resolved destination
+ * before handing it back, which can rewrite it, so it has to re-assert this
+ * same bound rather than hard-coding a second copy of the number.
+ */
+export const MAX_DESTINATION_LENGTH = 2000;
 
 // ── Private-host detection ────────────────────────────────────────────────────
 // Self-contained: does not depend on any deleted proxy module.
