@@ -4,7 +4,8 @@
  */
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
-import { processUrl, isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
+import { isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
+import { loadCleaningContext, cleanForPreview } from "../lib/cleaning-context.js";
 import { getPrefs, sessionStorage, getDomainStats, getRemoteParams } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
@@ -696,11 +697,12 @@ async function showUrlPreview(prefs, lang) {
     return;
   }
 
-  let domainRules = [];
-  try {
-    const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
-    if (resp.ok) domainRules = await resp.json();
-  } catch (_) { /* non-critical: preview works without domain rules */ }
+  // #1255: the whole context, not just the domain rules. This used to fetch
+  // domain-rules.json alone and hand processUrl a six-argument list, so the
+  // preview was computed without the path rules and could show a URL the
+  // extension would not produce -- on the surface whose only job is to show
+  // what it will produce.
+  const cleaningContext = await loadCleaningContext();
 
   // B14 (#452): fetch the active tab's `document.referrer` from the content
   // script so the cleaner can decide whether to honor the creator chain.
@@ -715,8 +717,7 @@ async function showUrlPreview(prefs, lang) {
     } catch { /* content script not loaded — ignore */ }
   }
 
-  // Path-strip and path-affiliate args intentionally omitted — popup is a preview surface. Defaulted [] is a no-op (accepted regression per declarative-path-rules design §7).
-  const result = processUrl(url, { ...prefs, notifyForeignAffiliate: false }, domainRules, undefined, undefined, referrer);
+  const result = cleanForPreview(url, prefs, cleaningContext, { referrer });
 
   // B14 (#452): honored-creator badge. Surfaced when the wrapper URL was
   // passed through unmodified to honor a creator referral chain. The

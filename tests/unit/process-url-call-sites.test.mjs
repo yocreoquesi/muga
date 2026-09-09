@@ -33,17 +33,17 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const SRC = join(ROOT, "src");
 
 /**
- * Call sites still assembling their own argument list, with the surface each
- * one drives. Slice (b) of #1255 moves these onto a shared builder; until then
- * they are tracked rather than silently tolerated.
+ * Call sites still assembling their own argument list.
+ *
+ * EMPTY as of slice (b): popup and the Settings URL tester moved onto
+ * lib/cleaning-context.js, and the content-script world onto
+ * window.__mugaCleanWithContext in slice (a). Every remaining call goes
+ * through one of those two.
  *
  * This list may only ever SHRINK. A new entry means a new hand-assembled call,
  * which is the thing #1255 exists to remove.
  */
-const KNOWN_INCOMPLETE = new Map([
-  ["src/popup/popup.js", "popup preview: omits pathStripRules and pathAffiliateRules"],
-  ["src/options/options.js", "Settings URL tester: passes 3 of 8 arguments"],
-]);
+const KNOWN_INCOMPLETE = new Map();
 
 /** Generated bundles are build output, not a call site anyone maintains. */
 const GENERATED = new Set(["src/content/cleaner-bundle.js"]);
@@ -159,9 +159,17 @@ describe("processUrl call sites (#1255)", () => {
       if (KNOWN_INCOMPLETE.has(file) || file === DEFINITION_FILE) continue;
       const src = readFileSync(join(ROOT, file), "utf8");
       for (const call of callsIn(src)) {
-        // One argument means prefs is undefined, and processUrl reads
-        // prefs.canonicalExtractorEnabled: it throws.
-        if (splitArgs(call).length < 2) {
+        // processUrl's last two parameters are pathStripRules and
+        // pathAffiliateRules, and both default to []. A call that stops early
+        // is not a syntax error, it is a caller silently opting out of the
+        // path rules -- which is exactly what the popup preview did at six
+        // arguments and the Settings URL tester at three. Requiring the full
+        // eight is what makes those two visible instead of valid; an earlier
+        // draft of this test only required two, and passed on both of them.
+        //
+        // One argument is the extreme case: prefs is undefined, processUrl
+        // reads prefs.canonicalExtractorEnabled, and it throws.
+        if (splitArgs(call).length < 8) {
           offenders.push(`${file}: ${call.replace(/\s+/g, " ").slice(0, 100)}`);
         }
       }
@@ -169,9 +177,11 @@ describe("processUrl call sites (#1255)", () => {
     assert.deepStrictEqual(
       offenders,
       [],
-      `A processUrl call passes no prefs:\n  ${offenders.join("\n  ")}\n` +
-        "processUrl reads prefs.canonicalExtractorEnabled, so this THROWS. If the caller " +
-        "catches and falls back, the fallback becomes the only path that ever runs."
+      `A processUrl call stops short of the full context:\n  ${offenders.join("\n  ")}\n` +
+        "The trailing arguments are the path rules, so stopping early opts out of them and " +
+        "the result will not match what the extension produces. Clean through " +
+        "lib/cleaning-context.js (extension pages) or window.__mugaCleanWithContext " +
+        "(content scripts) rather than assembling another argument list."
     );
   });
 
