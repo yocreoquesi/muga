@@ -935,10 +935,23 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
   // it (#984). This runs for every successful merge, including the
   // empty-accepted remove-only path above — that path legitimately produces
   // a "removed" diff (all previously accepted params dropped).
-  // Read-before-overwrite is TOCTOU-safe here: the fetch pipeline serializes
-  // mergeIntoCache calls. Only the single weekly alarm drives fetches and the
-  // _remoteFetchInFlight guard drops any overlapping run, so there is never a
-  // concurrent merge racing this get/set pair.
+  // Read-before-overwrite is TOCTOU-safe here, but #1266: the comment that used
+  // to sit here explained WHY using a mechanism that does not exist. It read
+  // "Only the single weekly alarm drives fetches and the _remoteFetchInFlight
+  // guard drops any overlapping run". There is no alarm. `chrome.alarms` appears
+  // nowhere in src/; the service worker deliberately avoids it and throttles on
+  // a stored timestamp instead (see the comment at its maybeFetchRemoteRules
+  // wake path, which says so explicitly). A maintainer trusting the old wording
+  // would have reasoned about this file's concurrency from a removed mechanism.
+  //
+  // What actually holds it together is narrower: _remoteFetchInFlight is the
+  // only serializer, and it is per-worker-lifetime. Every entry point funnels
+  // through runRemoteRulesFetch, including ENABLE_REMOTE_RULES and
+  // FORCE_FETCH_REMOTE_RULES, and each of those simply NO-OPS when a fetch is
+  // already in flight rather than queueing behind it. So within one worker
+  // lifetime no concurrent merge can race this get/set pair, which is the
+  // guarantee this code needs. Across a worker restart there is no lock at all,
+  // and nothing here would notice.
   const prevCache = await storage.get({ remoteParams: [], remoteRulesMeta: null, remoteRulesVersionFloor: 0 });
   const prevParams = Array.isArray(prevCache.remoteParams) ? prevCache.remoteParams : [];
   const diff = diffRemoteParams(prevParams, accepted);
@@ -1141,6 +1154,26 @@ export function buildScopedDnrRules(facts) {
  *
  * Pure and defensive: no storage, no clock, never throws, and malformed facts
  * are skipped individually rather than costing the whole answer.
+ *
+ * ── #1266: this answers "what SHOULD be stripped here", not "what IS" ───────
+ *
+ * The two can disagree, and it is worth knowing which one this is.
+ * `applyScopedDnrRules` catches its own failure and is deliberately non-fatal,
+ * so one bad scoped fact cannot take down the whole channel. That isolation is
+ * intentional and documented at that call. But `mergeIntoCache` persists
+ * `meta.scopedFacts` either way, and this function reads those persisted facts.
+ *
+ * So if the DNR registration silently failed, this still reports the param as
+ * scoped to the host, and a user reading that report is told a param is being
+ * stripped when no rule exists to strip it. The isolation trade-off was
+ * recorded; this reporting consequence of it was not, which is the whole of
+ * what is being fixed here.
+ *
+ * Deliberately NOT fixed by gating the report on registration success: that
+ * would mean either failing the merge on a bad fact, which throws away the
+ * isolation, or threading a registration-outcome signal through storage, which
+ * is a real design change rather than a documentation gap. Whichever way that
+ * goes, it should be a decision taken on its own terms.
  *
  * @param {string} host Hostname being reported.
  * @param {Array<{param: string, hosts: string[]}>|null|undefined} scopedFacts
