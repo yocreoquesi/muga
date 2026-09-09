@@ -15,10 +15,6 @@ import {
   DNR_REMOTE_PARAMS_RULE_ID,
   DNR_ALLOWLIST_RULE_ID_BASE,
   DNR_ALLOWLIST_MAX_RULES,
-  DNR_SUPPRESS_REFERER_RULE_ID,
-  DNR_BLOCK_BEACONS_RULE_ID,
-  DNR_BLOCKLIST_REFERER_RULE_ID_BASE,
-  DNR_BLOCKLIST_BEACON_RULE_ID_BASE,
   DNR_BLOCKLIST_MAX_RULES,
   ALLOWLIST_RESOURCE_TYPES,
   DNR_CATEGORY_FILTER_RULE_ID_BASE,
@@ -44,6 +40,12 @@ import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { resolveShortener, isPrivateHost, MAX_DESTINATION_LENGTH } from "../lib/native-shortener-resolver.js";
 import { cleanResolvedDestination } from "./clean-resolved-destination.js";
+import {
+  buildSuppressRefererRules,
+  buildBlockBeaconsRules,
+  buildBlocklistRefererRules,
+  buildBlocklistBeaconsRules,
+} from "./dnr-privacy-rules.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
@@ -983,25 +985,7 @@ async function syncCategoryFilteredDNR(prefs) {
 async function syncSuppressRefererDNR(prefs) {
   if (!hasDNR) return;
   try {
-    if (!prefs.suppressReferer) {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
-        addRules: [],
-      });
-      return;
-    }
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DNR_SUPPRESS_REFERER_RULE_ID],
-      addRules: [{
-        id: DNR_SUPPRESS_REFERER_RULE_ID,
-        priority: 1,
-        action: {
-          type: "modifyHeaders",
-          requestHeaders: [{ header: "referer", operation: "remove" }],
-        },
-        condition: { urlFilter: "*", resourceTypes: ALLOWLIST_RESOURCE_TYPES },
-      }],
-    });
+    await chrome.declarativeNetRequest.updateDynamicRules(buildSuppressRefererRules(prefs));
   } catch (err) {
     console.error("[MUGA] syncSuppressRefererDNR failed:", err);
   }
@@ -1019,41 +1003,11 @@ async function syncSuppressRefererDNR(prefs) {
 async function syncBlockBeaconsDNR(prefs) {
   if (!hasDNR) return;
   try {
-    if (!prefs.blockBeacons) {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
-        addRules: [],
-      });
-      return;
-    }
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DNR_BLOCK_BEACONS_RULE_ID],
-      addRules: [{
-        id: DNR_BLOCK_BEACONS_RULE_ID,
-        priority: 1,
-        action: { type: "block" },
-        condition: { resourceTypes: ["ping"] },
-      }],
-    });
+    await chrome.declarativeNetRequest.updateDynamicRules(buildBlockBeaconsRules(prefs));
   } catch (err) {
     console.error("[MUGA] syncBlockBeaconsDNR failed:", err);
   }
 }
-
-// Full range of blocklist Referer-force rule IDs ever handed out (referer-
-// beacon-privacy, PR 2), mirroring ALLOWLIST_RULE_ID_RANGE above: a resync
-// always clears every previously-added rule so no stale force rule survives
-// a domain being removed from the blacklist.
-const BLOCKLIST_REFERER_RULE_ID_RANGE = Array.from(
-  { length: DNR_BLOCKLIST_MAX_RULES },
-  (_, i) => DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
-);
-
-// Same as above, for the beacon-block force rule range.
-const BLOCKLIST_BEACON_RULE_ID_RANGE = Array.from(
-  { length: DNR_BLOCKLIST_MAX_RULES },
-  (_, i) => DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
-);
 
 /**
  * Syncs one dynamic DNR Referer force-suppress rule per bare-domain
@@ -1076,38 +1030,15 @@ async function syncBlocklistRefererDNR(prefs) {
   if (!hasDNR) return;
   try {
     const domains = getFullyBlacklistedDomains(prefs);
-
-    if (domains.length === 0) {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
-        addRules: [],
-      });
-      return;
-    }
-
-    let syncedDomains = domains;
-    if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
-      const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
-      syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
+    const { dropped, ...rules } = buildBlocklistRefererRules(domains);
+    if (dropped.length > 0) {
       console.warn(
         `[MUGA] syncBlocklistRefererDNR: ${domains.length} blacklisted domains exceed the ` +
         `${DNR_BLOCKLIST_MAX_RULES}-rule cap; dropped from Referer force-suppress rules:`,
         dropped,
       );
     }
-
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: BLOCKLIST_REFERER_RULE_ID_RANGE,
-      addRules: syncedDomains.map((domain, i) => ({
-        id: DNR_BLOCKLIST_REFERER_RULE_ID_BASE + i,
-        priority: 2,
-        action: {
-          type: "modifyHeaders",
-          requestHeaders: [{ header: "referer", operation: "remove" }],
-        },
-        condition: { requestDomains: [domain], resourceTypes: ALLOWLIST_RESOURCE_TYPES },
-      })),
-    });
+    await chrome.declarativeNetRequest.updateDynamicRules(rules);
   } catch (err) {
     console.error("[MUGA] syncBlocklistRefererDNR failed:", err);
   }
@@ -1127,35 +1058,15 @@ async function syncBlocklistBeaconsDNR(prefs) {
   if (!hasDNR) return;
   try {
     const domains = getFullyBlacklistedDomains(prefs);
-
-    if (domains.length === 0) {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
-        addRules: [],
-      });
-      return;
-    }
-
-    let syncedDomains = domains;
-    if (domains.length > DNR_BLOCKLIST_MAX_RULES) {
-      const dropped = domains.slice(DNR_BLOCKLIST_MAX_RULES);
-      syncedDomains = domains.slice(0, DNR_BLOCKLIST_MAX_RULES);
+    const { dropped, ...rules } = buildBlocklistBeaconsRules(domains);
+    if (dropped.length > 0) {
       console.warn(
         `[MUGA] syncBlocklistBeaconsDNR: ${domains.length} blacklisted domains exceed the ` +
         `${DNR_BLOCKLIST_MAX_RULES}-rule cap; dropped from beacon-block force rules:`,
         dropped,
       );
     }
-
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: BLOCKLIST_BEACON_RULE_ID_RANGE,
-      addRules: syncedDomains.map((domain, i) => ({
-        id: DNR_BLOCKLIST_BEACON_RULE_ID_BASE + i,
-        priority: 2,
-        action: { type: "block" },
-        condition: { requestDomains: [domain], resourceTypes: ["ping"] },
-      })),
-    });
+    await chrome.declarativeNetRequest.updateDynamicRules(rules);
   } catch (err) {
     console.error("[MUGA] syncBlocklistBeaconsDNR failed:", err);
   }

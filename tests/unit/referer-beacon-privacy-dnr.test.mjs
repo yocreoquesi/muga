@@ -490,10 +490,22 @@ describe("service-worker.js source guards — the four new sync fns exist and ar
       "must derive blacklisted domains via getFullyBlacklistedDomains, not reimplement domain matching");
   });
 
-  test("global Referer rule uses the shared ALLOWLIST_RESOURCE_TYPES import (task 1.5) and id 2500", () => {
-    assert.ok(swFnBlock.includes("DNR_SUPPRESS_REFERER_RULE_ID"));
-    assert.ok(swFnBlock.includes("resourceTypes: ALLOWLIST_RESOURCE_TYPES"));
-  });
+  // #1268: the test that used to sit here scanned this function's SOURCE TEXT
+  // for "DNR_SUPPRESS_REFERER_RULE_ID" and "resourceTypes:
+  // ALLOWLIST_RESOURCE_TYPES". Both moved into
+  // src/background/dnr-privacy-rules.js when the rule building was extracted,
+  // so the scan started failing on a change that altered no behaviour at all —
+  // the exact zombie-code failure mode the drift guard
+  // (service-worker-patterns-drift-guard.test.mjs) exists to discourage.
+  //
+  // Deleted rather than re-pointed at the new file, because both properties
+  // are now asserted on the BUILT RULE instead of on the text that builds it,
+  // in tests/unit/dnr-privacy-rules.test.mjs:
+  //   - "pref on registers one modifyHeaders rule that strips referer everywhere"
+  //     pins id 2500 and asserts resourceTypes is ALLOWLIST_RESOURCE_TYPES itself,
+  //     not a string that mentions it;
+  //   - "neither global rule id falls inside a blocklist range" pins the id
+  //     against collision, which no source scan could have checked.
 
   test("ALLOWLIST_RESOURCE_TYPES is imported from ../lib/dnr-ids.js, not re-declared locally", () => {
     assert.ok(
