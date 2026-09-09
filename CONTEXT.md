@@ -313,7 +313,7 @@ src/
 │   └── locales/               Per-locale data: en.mjs es.mjs pt.mjs de.mjs …
 ├── rules/
 │   ├── tracking-params.json   DNR rules (generated from TRACKING_PARAMS)
-│   ├── domain-rules.json      Per-domain preserve/strip rules (188 entries)
+│   ├── domain-rules.json      Per-domain preserve/strip rules (189 entries)
 │   ├── path-strip-rules.json  Path-token strip rules (Amazon slug/ref, etc.)
 │   ├── path-affiliate-rules.json  Path-based affiliate injection rules
 │   ├── wrapper-dnr-rules.json DNR wrapper-unwrap rules (generated)

@@ -28,6 +28,7 @@ export const PRESERVED_PARAMS = [
   "as_sitesearch",
   "as_yhi",
   "as_ylo",
+  "at",
   "attr_values",
   "auth",
   "b",
@@ -629,6 +630,7 @@ export const PRESERVED_BY_HOST = {
   ],
   "apple.com": [
     "app",
+    "at",
     "id",
     "l",
     "ls",
@@ -1522,6 +1524,9 @@ export const PRESERVED_BY_HOST = {
   ],
   "usprobioticguide.com": [
     "utm_campaign"
+  ],
+  "vercel.com": [
+    "ref"
   ],
   "video-shoper.ru": [
     "utm_source"

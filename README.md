@@ -72,7 +72,7 @@ After:  https://www.ebay.es/itm/123456789
 | Platform tracking | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **188 domains** preserve functional query params (search queries, pagination, filters) while removing the tracking.
+Domain-specific rules for **189 domains** preserve functional query params (search queries, pagination, filters) while removing the tracking.
 
 ---
 
