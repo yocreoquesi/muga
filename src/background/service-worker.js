@@ -42,7 +42,8 @@ import {
 import { TRUSTED_PUBLIC_KEYS } from "../lib/remote-rules-keys.js";
 import { buildRemoteRulesStatus } from "../lib/remote-rules-status.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
-import { resolveShortener } from "../lib/native-shortener-resolver.js";
+import { resolveShortener, isPrivateHost, MAX_DESTINATION_LENGTH } from "../lib/native-shortener-resolver.js";
+import { cleanResolvedDestination } from "./clean-resolved-destination.js";
 import { isGenericShortener } from "../lib/opaque-networks.js";
 import { createToolbarEventBus } from "../lib/toolbar-event-bus.js";
 import { createTabPresenterState } from "../lib/tab-presenter-state.js";
@@ -2244,6 +2245,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Native resolution — sole path as of ADR-0004 phase 5.
         const result = await resolveShortener(rawUrl);
+
+        // #1264: the resolved destination went straight back to the caller,
+        // which navigated to it. On navigation the DNR layer (Chrome) and the
+        // blocking webRequest handler (Firefox) still strip tracking params,
+        // so the gap is narrower than "the destination is never cleaned" — but
+        // wrapper unwrapping and the path rules live ONLY in the JS pipeline.
+        // Only l.facebook.com / lm.facebook.com are mirrored into DNR by
+        // wrapper-dnr-builder.js; the rest of the WRAPPERS table has no
+        // network-layer equivalent. So a short link resolving onto a wrapped
+        // URL took that hop un-unwrapped, while the same URL clicked directly
+        // would have been unwrapped. The user asked MUGA where the link really
+        // goes and got one hop less than it can resolve.
+        //
+        // Applies to both sources on purpose: "click" navigates to this
+        // string, and "hover" (#1028) SHOWS it as the real destination, so an
+        // uncleaned value is wrong on the preview for the same reason.
+        //
+        // Side effects are all suppressed: this is a pre-navigation transform,
+        // not a navigation. The browser is about to load the returned URL and
+        // the ordinary navigation path owns the tally, so counting here would
+        // inflate "URLs cleaned" and prepend a duplicate history row for a
+        // single click — the same reason the copy-selection call site passes
+        // these flags (#966).
+        if (result?.ok === true && typeof result.destination === "string") {
+          result.destination = await cleanResolvedDestination(result.destination, {
+            clean: (url) => handleProcessUrl(url, {
+              skipNotify: true,
+              skipStats: true,
+              skipSideEffects: true,
+              source: "shortener",
+            }),
+            isPrivateHost,
+            maxLength: MAX_DESTINATION_LENGTH,
+            onError: (err) => console.warn("[MUGA] cleanResolvedDestination failed:", err),
+          });
+        }
 
         try { sendResponse(result); } catch { /* channel closed */ }
       } catch (err) {
