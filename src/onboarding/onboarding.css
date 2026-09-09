@@ -197,3 +197,27 @@
       font-size: 14px; color: var(--text-2); line-height: 1.55;
       margin-bottom: 28px;
     }
+
+/* ---------- Reduced motion (#1260) --------------------------------------
+   Both halves on purpose. Overriding --dur covers every transition in this
+   file, which is all of them today, and keeps the cascade honest: the value a
+   rule reads is the value the user asked for. The blanket rule below covers
+   what a future edit hardcodes without going through the token, which is the
+   failure mode a token-only override cannot see.
+
+   "reduce" is a stated OS-level preference, so it is not a nicety: motion is a
+   vestibular trigger, and popup.css already honours it. This page and the
+   onboarding flow were the two surfaces that did not. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0.01ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

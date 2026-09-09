@@ -98,3 +98,62 @@ describe("Decorative feature icons in onboarding.html are aria-hidden", () => {
 // along with the versioned-consent engine when MUGA adopted the uBlock Origin
 // model — the onboarding page has a single informational mode now, so there is
 // no reveal to announce and no focus to move.
+
+// ── Reduced motion (#1260) ─────────────────────────────────────────
+//
+// "reduce" is a stated OS-level preference, and motion is a vestibular
+// trigger, so a surface that animates through it is not a style choice.
+// popup.css honoured it; options.css and onboarding.css did not, and both
+// animate every toggle, focus ring and card they own.
+//
+// Asserted per STYLESHEET rather than once, because the gap was exactly this:
+// one of three files had the media query and the other two were never
+// noticed.
+
+describe("every extension stylesheet honours prefers-reduced-motion", () => {
+  const sheets = [
+    { name: "popup.css", path: join(ROOT, "src/popup/popup.css") },
+    { name: "options.css", path: join(ROOT, "src/options/options.css") },
+    { name: "onboarding.css", path: join(ROOT, "src/onboarding/onboarding.css") },
+  ];
+
+  for (const { name, path } of sheets) {
+    test(`${name}: has a prefers-reduced-motion block`, () => {
+      const css = readFileSync(path, "utf8");
+      assert.ok(
+        /@media[^{]*prefers-reduced-motion/.test(css),
+        `${name} animates without honouring prefers-reduced-motion`,
+      );
+    });
+  }
+});
+
+// ── Destructive actions are guarded consistently (#1260) ───────────────
+//
+// "Reset stats" and "Forget reported params" sit in the same card, one under
+// the other, and both wipe local state with no undo. Only the first asked for
+// confirmation, which is worse than neither would be: it teaches that buttons
+// in this card are safe to press, and then one of them is not.
+//
+// The assertion is on the handler body, not on the file, because a
+// showConfirm() somewhere else in options.js is what made this pass by
+// accident for as long as it did.
+
+describe("both destructive buttons in the stats card confirm first", () => {
+  const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
+
+  for (const id of ["reset-stats-btn", "forget-reported-params-btn"]) {
+    test(`${id}'s click handler calls showConfirm before writing`, () => {
+      const at = optionsJs.indexOf(id);
+      assert.ok(at > -1, `${id} handler not found in options.js`);
+      const handler = optionsJs.slice(at, at + 900);
+      const confirmAt = handler.indexOf("showConfirm(");
+      const writeAt = handler.indexOf("chrome.storage.local.set");
+      assert.ok(confirmAt > -1, `${id} wipes local state with no confirmation`);
+      assert.ok(
+        writeAt > -1 && confirmAt < writeAt,
+        `${id} must confirm BEFORE it writes, not after`,
+      );
+    });
+  }
+});

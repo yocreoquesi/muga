@@ -212,3 +212,56 @@ describe("PREF_DEFAULTS — hover preview (#1028)", () => {
     assert.equal(PREF_DEFAULTS.hoverPreviewDelayMs, 2500);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 4. The keyboard path (#1260)
+// ---------------------------------------------------------------------------
+//
+// The feature was pointer-only: mouseover, mouseout, mousemove, scroll,
+// keydown-to-dismiss and click. Which put the one place MUGA says out loud
+// where a wrapped link really goes behind an interaction a keyboard-only or
+// screen-reader user cannot perform — while showTooltip's ARIA wiring
+// (reciprocal aria-describedby, role="tooltip") existed for a reader that
+// could never reach it.
+//
+// Source-string inspection, like section 2 above and for the same reason: a
+// content script cannot be imported under Node.
+
+describe("hover-preview source guards — reachable by keyboard (#1260)", () => {
+  test("opens on focusin, not only on mouseover", () => {
+    assert.ok(
+      /addEventListener\(\s*["']focusin["']/.test(HOVER_PREVIEW_SRC),
+      "hover preview must start its hold on focusin so tabbing to a link can reach it",
+    );
+  });
+
+  test("dismisses on focusout", () => {
+    assert.ok(
+      /addEventListener\(\s*["']focusout["']/.test(HOVER_PREVIEW_SRC),
+      "focus leaving the anchor must clear the hold, mirroring mouseout",
+    );
+  });
+
+  test("the focus path reuses the hold delay instead of firing immediately", () => {
+    // Tabbing is how a keyboard user READS a page. Firing on focus with no
+    // delay would resolve a shortener over the network for every link passed
+    // through, turning an opt-in network action into an involuntary one.
+    const focusBlock = HOVER_PREVIEW_SRC.slice(
+      HOVER_PREVIEW_SRC.indexOf('addEventListener("focusin"'),
+      HOVER_PREVIEW_SRC.indexOf('addEventListener("focusout"'),
+    );
+    assert.ok(focusBlock.length > 0, "expected a focusin handler before the focusout one");
+    assert.ok(
+      /hoverPreviewDelayMs/.test(focusBlock) && /setTimeout\(/.test(focusBlock),
+      "the focusin handler must schedule the same hold as hover, not call fireHover directly",
+    );
+  });
+
+  test("focusout treats focus moving inside the same anchor as staying", () => {
+    const outBlock = HOVER_PREVIEW_SRC.slice(HOVER_PREVIEW_SRC.indexOf('addEventListener("focusout"'));
+    assert.ok(
+      /relatedTarget/.test(outBlock) && /_currentAnchor\.contains\(/.test(outBlock),
+      "focus moving between descendants of the same anchor is not a leave",
+    );
+  });
+});

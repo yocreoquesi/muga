@@ -45,6 +45,7 @@ export default Object.freeze({
   forget_reported_params_btn: "Oublier les paramètres signalés",
   forget_reported_params_label: "Paramètres signalés",
   forget_reported_params_done: "Liste des signalements effacée",
+  forget_reported_params_confirm: "Êtes-vous sûr ? La liste locale des paramètres déjà signalés sera effacée.",
   forget_reported_params_hint: "Efface la liste locale des paramètres que vous avez déjà signalés. Le même paramètre pourra alors être signalé à nouveau.",
   domain_stats_empty: "Pas encore de statistiques par domaine. Continuez à naviguer !",
   domain_stats_params: "paramètres supprimés",

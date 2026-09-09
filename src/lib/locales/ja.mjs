@@ -45,6 +45,7 @@ export default Object.freeze({
   forget_reported_params_btn: "報告済みパラメータをリセット",
   forget_reported_params_label: "報告済みパラメータ",
   forget_reported_params_done: "報告リストをクリアしました",
+  forget_reported_params_confirm: "本当よろしいですか? すでに報告したパラメータのローカルリストがクリアされます。",
   forget_reported_params_hint: "すでに報告したパラメータのローカルリストをクリアします。同じパラメータを再度報告できるようになります。",
   domain_stats_empty: "ドメイン統計はまだありません。ブラウジングを続けてください!",
   domain_stats_params: "削除したパラメータ",

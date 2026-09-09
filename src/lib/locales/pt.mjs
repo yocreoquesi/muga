@@ -45,6 +45,7 @@ export default Object.freeze({
   forget_reported_params_btn: "Esquecer parâmetros reportados",
   forget_reported_params_label: "Parâmetros reportados",
   forget_reported_params_done: "Lista de reportes limpa",
+  forget_reported_params_confirm: "Tem certeza? Isso vai limpar a lista local de parâmetros já reportados.",
   forget_reported_params_hint: "Limpa a lista local de parâmetros já reportados. O mesmo parâmetro poderá ser reportado novamente.",
   domain_stats_empty: "Sem estatísticas ainda. Continue navegando!",
   domain_stats_params: "parâmetros removidos",
