@@ -191,9 +191,19 @@ export async function resolveShortener(url, opts) {
     return { ok: false, reason: "not_shortener" };
   }
 
-  // CSP connect-src whitelists only https shortener origins, and every
-  // allowlisted shortener serves https (an http short link just 301s to it), so
-  // upgrade the fetch URL to https or connect-src blocks it (throws "network").
+  // Upgrade the fetch URL to https. Every allowlisted shortener serves https
+  // (an http short link just 301s to it), so this costs nothing and keeps the
+  // resolution request off plaintext.
+  //
+  // #1258: this comment used to claim "CSP connect-src whitelists only https
+  // shortener origins", and that the upgrade existed because connect-src would
+  // otherwise block the fetch. That is false as shipped — the manifest sets
+  // `connect-src 'self' https: http:`, which permits both schemes to any
+  // origin, so nothing here is CSP-enforced and an un-upgraded http fetch
+  // would have gone out fine. The upgrade is worth keeping on its own merits;
+  // only the stated reason was wrong. Whether connect-src should instead be
+  // enumerated from GENERIC_SHORTENERS (the unfinished tail of #1035) is an
+  // open decision on #1258, not something this comment should pre-empt.
   // The destination is read from response.url below, so an http:// destination
   // is still preserved as-is — we never re-fetch it.
   let fetchUrl = inputUrl.toString();
