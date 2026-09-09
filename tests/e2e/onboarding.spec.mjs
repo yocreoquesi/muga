@@ -69,10 +69,17 @@ test.describe("Onboarding", () => {
     // URL", so an install read as a different product than the listing sold.
     // Descriptive "noise" prose elsewhere is current copy and deliberately out
     // of scope here — this only pins the identity line.
+    //
+    // #1259: this used to pin the literal "Clean every URL". That phrase was an
+    // absolute coverage claim, and it is gone. The test's PURPOSE survives it:
+    // what matters here is that the identity line still says MUGA cleans URLs,
+    // not which verb it uses. So the URL half is now pinned as a substring and
+    // the retired framings stay banned exactly as before.
     const tagline = page.locator('[data-i18n="ob_tagline_sub"]');
     await expect(tagline).toBeVisible();
     const text = await tagline.textContent();
-    expect(text).toContain("Clean every URL");
+    expect(text).toContain("URLs");
+    expect(text).toContain("tracking");
     expect(text).toContain("zero telemetry");
     expect(text).not.toContain("Denoise");
     expect(text).not.toContain("Fair to creators");
