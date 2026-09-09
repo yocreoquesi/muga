@@ -1435,11 +1435,14 @@ async function testUrl() {
   if (!input) return;
   try {
     const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-    const { processUrl } = await import("../lib/cleaner.js");
-    const resp = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
-    const domainRules = await resp.json();
-    // Path-strip and path-affiliate args intentionally omitted — options preview is a non-path surface. Defaulted [] is a no-op (accepted regression per declarative-path-rules design §7).
-    const result = processUrl(input, { ...prefs, notifyForeignAffiliate: false }, domainRules);
+    const { loadCleaningContext, cleanForPreview } = await import("../lib/cleaning-context.js");
+    // #1255: this used to pass three of eight arguments -- no path rules and no
+    // referrer -- so the URL tester answered a different question from the one
+    // the extension answers. The referrer stays "" deliberately: a URL typed
+    // into Settings arrives from nowhere, so honor-creator has nothing to
+    // honour, and cleanForPreview says that explicitly rather than by omission.
+    const cleaningContext = await loadCleaningContext();
+    const result = cleanForPreview(input, prefs, cleaningContext, { referrer: "" });
     cleanEl.textContent = result.cleanUrl;
     if (result.removedTracking?.length > 0) {
       removedEl.textContent = t("dev_url_removed", _currentLang).replace("%s", result.removedTracking.join(", "));
