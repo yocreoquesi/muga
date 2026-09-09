@@ -102,6 +102,35 @@ describe("Legal-sync — privacy policy does not unconditionally claim the keybo
 });
 
 // ---------------------------------------------------------------------------
+// 1c. Both policy copies must keep the detectability disclosure
+// ---------------------------------------------------------------------------
+//
+// #1258 asked why a page can detect that MUGA is installed. Chrome's half was
+// fixed in the manifest (`use_dynamic_url`), but Firefox MV2 has no equivalent
+// and an add-on carries a fixed id regardless, so the residual is permanent and
+// the honest move is to disclose it rather than imply a protection that is not
+// there.
+//
+// The shipped policy said so; the PUBLISHED copy did not, which is the drift
+// this file exists to catch — the copy a user reads before installing was the
+// one missing the caveat. Both are pinned here, on the Firefox sentence rather
+// than the heading, because a heading can survive an edit that deletes the only
+// claim under it.
+//
+describe("Legal-sync — both privacy copies disclose Firefox detectability", () => {
+  for (const file of ["src/privacy/privacy.html", "docs/privacy-page.html"]) {
+    test(`${file} says MUGA stays detectable on Firefox`, () => {
+      const html = read(file);
+      assert.ok(
+        /still detect MUGA on Firefox/.test(html),
+        `${file} dropped the Firefox detectability disclosure (#1258). Chrome uses ` +
+          "use_dynamic_url; Firefox has no equivalent, so the residual must be stated."
+      );
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 2. AMO approval-notes must reference the bundle pipeline
 // ---------------------------------------------------------------------------
 //
