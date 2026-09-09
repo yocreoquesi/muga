@@ -1,292 +1,274 @@
 /**
- * MUGA — Behavioral tests for #833 SW robustness fixes.
+ * MUGA — the #833 SW robustness invariants, tested against the real code (#1268)
  *
- * 1. Single-flight rules loaders: concurrent handleProcessUrl callers must
- *    share one in-flight promise and increment the attempt counter only once
- *    per actual fetch, not once per concurrent caller.
+ * This file used to open with:
  *
- * 2. firstUsed bootstrap: _initFirstUsed must be idempotent and must set
- *    firstUsed only when absent, protecting the original timestamp across
- *    retries in the same SW lifetime.
+ *   > All tests are behavioral — they exercise pure extracted helpers that
+ *   > mirror the production logic. No swSource string scanning; SW is not
+ *   > importable in Node (top-level chrome.* calls).
  *
- * All tests are behavioral — they exercise pure extracted helpers that mirror
- * the production logic. No swSource string scanning; SW is not importable
- * in Node (top-level chrome.* calls).
+ * So the #833 invariants were asserted against a reimplementation written in
+ * this file. If the service worker drifted from that copy, these tests stayed
+ * green while the shipped behaviour changed, and nothing proved the two still
+ * matched -- unlike the five STRIP mirrors, which are checked against their
+ * generator. It is also part of why the concurrency defects in #1257 could
+ * ship: the real call sites were in a file no test could reach.
+ *
+ * The fix was not a stronger mirror. `src/background/single-flight-loader.js`
+ * now holds the logic, the service worker constructs its two loaders from it,
+ * and these tests import it. The mirrors are deleted.
+ *
+ * ── What #833 fixed ────────────────────────────────────────────────────────
+ *
+ * A service worker wakes on many events and several can call into the cleaner
+ * at once. Before #833 each concurrent caller started its own fetch and
+ * incremented the attempt counter, so three simultaneous wakes could burn the
+ * whole retry budget on one cold start.
+ *
+ * Run with: npm test
  */
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-// ── 1. Single-flight loader helper ───────────────────────────────────────────
-//
-// Mirrors the _loadDomainRules / _loadPathRules + handleProcessUrl gating
-// pattern after the #833 fix. Key invariants:
-//
-//   a) Two concurrent callers sharing a null ref both await the SAME promise —
-//      the attempt counter increments once per actual fetch, not twice.
-//   b) After the shared await completes (failure case), the ref is nulled so
-//      the next independent call can retry.
-//   c) A successful load leaves the ref populated; subsequent callers skip
-//      the fetch entirely.
-//   d) Once MAX_ATTEMPTS is reached, the loader logs and returns without
-//      another fetch; the ref stays set (resolves immediately as no-op).
+import {
+  createSingleFlightLoader,
+  createFirstUsedBootstrap,
+} from "../../src/background/single-flight-loader.js";
 
-function makeSingleFlightLoader({ maxAttempts = 3 } = {}) {
+/**
+ * A loader over an in-memory rule array, wired the way the service worker
+ * wires its domain-rules loader.
+ */
+function makeLoader({ maxAttempts = 3, readCache, writeCache } = {}) {
   let rules = [];
-  let readyRef = null;
-  let attempts = 0;
+  let fetches = 0;
+  let behaviour = async () => ["rule-a"];
 
-  // Pure loader — mirrors _loadDomainRules sans Chrome APIs.
-  async function _load(fetchFn) {
-    if (attempts >= maxAttempts) return; // at cap — no-op
-    try {
-      attempts++;
-      rules = await fetchFn();
-    } catch {
-      // Do NOT null readyRef here — concurrent callers already have it.
-      // handleProcessUrl nulls it post-await if load failed.
-    }
-  }
+  const loader = createSingleFlightLoader({
+    label: "test-rules",
+    maxAttempts,
+    isLoaded: () => rules.length > 0,
+    readCache,
+    writeCache,
+    fetchAll: async () => {
+      fetches++;
+      return behaviour();
+    },
+    apply: (data) => { rules = data; },
+    onError: () => { /* the real loaders log; silence keeps the output readable */ },
+  });
 
-  // Caller site — mirrors handleProcessUrl's gating and post-await null-out.
-  async function handleCall(fetchFn) {
-    if (!readyRef) readyRef = _load(fetchFn);
-    await readyRef;
-    // Post-await: null for retry only when load failed and cap not reached.
-    if (rules.length === 0 && attempts < maxAttempts) {
-      readyRef = null;
-    }
-    return rules.slice();
-  }
-
-  return { handleCall, getAttempts: () => attempts, getRules: () => rules };
+  return {
+    loader,
+    getRules: () => rules.slice(),
+    getFetches: () => fetches,
+    setBehaviour: (fn) => { behaviour = fn; },
+  };
 }
 
-describe("Single-flight loader — concurrent callers share one in-flight promise", () => {
-  test("two concurrent callers produce exactly one fetch attempt on success", async () => {
-    let fetchCount = 0;
-    const loader = makeSingleFlightLoader();
-    const fetch = async () => { fetchCount++; return ["rule-a"]; };
+const FAIL = async () => { throw new Error("network"); };
 
-    const [r1, r2] = await Promise.all([
-      loader.handleCall(fetch),
-      loader.handleCall(fetch),
-    ]);
+// ── 1. Single-flight loading ─────────────────────────────────────────────────
 
-    assert.strictEqual(fetchCount, 1, "fetch must be called exactly once despite two concurrent callers");
-    assert.strictEqual(loader.getAttempts(), 1, "attempt counter must be 1, not 2");
-    assert.deepStrictEqual(r1, ["rule-a"]);
-    assert.deepStrictEqual(r2, ["rule-a"]);
+describe("single-flight loader — concurrent callers share one in-flight load", () => {
+  test("two concurrent callers produce exactly one fetch on success", async () => {
+    const h = makeLoader();
+    await Promise.all([h.loader.ensure(), h.loader.ensure()]);
+
+    assert.strictEqual(h.getFetches(), 1, "one fetch despite two concurrent callers");
+    assert.strictEqual(h.loader.attempts, 1, "the attempt counter must be 1, not 2");
+    assert.deepStrictEqual(h.getRules(), ["rule-a"]);
   });
 
-  test("two concurrent callers produce exactly one fetch attempt on failure", async () => {
-    let fetchCount = 0;
-    const loader = makeSingleFlightLoader();
-    const fetch = async () => { fetchCount++; throw new Error("network"); };
+  test("two concurrent callers produce exactly one fetch on failure", async () => {
+    // The race #833 fixed. Two callers each burning an attempt on a cold start
+    // is how a transient failure used to eat the whole retry budget.
+    const h = makeLoader();
+    h.setBehaviour(FAIL);
+    await Promise.all([h.loader.ensure(), h.loader.ensure()]);
 
-    await Promise.all([
-      loader.handleCall(fetch).catch(() => {}),
-      loader.handleCall(fetch).catch(() => {}),
-    ]);
-
-    assert.strictEqual(fetchCount, 1, "fetch must fire once even when it fails");
-    assert.strictEqual(loader.getAttempts(), 1, "attempt counter must be 1, not 2 (the race bug)");
+    assert.strictEqual(h.getFetches(), 1, "one fetch even when it fails");
+    assert.strictEqual(h.loader.attempts, 1, "the attempt counter must be 1, not 2");
   });
 
-  test("after failure, next independent call retries (ref nulled post-await)", async () => {
-    let fetchCount = 0;
-    const loader = makeSingleFlightLoader();
-    const failFetch = async () => { fetchCount++; throw new Error("net"); };
-    const okFetch   = async () => { fetchCount++; return ["rule-ok"]; };
-
-    // First call — fails
-    await loader.handleCall(failFetch);
-    assert.strictEqual(loader.getAttempts(), 1);
-
-    // Second independent call — should retry
-    const rules = await loader.handleCall(okFetch);
-    assert.strictEqual(loader.getAttempts(), 2, "second independent call must increment to 2");
-    assert.deepStrictEqual(rules, ["rule-ok"]);
-    assert.strictEqual(fetchCount, 2, "two distinct fetch calls should have been made");
-  });
-
-  test("after success, ref stays set and subsequent calls skip fetch", async () => {
-    let fetchCount = 0;
-    const loader = makeSingleFlightLoader();
-    const fetch = async () => { fetchCount++; return ["cached"]; };
-
-    await loader.handleCall(fetch);
-    await loader.handleCall(fetch); // ref is non-null and rules populated — no retry
-    await loader.handleCall(fetch);
-
-    assert.strictEqual(fetchCount, 1, "only one fetch for multiple calls after success");
-    assert.strictEqual(loader.getAttempts(), 1);
-  });
-
-  test("attempt cap: once maxAttempts reached, further calls are no-ops", async () => {
-    let fetchCount = 0;
-    const loader = makeSingleFlightLoader({ maxAttempts: 2 });
-    const failFetch = async () => { fetchCount++; throw new Error("net"); };
-
-    // Two failing attempts exhaust the cap
-    await loader.handleCall(failFetch);
-    await loader.handleCall(failFetch);
-    assert.strictEqual(loader.getAttempts(), 2);
-
-    // After the cap, ref is NOT nulled — loader resolves immediately as no-op
-    const rules = await loader.handleCall(failFetch);
-    assert.strictEqual(loader.getAttempts(), 2, "attempt counter must not exceed maxAttempts");
-    assert.strictEqual(fetchCount, 2, "the no-op call after the cap must not fetch again");
-    assert.deepStrictEqual(rules, []);
-  });
-
-  test("five concurrent callers all get the same result from one fetch", async () => {
-    let fetchCount = 0;
-    const loader = makeSingleFlightLoader();
-    const fetch = async () => {
-      fetchCount++;
-      // Simulate async work
-      await new Promise(r => setImmediate(r));
+  test("five concurrent callers all wait on the same load", async () => {
+    const h = makeLoader();
+    h.setBehaviour(async () => {
+      await new Promise((r) => setImmediate(r));
       return ["shared-rule"];
-    };
+    });
 
-    const results = await Promise.all(Array.from({ length: 5 }, () => loader.handleCall(fetch)));
-    assert.strictEqual(fetchCount, 1);
-    for (const r of results) {
-      assert.deepStrictEqual(r, ["shared-rule"]);
-    }
+    await Promise.all(Array.from({ length: 5 }, () => h.loader.ensure()));
+    assert.strictEqual(h.getFetches(), 1);
+    assert.deepStrictEqual(h.getRules(), ["shared-rule"]);
+  });
+
+  test("after a failure the next independent call retries", async () => {
+    const h = makeLoader();
+    h.setBehaviour(FAIL);
+    await h.loader.ensure();
+    assert.strictEqual(h.loader.attempts, 1);
+
+    h.setBehaviour(async () => ["rule-ok"]);
+    await h.loader.ensure();
+
+    assert.strictEqual(h.loader.attempts, 2, "the second independent call must retry");
+    assert.deepStrictEqual(h.getRules(), ["rule-ok"]);
+    assert.strictEqual(h.getFetches(), 2);
+  });
+
+  test("after success, later calls skip the fetch entirely", async () => {
+    const h = makeLoader();
+    await h.loader.ensure();
+    await h.loader.ensure();
+    await h.loader.ensure();
+
+    assert.strictEqual(h.getFetches(), 1, "one fetch across three calls once loaded");
+    assert.strictEqual(h.loader.attempts, 1);
+  });
+
+  test("once the attempt budget is spent, further calls are no-ops", async () => {
+    const h = makeLoader({ maxAttempts: 2 });
+    h.setBehaviour(FAIL);
+
+    await h.loader.ensure();
+    await h.loader.ensure();
+    assert.strictEqual(h.loader.attempts, 2);
+
+    await h.loader.ensure();
+    assert.strictEqual(h.loader.attempts, 2, "the counter must never exceed maxAttempts");
+    assert.strictEqual(h.getFetches(), 2, "the call after the cap must not fetch again");
+    assert.deepStrictEqual(h.getRules(), []);
   });
 });
 
-// ── 2. firstUsed idempotent bootstrap ────────────────────────────────────────
+// ── 2. The cache path, which the mirror could not reach ──────────────────────
 //
-// Mirrors _initFirstUsed() and the hot-path fallback in handleProcessUrl.
-// Invariants:
-//   a) When firstUsed is absent, setStats is called with a timestamp.
-//   b) When firstUsed is already present, setStats is NOT called (idempotent).
-//   c) The module flag (_firstUsedSet) prevents repeated storage reads in the
-//      hot path across multiple processUrl calls in the same SW lifetime.
-//   d) A throw between read and set (simulating concurrent writes) doesn't
-//      reset firstUsed to a later timestamp — the idempotent read-first
-//      pattern ensures the original timestamp is preserved.
+// These are the tests that could not previously be written. The mirror had no
+// cache layer at all, so nothing checked that a cache hit skips the attempt
+// budget -- the property that keeps a warm start from spending a retry it may
+// need later in the same lifetime.
 
-function makeFirstUsedBootstrap() {
-  let _firstUsedSet = false;
+describe("single-flight loader — the session cache", () => {
+  test("a cache hit costs no fetch and no attempt", async () => {
+    const h = makeLoader({ readCache: async () => ["cached-rule"] });
+    await h.loader.ensure();
 
-  // Mirrors _initFirstUsed from service-worker.js after #833 fix.
-  async function initFirstUsed({ getStats, setStats, now = Date.now }) {
-    if (_firstUsedSet) return;
-    try {
-      const stats = await getStats();
-      if (!stats.firstUsed) await setStats({ firstUsed: now() });
-      _firstUsedSet = true;
-    } catch { /* best-effort */ }
+    assert.deepStrictEqual(h.getRules(), ["cached-rule"]);
+    assert.strictEqual(h.getFetches(), 0, "a cache hit must not fetch");
+    assert.strictEqual(h.loader.attempts, 0,
+      "a cache hit must not spend an attempt, or a warm start eats a retry it may need");
+  });
+
+  test("a cache miss falls through to the fetch", async () => {
+    const h = makeLoader({ readCache: async () => null });
+    await h.loader.ensure();
+
+    assert.deepStrictEqual(h.getRules(), ["rule-a"]);
+    assert.strictEqual(h.getFetches(), 1);
+  });
+
+  test("a throwing cache is treated as a miss, not as a failure", async () => {
+    // A broken cache must not become an outage: it is a performance feature.
+    const h = makeLoader({ readCache: async () => { throw new Error("storage gone"); } });
+    await h.loader.ensure();
+
+    assert.deepStrictEqual(h.getRules(), ["rule-a"], "the load must still succeed");
+    assert.strictEqual(h.loader.attempts, 1);
+  });
+
+  test("a failing cache WRITE does not fail the load", async () => {
+    // The rules are already applied by then. A failed write costs the next cold
+    // start a fetch and nothing else.
+    const h = makeLoader({ writeCache: async () => { throw new Error("quota"); } });
+    await h.loader.ensure();
+
+    assert.deepStrictEqual(h.getRules(), ["rule-a"]);
+  });
+
+  test("a successful fetch is written to the cache", async () => {
+    let written = null;
+    const h = makeLoader({ writeCache: async (data) => { written = data; } });
+    await h.loader.ensure();
+
+    assert.deepStrictEqual(written, ["rule-a"]);
+  });
+});
+
+// ── 3. firstUsed bootstrap ───────────────────────────────────────────────────
+
+describe("firstUsed bootstrap — idempotent, and never overwrites", () => {
+  function makeStats(initial = {}) {
+    let stats = { ...initial };
+    let reads = 0;
+    let writes = 0;
+    return {
+      getStats: async () => { reads++; return { ...stats }; },
+      setStats: async (patch) => { writes++; stats = { ...stats, ...patch }; },
+      current: () => ({ ...stats }),
+      counts: () => ({ reads, writes }),
+    };
   }
 
-  // Mirrors the hot-path fallback in handleProcessUrl.
-  async function hotPathGuard({ getStats, setStats, now = Date.now }) {
-    if (_firstUsedSet) return; // free boolean check — no storage read
-    const localStats = await getStats();
-    if (localStats.firstUsed) {
-      _firstUsedSet = true;
-    } else {
-      await setStats({ firstUsed: now() });
-      _firstUsedSet = true;
-    }
-  }
+  test("sets firstUsed when it is absent", async () => {
+    const s = makeStats();
+    const boot = createFirstUsedBootstrap({ ...s, now: () => 1234 });
+    await boot.ensure();
 
-  return { initFirstUsed, hotPathGuard, isSet: () => _firstUsedSet };
-}
+    assert.strictEqual(s.current().firstUsed, 1234);
+    assert.strictEqual(boot.done, true);
+  });
 
-describe("firstUsed bootstrap — idempotent lifecycle initialization", () => {
-  test("sets firstUsed when absent on first call", async () => {
-    const { initFirstUsed } = makeFirstUsedBootstrap();
-    const statsStore = {};
-    await initFirstUsed({
-      getStats: async () => ({ ...statsStore }),
-      setStats: async (d) => { Object.assign(statsStore, d); },
-      now: () => 1000,
+  test("never overwrites an existing firstUsed", async () => {
+    // The value is "when this user first used MUGA". A retry that stamps today
+    // destroys it with no way to notice, which is why this is pinned rather
+    // than left to the read-then-write shape looking obviously correct.
+    const s = makeStats({ firstUsed: 111 });
+    const boot = createFirstUsedBootstrap({ ...s, now: () => 999 });
+    await boot.ensure();
+
+    assert.strictEqual(s.current().firstUsed, 111);
+    assert.strictEqual(s.counts().writes, 0, "an existing timestamp must not be rewritten");
+  });
+
+  test("is idempotent within a worker lifetime", async () => {
+    const s = makeStats();
+    const boot = createFirstUsedBootstrap({ ...s, now: () => 1 });
+
+    await boot.ensure();
+    await boot.ensure();
+    await boot.ensure();
+
+    assert.strictEqual(s.counts().reads, 1, "later calls must be a boolean check, not a storage read");
+    assert.strictEqual(s.counts().writes, 1);
+  });
+
+  test("a storage failure leaves it retryable rather than swallowing the stamp", async () => {
+    let fail = true;
+    let stats = {};
+    const boot = createFirstUsedBootstrap({
+      getStats: async () => { if (fail) throw new Error("storage"); return { ...stats }; },
+      setStats: async (patch) => { stats = { ...stats, ...patch }; },
+      now: () => 7,
     });
-    assert.strictEqual(statsStore.firstUsed, 1000);
+
+    await boot.ensure();
+    assert.strictEqual(boot.done, false, "a failed bootstrap must not mark itself done");
+
+    fail = false;
+    await boot.ensure();
+    assert.strictEqual(stats.firstUsed, 7, "the next call must complete the bootstrap");
   });
 
-  test("does not overwrite existing firstUsed (idempotent)", async () => {
-    const { initFirstUsed } = makeFirstUsedBootstrap();
-    const statsStore = { firstUsed: 500 };
-    let setCalled = false;
-    await initFirstUsed({
-      getStats: async () => ({ ...statsStore }),
-      setStats: async () => { setCalled = true; },
-      now: () => 9999,
-    });
-    assert.strictEqual(setCalled, false, "setStats must not be called when firstUsed already set");
-    assert.strictEqual(statsStore.firstUsed, 500, "original timestamp must be preserved");
-  });
+  test("concurrent callers do not double-write", async () => {
+    // Not reachable through the mirror either: the service worker calls this
+    // from onInstalled, onStartup and the PROCESS_URL fallback, which can
+    // overlap on a cold start.
+    const s = makeStats();
+    const boot = createFirstUsedBootstrap({ ...s, now: () => 5 });
 
-  test("_firstUsedSet flag prevents re-entry on subsequent lifecycle calls", async () => {
-    const bootstrap = makeFirstUsedBootstrap();
-    let getCount = 0;
-    const deps = {
-      getStats: async () => { getCount++; return {}; },
-      setStats: async () => {},
-    };
-    await bootstrap.initFirstUsed(deps);
-    await bootstrap.initFirstUsed(deps); // second lifecycle event — same SW lifetime
-    assert.strictEqual(getCount, 1, "getStats must only be called once per SW lifetime");
-    assert.strictEqual(bootstrap.isSet(), true);
-  });
-
-  test("hot path is free boolean check after lifecycle event sets the flag", async () => {
-    const bootstrap = makeFirstUsedBootstrap();
-    let getCount = 0;
-    const deps = {
-      getStats: async () => { getCount++; return {}; },
-      setStats: async () => {},
-    };
-    // Lifecycle event runs first
-    await bootstrap.initFirstUsed(deps);
-    getCount = 0; // reset counter
-
-    // Hot path should not touch storage
-    await bootstrap.hotPathGuard(deps);
-    await bootstrap.hotPathGuard(deps);
-    await bootstrap.hotPathGuard(deps);
-    assert.strictEqual(getCount, 0, "hot path must not call getStats after _firstUsedSet is true");
-  });
-
-  test("sequential lifecycle events only call setStats once (_firstUsedSet guards second call)", async () => {
-    // onInstalled and onStartup are sequential, not concurrent. The _firstUsedSet
-    // flag short-circuits the second call so getStats/setStats are not called again.
-    const bootstrap = makeFirstUsedBootstrap();
-    let setCount = 0;
-    let getCount = 0;
-    const statsStore = {};
-    const deps = {
-      getStats: async () => { getCount++; return { ...statsStore }; },
-      setStats: async (d) => { setCount++; Object.assign(statsStore, d); },
-      now: () => 1000,
-    };
-    await bootstrap.initFirstUsed(deps); // onInstalled fires
-    await bootstrap.initFirstUsed(deps); // onStartup fires later — must be no-op
-    assert.strictEqual(setCount, 1, "setStats must be called exactly once across sequential lifecycle events");
-    assert.strictEqual(getCount, 1, "getStats must be called exactly once — _firstUsedSet guards second call");
-  });
-
-  test("firstUsed preserves original timestamp even if init is called twice with different now()", async () => {
-    const bootstrap = makeFirstUsedBootstrap();
-    const statsStore = {};
-    let call = 0;
-    const deps = {
-      getStats: async () => ({ ...statsStore }),
-      setStats: async (d) => { Object.assign(statsStore, d); },
-      now: () => ++call === 1 ? 100 : 999,
-    };
-    await bootstrap.initFirstUsed(deps);
-    // Simulate a throw mid-way by resetting the flag and calling again
-    // (regression: if initFirstUsed ran again with a later now(), it must not overwrite)
-    statsStore.firstUsed = 100; // already set from first call
-    const secondBootstrap = makeFirstUsedBootstrap(); // new instance, same store
-    await secondBootstrap.initFirstUsed(deps); // sees existing firstUsed=100, must not overwrite
-    assert.strictEqual(statsStore.firstUsed, 100, "original timestamp must survive re-init");
+    await Promise.all([boot.ensure(), boot.ensure(), boot.ensure()]);
+    assert.strictEqual(s.counts().writes, 1, "three overlapping callers, one write");
   });
 });
