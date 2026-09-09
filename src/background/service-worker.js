@@ -314,7 +314,22 @@ async function _hydrateAttributionLedger() {
     // will overwrite local-storage cleanly.
   }
 }
-_hydrateAttributionLedger();
+
+// #1266: this call used to be bare, so nothing could wait for it. A PROCESS_URL
+// arriving inside the cold-start window pushed onto the EMPTY default ledger,
+// and the hydration that landed a microtask later replaced the whole object,
+// dropping that push. One lost row in "Recent activity" is the visible symptom,
+// which is why this is a secondary rather than part of #1257 — but the shape is
+// the same write-loss as those: read, then overwrite what someone else wrote in
+// between.
+//
+// Retaining the promise makes the window waitable. pushAttributionAndPersist
+// awaits it before touching _attributionLedger, so a push either happens before
+// hydration starts reading or after it has finished writing, never in between.
+// Nothing else needs to change: the hydration is still started here, at module
+// scope, so it is in flight during the cold start rather than deferred to the
+// first push.
+const _attributionLedgerHydrated = _hydrateAttributionLedger();
 
 /**
  * Builds an attribution event from a cleaner result and persists the
@@ -327,11 +342,20 @@ _hydrateAttributionLedger();
  * @param {object} prefs  - cached prefs (already resolved)
  * @param {string} [referrer] - navigation referrer (#452/B14).
  */
-function pushAttributionAndPersist(rawUrl, result, prefs, referrer = "") {
+async function pushAttributionAndPersist(rawUrl, result, prefs, referrer = "") {
   // Privacy gate: skip both in-memory accumulation AND storage write so
   // a user who flips the toggle off mid-session sees the ring buffer
-  // freeze immediately.
+  // freeze immediately. Checked before the await so a disabled ledger costs
+  // nothing at all, not even a microtask.
   if (prefs?.attributionLedgerEnabled === false) return;
+
+  // #1266: wait out the cold-start hydration window before touching
+  // _attributionLedger. _hydrateAttributionLedger swallows its own failures and
+  // always resolves, so this can never reject and never blocks past one cold
+  // start. Callers stay fire-and-forget; this function is still documented as
+  // never blocking THEM, it just no longer races the hydration.
+  await _attributionLedgerHydrated;
+
   let event;
   try {
     // #946 / drop-affiliate-injection (PR 1a): this ctx bag was originally
@@ -2394,6 +2418,15 @@ chrome.runtime.onStartup.addListener(async () => {
   // scope has already started them. Repeating them here raced that call.
   // #833: bootstrap firstUsed here so the hot path stays free.
   _initFirstUsed();
+  // #1266: toolbar-presenter's activeStates map is in-memory only, unlike its
+  // sibling badgeTotals which is mirrored to chrome.storage.session for exactly
+  // this reason. After an MV3 restart the map is empty and isTabInactive()
+  // defaults to active. repaintAllTabsActiveState is the only thing that
+  // recomputes it for already-open tabs, and it was wired ONLY to
+  // storage.onChanged, so a cold start with no pref change left it unrepainted.
+  // Low practical impact, since the cleaning path is gated by the same exemption
+  // check, but it was an asymmetry with the durably-backed sibling.
+  await repaintAllTabsActiveState(prefs);
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
@@ -2539,6 +2572,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // already evaluated.
   // #833: bootstrap firstUsed so the hot path stays free.
   _initFirstUsed();
+  // #1266: same cold-start rehydration as the onStartup handler. An update
+  // reloads the worker with tabs already open, so activeStates is empty for
+  // every one of them until an unrelated pref change happens to repaint it.
+  await repaintAllTabsActiveState(prefs);
 
   if (prefs.contextMenuEnabled !== false) {
     await syncContextMenus(true);
