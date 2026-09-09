@@ -683,6 +683,39 @@ input[type="text"]:not(.add-row input) {
   margin-top: 4px;
 }
 
+/* ---------- Developer tools disclosure (#1271) --------------------------
+   The QA panel is collapsed by default and says what it is before it opens,
+   so reaching a real setting through Advanced no longer hands the user a
+   button that replays onboarding. */
+.dev-tools-disclosure > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  list-style: none;
+}
+.dev-tools-disclosure > summary::-webkit-details-marker { display: none; }
+.dev-tools-disclosure > summary::before {
+  content: "B8";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--text-3);
+  transition: transform var(--dur) var(--ease);
+}
+.dev-tools-disclosure[open] > summary::before { transform: rotate(90deg); }
+.dev-tools-disclosure > summary strong { font-size: 13px; font-weight: 600; }
+.dev-tools-disclosure > summary small {
+  display: block;
+  margin-left: 20px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.dev-tools-disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ---------- Reduced motion (#1260) --------------------------------------
    Both halves on purpose. Overriding --dur covers every transition in this
    file, which is all of them today, and keeps the cascade honest: the value a
