@@ -26,6 +26,16 @@ const swSource = readFileSync(
   join(__dirname, "../../src/background/service-worker.js"),
   "utf8"
 );
+// applyDnrState (and the sync*DNR/reconcileRemoteDnrRule helpers it calls)
+// moved to src/background/dnr-sync.js (#1266 item 5, #1268), so it is
+// importable in Node — the source guards below that concern applyDnrState's
+// own body now read this file instead of swSource. The storage.onChanged
+// wiring stays in service-worker.js (the composition root) and is still
+// checked against swSource.
+const dnrSyncSource = readFileSync(
+  join(__dirname, "../../src/background/dnr-sync.js"),
+  "utf8"
+);
 
 // ── Pure implementation under test ───────────────────────────────────────────
 //
@@ -402,7 +412,7 @@ describe("applyDnrState — MV2 parity: only declared IDs are touched", () => {
 describe("service-worker.js source guards — #810 fix present", () => {
   test("applyDnrState reads declared IDs from getManifest() (not a hardcoded list)", () => {
     assert.ok(
-      swSource.includes("getManifest()"),
+      dnrSyncSource.includes("getManifest()"),
       "applyDnrState must derive declared ruleset IDs from chrome.runtime.getManifest()"
     );
   });
@@ -414,9 +424,9 @@ describe("service-worker.js source guards — #810 fix present", () => {
     // tests/unit/dnr-ruleset-state.test.mjs. Here we only guard that applyDnrState
     // still delegates to it (a regression that inlined a divergent copy would
     // bypass that coverage).
-    const applyFnStart = swSource.indexOf("async function applyDnrState(");
-    assert.ok(applyFnStart !== -1, "applyDnrState must exist in SW");
-    const applyFnBlock = swSource.slice(applyFnStart, applyFnStart + 2600);
+    const applyFnStart = dnrSyncSource.indexOf("export async function applyDnrState(");
+    assert.ok(applyFnStart !== -1, "applyDnrState must exist in dnr-sync.js");
+    const applyFnBlock = dnrSyncSource.slice(applyFnStart, applyFnStart + 2600);
     assert.ok(
       applyFnBlock.includes("partitionRulesets("),
       "applyDnrState must call partitionRulesets() to decide enabled/disabled rulesets"
@@ -481,11 +491,11 @@ describe("service-worker.js source guard — #921 remote-params rule (1001) gate
   // guards. The generous headroom is deliberate: a window that has to be
   // re-tuned every time a comment is added is a guard that gets deleted.
   const applyRegion =
-    swSource.match(/async function applyDnrState\([\s\S]{0,9000}/)?.[0] ?? "";
+    dnrSyncSource.match(/export async function applyDnrState\([\s\S]{0,9000}/)?.[0] ?? "";
   const gateClosed = applyRegion.slice(applyRegion.indexOf("Gate closed:"));
 
   test("applyDnrState region was located", () => {
-    assert.ok(applyRegion.length > 0, "applyDnrState must exist in the service worker");
+    assert.ok(applyRegion.length > 0, "applyDnrState must exist in dnr-sync.js");
     assert.ok(applyRegion.includes("Gate closed:"), "applyDnrState must have a gate-closed branch");
   });
 

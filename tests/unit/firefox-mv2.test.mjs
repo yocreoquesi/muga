@@ -20,6 +20,12 @@ const require = createRequire(import.meta.url);
 const SERVICE_WORKER_SOURCE = readFileSync(
   join(__dirname, "../../src/background/service-worker.js"), "utf8"
 );
+// hasDNR + the sync*DNR helpers/applyDnrState moved to dnr-sync.js (#1266
+// item 5, #1268), so it — not the service worker — is now the file the
+// hasDNR-guard checks below read.
+const DNR_SYNC_SOURCE = readFileSync(
+  join(__dirname, "../../src/background/dnr-sync.js"), "utf8"
+);
 const STORAGE_SOURCE = readFileSync(
   join(__dirname, "../../src/lib/storage.js"), "utf8"
 );
@@ -43,25 +49,27 @@ const MANIFEST_V3 = require("../../src/manifest.json");
 // ---------------------------------------------------------------------------
 describe("Firefox MV2 compatibility guards", () => {
 
-  test("service-worker.js guards declarativeNetRequest with hasDNR check", () => {
+  test("dnr-sync.js guards declarativeNetRequest with a lazily-evaluated hasDNR() check", () => {
     assert.ok(
-      SERVICE_WORKER_SOURCE.includes('const hasDNR = typeof chrome.declarativeNetRequest !== "undefined"'),
-      "service-worker.js must declare hasDNR guard for Firefox MV2 compatibility"
+      DNR_SYNC_SOURCE.includes(
+        'return typeof globalThis.chrome !== "undefined" && typeof globalThis.chrome.declarativeNetRequest !== "undefined";'
+      ),
+      "dnr-sync.js must declare the hasDNR() guard for Firefox MV2 compatibility"
     );
   });
 
-  test("syncCustomParamsDNR bails early when hasDNR is false", () => {
-    const fnMatch = SERVICE_WORKER_SOURCE.match(
-      /async function syncCustomParamsDNR[\s\S]*?if \(!hasDNR\) return;/
+  test("syncCustomParamsDNR bails early when hasDNR() is false", () => {
+    const fnMatch = DNR_SYNC_SOURCE.match(
+      /export async function syncCustomParamsDNR[\s\S]*?if \(!hasDNR\(\)\) return;/
     );
-    assert.ok(fnMatch, "syncCustomParamsDNR must check !hasDNR before any DNR call");
+    assert.ok(fnMatch, "syncCustomParamsDNR must check !hasDNR() before any DNR call");
   });
 
-  test("applyDnrState bails early when hasDNR is false", () => {
-    const fnMatch = SERVICE_WORKER_SOURCE.match(
-      /async function applyDnrState[\s\S]*?if \(!hasDNR\) return;/
+  test("applyDnrState bails early when hasDNR() is false", () => {
+    const fnMatch = DNR_SYNC_SOURCE.match(
+      /export async function applyDnrState[\s\S]*?if \(!hasDNR\(\)\) return;/
     );
-    assert.ok(fnMatch, "applyDnrState must check !hasDNR before any DNR call");
+    assert.ok(fnMatch, "applyDnrState must check !hasDNR() before any DNR call");
   });
 
   test("service-worker.js guards contextMenus with hasContextMenus check", () => {

@@ -127,12 +127,12 @@ const BASELINE = {
   "content-script.test.mjs": 20,            // content script not importable (#824); +1: same-document click-guard mirror (carousel regression)
   "dnr-ids.test.mjs": 8,                    // verifies SW + remote-rules import the ids module (#824)
   "dnr-consent-gate.test.mjs": 8,           // SW not importable; mixed with behavioral tests (#824). +1 for #921 rule-1001 gate guard
-  "allowlist-dnr.test.mjs": 7,               // SW not importable; syncAllowlistDNR/applyDnrState wiring guards, mostly behavioral (fake-DNR-facade tests) with a handful of source-region extractions mirroring dnr-consent-gate.test.mjs's pattern (#allowlist-full-inert, #824). +2 for the resourceTypes/main_frame fix (post fresh-context review Finding 1)
+  "allowlist-dnr.test.mjs": 1,               // 7 -> 1 (#1266 item 5, #1268): syncAllowlistDNR and applyDnrState moved to src/background/dnr-sync.js, importable in Node, so this file now imports the real functions instead of a mirror; the applyDnrState ordering/gate-closed guards became real behavioral assertions against recorded updateDynamicRules calls. The one remaining swSource.slice() is the storage.onChanged wiring, which stays in service-worker.js as the composition root and has no behavioral proxy.
   "verify-warnings-regression.test.mjs": 6, // regression guards; some migratable (#824)
   "i18n-orphan.test.mjs": 5,               // reads HTML/JS to find orphaned i18n keys (#824)
   "browser-detect.test.mjs": 4,            // verifies popup/options import the module (#824)
   "popup-reactive-status.test.mjs": 4,     // popup source; mixed behavioral/source (#824)
-  "custom-params-dnr.test.mjs": 3,         // SW not importable; behavioral fake-DNR-facade tests plus a source-region guard confirming the syncCustomParamsDNR empty-normalized-list fix landed in production, mirroring allowlist-dnr.test.mjs's pattern (#1104, #824)
+  "custom-params-dnr.test.mjs": 0,         // 3 -> 0 (#1266 item 5, #1268): syncCustomParamsDNR moved to src/background/dnr-sync.js, importable in Node, so this file now imports the real function directly instead of a mirror, and the source-region guard that used to confirm the empty-normalized-list fix landed in production is redundant with the behavioral tests above it — deleted rather than re-pointed.
   "storage.test.mjs": 2,                   // verifies storage structure patterns (#824)
   "url-regex-sync.test.mjs": 2,            // verifies SW + cleaner regex are byte-identical (#824)
   "docs-prefs-table.test.mjs": 1,          // reads storage source to verify docs table (#824)
