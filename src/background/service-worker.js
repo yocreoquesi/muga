@@ -21,7 +21,7 @@ import {
   DNR_CATEGORY_FILTER_MAX_RULES,
 } from "../lib/dnr-ids.js";
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
-import { createSingleFlightLoader, createFirstUsedBootstrap } from "./single-flight-loader.js";
+import { createSingleFlightLoader, createFirstUsedBootstrap } from "../lib/single-flight-loader.js";
 import { runOneTimeMigrations } from "./run-migrations.js";
 import { enqueueListMutation } from "../lib/list-mutation-queue.js";
 import { tearDownAndVerify, ownedDynamicRanges } from "./dnr-teardown.js";
@@ -73,7 +73,7 @@ const _affiliateDomains = getAffiliateDomains();
 // Idempotent firstUsed bootstrap. Called from onInstalled + onStartup so the
 // hot path (handleProcessUrl) only sees a free boolean check, not a storage
 // read, on the first processed URL. Sets firstUsed only when absent (#833).
-// #1268: the body moved to background/single-flight-loader.js so Node can
+// #1268: the body moved to lib/single-flight-loader.js so Node can
 // import it. It was previously mirrored inside sw-robustness-833.test.mjs,
 // where nothing proved the copy still matched this file.
 const _firstUsedBootstrap = createFirstUsedBootstrap({ getStats, setStats });
@@ -96,7 +96,7 @@ async function _initFirstUsed() {
 let domainRules = [];
 const DOMAIN_RULES_MAX_ATTEMPTS = 3;
 
-// #1268: the single-flight gating lives in background/single-flight-loader.js,
+// #1268: the single-flight gating lives in lib/single-flight-loader.js,
 // which Node can import. sw-robustness-833.test.mjs used to assert the #833
 // invariant against a copy of this pattern written inside the test file; it now
 // asserts it against this loader.
@@ -2233,7 +2233,7 @@ async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigati
   // Both loaders in one outer Promise.all so all three JSON files (domain +
   // 2x path) are in flight at once. Each ensure() shares a single in-flight
   // promise across concurrent callers and re-arms the retry after the await
-  // — the #833 invariant, now in background/single-flight-loader.js where it
+  // — the #833 invariant, now in lib/single-flight-loader.js where it
   // can be tested directly rather than through a copy (#1268).
   await Promise.all([_domainRulesLoader.ensure(), _pathRulesLoader.ensure()]);
   const prefs = await getPrefsWithCache();

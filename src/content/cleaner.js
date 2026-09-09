@@ -83,19 +83,73 @@
   // reference it via getDomainRulesCached() / direct read on the click and
   // copy paths.
   let _domainRulesCache = null;
-  let _domainRulesPending = null;
-  function getDomainRulesCached() {
-    if (_domainRulesCache) return Promise.resolve(_domainRulesCache);
-    if (_domainRulesPending) return _domainRulesPending;
-    _domainRulesPending = fetch(chrome.runtime.getURL("rules/domain-rules.json"))
-      .then(r => r.json())
-      .then(data => { _domainRulesCache = data; _domainRulesPending = null; return data; })
-      .catch(err => {
+
+  // #1270: this used to be its own fetch-and-dedupe, with no retry budget. A
+  // single transient failure produced [] for that whole navigation, so every
+  // per-domain preserve and strip rule was silently absent and the user saw
+  // cleaning quietly do less than it should, with nothing surfaced. The
+  // service worker loaded the SAME file with a 3-attempt budget and an explicit
+  // error when exhausted.
+  //
+  // Both now share src/lib/single-flight-loader.js, so there is one
+  // implementation of "one in-flight load, retry until the budget runs out"
+  // rather than two that drifted. The session-cache layer stays the service
+  // worker's: it is injected through readCache/writeCache, which this side
+  // simply does not pass.
+  //
+  // Reached through the bundle namespace because this file is not bundled and
+  // cannot import ES modules. cleaner-bundle.js is listed before this file in
+  // the same content_scripts entry, so it has already run; the fallback below
+  // covers the case where it somehow has not, and matches the old behaviour
+  // exactly rather than failing the page.
+  const _domainRulesLoader = window.__mugaCleaner?.createSingleFlightLoader?.({
+    label: "domain-rules.json (content)",
+    maxAttempts: 3,
+    isLoaded: () => _domainRulesCache !== null,
+    fetchAll: async () => {
+      const r = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
+      return r.json();
+    },
+    // Only a real array counts as loaded. Leaving the cache null on anything
+    // else keeps isLoaded() false, so a truncated or malformed payload spends
+    // the retry budget instead of being cached as "successfully empty".
+    apply: (data) => { if (Array.isArray(data)) _domainRulesCache = data; },
+    onError: (err, attempt) => {
+      console.error("[MUGA] domain-rules fetch failed (attempt", attempt, "):", err);
+    },
+  });
+
+  async function getDomainRulesCached() {
+    if (_domainRulesCache) return _domainRulesCache;
+    if (!_domainRulesLoader) {
+      // Bundle namespace missing. Single un-retried attempt, exactly as before.
+      try {
+        const r = await fetch(chrome.runtime.getURL("rules/domain-rules.json"));
+        _domainRulesCache = await r.json();
+      } catch (err) {
         console.error("[MUGA] domain-rules fetch failed:", err);
-        _domainRulesPending = null;
         return [];
-      });
-    return _domainRulesPending;
+      }
+      return _domainRulesCache;
+    }
+    await _domainRulesLoader.ensure();
+    if (_domainRulesCache === null) {
+      // One ensure() spends one attempt; the budget is consumed across calls,
+      // and the loader re-arms itself while any remains. So this warns for the
+      // current call rather than announcing a final give-up.
+      //
+      // Cleaning still proceeds without domain rules, which is the established
+      // fail-safe (the strip path and applyPathStrip both no-op on empty
+      // arrays). The point of #1270 is that this is now SAID, instead of being
+      // returned as an ordinary empty rule set indistinguishable from "this
+      // host has no rules".
+      console.warn(
+        "[MUGA] domain rules unavailable for this call; cleaning DEGRADED on this page: " +
+        "per-domain preserve/strip rules are not applied. Retry is armed while budget remains.",
+      );
+      return [];
+    }
+    return _domainRulesCache;
   }
   // Eagerly start the fetch so click/copy handlers find the cache populated
   // by the time the user actually clicks. The fetch is local (extension
@@ -112,7 +166,6 @@
   // in-page navigation and copy/click action — only the service-worker
   // path (copy-clean-link, context menu) had the real rules threaded in.
   let _pathRulesCache = null;
-  let _pathRulesPending = null;
 
   /**
    * The ONE cleaning call for the content-script world (#1255).
@@ -177,26 +230,60 @@
   // the cleaning engine, and nothing should be able to swap a method on it.
   // A sibling global is the extension point that respects that.
   window.__mugaCleanWithContext = cleanWithContext;
-  function getPathRulesCached() {
-    if (_pathRulesCache) return Promise.resolve(_pathRulesCache);
-    if (_pathRulesPending) return _pathRulesPending;
-    _pathRulesPending = Promise.all([
-      fetch(chrome.runtime.getURL("rules/path-strip-rules.json")).then(r => r.json()),
-      fetch(chrome.runtime.getURL("rules/path-affiliate-rules.json")).then(r => r.json()),
-    ])
-      .then(([pathStripRules, pathAffiliateRules]) => {
+  // #1270: same shared loader as the domain rules above, for the same reason.
+  // The service worker's path loader already used it; this side had its own
+  // copy with no retry budget.
+  const _pathRulesLoader = window.__mugaCleaner?.createSingleFlightLoader?.({
+    label: "path-rules (content)",
+    maxAttempts: 3,
+    isLoaded: () => _pathRulesCache !== null,
+    fetchAll: async () => {
+      const [stripResp, affResp] = await Promise.all([
+        fetch(chrome.runtime.getURL("rules/path-strip-rules.json")),
+        fetch(chrome.runtime.getURL("rules/path-affiliate-rules.json")),
+      ]);
+      return { strip: await stripResp.json(), affiliate: await affResp.json() };
+    },
+    apply: (data) => {
+      if (Array.isArray(data?.strip) && Array.isArray(data?.affiliate)) {
+        _pathRulesCache = { pathStripRules: data.strip, pathAffiliateRules: data.affiliate };
+      }
+    },
+    onError: (err, attempt) => {
+      console.error("[MUGA] path-rules fetch failed (attempt", attempt, "):", err);
+    },
+  });
+
+  const EMPTY_PATH_RULES = { pathStripRules: [], pathAffiliateRules: [] };
+
+  async function getPathRulesCached() {
+    if (_pathRulesCache) return _pathRulesCache;
+    if (!_pathRulesLoader) {
+      // Bundle namespace missing. Single un-retried attempt, as before.
+      try {
+        const [pathStripRules, pathAffiliateRules] = await Promise.all([
+          fetch(chrome.runtime.getURL("rules/path-strip-rules.json")).then(r => r.json()),
+          fetch(chrome.runtime.getURL("rules/path-affiliate-rules.json")).then(r => r.json()),
+        ]);
         _pathRulesCache = { pathStripRules, pathAffiliateRules };
-        _pathRulesPending = null;
-        return _pathRulesCache;
-      })
-      .catch(err => {
+      } catch (err) {
         console.error("[MUGA] path-rules fetch failed:", err);
-        _pathRulesPending = null;
-        // Fail-safe: never block cleaning. applyPathStrip/getPathAffiliatePolicy
-        // both no-op on empty arrays, same as an unloaded domain-rules cache.
-        return { pathStripRules: [], pathAffiliateRules: [] };
-      });
-    return _pathRulesPending;
+        return EMPTY_PATH_RULES;
+      }
+      return _pathRulesCache;
+    }
+    await _pathRulesLoader.ensure();
+    if (_pathRulesCache === null) {
+      // Fail-safe unchanged: never block cleaning. applyPathStrip and
+      // getPathAffiliatePolicy both no-op on empty arrays. Only the silence is
+      // gone.
+      console.warn(
+        "[MUGA] path rules unavailable for this call; Amazon-style path cleaning " +
+        "is not applied on this page. Retry is armed while budget remains.",
+      );
+      return EMPTY_PATH_RULES;
+    }
+    return _pathRulesCache;
   }
   // Eagerly start the fetch, same rationale as getDomainRulesCached() above.
   getPathRulesCached();

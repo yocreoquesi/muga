@@ -14,7 +14,7 @@
  * generator. It is also part of why the concurrency defects in #1257 could
  * ship: the real call sites were in a file no test could reach.
  *
- * The fix was not a stronger mirror. `src/background/single-flight-loader.js`
+ * The fix was not a stronger mirror. `src/lib/single-flight-loader.js`
  * now holds the logic, the service worker constructs its two loaders from it,
  * and these tests import it. The mirrors are deleted.
  *
@@ -34,7 +34,7 @@ import assert from "node:assert/strict";
 import {
   createSingleFlightLoader,
   createFirstUsedBootstrap,
-} from "../../src/background/single-flight-loader.js";
+} from "../../src/lib/single-flight-loader.js";
 
 /**
  * A loader over an in-memory rule array, wired the way the service worker
@@ -68,6 +68,63 @@ function makeLoader({ maxAttempts = 3, readCache, writeCache } = {}) {
 }
 
 const FAIL = async () => { throw new Error("network"); };
+
+// ── #1270: a fetch that SUCCEEDS but returns junk ────────────────────────────
+//
+// The content-script loaders added in #1270 guard `apply` on Array.isArray, so
+// a truncated or malformed rules payload never becomes the cache. That turns a
+// successful-but-useless fetch into a retryable failure instead of caching it
+// as "successfully empty", which is exactly the silent-degradation this issue
+// is about: an empty rule set is indistinguishable from "this host has no
+// rules" at every call site downstream.
+//
+// Every existing test above has an `apply` that always succeeds, so nothing
+// covered the case where the loader completes without becoming loaded.
+describe("#1270 — a payload apply() rejects keeps the retry armed", () => {
+
+  /** A loader whose apply() accepts arrays only, like the content-script pair. */
+  function makeGuardedLoader() {
+    let rules = null;
+    let fetches = 0;
+    let behaviour = async () => ["rule-a"];
+    const loader = createSingleFlightLoader({
+      label: "guarded-rules",
+      maxAttempts: 3,
+      isLoaded: () => rules !== null,
+      fetchAll: async () => { fetches++; return behaviour(); },
+      apply: (data) => { if (Array.isArray(data)) rules = data; },
+      onError: () => { /* silence */ },
+    });
+    return { loader, getRules: () => rules, getFetches: () => fetches, setBehaviour: (f) => { behaviour = f; } };
+  }
+
+  test("a non-array payload does not count as loaded", async () => {
+    const h = makeGuardedLoader();
+    h.setBehaviour(async () => ({ oops: "not an array" }));
+    await h.loader.ensure();
+    assert.equal(h.getRules(), null, "junk must never become the cache");
+  });
+
+  test("and the next call retries rather than serving a cached empty set", async () => {
+    const h = makeGuardedLoader();
+    h.setBehaviour(async () => "truncated");
+    await h.loader.ensure();
+    assert.equal(h.getFetches(), 1);
+
+    h.setBehaviour(async () => ["rule-a"]);
+    await h.loader.ensure();
+    assert.equal(h.getFetches(), 2, "the second call must re-fetch, not reuse the failed load");
+    assert.deepEqual(h.getRules(), ["rule-a"], "and recover once the payload is valid");
+  });
+
+  test("junk still spends the budget, so it cannot retry forever", async () => {
+    const h = makeGuardedLoader();
+    h.setBehaviour(async () => null);
+    for (let i = 0; i < 5; i++) await h.loader.ensure();
+    assert.equal(h.getFetches(), 3, "capped at maxAttempts like any other failure");
+    assert.equal(h.getRules(), null);
+  });
+});
 
 // ── 1. Single-flight loading ─────────────────────────────────────────────────
 
