@@ -46,15 +46,29 @@ function lastUpdatedOf(html) {
 }
 
 /**
- * Reduces a copy to comparable prose: body only, tags stripped, whitespace
- * collapsed. The two copies legitimately differ in styling (inline <style> vs
- * a linked stylesheet) and in where the Privacy Policy link points, so both
- * are normalised away — everything else must match exactly.
+ * Reduces a copy to comparable prose: the legal body only, tags stripped,
+ * whitespace collapsed.
+ *
+ * Three things legitimately differ between the two copies and are normalised
+ * away here — everything else must match exactly:
+ *
+ *   - STYLING. One links a stylesheet, the other used to inline one.
+ *   - The PRIVACY POLICY LINK, which resolves to a different filename in each
+ *     deploy root ("privacy.html" in the extension, "privacy-page.html" on
+ *     muga.app).
+ *   - PAGE CHROME. The published copy carries the site header and footer that
+ *     every other page on muga.app carries (#1260); the in-extension copy has
+ *     no site to navigate. Comparing navigation link text would make "the two
+ *     copies say the same thing" fail on a menu entry, which is not what this
+ *     guard is for — and would leave the real question, whether the TERMS
+ *     agree, answered by accident.
  */
 function bodyText(html) {
   return html
     .replace(/[\s\S]*?<body>/i, "")
     .replace(/<\/body>[\s\S]*/i, "")
+    .replace(/<header[\s\S]*?<\/header>/gi, "")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
     .replace(/href="privacy(-page)?\.html"/g, 'href="PRIVACY"')
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
