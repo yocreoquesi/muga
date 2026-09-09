@@ -685,7 +685,7 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 .growth-btn:hover {
   background: var(--surface-1);
   color: var(--text-1);
-  border-color: var(--border-strong, var(--text-1));
+  border-color: var(--text-1);
 }
 
 /* ---------- Per-site pause control (#980) ------------------------------- */
@@ -706,7 +706,7 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 }
 .pause-site-btn:hover {
   color: var(--text-1);
-  border-color: var(--border-strong, var(--text-1));
+  border-color: var(--text-1);
 }
 .pause-site-btn.paused {
   background: var(--accent-soft);
@@ -1039,6 +1039,16 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   cursor: pointer;
 }
 .recent-activity-copy:hover { background: var(--surface-2); }
+
+.stats-empty {
+  padding: 8px 14px 10px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: center;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-1);
+}
 
 .recent-activity-empty {
   padding: 8px 14px 12px;

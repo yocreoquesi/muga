@@ -25,6 +25,7 @@ export default Object.freeze({
   popup_badge_honored_creator: "{creator}を支援するため{network}経由でルーティング",
   ledger_section_title: "最近のアクティビティ",
   ledger_empty: "最近のナビゲーションはまだありません。ブラウジングを始めてください。MUGAがクリーンアップしたURLをここに表示します。",
+  stats_zero_state: "まだクリーンアップされたリンクはありません。トラッキング付きのリンクを開くとこれらのカウンターが動き始めます。",
   ledger_badge_cleaned: "クリーンアップ済み",
   ledger_badge_preserve_affiliate: "クリエイターのリファラルを保持",
   ledger_badge_honor_creator: "クリエイタールーティングを尊重",
