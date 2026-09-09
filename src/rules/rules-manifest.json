@@ -858,14 +858,6 @@
       "category": "email"
     },
     {
-      "param": "ie",
-      "category": "platform_noise",
-      "preservedOnDomains": [
-        "baidu.com",
-        "naver.com"
-      ]
-    },
-    {
       "param": "igsh",
       "category": "social"
     },

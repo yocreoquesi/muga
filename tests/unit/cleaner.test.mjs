@@ -1533,13 +1533,26 @@ describe("Amazon extended cleaning", () => {
     assert.equal(u.searchParams.get("k"), "usb hub", "functional k= param must be preserved (+ decoded as space)");
   });
 
-  test("ie=UTF8 is stripped from an Amazon browse URL", () => {
+  test("ie=UTF8 is Amazon's to strip, not everyone's (#1228)", () => {
+    // This used to assert that ie was stripped with NO domain rules passed,
+    // which is the same as asserting it was in the global list. It was, and
+    // that was the defect: "ie" is two characters and means "input encoding"
+    // across a large part of the web. baidu.com and naver.com had already been
+    // given preserveParams entries to stop MUGA taking it from them, which is
+    // what a global entry that was never global looks like from the inside.
+    //
+    // The claim is true on Amazon and now lives on Amazon's own rule. Without
+    // domain rules there is no Amazon rule to apply, so nothing is stripped
+    // here, and that is the assertion.
     const raw = "https://www.amazon.es/s?k=laptop&ie=UTF8&index=electronics";
-    const { cleanUrl, removedTracking } = processUrl(raw, PREFS);
+    const { cleanUrl } = processUrl(raw, PREFS);
     const u = new URL(cleanUrl);
-    assert.equal(u.searchParams.get("ie"), null, "ie= must be stripped");
-    assert.ok(removedTracking.includes("ie"), "ie must appear in removedTracking");
+    assert.equal(u.searchParams.get("ie"), "UTF8", "ie is no longer a global strip");
     assert.equal(u.searchParams.get("k"), "laptop", "k= must be preserved");
+
+    // The Amazon case itself is covered by cleaner-domains.test.mjs, which
+    // hands processUrl the real domain-rules.json: "Amazon encoding and UI
+    // params stripped (_encoding, ie, psc)".
   });
 
   test("node= is NOT stripped from an Amazon browse URL (functional category param)", () => {

@@ -69,8 +69,13 @@ export const TRACKING_PARAMS = [
   // Stored lowercase. cleaner.js compares param.toLowerCase() against this list.
   "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
   "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
-  // Amazon: legacy encoding indicator (ie=UTF8 on browse/search pages)
-  "ie",
+  // "ie" (Amazon's legacy encoding indicator, ie=UTF8) is NOT here on purpose.
+  //
+  // It is two characters long and it means "input encoding" on a large part of
+  // the web — baidu.com and naver.com already had to be given preserveParams
+  // entries to stop MUGA stripping it there, which is the symptom of a global
+  // entry that was never global. It stays in Amazon's own stripParams, where
+  // the claim is true and scoped (#1228).
 
   // eBay: tracking/click params (not the affiliate param itself)
   // "campid" removed from here: it is the eBay Partner Network affiliate param in
@@ -712,7 +717,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
       "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
-      "ie",
       // eBay
       "mkevt", "mkcid", "mkrid", "toolid", "customid",
       // AliExpress: non-attribution noise only. The aff_trace_key / algo_* /
