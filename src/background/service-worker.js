@@ -832,6 +832,24 @@ const CATEGORY_FILTER_RULE_ID_RANGE = Array.from(
 let _staticTrackingRules = null;
 
 /**
+ * The disabled-category set this worker last wrote mirrors for, as a sorted
+ * comma-joined key. `null` means "this lifetime has not synced yet", which is
+ * NOT the same as "no categories": dynamic rules persist across service-worker
+ * lifetimes, so a fresh worker must still reconcile once even when the user has
+ * nothing disabled, in case a previous lifetime left mirrors behind.
+ *
+ * This exists because applyDnrState runs on every storage change and every wake
+ * event. Writing the 300-id removeRuleIds range unconditionally on each of
+ * those put an extra disk write in front of every other rule family's sync, and
+ * the scoped-rule and toolbar-badge e2e specs timed out waiting for rules that
+ * were queued behind it. An idempotent sync should not rewrite state that has
+ * not changed.
+ *
+ * @type {string|null}
+ */
+let _categoryMirrorKey = null;
+
+/**
  * Reads the static tracking-param ruleset out of the extension package.
  *
  * Read through chrome.runtime.getURL rather than bundled at build time so the
@@ -884,11 +902,19 @@ async function syncCategoryFilteredDNR(prefs) {
   if (isFirefoxMV2) return;
   try {
     const disabled = prefs?.disabledCategories ?? [];
+
+    // Nothing changed since this worker last synced: skip the write entirely.
+    // See _categoryMirrorKey — the null case means a fresh worker, which always
+    // reconciles once so a previous lifetime's mirrors cannot linger.
+    const key = [...disabled].map(String).sort().join(",");
+    if (_categoryMirrorKey === key) return;
+
     if (disabled.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: CATEGORY_FILTER_RULE_ID_RANGE,
         addRules: [],
       });
+      _categoryMirrorKey = key;
       return;
     }
 
@@ -919,6 +945,9 @@ async function syncCategoryFilteredDNR(prefs) {
       removeRuleIds: CATEGORY_FILTER_RULE_ID_RANGE,
       addRules: mirrors,
     });
+    // Only after the write lands. A failed write must not record the state as
+    // applied, or the next call would skip the retry.
+    _categoryMirrorKey = key;
   } catch (err) {
     console.error("[MUGA] syncCategoryFilteredDNR failed:", err);
   }
