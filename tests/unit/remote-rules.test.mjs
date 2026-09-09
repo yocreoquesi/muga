@@ -69,6 +69,7 @@ import {
   REMOTE_RULE_ID,
   REMOTE_RULES_URL,
   MAX_PAYLOAD_BYTES,
+  MAX_SCOPED_FACTS,
   FETCH_TIMEOUT_MS,
   MAX_PARAM_COUNT,
   MAX_PARAM_LEN,
@@ -145,13 +146,32 @@ describe("Constants — shape and values", () => {
     );
   });
 
-  test("MAX_PAYLOAD_BYTES is 256 KB", () => {
+  test("MAX_PAYLOAD_BYTES is 512 KB", () => {
     // Raised from 50 KB when host-scoped facts joined the payload (#1229): the
     // first import measured ~105 KB of scoped facts against ~3 KB of global
     // params, so the old bound rejected the whole payload and took the global
     // rules down with it. MUGA's own bound, not a platform one — it exists so a
     // hostile endpoint cannot stream unbounded data in, and that still holds.
-    assert.strictEqual(MAX_PAYLOAD_BYTES, 256 * 1024);
+    //
+    // Raised again to 512 KB (#1278 follow-up). Not because 256 KB was too
+    // small — the entire AdGuard Filter 17 import signs to 56 KB — but because
+    // this number only reaches users through a release, so headroom for the
+    // next upstream sources is bought in the release that is already shipping.
+    assert.strictEqual(MAX_PAYLOAD_BYTES, 512 * 1024);
+  });
+
+  test("MAX_SCOPED_FACTS stays inside what MAX_PAYLOAD_BYTES can carry", () => {
+    // The two are one budget seen from two sides. A scoped entry measured
+    // ~57 bytes across the committed payload, so an entry cap whose worst case
+    // cannot fit under the byte cap would make the byte cap the real limit and
+    // this one decorative — the failure mode being a silently truncated payload
+    // nobody sized for.
+    const MEASURED_BYTES_PER_ENTRY = 57;
+    assert.ok(
+      MAX_SCOPED_FACTS * MEASURED_BYTES_PER_ENTRY < MAX_PAYLOAD_BYTES,
+      `${MAX_SCOPED_FACTS} entries at ~${MEASURED_BYTES_PER_ENTRY} bytes exceeds ` +
+        `MAX_PAYLOAD_BYTES (${MAX_PAYLOAD_BYTES})`,
+    );
   });
 
   test("FETCH_TIMEOUT_MS is 15 seconds", () => {
@@ -1923,7 +1943,7 @@ describe("#1221 — runRemoteRulesFetch and the scoped section", () => {
 //
 // Slice 1 verified, validated and persisted the scoped section without acting
 // on it. This is the half that acts: thin, host-scoped, dynamic rules in the
-// 3100-4099 range, at a priority that outranks the global strip rules.
+// 3100-5099 range, at a priority that outranks the global strip rules.
 //
 // Two measured constraints drive the whole shape (#1229, PR #1242):
 //   - THIN rules only. Modelled as complete-per-host profiles the measured

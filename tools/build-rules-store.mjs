@@ -89,6 +89,23 @@ function write(file, contents) {
  *
  * Set to the pre-#1229 runtime bound, which is what the fleet carries today.
  * Raising it is a one-line change and needs no client work.
+ *
+ * ── What it should become, and what has to happen first ───────────
+ *
+ * TARGET: 384 KB, once a release carrying MAX_PAYLOAD_BYTES = 512 KB has
+ * adoption. That is 75% of the runtime cap, leaving margin for the signer's two
+ * signatures and for a payload that grows between publishes, and it is ~6.8x
+ * the 56 KB the ENTIRE AdGuard Filter 17 host-anchored import signs to
+ * (measured 2026-09-09).
+ *
+ * NOT YET. v3.0.0 — which is every install today — carries the OLD 50 KB
+ * runtime bound: the raise to 256 KB landed in #1250, after that tag, and 512 KB
+ * after that again. Publishing above 50 KB before those builds are out there
+ * makes the whole payload OVER_CAP for everyone, global params included, and
+ * the channel stops updating until they auto-update. Cleaning keeps working
+ * (ADR-D9), but nothing new arrives.
+ *
+ * So the order is: release → adoption → this number. Not the other way round.
  */
 export const PUBLISH_PAYLOAD_BUDGET_BYTES = 50 * 1024;
 

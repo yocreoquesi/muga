@@ -1201,7 +1201,7 @@ async function applyDnrState(prefs) {
         blocklistBeacons: () => syncBlocklistBeaconsDNR({ blacklist: [] }),
         // Disabling the static rulesets and clearing rule 1000 is NOT enough:
         // rule 1001 is a DNR redirect that keeps stripping params for a
-        // disabled extension (#921). The host-scoped range (3100-4099, #1221
+        // disabled extension (#921). The host-scoped range (3100-5099, #1221
         // slice 2) comes from the same channel and goes in the same call.
         remoteParams: () => chrome.declarativeNetRequest.updateDynamicRules({
           removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID, ...SCOPED_RULE_ID_RANGE],
@@ -1212,7 +1212,7 @@ async function applyDnrState(prefs) {
 }
 
 // Reconciles the dynamic remote-params rule (id 1001) AND the host-scoped
-// range (3100-4099, #1221 slice 2) with current prefs + cached payload. Used on gate-open so rule 1001 is restored after the
+// range (3100-5099, #1221 slice 2) with current prefs + cached payload. Used on gate-open so rule 1001 is restored after the
 // gate-closed branch removed it, without waiting for the next weekly fetch.
 // buildRemoteDnrRule rejects an empty removeParams transform, so an empty or
 // missing cache resolves to "no rule" (removal only). (#921)

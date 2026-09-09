@@ -26,7 +26,7 @@
  * range from there.
  *
  * Pushing the rules in directly with `updateDynamicRules` was tried first and
- * is not viable: the service worker OWNS 3100-4099 and clears it on every gate
+ * is not viable: the service worker OWNS 3100-5099 and clears it on every gate
  * transition, so injected rules are wiped non-deterministically — one probe
  * lost its rule before the navigation, another before it even entered the
  * table. That is correct behaviour (the consent gate must be able to withdraw

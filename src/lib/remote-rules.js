@@ -63,8 +63,21 @@ export const REMOTE_RULE_ID = DNR_REMOTE_PARAMS_RULE_ID;
  * error until the extension auto-updates. That is why the PUBLISHER has its own,
  * deliberately smaller budget (`tools/build-rules-store.mjs`), moved up only
  * once a build carrying this value has adoption.
+ *
+ * Raised again to 512 KB, and the reason is that adoption sentence rather than
+ * any measurement. The whole of AdGuard Filter 17, every host-anchored fact it
+ * carries merged into the store, signs to 56 KB (measured 2026-09-09) — 256 KB
+ * already covered it 4.5x. But each raise of THIS number costs a release plus
+ * the wait for installs to pick it up before a single extra fact can ship, so
+ * the cheap moment to buy headroom for a second and third upstream source is a
+ * release that is happening anyway. 512 KB is ~9x the full import.
+ *
+ * What that costs: a hostile endpoint may stream 512 KB instead of 256 KB
+ * before the reader aborts. The bound is about memory and time, not
+ * authenticity — the signature is verified after the body is read — and half a
+ * megabyte buffered once a week is not a service-worker problem.
  */
-export const MAX_PAYLOAD_BYTES = 256 * 1024; // 256 KB
+export const MAX_PAYLOAD_BYTES = 512 * 1024; // 512 KB
 
 /** Fetch timeout in milliseconds (REQ-FETCH-5). */
 export const FETCH_TIMEOUT_MS = 15_000;
@@ -396,8 +409,19 @@ export function canonicalScopedMessage(version, published, scoped) {
 /** Hostname shape accepted in a scoped fact. Deliberately narrow. */
 const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 
-/** Upper bound on scoped facts in one payload, mirroring MAX_PARAM_COUNT's intent. */
-export const MAX_SCOPED_FACTS = 2000;
+/**
+ * Upper bound on scoped ENTRIES in one payload, mirroring MAX_PARAM_COUNT's
+ * intent: bound the work a single payload can ask of the client.
+ *
+ * One entry is one param with its host list, so this counts params, not facts.
+ * The full AdGuard Filter 17 import merged into the store is 1003 publishable
+ * entries (measured 2026-09-09); 6000 leaves 6x, and stays consistent with
+ * MAX_PAYLOAD_BYTES — 6000 entries at the measured ~57 bytes each is ~342 KB,
+ * comfortably inside the 512 KB the reader will accept. Raised alongside it for
+ * the same reason: both ship with a release, so they move together or the
+ * smaller one silently becomes the real cap.
+ */
+export const MAX_SCOPED_FACTS = 6000;
 
 /**
  * Does `host`, or any domain it sits under, declare `param` in preserveParams?
@@ -881,7 +905,7 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  *   - Also writes remoteRulesChangelog: a set-diff against the previous
  *     remoteParams cache, surfaced by Settings as "N added / M removed" (#984).
  *   - Calls dnr.updateDynamicRules to add/replace rule 1001.
- *   - Then replaces the host-scoped rules (3100-4099) from meta.scopedFacts,
+ *   - Then replaces the host-scoped rules (3100-5099) from meta.scopedFacts,
  *     in a separate, non-fatal call (#1221 slice 2).
  *   - Does NOT touch remoteRulesEnabled (sync) or customParams.
  *
@@ -1078,7 +1102,7 @@ export const SCOPED_RULE_ID_RANGE = Object.freeze(
  * preserve guard has already been asked about the anchor.
  *
  * @param {Array<{param: string, hosts: string[]}>} facts Validated scoped facts.
- * @returns {object[]} DNR rule objects in the 3100-4099 range.
+ * @returns {object[]} DNR rule objects in the 3100-5099 range.
  */
 export function buildScopedDnrRules(facts) {
   if (!Array.isArray(facts) || facts.length === 0) return [];
