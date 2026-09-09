@@ -143,6 +143,55 @@ describe("dnr-ids.js — dynamic ID ranges never overlap", () => {
       }
     }
   });
+
+  test("every reserved range together stays under the platform's dynamic-rule limit", async () => {
+    // Disjointness is not enough. These are DYNAMIC rules and the platform caps
+    // how many may exist AT ONCE, so a family that fits neatly between two
+    // neighbours can still push the total past what updateDynamicRules will
+    // accept — and that call rejects the WHOLE update, not the surplus.
+    //
+    // The binding number is Firefox's MAX_NUMBER_OF_DYNAMIC_RULES = 5000.
+    // Chrome's total is 30000, but it caps "unsafe" rules — anything that is
+    // not block/allow/allowAllRequests/upgradeScheme, which is every redirect
+    // rule MUGA registers — at 5000 too, so both platforms land on the same
+    // effective ceiling.
+    const ids = await import("../../src/lib/dnr-ids.js");
+    const PLATFORM_DYNAMIC_RULE_LIMIT = 5000;
+    const reserved =
+      1 + // custom params (1000)
+      1 + // remote params (1001)
+      ids.DNR_DOMAIN_PRESERVE_MAX_RULES +
+      ids.DNR_ALLOWLIST_MAX_RULES +
+      1 + // suppress referer
+      1 + // block beacons
+      ids.DNR_BLOCKLIST_MAX_RULES + // blocklist referer
+      ids.DNR_BLOCKLIST_MAX_RULES + // blocklist beacons
+      ids.DNR_SCOPED_PARAMS_MAX_RULES +
+      ids.DNR_CATEGORY_FILTER_MAX_RULES;
+
+    assert.ok(
+      reserved <= PLATFORM_DYNAMIC_RULE_LIMIT,
+      `MUGA reserves ${reserved} dynamic rule slots, over the ` +
+        `${PLATFORM_DYNAMIC_RULE_LIMIT} the platform allows at once`,
+    );
+  });
+
+  test("the scoped range covers the ids the category mirrors used to live in", async () => {
+    // The category-filter range moved from 4100 to 5100 when the scoped range
+    // grew into 3100-5099. Nothing migrates an installed profile's rules, so
+    // what removes an upgraded install's stale mirrors at 4100-4399 is the
+    // scoped range's own wholesale wipe. If that range ever stops covering
+    // them, those rules become permanently registered and invisible to the
+    // consent teardown, which only knows about ranges this file declares.
+    const ids = await import("../../src/lib/dnr-ids.js");
+    const LEGACY_CATEGORY_FILTER_BASE = 4100;
+    const LEGACY_CATEGORY_FILTER_MAX = 300;
+    const scopedStart = ids.DNR_SCOPED_PARAMS_RULE_ID_BASE;
+    const scopedEnd = scopedStart + ids.DNR_SCOPED_PARAMS_MAX_RULES - 1;
+
+    assert.ok(LEGACY_CATEGORY_FILTER_BASE >= scopedStart);
+    assert.ok(LEGACY_CATEGORY_FILTER_BASE + LEGACY_CATEGORY_FILTER_MAX - 1 <= scopedEnd);
+  });
 });
 
 // ── #1221 slice 2: the host-scoped strip rules ───────────────────────────────

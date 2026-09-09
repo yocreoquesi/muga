@@ -52,14 +52,14 @@
  *              REGARDLESS of prefs.blockBeacons (same D2 rationale as
  *              2700-2899). Managed by syncBlocklistBeaconsDNR(). Capped at
  *              DNR_BLOCKLIST_MAX_RULES.
- *   3100-4099 — dynamic HOST-SCOPED remote param strip rules (#1221 slice 2),
+ *   3100-5099 — dynamic HOST-SCOPED remote param strip rules (#1221 slice 2),
  *              built from the signed `scoped` section of the remote payload.
  *              THIN: each rule removes only the params anchored to its hosts,
  *              NOT the whole global list, and runs at priority 2 so it
  *              outranks the global strip rules rather than being shadowed by
  *              them. Managed by lib/remote-rules.js. Capped at
  *              DNR_SCOPED_PARAMS_MAX_RULES.
- *   4100-4399 — dynamic CATEGORY-FILTERED mirrors of the whole
+ *   5100-5399 — dynamic CATEGORY-FILTERED mirrors of the whole
  *              tracking-params.json ruleset (#1256). Registered ONLY while
  *              prefs.disabledCategories is non-empty, in which case the static
  *              ruleset is disabled and these stand in for it: same rules, same
@@ -72,9 +72,24 @@
  *              DNR_CATEGORY_FILTER_MAX_RULES.
  *
  * When adding a new dynamic rule, pick an ID > 1001 (and outside 2000-2499,
- * 2500, 2600, 2700-2899, 2900-3099, 3100-4099, 4100-4399 unless it belongs to
+ * 2500, 2600, 2700-2899, 2900-3099, 3100-5099, 5100-5399 unless it belongs to
  * one of those existing ranges), document it here, and verify it does not
  * overlap with any existing entry in this file.
+ *
+ * ── The platform ceiling every range shares ────────────────────────────
+ *
+ * These are DYNAMIC rules, and the binding limit is FIREFOX's: 5000 dynamic
+ * rules total (`MAX_NUMBER_OF_DYNAMIC_RULES`). Chrome's own total is 30000, but
+ * it caps "unsafe" rules at 5000 — unsafe being anything that is not block /
+ * allow / allowAllRequests / upgradeScheme, so every redirect rule MUGA
+ * registers counts against that 5000 too. Both platforms land on the same
+ * effective ceiling.
+ *
+ * So the sum of every range reserved above has to stay under 5000, not just
+ * each range on its own. `dnr-ids.test.mjs` asserts that total: a new family
+ * that fits neatly between two neighbours but pushes the sum over the platform
+ * limit fails a test, rather than making `updateDynamicRules` reject the whole
+ * call at runtime.
  */
 
 /** ID of the static tracking-params ruleset (tracking-params.json). */
@@ -206,20 +221,33 @@ export const DNR_BLOCKLIST_MAX_RULES = 200;
  * remote-rules.js#buildScopedDnrRules from the signed `scoped` section of the
  * remote payload, and applied by mergeIntoCache alongside rule 1001.
  *
- * Range 3100-4099, immediately after the 2900-3099 blocklist beacon range.
+ * Range 3100-5099, immediately after the 2900-3099 blocklist beacon range.
  */
 export const DNR_SCOPED_PARAMS_RULE_ID_BASE = 3100;
 
 /**
  * Maximum number of dynamic host-scoped strip rules
- * (ids BASE .. + DNR_SCOPED_PARAMS_MAX_RULES - 1). Sized against the measured
- * yield of the AdGuard host-anchored import (#1229: ~630 host profiles), with
- * headroom, and well under Chrome's dynamic-rule ceiling once the allowlist
- * (500) and blocklist (200 + 200) ranges are counted. Over the cap the builder
- * drops the tail and logs the dropped hosts rather than truncating silently,
- * mirroring DNR_ALLOWLIST_MAX_RULES.
+ * (ids BASE .. + DNR_SCOPED_PARAMS_MAX_RULES - 1).
+ *
+ * One rule is one GROUP of hosts sharing an identical param profile, so this
+ * number tracks HOST coverage, not param count.
+ *
+ * Sized against the ceiling that actually exists rather than against today's
+ * store: parsing the whole of AdGuard Filter 17 and merging every host-anchored
+ * fact it carries yields 683 hosts in 469 groups (measured 2026-09-09). 1000
+ * left barely 2x over an upstream MUGA has already imported in full; 2000
+ * leaves 4.3x, which is the room a second and third upstream source need.
+ *
+ * Raised in one move on purpose. This constant is compiled into every installed
+ * build, so raising it later costs a release plus adoption time before one
+ * extra host is covered — the same two-speed trap PUBLISH_PAYLOAD_BUDGET_BYTES
+ * documents from the other side. A reserved range costs nothing until rules are
+ * actually registered in it; only the platform total below is finite.
+ *
+ * Over the cap the builder drops the tail and logs the dropped hosts rather
+ * than truncating silently, mirroring DNR_ALLOWLIST_MAX_RULES.
  */
-export const DNR_SCOPED_PARAMS_MAX_RULES = 1000;
+export const DNR_SCOPED_PARAMS_MAX_RULES = 2000;
 
 /**
  * Priority of the dynamic host-scoped strip rules. MUST exceed the priority of
@@ -285,11 +313,23 @@ export const ALLOWLIST_RESOURCE_TYPES = [
 /**
  * First ID of the dynamic category-filtered mirror range (#1256).
  *
- * Chosen to sit above the host-scoped remote range (3100-4099) so the two can
+ * Chosen to sit above the host-scoped remote range (3100-5099) so the two can
  * never collide: both are rebuilt from scratch on their own schedule, and a
  * shared ID would make one silently overwrite the other.
+ *
+ * MOVED from 4100 when the scoped range grew to 3100-5099. An install upgrading
+ * across that change keeps its old mirrors registered at 4100-4399 until
+ * something clears them, and what clears them is the scoped range's own
+ * wholesale wipe: it now covers those ids and runs on every remote fetch, every
+ * gate change and every reconcile. Until then old and new mirrors coexist and
+ * strip the same params twice, which is idempotent.
+ *
+ * That self-healing overlap is exactly why the scoped range grew UPWARD into
+ * this one instead of moving to a fresh band: a relocated scoped range would
+ * have orphaned its own rules in ids nothing owns any more, which is the one
+ * shape the consent teardown cannot see.
  */
-export const DNR_CATEGORY_FILTER_RULE_ID_BASE = 4100;
+export const DNR_CATEGORY_FILTER_RULE_ID_BASE = 5100;
 
 /**
  * Ceiling on mirrored rules. tracking-params.json ships 19 today (one global
