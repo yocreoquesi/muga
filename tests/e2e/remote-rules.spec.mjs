@@ -110,6 +110,58 @@ async function waitForParamCount(optionsPage, expectedCount, timeoutMs = 8000) {
   );
 }
 
+/**
+ * Reads a value out of chrome.storage in the page's context.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {"local"|"sync"} area
+ * @param {object} defaults passed straight to chrome.storage[area].get
+ * @param {string} key which key of the result to return
+ */
+function readStorage(page, area, defaults, key) {
+  return page.evaluate(
+    ([a, d, k]) => new Promise((resolve) => {
+      chrome.storage[a].get(d, (data) => resolve(data[k]));
+    }),
+    [area, defaults, key],
+  );
+}
+
+/**
+ * Waits until the service worker has finished the whole enable pipeline and
+ * written the result to storage.
+ *
+ * `ENABLE_REMOTE_RULES` resolves as soon as the worker ACCEPTS the message. The
+ * fetch, signature verification, validation and cache merge all happen after
+ * that, in the worker. So reading chrome.storage on the next line races the
+ * write, and the tests that did it failed intermittently with `paramCount:
+ * undefined` or an empty `remoteParams` — a real race in the test, not in the
+ * product.
+ *
+ * The DOM-based `waitForParamCount` above already had this right; these are the
+ * storage-reading equivalents that did not.
+ */
+async function waitForRemoteMerge(page, timeoutMs = 8000) {
+  await expect
+    .poll(() => readStorage(page, "local", { remoteRulesMeta: null }, "remoteRulesMeta")
+      .then((meta) => meta?.paramCount ?? null), {
+      timeout: timeoutMs,
+      message: "the service worker never wrote remoteRulesMeta after ENABLE_REMOTE_RULES",
+    })
+    .not.toBeNull();
+}
+
+/** The mirror of the above for the disable path, which clears rather than writes. */
+async function waitForRemoteCleared(page, timeoutMs = 8000) {
+  await expect
+    .poll(() => readStorage(page, "local", { remoteParams: [] }, "remoteParams")
+      .then((params) => params.length), {
+      timeout: timeoutMs,
+      message: "the service worker never cleared remoteParams after DISABLE_REMOTE_RULES",
+    })
+    .toBe(0);
+}
+
 // ---------------------------------------------------------------------------
 // Test setup: shared keypair + signed payload for all tests in this file
 // ---------------------------------------------------------------------------
@@ -231,11 +283,8 @@ test.describe("Remote rules — E2E", () => {
       expect(result?.ok).toBe(true);
 
       // Query storage directly to verify paramCount (dedup happened in service worker)
-      const meta = await page.evaluate(async () => {
-        return new Promise(resolve => {
-          chrome.storage.local.get({ remoteRulesMeta: null }, data => resolve(data.remoteRulesMeta));
-        });
-      });
+      await waitForRemoteMerge(page);
+      const meta = await readStorage(page, "local", { remoteRulesMeta: null }, "remoteRulesMeta");
 
       // paramCount must equal unique non-builtin params, NOT the full payload length
       expect(meta?.paramCount).toBe(REMOTE_PARAMS_UNIQUE.length);
@@ -251,12 +300,10 @@ test.describe("Remote rules — E2E", () => {
       const enableResult = await enableRemoteRules(page);
       expect(enableResult?.ok).toBe(true);
 
-      // Verify remote params are in storage
-      const paramsAfterEnable = await page.evaluate(async () => {
-        return new Promise(resolve => {
-          chrome.storage.local.get({ remoteParams: [] }, data => resolve(data.remoteParams));
-        });
-      });
+      // Verify remote params are in storage. The merge lands after the enable
+      // message is acknowledged, so this waits for it rather than assuming.
+      await waitForRemoteMerge(page);
+      const paramsAfterEnable = await readStorage(page, "local", { remoteParams: [] }, "remoteParams");
       expect(paramsAfterEnable.length).toBe(REMOTE_PARAMS_UNIQUE.length);
 
       // Now disable
@@ -264,19 +311,12 @@ test.describe("Remote rules — E2E", () => {
       expect(disableResult?.ok).toBe(true);
 
       // remoteParams must be cleared from storage
-      const paramsAfterDisable = await page.evaluate(async () => {
-        return new Promise(resolve => {
-          chrome.storage.local.get({ remoteParams: [] }, data => resolve(data.remoteParams));
-        });
-      });
+      await waitForRemoteCleared(page);
+      const paramsAfterDisable = await readStorage(page, "local", { remoteParams: [] }, "remoteParams");
       expect(paramsAfterDisable).toHaveLength(0);
 
       // remoteRulesEnabled must be false
-      const isEnabled = await page.evaluate(async () => {
-        return new Promise(resolve => {
-          chrome.storage.sync.get({ remoteRulesEnabled: false }, data => resolve(data.remoteRulesEnabled));
-        });
-      });
+      const isEnabled = await readStorage(page, "sync", { remoteRulesEnabled: false }, "remoteRulesEnabled");
       expect(isEnabled).toBe(false);
     }
   );

@@ -133,6 +133,23 @@ async function installScopedRules(page, host) {
 
   await seedAndTrigger();
 
+  // Find OUR rule by what it strips, not by its id.
+  //
+  // This used to look for DNR_SCOPED_PARAMS_RULE_ID_BASE exactly, which quietly
+  // assumed the test's fact is the only scoped fact the worker knows about, so it
+  // always lands first in the range. That held only while the published payload
+  // carried zero scoped facts. The moment real ones exist, id 3100 belongs to one
+  // of THEM, the identity assertions below compare our expectation against a
+  // stranger's rule, and it fails as a deep-equality mismatch on requestDomains —
+  // which reads like a product bug and is not one.
+  //
+  // SCOPED_ONLY_PARAM is a test-only name, so matching on it identifies our rule
+  // regardless of how many real facts share the range.
+  const ours = (rules) =>
+    rules.find((r) =>
+      r.action?.redirect?.transform?.queryTransform?.removeParams?.includes(SCOPED_ONLY_PARAM)
+    );
+
   let live = [];
   await expect
     .poll(
@@ -143,7 +160,7 @@ async function installScopedRules(page, host) {
               chrome.declarativeNetRequest.getDynamicRules((r) => resolve(r))
             )
         );
-        if (live.some((r) => r.id === DNR_SCOPED_PARAMS_RULE_ID_BASE)) return true;
+        if (ours(live)) return true;
         // Re-send rather than just wait: a lost storage event is not something
         // a longer timeout recovers from.
         await seedAndTrigger();
@@ -152,12 +169,20 @@ async function installScopedRules(page, host) {
       {
         timeout: 30_000,
         intervals: [250, 500, 1000],
-        message: `the service worker never registered scoped rule ${DNR_SCOPED_PARAMS_RULE_ID_BASE}`,
+        message: `the service worker never registered a scoped rule stripping ${SCOPED_ONLY_PARAM}`,
       }
     )
     .toBe(true);
 
-  const registered = live.find((r) => r.id === DNR_SCOPED_PARAMS_RULE_ID_BASE);
+  const registered = ours(live);
+
+  // Still pinned: whatever id it got must belong to the range the service worker
+  // owns for scoped rules. That is the property #1221 cares about; being FIRST in
+  // that range never was.
+  expect(
+    registered.id,
+    `scoped rule ${registered.id} is outside the range the worker owns`,
+  ).toBeGreaterThanOrEqual(DNR_SCOPED_PARAMS_RULE_ID_BASE);
   // What the service worker registered must be what the builder produced —
   // otherwise the wire results below are about some other rule.
   expect(registered.condition.requestDomains).toEqual(expected[0].condition.requestDomains);

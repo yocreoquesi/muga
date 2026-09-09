@@ -21,7 +21,7 @@
  *      must not repeat) and the static manifest icon ships unchanged.
  */
 
-import { test, expect } from "./fixtures.mjs";
+import { test, expect, waitForInstallSettled } from "./fixtures.mjs";
 import {
   installTestModeSentinel,
   clearTestModeSentinel,
@@ -46,6 +46,29 @@ import {
 // accessor reads — until onboardingDone is confirmed true, so this wait
 // is a real condition, not a guess.
 async function completeOnboarding(context, extensionId) {
+  const extOrigin = `chrome-extension://${extensionId}`;
+  let page = context.pages().find(p => p.url().startsWith(extOrigin));
+  let opened = false;
+  if (!page) {
+    page = await context.newPage();
+    await page.goto(`${extOrigin}/popup/popup.html`);
+    opened = true;
+  }
+
+  // Order matters, and getting it wrong is what made "no digit is shown for a
+  // fresh tab" flake inside the full run while passing alone.
+  //
+  // Every test gets a fresh profile, so every test is a fresh INSTALL. onInstalled
+  // runs recordImplicitAcceptOnInstall() AND applyOnboardingBadge(), both async and
+  // on a schedule no test controls. Seeding consent while that is still in flight
+  // means the install path can land afterwards and repaint the global "!" badge
+  // underneath a test that has already asserted it is gone.
+  //
+  // fixtures.mjs documents this and exports the barrier (#1231). Waiting for the
+  // install to SETTLE before seeding turns a race into a sequence, rather than
+  // stacking another timeout on top of it.
+  await waitForInstallSettled(page);
+
   await seedStorage(context, extensionId, {
     local: {
       mugaConsent: {
@@ -56,20 +79,29 @@ async function completeOnboarding(context, extensionId) {
     },
   });
   await waitForDnrPropagation(context, extensionId);
-
-  const extOrigin = `chrome-extension://${extensionId}`;
-  let page = context.pages().find(p => p.url().startsWith(extOrigin));
-  let opened = false;
-  if (!page) {
-    page = await context.newPage();
-    await page.goto(`${extOrigin}/popup/popup.html`);
-    opened = true;
-  }
   await page.waitForFunction(() =>
     new Promise(resolve => {
       chrome.runtime.sendMessage({ type: "getPrefs" }, (r) => resolve(!!r?.onboardingDone));
     }), { timeout: 5000 }
   );
+
+  // Then wait for the consequence, not just the cause.
+  //
+  // onboardingDone flipping true is what makes applyOnboardingBadge CLEAR the
+  // global "!" badge, but that repaint is a separate async hop with no completion
+  // signal. It matters because getBadgeText({tabId}) falls back to the GLOBAL
+  // badge whenever a tab has no badge of its own — which is exactly the state
+  // "no digit is shown for a fresh tab" asserts on. So while "!" is still up,
+  // that test reads "!" instead of "", and it did, intermittently.
+  //
+  // This polls the observable end state rather than adding another timeout, so
+  // it cannot pass early on a slow machine or hang on a fast one.
+  await page.waitForFunction(() =>
+    new Promise(resolve => {
+      chrome.action.getBadgeText({}, (t) => resolve(t === ""));
+    }), { timeout: 5000 }
+  );
+
   if (opened) await page.close();
 }
 
