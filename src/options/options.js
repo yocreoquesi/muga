@@ -566,6 +566,15 @@ const RENDER_LIST_MAX_ITEMS = 1000;
 function renderList(containerId, items, listKey) {
   const container = document.getElementById(containerId);
   container.replaceChildren();
+
+  // The locally-stripped list is UNGATED now (#1271 item 4), so an empty one
+  // would greet every user with a section about a feature they have not used.
+  // Its own section carries it, and the popup is where entries come from.
+  if (listKey === "userCustomRules") {
+    const section = document.getElementById("user-custom-rules");
+    if (section) section.hidden = items.length === 0;
+  }
+
   if (!items.length) {
     const p = document.createElement("p");
     p.className = "empty";

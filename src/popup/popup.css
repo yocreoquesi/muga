@@ -1040,6 +1040,12 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 }
 .recent-activity-copy:hover { background: var(--surface-2); }
 
+.strip-locally-manage {
+  color: var(--text-link);
+  text-decoration: none;
+}
+.strip-locally-manage:hover { text-decoration: underline; }
+
 .stats-empty {
   padding: 8px 14px 10px;
   margin: 0;

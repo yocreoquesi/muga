@@ -1338,7 +1338,23 @@ function _renderStripLocallyCount(count, lang) {
     return;
   }
   // textContent + manual {n} replace — never innerHTML.
-  el.textContent = t("strip_locally_active_count", lang).replace("{n}", String(count));
+  el.replaceChildren();
+  el.appendChild(
+    document.createTextNode(t("strip_locally_active_count", lang).replace("{n}", String(count)) + " "),
+  );
+
+  // A way back to the list this counter counts (#1271 item 4). The button that
+  // fills it lives here in the popup; the list itself lives in Settings, and
+  // until now the only path to it was knowing it was there. Deep-linked with a
+  // hash rather than openOptionsPage(), which cannot carry one.
+  const link = document.createElement("a");
+  link.href = chrome.runtime.getURL("options/options.html#user-custom-rules");
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.className = "strip-locally-manage";
+  link.textContent = t("strip_locally_manage", lang);
+  el.appendChild(link);
+
   el.hidden = false;
 }
 

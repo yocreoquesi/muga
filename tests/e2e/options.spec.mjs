@@ -195,6 +195,12 @@ test.describe("Options — advanced settings", () => {
   test("URL tester produces a clean result", async ({ optionsPage: page }) => {
     await setCheckbox(page, "dev-mode", true);
 
+    // The developer tools sit behind their own disclosure now, collapsed by
+    // default (#1271): reaching a real setting through Advanced should not also
+    // hand the user a button that replays onboarding. So the QA panel has to be
+    // opened deliberately here, exactly as a person would.
+    await page.locator(".dev-tools-disclosure > summary").click();
+
     const input = page.locator("#dev-url-input");
     const testBtn = page.locator("#dev-url-test-btn");
     const result = page.locator("#dev-url-result");
