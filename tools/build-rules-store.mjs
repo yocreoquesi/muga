@@ -133,6 +133,39 @@ function fitScopedToBudget(scoped, baseBytes, budget) {
 const SCOPED_SECTION_OVERHEAD_BYTES = 512;
 
 /**
+ * Drops the scoped facts whose param is ALREADY in the global strip list.
+ *
+ * Such a fact publishes nothing: the payload's global rule (`buildRemoteDnrRule`,
+ * id 1001) carries no `requestDomains` and no `excludedRequestDomains`, so it
+ * removes its params on every main_frame host — including the ones the scoped
+ * fact names. The entry is not wrong, it is INERT, and it spends bytes from a
+ * bounded budget that real facts are being cut from (#1278).
+ *
+ * PROJECTION-TIME, not store-time, and that is the whole design:
+ *
+ *   - The store must keep every landed fact. Params leave the global list on
+ *     their own — the #1221 preserveParams sweep and #1263's affiliate sweep
+ *     both remove them — and when one does, its scoped fact has to start
+ *     publishing again. Deleting it here would make that silently impossible.
+ *   - `fitScopedToBudget` already lives here, so both decisions about what is
+ *     SERVED (as opposed to what is KNOWN) stay in one place.
+ *
+ * Not the same thing as a preserve collision. A `(param, host)` pair the host
+ * itself preserves never reaches the store: `land-scoped.mjs` refuses it at
+ * landing ("the host's OWN preserve list beats an upstream claim"). So a fact
+ * filtered here is one the global rule genuinely covers, never one that would
+ * have re-enabled stripping where a per-host rule deliberately preserves.
+ *
+ * @param {Array<{param: string, hosts: string[]}>} scoped
+ * @param {string[]} params The GLOBAL strip list this payload publishes.
+ * @returns {Array<{param: string, hosts: string[]}>}
+ */
+function withoutGloballyShadowed(scoped, params) {
+  const global = new Set(params);
+  return scoped.filter((fact) => !global.has(fact.param));
+}
+
+/**
  * Renders params.json with a replaced `params` array and `scoped` section,
  * preserving every other field.
  *
@@ -163,15 +196,28 @@ function renderParamsFile(existingText, params, scoped) {
   // What the DEPLOYED fleet can actually fetch, not what the store holds.
   const bare = { ...next };
   delete bare.scoped;
+
+  // Shadowed facts are removed BEFORE the fit, not after: the point is to hand
+  // their bytes to facts the budget is currently cutting (#1278).
+  const publishable = withoutGloballyShadowed(scoped, params);
+  const shadowed = scoped.length - publishable.length;
   const { published, dropped } = fitScopedToBudget(
-    scoped,
+    publishable,
     JSON.stringify(bare).length,
     PUBLISH_PAYLOAD_BUDGET_BYTES,
   );
 
+  if (shadowed > 0) {
+    console.log(
+      `[rules-store] ${shadowed} of ${scoped.length} scoped fact(s) name a param the global ` +
+        "list already strips everywhere — inert, so they are not published. They stay in the " +
+        "store and publish themselves if the param ever leaves the global list."
+    );
+  }
+
   if (dropped > 0) {
     console.warn(
-      `[rules-store] ${dropped} of ${scoped.length} scoped fact(s) exceed the ` +
+      `[rules-store] ${dropped} of ${publishable.length} publishable scoped fact(s) exceed the ` +
         `${PUBLISH_PAYLOAD_BUDGET_BYTES}-byte publish budget and are NOT in this payload. ` +
         "They stay in the store and publish themselves once the budget rises."
     );
