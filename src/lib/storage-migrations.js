@@ -17,6 +17,8 @@
 // cross-site-frequency.js, creator-allowlist.js) never imports storage.js or
 // storage-migrations.js, so this import cannot create a cycle.
 import { parseListEntry, domainMatches } from "./cleaner.js";
+// No cycle: list-mutation-queue.js imports nothing.
+import { enqueueListMutation } from "./list-mutation-queue.js";
 
 // ── One-time migration ────────────────────────────────────────────────────────
 
@@ -162,6 +164,16 @@ export async function migrateLegacyProxyPref() {
  * never throw out to the caller or break startup.
  */
 export async function migratePerSiteDisableToAllowlist() {
+  // Read AND write inside the queue (#1257). This used to read here and write
+  // with a raw chrome.storage.sync.set further down, outside any serialisation.
+  // `set` replaces the whole key, so an ADD_TO_WHITELIST landing in that window
+  // wrote its entry and then had it overwritten by the list this migration read
+  // before the entry existed -- gone, with no error anywhere.
+  //
+  // Reading inside the task is the load-bearing half: taking the snapshot
+  // outside and passing it in would fetch before this caller's turn and write
+  // after it, which is the same race with extra steps.
+  return enqueueListMutation(async () => {
   try {
     const data = await new Promise((resolve, reject) =>
       chrome.storage.sync.get({ whitelist: [], blacklist: [] }, (result) => {
@@ -217,6 +229,7 @@ export async function migratePerSiteDisableToAllowlist() {
   } catch {
     // Migration is best-effort — a failure here must never break startup.
   }
+  });
 }
 
 /**

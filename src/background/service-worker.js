@@ -27,6 +27,7 @@ import {
 import { partitionRulesets } from "../lib/dnr-ruleset-state.js";
 import { createSingleFlightLoader, createFirstUsedBootstrap } from "./single-flight-loader.js";
 import { runOneTimeMigrations } from "./run-migrations.js";
+import { enqueueListMutation } from "../lib/list-mutation-queue.js";
 import { buildCategoryFilteredRules } from "../lib/dnr-category-filter.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -373,9 +374,13 @@ function _invalidatePrefsCache() {
   _cacheVersion++;
 }
 
-// Serialize list mutations (whitelist/blacklist) to prevent race conditions
-// where two rapid messages read the same cached list and the second overwrites the first.
-let _listMutationQueue = Promise.resolve();
+// List mutations (whitelist/blacklist) are serialised through
+// lib/list-mutation-queue.js. The chain used to live here as a module-local
+// promise, which meant migratePerSiteDisableToAllowlist could not join it --
+// it is in a lib module and this file cannot be imported -- so that migration
+// wrote the whole list with a raw chrome.storage.sync.set and could destroy an
+// entry the user had just added (#1257). A queue only some writers use is not
+// a queue.
 
 function getPrefsWithCache() {
   if (cachedPrefs) return Promise.resolve(cachedPrefs);
@@ -1984,7 +1989,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false });
       return true;
     }
-    _listMutationQueue = _listMutationQueue.then(async () => {
+    enqueueListMutation(async () => {
       const fresh = await getPrefs();
       if (!fresh.whitelist.includes(entry)) {
         await setPrefs({ whitelist: [...fresh.whitelist, entry] });
@@ -2005,7 +2010,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false });
       return true;
     }
-    _listMutationQueue = _listMutationQueue.then(async () => {
+    enqueueListMutation(async () => {
       const fresh = await getPrefs();
       if (!fresh.blacklist.includes(entry)) {
         await setPrefs({ blacklist: [...fresh.blacklist, entry] });
