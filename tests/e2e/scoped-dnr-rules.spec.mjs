@@ -132,6 +132,41 @@ async function installScopedRules(page, host) {
                 published: new Date().toISOString(),
                 scopedFacts: [{ param, hosts: [h] }],
               },
+              // Refuse every published payload for the life of this profile.
+              //
+              // Until 2026-09-09 the published channel carried ZERO scoped
+              // facts, so the worker's own fetch landing mid-test was free: it
+              // registered nothing in 3100-5099 and the seeded rule below was
+              // the only occupant. #1229 changed that. v11 published 893 real
+              // facts at 20:54 and v12 published 915 at 22:14, and `main` went
+              // red on this spec at 21:27, in between.
+              //
+              // What the live payload costs is not correctness, it is TIME.
+              // 915 facts build 432 rules across 3100-3531, and every seed
+              // below drives applyScopedDnrRules, which rewrites the range with
+              // `removeRuleIds: [...SCOPED_RULE_ID_RANGE]` -- 2000 ids -- plus
+              // the rebuilt set. Re-seeding on every poll tick then asks a
+              // loaded CI runner to tear down and rebuild 432 rules several
+              // times a second, and it does not converge inside the poll
+              // budget. Locally, where a rewrite costs milliseconds, it
+              // converges every time, which is why this reproduces only on CI.
+              //
+              // remoteRulesVersionFloor is the production gate for exactly this
+              // ("a persistent floor", remote-rules.js:1363). validateParams
+              // rejects `newVersion <= storedVersion` at step 5, BEFORE
+              // mergeIntoCache runs, so a rejected payload never reaches
+              // applyScopedDnrRules and never enters the range. Seeding the
+              // floor high leaves the range holding exactly the one rule this
+              // spec builds, whatever the channel publishes today or grows to
+              // under its 5000-rule budget.
+              //
+              // This narrows nothing the spec claims. Its own header records
+              // that signature verification is unit-tested elsewhere and that
+              // the question here is what Chrome does with the rule objects
+              // buildScopedDnrRules emits. Racing the live channel was never
+              // part of that question; it was an accident of the channel being
+              // empty.
+              remoteRulesVersionFloor: 9_000_000,
               // Per-device overrides are overlaid LAST by getPrefs() and win
               // over sync, so an override of remoteRulesEnabled:false silently
               // vetoes everything below: reconcileRemoteDnrRule reads the cache
@@ -174,6 +209,18 @@ async function installScopedRules(page, host) {
     );
 
   let live = [];
+  // How often the trigger may be re-sent while polling.
+  //
+  // It used to fire on EVERY tick. That was written to recover a lost storage
+  // event, and it still does, but a re-send is not free: it drives a full
+  // applyDnrState, and while the range is occupied a full applyDnrState is a
+  // teardown and rebuild of every rule in it. Firing that several times a
+  // second does not make a slow reconcile finish sooner, it keeps the range
+  // permanently mid-rewrite, so the read at the top of the next tick lands
+  // between the remove and the add and sees nothing. Backing off leaves the
+  // recovery intact and gives each reconcile room to actually land.
+  const RESEND_EVERY_MS = 3_000;
+  let lastSend = Date.now();
   // Wrapped so a failure carries evidence instead of an accusation. This spec
   // failed on CI for a day saying "the service worker never registered a scoped
   // rule", which is true and useless: the interesting part is always WHY, and
@@ -191,8 +238,11 @@ async function installScopedRules(page, host) {
         );
         if (ours(live)) return true;
         // Re-send rather than just wait: a lost storage event is not something
-        // a longer timeout recovers from.
-        await seedAndTrigger();
+        // a longer timeout recovers from. Rate-limited, see RESEND_EVERY_MS.
+        if (Date.now() - lastSend >= RESEND_EVERY_MS) {
+          lastSend = Date.now();
+          await seedAndTrigger();
+        }
         return false;
       },
       {
@@ -214,15 +264,26 @@ async function installScopedRules(page, host) {
       () =>
         new Promise((resolve) =>
           chrome.storage.sync.get({ dnrEnabled: null, remoteRulesEnabled: null }, (sync) =>
-            chrome.storage.local.get({ mugaPerDevicePrefs: {}, remoteRulesMeta: null }, (local) =>
-              chrome.declarativeNetRequest.getDynamicRules((rules) =>
-                resolve({
-                  sync,
-                  overrides: local.mugaPerDevicePrefs,
-                  scopedFactsSeeded: local.remoteRulesMeta?.scopedFacts ?? null,
-                  registeredRuleIds: rules.map((r) => r.id).sort((a, b) => a - b),
+            chrome.storage.local.get(
+              { mugaPerDevicePrefs: {}, remoteRulesMeta: null, remoteRulesVersionFloor: 0 },
+              (local) =>
+                chrome.declarativeNetRequest.getDynamicRules((rules) => {
+                  const scoped = rules.filter((r) => r.id >= 3100 && r.id <= 5099);
+                  resolve({
+                    sync,
+                    overrides: local.mugaPerDevicePrefs,
+                    scopedFactsSeeded: local.remoteRulesMeta?.scopedFacts ?? null,
+                    // If the floor held, these three say so at a glance: the
+                    // seeded version is still in the cache, lastError names the
+                    // refusal, and the range holds one rule rather than the
+                    // published payload's hundreds.
+                    cachedVersion: local.remoteRulesMeta?.version ?? null,
+                    cachedLastError: local.remoteRulesMeta?.lastError ?? null,
+                    versionFloor: local.remoteRulesVersionFloor,
+                    scopedRuleCount: scoped.length,
+                    registeredRuleIds: rules.map((r) => r.id).sort((a, b) => a - b).slice(0, 40),
+                  });
                 })
-              )
             )
           )
         )
