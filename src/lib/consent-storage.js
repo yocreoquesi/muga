@@ -38,7 +38,7 @@ export const CONSENT_STORAGE_KEY = "mugaConsent";
  * since it named a wording no user was ever shown. tos-version-sync.test.mjs
  * now fails the build if the three ever disagree again.
  */
-export const TERMS_VERSION = "1.5";
+export const TERMS_VERSION = "1.6";
 
 /** Default record returned when nothing is stored yet. */
 export const CONSENT_DEFAULTS = Object.freeze({
