@@ -13,7 +13,7 @@
 // per-hop "stop at the first non-shortener host" control is gone; only the FINAL
 // destination is validated (Option A, best-effort affiliate handling).
 //
-// Behaviour & safety floor — MUGA is a denoise tool, not a security/privacy
+// Behaviour & safety floor — MUGA is a URL cleaner, not a security/privacy
 // product, so these are CORRECTNESS guards (don't hand back garbage), not a
 // security posture. Notably http:// destinations are allowed: the user clicked
 // a shortener and wants to reach it, whatever its scheme.
@@ -226,7 +226,7 @@ export async function resolveShortener(url, opts) {
     // the chain and reading response.url is the only readable path in-browser.
     // Trade-off (accepted, Option A): the browser follows the WHOLE chain, so the
     // per-hop "stop at the first non-shortener host" affiliate/SSRF control is
-    // gone — only the FINAL destination is validated. MUGA is a denoise tool and
+    // gone — only the FINAL destination is validated. MUGA is a URL cleaner and
     // affiliate handling here is best-effort, so revealing/cleaning the true
     // destination wins over per-hop control.
     response = await fetch(fetchUrl, {

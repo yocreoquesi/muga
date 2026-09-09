@@ -1,9 +1,10 @@
 # MUGA: Store Listings
 
 > Version: 3.0.0
-> Last updated: 2026-07-29
+> Last updated: 2026-09-10
 > NOTE: version tracks package.json (version-consistency.test.mjs). If the short description below changes, sync src/manifest.json "description" to match.
 > Status: Consumer-first, honesty pass. Same friendly, non-technical voice as prior versions. MUGA is a URL cleaner: it removes tracking parameters, unwraps redirect chains, reveals what a shortened link actually points to, and by default tries to preserve the referral of whoever recommended you (a best-effort intention, not a guarantee, and always user-controllable). MUGA adds no affiliate tag of its own, so there is no injection to disclose: the copy states plainly that it never monetizes your clicks. IMPORTANT copy rules kept from prior versions: NO enumeration of retailer/brand names anywhere (this triggered the Chrome Web Store keyword-spam rejection, routing ID FZSL, 2026-05). Technical detail (full param list, permission internals, affiliate mechanics) is deferred to GitHub and the website. Permission justifications live in the CWS "Privacy practices" tab and the privacy policy, NOT in this marketing body. No em-dashes and no "--" per house copy rules.
+> Decision (#1272): the extension name stays `MUGA: URL Cleaner. Remove tracking` on both stores. It already carries the identity this issue is protecting, so renaming a published listing would be pure churn the issue does not ask for.
 
 ---
 
@@ -15,9 +16,9 @@ MUGA: URL Cleaner. Remove tracking
 
 ### Short description (132 chars max)
 
-Clean the tracking noise from your URLs: strip trackers, unwrap redirects, reveal short links, keep creator referrals. Open source.
+Strips tracking from URLs and tries to preserve creator credit. Unwraps redirects, reveals short links. Open source, no telemetry.
 
-*(131 chars)*
+*(130 chars)*
 
 ---
 
@@ -59,7 +60,9 @@ https://github.com/yocreoquesi/muga
 
 ### Keywords (Chrome Web Store, max 5)
 
-URL cleaner, remove tracking, UTM, clean links, redirect
+URL cleaner, remove tracking, tracking parameters, UTM, short link
+
+Rationale (#1272): "tracking parameters" is the product's own vocabulary and was absent from the old set. "short link" captures a whole shipped feature (shortener resolution plus the web tool) that no keyword previously reached. "redirect" is dropped as already covered contextually by the rest of the listing. "clean links" is dropped as subsumed by "URL cleaner" plus "remove tracking". The cap is 5, so adding two required dropping two.
 
 ---
 
@@ -71,9 +74,9 @@ MUGA: URL Cleaner. Remove tracking
 
 ### Summary (250 chars max)
 
-Clean the tracking noise from your URLs without breaking pages: strip trackers, unwrap redirect chains, reveal short links, and keep the referral of whoever recommended you. No analytics, no telemetry, no account. Open source, GPL v3.
+Strips tracking parameters from your URLs without breaking pages: unwraps redirect chains, reveals short links, and tries to preserve creator credit, best-effort, never guaranteed. No analytics, no telemetry, no account. Open source, GPL v3.
 
-*(234 chars)*
+*(241 chars)*
 
 ---
 
@@ -114,7 +117,9 @@ https://github.com/yocreoquesi/muga
 
 - Extension name: MUGA: URL Cleaner. Remove tracking
 - License: GPL v3
-- Primary category: Privacy & Security
+- Primary category: Privacy & Security (recorded choice, #1272: AMO has no URL-tools bucket, so this places MUGA on a category page dominated by ad blockers and VPNs. It is the least bad fit rather than a claim about what MUGA is, and it should be revisited if AMO ever adds a utilities-shaped category.)
 - Secondary category: Shopping
-- Tags: url-cleaner, tracking, utm, privacy, redirects
+- Tags: url-cleaner, tracking, utm, shortener, redirects
 - Website: https://github.com/yocreoquesi/muga
+
+Rationale for tags (#1272): "privacy" is dropped because it reinforces exactly the framing this issue removes (privacy is a consequence of URL cleaning, not the pitch). "shortener" replaces it as the product's own vocabulary for a shipped feature. "clearurls" was considered as an alternative replacement (`docs/faq.md:17-24` already differentiates MUGA against it directly) and held back rather than guessing at AMO's tag cap; it is the next candidate if a slot opens.

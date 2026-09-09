@@ -116,6 +116,15 @@
     <li><strong>No user accounts or sign-in.</strong> We have no concept of a MUGA user identity.</li>
   </ul>
 
+  <h2>What We Used To Claim, And No Longer Do</h2>
+
+  <p>For a product whose identity is honesty, silently retiring a claim is weaker than naming it. These are commitments MUGA made publicly and later reversed, and why.</p>
+
+  <ul>
+    <li><strong>MUGA injects its own affiliate tag on supported stores</strong> (retired 2026-07-28, <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0006-remove-own-tag-affiliate-injection.md" target="_blank" rel="noopener noreferrer">ADR-0006</a>). MUGA now adds no affiliate tag of its own on any store, and never monetizes a click. Only third-party creator referrals are preserved, best-effort.</li>
+    <li><strong>MUGA refuses redirect-based affiliate networks on principle</strong> (retired 2026-05-24, <a href="https://github.com/yocreoquesi/muga/blob/main/docs/adr/0002-denoise-pivot-creator-agnostic.md" target="_blank" rel="noopener noreferrer">ADR-0002</a>). That exclusion silently cut most long-tail creators out of the "fair to creators" promise, so it was dropped. MUGA is creator-agnostic and attribution-model-agnostic.</li>
+  </ul>
+
   <h2>Permissions Explained</h2>
 
   <p>Every permission MUGA requests, across its Chrome (<code>manifest.json</code>) and Firefox (<code>manifest.v2.json</code>) manifests, has a specific, minimal purpose. Here is what each one is and why it exists.</p>

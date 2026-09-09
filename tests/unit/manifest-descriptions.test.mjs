@@ -14,6 +14,13 @@
  *      both manifests. Both Chrome and AMO reject a longer name, and AMO only
  *      reports it at `web-ext lint` time, which is the last gate before a
  *      release. Catching it here fails in one second instead.
+ *   5. manifest.json (MV3) and manifest.v2.json (MV2) descriptions are both
+ *      exactly equal to the #1272 canonical-vocabulary pitch string.
+ *   6. That same pitch string appears verbatim in docs/store-listing.md under
+ *      the Chrome Web Store "Short description" heading.
+ *   7. The pitch string is no longer than the 132-character Chrome cap.
+ *   8. Neither manifest description nor the Chrome short description contains
+ *      an em-dash or a "--" (house copy rule).
  */
 
 import { describe, it } from "node:test";
@@ -118,5 +125,53 @@ describe("manifest name store limits", () => {
       `docs/store-listing.md does not mention the shipped name "${mv3.name}". ` +
       "The listing is what gets pasted into the store consoles, so it must match the manifest."
     );
+  });
+});
+
+describe("canonical vocabulary pitch string (#1272)", () => {
+  // Single source of truth: the exact 130-character store-summary string
+  // agreed in issue #1272. Both manifests and the Chrome short description
+  // must match this verbatim.
+  const PITCH = "Strips tracking from URLs and tries to preserve creator credit. Unwraps redirects, reveals short links. Open source, no telemetry.";
+
+  const chromeShortDescription = (() => {
+    const match = storeListing.match(
+      /### Short description \(132 chars max\)\s*\n\s*\n([^\n]+)/
+    );
+    return match ? match[1].trim() : null;
+  })();
+
+  it("manifest.json (MV3) description matches the agreed pitch string exactly", () => {
+    assert.equal(mv3.description, PITCH);
+  });
+
+  it("manifest.v2.json (MV2) description matches the agreed pitch string exactly", () => {
+    assert.equal(mv2.description, PITCH);
+  });
+
+  it("the pitch string appears verbatim in docs/store-listing.md under the Chrome short description heading", () => {
+    assert.ok(
+      chromeShortDescription,
+      "Could not locate the Chrome Web Store 'Short description' block in docs/store-listing.md"
+    );
+    assert.equal(chromeShortDescription, PITCH);
+  });
+
+  it("the pitch string fits the 132-character Chrome cap", () => {
+    assert.ok(
+      PITCH.length <= 132,
+      `Pitch string is ${PITCH.length} characters, limit is 132`
+    );
+  });
+
+  it("neither manifest description nor the Chrome short description contains an em-dash or a double hyphen", () => {
+    for (const [label, text] of [
+      ["manifest.json description", mv3.description],
+      ["manifest.v2.json description", mv2.description],
+      ["Chrome short description", chromeShortDescription ?? ""],
+    ]) {
+      assert.ok(!text.includes("—"), `${label} contains an em-dash: "${text}"`);
+      assert.ok(!text.includes("--"), `${label} contains "--": "${text}"`);
+    }
   });
 });
