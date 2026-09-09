@@ -1,11 +1,35 @@
 name: Import upstream tracking params
 
+# ── The global path is closed to this report (#1303) ────────────────────────
+#
+# This workflow diffs AdGuard Filter 17 against MUGA's global strip list and
+# opens a PR with whatever it does not already carry. It is a MEASUREMENT. It
+# is not, and must not become, a landing path.
+#
+# MUGA's global strip rule has no `urlFilter` (#1217), so a param appended to
+# `TRACKING_PARAMS` is stripped on every site. The 2026-09-01 run measured what
+# that costs for this report's own output (#1303): of 1441 candidates, 100 are
+# two characters or shorter and 22 collide with common functional names — `q`,
+# `query`, `page`, `id`, `type`, `s`, `t`, `u`, `from`, `ref`, `source`.
+# Stripping `q` globally breaks search on much of the web; `u` is the exact
+# param behind the ShareASale incident that turned `main` red for four PRs.
+# Two more, `at` and `ref`, are Apple's and Vercel's affiliate tokens.
+#
+# The landing path for this source already exists and is not here. The weekly
+# `auto-ingest-rules.yml` run feeds the same filter through
+# `tools/rule-ingestion/`, whose AdGuard adapter forwards each fact AT THE HOST
+# UPSTREAM ANCHORED IT TO (#1229) and puts it through the gate stack rather than
+# through a human. Import at the anchor, never widen — that is what makes 1441
+# facts tractable, and it is why the reviewer checklist below no longer asks
+# anyone to append anything.
+
 on:
-  schedule:
-    # 1st of the month, 04:00 UTC. Monthly rather than weekly: upstream
-    # candidates are only useful once triaged, and a weekly cadence re-reported
-    # the same untriaged backlog every run instead of surfacing new signal.
-    - cron: "0 4 1 * *"
+  # On demand only (#1303). This used to run weekly, then monthly, on the
+  # premise that a human would triage the backlog into the global list. That
+  # premise is retired: the global path is closed to these candidates, and the
+  # weekly host-anchored pipeline lands this same source without them. A
+  # recurring PR whose only correct resolution is "close it" is noise, and the
+  # report is reproducible whenever the coverage number is actually wanted.
   workflow_dispatch:
 
 permissions:
@@ -91,7 +115,7 @@ jobs:
           CANDIDATES=$(jq -r '.new_candidates[] | "- `" + . + "`"' "$REPORT")
 
           BODY=$(cat <<EOF
-          Monthly automated diff against [AdGuard URL Tracking Protection (Filter 17)](https://filters.adtidy.org/extension/safari/filters/17.txt).
+          On-demand diff against [AdGuard URL Tracking Protection (Filter 17)](https://filters.adtidy.org/extension/chromium/filters/17.txt).
 
           **Source:** AdGuard Filter 17
           **Fetched at:** $(jq -r '.fetched_at' "$REPORT")
@@ -103,23 +127,36 @@ jobs:
 
           $CANDIDATES
 
-          ## Reviewer checklist
+          ## What to do with this
 
-          - [ ] Each candidate is a real tracking parameter (not a functional or affiliate one for any host MUGA already preserves)
-          - [ ] Categorize each candidate into the appropriate \`TRACKING_PARAM_CATEGORIES\` group in \`src/lib/affiliates.js\`
-          - [ ] Append to \`TRACKING_PARAMS\` array in the same file
-          - [ ] Run \`npm run build:rules\` to regenerate the DNR ruleset
-          - [ ] Run \`npm run build:content\` to regenerate the content-script bundle
-          - [ ] Add unit tests for any candidate with non-trivial behaviour
-          - [ ] Once all candidates are triaged, delete \`tools/import-candidates/report-$DATE.json\`
+          **Nothing in this PR lands a param, and nothing in it should.** It is a
+          measurement of the gap between upstream and MUGA's *global* strip list.
 
-          **DO NOT auto-merge.** Each candidate requires human judgment to confirm
-          it is not a functional parameter on some site and to assign it to the
-          right category. Marketers occasionally add their own tracking under
-          parameter names that look ambiguous.
+          The global strip rule has no \`urlFilter\` (#1217): anything appended to
+          \`TRACKING_PARAMS\` is stripped on every site. Against this report's own
+          output that is not a theoretical cost (#1303) — of the 2026-09-01 run's
+          1441 candidates, 100 were two characters or shorter and 22 collided with
+          common functional names (\`q\`, \`query\`, \`page\`, \`id\`, \`type\`, \`s\`,
+          \`t\`, \`u\`, \`from\`, \`ref\`, \`source\`). \`u\` is the param behind the
+          ShareASale incident; \`at\` and \`ref\` are Apple's and Vercel's affiliate
+          tokens. **The global path is closed to this backlog.**
 
-          The raw import report is committed to this branch at
-          \`tools/import-candidates/report-$DATE.json\` for archival.
+          Where these facts actually land: the weekly \`auto-ingest-rules.yml\` run
+          feeds the same AdGuard Filter 17 through \`tools/rule-ingestion/\`, which
+          takes each fact **at the host upstream anchored it to** (#1229) and runs
+          it through the gate stack. That path needs no triage here.
+
+          - [ ] Read the numbers below as a coverage signal, nothing more
+          - [ ] Do **NOT** append any candidate to \`TRACKING_PARAMS\` / \`src/rules/tracking-params.json\`
+          - [ ] If a candidate looks worth landing, land it **host-anchored** via the ingestion pipeline, not here
+          - [ ] Close this PR and delete \`tools/import-candidates/report-$DATE.json\`; the report is reproducible with \`workflow_dispatch\`
+
+          **DO NOT auto-merge**, and do not merge manually either: merging commits
+          an archival artefact that then has to be removed again (#1261).
+
+          The raw import report is on this branch at
+          \`tools/import-candidates/report-$DATE.json\` if you want to read it
+          without checking anything out.
           EOF
           )
 
