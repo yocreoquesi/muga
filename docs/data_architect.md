@@ -71,7 +71,8 @@ Device-only. ~10 MB quota.
 | `stats.referralsSpotted` | number | `0` | Total foreign affiliates detected |
 | `firstUsed` | number\|null | `null` | Unix timestamp (ms) of first use. Used for nudge timing |
 | `nudgeDismissed` | boolean | `false` | Whether the user dismissed the review nudge |
-| `devMode` | boolean | `false` | Developer tools visible in Settings. Device-local — intentionally not synced across devices |
+| `devMode` | boolean | `false` | Advanced settings panel visible in Settings. Device-local — intentionally not synced across devices |
+| `devToolsMode` | boolean | `false` | Developer tools panel visible in Settings, gated independently of `devMode` (#1271). Device-local — intentionally not synced across devices |
 | `domainStats` | object | `{}` | Per-domain tracker counts map (`{ domain: { params, urls } }`). Capped at 50 domains (LRU eviction) |
 | `remoteParams` | string[] | `[]` | Cached remote tracking params from the last signed fetch (only populated when remoteRulesEnabled) |
 | `remoteRulesMeta` | object | see below | Metadata for the last remote-rules fetch: `{ version, fetchedAt, paramCount, lastError, published }` |

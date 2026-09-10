@@ -180,6 +180,67 @@ export async function setDevMode(value) {
   }
 }
 
+// ── devToolsMode: device-local flag, independent of devMode (#1271 item 1) ──
+//
+// devToolsMode gates the Developer tools group: QA affordances (replay
+// onboarding, re-fire the affiliate toast, dump the debug log) that change
+// nothing about how URLs are cleaned. It is a SEPARATE key from devMode, not
+// a second thing devMode controls — the earlier pass on #1271 (a0b72be)
+// folded this group under a collapsed <details> inside the SAME devMode
+// gate instead, arguing a second persisted flag was "the heavier answer" to
+// a complaint that was about blast radius, not persistence. That framing
+// conflates the two: a second flag here is not heavier to persist (it is
+// one more boolean in local storage, same as devMode itself) — its cost is
+// one more control on the page for a user to notice and learn, which a
+// collapsed disclosure does not remove either. What the flag actually buys
+// is that reaching a real Advanced setting never implicitly reveals a panel
+// that can replay onboarding, because the two are no longer wired to the
+// same switch. Stored in chrome.storage.local, not sync, default off — same
+// reasoning as devMode: a QA flag has no business travelling between a
+// user's devices.
+
+/**
+ * Reads the devToolsMode flag from chrome.storage.local.
+ * @returns {Promise<boolean>}
+ */
+export async function getDevToolsMode() {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.get({ devToolsMode: false }, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result.devToolsMode === true);
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] getDevToolsMode failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Writes the devToolsMode flag to chrome.storage.local.
+ * @param {boolean} value
+ * @returns {Promise<void>}
+ */
+export async function setDevToolsMode(value) {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ devToolsMode: !!value }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[MUGA] setDevToolsMode failed:", err);
+  }
+}
+
 // ── incrementStat: batch-write pattern to prevent count loss under concurrency ──
 //
 // Problem: the naive read-modify-write pattern loses increments when two calls

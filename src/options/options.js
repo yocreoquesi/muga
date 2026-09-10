@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getRemoteParams } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams } from "../lib/storage.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -403,6 +403,21 @@ async function init() {
   }
   syncDevTools();
   if (devModeEl) devModeEl.addEventListener("change", syncDevTools);
+
+  // devToolsMode (#1271 item 1) is its OWN device-local flag, independent of
+  // devMode — same storage shape, same not-in-PREF_DEFAULTS reasoning, bound
+  // the same way, but a SEPARATE checkbox and a SEPARATE panel. Advanced and
+  // Developer tools must never move together.
+  const devToolsModeVal = await getDevToolsMode();
+  const devToolsModeEl = document.getElementById("dev-tools-mode");
+  if (devToolsModeEl) {
+    devToolsModeEl.checked = devToolsModeVal;
+    devToolsModeEl.addEventListener("change", () => {
+      setDevToolsMode(devToolsModeEl.checked).catch(err => console.error("[MUGA] save devToolsMode:", err));
+    });
+  }
+  syncDevToolsPanel();
+  if (devToolsModeEl) devToolsModeEl.addEventListener("change", syncDevToolsPanel);
   initDevTools();
 
   // Remote rule updates section — feature-detect then wire (REQ-UI-5)
@@ -1198,13 +1213,27 @@ function initExportImport() {
   });
 }
 
-/** Shows/hides dev tools section based on devMode pref. */
+/** Shows/hides the Advanced settings panel based on the dev-mode pref. */
 function syncDevTools() {
   const devModeEl = document.getElementById("dev-mode");
   const devToolsCard = document.getElementById("dev-tools-card");
   if (!devModeEl || !devToolsCard) return;
   // #858: visibility driven by CSS class (no inline style — required for CSP style-src without 'unsafe-inline')
   devToolsCard.classList.toggle("dev-tools-hidden", !devModeEl.checked);
+}
+
+/**
+ * Shows/hides the Developer tools panel based on the devToolsMode pref
+ * (#1271 item 1). Deliberately separate from syncDevTools()/dev-mode: this
+ * panel is QA instrumentation (replay onboarding, re-fire notifications,
+ * dump logs), not a URL-cleaning setting, so it gets its own gate rather
+ * than riding along with Advanced.
+ */
+function syncDevToolsPanel() {
+  const devToolsModeEl = document.getElementById("dev-tools-mode");
+  const devToolsPanel = document.getElementById("dev-tools-panel");
+  if (!devToolsModeEl || !devToolsPanel) return;
+  devToolsPanel.classList.toggle("dev-tools-hidden", !devToolsModeEl.checked);
 }
 
 /** Initializes dev tools: URL tester and preview features. */
