@@ -13,8 +13,10 @@
  * knew: `ie` needed preserveParams entries on baidu.com and naver.com, and `ei`
  * needed them on yahoo.com and yahoo.co.jp — per-host patches undoing a global
  * claim, one site at a time, which is what this defect looks like from the
- * inside. `ie` is gone; the remaining four are pinned here with what each one
- * still needs.
+ * inside. `ie` is gone; `_r` and `_t` left too, as part of the 17-param step 1
+ * pass under this same issue — tiktok.com already carried both in its own
+ * stripParams, so the DNR-generator blocker below did not apply to them; the
+ * remaining two, `si` and `ei`, are pinned here with what each one still needs.
  *
  * ── Why the four are not simply deleted too ────────────────────────────────
  *
@@ -56,8 +58,6 @@ const domainRules = JSON.parse(readFileSync(join(ROOT, "src/rules/domain-rules.j
 const KNOWN_SHORT = {
   si: "youtube.com, youtu.be",
   ei: "google.com",
-  _r: "tiktok.com",
-  _t: "tiktok.com",
 };
 
 describe("the built-in global strip list respects the same floor as the remote one (#1228)", () => {

@@ -64,7 +64,9 @@ test(`utm_newsletterid — added via add-rule`, () => {
   assertStrips("utm_newsletterid", "AdGuard filter 17 generic — newsletter UTM extension");
 });
 
-test(`_t — added via add-rule`, () => {
-  assertStrips("_t", "TikTok share token (sister to _r). Issue #508.");
-});
+// _t (and _r) removed from here in #1228 step 1: both left TRACKING_PARAMS —
+// AdGuard Filter 17 only ever anchors them to tiktok.com, and MUGA already
+// strips them there. No longer global coverage, so per this file's own
+// docblock the richer per-domain assertion lives in domain-rules.test.mjs
+// ("TikTok: strips is_from_webapp, sender_device") rather than here.
 

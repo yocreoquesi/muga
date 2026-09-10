@@ -572,6 +572,19 @@ describe("domain stripParams", () => {
     assert.equal(u.searchParams.get("q"), "trending");
   });
 
+  test("TikTok: strips _r, _t — host-scoped since #1228 step 1", () => {
+    // _r/_t left TRACKING_PARAMS in #1228 step 1 (AdGuard Filter 17 only ever
+    // anchors either to tiktok.com); this is the per-domain replacement for
+    // the coverage the old "_t — added via add-rule" generic-URL test gave.
+    const { cleanUrl } = clean(
+      "https://www.tiktok.com/@user/video/123?_r=1&_t=abc123&q=trending"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("_r"));
+    assert.ok(!u.searchParams.has("_t"));
+    assert.equal(u.searchParams.get("q"), "trending");
+  });
+
   test("Reddit: strips share_id, ref — preserves sort, context", () => {
     const { cleanUrl } = clean(
       "https://www.reddit.com/r/test/comments/abc?sort=top&context=3&share_id=xyz&ref=share"
@@ -598,14 +611,25 @@ describe("new global tracking params", () => {
     assert.ok(!u.searchParams.has("_gac"));
   });
 
-  test("strips Meta params (mibextid, fb_action_ids, fb_ref)", () => {
+  test("strips Meta params (fb_action_ids, fb_ref)", () => {
+    // mibextid removed from this generic-domain case in #1228 step 1: AdGuard
+    // Filter 17 only ever anchors it to facebook.com, and MUGA already strips
+    // it there (see "Facebook: strips mibextid" below) — it is host-scoped
+    // now, not a global claim.
     const { cleanUrl } = clean(
-      "https://example.com/?mibextid=abc&fb_action_ids=123&fb_ref=timeline"
+      "https://example.com/?fb_action_ids=123&fb_ref=timeline"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("fb_action_ids"));
+    assert.ok(!u.searchParams.has("fb_ref"));
+  });
+
+  test("Facebook: strips mibextid — host-scoped since #1228 step 1", () => {
+    const { cleanUrl } = clean(
+      "https://www.facebook.com/share/p/abc123/?mibextid=WC7FNe"
     );
     const u = new URL(cleanUrl);
     assert.ok(!u.searchParams.has("mibextid"));
-    assert.ok(!u.searchParams.has("fb_action_ids"));
-    assert.ok(!u.searchParams.has("fb_ref"));
   });
 
   test("strips Branch.io params", () => {

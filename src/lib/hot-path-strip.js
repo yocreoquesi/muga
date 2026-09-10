@@ -39,7 +39,7 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id"],
   ["utm_source_platform", "utm_creative_format", "utm_marketing_tactic"],
   ["fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid", "msclkid", "tclid", "twclid"],
-  ["mc_cid", "mc_eid", "igshid", "igsh"],
+  ["mc_cid", "mc_eid", "igshid"],
   ["_hsenc", "_hsmi", "mkt_tok"],
   ["yclid", "ysclid", "_openstat"],
   // NOTE: redirect-network ATTRIBUTION params (irclickid/cjevent/awc and the
@@ -55,7 +55,7 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["hsctatracking"],
   ["__s", "_ga", "_gl", "_gac"],
   ["ved", "ei", "sca_esv", "sxsrf"],
-  ["mibextid", "share_id"],
+  ["share_id"],
   ["_pos", "_ss", "_psq", "_sid", "_fid"],
   ["pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"],
 ].map((row) => Object.freeze(row)));
