@@ -298,7 +298,7 @@ function validateScopedFact({ scope, param, action, provenance }, where = "scope
  * order, and within a domain the preserve names precede the strip names in
  * their original sequence. Nothing else records it, so nothing else has to.
  *
- * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], note?: string}>} domainRules
+ * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], pathStrips?: Array<{pathPrefixes: string[], params: string[]}>, note?: string}>} domainRules
  * @param {string[]} globalParams  The `params` array from params.json.
  * @returns {{schemaVersion: number, entries: Array, projection: object}}
  */
@@ -377,7 +377,7 @@ export function withGlobalParams(store, params) {
  * where that breaks, and it should grow a merge rather than a replace then.
  *
  * @param {object} store
- * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], note?: string}>} domainRules
+ * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], pathStrips?: Array<{pathPrefixes: string[], params: string[]}>, note?: string}>} domainRules
  * @returns {object}
  */
 export function withDomainRules(store, domainRules) {
