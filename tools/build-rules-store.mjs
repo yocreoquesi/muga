@@ -21,6 +21,15 @@
  *       runs under `npm test` in CI and locally, matching how
  *       generate-strip-table.mjs is guarded by strip-table-generated.test.mjs.
  *
+ *   node tools/build-rules-store.mjs --prefer-anchors
+ *       #1344: relocates a qualifying param (host-anchored in domain-rules.json,
+ *       absent from TRACKING_PARAMS, still published globally) from the global
+ *       list to its own anchors, when the anchored facts fit the publish budget.
+ *       Re-runnable at any time — the predicate is derived from the store on
+ *       every run, never a hardcoded list — and a no-op writes nothing. Bumps
+ *       params.json's version by hand when it changes `params[]`, matching the
+ *       precedent set by #1342 (8502bd8).
+ *
  * ── Why params.json is read before it is written ──────────────────────
  *
  * `params.json` carries `version` and `published` alongside `params`, and those
@@ -35,14 +44,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  ACTIONS,
+  GLOBAL_SCOPE,
   emitDomainRules,
   emitParams,
   emitScoped,
   importArtifacts,
   parseStore,
   serializeStore,
+  withGlobalParams,
   withScopedFacts,
 } from "./rules-store.mjs";
+import { TRACKING_PARAMS } from "../src/lib/affiliates-data.js";
+import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../src/lib/remote-rules.js";
 
 export { withDomainRules, withGlobalParams } from "./rules-store.mjs";
 
@@ -180,6 +194,180 @@ const SCOPED_SECTION_OVERHEAD_BYTES = 512;
 function withoutGloballyShadowed(scoped, params) {
   const global = new Set(params);
   return scoped.filter((fact) => !global.has(fact.param));
+}
+
+// ── #1344: prefer a param's own anchors over a blanket global entry ──────────
+//
+// #1342 fixed the half of this circularity that was a leaked defect (a param
+// already removed from the BUNDLED global list, but still published globally
+// by the remote channel). What is left is a standing shape the pipeline
+// creates on its own: `parseRemoveparamRules`' design correction C1 folds a
+// host-anchored name into the global candidate pool by design (C1 is still
+// right — see tools/import-upstream.mjs), so the bundled artifact can anchor
+// a param to a host in `domain-rules.json` while the very same run keeps
+// publishing it globally in `tools/rules-source/params.json`. The global
+// entry then shadows the param's own scoped facts as "inert" (see
+// `withoutGloballyShadowed` above), which is backwards: the bundled artifact
+// already said this param belongs at specific hosts.
+//
+// `params[]` published-but-not-in-TRACKING_PARAMS is NORMAL (that is the
+// whole point of the remote channel — it adds to the bundled list) and is not
+// touched here. Only a param the bundled artifact has ALREADY anchored
+// qualifies.
+
+const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS);
+
+/** Lower-cased union of the two gates a relocation must never cross (#1322). */
+const NEVER_RELOCATE = new Set(
+  [...AFFILIATE_PARAM_GUARD, ...REMOTE_PARAM_DENYLIST].map((p) => p.toLowerCase())
+);
+
+/**
+ * Params the bundled artifact has anchored to at least one host via a plain
+ * (non path-scoped) STRIP entry.
+ *
+ * Read LIVE from the store's own entries, never a hardcoded list: hardcoding
+ * would go stale the moment #1228 or #1338 moves another param off
+ * TRACKING_PARAMS, which is exactly the circularity this exists to close.
+ * Path-scoped entries (`pathPrefixes`, ADR-0010) are excluded on purpose —
+ * they are a distinct mechanism, already kept out of the global pool at
+ * ingestion (#1326's `pathAnchorSkipped`) and out of this channel entirely by
+ * ADR-0010 decision 5, so they carry no `stripParams` shape for this
+ * predicate to read.
+ *
+ * @param {object} store
+ * @returns {Set<string>}
+ */
+function hostAnchoredStripParams(store) {
+  const set = new Set();
+  for (const entry of store.entries) {
+    if (
+      entry.scope !== GLOBAL_SCOPE &&
+      entry.action === ACTIONS.STRIP &&
+      !entry.pathPrefixes
+    ) {
+      set.add(entry.param);
+    }
+  }
+  return set;
+}
+
+/**
+ * Decides which qualifying params relocate from the global list to their own
+ * anchors, and returns a NEW store with exactly those removed from the
+ * global entries — nothing else. A param that does not qualify, or that
+ * qualifies but cannot be safely relocated, is provably untouched: this
+ * function only ever calls `withGlobalParams` with a SUBSET of the store's
+ * existing global params, never adds one, and never touches a host-scoped
+ * entry or a scopedFacts record.
+ *
+ * ── The safety property (not optional) ────────────────────────────────
+ *
+ * A param must never end up stripped nowhere in this channel. Relocating it
+ * means: remove the global entry, and its own scoped facts (already landed —
+ * this never invents one) stop being shadowed and enter the publish budget
+ * fit. If those facts do not survive that fit — the budget is genuinely
+ * full — dropping the global entry anyway would leave the param covered by
+ * neither, turning a coverage improvement into a coverage regression. So a
+ * candidate whose own facts do not make the cut stays global instead,
+ * unconditionally.
+ *
+ * ── How: extend the existing budget mechanism, not a second one ────────
+ *
+ * `withoutGloballyShadowed`/`fitScopedToBudget` already decide what the
+ * publish budget can carry, greedily, from an already-sorted list. This
+ * reuses both, unmodified, inside a small fixed-point loop: start by
+ * assuming every qualifying candidate relocates, run the real fit, and
+ * revert any candidate whose OWN record did not survive it. Reverting only
+ * ever adds a few bytes back to `params[]` (never removes budget already
+ * spent on a non-candidate fact), so the set of survivors can only shrink
+ * between iterations — the loop provably terminates and cannot cycle.
+ *
+ * @param {object} store
+ * @param {string} paramsFileText The committed params.json text, read only
+ *   to size the byte budget the exact way `renderParamsFile` does — this
+ *   never authors `version`/`published`/`sig`.
+ * @returns {{
+ *   store: object,
+ *   relocated: string[],
+ *   stayedGlobalForBudget: string[],
+ *   bytesRemaining: number|null,
+ * }}
+ */
+export function computeAnchorPreference(store, paramsFileText) {
+  const hostAnchored = hostAnchoredStripParams(store);
+  const globalParams = emitParams(store);
+  const scoped = emitScoped(store);
+
+  const candidates = globalParams.filter(
+    (param) =>
+      hostAnchored.has(param) &&
+      !TRACKING_PARAMS_SET.has(param) &&
+      !NEVER_RELOCATE.has(param.toLowerCase())
+  );
+
+  if (candidates.length === 0) {
+    return { store, relocated: [], stayedGlobalForBudget: [], bytesRemaining: null };
+  }
+
+  const current = JSON.parse(paramsFileText);
+  let relocated = new Set(candidates);
+  let finalParams = globalParams.filter((param) => !relocated.has(param));
+  let published = [];
+
+  for (;;) {
+    const bare = { ...current, params: finalParams };
+    delete bare.scoped;
+    const baseBytes = JSON.stringify(bare).length;
+
+    const publishable = withoutGloballyShadowed(scoped, finalParams);
+    published = fitScopedToBudget(publishable, baseBytes, PUBLISH_PAYLOAD_BUDGET_BYTES).published;
+    const publishedParams = new Set(published.map((fact) => fact.param));
+
+    const newlyUnfit = [...relocated].filter((param) => !publishedParams.has(param));
+    if (newlyUnfit.length === 0) break;
+    for (const param of newlyUnfit) relocated.delete(param);
+    finalParams = globalParams.filter((param) => !relocated.has(param));
+  }
+
+  const stayedGlobalForBudget = candidates.filter((param) => !relocated.has(param)).sort();
+
+  const finalBare = { ...current, params: finalParams };
+  delete finalBare.scoped;
+  const usedBytes =
+    JSON.stringify(finalBare).length +
+    SCOPED_SECTION_OVERHEAD_BYTES +
+    published.reduce((sum, fact) => sum + JSON.stringify(fact).length + 2, 0);
+
+  return {
+    store: relocated.size > 0 ? withGlobalParams(store, finalParams) : store,
+    relocated: [...relocated].sort(),
+    stayedGlobalForBudget,
+    bytesRemaining: PUBLISH_PAYLOAD_BUDGET_BYTES - usedBytes,
+  };
+}
+
+/**
+ * Applies `computeAnchorPreference` to the committed store and, if anything
+ * relocated, writes the result — including a hand version bump, since a
+ * changed `params[]` makes every installed build reject the payload as
+ * `VERSION_REGRESSION` otherwise (precedent: #1342, 8502bd8). A no-op run
+ * (nothing qualifies, or every candidate stays global for budget reasons)
+ * writes nothing and bumps nothing, so re-running this is always safe.
+ *
+ * @returns {{relocated: string[], stayedGlobalForBudget: string[], bytesRemaining: number|null}}
+ */
+export function runPreferAnchors() {
+  const store = loadStore();
+  const result = computeAnchorPreference(store, read(PARAMS_PATH));
+
+  if (result.relocated.length === 0) {
+    return result;
+  }
+
+  const current = JSON.parse(read(PARAMS_PATH));
+  writeAll(result.store, { version: current.version + 1 });
+  return result;
 }
 
 /**
@@ -363,6 +551,28 @@ if (isMain) {
     if (process.argv.includes("--import")) {
       const { entries } = runImport();
       console.log(`[rules-store] imported ${entries} entries into ${STORE_PATH}`);
+    } else if (process.argv.includes("--prefer-anchors")) {
+      const { relocated, stayedGlobalForBudget, bytesRemaining } = runPreferAnchors();
+      if (relocated.length === 0) {
+        console.log(
+          "[rules-store] #1344: nothing relocated — no qualifying param, or every candidate " +
+            "stayed global for budget reasons"
+        );
+      } else {
+        console.log(
+          `[rules-store] #1344: relocated ${relocated.length} param(s) to their anchors: ` +
+            relocated.join(", ")
+        );
+      }
+      if (stayedGlobalForBudget.length > 0) {
+        console.log(
+          `[rules-store] #1344: ${stayedGlobalForBudget.length} qualifying param(s) stayed ` +
+            `global — their anchored facts did not fit the publish budget: ${stayedGlobalForBudget.join(", ")}`
+        );
+      }
+      if (bytesRemaining !== null) {
+        console.log(`[rules-store] #1344: ${bytesRemaining} byte(s) left in the publish budget`);
+      }
     } else if (process.argv.includes("--check")) {
       const drifted = runCheck();
       if (drifted.length > 0) {
