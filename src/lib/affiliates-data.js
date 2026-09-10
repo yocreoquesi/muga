@@ -39,7 +39,7 @@ export const TRACKING_PARAMS = [
   // AFFILIATE_PATTERNS. Applying it globally (urlFilter: "*") would strip it on those
   // domains before the affiliate engine can act, and also break GitHub ?ref= branch refs
   // and SPA internal navigation. Context-specific removal only via AFFILIATE_PATTERNS. (#160)
-  "source", "campaign", "cid", "clickid",
+  "source", "campaign", "clickid",
   "_hsenc", "_hsmi", "hsctatracking",
   "mkt_tok", "trk", "trkcampaign",
 
@@ -702,7 +702,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // TikTok
 
       // Generic
-      "source", "campaign", "cid", "clickid",
+      "source", "campaign", "clickid",
       // Microsoft / Windows
       "ocid",
       // Amazon

@@ -375,6 +375,9 @@ export const PRESERVED_BY_HOST = {
   "adj.st": [
     "adj_t"
   ],
+  "adshares.net": [
+    "q"
+  ],
   "aladin.co.kr": [
     "cid",
     "date",
@@ -628,6 +631,9 @@ export const PRESERVED_BY_HOST = {
     "q",
     "sort"
   ],
+  "ana.co.jp": [
+    "q"
+  ],
   "apple.com": [
     "app",
     "at",
@@ -642,6 +648,9 @@ export const PRESERVED_BY_HOST = {
     "mt"
   ],
   "as.com": [
+    "q"
+  ],
+  "asahi.com": [
     "q"
   ],
   "auction.co.kr": [
@@ -672,6 +681,9 @@ export const PRESERVED_BY_HOST = {
     "page",
     "q",
     "seqid"
+  ],
+  "belta.co.jp": [
+    "q"
   ],
   "bestbuy.com": [
     "id",
@@ -724,6 +736,9 @@ export const PRESERVED_BY_HOST = {
   "canadacompanyregistry.com": [
     "utm_campaign"
   ],
+  "candy.ai": [
+    "q"
+  ],
   "carrefourpl.snrpage.com": [
     "utm_source"
   ],
@@ -731,6 +746,9 @@ export const PRESERVED_BY_HOST = {
     "q"
   ],
   "cnn.com": [
+    "q"
+  ],
+  "controld.com": [
     "q"
   ],
   "coolblue.nl": [
@@ -1025,6 +1043,9 @@ export const PRESERVED_BY_HOST = {
   "gaugau.futabanet.jp": [
     "utm_content"
   ],
+  "giphy.com": [
+    "q"
+  ],
   "github.com": [
     "l",
     "o",
@@ -1151,6 +1172,27 @@ export const PRESERVED_BY_HOST = {
     "sorted_type",
     "sword"
   ],
+  "lazada.co.id": [
+    "q"
+  ],
+  "lazada.co.th": [
+    "q"
+  ],
+  "lazada.com": [
+    "q"
+  ],
+  "lazada.com.my": [
+    "q"
+  ],
+  "lazada.com.ph": [
+    "q"
+  ],
+  "lazada.sg": [
+    "q"
+  ],
+  "lazada.vn": [
+    "q"
+  ],
   "lenovo.com": [
     "page",
     "q",
@@ -1173,6 +1215,9 @@ export const PRESERVED_BY_HOST = {
   ],
   "liverpool.com.mx": [
     "s"
+  ],
+  "lululemon.com.hk": [
+    "q"
   ],
   "maps.google.com": [
     "cid",
@@ -1285,6 +1330,12 @@ export const PRESERVED_BY_HOST = {
     "storetype",
     "subcategory"
   ],
+  "nhk.jp": [
+    "q"
+  ],
+  "nhk.or.jp": [
+    "q"
+  ],
   "nike.com": [
     "q"
   ],
@@ -1348,6 +1399,9 @@ export const PRESERVED_BY_HOST = {
     "q",
     "sort"
   ],
+  "petbook.de": [
+    "q"
+  ],
   "pinterest.com": [
     "page",
     "q",
@@ -1358,9 +1412,18 @@ export const PRESERVED_BY_HOST = {
     "hl",
     "id"
   ],
+  "porntube.com": [
+    "q"
+  ],
+  "rac.co.uk": [
+    "q"
+  ],
   "rd.bizrate.com": [
     "utm_campaign",
     "utm_medium"
+  ],
+  "realtor.com": [
+    "q"
   ],
   "reddit.app.link": [
     "utm_content"
@@ -1397,6 +1460,9 @@ export const PRESERVED_BY_HOST = {
   ],
   "rtve.es": [
     "page",
+    "q"
+  ],
+  "samsung.com": [
     "q"
   ],
   "scholar.google.com": [
@@ -1445,6 +1511,9 @@ export const PRESERVED_BY_HOST = {
     "q",
     "sort"
   ],
+  "sonybank.jp": [
+    "q"
+  ],
   "ssg.com": [
     "brand",
     "ctgid",
@@ -1470,6 +1539,9 @@ export const PRESERVED_BY_HOST = {
     "q",
     "s",
     "sortby"
+  ],
+  "teknosa.com": [
+    "q"
   ],
   "temu.com": [
     "page_num",
@@ -1522,6 +1594,9 @@ export const PRESERVED_BY_HOST = {
   "ulta.com": [
     "search"
   ],
+  "urban-vpn.com": [
+    "q"
+  ],
   "usprobioticguide.com": [
     "utm_campaign"
   ],
@@ -1530,6 +1605,12 @@ export const PRESERVED_BY_HOST = {
   ],
   "video-shoper.ru": [
     "utm_source"
+  ],
+  "video.unext.jp": [
+    "q"
+  ],
+  "vitamix.com": [
+    "q"
   ],
   "vk.com": [
     "q",

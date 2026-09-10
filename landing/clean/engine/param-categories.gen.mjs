@@ -329,7 +329,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "si",
       "source",
       "campaign",
-      "cid",
       "clickid",
       "ocid",
       "psc",
