@@ -61,7 +61,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ## What it removes
 
-**399 tracking params + 12 prefix patterns** across 6 categories, on every site:
+**396 tracking params + 12 prefix patterns** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -92,7 +92,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Always on, no configuration needed
 
-- Remove 399 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Remove 396 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path clutter (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard

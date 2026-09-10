@@ -724,10 +724,6 @@
       "category": "ads"
     },
     {
-      "param": "gs_lcp",
-      "category": "platform_noise"
-    },
-    {
       "param": "guccounter",
       "category": "generic"
     },
@@ -1263,10 +1259,6 @@
       "category": "social"
     },
     {
-      "param": "sca_esv",
-      "category": "platform_noise"
-    },
-    {
       "param": "sccid",
       "category": "ads"
     },
@@ -1559,10 +1551,6 @@
     {
       "param": "vc_lpp",
       "category": "generic"
-    },
-    {
-      "param": "ved",
-      "category": "platform_noise"
     },
     {
       "param": "vero_conv",
@@ -4282,9 +4270,7 @@
       ],
       "stripParams": [
         "sa",
-        "ved",
         "ei",
-        "gs_lcp",
         "sclient",
         "uact",
         "gs_lp",
@@ -4293,7 +4279,6 @@
         "oq",
         "aqs",
         "sourceid",
-        "sca_esv",
         "sxsrf",
         "usg",
         "sei",
@@ -4305,7 +4290,20 @@
         "vet",
         "dpr"
       ],
-      "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ved/ei are click tracking."
+      "pathStrips": [
+        {
+          "pathPrefixes": [
+            "/search",
+            "/webhp"
+          ],
+          "params": [
+            "ved",
+            "sca_esv",
+            "gs_lcp"
+          ]
+        }
+      ],
+      "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ei are click tracking. ved/sca_esv/gs_lcp are path-scoped to /search and /webhp (#1326) — upstream anchors them there, not to the whole host."
     },
     {
       "domain": "greenbuildingadvisor.com",

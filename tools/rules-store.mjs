@@ -40,6 +40,23 @@
  * Purity is what lets the round-trip test compare emitted STRINGS without
  * touching disk, which is how losslessness gets proven rather than eyeballed.
  *
+ * ── `entries[]` may carry a path-prefix predicate (#1326) ─────────────
+ *
+ * A STRIP entry may carry an optional `pathPrefixes: string[]` — literal path
+ * prefixes (e.g. `"/search"`), never a regex. Absent on every entry this
+ * schema predates, so importing and re-emitting the committed artifacts is
+ * byte-identical without it: this is additive, not a version bump. Restricted
+ * to STRIP (a path-scoped PRESERVE has no projection anywhere in this file)
+ * and validated on both construction and `parseStore`, the same two paths
+ * every other field on an entry is validated on.
+ *
+ * `groupByScope`/`emitDomainRules` project it into a domain's own
+ * `pathStrips: [{ pathPrefixes, params }]` — entries sharing the identical
+ * pathPrefixes array (same prefixes, same order) group into one entry, the
+ * same way the DNR generator groups domains sharing an identical removeParams
+ * set. `tools/generate-rules.mjs` is what turns that into an actual DNR rule;
+ * this module only carries the fact.
+ *
  * ── Slice 2 adds `scopedFacts[]`, a sibling of `entries[]` ────────────
  *
  * A gate-admitted host-scoped candidate (ADR-0008, Path A) cannot land in
@@ -104,6 +121,44 @@ const SCOPED_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z
  */
 const SCOPED_PARAM_RE = /^[a-zA-Z0-9_.\-]+$/;
 
+/**
+ * Shape an `entries[]` path-prefix predicate must have (#1326).
+ *
+ * Deliberately a LITERAL prefix, never a regex: #1094 and #1109 were both an
+ * over-matching host regex, and a path predicate is a bigger surface than a
+ * host one. Must start with "/" (a path, not a bare segment) and contain only
+ * URL path characters — no query (`?`), fragment (`#`), or wildcard (`*`).
+ * See docs/adr/0010-path-scoped-param-rules.md for what a literal prefix
+ * gives up against a regex, and why that tradeoff was chosen anyway.
+ */
+const PATH_PREFIX_RE = /^\/[A-Za-z0-9_\-./]*$/;
+
+/**
+ * Validates a `pathPrefixes` array (#1326): non-empty, every element a
+ * literal path prefix.
+ *
+ * @param {unknown} pathPrefixes
+ * @param {string} where
+ * @param {string} scope
+ * @param {string} param
+ * @throws {Error} On a non-array, an empty array, or a malformed prefix.
+ */
+function validatePathPrefixes(pathPrefixes, where, scope, param) {
+  if (!Array.isArray(pathPrefixes) || pathPrefixes.length === 0) {
+    throw new Error(
+      `rules-store: ${where} pathPrefixes must be a non-empty array (${scope} / ${param})`
+    );
+  }
+  for (const prefix of pathPrefixes) {
+    if (typeof prefix !== "string" || !PATH_PREFIX_RE.test(prefix)) {
+      throw new Error(
+        `rules-store: ${where} pathPrefixes entry ${JSON.stringify(prefix)} is not a literal ` +
+          `path prefix starting with "/" (${scope} / ${param})`
+      );
+    }
+  }
+}
+
 // ── Entry construction ───────────────────────────────────────────────
 
 /**
@@ -113,11 +168,14 @@ const SCOPED_PARAM_RE = /^[a-zA-Z0-9_.\-]+$/;
  * @param {string} spec.scope  Hostname suffix, or GLOBAL_SCOPE.
  * @param {string} spec.param  Param name, lowercased by the caller's source.
  * @param {string} spec.action One of ACTIONS.
- * @returns {{scope: string, param: string, action: string}}
- * @throws {Error} On an empty field, an unknown action, or a reserved action.
+ * @param {string[]} [spec.pathPrefixes] Literal path prefixes (#1326).
+ *   STRIP-only — see PATH_PREFIX_RE.
+ * @returns {{scope: string, param: string, action: string, pathPrefixes?: string[]}}
+ * @throws {Error} On an empty field, an unknown action, a reserved action, or
+ *   a malformed/misplaced pathPrefixes.
  */
-export function makeEntry({ scope, param, action }) {
-  return validateEntry({ scope, param, action });
+export function makeEntry({ scope, param, action, pathPrefixes }) {
+  return validateEntry({ scope, param, action, pathPrefixes });
 }
 
 /**
@@ -131,12 +189,13 @@ export function makeEntry({ scope, param, action }) {
  * entry — silently turning a param that exists to be PRESERVED into one to be
  * stripped, which is the one direction that costs a creator real money.
  *
- * @param {{scope: string, param: string, action: string}} entry
+ * @param {{scope: string, param: string, action: string, pathPrefixes?: string[]}} entry
  * @param {string} [where] Context for the error message.
- * @returns {{scope: string, param: string, action: string}}
- * @throws {Error} On an empty field, an unknown action, or a reserved action.
+ * @returns {{scope: string, param: string, action: string, pathPrefixes?: string[]}}
+ * @throws {Error} On an empty field, an unknown action, a reserved action, or
+ *   a malformed/misplaced pathPrefixes.
  */
-function validateEntry({ scope, param, action }, where = "entry") {
+function validateEntry({ scope, param, action, pathPrefixes }, where = "entry") {
   if (typeof scope !== "string" || scope.length === 0) {
     throw new Error(`rules-store: ${where} needs a scope (param: ${String(param)})`);
   }
@@ -160,6 +219,16 @@ function validateEntry({ scope, param, action }, where = "entry") {
     throw new Error(
       `rules-store: unknown action "${String(action)}" (${scope} / ${param})`
     );
+  }
+  if (pathPrefixes !== undefined) {
+    if (action !== ACTIONS.STRIP) {
+      throw new Error(
+        `rules-store: ${where} pathPrefixes is only valid on a "${ACTIONS.STRIP}" entry ` +
+          `(${scope} / ${param}, action: "${action}")`
+      );
+    }
+    validatePathPrefixes(pathPrefixes, where, scope, param);
+    return { scope, param, action, pathPrefixes: [...pathPrefixes] };
   }
   return { scope, param, action };
 }
@@ -229,7 +298,7 @@ function validateScopedFact({ scope, param, action, provenance }, where = "scope
  * order, and within a domain the preserve names precede the strip names in
  * their original sequence. Nothing else records it, so nothing else has to.
  *
- * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], note?: string}>} domainRules
+ * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], pathStrips?: Array<{pathPrefixes: string[], params: string[]}>, note?: string}>} domainRules
  * @param {string[]} globalParams  The `params` array from params.json.
  * @returns {{schemaVersion: number, entries: Array, projection: object}}
  */
@@ -249,6 +318,16 @@ export function importArtifacts(domainRules, globalParams) {
     }
     for (const param of rule.stripParams ?? []) {
       entries.push(makeEntry({ scope, param, action: ACTIONS.STRIP }));
+    }
+    // #1326: one entry per (pathPrefixes-group, param), in the artifact's own
+    // group and param order — groupByScope's Map re-groups them identically,
+    // which is what makes this direction round-trip.
+    for (const group of rule.pathStrips ?? []) {
+      for (const param of group.params ?? []) {
+        entries.push(
+          makeEntry({ scope, param, action: ACTIONS.STRIP, pathPrefixes: group.pathPrefixes })
+        );
+      }
     }
   }
 
@@ -298,7 +377,7 @@ export function withGlobalParams(store, params) {
  * where that breaks, and it should grow a merge rather than a replace then.
  *
  * @param {object} store
- * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], note?: string}>} domainRules
+ * @param {Array<{domain: string, preserveParams?: string[], stripParams?: string[], pathStrips?: Array<{pathPrefixes: string[], params: string[]}>, note?: string}>} domainRules
  * @returns {object}
  */
 export function withDomainRules(store, domainRules) {
@@ -398,17 +477,37 @@ export function withScopedFacts(store, facts) {
 /**
  * Groups host-scoped entries by scope, preserving first-appearance order.
  *
+ * A STRIP entry carrying `pathPrefixes` (#1326) does NOT join `strip` — it
+ * buckets into `pathStrips`, keyed by the exact `pathPrefixes` array (same
+ * prefixes, same order) so entries sharing one predicate group into one
+ * `{pathPrefixes, params}` record, the same way the DNR generator groups
+ * domains sharing an identical removeParams set. Insertion order of both the
+ * outer Map and each inner `pathStrips` Map is entries[]'s own order, which is
+ * what keeps `emitDomainRules` deterministic.
+ *
  * @param {object} store
- * @returns {Map<string, {preserve: string[], strip: string[]}>}
+ * @returns {Map<string, {preserve: string[], strip: string[], pathStrips: Map<string, {pathPrefixes: string[], params: string[]}>}>}
  */
 function groupByScope(store) {
   const grouped = new Map();
   for (const entry of store.entries) {
     if (entry.scope === GLOBAL_SCOPE) continue;
-    if (!grouped.has(entry.scope)) grouped.set(entry.scope, { preserve: [], strip: [] });
+    if (!grouped.has(entry.scope)) {
+      grouped.set(entry.scope, { preserve: [], strip: [], pathStrips: new Map() });
+    }
     const bucket = grouped.get(entry.scope);
     if (entry.action === ACTIONS.PRESERVE) bucket.preserve.push(entry.param);
-    else if (entry.action === ACTIONS.STRIP) bucket.strip.push(entry.param);
+    else if (entry.action === ACTIONS.STRIP) {
+      if (entry.pathPrefixes) {
+        const key = JSON.stringify(entry.pathPrefixes);
+        if (!bucket.pathStrips.has(key)) {
+          bucket.pathStrips.set(key, { pathPrefixes: entry.pathPrefixes, params: [] });
+        }
+        bucket.pathStrips.get(key).params.push(entry.param);
+      } else {
+        bucket.strip.push(entry.param);
+      }
+    }
     // No catch-all: an unrecognised action must never fall into the strip
     // bucket. validateEntry rejects one before it reaches here, and this
     // branch stays explicit so a future action cannot be silently mis-filed.
@@ -432,7 +531,7 @@ export function emitDomainRules(store) {
   const grouped = groupByScope(store);
   const out = [];
 
-  for (const [scope, { preserve, strip }] of grouped) {
+  for (const [scope, { preserve, strip, pathStrips }] of grouped) {
     // A scope with strips and nothing to preserve used to THROW here, on the
     // reasoning that the legacy schema required a non-empty preserveParams and
     // that emitting `[]` would ship a silently different file. That reasoning
@@ -465,6 +564,9 @@ export function emitDomainRules(store) {
     const meta = store.projection?.scopes?.[scope] ?? {};
     const record = { domain: scope, preserveParams: preserve };
     if (meta.emitStripParams) record.stripParams = strip;
+    // #1326: additive. Absent whenever a scope has no path-scoped strip, so
+    // every pre-existing entry (none of which had one) re-emits byte-identical.
+    if (pathStrips.size > 0) record.pathStrips = [...pathStrips.values()];
     if (Object.hasOwn(meta, "note")) record.note = meta.note;
     out.push(record);
   }

@@ -60,7 +60,7 @@
     mtm_campaign: 1, mtm_source: 1, mtm_medium: 1, mtm_content: 1,
     hsctatracking: 1,
     __s: 1, _ga: 1, _gl: 1, _gac: 1,
-    ved: 1, sca_esv: 1, sxsrf: 1,
+    sxsrf: 1,
     _pos: 1, _ss: 1, _psq: 1, _sid: 1, _fid: 1,
   });
 

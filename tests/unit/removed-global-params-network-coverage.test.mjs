@@ -35,6 +35,9 @@ import { TRACKING_PARAMS } from "../../src/lib/affiliates.js";
 import {
   DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
   DNR_DOMAIN_PRESERVE_MAX_RULES,
+  DNR_PATH_SCOPED_RULE_ID_BASE,
+  DNR_PATH_SCOPED_MAX_RULES,
+  DNR_PATH_SCOPED_PRIORITY,
 } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -438,8 +441,18 @@ describe("#1228 step 3 — 28 params stay stripped at the network layer, host-an
     // anchor, never widen". These stay global; host-scoping any of them would
     // claim less reach than the global entry already provides on the actual
     // anchor path, while adding a host-wide claim upstream never made.
+    //
+    // CHANGED (#1326): ved/sca_esv/gs_lcp used to be pinned here too. #1326
+    // gave domain-rules.json a real path-prefix predicate (pathStrips), so
+    // "domain-rules.json can only express host scope" is no longer true for
+    // them — they are the first real use of that mechanism, scoped to
+    // google.com's /search and /webhp (their actual upstream anchors,
+    // ||google.*/search and ||google.*/webhp). They moved OUT of this list
+    // and out of TRACKING_PARAMS entirely; see the "#1326 — path-scoped"
+    // describe block below for their new pin. The rest of this list still
+    // has no path predicate landed for it and stays global on the same
+    // reasoning as before.
     const PATH_ANCHORED_STAY_GLOBAL = [
-      "ved", "sca_esv", "gs_lcp",
       "linkcode", "creativeasin", "lp_asin", "store_ref", "sprefix",
       "mkevt", "mkcid", "mkrid", "toolid", "customid", "ingress",
     ];
@@ -453,6 +466,124 @@ describe("#1228 step 3 — 28 params stay stripped at the network layer, host-an
             "would claim more than the evidence supports (#1229 / ADR-0008).",
         );
       });
+    }
+  });
+});
+
+/**
+ * #1326 slices 1+2 — ved/sca_esv/gs_lcp moved from "stays global" to a real
+ * path-scoped strip on google.com.
+ *
+ * These three used to live in PATH_ANCHORED_STAY_GLOBAL above: upstream
+ * anchors them to a path (google wildcard host, /search and /webhp) and
+ * domain-rules.json could only express host scope, so the correct call was
+ * to leave them global rather than either drop them or over-claim the whole
+ * host. #1326 gave domain-rules.json a literal path-prefix predicate
+ * (`pathStrips`) and generate-rules.mjs a way to project it into a DNR rule
+ * that outranks the host's profile rule by priority instead of by exclusion
+ * (docs/adr/0010-path-scoped-param-rules.md). This is that mechanism's first
+ * real use.
+ *
+ * What changed: all three left TRACKING_PARAMS (396, was 399) and google.com's
+ * own `stripParams` (they used to be listed there too, redundantly, while
+ * still global). They now live only in google.com's `pathStrips`, scoped to
+ * `/search` and `/webhp` — the exact two anchors upstream uses.
+ */
+describe("#1326 — ved/sca_esv/gs_lcp are path-scoped to google.com /search and /webhp, not global", () => {
+  const PATH_SCOPED_PARAMS = ["ved", "sca_esv", "gs_lcp"];
+  const PATH_PREFIXES = ["/search", "/webhp"];
+
+  const domainRules = JSON.parse(
+    readFileSync(join(ROOT, "src", "rules", "domain-rules.json"), "utf8"),
+  );
+  const google = domainRules.find((d) => d.domain === "google.com");
+
+  const pathRules = RULES.filter(
+    (r) =>
+      r.id >= DNR_PATH_SCOPED_RULE_ID_BASE &&
+      r.id < DNR_PATH_SCOPED_RULE_ID_BASE + DNR_PATH_SCOPED_MAX_RULES,
+  );
+
+  for (const param of PATH_SCOPED_PARAMS) {
+    test(`"${param}" left TRACKING_PARAMS — it is no longer global`, () => {
+      assert.ok(
+        !trackingLc.has(param.toLowerCase()),
+        `"${param}" is back in TRACKING_PARAMS. It moved to a path-scoped strip on ` +
+          "google.com (#1326); either that measurement changed (revert this pin) or it " +
+          "must come back out of the global list.",
+      );
+    });
+
+    test(`"${param}" left google.com's own stripParams (it is only path-scoped now)`, () => {
+      assert.ok(
+        !(google?.stripParams ?? []).includes(param),
+        `"${param}" is still in google.com's stripParams. Left there, generate-rules.mjs's ` +
+          "extraStrips would re-globalize it across the whole host — exactly what the path " +
+          "predicate exists to avoid.",
+      );
+    });
+  }
+
+  test("google.com's pathStrips names exactly ved/sca_esv/gs_lcp on /search and /webhp", () => {
+    assert.ok(google, "no domain-rules.json entry for google.com");
+    const groups = google.pathStrips ?? [];
+    assert.equal(groups.length, 1, "expected exactly one pathStrips group on google.com");
+    assert.deepEqual([...groups[0].pathPrefixes].sort(), [...PATH_PREFIXES].sort());
+    assert.deepEqual(
+      [...groups[0].params].sort(),
+      [...PATH_SCOPED_PARAMS].sort(),
+    );
+  });
+
+  test("exactly one DNR path rule per (google.com, prefix) — 2 rules total", () => {
+    const googlePathRules = pathRules.filter((r) =>
+      (r.condition?.requestDomains ?? []).includes("google.com"),
+    );
+    assert.equal(googlePathRules.length, PATH_PREFIXES.length);
+    const prefixes = googlePathRules
+      .map((r) => r.condition.urlFilter)
+      .sort();
+    assert.deepEqual(
+      prefixes,
+      PATH_PREFIXES.map((p) => `||google.com${p}`).sort(),
+    );
+  });
+
+  test("every google.com path rule outranks the priority-1 global/profile rules", () => {
+    const googlePathRules = pathRules.filter((r) =>
+      (r.condition?.requestDomains ?? []).includes("google.com"),
+    );
+    for (const rule of googlePathRules) {
+      assert.equal(rule.priority, DNR_PATH_SCOPED_PRIORITY);
+      assert.ok(rule.priority > 1, `path rule ${rule.id} must outrank priority-1 rules`);
+    }
+  });
+
+  test("every google.com path rule strips the three plus the host's own complete profile set", () => {
+    const googleProfileRule = RULES.find(
+      (r) =>
+        r.id >= DNR_DOMAIN_PRESERVE_RULE_ID_BASE &&
+        r.id < DNR_DOMAIN_PRESERVE_RULE_ID_BASE + DNR_DOMAIN_PRESERVE_MAX_RULES &&
+        (r.condition?.requestDomains ?? []).includes("google.com"),
+    );
+    assert.ok(googleProfileRule, "no DNR profile rule covers google.com");
+    const profileSet = new Set(removeOf(googleProfileRule).map((p) => p.toLowerCase()));
+
+    const googlePathRules = pathRules.filter((r) =>
+      (r.condition?.requestDomains ?? []).includes("google.com"),
+    );
+    for (const rule of googlePathRules) {
+      const pathSet = new Set(removeOf(rule).map((p) => p.toLowerCase()));
+      for (const param of PATH_SCOPED_PARAMS) {
+        assert.ok(pathSet.has(param), `path rule ${rule.id} is missing "${param}"`);
+      }
+      for (const p of profileSet) {
+        assert.ok(
+          pathSet.has(p),
+          `path rule ${rule.id} is missing "${p}" from google.com's own complete profile set ` +
+            "— a path rule must carry the host's COMPLETE set, not a thin delta",
+        );
+      }
     }
   });
 });

@@ -2595,9 +2595,7 @@ export const DOMAIN_RULES = [
     ],
     "stripParams": [
       "sa",
-      "ved",
       "ei",
-      "gs_lcp",
       "sclient",
       "uact",
       "gs_lp",
@@ -2606,7 +2604,6 @@ export const DOMAIN_RULES = [
       "oq",
       "aqs",
       "sourceid",
-      "sca_esv",
       "sxsrf",
       "usg",
       "sei",
@@ -2618,7 +2615,20 @@ export const DOMAIN_RULES = [
       "vet",
       "dpr"
     ],
-    "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ved/ei are click tracking."
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/search",
+          "/webhp"
+        ],
+        "params": [
+          "ved",
+          "sca_esv",
+          "gs_lcp"
+        ]
+      }
+    ],
+    "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ei are click tracking. ved/sca_esv/gs_lcp are path-scoped to /search and /webhp (#1326) — upstream anchors them there, not to the whole host."
   },
   {
     "domain": "greenbuildingadvisor.com",

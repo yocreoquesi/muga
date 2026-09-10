@@ -25,6 +25,22 @@
  *              that domain's preserveParams, plus any domain-specific extra strips
  *              (e.g. Amazon internal-nav params — folded in here, no longer a
  *              separate rule). Domains sharing a profile share one rule.
+ *   800-899  — static ruleset: PATH-SCOPED tracking-param strip rules
+ *              (tracking-params.json, #1326). A `domain-rules.json` entry may
+ *              carry `pathStrips: [{ pathPrefixes[], params[] }]` — a literal
+ *              path-prefix predicate a host-only profile rule cannot express
+ *              (no `excludedUrlFilter` exists, so a profile rule cannot be
+ *              told "strip everywhere on this host except this one path").
+ *              Disjointness comes from PRIORITY instead of exclusion: each
+ *              path rule runs at DNR_PATH_SCOPED_PRIORITY (3), above every
+ *              priority-1 global/profile rule, so it wins on its own path and
+ *              the profile/global rule wins everywhere else on the host — see
+ *              docs/adr/0010-path-scoped-param-rules.md. Because DNR has no
+ *              OR across `urlFilter`, one rule is emitted PER (domain, path
+ *              prefix) pair, and each one carries the COMPLETE set for that
+ *              host+path (the host's own complete profile set UNION the
+ *              path-scoped params) — never a thin delta, for the same
+ *              one-rule-per-request reason the 300-799 range is complete.
  *   1000     — dynamic custom params rule (user-defined params, DNR redirect)
  *   1001     — dynamic remote params rule (signed remote payload, DNR redirect)
  *   2000-2499 — dynamic allowlist "allow" rules (#allowlist-full-inert), one
@@ -130,6 +146,53 @@ export const DNR_DOMAIN_PRESERVE_RULE_ID_BASE = 300;
  * 300-799 range can never overrun into DNR_CUSTOM_PARAMS_RULE_ID (1000).
  */
 export const DNR_DOMAIN_PRESERVE_MAX_RULES = 500;
+
+/**
+ * Base ID for the static PATH-SCOPED tracking-param strip rules emitted into
+ * tracking-params.json (#1326). One rule per (domain, path-prefix) pair —
+ * DNR's `urlFilter` cannot OR multiple prefixes, so a `domain-rules.json`
+ * entry with `pathStrips: [{ pathPrefixes: ["/a", "/b"], params }]` projects
+ * to TWO rules, one anchored to each prefix. Starts immediately after the
+ * 300-799 per-domain-profile range so the static id space (1-999) stays
+ * contiguous and documented top to bottom.
+ *
+ * id = DNR_PATH_SCOPED_RULE_ID_BASE + i, where i walks every emitted
+ * (domain, pathPrefixes-group, prefix) tuple in the generator's own
+ * deterministic order (see buildDnrRules in tools/generate-rules.mjs).
+ */
+export const DNR_PATH_SCOPED_RULE_ID_BASE = 800;
+
+/**
+ * Cap on the number of static path-scoped DNR rules. A path predicate cannot
+ * share a rule across hosts the way the per-domain-profile range collapses
+ * identical removeParams sets (#1326, #1326's own ADR) — every (domain,
+ * prefix) pair is its own rule — so this range is sized modestly rather than
+ * to DNR_DOMAIN_PRESERVE_MAX_RULES' scale. 800-899 leaves 900-999 as
+ * untouched buffer before DNR_CUSTOM_PARAMS_RULE_ID (1000), mirroring the
+ * gaps every other range in this file leaves its neighbour. The generator
+ * fails loudly if this is exceeded, the same posture DNR_DOMAIN_PRESERVE_MAX_RULES
+ * takes.
+ */
+export const DNR_PATH_SCOPED_MAX_RULES = 100;
+
+/**
+ * Priority of the static path-scoped strip rules. MUST exceed 1 — the
+ * priority of every global and per-domain-profile strip rule — because
+ * disjointness here comes from PRIORITY, not `excludedRequestDomains`: DNR
+ * has no `excludedUrlFilter`, so a profile rule cannot be told to cede one
+ * path the way it cedes a whole host to a more specific profile rule. A path
+ * rule at a higher priority wins on its own (domain, path-prefix) match; the
+ * profile/global rule wins everywhere else on the host — no exclusion list
+ * needed on either side. See docs/adr/0010-path-scoped-param-rules.md.
+ *
+ * Set to 3, above both the static rules (priority 1) AND the dynamic
+ * host-scoped remote rules (DNR_SCOPED_PARAMS_PRIORITY, priority 2) — a path
+ * predicate should win over either mechanism it might ever coexist with on
+ * the same host, not just the static one. Still far below
+ * DNR_SIGNED_URL_ALLOW_PRIORITY (1000), so "the signed-URL guard always
+ * wins" is unaffected.
+ */
+export const DNR_PATH_SCOPED_PRIORITY = 3;
 
 /**
  * ID of the dynamic rule that removes user-defined custom params.

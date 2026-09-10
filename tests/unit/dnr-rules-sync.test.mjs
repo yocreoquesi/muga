@@ -235,6 +235,15 @@ function ruleMatchesHost(rule, host) {
   const c = rule.condition ?? {};
   if (c.requestDomains && !hostUnderAny(host, c.requestDomains)) return false;
   if (c.excludedRequestDomains && hostUnderAny(host, c.excludedRequestDomains)) return false;
+  // #1326: a path-scoped rule's urlFilter carries a literal path prefix (e.g.
+  // "||google.com/search") that a bare HOST string can never satisfy — this
+  // helper is probed with hostnames, not full URLs. The global rule's
+  // urlFilter is "*" (matches everything) and stays unaffected; any other
+  // non-"*" urlFilter means the rule needs more than a bare host to match, so
+  // it correctly falls out of this host-only invariant. Its own disjointness
+  // (by priority, not exclusion) is proven by
+  // tests/unit/path-scoped-dnr-rules.test.mjs instead.
+  if (c.urlFilter && c.urlFilter !== "*") return false;
   return true;
 }
 
