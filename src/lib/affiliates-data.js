@@ -26,13 +26,13 @@ export const TRACKING_PARAMS = [
   "mc_cid", "mc_eid", "mailingid", "hqemail",
 
   // Social
-  "igshid", "igsh", "s_cid",
+  "igshid", "s_cid",
 
   // YouTube share tracking
   "si",
 
   // TikTok
-  "_r",
+
 
   // Generic
   // "ref" removed: it's the affiliate param for PcComponentes and MediaMarkt ES/DE in
@@ -54,9 +54,9 @@ export const TRACKING_PARAMS = [
 
   // Amazon: internal / referral noise (not the affiliate tag)
   "psc", "spla",
-  "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
+
   "pf_rd_p", "pf_rd_r", "pf_rd_s",
-  "linkcode", "linkid", "creativeasin", "smid", "spia",
+  "linkcode", "linkid", "creativeasin", "spia",
   // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
   // attribution ID; stripping it kills creator attribution (#794).
   "asc_contentid", "asc_contenttype", "asc_campaign",
@@ -64,7 +64,7 @@ export const TRACKING_PARAMS = [
   // Amazon: store page / brand referral noise
   "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
   // Amazon: search/browse noise
-  "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
+  "sprefix", "crid", "sbo", "cv_ct_cx",
   // Amazon: locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
   // Stored lowercase. cleaner.js compares param.toLowerCase() against this list.
   "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
@@ -100,7 +100,7 @@ export const TRACKING_PARAMS = [
   // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
 
   // Naver (Korean search/ads)
-  "nclid", "napm", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
+  "nclid", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
   "n_keyword", "n_keyword_id", "n_campaign_type", "n_cid", "n_match",
   "ssc_referrer",
 
@@ -198,13 +198,13 @@ export const TRACKING_PARAMS = [
   "fb_action_types", // Facebook action types
   "fb_ref",          // Facebook referral
   "fb_source",       // Facebook source
-  "mibextid",        // Meta mobile app share tracking
+         // Meta mobile app share tracking
 
   // TikTok (additional)
   "tt_medium",       // TikTok campaign medium
   "tt_content",      // TikTok campaign content
-  "is_from_webapp",  // TikTok referral tracking
-  "sender_device",   // TikTok device tracking
+   // TikTok referral tracking
+    // TikTok device tracking
   "sender_web_id",   // TikTok web ID tracking
   "is_copy_url",     // TikTok share method tracking
 
@@ -456,7 +456,7 @@ export const TRACKING_PARAMS = [
   "utm_newsletterid",
 
   // Added via npm run add-rule (#335): TikTok share token (sister to _r). Issue #508.
-  "_t",
+
 
 ];
 
@@ -571,7 +571,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // AppsFlyer extended
       "af_xp", "af_ad", "af_adset",
       // Naver Ads (Korean)
-      "nclid", "napm", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
+      "nclid", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
       "n_keyword", "n_keyword_id", "n_campaign_type", "n_cid", "n_match",
       "ssc_referrer",
       // Kakao Ads (Korean)
@@ -680,7 +680,7 @@ export const TRACKING_PARAM_CATEGORIES = {
     descriptionDe: "Tracking von Instagram, Pinterest, Snapchat, etc.",
     params: [
       // Instagram
-      "igshid", "igsh",
+      "igshid",
       // Pinterest
       "e_t", "epik", "pin_unauth",
       // Snapchat
@@ -700,21 +700,21 @@ export const TRACKING_PARAM_CATEGORIES = {
       // YouTube share
       "si",
       // TikTok
-      "_r",
+
       // Generic
       "source", "campaign", "cid", "clickid",
       // Microsoft / Windows
       "ocid",
       // Amazon
       "psc", "spla",
-      "pd_rd_r", "pd_rd_w", "pd_rd_wg", "pd_rd_i",
+
       "pf_rd_p", "pf_rd_r", "pf_rd_s",
-      "linkcode", "linkid", "creativeasin", "smid", "spia",
+      "linkcode", "linkid", "creativeasin", "spia",
       // ascsubtag removed: affiliate attribution (#794)
       "asc_contentid", "asc_contenttype", "asc_campaign",
       "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
       "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
-      "dib", "dib_tag", "sprefix", "crid", "dchild", "qid", "sbo", "cv_ct_cx",
+      "sprefix", "crid", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
       "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
       // eBay
@@ -728,9 +728,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       // GA4 cross-domain
       "_gl", "_ga", "_gac",
       // TikTok share tracking
-      "tt_medium", "tt_content", "is_from_webapp", "sender_device", "sender_web_id", "is_copy_url",
+      "tt_medium", "tt_content", "sender_web_id", "is_copy_url",
       // Meta mobile
-      "mibextid", "fb_action_ids", "fb_action_types", "fb_ref", "fb_source",
+      "fb_action_ids", "fb_action_types", "fb_ref", "fb_source",
       // Reddit share
       "share_id",
       // Branch.io
@@ -748,7 +748,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "adjust_t", "adjust_campaign", "adjust_adgroup", "adjust_creative",
       // A/B test
       "ab_channel", "ab_version",
-      "_t",
+
     ],
   },
   generic: {

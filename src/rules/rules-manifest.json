@@ -155,10 +155,6 @@
       "category": "platform_noise"
     },
     {
-      "param": "_r",
-      "category": "platform_noise"
-    },
-    {
       "param": "_sgm_action",
       "category": "generic"
     },
@@ -184,10 +180,6 @@
     },
     {
       "param": "_ss",
-      "category": "platform_noise"
-    },
-    {
-      "param": "_t",
       "category": "platform_noise"
     },
     {
@@ -565,20 +557,8 @@
       "category": "email"
     },
     {
-      "param": "dchild",
-      "category": "platform_noise"
-    },
-    {
       "param": "dclid",
       "category": "ads"
-    },
-    {
-      "param": "dib",
-      "category": "platform_noise"
-    },
-    {
-      "param": "dib_tag",
-      "category": "platform_noise"
     },
     {
       "param": "dm_i",
@@ -858,10 +838,6 @@
       "category": "email"
     },
     {
-      "param": "igsh",
-      "category": "social"
-    },
-    {
       "param": "igshid",
       "category": "social"
     },
@@ -903,10 +879,6 @@
     },
     {
       "param": "is_copy_url",
-      "category": "platform_noise"
-    },
-    {
-      "param": "is_from_webapp",
       "category": "platform_noise"
     },
     {
@@ -1024,10 +996,6 @@
     {
       "param": "mc_eid",
       "category": "email"
-    },
-    {
-      "param": "mibextid",
-      "category": "platform_noise"
     },
     {
       "param": "mindbox-click-id",
@@ -1198,10 +1166,6 @@
       "category": "ads"
     },
     {
-      "param": "napm",
-      "category": "ads"
-    },
-    {
       "param": "nb_expid_meta",
       "category": "generic"
     },
@@ -1255,22 +1219,6 @@
     {
       "param": "pcrid",
       "category": "ads"
-    },
-    {
-      "param": "pd_rd_i",
-      "category": "platform_noise"
-    },
-    {
-      "param": "pd_rd_r",
-      "category": "platform_noise"
-    },
-    {
-      "param": "pd_rd_w",
-      "category": "platform_noise"
-    },
-    {
-      "param": "pd_rd_wg",
-      "category": "platform_noise"
     },
     {
       "param": "personaclick_input_query",
@@ -1350,10 +1298,6 @@
     },
     {
       "param": "psc",
-      "category": "platform_noise"
-    },
-    {
-      "param": "qid",
       "category": "platform_noise"
     },
     {
@@ -1440,10 +1384,6 @@
       "category": "ads"
     },
     {
-      "param": "sender_device",
-      "category": "platform_noise"
-    },
-    {
       "param": "sender_web_id",
       "category": "platform_noise"
     },
@@ -1473,10 +1413,6 @@
     },
     {
       "param": "skiptwisterog",
-      "category": "platform_noise"
-    },
-    {
-      "param": "smid",
       "category": "platform_noise"
     },
     {
