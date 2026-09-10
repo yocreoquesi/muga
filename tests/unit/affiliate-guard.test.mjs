@@ -468,3 +468,52 @@ describe("published-artifact guard (#1212)", () => {
     );
   });
 });
+
+// ── The docblock's overlap list must stay true (#1328) ───────────────────────
+//
+// AFFILIATE_PARAM_GUARD's module docblock says plainly that membership is NOT a
+// claim MUGA never strips the name: some members are also in the hand-curated
+// global list, on purpose. To stop that paragraph rotting it names the exact
+// set, and this asserts the names it lists are the names that actually overlap.
+//
+// Either direction failing is informative. A name appearing in both without
+// being listed means a global-strip decision was made for a guard member and
+// nobody wrote down why. A listed name that no longer overlaps means the
+// paragraph is describing a world that moved on, which is how `ref_` read after
+// #1228 step 3 moved it out of the global list.
+describe("#1328 — the guard docblock's global-overlap list is accurate", () => {
+  it("names exactly the guard members that are also globally stripped", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, join } = await import("node:path");
+    const { AFFILIATE_PARAM_GUARD } = await import("../../src/lib/remote-rules.js");
+
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, "../../src/lib/remote-rules.js"), "utf8");
+
+    const paragraph = /Nine members are currently in the global strip list([^]*?)\(#1328\)/.exec(src);
+    assert.ok(paragraph, "the docblock paragraph naming the overlap is gone; it is what this guards");
+
+    const listed = new Set([...paragraph[1].matchAll(/`([a-z0-9_]+)`/g)].map((m) => m[1]));
+    const tracking = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
+    const actual = new Set([...AFFILIATE_PARAM_GUARD].filter((p) => tracking.has(p)));
+
+    const missing = [...actual].filter((p) => !listed.has(p)).sort();
+    const stale = [...listed].filter((p) => !actual.has(p)).sort();
+
+    assert.deepEqual(
+      missing,
+      [],
+      `guard members are stripped globally but the docblock does not name them: ${missing.join(", ")}. ` +
+        "Either the global entry is a deliberate curation call and belongs in that list with a reason, " +
+        "or it is a mistake and the name should leave TRACKING_PARAMS.",
+    );
+    assert.deepEqual(
+      stale,
+      [],
+      `the docblock still names ${stale.join(", ")} as globally stripped, and they are not. ` +
+        "Update the paragraph; a stale safety note is worse than none.",
+    );
+  });
+});
+

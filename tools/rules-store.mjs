@@ -25,11 +25,11 @@
  * an argument: import the committed artifacts, emit them again, compare bytes.
  * If the bytes match, the extension cannot have changed.
  *
- * That is also why `emitDomainRules` THROWS on a store entry the legacy schema
- * cannot represent instead of quietly dropping it or inventing an empty
- * `preserveParams`. The throw is the visible seam where the old coupling shows
- * through; a silent workaround would hide exactly the debt this store is here
- * to retire.
+ * `emitDomainRules` used to THROW on a scope with strips and no preserves, as
+ * the visible seam of that coupling. #1328 retired it: entries that exist only
+ * to add a host-anchored strip are now normal, and `preserveParams: []` is
+ * their honest projection. The "an entry must actually do something" invariant
+ * now lives where it can fail, asserted against the committed artifact.
  *
  * ── Pure module guarantees ────────────────────────────────────────────
  *
@@ -427,25 +427,40 @@ function groupByScope(store) {
  *
  * @param {object} store
  * @returns {string} File contents, LF endings, trailing newline.
- * @throws {Error} When an entry cannot be represented in the legacy schema.
  */
 export function emitDomainRules(store) {
   const grouped = groupByScope(store);
   const out = [];
 
   for (const [scope, { preserve, strip }] of grouped) {
-    if (preserve.length === 0) {
-      // The legacy schema requires a non-empty preserveParams on every entry,
-      // so a host-scoped strip with nothing to preserve has no representation.
-      // Fail loudly and name it: synthesising `preserveParams: []` would ship a
-      // silently different file, and dropping the entry would lose a rule.
-      // Slice 2 removes this constraint; until then it must stay visible.
-      throw new Error(
-        `rules-store: scope "${scope}" has strip entries (${strip.join(", ")}) but no ` +
-          `preserve entries. domain-rules.json cannot represent that — every entry ` +
-          `requires a non-empty preserveParams.`
-      );
-    }
+    // A scope with strips and nothing to preserve used to THROW here, on the
+    // reasoning that the legacy schema required a non-empty preserveParams and
+    // that emitting `[]` would ship a silently different file. That reasoning
+    // was sound while every entry existed to preserve something. The comment
+    // said so itself: "Slice 2 removes this constraint; until then it must stay
+    // visible." This is that removal (#1328).
+    //
+    // What changed: #1323 and #1324 added entries whose whole purpose is a
+    // host-anchored STRIP. They have no natural preserve list, so 60 of them
+    // carried `["q"]` invented purely to satisfy the constraint. `q` is not in
+    // TRACKING_PARAMS, so it preserved nothing; it was data written to pass a
+    // check. The constraint stopped describing the schema and started shaping
+    // the data, which is when a guard has to go.
+    //
+    // `[]` is representable and always was: the cleaner reads
+    // `(rule.preserveParams || [])`, so an empty list and an absent key behave
+    // identically. Emitting it is no longer a silent difference, it is the
+    // honest projection of a scope that only strips. The round-trip test still
+    // proves losslessness by bytes, which is what actually protects the shipped
+    // artifact.
+    //
+    // No replacement guard here: `groupByScope` only yields scopes that HAVE
+    // entries, and an entry's action is validated to be preserve or strip, so a
+    // scope with neither cannot reach this loop. A throw for it would be
+    // unreachable, and an unreachable throw reads as a guarantee while
+    // guaranteeing nothing. The "preserve or strip" invariant is asserted where
+    // it can actually fail, against the committed artifact, in
+    // domain-rules.test.mjs and config-integrity.test.mjs.
 
     const meta = store.projection?.scopes?.[scope] ?? {};
     const record = { domain: scope, preserveParams: preserve };

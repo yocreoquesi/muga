@@ -18,14 +18,20 @@ const domainRules = require("../../src/rules/domain-rules.json");
 // Domain rules JSON integrity
 // ---------------------------------------------------------------------------
 describe("domain-rules.json integrity", () => {
-  test("all entries have domain, preserveParams (non-empty array), and note", () => {
+  test("all entries have a domain, a note, and at least one of preserve or strip", () => {
     // Exact count is pinned so any domain-rules.json growth (e.g. the weekly
     // AdGuard/ClearURLs preserve harvest) is an explicit, reviewed change.
     assert.equal(domainRules.length, 249, `Expected 249 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);
-      assert.ok(rule.preserveParams.length > 0, `preserveParams must not be empty: ${rule.domain}`);
+      // #1328: preserve OR strip, not preserve alone. An entry that exists to add
+      // a host-anchored strip has no natural preserve list, and requiring one
+      // produced 60 entries carrying an inert `["q"]` purely to pass this check.
+      assert.ok(
+        rule.preserveParams.length > 0 || (rule.stripParams ?? []).length > 0,
+        `${rule.domain} neither preserves nor strips anything`,
+      );
       assert.equal(typeof rule.note, "string", `note must be string: ${rule.domain}`);
       assert.ok(rule.note.length > 0, `note must not be empty: ${rule.domain}`);
     }

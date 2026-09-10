@@ -170,32 +170,46 @@ test("emitted files end with exactly one trailing newline", () => {
   assert.equal(emitted.endsWith("\n\n"), false);
 });
 
-// ── The seam: what the store can hold and the legacy schema cannot ───
+// ── The seam that closed (#1328) ─────────────────────────────────────
+//
+// A host-scoped strip with no sibling preserve used to be the store's visible
+// seam: it could hold one and `emitDomainRules` threw rather than render it,
+// because every domain-rules.json entry was assumed to need a non-empty
+// preserveParams. `rules-store.mjs` said so itself: "Slice 2 removes this
+// constraint; until then it must stay visible."
+//
+// #1323 and #1324 made those entries ordinary, and the constraint went from
+// describing the schema to shaping the data: 60 entries carried
+// `preserveParams: ["q"]` invented purely to satisfy it, preserving a param
+// that is not in TRACKING_PARAMS and therefore was never stripped.
+//
+// So the seam is gone. It gets no replacement guard: `groupByScope` only yields
+// scopes that have entries, so the case a replacement would catch cannot reach
+// the renderer. The invariant is asserted where it can actually fail, against
+// the committed artifact, in domain-rules.test.mjs and config-integrity.test.mjs.
 
 test("the store accepts a host-scoped strip with no sibling preserve", () => {
-  // The decoupling that makes Slice 2 possible: scope and action are
-  // independent. domain-rules.json requires a non-empty preserveParams on every
-  // entry and therefore cannot express this at all.
+  // Scope and action stay independent; that decoupling is what made Slice 2
+  // possible and it is unchanged.
   const entry = makeEntry({ scope: "example.com", param: "trk", action: ACTIONS.STRIP });
   assert.deepEqual(entry, { scope: "example.com", param: "trk", action: "strip" });
 });
 
-test("emitDomainRules refuses to render it, naming scope and param", () => {
-  // It must fail loudly. Synthesising `preserveParams: []` would ship a
-  // silently different file; dropping the entry would lose a rule. Either
-  // failure is invisible in review, which is why this is pinned.
+test("emitDomainRules now renders it with an empty preserveParams", () => {
+  // `[]` is representable and always was: the cleaner reads
+  // `(rule.preserveParams || [])`, so empty and absent behave identically.
   const store = {
     schemaVersion: 1,
     entries: [makeEntry({ scope: "example.com", param: "trk", action: ACTIONS.STRIP })],
     projection: { scopes: { "example.com": { emitStripParams: true } } },
   };
 
-  assert.throws(
-    () => emitDomainRules(store),
-    (err) => err.message.includes("example.com") && err.message.includes("trk"),
-    "the unrepresentable entry was not reported with its scope and param"
-  );
+  const emitted = JSON.parse(emitDomainRules(store));
+  assert.deepEqual(emitted, [
+    { domain: "example.com", preserveParams: [], stripParams: ["trk"] },
+  ]);
 });
+
 
 test("reserved actions cannot enter the store while nothing projects them", () => {
   for (const action of RESERVED_ACTIONS) {
