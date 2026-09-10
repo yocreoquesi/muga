@@ -1,27 +1,35 @@
 /**
  * MUGA — #1097: badge/history read-modify-write race on chrome.storage.session.
  *
- * updateTabBadge() and appendHistory() in service-worker.js each do a
- * read -> mutate -> write cycle against chrome.storage.session (badge totals,
- * per-page counters, session history). Unlike the whitelist/blacklist
- * mutations (serialized via `_listMutationQueue`), these two cycles used to
- * run un-serialized. In MV3, chrome.storage.session is real async IPC (not a
- * synchronous in-memory Map), so two of these cycles racing on the same tab
- * can each read the pre-update value before either write lands — the second
- * write clobbers the first and the badge undercounts (or a history entry is
+ * updateTabBadge() (src/background/toolbar-badge.js, #1266 item 5) and
+ * appendHistory() (service-worker.js) each do a read -> mutate -> write
+ * cycle against chrome.storage.session (badge totals, per-page counters,
+ * session history). Unlike the whitelist/blacklist mutations (serialized
+ * via `_listMutationQueue`), these two cycles used to run un-serialized. In
+ * MV3, chrome.storage.session is real async IPC (not a synchronous
+ * in-memory Map), so two of these cycles racing on the same tab can each
+ * read the pre-update value before either write lands — the second write
+ * clobbers the first and the badge undercounts (or a history entry is
  * silently dropped).
  *
  * The fix adds `withSessionMutation`, a small serialization queue mirroring
  * the shape of `_listMutationQueue` (service-worker.js) and
  * `createMutex`/`withSyncMutation` (src/options/sync-mutation.js), and routes
- * both updateTabBadge and appendHistory through it.
+ * both updateTabBadge and appendHistory through it. Both must share the SAME
+ * queue instance in production — see toolbar-badge.js's module doc — which
+ * is why updateTabBadge below is exercised through createToolbarBadge's
+ * `withSessionMutation` injection point rather than a private copy.
  *
- * service-worker.js is browser-only (top-level chrome.* calls) and cannot be
- * imported directly in Node, so — following the established pattern in this
- * suite (see onboarding-tab-dedup-967.test.mjs, sw-robustness-833.test.mjs) —
- * the real production functions are extracted via source-slicing and bound to
- * a fake, artificially-delayed chrome.storage.session double that reproduces
- * the async-IPC race deterministically.
+ * updateTabBadge is now real, imported production code (#1266 item 5) — no
+ * more source-slicing for it. appendHistory (and withSessionMutation itself,
+ * which it shares) still live in service-worker.js, which is browser-only
+ * (top-level chrome.* calls) and cannot be imported directly in Node, so —
+ * following the established pattern in this suite (see
+ * onboarding-tab-dedup-967.test.mjs, sw-robustness-833.test.mjs) — those two
+ * are still extracted via source-slicing and bound to a fake,
+ * artificially-delayed chrome.storage.session double that reproduces the
+ * async-IPC race deterministically. The same fake double, and the same
+ * extracted `withSessionMutation`, drive the real updateTabBadge below.
  */
 
 import { test, describe } from "node:test";
@@ -29,6 +37,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { createToolbarBadge } from "../../src/background/toolbar-badge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../..");
@@ -53,16 +62,17 @@ function extractFunctionSource(src, name) {
 }
 
 const withSessionMutationSrc = extractFunctionSource(SW_SOURCE, "withSessionMutation");
-const updateTabBadgeSrc = extractFunctionSource(SW_SOURCE, "updateTabBadge");
 const appendHistorySrc = extractFunctionSource(SW_SOURCE, "appendHistory");
 const historyMaxMatch = SW_SOURCE.match(/const HISTORY_MAX\s*=\s*\d+;/);
 assert.ok(historyMaxMatch, "HISTORY_MAX constant must be defined");
 
 /**
- * Builds a fresh { updateTabBadge, appendHistory, withSessionMutation } bound
- * to fake sessionStorage/getPrefsWithCache/toolbarBus dependencies, with its
- * own private `_sessionMutationQueue` (fresh per call — tests never share
- * queue state).
+ * Builds a fresh { appendHistory, withSessionMutation } bound to fake
+ * sessionStorage/getPrefsWithCache/toolbarBus dependencies, with its own
+ * private `_sessionMutationQueue` (fresh per call — tests never share queue
+ * state). appendHistory still lives in service-worker.js (#1266 item 5 only
+ * moved the badge/tab-active-state block, not the history helpers), so it is
+ * still extracted via source-slicing.
  */
 function buildSessionHelpers({ sessionStorage, getPrefsWithCache, toolbarBus }) {
   const factory = new Function(
@@ -71,11 +81,44 @@ function buildSessionHelpers({ sessionStorage, getPrefsWithCache, toolbarBus }) 
      let _sessionMutationQueue = Promise.resolve();
      ${historyMaxMatch[0]}
      ${withSessionMutationSrc}
-     ${updateTabBadgeSrc}
      ${appendHistorySrc}
-     return { updateTabBadge, appendHistory, withSessionMutation };`,
+     return { appendHistory, withSessionMutation };`,
   );
   return factory(sessionStorage, getPrefsWithCache, toolbarBus);
+}
+
+/**
+ * Builds a fresh, standalone `withSessionMutation` — same source-sliced
+ * production function as above, but not bundled with appendHistory. Used to
+ * drive the REAL, imported updateTabBadge (src/background/toolbar-badge.js,
+ * #1266 item 5) below, since createToolbarBadge requires withSessionMutation
+ * to be injected rather than reimplemented (see that file's module doc).
+ */
+function buildWithSessionMutation() {
+  const factory = new Function(
+    `"use strict";
+     let _sessionMutationQueue = Promise.resolve();
+     ${withSessionMutationSrc}
+     return withSessionMutation;`,
+  );
+  return factory();
+}
+
+/**
+ * Builds the REAL updateTabBadge (createToolbarBadge from
+ * src/background/toolbar-badge.js), wired to a freshly-built, source-sliced
+ * `withSessionMutation` (see buildWithSessionMutation above) so this suite
+ * still exercises the production queue implementation, not a mock.
+ */
+function buildUpdateTabBadge({ sessionStorage, getPrefsWithCache, toolbarBus, withSessionMutation = buildWithSessionMutation() }) {
+  const { updateTabBadge } = createToolbarBadge({
+    bus: toolbarBus,
+    getPrefs: getPrefsWithCache,
+    sessionStorage,
+    tabsApi: { query: (queryInfo, cb) => cb([]) },
+    withSessionMutation,
+  });
+  return { updateTabBadge };
 }
 
 /**
@@ -116,11 +159,24 @@ describe("#1097 — SW defines the session-storage mutation queue", () => {
     );
   });
 
-  test("updateTabBadge routes its read-modify-write cycle through withSessionMutation", () => {
-    assert.ok(
-      updateTabBadgeSrc.includes("withSessionMutation("),
-      "updateTabBadge must serialize its badge read-modify-write cycle",
-    );
+  test("updateTabBadge routes its read-modify-write cycle through withSessionMutation", async () => {
+    // Behavioral, not source-text (#824 ratchet): updateTabBadge is now real,
+    // imported production code, so this spies on the injected
+    // withSessionMutation to prove it is actually invoked, rather than
+    // grepping for the call in source text.
+    let called = false;
+    const real = buildWithSessionMutation();
+    const spyWithSessionMutation = (fn) => { called = true; return real(fn); };
+    const { updateTabBadge } = buildUpdateTabBadge({
+      sessionStorage: makeFakeSessionStorage({ delayMs: 0 }),
+      getPrefsWithCache: async () => ({}),
+      toolbarBus: noopToolbarBus(),
+      withSessionMutation: spyWithSessionMutation,
+    });
+
+    await updateTabBadge(1, 1);
+
+    assert.ok(called, "updateTabBadge must serialize its badge read-modify-write cycle through withSessionMutation");
   });
 
   test("appendHistory routes its read-modify-write cycle through withSessionMutation", () => {
@@ -134,7 +190,7 @@ describe("#1097 — SW defines the session-storage mutation queue", () => {
 describe("#1097 — updateTabBadge: concurrent clean events never lose an update", () => {
   test("two concurrent updateTabBadge calls on the same tab sum correctly", async () => {
     const sessionStorage = makeFakeSessionStorage();
-    const { updateTabBadge } = buildSessionHelpers({
+    const { updateTabBadge } = buildUpdateTabBadge({
       sessionStorage,
       getPrefsWithCache: async () => ({}),
       toolbarBus: noopToolbarBus(),
@@ -151,7 +207,7 @@ describe("#1097 — updateTabBadge: concurrent clean events never lose an update
 
   test("five concurrent updateTabBadge calls on the same tab all land, in call order", async () => {
     const sessionStorage = makeFakeSessionStorage();
-    const { updateTabBadge } = buildSessionHelpers({
+    const { updateTabBadge } = buildUpdateTabBadge({
       sessionStorage,
       getPrefsWithCache: async () => ({}),
       toolbarBus: noopToolbarBus(),
@@ -166,7 +222,7 @@ describe("#1097 — updateTabBadge: concurrent clean events never lose an update
   test("emits urlCleaned with the correct running total for each call", async () => {
     const sessionStorage = makeFakeSessionStorage();
     const toolbarBus = noopToolbarBus();
-    const { updateTabBadge } = buildSessionHelpers({
+    const { updateTabBadge } = buildUpdateTabBadge({
       sessionStorage,
       getPrefsWithCache: async () => ({}),
       toolbarBus,
