@@ -105,8 +105,45 @@ const TAILORED_HOST = "www.youtube.com";
  * Without it, "the scoped param survived" would mean "no rule was installed
  * yet" — the opposite conclusion from the one being drawn.
  */
+/**
+ * Waits out the worker's OWN remote-rules fetch before the test seeds anything.
+ *
+ * The version floor the seed writes (see remoteRulesVersionFloor below) refuses
+ * every payload validated AFTER it lands, which is every fetch but one: the
+ * fetch already in flight read the floor before the seed existed, so it merges
+ * regardless and calls applyScopedDnrRules with the published payload's 915
+ * facts. That registers 432 rules over the seeded one, and the diagnostic this
+ * spec prints on failure says exactly that -- `versionFloor: 9000000`,
+ * `cachedVersion: 1`, `scopedRuleCount: 432`: floor set, cache ours, range
+ * theirs.
+ *
+ * Re-seeding does eventually win that race, but not reliably inside the poll
+ * budget on a loaded runner, and hammering it is what #1319 had to stop doing.
+ * Letting the one unstoppable fetch land FIRST removes the race instead of
+ * outrunning it: after it settles, the floor makes every later fetch a refusal,
+ * so the seed is the last writer by construction.
+ *
+ * Bounded and non-fatal. If the channel is off, blocked or simply slow, the
+ * poll below is still the real gate; this only removes a known collision.
+ */
+async function waitForRemoteFetchSettled(page, budgetMs) {
+  const deadline = Date.now() + budgetMs;
+  while (Date.now() < deadline) {
+    const meta = await page.evaluate(
+      () => new Promise((resolve) =>
+        chrome.storage.local.get({ remoteRulesMeta: null }, (r) => resolve(r.remoteRulesMeta)),
+      ),
+    );
+    // A published payload carries a real version; the seed below uses 1. A
+    // recorded error means the fetch finished and will not be landing anything.
+    if (meta && ((typeof meta.version === "number" && meta.version > 1) || meta.lastError)) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
 async function installScopedRules(page, host) {
   await waitForInstallSettled(page);
+  await waitForRemoteFetchSettled(page, process.env.CI ? 30_000 : 5_000);
   const expected = buildScopedDnrRules([{ param: SCOPED_ONLY_PARAM, hosts: [host] }]);
 
   // Guard the premise before spending a navigation on it. If the builder ever
