@@ -424,7 +424,7 @@
       },
       "google.com": {
         "emitStripParams": true,
-        "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ved/ei are click tracking."
+        "note": "Search query, language/region, pagination: functional. cid preserved for Maps. sa/ei are click tracking. ved/sca_esv/gs_lcp are path-scoped to /search and /webhp (#1326) — upstream anchors them there, not to the whole host."
       },
       "greenbuildingadvisor.com": {
         "emitStripParams": false,
@@ -2829,9 +2829,7 @@
     {"scope":"google.com","param":"cid","action":"preserve"},
     {"scope":"google.com","param":"nfpr","action":"preserve"},
     {"scope":"google.com","param":"sa","action":"strip"},
-    {"scope":"google.com","param":"ved","action":"strip"},
     {"scope":"google.com","param":"ei","action":"strip"},
-    {"scope":"google.com","param":"gs_lcp","action":"strip"},
     {"scope":"google.com","param":"sclient","action":"strip"},
     {"scope":"google.com","param":"uact","action":"strip"},
     {"scope":"google.com","param":"gs_lp","action":"strip"},
@@ -2840,7 +2838,6 @@
     {"scope":"google.com","param":"oq","action":"strip"},
     {"scope":"google.com","param":"aqs","action":"strip"},
     {"scope":"google.com","param":"sourceid","action":"strip"},
-    {"scope":"google.com","param":"sca_esv","action":"strip"},
     {"scope":"google.com","param":"sxsrf","action":"strip"},
     {"scope":"google.com","param":"usg","action":"strip"},
     {"scope":"google.com","param":"sei","action":"strip"},
@@ -2851,6 +2848,9 @@
     {"scope":"google.com","param":"fbs","action":"strip"},
     {"scope":"google.com","param":"vet","action":"strip"},
     {"scope":"google.com","param":"dpr","action":"strip"},
+    {"scope":"google.com","param":"ved","action":"strip","pathPrefixes":["/search","/webhp"]},
+    {"scope":"google.com","param":"sca_esv","action":"strip","pathPrefixes":["/search","/webhp"]},
+    {"scope":"google.com","param":"gs_lcp","action":"strip","pathPrefixes":["/search","/webhp"]},
     {"scope":"greenbuildingadvisor.com","param":"oly_enc_id","action":"preserve"},
     {"scope":"humblebundle.com","param":"srch","action":"preserve"},
     {"scope":"humblebundle.com","param":"partner","action":"strip"},

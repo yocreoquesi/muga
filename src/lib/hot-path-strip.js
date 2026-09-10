@@ -45,6 +45,11 @@
  * `pr_ref_pid`, `pr_rec_pid` and `pr_seq` removed for the same reason — each
  * is now host-anchored in domain-rules.json rather than stripped everywhere,
  * and this table has no way to express a host scope either.
+ *
+ * #1326: `ved` and `sca_esv` removed for the same class of reason, one level
+ * narrower — they are now PATH-scoped (google.com /search, /webhp), not just
+ * host-scoped, and this table has no way to express a path scope any more
+ * than it can express a host one. `sxsrf` (never path-scoped) stays.
  */
 
 /** @type {ReadonlyArray<ReadonlyArray<string>>} */
@@ -67,7 +72,7 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["mtm_campaign", "mtm_source", "mtm_medium", "mtm_content"],
   ["hsctatracking"],
   ["__s", "_ga", "_gl", "_gac"],
-  ["ved", "sca_esv", "sxsrf"],
+  ["sxsrf"],
   ["_pos", "_ss", "_psq", "_sid", "_fid"],
 ].map((row) => Object.freeze(row)));
 

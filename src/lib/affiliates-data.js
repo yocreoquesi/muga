@@ -204,10 +204,11 @@ export const TRACKING_PARAMS = [
   "is_copy_url",     // TikTok share method tracking
 
   // Google search tracking
-  "ved",        // Google Visitor Encoding Data (click tracking)
-  "sca_esv",    // Google search experiment/session value
+  // ved / sca_esv / gs_lcp moved to a path-scoped strip on google.com
+  // (/search, /webhp) — #1326 slice 2. Upstream anchors them to a path, not
+  // the whole host, and domain-rules.json can now express that; see
+  // docs/adr/0010-path-scoped-param-rules.md.
   "sxsrf",      // Google CSRF/tracking token
-  "gs_lcp",     // Google search autocomplete tracking
 
   // Branch.io (deep link attribution)
   "_branch_match_id",  // Branch match ID
@@ -696,8 +697,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       // btsid / ws_ab_test / aff_request_id family is declared in
       // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
       "afsmartredirect", "gatewayadapt", "mall_affr",
-      // Google search tracking
-      "ved", "sca_esv", "sxsrf", "gs_lcp",
+      // Google search tracking (ved/sca_esv/gs_lcp are now path-scoped on
+      // google.com /search, /webhp — #1326 slice 2 — not global)
+      "sxsrf",
       // GA4 cross-domain
       "_gl", "_ga", "_gac",
       // TikTok share tracking

@@ -462,15 +462,28 @@ function _ensureDomainIndex(domainRules) {
  * #629 win 1: lookup is O(suffix-count) — at most ~3-4 probes per call instead
  * of linear scan over the entire domainRules array (~167 entries in production).
  *
+ * #1326: a domain-rules.json entry may also carry `pathStrips:
+ * [{pathPrefixes, params}]` — a literal path-prefix predicate (never a
+ * regex). When `pathname` is a string, a group's params fold into
+ * `domainStrip` IF the pathname starts with one of its `pathPrefixes`. When
+ * `pathname` is omitted (the pre-#1326 call shape every existing call site
+ * used, and still the default), NO path-scoped strip applies — a missing
+ * pathname must mean "no path-scoped strips apply", never "apply them all",
+ * since the latter would strip a path-anchored param across the WHOLE host,
+ * exactly the over-claim the path predicate exists to avoid.
+ *
  * @param {string} hostname
- * @param {Array}  domainRules  - Array of { domain, preserveParams[], stripParams[]? } objects
+ * @param {Array}  domainRules  - Array of { domain, preserveParams[], stripParams[]?, pathStrips[]? } objects
+ * @param {string} [pathname] - The URL's pathname (e.g. "/search"). Optional;
+ *   see above for what omitting it means.
  * @returns {{ preserved: Set<string>, domainStrip: Set<string> }}
  */
-export function getDomainParamSets(hostname, domainRules = []) {
+export function getDomainParamSets(hostname, domainRules = [], pathname) {
   const preserved = new Set();
   const domainStrip = new Set();
   const idx = _ensureDomainIndex(domainRules);
   if (!idx) return { preserved, domainStrip };
+  const hasPathname = typeof pathname === "string";
 
   // Generate suffix candidates: for "a.b.c.com" probe a.b.c.com, b.c.com, c.com, com.
   // Bounded by the dot count, which is small in practice (≤ 5 for real hosts).
@@ -489,6 +502,14 @@ export function getDomainParamSets(hostname, domainRules = []) {
     if (!rule) continue;
     (rule.preserveParams || []).forEach((p) => preserved.add(p.toLowerCase()));
     (rule.stripParams || []).forEach((p) => domainStrip.add(p.toLowerCase()));
+    if (hasPathname && Array.isArray(rule.pathStrips)) {
+      for (const group of rule.pathStrips) {
+        const prefixes = group.pathPrefixes || [];
+        if (prefixes.some((prefix) => pathname.startsWith(prefix))) {
+          (group.params || []).forEach((p) => domainStrip.add(p.toLowerCase()));
+        }
+      }
+    }
   }
   return { preserved, domainStrip };
 }
@@ -618,7 +639,9 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
   // #536: user-promoted strip rules. Lowercased once for case-insensitive
   // membership; consulted last so built-in/affiliate paths still win.
   const userCustomRules = new Set((prefs.userCustomRules || []).map(p => p.toLowerCase()));
-  const { preserved, domainStrip } = getDomainParamSets(hostname, domainRules);
+  // #1326: url.pathname is already available here, so a path-scoped strip
+  // (domain-rules.json's pathStrips) can be resolved in the same call.
+  const { preserved, domainStrip } = getDomainParamSets(hostname, domainRules, url.pathname);
 
   const disabledParams = new Set();
   if (disabledCategories.size > 0) {

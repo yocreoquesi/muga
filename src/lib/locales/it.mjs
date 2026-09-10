@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_tagline: "I tuoi link, senza il tracciamento.",
   ob_tagline_sub: "Rimuovi il tracciamento dalle tue URL · mantieni i referral dei creator · zero telemetria.",
   ob_step1_title: "Come MUGA acquieta le tue URL",
-  ob_feat1_title: "Rimuove oltre 399 pattern di tracciamento noti",
+  ob_feat1_title: "Rimuove oltre 396 pattern di tracciamento noti",
   ob_feat1_desc: "fbclid, gclid, UTM e centinaia di altri, spariti prima del caricamento della pagina. La pulizia avviene localmente nel tuo browser, senza analisi né telemetria.",
   ob_feat2_title: "Scarta le deviazioni: AMP, beacon ping, wrapper di reindirizzamento",
   ob_feat2_desc: "Ogni deviazione che il web aggiunge tra te e la pagina che volevi viene corretta localmente, nel tuo browser.",

@@ -29,6 +29,9 @@ import {
   DNR_DOMAIN_PRESERVE_MAX_RULES,
   DNR_SIGNED_URL_ALLOW_RULE_ID,
   DNR_SIGNED_URL_ALLOW_PRIORITY,
+  DNR_PATH_SCOPED_RULE_ID_BASE,
+  DNR_PATH_SCOPED_MAX_RULES,
+  DNR_PATH_SCOPED_PRIORITY,
 } from "../src/lib/dnr-ids.js";
 import { SIGNED_URL_REGEX_FILTER } from "../src/lib/signed-url.js";
 
@@ -106,6 +109,32 @@ function resolveCategory(param, categoriesMap) {
     );
   }
   return hits[0];
+}
+
+/**
+ * Builds the `urlFilter` for a path-scoped DNR rule (#1326): a domain anchor
+ * (`||domain`) followed by the literal path prefix, e.g. `||google.com/search`.
+ *
+ * `||` matches at the start of a domain name OR immediately after a "."
+ * (Chrome's documented domain-anchor semantics), which is why this also
+ * matches a subdomain — `maps.google.com/search` satisfies `||google.com` the
+ * same way it satisfies a `requestDomains: ["google.com"]` condition. No
+ * wildcard follows the prefix: without a trailing `|` or `*`, DNR does not
+ * require the match to reach the end of the URL, so this is a genuine PREFIX
+ * match on the path, not a whole-path match — "/searchhistory" matches
+ * "/search" too, which is the accepted tradeoff of a literal prefix over a
+ * regex (see docs/adr/0010-path-scoped-param-rules.md).
+ *
+ * The rule this feeds also carries `requestDomains: [domain]` — redundant
+ * with `||domain` here, kept anyway so the condition reads like every other
+ * host-scoped rule in this file at a glance, and as defense in depth.
+ *
+ * @param {string} domain
+ * @param {string} prefix Literal path prefix, e.g. "/search".
+ * @returns {string}
+ */
+function buildPathScopedUrlFilter(domain, prefix) {
+  return `||${domain}${prefix}`;
 }
 
 /**
@@ -420,6 +449,11 @@ export function buildDnrRules() {
     perDomain.push({ domain: rule.domain, removeParams });
   }
 
+  // Reused below (#1326) to build each path rule's COMPLETE set: a domain's
+  // own tailored removeParams when it has one, else the full global list —
+  // the set that already applies to the rest of the host today.
+  const removeParamsByDomain = new Map(perDomain.map((d) => [d.domain, d.removeParams]));
+
   // Group domains that share an identical removeParams set into one rule.
   const bySig = new Map(); // JSON(removeParams) -> { removeParams, domains: Set }
   for (const { domain, removeParams } of perDomain) {
@@ -537,6 +571,85 @@ export function buildDnrRules() {
     });
   });
 
+  // ── Path-scoped strip rules (#1326) ──────────────────────────────────────
+  //
+  // A domain-rules.json entry may carry `pathStrips: [{pathPrefixes, params}]`
+  // — a literal path-prefix predicate a profile rule cannot express (there is
+  // no `excludedUrlFilter`, so a profile rule cannot cede one path the way it
+  // cedes a whole host to a more specific profile). Disjointness comes from
+  // PRIORITY (DNR_PATH_SCOPED_PRIORITY, above every priority-1 rule above)
+  // instead of exclusion: the path rule wins on its own (domain, prefix)
+  // match, the profile/global rule wins everywhere else on the host. See
+  // docs/adr/0010-path-scoped-param-rules.md.
+  //
+  // DNR's urlFilter cannot OR multiple prefixes, so one rule is emitted per
+  // (domain, pathPrefixes-group, prefix) tuple, and — same one-rule-per-request
+  // reasoning as every rule above — each carries the COMPLETE set for that
+  // host+path: the domain's own removeParams (or the full global list when the
+  // domain has no profile of its own) UNION the path-scoped params, guarded
+  // exactly like extraStrips above.
+  const pathRuleSpecs = [];
+  for (const rule of domainRules) {
+    if (typeof rule.domain !== "string") continue;
+    const pathStrips = rule.pathStrips;
+    if (!Array.isArray(pathStrips) || pathStrips.length === 0) continue;
+
+    const hostBase = removeParamsByDomain.get(rule.domain) ?? [...TRACKING_PARAMS];
+    const hostBaseLc = new Set(hostBase.map((p) => p.toLowerCase()));
+
+    for (const group of pathStrips) {
+      const seen = new Set();
+      const addition = (group.params ?? []).filter((p) => {
+        const lc = p.toLowerCase();
+        if (seen.has(lc) || hostBaseLc.has(lc)) return false;
+        seen.add(lc);
+        return !guard.has(lc) && !deny.has(lc);
+      });
+      const removeParams = [...hostBase, ...addition.sort(byCodepoint)];
+
+      for (const prefix of group.pathPrefixes ?? []) {
+        pathRuleSpecs.push({ domain: rule.domain, prefix, removeParams });
+      }
+    }
+  }
+
+  // Deterministic, independent of domainRules' own iteration order (a future
+  // reorder of the source array must not reshuffle ids).
+  pathRuleSpecs.sort(
+    (a, b) => byCodepoint(a.domain, b.domain) || byCodepoint(a.prefix, b.prefix)
+  );
+
+  if (pathRuleSpecs.length > DNR_PATH_SCOPED_MAX_RULES) {
+    process.stderr.write(
+      `generate-rules.mjs: ${pathRuleSpecs.length} path-scoped DNR rules exceeds ` +
+      `DNR_PATH_SCOPED_MAX_RULES (${DNR_PATH_SCOPED_MAX_RULES}). Raise the cap ` +
+      `(and its ID range in dnr-ids.js) or reduce distinct path-scoped profiles.\n`
+    );
+    process.exit(1);
+  }
+
+  pathRuleSpecs.forEach((spec, i) => {
+    rules.push({
+      id: DNR_PATH_SCOPED_RULE_ID_BASE + i,
+      priority: DNR_PATH_SCOPED_PRIORITY,
+      action: {
+        type: "redirect",
+        redirect: {
+          transform: {
+            queryTransform: {
+              removeParams: spec.removeParams,
+            },
+          },
+        },
+      },
+      condition: {
+        requestDomains: [spec.domain],
+        urlFilter: buildPathScopedUrlFilter(spec.domain, spec.prefix),
+        resourceTypes: ["main_frame"],
+      },
+    });
+  });
+
   return rules;
 }
 
@@ -621,6 +734,9 @@ function main() {
     (n, r) => n + (r.condition.requestDomains?.length ?? 0),
     0
   );
+  const pathRules = dnrRules.filter(
+    (r) => r.id >= DNR_PATH_SCOPED_RULE_ID_BASE && r.id < DNR_PATH_SCOPED_RULE_ID_BASE + DNR_PATH_SCOPED_MAX_RULES
+  );
 
   const preserveModule = buildPreserveParamsModule();
 
@@ -629,7 +745,7 @@ function main() {
   writeFileSync(PRESERVE_PARAMS_PATH, preserveModule, "utf8");
 
   console.log(
-    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${globalCount} global DNR params; ${profileRules.length} per-domain-profile rules covering ${profileDomains} domains)`
+    `Generated rules-manifest.json (${manifest.tracking.length} params, ${manifest.prefix_rules.length} prefixes) and tracking-params.json (${globalCount} global DNR params; ${profileRules.length} per-domain-profile rules covering ${profileDomains} domains; ${pathRules.length} path-scoped rules)`
   );
 }
 

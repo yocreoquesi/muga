@@ -164,6 +164,7 @@ describe("dnr-ids.js — dynamic ID ranges never overlap", () => {
       1 + // custom params (1000)
       1 + // remote params (1001)
       ids.DNR_DOMAIN_PRESERVE_MAX_RULES +
+      ids.DNR_PATH_SCOPED_MAX_RULES + // static path-scoped strips (800-899, #1326)
       ids.DNR_ALLOWLIST_MAX_RULES +
       1 + // suppress referer
       1 + // block beacons
