@@ -598,14 +598,23 @@ describe("new global tracking params", () => {
     assert.ok(!u.searchParams.has("_gac"));
   });
 
-  test("strips Meta params (mibextid, fb_action_ids, fb_ref)", () => {
+  test("strips Meta params (fb_action_ids, fb_ref globally; mibextid on facebook.com)", () => {
     const { cleanUrl } = clean(
-      "https://example.com/?mibextid=abc&fb_action_ids=123&fb_ref=timeline"
+      "https://example.com/?fb_action_ids=123&fb_ref=timeline"
     );
     const u = new URL(cleanUrl);
-    assert.ok(!u.searchParams.has("mibextid"));
     assert.ok(!u.searchParams.has("fb_action_ids"));
     assert.ok(!u.searchParams.has("fb_ref"));
+
+    // mibextid left TRACKING_PARAMS in #1228 (commit 13f1250): it is one of
+    // the 16 params now anchored to facebook.com's own DNR profile rule
+    // instead of being stripped site-wide, so it is only stripped on its
+    // anchored host, not on a generic domain like example.com above.
+    const { cleanUrl: fbCleanUrl } = clean(
+      "https://www.facebook.com/events/123?mibextid=abc"
+    );
+    const fb = new URL(fbCleanUrl);
+    assert.ok(!fb.searchParams.has("mibextid"));
   });
 
   test("strips Branch.io params", () => {

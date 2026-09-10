@@ -64,7 +64,7 @@ test(`utm_newsletterid — added via add-rule`, () => {
   assertStrips("utm_newsletterid", "AdGuard filter 17 generic — newsletter UTM extension");
 });
 
-test(`_t — added via add-rule`, () => {
-  assertStrips("_t", "TikTok share token (sister to _r). Issue #508.");
-});
-
+// _t moved to tests/unit/cleaner.test.mjs (#1228, commit 13f1250): it left
+// TRACKING_PARAMS and is now anchored to tiktok.com's own domain-rules
+// stripParams/DNR profile rule instead of stripping on a generic URL, so a
+// bounded-scope test replaces this entry per the policy above.
