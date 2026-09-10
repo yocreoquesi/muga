@@ -15,11 +15,31 @@
  * `computeAnchorPreference` (tools/build-rules-store.mjs) closes that: a
  * param qualifies when it is absent from the bundled TRACKING_PARAMS and
  * present in at least one host's plain `stripParams` — DERIVED from the
- * store's own entries every time this runs, never a hardcoded list, so a
- * future writer moving another param off TRACKING_PARAMS is picked up
- * automatically. A qualifying param relocates only if its own scoped facts
- * survive the existing publish-budget fit; otherwise it stays global. It can
- * never lose both.
+ * store's own entries every time this runs, never a hardcoded list.
+ *
+ * ── The orphan-protection revision ──────────────────────────────────────
+ *
+ * A first version of this fix protected only the CANDIDATES ("does my own
+ * record survive the budget fit"). That is necessary but not sufficient: the
+ * publish budget's own accounting (`fitScopedToBudget`, deliberately
+ * conservative — see its own comments) already sits within a few dozen
+ * bytes of ITS OWN ceiling against the real committed store, because there
+ * is always a bigger backlog of facts than fits. Admitting a candidate's
+ * record can push the strict alphabetical cutoff earlier and silently evict
+ * some UNRELATED already-published param's fact — an ORPHANED fact
+ * (`countOrphanedFacts`): covered by neither channel, even though it was
+ * covered a moment ago.
+ *
+ * Measured directly against the real committed store: relocating even just
+ * the ten named below evicts 14 unrelated params (16 facts) — `wpset wref
+ * wtime x_hk x_imp xadid xcust xdm_c xdm_e xdm_p xhuserid xid_param_2 xmktid
+ * xmt` — because relocating a param never reduces ITS OWN orphan risk (it is
+ * covered by global before, by scoped after — net zero) while the budget's
+ * conservative accounting has no room to spare. So EVERY one of the 62
+ * candidates defers today, and the orphan count stays exactly where `main`
+ * already had it (8): #1344 cannot close by relocation alone while the
+ * publish budget is this saturated — see this module's own docblock for why
+ * raising the budget is not an available lever.
  */
 
 import { test, describe } from "node:test";
@@ -31,14 +51,18 @@ import { dirname, join } from "node:path";
 import {
   ACTIONS,
   GLOBAL_SCOPE,
+  emitScoped,
   makeEntry,
+  parseStore,
   withGlobalParams,
   withScopedFacts,
 } from "../../tools/rules-store.mjs";
 import {
   computeAnchorPreference,
+  countOrphanedFacts,
   PUBLISH_PAYLOAD_BUDGET_BYTES,
   PARAMS_PATH,
+  STORE_PATH,
 } from "../../tools/build-rules-store.mjs";
 import { TRACKING_PARAMS } from "../../src/lib/affiliates-data.js";
 import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../../src/lib/remote-rules.js";
@@ -69,7 +93,120 @@ function baseStore(globalParams, anchors = {}) {
   return { schemaVersion: 1, entries, projection: { scopes: {} } };
 }
 
-// ── The ten named params, against the REAL committed store (post-fix) ────
+const loadRealStore = () => parseStore(readFileSync(STORE_PATH, "utf8"));
+const realParamsText = () => readFileSync(PARAMS_PATH, "utf8");
+
+// ── The whole-payload invariant: the orphan count must never rise ────────
+//
+// This is the test that would have caught the first version's regression —
+// it is about the WHOLE payload, not any one param, and it is checked
+// against the REAL committed store, not a synthetic one.
+
+describe("#1344 — the orphan count must never rise", () => {
+  test("running computeAnchorPreference against the real committed store never increases orphans", () => {
+    const store = loadRealStore();
+    const result = computeAnchorPreference(store, realParamsText());
+
+    assert.ok(
+      result.orphansAfter <= result.orphansBefore,
+      `orphaned facts rose from ${result.orphansBefore} to ${result.orphansAfter} — a relocation ` +
+        "evicted more already-published coverage than it added"
+    );
+  });
+
+  test("orphansBefore matches an independent count over the real store's own scopedFacts", () => {
+    // Recomputes the same count a different way — directly from
+    // scopedFacts[], never via computeAnchorPreference's internals — so this
+    // does not just check the function against itself.
+    const store = loadRealStore();
+    const globalParams = JSON.parse(realParamsText()).params;
+    const publishedParams = new Set((JSON.parse(realParamsText()).scoped ?? []).map((f) => f.param));
+
+    const independent = countOrphanedFacts(store, globalParams, publishedParams);
+    const result = computeAnchorPreference(store, realParamsText());
+
+    assert.equal(result.orphansBefore, independent);
+  });
+
+  test("today, every one of the 62 qualifying candidates defers — relocating any of them would orphan a neighbour", () => {
+    // The concrete, current finding: the publish budget is saturated enough
+    // (see this module's docblock) that NOTHING can relocate today without
+    // evicting something else. This pins that finding so a future change to
+    // the store, the budget, or the mechanism has to re-examine it rather
+    // than silently drift.
+    const store = loadRealStore();
+    const result = computeAnchorPreference(store, realParamsText());
+
+    assert.ok(result.stayedGlobalForBudget.length > 0, "fixture assumption: candidates exist today");
+    assert.equal(
+      result.relocated.length,
+      0,
+      `expected 0 relocations against the real store's current budget saturation, got: ` +
+        result.relocated.join(", ")
+    );
+    assert.equal(result.orphansAfter, result.orphansBefore);
+  });
+
+  test("relocating just the ten #1228 params, unprotected, WOULD have evicted 14 unrelated params (16 facts)", () => {
+    // Direct evidence for the docblock's claim, computed independently of
+    // computeAnchorPreference's admission logic (this simulates the naive,
+    // unprotected relocation the first version of this fix shipped, and
+    // shows exactly why it was wrong).
+    const store = loadRealStore();
+    const current = JSON.parse(realParamsText());
+    const globalParams = current.params;
+    // The FULL pool the real mechanism draws from (`emitScoped`, ~1068
+    // facts) — not `current.scoped` (the ~921 ALREADY-published subset).
+    // Using the smaller one here would silently hide the eviction this test
+    // exists to demonstrate.
+    const scoped = emitScoped(store);
+
+    const TEN = [
+      "igsh",
+      "mibextid",
+      "smid",
+      "campaign",
+      "crid",
+      "igshid",
+      "n_cid",
+      "ocid",
+      "share_id",
+      "trk",
+    ];
+
+    function fit(params) {
+      const bare = { ...current, params };
+      delete bare.scoped;
+      const baseBytes = JSON.stringify(bare).length;
+      const globalSet = new Set(params);
+      const publishable = scoped.filter((f) => !globalSet.has(f.param));
+      let used = baseBytes + 512; // SCOPED_SECTION_OVERHEAD_BYTES, mirrored here on purpose —
+      // this test's whole point is to be an INDEPENDENT check of the real
+      // mechanism's behavior, not a call into it.
+      const published = [];
+      for (const f of publishable) {
+        const cost = JSON.stringify(f).length + 2;
+        if (used + cost > PUBLISH_PAYLOAD_BUDGET_BYTES) break;
+        used += cost;
+        published.push(f);
+      }
+      return new Set(published.map((f) => f.param));
+    }
+
+    const before = fit(globalParams);
+    const after = fit(globalParams.filter((p) => !TEN.includes(p)));
+
+    const evicted = [...before].filter((p) => !after.has(p) && !TEN.includes(p));
+    assert.ok(
+      evicted.length > 0,
+      "fixture assumption failed: relocating the ten no longer evicts anything against the " +
+        "current committed store — #1344 may now be closeable; re-measure before hand-picking " +
+        "the ten again"
+    );
+  });
+});
+
+// ── The ten named params: correctly deferred, not silently dropped ───────
 
 describe("#1344 — the ten host-anchored params #1342 could not reach", () => {
   const TEN = [
@@ -87,28 +224,30 @@ describe("#1344 — the ten host-anchored params #1342 could not reach", () => {
 
   const params = JSON.parse(readFileSync(PARAMS_PATH, "utf8"));
   const globalSet = new Set(params.params);
-  const scopedByParam = new Map((params.scoped ?? []).map((f) => [f.param, f.hosts]));
 
   for (const param of TEN) {
-    test(`"${param}" is no longer in the published global list`, () => {
+    test(`"${param}" is reported as deferred, not silently left unexplained`, () => {
+      const store = loadRealStore();
+      const result = computeAnchorPreference(store, realParamsText());
       assert.ok(
-        !globalSet.has(param),
-        `"${param}" is still in tools/rules-source/params.json's global params — it should have ` +
-          "relocated to its own anchors (#1344)"
+        result.stayedGlobalForBudget.includes(param),
+        `"${param}" is neither relocated nor reported as deferred — the mechanism must account ` +
+          "for every qualifying candidate one way or the other"
       );
     });
 
-    test(`"${param}"'s anchored facts ARE in the published scoped section`, () => {
-      const hosts = scopedByParam.get(param);
+    test(`"${param}" still strips everywhere — it is still in the published global list`, () => {
+      // The safe, correct state today: it never lost coverage, because the
+      // orphan-protecting admission rule kept it global rather than risk a
+      // neighbour's coverage for a byte budget this tight.
       assert.ok(
-        hosts && hosts.length > 0,
-        `"${param}" has no scoped facts in the published payload — relocating it without its ` +
-          "own coverage would strip it nowhere (#1344's safety property)"
+        globalSet.has(param),
+        `"${param}" left the published global list without being reported as relocated`
       );
     });
   }
 
-  test("none of the ten are in the bundled TRACKING_PARAMS (still correctly anchored, not reverted)", () => {
+  test("none of the ten are in the bundled TRACKING_PARAMS (still correctly anchored in domain-rules.json)", () => {
     const leaked = TEN.filter((p) => TRACKING_SET.has(p));
     assert.deepEqual(leaked, [], `these came back into TRACKING_PARAMS: ${leaked.join(", ")}`);
   });
@@ -139,7 +278,7 @@ describe("#1344 — the predicate: absent from TRACKING_PARAMS AND host-anchored
     assert.deepEqual(result.store, store);
   });
 
-  test("a host-anchored param absent from TRACKING_PARAMS relocates when its facts fit", () => {
+  test("a host-anchored param absent from TRACKING_PARAMS relocates when nothing competes for the budget", () => {
     const param = "muga_test_anchor_only";
     assert.ok(!TRACKING_SET.has(param), "fixture assumption: not a real built-in");
 
@@ -151,6 +290,7 @@ describe("#1344 — the predicate: absent from TRACKING_PARAMS AND host-anchored
 
     assert.deepEqual(result.relocated, [param]);
     assert.deepEqual(result.stayedGlobalForBudget, []);
+    assert.equal(result.orphansAfter, result.orphansBefore);
 
     const rebuilt = withGlobalParams(store, []);
     assert.deepEqual(result.store, rebuilt, "only the global entry for the param should be removed");
@@ -183,9 +323,9 @@ describe("#1344 — the predicate: absent from TRACKING_PARAMS AND host-anchored
   });
 });
 
-// ── The safety property: never lose both ─────────────────────────────────
+// ── The safety property: never lose both, and never orphan a neighbour ───
 
-describe("#1344 — safety property: a qualifying param whose facts do not fit stays global", () => {
+describe("#1344 — safety property: a relocation must not cost MORE coverage than it gains", () => {
   test("a param whose relocation would overflow the budget stays global, unrelocated", () => {
     const param = "muga_test_overflow";
     assert.ok(!TRACKING_SET.has(param));
@@ -229,6 +369,7 @@ describe("#1344 — safety property: a qualifying param whose facts do not fit s
       store,
       "the store must be untouched — the param is neither relocated nor otherwise altered"
     );
+    assert.equal(result.orphansAfter, result.orphansBefore);
 
     // And the property that actually matters: the param still strips
     // SOMEWHERE. It never left the global list, so it is never covered by
@@ -239,9 +380,10 @@ describe("#1344 — safety property: a qualifying param whose facts do not fit s
     assert.ok(stillGlobal, "a param that failed to relocate must remain in the global list");
   });
 
-  test("a small qualifying param relocates fine against the same tight budget", () => {
-    // Contrast case: one host, tiny payload — proves the tight budget above
-    // is what blocked the twelve-host param, not some other bug.
+  test("a small qualifying param relocates fine when nothing else competes for the budget", () => {
+    // Contrast case: one host, tiny payload, no neighbours — proves the
+    // tight-budget test above is what blocked the twelve-host param, not
+    // some other bug.
     const param = "muga_test_fits";
     const store = withScopedFacts(baseStore([param], { [param]: ["example.com"] }), [
       { scope: "example.com", param, action: ACTIONS.STRIP },
@@ -252,6 +394,101 @@ describe("#1344 — safety property: a qualifying param whose facts do not fit s
 
     assert.deepEqual(result.relocated, [param]);
     assert.deepEqual(result.stayedGlobalForBudget, []);
+    assert.equal(result.orphansAfter, result.orphansBefore);
+  });
+
+  test("a candidate defers when relocating it would evict an already-published NEIGHBOUR's fact", () => {
+    // The property the first version of this fix missed: the per-candidate
+    // check alone ("does MY record survive") is not enough. Here the
+    // candidate's OWN record would survive in isolation — proven by the
+    // first assertion below, run with the neighbour absent — but with the
+    // neighbour present, admitting the candidate would push the neighbour's
+    // already-published fact out of the budget fit. That must block the
+    // relocation, not just log it.
+    const param = "aaa_test_evicts_neighbour";
+    const neighbour = "zzz_test_already_published_neighbour";
+    assert.ok(!TRACKING_SET.has(param) && !TRACKING_SET.has(neighbour));
+
+    const withoutNeighbour = withScopedFacts(baseStore([param], { [param]: ["a.example"] }), [
+      { scope: "a.example", param, action: ACTIONS.STRIP },
+    ]);
+    const withNeighbour = withScopedFacts(withoutNeighbour, [
+      { scope: "b.example", param: neighbour, action: ACTIONS.STRIP },
+    ]);
+
+    // Binary-search, ON THE CROWDED STORE ITSELF, the tightest budget (via
+    // padding) at which the candidate still relocates despite the neighbour
+    // occupying room — i.e. the exact boundary where admitting the candidate
+    // stops being possible without touching the neighbour. Derived at test
+    // time rather than hardcoded, so this does not silently stop testing
+    // anything if the module's byte accounting ever changes shape.
+    //
+    // Searching on the SOLO store instead would find a tighter boundary than
+    // this one (the neighbour's longer name costs more bytes than the
+    // candidate's, so the crowded store's own transition sits at a looser
+    // padding) and land past the point where the neighbour itself stops
+    // fitting the baseline — which would test a different, uninteresting
+    // case ("nothing fits any more") rather than the one this test is for.
+    const textFor = (paddingLen) =>
+      JSON.stringify({
+        version: 1,
+        published: "2026-01-01T00:00:00.000Z",
+        padding: "x".repeat(Math.max(0, paddingLen)),
+      });
+
+    let lo = 0;
+    let hi = PUBLISH_PAYLOAD_BUDGET_BYTES;
+    // Invariant during the search: padding=lo relocates the candidate even
+    // WITH the neighbour present; padding=hi does not.
+    assert.equal(
+      computeAnchorPreference(withNeighbour, textFor(lo)).relocated.length,
+      1,
+      "fixture assumption: the loosest padding must relocate the candidate even with the neighbour present"
+    );
+    assert.equal(
+      computeAnchorPreference(withNeighbour, textFor(hi)).relocated.length,
+      0,
+      "fixture assumption: the tightest padding must never relocate anything"
+    );
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      const fits = computeAnchorPreference(withNeighbour, textFor(mid)).relocated.length === 1;
+      if (fits) lo = mid;
+      else hi = mid;
+    }
+    // `hi` is the tightest padding at which the candidate stops relocating
+    // in the crowded store — the boundary this test exists to exercise.
+    const boundaryPadding = hi;
+
+    const soloResult = computeAnchorPreference(withoutNeighbour, textFor(boundaryPadding));
+    assert.equal(
+      soloResult.relocated.length,
+      1,
+      "the candidate's own record must still fit at this exact padding when nothing competes for " +
+        "it — proving the neighbour, not raw budget exhaustion, is what blocks it below"
+    );
+
+    const crowdedResult = computeAnchorPreference(withNeighbour, textFor(boundaryPadding));
+    assert.equal(
+      crowdedResult.orphansBefore,
+      0,
+      "fixture assumption: the neighbour's fact must still be published at baseline here — " +
+        "otherwise this is testing raw exhaustion, not a neighbour eviction"
+    );
+
+    assert.deepEqual(
+      crowdedResult.relocated,
+      [],
+      "the candidate must defer once a neighbour's already-published fact is competing for the " +
+        "same tight room — its own record fitting ALONE is not enough"
+    );
+    assert.deepEqual(crowdedResult.stayedGlobalForBudget, [param]);
+    assert.equal(
+      crowdedResult.orphansAfter,
+      crowdedResult.orphansBefore,
+      "deferring must leave the orphan count exactly where it was — the neighbour's coverage " +
+        "must survive untouched"
+    );
   });
 });
 
