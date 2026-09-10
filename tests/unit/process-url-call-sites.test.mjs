@@ -124,8 +124,10 @@ describe("processUrl call sites (#1255)", () => {
       "the definition's own file must be seen, or the regex is not matching calls at all"
     );
     assert.ok(
-      FILES.includes("src/background/service-worker.js"),
-      "the service-worker reference call site must be seen"
+      // handleProcessUrl (and its processUrl() call) moved to
+      // src/background/process-url.js (#1266 item 5, slice 6).
+      FILES.includes("src/background/process-url.js"),
+      "the service-worker's reference call site (now process-url.js) must be seen"
     );
   });
 

@@ -81,7 +81,14 @@ const PATTERNS_TEST_PATH = join(
 // and the swSource.test()-based function-existence check (not counted by
 // this file's swSource.(...)( pattern anyway) is deleted as redundant with
 // the real import succeeding at all.
-const MAX_SOURCE_STRING_ASSERTIONS = 73;
+// 73 → 65 (#1266 item 5 slice 6): handleProcessUrl (and the cleanedEntry/
+// passthroughEntry literals it built) moved to src/background/process-url.js,
+// importable in Node. The "Security: debug log payload privacy" block's four
+// swSource.indexOf() anchors are replaced with real calls to the actual
+// handleProcessUrl, reading back what logAction really wrote to the (in-memory
+// ponyfill) debug log — see tests/unit/process-url.test.mjs for the fuller
+// ordering suite this same move unlocked.
+const MAX_SOURCE_STRING_ASSERTIONS = 65;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 

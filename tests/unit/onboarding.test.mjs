@@ -42,17 +42,53 @@ const ONBOARDING_JS = readFileSync(
 // write somehow failed).
 // ---------------------------------------------------------------------------
 describe("Consent gate — onboardingDone feature gates (defense-in-depth)", () => {
-  // Service worker: handleProcessUrl must return untouched when !onboardingDone
-  test("service-worker blocks URL processing when onboardingDone is false", () => {
-    assert.ok(
-      SERVICE_WORKER_SOURCE.includes("!prefs.onboardingDone"),
-      "handleProcessUrl must check prefs.onboardingDone"
-    );
-    // The guard must be in the same conditional as !prefs.enabled
-    assert.ok(
-      /!prefs\.enabled\s*\|\|\s*!prefs\.onboardingDone/.test(SERVICE_WORKER_SOURCE),
-      "onboardingDone guard must be combined with enabled check in handleProcessUrl"
-    );
+  // handleProcessUrl moved to src/background/process-url.js (#1266 item 5,
+  // slice 6) and is Node-importable now, so this is a real call rather than
+  // a source-string match against service-worker.js (which still carries the
+  // SAME combined guard for its OWN network-layer stripper at a different
+  // line — a source match here would have kept "passing" for the wrong
+  // reason after the move, since that second occurrence remains).
+  test("handleProcessUrl returns untouched when onboardingDone is false", async () => {
+    globalThis.chrome = {
+      storage: { local: { get(d, cb) { cb({ ...d }); }, set(i, cb) { if (cb) cb(); } } },
+      runtime: { lastError: null },
+    };
+    const { createProcessUrl } = await import("../../src/background/process-url.js");
+    const { handleProcessUrl } = createProcessUrl({
+      domainRulesLoader: { ensure: async () => {} },
+      pathRulesLoader: { ensure: async () => {} },
+      firstUsedBootstrap: { ensure: async () => {} },
+      getPrefs: async () => ({ enabled: true, onboardingDone: false }),
+      getDomainRules: () => [],
+      getPathStripRules: () => [],
+      getPathAffiliateRules: () => [],
+      frequencyTracker: null,
+      appendHistory: async () => { throw new Error("must not be called when onboardingDone is false"); },
+    });
+    const result = await handleProcessUrl("https://example.com/?utm_source=x", {});
+    assert.equal(result.action, "untouched", "handleProcessUrl must check prefs.onboardingDone");
+  });
+
+  test("handleProcessUrl returns untouched when enabled is false, even with onboardingDone true", async () => {
+    globalThis.chrome = {
+      storage: { local: { get(d, cb) { cb({ ...d }); }, set(i, cb) { if (cb) cb(); } } },
+      runtime: { lastError: null },
+    };
+    const { createProcessUrl } = await import("../../src/background/process-url.js");
+    const { handleProcessUrl } = createProcessUrl({
+      domainRulesLoader: { ensure: async () => {} },
+      pathRulesLoader: { ensure: async () => {} },
+      firstUsedBootstrap: { ensure: async () => {} },
+      getPrefs: async () => ({ enabled: false, onboardingDone: true }),
+      getDomainRules: () => [],
+      getPathStripRules: () => [],
+      getPathAffiliateRules: () => [],
+      frequencyTracker: null,
+      appendHistory: async () => { throw new Error("must not be called when enabled is false"); },
+    });
+    const result = await handleProcessUrl("https://example.com/?utm_source=x", {});
+    assert.equal(result.action, "untouched",
+      "onboardingDone guard must be combined with the enabled check in handleProcessUrl");
   });
 
   // Content script: must check onboardingDone for ping blocking
