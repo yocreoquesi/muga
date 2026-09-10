@@ -214,6 +214,42 @@ function withoutGloballyShadowed(scoped, params) {
 // whole point of the remote channel — it adds to the bundled list) and is not
 // touched here. Only a param the bundled artifact has ALREADY anchored
 // qualifies.
+//
+// ── Why the budget cannot just be raised instead ───────────────────────
+//
+// See `PUBLISH_PAYLOAD_BUDGET_BYTES`'s own docblock above for the full
+// argument; the short version, so it sits next to the code that makes the
+// budget feel tight: every install today is v3.0.0, which carries the OLD
+// 50 KB runtime bound compiled in. Publishing above it makes the WHOLE
+// payload OVER_CAP for the entire fleet — global params included, not just
+// the scoped section — until those installs auto-update to a build with the
+// raised bound. The order is release, then adoption, then this number. A
+// relocation mechanism that ran out of room cannot fix that by publishing
+// more; it can only decide, honestly, who fits today.
+//
+// ── Relocation is a TRADE, not a pure addition, in a saturated budget ───
+//
+// A first version of this fix protected only the CANDIDATES: revert one if
+// its own record did not survive the budget fit. That is necessary but not
+// sufficient. The budget was already ~98% full before any relocation, so
+// admitting 60 candidates' records did not just spend idle headroom — it
+// competed with facts THE CURRENT PROJECTION WAS ALREADY PUBLISHING.
+// `fitScopedToBudget` takes a strict alphabetical prefix; adding weight
+// anywhere in that ordering pushes the cutoff earlier, and whatever falls
+// after it — unrelated params nobody asked to touch — silently stops being
+// covered by EITHER channel. That is an orphaned fact: landed in the store,
+// global does not cover it, scoped does not publish it, so the hosts that
+// named it stop being cleaned. Measured on the first version: `main` already
+// carried 8 orphaned facts (budget-cut, pre-existing); relocating 60
+// candidates grew that to 80 across 70 params — the 62 candidates' own
+// relocations were safe, but their NEIGHBOURS paid for it.
+//
+// So the admission rule below protects the whole pre-change published set,
+// not just the candidates: a candidate relocates only if doing so evicts
+// NOTHING the projection was already serving. The orphan count is checked
+// directly (`countOrphanedFacts`) and must never rise — that is the
+// invariant a per-candidate check alone cannot see, because it is a property
+// of the WHOLE payload, not of any one param.
 
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS);
 
@@ -253,6 +289,55 @@ function hostAnchoredStripParams(store) {
 }
 
 /**
+ * Counts (scope, param) facts landed in the store that are covered by
+ * NEITHER channel: the param is not in the published global list, and its
+ * record did not make the published scoped section either. A fact like that
+ * strips nowhere — the host that named it stops being cleaned — even though
+ * the store still holds it.
+ *
+ * This is the property a per-candidate check cannot see: it is about the
+ * WHOLE payload, not about any one param. `computeAnchorPreference`'s
+ * admission rule exists specifically so this count never rises.
+ *
+ * @param {object} store
+ * @param {string[]} publishedGlobalParams The global list actually published.
+ * @param {Set<string>|string[]} publishedScopedParams Params whose scoped
+ *   record actually made the budget fit.
+ * @returns {number}
+ */
+export function countOrphanedFacts(store, publishedGlobalParams, publishedScopedParams) {
+  const globalSet = new Set(publishedGlobalParams);
+  const scopedSet =
+    publishedScopedParams instanceof Set ? publishedScopedParams : new Set(publishedScopedParams);
+  let count = 0;
+  for (const fact of store.scopedFacts ?? []) {
+    if (!globalSet.has(fact.param) && !scopedSet.has(fact.param)) count++;
+  }
+  return count;
+}
+
+/**
+ * Runs the real, unmodified `withoutGloballyShadowed` → `fitScopedToBudget`
+ * pair for a candidate global-params list, against `scoped` and the byte
+ * shape `current` (params.json's other fields) establishes. This is the
+ * SAME mechanism `renderParamsFile` uses to build the actual artifact, so a
+ * decision validated against it is a decision the real projection will
+ * reproduce — not an approximation of one.
+ *
+ * @param {object} current Parsed params.json, `scoped` still present or not.
+ * @param {Array<{param: string, hosts: string[]}>} scoped Full projection (emitScoped).
+ * @param {string[]} params Candidate global list.
+ * @returns {Array<{param: string, hosts: string[]}>} What would publish.
+ */
+function fitForParams(current, scoped, params) {
+  const bare = { ...current, params };
+  delete bare.scoped;
+  const baseBytes = JSON.stringify(bare).length;
+  const publishable = withoutGloballyShadowed(scoped, params);
+  return fitScopedToBudget(publishable, baseBytes, PUBLISH_PAYLOAD_BUDGET_BYTES).published;
+}
+
+/**
  * Decides which qualifying params relocate from the global list to their own
  * anchors, and returns a NEW store with exactly those removed from the
  * global entries — nothing else. A param that does not qualify, or that
@@ -263,25 +348,48 @@ function hostAnchoredStripParams(store) {
  *
  * ── The safety property (not optional) ────────────────────────────────
  *
- * A param must never end up stripped nowhere in this channel. Relocating it
- * means: remove the global entry, and its own scoped facts (already landed —
- * this never invents one) stop being shadowed and enter the publish budget
- * fit. If those facts do not survive that fit — the budget is genuinely
- * full — dropping the global entry anyway would leave the param covered by
- * neither, turning a coverage improvement into a coverage regression. So a
- * candidate whose own facts do not make the cut stays global instead,
- * unconditionally.
+ * A param must never end up stripped nowhere in this channel — and the
+ * relocation as a WHOLE must never leave MORE facts stripped nowhere than
+ * before it ran. The obvious per-candidate check ("does MY record survive
+ * the fit") is necessary but not sufficient: `fitScopedToBudget` takes a
+ * strict alphabetical prefix, and the pre-relocation baseline already sits
+ * close to that prefix's own ceiling (there is always a bigger backlog of
+ * facts than fits — that is the ENTIRE reason a budget-trim exists at all).
+ * Admitting a candidate's record can push the cutoff earlier and silently
+ * evict some unrelated, already-published param's fact — a coverage
+ * regression nobody asked for, on a param nobody touched, an ORPHANED fact
+ * (`countOrphanedFacts`): landed in the store, covered by neither channel.
+ *
+ * The rule this function enforces: the orphan count must never rise, checked
+ * directly and incrementally, against the REAL projection mechanism, not
+ * approximated. This is deliberately more permissive than "evict nothing" —
+ * relocating a candidate MAY still displace some other already-published
+ * fact from the alphabetical cutoff, exactly as budget trimming always has,
+ * as long as the total count of uncovered facts does not grow. A strictly
+ * zero-eviction rule turned out to admit nothing at all: the existing budget
+ * accounting is conservative enough (`SCOPED_SECTION_OVERHEAD_BYTES` and the
+ * per-entry `+2` in `fitScopedToBudget` are deliberately generous, see their
+ * own comments) that its OWN reported margin against a backlog this size is
+ * routinely a few dozen bytes — smaller than a single relocated record — so
+ * "evict literally nothing, ever" is not a real budget it is possible to
+ * relocate into. "Do not make coverage worse than it already is" is the
+ * property that actually matters, and it is the one #1344 asked for.
  *
  * ── How: extend the existing budget mechanism, not a second one ────────
  *
  * `withoutGloballyShadowed`/`fitScopedToBudget` already decide what the
- * publish budget can carry, greedily, from an already-sorted list. This
- * reuses both, unmodified, inside a small fixed-point loop: start by
- * assuming every qualifying candidate relocates, run the real fit, and
- * revert any candidate whose OWN record did not survive it. Reverting only
- * ever adds a few bytes back to `params[]` (never removes budget already
- * spent on a non-candidate fact), so the set of survivors can only shrink
- * between iterations — the loop provably terminates and cannot cycle.
+ * publish budget can carry, greedily, from an already-sorted list —
+ * `fitForParams` wraps that exact pair, unmodified, so every check below
+ * asks the REAL mechanism, never an estimate of it. Candidates are tried one
+ * at a time, in alphabetical order (deterministic, matching every other sort
+ * in this module): tentatively remove one from the global list, run the real
+ * fit, and admit it ONLY if (a) the candidate's own record is in the result
+ * AND (b) the resulting orphan count is no higher than it was before this
+ * candidate was tried. A candidate that fails either check is deferred (left
+ * global) and the pass continues to the next one — deferring never changes
+ * `finalParams`, so it cannot make a LATER candidate's arithmetic worse, and
+ * the loop is a single deterministic forward pass, not an
+ * iterate-to-fixpoint.
  *
  * @param {object} store
  * @param {string} paramsFileText The committed params.json text, read only
@@ -292,12 +400,15 @@ function hostAnchoredStripParams(store) {
  *   relocated: string[],
  *   stayedGlobalForBudget: string[],
  *   bytesRemaining: number|null,
+ *   orphansBefore: number,
+ *   orphansAfter: number,
  * }}
  */
 export function computeAnchorPreference(store, paramsFileText) {
   const hostAnchored = hostAnchoredStripParams(store);
   const globalParams = emitParams(store);
   const scoped = emitScoped(store);
+  const current = JSON.parse(paramsFileText);
 
   const candidates = globalParams.filter(
     (param) =>
@@ -306,44 +417,66 @@ export function computeAnchorPreference(store, paramsFileText) {
       !NEVER_RELOCATE.has(param.toLowerCase())
   );
 
+  // The pre-relocation baseline: what the CURRENT projection actually
+  // publishes, against the UNTOUCHED global list. Computed once. This is
+  // what no relocation may ever evict.
+  const baselinePublished = fitForParams(current, scoped, globalParams);
+  const baselinePublishedParams = new Set(baselinePublished.map((fact) => fact.param));
+  const orphansBefore = countOrphanedFacts(store, globalParams, baselinePublishedParams);
+
   if (candidates.length === 0) {
-    return { store, relocated: [], stayedGlobalForBudget: [], bytesRemaining: null };
+    return {
+      store,
+      relocated: [],
+      stayedGlobalForBudget: [],
+      bytesRemaining: null,
+      orphansBefore,
+      orphansAfter: orphansBefore,
+    };
   }
 
-  const current = JSON.parse(paramsFileText);
-  let relocated = new Set(candidates);
-  let finalParams = globalParams.filter((param) => !relocated.has(param));
-  let published = [];
+  const sortedCandidates = [...candidates].sort();
+  let finalParams = globalParams;
+  let lastPublished = baselinePublished;
+  let orphanCount = orphansBefore;
+  const relocated = [];
+  const deferred = [];
 
-  for (;;) {
-    const bare = { ...current, params: finalParams };
-    delete bare.scoped;
-    const baseBytes = JSON.stringify(bare).length;
-
-    const publishable = withoutGloballyShadowed(scoped, finalParams);
-    published = fitScopedToBudget(publishable, baseBytes, PUBLISH_PAYLOAD_BUDGET_BYTES).published;
+  for (const param of sortedCandidates) {
+    const tentativeParams = finalParams.filter((p) => p !== param);
+    const published = fitForParams(current, scoped, tentativeParams);
     const publishedParams = new Set(published.map((fact) => fact.param));
 
-    const newlyUnfit = [...relocated].filter((param) => !publishedParams.has(param));
-    if (newlyUnfit.length === 0) break;
-    for (const param of newlyUnfit) relocated.delete(param);
-    finalParams = globalParams.filter((param) => !relocated.has(param));
-  }
+    const ownFactsPublished = publishedParams.has(param);
+    const tentativeOrphanCount = countOrphanedFacts(store, tentativeParams, publishedParams);
 
-  const stayedGlobalForBudget = candidates.filter((param) => !relocated.has(param)).sort();
+    if (ownFactsPublished && tentativeOrphanCount <= orphanCount) {
+      finalParams = tentativeParams;
+      lastPublished = published;
+      orphanCount = tentativeOrphanCount;
+      relocated.push(param);
+    } else {
+      deferred.push(param);
+    }
+  }
 
   const finalBare = { ...current, params: finalParams };
   delete finalBare.scoped;
   const usedBytes =
     JSON.stringify(finalBare).length +
     SCOPED_SECTION_OVERHEAD_BYTES +
-    published.reduce((sum, fact) => sum + JSON.stringify(fact).length + 2, 0);
+    lastPublished.reduce((sum, fact) => sum + JSON.stringify(fact).length + 2, 0);
+
+  const finalPublishedParams = new Set(lastPublished.map((fact) => fact.param));
+  const orphansAfter = countOrphanedFacts(store, finalParams, finalPublishedParams);
 
   return {
-    store: relocated.size > 0 ? withGlobalParams(store, finalParams) : store,
-    relocated: [...relocated].sort(),
-    stayedGlobalForBudget,
+    store: relocated.length > 0 ? withGlobalParams(store, finalParams) : store,
+    relocated: relocated.sort(),
+    stayedGlobalForBudget: deferred.sort(),
     bytesRemaining: PUBLISH_PAYLOAD_BUDGET_BYTES - usedBytes,
+    orphansBefore,
+    orphansAfter,
   };
 }
 
@@ -355,7 +488,13 @@ export function computeAnchorPreference(store, paramsFileText) {
  * (nothing qualifies, or every candidate stays global for budget reasons)
  * writes nothing and bumps nothing, so re-running this is always safe.
  *
- * @returns {{relocated: string[], stayedGlobalForBudget: string[], bytesRemaining: number|null}}
+ * @returns {{
+ *   relocated: string[],
+ *   stayedGlobalForBudget: string[],
+ *   bytesRemaining: number|null,
+ *   orphansBefore: number,
+ *   orphansAfter: number,
+ * }}
  */
 export function runPreferAnchors() {
   const store = loadStore();
@@ -552,11 +691,12 @@ if (isMain) {
       const { entries } = runImport();
       console.log(`[rules-store] imported ${entries} entries into ${STORE_PATH}`);
     } else if (process.argv.includes("--prefer-anchors")) {
-      const { relocated, stayedGlobalForBudget, bytesRemaining } = runPreferAnchors();
+      const { relocated, stayedGlobalForBudget, bytesRemaining, orphansBefore, orphansAfter } =
+        runPreferAnchors();
       if (relocated.length === 0) {
         console.log(
           "[rules-store] #1344: nothing relocated — no qualifying param, or every candidate " +
-            "stayed global for budget reasons"
+            "was deferred for headroom"
         );
       } else {
         console.log(
@@ -566,13 +706,17 @@ if (isMain) {
       }
       if (stayedGlobalForBudget.length > 0) {
         console.log(
-          `[rules-store] #1344: ${stayedGlobalForBudget.length} qualifying param(s) stayed ` +
-            `global — their anchored facts did not fit the publish budget: ${stayedGlobalForBudget.join(", ")}`
+          `[rules-store] #1344: ${stayedGlobalForBudget.length} qualifying param(s) deferred ` +
+            `for headroom — relocating would have evicted an already-published fact: ` +
+            stayedGlobalForBudget.join(", ")
         );
       }
       if (bytesRemaining !== null) {
         console.log(`[rules-store] #1344: ${bytesRemaining} byte(s) left in the publish budget`);
       }
+      console.log(
+        `[rules-store] #1344: orphaned facts (published by neither channel): ${orphansBefore} -> ${orphansAfter}`
+      );
     } else if (process.argv.includes("--check")) {
       const drifted = runCheck();
       if (drifted.length > 0) {
