@@ -1227,13 +1227,6 @@
       "category": "email"
     },
     {
-      "param": "ref_",
-      "category": "platform_noise",
-      "preservedOnDomains": [
-        "imdb.com"
-      ]
-    },
-    {
       "param": "rtkcid",
       "category": "ads"
     },

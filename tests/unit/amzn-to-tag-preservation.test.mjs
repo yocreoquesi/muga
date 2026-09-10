@@ -29,6 +29,11 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { processUrl } from "../../src/lib/cleaner.js";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+// Same mechanism cleaner.test.mjs uses for this file.
+const domainRules = require("../../src/rules/domain-rules.json");
 
 describe("amzn.to regression — tag= preservation post-proxy (D7 shipping gate)", () => {
   test("amazon.com/dp/<asin>?tag=<creator> preserves tag when Honor Creator is on", () => {
@@ -52,11 +57,14 @@ describe("amzn.to regression — tag= preservation post-proxy (D7 shipping gate)
     // in AFFILIATE_PATTERNS, so it is in the affiliateParamSet that protects
     // it from being stripped by stripTrackingParams.
     const resolved = "https://www.amazon.es/dp/B0XXXXX?tag=creator-21";
-    const result = processUrl(resolved, {
-      enabled: true,
-      honorCreatorMode: true,
-      privacyProxyEnabled: true,
-    });
+    // domainRules passed because the extension always passes them: amazon.es has
+    // a profile of its own, and a tag-preservation gate is only meaningful
+    // against the configuration a user actually runs.
+    const result = processUrl(
+      resolved,
+      { enabled: true, honorCreatorMode: true, privacyProxyEnabled: true },
+      domainRules,
+    );
     assert.ok(
       result.cleanUrl.includes("tag=creator-21"),
       `Expected tag=creator-21 to survive on amazon.es; got ${result.cleanUrl}`,
@@ -85,11 +93,16 @@ describe("amzn.to regression — tag= preservation post-proxy (D7 shipping gate)
     // the affiliate tag. The cleaner must strip the noise but preserve the tag.
     const resolved =
       "https://www.amazon.com/dp/B0XXXXX?tag=youtuber-20&psc=1&ref_=cm_sw_r&linkCode=ll1";
-    const result = processUrl(resolved, {
-      enabled: true,
-      honorCreatorMode: true,
-      privacyProxyEnabled: true,
-    });
+    // domainRules passed on purpose (#1228 step 3): `ref_` left the global list,
+    // because upstream only anchors it to two amazon subdomains and to imdb.com,
+    // which preserves it. amazon.com's own profile is what strips it now, and
+    // the extension always passes these rules, so asserting without them tested
+    // a path nobody runs.
+    const result = processUrl(
+      resolved,
+      { enabled: true, honorCreatorMode: true, privacyProxyEnabled: true },
+      domainRules,
+    );
     // Tag must survive
     assert.ok(
       result.cleanUrl.includes("tag=youtuber-20"),

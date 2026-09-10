@@ -56,7 +56,7 @@ export const TRACKING_PARAMS = [
   // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
   // attribution ID; stripping it kills creator attribution (#794).
   "asc_contentid", "asc_contenttype",
-  "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
+  "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",
   // Amazon: store page / brand referral noise
   "lp_asin", "store_ref", "bl_grd_status", "ingress",
   // Amazon: search/browse noise
@@ -685,7 +685,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       "linkcode", "linkid", "creativeasin", "spia",
       // ascsubtag removed: affiliate attribution (#794)
       "asc_contentid", "asc_contenttype",
-      "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
+      "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",
       "lp_asin", "store_ref", "bl_grd_status", "ingress",
       "sprefix", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",

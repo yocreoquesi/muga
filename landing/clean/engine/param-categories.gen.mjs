@@ -329,7 +329,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "asc_contenttype",
       "_encoding",
       "content-id",
-      "ref_",
       "social_share",
       "skiptwisterog",
       "starsleft",

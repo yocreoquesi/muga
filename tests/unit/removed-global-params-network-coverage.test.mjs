@@ -235,22 +235,28 @@ describe("#1228 step 2 — `cid` stays stripped at the network layer, host-ancho
  * while neither upstream source ever anchors it globally, only to specific
  * hosts. Same failure class as #1212/#1217/step 1/step 2.
  *
- * The issue's list names 29 params. This step ships 28 of them: `ref_` is
- * withheld. Its only anchored host per this step's measurement is
- * imdb.com — but imdb.com's own domain-rules.json entry already carries
- * `preserveParams: ["ref_", "q"]`, a pre-existing, deliberate decision (IMDb
- * uses ref_ for internal navigation context; Amazon itself strips ref_, but
- * IMDb preserves it — see that entry's neighboring amazon.* entries for the
- * contrast). generate-rules.mjs's own `extraStrips` filter excludes any
- * param already in a host's OWN preserveParams (see its comment: "did NOT"
- * -> filtered before it ever reaches removeParams), so adding `ref_` to
- * imdb.com's stripParams would not have reached DNR at all — it would have
- * been silently inert, exactly the failure class this whole issue chain
- * exists to prevent. Overriding imdb.com's existing preserve is a product
- * judgment call outside this step's authority, so `ref_` stays in
- * TRACKING_PARAMS, untouched, reported rather than fixed.
+ * The issue's list names 29 params and this step ships all 29, but `ref_`
+ * takes a different route from the other 28 and is worth reading.
  *
- * TRACKING_PARAMS: 429 -> 401 (28 removed, not 29).
+ * Upstream anchors `ref_` to three hosts: supply.amazon.com,
+ * gaming.amazon.com and imdb.com. (AdGuard's broader `||amazon.*` line for it
+ * is commented out in the filter, so upstream retracted that claim itself.)
+ * MUGA already covers the first two: amazon.com's profile strips `ref_` and
+ * suffix-covers both subdomains. The third disagrees on purpose — imdb.com's
+ * entry carries `preserveParams: ["ref_", "q"]`, because IMDb uses ref_ for
+ * internal navigation context.
+ *
+ * So `ref_` needed no new host rule at all. Adding one to imdb.com would have
+ * been worse than useless: `generate-rules.mjs`'s `extraStrips` filter drops
+ * anything already in a host's OWN preserveParams, so the entry would have
+ * been silently inert, which is the failure class this whole chain exists to
+ * catch. The right move was to add nothing and let both existing decisions
+ * stand.
+ *
+ * Result: stripped on the two Amazon hosts, deliberately preserved on IMDb,
+ * untouched everywhere else, which is exactly what the anchors say.
+ *
+ * TRACKING_PARAMS: 429 -> 400.
  */
 describe("#1228 step 3 — 28 params stay stripped at the network layer, host-anchored", () => {
   // Every host each param is anchored to, from src/rules/domain-rules.json
@@ -360,25 +366,40 @@ describe("#1228 step 3 — 28 params stay stripped at the network layer, host-an
       );
     });
 
-    test('"ref_" remains in TRACKING_PARAMS (its only anchored host, imdb.com, already preserves it)', () => {
+    test('"ref_" left the global list and is covered by its anchors, not by a new rule', () => {
       assert.ok(
-        trackingLc.has("ref_"),
-        '"ref_" left TRACKING_PARAMS — it must stay global: imdb.com already carries ' +
-          '`preserveParams: ["ref_", ...]`, so a stripParams entry there would be filtered by ' +
-          "generate-rules.mjs's extraStrips and never reach DNR. Overriding that preserve is a " +
-          "product decision outside this step's authority.",
+        !trackingLc.has("ref_"),
+        '"ref_" is back in TRACKING_PARAMS. Upstream anchors it to supply.amazon.com, ' +
+          "gaming.amazon.com and imdb.com only, and amazon.com's profile already covers the " +
+          "first two, so a global entry claims far more than either source does.",
       );
 
-      // Guard the mechanism, not just the outcome: if ref_ were ever added to
-      // imdb.com's stripParams without removing it from preserveParams, prove
-      // it would still not reach imdb.com's DNR rule — inert, not merely absent.
-      const domainRulesPath = join(ROOT, "src", "rules", "domain-rules.json");
-      const domainRules = JSON.parse(readFileSync(domainRulesPath, "utf8"));
+      const domainRules = JSON.parse(
+        readFileSync(join(ROOT, "src", "rules", "domain-rules.json"), "utf8"),
+      );
+
+      // The two Amazon anchors: covered by amazon.com's own profile, by suffix.
+      const amazon = domainRules.find((e) => e.domain === "amazon.com");
+      assert.ok(
+        (amazon?.stripParams ?? []).includes("ref_"),
+        "amazon.com stopped stripping ref_ — supply.amazon.com and gaming.amazon.com are its " +
+          "upstream anchors and nothing else covers them, so ref_ would stop being stripped " +
+          "before the request leaves the browser.",
+      );
+
+      // The third anchor disagrees on purpose, and that disagreement is the point.
       const imdb = domainRules.find((e) => e.domain === "imdb.com");
       assert.ok(
         (imdb?.preserveParams ?? []).includes("ref_"),
-        "imdb.com no longer preserves ref_ — the conflict this test documents may be resolved; " +
-          "re-measure whether ref_ can now be host-anchored to imdb.com.",
+        "imdb.com stopped preserving ref_. MUGA deliberately overrides upstream here (IMDb uses " +
+          "ref_ for internal navigation), and with ref_ no longer global, dropping this preserve " +
+          "silently changes what IMDb links look like.",
+      );
+      assert.ok(
+        !(imdb?.stripParams ?? []).includes("ref_"),
+        "imdb.com now both preserves and strips ref_. generate-rules.mjs's extraStrips filter " +
+          "drops a param already in the host's own preserveParams, so the strip entry would be " +
+          "silently inert rather than winning.",
       );
     });
 
