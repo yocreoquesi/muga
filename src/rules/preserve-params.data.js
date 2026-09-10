@@ -372,6 +372,9 @@ export const PRESERVED_BY_HOST = {
   "29cm.co.kr": [
     "keyword"
   ],
+  "aboutamazon.com": [
+    "q"
+  ],
   "adj.st": [
     "adj_t"
   ],
@@ -631,7 +634,13 @@ export const PRESERVED_BY_HOST = {
     "q",
     "sort"
   ],
+  "amzn.to": [
+    "q"
+  ],
   "ana.co.jp": [
+    "q"
+  ],
+  "app.adjust.com": [
     "q"
   ],
   "apple.com": [
@@ -660,6 +669,12 @@ export const PRESERVED_BY_HOST = {
     "keyword",
     "page",
     "sort"
+  ],
+  "avansas.com": [
+    "q"
+  ],
+  "aws.eu": [
+    "q"
   ],
   "baidu.com": [
     "bs",
@@ -733,6 +748,9 @@ export const PRESERVED_BY_HOST = {
     "rooms",
     "ss"
   ],
+  "builder.aws.com": [
+    "q"
+  ],
   "canadacompanyregistry.com": [
     "utm_campaign"
   ],
@@ -742,10 +760,16 @@ export const PRESERVED_BY_HOST = {
   "carrefourpl.snrpage.com": [
     "utm_source"
   ],
+  "change.org": [
+    "q"
+  ],
   "cnbc.com": [
     "q"
   ],
   "cnn.com": [
+    "q"
+  ],
+  "code-wallets.com": [
     "q"
   ],
   "controld.com": [
@@ -1043,6 +1067,9 @@ export const PRESERVED_BY_HOST = {
   "gaugau.futabanet.jp": [
     "utm_content"
   ],
+  "gettranny.com": [
+    "q"
+  ],
   "giphy.com": [
     "q"
   ],
@@ -1163,6 +1190,9 @@ export const PRESERVED_BY_HOST = {
     "category_id",
     "term"
   ],
+  "kitbash3d.com": [
+    "q"
+  ],
   "kommersant.ru": [
     "erid"
   ],
@@ -1280,6 +1310,12 @@ export const PRESERVED_BY_HOST = {
   "metabase.com": [
     "utm_term"
   ],
+  "microsoft.com": [
+    "q"
+  ],
+  "moffme.com": [
+    "q"
+  ],
   "mootoon.co.kr": [
     "cuid"
   ],
@@ -1317,8 +1353,14 @@ export const PRESERVED_BY_HOST = {
     "start",
     "where"
   ],
+  "nesine.com": [
+    "q"
+  ],
   "netflix.com": [
     "jbv",
+    "q"
+  ],
+  "netmonet.co": [
     "q"
   ],
   "newegg.com": [
@@ -1337,6 +1379,9 @@ export const PRESERVED_BY_HOST = {
     "q"
   ],
   "nike.com": [
+    "q"
+  ],
+  "nikkei.com": [
     "q"
   ],
   "notebooksbilliger.de": [
@@ -1360,6 +1405,12 @@ export const PRESERVED_BY_HOST = {
     "query",
     "sort"
   ],
+  "onelink.me": [
+    "q"
+  ],
+  "online.nojima.co.jp": [
+    "q"
+  ],
   "open.spotify.com": [
     "context",
     "go",
@@ -1375,6 +1426,9 @@ export const PRESERVED_BY_HOST = {
     "sku",
     "sortiertnach",
     "view"
+  ],
+  "pages.awscloud.com": [
+    "q"
   ],
   "palacio.mx": [
     "q"
@@ -1399,6 +1453,9 @@ export const PRESERVED_BY_HOST = {
     "q",
     "sort"
   ],
+  "pcmax.jp": [
+    "q"
+  ],
   "petbook.de": [
     "q"
   ],
@@ -1413,6 +1470,9 @@ export const PRESERVED_BY_HOST = {
     "id"
   ],
   "porntube.com": [
+    "q"
+  ],
+  "puma.com": [
     "q"
   ],
   "rac.co.uk": [
@@ -1443,6 +1503,9 @@ export const PRESERVED_BY_HOST = {
   "redirects.tradedoubler.com": [
     "utm_campaign",
     "utm_content"
+  ],
+  "registration.awsevents.com": [
+    "q"
   ],
   "renfe.com": [
     "adultos",
@@ -1491,6 +1554,12 @@ export const PRESERVED_BY_HOST = {
     "sort",
     "src_tab_page_id"
   ],
+  "shop.asus.com": [
+    "q"
+  ],
+  "shop.hololivepro.com": [
+    "q"
+  ],
   "shopee.com": [
     "keyword",
     "page"
@@ -1511,7 +1580,13 @@ export const PRESERVED_BY_HOST = {
     "q",
     "sort"
   ],
+  "smartnews.com": [
+    "q"
+  ],
   "sonybank.jp": [
+    "q"
+  ],
+  "sport.sky.it": [
     "q"
   ],
   "ssg.com": [
@@ -1555,6 +1630,12 @@ export const PRESERVED_BY_HOST = {
     "q",
     "type"
   ],
+  "threads.com": [
+    "q"
+  ],
+  "threads.net": [
+    "q"
+  ],
   "tiktok.com": [
     "lang",
     "q",
@@ -1589,6 +1670,9 @@ export const PRESERVED_BY_HOST = {
   "twitter.com": [
     "f",
     "lang",
+    "q"
+  ],
+  "ubereats.com": [
     "q"
   ],
   "ulta.com": [
@@ -1630,6 +1714,12 @@ export const PRESERVED_BY_HOST = {
   "wayfair.com": [
     "keyword"
   ],
+  "wesleyfinancialgroup.typeform.com": [
+    "q"
+  ],
+  "wetransfer.com": [
+    "q"
+  ],
   "wikipedia.org": [
     "action",
     "curid",
@@ -1644,9 +1734,18 @@ export const PRESERVED_BY_HOST = {
     "page",
     "query"
   ],
+  "www.alternate.de": [
+    "q"
+  ],
   "x.com": [
     "f",
     "lang",
+    "q"
+  ],
+  "xiaohongshu.com": [
+    "q"
+  ],
+  "xkcd.com": [
     "q"
   ],
   "yahoo.co.jp": [

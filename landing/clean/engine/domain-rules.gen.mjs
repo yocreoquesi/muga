@@ -46,6 +46,16 @@ export const DOMAIN_RULES = [
     "note": "Korean fashion/lifestyle e-commerce. Search query: functional."
   },
   {
+    "domain": "aboutamazon.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "asc_campaign"
+    ],
+    "note": "Amazon's corporate news/PR site. Search query preserved as a safe default. `asc_campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "adj.st",
     "preserveParams": [
       "adj_t"
@@ -1414,6 +1424,16 @@ export const DOMAIN_RULES = [
     "note": "Brazilian retail marketplace. Search, pagination, sort: functional. operationHash is a GraphQL cache-bust token."
   },
   {
+    "domain": "amzn.to",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "asc_campaign"
+    ],
+    "note": "Amazon's URL shortener. Search query preserved as a safe default. `asc_campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "ana.co.jp",
     "preserveParams": [
       "q"
@@ -1422,6 +1442,16 @@ export const DOMAIN_RULES = [
       "cid"
     ],
     "note": "All Nippon Airways (ANA), Japanese airline. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "app.adjust.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "campaign"
+    ],
+    "note": "Adjust, mobile attribution platform. Search query preserved as a safe default. `campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "apple.com",
@@ -1487,6 +1517,27 @@ export const DOMAIN_RULES = [
     "note": "eBay Korea auction platform (same group as Gmarket)"
   },
   {
+    "domain": "avansas.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "sc_customer",
+      "sc_uid"
+    ],
+    "note": "Avansas, Turkish office-supplies e-commerce. Search query preserved as a safe default. `sc_customer`, `sc_uid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "aws.eu",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "trk"
+    ],
+    "note": "AWS EU domain. Search query preserved as a safe default. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "baidu.com",
     "preserveParams": [
       "wd",
@@ -1510,7 +1561,8 @@ export const DOMAIN_RULES = [
     ],
     "stripParams": [
       "facebook_page",
-      "at_bbc_team"
+      "at_bbc_team",
+      "ocid"
     ],
     "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
   },
@@ -1523,7 +1575,8 @@ export const DOMAIN_RULES = [
     ],
     "stripParams": [
       "facebook_page",
-      "at_bbc_team"
+      "at_bbc_team",
+      "ocid"
     ],
     "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
   },
@@ -1668,6 +1721,16 @@ export const DOMAIN_RULES = [
     "note": "Hotel search and booking: functional. label/sid are tracking."
   },
   {
+    "domain": "builder.aws.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "trk"
+    ],
+    "note": "AWS Builder ID / community platform. Search query preserved as a safe default. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "canadacompanyregistry.com",
     "preserveParams": [
       "utm_campaign"
@@ -1692,6 +1755,16 @@ export const DOMAIN_RULES = [
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
   },
   {
+    "domain": "change.org",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "share_id"
+    ],
+    "note": "Change.org, online petition platform. Search query preserved as a safe default. `share_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "cnbc.com",
     "preserveParams": [
       "q"
@@ -1708,6 +1781,16 @@ export const DOMAIN_RULES = [
       "q"
     ],
     "note": "Search query: functional"
+  },
+  {
+    "domain": "code-wallets.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "tw_adid"
+    ],
+    "note": "Crypto wallet promo-code platform. Search query preserved as a safe default. `tw_adid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "controld.com",
@@ -2436,6 +2519,16 @@ export const DOMAIN_RULES = [
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
   },
   {
+    "domain": "gettranny.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "campaign"
+    ],
+    "note": "Adult content platform. Search query preserved as a safe default. `campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "giphy.com",
     "preserveParams": [
       "q"
@@ -2625,7 +2718,10 @@ export const DOMAIN_RULES = [
     "stripParams": [
       "pf_rd_m",
       "pf_rd_t",
-      "pf_rd_i"
+      "pf_rd_i",
+      "pf_rd_p",
+      "pf_rd_r",
+      "pf_rd_s"
     ],
     "note": "IMDb. pf_rd_* are internal placement tracking (same family as Amazon)."
   },
@@ -2681,7 +2777,8 @@ export const DOMAIN_RULES = [
       "igsh",
       "img_index",
       "source",
-      "entry_point"
+      "entry_point",
+      "igshid"
     ],
     "note": "Language: functional. Share tracking (igsh) and app entry metadata stripped."
   },
@@ -2734,6 +2831,16 @@ export const DOMAIN_RULES = [
       "total_hits"
     ],
     "note": "Kickstarter. Referral/event tracking stripped."
+  },
+  {
+    "domain": "kitbash3d.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "ad_id"
+    ],
+    "note": "Kitbash3D, 3D model/asset marketplace. Search query preserved as a safe default. `ad_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "kommersant.ru",
@@ -3021,6 +3128,27 @@ export const DOMAIN_RULES = [
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
   },
   {
+    "domain": "microsoft.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "nclid",
+      "ocid"
+    ],
+    "note": "Microsoft's site. Search query preserved as a safe default. `nclid`, `ocid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "moffme.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "campaign"
+    ],
+    "note": "MOFFME, Japanese job/employment listing platform. Search query preserved as a safe default. `campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "mootoon.co.kr",
     "preserveParams": [
       "cuid"
@@ -3033,7 +3161,9 @@ export const DOMAIN_RULES = [
       "q"
     ],
     "stripParams": [
-      "pc"
+      "pc",
+      "ei",
+      "ocid"
     ],
     "note": "MSN. Partner code tracking stripped."
   },
@@ -3114,6 +3244,16 @@ export const DOMAIN_RULES = [
     "note": "Korean search engine + portal. Naver Ad and click tracking params stripped."
   },
   {
+    "domain": "nesine.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "adjust_t"
+    ],
+    "note": "Nesine, Turkish sports betting platform. Search query preserved as a safe default. `adjust_t` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "netflix.com",
     "preserveParams": [
       "q",
@@ -3126,6 +3266,16 @@ export const DOMAIN_RULES = [
       "jbr"
     ],
     "note": "Search and content ID: functional. trackId/tctx/jbd/jbr are internal tracking."
+  },
+  {
+    "domain": "netmonet.co",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "visitid"
+    ],
+    "note": "Netmonet, link-monetization platform. Search query preserved as a safe default. `visitid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "newegg.com",
@@ -3170,6 +3320,16 @@ export const DOMAIN_RULES = [
     "note": "Nike. Search query: functional."
   },
   {
+    "domain": "nikkei.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "n_cid"
+    ],
+    "note": "Nikkei, Japanese financial newspaper. Search query preserved as a safe default. `n_cid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "notebooksbilliger.de",
     "preserveParams": [
       "q"
@@ -3199,6 +3359,9 @@ export const DOMAIN_RULES = [
       "home",
       "from"
     ],
+    "stripParams": [
+      "ocid"
+    ],
     "note": "Auth flow and navigation: functional"
   },
   {
@@ -3218,6 +3381,26 @@ export const DOMAIN_RULES = [
       "src"
     ],
     "note": "Korea's top beauty/cosmetics retailer"
+  },
+  {
+    "domain": "onelink.me",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "af_sub1"
+    ],
+    "note": "AppsFlyer OneLink, mobile deep-link/attribution service. Search query preserved as a safe default. `af_sub1` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "online.nojima.co.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "campaign"
+    ],
+    "note": "Nojima, Japanese consumer electronics retailer's online store. Search query preserved as a safe default. `campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "open.spotify.com",
@@ -3257,6 +3440,16 @@ export const DOMAIN_RULES = [
       "originurl"
     ],
     "note": "German e-commerce giant. Search, sort, color/age/size filters, SKU, view mode: functional. psr/entryRule/rule/targetContextPsr are internal personalization tracking."
+  },
+  {
+    "domain": "pages.awscloud.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "trk"
+    ],
+    "note": "AWS marketing landing pages. Search query preserved as a safe default. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "palacio.mx",
@@ -3314,6 +3507,16 @@ export const DOMAIN_RULES = [
     "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
+    "domain": "pcmax.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "ad_id"
+    ],
+    "note": "PCMAX, Japanese dating/matching platform. Search query preserved as a safe default. `ad_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "petbook.de",
     "preserveParams": [
       "q"
@@ -3350,6 +3553,17 @@ export const DOMAIN_RULES = [
       "cid"
     ],
     "note": "Adult video platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "puma.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "sc_eh",
+      "sc_uid"
+    ],
+    "note": "Puma, athletic apparel brand. Search query preserved as a safe default. `sc_eh`, `sc_uid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "rac.co.uk",
@@ -3421,6 +3635,16 @@ export const DOMAIN_RULES = [
       "utm_content"
     ],
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "registration.awsevents.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "trk"
+    ],
+    "note": "AWS Events registration platform. Search query preserved as a safe default. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "renfe.com",
@@ -3517,6 +3741,30 @@ export const DOMAIN_RULES = [
     "note": "Search, filters and pagination: functional. Affiliate params (redirect-based networks) actively stripped."
   },
   {
+    "domain": "shop.asus.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "ad_id"
+    ],
+    "note": "ASUS official online store. Search query preserved as a safe default. `ad_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "shop.hololivepro.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "pr_prod_strat",
+      "pr_rec_id",
+      "pr_rec_pid",
+      "pr_ref_pid",
+      "pr_seq"
+    ],
+    "note": "Hololive Production's official merchandise shop. Search query preserved as a safe default. `pr_prod_strat`, `pr_rec_id`, `pr_rec_pid`, `pr_ref_pid`, `pr_seq` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "shopee.com",
     "preserveParams": [
       "keyword",
@@ -3578,6 +3826,16 @@ export const DOMAIN_RULES = [
     "note": "Deal aggregator. Attribution/ad tracking stripped."
   },
   {
+    "domain": "smartnews.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "share_id"
+    ],
+    "note": "SmartNews, news aggregator app. Search query preserved as a safe default. `share_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "sonybank.jp",
     "preserveParams": [
       "q"
@@ -3586,6 +3844,16 @@ export const DOMAIN_RULES = [
       "cid"
     ],
     "note": "Sony Bank, Japanese online bank. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "sport.sky.it",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "share_id"
+    ],
+    "note": "Sky Sport Italia. Search query preserved as a safe default. `share_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "ssg.com",
@@ -3656,7 +3924,8 @@ export const DOMAIN_RULES = [
       "q"
     ],
     "stripParams": [
-      "cid"
+      "cid",
+      "crid"
     ],
     "note": "Teknosa, Turkish electronics retailer. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
@@ -3680,6 +3949,26 @@ export const DOMAIN_RULES = [
     ],
     "stripParams": [],
     "note": "German musical instrument retailer (Europe's largest). Search, department, type filter: functional."
+  },
+  {
+    "domain": "threads.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "igshid"
+    ],
+    "note": "Meta's Threads app. Search query preserved as a safe default. `igshid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "threads.net",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "igshid"
+    ],
+    "note": "Meta's Threads (legacy share domain). Search query preserved as a safe default. `igshid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "tiktok.com",
@@ -3776,7 +4065,8 @@ export const DOMAIN_RULES = [
       "tyutm_source",
       "tyutm_medium",
       "tyutm_campaign",
-      "utm_subaff"
+      "utm_subaff",
+      "adjust_t"
     ],
     "note": "Turkish e-commerce. Link/campaign tracking stripped."
   },
@@ -3804,6 +4094,16 @@ export const DOMAIN_RULES = [
       "cn"
     ],
     "note": "Search query and filters: functional. t/s/src/cn are share/campaign tracking."
+  },
+  {
+    "domain": "ubereats.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "campaign"
+    ],
+    "note": "Uber Eats food delivery. Search query preserved as a safe default. `campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "ulta.com",
@@ -3903,6 +4203,26 @@ export const DOMAIN_RULES = [
     "note": "US furniture/home goods retailer. Search keyword: functional."
   },
   {
+    "domain": "wesleyfinancialgroup.typeform.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "tblci"
+    ],
+    "note": "Wesley Financial Group's Typeform lead-capture page. Search query preserved as a safe default. `tblci` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "wetransfer.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "trk"
+    ],
+    "note": "WeTransfer, file-sharing service. Search query preserved as a safe default. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "wikipedia.org",
     "preserveParams": [
       "search",
@@ -3929,6 +4249,16 @@ export const DOMAIN_RULES = [
     "note": "Wall Street Journal. Module/referral tracking stripped."
   },
   {
+    "domain": "www.alternate.de",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "campaign"
+    ],
+    "note": "Alternate, German electronics retailer. Upstream anchors this to the www subdomain specifically, not the root alternate.de (which has its own entry) — kept separate per #1229/ADR-0008 (import at the anchor, never widen). Search query preserved as a safe default. `campaign` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
     "domain": "x.com",
     "preserveParams": [
       "q",
@@ -3944,6 +4274,26 @@ export const DOMAIN_RULES = [
       "cn"
     ],
     "note": "Search query and filters: functional. t/s/src/cn are share/campaign tracking."
+  },
+  {
+    "domain": "xiaohongshu.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "share_id"
+    ],
+    "note": "Xiaohongshu (RED), Chinese social commerce platform. Search query preserved as a safe default. `share_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+  },
+  {
+    "domain": "xkcd.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "trk"
+    ],
+    "note": "xkcd webcomic. Search query preserved as a safe default. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "yahoo.co.jp",
@@ -4116,6 +4466,9 @@ export const DOMAIN_RULES = [
     "domain": "vercel.com",
     "preserveParams": [
       "ref"
+    ],
+    "stripParams": [
+      "sfmc_activityid"
     ],
     "note": "Vercel Referrals uses `ref` as its creator attribution token (#1252). Preserved on this host only: `ref` is genuinely a tracker elsewhere, so guarding the name globally would block those strips forever."
   }

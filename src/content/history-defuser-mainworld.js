@@ -53,7 +53,7 @@
     utm_source: 1, utm_medium: 1, utm_campaign: 1, utm_content: 1, utm_term: 1, utm_id: 1,
     utm_source_platform: 1, utm_creative_format: 1, utm_marketing_tactic: 1,
     fbclid: 1, gclid: 1, gclsrc: 1, dclid: 1, gbraid: 1, wbraid: 1, msclkid: 1, tclid: 1, twclid: 1,
-    mc_cid: 1, mc_eid: 1, igshid: 1,
+    mc_cid: 1, mc_eid: 1,
     _hsenc: 1, _hsmi: 1, mkt_tok: 1,
     yclid: 1, ysclid: 1, _openstat: 1,
     ttclid: 1, sccid: 1, rdt_cid: 1,
@@ -62,10 +62,8 @@
     mtm_campaign: 1, mtm_source: 1, mtm_medium: 1, mtm_content: 1,
     hsctatracking: 1,
     __s: 1, _ga: 1, _gl: 1, _gac: 1,
-    ved: 1, ei: 1, sca_esv: 1, sxsrf: 1,
-    share_id: 1,
+    ved: 1, sca_esv: 1, sxsrf: 1,
     _pos: 1, _ss: 1, _psq: 1, _sid: 1, _fid: 1,
-    pr_prod_strat: 1, pr_rec_id: 1, pr_ref_pid: 1, pr_rec_pid: 1, pr_seq: 1,
   });
 
   /**

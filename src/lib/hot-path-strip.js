@@ -40,6 +40,11 @@
  * everywhere, and this table has no way to express a host scope either. After
  * removing an entry here, regenerate the five content scripts with
  * `npm run build:strip`.
+ *
+ * #1228 step 3: `igshid`, `ei`, `share_id`, `pr_prod_strat`, `pr_rec_id`,
+ * `pr_ref_pid`, `pr_rec_pid` and `pr_seq` removed for the same reason — each
+ * is now host-anchored in domain-rules.json rather than stripped everywhere,
+ * and this table has no way to express a host scope either.
  */
 
 /** @type {ReadonlyArray<ReadonlyArray<string>>} */
@@ -47,7 +52,7 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id"],
   ["utm_source_platform", "utm_creative_format", "utm_marketing_tactic"],
   ["fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid", "msclkid", "tclid", "twclid"],
-  ["mc_cid", "mc_eid", "igshid"],
+  ["mc_cid", "mc_eid"],
   ["_hsenc", "_hsmi", "mkt_tok"],
   ["yclid", "ysclid", "_openstat"],
   // NOTE: redirect-network ATTRIBUTION params (irclickid/cjevent/awc and the
@@ -62,10 +67,8 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["mtm_campaign", "mtm_source", "mtm_medium", "mtm_content"],
   ["hsctatracking"],
   ["__s", "_ga", "_gl", "_gac"],
-  ["ved", "ei", "sca_esv", "sxsrf"],
-  ["share_id"],
+  ["ved", "sca_esv", "sxsrf"],
   ["_pos", "_ss", "_psq", "_sid", "_fid"],
-  ["pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"],
 ].map((row) => Object.freeze(row)));
 
 /**
