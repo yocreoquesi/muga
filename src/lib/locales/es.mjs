@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_tagline: "Tus enlaces, sin el rastreo.",
   ob_tagline_sub: "Quita el rastreo de tus URLs · conserva las referencias de creadores · cero telemetría.",
   ob_step1_title: "Cómo MUGA aquieta tus URLs",
-  ob_feat1_title: "Elimina 429+ patrones de rastreo conocidos",
+  ob_feat1_title: "Elimina 400+ patrones de rastreo conocidos",
   ob_feat1_desc: "fbclid, gclid, UTMs y cientos más, desaparecidos antes de que cargue la página. La limpieza se hace localmente en tu navegador, sin analíticas ni telemetría.",
   ob_feat2_title: "Desenvuelve los desvíos: AMP, balizas ping, wrappers de redirección",
   ob_feat2_desc: "Cada desvío que la web pone entre tú y la página que querías se corrige localmente, dentro de tu navegador.",

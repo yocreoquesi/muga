@@ -29,10 +29,18 @@
  * they are still stripped, just at the network layer, host-scoped instead of
  * global.
  *
- * `si` (youtube.com, youtu.be) and `ei` (google.com) are not part of the 16
+ * `si` (youtube.com, youtu.be) and `ei` (google.com) were not part of the 16
  * params that step folded out of the global list — narrowing the global list
- * further was out of scope for it — so they stay pinned below the floor here
- * until a later slice does for them what this one did for `_r`/`_t`.
+ * further was out of scope for it — so they stayed pinned below the floor
+ * here until a later slice did for them what this one did for `_r`/`_t`.
+ *
+ * #1228 step 3 is that slice for `ei`: it left TRACKING_PARAMS and is now
+ * host-anchored to msn.com (the host the AdGuard/ClearURLs measurement
+ * actually supports). google.com already independently listed `ei` in its
+ * own domain-rules.json `stripParams` before this step touched anything, so
+ * it keeps stripping ei with no coverage loss — see
+ * tests/unit/removed-global-params-network-coverage.test.mjs for the
+ * host-anchored guard. `si` stays pinned; narrowing it was out of scope here.
  */
 
 import { test, describe } from "node:test";
@@ -56,7 +64,6 @@ const domainRules = JSON.parse(readFileSync(join(ROOT, "src/rules/domain-rules.j
  */
 const KNOWN_SHORT = {
   si: "youtube.com, youtu.be",
-  ei: "google.com",
 };
 
 describe("the built-in global strip list respects the same floor as the remote one (#1228)", () => {
@@ -124,6 +131,35 @@ describe("the built-in global strip list respects the same floor as the remote o
     assert.ok(
       amazon?.action.redirect.transform.queryTransform.removeParams.includes("ie"),
       "Amazon must keep stripping ie from its own rule — that claim is true and scoped",
+    );
+  });
+
+  test("ei is gone too (#1228 step 3), and google.com's own claim survives unmoved", () => {
+    // ei left TRACKING_PARAMS in #1228 step 3, host-anchored to msn.com — the
+    // host the AdGuard/ClearURLs measurement actually supports. Unlike ie,
+    // this did not force any NEW tailored rule for google.com: google.com
+    // already listed ei in its own domain-rules.json stripParams before this
+    // step touched anything, so its DNR profile rule is unchanged.
+    assert.ok(!TRACKING_PARAMS.includes("ei"), "ei must not return to the global list");
+
+    const rules = JSON.parse(readFileSync(join(ROOT, "src/rules/tracking-params.json"), "utf8"));
+    const global = rules.find((r) => r.id === 1);
+    assert.ok(
+      !global.action.redirect.transform.queryTransform.removeParams.includes("ei"),
+      "the generated global rule must not strip ei either",
+    );
+
+    const google = rules.find((r) => r.condition?.requestDomains?.includes("google.com"));
+    assert.ok(
+      google?.action.redirect.transform.queryTransform.removeParams.includes("ei"),
+      "google.com must keep stripping ei from its own pre-existing rule — that claim was " +
+        "already true and scoped before this step",
+    );
+
+    const msn = rules.find((r) => r.condition?.requestDomains?.includes("msn.com"));
+    assert.ok(
+      msn?.action.redirect.transform.queryTransform.removeParams.includes("ei"),
+      "msn.com must strip ei from its own rule — the host #1228 step 3 actually anchors it to",
     );
   });
 });

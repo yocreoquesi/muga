@@ -704,14 +704,30 @@ describe("Cross-portal tracking param stripping", () => {
     assert.ok(!u.searchParams.has("s"), "Twitter: s must be stripped");
   });
 
-  test("Shopify: pr_prod_strat, pr_rec_id, pr_ref_pid stripped globally", () => {
+  // #1228 step 3: pr_prod_strat/pr_rec_id/pr_ref_pid/pr_rec_pid/pr_seq left
+  // TRACKING_PARAMS (429 -> 401) and are now host-anchored to
+  // shop.hololivepro.com only, the one host the upstream measurement
+  // supports (see domain-rules.json's note on that entry) — not stripped on
+  // an arbitrary Shopify storefront any more.
+  test("shop.hololivepro.com: pr_prod_strat, pr_rec_id, pr_ref_pid stripped (host-anchored, #1228 step 3)", () => {
     const { cleanUrl } = clean(
-      "https://example-store.myshopify.com/products/widget?pr_prod_strat=copurchase&pr_rec_id=abc&pr_ref_pid=123&pr_rec_pid=456&pr_seq=uniform"
+      "https://shop.hololivepro.com/products/widget?pr_prod_strat=copurchase&pr_rec_id=abc&pr_ref_pid=123&pr_rec_pid=456&pr_seq=uniform"
     );
     const u = new URL(cleanUrl);
     for (const p of ["pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"]) {
-      assert.ok(!u.searchParams.has(p), `Shopify: ${p} must be stripped`);
+      assert.ok(!u.searchParams.has(p), `shop.hololivepro.com: ${p} must be stripped`);
     }
+  });
+
+  test("Shopify (generic, non-anchored host): pr_prod_strat survives (#1228 step 3 narrowed this to shop.hololivepro.com)", () => {
+    const { cleanUrl } = clean(
+      "https://example-store.myshopify.com/products/widget?pr_prod_strat=copurchase&pr_rec_id=abc"
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(
+      u.searchParams.has("pr_prod_strat"),
+      "pr_prod_strat is no longer global — an unrelated Shopify storefront must not lose it",
+    );
   });
 
   test("Etsy: organic_search_click stripped; click_key stripped", () => {

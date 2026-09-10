@@ -26,7 +26,7 @@ export const TRACKING_PARAMS = [
   "mc_cid", "mc_eid", "mailingid", "hqemail",
 
   // Social
-  "igshid", "s_cid",
+  "s_cid",
 
   // YouTube share tracking
   "si",
@@ -39,9 +39,9 @@ export const TRACKING_PARAMS = [
   // AFFILIATE_PATTERNS. Applying it globally (urlFilter: "*") would strip it on those
   // domains before the affiliate engine can act, and also break GitHub ?ref= branch refs
   // and SPA internal navigation. Context-specific removal only via AFFILIATE_PATTERNS. (#160)
-  "source", "campaign", "clickid",
+  "source", "clickid",
   "_hsenc", "_hsmi", "hsctatracking",
-  "mkt_tok", "trk", "trkcampaign",
+  "mkt_tok", "trkcampaign",
 
   // Affiliate networks: click identifiers not covered by matrix v1.0.
   // Network click IDs in matrix v1.0 are declared in REDIRECT_NETWORK_PATTERNS.landingParams.
@@ -49,22 +49,18 @@ export const TRACKING_PARAMS = [
   // the Tradedoubler matrix entry; required-at-landing means it MUST NOT be in
   // the universal strip.)
 
-  // Microsoft / Windows
-  "ocid",
-
   // Amazon: internal / referral noise (not the affiliate tag)
   "psc", "spla",
 
-  "pf_rd_p", "pf_rd_r", "pf_rd_s",
   "linkcode", "linkid", "creativeasin", "spia",
   // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
   // attribution ID; stripping it kills creator attribution (#794).
-  "asc_contentid", "asc_contenttype", "asc_campaign",
-  "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
+  "asc_contentid", "asc_contenttype",
+  "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",
   // Amazon: store page / brand referral noise
-  "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
+  "lp_asin", "store_ref", "bl_grd_status", "ingress",
   // Amazon: search/browse noise
-  "sprefix", "crid", "sbo", "cv_ct_cx",
+  "sprefix", "sbo", "cv_ct_cx",
   // Amazon: locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
   // Stored lowercase. cleaner.js compares param.toLowerCase() against this list.
   "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
@@ -100,8 +96,8 @@ export const TRACKING_PARAMS = [
   // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
 
   // Naver (Korean search/ads)
-  "nclid", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
-  "n_keyword", "n_keyword_id", "n_campaign_type", "n_cid", "n_match",
+  "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
+  "n_keyword", "n_keyword_id", "n_campaign_type", "n_match",
   "ssc_referrer",
 
   // Kakao (Korean messaging/ads)
@@ -167,7 +163,6 @@ export const TRACKING_PARAMS = [
 
   // Taboola
   "taboola_campaign_id", // Taboola campaign
-  "tblci",               // Taboola click ID
 
   // Criteo
   "criteo_id",  // Criteo user ID
@@ -210,13 +205,9 @@ export const TRACKING_PARAMS = [
 
   // Google search tracking
   "ved",        // Google Visitor Encoding Data (click tracking)
-  "ei",         // Google Event ID (session tracking)
   "sca_esv",    // Google search experiment/session value
   "sxsrf",      // Google CSRF/tracking token
   "gs_lcp",     // Google search autocomplete tracking
-
-  // Reddit (additional)
-  "share_id",   // Reddit share tracking
 
   // Branch.io (deep link attribution)
   "_branch_match_id",  // Branch match ID
@@ -228,7 +219,6 @@ export const TRACKING_PARAMS = [
 
   // Salesforce Marketing Cloud
   "sfmc_id",         // SFMC contact ID
-  "sfmc_activityid", // SFMC activity tracking
 
   // Shopify
   "_pos",   // Product position in collection
@@ -236,19 +226,13 @@ export const TRACKING_PARAMS = [
   "_psq",   // Shopify predictive search query
   "_sid",   // Shopify session ID
   "_fid",   // Shopify filter ID
-  "pr_prod_strat",  // Shopify product recommendation strategy
-  "pr_rec_id",      // Shopify recommendation ID
-  "pr_ref_pid",     // Shopify referral product ID
-  "pr_rec_pid",     // Shopify recommended product ID
-  "pr_seq",         // Shopify recommendation sequence
 
   // AppsFlyer (mobile attribution)
   "af_dp",     // AppsFlyer deep link
   "af_web_dp", // AppsFlyer web deep link fallback
-  "af_sub1", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
+  "af_sub2", "af_sub3", "af_sub4", "af_sub5",
 
   // Adjust (mobile attribution)
-  "adjust_t",        // Adjust tracker
   "adjust_campaign", // Adjust campaign
   "adjust_adgroup",  // Adjust ad group
   "adjust_creative", // Adjust creative
@@ -286,9 +270,6 @@ export const TRACKING_PARAMS = [
   // IBM Acoustic / Silverpop (Neat URL)
   "spjobid", "spmailingid", "spreportid", "spuserid",
 
-  // Sailthru (Brave)
-  "sc_customer", "sc_eh", "sc_uid",
-
   // Listrak (Registry)
   "trk_contact", "trk_msg", "trk_module", "trk_sid",
 
@@ -319,7 +300,7 @@ export const TRACKING_PARAMS = [
   "syclid",           // Snapchat click ID (alternate)
 
   // Triple Whale (Registry)
-  "tw_source", "tw_adid",
+  "tw_source",
 
   // Adobe extended (AdGuard)
   "adobe_mc_ref",  // Adobe MC referrer
@@ -339,7 +320,6 @@ export const TRACKING_PARAMS = [
 
   // Generic / multi-platform
   "click_id",   // generic click ID
-  "ad_id",      // generic ad ID
   "ab_channel", // A/B test channel
   "ab_version", // A/B test version
 
@@ -533,7 +513,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Outbrain
       "oborigurl", "outbrainclickid",
       // Taboola
-      "taboola_campaign_id", "tblci",
+      "taboola_campaign_id",
       // Criteo
       "criteo_id",
       // Google Ads additional
@@ -547,7 +527,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Zemanta / Outbrain DSP
       "zemclick",
       // Generic click / ad IDs
-      "click_id", "ad_id",
+      "click_id",
       // Yandex
       "yclid", "ysclid", "_openstat", "ymclid",
       // Ad platforms (Brave + Registry; irclickid excluded per matrix v1.0)
@@ -561,7 +541,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Webtrekk
       "wt_zmc",
       // Triple Whale
-      "tw_source", "tw_adid",
+      "tw_source",
       // Marin Software
       "mkwid", "pcrid",
       // GoDataFeed
@@ -571,8 +551,8 @@ export const TRACKING_PARAM_CATEGORIES = {
       // AppsFlyer extended
       "af_xp", "af_ad", "af_adset",
       // Naver Ads (Korean)
-      "nclid", "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
-      "n_keyword", "n_keyword_id", "n_campaign_type", "n_cid", "n_match",
+      "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
+      "n_keyword", "n_keyword_id", "n_campaign_type", "n_match",
       "ssc_referrer",
       // Kakao Ads (Korean)
       "kclid", "kakao_agent", "kakaotrack",
@@ -616,7 +596,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Marketo
       "mkt_tok", "_mkto_trk",
       // Generic email
-      "trk", "trkcampaign",
+      "trkcampaign",
       // Iterable
       "itm_campaign", "itm_content", "itm_medium", "itm_source", "itm_term",
       // Klaviyo
@@ -640,8 +620,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "elqtrackid", "elqaid", "elqat", "elqcampaignid",
       // IBM Acoustic / Silverpop (Neat URL)
       "spjobid", "spmailingid", "spreportid", "spuserid",
-      // Sailthru (Brave)
-      "sc_customer", "sc_eh", "sc_uid",
       // Listrak (Registry)
       "trk_contact", "trk_msg", "trk_module", "trk_sid",
       // MailerLite (Brave + AdGuard)
@@ -679,8 +657,6 @@ export const TRACKING_PARAM_CATEGORIES = {
     descriptionPt: "Rastreamento de Instagram, Pinterest, Snapchat, etc.",
     descriptionDe: "Tracking von Instagram, Pinterest, Snapchat, etc.",
     params: [
-      // Instagram
-      "igshid",
       // Pinterest
       "e_t", "epik", "pin_unauth",
       // Snapchat
@@ -702,19 +678,16 @@ export const TRACKING_PARAM_CATEGORIES = {
       // TikTok
 
       // Generic
-      "source", "campaign", "clickid",
-      // Microsoft / Windows
-      "ocid",
+      "source", "clickid",
       // Amazon
       "psc", "spla",
 
-      "pf_rd_p", "pf_rd_r", "pf_rd_s",
       "linkcode", "linkid", "creativeasin", "spia",
       // ascsubtag removed: affiliate attribution (#794)
-      "asc_contentid", "asc_contenttype", "asc_campaign",
-      "_encoding", "content-id", "ref_", "social_share", "skiptwisterog", "starsleft",
-      "lp_asin", "store_ref", "bl_grd_status", "ingress", "visitid",
-      "sprefix", "crid", "sbo", "cv_ct_cx",
+      "asc_contentid", "asc_contenttype",
+      "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",
+      "lp_asin", "store_ref", "bl_grd_status", "ingress",
+      "sprefix", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
       "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
       // eBay
@@ -724,28 +697,25 @@ export const TRACKING_PARAM_CATEGORIES = {
       // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
       "afsmartredirect", "gatewayadapt", "mall_affr",
       // Google search tracking
-      "ved", "ei", "sca_esv", "sxsrf", "gs_lcp",
+      "ved", "sca_esv", "sxsrf", "gs_lcp",
       // GA4 cross-domain
       "_gl", "_ga", "_gac",
       // TikTok share tracking
       "tt_medium", "tt_content", "sender_web_id", "is_copy_url",
       // Meta mobile
       "fb_action_ids", "fb_action_types", "fb_ref", "fb_source",
-      // Reddit share
-      "share_id",
       // Branch.io
       "_branch_match_id", "_branch_referrer",
       // Braze
       "_bta_tid", "_bta_c",
       // Salesforce MC
-      "sfmc_id", "sfmc_activityid",
+      "sfmc_id",
       // Shopify
       "_pos", "_ss", "_psq", "_sid", "_fid",
-      "pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq",
       // AppsFlyer
-      "af_dp", "af_web_dp", "af_sub1", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
+      "af_dp", "af_web_dp", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
       // Adjust
-      "adjust_t", "adjust_campaign", "adjust_adgroup", "adjust_creative",
+      "adjust_campaign", "adjust_adgroup", "adjust_creative",
       // A/B test
       "ab_channel", "ab_version",
 

@@ -142,6 +142,12 @@ async function stubShopifyHost(page) {
 
           // Shopify re-adds its storefront context params via replaceState
           // as the user moves from a collection/search into a product.
+          // pr_* (product-recommendation params) left this fixture's assertion
+          // set in #1228 step 3: they left both TRACKING_PARAMS and the
+          // hot-path sync STRIP subset (hot-path-strip.js) and are now
+          // host-anchored to shop.hololivepro.com specifically, which this
+          // synthetic "shop.example" stub is not. They stay in the URL below
+          // to prove the sync subset does NOT touch them any more.
           document.getElementById("muga-shopify-btn").addEventListener("click", () => {
             history.replaceState({ tag: "muga-test" }, "Product",
               "/products/exfoliating-polish?_pos=7&_ss=r&_psq=x&_sid=bba2e42bf&_fid=y" +
@@ -258,10 +264,10 @@ test.describe("SPA reclean on pushState (#951 Layer B)", () => {
 
     await page.locator("#muga-shopify-btn").click();
 
-    // The whole Shopify storefront family (_pos/_ss/_psq/_sid/_fid + pr_*) is on
-    // the main-world SYNC subset, so it is stripped inside the replaceState wrap
-    // BEFORE the URL is ever committed. Poll defensively for gate arrival, then
-    // assert the committed URL is already clean.
+    // _pos/_ss/_psq/_sid/_fid are on the main-world SYNC subset, so they are
+    // stripped inside the replaceState wrap BEFORE the URL is ever committed.
+    // Poll defensively for gate arrival, then assert the committed URL is
+    // already clean.
     await page.waitForFunction(
       () => !window.location.search.includes("_pos"),
       { timeout: 10000 }
@@ -270,10 +276,15 @@ test.describe("SPA reclean on pushState (#951 Layer B)", () => {
     const finalPath = await page.evaluate(() => window.location.pathname);
     const finalSearch = await page.evaluate(() => window.location.search);
 
-    // Every Shopify storefront param is gone.
-    for (const p of ["_pos", "_ss", "_psq", "_sid", "_fid",
-      "pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"]) {
+    // Every Shopify storefront param the sync subset still owns is gone.
+    for (const p of ["_pos", "_ss", "_psq", "_sid", "_fid"]) {
       expect(finalSearch).not.toContain(p);
+    }
+    // pr_* left the sync subset in #1228 step 3 (host-anchored to
+    // shop.hololivepro.com now, not stripped globally) — this synthetic
+    // "shop.example" host is not that host, so pr_* must survive here.
+    for (const p of ["pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"]) {
+      expect(finalSearch).toContain(p);
     }
     // Functional param preserved; product path untouched.
     expect(finalSearch).toContain("variant=42");

@@ -1240,7 +1240,12 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("strips _encoding, content-id, ref_ — preserves th (variant selector)", () => {
     const raw = "https://www.amazon.es/Emergencia/dp/B0GF8C2S62/?_encoding=UTF8&content-id=amzn1.sym.abc&ref_=pd_hp_d_atf_unk&th=1";
-    const { cleanUrl, action } = processUrl(raw, PREFS);
+    // domainRules passed on purpose (#1228 step 3): `ref_` is no longer in the
+    // global list, because upstream only ever anchors it to two amazon
+    // subdomains and to imdb.com, which preserves it. amazon.es's own profile
+    // strips it, and the extension always passes these rules, so this is the
+    // path a user actually takes.
+    const { cleanUrl, action } = processUrl(raw, PREFS, domainRules);
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("_encoding"), null);
     assert.equal(u.searchParams.get("content-id"), null);
