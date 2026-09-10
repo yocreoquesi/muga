@@ -14,6 +14,11 @@ import { hasDNR, isFirefoxMV2, applyDnrState } from "./dnr-sync.js";
 import { createToolbarBadge } from "./toolbar-badge.js";
 import { createSingleFlightLoader, createFirstUsedBootstrap } from "../lib/single-flight-loader.js";
 import { runOneTimeMigrations } from "./run-migrations.js";
+import { openOnboardingOnce, clearOnboardingTabFlag, shouldOpenOnboarding } from "./onboarding-gate.js";
+import { maybeFetchRemoteRules } from "./remote-rules-wake.js";
+// Imported exactly once, here — see session-log.js's docblock for why that
+// matters and how a second import stays a no-op regardless.
+import { logAction } from "./session-log.js";
 import { enqueueListMutation } from "../lib/list-mutation-queue.js";
 import { t } from "../lib/i18n.js";
 import {
@@ -213,32 +218,11 @@ runOneTimeMigrations({
 });
 
 // --- Session log (actions + errors, exported via debug log) ---
-const SESSION_LOG_MAX = 2000;
+// appendSessionLog/logAction and the console.error/console.warn overrides
+// moved to ./session-log.js (#1266 item 5, slice 5). Imported exactly once,
+// at the top of this file — see that module's docblock for why importing it
+// more than once must never happen, and how it stays a no-op if it does.
 const MAX_URL_LENGTH = 8192;
-
-function appendSessionLog(level, args) {
-  const entry = { ts: Date.now(), level, msg: args.map(a => {
-    try { return typeof a === "object" ? JSON.stringify(a) : String(a); } catch { return "[unserializable]"; }
-  }).join(" ") };
-  sessionStorage.get({ debugLog: [] }).then(data => {
-    const log = [entry, ...data.debugLog].slice(0, SESSION_LOG_MAX);
-    sessionStorage.set({ debugLog: log }).catch(() => { /* best-effort debug log */ });
-  }).catch(() => { /* session storage may be unavailable */ });
-}
-
-/** Log a MUGA action as a structured object for rich debug output. */
-function logAction(action, detail) {
-  if (typeof detail === "object") {
-    appendSessionLog("action", [`[${action}]`, JSON.stringify(detail)]);
-  } else {
-    appendSessionLog("action", [`[${action}]`, detail]);
-  }
-}
-
-const _origError = console.error.bind(console);
-console.error = (...args) => { _origError(...args); appendSessionLog("error", args); };
-const _origWarn = console.warn.bind(console);
-console.warn = (...args) => { _origWarn(...args); appendSessionLog("warn", args); };
 
 // --- Cross-site frequency tracker singleton (#446 / #495) ---
 //
@@ -633,71 +617,10 @@ if (isFirefoxMV2()) {
 }
 
 // --- Remote-rules opportunistic fetch ---
-// MV3 service workers wake on many events (navigation, message, onInstalled,
-// onStartup, etc.). Instead of using chrome.alarms — which requires a separate
-// permission and a Privacy-practices justification — we piggyback on those
-// natural wake-ups and throttle with a time-gate stored in remoteRulesMeta.
-// Users who never open the browser don't need fresh rules; users who do, get
-// one fetch per ~7 days as a side-effect of normal activity.
-
-// Target interval between successful remote-rules fetches (7 days).
-const REMOTE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
-
-// Module-level flag — checked once per SW lifetime so repeated wake events
-// (one per message, one per navigation, etc.) don't hit chrome.storage on
-// every call. Resets automatically when the SW dies and respawns.
-let _remoteRulesCheckedThisLifetime = false;
-
-/**
- * Fires a remote-rules fetch iff (a) the user has opted in, (b) no fetch is
- * currently in flight (enforced by runRemoteRulesFetch internally), and (c)
- * the last successful fetch is older than REMOTE_REFRESH_INTERVAL_MS (or has
- * never happened). Silent no-op on any failure to read state — this is a
- * best-effort path that must never block callers.
- *
- * Deduplicated per SW lifetime via `_remoteRulesCheckedThisLifetime` so
- * hot paths (PROCESS_URL, message handlers) can call it freely without
- * extra storage reads.
- *
- * @param {object} deps - Dependencies for runRemoteRulesFetch (same shape as Phase 2).
- * @returns {Promise<void>}
- */
-async function maybeFetchRemoteRules(deps) {
-  if (_remoteRulesCheckedThisLifetime) return;
-  _remoteRulesCheckedThisLifetime = true;
-  try {
-    // Read the FULL merged prefs (not just remoteRulesEnabled): getPrefs()
-    // overlays the per-device consent record (onboardingDone / consentVersion /
-    // consentDate), which the consent gate below needs.
-    const prefs = await getPrefs();
-    if (!prefs.remoteRulesEnabled) return;
-    // Egress gate. Blocks the weekly signed GET to rules.muga.app until this
-    // device has a recorded acceptance at all.
-    //
-    // DELIBERATE CHANGE, not an oversight. #888 review C1 originally coupled
-    // this egress to a consent VERSION: a user still at stored consentVersion
-    // 1.0 (accepted before v1.1 disclosed the request) stayed blocked until
-    // they accepted a delta re-onboard. Adopting the uBlock Origin model
-    // removed the versioned-consent engine, so that per-version coupling is
-    // gone: a 1.0 user now makes the request on the next SW wake.
-    //
-    // Accepted on the same reasoning uBO applies to its own filter-list
-    // fetches — the Terms describing the request are available and linked, the
-    // request carries no data about the user (Ed25519-signed, credentials
-    // omitted, no body), and it can be turned off in Settings, which returns
-    // MUGA to making no outbound requests. Re-coupling disclosure to a version
-    // would mean reintroducing the version engine; that trade was considered
-    // and declined.
-    if (shouldOpenOnboarding(prefs)) return;
-    const { remoteRulesMeta } = await getRemoteParams();
-    const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
-    if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) return;
-    await runRemoteRulesFetch(deps);
-  } catch (err) {
-    // Non-fatal: remote rules are optional. Leave built-in rules active.
-    console.warn("[MUGA] maybeFetchRemoteRules:", err?.message || err);
-  }
-}
+// maybeFetchRemoteRules / REMOTE_REFRESH_INTERVAL_MS moved to
+// ./remote-rules-wake.js (#1266 item 5, slice 4). See that module's docblock
+// for why it imports shouldOpenOnboarding from ./onboarding-gate.js directly
+// rather than taking it as an injected dependency.
 
 /**
  * Global toolbar badge for the onboarding state. Shown as "!" while this
@@ -1706,60 +1629,8 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 
 // --- Dedup: open the onboarding tab at most once while consent is pending. ---
-// Two layers: a module flag guards a double-open within a single background
-// lifetime (onInstalled + fallback both firing), and a persisted
-// chrome.storage.local flag guards across MV3 service-worker cold starts (#967).
-// Without the persisted layer the volatile flag reset on every wake, so an
-// incomplete onboarding reopened a fresh tab on each navigation-triggered
-// restart. The persisted flag is cleared (clearOnboardingTabFlag) once consent
-// is valid, so a later ToS re-onboard can still surface the tab again.
-let _onboardingTabOpened = false;
-const ONBOARDING_TAB_FLAG = "mugaOnboardingTabOpened";
-
-async function openOnboardingOnce() {
-  if (_onboardingTabOpened) return;
-  _onboardingTabOpened = true; // synchronous within-lifetime guard (no await above)
-  try {
-    const already = await new Promise((resolve) => {
-      chrome.storage.local.get({ [ONBOARDING_TAB_FLAG]: false }, (r) =>
-        resolve(!!(r && r[ONBOARDING_TAB_FLAG])));
-    });
-    if (already) return; // a prior lifetime already opened it — do not spam a new tab
-    // Set BEFORE creating the tab so a rapid second cold start can't double-open.
-    await new Promise((resolve) => {
-      chrome.storage.local.set({ [ONBOARDING_TAB_FLAG]: true }, () => resolve());
-    });
-  } catch { /* best-effort: worst case one extra tab, never a missing one */ }
-  chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
-}
-
-// Clears the persisted onboarding-tab guard so a future re-onboard (ToS bump)
-// can open the tab again. Called when consent is valid — i.e. onboarding is not
-// currently needed — which is the natural point to reset the one-shot guard.
-function clearOnboardingTabFlag() {
-  _onboardingTabOpened = false;
-  try {
-    chrome.storage.local.remove(ONBOARDING_TAB_FLAG, () => void chrome.runtime.lastError);
-  } catch { /* ignore */ }
-}
-
-/**
- * Single decision function consulted by both the onInstalled and the
- * background-load fallback paths (#365). Returns true when the onboarding
- * tab should be opened, which now means one thing only: this device has no
- * recorded acceptance.
- *
- * A Terms update never reopens this tab. MUGA follows the uBlock Origin
- * model — Terms available and linked, acceptance by use, no re-prompt — so
- * the versioned-consent policy that used to return `soft-reonboard` /
- * `hard-reonboard` here was removed.
- *
- * @param {object} prefs - Merged prefs (consent overlay applied by getPrefs).
- * @returns {boolean}
- */
-function shouldOpenOnboarding(prefs) {
-  return !prefs.onboardingDone;
-}
+// openOnboardingOnce / clearOnboardingTabFlag / shouldOpenOnboarding moved to
+// ./onboarding-gate.js (#1266 item 5, slice 3). See that module's docblock.
 
 // --- Migration banner support: persist the previous version (#1100) --------
 // The popup's migration banner (src/lib/migration-prompt.js) computes a

@@ -12,57 +12,39 @@
  * that survives cold starts, cleared once consent is valid so a later ToS
  * re-onboard can surface the tab again.
  *
- * service-worker.js is browser-only (top-level chrome.*), so we pin the wiring
- * via source inspection AND exercise the extracted openOnboardingOnce against a
- * fake chrome, the established pattern for this module.
+ * `openOnboardingOnce` / `clearOnboardingTabFlag` / `shouldOpenOnboarding`
+ * moved to `src/background/onboarding-gate.js` (#1266 item 5, slice 3),
+ * which is importable in Node. Before that move this file extracted the
+ * function body out of service-worker.js by string search and brace
+ * matching, then `new Function(...)`-evaluated it against a hand-rolled
+ * `_onboardingTabOpened` / `ONBOARDING_TAB_FLAG` pair it re-declared itself —
+ * a reimplementation with no structural tie to the source it claimed to
+ * prove. Below imports and exercises the REAL functions instead. The one
+ * remaining source-text assertion pins the composition-root WIRING in
+ * service-worker.js (which if/else branch calls which function) — that
+ * stays there by design (#1266), so it stays a source check.
  */
 
-import { test, describe } from "node:test";
+import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import {
+  openOnboardingOnce,
+  clearOnboardingTabFlag,
+  shouldOpenOnboarding,
+} from "../../src/background/onboarding-gate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../..");
 const SW_SOURCE = readFileSync(resolve(root, "src/background/service-worker.js"), "utf8");
 
-/** Extracts a top-level `async function <name>(...) { ... }` block via brace matching. */
-function extractFunctionSource(src, name) {
-  const idx = src.indexOf(`async function ${name}`);
-  assert.ok(idx !== -1, `${name} must be defined as an async function`);
-  let depth = 0;
-  let started = false;
-  let i = idx;
-  for (; i < src.length; i++) {
-    if (src[i] === "{") { depth++; started = true; }
-    else if (src[i] === "}") {
-      depth--;
-      if (started && depth === 0) { i++; break; }
-    }
-  }
-  return src.slice(idx, i);
-}
-
-/** Builds a callable openOnboardingOnce bound to a fake `chrome`, with fresh module state. */
-function buildOpenOnboardingOnce(fakeChrome) {
-  const fnSrc = extractFunctionSource(SW_SOURCE, "openOnboardingOnce");
-  const factory = new Function(
-    "chrome",
-    `"use strict";
-     let _onboardingTabOpened = false;
-     const ONBOARDING_TAB_FLAG = "mugaOnboardingTabOpened";
-     ${fnSrc}
-     return openOnboardingOnce;`,
-  );
-  return factory(fakeChrome);
-}
-
 /** Minimal chrome.storage.local + tabs stub backed by an in-memory store. */
 function makeFakeChrome(initialStore = {}) {
   const store = { ...initialStore };
   const calls = { created: 0, lastCreatedUrl: null };
-  const fakeChrome = {
+  globalThis.chrome = {
     storage: {
       local: {
         get: (defaults, cb) => cb({ ...defaults, ...store }),
@@ -75,29 +57,24 @@ function makeFakeChrome(initialStore = {}) {
     },
     runtime: { getURL: (p) => p, lastError: null },
   };
-  return { fakeChrome, store, calls };
+  return { store, calls };
 }
 
+// _onboardingTabOpened is module-scope state in onboarding-gate.js — one
+// check per "SW lifetime" in production. Reset it before every test so each
+// one starts from a known fresh-lifetime state, the same way a real SW
+// restart would (clearOnboardingTabFlag() is itself under test below, so
+// using it here is exercising real code, not a test-only backdoor).
+beforeEach(() => {
+  makeFakeChrome();
+  clearOnboardingTabFlag();
+});
+
 describe("#967 — onboarding tab dedup survives SW cold starts", () => {
-
-  test("SW defines a persisted ONBOARDING_TAB_FLAG guard", () => {
-    assert.ok(
-      /const ONBOARDING_TAB_FLAG\s*=\s*"mugaOnboardingTabOpened"/.test(SW_SOURCE),
-      "service-worker must define a persisted onboarding-tab flag key",
-    );
-  });
-
-  test("openOnboardingOnce reads and writes the persisted flag in chrome.storage.local", () => {
-    const fnSrc = extractFunctionSource(SW_SOURCE, "openOnboardingOnce");
-    assert.ok(fnSrc.includes("chrome.storage.local.get"), "must read the persisted flag");
-    assert.ok(fnSrc.includes("chrome.storage.local.set"), "must persist the flag");
-    assert.ok(fnSrc.includes("ONBOARDING_TAB_FLAG"), "must key on ONBOARDING_TAB_FLAG");
-  });
-
   test("consent-valid path clears the persisted guard for future re-onboards", () => {
     assert.ok(
-      SW_SOURCE.includes("function clearOnboardingTabFlag"),
-      "must define clearOnboardingTabFlag",
+      SW_SOURCE.includes('from "./onboarding-gate.js"'),
+      "service-worker must import the onboarding-gate module",
     );
     // The fallback IIFE's else-branch (consent satisfied) must clear it.
     assert.ok(
@@ -106,10 +83,8 @@ describe("#967 — onboarding tab dedup survives SW cold starts", () => {
     );
   });
 
-  // Behavioral: run the real extracted function against a fake chrome.
   test("first call opens exactly one tab and persists the flag", async () => {
-    const { fakeChrome, store, calls } = makeFakeChrome();
-    const openOnboardingOnce = buildOpenOnboardingOnce(fakeChrome);
+    const { store, calls } = makeFakeChrome();
     await openOnboardingOnce();
     assert.equal(calls.created, 1, "opens the onboarding tab on first pending call");
     assert.equal(store.mugaOnboardingTabOpened, true, "persists the guard flag");
@@ -117,19 +92,54 @@ describe("#967 — onboarding tab dedup survives SW cold starts", () => {
   });
 
   test("a later cold start does NOT reopen when the persisted flag is already set", async () => {
-    // Simulate a fresh SW lifetime (fresh module state) where the flag persisted
-    // from a previous lifetime is already true.
-    const { fakeChrome, calls } = makeFakeChrome({ mugaOnboardingTabOpened: true });
-    const openOnboardingOnce = buildOpenOnboardingOnce(fakeChrome);
+    // Simulate a fresh SW lifetime (beforeEach already reset the module flag)
+    // where the flag persisted from a previous lifetime is already true.
+    const { calls } = makeFakeChrome({ mugaOnboardingTabOpened: true });
     await openOnboardingOnce();
     assert.equal(calls.created, 0, "must not spam a new tab across cold starts");
   });
 
   test("two calls in the same lifetime open only one tab (module-flag guard)", async () => {
-    const { fakeChrome, calls } = makeFakeChrome();
-    const openOnboardingOnce = buildOpenOnboardingOnce(fakeChrome);
+    const { calls } = makeFakeChrome();
     await openOnboardingOnce();
     await openOnboardingOnce();
     assert.equal(calls.created, 1, "within-lifetime double call opens one tab");
+  });
+});
+
+describe("clearOnboardingTabFlag — real behavior, not just a source-text guard", () => {
+  test("removes the persisted flag from chrome.storage.local", () => {
+    const { store } = makeFakeChrome({ mugaOnboardingTabOpened: true });
+    clearOnboardingTabFlag();
+    assert.strictEqual(store.mugaOnboardingTabOpened, undefined);
+  });
+
+  test("resets the module flag so a later call can open a new tab", async () => {
+    const { calls: firstCalls } = makeFakeChrome();
+    await openOnboardingOnce();
+    assert.equal(firstCalls.created, 1);
+
+    clearOnboardingTabFlag();
+
+    // A fresh store (as if the persisted flag was also cleared elsewhere,
+    // e.g. by a real re-onboard) plus the reset module flag lets a later
+    // call open the tab again.
+    const { calls: secondCalls } = makeFakeChrome();
+    await openOnboardingOnce();
+    assert.equal(secondCalls.created, 1, "after clearOnboardingTabFlag, a later call can open again");
+  });
+});
+
+describe("shouldOpenOnboarding — pure decision function", () => {
+  test("true when onboardingDone is false", () => {
+    assert.strictEqual(shouldOpenOnboarding({ onboardingDone: false }), true);
+  });
+
+  test("false when onboardingDone is true", () => {
+    assert.strictEqual(shouldOpenOnboarding({ onboardingDone: true }), false);
+  });
+
+  test("true when onboardingDone is absent (defensive default)", () => {
+    assert.strictEqual(shouldOpenOnboarding({}), true);
   });
 });

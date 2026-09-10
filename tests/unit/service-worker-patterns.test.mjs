@@ -5,7 +5,7 @@
  * by reading source code and replicating key functions.
  */
 
-import { test, describe } from "node:test";
+import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -344,94 +344,120 @@ describe("Security: debug log payload privacy (finding 1)", () => {
 // Replaces chrome.alarms. No new permission required — the SW wakes on natural
 // events (onInstalled, onStartup, PROCESS_URL) and checks the stored fetchedAt
 // timestamp. One check per SW lifetime via a module-level flag.
+//
+// maybeFetchRemoteRules / REMOTE_REFRESH_INTERVAL_MS moved to
+// src/background/remote-rules-wake.js (#1266 item 5, slice 4). This block
+// used to run against `makeMaybeFetchHelper()`, "Pure extraction of
+// maybeFetchRemoteRules for unit testing. Mirrors the production logic in
+// service-worker.js" by its own comment — a reimplementation with no
+// structural tie to the function it claimed to mirror. The tests below
+// import and exercise the REAL function; see
+// tests/unit/remote-rules-wake.test.mjs for the throttle and
+// error-does-not-wedge-it coverage #1266 asks for specifically — this block
+// keeps the egress-gate scenarios that already lived here, now proven
+// against real code instead of a hand-copy of it.
 
-const REMOTE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+/** Builds a chrome.storage.{sync,local} stub backed by plain objects. */
+function makeRemoteRulesWakeChrome(syncStore = {}, localStore = {}) {
+  const sync = { ...syncStore };
+  const local = { ...localStore };
+  const area = (store) => ({
+    get: (defaults, cb) => cb({ ...defaults, ...store }),
+    set: (obj, cb) => { Object.assign(store, obj); cb && cb(); },
+    remove: (key, cb) => {
+      (Array.isArray(key) ? key : [key]).forEach((k) => delete store[k]);
+      cb && cb();
+    },
+  });
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    storage: { sync: area(sync), local: area(local) },
+  };
+  return { sync, local };
+}
 
 /**
- * Pure extraction of maybeFetchRemoteRules for unit testing. Mirrors the
- * production logic in service-worker.js.
+ * Builds the runRemoteRulesFetch-shaped deps maybeFetchRemoteRules forwards
+ * to it, with a fetchImpl that records every call and rejects immediately —
+ * enough to tell whether a fetch was ATTEMPTED (what the throttle gates)
+ * without needing a real network response or a valid signature.
  */
-function makeMaybeFetchHelper() {
-  let _checked = false;
-  return async function maybeFetchRemoteRules(deps) {
-    if (_checked) return "skipped-dedup";
-    _checked = true;
-    // Read FULL merged prefs (includes the consent overlay), mirroring prod.
-    const prefs = await deps.getPrefs();
-    if (!prefs.remoteRulesEnabled) return "disabled";
-    // Egress gate — mirrors shouldOpenOnboarding(prefs) in service-worker.js.
-    // The egress waits until this device has a recorded acceptance at all. It
-    // is no longer coupled to a consent VERSION (see the uBO-model note on the
-    // production gate).
-    if (!prefs.onboardingDone) return "consent-blocked";
-    const { remoteRulesMeta } = await deps.getRemoteParams();
-    const last = remoteRulesMeta?.fetchedAt ? Date.parse(remoteRulesMeta.fetchedAt) : 0;
-    if (Number.isFinite(last) && Date.now() - last < REMOTE_REFRESH_INTERVAL_MS) {
-      return "fresh";
-    }
-    await deps.runFetch(deps.fetchDeps);
-    return "ran";
+function makeRunFetchDeps() {
+  const calls = [];
+  const localStore = {};
+  return {
+    calls,
+    deps: {
+      fetchImpl: async (url, opts) => {
+        calls.push({ url, opts });
+        throw new Error("test-fetch-reject");
+      },
+      subtle: undefined,
+      trustedKeys: [],
+      storage: {
+        get: async (d) => ({ ...d, ...localStore }),
+        set: async (obj) => { Object.assign(localStore, obj); },
+        remove: async () => {},
+      },
+      dnr: { updateDynamicRules: async () => {} },
+    },
   };
 }
 
 describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
+  let maybeFetchRemoteRules;
+
+  beforeEach(async () => {
+    // _remoteRulesCheckedThisLifetime is module-scope state — one check per
+    // "SW lifetime". A fresh cache-busted import here is the test equivalent
+    // of a fresh service-worker cold start, so every test below starts
+    // un-checked regardless of what ran before it.
+    const mod = await import(`../../src/background/remote-rules-wake.js?cb=${Math.random()}`);
+    maybeFetchRemoteRules = mod.maybeFetchRemoteRules;
+  });
+
   test("short-circuits when remoteRulesEnabled is false (SC-01)", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
-    const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: false }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "disabled");
-    assert.strictEqual(fetchCalled, false, "fetch must not fire when disabled");
+    makeRemoteRulesWakeChrome({ remoteRulesEnabled: false });
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 0, "fetch must not fire when disabled");
   });
 
   test("short-circuits when last fetch is fresh (< 7 days)", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
     const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1h ago
-    const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: recent } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "fresh");
-    assert.strictEqual(fetchCalled, false);
+    makeRemoteRulesWakeChrome(
+      { remoteRulesEnabled: true },
+      { mugaConsent: { ...VALID_CONSENT, consentDate: Date.now() }, remoteRulesMeta: { fetchedAt: recent } },
+    );
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 0);
   });
 
   test("fires fetch when last fetch is stale (> 7 days)", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
     const stale = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
-    const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: stale } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "ran");
-    assert.strictEqual(fetchCalled, true);
+    makeRemoteRulesWakeChrome(
+      { remoteRulesEnabled: true },
+      { mugaConsent: { ...VALID_CONSENT, consentDate: Date.now() }, remoteRulesMeta: { fetchedAt: stale } },
+    );
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 1);
   });
 
   test("fires fetch when fetchedAt is absent (first-time enable)", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
-    const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "ran");
-    assert.strictEqual(fetchCalled, true);
+    makeRemoteRulesWakeChrome(
+      { remoteRulesEnabled: true },
+      { mugaConsent: { ...VALID_CONSENT, consentDate: Date.now() } },
+    );
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 1);
   });
 
   // ── Egress gate on the weekly signed GET ──────────────────────────────────
   // The request must not fire on a device that has never recorded acceptance.
-  // These assert REAL behavior (was runFetch called?), not source text.
+  // These assert REAL behavior (was fetchImpl called?), not source text.
   //
   // #888 review C1 additionally blocked a user whose stored consentVersion
   // predated the version that disclosed this request. That per-version
@@ -439,92 +465,54 @@ describe("Remote-rules on-wake time-gated fetch (replaces alarms)", () => {
   // the uBlock Origin model; the test below pins the resulting behavior so the
   // change stays visible rather than silently regressing back.
   test("an older stored consentVersion no longer blocks the fetch (uBO model)", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
-    const result = await maybe({
+    makeRemoteRulesWakeChrome(
+      { remoteRulesEnabled: true },
       // Accepted long ago, at a Terms version predating this request's
-      // disclosure. Under the versioned engine this returned "consent-blocked".
-      getPrefs: async () => ({ remoteRulesEnabled: true, onboardingDone: true, consentVersion: "1.0" }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "ran");
-    assert.strictEqual(fetchCalled, true, "acceptance is not re-gated per Terms version");
+      // disclosure. Under the versioned engine this used to block the fetch.
+      { mugaConsent: { onboardingDone: true, consentVersion: "1.0", consentDate: Date.now() } },
+    );
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 1, "acceptance is not re-gated per Terms version");
   });
 
   test("does NOT fetch when consent is never-accepted", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
-    const result = await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true }), // no onboardingDone → never-accepted
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "consent-blocked");
-    assert.strictEqual(fetchCalled, false);
+    // No mugaConsent record stored → getConsent() falls back to
+    // CONSENT_DEFAULTS (onboardingDone: false) → never-accepted.
+    makeRemoteRulesWakeChrome({ remoteRulesEnabled: true }, {});
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 0);
   });
 
   test("C1: DOES fetch when consent is valid (stored version === required)", async () => {
-    let fetchCalled = false;
-    const maybe = makeMaybeFetchHelper();
-    const result = await maybe({
-      // Uses the live TERMS_VERSION (via VALID_CONSENT) rather than
-      // a hardcoded literal so this test does not go stale every time a new
-      // consent version ships.
-      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async () => { fetchCalled = true; },
-      fetchDeps: {},
-    });
-    assert.strictEqual(result, "ran");
-    assert.strictEqual(fetchCalled, true, "egress allowed once the user has accepted the disclosing consent version");
+    // Uses the live TERMS_VERSION (via VALID_CONSENT) rather than a hardcoded
+    // literal so this test does not go stale every time a new consent
+    // version ships.
+    makeRemoteRulesWakeChrome(
+      { remoteRulesEnabled: true },
+      { mugaConsent: { ...VALID_CONSENT, consentDate: Date.now() } },
+    );
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 1, "egress allowed once the user has accepted the disclosing consent version");
   });
 
   test("dedupes subsequent calls in the same SW lifetime", async () => {
-    let fetchCount = 0;
-    const maybe = makeMaybeFetchHelper();
-    const deps = {
-      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async () => { fetchCount++; },
-      fetchDeps: {},
-    };
-    const first = await maybe(deps);
-    const second = await maybe(deps);
-    const third = await maybe(deps);
-    assert.strictEqual(first, "ran");
-    assert.strictEqual(second, "skipped-dedup");
-    assert.strictEqual(third, "skipped-dedup");
-    assert.strictEqual(fetchCount, 1, "runFetch must only be invoked once per SW lifetime");
-  });
-
-  test("passes fetchDeps to runFetch", async () => {
-    let received = null;
-    const maybe = makeMaybeFetchHelper();
-    const fakeDeps = { marker: "xyz" };
-    await maybe({
-      getPrefs: async () => ({ remoteRulesEnabled: true, ...VALID_CONSENT }),
-      getRemoteParams: async () => ({ remoteRulesMeta: { fetchedAt: null } }),
-      runFetch: async (deps) => { received = deps; },
-      fetchDeps: fakeDeps,
-    });
-    assert.strictEqual(received, fakeDeps);
-  });
-
-  test("service worker source defines maybeFetchRemoteRules", () => {
-    assert.ok(
-      /function\s+maybeFetchRemoteRules|async\s+function\s+maybeFetchRemoteRules/.test(swSource),
-      "SW must define maybeFetchRemoteRules function"
+    makeRemoteRulesWakeChrome(
+      { remoteRulesEnabled: true },
+      { mugaConsent: { ...VALID_CONSENT, consentDate: Date.now() } },
     );
+    const { calls, deps } = makeRunFetchDeps();
+    await maybeFetchRemoteRules(deps);
+    await maybeFetchRemoteRules(deps);
+    await maybeFetchRemoteRules(deps);
+    assert.strictEqual(calls.length, 1, "a fetch must only be attempted once per SW lifetime");
   });
 
-  test("service worker defines REMOTE_REFRESH_INTERVAL_MS as 7 days", () => {
-    const match = swSource.match(/REMOTE_REFRESH_INTERVAL_MS\s*=\s*([^;]+);/);
-    assert.ok(match, "SW must define REMOTE_REFRESH_INTERVAL_MS");
-    const value = Function(`"use strict"; return (${match[1]});`)();
-    assert.strictEqual(value, 7 * 24 * 60 * 60 * 1000, "must equal 7 days in ms");
+  test("REMOTE_REFRESH_INTERVAL_MS is 7 days", async () => {
+    const { REMOTE_REFRESH_INTERVAL_MS } = await import("../../src/background/remote-rules-wake.js");
+    assert.strictEqual(REMOTE_REFRESH_INTERVAL_MS, 7 * 24 * 60 * 60 * 1000, "must equal 7 days in ms");
   });
 
   test("service worker calls maybeFetchRemoteRules from onInstalled", () => {
