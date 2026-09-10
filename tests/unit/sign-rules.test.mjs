@@ -571,7 +571,21 @@ describe("sign-rules.mjs preserve guard vs. built-ins (#1221)", () => {
     // The load-bearing half: signing must not silently drop params. A signer
     // that "passed" by discarding the offending ones would satisfy the
     // signability test above and be far worse than the failure it replaced.
-    assert.deepStrictEqual(signed.params, published.params);
+    //
+    // Compared against the SOURCE, not the published file. That is both
+    // stronger and actually checkable. It is the signer's own behaviour under
+    // test here, and the source is its input; the published file is a snapshot
+    // of some earlier input and says nothing about whether this signer drops
+    // anything.
+    const source = JSON.parse(
+      readFileSync(join(REPO_ROOT, "tools", "rules-source", "params.json"), "utf8")
+    );
+    assert.deepStrictEqual(
+      signed.params,
+      source.params,
+      "the signer dropped or reordered params from its own input, which is the exact " +
+        "failure mode a signability-only test would let through"
+    );
 
     // NOT equality: the source legitimately runs AHEAD of the published file
     // whenever a version bump is committed and waiting to publish. Monotonicity
@@ -580,6 +594,26 @@ describe("sign-rules.mjs preserve guard vs. built-ins (#1221)", () => {
       signed.version >= published.version,
       `source version ${signed.version} must not regress below published ${published.version}`
     );
+
+    // #1326: this used to compare `signed.params` against the PUBLISHED params
+    // unconditionally, which made the pending-publish state the comment above
+    // describes impossible to reach. A version bump exists precisely because
+    // the params changed, so "a bump committed and waiting to publish" always
+    // carries a params delta too. Tolerating the version while forbidding the
+    // delta contradicted itself, and it fired on the change that removed 31
+    // path-anchor-only params from the channel.
+    //
+    // What is still worth pinning: params must NOT move without a bump, or an
+    // installed build rejects the payload as VERSION_REGRESSION and silently
+    // keeps the old rules.
+    if (signed.version === published.version) {
+      assert.deepStrictEqual(
+        signed.params,
+        published.params,
+        "the source params changed without a version bump, so every installed build would " +
+          "reject the republished payload and keep the old list"
+      );
+    }
   });
 
   test("a built-in that some host preserves is allowed through", () => {
