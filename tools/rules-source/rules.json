@@ -18,6 +18,10 @@
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
       },
+      "adshares.net": {
+        "emitStripParams": true,
+        "note": "Adshares decentralized ad exchange. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "aladin.co.kr": {
         "emitStripParams": true,
         "note": "Korean online bookstore. Search, pagination, category, date: functional."
@@ -98,6 +102,10 @@
         "emitStripParams": true,
         "note": "Brazilian retail marketplace. Search, pagination, sort: functional. operationHash is a GraphQL cache-bust token."
       },
+      "ana.co.jp": {
+        "emitStripParams": true,
+        "note": "All Nippon Airways (ANA), Japanese airline. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "apple.com": {
         "emitStripParams": true,
         "note": "Apple. afid/ct/pt are affiliate/campaign tracking. `at` is Apple's Performance Partners affiliate token (#1252), preserved here rather than guarded globally: this scope suffix-covers music/tv/books/podcasts/apps/itunes.apple.com, the hosts that actually carry it."
@@ -109,6 +117,10 @@
       "as.com": {
         "emitStripParams": false,
         "note": "Search query: functional"
+      },
+      "asahi.com": {
+        "emitStripParams": true,
+        "note": "Asahi Shimbun, Japanese newspaper. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
       },
       "auction.co.kr": {
         "emitStripParams": true,
@@ -125,6 +137,10 @@
       "bbc.com": {
         "emitStripParams": true,
         "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
+      },
+      "belta.co.jp": {
+        "emitStripParams": true,
+        "note": "Belta, Japanese health/beauty e-commerce. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
       },
       "bestbuy.com": {
         "emitStripParams": true,
@@ -158,6 +174,10 @@
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
       },
+      "candy.ai": {
+        "emitStripParams": true,
+        "note": "Candy.AI, AI companion platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "carrefourpl.snrpage.com": {
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
@@ -169,6 +189,10 @@
       "cnn.com": {
         "emitStripParams": false,
         "note": "Search query: functional"
+      },
+      "controld.com": {
+        "emitStripParams": true,
+        "note": "Control D, DNS filtering/network control service. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
       },
       "coolblue.nl": {
         "emitStripParams": true,
@@ -334,6 +358,10 @@
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
       },
+      "giphy.com": {
+        "emitStripParams": true,
+        "note": "Giphy, GIF search platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "github.com": {
         "emitStripParams": true,
         "note": "Search, tab, sort, pagination: functional. Email notification tracking stripped."
@@ -418,6 +446,34 @@
         "emitStripParams": true,
         "note": "Korean grocery delivery (Market Kurly). Search, pagination, sort: functional."
       },
+      "lazada.co.id": {
+        "emitStripParams": true,
+        "note": "Lazada Indonesia storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
+      "lazada.co.th": {
+        "emitStripParams": true,
+        "note": "Lazada Thailand storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
+      "lazada.com": {
+        "emitStripParams": true,
+        "note": "Lazada, Southeast Asian e-commerce marketplace. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
+      "lazada.com.my": {
+        "emitStripParams": true,
+        "note": "Lazada Malaysia storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
+      "lazada.com.ph": {
+        "emitStripParams": true,
+        "note": "Lazada Philippines storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
+      "lazada.sg": {
+        "emitStripParams": true,
+        "note": "Lazada Singapore storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
+      "lazada.vn": {
+        "emitStripParams": true,
+        "note": "Lazada Vietnam storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+      },
       "lenovo.com": {
         "emitStripParams": true,
         "note": "Lenovo. Outbrain/campaign tracking stripped."
@@ -433,6 +489,10 @@
       "liverpool.com.mx": {
         "emitStripParams": true,
         "note": "Mexican department store. Search query: functional."
+      },
+      "lululemon.com.hk": {
+        "emitStripParams": true,
+        "note": "Lululemon Hong Kong storefront. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
       },
       "maps.google.com": {
         "emitStripParams": false,
@@ -514,6 +574,14 @@
         "emitStripParams": true,
         "note": "US electronics retailer. Search, category, pagination: functional."
       },
+      "nhk.jp": {
+        "emitStripParams": true,
+        "note": "NHK, Japan's public broadcaster. Search query preserved as a safe default. `cid` host-anchored via AdGuard `domain=nhk.jp|nhk.or.jp$removeparam=cid`, not global (#1228 step 2)."
+      },
+      "nhk.or.jp": {
+        "emitStripParams": true,
+        "note": "NHK, Japan's public broadcaster. Search query preserved as a safe default. `cid` host-anchored via AdGuard `domain=nhk.jp|nhk.or.jp$removeparam=cid`, not global (#1228 step 2)."
+      },
       "nike.com": {
         "emitStripParams": true,
         "note": "Nike. Search query: functional."
@@ -558,6 +626,10 @@
         "emitStripParams": true,
         "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
       },
+      "petbook.de": {
+        "emitStripParams": true,
+        "note": "Petbook, German pet-supplies e-commerce. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "pinterest.com": {
         "emitStripParams": false,
         "note": "Search and pagination: functional"
@@ -566,9 +638,21 @@
         "emitStripParams": false,
         "note": "App ID and locale: functional"
       },
+      "porntube.com": {
+        "emitStripParams": true,
+        "note": "Adult video platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
+      "rac.co.uk": {
+        "emitStripParams": true,
+        "note": "RAC, UK motoring/breakdown services. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "rd.bizrate.com": {
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+      },
+      "realtor.com": {
+        "emitStripParams": true,
+        "note": "Realtor.com, US real-estate listings. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
       },
       "reddit.app.link": {
         "emitStripParams": false,
@@ -594,6 +678,10 @@
         "emitStripParams": false,
         "note": "Search query and pagination: functional"
       },
+      "samsung.com": {
+        "emitStripParams": true,
+        "note": "Samsung Electronics. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "scholar.google.com": {
         "emitStripParams": false,
         "note": "Scholar search, citation filters, pagination: functional"
@@ -618,6 +706,10 @@
         "emitStripParams": true,
         "note": "Deal aggregator. Attribution/ad tracking stripped."
       },
+      "sonybank.jp": {
+        "emitStripParams": true,
+        "note": "Sony Bank, Japanese online bank. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "ssg.com": {
         "emitStripParams": true,
         "note": "Shinsegae Group online department store"
@@ -633,6 +725,10 @@
       "target.com": {
         "emitStripParams": true,
         "note": "US retailer. ref/afid/fndsrc are ad attribution tracking."
+      },
+      "teknosa.com": {
+        "emitStripParams": true,
+        "note": "Teknosa, Turkish electronics retailer. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
       },
       "temu.com": {
         "emitStripParams": false,
@@ -678,6 +774,10 @@
         "emitStripParams": true,
         "note": "US beauty retailer. Search query: functional."
       },
+      "urban-vpn.com": {
+        "emitStripParams": true,
+        "note": "Urban VPN service. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
       "usprobioticguide.com": {
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
@@ -685,6 +785,14 @@
       "video-shoper.ru": {
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+      },
+      "video.unext.jp": {
+        "emitStripParams": true,
+        "note": "U-NEXT, Japanese video streaming service. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+      },
+      "vitamix.com": {
+        "emitStripParams": true,
+        "note": "Vitamix, blender manufacturer e-commerce. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
       },
       "vk.com": {
         "emitStripParams": true,
@@ -777,6 +885,8 @@
     {"scope":"20minutos.es","param":"q","action":"preserve"},
     {"scope":"29cm.co.kr","param":"keyword","action":"preserve"},
     {"scope":"adj.st","param":"adj_t","action":"preserve"},
+    {"scope":"adshares.net","param":"q","action":"preserve"},
+    {"scope":"adshares.net","param":"cid","action":"strip"},
     {"scope":"aladin.co.kr","param":"search","action":"preserve"},
     {"scope":"aladin.co.kr","param":"start","action":"preserve"},
     {"scope":"aladin.co.kr","param":"type","action":"preserve"},
@@ -1970,19 +2080,24 @@
     {"scope":"americanas.com.br","param":"page","action":"preserve"},
     {"scope":"americanas.com.br","param":"sort","action":"preserve"},
     {"scope":"americanas.com.br","param":"operationhash","action":"strip"},
+    {"scope":"ana.co.jp","param":"q","action":"preserve"},
+    {"scope":"ana.co.jp","param":"cid","action":"strip"},
     {"scope":"apple.com","param":"mt","action":"preserve"},
     {"scope":"apple.com","param":"ls","action":"preserve"},
     {"scope":"apple.com","param":"l","action":"preserve"},
     {"scope":"apple.com","param":"app","action":"preserve"},
     {"scope":"apple.com","param":"id","action":"preserve"},
+    {"scope":"apple.com","param":"at","action":"preserve"},
     {"scope":"apple.com","param":"afid","action":"strip"},
     {"scope":"apple.com","param":"ct","action":"strip"},
     {"scope":"apple.com","param":"pt","action":"strip"},
-    {"scope":"apple.com","param":"at","action":"preserve"},
+    {"scope":"apple.com","param":"cid","action":"strip"},
     {"scope":"apps.apple.com","param":"mt","action":"preserve"},
     {"scope":"apps.apple.com","param":"ls","action":"preserve"},
     {"scope":"apps.apple.com","param":"l","action":"preserve"},
     {"scope":"as.com","param":"q","action":"preserve"},
+    {"scope":"asahi.com","param":"q","action":"preserve"},
+    {"scope":"asahi.com","param":"cid","action":"strip"},
     {"scope":"auction.co.kr","param":"keyword","action":"preserve"},
     {"scope":"auction.co.kr","param":"gdno","action":"preserve"},
     {"scope":"auction.co.kr","param":"itemno","action":"preserve"},
@@ -2013,6 +2128,8 @@
     {"scope":"bbc.com","param":"page","action":"preserve"},
     {"scope":"bbc.com","param":"facebook_page","action":"strip"},
     {"scope":"bbc.com","param":"at_bbc_team","action":"strip"},
+    {"scope":"belta.co.jp","param":"q","action":"preserve"},
+    {"scope":"belta.co.jp","param":"cid","action":"strip"},
     {"scope":"bestbuy.com","param":"id","action":"preserve"},
     {"scope":"bestbuy.com","param":"intl","action":"preserve"},
     {"scope":"bestbuy.com","param":"page","action":"preserve"},
@@ -2089,11 +2206,15 @@
     {"scope":"booking.com","param":"sid","action":"strip"},
     {"scope":"booking.com","param":"keep_landing","action":"strip"},
     {"scope":"canadacompanyregistry.com","param":"utm_campaign","action":"preserve"},
+    {"scope":"candy.ai","param":"q","action":"preserve"},
+    {"scope":"candy.ai","param":"cid","action":"strip"},
     {"scope":"carrefourpl.snrpage.com","param":"utm_source","action":"preserve"},
     {"scope":"cnbc.com","param":"q","action":"preserve"},
     {"scope":"cnbc.com","param":"__source","action":"strip"},
     {"scope":"cnbc.com","param":"par","action":"strip"},
     {"scope":"cnn.com","param":"q","action":"preserve"},
+    {"scope":"controld.com","param":"q","action":"preserve"},
+    {"scope":"controld.com","param":"cid","action":"strip"},
     {"scope":"coolblue.nl","param":"q","action":"preserve"},
     {"scope":"coolblue.nl","param":"sort","action":"preserve"},
     {"scope":"coolblue.nl","param":"page","action":"preserve"},
@@ -2473,6 +2594,7 @@
     {"scope":"flipkart.com","param":"hpid","action":"strip"},
     {"scope":"flipkart.com","param":"ctx","action":"strip"},
     {"scope":"flipkart.com","param":"fm","action":"strip"},
+    {"scope":"flipkart.com","param":"cid","action":"strip"},
     {"scope":"fnac.com","param":"searchquery","action":"preserve"},
     {"scope":"fnac.com","param":"sl","action":"preserve"},
     {"scope":"fnac.com","param":"stype","action":"preserve"},
@@ -2502,6 +2624,8 @@
     {"scope":"fravega.com","param":"keyword","action":"preserve"},
     {"scope":"gamestop.com","param":"q","action":"preserve"},
     {"scope":"gaugau.futabanet.jp","param":"utm_content","action":"preserve"},
+    {"scope":"giphy.com","param":"q","action":"preserve"},
+    {"scope":"giphy.com","param":"cid","action":"strip"},
     {"scope":"github.com","param":"tab","action":"preserve"},
     {"scope":"github.com","param":"q","action":"preserve"},
     {"scope":"github.com","param":"type","action":"preserve"},
@@ -2658,6 +2782,20 @@
     {"scope":"kurly.com","param":"page","action":"preserve"},
     {"scope":"kurly.com","param":"per_page","action":"preserve"},
     {"scope":"kurly.com","param":"sorted_type","action":"preserve"},
+    {"scope":"lazada.co.id","param":"q","action":"preserve"},
+    {"scope":"lazada.co.id","param":"cid","action":"strip"},
+    {"scope":"lazada.co.th","param":"q","action":"preserve"},
+    {"scope":"lazada.co.th","param":"cid","action":"strip"},
+    {"scope":"lazada.com","param":"q","action":"preserve"},
+    {"scope":"lazada.com","param":"cid","action":"strip"},
+    {"scope":"lazada.com.my","param":"q","action":"preserve"},
+    {"scope":"lazada.com.my","param":"cid","action":"strip"},
+    {"scope":"lazada.com.ph","param":"q","action":"preserve"},
+    {"scope":"lazada.com.ph","param":"cid","action":"strip"},
+    {"scope":"lazada.sg","param":"q","action":"preserve"},
+    {"scope":"lazada.sg","param":"cid","action":"strip"},
+    {"scope":"lazada.vn","param":"q","action":"preserve"},
+    {"scope":"lazada.vn","param":"cid","action":"strip"},
     {"scope":"lenovo.com","param":"q","action":"preserve"},
     {"scope":"lenovo.com","param":"sort","action":"preserve"},
     {"scope":"lenovo.com","param":"page","action":"preserve"},
@@ -2689,6 +2827,8 @@
     {"scope":"linkedin.com","param":"recommendedflavor","action":"strip"},
     {"scope":"linkedin.com","param":"origin","action":"strip"},
     {"scope":"liverpool.com.mx","param":"s","action":"preserve"},
+    {"scope":"lululemon.com.hk","param":"q","action":"preserve"},
+    {"scope":"lululemon.com.hk","param":"cid","action":"strip"},
     {"scope":"maps.google.com","param":"q","action":"preserve"},
     {"scope":"maps.google.com","param":"ll","action":"preserve"},
     {"scope":"maps.google.com","param":"z","action":"preserve"},
@@ -2793,6 +2933,10 @@
     {"scope":"newegg.com","param":"start","action":"preserve"},
     {"scope":"newegg.com","param":"limit","action":"preserve"},
     {"scope":"newegg.com","param":"storetype","action":"preserve"},
+    {"scope":"nhk.jp","param":"q","action":"preserve"},
+    {"scope":"nhk.jp","param":"cid","action":"strip"},
+    {"scope":"nhk.or.jp","param":"q","action":"preserve"},
+    {"scope":"nhk.or.jp","param":"cid","action":"strip"},
     {"scope":"nike.com","param":"q","action":"preserve"},
     {"scope":"notebooksbilliger.de","param":"q","action":"preserve"},
     {"scope":"nytimes.com","param":"query","action":"preserve"},
@@ -2863,14 +3007,22 @@
     {"scope":"pccomponentes.com","param":"category","action":"preserve"},
     {"scope":"pccomponentes.com","param":"publicidadid","action":"strip"},
     {"scope":"pccomponentes.com","param":"ref","action":"strip"},
+    {"scope":"petbook.de","param":"q","action":"preserve"},
+    {"scope":"petbook.de","param":"cid","action":"strip"},
     {"scope":"pinterest.com","param":"q","action":"preserve"},
     {"scope":"pinterest.com","param":"rs","action":"preserve"},
     {"scope":"pinterest.com","param":"page","action":"preserve"},
     {"scope":"play.google.com","param":"id","action":"preserve"},
     {"scope":"play.google.com","param":"hl","action":"preserve"},
     {"scope":"play.google.com","param":"gl","action":"preserve"},
+    {"scope":"porntube.com","param":"q","action":"preserve"},
+    {"scope":"porntube.com","param":"cid","action":"strip"},
+    {"scope":"rac.co.uk","param":"q","action":"preserve"},
+    {"scope":"rac.co.uk","param":"cid","action":"strip"},
     {"scope":"rd.bizrate.com","param":"utm_campaign","action":"preserve"},
     {"scope":"rd.bizrate.com","param":"utm_medium","action":"preserve"},
+    {"scope":"realtor.com","param":"q","action":"preserve"},
+    {"scope":"realtor.com","param":"cid","action":"strip"},
     {"scope":"reddit.app.link","param":"utm_content","action":"preserve"},
     {"scope":"reddit.com","param":"sort","action":"preserve"},
     {"scope":"reddit.com","param":"t","action":"preserve"},
@@ -2906,6 +3058,8 @@
     {"scope":"ripley.cl","param":"q","action":"preserve"},
     {"scope":"rtve.es","param":"q","action":"preserve"},
     {"scope":"rtve.es","param":"page","action":"preserve"},
+    {"scope":"samsung.com","param":"q","action":"preserve"},
+    {"scope":"samsung.com","param":"cid","action":"strip"},
     {"scope":"scholar.google.com","param":"q","action":"preserve"},
     {"scope":"scholar.google.com","param":"hl","action":"preserve"},
     {"scope":"scholar.google.com","param":"as_sdt","action":"preserve"},
@@ -2974,6 +3128,8 @@
     {"scope":"slickdeals.net","param":"adoberef","action":"strip"},
     {"scope":"slickdeals.net","param":"attrsrc","action":"strip"},
     {"scope":"slickdeals.net","param":"src","action":"strip"},
+    {"scope":"sonybank.jp","param":"q","action":"preserve"},
+    {"scope":"sonybank.jp","param":"cid","action":"strip"},
     {"scope":"ssg.com","param":"query","action":"preserve"},
     {"scope":"ssg.com","param":"q","action":"preserve"},
     {"scope":"ssg.com","param":"page","action":"preserve"},
@@ -3009,6 +3165,8 @@
     {"scope":"target.com","param":"targetid","action":"strip"},
     {"scope":"target.com","param":"cpng","action":"strip"},
     {"scope":"target.com","param":"lid","action":"strip"},
+    {"scope":"teknosa.com","param":"q","action":"preserve"},
+    {"scope":"teknosa.com","param":"cid","action":"strip"},
     {"scope":"temu.com","param":"search_key","action":"preserve"},
     {"scope":"temu.com","param":"search_type","action":"preserve"},
     {"scope":"temu.com","param":"page_num","action":"preserve"},
@@ -3082,8 +3240,14 @@
     {"scope":"twitter.com","param":"src","action":"strip"},
     {"scope":"twitter.com","param":"cn","action":"strip"},
     {"scope":"ulta.com","param":"search","action":"preserve"},
+    {"scope":"urban-vpn.com","param":"q","action":"preserve"},
+    {"scope":"urban-vpn.com","param":"cid","action":"strip"},
     {"scope":"usprobioticguide.com","param":"utm_campaign","action":"preserve"},
     {"scope":"video-shoper.ru","param":"utm_source","action":"preserve"},
+    {"scope":"video.unext.jp","param":"q","action":"preserve"},
+    {"scope":"video.unext.jp","param":"cid","action":"strip"},
+    {"scope":"vitamix.com","param":"q","action":"preserve"},
+    {"scope":"vitamix.com","param":"cid","action":"strip"},
     {"scope":"vk.com","param":"q","action":"preserve"},
     {"scope":"vk.com","param":"section","action":"preserve"},
     {"scope":"vk.com","param":"w","action":"preserve"},
@@ -3214,6 +3378,7 @@
     {"scope":"zalando.es","param":"price_to","action":"preserve"},
     {"scope":"zalando.es","param":"wmc","action":"strip"},
     {"scope":"zigzag.kr","param":"keyword","action":"preserve"},
+    {"scope":"vercel.com","param":"ref","action":"preserve"},
     {"scope":"*","param":"__source","action":"strip"},
     {"scope":"*","param":"__tn__","action":"strip"},
     {"scope":"*","param":"_branch_match_id","action":"strip"},
@@ -3402,8 +3567,7 @@
     {"scope":"*","param":"xid","action":"strip"},
     {"scope":"*","param":"xptdk","action":"strip"},
     {"scope":"*","param":"xtor","action":"strip"},
-    {"scope":"*","param":"zrclid","action":"strip"},
-    {"scope":"vercel.com","param":"ref","action":"preserve"}
+    {"scope":"*","param":"zrclid","action":"strip"}
   ],
   "scopedFacts": [
     {"scope":"123chat.jp","param":"afid","action":"strip","provenance":{"signals":["adguard-tp"],"firstSeenAt":"2026-09-08T14:45:41.811Z","admittedAt":"2026-09-08T14:46:19.093Z"}},

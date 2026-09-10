@@ -53,6 +53,16 @@ export const DOMAIN_RULES = [
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
   },
   {
+    "domain": "adshares.net",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Adshares decentralized ad exchange. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "aladin.co.kr",
     "preserveParams": [
       "search",
@@ -1404,6 +1414,16 @@ export const DOMAIN_RULES = [
     "note": "Brazilian retail marketplace. Search, pagination, sort: functional. operationHash is a GraphQL cache-bust token."
   },
   {
+    "domain": "ana.co.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "All Nippon Airways (ANA), Japanese airline. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "apple.com",
     "preserveParams": [
       "mt",
@@ -1416,7 +1436,8 @@ export const DOMAIN_RULES = [
     "stripParams": [
       "afid",
       "ct",
-      "pt"
+      "pt",
+      "cid"
     ],
     "note": "Apple. afid/ct/pt are affiliate/campaign tracking. `at` is Apple's Performance Partners affiliate token (#1252), preserved here rather than guarded globally: this scope suffix-covers music/tv/books/podcasts/apps/itunes.apple.com, the hosts that actually carry it."
   },
@@ -1435,6 +1456,16 @@ export const DOMAIN_RULES = [
       "q"
     ],
     "note": "Search query: functional"
+  },
+  {
+    "domain": "asahi.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Asahi Shimbun, Japanese newspaper. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "auction.co.kr",
@@ -1495,6 +1526,16 @@ export const DOMAIN_RULES = [
       "at_bbc_team"
     ],
     "note": "Search query and pagination: functional. BBC social/team attribution tracking stripped."
+  },
+  {
+    "domain": "belta.co.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Belta, Japanese health/beauty e-commerce. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "bestbuy.com",
@@ -1634,6 +1675,16 @@ export const DOMAIN_RULES = [
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
   },
   {
+    "domain": "candy.ai",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Candy.AI, AI companion platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "carrefourpl.snrpage.com",
     "preserveParams": [
       "utm_source"
@@ -1657,6 +1708,16 @@ export const DOMAIN_RULES = [
       "q"
     ],
     "note": "Search query: functional"
+  },
+  {
+    "domain": "controld.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Control D, DNS filtering/network control service. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "coolblue.nl",
@@ -2292,7 +2353,8 @@ export const DOMAIN_RULES = [
       "ppt",
       "hpid",
       "ctx",
-      "fm"
+      "fm",
+      "cid"
     ],
     "note": "Indian e-commerce. otracker/ssid/marketplace are internal tracking."
   },
@@ -2372,6 +2434,16 @@ export const DOMAIN_RULES = [
       "utm_content"
     ],
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "giphy.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Giphy, GIF search platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "github.com",
@@ -2682,6 +2754,76 @@ export const DOMAIN_RULES = [
     "note": "Korean grocery delivery (Market Kurly). Search, pagination, sort: functional."
   },
   {
+    "domain": "lazada.co.id",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada Indonesia storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "lazada.co.th",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada Thailand storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "lazada.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada, Southeast Asian e-commerce marketplace. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "lazada.com.my",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada Malaysia storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "lazada.com.ph",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada Philippines storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "lazada.sg",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada Singapore storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "lazada.vn",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lazada Vietnam storefront. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
+  },
+  {
     "domain": "lenovo.com",
     "preserveParams": [
       "q",
@@ -2740,6 +2882,16 @@ export const DOMAIN_RULES = [
     ],
     "stripParams": [],
     "note": "Mexican department store. Search query: functional."
+  },
+  {
+    "domain": "lululemon.com.hk",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Lululemon Hong Kong storefront. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "maps.google.com",
@@ -2990,6 +3142,26 @@ export const DOMAIN_RULES = [
     "note": "US electronics retailer. Search, category, pagination: functional."
   },
   {
+    "domain": "nhk.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "NHK, Japan's public broadcaster. Search query preserved as a safe default. `cid` host-anchored via AdGuard `domain=nhk.jp|nhk.or.jp$removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "nhk.or.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "NHK, Japan's public broadcaster. Search query preserved as a safe default. `cid` host-anchored via AdGuard `domain=nhk.jp|nhk.or.jp$removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "nike.com",
     "preserveParams": [
       "q"
@@ -3142,6 +3314,16 @@ export const DOMAIN_RULES = [
     "note": "Search and filter params: functional. Affiliate params (Awin redirect model) actively stripped."
   },
   {
+    "domain": "petbook.de",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Petbook, German pet-supplies e-commerce. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "pinterest.com",
     "preserveParams": [
       "q",
@@ -3160,12 +3342,42 @@ export const DOMAIN_RULES = [
     "note": "App ID and locale: functional"
   },
   {
+    "domain": "porntube.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Adult video platform. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "rac.co.uk",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "RAC, UK motoring/breakdown services. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "rd.bizrate.com",
     "preserveParams": [
       "utm_campaign",
       "utm_medium"
     ],
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "realtor.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Realtor.com, US real-estate listings. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "reddit.app.link",
@@ -3240,6 +3452,16 @@ export const DOMAIN_RULES = [
       "page"
     ],
     "note": "Search query and pagination: functional"
+  },
+  {
+    "domain": "samsung.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Samsung Electronics. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "scholar.google.com",
@@ -3356,6 +3578,16 @@ export const DOMAIN_RULES = [
     "note": "Deal aggregator. Attribution/ad tracking stripped."
   },
   {
+    "domain": "sonybank.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Sony Bank, Japanese online bank. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "ssg.com",
     "preserveParams": [
       "query",
@@ -3417,6 +3649,16 @@ export const DOMAIN_RULES = [
       "lid"
     ],
     "note": "US retailer. ref/afid/fndsrc are ad attribution tracking."
+  },
+  {
+    "domain": "teknosa.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Teknosa, Turkish electronics retailer. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
   },
   {
     "domain": "temu.com",
@@ -3572,6 +3814,16 @@ export const DOMAIN_RULES = [
     "note": "US beauty retailer. Search query: functional."
   },
   {
+    "domain": "urban-vpn.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Urban VPN service. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
     "domain": "usprobioticguide.com",
     "preserveParams": [
       "utm_campaign"
@@ -3584,6 +3836,26 @@ export const DOMAIN_RULES = [
       "utm_source"
     ],
     "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
+  },
+  {
+    "domain": "video.unext.jp",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "U-NEXT, Japanese video streaming service. Search query preserved as a safe default. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+  },
+  {
+    "domain": "vitamix.com",
+    "preserveParams": [
+      "q"
+    ],
+    "stripParams": [
+      "cid"
+    ],
+    "note": "Vitamix, blender manufacturer e-commerce. Search query preserved as a safe default. `cid` host-anchored via ClearURLs `referralMarketing`, not global (#1228 step 2)."
   },
   {
     "domain": "vk.com",
