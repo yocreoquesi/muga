@@ -208,7 +208,7 @@
       <div class="row">
         <div class="row-label">
           <strong data-i18n="advanced_mode_label">Show advanced settings</strong>
-          <small data-i18n="advanced_mode_hint">Fine-grained control over URL cleaning, privacy, and developer tools</small>
+          <small data-i18n="advanced_mode_hint">Fine-grained control over URL cleaning and privacy</small>
         </div>
         <label class="toggle"><input type="checkbox" id="dev-mode" data-i18n-aria-label="aria_dev_mode"><span class="slider"></span></label>
       </div>
@@ -462,21 +462,35 @@
           <input type="file" id="import-file" accept=".json" class="input-file-hidden">
         </div>
       </div>
+    </div>
+  </section>
 
-      <!-- Developer tools (Tier 3 sub-group).
-           Behind its OWN disclosure, collapsed by default (#1271 item 1). These
-           are QA affordances — replay onboarding, re-fire the affiliate toast,
-           dump the debug log — and they used to sit open in the same list as
-           settings that change how URLs get cleaned, reached by anyone who
-           flipped Advanced to get at a real setting. The summary says what the
-           group is for so the difference is visible before it is opened. -->
-      <h2 class="mt-16" data-i18n="section_dev_tools">Developer tools</h2>
-      <details class="dev-tools-disclosure">
-        <summary>
+  <!-- Developer tools (#1271 item 1): its OWN device-local gate, independent
+       of Advanced/dev-mode. These are QA affordances - replay onboarding,
+       re-fire the affiliate toast, dump the debug log - and none of them
+       change how URLs get cleaned. The earlier pass on this issue (a0b72be)
+       put them behind a collapsed <details> under the SAME dev-mode switch
+       as real settings, reasoning that a second persisted flag was "the
+       heavier answer" to a complaint about blast radius, not persistence.
+       That collapse was a disclosure, not a gate: a user who flipped
+       Advanced to reach Honor Creator Mode still got a panel that can replay
+       onboarding and re-fire notifications, one click away instead of
+       already open. This toggle is the gate the issue asks for. The <details>
+       is gone: once the group itself is hidden by default, a second fold
+       inside it earns nothing and only adds a click. -->
+  <section id="section-dev-tools">
+    <h2 data-i18n="section_dev_tools">Developer tools</h2>
+    <div class="card">
+      <div class="row">
+        <div class="row-label">
           <strong data-i18n="dev_tools_disclosure">Tools for inspecting MUGA itself</strong>
           <small data-i18n="dev_tools_disclosure_hint">None of these change how URLs are cleaned. They replay onboarding, preview notifications and dump logs.</small>
-        </summary>
-      <div class="card">
+        </div>
+        <label class="toggle"><input type="checkbox" id="dev-tools-mode" data-i18n-aria-label="aria_dev_tools_mode"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div id="dev-tools-panel" class="dev-tools-hidden">
+      <div class="card card-dev">
         <div class="row">
           <div class="row-label">
             <strong data-i18n="dev_preview_notify_label">Preview affiliate notification</strong>
@@ -527,7 +541,6 @@
           </div>
         </div>
       </div>
-      </details>
     </div>
   </section>
 

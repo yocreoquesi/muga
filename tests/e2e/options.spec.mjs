@@ -167,7 +167,7 @@ test.describe("Options — language", () => {
 });
 
 test.describe("Options — advanced settings", () => {
-  test("dev tools are hidden by default and shown when toggled", async ({ optionsPage: page }) => {
+  test("Advanced settings panel is hidden by default and shown when toggled", async ({ optionsPage: page }) => {
     const devToolsCard = page.locator("#dev-tools-card");
     await expect(devToolsCard).toBeHidden();
 
@@ -191,15 +191,34 @@ test.describe("Options — advanced settings", () => {
 
     await setCheckbox(page, "dev-mode", false);
   });
+});
+
+test.describe("Options — developer tools (#1271 item 1)", () => {
+  test("Developer tools panel is hidden by default and shown when toggled, independently of Advanced", async ({ optionsPage: page }) => {
+    const devToolsCard = page.locator("#dev-tools-card");
+    const devToolsPanel = page.locator("#dev-tools-panel");
+    await expect(devToolsPanel).toBeHidden();
+
+    // Turning Advanced on must not reveal the QA panel: the two gates are
+    // separate, device-local flags now, not one toggle controlling both.
+    await setCheckbox(page, "dev-mode", true);
+    await expect(devToolsPanel).toBeHidden();
+    await setCheckbox(page, "dev-mode", false);
+
+    // Turning the QA gate on must not reveal Advanced.
+    await setCheckbox(page, "dev-tools-mode", true);
+    await expect(devToolsPanel).toBeVisible();
+    await expect(devToolsCard).toBeHidden();
+
+    await setCheckbox(page, "dev-tools-mode", false);
+    await expect(devToolsPanel).toBeHidden();
+  });
 
   test("URL tester produces a clean result", async ({ optionsPage: page }) => {
-    await setCheckbox(page, "dev-mode", true);
-
-    // The developer tools sit behind their own disclosure now, collapsed by
-    // default (#1271): reaching a real setting through Advanced should not also
-    // hand the user a button that replays onboarding. So the QA panel has to be
-    // opened deliberately here, exactly as a person would.
-    await page.locator(".dev-tools-disclosure > summary").click();
+    // The developer tools have their own gate now (#1271 item 1): reaching a
+    // real Advanced setting no longer hands the user a panel that can replay
+    // onboarding. This toggle is separate from dev-mode.
+    await setCheckbox(page, "dev-tools-mode", true);
 
     const input = page.locator("#dev-url-input");
     const testBtn = page.locator("#dev-url-test-btn");
@@ -216,7 +235,7 @@ test.describe("Options — advanced settings", () => {
     // URL constructor normalizes: example.com -> example.com/
     expect(text).toMatch(/^https:\/\/example\.com\/?$/);
 
-    await setCheckbox(page, "dev-mode", false);
+    await setCheckbox(page, "dev-tools-mode", false);
   });
 });
 
