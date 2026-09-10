@@ -32,6 +32,14 @@
  * source-code row) so the generated object literal's line breaks match the
  * hand-written original exactly, keeping the diff introducing this file
  * a no-op inside the STRIP braces (only a generated-marker comment is added).
+ *
+ * #1228 (commit 13f1250): `igsh` and `mibextid` were removed from this table.
+ * They are the same class of unscoped global claim that step narrowed on the
+ * TRACKING_PARAMS side — both are now anchored to a specific host
+ * (instagram.com and facebook.com respectively) instead of stripped
+ * everywhere, and this table has no way to express a host scope either. After
+ * removing an entry here, regenerate the five content scripts with
+ * `npm run build:strip`.
  */
 
 /** @type {ReadonlyArray<ReadonlyArray<string>>} */
@@ -39,7 +47,7 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id"],
   ["utm_source_platform", "utm_creative_format", "utm_marketing_tactic"],
   ["fbclid", "gclid", "gclsrc", "dclid", "gbraid", "wbraid", "msclkid", "tclid", "twclid"],
-  ["mc_cid", "mc_eid", "igshid", "igsh"],
+  ["mc_cid", "mc_eid", "igshid"],
   ["_hsenc", "_hsmi", "mkt_tok"],
   ["yclid", "ysclid", "_openstat"],
   // NOTE: redirect-network ATTRIBUTION params (irclickid/cjevent/awc and the
@@ -55,7 +63,7 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["hsctatracking"],
   ["__s", "_ga", "_gl", "_gac"],
   ["ved", "ei", "sca_esv", "sxsrf"],
-  ["mibextid", "share_id"],
+  ["share_id"],
   ["_pos", "_ss", "_psq", "_sid", "_fid"],
   ["pr_prod_strat", "pr_rec_id", "pr_ref_pid", "pr_rec_pid", "pr_seq"],
 ].map((row) => Object.freeze(row)));
