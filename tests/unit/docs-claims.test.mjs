@@ -92,6 +92,32 @@ function liveDomainCount() {
 
 describe("docs-claims — machine-enforced README/CONTRIBUTING accuracy", () => {
   const readme = readRoot("README.md");
+
+  // #1262: GitHub is where most people arrive, and the two surfaces that do the
+  // most work were invisible from it. The web cleaner is the only thing that
+  // demonstrates MUGA with no install and no trust decision; the transparency
+  // report is the strongest trust document in the project, publishing a measured
+  // false-positive rate against a labelled corpus. Neither was in the link bar.
+  //
+  // Asserted on the bar specifically, not "somewhere in the README", because a
+  // link buried in a section is not an entry point.
+  test("(e) the README link bar reaches the web cleaner and the transparency report", () => {
+    const bar = readme
+      .split("\n")
+      .find((line) => line.includes("[Privacy policy]") && line.includes("[FAQ]"));
+    assert.ok(bar, "the README link bar is gone or was reshaped; #1262 pinned its contents");
+
+    assert.ok(
+      bar.includes("https://muga.app/clean"),
+      "the link bar lost the web cleaner. It is the only MUGA surface that needs no install, " +
+        "and GitHub is where most people arrive.",
+    );
+    assert.ok(
+      bar.includes("transparency.html"),
+      "the link bar lost the transparency report. It publishes the measured FP/FN rate, and " +
+        "hiding the strongest trust document from the main entry point wastes it.",
+    );
+  });
   const contributing = readRoot("CONTRIBUTING.md");
 
   // ── (a) Noise-pattern counts ─────────────────────────────────────────────

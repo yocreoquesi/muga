@@ -173,6 +173,29 @@ function init() {
     }
   });
 
+  // Prefill and clean from `?url=` (#1262 item 3).
+  //
+  // This is what makes a result shareable at all: before it, every use of the
+  // tool died in the tab it happened in, because there was no way to hand
+  // someone a cleaning to look at. With it, the address bar IS the share link.
+  //
+  // Read after the handlers are bound, so a prefilled run goes through exactly
+  // the same runClean() path a typed one does; nothing here is a second code
+  // path that could drift from the button.
+  //
+  // Safety: the value only ever reaches `input.value`, never markup, and
+  // cleanUrl() does its own validation, so a hostile `?url=` gets the same
+  // treatment as hostile typing. A malformed or absent search string is a
+  // no-op rather than an error, because arriving with a broken link should
+  // leave the visitor at a working empty tool, not at a stack trace.
+  try {
+    const prefill = new URLSearchParams(globalThis.location?.search || "").get("url");
+    if (prefill) {
+      refs.input.value = prefill;
+      runClean();
+    }
+  } catch { /* no location, or an unparseable search string: leave the empty state */ }
+
   refs.copyBtn.addEventListener("click", () => {
     if (!lastCleanUrl) return;
     const originalLabel = refs.copyBtn.textContent;
