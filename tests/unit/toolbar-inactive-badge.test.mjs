@@ -6,26 +6,31 @@
  * navigation commit and on prefs changes.
  *
  * The presenter-side precedence (glyph vs count vs onboarding vs showBadge)
- * is exhaustively covered behaviorally in toolbar-presenter.test.mjs. This
- * file covers what that file cannot: the SERVICE WORKER cannot be imported
- * in Node (it makes top-level chrome.* calls), so:
+ * is exhaustively covered behaviorally in toolbar-presenter.test.mjs.
  *
- *   1. `computeTabActiveState` is re-implemented as a pure function here,
- *      built on the REAL `isSiteFullyExempt` from src/lib/cleaner.js (not a
- *      mirror) — only the enabled/onboardingDone gate is duplicated, and it
- *      is a one-line boolean formula lifted verbatim from the design.
- *   2. A small number of source-string assertions pin that the real
- *      service-worker.js wires the pure logic above into the onUpdated
- *      listener and the storage.onChanged repaint triggers. This file is
- *      independent of the #706 drift-guard baseline in
- *      service-worker-patterns.test.mjs (that guard only counts assertions
- *      in that one file), but keeps the same "prefer behavioral, use
- *      source-text sparingly" discipline.
- *   3. A guard confirming production source never calls `actionApi.setIcon`
- *      (#910 / f6a6e2b regression) — the e2e spec proves this behaviorally
- *      in a real browser (tests/e2e/toolbar-badge.spec.mjs); this is the
- *      static-analysis backstop for environments (like this one) that
- *      cannot launch a browser.
+ * Before #1266 item 5's second slice, `computeTabActiveState` and
+ * `repaintAllTabsActiveState` lived in service-worker.js, which cannot be
+ * imported in Node (top-level chrome.* calls) — so this file used to carry
+ * a hand-written mirror of the formula plus source-text assertions pinning
+ * the wiring. Both are now real, imported code:
+ *
+ *   - `computeTabActiveState` is imported directly from
+ *     src/background/toolbar-badge.js and exercised below against its real
+ *     behavior — no mirror.
+ *   - `repaintAllTabsActiveState`'s tab enumeration and the onUpdated
+ *     handler's navigationStarted-before-tabActiveStateChanged ordering are
+ *     covered behaviorally in tests/unit/toolbar-badge.test.mjs, against
+ *     the real functions with a stubbed tabsApi/bus — including the
+ *     #1266 item 2 cold-start repaint proof this file could never write.
+ *
+ * What remains below is source-text on purpose: the storage.onChanged
+ * listener and the `__TEST__emitToolbarEvent` harness case both stay in
+ * service-worker.js as the composition root (the module doc in
+ * toolbar-badge.js explains why the addListener/listener wiring can't move
+ * without re-breaking importability), so there is no real function to
+ * import and no behavioral proxy for "the SW calls repaintAllTabsActiveState
+ * from this branch." These are the "genuinely still needs the composition
+ * root" cases #1266 item 5 anticipates.
  */
 
 import { test, describe } from "node:test";
@@ -33,25 +38,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
-import { isSiteFullyExempt } from "../../src/lib/cleaner.js";
+import { computeTabActiveState } from "../../src/background/toolbar-badge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const swSource = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
 const presenterSource = readFileSync(join(__dirname, "../../src/lib/toolbar-presenter.js"), "utf8");
 
-/**
- * Pure re-implementation of service-worker.js#computeTabActiveState.
- * Mirrors the production one-line formula exactly:
- *   prefs.enabled === true && prefs.onboardingDone === true &&
- *   !isSiteFullyExempt(hostname, prefs)
- * DRIFT GUARD: if the real formula changes, update this mirror to match —
- * otherwise these behavioral tests keep passing against a stale formula.
- */
-function computeTabActiveState(prefs, hostname) {
-  return prefs?.enabled === true && prefs?.onboardingDone === true && !isSiteFullyExempt(hostname, prefs);
-}
-
-describe("computeTabActiveState — Active-on-tab formula", () => {
+describe("computeTabActiveState — Active-on-tab formula (real, imported function)", () => {
   const BASE = { enabled: true, onboardingDone: true, whitelist: [], blacklist: [] };
 
   test("active when enabled + onboarded + not exempt", () => {
@@ -106,40 +99,12 @@ describe("computeTabActiveState — Active-on-tab formula", () => {
 // manual offsets. This idiom is already established elsewhere in the suite
 // (e.g. service-worker-patterns.test.mjs, verify-warnings-regression.test.mjs)
 // for exactly this "SW/content-script not importable in Node" situation.
-describe("service-worker.js — inactive-badge wiring (structural)", () => {
-  test("imports isSiteFullyExempt from cleaner.js", () => {
-    assert.ok(
-      /import\s*\{[^}]*isSiteFullyExempt[^}]*\}\s*from\s*"\.\.\/lib\/cleaner\.js"/.test(swSource),
-      "service worker must import isSiteFullyExempt from ../lib/cleaner.js"
-    );
-  });
-
-  test("defines computeTabActiveState with the exact Active-on-tab formula", () => {
-    assert.ok(
-      /function computeTabActiveState\(prefs, hostname\) \{\s*return prefs\?\.enabled === true && prefs\?\.onboardingDone === true && !isSiteFullyExempt\(hostname, prefs\);\s*\}/
-        .test(swSource),
-      "computeTabActiveState must be exactly: prefs.enabled===true && prefs.onboardingDone===true && !isSiteFullyExempt(hostname, prefs)"
-    );
-  });
-
-  test("repaintAllTabsActiveState enumerates the live tab list and emits tabActiveStateChanged per tab", () => {
-    assert.ok(
-      /async function repaintAllTabsActiveState\(prefs\)[\s\S]{0,600}chrome\.tabs\.query[\s\S]{0,700}type:\s*"tabActiveStateChanged"/
-        .test(swSource),
-      "repaintAllTabsActiveState must enumerate tabs via chrome.tabs.query and emit tabActiveStateChanged per tab"
-    );
-  });
-
-  test("onUpdated listener emits tabActiveStateChanged AFTER navigationStarted", () => {
-    // Order matters (see toolbar-presenter.js module doc): navigationStarted's
-    // per-page reset must not clobber the freshly-recomputed active flag.
-    assert.ok(
-      /chrome\.tabs\.onUpdated\.addListener[\s\S]{0,1500}type:\s*"navigationStarted"[\s\S]{0,800}type:\s*"tabActiveStateChanged"/
-        .test(swSource),
-      "onUpdated handler must emit navigationStarted before tabActiveStateChanged"
-    );
-  });
-
+//
+// Only the composition-root wiring remains here — the pure logic these
+// branches call (computeTabActiveState, repaintAllTabsActiveState, the
+// onUpdated ordering) is covered behaviorally above and in
+// tests/unit/toolbar-badge.test.mjs.
+describe("service-worker.js — inactive-badge wiring (structural, composition-root only)", () => {
   test("sync storage change listener repaints active-state on enabled/whitelist/blacklist changes", () => {
     assert.ok(
       /if \(changes\.enabled \|\| changes\.whitelist \|\| changes\.blacklist\)\s*\{[^}]*repaintAllTabsActiveState/.test(swSource),
