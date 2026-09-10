@@ -19,6 +19,18 @@ ships are anchored to the sites they were actually observed on.
 - **Anchored rules carry their own signature** (#1243). The site-anchored section of the rules payload is signed separately from the global one. An attacker who can tamper with the payload in transit can suppress anchored rules, which costs cleaning, but can never inject one, which would strip a parameter on a site nobody vouched for. Older versions ignore the new section and keep updating exactly as before.
 - **The problem report says which rules were site-specific** (#1248). When you report a site as broken, the report now names the parameters MUGA applied *only on that site*. Each of those was admitted on one upstream source's word for that site alone, so they are the first suspects, and naming them is what makes a wrong rule findable and reversible rather than a guess.
 
+### Changed
+
+- **The global rule shrank, and what left it moved to the sites it belongs to** (#1228, #1322, #1323, #1324, #1341). MUGA's site-wide list went from 450 parameters to 396. Nothing was simply deleted: 41 of them now clean on the sites where they were actually observed as trackers, and the remaining difference is names that never had evidence for a site-wide claim. `cid` is the clearest case. It is a customer id, a category id and a chat id depending on where you are, MUGA stripped it everywhere, and neither of the two upstream sources it follows has ever treated it as a site-wide tracker. It now cleans on the 29 sites that do use it for tracking and is left alone on the rest of the web. Three existing rules that had been added by hand to rescue `cid` on Google Maps, SharePoint and Aladin are what a bad site-wide claim looks like from the inside.
+
+- **`ved`, `sca_esv` and `gs_lcp` clean on Google search only** (#1326). Upstream anchors these to Google's search pages rather than to Google as a whole, and MUGA could previously only say "this site" or "everywhere", so it said everywhere. It can now say "this site, on these paths", which is what the evidence actually supports. On any other part of Google, and on the rest of the web, they are left alone.
+
+- **Ten parameters stopped being cleaned entirely** (#1326). `clickorigin`, `ga_account`, `gemius_identifier`, `gs_l`, `mclid`, `offerlistid`, `position`, `scm-url`, `uniqueid` and `wt_cd` were being removed on every site on the strength of a single upstream rule scoped to one page of one site. That is not enough evidence for a site-wide claim, and `position`, `uniqueid` and `offerlistid` are exactly the kind of names that carry meaning on sites nobody has profiled. If any of them turns out to be a tracker somewhere specific, it can come back anchored to that site.
+
+- **Developer tools have their own switch** (#1271). "Show advanced settings" used to reveal both real settings and a panel that can replay onboarding, re-fire notifications and export the debug log. Reaching a setting no longer hands you the QA tools; they have a separate switch that says what they are for. Neither setting syncs between devices.
+
+- **The web cleaner takes a link in the address bar** (#1262). `muga.app/clean?url=<link>` opens with that link already cleaned, so a result is something you can send someone rather than something that dies in your tab. A malformed link leaves a working empty tool rather than an error.
+
 ### Fixed
 
 - **ShareASale referrals are no longer stripped** (#1213). MUGA was removing `u`, ShareASale's affiliate id, on every site. The upstream rule it came from was scoped to two unrelated sites, and dropping that scope turned a correct fact into a broken one: creator attribution was lost on every ShareASale link. This is the failure the whole site-anchoring change above exists to prevent.
