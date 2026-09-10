@@ -61,7 +61,7 @@ After:  https://www.ebay.es/itm/123456789
 
 ## What it removes
 
-**400 tracking params + 12 prefix patterns** across 6 categories, on every site:
+**399 tracking params + 12 prefix patterns** across 6 categories, on every site:
 
 | Category | Examples |
 |---|---|
@@ -72,7 +72,7 @@ After:  https://www.ebay.es/itm/123456789
 | Platform tracking | E-commerce session IDs, click params, marketplace tokens + 25 more |
 | Generic | `s_cid`, `wickedid`, and catch-all click IDs |
 
-Domain-specific rules for **249 domains** preserve functional query params (search queries, pagination, filters) while removing the tracking.
+Domain-specific rules for **252 domains** preserve functional query params (search queries, pagination, filters) while removing the tracking.
 
 ---
 
@@ -92,7 +92,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 
 ### Always on, no configuration needed
 
-- Remove 400 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
+- Remove 399 tracking params and 12 prefix patterns on every navigation (UTMs, fbclid, gclid, share tokens, click IDs, and more)
 - Strip e-commerce path clutter (`/ref=nav_logo`, session IDs after product ID, product slug, locale params)
 - Right-click any link → **Copy clean link**
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
@@ -189,7 +189,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 4,400+ unit tests
+npm test               # 4,399+ unit tests
 npm run test:e2e       # 90+ E2E tests (Playwright, requires headed Chromium)
 npm run build:chrome
 npm run build:firefox

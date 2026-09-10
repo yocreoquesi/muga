@@ -322,7 +322,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "psc",
       "spla",
       "linkcode",
-      "linkid",
       "creativeasin",
       "spia",
       "asc_contentid",

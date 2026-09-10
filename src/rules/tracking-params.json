@@ -55,7 +55,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -461,6 +460,7 @@
         "asahi.com",
         "auction.co.kr",
         "avansas.com",
+        "awin1.com",
         "aws.eu",
         "bbc.co.uk",
         "bbc.com",
@@ -502,6 +502,7 @@
         "falabella.com",
         "falabella.com.co",
         "fandom.com",
+        "fantasygf.ai",
         "fb.com",
         "fiverr.com",
         "flipkart.com",
@@ -565,6 +566,7 @@
         "paypal.com",
         "pccomponentes.com",
         "pcmax.jp",
+        "peepshow.com",
         "petbook.de",
         "porntube.com",
         "puma.com",
@@ -665,7 +667,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -1095,7 +1096,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -1520,7 +1520,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -1943,7 +1942,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -2392,7 +2390,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -2831,7 +2828,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -3218,6 +3214,7 @@
               "hsa_cr_id",
               "ie",
               "ld",
+              "linkid",
               "mrai",
               "pagetype",
               "pd_gw_unk",
@@ -3317,7 +3314,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -3741,7 +3737,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -4170,7 +4165,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -4597,7 +4591,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -5025,7 +5018,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -5450,7 +5442,431 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
+              "creativeasin",
+              "spia",
+              "asc_contentid",
+              "asc_contenttype",
+              "_encoding",
+              "content-id",
+              "social_share",
+              "skiptwisterog",
+              "starsleft",
+              "lp_asin",
+              "store_ref",
+              "bl_grd_status",
+              "ingress",
+              "sprefix",
+              "sbo",
+              "cv_ct_cx",
+              "__mk_es_es",
+              "__mk_de_de",
+              "__mk_fr_fr",
+              "__mk_it_it",
+              "__mk_en_us",
+              "__mk_en_gb",
+              "__mk_pt_br",
+              "__mk_ja_jp",
+              "mkevt",
+              "mkcid",
+              "mkrid",
+              "toolid",
+              "customid",
+              "afsmartredirect",
+              "gatewayadapt",
+              "mall_affr",
+              "e_t",
+              "epik",
+              "sc_channel",
+              "sc_country",
+              "sc_funnel",
+              "sc_segment",
+              "sc_icid",
+              "rdt_cid",
+              "n_media",
+              "n_query",
+              "n_rank",
+              "n_ad_group",
+              "n_ad",
+              "n_keyword",
+              "n_keyword_id",
+              "n_campaign_type",
+              "n_match",
+              "ssc_referrer",
+              "kclid",
+              "kakao_agent",
+              "kakaotrack",
+              "lpinfo",
+              "srsltid",
+              "wickedid",
+              "li_fat_id",
+              "li_extra",
+              "li_source",
+              "s_kwcid",
+              "ef_id",
+              "ttclid",
+              "mscid",
+              "itm_campaign",
+              "itm_content",
+              "itm_medium",
+              "itm_source",
+              "itm_term",
+              "_kx",
+              "klaviyo_id",
+              "vgo_ee",
+              "_mkto_trk",
+              "pi_ad_id",
+              "pi_campaign_id",
+              "sfdcimpactsrc",
+              "dm_i",
+              "omnisendcontactid",
+              "sib_id",
+              "__hstc",
+              "__hsfp",
+              "__hssc",
+              "oborigurl",
+              "outbrainclickid",
+              "taboola_campaign_id",
+              "criteo_id",
+              "gad_source",
+              "fbc",
+              "fbp",
+              "sccid",
+              "pin_unauth",
+              "zemclick",
+              "_gl",
+              "_ga",
+              "_gac",
+              "fb_action_ids",
+              "fb_action_types",
+              "fb_ref",
+              "fb_source",
+              "tt_medium",
+              "tt_content",
+              "sender_web_id",
+              "is_copy_url",
+              "ved",
+              "sca_esv",
+              "sxsrf",
+              "gs_lcp",
+              "_branch_match_id",
+              "_branch_referrer",
+              "_bta_tid",
+              "_bta_c",
+              "sfmc_id",
+              "_pos",
+              "_ss",
+              "_psq",
+              "_sid",
+              "_fid",
+              "af_dp",
+              "af_web_dp",
+              "af_sub2",
+              "af_sub3",
+              "af_sub4",
+              "af_sub5",
+              "adjust_campaign",
+              "adjust_adgroup",
+              "adjust_creative",
+              "yclid",
+              "ysclid",
+              "_openstat",
+              "pk_campaign",
+              "pk_kwd",
+              "pk_source",
+              "pk_medium",
+              "pk_cid",
+              "mtm_campaign",
+              "mtm_keyword",
+              "mtm_source",
+              "mtm_medium",
+              "mtm_content",
+              "mtm_group",
+              "mtm_placement",
+              "mtm_cid",
+              "xtor",
+              "xts",
+              "at_campaign",
+              "at_medium",
+              "at_recipient_id",
+              "at_recipient_list",
+              "wt_zmc",
+              "hsa_cam",
+              "hsa_grp",
+              "hsa_mt",
+              "hsa_src",
+              "hsa_ad",
+              "hsa_acc",
+              "hsa_net",
+              "hsa_kw",
+              "hsa_tgt",
+              "hsa_ver",
+              "bsft_clkid",
+              "bsft_uid",
+              "bsft_eid",
+              "bsft_mid",
+              "elqtrackid",
+              "elqaid",
+              "elqat",
+              "elqcampaignid",
+              "spjobid",
+              "spmailingid",
+              "spreportid",
+              "spuserid",
+              "trk_contact",
+              "trk_msg",
+              "trk_module",
+              "trk_sid",
+              "ml_subscriber",
+              "ml_subscriber_hash",
+              "__s",
+              "_ke",
+              "et_rid",
+              "ss_email_id",
+              "vero_id",
+              "oly_anon_id",
+              "oly_enc_id",
+              "sms_click",
+              "sms_source",
+              "sms_uph",
+              "unicorn_click_id",
+              "rb_clickid",
+              "ndclid",
+              "vmcid",
+              "ymclid",
+              "syclid",
+              "tw_source",
+              "adobe_mc_ref",
+              "adobe_mc_sdid",
+              "af_xp",
+              "af_ad",
+              "af_adset",
+              "mkwid",
+              "pcrid",
+              "gdfms",
+              "gdftrk",
+              "gdffi",
+              "click_id",
+              "ab_channel",
+              "ab_version",
+              "adj_campaign",
+              "adj_creative",
+              "adj_label",
+              "adj_t",
+              "adjust_referrer",
+              "adjust_tracker",
+              "adjust_tracker_limit",
+              "adsterra_clid",
+              "adsterra_placement_id",
+              "adfrom",
+              "adc_publisher",
+              "adc_token",
+              "aiad_clid",
+              "af_click_lookback",
+              "af_force_deeplink",
+              "is_retargeting",
+              "at_campaign_type",
+              "at_creation",
+              "at_emailtype",
+              "at_link",
+              "at_link_id",
+              "at_link_origin",
+              "at_link_type",
+              "at_ptr_name",
+              "at_send_date",
+              "bsft_aaid",
+              "bsft_ek",
+              "cx_click",
+              "cx_recsorder",
+              "cx_recswidget",
+              "dpg_campaign",
+              "dpg_content",
+              "dpg_medium",
+              "dpg_source",
+              "ebisadid",
+              "ebisother1",
+              "ebisother2",
+              "ebisother3",
+              "ebisother4",
+              "ebisother5",
+              "elq",
+              "elqak",
+              "fb_comment_id",
+              "fbadid",
+              "action_object_map",
+              "action_ref_map",
+              "action_type_map",
+              "gad_campaignid",
+              "gci",
+              "gps_adid",
+              "usqp",
+              "hsa_la",
+              "hsa_ol",
+              "ir_adid",
+              "ir_campaignid",
+              "ir_partnerid",
+              "int_campaign",
+              "int_content",
+              "int_medium",
+              "int_source",
+              "int_term",
+              "line_uid",
+              "mt_adset",
+              "mt_campaign",
+              "mt_click_id",
+              "mt_creative",
+              "mt_link_id",
+              "mt_medium",
+              "mt_network",
+              "mnv_sid",
+              "mt_sub1",
+              "mt_sub2",
+              "mt_sub3",
+              "mt_sub4",
+              "mt_sub5",
+              "mindbox-click-id",
+              "mindbox-message-key",
+              "pk_vid",
+              "tw_medium",
+              "tw_profile_id",
+              "guccounter",
+              "guce_referrer",
+              "guce_referrer_sig",
+              "gfr_xid",
+              "yj_r",
+              "ymid",
+              "__io_lv",
+              "_bdadid",
+              "_bhlid",
+              "_clde",
+              "_cldee",
+              "_io_session_id",
+              "_ly_c",
+              "_ly_r",
+              "_ope",
+              "_sgm_action",
+              "_sgm_campaign",
+              "_sgm_pinned",
+              "_sgm_source",
+              "_sgm_term",
+              "_zucks_suid",
+              "analytics_context",
+              "analytics_trace_id",
+              "axr_tref",
+              "asgtbndr",
+              "bance_xuid",
+              "bemobdata",
+              "beyond_uzcvid",
+              "beyond_uzmcvid",
+              "ucx_ref",
+              "btag",
+              "cm_cr",
+              "cm_me",
+              "cmpid",
+              "cstrackid",
+              "cuid",
+              "emcs_t",
+              "ems_dl",
+              "erid",
+              "external_click_id",
+              "famad_xuid",
+              "ftag",
+              "janet",
+              "jmtyclid",
+              "ldtag_cl",
+              "loclid",
+              "lt_r",
+              "maf",
+              "nb_expid_meta",
+              "nb_placement",
+              "nx_source",
+              "oprtrack",
+              "personaclick_input_query",
+              "personaclick_search_query",
+              "recommended_by",
+              "recommended_code",
+              "rtkcid",
+              "sb_referer_host",
+              "spot_im_redirect_source",
+              "spr",
+              "sprtype",
+              "srclt",
+              "sscid",
+              "tcsack",
+              "user_email_address",
+              "uzcid",
+              "vc_lpp",
+              "vero_conv",
+              "vs_campaign_id",
+              "vsm_cid",
+              "vsm_pid",
+              "vsm_type",
+              "winflncrtag",
+              "link_source",
+              "tgclid",
+              "utm_compaign",
+              "utm_emailid",
+              "utm_email",
+              "utm_newsletterid",
+              "linkid"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "requestDomains": [
+        "awin1.com",
+        "fantasygf.ai",
+        "peepshow.com"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 312,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_source",
+              "utm_medium",
+              "utm_campaign",
+              "utm_content",
+              "utm_term",
+              "utm_id",
+              "utm_source_platform",
+              "utm_creative_format",
+              "utm_marketing_tactic",
+              "fbclid",
+              "gclid",
+              "gclsrc",
+              "dclid",
+              "gbraid",
+              "wbraid",
+              "msclkid",
+              "tclid",
+              "twclid",
+              "mc_cid",
+              "mc_eid",
+              "mailingid",
+              "hqemail",
+              "s_cid",
+              "si",
+              "source",
+              "clickid",
+              "_hsenc",
+              "_hsmi",
+              "hsctatracking",
+              "mkt_tok",
+              "trkcampaign",
+              "psc",
+              "spla",
+              "linkcode",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -5837,7 +6253,7 @@
     }
   },
   {
-    "id": 312,
+    "id": 313,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -5879,7 +6295,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -6264,7 +6679,7 @@
     }
   },
   {
-    "id": 313,
+    "id": 314,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -6306,7 +6721,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -6689,7 +7103,7 @@
     }
   },
   {
-    "id": 314,
+    "id": 315,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -6731,7 +7145,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -7129,7 +7542,7 @@
     }
   },
   {
-    "id": 315,
+    "id": 316,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -7171,7 +7584,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -7553,7 +7965,7 @@
     }
   },
   {
-    "id": 316,
+    "id": 317,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -7595,7 +8007,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -7980,7 +8391,7 @@
     }
   },
   {
-    "id": 317,
+    "id": 318,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -8022,7 +8433,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -8416,7 +8826,7 @@
     }
   },
   {
-    "id": 318,
+    "id": 319,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -8458,7 +8868,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -8841,7 +9250,7 @@
     }
   },
   {
-    "id": 319,
+    "id": 320,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -8882,7 +9291,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -9264,7 +9672,7 @@
     }
   },
   {
-    "id": 320,
+    "id": 321,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -9305,7 +9713,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -9687,7 +10094,7 @@
     }
   },
   {
-    "id": 321,
+    "id": 322,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -9729,7 +10136,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -10114,7 +10520,7 @@
     }
   },
   {
-    "id": 322,
+    "id": 323,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -10156,7 +10562,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -10539,7 +10944,7 @@
     }
   },
   {
-    "id": 323,
+    "id": 324,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -10581,7 +10986,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -10963,7 +11367,7 @@
     }
   },
   {
-    "id": 324,
+    "id": 325,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -11005,7 +11409,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -11389,7 +11792,7 @@
     }
   },
   {
-    "id": 325,
+    "id": 326,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -11431,7 +11834,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -11842,7 +12244,7 @@
     }
   },
   {
-    "id": 326,
+    "id": 327,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -11884,7 +12286,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -12268,7 +12669,7 @@
     }
   },
   {
-    "id": 327,
+    "id": 328,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -12310,7 +12711,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -12705,7 +13105,7 @@
     }
   },
   {
-    "id": 328,
+    "id": 329,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -12747,7 +13147,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -13134,7 +13533,7 @@
     }
   },
   {
-    "id": 329,
+    "id": 330,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -13176,7 +13575,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -13560,7 +13958,7 @@
     }
   },
   {
-    "id": 330,
+    "id": 331,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -13602,7 +14000,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -13985,7 +14382,7 @@
     }
   },
   {
-    "id": 331,
+    "id": 332,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -14027,7 +14424,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -14409,7 +14805,7 @@
     }
   },
   {
-    "id": 332,
+    "id": 333,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -14451,7 +14847,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -14834,7 +15229,7 @@
     }
   },
   {
-    "id": 333,
+    "id": 334,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -14876,7 +15271,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -15267,7 +15661,7 @@
     }
   },
   {
-    "id": 334,
+    "id": 335,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -15309,7 +15703,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -15692,7 +16085,7 @@
     }
   },
   {
-    "id": 335,
+    "id": 336,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -15734,7 +16127,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -16116,7 +16508,7 @@
     }
   },
   {
-    "id": 336,
+    "id": 337,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -16158,7 +16550,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -16541,7 +16932,7 @@
     }
   },
   {
-    "id": 337,
+    "id": 338,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -16583,7 +16974,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -16971,7 +17361,7 @@
     }
   },
   {
-    "id": 338,
+    "id": 339,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -17013,7 +17403,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -17423,7 +17812,7 @@
     }
   },
   {
-    "id": 339,
+    "id": 340,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -17465,7 +17854,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -17849,7 +18237,7 @@
     }
   },
   {
-    "id": 340,
+    "id": 341,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -17891,7 +18279,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -18275,7 +18662,7 @@
     }
   },
   {
-    "id": 341,
+    "id": 342,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -18317,7 +18704,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -18704,7 +19090,7 @@
     }
   },
   {
-    "id": 342,
+    "id": 343,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -18746,7 +19132,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -19137,7 +19522,7 @@
     }
   },
   {
-    "id": 343,
+    "id": 344,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -19179,7 +19564,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -19563,7 +19947,7 @@
     }
   },
   {
-    "id": 344,
+    "id": 345,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -19605,7 +19989,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -19987,7 +20370,7 @@
     }
   },
   {
-    "id": 345,
+    "id": 346,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -20028,7 +20411,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -20410,7 +20792,7 @@
     }
   },
   {
-    "id": 346,
+    "id": 347,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -20452,7 +20834,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -20836,7 +21217,7 @@
     }
   },
   {
-    "id": 347,
+    "id": 348,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -20878,7 +21259,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -21262,7 +21642,7 @@
     }
   },
   {
-    "id": 348,
+    "id": 349,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -21299,7 +21679,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -21680,7 +22059,7 @@
     }
   },
   {
-    "id": 349,
+    "id": 350,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -21722,7 +22101,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -22110,7 +22488,7 @@
     }
   },
   {
-    "id": 350,
+    "id": 351,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -22152,7 +22530,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -22552,7 +22929,7 @@
     }
   },
   {
-    "id": 351,
+    "id": 352,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -22594,7 +22971,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -22974,7 +23350,7 @@
     }
   },
   {
-    "id": 352,
+    "id": 353,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -23016,7 +23392,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -23385,6 +23760,7 @@
               "hmb_campaign",
               "hmb_medium",
               "hmb_source",
+              "linkid",
               "mcid"
             ]
           }
@@ -23401,7 +23777,7 @@
     }
   },
   {
-    "id": 353,
+    "id": 354,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -23443,7 +23819,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -23830,7 +24205,7 @@
     }
   },
   {
-    "id": 354,
+    "id": 355,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -23872,7 +24247,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -24258,7 +24632,7 @@
     }
   },
   {
-    "id": 355,
+    "id": 356,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -24300,7 +24674,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -24693,7 +25066,7 @@
     }
   },
   {
-    "id": 356,
+    "id": 357,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -24735,7 +25108,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -25120,7 +25492,7 @@
     }
   },
   {
-    "id": 357,
+    "id": 358,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -25162,7 +25534,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -25546,7 +25917,7 @@
     }
   },
   {
-    "id": 358,
+    "id": 359,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -25588,7 +25959,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -25972,7 +26342,7 @@
     }
   },
   {
-    "id": 359,
+    "id": 360,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -26014,7 +26384,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -26398,7 +26767,7 @@
     }
   },
   {
-    "id": 360,
+    "id": 361,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -26440,7 +26809,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -26824,7 +27192,7 @@
     }
   },
   {
-    "id": 361,
+    "id": 362,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -26866,7 +27234,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -27259,7 +27626,7 @@
     }
   },
   {
-    "id": 362,
+    "id": 363,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -27301,7 +27668,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -27685,7 +28051,7 @@
     }
   },
   {
-    "id": 363,
+    "id": 364,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -27727,7 +28093,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -28112,7 +28477,7 @@
     }
   },
   {
-    "id": 364,
+    "id": 365,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -28153,7 +28518,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -28534,7 +28898,7 @@
     }
   },
   {
-    "id": 365,
+    "id": 366,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -28576,7 +28940,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -28959,7 +29322,7 @@
     }
   },
   {
-    "id": 366,
+    "id": 367,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -29001,7 +29364,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -29385,7 +29747,7 @@
     }
   },
   {
-    "id": 367,
+    "id": 368,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -29427,7 +29789,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -29813,7 +30174,7 @@
     }
   },
   {
-    "id": 368,
+    "id": 369,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -29855,7 +30216,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -30244,7 +30604,7 @@
     }
   },
   {
-    "id": 369,
+    "id": 370,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -30286,7 +30646,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -30668,7 +31027,7 @@
     }
   },
   {
-    "id": 370,
+    "id": 371,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -30710,7 +31069,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -31095,7 +31453,7 @@
     }
   },
   {
-    "id": 371,
+    "id": 372,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -31137,7 +31495,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -31519,7 +31876,7 @@
     }
   },
   {
-    "id": 372,
+    "id": 373,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -31561,7 +31918,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -31943,7 +32299,7 @@
     }
   },
   {
-    "id": 373,
+    "id": 374,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -31985,7 +32341,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -32370,7 +32725,7 @@
     }
   },
   {
-    "id": 374,
+    "id": 375,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -32412,7 +32767,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -32794,7 +33148,7 @@
     }
   },
   {
-    "id": 375,
+    "id": 376,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -32836,7 +33190,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -33221,7 +33574,7 @@
     }
   },
   {
-    "id": 376,
+    "id": 377,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -33263,7 +33616,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -33645,7 +33997,7 @@
     }
   },
   {
-    "id": 377,
+    "id": 378,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -33687,7 +34039,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -34073,7 +34424,7 @@
     }
   },
   {
-    "id": 378,
+    "id": 379,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -34115,7 +34466,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -34502,7 +34852,7 @@
     }
   },
   {
-    "id": 379,
+    "id": 380,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -34544,7 +34894,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -34933,7 +35282,7 @@
     }
   },
   {
-    "id": 380,
+    "id": 381,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -34975,7 +35324,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -35358,7 +35706,7 @@
     }
   },
   {
-    "id": 381,
+    "id": 382,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -35400,7 +35748,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -35783,7 +36130,7 @@
     }
   },
   {
-    "id": 382,
+    "id": 383,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -35823,7 +36170,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -36204,7 +36550,7 @@
     }
   },
   {
-    "id": 383,
+    "id": 384,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -36246,7 +36592,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -36637,7 +36982,7 @@
     }
   },
   {
-    "id": 384,
+    "id": 385,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -36677,7 +37022,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -37058,7 +37402,7 @@
     }
   },
   {
-    "id": 385,
+    "id": 386,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -37100,7 +37444,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -37489,7 +37832,7 @@
     }
   },
   {
-    "id": 386,
+    "id": 387,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -37531,7 +37874,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -37915,7 +38257,7 @@
     }
   },
   {
-    "id": 387,
+    "id": 388,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -37957,7 +38299,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -38343,7 +38684,7 @@
     }
   },
   {
-    "id": 388,
+    "id": 389,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -38385,7 +38726,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -38769,7 +39109,7 @@
     }
   },
   {
-    "id": 389,
+    "id": 390,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -38811,7 +39151,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -39199,7 +39538,7 @@
     }
   },
   {
-    "id": 390,
+    "id": 391,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -39241,7 +39580,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -39633,7 +39971,7 @@
     }
   },
   {
-    "id": 391,
+    "id": 392,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -39675,7 +40013,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -40060,7 +40397,7 @@
     }
   },
   {
-    "id": 392,
+    "id": 393,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -40102,7 +40439,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -40495,7 +40831,7 @@
     }
   },
   {
-    "id": 393,
+    "id": 394,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -40537,7 +40873,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -40920,7 +41255,7 @@
     }
   },
   {
-    "id": 394,
+    "id": 395,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -40962,7 +41297,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -41345,7 +41679,7 @@
     }
   },
   {
-    "id": 395,
+    "id": 396,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -41387,7 +41721,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -41792,7 +42125,7 @@
     }
   },
   {
-    "id": 396,
+    "id": 397,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -41834,7 +42167,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -42218,7 +42550,7 @@
     }
   },
   {
-    "id": 397,
+    "id": 398,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -42260,7 +42592,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -42643,7 +42974,7 @@
     }
   },
   {
-    "id": 398,
+    "id": 399,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -42685,7 +43016,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -43073,7 +43403,7 @@
     }
   },
   {
-    "id": 399,
+    "id": 400,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -43115,7 +43445,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -43501,7 +43830,7 @@
     }
   },
   {
-    "id": 400,
+    "id": 401,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -43543,7 +43872,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -43925,7 +44253,7 @@
     }
   },
   {
-    "id": 401,
+    "id": 402,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -43967,7 +44295,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -44355,7 +44682,7 @@
     }
   },
   {
-    "id": 402,
+    "id": 403,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -44397,7 +44724,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -44779,7 +45105,7 @@
     }
   },
   {
-    "id": 403,
+    "id": 404,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -44821,7 +45147,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -45204,7 +45529,7 @@
     }
   },
   {
-    "id": 404,
+    "id": 405,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -45246,7 +45571,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -45630,7 +45954,7 @@
     }
   },
   {
-    "id": 405,
+    "id": 406,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -45672,7 +45996,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -46058,7 +46381,7 @@
     }
   },
   {
-    "id": 406,
+    "id": 407,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -46100,7 +46423,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",
@@ -46490,7 +46812,7 @@
     }
   },
   {
-    "id": 407,
+    "id": 408,
     "priority": 1,
     "action": {
       "type": "redirect",
@@ -46532,7 +46854,6 @@
               "psc",
               "spla",
               "linkcode",
-              "linkid",
               "creativeasin",
               "spia",
               "asc_contentid",

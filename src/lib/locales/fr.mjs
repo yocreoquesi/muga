@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_tagline: "Vos liens, sans le pistage.",
   ob_tagline_sub: "Supprimer le pistage de vos URL · conserver les référents des créateurs · zéro télémétrie.",
   ob_step1_title: "Comment MUGA apaise vos URL",
-  ob_feat1_title: "Supprime plus de 400 motifs de pistage connus",
+  ob_feat1_title: "Supprime plus de 399 motifs de pistage connus",
   ob_feat1_desc: "fbclid, gclid, UTM et des centaines d'autres, disparus avant le chargement de la page. Le nettoyage s'effectue localement dans votre navigateur, sans analytique ni télémétrie.",
   ob_feat2_title: "Déballe les détours : AMP, balises ping, wrappers de redirection",
   ob_feat2_desc: "Chaque détour que le web ajoute entre vous et la page souhaitée est corrigé localement, dans votre navigateur.",
