@@ -39,10 +39,66 @@
 import { mkdtempSync, cpSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
 // ── Exported for unit testing ───────────────────────────────────────────────
+
+/**
+ * Absolute path to web-ext's executable script, via Node module resolution.
+ *
+ * `exports` in web-ext's package.json blocks `require.resolve("web-ext/package.json")`,
+ * so resolve the package entry and walk up to the directory whose package.json
+ * declares the package, then read its `bin`. Both steps are the ordinary
+ * resolution rules, which is the whole point: wherever Node can import web-ext,
+ * this finds its binary.
+ *
+ * @returns {string} absolute path to the bin script
+ * @throws {Error} naming the missing install, not a path that does not exist
+ */
+export function resolveWebExtBin() {
+  const require = createRequire(import.meta.url);
+  let entry;
+  try {
+    entry = require.resolve("web-ext");
+  } catch {
+    throw new Error(
+      "[strip-test-seams] web-ext is not installed anywhere Node can resolve it from " +
+        `${dirname(fileURLToPath(import.meta.url))}. Run \`npm ci\` in this checkout, ` +
+        "or in the parent checkout if this is a git worktree (#1329).",
+    );
+  }
+
+  let dir = dirname(entry);
+  for (;;) {
+    const manifest = join(dir, "package.json");
+    let pkg;
+    try {
+      pkg = JSON.parse(readFileSync(manifest, "utf8"));
+    } catch {
+      pkg = null;
+    }
+    if (pkg?.name === "web-ext") {
+      const bin = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.["web-ext"];
+      if (!bin) {
+        throw new Error(
+          `[strip-test-seams] web-ext at ${dir} declares no "web-ext" bin; cannot build (#1329).`,
+        );
+      }
+      return join(dir, bin);
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      throw new Error(
+        `[strip-test-seams] resolved web-ext to ${entry} but found no package.json ` +
+          "declaring it; the install looks corrupt. Reinstall it (#1329).",
+      );
+    }
+    dir = parent;
+  }
+}
+
 
 /**
  * Returns the inert stub content for test-fixtures.js.
@@ -170,25 +226,26 @@ if (isMain) {
       console.log("[strip-test-seams] NOTE: __MUGA_TRUSTED_KEYS__ seam not found (already removed or restructured)");
     }
 
-    // 3. Resolve the web-ext binary: prefer the local node_modules copy.
-    //    On Windows, .bin/ shims are .cmd files; on POSIX they are shebanged scripts.
-    //    We invoke .cmd files via cmd.exe /c to avoid the DEP0190 shell:true warning.
-    const __dir    = dirname(fileURLToPath(import.meta.url));
-    const binDir   = join(__dir, "..", "node_modules", ".bin");
-    const isWin    = process.platform === "win32";
-    const webExt   = isWin
-      ? join(binDir, "web-ext.cmd")
-      : join(binDir, "web-ext");
+    // 3. Resolve web-ext's entry script through Node's own module resolution.
+    //
+    //    This used to hardcode `../node_modules/.bin/web-ext[.cmd]` relative to
+    //    this file. That is not where Node looks, and it is wrong in the one
+    //    place parallel work on this repo happens: a `git worktree` has no
+    //    `node_modules` of its own, so the path simply does not exist and the
+    //    build died on an ENOENT naming a path rather than a missing install
+    //    (#1329). Node's resolution walks up from the requiring file, so a
+    //    worktree finds the parent checkout's install the way every other
+    //    import in this repo already does.
+    //
+    //    Running the bin's JS with process.execPath also retires the Windows
+    //    branch: no .bin shim, so no .cmd, so no cmd.exe /c and no DEP0190
+    //    shell:true workaround. One code path on every platform.
+    const webExtBin = resolveWebExtBin();
 
     // 4. Run web-ext build from the temp copy.
     const buildArgs = ["build", "--source-dir", tmpSrc, ...webExtArgs];
     console.log(`[strip-test-seams] Running: web-ext ${buildArgs.join(" ")}`);
-    if (isWin) {
-      // Invoke the .cmd shim through cmd.exe with /c to avoid DEP0190 shell:true.
-      execFileSync("cmd.exe", ["/c", webExt, ...buildArgs], { stdio: "inherit" });
-    } else {
-      execFileSync(webExt, buildArgs, { stdio: "inherit" });
-    }
+    execFileSync(process.execPath, [webExtBin, ...buildArgs], { stdio: "inherit" });
 
   } finally {
     rmSync(tmpBase, { recursive: true, force: true });

@@ -25,9 +25,9 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
@@ -35,7 +35,8 @@ const ROOT = join(__dirname, "..", "..");
 // Import the exported rewriter functions.
 // Use pathToFileURL so Windows absolute paths are valid ESM URLs.
 const stripSeamsUrl = pathToFileURL(resolve(ROOT, "tools/strip-test-seams.mjs")).href;
-const { rewriteTestFixtures, neutraliseTrustedKeysSeam } = await import(stripSeamsUrl);
+const { rewriteTestFixtures, neutraliseTrustedKeysSeam, resolveWebExtBin } =
+  await import(stripSeamsUrl);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -203,3 +204,63 @@ describe("neutraliseTrustedKeysSeam — seam absent", () => {
     assert.doesNotThrow(() => neutraliseTrustedKeysSeam(""));
   });
 });
+
+// ── resolveWebExtBin (#1329) ─────────────────────────────────────────────────
+//
+// The build used to reach for `../node_modules/.bin/web-ext[.cmd]`, a path
+// relative to the script rather than a resolution. That is not where Node
+// looks, and it broke the one place parallel work on this repo happens: a
+// `git worktree` has no `node_modules` of its own, so the build died on an
+// ENOENT naming a path instead of a missing install.
+//
+// These assert the resolution, not the path: wherever Node can import web-ext,
+// the build must find its binary.
+describe("resolveWebExtBin — #1329", () => {
+  test("returns a file that exists", () => {
+    const bin = resolveWebExtBin();
+    assert.ok(existsSync(bin), `resolved ${bin}, which does not exist`);
+  });
+
+  test("returns the bin web-ext's own package.json declares", () => {
+    const bin = resolveWebExtBin();
+    // Walk to the package root the same way the resolver does, then compare
+    // against the manifest rather than against a path this test hardcodes.
+    let dir = dirname(bin);
+    let pkg = null;
+    for (;;) {
+      try {
+        const candidate = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+        if (candidate.name === "web-ext") { pkg = candidate; break; }
+      } catch { /* keep walking */ }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    assert.ok(pkg, "resolved a path with no web-ext package.json above it");
+    const declared = typeof pkg.bin === "string" ? pkg.bin : pkg.bin["web-ext"];
+    assert.equal(bin, join(dir, declared));
+  });
+
+  test("does not depend on a .bin shim, so there is one code path per platform", () => {
+    const bin = resolveWebExtBin();
+    assert.ok(
+      !bin.includes(`${sep}.bin${sep}`),
+      `resolved through a .bin shim (${bin}). Running the shim is what forced the ` +
+        "Windows cmd.exe branch and its DEP0190 workaround; the bin's own JS runs " +
+        "under process.execPath on every platform.",
+    );
+    assert.ok(bin.endsWith(".js"), `expected a JS entry to run under node, got ${bin}`);
+  });
+
+  test("the build script no longer hardcodes a node_modules path", () => {
+    // A source-text check on purpose: the failure mode is a future edit
+    // reintroducing the hardcoded path, and no behavioural test can see that
+    // while a local install happens to make both work.
+    const src = readFileSync(resolve(ROOT, "tools/strip-test-seams.mjs"), "utf8");
+    assert.ok(
+      !/join\([^)]*"node_modules"[^)]*"\.bin"/.test(src),
+      "strip-test-seams.mjs builds a node_modules/.bin path again — that is the #1329 defect",
+    );
+  });
+});
+
