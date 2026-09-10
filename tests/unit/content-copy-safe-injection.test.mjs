@@ -482,16 +482,53 @@ describe("#946 — copy-safe prefs preserve third-party attribution (real proces
 // mirrors of un-importable SW code.
 describe("#946 — background copy call sites already suppress injection (regression pin)", () => {
   const swSrc = readFileSync(join(__dirname, "../../src/background/service-worker.js"), "utf8");
+  // handleProcessUrl itself moved to process-url.js (#1266 item 5, slice 6) —
+  // the effectivePrefs branch this test pins now lives there, not in
+  // service-worker.js. process-url.js is Node-importable, so this is a real
+  // behavioral test of the actual branch rather than a source-string match.
+  const AFFILIATE_URL = "https://www.amazon.es/dp/B08N5WRWNW?tag=creator-21";
 
-  test("handleProcessUrl's effectivePrefs branch forces the toast off on skipNotify", () => {
+  test("handleProcessUrl's effectivePrefs branch forces the toast off on skipNotify", async () => {
     // drop-affiliate-injection (PR 1a): the injectOwnAffiliate override was
     // removed from this branch — injection is gone, so there is nothing
     // left to suppress on that side. notifyForeignAffiliate suppression
-    // (the toast) is still required on copy.
-    const idx = swSrc.indexOf("const effectivePrefs = skipNotify");
-    assert.ok(idx !== -1, "handleProcessUrl must build a copy-safe effectivePrefs branch");
-    const block = swSrc.slice(idx, idx + 200);
-    assert.ok(block.includes("notifyForeignAffiliate: false"));
+    // (the toast) is still required on copy: with skipNotify:true, a URL
+    // that WOULD otherwise produce "detected_foreign" must not, because
+    // effectivePrefs.notifyForeignAffiliate is forced to false.
+    const { createProcessUrl } = await import("../../src/background/process-url.js");
+    const localData = new Map();
+    globalThis.chrome = {
+      storage: {
+        local: {
+          get(defaults, cb) {
+            const out = {};
+            for (const [k, v] of Object.entries(defaults || {})) out[k] = localData.has(k) ? localData.get(k) : v;
+            cb(out);
+          },
+          set(items, cb) { for (const [k, v] of Object.entries(items)) localData.set(k, v); if (cb) cb(); },
+        },
+      },
+      runtime: { lastError: null },
+    };
+    const { handleProcessUrl } = createProcessUrl({
+      domainRulesLoader: { ensure: async () => {} },
+      pathRulesLoader: { ensure: async () => {} },
+      firstUsedBootstrap: { ensure: async () => {} },
+      getPrefs: async () => ({ enabled: true, onboardingDone: true, notifyForeignAffiliate: true, attributionLedgerEnabled: false }),
+      getDomainRules: () => domainRules,
+      getPathStripRules: () => [],
+      getPathAffiliateRules: () => [],
+      frequencyTracker: null,
+      appendHistory: async () => {},
+    });
+
+    const withoutSkipNotify = await handleProcessUrl(AFFILIATE_URL, {});
+    assert.equal(withoutSkipNotify.action, "detected_foreign",
+      "fixture sanity check — the live prefs must actually detect this tag when not copy-safe");
+
+    const withSkipNotify = await handleProcessUrl(AFFILIATE_URL, { skipNotify: true });
+    assert.notEqual(withSkipNotify.action, "detected_foreign",
+      "skipNotify:true must force notifyForeignAffiliate:false in effectivePrefs, suppressing detection");
   });
 
   test("keyboard shortcut (Alt+Shift+C) copy call site passes skipNotify: true", () => {

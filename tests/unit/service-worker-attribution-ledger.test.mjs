@@ -15,20 +15,16 @@
  *      chrome.storage.local. This is what the popup will exercise on
  *      open after the SW has done its work.
  *
- *   2. The service-worker source contains the call site that pushes
- *      attribution events into chrome.storage.local. A structural
- *      readFileSync test catches the regression where someone removes
- *      the writer and the ledger silently stops accumulating.
+ *   2. process-url.js (src/background/process-url.js, #1266 item 5 slice 6)
+ *      actually persists an event to chrome.storage.local after a clean,
+ *      and actually honors the attributionLedgerEnabled privacy gate — a
+ *      real, running proof now that the writer lives in an importable
+ *      module, replacing what used to be a structural readFileSync scan of
+ *      service-worker.js (which the ledger writer moved out of in full).
  */
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = resolve(__dirname, "../..");
 
 import {
   createLedger,
@@ -112,35 +108,61 @@ describe("ledger persistence — chrome.storage.local round-trip", () => {
   });
 });
 
-describe("service-worker source carries the ledger writer", () => {
-  test("service-worker.js imports the attribution-ledger module", () => {
-    const src = readFileSync(resolve(root, "src/background/service-worker.js"), "utf8");
-    assert.ok(
-      /from\s+"\.\.\/lib\/attribution-ledger\.js"/.test(src),
-      "service-worker.js must import from attribution-ledger.js",
-    );
+describe("the ledger writer, and where it actually lives now", () => {
+  // The ledger subsystem (creation, cold-start hydration, and
+  // pushAttributionAndPersist) moved to src/background/process-url.js in
+  // full (#1266 item 5, slice 6) — nothing outside handleProcessUrl ever
+  // touched the in-memory `_attributionLedger`, so it had no reason to stay
+  // behind. process-url.js is Node-importable, so the three checks that used
+  // to structurally scan service-worker.js's source are replaced with a
+  // real, running proof that createProcessUrl actually persists an event and
+  // actually honors the privacy gate — the SW-source checks would have kept
+  // "passing" for the wrong reason (or silently stopped proving anything)
+  // once the writer moved, since they only assert substring presence.
+
+  test("process-url.js persists an attribution event to chrome.storage.local after a clean", async () => {
+    let seenSet = false;
+    globalThis.chrome = {
+      storage: { local: { get(d, cb) { cb({ ...d }); }, set(items, cb) { if ("attributionLedger" in items) seenSet = true; if (cb) cb(); } } },
+      runtime: { lastError: null },
+    };
+    const { createProcessUrl } = await import("../../src/background/process-url.js");
+    const { handleProcessUrl } = createProcessUrl({
+      domainRulesLoader: { ensure: async () => {} },
+      pathRulesLoader: { ensure: async () => {} },
+      firstUsedBootstrap: { ensure: async () => {} },
+      getPrefs: async () => ({ enabled: true, onboardingDone: true, attributionLedgerEnabled: true }),
+      getDomainRules: () => [],
+      getPathStripRules: () => [],
+      getPathAffiliateRules: () => [],
+      frequencyTracker: null,
+      appendHistory: async () => {},
+    });
+    await handleProcessUrl("https://example.com/?utm_source=x", {});
+    await new Promise((r) => setImmediate(r));
+    assert.ok(seenSet, "handleProcessUrl must persist attributionLedger via chrome.storage.local.set");
   });
 
-  test("service-worker.js writes attributionLedger to chrome.storage.local", () => {
-    const src = readFileSync(resolve(root, "src/background/service-worker.js"), "utf8");
-    assert.ok(
-      /attributionLedger/.test(src),
-      "service-worker.js must reference attributionLedger (writes to chrome.storage.local)",
-    );
-    // The writer must call chrome.storage.local.set somewhere — guard against
-    // accidental drop-through to a different storage area.
-    assert.ok(
-      /chrome\.storage\.local\.set\([^)]*attributionLedger/.test(src) ||
-        /attributionLedger[^]{0,200}chrome\.storage\.local\.set/.test(src),
-      "service-worker.js must persist the ledger via chrome.storage.local.set",
-    );
-  });
-
-  test("service-worker.js gates the ledger writer on attributionLedgerEnabled pref", () => {
-    const src = readFileSync(resolve(root, "src/background/service-worker.js"), "utf8");
-    assert.ok(
-      /attributionLedgerEnabled/.test(src),
-      "service-worker.js must gate the writer on prefs.attributionLedgerEnabled (privacy toggle)",
-    );
+  test("process-url.js gates the ledger writer on attributionLedgerEnabled: false", async () => {
+    let seenSet = false;
+    globalThis.chrome = {
+      storage: { local: { get(d, cb) { cb({ ...d }); }, set(items, cb) { if ("attributionLedger" in items) seenSet = true; if (cb) cb(); } } },
+      runtime: { lastError: null },
+    };
+    const { createProcessUrl } = await import("../../src/background/process-url.js");
+    const { handleProcessUrl } = createProcessUrl({
+      domainRulesLoader: { ensure: async () => {} },
+      pathRulesLoader: { ensure: async () => {} },
+      firstUsedBootstrap: { ensure: async () => {} },
+      getPrefs: async () => ({ enabled: true, onboardingDone: true, attributionLedgerEnabled: false }),
+      getDomainRules: () => [],
+      getPathStripRules: () => [],
+      getPathAffiliateRules: () => [],
+      frequencyTracker: null,
+      appendHistory: async () => {},
+    });
+    await handleProcessUrl("https://example.com/?utm_source=x", {});
+    await new Promise((r) => setImmediate(r));
+    assert.equal(seenSet, false, "attributionLedgerEnabled:false must suppress the storage write entirely");
   });
 });

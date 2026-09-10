@@ -288,44 +288,89 @@ describe("Cache invalidation — version counter", () => {
 // ── Security: debug log must not contain URLs/paths outside devMode ──────────
 
 describe("Security: debug log payload privacy (finding 1)", () => {
-  test("logAction('cleaned') does not include cleanUrl unconditionally", () => {
-    // cleanUrl must only be logged when devMode is true.
-    // The entry object is built before the logAction call; we anchor on cleanedEntry.
-    const cleanedEntryStart = swSource.indexOf("const cleanedEntry =");
-    assert.ok(cleanedEntryStart !== -1, "cleanedEntry object must exist");
-    const cleanedBlock = swSource.slice(cleanedEntryStart, cleanedEntryStart + 600);
-    const devModeGatePos = cleanedBlock.indexOf("if (prefs.devMode)");
-    assert.ok(devModeGatePos !== -1, "cleanedEntry block must have a devMode gate");
-    const cleanUrlBeforeGate = cleanedBlock.slice(0, devModeGatePos).includes("cleanUrl");
-    assert.ok(!cleanUrlBeforeGate, "cleanUrl must not appear in the flat log entry before devMode gate");
+  // cleanedEntry/passthroughEntry (and the logAction calls that log them)
+  // moved to src/background/process-url.js in full (#1266 item 5, slice 6).
+  // process-url.js is Node-importable now, so these four checks are real
+  // behavioral proof — a call to the actual handleProcessUrl, reading what
+  // actually landed in the debug log — rather than a source-text scan of a
+  // module that no longer contains this code.
+  //
+  // logAction ultimately writes through session-log.js's appendSessionLog,
+  // which uses lib/storage.js's `sessionStorage` (chrome.storage.session).
+  // No chrome.storage.session is provided below on purpose: storage.js
+  // falls back to its own in-memory ponyfill Map when the API is absent
+  // (see storage.js's `_hasSessionStorage` docblock), which this test reads
+  // back directly via the real, exported `sessionStorage.get`.
+
+  async function runAndReadDebugLog({ devMode, url, prefs = {} }) {
+    globalThis.chrome = {
+      storage: {
+        local: { get: (d, cb) => cb({ ...d }), set: (i, cb) => { if (cb) cb(); } },
+      },
+      runtime: { lastError: null },
+    };
+    const { createProcessUrl } = await import(`../../src/background/process-url.js?cb=${Math.random()}`);
+    // NOT cache-busted: process-url.js's own session-log.js import resolves
+    // ../lib/storage.js at its ORIGINAL specifier, so this must be the same
+    // module instance to read back what logAction actually wrote.
+    const { sessionStorage } = await import("../../src/lib/storage.js");
+    const { handleProcessUrl } = createProcessUrl({
+      domainRulesLoader: { ensure: async () => {} },
+      pathRulesLoader: { ensure: async () => {} },
+      firstUsedBootstrap: { ensure: async () => {} },
+      getPrefs: async () => ({ enabled: true, onboardingDone: true, devMode, attributionLedgerEnabled: false, ...prefs }),
+      getDomainRules: () => [],
+      getPathStripRules: () => [],
+      getPathAffiliateRules: () => [],
+      frequencyTracker: null,
+      appendHistory: async () => {},
+    });
+    await handleProcessUrl(url, {});
+    // appendSessionLog resolves through a couple of promise hops.
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    const { debugLog } = await sessionStorage.get({ debugLog: [] });
+    return debugLog;
+  }
+
+  test("logAction('cleaned') does not include cleanUrl when devMode is false", async () => {
+    const debugLog = await runAndReadDebugLog({ devMode: false, url: "https://example.com/?utm_source=x" });
+    const entry = debugLog.find((e) => e.msg.startsWith("[cleaned]"));
+    assert.ok(entry, "a [cleaned] debug-log entry must exist");
+    assert.ok(!entry.msg.includes("cleanUrl"), `cleanUrl must not appear outside devMode: ${entry.msg}`);
   });
 
-  test("logAction('cleaned') includes domain unconditionally", () => {
-    const cleanedEntryStart = swSource.indexOf("const cleanedEntry =");
-    assert.ok(cleanedEntryStart !== -1, "cleanedEntry object must exist");
-    const cleanedBlock = swSource.slice(cleanedEntryStart, cleanedEntryStart + 200);
-    assert.ok(cleanedBlock.includes("domain"), "domain must always be logged");
+  test("logAction('cleaned') includes domain unconditionally", async () => {
+    const debugLog = await runAndReadDebugLog({ devMode: false, url: "https://example.com/?utm_source=x" });
+    const entry = debugLog.find((e) => e.msg.startsWith("[cleaned]"));
+    assert.ok(entry, "a [cleaned] debug-log entry must exist");
+    assert.ok(entry.msg.includes("\"domain\""), "domain must always be logged");
   });
 
-  test("logAction('cleaned') includes junkRemoved unconditionally", () => {
-    const cleanedEntryStart = swSource.indexOf("const cleanedEntry =");
-    assert.ok(cleanedEntryStart !== -1, "cleanedEntry object must exist");
-    const cleanedBlock = swSource.slice(cleanedEntryStart, cleanedEntryStart + 250);
-    assert.ok(cleanedBlock.includes("junkRemoved"), "junkRemoved must always be logged");
+  test("logAction('cleaned') includes junkRemoved unconditionally", async () => {
+    const debugLog = await runAndReadDebugLog({ devMode: false, url: "https://example.com/?utm_source=x" });
+    const entry = debugLog.find((e) => e.msg.startsWith("[cleaned]"));
+    assert.ok(entry, "a [cleaned] debug-log entry must exist");
+    assert.ok(entry.msg.includes("\"junkRemoved\""), "junkRemoved must always be logged");
   });
 
-  test("logAction('passthrough') does not include path unconditionally", () => {
-    // path must only be logged when devMode is true.
-    // The devMode gate wraps path/params assignment BEFORE the logAction call.
-    // We find the block that contains both the gate and the logAction call.
-    const passthroughEntryStart = swSource.indexOf("const passthroughEntry =");
-    assert.ok(passthroughEntryStart !== -1, "passthroughEntry object must exist");
-    const passthroughBlock = swSource.slice(passthroughEntryStart, passthroughEntryStart + 400);
-    // The flat literal (before devMode gate) must NOT contain path:
-    const devModeGatePos = passthroughBlock.indexOf("if (prefs.devMode)");
-    assert.ok(devModeGatePos !== -1, "passthrough block must have a devMode gate");
-    const pathBeforeGate = passthroughBlock.slice(0, devModeGatePos).includes("path:");
-    assert.ok(!pathBeforeGate, "path must not appear in passthrough entry before devMode gate");
+  test("logAction('passthrough') does not include path when devMode is false", async () => {
+    // A passthrough fires when the URL has a query string but nothing was
+    // stripped/changed — e.g. a query MUGA has no rule for.
+    const debugLog = await runAndReadDebugLog({ devMode: false, url: "https://example.com/?nothing_to_strip=1" });
+    const entry = debugLog.find((e) => e.msg.startsWith("[passthrough]"));
+    assert.ok(entry, "a [passthrough] debug-log entry must exist");
+    assert.ok(!entry.msg.includes("\"path\""), `path must not appear outside devMode: ${entry.msg}`);
+  });
+
+  test("contrast: devMode:true DOES include cleanUrl and path", async () => {
+    const cleanedLog = await runAndReadDebugLog({ devMode: true, url: "https://example.com/?utm_source=x" });
+    const cleanedEntry = cleanedLog.find((e) => e.msg.startsWith("[cleaned]"));
+    assert.ok(cleanedEntry?.msg.includes("cleanUrl"), "devMode:true must include cleanUrl — proves the prior test's absence was the gate, not a fixture that never logs it");
+
+    const passthroughLog = await runAndReadDebugLog({ devMode: true, url: "https://example.com/?nothing_to_strip=1" });
+    const passthroughEntry = passthroughLog.find((e) => e.msg.startsWith("[passthrough]"));
+    assert.ok(passthroughEntry?.msg.includes("\"path\""), "devMode:true must include path");
   });
 
   test("sender.tab guard required for list-mutation messages (finding 5)", () => {

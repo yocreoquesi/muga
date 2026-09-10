@@ -4,7 +4,7 @@
  * and maintains extension state.
  */
 
-import { processUrl, computeNavigationStrip, parseListEntry, isSiteFullyExempt, isSiteFullyBlacklisted } from "../lib/cleaner.js";
+import { computeNavigationStrip, parseListEntry, isSiteFullyExempt, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
 import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
@@ -12,6 +12,7 @@ import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 import { isValidListEntry } from "../lib/validation.js";
 import { hasDNR, isFirefoxMV2, applyDnrState } from "./dnr-sync.js";
 import { createToolbarBadge } from "./toolbar-badge.js";
+import { createProcessUrl } from "./process-url.js";
 import { createSingleFlightLoader, createFirstUsedBootstrap } from "../lib/single-flight-loader.js";
 import { runOneTimeMigrations } from "./run-migrations.js";
 import { openOnboardingOnce, clearOnboardingTabFlag, shouldOpenOnboarding } from "./onboarding-gate.js";
@@ -39,12 +40,6 @@ import {
   createChromeLocalAdapter as createFrequencyChromeAdapter,
   defaultHasher as defaultFrequencyHasher,
 } from "../lib/cross-site-frequency.js";
-import {
-  createLedger as createAttributionLedger,
-  pushEvent as pushAttributionEvent,
-  fromCleanerResult as attributionEventFromCleanerResult,
-  DEFAULT_LEDGER_CAPACITY,
-} from "../lib/attribution-ledger.js";
 
 self.addEventListener("unhandledrejection", (e) => {
   console.warn("[MUGA] unhandled rejection:", e.reason);
@@ -240,113 +235,35 @@ const frequencyTracker = _frequencyAdapter
   ? createFrequencyTracker({ adapter: _frequencyAdapter, hasher: defaultFrequencyHasher })
   : null;
 
-// --- Attribution Ledger (#460, A2) ---
+// --- handleProcessUrl (#1266 item 5, slice 6) ---
 //
-// Rolling ring buffer of cleaner-pipeline events feeding the popup
-// "Recent activity" section. Persisted to chrome.storage.local under
-// "attributionLedger" so the popup can render after SW restart.
+// The Attribution Ledger (#460, A2) and handleProcessUrl itself moved to
+// ./process-url.js — see that module's docblock for the full mapped
+// side-effect ordering and for why the ledger moved in full while
+// domainRules/pathStripRules/pathAffiliateRules/frequencyTracker/
+// getPrefsWithCache/appendHistory stay here and are injected instead (they
+// are shared with call sites outside handleProcessUrl).
 //
-// In-memory ledger is the source of truth during a SW lifetime; the
-// local-storage write is a fire-and-forget mirror. On SW cold start the
-// in-memory copy is empty and the popup reads directly from local
-// storage — both surfaces converge once the next event lands.
-//
-// Gated on prefs.attributionLedgerEnabled (default true). When false,
-// pushAttributionAndPersist short-circuits without touching storage.
-let _attributionLedger = createAttributionLedger(DEFAULT_LEDGER_CAPACITY);
-
-async function _hydrateAttributionLedger() {
-  try {
-    const data = await new Promise((resolve, reject) => {
-      chrome.storage.local.get(
-        { attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } },
-        (r) => {
-          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-          else resolve(r);
-        },
-      );
-    });
-    if (data?.attributionLedger && Array.isArray(data.attributionLedger.events)) {
-      _attributionLedger = {
-        events: data.attributionLedger.events.slice(),
-        capacity: Number(data.attributionLedger.capacity) || DEFAULT_LEDGER_CAPACITY,
-      };
-    }
-  } catch {
-    // Best-effort: stay with the empty in-memory ledger. The first push
-    // will overwrite local-storage cleanly.
-  }
-}
-
-// #1266: this call used to be bare, so nothing could wait for it. A PROCESS_URL
-// arriving inside the cold-start window pushed onto the EMPTY default ledger,
-// and the hydration that landed a microtask later replaced the whole object,
-// dropping that push. One lost row in "Recent activity" is the visible symptom,
-// which is why this is a secondary rather than part of #1257 — but the shape is
-// the same write-loss as those: read, then overwrite what someone else wrote in
-// between.
-//
-// Retaining the promise makes the window waitable. pushAttributionAndPersist
-// awaits it before touching _attributionLedger, so a push either happens before
-// hydration starts reading or after it has finished writing, never in between.
-// Nothing else needs to change: the hydration is still started here, at module
-// scope, so it is in flight during the cold start rather than deferred to the
-// first push.
-const _attributionLedgerHydrated = _hydrateAttributionLedger();
-
-/**
- * Builds an attribution event from a cleaner result and persists the
- * updated ledger. Fire-and-forget — never blocks the caller. Gated on
- * prefs.attributionLedgerEnabled so users can opt out of URL persistence
- * without disabling the rest of MUGA.
- *
- * @param {string} rawUrl
- * @param {object} result - return value from processUrl
- * @param {object} prefs  - cached prefs (already resolved)
- * @param {string} [referrer] - navigation referrer (#452/B14).
- */
-async function pushAttributionAndPersist(rawUrl, result, prefs, referrer = "") {
-  // Privacy gate: skip both in-memory accumulation AND storage write so
-  // a user who flips the toggle off mid-session sees the ring buffer
-  // freeze immediately. Checked before the await so a disabled ledger costs
-  // nothing at all, not even a microtask.
-  if (prefs?.attributionLedgerEnabled === false) return;
-
-  // #1266: wait out the cold-start hydration window before touching
-  // _attributionLedger. _hydrateAttributionLedger swallows its own failures and
-  // always resolves, so this can never reject and never blocks past one cold
-  // start. Callers stay fire-and-forget; this function is still documented as
-  // never blocking THEM, it just no longer races the hydration.
-  await _attributionLedgerHydrated;
-
-  let event;
-  try {
-    // #946 / drop-affiliate-injection (PR 1a): this ctx bag was originally
-    // built so fromCleanerResult could reprocess an `injected` result with
-    // injection forced off (deriving a tagless copy-safe URL). That
-    // "injected" case is now unreachable — processUrl never produces it —
-    // so ctx is currently unused by fromCleanerResult, but harmless to pass.
-    event = attributionEventFromCleanerResult(rawUrl, result, {
-      prefs, domainRules, pathStripRules, pathAffiliateRules, referrer,
-    });
-  } catch (err) {
-    console.warn("[MUGA] attribution: fromCleanerResult failed:", err);
-    return;
-  }
-  if (!event) return;
-  _attributionLedger = pushAttributionEvent(_attributionLedger, event);
-  // Best-effort write — failures are silent because the ledger is a UX
-  // affordance, not authoritative state.
-  try {
-    chrome.storage.local.set({ attributionLedger: _attributionLedger }, () => {
-      if (chrome.runtime.lastError) {
-        console.warn("[MUGA] attribution: ledger write failed:", chrome.runtime.lastError);
-      }
-    });
-  } catch (err) {
-    console.warn("[MUGA] attribution: ledger write threw:", err);
-  }
-}
+// createProcessUrl() is called HERE, synchronously, at module scope — NOT
+// lazily on first use — because it eagerly kicks off the ledger's
+// cold-start hydration the instant it runs. This is the exact point in
+// this file's own top-level execution the pre-move hydration call used to
+// sit; moving this call later (e.g. into the message listener) would
+// reintroduce the #1266 write-loss race the hydration promise exists to
+// close. domainRules/pathStripRules/pathAffiliateRules are `let` bindings
+// reassigned by the rule loaders after their first fetch, so they are
+// injected as accessor functions rather than by value.
+const { handleProcessUrl } = createProcessUrl({
+  domainRulesLoader: _domainRulesLoader,
+  pathRulesLoader: _pathRulesLoader,
+  firstUsedBootstrap: _firstUsedBootstrap,
+  getPrefs: getPrefsWithCache,
+  getDomainRules: () => domainRules,
+  getPathStripRules: () => pathStripRules,
+  getPathAffiliateRules: () => pathAffiliateRules,
+  frequencyTracker,
+  appendHistory,
+});
 
 // --- Prefs cache ---
 
@@ -1427,139 +1344,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 });
 
-async function handleProcessUrl(rawUrl, { skipNotify = false, source = "navigation", skipStats = false, skipSideEffects = false, referrer = "" } = {}) {
-  if (!rawUrl?.startsWith("http")) return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
-  // Both loaders in one outer Promise.all so all three JSON files (domain +
-  // 2x path) are in flight at once. Each ensure() shares a single in-flight
-  // promise across concurrent callers and re-arms the retry after the await
-  // — the #833 invariant, now in lib/single-flight-loader.js where it
-  // can be tested directly rather than through a copy (#1268).
-  await Promise.all([_domainRulesLoader.ensure(), _pathRulesLoader.ensure()]);
-  const prefs = await getPrefsWithCache();
-
-  if (!prefs.enabled || !prefs.onboardingDone) {
-    return { cleanUrl: rawUrl, action: "untouched", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
-  }
-
-  // On copy: suppress the toast. User didn't navigate, they just copied a
-  // link. drop-affiliate-injection (PR 1a): the injectOwnAffiliate override
-  // was removed — MUGA never injects its own tag anymore, so there is
-  // nothing left to suppress on that side.
-  const effectivePrefs = skipNotify
-    ? { ...prefs, notifyForeignAffiliate: false }
-    : prefs;
-
-  let result;
-  try {
-    // 5th arg `frequencyTracker` is the cross-site-frequency singleton
-    // (#446 / #495). Cleaner side fires-and-forgets one observe() per
-    // stripped tracking param, gated on prefs.crossSiteFrequencyEnabled.
-    // Null-safe: cleaner no-ops when the tracker is missing.
-    // 6th arg `referrer` (#452 / B14) wires Honor Creator Mode — when the
-    // user enabled the toggle AND the navigation referrer matches an
-    // allowlisted creator, the cleaner short-circuits with action
-    // "honored-creator". Empty string for non-navigation contexts.
-    result = processUrl(rawUrl, effectivePrefs, domainRules, undefined, frequencyTracker, referrer, pathStripRules, pathAffiliateRules);
-  } catch (err) {
-    console.error("[MUGA] processUrl failed:", err, rawUrl);
-    return { cleanUrl: rawUrl, action: "error", removedTracking: [], junkRemoved: 0, detectedAffiliate: null, autoInjected: null };
-  }
-
-  // firstUsed is initialized in onInstalled/onStartup (idempotent); the flag
-  // is set there so this hot path is a free boolean check on every call after
-  // the first SW lifetime event.
-  // Fallback for a lifecycle event that has not fired yet (a Firefox temporary
-  // add-on loads without install/startup), so the timestamp is as accurate as
-  // it can be rather than waiting for a future startup. ensure() is the same
-  // call onInstalled/onStartup make and is idempotent per worker lifetime, so
-  // after the first one this is a boolean check (#1268).
-  await _firstUsedBootstrap.ensure();
-
-  // Update stats and session history. Only count if the URL actually changed (S13).
-  const urlChanged = result.cleanUrl !== rawUrl;
-  let parsedRaw;
-  try { parsedRaw = new URL(rawUrl); } catch { /* ignore */ }
-  // #966: copy-safe reprocessing (skipSideEffects) must not mutate any
-  // user-visible tally. Copying an entry re-cleans an already-counted URL, so
-  // counting it again would inflate "URLs cleaned", prepend a DUPLICATE session
-  // history row (evicting real entries), and push a duplicate ledger event. When
-  // skipSideEffects is set we still compute the clean URL for the response,
-  // but write nothing.
-  if (!skipSideEffects && (result.action === "untouched" || (!urlChanged && result.junkRemoved === 0))) {
-    if (parsedRaw?.search) {
-      const passthroughEntry = { domain: parsedRaw.hostname.replace(/^www\./, "") };
-      if (prefs.devMode) {
-        passthroughEntry.path = parsedRaw.pathname;
-        passthroughEntry.params = [...parsedRaw.searchParams.keys()];
-      }
-      logAction("passthrough", passthroughEntry);
-    }
-  }
-  if (result.action !== "untouched" && (urlChanged || result.junkRemoved > 0)) {
-    if (!skipStats && !skipSideEffects) {
-      incrementStat("urlsCleaned");
-      if (result.junkRemoved > 0) incrementStat("junkRemoved", result.junkRemoved);
-      if (prefs.domainStats && result.junkRemoved > 0) {
-        try {
-          const hostname = new URL(rawUrl).hostname.replace(/^www\./, "");
-          incrementDomainStat(hostname, result.junkRemoved);
-        } catch { /* invalid URL, skip domain stat */ }
-      }
-    }
-    if (!skipSideEffects) {
-      await appendHistory(rawUrl, result.cleanUrl, result.removedTracking ?? []);
-      if (parsedRaw) {
-        try {
-          const domain = parsedRaw.hostname.replace(/^www\./, "");
-          const cleanedEntry = {
-            source,
-            domain,
-            action: result.action,
-            junkRemoved: result.junkRemoved,
-          };
-          if (prefs.devMode) {
-            const parsedClean = new URL(result.cleanUrl);
-            cleanedEntry.path = parsedRaw.pathname;
-            cleanedEntry.removed = result.removedTracking;
-            cleanedEntry.originalParams = [...parsedRaw.searchParams.keys()];
-            cleanedEntry.cleanParams = [...parsedClean.searchParams.keys()];
-            cleanedEntry.cleanUrl = result.cleanUrl;
-          }
-          logAction("cleaned", cleanedEntry);
-        } catch { /* malformed cleanUrl — skip logging */ }
-      }
-    }
-  }
-  if (result.action === "detected_foreign") {
-    // #966: a copy must not bump referralsSpotted or log a detection either.
-    if (!skipSideEffects) {
-      incrementStat("referralsSpotted");
-      const d = result.detectedAffiliate;
-      logAction("affiliate_detected", {
-        domain: parsedRaw?.hostname.replace(/^www\./, "") ?? "",
-        param: d?.param,
-        value: d?.value,
-        store: d?.pattern?.name ?? null,
-        action: result.action,
-      });
-    }
-    // drop-affiliate-injection (PR 1a): the withOurAffiliate alternate-URL
-    // construction was removed — MUGA never injects its own tag anymore, so
-    // there is no "with our tag" variant for the toast's "Remove it" action
-    // to offer. It now always strips to result.cleanUrl.
-  }
-
-  // #460 (A2): mirror the cleaner outcome into the Attribution Ledger
-  // so the popup's "Recent activity" section can render. Fire-and-forget
-  // so a write hiccup never affects the caller's URL processing.
-  // #966: skipped for copy-safe reprocessing so a copy doesn't push a
-  // duplicate ledger event for an already-recorded URL.
-  if (!skipSideEffects) {
-    pushAttributionAndPersist(rawUrl, result, prefs, referrer);
-  }
-
-  return result;
-}
+// handleProcessUrl moved to ./process-url.js (#1266 item 5, slice 6) — see
+// that module's docblock for the full mapped side-effect ordering. The
+// factory call that constructs it (and eagerly starts the Attribution
+// Ledger's cold-start hydration) lives above, right after frequencyTracker,
+// at the exact point in this file's top-level execution the pre-move
+// hydration call used to sit.
 
 // --- Remote-rules deps factory ---
 // Builds the deps object for runRemoteRulesFetch. Centralised so the
