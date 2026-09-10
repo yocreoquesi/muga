@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_tagline: "あなたのリンクから、トラッキングを取り除く。",
   ob_tagline_sub: "URLからトラッキングを除去 · クリエイターの紹介を維持 · テレメトリーゼロ。",
   ob_step1_title: "MUGAがURLを静かにする方法",
-  ob_feat1_title: "既知のトラッキングパターンを400以上除去",
+  ob_feat1_title: "既知のトラッキングパターンを399以上除去",
   ob_feat1_desc: "fbclid、gclid、UTM、その他数百種類は、ページ読み込み前に消える。クリーンアップはブラウザ内でローカルに実行され、解析もテレメトリーもありません。",
   ob_feat2_title: "寄り道を解消: AMP、pingビーコン、リダイレクトラッパー",
   ob_feat2_desc: "ウェブがあなたと目的ページの間に加えるすべての寄り道を、ブラウザ内でローカルに解消します。",

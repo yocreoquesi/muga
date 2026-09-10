@@ -358,12 +358,42 @@ describe("#1228 step 3 — 28 params stay stripped at the network layer, host-an
       );
     });
 
-    test('"linkid" remains in TRACKING_PARAMS (its remaining anchor, awin1.com, is a live affiliate redirect host)', () => {
+    // #1327 settled this one. It was held back from step 3 because one of its
+    // anchors, awin1.com, is a live affiliate redirect host, and touching an
+    // affiliate network on "probably safe" is not a trade this product makes.
+    //
+    // The review turned it around: `linkid` appears nowhere in Awin's flow. The
+    // click carries awinmid + awinaffid and the merchant landing carries awc
+    // (docs/affiliate-networks-matrix.md#awin); awc and awinaffid are in
+    // AFFILIATE_PARAM_GUARD and none of the three is in TRACKING_PARAMS, so
+    // MUGA leaves the whole attribution path alone.
+    //
+    // And the global entry meant MUGA was ALREADY stripping `linkid` on
+    // awin1.com, on every other site too. Anchoring it is a narrowing, not a
+    // new risk.
+    test('"linkid" is host-anchored, and the Awin attribution params stay untouched', async () => {
       assert.ok(
-        trackingLc.has("linkid"),
-        '"linkid" left TRACKING_PARAMS — it must stay global: its anchored hosts include ' +
-          "awin1.com, a REDIRECT_NETWORK_PATTERNS affiliate network host, held for its own review.",
+        !trackingLc.has("linkid"),
+        '"linkid" is back in TRACKING_PARAMS. Upstream anchors it to four hosts only, so a ' +
+          "global entry strips it on every site while claiming far more than either source does.",
       );
+
+      const { AFFILIATE_PARAM_GUARD } = await import("../../src/lib/remote-rules.js");
+      for (const p of ["awc", "awinaffid"]) {
+        assert.ok(
+          AFFILIATE_PARAM_GUARD.has(p),
+          `${p} left AFFILIATE_PARAM_GUARD. It is what actually carries Awin attribution, and ` +
+            "with linkid now anchored on awin1.com this guard is the only thing standing between " +
+            "an ingested payload and a creator's commission.",
+        );
+      }
+      for (const p of ["awc", "awinaffid", "awinmid"]) {
+        assert.ok(
+          !trackingLc.has(p),
+          `${p} entered the global strip list. It is part of Awin's documented click or landing ` +
+            "flow, so stripping it destroys the commission MUGA exists to protect.",
+        );
+      }
     });
 
     test('"ref_" left the global list and is covered by its anchors, not by a new rule', () => {

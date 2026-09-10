@@ -52,7 +52,7 @@ export const TRACKING_PARAMS = [
   // Amazon: internal / referral noise (not the affiliate tag)
   "psc", "spla",
 
-  "linkcode", "linkid", "creativeasin", "spia",
+  "linkcode", "creativeasin", "spia",
   // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
   // attribution ID; stripping it kills creator attribution (#794).
   "asc_contentid", "asc_contenttype",
@@ -682,7 +682,7 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Amazon
       "psc", "spla",
 
-      "linkcode", "linkid", "creativeasin", "spia",
+      "linkcode", "creativeasin", "spia",
       // ascsubtag removed: affiliate attribution (#794)
       "asc_contentid", "asc_contenttype",
       "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",

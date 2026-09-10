@@ -142,6 +142,10 @@
         "emitStripParams": true,
         "note": "Avansas, Turkish office-supplies e-commerce. `sc_customer`, `sc_uid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
       },
+      "awin1.com": {
+        "emitStripParams": true,
+        "note": "Awin affiliate redirect host. `linkid` is NOT part of Awin attribution: the click carries awinmid + awinaffid and the merchant landing carries awc (docs/affiliate-networks-matrix.md#awin), none of which MUGA strips. Host-anchored via AdGuard, not global (#1327)."
+      },
       "aws.eu": {
         "emitStripParams": true,
         "note": "AWS EU domain. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
@@ -349,6 +353,10 @@
       "fandom.com": {
         "emitStripParams": true,
         "note": "Wiki platform. cb is cache buster, so/ref_ are source tracking."
+      },
+      "fantasygf.ai": {
+        "emitStripParams": true,
+        "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
       },
       "fb.com": {
         "emitStripParams": true,
@@ -702,6 +710,10 @@
         "emitStripParams": true,
         "note": "PCMAX, Japanese dating/matching platform. `ad_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
       },
+      "peepshow.com": {
+        "emitStripParams": true,
+        "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
+      },
       "petbook.de": {
         "emitStripParams": true,
         "note": "Petbook, German pet-supplies e-commerce. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
@@ -894,6 +906,10 @@
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
       },
+      "vercel.com": {
+        "emitStripParams": true,
+        "note": "Vercel Referrals uses `ref` as its creator attribution token (#1252). Preserved on this host only: `ref` is genuinely a tracker elsewhere, so guarding the name globally would block those strips forever."
+      },
       "video-shoper.ru": {
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
@@ -993,10 +1009,6 @@
       "zigzag.kr": {
         "emitStripParams": true,
         "note": "Korean fashion e-commerce platform. Search query: functional."
-      },
-      "vercel.com": {
-        "emitStripParams": true,
-        "note": "Vercel Referrals uses `ref` as its creator attribution token (#1252). Preserved on this host only: `ref` is genuinely a tracker elsewhere, so guarding the name globally would block those strips forever."
       }
     }
   },
@@ -3724,7 +3736,11 @@
     {"scope":"*","param":"xid","action":"strip"},
     {"scope":"*","param":"xptdk","action":"strip"},
     {"scope":"*","param":"xtor","action":"strip"},
-    {"scope":"*","param":"zrclid","action":"strip"}
+    {"scope":"*","param":"zrclid","action":"strip"},
+    {"scope":"awin1.com","param":"linkid","action":"strip"},
+    {"scope":"fantasygf.ai","param":"linkid","action":"strip"},
+    {"scope":"humblebundle.com","param":"linkid","action":"strip"},
+    {"scope":"peepshow.com","param":"linkid","action":"strip"}
   ],
   "scopedFacts": [
     {"scope":"123chat.jp","param":"afid","action":"strip","provenance":{"signals":["adguard-tp"],"firstSeenAt":"2026-09-08T14:45:41.811Z","admittedAt":"2026-09-08T14:46:19.093Z"}},

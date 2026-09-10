@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_tagline: "Your links, with the tracking taken out.",
   ob_tagline_sub: "Strip tracking from your URLs · keep creator referrals · zero telemetry.",
   ob_step1_title: "How MUGA quiets your URLs",
-  ob_feat1_title: "Strips 400+ known tracking patterns",
+  ob_feat1_title: "Strips 399+ known tracking patterns",
   ob_feat1_desc: "fbclid, gclid, UTMs, and hundreds more, gone before the page loads. The cleaning runs locally in your browser, with no analytics and no telemetry.",
   ob_feat2_title: "Unwraps the detours: AMP, ping beacons, redirect wrappers",
   ob_feat2_desc: "Every detour the web adds between you and the page you wanted is straightened out, locally, inside your browser.",

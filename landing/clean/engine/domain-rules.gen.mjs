@@ -2637,7 +2637,8 @@ export const DOMAIN_RULES = [
       "hmb_medium",
       "hmb_campaign",
       "hmb_source",
-      "mcid"
+      "mcid",
+      "linkid"
     ],
     "note": "Humble Bundle. Partner/campaign tracking stripped."
   },
@@ -4351,5 +4352,29 @@ export const DOMAIN_RULES = [
       "sfmc_activityid"
     ],
     "note": "Vercel Referrals uses `ref` as its creator attribution token (#1252). Preserved on this host only: `ref` is genuinely a tracker elsewhere, so guarding the name globally would block those strips forever."
+  },
+  {
+    "domain": "awin1.com",
+    "preserveParams": [],
+    "stripParams": [
+      "linkid"
+    ],
+    "note": "Awin affiliate redirect host. `linkid` is NOT part of Awin attribution: the click carries awinmid + awinaffid and the merchant landing carries awc (docs/affiliate-networks-matrix.md#awin), none of which MUGA strips. Host-anchored via AdGuard, not global (#1327)."
+  },
+  {
+    "domain": "fantasygf.ai",
+    "preserveParams": [],
+    "stripParams": [
+      "linkid"
+    ],
+    "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
+  },
+  {
+    "domain": "peepshow.com",
+    "preserveParams": [],
+    "stripParams": [
+      "linkid"
+    ],
+    "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
   }
 ];
