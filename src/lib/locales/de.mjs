@@ -257,7 +257,7 @@ export default Object.freeze({
   ob_tagline: "Deine Links, ohne das Tracking.",
   ob_tagline_sub: "Tracking aus deinen URLs entfernen · Creator-Empfehlungen behalten · keine Telemetrie.",
   ob_step1_title: "Wie MUGA deine URLs beruhigt",
-  ob_feat1_title: "Entfernt 429+ bekannte Tracking-Muster",
+  ob_feat1_title: "Entfernt 401+ bekannte Tracking-Muster",
   ob_feat1_desc: "fbclid, gclid, UTMs und Hunderte mehr: weg, bevor die Seite lädt. Die Bereinigung läuft lokal in deinem Browser, ohne Analyse und ohne Telemetrie.",
   ob_feat2_title: "Entpackt die Umwege: AMP, Ping-Beacons, Redirect-Wrapper",
   ob_feat2_desc: "Jeder Umweg, den das Web zwischen dich und die gewünschte Seite einfügt, wird lokal in deinem Browser begradigt.",
