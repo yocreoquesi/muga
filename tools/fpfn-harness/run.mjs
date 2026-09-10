@@ -37,6 +37,15 @@ const { processUrl } = await import(
   pathToFileURL(join(ROOT, "src", "lib", "cleaner.js")).href
 );
 
+// The shipped extension ALWAYS passes its domain rules to processUrl. Measuring
+// without them measures a configuration nobody runs (see runEntry below).
+const DOMAIN_RULES = (() => {
+  const raw = JSON.parse(readFileSync(join(ROOT, "src", "rules", "domain-rules.json"), "utf8"));
+  return Array.isArray(raw)
+    ? raw
+    : Object.entries(raw).map(([domain, rule]) => ({ domain, ...rule }));
+})();
+
 // ---------------------------------------------------------------------------
 // PREFS — matches the pattern used in affiliate-harness.test.mjs
 // ---------------------------------------------------------------------------
@@ -89,14 +98,23 @@ function loadFixtures() {
 // ---------------------------------------------------------------------------
 
 function runEntry(entry) {
-  // domainRules is intentionally [] — the harness measures preservation that
-  // holds WITHOUT the domain-rules preserveParams safety net (a stricter FP
-  // test). A future corpus entry depending on a domain-rules-only preserve
-  // would need domainRules wired in here.
+  // domainRules used to be [], on the reasoning that measuring without the
+  // preserveParams safety net was a STRICTER false-positive test. It was not
+  // stricter, it was different: it measured a configuration the extension never
+  // runs in. The comment here already anticipated the failure ("a future corpus
+  // entry depending on a domain-rules-only preserve would need domainRules
+  // wired in here"), and #1228 produced one, but the deeper problem was that
+  // the published number was never about the shipped product.
+  //
+  // Two corpus entries were labelled against the old configuration and had to
+  // move with this: amazon.com's profile strips `ref` and youtube.com's strips
+  // `feature`, both deliberately (domain-rules.test.mjs asserts both). Without
+  // domain rules they survived, so the corpus recorded them as preserved, which
+  // is the opposite of what a user actually gets.
   const { cleanUrl } = processUrl(
     entry.url,
     PREFS,
-    [],
+    DOMAIN_RULES,
     undefined,
     undefined,
     entry.referrer ?? null
