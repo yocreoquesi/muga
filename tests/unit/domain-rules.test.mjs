@@ -702,11 +702,28 @@ describe("domain-rules.json structure", () => {
     assert.ok(Array.isArray(domainRules));
   });
 
-  test("every entry has domain (string) and preserveParams (non-empty array)", () => {
+  // #1328: this used to require preserveParams to be non-empty, full stop. That
+  // held while every entry existed to PRESERVE something. Since #1323/#1324
+  // entries exist purely to add a host-anchored STRIP, and those have no natural
+  // preserve list, so 60 of them carried `["q"]` as filler to satisfy the check.
+  // `q` is not in TRACKING_PARAMS, so preserving it did nothing; it was data
+  // invented to pass a gate.
+  //
+  // "preserve or strip" is what actually catches a half-written entry, and it is
+  // STRICTER than the old rule: it also rejects an entry with neither, which the
+  // old check let through.
+  test("every entry has a domain and does at least one of preserve or strip", () => {
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `bad domain in rule: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array in: ${rule.domain}`);
-      assert.ok(rule.preserveParams.length > 0, `preserveParams must not be empty in: ${rule.domain}`);
+      assert.ok(
+        rule.stripParams === undefined || Array.isArray(rule.stripParams),
+        `stripParams must be an array when present in: ${rule.domain}`,
+      );
+      assert.ok(
+        rule.preserveParams.length > 0 || (rule.stripParams ?? []).length > 0,
+        `${rule.domain} neither preserves nor strips anything, so it does nothing at all`,
+      );
     }
   });
 

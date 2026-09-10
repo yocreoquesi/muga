@@ -202,11 +202,21 @@ export const REMOTE_PARAM_DENYLIST = Object.freeze(new Set([
  * is an un-stripped low-value param.
  *
  * It is NOT a claim that MUGA never strips these names anywhere. MUGA's own
- * curated rules may strip one deliberately — `src/rules/tracking-params.json`
- * rule 302 removes `linkcode`, `creativeasin`, `linkid` and `ref_` on amazon.*
- * while keeping `tag`, which is the param that actually carries the associate
- * id. That is a curation decision about a specific host, not a contradiction of
- * this set.
+ * curated rules may strip one deliberately: the amazon.* profile removes
+ * `linkcode`, `creativeasin`, `linkid` and `ref_` while keeping `tag`, which is
+ * the param that actually carries the associate id. That is a curation decision
+ * about a specific host, not a contradiction of this set.
+ *
+ * Nine members are currently in the global strip list as well, so they are
+ * removed on every site: `linkcode`, `creativeasin`, `mkevt`, `mkcid`, `mkrid`,
+ * `toolid`, `customid`, `clickid`, `click_id`. Each is a hand-curated decision
+ * that this set does not govern. Counting them is the quickest way to check
+ * this paragraph is still true (#1328).
+ *
+ * Note `ref_` is NOT among those nine: #1228 step 3 moved it out of the global
+ * list, so it is now stripped only where its profile says so. The rule id it
+ * lands in moves whenever domain-rules.json grows, which is why this paragraph
+ * names the profile rather than an id.
  *
  * It is also NOT the runtime's affiliate model. That is `AFFILIATE_PATTERNS`
  * (src/lib/affiliates.js), built from CAPS_DIRECT_INJECTION_PROGRAMS, which
