@@ -128,3 +128,103 @@ describe("#1228 — removed global params stay stripped at the network layer", (
     });
   }
 });
+
+/**
+ * #1228 step 2 — `cid`, the highest-risk single name on the issue's list.
+ *
+ * `cid` (customer id / category id / chat id / Google Maps business id — a
+ * textbook collision name) was in TRACKING_PARAMS, stripped on every site on
+ * the web. Measured against both upstream sources, neither supports a global
+ * claim for it: AdGuard Filter 17 anchors it to 23 specific hosts (zero
+ * global lines), and ClearURLs strips it for only 3 providers, none in
+ * `globalRules`. #1228 step 2 removes `cid` from TRACKING_PARAMS (430 -> 429)
+ * and re-publishes it at its correct scope: host-anchored `stripParams` in
+ * domain-rules.json for the 29 hosts the evidence actually supports.
+ *
+ * Same invariant as the describe block above, applied to `cid` on its own
+ * list of hosts (kept separate from PARAM_ANCHORED_HOSTS because that map
+ * documents #1228 step 1's original 16-param measurement).
+ */
+describe("#1228 step 2 — `cid` stays stripped at the network layer, host-anchored", () => {
+  // apple.com and flipkart.com already had domain-rules.json entries (step 1's
+  // scope); the rest are new entries added for cid alone.
+  const CID_HOSTS = [
+    "apple.com", "flipkart.com",
+    // AdGuard `||host^$removeparam=cid` anchors (nhk.jp/nhk.or.jp via the
+    // `domain=nhk.jp|nhk.or.jp` form).
+    "adshares.net", "ana.co.jp", "asahi.com", "belta.co.jp", "candy.ai",
+    "controld.com", "giphy.com", "lululemon.com.hk", "nhk.jp", "nhk.or.jp",
+    "petbook.de", "porntube.com", "rac.co.uk", "realtor.com", "samsung.com",
+    "sonybank.jp", "teknosa.com", "urban-vpn.com", "video.unext.jp",
+    // ClearURLs `referralMarketing` anchors.
+    "vitamix.com", "lazada.com", "lazada.co.th", "lazada.co.id",
+    "lazada.com.my", "lazada.com.ph", "lazada.sg", "lazada.vn",
+  ];
+
+  test("29 hosts are covered (sanity on the fixture itself)", () => {
+    assert.equal(CID_HOSTS.length, 29);
+  });
+
+  test('"cid" is absent from TRACKING_PARAMS', () => {
+    assert.ok(
+      !trackingLc.has("cid"),
+      '"cid" is back in TRACKING_PARAMS — it was removed by #1228 step 2 because neither ' +
+        "AdGuard nor ClearURLs supports a global claim for it; either that evidence changed " +
+        "(revert the removal with a new measurement) or it must come back out.",
+    );
+  });
+
+  for (const host of CID_HOSTS) {
+    test(`"cid" is stripped by a DNR profile rule scoped to "${host}"`, () => {
+      const rule = PROFILE_RULES.find((r) =>
+        (r.condition?.requestDomains ?? []).includes(host),
+      );
+      assert.ok(
+        rule,
+        `no DNR profile rule covers "${host}" — "cid" would stop being stripped before the ` +
+          "request leaves the browser. Run `npm run build:rules`.",
+      );
+
+      const excluded = new Set(rule.condition?.excludedRequestDomains ?? []);
+      assert.ok(
+        !excluded.has(host),
+        `the DNR profile rule covering "cid" on "${host}" (id ${rule.id}) excludes "${host}" ` +
+          "from itself — \"cid\" would stop being stripped before the request leaves the browser.",
+      );
+
+      const removeParamsLc = new Set(removeOf(rule).map((p) => p.toLowerCase()));
+      assert.ok(
+        removeParamsLc.has("cid"),
+        `"cid" is not in the removeParams of the DNR profile rule covering "${host}" ` +
+          `(id ${rule.id}) — "cid" would stop being stripped before the request leaves the ` +
+          "browser. Run `npm run build:rules`.",
+      );
+    });
+  }
+
+  // Deliberately excluded (#1229 / ADR-0008 "import at the anchor, never
+  // widen"): upstream anchors `cid` to a PATH on these hosts
+  // (`||123chat.jp/promotion/`, `||shop.tsukumo.co.jp/goods/`,
+  // `||ojrq.net/p/`), not to the whole host. domain-rules.json can only
+  // express host scope, so adding them would claim more than upstream claims.
+  // Pinned here so a future contributor does not "complete the set" by
+  // widening the claim past its evidence.
+  const PATH_ANCHORED_EXCLUDED_HOSTS = ["123chat.jp", "shop.tsukumo.co.jp", "ojrq.net"];
+
+  for (const host of PATH_ANCHORED_EXCLUDED_HOSTS) {
+    test(`"${host}" does NOT get a "cid" DNR strip (upstream anchors it to a path, not the host)`, () => {
+      const rule = PROFILE_RULES.find((r) =>
+        (r.condition?.requestDomains ?? []).includes(host),
+      );
+      if (!rule) return; // no profile rule at all — cid is not stripped here, as intended.
+
+      const removeParamsLc = new Set(removeOf(rule).map((p) => p.toLowerCase()));
+      assert.ok(
+        !removeParamsLc.has("cid"),
+        `"${host}" has a DNR profile rule (id ${rule.id}) that strips "cid" host-wide — ` +
+          "upstream only anchors cid to a path on this host, so this host-wide claim widens " +
+          "past the evidence (#1229 / ADR-0008). Remove it from domain-rules.json stripParams.",
+      );
+    });
+  }
+});
