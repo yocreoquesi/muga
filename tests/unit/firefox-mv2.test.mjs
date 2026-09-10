@@ -26,6 +26,12 @@ const SERVICE_WORKER_SOURCE = readFileSync(
 const DNR_SYNC_SOURCE = readFileSync(
   join(__dirname, "../../src/background/dnr-sync.js"), "utf8"
 );
+// openOnboardingOnce/shouldOpenOnboarding moved to onboarding-gate.js (#1266
+// item 5, slice 3) — the chrome.tabs.create call the onboarding fallback
+// eventually reaches now lives there, not in service-worker.js.
+const ONBOARDING_GATE_SOURCE = readFileSync(
+  join(__dirname, "../../src/background/onboarding-gate.js"), "utf8"
+);
 const STORAGE_SOURCE = readFileSync(
   join(__dirname, "../../src/lib/storage.js"), "utf8"
 );
@@ -169,11 +175,21 @@ describe("Firefox MV2 compatibility guards", () => {
   test("onboarding fallback exists independent of onInstalled", () => {
     // onInstalled is unreliable in Firefox MV2: ES modules load async and the
     // listener may be registered after the event fires. A top-level fallback
-    // must check onboardingDone and open onboarding on every background load.
-    const hasFallback = SERVICE_WORKER_SOURCE.includes("!prefs.onboardingDone") &&
-      /\(async\s*\(\)\s*=>\s*\{[\s\S]*?onboardingDone[\s\S]*?tabs\.create/.test(SERVICE_WORKER_SOURCE);
+    // must check consent and open onboarding on every background load.
+    //
+    // shouldOpenOnboarding/openOnboardingOnce (and the chrome.tabs.create
+    // call openOnboardingOnce makes) moved to src/background/onboarding-gate.js
+    // (#1266 item 5, slice 3) — this checks that the fallback IIFE still
+    // consults them in service-worker.js, the composition root, and that
+    // openOnboardingOnce still ends in a real chrome.tabs.create.
+    const hasFallback =
+      /\(async\s*\(\)\s*=>\s*\{[\s\S]*?shouldOpenOnboarding\(prefs\)[\s\S]*?openOnboardingOnce\(\)/.test(SERVICE_WORKER_SOURCE);
     assert.ok(hasFallback,
-      "service-worker.js must have a top-level async fallback that opens onboarding if onboardingDone is false -- onInstalled alone is not reliable in Firefox MV2");
+      "service-worker.js must have a top-level async fallback that consults shouldOpenOnboarding/openOnboardingOnce -- onInstalled alone is not reliable in Firefox MV2");
+    assert.ok(
+      ONBOARDING_GATE_SOURCE.includes("chrome.tabs.create("),
+      "openOnboardingOnce (onboarding-gate.js) must still open the tab via chrome.tabs.create",
+    );
   });
 
   test("onboarding fallback is AFTER onInstalled listener (not inside it)", () => {

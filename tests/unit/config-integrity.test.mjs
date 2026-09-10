@@ -388,8 +388,9 @@ describe("manifest.json integrity", () => {
   });
 
   // Remote rules update — v1.10.1 removed chrome.alarms in favor of opportunistic
-  // on-wake time-gated fetch (maybeFetchRemoteRules in service-worker.js). Asserting
-  // the permission is absent prevents it from silently returning during future refactors.
+  // on-wake time-gated fetch (maybeFetchRemoteRules in
+  // src/background/remote-rules-wake.js). Asserting the permission is absent
+  // prevents it from silently returning during future refactors.
   test("MV3 permissions do NOT include alarms (v1.10.1 switched to on-wake fetch)", () => {
     assert.ok(
       !mv3.permissions.includes("alarms"),

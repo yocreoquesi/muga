@@ -104,14 +104,19 @@ describe("browsewrap Phase 1 — options is non-blocking", () => {
 // Onboarding dedup: only one tab should open per background lifetime
 // ---------------------------------------------------------------------------
 describe("Onboarding dedup — prevent double tabs", () => {
-  test("service-worker uses openOnboardingOnce() dedup function", () => {
+  test("service-worker imports the openOnboardingOnce dedup function from onboarding-gate.js", () => {
+    // openOnboardingOnce / _onboardingTabOpened moved to
+    // src/background/onboarding-gate.js (#1266 item 5, slice 3), importable
+    // in Node — see tests/unit/onboarding-tab-dedup-967.test.mjs for the
+    // real behavioral coverage. service-worker.js keeps the composition-root
+    // import and the call sites, checked below and in the next test.
     assert.ok(
-      SERVICE_WORKER_SOURCE.includes("_onboardingTabOpened"),
-      "service-worker must have _onboardingTabOpened dedup flag"
+      SERVICE_WORKER_SOURCE.includes('from "./onboarding-gate.js"'),
+      "service-worker must import from ./onboarding-gate.js"
     );
     assert.ok(
-      SERVICE_WORKER_SOURCE.includes("function openOnboardingOnce"),
-      "service-worker must define openOnboardingOnce function"
+      SERVICE_WORKER_SOURCE.includes("openOnboardingOnce"),
+      "service-worker must import/call openOnboardingOnce"
     );
   });
 

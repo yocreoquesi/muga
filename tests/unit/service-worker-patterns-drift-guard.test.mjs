@@ -72,7 +72,16 @@ const PATTERNS_TEST_PATH = join(
 // message.source (resolveShortenersOnClick/resolveShortenersOnHover) rather
 // than trusting the caller's own gate. The gate LOGIC itself is covered
 // behaviorally via a pure resolveShortenerSourceGate() mirror.
-const MAX_SOURCE_STRING_ASSERTIONS = 74;
+// 74 → 73 (#1266 item 5 slice 4): maybeFetchRemoteRules moved to
+// src/background/remote-rules-wake.js, importable in Node — the
+// "Remote-rules on-wake time-gated fetch" block now imports and drives the
+// REAL function (see tests/unit/remote-rules-wake.test.mjs) instead of
+// running a hand-written mirror. One swSource.match() (pinning
+// REMOTE_REFRESH_INTERVAL_MS's value) is replaced by a real import-and-compare,
+// and the swSource.test()-based function-existence check (not counted by
+// this file's swSource.(...)( pattern anyway) is deleted as redundant with
+// the real import succeeding at all.
+const MAX_SOURCE_STRING_ASSERTIONS = 73;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 
