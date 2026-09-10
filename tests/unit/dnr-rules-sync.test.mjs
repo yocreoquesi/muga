@@ -135,6 +135,25 @@ test("ONE-RULE-PER-HOST — no domain appears in more than one profile rule", ()
 });
 
 test("profile rules are requestDomains-scoped and never global (no urlFilter)", () => {
+  // A profile rule may carry excludedRequestDomains — this was tightened, not
+  // dropped, by #1228. It held as a blanket "never" only while Amazon hosts
+  // were the sole tailored ones (the AMAZON_HOST_RE gate in
+  // tools/generate-rules.mjs). With that gate removed, ANY host's stripParams
+  // can produce a tailored profile rule, so a parent domain (google.com) can
+  // now have a nested tailored subdomain (maps.google.com) that needs its own,
+  // different profile rule. Chrome matches a requestDomains-scoped rule on the
+  // domain AND its subdomains, so without an exclusion the parent's rule would
+  // also match the child's requests and both would fire — Chrome applies only
+  // one, half-cleaning it (see the ONE-RULE-PER-REQUEST header comment above).
+  // The parent rule excluding the child is the correct handoff to the child's
+  // more specific rule, so the real invariant is not "no exclusions" but that
+  // every exclusion is a strict subdomain of the rule's own requestDomains AND
+  // is itself covered by its own profile rule — anything else opens a gap
+  // instead of a handoff. The "ONE-RULE-PER-HOST — subdomain-aware" test below
+  // proves the resulting mechanism still yields exactly one rule per request.
+  const allProfileDomains = new Set(
+    PROFILE_RULES.flatMap((r) => r.condition?.requestDomains ?? []),
+  );
   for (const rule of PROFILE_RULES) {
     assert.ok(
       Array.isArray(rule.condition?.requestDomains) && rule.condition.requestDomains.length > 0,
@@ -145,11 +164,26 @@ test("profile rules are requestDomains-scoped and never global (no urlFilter)", 
       undefined,
       `profile rule ${rule.id} must NOT use a global urlFilter — that would match every host`,
     );
-    assert.equal(
-      rule.condition?.excludedRequestDomains,
-      undefined,
-      `profile rule ${rule.id} must not use excludedRequestDomains — only the global rule does`,
+
+    const excludedForRule = rule.condition?.excludedRequestDomains;
+    if (excludedForRule === undefined) continue;
+    assert.ok(
+      Array.isArray(excludedForRule) && excludedForRule.length > 0,
+      `profile rule ${rule.id} has an excludedRequestDomains field that is present but empty/invalid — omit the field instead`,
     );
+    for (const excludedHost of excludedForRule) {
+      const isStrictSubdomainOfOwnDomain = rule.condition.requestDomains.some(
+        (d) => excludedHost !== d && excludedHost.endsWith("." + d),
+      );
+      assert.ok(
+        isStrictSubdomainOfOwnDomain,
+        `profile rule ${rule.id} excludes "${excludedHost}" but it is not a strict subdomain of any of this rule's own requestDomains [${rule.condition.requestDomains.join(", ")}] — an exclusion must hand a nested host off to its own more specific rule, not open a gap`,
+      );
+      assert.ok(
+        allProfileDomains.has(excludedHost),
+        `profile rule ${rule.id} excludes "${excludedHost}" but no profile rule covers it — this opens a gap instead of a handoff. Run \`npm run build:rules\``,
+      );
+    }
   }
 });
 
