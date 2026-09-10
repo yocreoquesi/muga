@@ -270,3 +270,69 @@ describe("parseRemoveparamRules — scoped extraction (Slice 2, additive)", () =
     ]);
   });
 });
+
+// ── #1326: a `||`-prefixed line has THREE anchor shapes, not two ──────────
+//
+// A path (or query) anchor — `||host/path...` or `||host&query=...` — is
+// narrower than a host and, unlike a host anchor, has nowhere smaller to
+// land in this channel: `scoped[]` cannot express a path predicate
+// (ADR-0010 decision 5 keeps those bundled-only). Design correction C1's
+// "anchored ⇒ still global" argument does not cover this shape — C1 is
+// about a fact that has `scoped[]` to relocate to, and a path anchor does
+// not. So a path-anchored line must contribute to NEITHER `params` NOR
+// `scoped`, and must be counted in its own `pathAnchorSkipped` field rather
+// than silently falling through into the global pool.
+//
+// The four cases below are the complete anchor-classification surface this
+// function has: pin all four in the same place so a future edit cannot
+// quietly re-merge the path-anchor case into "global" again.
+describe("parseRemoveparamRules — path/query anchor classification (#1326)", () => {
+  test("||host/path$removeparam=x is path-anchored: excluded from params AND scoped, counted in pathAnchorSkipped", () => {
+    const text = "||example.com/search$removeparam=x";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], []);
+    assert.deepEqual(scoped, []);
+    assert.equal(pathAnchorSkipped, 1);
+  });
+
+  test("||host&query=v$removeparam=x is also path/query-anchored (no clean ^-terminated host)", () => {
+    const text = "||example.com&query=v$removeparam=x";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], []);
+    assert.deepEqual(scoped, []);
+    assert.equal(pathAnchorSkipped, 1);
+  });
+
+  test("||host^$removeparam=x is still a whole-host anchor: reaches params AND scoped, pathAnchorSkipped stays 0", () => {
+    const text = "||example.com^$removeparam=x";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["x"]);
+    assert.deepEqual(scoped, [{ param: "x", scope: "example.com" }]);
+    assert.equal(pathAnchorSkipped, 0);
+  });
+
+  test("$removeparam=x,domain=h.example is still a domain-modifier anchor: reaches params AND scoped, pathAnchorSkipped stays 0", () => {
+    const text = "$removeparam=x,domain=h.example";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["x"]);
+    assert.deepEqual(scoped, [{ param: "x", scope: "h.example" }]);
+    assert.equal(pathAnchorSkipped, 0);
+  });
+
+  test("an unanchored line is unaffected: reaches params, no scoped pair, pathAnchorSkipped stays 0", () => {
+    const text = "*$removeparam=x";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["x"]);
+    assert.deepEqual(scoped, []);
+    assert.equal(pathAnchorSkipped, 0);
+  });
+
+  test("pipe-separated names on a path-anchored line all stay out of params", () => {
+    const text = "||example.com/itm$removeparam=a|b";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], []);
+    assert.deepEqual(scoped, []);
+    // One line, one count — matching scopeSkipped's per-line convention.
+    assert.equal(pathAnchorSkipped, 1);
+  });
+});

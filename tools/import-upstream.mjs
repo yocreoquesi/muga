@@ -81,11 +81,46 @@ function normalizeHost(raw) {
  * counted in its own `exceptionsSkipped` field rather than folded into
  * `skipped` — conflating the two hid this bug for as long as it existed.
  *
+ * A `||`-prefixed line takes exactly one of THREE anchor shapes, not two:
+ *   `||host^...`            — HOST anchor: the whole line is scoped to `host`.
+ *   `...,domain=h1|h2...`   — an explicit domain modifier, pipe-separated,
+ *                              `~`-prefixed entries are negated (excluded).
+ *                              Independent of `||` — it may appear on a line
+ *                              that never starts with `||` at all.
+ *   `||host/path...`        — PATH (or query) anchor: `||` followed by
+ *                              anything that is neither a clean `^`-terminated
+ *                              host nor a `domain=` modifier — e.g.
+ *                              `||host/path$removeparam=x` or
+ *                              `||host&query=v$removeparam=x`. Narrower than a
+ *                              host, and unlike a host anchor it has no
+ *                              smaller landing spot in this channel: a
+ *                              path/query predicate cannot enter `scoped[]`
+ *                              (ADR-0010 decision 5 keeps path predicates out
+ *                              of the signed payload entirely — they are a
+ *                              BUNDLED-only mechanism), and design correction
+ *                              C1's "anchored ⇒ still global" argument does
+ *                              NOT cover this shape: C1 measured that
+ *                              excluding HOST anchors from `params` would
+ *                              amputate 85% of real auto-merge reach, because
+ *                              a host anchor still has `scoped[]` to land in
+ *                              ("not global" means relocated, not discarded).
+ *                              A path anchor has nowhere smaller to relocate
+ *                              to, so landing it in `params` is not a
+ *                              fallback, it is an over-claim with no smaller
+ *                              option — the exact #1212/#1217/#1326 failure
+ *                              class. Such a line contributes to NEITHER
+ *                              `params` NOR `scoped`; it is counted in its
+ *                              own `pathAnchorSkipped` field, the same way an
+ *                              `@@` exception gets its own `exceptionsSkipped`
+ *                              rather than being folded into `skipped` (a
+ *                              path anchor is not a malformed spec either).
+ *
  * @param {string} text The raw filter list contents.
- * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number }}
+ * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number }}
  *   Lowercased parameter names, skip count, count of `@@` exception lines excluded from `params`,
- *   host-anchored (param, host) facts, and a count of lines skipped from the scoped path because
- *   they carried both anchor forms at once (ambiguous).
+ *   host-anchored (param, host) facts, a count of lines skipped from the scoped path because
+ *   they carried both anchor forms at once (ambiguous), and a count of `||`-prefixed lines
+ *   anchored to a path or query rather than a whole host (excluded from both `params` and `scoped`).
  */
 export function parseRemoveparamRules(text) {
   const params = new Set();
@@ -93,6 +128,7 @@ export function parseRemoveparamRules(text) {
   let skipped = 0;
   let exceptionsSkipped = 0;
   let scopeSkipped = 0;
+  let pathAnchorSkipped = 0;
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) continue;
@@ -119,23 +155,34 @@ export function parseRemoveparamRules(text) {
     // for pipe-separated multi-regex specs — a spec like "/regex1/|/regex2/" counts as 1 skip.
     if (spec.startsWith("/") || spec.startsWith("~")) { skipped++; continue; }
 
+    // Anchor classification, computed BEFORE the name extraction below so a
+    // path/query anchor can be excluded from the global candidate pool
+    // rather than silently falling into it (#1326).
+    const anchorMatch = /^\|\|([^^]*)\^/.exec(line);
+    const domainMatch = /[$,]domain=([^,$]+)/i.exec(line);
+    // A `||`-prefixed line that matches neither a clean host anchor nor a
+    // `domain=` modifier is anchored to a path or a query, never to a whole
+    // host — see the docblock above for why that must not reach `params`.
+    const isPathAnchored = line.startsWith("||") && !anchorMatch && !domainMatch;
+
     const names = [];
     for (const piece of spec.split("|")) {
       const name = piece.trim().toLowerCase();
       if (!name) { skipped++; continue; }
       if (!PARAM_NAME_RE.test(name)) { skipped++; continue; }
-      params.add(name);
       names.push(name);
     }
 
-    // Two independent anchor forms, either of which may be present:
-    //   `||host^...`            — the whole line is scoped to `host`.
-    //   `...,domain=h1|h2...`   — an explicit domain modifier, pipe-separated,
-    //                              `~`-prefixed entries are negated (excluded).
-    // The `domain=` scan is independent of the removeparam match because
-    // either modifier may appear first on the line.
-    const anchorMatch = /^\|\|([^^]*)\^/.exec(line);
-    const domainMatch = /[$,]domain=([^,$]+)/i.exec(line);
+    if (isPathAnchored) {
+      // Neither destination applies: not `params` (no smaller landing spot
+      // exists, so global would over-claim) and not `scoped` (the payload
+      // cannot express a path predicate at all). Names are still validated
+      // above so a malformed name is still counted in `skipped`, not here.
+      pathAnchorSkipped++;
+      continue;
+    }
+
+    for (const name of names) params.add(name);
 
     if (anchorMatch && domainMatch) {
       // AdGuard semantics intersect the two forms; guessing risks
@@ -162,7 +209,7 @@ export function parseRemoveparamRules(text) {
       }
     }
   }
-  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped };
+  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped };
 }
 
 async function main() {
@@ -174,7 +221,7 @@ async function main() {
   }
   const text = await response.text();
 
-  const { params: upstreamParams, skipped, exceptionsSkipped } = parseRemoveparamRules(text);
+  const { params: upstreamParams, skipped, exceptionsSkipped, pathAnchorSkipped } = parseRemoveparamRules(text);
   const existing = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
 
   const candidates = [...upstreamParams].filter((p) => !existing.has(p));
@@ -190,11 +237,12 @@ async function main() {
     new_candidates: candidates,
     skipped,
     exceptionsSkipped,
+    pathAnchorSkipped,
   };
 
   const outPath = process.env.IMPORT_REPORT_PATH || "/tmp/import-report.json";
   writeFileSync(outPath, JSON.stringify(report, null, 2) + "\n", "utf8");
-  console.log(`[import-upstream] parseRemoveparamRules: skipped ${skipped} non-literal removeparam spec(s), ${exceptionsSkipped} @@ exception line(s)`);
+  console.log(`[import-upstream] parseRemoveparamRules: skipped ${skipped} non-literal removeparam spec(s), ${exceptionsSkipped} @@ exception line(s), ${pathAnchorSkipped} path/query-anchored line(s) excluded from the global pool (#1326)`);
   console.log(`AdGuard Filter 17: ${upstreamParams.size} params parsed`);
   console.log(`MUGA TRACKING_PARAMS: ${existing.size} entries`);
   console.log(`New candidates: ${candidates.length}`);
