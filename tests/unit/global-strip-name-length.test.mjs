@@ -13,25 +13,26 @@
  * knew: `ie` needed preserveParams entries on baidu.com and naver.com, and `ei`
  * needed them on yahoo.com and yahoo.co.jp — per-host patches undoing a global
  * claim, one site at a time, which is what this defect looks like from the
- * inside. `ie` is gone; the remaining four are pinned here with what each one
- * still needs.
+ * inside. `ie` is gone; `_r` and `_t` are gone too, removed in the same step
+ * (commit 13f1250) that deleted the `AMAZON_HOST_RE` gate in
+ * `tools/generate-rules.mjs` (see the "Extra strips" comment there). `si` and
+ * `ei` are pinned here with what each one still needs.
  *
- * ── Why the four are not simply deleted too ────────────────────────────────
+ * ── Why si and ei are not simply deleted too ────────────────────────────────
  *
- * Because on the DNR path a per-host `stripParams` entry does NOT survive its
- * param leaving the global list. `generate-rules.mjs` builds a tailored rule as
- * "all TRACKING_PARAMS minus this host's preserves", and its `extraStrips`
- * escape hatch — params outside TRACKING_PARAMS that a host still strips — is
- * gated on `AMAZON_HOST_RE`. So `ie` could leave (Amazon picks it up as an
- * extra strip) while `si`, `ei`, `_r` and `_t` cannot: youtube.com, google.com
- * and tiktok.com would lose them outright in Chrome, however clearly
- * domain-rules.json lists them.
+ * Not because of a remaining technical blocker: once `AMAZON_HOST_RE` was
+ * removed, `generate-rules.mjs`'s `extraStrips` escape hatch — params outside
+ * TRACKING_PARAMS that a host's own `stripParams` still lists — applies to
+ * every tailored host, not only Amazon's. That is exactly what let `_r` and
+ * `_t` leave: tiktok.com already listed them in `stripParams`, so once the
+ * gate was gone its own DNR profile rule picked them up as extra strips, and
+ * they are still stripped, just at the network layer, host-scoped instead of
+ * global.
  *
- * The path out is the one ADR-0008 and #1221 already built: a host-anchored
- * fact travels as a DYNAMIC thin rule through the scoped channel, which is
- * exactly the shape a static per-host rule cannot have (measured in #1242: a
- * static thin rule is shadowed by the global rule and never fires). Land the
- * fact, then drop the global entry.
+ * `si` (youtube.com, youtu.be) and `ei` (google.com) are not part of the 16
+ * params that step folded out of the global list — narrowing the global list
+ * further was out of scope for it — so they stay pinned below the floor here
+ * until a later slice does for them what this one did for `_r`/`_t`.
  */
 
 import { test, describe } from "node:test";
@@ -56,8 +57,6 @@ const domainRules = JSON.parse(readFileSync(join(ROOT, "src/rules/domain-rules.j
 const KNOWN_SHORT = {
   si: "youtube.com, youtu.be",
   ei: "google.com",
-  _r: "tiktok.com",
-  _t: "tiktok.com",
 };
 
 describe("the built-in global strip list respects the same floor as the remote one (#1228)", () => {

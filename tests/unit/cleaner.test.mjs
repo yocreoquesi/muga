@@ -26,6 +26,7 @@ import { join, dirname } from "node:path";
 import { createRequire } from "node:module";
 import { processUrl, parseListEntry, __test__ } from "../../src/lib/cleaner.js";
 import { AFFILIATE_PATTERNS, getPatternsForHost } from "../../src/lib/affiliates.js";
+import { TRACKING_PARAMS } from "../../src/lib/affiliates-data.js";
 import {
   createInMemoryAdapter,
   createTracker,
@@ -3489,5 +3490,34 @@ describe("Repeated query-param keys (#733)", () => {
     assert.equal(junkRemoved, 2);
     assert.equal(removedTracking.filter(p => p === "utm_source").length, 1);
     assert.ok(removedTracking.includes("utm_medium"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _t — moved out of tests/unit/cleaner-add-rule-regression.test.mjs (#1228)
+//
+// _t left TRACKING_PARAMS in commit 13f1250: it is one of the 16 params now
+// anchored to tiktok.com's own domain-rules stripParams/DNR profile rule
+// instead of being stripped on every generic URL. That file's own docblock
+// says a param needing bounded-scope coverage gets a richer test here instead
+// of a generic assertStrips() entry there, so this replaces that entry.
+// ---------------------------------------------------------------------------
+describe("_t (#1228 — host-scoped, tiktok.com)", () => {
+  test("_t is stripped on tiktok.com, its anchored host", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.tiktok.com/@user/video/123?_t=abc&keep=bar",
+      PREFS,
+      domainRules
+    );
+    const u = new URL(cleanUrl);
+    assert.ok(!u.searchParams.has("_t"));
+    assert.equal(u.searchParams.get("keep"), "bar");
+  });
+
+  test("_t is NOT in TRACKING_PARAMS — it no longer strips on a generic host", () => {
+    assert.ok(
+      !TRACKING_PARAMS.includes("_t"),
+      "_t must stay out of the global list — it is covered per-host on tiktok.com instead",
+    );
   });
 });

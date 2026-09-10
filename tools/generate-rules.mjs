@@ -32,9 +32,6 @@ import {
 } from "../src/lib/dnr-ids.js";
 import { SIGNED_URL_REGEX_FILTER } from "../src/lib/signed-url.js";
 
-/** Amazon marketplace hosts we scope the internal-nav strip rule to. */
-const AMAZON_HOST_RE = /(^|\.)amazon\./;
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const DOMAIN_RULES_PATH    = resolve(ROOT, "src/rules/domain-rules.json");
@@ -373,17 +370,35 @@ export function buildDnrRules() {
     const preserveLc = new Set((rule.preserveParams ?? []).map((p) => p.toLowerCase()));
     const preservesTracked = [...preserveLc].some((p) => trackingLc.has(p));
 
-    // Extra strips: Amazon internal-nav params the cleaner strips on Amazon but
-    // that are unsafe site-wide (absent from TRACKING_PARAMS), minus anything
-    // preserved/guarded/denied. Guard/deny are safety nets against a future edit
-    // leaking an affiliate/nav key.
-    let extraStrips = [];
-    if (AMAZON_HOST_RE.test(rule.domain)) {
-      extraStrips = (rule.stripParams ?? []).filter((p) => {
-        const lc = p.toLowerCase();
-        return !trackingLc.has(lc) && !preserveLc.has(lc) && !guard.has(lc) && !deny.has(lc);
-      });
-    }
+    // Extra strips: params a host's profile strips that are unsafe site-wide
+    // (absent from TRACKING_PARAMS), minus anything preserved/guarded/denied.
+    // Guard/deny are safety nets against a future edit leaking an affiliate or
+    // nav key, and they stay exactly as strict as before.
+    //
+    // This used to be gated on AMAZON_HOST_RE, which made "covered per-host in
+    // domain-rules.json" mean two different things depending on the host: on
+    // amazon.* the profile reached the network layer, and everywhere else it
+    // did not. A param in a non-Amazon host's stripParams but not in
+    // TRACKING_PARAMS was in NO DNR rule at all, so it was only cleaned after
+    // the page loaded, by the content script's history.replaceState.
+    //
+    // That asymmetry is what blocked #1228. Its whole premise is that a global
+    // entry is redundant once the param is covered per-host, and for every
+    // non-Amazon host that premise was false: dropping the global entry
+    // downgraded the param from pre-request stripping to post-load rewriting.
+    // The first outbound request would still carry it, which is precisely what
+    // DNR exists to prevent.
+    //
+    // Removing the gate costs rules, not safety: 18 rules become 91 across 127
+    // hosts, far inside Chrome's static-ruleset budget, and every one is still
+    // requestDomains-scoped and complete-per-host. Nested tailored hosts (a
+    // profile for maps.google.com under one for google.com) are handled by the
+    // existing exclusion logic below, and the ONE-RULE-PER-HOST test proves the
+    // result still matches exactly one rule per request.
+    const extraStrips = (rule.stripParams ?? []).filter((p) => {
+      const lc = p.toLowerCase();
+      return !trackingLc.has(lc) && !preserveLc.has(lc) && !guard.has(lc) && !deny.has(lc);
+    });
 
     if (!preservesTracked && extraStrips.length === 0) continue; // global covers it
 

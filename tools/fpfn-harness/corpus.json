@@ -46,13 +46,13 @@
   },
   {
     "url": "https://www.amazon.com/s?k=mechanical+keyboard&ref=nb_sb_noss&field-keywords=mechanical",
-    "note": "functional: Amazon search — preserve k (search query), ref is NOT in TRACKING_PARAMS (affiliate param), field-keywords is functional",
-    "expected": { "preserve": ["k", "ref", "field-keywords"], "strip": [] }
+    "note": "functional: Amazon search. Preserve k (search query) and field-keywords. `ref` is NOT in TRACKING_PARAMS, but amazon.com's profile strips it as internal-nav noise, so the shipped extension removes it here (#1228: this entry used to expect it preserved, which was only true while the harness ran without domain rules)",
+    "expected": { "preserve": ["k", "field-keywords"], "strip": ["ref"] }
   },
   {
     "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be",
-    "note": "functional: YouTube watch — preserve v (video ID), feature is NOT in TRACKING_PARAMS",
-    "expected": { "preserve": ["v", "feature"], "strip": [] }
+    "note": "functional: YouTube watch. Preserve v (video ID). `feature` is NOT in TRACKING_PARAMS, but youtube.com's profile strips it, so the shipped extension removes it here (#1228: same correction as the Amazon entry)",
+    "expected": { "preserve": ["v"], "strip": ["feature"] }
   },
   {
     "url": "https://www.bing.com/search?q=best+laptops+2026&form=QBLH&setlang=en",
