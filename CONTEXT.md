@@ -2,7 +2,7 @@
 
 > **Read this first.** This document is the one-stop map for contributors and AI agents navigating the codebase. README has the pitch; CONTEXT.md has the system.
 
-MUGA is a browser extension (Chrome MV3 + Firefox MV2) that removes 430 tracking parameters and 12 prefix-based noise patterns from URLs before a page loads, while preserving affiliate attribution tags that pay independent creators. The cleaning itself is entirely local: no telemetry, no analytics, and no URL of yours is ever sent anywhere for processing. Two things do leave the browser, both user-controllable and both documented below: a weekly signed rule fetch from `rules.muga.app` (section 6), and short-link resolution, which goes straight to the shortener host with no MUGA server in between (section 3). MUGA ships a self-scaling rule-ingestion pipeline that grows its coverage automatically from upstream filter lists without human review in the hot path.
+MUGA is a browser extension (Chrome MV3 + Firefox MV2) that removes 429 tracking parameters and 12 prefix-based noise patterns from URLs before a page loads, while preserving affiliate attribution tags that pay independent creators. The cleaning itself is entirely local: no telemetry, no analytics, and no URL of yours is ever sent anywhere for processing. Two things do leave the browser, both user-controllable and both documented below: a weekly signed rule fetch from `rules.muga.app` (section 6), and short-link resolution, which goes straight to the shortener host with no MUGA server in between (section 3). MUGA ships a self-scaling rule-ingestion pipeline that grows its coverage automatically from upstream filter lists without human review in the hot path.
 
 ---
 
@@ -313,7 +313,7 @@ src/
 │   └── locales/               Per-locale data: en.mjs es.mjs pt.mjs de.mjs …
 ├── rules/
 │   ├── tracking-params.json   DNR rules (generated from TRACKING_PARAMS)
-│   ├── domain-rules.json      Per-domain preserve/strip rules (189 entries)
+│   ├── domain-rules.json      Per-domain preserve/strip rules (216 entries)
 │   ├── path-strip-rules.json  Path-token strip rules (Amazon slug/ref, etc.)
 │   ├── path-affiliate-rules.json  Path-based affiliate injection rules
 │   ├── wrapper-dnr-rules.json DNR wrapper-unwrap rules (generated)
