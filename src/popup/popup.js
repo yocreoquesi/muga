@@ -251,10 +251,8 @@ async function init() {
     formatStat(local.stats?.urlsCleaned ?? 0);
   document.getElementById("stat-junk").textContent =
     formatStat(local.stats?.junkRemoved ?? 0);
-  document.getElementById("stat-referrals").textContent =
-    formatStat(local.stats?.referralsSpotted ?? 0);
 
-  // A fresh install shows three zeros and nothing else, which reads as broken
+  // A fresh install shows bare zeros and nothing else, which reads as broken
   // rather than new (#1260). The ledger below already explains its own empty
   // state; this gives the counters the same courtesy, and only while they are
   // all still zero.

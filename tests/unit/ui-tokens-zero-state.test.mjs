@@ -159,10 +159,23 @@ describe("popup zero state (#1260)", () => {
       assert.equal(isFreshInstall({ urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 0 }), true);
     });
 
-    test("any counter above zero is not", () => {
-      assert.equal(isFreshInstall({ urlsCleaned: 1, junkRemoved: 0, referralsSpotted: 0 }), false);
-      assert.equal(isFreshInstall({ urlsCleaned: 0, junkRemoved: 3, referralsSpotted: 0 }), false);
-      assert.equal(isFreshInstall({ urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 9 }), false);
+    test("any RENDERED counter above zero is not", () => {
+      assert.equal(isFreshInstall({ urlsCleaned: 1, junkRemoved: 0 }), false);
+      assert.equal(isFreshInstall({ urlsCleaned: 0, junkRemoved: 3 }), false);
+    });
+
+    test("a counter the popup no longer renders does not suppress the message (#1339)", () => {
+      // referralsSpotted lost its tile because it could only ever read 0: its
+      // increment sits behind notifyForeignAffiliate, which defaults to false.
+      // It is still written to storage, so a user who HAD turned that setting on
+      // carries a non-zero value. That must not hide the zero state from the two
+      // tiles that genuinely are zero, or the explanation goes missing from the
+      // only person who needs it.
+      assert.equal(
+        isFreshInstall({ urlsCleaned: 0, junkRemoved: 0, referralsSpotted: 9 }),
+        true,
+        "a stat with no tile decided a visible message",
+      );
     });
 
     test("a missing or unreadable stats object is fresh, because it has nothing to show", () => {
