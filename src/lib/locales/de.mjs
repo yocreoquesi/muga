@@ -6,7 +6,6 @@
 export default Object.freeze({
   stat_urls: "URLs bereinigt",
   stat_junk: "Rauschen-Bits entfernt",
-  stat_referrals: "Affiliate-Tags erkannt",
   preview_label: "Diese Seite",
   history_label: "Diese Sitzung",
   history_empty: "Noch keine URLs bereinigt. Fang an zu surfen. MUGA arbeitet automatisch.",

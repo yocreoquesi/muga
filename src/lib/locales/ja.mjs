@@ -6,7 +6,6 @@
 export default Object.freeze({
   stat_urls: "クリーンアップしたURL",
   stat_junk: "削除したノイズ",
-  stat_referrals: "検出したアフィリエイトタグ",
   preview_label: "このページ",
   history_label: "このセッション",
   history_empty: "まだクリーンアップされたURLはありません。普通にブラウジングしてください。MUGAは自動的に動作します。",
