@@ -51,16 +51,12 @@
       <span class="stat-value" id="stat-junk">0</span>
       <span class="stat-label" data-i18n="stat_junk">bits of noise removed</span>
     </div>
-    <div class="stat">
-      <span class="stat-value" id="stat-referrals">0</span>
-      <span class="stat-label" data-i18n="stat_referrals">affiliate tags detected</span>
-    </div>
   </section>
 
-  <!-- Zero state (#1260). Three bare zeros are the first thing a fresh install
-       sees, and they read as "nothing works" rather than "nothing has happened
-       yet". Shown only while all three counters are 0, so an established user
-       never sees it. Same pattern as #recent-activity-empty below: the string
+  <!-- Zero state (#1260). Bare zeros are the first thing a fresh install sees,
+       and they read as "nothing works" rather than "nothing has happened yet".
+       Shown only while every counter is 0, so an established user never sees
+       it. (#1339 removed a third tile that could only ever read 0.) Same pattern as #recent-activity-empty below: the string
        is in the markup with its data-i18n key, so it is translated even before
        the JS layer reads chrome.storage.local. -->
   <p id="stats-empty" class="stats-empty" data-i18n="stats_zero_state" hidden>

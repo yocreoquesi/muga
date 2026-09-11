@@ -15,8 +15,15 @@ test.describe("Popup", () => {
     // Enable toggle (hidden by custom CSS, check attached)
     await expect(page.locator("#enabled-toggle")).toBeAttached();
 
-    // Stats section — 3 stat values
-    await expect(page.locator(".stat-value")).toHaveCount(3);
+    // Stats section. Two tiles since #1339 removed "affiliate tags detected",
+    // which could only ever read 0: its counter increments behind
+    // notifyForeignAffiliate, which defaults to false. Asserted by id rather
+    // than by count alone, so a future tile appearing or a rename fails here
+    // with a name instead of an arithmetic mismatch.
+    await expect(page.locator(".stat-value")).toHaveCount(2);
+    await expect(page.locator("#stat-urls")).toBeVisible();
+    await expect(page.locator("#stat-junk")).toBeVisible();
+    await expect(page.locator("#stat-referrals")).toHaveCount(0);
 
     // Footer with settings link
     await expect(page.locator("#open-options")).toBeVisible();
