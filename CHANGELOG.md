@@ -2,7 +2,7 @@
 
 All notable changes to MUGA will be documented in this file.
 
-## [Unreleased]
+## [3.1.0] - 2026-09-11
 
 This cycle is about MUGA learning **where** a tracking parameter applies, not just
 which ones exist. Until now every rule MUGA published applied to the entire web,
@@ -1201,7 +1201,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/yocreoquesi/muga/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/yocreoquesi/muga/compare/v2.6.0...v3.0.0
 [2.6.0]: https://github.com/yocreoquesi/muga/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/yocreoquesi/muga/compare/v2.4.0...v2.5.0
