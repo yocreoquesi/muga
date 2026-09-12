@@ -47,6 +47,22 @@ import { SUPPORTED_LANGS } from "./i18n.js";
  * Schema version stamped onto every export from this build. Bumping this is
  * a no-op today (there are no migrations yet) but gives future imports a
  * `data.schemaVersion` to branch on via migrate() below.
+ *
+ * #1336 did NOT bump this. migrate() only pattern-matches on payload SHAPE
+ * (blacklist/whitelist arrays) — it never branches on `_fromVersion` today —
+ * so a version bump here would not change any runtime behavior. Adding
+ * `devToolsMode` to SETTINGS_FIELDS is backward-compatible in both
+ * directions without one:
+ *   - An OLD build importing a NEW payload: its SETTINGS_FIELDS/BOOLEAN_KEYS
+ *     simply have no `devToolsMode` entry, so planImport() never reads the
+ *     key — same precedent as any older build reading a newer export (e.g.
+ *     hoverPreviewEnabled before it existed).
+ *   - A NEW build importing an OLD payload: `migrated.devToolsMode` is
+ *     `undefined`, the `typeof migrated[field.key] === "boolean"` check in
+ *     planImport() fails, and `special.devToolsMode` comes back `undefined`
+ *     — which options.js reads as "leave the stored flag untouched", not
+ *     "force it to false" (see the round-trip tests in
+ *     tests/unit/export-import.test.mjs for the asserted behavior).
  */
 export const SETTINGS_SCHEMA_VERSION = 1;
 
@@ -93,7 +109,18 @@ const VALID_CATEGORIES = new Set(["utm", "ads", "email", "social", "platform_noi
  *                          this pure module, so they are kept OUT of toSave
  *                          and reported via `special` for options.js to gate
  *                          against chrome.permissions
- *   - "local"            — devMode: chrome.storage.local, not a synced pref
+ *   - "local"            — devMode, devToolsMode: chrome.storage.local, not a
+ *                          synced pref. buildExportPayload()/planImport() read
+ *                          each "local" field BY ITS OWN KEY (from the opts
+ *                          object / the imported payload respectively), never
+ *                          from one hardcoded field name — see #1336: an
+ *                          earlier version of buildExportPayload collapsed
+ *                          every "local" field onto the single `devMode`
+ *                          value, so a second local key would have silently
+ *                          received devMode's value instead of its own. A
+ *                          third "local" key added later needs no change to
+ *                          either function, only a caller that passes its
+ *                          value under its own key.
  *
  * `guarded: true` marks prefs that also appear in GUARDED_PREFS
  * (synced-affiliate-pref-guard.js) and therefore need per-device override
@@ -128,6 +155,14 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "toastDuration", kind: "toastDuration", label: "row_toast_duration_label" },
   { key: "language", kind: "language", label: "lang_label" },
   { key: "devMode", kind: "local", label: "advanced_mode_label" },
+  // devToolsMode (#1271 item 1) is devMode's exact sibling: same storage
+  // (chrome.storage.local), same default (false), same purely-UI-visibility
+  // nature. It travels through export/import for the same reason devMode
+  // does (#1336) — see the "local" kind note above for why this needed
+  // buildExportPayload/planImport to stop hardcoding a single field name.
+  // `dev_tools_disclosure` is the existing label for the Developer tools row
+  // (options.html #section-dev-tools), reused rather than introducing a new key.
+  { key: "devToolsMode", kind: "local", label: "dev_tools_disclosure" },
   { key: "paramBreakdown", kind: "boolean", label: "row_param_breakdown_label" },
   { key: "showReportButton", kind: "boolean", label: "row_show_report_button_label" },
   { key: "domainStats", kind: "boolean", label: "row_domain_stats_label" },
@@ -230,22 +265,32 @@ function migrate(data, _fromVersion) {
 
 /**
  * Builds the export payload from the current synced prefs. Pure: the
- * caller reads chrome.storage.sync + devMode + the manifest version and
- * passes them in.
+ * caller reads chrome.storage.sync + every "local"-kind flag (devMode,
+ * devToolsMode, ...) + the manifest version and passes them in.
+ *
+ * #1336: each "local" field is read from `opts` BY ITS OWN KEY
+ * (`opts[field.key]`), not from one hardcoded `devMode` parameter — the
+ * earlier version of this function gave every "local" field devMode's
+ * value, which is exactly the bug that motivated this. A caller that omits
+ * a local key simply gets `undefined` for that field, same as any other
+ * missing opts entry.
  *
  * @param {object} prefs - Raw chrome.storage.sync.get(PREF_DEFAULTS) result.
- * @param {{devMode?: boolean, appVersion?: string}} [opts]
+ * @param {{[key: string]: boolean|string|undefined}} [opts] - Carries
+ *   `appVersion` plus one entry per "local"-kind SETTINGS_FIELDS key
+ *   (currently `devMode`, `devToolsMode`).
  * @returns {object} Flat export payload (same shape as before this refactor,
  *   plus `schemaVersion`).
  */
-export function buildExportPayload(prefs, { devMode, appVersion } = {}) {
+export function buildExportPayload(prefs, opts = {}) {
+  const { appVersion } = opts;
   const payload = {
     muga: true,
     version: appVersion,
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   };
   for (const field of SETTINGS_FIELDS) {
-    payload[field.key] = field.kind === "local" ? devMode : prefs[field.key];
+    payload[field.key] = field.kind === "local" ? opts[field.key] : prefs[field.key];
   }
   return payload;
 }
@@ -258,7 +303,8 @@ export function buildExportPayload(prefs, { devMode, appVersion } = {}) {
  *
  * @param {*} data - Parsed JSON from the imported file.
  * @returns {object} `{ ok: false }` on failure, or `{ ok: true, toSave,
- *   special: { followShortenersRequested, devMode }, skipped }` on success.
+ *   special: { followShortenersRequested, devMode, devToolsMode }, skipped }`
+ *   on success.
  */
 export function planImport(data) {
   if (!data || typeof data !== "object") return { ok: false };
@@ -287,11 +333,25 @@ export function planImport(data) {
 
   const toSave = { blacklist, whitelist, customParams };
 
-  // devMode is device-local and followShortenersEnabled is permission-gated —
-  // both are deliberately excluded from BOOLEAN_KEYS (see their `kind` above)
-  // so this loop can never touch either.
+  // devMode/devToolsMode are device-local and followShortenersEnabled is
+  // permission-gated — all are deliberately excluded from BOOLEAN_KEYS (see
+  // their `kind` above) so this loop can never touch any of them.
   for (const key of BOOLEAN_KEYS) {
     if (typeof migrated[key] === "boolean") toSave[key] = migrated[key];
+  }
+
+  // #1336: every "local"-kind field (devMode, devToolsMode, ...) is surfaced
+  // via `special` BY ITS OWN KEY, generically — never toSave (see the
+  // BOOLEAN_KEYS exclusion above), and never collapsed onto one hardcoded
+  // field. `undefined` means "the file didn't carry this key", which the
+  // caller (options.js) reads as "leave the stored flag untouched" rather
+  // than forcing it to false — same contract devMode already had, extended
+  // to whatever local fields SETTINGS_FIELDS declares.
+  const localSpecial = {};
+  for (const field of SETTINGS_FIELDS) {
+    if (field.kind === "local") {
+      localSpecial[field.key] = typeof migrated[field.key] === "boolean" ? migrated[field.key] : undefined;
+    }
   }
 
   if (Array.isArray(migrated.disabledCategories) && migrated.disabledCategories.every((e) => VALID_CATEGORIES.has(e))) {
@@ -357,7 +417,8 @@ export function planImport(data) {
       // whatever value actually landed. Same provided/requested split as above.
       remoteRulesProvided: typeof migrated.remoteRulesEnabled === "boolean",
       remoteRulesRequested: migrated.remoteRulesEnabled === true,
-      devMode: typeof migrated.devMode === "boolean" ? migrated.devMode : undefined,
+      // devMode, devToolsMode, and any future "local" field — see localSpecial above.
+      ...localSpecial,
     },
     skipped,
   };

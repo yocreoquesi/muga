@@ -520,3 +520,67 @@ describe("import/export hardening (#964/#965/#968)", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// devToolsMode travels through export/import like its sibling devMode (#1336)
+// ---------------------------------------------------------------------------
+//
+// devToolsMode (#1271 item 1) and devMode are exact siblings: same storage
+// (chrome.storage.local), same default (false), same purely-UI-visibility
+// nature. Before this, buildExportPayload() collapsed the whole "local" kind
+// onto ONE hardcoded value, so declaring devToolsMode as a second "local"
+// field would have silently given it devMode's value on export. These tests
+// prove the two travel independently.
+describe("devToolsMode travels through export/import (#1336)", () => {
+
+  // buildExportPayload reads blacklist/whitelist/customParams from `prefs`
+  // (kind: "list"), so a bare `{}` leaves them undefined and planImport
+  // would reject the payload as structurally invalid before ever reaching
+  // devMode/devToolsMode. Pass empty lists explicitly, same as validImportData's own base shape.
+  const EMPTY_LISTS = { blacklist: [], whitelist: [], customParams: [] };
+
+  test("45. export/import round-trip: two local keys keep DISTINCT values", () => {
+    const payload = buildExportPayload(EMPTY_LISTS, { devMode: true, devToolsMode: false, appVersion: "1.0.0" });
+    assert.strictEqual(payload.devMode, true, "devMode must come from its own opts entry");
+    assert.strictEqual(payload.devToolsMode, false, "devToolsMode must come from its own opts entry, not devMode's value");
+
+    const plan = planImport(payload);
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.special.devMode, true);
+    assert.strictEqual(plan.special.devToolsMode, false);
+  });
+
+  test("46. export/import round-trip with values swapped catches a swapped-value regression", () => {
+    const payload = buildExportPayload(EMPTY_LISTS, { devMode: false, devToolsMode: true, appVersion: "1.0.0" });
+    assert.strictEqual(payload.devMode, false);
+    assert.strictEqual(payload.devToolsMode, true);
+
+    const plan = planImport(payload);
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.special.devMode, false);
+    assert.strictEqual(plan.special.devToolsMode, true);
+  });
+
+  test("47. an old payload without devToolsMode leaves the flag untouched on import, not forced to false", () => {
+    // No devToolsMode key at all, same as a settings backup exported before #1336.
+    const plan = planImport(validImportData({ devMode: true }));
+    assert.strictEqual(plan.special.devMode, true);
+    assert.strictEqual(plan.special.devToolsMode, undefined, "absent devToolsMode must be undefined, not false — options.js reads undefined as \"leave stored value untouched\"");
+    assert.strictEqual(plan.toSave.devToolsMode, undefined, "devToolsMode must never appear in toSave (it is not a synced pref)");
+  });
+
+  test("48. options.js wires devToolsMode export via getDevToolsMode and import via setDevToolsMode", () => {
+    assert.ok(
+      /devToolsMode:\s*devToolsModeLocal/.test(OPTIONS_SOURCE),
+      "export must pass devToolsMode from local storage into buildExportPayload"
+    );
+    assert.ok(
+      /plan\.special\.devToolsMode !== undefined/.test(OPTIONS_SOURCE),
+      "import must branch on plan.special.devToolsMode being provided"
+    );
+    assert.ok(
+      OPTIONS_SOURCE.includes("await setDevToolsMode(plan.special.devToolsMode)"),
+      "import must apply devToolsMode via setDevToolsMode, same as devMode"
+    );
+  });
+});
