@@ -990,10 +990,15 @@ function initExportImport() {
   document.getElementById("export-btn").addEventListener("click", async () => {
     let prefs;
     try { prefs = await chrome.storage.sync.get(PREF_DEFAULTS); } catch (err) { console.error("[MUGA] export prefs:", err); return; }
-    // devMode is device-local (not in PREF_DEFAULTS) — read separately
+    // devMode/devToolsMode are device-local (not in PREF_DEFAULTS) — read
+    // each separately and pass it under its own key (#1336: buildExportPayload
+    // reads every "local"-kind field by its own key, never a single
+    // hardcoded one).
     const devModeLocal = await getDevMode();
+    const devToolsModeLocal = await getDevToolsMode();
     const payload = buildExportPayload(prefs, {
       devMode: devModeLocal,
+      devToolsMode: devToolsModeLocal,
       appVersion: chrome.runtime.getManifest().version,
     });
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -1083,13 +1088,20 @@ function initExportImport() {
 
       // Build the dry-run diff: currentValues from the EFFECTIVE prefs
       // (override-resolved, same source the DOM refresh below uses) plus the
-      // current devMode; incomingValues from the fully-resolved toSave
-      // (permission gates already applied above) plus the devMode this
-      // import would land, if the file carries one.
-      const currentValues = { ...(await getPrefs()), devMode: await getDevMode() };
+      // current devMode/devToolsMode; incomingValues from the fully-resolved
+      // toSave (permission gates already applied above) plus whichever of
+      // devMode/devToolsMode this import would land, if the file carries them.
+      const currentValues = {
+        ...(await getPrefs()),
+        devMode: await getDevMode(),
+        devToolsMode: await getDevToolsMode(),
+      };
       const incomingValues = { ...toSave };
       if (plan.special.devMode !== undefined) {
         incomingValues.devMode = plan.special.devMode;
+      }
+      if (plan.special.devToolsMode !== undefined) {
+        incomingValues.devToolsMode = plan.special.devToolsMode;
       }
 
       const rows = diffImport(currentValues, incomingValues);
@@ -1117,9 +1129,14 @@ function initExportImport() {
       // device-local devMode changed against un-imported sync prefs (#1044).
       if (!saved) throw new Error("import: setPrefs write did not land");
 
-      // devMode from imported file → local storage (only after the sync write landed)
+      // devMode/devToolsMode from imported file → local storage (only after the
+      // sync write landed). #1336: devToolsMode follows the exact same
+      // undefined-means-untouched contract devMode already had.
       if (plan.special.devMode !== undefined) {
         await setDevMode(plan.special.devMode);
+      }
+      if (plan.special.devToolsMode !== undefined) {
+        await setDevToolsMode(plan.special.devToolsMode);
       }
 
       // #965: importing a config is an explicit choice for this device.
@@ -1183,10 +1200,12 @@ function initExportImport() {
       const experimentalParamEl = document.getElementById("experimental-param-classes");
       if (experimentalParamEl) experimentalParamEl.checked = newPrefs.experimentalParamClassesEnabled;
       if (Array.isArray(toSave.creatorAllowlist)) _refreshCreatorAllowlist?.(newPrefs.creatorAllowlist);
-      // devMode is device-local — re-read from local storage after import
+      // devMode/devToolsMode are device-local — re-read from local storage after import
       document.getElementById("dev-mode").checked = await getDevMode();
+      document.getElementById("dev-tools-mode").checked = await getDevToolsMode();
       document.getElementById("toast-duration-select").value = String(snapToastDuration(newPrefs.toastDuration));
       syncDevTools();
+      syncDevToolsPanel();
       if (toSave.language) {
         _currentLang = toSave.language;
         document.getElementById("lang-select").value = _currentLang;

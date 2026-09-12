@@ -96,6 +96,7 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
     assert.ok(!BOOLEAN_KEYS.includes("resolveShortenersOnHover"));
     assert.ok(!BOOLEAN_KEYS.includes("remoteRulesEnabled"));
     assert.ok(!BOOLEAN_KEYS.includes("devMode"));
+    assert.ok(!BOOLEAN_KEYS.includes("devToolsMode"));
   });
 
   test("SETTINGS_FIELDS has no duplicate keys (single source of truth)", () => {
@@ -115,11 +116,16 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
 });
 
 describe("buildExportPayload", () => {
+  // #1336: each "local" key must come from ITS OWN opts entry, not a single
+  // shared value — devMode:true and devToolsMode:false are deliberately
+  // different so a regression that collapses them onto one value fails this.
+  const LOCAL_VALUES = { devMode: true, devToolsMode: false };
+
   test("full round-trip: every SETTINGS_FIELDS key is present with the correct value", () => {
-    const payload = buildExportPayload(SAMPLE_PREFS, { devMode: true, appVersion: "9.9.9" });
+    const payload = buildExportPayload(SAMPLE_PREFS, { ...LOCAL_VALUES, appVersion: "9.9.9" });
     for (const field of SETTINGS_FIELDS) {
       if (field.kind === "local") {
-        assert.strictEqual(payload[field.key], true, `"${field.key}" must come from the devMode param`);
+        assert.strictEqual(payload[field.key], LOCAL_VALUES[field.key], `"${field.key}" must come from its own opts entry, not a shared one`);
       } else {
         assert.deepStrictEqual(payload[field.key], SAMPLE_PREFS[field.key], `"${field.key}" must round-trip from prefs`);
       }
@@ -399,6 +405,32 @@ describe("planImport — devMode (local-only, not a synced pref)", () => {
   test("devMode never appears in toSave (it is not a synced pref)", () => {
     const plan = planImport(validImportData({ devMode: true }));
     assert.strictEqual(plan.toSave.devMode, undefined);
+  });
+});
+
+// #1336: devToolsMode is devMode's exact sibling (same storage, same
+// default, same never-synced reasoning) and now travels through
+// export/import the same way — this mirrors the devMode describe block above.
+describe("planImport — devToolsMode (local-only, not a synced pref)", () => {
+  test("special.devToolsMode carries the raw boolean, undefined when absent", () => {
+    assert.strictEqual(planImport(validImportData({ devToolsMode: true })).special.devToolsMode, true);
+    assert.strictEqual(planImport(validImportData({ devToolsMode: false })).special.devToolsMode, false);
+    assert.strictEqual(planImport(validImportData({})).special.devToolsMode, undefined);
+  });
+
+  test("devToolsMode never appears in toSave (it is not a synced pref)", () => {
+    const plan = planImport(validImportData({ devToolsMode: true }));
+    assert.strictEqual(plan.toSave.devToolsMode, undefined);
+  });
+
+  test("devMode and devToolsMode are reported independently in special, never collapsed onto one value", () => {
+    const plan = planImport(validImportData({ devMode: true, devToolsMode: false }));
+    assert.strictEqual(plan.special.devMode, true);
+    assert.strictEqual(plan.special.devToolsMode, false);
+
+    const swapped = planImport(validImportData({ devMode: false, devToolsMode: true }));
+    assert.strictEqual(swapped.special.devMode, false);
+    assert.strictEqual(swapped.special.devToolsMode, true);
   });
 });
 
