@@ -181,3 +181,19 @@ describe("#1200 — the DNR regex mirrors the runtime rule", () => {
     }
   });
 });
+
+// #1338: `spr` had no upstream evidence as a tracking param in either source,
+// global or anchored, and stripping it is what broke the #1200 downloads. The
+// signed-URL guard stays as the second line; the strip list must not name it.
+describe("#1338 — spr is not a global tracking param", () => {
+  it("is absent from TRACKING_PARAMS", async () => {
+    const { TRACKING_PARAMS } = await import("../../src/lib/affiliates-data.js");
+    assert.ok(!TRACKING_PARAMS.includes("spr"));
+  });
+
+  it("is absent from the generated DNR tracking rules", async () => {
+    const { readFileSync } = await import("node:fs");
+    const rules = readFileSync(new URL("../../src/rules/tracking-params.json", import.meta.url), "utf8");
+    assert.ok(!/"spr"/.test(rules));
+  });
+});

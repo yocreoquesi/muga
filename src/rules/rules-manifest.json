@@ -1327,10 +1327,6 @@
       "category": "generic"
     },
     {
-      "param": "spr",
-      "category": "generic"
-    },
-    {
       "param": "sprefix",
       "category": "platform_noise"
     },

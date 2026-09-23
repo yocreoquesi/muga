@@ -464,7 +464,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "pk_vid",
       "sb_referer_host",
       "spot_im_redirect_source",
-      "spr",
       "sprtype",
       "tcsack",
       "uzcid",
