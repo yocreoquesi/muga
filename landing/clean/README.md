@@ -8,7 +8,12 @@ adds its own affiliate tag. Any existing affiliate or creator referral tag is
 respected by default, never stripped or overwritten; stripping third-party
 tags is an optional extra you control.
 
-Served in production at `muga.app/clean/` (see `landing/clean/` below).
+`/clean` was retired as a public destination (#1356): `muga.app/clean` now
+redirects to the landing's own copy of this tool (`landing/index.html`'s
+`#demo-tool`, driven by `landing/clean/ui.js`), instead of serving a separate
+page. `web/index.html` stays as a local dev-only preview (see "Running and
+developing locally" below) but is no longer mirrored into `landing/clean/`
+(see `landing/clean/` below) and nothing serves it in production.
 
 ## The one-way boundary (read this before touching anything here)
 
@@ -32,7 +37,9 @@ only (`sdd/web-cleaner-tool/design`, ADR-1):
   internal API ever shifts, only this file changes.
 - **UI** (`web/index.html`, `web/ui.js`, `web/ui-view.js`) — depends solely
   on the adapter's exported `cleanUrl()` contract. No knowledge of
-  `processUrl` or `__mugaCleaner`.
+  `processUrl` or `__mugaCleaner`. `web/index.html` is local dev-only
+  (#1356); `web/ui.js` and `web/ui-view.js` stay mirrored into
+  `landing/clean/` because the landing loads them at runtime.
 
 `src/` must never import anything from `web/` or `landing/clean/`, and
 `web/` (and its generated mirror) must never import anything from `src/`
@@ -56,11 +63,11 @@ regenerated from `src/rules/domain-rules.json`. All of it is written by:
 npm run build:web
 ```
 
-(`tools/build-web.mjs`). This script also mirrors the entire `web/` tree
-into `landing/clean/`, which the Cloudflare Pages project that serves
-muga.app picks up automatically (its build output directory is `landing/`) —
-that mirror is how `muga.app/clean/` gets deployed, with zero new
-infrastructure.
+(`tools/build-web.mjs`). This script also mirrors the `web/` tree into
+`landing/clean/` (excluding `index.html`, see below), which the Cloudflare
+Pages project that serves muga.app picks up automatically (its build output
+directory is `landing/`) — that mirror is how the landing's inline tool
+(`#demo-tool`) gets its real controller, with zero new infrastructure.
 
 If you edit `web/engine/cleaner-bundle.js`, `web/engine/domain-rules.json`,
 `web/engine/domain-rules.gen.mjs`, or anything under `landing/clean/`
