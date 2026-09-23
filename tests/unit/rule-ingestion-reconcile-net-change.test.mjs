@@ -277,14 +277,53 @@ describe("runReconcile", () => {
 // a real `node` process, a real `git` repo, `GITHUB_OUTPUT` a real temp file.
 // Never the real repo's committed tree.
 
+/**
+ * A `process.env` with every `GIT_*` variable stripped (`GIT_DIR`,
+ * `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_AUTHOR_*`, ... — anything an
+ * enclosing git hook, `git rebase`, or a CI wrapper might have set on THIS
+ * process and that a naive inherited env would otherwise leak into the
+ * fixture's own git subprocesses, silently redirecting them at the wrong
+ * repo, index or worktree), plus `GIT_CONFIG_NOSYSTEM=1` and an isolated
+ * `HOME`/`USERPROFILE` so no machine-level `~/.gitconfig` (a signing key, an
+ * alias, a credential helper) can influence a throwaway fixture.
+ *
+ * @param {string} isolatedHome
+ * @returns {NodeJS.ProcessEnv}
+ */
+function isolatedGitEnv(isolatedHome) {
+  const env = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("GIT_")) continue;
+    env[key] = value;
+  }
+  env.HOME = isolatedHome;
+  env.USERPROFILE = isolatedHome;
+  env.GIT_CONFIG_NOSYSTEM = "1";
+  return env;
+}
+
+/** Asserts a spawned git command exited 0, surfacing stderr on failure. */
+function assertGitOk(result, label) {
+  assert.equal(result.status, 0, `${label} failed (exit ${result.status}): ${result.stderr}`);
+  return result;
+}
+
 function makeCliFixture() {
   const repoDir = mkdtempSync(join(tmpdir(), "reconcile-cli-fixture-"));
-  const run = (args, extraEnv = {}) =>
-    spawnSync("git", args, { cwd: repoDir, encoding: "utf8", ...extraEnv });
+  const isolatedHome = mkdtempSync(join(tmpdir(), "reconcile-cli-home-"));
+  // core.hooksPath -> a real, empty directory. No hook files in it, so every
+  // hook is a guaranteed no-op — safer than an empty-string value, which git
+  // treats inconsistently across platforms/versions.
+  const emptyHooksDir = mkdtempSync(join(tmpdir(), "reconcile-cli-hooks-"));
+  const gitEnv = isolatedGitEnv(isolatedHome);
 
-  run(["init", "-q"]);
-  run(["config", "user.email", "fixture@local.test"]);
-  run(["config", "user.name", "Fixture"]);
+  const run = (args) => spawnSync("git", args, { cwd: repoDir, encoding: "utf8", env: gitEnv });
+
+  assertGitOk(run(["init", "-q"]), "git init");
+  assertGitOk(run(["config", "user.email", "fixture@local.test"]), "git config user.email");
+  assertGitOk(run(["config", "user.name", "Fixture"]), "git config user.name");
+  assertGitOk(run(["config", "commit.gpgsign", "false"]), "git config commit.gpgsign");
+  assertGitOk(run(["config", "core.hooksPath", emptyHooksDir]), "git config core.hooksPath");
 
   mkdirSync(join(repoDir, "tools", "rules-source"), { recursive: true });
   mkdirSync(join(repoDir, "tools", "rule-ingestion"), { recursive: true });
@@ -294,10 +333,10 @@ function makeCliFixture() {
     "utf8"
   );
 
-  return { repoDir, run };
+  return { repoDir, run, gitEnv };
 }
 
-function writeAndCommit(repoDir, run, { version, published, params, message }) {
+function writeAndCommit(repoDir, run, { version, published, params, message, extraFiles = {} }) {
   writeFileSync(
     join(repoDir, "tools", "rules-source", "params.json"),
     JSON.stringify({ version, published, params }, null, 2) + "\n",
@@ -308,42 +347,56 @@ function writeAndCommit(repoDir, run, { version, published, params, message }) {
     '{"schemaVersion":1,"entries":[]}\n',
     "utf8"
   );
-  run(["add", "-A"]);
-  run(["commit", "-q", "-m", message]);
+  for (const [name, content] of Object.entries(extraFiles)) {
+    writeFileSync(join(repoDir, "tools", "rules-source", name), content, "utf8");
+  }
+  assertGitOk(run(["add", "-A"]), "git add");
+  assertGitOk(run(["commit", "-q", "-m", message]), "git commit");
 }
 
-function runCli(repoDir, githubOutputPath) {
+function runCli(repoDir, gitEnv, githubOutputPath) {
   return spawnSync(
     process.execPath,
     [join(repoDir, "tools", "rule-ingestion", "reconcile-net-change.mjs")],
     {
       cwd: repoDir,
       encoding: "utf8",
-      env: { ...process.env, GITHUB_OUTPUT: githubOutputPath },
+      // The isolated git env, not raw process.env — the CLI's OWN internal
+      // `execFileSync("git", ...)` calls inherit whatever env this subprocess
+      // runs with, so this is what keeps THOSE calls isolated too, not just
+      // the fixture's own setup commands above.
+      env: { ...gitEnv, GITHUB_OUTPUT: githubOutputPath },
     }
   );
 }
 
 describe("CLI (real subprocess, real git, throwaway fixture repo)", () => {
-  test("net-unchanged: exits 0, emits changed=false, restores the working tree", () => {
-    const { repoDir, run } = makeCliFixture();
+  test("net-unchanged: exits 0, emits changed=false, restores ONLY the two compared files", () => {
+    const { repoDir, run, gitEnv } = makeCliFixture();
     writeAndCommit(repoDir, run, {
       version: 5,
       published: "2026-09-01T00:00:00.000Z",
       params: ["a", "b"],
       message: "committed",
+      // A THIRD tracked file under rules-source/ that reconcile never looks
+      // at — proves the restore is narrowed to exactly params.json/rules.json
+      // (R3.2's fix), not a directory-wide `git checkout -- tools/rules-source`
+      // that would silently wipe an in-progress local edit to this file too.
+      extraFiles: { "notes.txt": "original\n" },
     });
 
     // Simulate the exact T3.1 symptom: version/published moved (a stacked
-    // bump), content did not.
+    // bump), content did not — plus an unrelated LOCAL, uncommitted edit to
+    // the third tracked file that a narrowed restore must leave alone.
     writeFileSync(
       join(repoDir, "tools", "rules-source", "params.json"),
       JSON.stringify({ version: 7, published: "2026-09-08T00:00:00.000Z", params: ["a", "b"] }, null, 2) + "\n",
       "utf8"
     );
+    writeFileSync(join(repoDir, "tools", "rules-source", "notes.txt"), "locally modified, must survive\n", "utf8");
 
     const githubOutputPath = join(repoDir, "github-output.txt");
-    const proc = runCli(repoDir, githubOutputPath);
+    const proc = runCli(repoDir, gitEnv, githubOutputPath);
 
     assert.equal(proc.status, 0, proc.stderr);
     assert.match(proc.stdout, /net content identical to HEAD/);
@@ -352,10 +405,17 @@ describe("CLI (real subprocess, real git, throwaway fixture repo)", () => {
 
     const restored = JSON.parse(readFileSync(join(repoDir, "tools", "rules-source", "params.json"), "utf8"));
     assert.equal(restored.version, 5, "must be restored to HEAD's committed version");
+
+    const notes = readFileSync(join(repoDir, "tools", "rules-source", "notes.txt"), "utf8");
+    assert.equal(
+      notes,
+      "locally modified, must survive\n",
+      "an unrelated tracked file under rules-source/ must NOT be restored — only params.json/rules.json are"
+    );
   });
 
   test("net-changed: exits 0, emits changed=true, writes exactly HEAD version + 1", () => {
-    const { repoDir, run } = makeCliFixture();
+    const { repoDir, run, gitEnv } = makeCliFixture();
     writeAndCommit(repoDir, run, {
       version: 5,
       published: "2026-09-01T00:00:00.000Z",
@@ -371,7 +431,7 @@ describe("CLI (real subprocess, real git, throwaway fixture repo)", () => {
     );
 
     const githubOutputPath = join(repoDir, "github-output.txt");
-    const proc = runCli(repoDir, githubOutputPath);
+    const proc = runCli(repoDir, gitEnv, githubOutputPath);
 
     assert.equal(proc.status, 0, proc.stderr);
     assert.match(proc.stdout, /version set to 6/);

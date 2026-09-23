@@ -11,9 +11,16 @@
  * tree, every #1344 candidate is already relocated (T2), so a fresh
  * `--prefer-anchors` run is a genuine, provable no-op — `runPreferAnchors`
  * writes nothing when `relocated.length === 0` (see its own doc in
- * tools/build-rules-store.mjs) — so running the real CLI for real cannot
- * mutate the working tree. `git status --short` is asserted clean afterward
- * as the safety proof, not just assumed.
+ * tools/build-rules-store.mjs).
+ *
+ * That precondition is checked BEFORE the subprocess is spawned, via the
+ * pure `computeAnchorPreference` dry-run against the real committed store —
+ * never assumed, and never only checked after the fact. If this branch's
+ * committed tree ever regains a relocatable candidate (main drifted, or this
+ * test runs on the wrong branch), the assertion fails here and the real CLI
+ * is never spawned at all, so a failing precondition can never itself mutate
+ * the developer's working tree. `git status --short` before/after the actual
+ * spawn is kept as a second, independent proof.
  *
  * `changed:true` (the relocating branch) is NOT covered by a subprocess test
  * here. Unlike reconcile-net-change.mjs (a single file with no internal
@@ -42,12 +49,28 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadStore, computeAnchorPreference, PARAMS_PATH } from "../../tools/build-rules-store.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..");
 const CLI_PATH = join(REPO_ROOT, "tools", "build-rules-store.mjs");
 
 describe("CLI: node tools/build-rules-store.mjs --prefer-anchors (real subprocess, real repo)", () => {
   test("on the real committed tree (already fully relocated), it is a proven no-op that emits changed=false", () => {
+    // Precondition FIRST, via the pure function, before anything is spawned.
+    // A failing assertion here stops the test cold — the real CLI subprocess
+    // below is unreachable code once this throws, so a broken precondition
+    // can never itself mutate the working tree.
+    const dryRun = computeAnchorPreference(loadStore(), readFileSync(PARAMS_PATH, "utf8"));
+    assert.equal(
+      dryRun.relocated.length,
+      0,
+      "precondition failed: the real committed tree has relocatable #1344 candidate(s) " +
+        `(${dryRun.relocated.join(", ")}) — refusing to spawn the real CLI against it, since ` +
+        "that would relocate them for real and mutate the working tree. This test only runs " +
+        "safely when the tree is already fully relocated."
+    );
+
     const before = spawnSync("git", ["status", "--short"], { cwd: REPO_ROOT, encoding: "utf8" });
     assert.equal(before.status, 0, before.stderr);
 
