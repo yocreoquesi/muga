@@ -47,7 +47,7 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   scoped DNR rules stay within 2000, update tests to the relocated state.
   Route: delegated (same writer).
 
-- [ ] T3 Make the weekly auto-ingest preserve the #1344 relocation. The
+- [x] T3 Make the weekly auto-ingest preserve the #1344 relocation. The
   first post-merge ingest (run 35921813206) failed `npm test`: the pipeline
   re-added the 62 relocated params to the global list, the circularity #1344
   itself described ("hand-removing them is undone by the next ingest").
@@ -149,11 +149,86 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   rules.muga.app (53403 bytes, both signatures, `trk` not global). Manual
   auto-ingest dispatch failed `npm test` (T3 opened).
 
+- 2026-09-23: T3 closed. Mapped the write path first: `promote-rules.mjs`
+  reads `params.json` and the store directly (not via `build-rules-store.mjs`),
+  merges upstream's `art.params` (which `parseRemoveparamRules`'s design
+  correction C1 folds a host-anchored name into, by design — C1 is still
+  right, see tools/import-upstream.mjs) into the global list, and writes both
+  files itself; `land-scoped.mjs` then calls `build-rules-store.mjs`'s
+  `writeAll`, which re-renders `params.json`'s `scoped` section from
+  whatever the store's global list is AT THAT POINT — so a param promote just
+  re-added gets re-shadowed by `withoutGloballyShadowed`, exactly reproducing
+  the circularity #1344 already named.
+
+  Chose approach (b): wired `node tools/build-rules-store.mjs
+  --prefer-anchors` into `.github/workflows/auto-ingest-rules.yml`, as a new
+  step after land-scoped and before the gates/publish, gated on
+  `steps.pipeline.conclusion == 'success'` (matching land-scoped, not the
+  global `noop` signal — the failure mode is a promote run that reports
+  non-noop while still being wrong). Its own `changed` output (new
+  `GITHUB_OUTPUT` emission in `build-rules-store.mjs`'s CLI, mirroring
+  land-scoped's) feeds the combined `steps.work.outputs.any` decision.
+  Rejected approach (a) (excluding a param from promote's merge via the raw
+  3-part predicate): it would decide admission WITHOUT the orphan/budget
+  check `computeAnchorPreference` already does, risking a real orphan on a
+  future saturated budget, and would duplicate logic. `--prefer-anchors`
+  already derives candidates live from the store, is already proven
+  orphan-safe (`channel-prefers-anchors.test.mjs`), and a no-op run writes
+  nothing / bumps no version — so composing it after promote+land-scoped is
+  the smallest correct fix, reusing tested code instead of adding a second
+  admission path.
+
+  RED: added a "T3 (#1344)" describe block to
+  `tests/unit/ingestion-scheduled-workflow.test.mjs` asserting the
+  `--prefer-anchors` step exists, runs after land-scoped and before the test
+  gate and the publish step, is gated like land-scoped (not on the global
+  noop), and feeds the combined signal. Verified RED by stashing the fix and
+  running `node --test tests/unit/ingestion-scheduled-workflow.test.mjs`: 4
+  failures. Restored the fix: `node --test` on that file passes (38/38).
+  Also added a function-level regression test in
+  `tests/unit/channel-prefers-anchors.test.mjs` ("T3 (#1344) — a param
+  promote re-globalizes is relocated back out on the next run") that builds a
+  post-relocation store, simulates promote's re-add via `withGlobalParams`,
+  and asserts `computeAnchorPreference` relocates it back out with orphans
+  unchanged and a stable idempotent second run — passes.
+
+  Real-pipeline reproduction (scratch git worktree at commit 1b82b2d, under
+  the session scratchpad, `npm ci` + a throwaway ed25519 key added to
+  `TRUSTED_PUBLIC_KEYS` INSIDE THAT WORKTREE ONLY, never committed):
+  `MUGA_SIGNING_KEY_PATH=... npm run pipeline:rules` (promote wrote v15->16,
+  +60 net params) then `node tools/rule-ingestion/land-scoped.mjs --report
+  ...` (1517 facts landed, 58 new) then `npm test` — **7989 tests, 32
+  failing**, all in `channel-prefers-anchors.test.mjs` (igsh, mibextid, smid,
+  campaign, ... back in the global list — the exact run-35921813206 failure).
+  Then `node tools/build-rules-store.mjs --prefer-anchors` (the step the fix
+  adds): relocated the same 62 params, orphans 0->0, 336932 bytes left in
+  budget. `npm test` again — **7989 tests, 0 failing** (1 pre-existing skip).
+  Worktree and throwaway key deleted afterward (`git worktree remove` hit a
+  Windows long-path error on the nested `node_modules`; emptied it with
+  `robocopy /MIR` against an empty dir first, then `rm -rf` + `git worktree
+  prune` — confirmed gone from `git worktree list`).
+
+  On the branch: `npm test` 7994/7993 pass (1 pre-existing skip, no flake
+  observed), `npm run check:rules-store` clean (informational inert-facts
+  line only, no drift), `npm run lint:js` clean, `npm run typecheck` clean.
+  No CRLF or generated-file noise (`git diff --stat -- tools/rules-source/
+  src/rules/ docs/rules/` empty — this task never ran compile:rules/build:dnr
+  since nothing here touches TRACKING_PARAMS).
+
+  Files changed: `.github/workflows/auto-ingest-rules.yml` (new
+  `prefer_anchors` step + updated combined-signal step + header comment),
+  `tools/build-rules-store.mjs` (GITHUB_OUTPUT `changed=` emission for
+  `--prefer-anchors`), `tests/unit/ingestion-scheduled-workflow.test.mjs`,
+  `tests/unit/channel-prefers-anchors.test.mjs`.
+
+  Commit: 9b19158 (fix(rules): keep the #1344 relocation across ingest runs).
+
 ## Next step
 
-Both tasks closed and both checks lists green. Nothing outstanding for this
-feature; #1344 is closed by this relocation. Delivery (push, PR) is the
-user's decision under ordinary repository policy — not done by this agent.
+All three tasks closed and all checks lists green. Nothing outstanding for
+this feature; #1344 is closed by this relocation and the weekly ingest now
+preserves it. Delivery (push, PR) is the user's decision under ordinary
+repository policy — not done by this agent.
 
 ## Related
 
