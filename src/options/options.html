@@ -139,6 +139,50 @@
     </div>
   </section>
 
+  <!-- Report a problem (#1353, ADR-0011 Decision 3 + the #1271 correction it
+       made): a USER-REACHABLE report flow. Before this, the only Settings
+       copy of the report form lived inside the Developer tools card
+       (formerly options.html:522-541), bound to the raw QA URL tester and
+       reachable only behind devToolsMode — so there was no user-reachable
+       report flow in Settings at all, only a QA one. This is NEW UI, not a
+       move: the popup's own report flow (popup.html:121-127,
+       popup.js:636-645,:844-912) is untouched here, and so is the QA
+       tester above — that pref/copy work is #1354/#1355, decided later.
+       TIER 1, ungated, own section: deliberately kept separate from
+       #section-activity (#1351 is concurrently adding a panel there) to
+       avoid two agents editing the same block. Reuses the SAME pure funnel
+       both existing surfaces already share (src/lib/broken-site-report.js)
+       and the same GitHub issue deep-link — no new egress, no new pref.
+       Settings has no "current tab" context the way the popup does, so —
+       like the QA tester — the user pastes the URL they had trouble with. -->
+  <section id="section-report">
+    <h2 data-i18n="section_report">Report a problem</h2>
+    <div class="card">
+      <div class="list-section url-tester-section">
+        <strong class="url-tester-label" data-i18n="report_url_label">Report a URL</strong>
+        <small class="url-tester-hint" data-i18n="report_url_hint">Paste a URL you had trouble with. MUGA checks it, then you can send a report.</small>
+        <div class="add-row">
+          <input id="report-url-input" type="text" class="input-mono" placeholder="https://example.com?utm_source=google&amp;fbclid=..." data-i18n-placeholder="dev_url_tester_placeholder" data-i18n-aria-label="aria_dev_url_input">
+          <button class="add-btn" id="report-url-test-btn" data-i18n="dev_url_test_btn">Test</button>
+        </div>
+        <p class="hint" id="report-url-invalid-hint" hidden data-i18n="report_url_invalid">Enter a valid web address, starting with http:// or https://</p>
+        <div id="report-url-result" hidden>
+          <div class="result-label" data-i18n="dev_url_result_label">Result</div>
+          <div id="report-url-clean"></div>
+          <div id="report-url-removed" class="result-removed"></div>
+          <button class="report-btn report-btn-inline" id="report-url-report-btn" hidden data-i18n="dev_url_report_btn">Report a problem with this URL</button>
+          <div class="report-include-url-row" id="report-url-include-url-row" hidden>
+            <label>
+              <input type="checkbox" id="report-url-include-url">
+              <span data-i18n="report_include_full_url_label">Include the full URL</span>
+            </label>
+            <small class="report-include-url-hint" data-i18n="report_include_full_url_hint">I confirm it has no personal or sensitive data</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- General (#936): merges the former single-item Features + Language sections. -->
   <section>
     <h2 data-i18n="section_general">General</h2>

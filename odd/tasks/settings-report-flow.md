@@ -73,17 +73,28 @@ failing test observed first, then implementation, per task instructions.
 ## Checklist
 
 - [x] T1 — create this task file, commit alone.
-- [ ] T2 — add `isReportableUrl(url)` to `src/lib/broken-site-report.js`;
+- [x] T2 — add `isReportableUrl(url)` to `src/lib/broken-site-report.js`;
       write its test first in `tests/unit/broken-site-report.test.mjs`,
-      observe RED, implement, observe GREEN.
-- [ ] T3 — add the new "Report a problem" section to `options.html`
-      (own section, ungated, unique ids) + wire it in `options.js`
-      (`initReportFlow()`, called from `init()`), reusing
-      `buildBrokenSiteReportBody` + `isReportableUrl` + the existing
+      observe RED, implement, observe GREEN. (commit ad01b66; RED confirmed
+      via `SyntaxError: ... does not provide an export named
+      'isReportableUrl'`, then GREEN: 36/36 in the file, 8074/8075 full
+      suite with the one pre-existing skip)
+- [x] T3 — add the new "Report a problem" section to `options.html`
+      (own `<section id="section-report">`, ungated, unique
+      `report-url-*` ids) + wire it in `options.js`
+      (`initReportFlow()`, called from `init()` right after
+      `initExportImport()`), reusing `buildBrokenSiteReportBody` +
+      `isReportableUrl` + the existing
       `cleanForPreview`/`getRemoteParams`/`scopedParamsForHost` helpers the
-      QA tester already uses.
-- [ ] T4 — add the new visible strings to all 7 locale files.
-- [ ] T5 — run full check suite; record results below.
+      QA tester already uses. Same GitHub issue deep-link, no new egress.
+- [x] T4 — added `section_report`, `report_url_label`, `report_url_hint`,
+      `report_url_invalid` to all 7 locale files (reused
+      `dev_url_tester_placeholder`, `aria_dev_url_input`, `dev_url_test_btn`,
+      `dev_url_result_label`, `dev_url_removed`, `dev_url_clean`,
+      `dev_url_action`, `dev_url_error`, `dev_url_report_btn`,
+      `report_include_full_url_label`, `report_include_full_url_hint` as-is
+      for the shared parts of the flow).
+- [x] T5 — full check suite run; see Checks/Progress below.
 
 ## Acceptance criteria
 
@@ -113,3 +124,23 @@ failing test observed first, then implementation, per task instructions.
 ## Progress
 
 - 2026-09-24: Task file created (T1).
+- 2026-09-24: T2 done, commit ad01b66.
+- 2026-09-24: T3/T4 done. Checks observed:
+  - `npm test`: 8099/8100 pass, 1 pre-existing skip (matches ADR-0011's
+    "one pre-existing skipped test" note), 0 fail.
+  - `npm run lint:js`: clean.
+  - `npm run typecheck`: clean.
+  - `npm run check:i18n`: "ok: no FIXME markers, stubs, or empty
+    translations in src/lib/locales/*.mjs".
+  - `npm run lint` (web-ext): 0 errors, 2 pre-existing warnings in
+    `lib/i18n.js` (unrelated, `UNSAFE_VAR_ASSIGNMENT` on innerHTML,
+    predates this change). `git diff --quiet src/manifest.json` confirmed
+    clean afterward.
+  - e2e: `tests/e2e/options.spec.mjs` and `tests/e2e/popup.spec.mjs` have
+    no "report" coverage — nothing relevant to run.
+  - Targeted re-run of `tests/unit/settings-activity-domain-stats.test.mjs`
+    (id-uniqueness guard), `tests/unit/i18n-locale-modules.test.mjs`
+    (locale key-parity), `tests/unit/options-patterns.test.mjs`,
+    `tests/unit/options-aria-i18n.test.mjs`,
+    `tests/unit/options-dev-tools-gate.test.mjs`: 98/98 pass.
+  - Status: all checklist items done. Feature complete for this slice.

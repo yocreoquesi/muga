@@ -19,7 +19,7 @@ import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport } from "../lib/settings-schema.js";
-import { buildBrokenSiteReportBody } from "../lib/broken-site-report.js";
+import { buildBrokenSiteReportBody, isReportableUrl } from "../lib/broken-site-report.js";
 import { scopedParamsForHost } from "../lib/remote-rules.js";
 import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
@@ -401,6 +401,10 @@ async function init() {
   bindListButtons();
   initStatsSection();
   initExportImport();
+  // #1353: the user-reachable "Report a problem" flow. Own section, ungated
+  // (unlike the QA URL tester it mirrors the shape of), so it is wired
+  // unconditionally here rather than alongside devToolsMode below.
+  initReportFlow();
 
   // devMode is device-local (chrome.storage.local), not sync — bind separately
   const devModeVal = await getDevMode();
@@ -1643,6 +1647,127 @@ async function testUrl() {
     // #858: use hidden attribute to reveal result on error
     resultDiv.hidden = false;
   }
+}
+
+/**
+ * Wires the Settings-reachable "Report a problem" flow (#1353). Deliberately
+ * NOT a call into testUrl()/initDevTools() above: this card is ungated and
+ * lives in its own section, with its own `report-url-*` ids, distinct from
+ * the QA tester's `dev-url-*` ids (unique-id guard,
+ * tests/unit/settings-activity-domain-stats.test.mjs). It mirrors the same
+ * shape (paste a URL, run it through the cleaner, then report) because
+ * Settings has no current-tab context the way the popup does — there is no
+ * "this page" to report on without asking the user which URL they mean.
+ *
+ * Reuses the exact same pure funnel (buildBrokenSiteReportBody) and GitHub
+ * issue deep-link the QA tester uses: no new egress, no new pref. The one
+ * addition is isReportableUrl(), which gives friendly inline validation
+ * before the cleaner ever runs, instead of surfacing a raw exception
+ * message for a URL that was never going to parse.
+ */
+function initReportFlow() {
+  const input = document.getElementById("report-url-input");
+  const testBtn = document.getElementById("report-url-test-btn");
+  if (!input || !testBtn) return;
+
+  const invalidHint = document.getElementById("report-url-invalid-hint");
+  const resultDiv = document.getElementById("report-url-result");
+
+  async function runReportUrlCheck() {
+    const url = input.value.trim();
+    if (invalidHint) invalidHint.hidden = true;
+    if (resultDiv) resultDiv.hidden = true;
+    if (!url) return;
+
+    // #1353: validate BEFORE running the cleaner, so a malformed URL gets a
+    // friendly inline message instead of whatever exception message the
+    // cleaning pipeline happens to throw.
+    if (!isReportableUrl(url)) {
+      if (invalidHint) invalidHint.hidden = false;
+      return;
+    }
+
+    const cleanEl = document.getElementById("report-url-clean");
+    const removedEl = document.getElementById("report-url-removed");
+    const reportBtn = document.getElementById("report-url-report-btn");
+    if (reportBtn) reportBtn.hidden = true;
+    // The opt-in full-URL consent is PER-URL: reset the row + checkbox on
+    // every check, same reasoning as testUrl() above (#1229 comment there).
+    const includeUrlRow = document.getElementById("report-url-include-url-row");
+    if (includeUrlRow) includeUrlRow.hidden = true;
+    const includeUrlCheckbox = document.getElementById("report-url-include-url");
+    if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
+
+    try {
+      const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
+      const { loadCleaningContext, cleanForPreview } = await import("../lib/cleaning-context.js");
+      // Referrer stays "" deliberately, same as testUrl(): a URL pasted into
+      // Settings arrives from nowhere, so honor-creator has nothing to honour.
+      const cleaningContext = await loadCleaningContext();
+      const result = cleanForPreview(url, prefs, cleaningContext, { referrer: "" });
+      if (cleanEl) cleanEl.textContent = result.cleanUrl;
+      if (removedEl) {
+        if (result.removedTracking?.length > 0) {
+          removedEl.textContent = t("dev_url_removed", _currentLang).replace("%s", result.removedTracking.join(", "));
+        } else if (result.cleanUrl === url) {
+          removedEl.textContent = t("dev_url_clean", _currentLang);
+        } else {
+          removedEl.textContent = t("dev_url_action", _currentLang).replace("%s", result.action);
+        }
+      }
+      if (resultDiv) resultDiv.hidden = false;
+
+      // #1229: resolved here so the click handler stays synchronous. A
+      // failure degrades to "no scoped params" — the report exactly as it
+      // was before this existed.
+      let scopedParams = [];
+      try {
+        const { remoteRulesMeta } = await getRemoteParams();
+        scopedParams = scopedParamsForHost(new URL(url).hostname, remoteRulesMeta?.scopedFacts);
+      } catch {
+        scopedParams = [];
+      }
+
+      if (reportBtn) {
+        // Clone to avoid listener accumulation across repeated checks,
+        // same as testUrl().
+        const newBtn = reportBtn.cloneNode(true);
+        reportBtn.parentNode.replaceChild(newBtn, reportBtn);
+        newBtn.hidden = false;
+        if (includeUrlRow) includeUrlRow.hidden = false;
+
+        newBtn.addEventListener("click", () => {
+          try {
+            const hostname = new URL(url).hostname;
+            const includeCheckbox = document.getElementById("report-url-include-url");
+            const body = buildBrokenSiteReportBody({
+              url,
+              includeFullUrl: includeCheckbox?.checked === true,
+              hostname,
+              version: chrome.runtime.getManifest().version,
+              browser: navigator.userAgent,
+              action: result.action,
+              removedParams: result.removedTracking,
+              scopedParams,
+            });
+            const title = encodeURIComponent(`[URL Report] ${hostname}`);
+            window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
+          } catch {
+            // Invalid URL, ignore
+          }
+        });
+      }
+    } catch (e) {
+      if (cleanEl) cleanEl.textContent = "";
+      if (removedEl) removedEl.textContent = `${t("dev_url_error", _currentLang)} ${e.message}`;
+      if (resultDiv) resultDiv.hidden = false;
+    }
+  }
+
+  testBtn.addEventListener("click", runReportUrlCheck);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runReportUrlCheck();
+  });
 }
 
 // ── Error-code → i18n-key map for remote-rules status rendering ──────────────
