@@ -356,6 +356,43 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   Commit: cafd5f7 (fix(rules): restore only what reconcile compares, and test
   its CLI output).
 
+- 2026-09-24: Second native review approved the T3.1 advisory follow-up
+  (receipt acknowledged); 4 test-safety advisories applied in one commit:
+  1. `build-rules-store-cli.test.mjs` spawned the real `--prefer-anchors` CLI
+     against the real repo and only checked the "already relocated"
+     precondition AFTER running — a failing precondition would have mutated
+     the working tree. Moved the check BEFORE the spawn, via a pure
+     `computeAnchorPreference` dry-run against `loadStore()`; a non-zero
+     `relocated.length` now fails the assertion before any subprocess exists.
+  2. `reconcile-net-change`'s fixture git subprocesses and the spawned CLI
+     both inherited the test runner's own `GIT_*` env vars (`GIT_DIR`,
+     `GIT_WORK_TREE`, `GIT_INDEX_FILE`, ...), risking silent redirection at
+     the wrong repo/index/worktree. Added `isolatedGitEnv()`: strips every
+     `GIT_*` var, sets `GIT_CONFIG_NOSYSTEM=1` and an isolated
+     `HOME`/`USERPROFILE`; the fixture repo also gets `commit.gpgsign=false`
+     and `core.hooksPath` pointed at a fresh empty directory (never an empty
+     string — inconsistent across git versions).
+  3. Every fixture `git init`/`config`/`add`/`commit` call now goes through
+     `assertGitOk()`, which asserts exit status 0 and surfaces stderr, so a
+     setup failure fails loudly instead of masquerading as a test failure
+     three steps later.
+  4. Added a third tracked file (`notes.txt`) under the fixture's
+     `rules-source/` dir with an uncommitted local edit in the net-unchanged
+     CLI test, and asserted it survives the reconcile run untouched — direct
+     proof the restore stays narrowed to exactly `params.json`/`rules.json`
+     (the previous review's R3-001 fix), not a directory-wide checkout.
+
+  Checks: `npm test` 8019/8018 pass (1 pre-existing skip, no flake), `npm run
+  lint:js` clean, `npm run typecheck` clean. `git status --short` after the
+  full test run showed only the two edited test files — no mutation of the
+  real committed tree from any of these tests.
+
+  Files changed: `tests/unit/build-rules-store-cli.test.mjs`,
+  `tests/unit/rule-ingestion-reconcile-net-change.test.mjs`.
+
+  Commit: 892cf6e (test(rules): isolate the reconcile and prefer-anchors CLI
+  tests).
+
 ## Next step
 
 All three tasks closed and all checks lists green. Nothing outstanding for
