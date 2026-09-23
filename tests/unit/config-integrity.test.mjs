@@ -21,15 +21,23 @@ describe("domain-rules.json integrity", () => {
   test("all entries have a domain, a note, and at least one of preserve or strip", () => {
     // Exact count is pinned so any domain-rules.json growth (e.g. the weekly
     // AdGuard/ClearURLs preserve harvest) is an explicit, reviewed change.
-    assert.equal(domainRules.length, 252, `Expected 252 entries, got ${domainRules.length}`);
+    // 252 -> 289 (#1326 slice 3): tools/import-path-anchors.mjs landed 37 new
+    // path-scoped-only hosts (46 (host, pathPrefix) groups total).
+    assert.equal(domainRules.length, 289, `Expected 289 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);
       // #1328: preserve OR strip, not preserve alone. An entry that exists to add
       // a host-anchored strip has no natural preserve list, and requiring one
       // produced 60 entries carrying an inert `["q"]` purely to pass this check.
+      // #1326 slice 3: a path-scoped-only host (landed purely for a
+      // pathStrips group, no whole-host preserve or strip of its own) is the
+      // same shape one level narrower — it genuinely strips something, just
+      // only on a path, so pathStrips also satisfies this check.
       assert.ok(
-        rule.preserveParams.length > 0 || (rule.stripParams ?? []).length > 0,
+        rule.preserveParams.length > 0 ||
+          (rule.stripParams ?? []).length > 0 ||
+          (rule.pathStrips ?? []).length > 0,
         `${rule.domain} neither preserves nor strips anything`,
       );
       assert.equal(typeof rule.note, "string", `note must be string: ${rule.domain}`);

@@ -142,10 +142,6 @@
         "emitStripParams": true,
         "note": "Avansas, Turkish office-supplies e-commerce. `sc_customer`, `sc_uid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
       },
-      "awin1.com": {
-        "emitStripParams": true,
-        "note": "Awin affiliate redirect host. `linkid` is NOT part of Awin attribution: the click carries awinmid + awinaffid and the merchant landing carries awc (docs/affiliate-networks-matrix.md#awin), none of which MUGA strips. Host-anchored via AdGuard, not global (#1327)."
-      },
       "aws.eu": {
         "emitStripParams": true,
         "note": "AWS EU domain. `trk` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
@@ -353,10 +349,6 @@
       "fandom.com": {
         "emitStripParams": true,
         "note": "Wiki platform. cb is cache buster, so/ref_ are source tracking."
-      },
-      "fantasygf.ai": {
-        "emitStripParams": true,
-        "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
       },
       "fb.com": {
         "emitStripParams": true,
@@ -710,10 +702,6 @@
         "emitStripParams": true,
         "note": "PCMAX, Japanese dating/matching platform. `ad_id` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
       },
-      "peepshow.com": {
-        "emitStripParams": true,
-        "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
-      },
       "petbook.de": {
         "emitStripParams": true,
         "note": "Petbook, German pet-supplies e-commerce. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
@@ -906,10 +894,6 @@
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
       },
-      "vercel.com": {
-        "emitStripParams": true,
-        "note": "Vercel Referrals uses `ref` as its creator attribution token (#1252). Preserved on this host only: `ref` is genuinely a tracker elsewhere, so guarding the name globally would block those strips forever."
-      },
       "video-shoper.ru": {
         "emitStripParams": false,
         "note": "Preserve params harvested from AdGuard/ClearURLs exceptions"
@@ -1009,6 +993,170 @@
       "zigzag.kr": {
         "emitStripParams": true,
         "note": "Korean fashion e-commerce platform. Search query: functional."
+      },
+      "vercel.com": {
+        "emitStripParams": true,
+        "note": "Vercel Referrals uses `ref` as its creator attribution token (#1252). Preserved on this host only: `ref` is genuinely a tracker elsewhere, so guarding the name globally would block those strips forever."
+      },
+      "awin1.com": {
+        "emitStripParams": true,
+        "note": "Awin affiliate redirect host. `linkid` is NOT part of Awin attribution: the click carries awinmid + awinaffid and the merchant landing carries awc (docs/affiliate-networks-matrix.md#awin), none of which MUGA strips. Host-anchored via AdGuard, not global (#1327)."
+      },
+      "fantasygf.ai": {
+        "emitStripParams": true,
+        "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
+      },
+      "peepshow.com": {
+        "emitStripParams": true,
+        "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
+      },
+      "123chat.jp": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "ad.doubleclick.net": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "adobe.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "alia-cloudflare.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "api.cxense.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "azby.fmworld.net": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "blu-ray.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "ca.indeed.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "cc.loginfra.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "cc.naver.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "cdn.modrinth.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "click.linksynergy.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "coco.fun": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "cod.bitrec.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "d.odsyms15.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "edge.curalate.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "heraldcorp.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "hit.gemius.pl": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "lcs.naver.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "lite.qwant.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "media.joj.sk": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "media01.eu": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "ojrq.net": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "p.liadm.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "pixel.adsafeprotected.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "podbean.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "popin.cc": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "quora.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "search.naver.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "shop.tsukumo.co.jp": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "skt.sh": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "sprinklr.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "target.georiot.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "track.wargaming-aff.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "trustzonevpn.info": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "websearch.rakuten.co.jp": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+      },
+      "www.baidu.com": {
+        "emitStripParams": false,
+        "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
       }
     }
   },
@@ -2501,6 +2649,12 @@
     {"scope":"duckduckgo.com","param":"kb","action":"preserve"},
     {"scope":"duckduckgo.com","param":"kv","action":"preserve"},
     {"scope":"duckduckgo.com","param":"kw","action":"preserve"},
+    {"scope":"duckduckgo.com","param":"ad_domain","action":"strip","pathPrefixes":["/y.js"]},
+    {"scope":"duckduckgo.com","param":"ad_provider","action":"strip","pathPrefixes":["/y.js"]},
+    {"scope":"duckduckgo.com","param":"ad_type","action":"strip","pathPrefixes":["/y.js"]},
+    {"scope":"duckduckgo.com","param":"click_metadata","action":"strip","pathPrefixes":["/y.js"]},
+    {"scope":"duckduckgo.com","param":"iurl","action":"strip","pathPrefixes":["/y.js"]},
+    {"scope":"duckduckgo.com","param":"vqd","action":"strip","pathPrefixes":["/y.js"]},
     {"scope":"dzen.ru","param":"text","action":"preserve"},
     {"scope":"dzen.ru","param":"from","action":"strip"},
     {"scope":"dzen.ru","param":"clid","action":"strip"},
@@ -2671,6 +2825,7 @@
     {"scope":"facebook.com","param":"ls_ref","action":"strip"},
     {"scope":"facebook.com","param":"referral_code","action":"strip"},
     {"scope":"facebook.com","param":"referral_story_type","action":"strip"},
+    {"scope":"facebook.com","param":"tracking","action":"strip","pathPrefixes":["/marketplace/"]},
     {"scope":"falabella.com","param":"q","action":"preserve"},
     {"scope":"falabella.com","param":"f.product.brandname","action":"preserve"},
     {"scope":"falabella.com","param":"f.range.derived.variant.discount","action":"preserve"},
@@ -2858,6 +3013,7 @@
     {"scope":"humblebundle.com","param":"hmb_campaign","action":"strip"},
     {"scope":"humblebundle.com","param":"hmb_source","action":"strip"},
     {"scope":"humblebundle.com","param":"mcid","action":"strip"},
+    {"scope":"humblebundle.com","param":"linkid","action":"strip"},
     {"scope":"iberia.com","param":"origin","action":"preserve"},
     {"scope":"iberia.com","param":"destination","action":"preserve"},
     {"scope":"iberia.com","param":"outbounddate","action":"preserve"},
@@ -2930,6 +3086,8 @@
     {"scope":"kickstarter.com","param":"ref","action":"strip"},
     {"scope":"kickstarter.com","param":"event","action":"strip"},
     {"scope":"kickstarter.com","param":"total_hits","action":"strip"},
+    {"scope":"kickstarter.com","param":"event","action":"strip","pathPrefixes":["/projects"]},
+    {"scope":"kickstarter.com","param":"total_hits","action":"strip","pathPrefixes":["/projects"]},
     {"scope":"kitbash3d.com","param":"ad_id","action":"strip"},
     {"scope":"kommersant.ru","param":"erid","action":"preserve"},
     {"scope":"kurly.com","param":"sword","action":"preserve"},
@@ -2973,6 +3131,12 @@
     {"scope":"linkedin.com","param":"lgtemp","action":"strip"},
     {"scope":"linkedin.com","param":"recommendedflavor","action":"strip"},
     {"scope":"linkedin.com","param":"origin","action":"strip"},
+    {"scope":"linkedin.com","param":"originalreferer","action":"strip","pathPrefixes":["/authwall"]},
+    {"scope":"linkedin.com","param":"trkinfo","action":"strip","pathPrefixes":["/authwall"]},
+    {"scope":"linkedin.com","param":"destredirecturl","action":"strip","pathPrefixes":["/premium/"]},
+    {"scope":"linkedin.com","param":"isss","action":"strip","pathPrefixes":["/premium/"]},
+    {"scope":"linkedin.com","param":"referenceid","action":"strip","pathPrefixes":["/premium/"]},
+    {"scope":"linkedin.com","param":"upsellorderorigin","action":"strip","pathPrefixes":["/premium/"]},
     {"scope":"liverpool.com.mx","param":"s","action":"preserve"},
     {"scope":"lululemon.com.hk","param":"cid","action":"strip"},
     {"scope":"maps.google.com","param":"q","action":"preserve"},
@@ -3550,8 +3714,135 @@
     {"scope":"vercel.com","param":"sfmc_activityid","action":"strip"},
     {"scope":"awin1.com","param":"linkid","action":"strip"},
     {"scope":"fantasygf.ai","param":"linkid","action":"strip"},
-    {"scope":"humblebundle.com","param":"linkid","action":"strip"},
     {"scope":"peepshow.com","param":"linkid","action":"strip"},
+    {"scope":"123chat.jp","param":"cid","action":"strip","pathPrefixes":["/promotion/"]},
+    {"scope":"ad.doubleclick.net","param":"clickorigin","action":"strip","pathPrefixes":["/ddm/clk/"]},
+    {"scope":"ad.doubleclick.net","param":"deeplink","action":"strip","pathPrefixes":["/ddm/clk/"]},
+    {"scope":"ad.doubleclick.net","param":"pid","action":"strip","pathPrefixes":["/ddm/clk/"]},
+    {"scope":"adobe.com","param":"trackingid","action":"strip","pathPrefixes":["/download/"]},
+    {"scope":"alia-cloudflare.com","param":"ip_address","action":"strip","pathPrefixes":["/launcher/"]},
+    {"scope":"alia-cloudflare.com","param":"is_mobile","action":"strip","pathPrefixes":["/launcher/"]},
+    {"scope":"alia-cloudflare.com","param":"new_session","action":"strip","pathPrefixes":["/launcher/"]},
+    {"scope":"alia-cloudflare.com","param":"user_agent","action":"strip","pathPrefixes":["/launcher/"]},
+    {"scope":"api.cxense.com","param":"experienceid","action":"strip","pathPrefixes":["/public/widget/data"]},
+    {"scope":"api.cxense.com","param":"getid","action":"strip","pathPrefixes":["/public/widget/data"]},
+    {"scope":"api.cxense.com","param":"prnd","action":"strip","pathPrefixes":["/public/widget/data"]},
+    {"scope":"api.cxense.com","param":"trackingid","action":"strip","pathPrefixes":["/public/widget/data"]},
+    {"scope":"api.cxense.com","param":"usi","action":"strip","pathPrefixes":["/public/widget/data"]},
+    {"scope":"api.cxense.com","param":"widgetid","action":"strip","pathPrefixes":["/public/widget/data"]},
+    {"scope":"azby.fmworld.net","param":"affitest","action":"strip","pathPrefixes":["/cgi-bin/common/rd.cgi"]},
+    {"scope":"blu-ray.com","param":"c","action":"strip","pathPrefixes":["/link/click.php"]},
+    {"scope":"blu-ray.com","param":"tid","action":"strip","pathPrefixes":["/link/click.php"]},
+    {"scope":"ca.indeed.com","param":"attributionid","action":"strip","pathPrefixes":["/cmp"]},
+    {"scope":"ca.indeed.com","param":"fromjk","action":"strip","pathPrefixes":["/cmp"]},
+    {"scope":"ca.indeed.com","param":"tk","action":"strip","pathPrefixes":["/cmp"]},
+    {"scope":"ca.indeed.com","param":"acatk","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"ad","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"adid","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"advn","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"camk","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"cmp","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"i2af","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"jrtk","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"pub","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"rjptk","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"sjdu","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"tk","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"vjs","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"xfps","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"xkcb","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"ca.indeed.com","param":"xpse","action":"strip","pathPrefixes":["/viewjob"]},
+    {"scope":"cc.loginfra.com","param":"a","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.loginfra.com","param":"bw","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.loginfra.com","param":"nsc","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.loginfra.com","param":"px","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.loginfra.com","param":"py","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.loginfra.com","param":"sx","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.loginfra.com","param":"sy","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.naver.com","param":"bw","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.naver.com","param":"px","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.naver.com","param":"py","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.naver.com","param":"sx","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cc.naver.com","param":"sy","action":"strip","pathPrefixes":["/cc"]},
+    {"scope":"cdn.modrinth.com","param":"mr_download_reason","action":"strip","pathPrefixes":["/data/"]},
+    {"scope":"cdn.modrinth.com","param":"mr_game_version","action":"strip","pathPrefixes":["/data/"]},
+    {"scope":"cdn.modrinth.com","param":"mr_loader","action":"strip","pathPrefixes":["/data/"]},
+    {"scope":"click.linksynergy.com","param":"u1","action":"strip","pathPrefixes":["/fs-bin/click"]},
+    {"scope":"click.linksynergy.com","param":"u2","action":"strip","pathPrefixes":["/fs-bin/click"]},
+    {"scope":"coco.fun","param":"d","action":"strip","pathPrefixes":["/share/"]},
+    {"scope":"coco.fun","param":"m","action":"strip","pathPrefixes":["/share/"]},
+    {"scope":"coco.fun","param":"share_to","action":"strip","pathPrefixes":["/share/"]},
+    {"scope":"cod.bitrec.com","param":"externalvisitorid","action":"strip","pathPrefixes":["/topocentras-services/js/recs"]},
+    {"scope":"cod.bitrec.com","param":"r","action":"strip","pathPrefixes":["/topocentras-services/js/recs"]},
+    {"scope":"cod.bitrec.com","param":"visitorid","action":"strip","pathPrefixes":["/topocentras-services/js/recs"]},
+    {"scope":"d.odsyms15.com","param":"article_id","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"d.odsyms15.com","param":"ext.referrer","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"d.odsyms15.com","param":"uid.p","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"edge.curalate.com","param":"spatialtags","action":"strip","pathPrefixes":["/v1/img/"]},
+    {"scope":"edge.curalate.com","param":"appid","action":"strip","pathPrefixes":["/v1/media/"]},
+    {"scope":"edge.curalate.com","param":"fpcuid","action":"strip","pathPrefixes":["/v1/media/"]},
+    {"scope":"edge.curalate.com","param":"rid","action":"strip","pathPrefixes":["/v1/media/"]},
+    {"scope":"heraldcorp.com","param":"pos","action":"strip","pathPrefixes":["/view.php"]},
+    {"scope":"hit.gemius.pl","param":"extra","action":"strip","pathPrefixes":["/hitredir"]},
+    {"scope":"lcs.naver.com","param":"bh","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"bw","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"domcomplete","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"domcontentloadedeventend","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"domcontentloadedeventstart","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"dominteractive","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"domloading","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"ln","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"loadeventend","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"loadeventstart","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"ls","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"navigationstart","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"os","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"pid","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"requeststart","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"responseend","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"responsestart","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"sr","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lcs.naver.com","param":"ts","action":"strip","pathPrefixes":["/m"]},
+    {"scope":"lite.qwant.com","param":"ad","action":"strip","pathPrefixes":["/redirect/"]},
+    {"scope":"lite.qwant.com","param":"cachekey","action":"strip","pathPrefixes":["/redirect/"]},
+    {"scope":"lite.qwant.com","param":"position","action":"strip","pathPrefixes":["/redirect/"]},
+    {"scope":"lite.qwant.com","param":"serp_position","action":"strip","pathPrefixes":["/redirect/"]},
+    {"scope":"lite.qwant.com","param":"tgp","action":"strip","pathPrefixes":["/redirect/"]},
+    {"scope":"lite.qwant.com","param":"uri","action":"strip","pathPrefixes":["/redirect/"]},
+    {"scope":"media.joj.sk","param":"ad_params","action":"strip","pathPrefixes":["/outstream/embed"]},
+    {"scope":"media.joj.sk","param":"ga_account","action":"strip","pathPrefixes":["/outstream/embed"]},
+    {"scope":"media.joj.sk","param":"gemius_identifier","action":"strip","pathPrefixes":["/outstream/embed"]},
+    {"scope":"media.joj.sk","param":"tracking_params","action":"strip","pathPrefixes":["/outstream/embed"]},
+    {"scope":"media01.eu","param":"trackid","action":"strip","pathPrefixes":["/set.aspx"]},
+    {"scope":"ojrq.net","param":"cid","action":"strip","pathPrefixes":["/p/"]},
+    {"scope":"ojrq.net","param":"tpsync","action":"strip","pathPrefixes":["/p/"]},
+    {"scope":"p.liadm.com","param":"_lc2_fpi","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"p.liadm.com","param":"i6","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"p.liadm.com","param":"li","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"p.liadm.com","param":"stpe","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"pixel.adsafeprotected.com","param":"anid","action":"strip","pathPrefixes":["/services/pub"]},
+    {"scope":"pixel.adsafeprotected.com","param":"sessionid","action":"strip","pathPrefixes":["/services/pub"]},
+    {"scope":"pixel.adsafeprotected.com","param":"slot","action":"strip","pathPrefixes":["/services/pub"]},
+    {"scope":"pixel.adsafeprotected.com","param":"sr","action":"strip","pathPrefixes":["/services/pub"]},
+    {"scope":"pixel.adsafeprotected.com","param":"wr","action":"strip","pathPrefixes":["/services/pub"]},
+    {"scope":"podbean.com","param":"pbss","action":"strip","pathPrefixes":["/pb/"]},
+    {"scope":"podbean.com","param":"referrer","action":"strip","pathPrefixes":["/player/"]},
+    {"scope":"popin.cc","param":"info","action":"strip","pathPrefixes":["/popin_discovery/"]},
+    {"scope":"quora.com","param":"al_imp","action":"strip","pathPrefixes":["/qemail/tc"]},
+    {"scope":"search.naver.com","param":"i","action":"strip","pathPrefixes":["/p/crd/rd"]},
+    {"scope":"search.naver.com","param":"px","action":"strip","pathPrefixes":["/p/crd/rd"]},
+    {"scope":"search.naver.com","param":"py","action":"strip","pathPrefixes":["/p/crd/rd"]},
+    {"scope":"search.naver.com","param":"sx","action":"strip","pathPrefixes":["/p/crd/rd"]},
+    {"scope":"search.naver.com","param":"sy","action":"strip","pathPrefixes":["/p/crd/rd"]},
+    {"scope":"search.naver.com","param":"tqi","action":"strip","pathPrefixes":["/search.naver"]},
+    {"scope":"shop.tsukumo.co.jp","param":"cid","action":"strip","pathPrefixes":["/goods/"]},
+    {"scope":"skt.sh","param":"referer","action":"strip","pathPrefixes":["/common/share/bridge"]},
+    {"scope":"sprinklr.com","param":"cursor","action":"strip","pathPrefixes":["/api/livechat/event/"]},
+    {"scope":"target.georiot.com","param":"tsid","action":"strip","pathPrefixes":["/Proxy.ashx"]},
+    {"scope":"track.wargaming-aff.com","param":"ref_id","action":"strip","pathPrefixes":["/click"]},
+    {"scope":"trustzonevpn.info","param":"rid","action":"strip","pathPrefixes":["/r.php"]},
+    {"scope":"websearch.rakuten.co.jp","param":"ref","action":"strip","pathPrefixes":["/Web"]},
+    {"scope":"www.baidu.com","param":"eqid","action":"strip","pathPrefixes":["/link"]},
     {"scope":"*","param":"_branch_match_id","action":"strip"},
     {"scope":"*","param":"_hsenc","action":"strip"},
     {"scope":"*","param":"_hsmi","action":"strip"},
