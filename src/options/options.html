@@ -128,7 +128,8 @@
        gating checkbox below (Display card) already owns the plain
        domain-stats id — moving both into the same document would
        otherwise collide. -->
-  <section id="section-activity">
+  <!-- Hidden until renderDomainStatsActivity() decides; avoids an empty flash (#1350). -->
+  <section id="section-activity" hidden>
     <h2 data-i18n="section_activity">Activity</h2>
     <div class="card">
       <div class="list-section" id="domain-stats-panel">

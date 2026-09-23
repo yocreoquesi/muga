@@ -74,16 +74,20 @@ describe("options.html — no duplicate DOM ids", () => {
 
 describe("options.html — #section-activity hosts the domain-stats table", () => {
   test("section#section-activity exists with a translated heading", () => {
-    assert.match(optionsHtml, /<section id="section-activity">/, "options.html must contain #section-activity");
+    assert.match(optionsHtml, /<section id="section-activity" hidden>/, "options.html must contain #section-activity");
     assert.match(
       optionsHtml,
-      /<section id="section-activity">\s*<h2[^>]*data-i18n="section_activity"/,
+      /<section id="section-activity" hidden>\s*<h2[^>]*data-i18n="section_activity"/,
       "#section-activity must have an h2 with data-i18n=\"section_activity\""
     );
   });
 
+  test("#section-activity starts hidden, so it never flashes empty before init decides (#1350 review R3-001)", () => {
+    assert.match(optionsHtml, /<section id="section-activity" hidden>/);
+  });
+
   test("the domain-stats-panel lives inside #section-activity and declares a list container", () => {
-    const sectionMatch = optionsHtml.match(/<section id="section-activity">[\s\S]*?<\/section>/);
+    const sectionMatch = optionsHtml.match(/<section id="section-activity" hidden>[\s\S]*?<\/section>/);
     assert.ok(sectionMatch, "#section-activity must be a well-formed <section>");
     assert.match(sectionMatch[0], /id="domain-stats-panel"/);
     assert.match(sectionMatch[0], /id="domain-stats-list"/);
@@ -94,7 +98,7 @@ describe("options.html — #section-activity hosts the domain-stats table", () =
     const advancedStart = optionsHtml.indexOf('<section id="section-dev">');
     const devToolsStart = optionsHtml.indexOf('<section id="section-dev-tools">');
     assert.ok(advancedStart !== -1 && devToolsStart !== -1, "Advanced/dev-tools markers must exist");
-    const activityStart = optionsHtml.indexOf('<section id="section-activity">');
+    const activityStart = optionsHtml.indexOf('<section id="section-activity" hidden>');
     assert.ok(activityStart !== -1, "#section-activity must exist");
     assert.ok(
       activityStart < advancedStart,
