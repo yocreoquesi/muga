@@ -282,6 +282,31 @@ describe("landing inline tool — does not reimplement the cleaner", () => {
   });
 });
 
+describe("landing inline tool — retargeted /clean links (#1356)", () => {
+  // /clean is retired: the landing already hosts the tool inline, so both
+  // places the landing promoted /clean as a second destination point at the
+  // tool anchor on the same page instead. Scans the whole HTML (not just
+  // BOOTSTRAP), since these are <a href> attributes, not bootstrap script.
+  test("no link on the landing still points at https://muga.app/clean", () => {
+    assert.ok(
+      !HTML.includes("https://muga.app/clean"),
+      "landing/index.html must not promote /clean as a destination anymore (#1356); retarget to #demo-tool",
+    );
+  });
+
+  test("the platform card's web option points at the in-page tool anchor", () => {
+    const cardMatch = HTML.match(/<a class="way" data-plat="web" href="([^"]+)"/);
+    assert.ok(cardMatch, "the web platform card must exist");
+    assert.equal(cardMatch[1], "#demo-tool", "the web platform card must link to #demo-tool, not a separate page");
+  });
+
+  test("the footer's web cleaner entry points at the in-page tool anchor", () => {
+    const footerMatch = HTML.match(/<li><a href="([^"]+)">MUGA URL Cleaner<\/a><\/li>/);
+    assert.ok(footerMatch, "the footer's web cleaner entry must exist");
+    assert.equal(footerMatch[1], "#demo-tool", "the footer's web cleaner entry must link to #demo-tool, not a separate page");
+  });
+});
+
 describe("landing inline tool — hosts the real controller's full markup", () => {
   test("the landing includes every element id web/ui.js init() binds to", () => {
     const ids = uiInitBoundIds();
