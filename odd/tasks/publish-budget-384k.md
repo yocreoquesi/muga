@@ -223,6 +223,85 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
 
   Commit: 9b19158 (fix(rules): keep the #1344 relocation across ingest runs).
 
+- 2026-09-23: T3.1 (coordinator review finding). Concern: in steady state,
+  promote re-adds the same 62 relocated params every week (C1), so pipeline
+  `noop` reads `false` and `--prefer-anchors` relocates 62 every week
+  (`changed: true`) forever, even once net content stops moving — and each
+  step's own version bump stacks (promote +1, prefer-anchors +1) into one run.
+  Measured, not reasoned about: scratch worktree at 741bd57 (T3's commit,
+  before this fix), throwaway key trusted in that worktree only. Week 1
+  (`pipeline:rules` -> `land-scoped.mjs` -> `--prefer-anchors`, then committed):
+  pipeline noop=false (v15->16, +60 net), land-scoped changed=true (58 new
+  facts), prefer-anchors relocated 62, final version 17 (a STACKED double
+  bump: 15->16->17). Week 2 (same sequence again, same live upstream,
+  uncommitted): pipeline noop=false again (v17->18, +62 net — the same 62
+  params look "new" against the post-relocation list), land-scoped
+  changed=false (0 added — the 58 facts were already landed), prefer-anchors
+  relocated the SAME 62 params again, final version 19 (another stacked
+  bump). `git diff --stat tools/rules-source` after week 2: only
+  `params.json`, 2 lines (version/published) — `rules.json` byte-identical to
+  week 1's commit, `params.length` 94 both weeks, `scoped.length` 1017 both
+  weeks. Confirmed: a true net no-op, but the workflow (as T3 shipped it)
+  would have signed, published and auto-merged a new version anyway.
+
+  Fix: added `tools/rule-ingestion/reconcile-net-change.mjs` — compares the
+  working tree's `params.json` (ignoring `version`/`published`/`sig` via
+  `normalizeParamsForCompare`) and `rules.json` (byte-for-byte) against
+  `git show HEAD:...`. Identical: `git checkout -- tools/rules-source`
+  (restore, discard the run's bumps), report `changed:false`. Different:
+  `withVersion` surgically rewrites ONLY the top-level `"version"` field
+  (never re-`JSON.stringify`s the whole file, which would blow away
+  `renderParamsFile`'s one-fact-per-line `scoped` formatting) to exactly
+  `HEAD`'s version + 1, collapsing any stacked bump to one. Wired into
+  `.github/workflows/auto-ingest-rules.yml` as a new `reconcile` step after
+  `--prefer-anchors` and before the work-decision step; that step's `ANY` is
+  now assigned directly from `steps.reconcile.outputs.changed`
+  (`ANY="$RECONCILED"`) instead of OR-ing the raw `GLOBAL`/`SCOPED`/`ANCHORS`
+  signals — OR-ing `GLOBAL` back in would have reintroduced the exact bug,
+  since it reads `false` every week in steady state regardless of net
+  content. GLOBAL/SCOPED/ANCHORS are kept and logged for observability, not
+  removed. Corrected the prefer-anchors step's own comment, which had claimed
+  "a run that relocates nothing... stays a true no-op end to end" — that
+  never actually triggers once #1344's candidates exist, since prefer-anchors
+  relocates the same params every week; reconcile is what achieves
+  quiescence, not prefer-anchors's own no-op case.
+
+  RED: `tests/unit/rule-ingestion-reconcile-net-change.test.mjs` written
+  first — ran against a temporarily-moved-away module file (`ERR_MODULE_NOT_FOUND`,
+  1 fail), then against the real module (13/13 pass, including a stacked-bump
+  regression test asserting HEAD=15/current=17 collapses to 16, and a pinned
+  edge case for the real committed scoped fact `{"param":"version",...}` never
+  being mistaken for the top-level field). Added a "T3.1" describe block to
+  `tests/unit/ingestion-scheduled-workflow.test.mjs` (step exists, ordered
+  after prefer-anchors and before the decision step, gated like land-scoped,
+  `ANY` derived from `RECONCILED` not the old GLOBAL-OR, superseded comment
+  text gone): 5 failures against the pre-fix workflow, 44/44 after.
+
+  Re-measured post-fix (fresh scratch worktree at 5da93af, same throwaway-key
+  protocol): week 1 — pipeline v15->16, prefer-anchors relocated 62,
+  reconcile "net content differs from HEAD — version set to 16" (collapsed
+  the stacked 15->16->17 to a single 16), committed. Week 2 — pipeline
+  v16->17 (+62 net, same C1 re-offer), land-scoped changed=false,
+  prefer-anchors relocated the same 62, reconcile "net content identical to
+  HEAD ... restored tools/rules-source to HEAD, nothing to publish this run".
+  `git status --short` after week 2: clean under `tools/rules-source/`;
+  committed version stayed 16. Week 2 is now a true no-op; week 1 still
+  publishes with exactly one version bump.
+
+  Checks: `npm test` 8014/8013 pass (1 pre-existing skip, no flake), `npm run
+  check:rules-store` clean, `npm run lint:js` clean, `npm run typecheck`
+  clean. No generated-file/CRLF diff. Both scratch worktrees and both
+  throwaway keys deleted (`robocopy /MIR` against an empty dir, then `rm -rf`
+  + `git worktree prune`; confirmed gone from `git worktree list`).
+
+  Files changed: `tools/rule-ingestion/reconcile-net-change.mjs` (new),
+  `.github/workflows/auto-ingest-rules.yml` (new `reconcile` step, corrected
+  `ANY` assignment, corrected comment), `tests/unit/ingestion-scheduled-workflow.test.mjs`,
+  `tests/unit/rule-ingestion-reconcile-net-change.test.mjs` (new).
+
+  Commit: 5da93af (fix(rules): guard the weekly ingest against #1344
+  relocation churn).
+
 ## Next step
 
 All three tasks closed and all checks lists green. Nothing outstanding for
