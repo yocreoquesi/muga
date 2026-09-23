@@ -101,27 +101,23 @@ function write(file, contents) {
  * runtime bound rises with a release, this one rises once that release has
  * adoption.
  *
- * Set to the pre-#1229 runtime bound, which is what the fleet carries today.
- * Raising it is a one-line change and needs no client work.
+ * ── Where it stands ───────────────────────────────────────────────────
  *
- * ── What it should become, and what has to happen first ───────────
+ * 384 KB since 2026-09-23, once v3.1.0 (the first release carrying
+ * MAX_PAYLOAD_BYTES = 512 KB, shipped 2026-09-11) had the fleet. That is 75% of
+ * the runtime cap, leaving margin for the signer's two signatures and for a
+ * payload that grows between publishes, and it is ~6.8x the 56 KB the ENTIRE
+ * AdGuard Filter 17 host-anchored import signs to (measured 2026-09-09).
  *
- * TARGET: 384 KB, once a release carrying MAX_PAYLOAD_BYTES = 512 KB has
- * adoption. That is 75% of the runtime cap, leaving margin for the signer's two
- * signatures and for a payload that grows between publishes, and it is ~6.8x
- * the 56 KB the ENTIRE AdGuard Filter 17 host-anchored import signs to
- * (measured 2026-09-09).
+ * It was 50 KB before that, because v3.0.0 carried the old 50 KB runtime bound
+ * and publishing above it made the whole payload OVER_CAP there, global params
+ * included, until those installs auto-updated. Cleaning keeps working in that
+ * state (ADR-D9), but nothing new arrives.
  *
- * NOT YET. v3.0.0 — which is every install today — carries the OLD 50 KB
- * runtime bound: the raise to 256 KB landed in #1250, after that tag, and 512 KB
- * after that again. Publishing above 50 KB before those builds are out there
- * makes the whole payload OVER_CAP for everyone, global params included, and
- * the channel stops updating until they auto-update. Cleaning keeps working
- * (ADR-D9), but nothing new arrives.
- *
- * So the order is: release → adoption → this number. Not the other way round.
+ * The rule for the NEXT raise is the same: release → adoption → this number.
+ * Not the other way round.
  */
-export const PUBLISH_PAYLOAD_BUDGET_BYTES = 50 * 1024;
+export const PUBLISH_PAYLOAD_BUDGET_BYTES = 384 * 1024;
 
 /**
  * Trims the scoped section to what the published payload can carry.
@@ -219,13 +215,12 @@ function withoutGloballyShadowed(scoped, params) {
 //
 // See `PUBLISH_PAYLOAD_BUDGET_BYTES`'s own docblock above for the full
 // argument; the short version, so it sits next to the code that makes the
-// budget feel tight: every install today is v3.0.0, which carries the OLD
-// 50 KB runtime bound compiled in. Publishing above it makes the WHOLE
-// payload OVER_CAP for the entire fleet — global params included, not just
-// the scoped section — until those installs auto-update to a build with the
-// raised bound. The order is release, then adoption, then this number. A
-// relocation mechanism that ran out of room cannot fix that by publishing
-// more; it can only decide, honestly, who fits today.
+// budget feel tight: the budget can only rise after a release carrying a
+// larger runtime bound has the fleet, because an install on an older build
+// rejects the WHOLE payload as OVER_CAP, global params included. The order is
+// release, then adoption, then this number. A relocation mechanism that runs
+// out of room cannot fix that by publishing more; it can only decide,
+// honestly, who fits today.
 //
 // ── Relocation is a TRADE, not a pure addition, in a saturated budget ───
 //

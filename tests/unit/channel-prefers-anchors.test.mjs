@@ -22,24 +22,34 @@
  * A first version of this fix protected only the CANDIDATES ("does my own
  * record survive the budget fit"). That is necessary but not sufficient: the
  * publish budget's own accounting (`fitScopedToBudget`, deliberately
- * conservative — see its own comments) already sits within a few dozen
- * bytes of ITS OWN ceiling against the real committed store, because there
- * is always a bigger backlog of facts than fits. Admitting a candidate's
+ * conservative — see its own comments) can sit within a few dozen bytes of
+ * ITS OWN ceiling against a big enough committed store, because there is
+ * always a bigger backlog of facts than fits. Admitting a candidate's
  * record can push the strict alphabetical cutoff earlier and silently evict
  * some UNRELATED already-published param's fact — an ORPHANED fact
  * (`countOrphanedFacts`): covered by neither channel, even though it was
  * covered a moment ago.
  *
- * Measured directly against the real committed store: relocating even just
- * the ten named below evicts 14 unrelated params (16 facts) — `wpset wref
+ * Measured directly against the real committed store UNDER THE OLD 50 KB
+ * budget (what shipped before v3.1.0 had the fleet): relocating even just
+ * the ten named below evicted 14 unrelated params (16 facts) — `wpset wref
  * wtime x_hk x_imp xadid xcust xdm_c xdm_e xdm_p xhuserid xid_param_2 xmktid
  * xmt` — because relocating a param never reduces ITS OWN orphan risk (it is
- * covered by global before, by scoped after — net zero) while the budget's
- * conservative accounting has no room to spare. So EVERY one of the 62
- * candidates defers today, and the orphan count stays exactly where `main`
- * already had it (8): #1344 cannot close by relocation alone while the
- * publish budget is this saturated — see this module's own docblock for why
- * raising the budget is not an available lever.
+ * covered by global before, by scoped after — net zero) while a saturated
+ * budget's conservative accounting has no room to spare. Every one of the 62
+ * candidates deferred at that budget, and the orphan count stayed exactly
+ * where it already was (8).
+ *
+ * 2026-09-23: the publish budget raised to 384 KB (see
+ * `PUBLISH_PAYLOAD_BUDGET_BYTES`'s own docblock — release, then adoption,
+ * then this number) gave the mechanism the headroom the 50 KB ceiling never
+ * had: against the real committed store, all 62 candidates now relocate
+ * cleanly, with room to spare and the orphan count untouched. The
+ * saturation scenario above is no longer today's truth, but the invariant it
+ * protects still matters whenever a future backlog grows to fill whatever
+ * budget is current — so the "unprotected relocation evicts a neighbour"
+ * evidence below is reproduced against a synthetic saturated budget instead
+ * of the (now roomy) real one.
  */
 
 import { test, describe } from "node:test";
@@ -128,38 +138,45 @@ describe("#1344 — the orphan count must never rise", () => {
     assert.equal(result.orphansBefore, independent);
   });
 
-  test("today, every one of the 62 qualifying candidates defers — relocating any of them would orphan a neighbour", () => {
-    // The concrete, current finding: the publish budget is saturated enough
-    // (see this module's docblock) that NOTHING can relocate today without
-    // evicting something else. This pins that finding so a future change to
-    // the store, the budget, or the mechanism has to re-examine it rather
-    // than silently drift.
+  test("today, every one of the 62 qualifying candidates relocates — the 384 KB budget has room for all of them", () => {
+    // The concrete, current finding: raising the publish budget to 384 KB
+    // (2026-09-23, once v3.1.0 had the fleet) gave the mechanism enough
+    // headroom that every qualifying candidate's own record fits AND none
+    // of them evicts an already-published neighbour. This pins that finding
+    // so a future change to the store, the budget, or the mechanism has to
+    // re-examine it rather than silently drift.
     const store = loadRealStore();
     const result = computeAnchorPreference(store, realParamsText());
 
-    assert.ok(result.stayedGlobalForBudget.length > 0, "fixture assumption: candidates exist today");
     assert.equal(
       result.relocated.length,
-      0,
-      `expected 0 relocations against the real store's current budget saturation, got: ` +
-        result.relocated.join(", ")
+      62,
+      `expected all 62 qualifying candidates to relocate against the real store's current 384 KB ` +
+        `headroom, got ${result.relocated.length}: ` + result.relocated.join(", ")
     );
+    assert.deepEqual(result.stayedGlobalForBudget, []);
     assert.equal(result.orphansAfter, result.orphansBefore);
   });
 
-  test("relocating just the ten #1228 params, unprotected, WOULD have evicted 14 unrelated params (16 facts)", () => {
+  test("relocating just the ten #1228 params, unprotected, under a saturated 50 KB budget WOULD have evicted 14 unrelated params (16 facts)", () => {
     // Direct evidence for the docblock's claim, computed independently of
     // computeAnchorPreference's admission logic (this simulates the naive,
     // unprotected relocation the first version of this fix shipped, and
-    // shows exactly why it was wrong).
+    // shows exactly why it was wrong). The real committed store no longer
+    // saturates the current 384 KB budget (see the "orphan count must never
+    // rise" test above), so this test recreates the saturation the
+    // invariant exists for with a fixed, budget-independent ceiling — the
+    // same 50 KB the channel published under before v3.1.0 had the fleet —
+    // rather than the (now roomy) real `PUBLISH_PAYLOAD_BUDGET_BYTES`.
     const store = loadRealStore();
     const current = JSON.parse(realParamsText());
     const globalParams = current.params;
     // The FULL pool the real mechanism draws from (`emitScoped`, ~1068
-    // facts) — not `current.scoped` (the ~921 ALREADY-published subset).
-    // Using the smaller one here would silently hide the eviction this test
-    // exists to demonstrate.
+    // facts) — not `current.scoped` (the published subset). Using the
+    // smaller one here would silently hide the eviction this test exists to
+    // demonstrate.
     const scoped = emitScoped(store);
+    const SATURATED_BUDGET = 50 * 1024;
 
     const TEN = [
       "igsh",
@@ -186,7 +203,7 @@ describe("#1344 — the orphan count must never rise", () => {
       const published = [];
       for (const f of publishable) {
         const cost = JSON.stringify(f).length + 2;
-        if (used + cost > PUBLISH_PAYLOAD_BUDGET_BYTES) break;
+        if (used + cost > SATURATED_BUDGET) break;
         used += cost;
         published.push(f);
       }
@@ -197,16 +214,24 @@ describe("#1344 — the orphan count must never rise", () => {
     const after = fit(globalParams.filter((p) => !TEN.includes(p)));
 
     const evicted = [...before].filter((p) => !after.has(p) && !TEN.includes(p));
-    assert.ok(
-      evicted.length > 0,
-      "fixture assumption failed: relocating the ten no longer evicts anything against the " +
-        "current committed store — #1344 may now be closeable; re-measure before hand-picking " +
-        "the ten again"
+    assert.equal(
+      evicted.length,
+      14,
+      `expected 14 unrelated params evicted under a saturated 50 KB budget, got ${evicted.length}: ` +
+        evicted.sort().join(", ")
     );
   });
 });
 
-// ── The ten named params: correctly deferred, not silently dropped ───────
+// ── The ten named params: now free to relocate ────────────────────────────
+//
+// #1342 could not reach these ten under the old 50 KB budget (every
+// candidate deferred to protect a neighbour). The 384 KB budget removed that
+// ceiling: `computeAnchorPreference` now reports all ten as relocating. The
+// actual relocation (writing that back to the store) is #1344's own commit —
+// at this point in the sequence the store is untouched, so the committed
+// global list still carries them, and the assertions below check the dry-run
+// decision, not yet the applied one.
 
 describe("#1344 — the ten host-anchored params #1342 could not reach", () => {
   const TEN = [
@@ -226,23 +251,23 @@ describe("#1344 — the ten host-anchored params #1342 could not reach", () => {
   const globalSet = new Set(params.params);
 
   for (const param of TEN) {
-    test(`"${param}" is reported as deferred, not silently left unexplained`, () => {
+    test(`"${param}" is reported as ready to relocate, not silently left unexplained`, () => {
       const store = loadRealStore();
       const result = computeAnchorPreference(store, realParamsText());
       assert.ok(
-        result.stayedGlobalForBudget.includes(param),
+        result.relocated.includes(param),
         `"${param}" is neither relocated nor reported as deferred — the mechanism must account ` +
           "for every qualifying candidate one way or the other"
       );
     });
 
-    test(`"${param}" still strips everywhere — it is still in the published global list`, () => {
-      // The safe, correct state today: it never lost coverage, because the
-      // orphan-protecting admission rule kept it global rather than risk a
-      // neighbour's coverage for a byte budget this tight.
+    test(`"${param}" still strips everywhere today — the relocation has not been applied to the committed store yet`, () => {
+      // The store has not had `--prefer-anchors` run against it yet, so the
+      // committed global list is unchanged: the param has not lost
+      // coverage, it just has not moved yet.
       assert.ok(
         globalSet.has(param),
-        `"${param}" left the published global list without being reported as relocated`
+        `"${param}" left the published global list without the relocation having been applied`
       );
     });
   }
@@ -436,8 +461,32 @@ describe("#1344 — safety property: a relocation must not cost MORE coverage th
         padding: "x".repeat(Math.max(0, paddingLen)),
       });
 
+    // At a large enough budget (384 KB), searching the padding range all the
+    // way up to PUBLISH_PAYLOAD_BUDGET_BYTES stops being safe: past a
+    // certain padding the BASELINE itself (candidate still global, so only
+    // the neighbour's own record is competing for room) stops fitting the
+    // neighbour — `orphansBefore` flips from 0 to 1 — and once that has
+    // already happened, relocating the candidate no longer makes coverage
+    // any WORSE (it was already broken), so `relocated` flips back to 1
+    // before finally hitting 0 again at total exhaustion. That reentrant
+    // region is real (the admission rule's own "do not make it worse, not
+    // zero-eviction" design — see computeAnchorPreference's docblock) but it
+    // is not what this test is for: it wants the boundary where the
+    // candidate defers specifically because relocating it would evict a
+    // neighbour that was STILL published a moment ago. So the search range
+    // is bounded above by the tightest padding at which the baseline is
+    // still clean, found the same way, first.
+    let orphanLo = 0;
+    let orphanHi = PUBLISH_PAYLOAD_BUDGET_BYTES;
+    while (orphanHi - orphanLo > 1) {
+      const mid = Math.floor((orphanLo + orphanHi) / 2);
+      const stillClean = computeAnchorPreference(withNeighbour, textFor(mid)).orphansBefore === 0;
+      if (stillClean) orphanLo = mid;
+      else orphanHi = mid;
+    }
+
     let lo = 0;
-    let hi = PUBLISH_PAYLOAD_BUDGET_BYTES;
+    let hi = orphanLo;
     // Invariant during the search: padding=lo relocates the candidate even
     // WITH the neighbour present; padding=hi does not.
     assert.equal(
@@ -448,7 +497,7 @@ describe("#1344 — safety property: a relocation must not cost MORE coverage th
     assert.equal(
       computeAnchorPreference(withNeighbour, textFor(hi)).relocated.length,
       0,
-      "fixture assumption: the tightest padding must never relocate anything"
+      "fixture assumption: the tightest still-clean padding must not relocate the candidate"
     );
     while (hi - lo > 1) {
       const mid = Math.floor((lo + hi) / 2);
@@ -456,8 +505,9 @@ describe("#1344 — safety property: a relocation must not cost MORE coverage th
       if (fits) lo = mid;
       else hi = mid;
     }
-    // `hi` is the tightest padding at which the candidate stops relocating
-    // in the crowded store — the boundary this test exists to exercise.
+    // `hi` is the tightest still-clean padding at which the candidate stops
+    // relocating in the crowded store — the boundary this test exists to
+    // exercise.
     const boundaryPadding = hi;
 
     const soloResult = computeAnchorPreference(withoutNeighbour, textFor(boundaryPadding));

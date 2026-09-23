@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 14,
   "published": "2026-09-10T20:35:56.039Z",
   "params": [
     "__source",
@@ -1082,6 +1082,14 @@
     {"param":"xhuserid","hosts":["faphouse.com"]},
     {"param":"xid_param_2","hosts":["nesine.com"]},
     {"param":"xmktid","hosts":["pages.tmall.com"]},
-    {"param":"xmt","hosts":["threads.com","threads.net"]}
+    {"param":"xmt","hosts":["threads.com","threads.net"]},
+    {"param":"xsdata","hosts":["sharepoint.com"]},
+    {"param":"xuid","hosts":["comic.k-manga.jp"]},
+    {"param":"xvcid","hosts":["expressvpn.com"]},
+    {"param":"yredirect","hosts":["dzen.ru"]},
+    {"param":"ytag","hosts":["compshare.cn"]},
+    {"param":"ytwchpos","hosts":["gaming.amazon.com"]},
+    {"param":"z","hosts":["awaliwa.com"]},
+    {"param":"zdroj","hosts":["idnes.cz"]}
   ]
 }
