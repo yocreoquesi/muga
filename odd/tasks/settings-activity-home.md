@@ -69,20 +69,34 @@ their content is not moved here.
 
 ## Checklist
 
-- [ ] T1 — Feature document created and committed alone.
-- [ ] T2 — `src/lib/domain-stats-view.js` (`planDomainStatsView`) + RED-first
-      unit test `tests/unit/domain-stats-view.test.mjs`.
-- [ ] T3 — `options.html`: new `<section id="section-activity">` with
+- [x] T1 — Feature document created and committed alone. (a1ba77a)
+- [x] T2 — `src/lib/domain-stats-view.js` (`planDomainStatsView`) + RED-first
+      unit test `tests/unit/domain-stats-view.test.mjs`. RED observed
+      (ERR_MODULE_NOT_FOUND) before the module existed; GREEN after (7/7).
+- [x] T3 — `options.html`: new `<section id="section-activity">` with
       `domain-stats-panel` card; `en.mjs` + 6 other locales get
-      `section_activity`.
-- [ ] T4 — `options.js`: `renderDomainStatsActivity()`, wired at init, after
+      `section_activity`. `options.css` gets the moved row styling.
+- [x] T4 — `options.js`: `renderDomainStatsActivity()`, wired at init, after
       toggle change, and after import.
-- [ ] T5 — `popup.html`/`popup.js`/`popup.css`: remove the domain-stats
-      panel, its renderer, its call site, its CSS.
-- [ ] T6 — Guard tests: no-duplicate-id test for `options.html`; popup no
-      longer renders domain stats.
-- [ ] T7 — Run full check suite, rebuild bundles if touched, record results
-      here, final commit(s).
+- [x] T5 — `popup.html`/`popup.js`/`popup.css`: removed the domain-stats
+      panel, its renderer (`showDomainStats`), its call site, its CSS, and
+      the now-unused `getDomainStats` import.
+- [x] T6 — Guard tests in `tests/unit/settings-activity-domain-stats.test.mjs`:
+      no-duplicate-id across `options.html`, the checkbox/panel id split,
+      `#section-activity` is TIER 1 (positioned before Advanced), and popup
+      no longer declares/calls `showDomainStats` or the removed element ids.
+- [x] T7 — Full check suite run (see Progress); no build:content/build:web
+      bundle touched (neither bundler's inputs include src/popup, src/options,
+      or the new src/lib module); final commit(s) below.
+
+## Notes for the next slice (#1351)
+
+`#section-activity` currently hides itself entirely when `prefs.domainStats`
+is off, since it hosts only the domain-stats panel today. Once #1351 adds a
+second, independently-gated panel to the same section, that section-level
+hide will need to become "hide iff every child panel is hidden" rather than
+being tied to one pref. Left as-is here since #1350 has exactly one panel
+and ADR-0011 does not decide the multi-panel layout.
 
 ## Acceptance criteria (copied from issue #1350)
 
@@ -101,4 +115,28 @@ if confirmed unaffected.
 
 - 2026-09-24: Explored ADR-0011, issues #1350-#1353, popup.js/html,
   options.js/html, storage.js, locale/test conventions. Wrote this document.
+- 2026-09-24: Implemented T2-T6. Checks run from a clean worktree:
+  - This worktree had no `node_modules` at all (fresh worktree checkout);
+    `npm install` was run once to restore it (needed for `npm run typecheck`,
+    which reads `./node_modules/@types`; `npm test`/`lint:js`/`check:i18n`
+    had been resolving from elsewhere and already passed before the install).
+  - `npm test`: 8046 tests, 8045 pass, 1 skipped (the known pre-existing
+    skip), 0 fail. Re-ran `tests/unit/sign-rules.test.mjs` in isolation per
+    the known-Windows-flake note: 27/27 pass, no flake observed.
+  - `npm run lint:js`: clean, 0 problems.
+  - `npm run typecheck`: clean, 0 errors (after the `npm install` above).
+  - `npm run check:i18n`: ok, no FIXME/stub/empty translations.
+  - `npm run lint` (web-ext): 0 errors, 0 notices, 2 warnings — both
+    pre-existing `UNSAFE_VAR_ASSIGNMENT` notices in `src/lib/i18n.js`
+    (innerHTML), unrelated to this change.
+  - `tests/unit/context-map.test.mjs`: 10/10 pass (ADR-0011 index entry
+    unaffected).
+  - No `build:content`/`build:web` rebuild needed: neither bundler's inputs
+    include `src/popup/`, `src/options/`, or the new
+    `src/lib/domain-stats-view.js`.
+  - e2e: searched `tests/e2e/` for any spec covering the popup's
+    domain-stats panel; none exists (the only e2e hit,
+    `export-import.spec.mjs`, checks the `domainStats` *pref boolean* in the
+    export payload, unrelated to the UI panel). Nothing to update; Playwright
+    was not run.
 
