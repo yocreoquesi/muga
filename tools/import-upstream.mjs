@@ -158,7 +158,10 @@ export function parseRemoveparamRules(text) {
     // Anchor classification, computed BEFORE the name extraction below so a
     // path/query anchor can be excluded from the global candidate pool
     // rather than silently falling into it (#1326).
-    const anchorMatch = /^\|\|([^^]*)\^/.exec(line);
+    // The capture stops at `/`, `?`, `&` and `=`: none can appear in a host,
+    // and upstream path anchors end in `^` too (`||ca.indeed.com/viewjob^`),
+    // so `[^^]*` alone let them pass as a whole host (#1357).
+    const anchorMatch = /^\|\|([^^/?&=]*)\^/.exec(line);
     const domainMatch = /[$,]domain=([^,$]+)/i.exec(line);
     // A `||`-prefixed line that matches neither a clean host anchor nor a
     // `domain=` modifier is anchored to a path or a query, never to a whole
