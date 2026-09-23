@@ -303,6 +303,26 @@ describe("parseRemoveparamRules — path/query anchor classification (#1326)", (
     assert.equal(pathAnchorSkipped, 1);
   });
 
+  // #1357: the live upstream shape ends the path with `^`
+  // (`||ca.indeed.com/viewjob^$removeparam=cmp`). The fixtures above omit the
+  // `^`, so they never exercised the host-anchor regex, which accepted any
+  // run of non-`^` characters, path included, as a "clean host".
+  test("||host/path^$removeparam=x (caret-terminated path) is still path-anchored", () => {
+    const text = "||ca.indeed.com/viewjob^$removeparam=cmp";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], []);
+    assert.deepEqual(scoped, []);
+    assert.equal(pathAnchorSkipped, 1);
+  });
+
+  test("||host?query^ and ||host&query=v^ (caret-terminated query) are still path/query-anchored", () => {
+    const text = "||example.com?q^$removeparam=x\n||example.com&query=v^$removeparam=y";
+    const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], []);
+    assert.deepEqual(scoped, []);
+    assert.equal(pathAnchorSkipped, 2);
+  });
+
   test("||host^$removeparam=x is still a whole-host anchor: reaches params AND scoped, pathAnchorSkipped stays 0", () => {
     const text = "||example.com^$removeparam=x";
     const { params, scoped, pathAnchorSkipped } = parseRemoveparamRules(text);
