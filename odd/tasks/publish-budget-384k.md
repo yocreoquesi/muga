@@ -302,6 +302,60 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   Commit: 5da93af (fix(rules): guard the weekly ingest against #1344
   relocation churn).
 
+- 2026-09-24: Native review approved (receipt acknowledged); 5 non-blocking
+  advisories applied in one follow-up commit:
+  1. `reconcile-net-change.mjs` restored the whole `tools/rules-source`
+     directory but only ever compared `params.json`+`rules.json` — narrowed
+     `restore()` to accept exactly those two repo-relative paths. Replaced the
+     fixed `RELATIVE_PARAMS_PATH`/`RELATIVE_STORE_PATH` constants with a new
+     `toRepoRelativePath()` helper derived from whatever `paramsPath`/
+     `storePath` the caller actually passed (with an explicit
+     `headParamsPath`/`headStorePath` override for a fixture whose paths
+     aren't real repo paths), closing the hidden coupling where an overridden
+     path silently kept comparing/restoring the production files.
+  2. Corrected `tools/build-rules-store.mjs`'s `--prefer-anchors` CLI comment:
+     it claimed the workflow's combined signal routes on this step's own
+     `changed` output — it does not (T3.1: `ANY` reads `reconcile-net-change`
+     alone) — and states explicitly that OR-ing this signal back into `ANY`
+     reintroduces the steady-state churn.
+  3. Fixed `\Z` (a PCRE end-of-input anchor, matches the literal char "Z" in
+     JS) in the work-decision block matcher to `(?![\s\S])`.
+  4. Anchored the T3 ordering test on `run:` lines (regex + `.index`) instead
+     of bare `content.indexOf(...)`, matching the T3.1 test's own pattern —
+     the bare version was fragile to exactly the kind of forward-reference
+     comment this file's own docblocks use.
+  5. Added spawn-based CLI tests: `tests/unit/rule-ingestion-reconcile-net-change.test.mjs`
+     gained a "CLI (real subprocess, real git, throwaway fixture repo)"
+     block — the script has no internal imports, so it was copied into a
+     disposable `git init`'d fixture repo (mirroring `tools/rules-source/` +
+     `tools/rule-ingestion/` layout) and run for real via `node`/`spawnSync`,
+     covering both `changed=false` (restore) and `changed=true` (single-bump
+     write) branches against a real `$GITHUB_OUTPUT` file. New
+     `tests/unit/build-rules-store-cli.test.mjs` spawns the REAL
+     `build-rules-store.mjs --prefer-anchors` against the REAL repo for the
+     `changed=false` branch only — safe because this branch's committed tree
+     already has every #1344 candidate relocated (a proven no-op, asserted via
+     `git status --short` before/after) — and explicitly declines to fixture
+     the `changed=true` branch: that module pulls in `rules-store.mjs`,
+     `affiliates-data.js` and `remote-rules.js`, and faithfully mirroring that
+     graph risked asserting against a drifted strawman while the real
+     alternative (mutating the real committed tree) is not permitted; that
+     branch stays covered at the pure-function level by
+     `channel-prefers-anchors.test.mjs`.
+
+  Checks: `npm test` 8019/8018 pass (1 pre-existing skip, no flake observed —
+  the known `sign-rules.test.mjs` full-suite flake did not reproduce this
+  run), `npm run check:rules-store` clean, `npm run lint:js` clean, `npm run
+  typecheck` clean. No generated-file diff.
+
+  Files changed: `tools/rule-ingestion/reconcile-net-change.mjs`,
+  `tools/build-rules-store.mjs`, `tests/unit/ingestion-scheduled-workflow.test.mjs`,
+  `tests/unit/rule-ingestion-reconcile-net-change.test.mjs`,
+  `tests/unit/build-rules-store-cli.test.mjs` (new).
+
+  Commit: cafd5f7 (fix(rules): restore only what reconcile compares, and test
+  its CLI output).
+
 ## Next step
 
 All three tasks closed and all checks lists green. Nothing outstanding for
