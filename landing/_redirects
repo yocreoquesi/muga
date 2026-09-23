@@ -1,0 +1,29 @@
+# muga.app redirects — Cloudflare Pages (see landing/_headers for the same
+# platform note; response headers and redirects are two different files Pages
+# reads from the same build output directory, `landing/`).
+#
+# /clean retired as a public destination (#1356): the landing already hosts
+# the same tool inline at #demo-tool, driven by the real controller
+# (landing/clean/ui.js). Redirect rather than 404, and straight at the tool
+# anchor rather than a bare "/", because a redirect that lands on a page that
+# ignores ?url= is worse than a 404 (#1333 made the address bar itself the
+# share link).
+#
+# The destination carries no query string of its own on purpose: Cloudflare's
+# `_redirects` docs do not explicitly promise that a bare destination
+# forwards the incoming request's query string, but this is the documented
+# default for Netlify's `_redirects` format (which Pages' format follows),
+# and it is the only way #1333's ?url= survives without this file trying to
+# capture and re-emit an arbitrary query string, which `_redirects` cannot do
+# (no query-parameter capture; see the "Query Parameters" row in Cloudflare's
+# own redirects docs). Unverified against production; see
+# odd/tasks/retire-clean-page.md and verify with:
+#   curl -sD - -o /dev/null "https://muga.app/clean?url=https://example.com/p?utm_source=x"
+# and confirm the Location header keeps the ?url= value.
+#
+# landing/clean/ui.js, landing/clean/engine/* etc. are NOT covered here and
+# must stay reachable: they are still runtime dependencies the landing loads
+# on first interaction (tools/build-web.mjs mirrors them from web/), so this
+# only redirects the retired page itself, never a /clean/* subtree.
+/clean /#demo-tool 301
+/clean/ /#demo-tool 301
