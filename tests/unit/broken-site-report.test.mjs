@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import {
   buildBrokenSiteReportFields,
   buildBrokenSiteReportBody,
+  isReportableUrl,
 } from "../../src/lib/broken-site-report.js";
 
 const LONG_URL = `https://example.com/${"a".repeat(2000)}`;
@@ -120,6 +121,48 @@ describe("buildBrokenSiteReportFields", () => {
     const fields = buildBrokenSiteReportFields(undefined);
     assert.equal(fields.hostname, "");
     assert.equal("url" in fields, false);
+  });
+});
+
+// ── #1353 — public validation gate for the Settings-reachable report flow ──
+//
+// Settings has no "current tab" context the way the popup does: a user
+// pastes the URL they had trouble with. Before this existed the only
+// feedback on a malformed URL was whatever exception message the cleaning
+// pipeline happened to throw (dev_url_error). isReportableUrl exposes the
+// SAME http(s)-only gate the module already enforces privately
+// (_parseReportUrl), so the new UI can show a friendly inline validation
+// message before ever invoking the cleaner.
+describe("isReportableUrl", () => {
+  test("true for a valid https URL", () => {
+    assert.equal(isReportableUrl("https://example.com/path?a=1"), true);
+  });
+
+  test("true for a valid http URL", () => {
+    assert.equal(isReportableUrl("http://example.com/"), true);
+  });
+
+  test("false for a non-http(s) scheme", () => {
+    assert.equal(isReportableUrl("javascript:alert(1)"), false);
+    assert.equal(isReportableUrl("data:text/html,<script>1</script>"), false);
+    assert.equal(isReportableUrl("mailto:someone@example.com"), false);
+  });
+
+  test("false for malformed input", () => {
+    assert.equal(isReportableUrl("not a url at all"), false);
+  });
+
+  test("false for empty string, null, undefined, or non-string input", () => {
+    assert.equal(isReportableUrl(""), false);
+    assert.equal(isReportableUrl(null), false);
+    assert.equal(isReportableUrl(undefined), false);
+    assert.equal(isReportableUrl(12345), false);
+  });
+
+  test("never throws on garbage input", () => {
+    assert.doesNotThrow(() => isReportableUrl());
+    assert.doesNotThrow(() => isReportableUrl({}));
+    assert.doesNotThrow(() => isReportableUrl([]));
   });
 });
 

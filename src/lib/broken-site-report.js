@@ -78,6 +78,24 @@ function _canIncludeFullUrl(url, includeFullUrl, isValidHttpUrl) {
 }
 
 /**
+ * Public validation gate for a Settings-reachable report flow (#1353):
+ * true only for a well-formed http(s) URL. Wraps the module's private
+ * `_parseReportUrl` gate — the popup and the QA URL tester both learn
+ * whether a URL is reportable only as a side effect of building the whole
+ * fields/body object; a surface that has no live cleaning result yet (a
+ * user just pasted a URL and hasn't run the check) needs the yes/no answer
+ * on its own, to show friendly inline validation instead of nothing.
+ *
+ * Never throws — malformed/garbage input returns false.
+ *
+ * @param {string|null|undefined} url
+ * @returns {boolean}
+ */
+export function isReportableUrl(url) {
+  return _parseReportUrl(url).isValidHttpUrl;
+}
+
+/**
  * Builds the field set for the popup's form-based GitHub issue deep-link
  * (.github/ISSUE_TEMPLATE/broken-site.yml). Returns a plain object matching
  * the template's field IDs. The `url` key is present ONLY when the caller
