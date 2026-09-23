@@ -107,8 +107,17 @@ describe("docs-claims — machine-enforced README/CONTRIBUTING accuracy", () => 
       .find((line) => line.includes("[Privacy policy]") && line.includes("[FAQ]"));
     assert.ok(bar, "the README link bar is gone or was reshaped; #1262 pinned its contents");
 
+    // #1356: /clean was retired as a public destination (the landing already
+    // hosts the same tool inline); the bar now points at the landing's tool
+    // anchor, which /clean itself redirects to (landing/_redirects), so an
+    // old bookmark of either link still works.
     assert.ok(
-      bar.includes("https://muga.app/clean"),
+      !bar.includes("https://muga.app/clean"),
+      "the link bar still points at the retired /clean page (#1356); it should link to " +
+        "https://muga.app/#demo-tool instead",
+    );
+    assert.ok(
+      bar.includes("https://muga.app/#demo-tool"),
       "the link bar lost the web cleaner. It is the only MUGA surface that needs no install, " +
         "and GitHub is where most people arrive.",
     );

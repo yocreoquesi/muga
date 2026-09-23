@@ -48,10 +48,12 @@
  * `export const NAME = [...]`. (2) is kept alongside (3), unchanged, so
  * existing byte-copy drift tests (web-engine-mirror.test.mjs) still hold.
  *
- * Then mirrors the entire web/ tree into landing/clean/, which the
- * Cloudflare Pages build already picks up (it deploys the whole `landing/`
- * trigger includes `landing/**`). See design ADR-2
- * (sdd/web-cleaner-tool/design).
+ * Then mirrors the web/ tree into landing/clean/, which the Cloudflare
+ * Pages build already picks up (it deploys the whole `landing/` trigger
+ * includes `landing/**`). See design ADR-2 (sdd/web-cleaner-tool/design).
+ * index.html is excluded from that mirror (#1356): /clean was retired as a
+ * public destination, so its served copy (landing/clean/index.html) is
+ * gone, while web/index.html stays as a local dev-only preview.
  *
  * Deterministic plain file copies/transforms only — no bundler. CI
  * re-runs this and git-diffs the result to catch drift (see ci.yml).
@@ -178,10 +180,21 @@ function main() {
   const pathStripRules = JSON.parse(readFileSync(SRC_PATH_STRIP_RULES, "utf8"));
   writeFileSync(WEB_PATH_STRIP_RULES_MODULE, renderPathStripRulesModule(pathStripRules));
 
-  // Mirror the whole authored+vendored web/ tree into landing/clean/ so
-  // relative asset paths (./engine/cleaner-bundle.js, ./adapter.js, ...)
-  // resolve identically under web/ and under landing/clean/.
-  cpSync(WEB_DIR, LANDING_CLEAN_DIR, { recursive: true });
+  // Mirror the authored+vendored web/ tree into landing/clean/ so relative
+  // asset paths (./engine/cleaner-bundle.js, ./adapter.js, ...) resolve
+  // identically under web/ and under landing/clean/.
+  //
+  // index.html is excluded (#1356): it was the served /clean page, retired
+  // as a public destination now that the landing hosts the same tool inline.
+  // web/index.html itself stays as a local dev-only preview (see web/
+  // README.md), but nothing should serve it in production, so it is never
+  // copied into the Cloudflare Pages build output (landing/). Everything
+  // else here (ui.js, ui-view.js, param-insight.js, report-link.js,
+  // engine/) keeps mirroring: the landing loads them at runtime.
+  cpSync(WEB_DIR, LANDING_CLEAN_DIR, {
+    recursive: true,
+    filter: (src) => src !== join(WEB_DIR, "index.html"),
+  });
 
   console.log(`[muga] web engine copies written: ${WEB_BUNDLE}`);
   console.log(`[muga]                            ${WEB_DOMAIN_RULES}`);

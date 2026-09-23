@@ -205,6 +205,73 @@ describe("landing inline tool — lazy load on first interaction", () => {
   });
 });
 
+describe("landing inline tool — eager start on ?url= (#1356)", () => {
+  // /clean now redirects here keeping the query string (see landing/
+  // _redirects and tests/unit/landing-redirects-guard.test.mjs), and #1333's
+  // ?url= share link only works if the tool actually initializes on load.
+  // The lazy path above never fires until a focusin/pointerdown, which a
+  // visitor who arrives, reads the already-cleaned result and leaves may
+  // never trigger. This block cannot be exercised under node:test (browser-
+  // only DOM), same as the rest of this file: structural source checks only.
+
+  test("checks the query string for a shared ?url= before deciding whether to wait for interaction", () => {
+    assert.ok(
+      /URLSearchParams\(\s*window\.location\.search/.test(BOOTSTRAP_NO_COMMENTS),
+      "the bootstrap script must inspect window.location.search for a shared ?url=, matching web/ui.js's own " +
+        "prefill check, or a /clean?url=... share link redirected here starts an empty tool that never cleans",
+    );
+    assert.ok(
+      /\.has\(\s*['"]url['"]\s*\)/.test(BOOTSTRAP_NO_COMMENTS),
+      "must check specifically for the `url` parameter (#1333's ?url= share link)",
+    );
+  });
+
+  test("calls bootstrap() directly when a shared URL is present, instead of only wiring the lazy listeners", () => {
+    assert.ok(
+      /\bbootstrap\(\s*\)/.test(BOOTSTRAP_NO_COMMENTS),
+      "must invoke bootstrap() outside of an addEventListener callback so the tool starts on page load, not on " +
+        "first interaction, when ?url= is present",
+    );
+  });
+
+  test("the lazy focusin/pointerdown listeners are still wired for a normal visit with no ?url=", () => {
+    // These must survive unconditionally: the eager path is additive, not a
+    // replacement, or every visitor without a ?url= regresses to no tool at
+    // all until this test's sibling ("lazy load on first interaction") would
+    // also start failing.
+    assert.ok(
+      /addEventListener\(\s*['"]focusin['"]\s*,\s*bootstrap\s*\)/.test(BOOTSTRAP),
+      "the focusin listener must still be wired for the non-eager path",
+    );
+    assert.ok(
+      /addEventListener\(\s*['"]pointerdown['"]\s*,\s*bootstrap\s*\)/.test(BOOTSTRAP),
+      "the pointerdown listener must still be wired for the non-eager path",
+    );
+  });
+
+  test("startTool() is still invoked exactly once (via bootstrap), even with the new eager path", () => {
+    // Guards against a regression where the eager path calls startTool()
+    // directly instead of going through bootstrap(), which would create a
+    // second load path and break "startTool() is only invoked from
+    // bootstrap()" above.
+    const invocations = (BOOTSTRAP_NO_COMMENTS.match(/startTool\(/g) || []).length;
+    const definition = (BOOTSTRAP_NO_COMMENTS.match(/function startTool\(/g) || []).length;
+    assert.equal(
+      invocations - definition,
+      1,
+      "startTool() must be invoked exactly once, from bootstrap(), whether the eager or the lazy path triggers it",
+    );
+  });
+
+  test("a malformed or absent query string does not throw (falls through to the lazy path)", () => {
+    assert.ok(
+      /try\s*\{[\s\S]*?URLSearchParams[\s\S]*?\}\s*catch/.test(BOOTSTRAP_NO_COMMENTS),
+      "reading location.search must be guarded by try/catch, matching web/ui.js's own prefill guard, so an " +
+        "unparseable search string leaves a working (lazy) tool rather than an uncaught error",
+    );
+  });
+});
+
 describe("landing inline tool — does not reimplement the cleaner", () => {
   test("no hand-rolled renderer lives inline (ui.js renders everything)", () => {
     assert.ok(!/function renderResult\b/.test(BOOTSTRAP), "no lightweight renderResult() may exist (ui.js renders)");
@@ -212,6 +279,31 @@ describe("landing inline tool — does not reimplement the cleaner", () => {
     assert.ok(!/function renderAfter\b/.test(BOOTSTRAP), "no lightweight renderAfter() may exist");
     assert.ok(!HTML.includes('id="demo-open-full"'), "no #demo-open-full \"open the full tool\" link may exist");
     assert.ok(!/open the full tool/i.test(BOOTSTRAP_NO_COMMENTS), "no \"open the full tool\" fallback copy may remain");
+  });
+});
+
+describe("landing inline tool — retargeted /clean links (#1356)", () => {
+  // /clean is retired: the landing already hosts the tool inline, so both
+  // places the landing promoted /clean as a second destination point at the
+  // tool anchor on the same page instead. Scans the whole HTML (not just
+  // BOOTSTRAP), since these are <a href> attributes, not bootstrap script.
+  test("no link on the landing still points at https://muga.app/clean", () => {
+    assert.ok(
+      !HTML.includes("https://muga.app/clean"),
+      "landing/index.html must not promote /clean as a destination anymore (#1356); retarget to #demo-tool",
+    );
+  });
+
+  test("the platform card's web option points at the in-page tool anchor", () => {
+    const cardMatch = HTML.match(/<a class="way" data-plat="web" href="([^"]+)"/);
+    assert.ok(cardMatch, "the web platform card must exist");
+    assert.equal(cardMatch[1], "#demo-tool", "the web platform card must link to #demo-tool, not a separate page");
+  });
+
+  test("the footer's web cleaner entry points at the in-page tool anchor", () => {
+    const footerMatch = HTML.match(/<li><a href="([^"]+)">MUGA URL Cleaner<\/a><\/li>/);
+    assert.ok(footerMatch, "the footer's web cleaner entry must exist");
+    assert.equal(footerMatch[1], "#demo-tool", "the footer's web cleaner entry must link to #demo-tool, not a separate page");
   });
 });
 

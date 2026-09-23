@@ -23,7 +23,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -172,3 +172,25 @@ for (const rel of ["ui.js", "ui-view.js", "param-insight.js", "report-link.js"])
     );
   });
 }
+
+// /clean retired as a public destination (#1356): landing/clean/index.html
+// was the served page, mirrored wholesale from web/index.html by the
+// cpSync() in tools/build-web.mjs. Deleting only the mirrored copy would not
+// survive the next `npm run build:web`, which mirrors the whole web/ tree —
+// it would silently recreate landing/clean/index.html. build-web.mjs's
+// cpSync must exclude index.html so the retirement actually sticks.
+// web/index.html itself stays (a local dev-only preview; nothing serves it
+// once /clean redirects away), which is why it is not asserted gone here.
+test("landing/clean/index.html is gone (the retired /clean page) and web/index.html stays (dev-only preview)", () => {
+  assert.equal(
+    existsSync(join(ROOT, "landing/clean/index.html")),
+    false,
+    "landing/clean/index.html must not exist — /clean is retired (#1356); if 'npm run build:web' recreated it, " +
+      "its cpSync() mirror needs to exclude index.html",
+  );
+  assert.equal(
+    existsSync(join(ROOT, "web/index.html")),
+    true,
+    "web/index.html should still exist as the (now unserved) local dev preview of the standalone tool",
+  );
+});
