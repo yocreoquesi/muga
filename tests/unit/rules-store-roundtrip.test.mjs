@@ -57,7 +57,8 @@ import {
   renderArtifacts,
   PUBLISH_PAYLOAD_BUDGET_BYTES,
 } from "../../tools/build-rules-store.mjs";
-import { MAX_PAYLOAD_BYTES } from "../../src/lib/remote-rules.js";
+import { MAX_PAYLOAD_BYTES, buildScopedDnrRules } from "../../src/lib/remote-rules.js";
+import { DNR_SCOPED_PARAMS_MAX_RULES } from "../../src/lib/dnr-ids.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..");
@@ -483,6 +484,19 @@ test("the publish budget stays at or below the runtime cap", () => {
   // the publish budget once that release has adoption — but the publisher may
   // never exceed what the client accepts.
   assert.ok(PUBLISH_PAYLOAD_BUDGET_BYTES <= MAX_PAYLOAD_BYTES);
+});
+
+test("the committed scoped section compiles to fewer DNR rules than the scoped range holds", () => {
+  // The byte budget is no longer what binds (384 KB since 2026-09-23); the
+  // scoped DNR range is. buildScopedDnrRules truncates past the cap with only a
+  // console warning, so reaching it means hosts silently lose their rule.
+  // Strictly below, so a payload that lands exactly on the cap still fails here.
+  const source = JSON.parse(readFileSync(PARAMS_PATH, "utf8"));
+  const rules = buildScopedDnrRules(source.scoped ?? []);
+  assert.ok(
+    rules.length < DNR_SCOPED_PARAMS_MAX_RULES,
+    `scoped section compiles to ${rules.length} DNR rules; the range holds ${DNR_SCOPED_PARAMS_MAX_RULES}`,
+  );
 });
 
 test("a store whose scoped facts exceed the budget publishes a subset, not everything", () => {
