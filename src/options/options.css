@@ -252,6 +252,47 @@ h2 {
 }
 .list-group-divider { border-top: 1px solid var(--border-1); }
 
+/* ---------- Activity: domain-stats table (#1350) ------------------------ */
+/* Mirrors popup.css's removed .domain-stats-row styling — the data moved,
+   the row shape did not. */
+.domain-stats-empty {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.domain-stats-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-1);
+  font-size: 12.5px;
+}
+.domain-stats-row:first-child { border-top: none; }
+
+.domain-stats-name {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.domain-stats-params,
+.domain-stats-urls {
+  color: var(--text-3);
+  white-space: nowrap;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.domain-stats-params {
+  color: var(--accent-strong);
+  font-weight: 500;
+}
+
 /* ---------- Creator allowlist editor (#445, B13) ----------------------- */
 .creator-allowlist-section {
   border-top: 1px solid var(--border-1);

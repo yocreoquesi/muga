@@ -4,7 +4,8 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams, getDomainStats } from "../lib/storage.js";
+import { planDomainStatsView } from "../lib/domain-stats-view.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -363,6 +364,15 @@ async function init() {
   bindToggle("param-breakdown", "paramBreakdown", prefs);
   bindToggle("show-report-button", "showReportButton", prefs);
   bindToggle("domain-stats", "domainStats", prefs);
+  // #1350: the Activity section's domain-stats table is gated on the same
+  // pref as the recording itself (process-url.js:375, service-worker.js:352)
+  // — a user who turns off recording sees no stale table either. Re-render
+  // live on toggle so Settings doesn't require a reload to reflect it.
+  document.getElementById("domain-stats")?.addEventListener("change", () => {
+    renderDomainStatsActivity(document.getElementById("domain-stats").checked)
+      .catch(err => console.error("[MUGA] render domain stats:", err));
+  });
+  await renderDomainStatsActivity(prefs.domainStats);
   // Toolbar badge toggle (#910). Default ON; controls the native
   // setBadgeText running-count overlay on the toolbar icon.
   bindToggle("show-badge", "showBadge", prefs);
@@ -567,6 +577,64 @@ async function initBlocklistMigrationNotice(prefs) {
   document.getElementById("blocklist-migration-notice-link")?.addEventListener("click", () => {
     document.getElementById("section-aggressive-privacy")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
+}
+
+/**
+ * Renders the per-domain tracker-stats table in Settings' Activity section
+ * (#1350, ADR-0011 Decision 3). Moved here from the popup's showDomainStats
+ * (popup.js:920-966, removed) — a ranked table that "rewards study" is a
+ * Settings surface, not a two-second glance. Behaviour is otherwise
+ * unchanged: hidden while recording is off, an empty-state message once
+ * recording is on but no data exists yet, sorted by params desc, capped at
+ * the same 10 rows (see planDomainStatsView).
+ * @param {boolean} domainStatsEnabled current value of prefs.domainStats
+ */
+async function renderDomainStatsActivity(domainStatsEnabled) {
+  const section = document.getElementById("section-activity");
+  const list = document.getElementById("domain-stats-list");
+  if (!section || !list) return;
+
+  if (!domainStatsEnabled) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  let allStats;
+  try { allStats = await getDomainStats(); } catch (err) { console.error("[MUGA] getDomainStats:", err); allStats = {}; }
+  const { empty, entries } = planDomainStatsView(allStats);
+
+  list.replaceChildren();
+
+  if (empty) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "domain-stats-empty";
+    emptyEl.textContent = t("domain_stats_empty", _currentLang);
+    list.appendChild(emptyEl);
+    return;
+  }
+
+  for (const { domain, params, urls } of entries) {
+    const row = document.createElement("div");
+    row.className = "domain-stats-row";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "domain-stats-name";
+    nameEl.textContent = domain;
+
+    const paramsEl = document.createElement("span");
+    paramsEl.className = "domain-stats-params";
+    paramsEl.textContent = `${params} ${t("domain_stats_params", _currentLang)}`;
+
+    const urlsEl = document.createElement("span");
+    urlsEl.className = "domain-stats-urls";
+    urlsEl.textContent = `${urls} ${t("domain_stats_urls", _currentLang)}`;
+
+    row.appendChild(nameEl);
+    row.appendChild(paramsEl);
+    row.appendChild(urlsEl);
+    list.appendChild(row);
+  }
 }
 
 // Defense-in-depth cap on user-list rendering (#631 item 3): even if
@@ -1177,6 +1245,7 @@ function initExportImport() {
       document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
+      await renderDomainStatsActivity(newPrefs.domainStats);
       document.getElementById("show-badge").checked = newPrefs.showBadge;
       // #964 / browsewrap Phase 2: reflect the gated result for EACH split
       // toggle — each checkbox must match the pref that actually landed

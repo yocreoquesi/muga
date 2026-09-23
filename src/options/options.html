@@ -116,6 +116,28 @@
     </div>
   </section>
 
+  <!-- Activity (#1350, ADR-0011 Decision 3): the home for the popup's
+       record/analysis panels once each slice lands (#1350 domain stats,
+       #1351 suspicious params, #1352 session/recent-activity ledgers, #1353
+       report flow). ADR-0011 calls these "a record or an analysis rather
+       than a glance" — Settings has the stable address and unbounded
+       viewport a ledger needs, and the popup does not. TIER 1, ungated:
+       like "Your locally-stripped params" above, a record is not an
+       advanced setting. This slice hosts only the domain-stats table; the
+       panel itself owns its own id, domain-stats-panel, because the
+       gating checkbox below (Display card) already owns the plain
+       domain-stats id — moving both into the same document would
+       otherwise collide. -->
+  <section id="section-activity">
+    <h2 data-i18n="section_activity">Activity</h2>
+    <div class="card">
+      <div class="list-section" id="domain-stats-panel">
+        <strong class="list-group-title" data-i18n="domain_stats_label">Where the most noise comes from</strong>
+        <div id="domain-stats-list"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- General (#936): merges the former single-item Features + Language sections. -->
   <section>
     <h2 data-i18n="section_general">General</h2>

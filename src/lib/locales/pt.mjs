@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "Privacidade",
   section_display: "Exibição",
   section_user_custom_rules: "Seus parâmetros removidos localmente",
+  section_activity: "Atividade",
   user_custom_rules_hint: "Parâmetros que você promoveu com «Remover localmente» na janela pop-up. O MUGA os remove em todos os sites. Remova os que não quiser mais eliminar.",
   row_canonical_extractor_label: "Encontrar o destino real quando um invólucro o esconde",
   row_canonical_extractor_hint: "Quando um invólucro oculta seu destino, o MUGA lê o link canônico da página para encontrar o destino real antes de desistir.",

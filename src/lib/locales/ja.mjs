@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "プライバシー",
   section_display: "表示",
   section_user_custom_rules: "ローカルで削除したパラメータ",
+  section_activity: "アクティビティ",
   user_custom_rules_hint: "ポップアップの「ローカルで削除」で追加したパラメータです。MUGA はこれらをすべてのサイトで削除します。削除したくないものは取り除いてください。",
   row_canonical_extractor_label: "ラッパーが隠している本当の遷移先を見つける",
   row_canonical_extractor_hint: "ラッパーがリンク先を隠している場合、MUGA はあきらめる前にページの正規リンクを読み取って本当のリンク先を見つけます。",
