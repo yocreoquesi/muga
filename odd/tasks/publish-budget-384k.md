@@ -93,7 +93,7 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
     finding alongside the historical 50 KB saturation evidence.
   Checks green: `npm test` (7975 pass, 1 pre-existing skip), `npm run
   check:rules-store`, `npm run lint:js`, `npm run typecheck`.
-  Commit: 0aa2317.
+  Commit: d6bdec4.
 - 2026-09-23: T2 closed. Ran `node tools/build-rules-store.mjs
   --prefer-anchors`: relocated 62 params (see full list in the CLI output /
   final report), 0 deferred, orphans 0 -> 0, 338518 bytes left in the 384 KB
@@ -125,7 +125,7 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   Checks green again: `npm test` (7985 pass, 1 pre-existing skip), `npm run
   check:rules-store`, `npm run lint:js`, `npm run typecheck`, `npm run
   compile:rules` + `npm run build:dnr` (no unexpected diff).
-  Commit: 8bbfa6c.
+  Commit: d343941 (fix(rules): relocate host-anchored params ... #1344).
 
 ## Next step
 
